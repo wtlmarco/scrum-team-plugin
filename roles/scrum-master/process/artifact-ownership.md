@@ -31,6 +31,8 @@ Os caminhos concretos dos documentos do projeto estão em `.team-project/README.
 | Registro de GAPs abertos | QA | Levantado sobre código; vence a narrativa de status — modelo em [`../../../deliverables/implementation/pending.md`](../../../deliverables/implementation/pending.md) |
 | Registro de evidências (`.team-project/quality-assurance/`) | QA | Comando, saída, veredito |
 | `${CLAUDE_PLUGIN_ROOT}/agents/*`, `commands/*`, `.claude-plugin/*` | stakeholder | Composição e comportamento do time |
+| `CHANGELOG.md` (raiz) — changelog de entregas | stakeholder | Registro das entregas versionadas do plugin (`vMAJOR.MINOR.PATCH`). O SM **reconcilia** no `/review`: toda entrada de `process-changelog.md` tem par aqui na mesma linha `vX.Y`; `version` de `.claude-plugin/plugin.json` == topo do `CHANGELOG.md` (R18 · [`workflow.md` §5d](workflow.md)) |
+| Processo de lançamento — branch, PR, bump de `version`, `/team update` | stakeholder | Fecha a versão e corta a entrega. Roteiro em [`workflow.md` §5d](workflow.md); regra em R18. O SM verifica a rastreabilidade da entrega, não corta a release |
 
 ### 1a. `${CLAUDE_PLUGIN_ROOT}/standards/` — dono editorial único, consumo compartilhado (R16)
 
@@ -71,6 +73,7 @@ ideia ─────▶ PO escreve requisito e prioriza no backlog
 | QA encontra defeito fora do item | Corrigir de passagem | Abrir GAP; SM entra na fila |
 | Frente 2 do QA parece repetir o `/arc comply` | Reexecutar a tabela passo × conforme do comply | Checar o que o comply não vê: plano omitiu ou errou a seção que o item exigia — [`workflow.md` §4a](workflow.md) |
 | SM vê status divergente do código | Ajustar o status pela intuição | Acionar `/qa audit`; corrigir com o achado |
+| Mudança de `/review` aplicada mas não lançada | Assumir que as instalações já a têm | Entra numa entrega: branch, bump de `version`, entrada no `CHANGELOG.md` (R18 · [`workflow.md` §5d](workflow.md)) |
 | PO quer marcar critério de sucesso como atendido | Marcar direto | Exige evidência no registro do QA |
 
 ## 4. Convenções

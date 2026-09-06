@@ -51,7 +51,7 @@ As etapas 0 e 0b são **anteriores ao ciclo** e não se repetem por item: o onbo
 
 ## 4a. Aderência: `/arc comply` e a frente 2 do QA verificam objetos diferentes
 
-`/arc comply` **não é etapa do ciclo** (o ciclo é 0→1→2→3→4→5; ver `commands/team.md`). É uma revisão de aderência **sob demanda**, em um de dois momentos: (a) o Arquiteto a roda antes de entregar ao QA quando a entrega é grande ou tocou muitos passos; (b) é a rota de volta dos achados de aderência de execução do veredito (⚠️/❌), antes do `/dev resume`. Não roda no `/team cycle` nem nos modos parciais.
+`/arc comply` **não é etapa do ciclo** (as etapas de construção do ciclo são 3→4→5→6 na numeração da §2 — Arquiteto, dev, gap, QA; `commands/team.md` modo `cycle` usa um índice local próprio, 0–6, só das etapas de construção). É uma revisão de aderência **sob demanda**, em um de dois momentos: (a) o Arquiteto a roda antes de entregar ao QA quando a entrega é grande ou tocou muitos passos; (b) é a rota de volta dos achados de aderência de execução do veredito (⚠️/❌), antes do `/dev resume`. Não roda no `/team cycle` nem nos modos parciais.
 
 | Verificação | Objeto | Pergunta |
 |---|---|---|
@@ -79,7 +79,7 @@ Veredito de frente 2 que só reproduz a tabela passo × conforme do comply, sem 
 | Refinamento funcional | ideia nova em área já documentada | `/po analyze <ideia>` | resposta única |
 | Refinamento técnico | antes de construir | `/arc plan <ID>` | 1 plano |
 | Review | ao fim do item | `/qa <ID>` → `/po accept <ID>` | veredito + aceite |
-| Retrospectiva | a cada 3 itens fechados | `/sm impact retro` | [template](../templates/retrospective.md) · mede o footprint do processo (§5c) |
+| Retrospectiva | a cada 3 itens fechados | `/sm close` (3º item) | [template](../templates/retrospective.md) · mede o footprint do processo (§5c) |
 | Auditoria cruzada | a cada 3 ciclos | `/qa audit` | achados, sem correção |
 | Consulta ao time | decisão que atravessa papéis | `/team <pergunta>` | posições + convergências + divergências |
 | Acordo | quando se quer uma posição única | `/team agreement <questão>` | recomendação do SM, com a divergência registrada |
@@ -87,6 +87,7 @@ Veredito de frente 2 que só reproduz a tabela passo × conforme do comply, sem 
 | Revisão de processo | a cada 3 retrospectivas, ou quando uma métrica estoura | `/review metrics` | **uma** proposta de mudança, com o indicador que a valida; é também o giro **Act** do ciclo de eficiência (§5c) |
 | Curadoria do processo | quando dois papéis mudam algo que se contradiz | `/review` | consolidação do changelog e escalação do que ficou inconsistente |
 | Auditoria de processo | a cada replicação, ou quando o time cresce | `/review audit` | achados de coerência interna de `${CLAUDE_PLUGIN_ROOT}/` |
+| Lançamento de entrega | quando o stakeholder fecha uma versão | branch + PR + bump de `version`; cliente: `/team update` | entrada no `CHANGELOG.md` (§5d · R18) |
 
 ## 5a. Ritual de onboarding do projeto (R14)
 
@@ -176,6 +177,36 @@ O custo dos documentos de `${CLAUDE_PLUGIN_ROOT}/` não pode depender de uma fax
 
 **O que a fase Check candidata à remoção:** modelo que ninguém referencia, seção que repete outra, regra sem citação em 3 ciclos, entrada de changelog acima do teto. Processo que só cresce deixa de ser seguido — revisar é também remover.
 
+## 5d. Atualização e lançamento do plugin
+
+O **processo do time** (os documentos de `${CLAUDE_PLUGIN_ROOT}/`) evolui por `/review`, no repositório-fonte. Chegar às instalações onde o time está instalado é outro passo: uma **entrega versionada**. Os dois registros não se confundem —
+
+| Registro | Arquivo | Versão | Alimentado por | Dono |
+|---|---|---|---|---|
+| Evolução das regras de trabalho | `roles/scrum-master/process/process-changelog.md` | `vX.Y` | `/review` (SM cura) | SM |
+| Entrega do plugin às instalações | `CHANGELOG.md` (raiz) | `vMAJOR.MINOR.PATCH` | fechamento de entrega | stakeholder |
+
+### Ciclo de uma entrega
+1. **Branch** `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `main`.
+2. As correções e melhorias da entrega — inclusive as aplicadas por `/review` — vão nessa branch, que acumula até o stakeholder sinalizar o fechamento da versão.
+3. **PR para `main`**, para aprovação do stakeholder.
+4. **Bump** de `version` em `.claude-plugin/plugin.json` para `vX.Y.Z`.
+5. **Entrada** no topo de `CHANGELOG.md`: o que foi entregue, a branch e como verificar.
+6. No merge, os clientes são avisados e atualizam com **`/team update`** (ou os comandos nativos `claude plugin marketplace update` + `claude plugin update`).
+
+### Regra de numeração
+- `MAJOR.MINOR` acompanham a versão do changelog do processo **quando a entrega inclui mudança de processo**: uma entrega que carrega uma entrada nova de `process-changelog.md` (`vX.Y`) é lançada como `vX.Y.0`. A colisão numérica entre os dois changelogs é intencional e sinaliza o par.
+- `PATCH` (`vX.Y.1`, `vX.Y.2`…) é correção sobre a mesma linha, sem mudança de processo.
+- Entrega de escopo fechado (nova capacidade de comando, faxina, correção) incrementa `MINOR` ou `PATCH` sem tocar o changelog do processo — e a entrada em `CHANGELOG.md` diz isso explicitamente.
+
+### O que o SM reconcilia (curadoria do `/review`)
+- Toda entrada nova de `process-changelog.md` tem entrada correspondente em `CHANGELOG.md` na mesma linha `vX.Y`, ou a divergência é registrada.
+- `version` de `.claude-plugin/plugin.json` == a versão da entrada do topo de `CHANGELOG.md`.
+- Nenhuma entrada de `CHANGELOG.md` afirma "sem mudança de processo" quando a entrega, de fato, carrega uma.
+
+### `/team update` — lado da instalação
+Roda **na cópia instalada**, nunca no repositório-fonte (guarda: recusa se `${CLAUDE_PLUGIN_ROOT}/.git/` existir). Compara a `version` instalada com a do `main` da origem canônica, mostra o delta do `CHANGELOG.md` e, após confirmação, aplica. Reiniciar a sessão continua manual. Detalhe do comando em `commands/team.md` modo `update`.
+
 ## 6. Escalação
 
 ```
@@ -219,6 +250,7 @@ Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no pa
 | Documentação atualizada | aceite | QA | R12 |
 | Aceite funcional | fechamento | PO | — |
 | Evidência registrada | fechamento | QA/SM | R7 |
+| Bump de `version` + entrada no `CHANGELOG.md` nomeando a branch | merge do PR em `main` | stakeholder (SM verifica) | R18 · §5d |
 
 ## 9. Ambiente de verificação
 

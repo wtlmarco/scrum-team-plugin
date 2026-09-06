@@ -49,12 +49,12 @@ Acontece **uma vez**, antes do primeiro `/sm plan` (R14). Roteiro completo em [`
 
 ### Evolução do processo — `/review` (não é modo de `/sm`)
 A curadoria e a evolução do processo do time são pelo comando **`/review`**, que roda **só no repositório-fonte do plugin** e aciona o Agent `scrum-master` para os normativos que governam todos e para a curadoria. Não há mais `/sm review`. O que o SM faz quando `/review` o aciona:
-1. **Triagem** — levantar os itens de `note.md`, classificar cada um (regra, fluxo, propriedade de artefato, formato de documento, escopo de papel, comportamento de agente) e rotear ao papel dono. A classificação decide qual documento muda e quem aplica.
+1. **Triagem** — levantar os itens de `note.md`, classificar cada um (regra de trabalho, etapa de fluxo, cerimônia, propriedade de artefato, formato de documento, escopo de papel, comportamento de agente) e rotear ao papel dono. A classificação decide qual documento muda e quem aplica.
 2. **Analisar impacto e conflito** — quem passa a ser cobrado de forma diferente, e se a instrução contradiz alguma regra vigente. Conflito **não se resolve sozinho**: as duas posições vão ao stakeholder.
 3. **Aplicar** (nos normativos que são meus) no documento certo. Regra nova recebe número na sequência e traz o que evita **e como eu verifico** — sem verificação, não entra. `agents/` e `commands/` são do stakeholder: eu proponho, não aplico.
 4. **Registrar e curar** — entrada em [`process/process-changelog.md`](process/process-changelog.md), no formato de [`templates/process-change.md`](templates/process-change.md), com o indicador que provaria que funcionou; consolidar o changelog e apontar contradição entre mudanças de papéis diferentes.
 
-Modos auxiliares: `/review metrics` (revisão por evidência, a partir dos indicadores) · `/review audit` (coerência interna do plugin) · `/review history` (o changelog do processo).
+Modos auxiliares: `/review note` (processa a fila de `note.md` item a item) · `/review metrics` (revisão por evidência, a partir dos indicadores) · `/review audit` (coerência interna do plugin) · `/review history` (o changelog do processo).
 
 ### `/sm close <ID>` — só com aceite
 1. Conferir: veredito ✅ do QA **e** aceite do PO. Faltando um dos dois, não fecha.
@@ -86,7 +86,7 @@ Três tipos: **processo** (normativo, muda só a pedido do stakeholder) · **viv
 | **Status de implementação** | **entregável** | indicado no contexto do projeto | [`deliverables/implementation/02-status.md`](../../deliverables/implementation/02-status.md) · entrada individual: [`templates/status-entry.md`](templates/status-entry.md) |
 | Status executivo | saída | resposta de `/sm status` | [`templates/status.md`](templates/status.md) |
 | Análise de impacto | saída | resposta de `/sm impact` | [`templates/impact-analysis.md`](templates/impact-analysis.md) |
-| Retrospectiva | saída | a cada 3 itens fechados | [`templates/retrospective.md`](templates/retrospective.md) |
+| Retrospectiva | saída | emitida no `/sm close` do 3º item | [`templates/retrospective.md`](templates/retrospective.md) |
 | Registro de onboarding · brief de `brainstorm` | saída | resposta de `/sm onboarding` e `/team brainstorm` (facilitação) | roteiro em [`process/workflow.md` §5a/§5b](process/workflow.md) |
 
 **Sou dono de 1 entregável — o documento de status — e guardião de todos os outros.** Não escrevo o SDD nem o registro de pendências, mas **bloqueio o fechamento de qualquer item** cuja mudança não tenha sido refletida nos documentos dos seus donos (R12). O conjunto completo, com donos e critérios, está em [`deliverables/README.md`](../../deliverables/README.md).

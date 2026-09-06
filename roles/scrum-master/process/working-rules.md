@@ -119,6 +119,12 @@ Cada entrada de [`process-changelog.md`](process-changelog.md) registra a **deci
 **Evita:** a inflação medida no próprio changelog — v1.0 = 1,4 KB, v1.8 = 17,1 KB, 12× em nove versões — sem custar rastreabilidade: o que se corta é a deliberação repetida e o que já está registrado noutro documento, nunca a decisão nem o porquê dela.
 **SM verifica:** tamanho por bloco `## vX.Y` do changelog (`wc -l`, KB); entrada acima de 10 KB volta para edição antes de entrar; a linha de footprint da retrospectiva acusa o estouro no ciclo em que aconteceu.
 
+### R18. Entrega do plugin é ramificada, versionada e registrada
+Toda mudança que chega às instalações do time passa por uma **entrega**: branch (`fix/` ou `feat/`) a partir de `main`, PR para `main`, `version` de `.claude-plugin/plugin.json` em `vMAJOR.MINOR.PATCH`, e uma entrada no topo de `CHANGELOG.md` com o que foi entregue, a branch e como verificar. `MAJOR.MINOR` acompanham o changelog do processo quando a entrega carrega mudança de processo — entrega com entrada nova de [`process-changelog.md`](process-changelog.md) sai como `vX.Y.0`; `PATCH` é correção sobre a mesma linha. O roteiro está em [`workflow.md` §5d](workflow.md).
+
+**Evita:** dois modos de falha — mudança aplicada direto em `main` sem entrega, que nenhuma instalação recebe de forma rastreável e que ninguém consegue reverter por versão; e `CHANGELOG.md`, `plugin.json` e `process-changelog.md` derivando entre si até "qual versão tem o quê" não ter resposta.
+**SM verifica:** todo merge em `main` tem bump de `version` em `plugin.json` **e** entrada nova no topo de `CHANGELOG.md` nomeando a branch; a `version` de `plugin.json` é igual à da entrada do topo de `CHANGELOG.md`; toda entrada nova de `process-changelog.md` tem par em `CHANGELOG.md` na mesma linha `vX.Y`, ou a divergência está registrada; nenhuma entrada de `CHANGELOG.md` nega ter mudança de processo quando carrega uma.
+
 ---
 
 ## Como o SM aplica
@@ -141,6 +147,7 @@ Cada entrada de [`process-changelog.md`](process-changelog.md) registra a **deci
 | Plano ou veredito que toca engenharia sem citar a seção de standard aplicável | planos + vereditos do período | recorrente → standard virou enfeite (R16) |
 | GAP ou achado apontando defeito em `${CLAUDE_PLUGIN_ROOT}/standards/` sem chegar ao `/review` seguinte | registro de GAPs + changelog do processo | qualquer ocorrência → canal de defeito de R16 quebrado |
 | Carga fixa dos documentos do processo (KB) por papel | tamanho de `agents/` + `commands/` + `roles/<papel>/` | crescimento sem regra ou cerimônia nova, ou entrada de changelog > 10 KB → R17 / ciclo de eficiência (workflow §5c) |
+| Merge em `main` sem bump de `version` + entrada no `CHANGELOG.md`, ou `plugin.json` ≠ topo do `CHANGELOG.md`, ou entrada de `process-changelog.md` sem par em `CHANGELOG.md` | `git log main` + `CHANGELOG.md` + `plugin.json` | qualquer ocorrência → R18 ignorada (workflow §5d) |
 
 **Ciclo de eficiência (PDCA).** A verificação do custo dos documentos não espera faxina do stakeholder: cada `/review` sem instrução mede o footprint do próprio papel, a retrospectiva registra o total, e o giro de `/review metrics` (a cada 3 retrospectivas) consolida e tira **uma** remoção candidata. Roteiro em [`workflow.md` §5c](workflow.md).
 
@@ -171,3 +178,4 @@ Cada entrada de [`process-changelog.md`](process-changelog.md) registra a **deci
 | R15 | Ideia sem documentação passa por brainstorm antes de requisito ou SDD | Método |
 | R16 | Padrões de engenharia são base compartilhada — um editor, consumo obrigatório, defeito roteado | Método |
 | R17 | Entrada de changelog do processo tem teto e forma fixa | Método |
+| R18 | Entrega do plugin é ramificada, versionada e registrada | Método |
