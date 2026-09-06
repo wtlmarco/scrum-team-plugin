@@ -13,13 +13,13 @@
 
 ---
 
-## v2.8.0 — em aberto (base `main`)
+## v2.8.0 — 2026-09-06
 
-**Branch:** `fix/v2.8.0` · **Base:** `main` — ainda não integrada a `main`.
+**Branch:** `fix/v2.8.0` · **Base:** `main` (v1.0.0) · **PR** para `main`.
 
-A branch acumula correções e melhorias até o stakeholder fechar a versão. Introduz o versionamento de entregas, consolida a centralização da evolução do processo, e traz o modo `/team update` com o normativo do processo de lançamento. No lançamento, os clientes são avisados e atualizam com **`/team update`**.
+Primeira entrega versionada. Introduz o versionamento de entregas, consolida a centralização da evolução do processo, e traz o modo `/team update` com o normativo do processo de lançamento. Usuários com o plugin já instalado atualizam por `claude plugin marketplace update team` + `claude plugin update team@team` (o bump `1.0.0` → `2.8.0` dispara a atualização); da v2.8.0 em diante, **`/team update`** faz isso.
 
-> Esta entrega carrega mudança de processo até [`process-changelog.md` v2.9](roles/scrum-master/process/process-changelog.md). Pela regra de numeração de [`workflow.md` §5d](roles/scrum-master/process/workflow.md) uma entrega assim sairia como `v2.9.0`; por decisão do stakeholder o lote permanece **v2.8.0** (a v2.8.0 nunca foi ao ar e ainda acumula) — a regra §5d passa a valer a partir da próxima entrega.
+> Esta entrega carrega mudança de processo até [`process-changelog.md` v2.9](roles/scrum-master/process/process-changelog.md). Pela regra de numeração de [`workflow.md` §5d](roles/scrum-master/process/workflow.md) uma entrega assim sairia como `v2.9.0`; por decisão do stakeholder o lote permanece **v2.8.0** (a v2.8.0 é a primeira entrega e ainda não estava em `main`) — a regra §5d passa a valer a partir da próxima entrega.
 
 ### Entregue
 
