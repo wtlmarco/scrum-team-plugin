@@ -8,7 +8,7 @@
 
 ## Abertas
 
-- *(nada)* — a faxina de "revise" foi aplicada e registrada como **v2.7** no changelog do processo.
+- *(nada)*
 
 ## Como usar esta lista
 

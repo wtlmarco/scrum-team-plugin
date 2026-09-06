@@ -77,7 +77,7 @@ Se o primeiro plano do Arquiteto precisar de mais de dois 🔺 GAPs para ser exe
 ## Checklist de replicação
 
 - [ ] Plugin instalado (`claude plugin list` mostra `team@team` habilitado)
-- [ ] `claude plugin details team@team` lista os 7 comandos (`sm` `po` `arc` `ux` `dev` `qa` `team`) e os 6 agents
+- [ ] `claude plugin details team@team` lista os 8 comandos (`sm` `po` `arc` `ux` `dev` `qa` `team` `review`) e os 6 agents
 - [ ] Comandos aparecem após reiniciar a sessão
 - [ ] `/team init` executado; `.team-project/README.md` escrito, com stack, fontes da verdade, comandos e limitações
 - [ ] Os seis `context.md` escritos, com as armadilhas do projeto

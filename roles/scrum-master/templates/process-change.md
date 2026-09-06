@@ -8,7 +8,7 @@ Toda instrução de melhoria do stakeholder vira uma entrada. É o que impede o 
 ## <vX.Y> — <título curto da mudança> — <data>
 
 **Instrução:** <o que o stakeholder pediu, literal>
-**Classificação:** regra · fluxo · propriedade · formato de documento · escopo de papel · comportamento de agente
+**Classificação:** regra · fluxo · cerimônia · propriedade · formato de documento · escopo de papel · comportamento de agente
 
 ### O que mudou
 | Documento | Seção | Mudança |

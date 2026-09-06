@@ -13,10 +13,12 @@ claude plugin install team@team --scope project -y
 
 `/team init` cria o `.team-project/` padrão e conduz o preenchimento. **Sem `.team-project/`, todo papel para e pede que ele seja criado** — é a fonte de contexto de projeto do time.
 
-Manter atualizado:
+Manter atualizado — **`/team update`** faz a checagem e a aplicação: compara a versão instalada com a do `main` da origem canônica (`https://github.com/wtlmarco/scrum-team-plugin`), mostra o que mudou e, após confirmação, aplica. Roda **na cópia instalada**, nunca no repositório-fonte.
+
+Os comandos nativos que ele orquestra, se preferir rodar à mão:
 
 ```powershell
-claude plugin marketplace update team    # sincroniza com a origem
+claude plugin marketplace update team    # sincroniza com a origem registrada
 claude plugin update team@team           # aplica (exige reiniciar a sessão)
 ```
 
@@ -30,7 +32,7 @@ claude plugin update team@team           # aplica (exige reiniciar a sessão)
 | `/ux` | `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` | UX — jornada, tela, usabilidade, acessibilidade |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` | Desenvolvedor — executa o plano, não improvisa |
 | `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` | QA — o veredito de qualidade que responde ao stakeholder |
-| `/team` | `init` · `<mensagem>` · `brainstorm <ideia>` · `agreement <questão>` · `cycle <ID>` | O time inteiro |
+| `/team` | `init` · `update` · `<mensagem>` · `brainstorm <ideia>` · `agreement <questão>` · `cycle <ID>` | O time inteiro |
 | `/review` | `<instrução>` · `note` · `metrics` · `audit` · `history` | Evolução do processo do time — **só no repositório-fonte do plugin** |
 
 **O `/review` é diferente de todos os outros:** ele não trabalha no projeto — evolui os **documentos do plugin** (o processo do time). Roda só num clone do repositório do plugin; contra a cópia instalada num projeto, a mudança é sobrescrita no próximo `claude plugin update`. Melhoria de operação percebida trabalhando num projeto é anotada como sintoma e levada ao `note.md` do repositório do plugin, que é a fila do `/review`. Todo o resto opera no produto e registra em `.team-project/` ou nos documentos do projeto.

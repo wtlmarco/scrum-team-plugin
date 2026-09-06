@@ -1,5 +1,8 @@
 # Time Scrum — Plugin do Claude Code
 
+> **Versão atual: v2.8.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `main`, via PR para aprovação. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
+
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
 
 É **genérico e reutilizável**: define **quem faz o quê**, **como cada papel trabalha**, **quais regras governam o time** e **quais modelos de documento cada papel usa** — sem uma linha sobre um produto específico.
@@ -33,6 +36,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 │   ├── implementation-quality.md       nível 2 — perfil de stack (.NET/GitLab)
 │   └── implementation-security-lgpd-copyright.md   transversal
 ├── README.md                        ← este índice
+├── CHANGELOG.md                     changelog de entregas (vX.Y.Z) — o que saiu em cada versão e a branch
 ├── how-to.md                        guia do stakeholder — instalar, atualizar, os 4 caminhos de entrada
 ├── replicate-in-new-project.md      como levar este time para outro projeto
 ├── review-contract.md               contrato do `/review` — lido só quando o `/review` aciona o agente de um papel
@@ -99,7 +103,7 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 /ux     journey <fluxo> | screen <ID> | prototype | review-ui <tela>
 /dev    <ID> | resume <ID> | gap <resposta do arquiteto>
 /qa     <ID> | baseline | audit | security <ID>
-/team   init | <mensagem ou pergunta> | brainstorm <ideia> | agreement <questão> | cycle <ID>
+/team   init | update | <mensagem ou pergunta> | brainstorm <ideia> | agreement <questão> | cycle <ID>
 /review <instrução> | note | metrics | audit | history            (só no repositório-fonte do plugin)
 ```
 
@@ -147,7 +151,7 @@ Nenhum atalho: item com interface não é planejado sem especificação de tela,
 
 Geridas pelo SM, válidas para todos os papéis e para o stakeholder:
 
-- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 17 regras (eficiência R1-R6, qualidade R7-R12, método R13-R17), o que cada uma evita e como o SM verifica
+- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 18 regras (eficiência R1-R6, qualidade R7-R12, método R13-R18), o que cada uma evita e como o SM verifica
 - [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) — ciclo, cerimônias, DoR/DoD, gates, escalação
 - [`roles/scrum-master/process/artifact-ownership.md`](roles/scrum-master/process/artifact-ownership.md) — quem escreve o quê
 - [`roles/scrum-master/process/process-changelog.md`](roles/scrum-master/process/process-changelog.md) — como o processo chegou até aqui
@@ -190,7 +194,7 @@ Cada projeto que usa o time o registra no seu próprio `.claude/settings.json`. 
 }
 ```
 
-Instalar e manter atualizado usa os comandos nativos do Claude Code — não há mecanismo próprio:
+Instalar usa os comandos nativos do Claude Code; para **atualizar**, o time traz o atalho `/team update`, que checa a versão e orquestra os nativos:
 
 ```powershell
 claude plugin marketplace add <caminho-ou-repo> --scope project
@@ -201,6 +205,7 @@ claude plugin update team@team           # aplica a nova versão (exige reinicia
 
 Consequências práticas:
 
+- **`/team update`** (rodado num projeto onde o time está instalado) compara a versão instalada com a do `main` da origem canônica (`https://github.com/wtlmarco/scrum-team-plugin`), mostra o CHANGELOG do delta e aplica `claude plugin marketplace update` + `claude plugin update` após confirmação. Reiniciar a sessão continua manual. No repositório-fonte ele recusa — lá a atualização é `git pull`.
 - Os comandos continuam sendo `/sm`, `/po`, `/arc`, `/ux`, `/dev`, `/qa`, `/team`, `/review` — plugin não prefixa comando.
 - Editar um arquivo em `agents/` ou `commands/` muda o time; **reinicie a sessão** para o Claude Code recarregar.
 - `claude plugin validate .team --strict` checa os manifestos; `claude plugin details team@team` lista os componentes e o custo em tokens.
