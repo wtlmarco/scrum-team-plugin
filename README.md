@@ -1,5 +1,8 @@
 # Time Scrum — Plugin do Claude Code
 
+> **Versão atual: v2.8.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` a partir de `main`, via PR para aprovação. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
+
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
 
 É **genérico e reutilizável**: define **quem faz o quê**, **como cada papel trabalha**, **quais regras governam o time** e **quais modelos de documento cada papel usa** — sem uma linha sobre um produto específico.
@@ -33,6 +36,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 │   ├── implementation-quality.md       nível 2 — perfil de stack (.NET/GitLab)
 │   └── implementation-security-lgpd-copyright.md   transversal
 ├── README.md                        ← este índice
+├── CHANGELOG.md                     changelog de entregas (vX.Y.Z) — o que saiu em cada versão e a branch
 ├── how-to.md                        guia do stakeholder — instalar, atualizar, os 4 caminhos de entrada
 ├── replicate-in-new-project.md      como levar este time para outro projeto
 ├── review-contract.md               contrato do `/review` — lido só quando o `/review` aciona o agente de um papel
