@@ -63,8 +63,8 @@ O comply **não julga se o plano citou o conjunto certo ou completo de seções*
 **Como o SM verifica que o QA fez a checagem dele e não a do Arquiteto:** o veredito da frente 2 traz, para cada área de engenharia que o item toca, **a seção de standard que o item exigia × a seção citada no plano**, com um de quatro estados por linha:
 - citada e aplicada — ok;
 - citada e divergente do código — **reprovação** (R16);
-- **exigida pelo item e ausente do plano** — achado de processo ao `/arc review`;
-- citada errada para o que o item faz — achado de processo ao `/arc review`.
+- **exigida pelo item e ausente do plano** — achado de processo ao `/review`;
+- citada errada para o que o item faz — achado de processo ao `/review`.
 
 Veredito de frente 2 que só reproduz a tabela passo × conforme do comply, sem a coluna "seção exigida pelo item × seção citada", indica que o QA fez a checagem do Arquiteto, não a dele — o SM registra como achado de processo contra o veredito.
 
@@ -83,10 +83,10 @@ Veredito de frente 2 que só reproduz a tabela passo × conforme do comply, sem 
 | Auditoria cruzada | a cada 3 ciclos | `/qa audit` | achados, sem correção |
 | Consulta ao time | decisão que atravessa papéis | `/team <pergunta>` | posições + convergências + divergências |
 | Acordo | quando se quer uma posição única | `/team agreement <questão>` | recomendação do SM, com a divergência registrada |
-| Melhoria de processo | quando o stakeholder instrui uma mudança de método | `/<papel> review <instrução>` | documento do papel atualizado + entrada no changelog do processo |
-| Revisão de processo | a cada 3 retrospectivas, ou quando uma métrica estoura | `/sm review metrics` | **uma** proposta de mudança, com o indicador que a valida; é também o giro **Act** do ciclo de eficiência (§5c) |
-| Curadoria do processo | quando dois papéis mudam algo que se contradiz | `/sm review` | consolidação do changelog e escalação do que ficou inconsistente |
-| Auditoria de processo | a cada replicação, ou quando o time cresce | `/sm review audit` | achados de coerência interna de `${CLAUDE_PLUGIN_ROOT}/` |
+| Melhoria de processo | quando o stakeholder instrui uma mudança de método | `/review <instrução>` | documento do papel atualizado + entrada no changelog do processo |
+| Revisão de processo | a cada 3 retrospectivas, ou quando uma métrica estoura | `/review metrics` | **uma** proposta de mudança, com o indicador que a valida; é também o giro **Act** do ciclo de eficiência (§5c) |
+| Curadoria do processo | quando dois papéis mudam algo que se contradiz | `/review` | consolidação do changelog e escalação do que ficou inconsistente |
+| Auditoria de processo | a cada replicação, ou quando o time cresce | `/review audit` | achados de coerência interna de `${CLAUDE_PLUGIN_ROOT}/` |
 
 ## 5a. Ritual de onboarding do projeto (R14)
 
@@ -160,19 +160,19 @@ O custo dos documentos de `${CLAUDE_PLUGIN_ROOT}/` não pode depender de uma fax
 
 | Fase | Onde já acontece | O que a eficiência acrescenta |
 |---|---|---|
-| **Plan** | `/sm review metrics` (a cada 3 retrospectivas, ou métrica estourada) | Reafirma o teto de footprint por papel e o alvo do período: ao menos **uma** remoção candidata nomeada |
-| **Do** | operação normal + cada `/<papel> review` | Papéis editam seus documentos; toda entrada de changelog respeita R17 |
-| **Check** | `/<papel> review` sem instrução (reavaliação do conjunto, linha "Excesso") + retrospectiva | Passa a ser quantitativo: o papel mede seu footprint e compara com o valor anterior registrado; a retrospectiva registra total e Δ |
-| **Act** | `/sm review metrics` + `/<papel> review <instrução>` | O SM consolida os footprints numa tabela por papel, escolhe **uma** mudança, roteia o corte ao dono; entrada no changelog com o indicador (KB antes/depois) |
+| **Plan** | `/review metrics` (a cada 3 retrospectivas, ou métrica estourada) | Reafirma o teto de footprint por papel e o alvo do período: ao menos **uma** remoção candidata nomeada |
+| **Do** | operação normal + cada `/review` | Papéis editam seus documentos; toda entrada de changelog respeita R17 |
+| **Check** | `/review` sem instrução (reavaliação do conjunto, linha "Excesso") + retrospectiva | Passa a ser quantitativo: o papel mede seu footprint e compara com o valor anterior registrado; a retrospectiva registra total e Δ |
+| **Act** | `/review metrics` + `/review <instrução>` | O SM consolida os footprints numa tabela por papel, escolhe **uma** mudança, roteia o corte ao dono; entrada no changelog com o indicador (KB antes/depois) |
 
 **Métrica por papel:** KB da carga fixa por invocação (`agents/<papel>.md` + `commands/<papel>.md`) **+** KB do conjunto do papel (`roles/<papel>/` — README, skills, templates; para o SM, também `process/`).
 
 **Gatilhos:**
-- *Medição* — em todo `/<papel> review` sem instrução (o papel já faz a reavaliação do conjunto ali; passa a anexar os dois números) e na retrospectiva (o SM mede o total do processo).
-- *Giro completo* — casado com `/sm review metrics`: a cada 3 retrospectivas, ou antecipado por limiar.
+- *Medição* — em todo `/review` sem instrução (o papel já faz a reavaliação do conjunto ali; passa a anexar os dois números) e na retrospectiva (o SM mede o total do processo).
+- *Giro completo* — casado com `/review metrics`: a cada 3 retrospectivas, ou antecipado por limiar.
 - *Limiar que dispara Act fora de cadência* — footprint de um papel cresce > 20% entre dois giros sem regra ou cerimônia nova que o justifique; **ou** qualquer entrada de changelog passa de 10 KB (R17); **ou** o footprint total de `${CLAUDE_PLUGIN_ROOT}/` cresce dois giros seguidos sem nenhuma remoção registrada.
 
-**Onde fica registrado, para ser comparável no tempo:** a tabela de footprint por papel vai na saída de `/sm review metrics`; quando o giro gera entrada no changelog — o caso normal, um corte por giro —, os números ficam ali, no campo "Como saberemos que funcionou" do modelo [`process-change.md`](../templates/process-change.md). Entre giros, a retrospectiva carrega a linha "carga fixa do processo (KB): atual / retro anterior / Δ" como série contínua.
+**Onde fica registrado, para ser comparável no tempo:** a tabela de footprint por papel vai na saída de `/review metrics`; quando o giro gera entrada no changelog — o caso normal, um corte por giro —, os números ficam ali, no campo "Como saberemos que funcionou" do modelo [`process-change.md`](../templates/process-change.md). Entre giros, a retrospectiva carrega a linha "carga fixa do processo (KB): atual / retro anterior / Δ" como série contínua.
 
 **O que a fase Check candidata à remoção:** modelo que ninguém referencia, seção que repete outra, regra sem citação em 3 ciclos, entrada de changelog acima do teto. Processo que só cresce deixa de ser seguido — revisar é também remover.
 
@@ -186,7 +186,7 @@ dúvida de prioridade     ──▶ SM
 lacuna de especificação  ──▶ PO ──▶ stakeholder (3 opções + recomendação)
 decisão estratégica      ──▶ stakeholder       (stack, provedor, custo, risco aceito)
 exceção a um padrão      ──▶ stakeholder ──▶ ADR escrita pelo Arquiteto
-defeito em ${CLAUDE_PLUGIN_ROOT}/standards/ ──▶ Arquiteto (dev: 🔺 GAP · QA: achado de processo) ──▶ /arc review   (R16)
+defeito em ${CLAUDE_PLUGIN_ROOT}/standards/ ──▶ Arquiteto (dev: 🔺 GAP · QA: achado de processo) ──▶ /review   (R16)
 ```
 
 Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no papel correto (R9). **Exceção declarada:** no `brainstorm` (§5b) e no passo 5 do `onboarding` (§5a) o stakeholder é participante — o diálogo direto ali é co-criação, não escalação; o que sobe a ele mesmo assim vem com opções e recomendação.

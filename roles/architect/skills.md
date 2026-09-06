@@ -105,8 +105,8 @@ Duas armadilhas:
 **Tratar defeito reportado como defeito, não como dúvida.** Quando o 🔺 GAP do dev ou o achado do QA diz "o standard se contradiz aqui" / "não diz como verificar isto" / "manda fazer X e a seção Y proíbe":
 
 1. desbloquear o item primeiro, com uma decisão técnica válida para ele;
-2. classificar: **defeito do standard** (corrigir por `/arc review`) ou **leitura errada** (então o defeito é de clareza — o texto ainda tem culpa);
-3. corrigir no `review` seguinte. Defeito de standard aberto por mais de um ciclo vira bloqueio no quadro.
+2. classificar: **defeito do standard** (corrigir por `/review`) ou **leitura errada** (então o defeito é de clareza — o texto ainda tem culpa);
+3. corrigir no `/review` seguinte. Defeito de standard aberto por mais de um ciclo vira bloqueio no quadro.
 
 Dois erros a evitar: **corrigir o standard no meio do item**, sem registro nem changelog — vira normativo que muda por conversa, exatamente o que R16 impede; e **ajustar o normativo para caber no caso do projeto atual** — isso é conteúdo do documento de arquitetura do produto, não do padrão agnóstico.
 

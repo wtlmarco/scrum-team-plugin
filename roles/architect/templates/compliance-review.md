@@ -52,12 +52,12 @@ que o passo citou** — não se a citação estava completa ou correta para o it
 <Se o dev levantou gaps, o que faltou no plano — R8/métrica de "gaps por plano".>
 
 **Defeito de standard levantado neste item:** <🔺 GAP apontando contradição, lacuna ou regra inverificável em
-`${CLAUDE_PLUGIN_ROOT}/standards/` — entra na fila do próximo `/arc review` (R16); ou "nenhum">
+`${CLAUDE_PLUGIN_ROOT}/standards/` — entra na fila do próximo `/review` (R16); ou "nenhum">
 ```
 
 ## Regras
 
-- **Aplicação, não completude da citação.** Este modelo afere se a seção que o passo **citou** está no código. Plano que **omitiu** uma seção exigida pelo item, ou que **citou a errada**, é defeito que o autor do plano estruturalmente não vê — quem pega é a frente 2 do `/qa <ID>` ([`workflow.md`](../../scrum-master/process/workflow.md) §4a). Se eu mesmo perceber a omissão aqui, ela vai para a seção 5 como 🔺 GAP do próximo `/arc review`, nunca como linha da tabela da §2.
+- **Aplicação, não completude da citação.** Este modelo afere se a seção que o passo **citou** está no código. Plano que **omitiu** uma seção exigida pelo item, ou que **citou a errada**, é defeito que o autor do plano estruturalmente não vê — quem pega é a frente 2 do `/qa <ID>` ([`workflow.md`](../../scrum-master/process/workflow.md) §4a). Se eu mesmo perceber a omissão aqui, ela vai para a seção 5 como 🔺 GAP do próximo `/review`, nunca como linha da tabela da §2.
 - Cada achado precisa de `arquivo:linha`. Sem isso é suspeita — e deve ser marcada como tal.
 - **Não corrigir o código.** Ajuste volta ao dev com instrução concreta.
 - Desvio de nomenclatura conta como falha, não como detalhe (R10).

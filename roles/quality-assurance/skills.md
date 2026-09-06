@@ -71,7 +71,7 @@ Antes de validar qualquer item novo, reproduza os números que a documentação 
 
 **Não são defeito:** regra que eu não entendi (reler antes), regra que dá mais trabalho, regra que eu faria diferente. Discordar é legítimo; decidir não é meu.
 
-Defeito de standard é **achado de processo roteado ao `/arc review`** — nunca achado de código, nunca correção de passagem, nunca reprovação do dev (ele não tinha como cumprir). Não entra no registro de GAPs do projeto: vai na seção de roteamentos do veredito e segue ao Arquiteto. Como o GAP de standard do dev, **não fecha com a resposta** — a decisão técnica desbloqueia o item, a correção do texto é do `/arc review` seguinte.
+Defeito de standard é **achado de processo roteado ao `/review`** — nunca achado de código, nunca correção de passagem, nunca reprovação do dev (ele não tinha como cumprir). Não entra no registro de GAPs do projeto: vai na seção de roteamentos do veredito e segue ao Arquiteto. Como o GAP de standard do dev, **não fecha com a resposta** — a decisão técnica desbloqueia o item, a correção do texto é do `/review` seguinte.
 
 **Plano que omitiu ou citou errada a seção que o item exigia.** O terceiro caso, e o mais difícil dos três: exige saber o que o item **exigia**, não só ler o que o plano **disse**. O `/arc comply` não pega este — o Arquiteto que escreveu o plano não enxerga a própria omissão. É o valor próprio da frente 2 ([`workflow.md`](../scrum-master/process/workflow.md) §4a).
 
@@ -84,7 +84,7 @@ Como se reconhece — a régua vem do item, não do plano:
 
 Não confundir com os outros dois. No **desvio no código**, a seção certa **foi** citada e o código não a cumpre — o dev tinha a régua e falhou; volta à construção. Aqui a régua nunca chegou ao dev: **não se reprova o dev**, e mesmo que o código cumpra a seção não-citada por acaso, o plano segue incompleto para o próximo item. No **defeito no standard**, o texto da seção é que é inválido; aqui o texto está íntegro — faltou o plano apontá-lo.
 
-Rota: **achado de processo ao `/arc review`**, na seção de roteamentos do veredito; não entra no registro de GAPs. No `verdict.md`, é o estado "exigida e ausente do plano" ou "citada errada" da tabela da frente 2.
+Rota: **achado de processo ao `/review`**, na seção de roteamentos do veredito; não entra no registro de GAPs. No `verdict.md`, é o estado "exigida e ausente do plano" ou "citada errada" da tabela da frente 2.
 
 ## 10. Exercitar desempenho como número, não como impressão
 

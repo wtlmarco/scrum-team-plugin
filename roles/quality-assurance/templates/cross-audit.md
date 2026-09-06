@@ -51,7 +51,7 @@ Compara o documento de status, o escopo/critérios, o inventário de código e o
 | ID proposto | Criticidade | Resumo |
 |---|---|---|
 
-### Achados de processo em `${CLAUDE_PLUGIN_ROOT}/standards/` — rota `/arc review`
+### Achados de processo em `${CLAUDE_PLUGIN_ROOT}/standards/` — rota `/review`
 | Onde (`<arquivo> §<n>`) | Sinal (contradição / lacuna / inverificável) | Resumo |
 |---|---|---|
 
@@ -63,7 +63,7 @@ Compara o documento de status, o escopo/critérios, o inventário de código e o
 
 - **Passe 2 só nos pontos que o Passe 1 apontou.** Ler tudo "por garantia" é o oposto de eficiência (R3).
 - **Nada é corrigido na auditoria.** O resultado vira GAPs; o SM enfileira.
-- **Incoerência dentro de `${CLAUDE_PLUGIN_ROOT}/standards/`** (contradição entre seções, regra sem verificação, perfil de nível 2 que afrouxa o nível 1) é **achado de processo roteado ao `/arc review`** (R16) — não vira GAP de projeto e não se corrige aqui. Achar e rotear; a caneta do normativo é do Arquiteto.
+- **Incoerência dentro de `${CLAUDE_PLUGIN_ROOT}/standards/`** (contradição entre seções, regra sem verificação, perfil de nível 2 que afrouxa o nível 1) é **achado de processo roteado ao `/review`** (R16) — não vira GAP de projeto e não se corrige aqui. Achar e rotear; a caneta do normativo é do Arquiteto.
 - **Confirmar não-gap é entrega**, não sobra: poupa a próxima auditoria.
 - A auditoria é o mecanismo que impede o retorno do problema mais comum de projeto longo: documentação descrevendo um sistema que não existe mais.
 

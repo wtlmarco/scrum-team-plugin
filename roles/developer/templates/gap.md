@@ -38,7 +38,7 @@ Levantado pelo dev quando o plano — ou a seção de standard que ele citou —
 
 ## Defeito em `${CLAUDE_PLUGIN_ROOT}/standards/` — o GAP de tipo `standard`
 
-`${CLAUDE_PLUGIN_ROOT}/standards/` é a base de qualidade comum do time. O **dono editorial é o Arquiteto**; o dev e o QA são **consumidores obrigatórios** (R16). Por isso defeito ali **não se corrige de passagem**: vira GAP, o dev **para de codificar**, e a correção sai por `/arc review`.
+`${CLAUDE_PLUGIN_ROOT}/standards/` é a base de qualidade comum do time. O **dono editorial é o Arquiteto**; o dev e o QA são **consumidores obrigatórios** (R16). Por isso defeito ali **não se corrige de passagem**: vira GAP, o dev **para de codificar**, e a correção sai por `/review`.
 
 O que caracteriza:
 
@@ -65,7 +65,7 @@ O que caracteriza:
 - **Citar `arquivo:linha`**, não a impressão. O Arquiteto vai ler o código antes de responder. No GAP de tipo `standard`, citar também `<arquivo do standard> §<n>`.
 - **Dizer o que já foi entregue e como o repositório ficou** — permite ao Arquiteto decidir se vale continuar ou reverter.
 - Depois da resposta, retomar por `/dev gap <resposta>` (ou continuar o mesmo agente), do passo em que parou.
-- **GAP de tipo `standard` não fecha com a resposta.** A decisão técnica desbloqueia o item; a correção do documento é do `/arc review` seguinte (R16). O dev registra o GAP no relatório de entrega mesmo quando já voltou a codificar.
+- **GAP de tipo `standard` não fecha com a resposta.** A decisão técnica desbloqueia o item; a correção do documento é do `/review` seguinte (R16). O dev registra o GAP no relatório de entrega mesmo quando já voltou a codificar.
 
 ## Exemplo 1 — tipo `plano`
 
@@ -105,4 +105,4 @@ B) o Arquiteto fixar o conjunto mínimo de campos no plano deste item. (não esc
 **Estado do repositório:** compila; testes passam.
 ```
 
-*(A resposta do Arquiteto desbloqueia o item. A correção do texto do standard entra no `/arc review` seguinte — R16.)*
+*(A resposta do Arquiteto desbloqueia o item. A correção do texto do standard entra no `/review` seguinte — R16.)*

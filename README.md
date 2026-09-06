@@ -21,7 +21,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 │   ├── plugin.json                  manifesto do plugin
 │   └── marketplace.json             manifesto do marketplace (permite instalar por caminho)
 ├── agents/      scrum-master · product-owner · architect · user-experience · developer · quality-assurance
-├── commands/    sm · po · arc · ux · dev · qa · team       definições dos 7 comandos
+├── commands/    sm · po · arc · ux · dev · qa · team · review   definições dos 8 comandos
 ├── deliverables/                    estrutura dos documentos que o time entrega
 │   ├── README.md                    os conjuntos: donos, ordem de elaboração, critérios de qualidade
 │   ├── sdd/                         o que o sistema é — 8 documentos
@@ -35,9 +35,9 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 ├── README.md                        ← este índice
 ├── how-to.md                        guia do stakeholder — instalar, atualizar, os 4 caminhos de entrada
 ├── replicate-in-new-project.md      como levar este time para outro projeto
-├── review-contract.md               contrato do modo `review` — lido só quando um comando entra em `review`
+├── review-contract.md               contrato do `/review` — lido só quando o `/review` aciona o agente de um papel
 ├── team-init.md                     ritual do `/team init` — lido só nesse modo, uma vez por projeto
-├── note.md                          fila de correções do próprio plugin (dono: stakeholder)
+├── note.md                          fila de melhorias do próprio plugin, entrada do `/review` (dono: stakeholder)
 └── roles/                           documentação dos papéis
     ├── scrum-master/       processo, quadro, status, regras que governam todos
     │   ├── README.md · skills.md
@@ -64,7 +64,7 @@ Cada pasta em `roles/`:
 | `templates/` | Modelos dos documentos e das saídas que o papel produz |
 | `process/` | *(só no SM)* Os normativos que governam todos os papéis |
 
-**Fora de `roles/`:** [`standards/`](standards/README.md) — os padrões de engenharia, em dois níveis (princípios agnósticos de linguagem, que não mudam entre projetos, e perfis de stack substituíveis). Era `roles/architect/standards/`; foi promovido a diretório de primeiro nível, irmão de `deliverables/`. **Dono editorial: o Arquiteto** — única caneta, muda só por `/arc review`. É **base de qualidade de consumo obrigatório** para o Desenvolvedor e o QA, que levantam defeito mas não editam (R16 · [`artifact-ownership.md`](roles/scrum-master/process/artifact-ownership.md)).
+**Fora de `roles/`:** [`standards/`](standards/README.md) — os padrões de engenharia, em dois níveis (princípios agnósticos de linguagem, que não mudam entre projetos, e perfis de stack substituíveis). Era `roles/architect/standards/`; foi promovido a diretório de primeiro nível, irmão de `deliverables/`. **Dono editorial: o Arquiteto** — única caneta, muda só por `/review` (que roteia ao Agent `architect`). É **base de qualidade de consumo obrigatório** para o Desenvolvedor e o QA, que levantam defeito mas não editam (R16 · [`artifact-ownership.md`](roles/scrum-master/process/artifact-ownership.md)).
 
 ### Quatro tipos de documento
 
@@ -93,18 +93,19 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 ## Comandos
 
 ```
-/sm    onboarding | status | plan | board | impact <mudança> | close <ID> | review <instrução>
-/po    analyze <ideia> | requirement <ID> | prioritize | accept <ID> | review <instrução>
-/arc   plan <ID> | comply <ID> | adr <tema> | question <dúvida>      | review <instrução>
-/ux    journey <fluxo> | screen <ID> | prototype | review-ui <tela>  | review <instrução>
-/dev   <ID> | resume <ID> | gap <resposta do arquiteto>          (sem review — ver abaixo)
-/qa    <ID> | baseline | audit | security <ID>                       | review <instrução>
-/team  init | <mensagem ou pergunta> | brainstorm <ideia> | agreement <questão> | cycle <ID>
+/sm     onboarding | status | plan | board | impact <mudança> | close <ID>
+/po     analyze <ideia> | requirement <ID> | prioritize | accept <ID>
+/arc    plan <ID> | comply <ID> | adr <tema> | question <dúvida>
+/ux     journey <fluxo> | screen <ID> | prototype | review-ui <tela>
+/dev    <ID> | resume <ID> | gap <resposta do arquiteto>
+/qa     <ID> | baseline | audit | security <ID>
+/team   init | <mensagem ou pergunta> | brainstorm <ideia> | agreement <questão> | cycle <ID>
+/review <instrução> | note | metrics | audit | history            (só no repositório-fonte do plugin)
 ```
 
-Os nomes dos comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. Dois modos evitam colisão com o `review` de processo: **`/arc comply`** (revisão de aderência do código ao plano) e **`/ux review-ui`** (revisão de usabilidade de uma tela).
+Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. **`/ux review-ui`** (revisão de usabilidade de uma tela do projeto) e **`/arc comply`** (revisão de aderência do código ao plano) são trabalho no produto — não confundir com **`/review`**, que evolui o processo do time.
 
-Os seis primeiros falam com **um** papel. `/team` fala com **todos**:
+Os seis primeiros falam com **um** papel. `/team` fala com **todos**; `/review` evolui os documentos do plugin:
 
 | Modo | O que faz | Quando usar |
 |---|---|---|
@@ -151,32 +152,30 @@ Geridas pelo SM, válidas para todos os papéis e para o stakeholder:
 - [`roles/scrum-master/process/artifact-ownership.md`](roles/scrum-master/process/artifact-ownership.md) — quem escreve o quê
 - [`roles/scrum-master/process/process-changelog.md`](roles/scrum-master/process/process-changelog.md) — como o processo chegou até aqui
 
-### Como o processo evolui — `review`
+### Como o processo evolui — `/review`
 
-O processo não muda por conversa: muda pelo modo **`review`**. Cada papel aperfeiçoa **os próprios documentos** a partir de uma instrução sua — e, no mesmo passe, **reavalia o conjunto**: coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência e o que dá para remover. `review` sem instrução faz só a reavaliação.
+O processo não muda por conversa: muda pelo comando **`/review`**, e **só no repositório-fonte do plugin** — rodá-lo contra a cópia instalada num projeto edita algo que o próximo `claude plugin update` sobrescreve. A fila de melhorias é [`note.md`](note.md): o item é escrito como **sintoma**, e o `/review` (Agent `scrum-master`) o **classifica e roteia** ao papel dono, que aplica seguindo [`review-contract.md`](review-contract.md) — quatro passos (classificar · analisar conflito · aplicar · registrar) e, no mesmo passe, **reavaliação do conjunto** (coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência, excesso). `/review` sem instrução faz só a reavaliação + a triagem de `note.md`.
 
-| Comando | Alcance |
+**O invariante de dono único não muda** — `/review` roteia, o dono aplica:
+
+| Classificação do item | Quem aplica |
 |---|---|
-| `/sm review` | Roteiro, skills e modelos do SM **+ os normativos que governam todos** (regras, fluxo, propriedade) — e a **curadoria** do processo do time inteiro |
-| `/po review` | Roteiro, skills, modelos do PO e os modelos de entregável que ele possui |
-| `/arc review` | Roteiro, skills, modelos, **`standards/`** (dono editorial — R16), os modelos de entregável do Arquiteto **e os documentos do papel dev** |
-| `/ux review` | Roteiro, skills e modelos do UX — jornada, tela, revisão de usabilidade |
-| *(o dev não tem `review`)* | Os documentos do papel dev são revisados pelo **Arquiteto**, por `/arc review` — ver abaixo |
-| `/qa review` | Roteiro, skills, modelos do QA e os modelos de entregável que ele possui; **defeito em `standards/` vira achado de processo roteado ao `/arc review`** (R16) |
+| regra / fluxo / propriedade de artefato / cerimônia | Agent `scrum-master` (normativos que governam todos + curadoria) |
+| roteiro, skills, templates de um papel, entregáveis que ele possui | agente daquele papel (PO · UX · QA · Arquiteto) |
+| `standards/` **e** os documentos do papel dev | Agent `architect` — o dev roda no modelo mais simples do time e não reescreve o normativo que o governa |
+| `agents/` · `commands/` · `.claude-plugin/` | **proposta ao stakeholder**, nunca aplicada pelos papéis |
 
-Quatro passos, iguais para todos: **classificar** o que a instrução muda · **analisar conflito** com o que já vale · **aplicar** no documento certo · **registrar** no [changelog do processo](roles/scrum-master/process/process-changelog.md).
+Limites que mantêm a evolução saudável:
 
-Cinco limites que mantêm a evolução saudável:
-
-- **Cada papel só mexe nos próprios documentos.** Instrução que toca outro é roteada; normativo que governa todos é exclusivo do `/sm review`.
-- **O dev não revisa os próprios normativos.** Ele roda no modelo mais simples do time, calibrado para executar plano com fidelidade — deixá-lo reescrever a regra que o governa é o caminho mais curto para ela afrouxar sem ninguém notar. Quem revisa é o **Arquiteto**, que escreve o plano que o dev consome e lê os 🔺 GAPs e as seções "Não fiz" dos relatórios como evidência. O retorno do dev sobe por esses dois canais, não por edição direta.
-- **Regra sem forma de verificação não entra** — se não dá para dizer como se confere, ela não é aplicável.
+- **Cada papel só mexe nos próprios documentos.** Item que toca outro o SM roteia; normativo que governa todos é exclusivo do Agent `scrum-master`.
+- **O dev não edita os próprios normativos.** O retorno dele sobe pelos 🔺 GAPs e pelas seções "Não fiz" dos relatórios, que o Arquiteto lê ao ser acionado pelo `/review` — não por edição direta.
+- **Regra sem forma de verificação não entra.**
 - **Conflito com regra vigente não se resolve sozinho** — as duas posições vão ao stakeholder.
 - **`agents/` e `commands/` são seus** — os papéis propõem, não aplicam.
 
-O **SM é o curador**: consolida o changelog, aponta contradição entre mudanças de papéis diferentes e leva ao stakeholder o que ficou inconsistente. E `/sm review metrics` sempre considera **remover** algo — processo que só cresce fica caro e deixa de ser seguido.
+O **SM é o curador**: consolida o changelog, aponta contradição entre mudanças de papéis diferentes e leva ao stakeholder o que ficou inconsistente. E `/review metrics` sempre considera **remover** algo — processo que só cresce fica caro e deixa de ser seguido.
 
-Modos auxiliares do SM: `review audit` (coerência interna do plugin) · `review metrics` (revisão por evidência) · `review history` (o changelog).
+Modos auxiliares: `/review note` (processa a fila de `note.md`) · `/review audit` (coerência interna do plugin) · `/review metrics` (revisão por evidência) · `/review history` (o changelog).
 
 ## Como o time é carregado
 
@@ -202,12 +201,12 @@ claude plugin update team@team           # aplica a nova versão (exige reinicia
 
 Consequências práticas:
 
-- Os comandos continuam sendo `/sm`, `/po`, `/arc`, `/dev`, `/qa`, `/team` — plugin não prefixa comando.
+- Os comandos continuam sendo `/sm`, `/po`, `/arc`, `/ux`, `/dev`, `/qa`, `/team`, `/review` — plugin não prefixa comando.
 - Editar um arquivo em `agents/` ou `commands/` muda o time; **reinicie a sessão** para o Claude Code recarregar.
 - `claude plugin validate .team --strict` checa os manifestos; `claude plugin details team@team` lista os componentes e o custo em tokens.
 - `.claude/` guarda só a configuração — nenhuma definição do time.
 
-> ⚠️ **`agents/` e `commands/` têm de ficar na raiz do plugin — nunca dentro de `.claude-plugin/`.** Só os manifestos vivem lá. Testado na versão 2.1.257: movendo as duas pastas para dentro de `.claude-plugin/`, o inventário cai para **Skills (0), Agents (0)** — e apontar os arquivos explicitamente pelos campos `agents`/`commands` do manifesto **também não resgata**. Pior: `claude plugin validate --strict` **continua passando**, então a falha é silenciosa. Depois de mexer na estrutura, o teste que vale é `claude plugin details team@team` — ele tem de listar os **7 comandos** (`sm` `po` `arc` `ux` `dev` `qa` `team`) e os **6 agents**.
+> ⚠️ **`agents/` e `commands/` têm de ficar na raiz do plugin — nunca dentro de `.claude-plugin/`.** Só os manifestos vivem lá. Testado na versão 2.1.257: movendo as duas pastas para dentro de `.claude-plugin/`, o inventário cai para **Skills (0), Agents (0)** — e apontar os arquivos explicitamente pelos campos `agents`/`commands` do manifesto **também não resgata**. Pior: `claude plugin validate --strict` **continua passando**, então a falha é silenciosa. Depois de mexer na estrutura, o teste que vale é `claude plugin details team@team` — ele tem de listar os **8 comandos** (`sm` `po` `arc` `ux` `dev` `qa` `team` `review`) e os **6 agents**.
 
 ## Convenções
 

@@ -78,15 +78,15 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 
 | Comando | Modos |
 |---|---|
-| `/sm` | `onboarding` · `status` · `plan` · `board` · `impact <mudança>` · `close <ID>` · `review` |
-| `/po` | `analyze <ideia>` · `requirement <ID>` · `prioritize` · `accept <ID>` · `review` |
-| `/arc` | `plan <ID>` · `comply <ID>` · `adr <tema>` · `question <dúvida>` · `review` |
-| `/ux` | `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` · `review` |
+| `/sm` | `onboarding` · `status` · `plan` · `board` · `impact <mudança>` · `close <ID>` |
+| `/po` | `analyze <ideia>` · `requirement <ID>` · `prioritize` · `accept <ID>` |
+| `/arc` | `plan <ID>` · `comply <ID>` · `adr <tema>` · `question <dúvida>` |
+| `/ux` | `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` |
-| `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` · `review` |
+| `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` |
 | `/team` | `init` · `<mensagem>` · `brainstorm <ideia>` · `agreement <questão>` · `cycle <ID>` |
 
-O modo `review` de cada papel **não trabalha no projeto** — evolui os documentos do próprio papel dentro do plugin.
+A evolução do processo do time é pelo comando **`/review`**, executado num clone do repositório-fonte do plugin — **não neste projeto**.
 
 **Por onde começar**
 

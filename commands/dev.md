@@ -20,9 +20,9 @@ Com o plano em mãos, use a ferramenta Agent com `subagent_type: "developer"` e 
 4. As regras do contrato de trabalho: só os arquivos listados no plano; nomenclatura literal; sem refatoração oportunista, dependência nova ou escopo antecipado; os testes previstos são obrigatórios; os comandos de verificação executados de verdade, com a saída colada; documentação não é dele.
 5. A instrução de **parar e reportar 🔺 GAP** — no formato de `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/gap.md` — em vez de decidir sozinho.
 
-## `/dev review` não existe — é do Arquiteto
+## Evolução dos documentos do dev — pelo `/review`, aplicada pelo Arquiteto
 
-Se o pedido chegar como `/dev review`, **não execute**: responda que o caminho é `/arc review` e repasse a instrução do stakeholder, literal, para o Arquiteto avaliar. O racional da exceção está em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/artifact-ownership.md` §1.
+Nenhum papel tem modo `review` próprio — a evolução do processo é pelo comando **`/review`**. Os documentos do papel dev (roteiro, skills, modelos) são os únicos que outro papel aplica: o **Agent `architect`**, porque o dev roda no modelo mais simples do time e não reescreve o normativo que o governa. O racional está em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/artifact-ownership.md` §1. Pedido `/dev review …` → responda que o caminho é `/review …`. O retorno do dev sobe pelos 🔺 GAP e pela seção "Não fiz (fora do plano)" do relatório, que o Arquiteto lê ao ser acionado pelo `/review`.
 
 Ao receber o relatório de entrega:
 - Se houver 🔺 GAP, leve-o ao Arquiteto (`/arc question` ou Agent `architect`) e devolva a decisão ao dev — **não resolva o gap você mesmo**.

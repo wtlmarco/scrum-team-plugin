@@ -6,6 +6,42 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v2.5 — Obsolescência corrigida nos documentos do Arquiteto: comply sob demanda e Ficha até V21 — 06/09/2026
+
+**Instrução:** *(stakeholder, escopo fechado — quatro itens)* posicionar o comply como revisão **sob demanda**, fora do ciclo, em `compliance-review.md:1` e no título `architect/README.md:51`; **delimitar** (linha 29, cabeçalho da §2 e Regras) que ele afere só a **aplicação** do que o plano citou, não a completude da citação — esta é da frente 2 do QA (`workflow.md` §4a); e atualizar `deliverables/sdd/03-architecture.md` §2b de "V1–V17" para **V1–V21**, registrando que a Ficha **transcreve, não origina** o número *(item roteado pelo PO, v2.3)*.
+**Classificação:** formato de documento (modelo de saída do comply + modelo de entregável SDD-03) + fluxo (posicionamento do comply refletido onde ele é lido).
+**Registrada por:** Arquiteto, via `/arc review`. **Escopo fechado — rodada de correção de obsolescência.** *(Deliberação na resposta do `review`, não aqui — R17.)*
+
+### O que mudou
+| Documento | Mudança |
+|---|---|
+| `roles/architect/templates/compliance-review.md` | Cabeçalho reescrito: sob demanda, **não é etapa do ciclo**, os dois momentos (a) iniciativa antes do QA / (b) rota de volta de achado ⚠️/❌ antes do `/dev resume`; parágrafo **"Objeto: o Plano de Execução vigente"** com a exclusão explícita da completude da citação. Nota de escopo sob o cabeçalho da §2; linha 29 reescrita para "seção **citada pelo passo** aplicada de fato — *só a aplicação do que o plano citou*". Regra nova: omissão ou citação errada é da frente 2 e vira 🔺 GAP na seção 5, nunca linha da §2. Veredito da §4 ganha a forma da rota (b) |
+| `roles/architect/README.md` | Título §`/arc comply` de "antes do QA" → **"sob demanda, fora do ciclo"**; corpo ganha os dois momentos e a fronteira com a frente 2 |
+| `deliverables/sdd/03-architecture.md` | §2b: **V1–V17 → V1–V21**, com os campos de V18–V21 (operações sob orçamento · comando de carga por unidade · margem de ruído medida · ambiente e baseline) e o parágrafo **"V18 transcreve, não origina, o número"** (origem = RNF de `01-requirements.md`, cinco campos de P1). Regra de pré-requisito ganha "Ficha com V18–V21 ausentes é ficha incompleta" (§7 #22). Falha comum nova: linha de V18 sem RNF de origem |
+
+### Por quê (modo de falha evitado)
+Documento obsoleto não é ruído neutro. "Antes do QA" reintroduz o comply como etapa obrigatória — a invocação de agente por item que o stakeholder recusou; a linha 29 sem delimitação faz o QA concluir que a frente 2 é redundante e abandoná-la, deixando sem dono o defeito que o autor do plano não vê. "V1–V17" faz a Ficha ser dada como completa sem V18–V21: o projeto entra em construção com desempenho nem medido nem declarado "não exercitado" — o estado que §5.6 proíbe. E sem "transcreve, não origina", o Arquiteto inventa limiar na Ficha, quebrando a cadeia PO → V18 → veredito da v2.3.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| Arquiteto | Roda comply por decisão sua, não por etapa; citação omitida não vira linha de tabela — vira 🔺 GAP. Ao preencher §2b, cobre V18–V21 e aponta o RNF de origem de cada linha de V18 |
+| Dev · QA | Nada muda no que executam; o modelo do Arquiteto passa a **confirmar** por escrito que a completude da citação é da frente 2 |
+
+### Conflitos com o processo vigente
+Nenhum. `commands/arc.md:16` e `commands/team.md` passo 6 já traziam a delimitação (v2.4) e ficaram coerentes com estes textos. `standards/implementation-principles.md:382` ("Ajuste antes do QA") é coluna de **consequência** do achado, não de momento — sem conflito. `.team/standards/` não foi tocado.
+
+### Como saberemos que funcionou
+- Nenhum `/arc comply` do período traz linha de §2 acusando "seção obrigatória omitida do plano" (omissão vai à seção 5 como 🔺 GAP), e toda ocorrência declara qual dos dois momentos a motivou.
+- Próximo projeto que preencher a §2b entrega V18–V21 no primeiro passe, cada linha de V18 com o RNF de origem citado. Ficha em V1–V17 de novo em até 2 projetos → o modelo não está sendo lido, e a Ficha vira checklist de gate no `execution-plan.md`.
+- **Footprint (§5c):** `/arc` = 12,2 KB (`agents/architect.md` 8,0 + `commands/arc.md` 4,2) · `roles/architect/` = 34,7 KB (+0,3, todo em `compliance-review.md` 4,2 → 4,5). `.team/standards/` (dono editorial) = 135,5 KB, **inalterado**. `deliverables/sdd/03-architecture.md` 4,3 → 5,0 KB. **Remoção candidata:** `architect/README.md` §"Dono editorial de `.team/standards/`" (~1,4 KB), que repete `standards/README.md` — colapsável a ponteiro. Não removido: escopo fechado.
+
+### Pendente do stakeholder
+- **`agents/architect.md:33`** — "revisar o que voltou do dev contra o padrão **antes do QA**" é o último texto obsoleto e está fora da minha caneta. Substituição proposta: *"**Aderência** — sob demanda, revisar o que voltou do dev contra o plano e o padrão: cada passo como escrito e a seção de standard que o passo citou aplicada de fato (`workflow.md` §4a)."* Não obrigatória; vigora só após reiniciar a sessão.
+- Com a v2.5 o changelog vivo fica com **4 entradas** (teto = 3): arquivar a v2.1 continua pendente da v2.4. Não toquei no arquivamento (R17).
+
+---
+
 ## v2.4 — Aderência ao plano × aderência ao standard: `/arc comply` e a frente 2 do QA verificam objetos diferentes — 06/09/2026
 
 **Instrução:** *(roteada pelo QA, `/qa review` v2.2, para decisão de fluxo do SM)* "decidir a divisão de trabalho entre `/arc comply` e `/qa <ID>` na verificação de aderência à seção de standard citada no plano." **Decisão do stakeholder: Opção C — não é duplicação, é sobreposição mal definida.** `/arc comply` afere **plano → código** (o autor conferindo a execução da sua instrução); a frente 2 afere **standard → código** e a **completude do plano ante o item** (o plano omitiu uma seção obrigatória ou citou a errada). A interseção — seção citada aplicada no código — o QA reverifica de forma independente por ser o gate ao stakeholder.

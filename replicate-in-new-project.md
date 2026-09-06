@@ -9,17 +9,10 @@ O plugin é **inteiramente genérico**: não contém nada de um produto específ
 
 ## Passo 1 — Instalar o time
 
-Este repositório **é** um plugin do Claude Code autocontido. Aponte o projeto para ele:
+Este repositório **é** um plugin do Claude Code autocontido. Os comandos `claude plugin marketplace add` / `install` / `update` e o passo de reiniciar a sessão estão em [`how-to.md` § "Instalar em um projeto"](how-to.md) — a fonte única desse bloco. O que é próprio da replicação:
 
-```powershell
-cd <projeto-novo>
-claude plugin marketplace add <caminho-ou-repo-do-time> --scope project
-claude plugin install team@team --scope project -y
-```
-
-A origem pode ser um caminho local (`../scrum-team-plugin`) ou o repositório git. Grava em `.claude/settings.json` do novo projeto — **caminho relativo é preservado**, então o registro pode ser versionado. Confira com `claude plugin list` e **reinicie a sessão** para os comandos aparecerem.
-
-> **Uma origem, vários projetos.** Melhorias no processo chegam a todos de uma vez, por `claude plugin marketplace update team` + `claude plugin update team@team`. Copiar a pasta para dentro de cada projeto cria versões que divergem — não faça isso.
+- A origem pode ser um caminho local (`../scrum-team-plugin`) ou o repositório git. O registro vai para `.claude/settings.json` do novo projeto; **caminho relativo é preservado**, então pode ser versionado.
+- **Uma origem, vários projetos.** Melhorias no processo chegam a todos de uma vez por `claude plugin marketplace update team` + `claude plugin update team@team`. Copiar a pasta para dentro de cada projeto cria versões que divergem — não faça isso.
 
 ## Passo 2 — Criar o contexto do projeto: `/team init`
 
@@ -27,29 +20,7 @@ Depois de reiniciar a sessão, rode **`/team init`**. Ele cria a estrutura de `.
 
 O guia de uso — instalação, atualização, os quatro caminhos de entrada (projeto novo · retomada · bug · melhoria) e as regras que valem sempre — está em [`how-to.md`](how-to.md).
 
-O que segue descreve **o que o `/team init` produz**, para quem preferir fazer à mão ou quiser conferir o resultado.
-
-Sem `.team-project/`, os agentes param e pedem que ele seja criado. O modelo completo — estrutura, o que vai em cada arquivo e o que vai em cada `context.md` — está em [`roles/scrum-master/templates/project-context.md`](roles/scrum-master/templates/project-context.md).
-
-```
-.team-project/
-├── README.md                 produto · situação · stack · fontes da verdade · ambiente · limitações
-├── scrum-master/             context.md · work-board.md
-├── product-owner/            context.md · product-backlog.md
-├── architect/                context.md · plans/
-├── user-experience/          context.md · journeys/ · screens/
-├── developer/                context.md
-└── quality-assurance/        context.md · evidence.md
-```
-
-| Criar | A partir de |
-|---|---|
-| `README.md` | `roles/scrum-master/templates/project-context.md` |
-| `scrum-master/work-board.md` | `roles/scrum-master/templates/work-board.md` |
-| `product-owner/product-backlog.md` | `roles/product-owner/templates/product-backlog.md` |
-| `quality-assurance/evidence.md` | `roles/quality-assurance/templates/evidence.md` |
-| `<papel>/context.md` | seção "O que vai em cada context.md" do modelo de contexto |
-| `architect/plans/` · `user-experience/journeys/` · `user-experience/screens/` | pastas vazias — nascem do `/arc plan` e do `/ux` |
+Sem `.team-project/`, os agentes param e pedem que ele seja criado. A **estrutura do diretório, a tabela arquivo → modelo de origem e o que vai em cada `context.md`** estão em [`roles/scrum-master/templates/project-context.md`](roles/scrum-master/templates/project-context.md) — a fonte única. Consulte-a se preferir montar à mão ou conferir o que o `/team init` produziu.
 
 **O que mais rende ao escrever:** as **armadilhas** do projeto no `context.md` do Arquiteto e do Dev. Uma linha como *"handler novo exige registro manual, senão devolve 500"* evita mais retrabalho do que três parágrafos de descrição de arquitetura.
 
@@ -81,7 +52,7 @@ A distribuição de modelos é uma escolha de custo/qualidade, não uma regra:
 
 **Dois papéis em Opus custam mais.** É deliberado: são os dois que produzem especificação que os outros executam — plano raso e tela mal especificada custam o item inteiro. Projeto **sem interface** (biblioteca, serviço, CLI) pode dispensar o UX; projeto sem base de código legada pode dispensar o QA no começo. Projeto com mais de uma frente independente justifica um segundo dev — nesse caso, reative as regras de faixas descritas em [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) §7.
 
-Os princípios de engenharia de **nível 1** ([`standards/implementation-principles.md`](standards/implementation-principles.md)) são agnósticos de linguagem e plataforma — não mudam entre projetos. Só o **perfil de stack de nível 2** (os guias `implementation-guide` / `implementation-quality`, hoje calibrados para .NET/GitLab) é substituído quando a stack do novo projeto é outra — é o único ponto do plugin que pode precisar de troca, feita pelo Arquiteto via `/arc review`.
+Os princípios de engenharia de **nível 1** ([`standards/implementation-principles.md`](standards/implementation-principles.md)) são agnósticos de linguagem e plataforma — não mudam entre projetos. Só o **perfil de stack de nível 2** (os guias `implementation-guide` / `implementation-quality`, hoje calibrados para .NET/GitLab) é substituído quando a stack do novo projeto é outra — é o único ponto do plugin que pode precisar de troca, feita pelo Arquiteto via `/review`, num clone do repositório-fonte do plugin.
 
 ## Passo 5 — Semear o backlog inicial
 
