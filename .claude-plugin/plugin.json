@@ -1,0 +1,11 @@
+{
+  "name": "team",
+  "displayName": "Time Scrum",
+  "version": "1.0.0",
+  "description": "Time Scrum completo — Scrum Master, Product Owner, Arquiteto, Desenvolvedor e QA — com roteiros de atuacao, skills, padroes de engenharia e modelos de documentacao. Comandos: /sm /po /arc /ux /dev /qa /team.",
+  "author": {
+    "name": "Marco Antonio Amaral Santos"
+  },
+  "license": "MIT",
+  "keywords": ["scrum", "agents", "team", "sdlc", "code-review"]
+}

@@ -1,0 +1,117 @@
+# Replicar este time em um novo projeto
+
+O plugin é **inteiramente genérico**: não contém nada de um produto específico. Replicar não é adaptar o time — é **instalar o plugin** e **escrever o contexto do novo projeto**.
+
+| Diretório | Natureza | Ao replicar |
+|---|---|---|
+| O plugin | Processo: papéis, regras, fluxo, padrões, modelos, changelog do processo | **Copiar ou apontar — nada a editar** |
+| `.team-project/` | Contexto: produto, stack, comandos, quadro, backlog, planos, evidências | **Criar do zero** |
+
+## Passo 1 — Instalar o time
+
+Este repositório **é** um plugin do Claude Code autocontido. Aponte o projeto para ele:
+
+```powershell
+cd <projeto-novo>
+claude plugin marketplace add <caminho-ou-repo-do-time> --scope project
+claude plugin install team@team --scope project -y
+```
+
+A origem pode ser um caminho local (`../scrum-team-plugin`) ou o repositório git. Grava em `.claude/settings.json` do novo projeto — **caminho relativo é preservado**, então o registro pode ser versionado. Confira com `claude plugin list` e **reinicie a sessão** para os comandos aparecerem.
+
+> **Uma origem, vários projetos.** Melhorias no processo chegam a todos de uma vez, por `claude plugin marketplace update team` + `claude plugin update team@team`. Copiar a pasta para dentro de cada projeto cria versões que divergem — não faça isso.
+
+## Passo 2 — Criar o contexto do projeto: `/team init`
+
+Depois de reiniciar a sessão, rode **`/team init`**. Ele cria a estrutura de `.team-project/` a partir dos modelos, lê o repositório para preencher o que já dá para inferir, pergunta só o que falta e aponta o próximo passo conforme o projeto seja novo ou retomado.
+
+O guia de uso — instalação, atualização, os quatro caminhos de entrada (projeto novo · retomada · bug · melhoria) e as regras que valem sempre — está em [`how-to.md`](how-to.md).
+
+O que segue descreve **o que o `/team init` produz**, para quem preferir fazer à mão ou quiser conferir o resultado.
+
+Sem `.team-project/`, os agentes param e pedem que ele seja criado. O modelo completo — estrutura, o que vai em cada arquivo e o que vai em cada `context.md` — está em [`roles/scrum-master/templates/project-context.md`](roles/scrum-master/templates/project-context.md).
+
+```
+.team-project/
+├── README.md                 produto · situação · stack · fontes da verdade · ambiente · limitações
+├── scrum-master/             context.md · work-board.md
+├── product-owner/            context.md · product-backlog.md
+├── architect/                context.md · plans/
+├── user-experience/          context.md · journeys/ · screens/
+├── developer/                context.md
+└── quality-assurance/        context.md · evidence.md
+```
+
+| Criar | A partir de |
+|---|---|
+| `README.md` | `roles/scrum-master/templates/project-context.md` |
+| `scrum-master/work-board.md` | `roles/scrum-master/templates/work-board.md` |
+| `product-owner/product-backlog.md` | `roles/product-owner/templates/product-backlog.md` |
+| `quality-assurance/evidence.md` | `roles/quality-assurance/templates/evidence.md` |
+| `<papel>/context.md` | seção "O que vai em cada context.md" do modelo de contexto |
+| `architect/plans/` · `user-experience/journeys/` · `user-experience/screens/` | pastas vazias — nascem do `/arc plan` e do `/ux` |
+
+**O que mais rende ao escrever:** as **armadilhas** do projeto no `context.md` do Arquiteto e do Dev. Uma linha como *"handler novo exige registro manual, senão devolve 500"* evita mais retrabalho do que três parágrafos de descrição de arquitetura.
+
+## Passo 3 — Abrir o conjunto de entregáveis
+
+O time também **elabora e mantém** os documentos de projeto. A estrutura de cada um está em [`deliverables/`](deliverables/README.md), em dois conjuntos:
+
+| Conjunto | Responde | Donos |
+|---|---|---|
+| [`sdd/`](deliverables/sdd/README.md) — 8 documentos | o que o sistema é | PO (5) · Arquiteto (3) |
+| [`implementation/`](deliverables/implementation/README.md) — 4 documentos | como a construção está indo | PO (1) · SM (1) · QA (2) |
+
+**Projeto novo:** crie no dia 1 apenas o **índice do SDD** e o documento de **escopo e critérios** — o resto nasce quando a necessidade aparecer. Depois siga a ordem de elaboração de [`deliverables/README.md`](deliverables/README.md).
+
+**Projeto retomado:** comece pelo `pending.md`. `/qa audit` + `/qa baseline` produzem o levantamento sobre código que vira o backlog inicial — e revelam o tamanho verdadeiro do trabalho, que costuma diferir do que o documento de status declara.
+
+**Não escreva os doze de uma vez.** Documento escrito antes da necessidade envelhece antes de ser lido.
+
+## Passo 4 — Ajustar a composição do time
+
+A distribuição de modelos é uma escolha de custo/qualidade, não uma regra:
+
+| Papel | Modelo | Por quê |
+|---|---|---|
+| Arquiteto | Opus | Concentra todo o raciocínio de desenho técnico |
+| UX | Opus | Desenho de jornada e tela é raciocínio original, não execução de padrão |
+| SM, PO, QA | Sonnet | Leitura, julgamento e verificação — não precisam de desenho original |
+| Dev | Haiku | Executa plano detalhado; a qualidade vem do plano, não do modelo |
+
+**Dois papéis em Opus custam mais.** É deliberado: são os dois que produzem especificação que os outros executam — plano raso e tela mal especificada custam o item inteiro. Projeto **sem interface** (biblioteca, serviço, CLI) pode dispensar o UX; projeto sem base de código legada pode dispensar o QA no começo. Projeto com mais de uma frente independente justifica um segundo dev — nesse caso, reative as regras de faixas descritas em [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) §7.
+
+Os princípios de engenharia de **nível 1** ([`standards/implementation-principles.md`](standards/implementation-principles.md)) são agnósticos de linguagem e plataforma — não mudam entre projetos. Só o **perfil de stack de nível 2** (os guias `implementation-guide` / `implementation-quality`, hoje calibrados para .NET/GitLab) é substituído quando a stack do novo projeto é outra — é o único ponto do plugin que pode precisar de troca, feita pelo Arquiteto via `/arc review`.
+
+## Passo 5 — Semear o backlog inicial
+
+O time só arranca com uma **lista de itens com ID**:
+
+- **Projeto existente** — rode `/qa audit` e `/qa baseline` primeiro. O resultado (pendências com evidência + números reais de build/teste) vira o backlog inicial.
+- **Projeto novo** — `/po analyze <visão do produto>` para os primeiros requisitos, depois `/sm plan`.
+
+## Passo 6 — Primeira rodada de validação
+
+Nesta ordem, para confirmar que o time está calibrado antes de confiar nele:
+
+```
+/qa baseline          → os números declarados batem com a realidade?
+/sm status            → o status sai em 6 linhas, com ID e evidência?
+/arc plan <ID>       → o plano é executável por um júnior sem decidir nada?
+/team cycle <ID>      → o ciclo fecha com veredito e evidência real?
+```
+
+Se o primeiro plano do Arquiteto precisar de mais de dois 🔺 GAPs para ser executado, o problema não é o time — é o `context.md` do Arquiteto, que está raso. É a métrica mais barata de saúde da instalação.
+
+## Checklist de replicação
+
+- [ ] Plugin instalado (`claude plugin list` mostra `team@team` habilitado)
+- [ ] `claude plugin details team@team` lista os 7 comandos (`sm` `po` `arc` `ux` `dev` `qa` `team`) e os 6 agents
+- [ ] Comandos aparecem após reiniciar a sessão
+- [ ] `/team init` executado; `.team-project/README.md` escrito, com stack, fontes da verdade, comandos e limitações
+- [ ] Os seis `context.md` escritos, com as armadilhas do projeto
+- [ ] Índice do SDD e documento de escopo criados a partir de `deliverables/`; demais conforme a necessidade
+- [ ] Em projeto retomado: `pending.md` produzido por `/qa audit` antes de qualquer planejamento
+- [ ] Backlog inicial semeado com IDs
+- [ ] `/qa baseline` executado e registrado em `.team-project/quality-assurance/evidence.md`
+- [ ] Primeiro `/team cycle` fechado com veredito ✅

@@ -1,0 +1,14 @@
+{
+  "name": "team",
+  "description": "Time Scrum reutilizavel para projetos de software — papeis, roteiros, padroes de engenharia e modelos de documentacao, empacotados como plugin do Claude Code.",
+  "owner": {
+    "name": "Marco Antonio Amaral Santos"
+  },
+  "plugins": [
+    {
+      "name": "team",
+      "source": "./",
+      "description": "Time Scrum completo — SM, PO, Arquiteto, Dev e QA. Comandos: /sm /po /arc /ux /dev /qa /team."
+    }
+  ]
+}
