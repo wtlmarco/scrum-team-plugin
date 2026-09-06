@@ -12,7 +12,7 @@ Os caminhos concretos dos documentos do projeto estão em `.team-project/README.
 | Planos de Execução (`.team-project/architect/plans/`) | Arquiteto | Um plano por item, nome `<ID>-<slug>.md` |
 | Arquitetura, modelo de dados, modelo de API (SDD) | Arquiteto | Grafia de entidades e endpoints é contrato — modelos em [`../../../deliverables/sdd/README.md`](../../../deliverables/sdd/README.md) |
 | ADRs | Arquiteto | Decisão estrutural recorrente |
-| `${CLAUDE_PLUGIN_ROOT}/standards/**` | **Arquiteto (dono editorial)** · dev e QA consumidores obrigatórios | Base de qualidade comum dos três (R16). Única caneta é do Arquiteto — muda só por `/arc review`. Agnóstico de produto — nunca ajustar para acomodar caso específico. Dev roteia defeito por 🔺 GAP, QA por achado de processo; os dois ao Arquiteto. Divergência de engenharia entre os três decide o Arquiteto; o que ultrapassa engenharia sobe ao stakeholder pelo SM |
+| `${CLAUDE_PLUGIN_ROOT}/standards/**` | **Arquiteto (dono editorial)** · dev e QA consumidores obrigatórios | Base de qualidade comum dos três (R16). Única caneta é do Arquiteto — muda só por `/review`. Agnóstico de produto — nunca ajustar para acomodar caso específico. Dev roteia defeito por 🔺 GAP, QA por achado de processo; os dois ao Arquiteto. Divergência de engenharia entre os três decide o Arquiteto; o que ultrapassa engenharia sobe ao stakeholder pelo SM |
 | Mapas de jornada (`.team-project/user-experience/journeys/`) | UX | Um por objetivo do usuário |
 | Especificações de tela (`.team-project/user-experience/screens/`) | UX | Os seis estados e os critérios de acessibilidade são obrigatórios |
 | Protótipos | UX | Exploração, não código de produção |
@@ -22,10 +22,10 @@ Os caminhos concretos dos documentos do projeto estão em `.team-project/README.
 | Documento de status/progresso | SM | Memória de progresso e decisões — modelo em [`../../../deliverables/implementation/02-status.md`](../../../deliverables/implementation/02-status.md) |
 | Quadro de trabalho (`.team-project/scrum-master/`) | SM | Sprint Backlog vivo |
 | Registro de onboarding · brief de `brainstorm` | SM (**facilitação**) | Saída de `/sm onboarding` e `/team brainstorm` — registro do entendimento alinhado e do brief funcional. **Não substitui** a propriedade do PO sobre o requisito nem a divisão de autoria do SDD (PO: visão/requisitos/fluxos; Arquiteto: arquitetura/dados/API). Não vira arquivo permanente sem lugar declarado em `.team-project/` |
-| `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/**` | SM | Processo — muda só a pedido do stakeholder, via `/sm review` |
+| `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/**` | SM | Processo — muda só a pedido do stakeholder, via `/review` (Agent `scrum-master`) |
 | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/process-changelog.md` | SM (**curador**) | **Exceção à regra de dono único:** todo papel acrescenta a entrada da sua própria mudança de processo; o SM cura — consolida, aponta contradição e escala o que ficou inconsistente. Entrada nunca é reescrita |
-| `${CLAUDE_PLUGIN_ROOT}/roles/<papel>/README.md`, `skills.md`, `templates/` | o próprio papel | Roteiro e modelos do papel — evoluem por `/<papel> review`, com registro no changelog do processo |
-| `${CLAUDE_PLUGIN_ROOT}/roles/developer/**` | **Arquiteto** | **Exceção:** o dev não revisa os próprios normativos — roda no modelo mais simples do time, calibrado para executar plano, não para reescrever a regra que o governa. O Arquiteto revisa por `/arc review`, usando os 🔺 GAPs e as seções "Não fiz" dos relatórios como evidência |
+| `${CLAUDE_PLUGIN_ROOT}/roles/<papel>/README.md`, `skills.md`, `templates/` | o próprio papel | Roteiro e modelos do papel — evoluem por `/review`, que roteia ao agente do papel dono, com registro no changelog do processo |
+| `${CLAUDE_PLUGIN_ROOT}/roles/developer/**` | **Arquiteto** | **Exceção:** o dev não revisa os próprios normativos — roda no modelo mais simples do time, calibrado para executar plano, não para reescrever a regra que o governa. O Arquiteto revisa por `/review`, usando os 🔺 GAPs e as seções "Não fiz" dos relatórios como evidência |
 | Contexto do projeto (`.team-project/**/context.md`) | SM, com aporte de cada papel | O papel dono do assunto propõe; o SM mantém a coerência |
 | Mapa/inventário de código | QA | Uma linha por arquivo — modelo em [`../../../deliverables/implementation/03-code-map.md`](../../../deliverables/implementation/03-code-map.md) |
 | Registro de GAPs abertos | QA | Levantado sobre código; vence a narrativa de status — modelo em [`../../../deliverables/implementation/pending.md`](../../../deliverables/implementation/pending.md) |
@@ -34,13 +34,13 @@ Os caminhos concretos dos documentos do projeto estão em `.team-project/README.
 
 ### 1a. `${CLAUDE_PLUGIN_ROOT}/standards/` — dono editorial único, consumo compartilhado (R16)
 
-"Base compartilhada entre Arquiteto, dev e QA" **não afrouxa o invariante de dono único** — o dono *editorial* continua sendo um só, o Arquiteto, e a caneta muda só por `/arc review`. O que é compartilhado é a **obrigação de consumo** e o **direito de levantar defeito**:
+"Base compartilhada entre Arquiteto, dev e QA" **não afrouxa o invariante de dono único** — o dono *editorial* continua sendo um só, o Arquiteto, e a caneta muda só por `/review`. O que é compartilhado é a **obrigação de consumo** e o **direito de levantar defeito**:
 
 | Papel | Sobre `${CLAUDE_PLUGIN_ROOT}/standards/` | Como propõe mudança |
 |---|---|---|
-| **Arquiteto** | Dono editorial. Escreve, versiona, mantém a coerência entre nível 1 e perfis de nível 2 | `/arc review` |
-| **dev** | Consumidor obrigatório: aplica a regra ao executar o plano | 🔺 GAP apontando contradição / lacuna / regra inverificável → Arquiteto decide → `/arc review` (o dev não tem `review` — v1.3) |
-| **QA** | Consumidor obrigatório: valida a entrega contra os standards | Achado de processo (não achado de código) roteado ao Arquiteto; ou `/qa review` que roteia ao `/arc review` |
+| **Arquiteto** | Dono editorial. Escreve, versiona, mantém a coerência entre nível 1 e perfis de nível 2 | `/review` |
+| **dev** | Consumidor obrigatório: aplica a regra ao executar o plano | 🔺 GAP apontando contradição / lacuna / regra inverificável → Arquiteto decide → `/review` roteia a correção do texto ao Arquiteto (o dev não edita os próprios normativos — v1.3) |
+| **QA** | Consumidor obrigatório: valida a entrega contra os standards | Achado de processo (não achado de código) → `/review` roteia ao Arquiteto |
 
 **Desempate:** quando os três discordam sobre uma regra de engenharia, decide o **Arquiteto** — é o dono do desenho técnico. A divergência que ultrapassa engenharia (custo, prazo, escopo, política) sobe ao **stakeholder pelo SM**, com as posições lado a lado (consolidação de acordo). Defeito num standard **não se corrige de passagem** — vale a mesma regra do QA que acha defeito fora do item (abrir registro, não corrigir).
 

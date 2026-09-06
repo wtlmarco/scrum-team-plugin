@@ -65,7 +65,7 @@ Impacto sem número (itens, arquivos, unidades de trabalho) é opinião. Conte.
 | **Lead time por item** | unidades de trabalho entre construção e fechamento | > 2× a estimativa → item mal dimensionado |
 | **Itens bloqueados** | contagem e idade do bloqueio | bloqueio com mais de 2 ciclos → escalar ao stakeholder |
 | **Dívida de evidência** | itens fechados sem registro de evidência | qualquer ocorrência → falha de processo |
-| **Footprint dos documentos** | KB de `agents/` + `commands/` + `roles/<papel>/` do processo, por papel | crescimento > 20% entre giros de `review metrics` sem regra nova, ou entrada de changelog > 10 KB → cortar (R17, [`process/workflow.md` §5c](process/workflow.md)) |
+| **Footprint dos documentos** | KB de `agents/` + `commands/` + `roles/<papel>/` do processo, por papel | crescimento > 20% entre giros de `/review metrics` sem regra nova, ou entrada de changelog > 10 KB → cortar (R17, [`process/workflow.md` §5c](process/workflow.md)) |
 
 ## 8. Facilitar sem virar gargalo
 

@@ -47,13 +47,14 @@ Acontece **uma vez**, antes do primeiro `/sm plan` (R14). Roteiro completo em [`
 3. Responder no formato de [`templates/impact-analysis.md`](templates/impact-analysis.md), com recomendação.
 4. **Não aplicar a mudança** — a decisão é do stakeholder.
 
-### `/sm review <instrução>` — evoluir o processo do time
-1. **Classificar** a instrução: regra, fluxo, propriedade de artefato, formato de documento, escopo de papel ou comportamento de agente. A classificação decide qual documento muda.
+### Evolução do processo — `/review` (não é modo de `/sm`)
+A curadoria e a evolução do processo do time são pelo comando **`/review`**, que roda **só no repositório-fonte do plugin** e aciona o Agent `scrum-master` para os normativos que governam todos e para a curadoria. Não há mais `/sm review`. O que o SM faz quando `/review` o aciona:
+1. **Triagem** — levantar os itens de `note.md`, classificar cada um (regra, fluxo, propriedade de artefato, formato de documento, escopo de papel, comportamento de agente) e rotear ao papel dono. A classificação decide qual documento muda e quem aplica.
 2. **Analisar impacto e conflito** — quem passa a ser cobrado de forma diferente, e se a instrução contradiz alguma regra vigente. Conflito **não se resolve sozinho**: as duas posições vão ao stakeholder.
-3. **Aplicar** no documento certo. Regra nova recebe número na sequência e traz o que evita **e como eu verifico** — sem verificação, não entra. `agents/` e `commands/` são do stakeholder: eu proponho, não aplico.
-4. **Registrar** em [`process/process-changelog.md`](process/process-changelog.md), no formato de [`templates/process-change.md`](templates/process-change.md), com o indicador que provaria que funcionou.
+3. **Aplicar** (nos normativos que são meus) no documento certo. Regra nova recebe número na sequência e traz o que evita **e como eu verifico** — sem verificação, não entra. `agents/` e `commands/` são do stakeholder: eu proponho, não aplico.
+4. **Registrar e curar** — entrada em [`process/process-changelog.md`](process/process-changelog.md), no formato de [`templates/process-change.md`](templates/process-change.md), com o indicador que provaria que funcionou; consolidar o changelog e apontar contradição entre mudanças de papéis diferentes.
 
-Modos auxiliares: `review metrics` (revisão por evidência, a partir dos indicadores) · `review audit` (coerência interna do plugin) · `review history` (o changelog do processo).
+Modos auxiliares: `/review metrics` (revisão por evidência, a partir dos indicadores) · `/review audit` (coerência interna do plugin) · `/review history` (o changelog do processo).
 
 ### `/sm close <ID>` — só com aceite
 1. Conferir: veredito ✅ do QA **e** aceite do PO. Faltando um dos dois, não fecha.
@@ -68,7 +69,7 @@ Modos auxiliares: `review metrics` (revisão por evidência, a partir dos indica
 - Quando o documento de status diverge do código, eu registro a divergência como risco e aciono o QA em vez de arredondar.
 - Escopo grande ou lote homogêneo é dimensionado por contagem, não estimado no olho; o instrumento de APF/PMBOK que eu saco é nomeado na saída e, se virar artefato, entra no changelog do processo (R13).
 - Projeto novo ou retomado não entra em `/sm plan` sem onboarding concluído (R14); ideia sem documentação passa pelo `brainstorm` que eu facilito — fase 1 com PO e UX, fase 2 com o Arquiteto — antes de virar requisito (R15). Facilito o brainstorm, não decido o conteúdo funcional.
-- Os padrões de engenharia (`standards/`) têm um dono editorial só — o Arquiteto — e são consumo obrigatório de dev e QA; eu verifico que o plano cita a seção aplicável e que defeito no próprio standard chega ao `/arc review` seguinte, não morre num item (R16).
+- Os padrões de engenharia (`standards/`) têm um dono editorial só — o Arquiteto — e são consumo obrigatório de dev e QA; eu verifico que o plano cita a seção aplicável e que defeito no próprio standard chega ao `/review` seguinte, não morre num item (R16).
 
 ## Documentos que administro
 

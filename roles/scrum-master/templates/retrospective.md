@@ -18,8 +18,8 @@ Curta e acionável. Uma retrospectiva que não gera **uma** ação concreta foi 
 | Projeto planejado sem registro de onboarding | <n> | qualquer | R14 |
 | Requisito do SDD sem `brainstorm` nem `/po analyze` na origem | <n> | qualquer | R15 |
 | Plano/veredito de engenharia sem citar a seção de `${CLAUDE_PLUGIN_ROOT}/standards/` aplicável | <n> | recorrente | R16 |
-| Defeito em `${CLAUDE_PLUGIN_ROOT}/standards/` sem chegar ao `/arc review` seguinte | <n> | qualquer | R16 |
-| Carga fixa dos documentos do processo (KB) — fase Check do PDCA (workflow §5c) | <atual> / <retro anterior> / <Δ> · causa se cresceu · ação: nenhuma \| corte candidato para `review metrics` | crescimento sem regra ou cerimônia nova; entrada de changelog > 10 KB | R17 |
+| Defeito em `${CLAUDE_PLUGIN_ROOT}/standards/` sem chegar ao `/review` seguinte | <n> | qualquer | R16 |
+| Carga fixa dos documentos do processo (KB) — fase Check do PDCA (workflow §5c) | <atual> / <retro anterior> / <Δ> · causa se cresceu · ação: nenhuma \| corte candidato para `/review metrics` | crescimento sem regra ou cerimônia nova; entrada de changelog > 10 KB | R17 |
 
 ### O que funcionou (3)
 1. <fato observável, não sensação>
@@ -39,7 +39,7 @@ Curta e acionável. Uma retrospectiva que não gera **uma** ação concreta foi 
 - No máximo **uma** ação por retrospectiva. Três ações = nenhuma ação.
 - Todo "o que corrigir" aponta para uma regra de [`../working-rules.md`](../process/working-rules.md) — violada ou faltante. Se não aponta para nenhuma, ou é ruído, ou é regra nova a escrever.
 - Métrica sem fonte não entra. As fontes são: relatórios do dev, `.team-project/quality-assurance/evidence.md` e o próprio quadro.
-- A linha de footprint (KB) é a fase **Check** do ciclo de eficiência ([`../process/workflow.md` §5c](../process/workflow.md)): mede `agents/` + `commands/` + `roles/<papel>/` do processo, compara com a retrospectiva anterior e alimenta o giro de `/sm review metrics`. Crescimento sem regra ou cerimônia nova é candidato a corte, não a nota. Fonte: tamanho dos arquivos de `${CLAUDE_PLUGIN_ROOT}/`.
+- A linha de footprint (KB) é a fase **Check** do ciclo de eficiência ([`../process/workflow.md` §5c](../process/workflow.md)): mede `agents/` + `commands/` + `roles/<papel>/` do processo, compara com a retrospectiva anterior e alimenta o giro de `/review metrics`. Crescimento sem regra ou cerimônia nova é candidato a corte, não a nota. Fonte: tamanho dos arquivos de `${CLAUDE_PLUGIN_ROOT}/`.
 
 ## Exemplo de leitura
 

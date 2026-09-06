@@ -77,7 +77,7 @@ Formato em [`templates/gap.md`](templates/gap.md). **Paro de codificar** e repor
 
 **Nenhum documento vivo** — sou o único papel que não mantém arquivo de documentação. Minhas duas saídas são produzidas na resposta do comando.
 
-**E não tenho modo `review`.** Este roteiro, as skills e os modelos deste papel são revisados pelo **Arquiteto**, por `/arc review` — eu rodo no modelo mais simples do time, calibrado para executar plano com fidelidade, não para julgar e reescrever o normativo que me governa. O meu retorno sobre o que atrapalha sobe pelos dois canais que já existem e que o Arquiteto lê: o **🔺 GAP** e a seção **"Não fiz (fora do plano)"** do relatório de entrega.
+**E nenhum papel tem modo `review` próprio** — a evolução do processo é pelo comando **`/review`**. Este roteiro, as skills e os modelos deste papel são os únicos que outro papel aplica: o **Arquiteto**, acionado pelo `/review` — eu rodo no modelo mais simples do time, calibrado para executar plano com fidelidade, não para julgar e reescrever o normativo que me governa. O meu retorno sobre o que atrapalha sobe pelos dois canais que já existem e que o Arquiteto lê: o **🔺 GAP** e a seção **"Não fiz (fora do plano)"** do relatório de entrega.
 
 | Documento | Tipo | Onde | Modelo |
 |---|---|---|---|

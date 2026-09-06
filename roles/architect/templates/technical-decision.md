@@ -22,7 +22,7 @@ Resposta do Arquiteto quando o dev para e pergunta. Precisa ser **executável**:
 - [ ] **Erro do plano** → corrigir o passo <n> antes de o dev retomar
 - [ ] **Lacuna da especificação** → registrar no documento de status, via SM
 - [ ] **Decisão estrutural e recorrente** → vira ADR
-- [ ] **Defeito no standard** (contradição, lacuna, regra inverificável em `${CLAUDE_PLUGIN_ROOT}/standards/`) → decidir agora para destravar o item **e** entrar na fila do próximo `/arc review` — R16
+- [ ] **Defeito no standard** (contradição, lacuna, regra inverificável em `${CLAUDE_PLUGIN_ROOT}/standards/`) → decidir agora para destravar o item **e** entrar na fila do próximo `/review` — R16
 - [ ] **Dúvida funcional** → escalar ao PO, o dev fica parado neste passo
 
 ### O que o dev faz agora
@@ -36,7 +36,7 @@ Resposta do Arquiteto quando o dev para e pergunta. Precisa ser **executável**:
 - Ler o código citado antes de responder — o relato do dev pode estar certo pelo motivo errado.
 - Classificar sempre: gap sem classificação vira decisão perdida (R6).
 - Gap do mesmo tipo pela segunda vez = ajustar o **formato** do plano, não só responder de novo.
-- **Gap que aponta defeito num standard destrava o item primeiro e corrige o normativo depois**, por `/arc review` — nunca editar `${CLAUDE_PLUGIN_ROOT}/standards/` no meio de um item, e nunca mandar o dev "ignorar a regra por enquanto" sem registro (R16).
+- **Gap que aponta defeito num standard destrava o item primeiro e corrige o normativo depois**, por `/review` — nunca editar `${CLAUDE_PLUGIN_ROOT}/standards/` no meio de um item, e nunca mandar o dev "ignorar a regra por enquanto" sem registro (R16).
 
 ## Exemplo
 

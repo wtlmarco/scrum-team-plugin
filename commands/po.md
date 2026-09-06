@@ -1,6 +1,6 @@
 ---
 description: Aciona o Product Owner — análise funcional, requisitos, priorização do Product Backlog e aceite de entrega.
-argument-hint: "[analyze <ideia> | requirement <ID> | prioritize | accept <ID> | review <instrução>] ou pergunta livre"
+argument-hint: "[analyze <ideia> | requirement <ID> | prioritize | accept <ID>] ou pergunta livre"
 ---
 
 Aciona o **Product Owner** do time.
@@ -17,13 +17,10 @@ Use a ferramenta Agent com `subagent_type: "product-owner"` e `run_in_background
    - **prioritize** → ordenar o Product Backlog por valor e risco funcional, segundo a régua do projeto, justificando cada posição em uma linha; entregar a ordem ao SM.
    - **accept `<ID>`** → aceite formal no formato de `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/acceptance.md`: exige veredito do QA anexado.
    - **pergunta livre** → responder na visão de produto, sem entrar em solução técnica.
-   - **review `<instrução>`** → aperfeiçoar os próprios documentos de processo. Ver o contrato abaixo.
 4. Lembrete de limites: não decide "como"; não escreve código, especificação técnica, ADRs, padrões, status, mapa de código nem registro de GAPs. Lacuna de especificação vira escalação ao stakeholder com no máximo 3 opções e uma recomendação.
 
-## Modo `review` — evolução dos documentos deste papel
+## Evolução dos documentos do PO — não é aqui
 
-**Leia `${CLAUDE_PLUGIN_ROOT}/review-contract.md` e siga-o** — quatro passos, reavaliação do conjunto e limites comuns. Só neste modo.
-
-**Alcance do PO:** `roles/product-owner/README.md` (roteiro e fronteiras), `skills.md` (competências), `templates/*` (requisito, análise funcional, aceite, backlog) e os modelos de entregável que ele possui — `deliverables/sdd/` (índice, visão geral, requisitos, fluxos, changelog) e `deliverables/implementation/01-scope-and-criteria.md`.
+Os documentos de processo do PO (roteiro, skills, modelos, os entregáveis do SDD que ele possui) evoluem pelo comando **`/review`**, que aciona o Agent `product-owner` conforme `${CLAUDE_PLUGIN_ROOT}/review-contract.md`. Não há mais `/po review`. Pedido `/po review …` → responda que o caminho é `/review …`.
 
 Ao receber a resposta, repasse a decisão e o requisito na íntegra e destaque o que precisa de definição do stakeholder.

@@ -64,8 +64,8 @@ Especificação que só descreve o caminho feliz devolve o problema ao dev, que 
 - **Especificação de tela** — `templates/screen-spec.md`
 - **Revisão de usabilidade e acessibilidade** — `templates/usability-review.md`
 
-## Modo `review`
+## Evolução dos seus documentos — `/review`
 
-**Só quando o pedido entrar em `review`:** leia `${CLAUDE_PLUGIN_ROOT}/review-contract.md` e siga-o — os quatro passos, a reavaliação obrigatória do conjunto e os limites comuns estão lá, e não se repetem aqui.
+**Quando o `/review` te acionar:** leia `${CLAUDE_PLUGIN_ROOT}/review-contract.md` e siga-o — os quatro passos, a reavaliação obrigatória do conjunto, os limites comuns e o alcance de cada papel estão lá, e não se repetem aqui.
 
 **Seu alcance:** `roles/user-experience/` — roteiro, skills e modelos (jornada, tela, revisão de usabilidade), incluindo os seis estados e a lista de critérios de acessibilidade verificáveis que vivem neles.

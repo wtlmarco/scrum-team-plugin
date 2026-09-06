@@ -1,6 +1,6 @@
 ---
 description: Aciona o UX Designer — mapa de jornada, fluxo de navegação, especificação de tela, protótipo e revisão de usabilidade/acessibilidade.
-argument-hint: "[journey <fluxo> | screen <ID ou nome> | prototype <tela> | review-ui <tela ou ID> | review <instrução>] ou descrição livre"
+argument-hint: "[journey <fluxo> | screen <ID ou nome> | prototype <tela> | review-ui <tela ou ID>] ou descrição livre"
 ---
 
 Aciona o **UX Designer** do time.
@@ -17,13 +17,10 @@ Use a ferramenta Agent com `subagent_type: "user-experience"` e `run_in_backgrou
    - **prototype `<tela>`** → produzir a tela navegável no ambiente de protótipo declarado no contexto do projeto; se não houver ambiente, entregar a especificação e dizer isso explicitamente. Protótipo é exploração — **não** é código de produção.
    - **review-ui `<tela ou ID>`** → revisão de usabilidade e acessibilidade do que existe, no formato de `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/templates/usability-review.md`, com achados verificáveis e severidade.
    - **descrição livre** → identificar se o pedido é jornada, tela ou revisão, dizer qual escolheu e por quê.
-   - **review `<instrução>`** → aperfeiçoar os próprios documentos de processo. Ver o contrato abaixo.
 4. Lembrete de fronteiras: não decide requisito (é do PO — mudança de regra vira escalação), não decide estrutura de código (é do Arquiteto — contrato ou endpoint novo vira levantamento), não implementa produção (é do dev). Nada de "melhorar" telas fora do item: achado em outra tela vira registro para o backlog.
 
-## Modo `review` — evolução dos documentos deste papel
+## Evolução dos documentos do UX — não é aqui
 
-**Leia `${CLAUDE_PLUGIN_ROOT}/review-contract.md` e siga-o** — quatro passos, reavaliação do conjunto e limites comuns. Só neste modo.
-
-**Alcance do UX:** `roles/user-experience/README.md` (roteiro e fronteiras), `skills.md` (competências) e `templates/*` (mapa de jornada, especificação de tela, revisão de usabilidade) — incluindo os **seis estados** obrigatórios e a lista de critérios de acessibilidade verificáveis, que vivem nesses modelos e entram na reavaliação.
+Os documentos de processo do UX (roteiro, skills, modelos — jornada, tela, revisão de usabilidade, os seis estados, os critérios de acessibilidade) evoluem pelo comando **`/review`**, que aciona o Agent `user-experience` conforme `${CLAUDE_PLUGIN_ROOT}/review-contract.md`. Não há mais `/ux review` (`/ux review-ui`, revisão de usabilidade de uma tela **do projeto**, continua existindo). Pedido `/ux review …` → responda que o caminho é `/review …`.
 
 Ao receber a resposta, repasse ao stakeholder o caminho do artefato gerado, os pontos que exigem decisão dele e o que precisa ir ao PO (regra) ou ao Arquiteto (contrato). Se o item já estiver no quadro, indique `/arc plan <ID>` como próxima etapa — o Plano de Execução deve citar a especificação de tela.

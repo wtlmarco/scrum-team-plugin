@@ -31,8 +31,8 @@ Espelha o `Tipo: plano | standard` do [`gap.md` do dev](../../developer/template
 |---|---|---|
 | O que é | Defeito na entrega: requisito não atendido, exposição, divergência especificação × código, desvio de seção de standard **citada** no plano | Defeito no próprio `${CLAUDE_PLUGIN_ROOT}/standards/`: contradição entre seções, lacuna que impede executar um passo, regra sem forma de verificação |
 | Entra no registro de GAPs do projeto? | Sim, na seção da criticidade | **Não** — o normativo é agnóstico, não é do projeto |
-| Onde fica registrado | Este documento (`pending.md` ou o indicado no contexto) | Seção de roteamentos do veredito → `/arc review` |
-| Fecha quando | O código é corrigido e revalidado | O Arquiteto corrige o texto no `/arc review` seguinte; a decisão técnica que desbloqueia o item **não** fecha o achado de processo |
+| Onde fica registrado | Este documento (`pending.md` ou o indicado no contexto) | Seção de roteamentos do veredito → `/review` |
+| Fecha quando | O código é corrigido e revalidado | O Arquiteto corrige o texto no `/review` seguinte; a decisão técnica que desbloqueia o item **não** fecha o achado de processo |
 | Citação obrigatória | `arquivo:linha` | `arquivo:linha` do código que expôs o problema **+** `<arquivo do standard> §<n>` |
 
 **Três sinais de defeito de standard:** contradição · lacuna · regra inverificável. **Não são defeito:** regra que dá mais trabalho, regra que eu faria diferente, regra que não entendi (reler antes).
@@ -59,7 +59,7 @@ Item que parecia lacuna e foi verificado como correto vai para a seção de não
 - **Impacto em linguagem de consequência**, não de código: quem é prejudicado e como.
 - **Ação sugerida é direção, não plano.** O plano é do Arquiteto.
 - Sem evidência conclusiva, o item **não entra**: fica como suspeita no veredito até ser confirmado.
-- **Tipo `processo` não abre item aqui.** É achado de processo: registra-se na seção de roteamentos do veredito e segue ao `/arc review` (R16). Este documento só recebe defeitos do projeto.
+- **Tipo `processo` não abre item aqui.** É achado de processo: registra-se na seção de roteamentos do veredito e segue ao `/review` (R16). Este documento só recebe defeitos do projeto.
 
 ## Exemplo
 

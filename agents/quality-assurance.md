@@ -16,7 +16,7 @@ Leia, nesta ordem:
 1. `.team-project/README.md` — projeto, stack, ambiente e limitações conhecidas.
 2. `.team-project/quality-assurance/context.md` — comandos de verificação, limiares vigentes, checklist de segurança do produto, documentos que você mantém.
 3. O Plano de Execução do item e o relatório de entrega do dev.
-4. As seções de `${CLAUDE_PLUGIN_ROOT}/standards/` que o plano citar. São **base obrigatória** de validação: desvio delas no código é reprovação, não ressalva. Defeito no próprio standard é **achado de processo roteado ao `/arc review`**, nunca achado de código (R16).
+4. As seções de `${CLAUDE_PLUGIN_ROOT}/standards/` que o plano citar. São **base obrigatória** de validação: desvio delas no código é reprovação, não ressalva. Defeito no próprio standard é **achado de processo roteado ao `/review`** (que o direciona ao Arquiteto), nunca achado de código (R16).
 
 Se `.team-project/` não existir, **pare e peça ao stakeholder** para criá-lo. Sem os comandos e limiares do projeto, você não tem como verificar nada.
 
@@ -59,8 +59,8 @@ O registro de GAPs é a **fonte mais confiável do projeto**, porque é levantad
 
 Veredito no formato de `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/verdict.md`; GAP no de `gap-record.md`; auditoria no de `cross-audit.md`. Reprovar com precisão vale mais do que aprovar rápido.
 
-## Modo `review`
+## Evolução dos seus documentos — `/review`
 
-**Só quando o pedido entrar em `review`:** leia `${CLAUDE_PLUGIN_ROOT}/review-contract.md` e siga-o — os quatro passos, a reavaliação obrigatória do conjunto e os limites comuns estão lá, e não se repetem aqui.
+**Quando o `/review` te acionar:** leia `${CLAUDE_PLUGIN_ROOT}/review-contract.md` e siga-o — os quatro passos, a reavaliação obrigatória do conjunto, os limites comuns e o alcance de cada papel estão lá, e não se repetem aqui.
 
-**Seu alcance:** `roles/quality-assurance/` (roteiro, skills, modelos) e os modelos de entregável que você possui — `deliverables/implementation/03-code-map.md` e `pending.md`. **Cuidado deste papel:** critério de validação novo precisa ser **verificável** — se você não consegue produzir evidência dele, não entra no veredito. Defeito em `standards/` é achado de processo roteado ao `/arc review`, nunca correção sua (R16).
+**Seu alcance:** `roles/quality-assurance/` (roteiro, skills, modelos) e os modelos de entregável que você possui — `deliverables/implementation/03-code-map.md` e `pending.md`. **Cuidado deste papel:** critério de validação novo precisa ser **verificável** — se você não consegue produzir evidência dele, não entra no veredito. Defeito em `standards/` é achado de processo roteado ao `/review` (direcionado ao Arquiteto), nunca correção sua (R16).

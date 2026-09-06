@@ -80,7 +80,7 @@ configuração e entra na seção 8, não vira item sem verificação.>
 7. **Se o dev puder escolher entre duas formas, o plano está incompleto.**
 8. **Todo passo declara o anel** do arquivo que toca. Passo que faz o domínio depender de fora, ou que põe regra de negócio na borda, é erro de plano — não de execução (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §2).
 9. **Nenhum passo de refatoração "de passagem".** Melhoria fora do objetivo do item vira item próprio (§4.5 do mesmo normativo).
-10. **Todo passo com regra de engenharia cita a seção de `${CLAUDE_PLUGIN_ROOT}/standards/` aplicável, com número** (R16). O dev lê só o que o plano citou — seção não citada é seção não lida. "Seguir os standards" não é citação. Se a regra de que o passo precisa **não existe** no normativo, ou existe contraditória, isso é defeito do standard e é do Arquiteto: resolver por `/arc review` antes de liberar o plano.
+10. **Todo passo com regra de engenharia cita a seção de `${CLAUDE_PLUGIN_ROOT}/standards/` aplicável, com número** (R16). O dev lê só o que o plano citou — seção não citada é seção não lida. "Seguir os standards" não é citação. Se a regra de que o passo precisa **não existe** no normativo, ou existe contraditória, isso é defeito do standard e é do Arquiteto: resolver por `/review` antes de liberar o plano.
 
 ## Exemplo abreviado
 

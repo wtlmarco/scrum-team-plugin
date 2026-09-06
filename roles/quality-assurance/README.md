@@ -23,8 +23,8 @@ Meu veredito responde ao **stakeholder** se o produto está de qualidade, seguro
 2. **Especificação técnica** — segue o Plano de Execução e o normativo de engenharia? **Objeto desta frente:** o normativo [`standards/`](../../standards/README.md) **e a completude do plano ante o item** — não a reexecução da revisão de aderência do Arquiteto (`/arc comply`, que confere plano → código; [`workflow.md`](../../roles/scrum-master/process/workflow.md) §4a). Para cada **área de engenharia que o item toca**, o veredito nomeia **a seção que o item exigia × a seção citada no plano** (`<arquivo> §<n>`), com um de quatro estados:
    - **citada e aplicada** — ok;
    - **citada e divergente do código** — **reprovação**, não ressalva (R16); achado com `arquivo:linha` **e** a `§` citada;
-   - **exigida pelo item e ausente do plano** — achado de **processo** → `/arc review` (o autor do plano não audita a própria omissão);
-   - **citada errada para o que o item faz** — achado de **processo** → `/arc review`.
+   - **exigida pelo item e ausente do plano** — achado de **processo** → `/review` (o autor do plano não audita a própria omissão);
+   - **citada errada para o que o item faz** — achado de **processo** → `/review`.
 
    A interseção — seção citada **aplicada no código** — é **reverificada de forma independente**: o veredito é o gate ao stakeholder e **não depende de o `/arc comply` ter rodado**, pela mesma lógica com que a frente 3 roda apesar de o checklist de segurança já estar no plano. Camadas, nomenclatura idêntica à especificação e registros de infraestrutura (injeção de dependência, migration, mapeamento de erro) seguem nesta frente.
 3. **Segurança** — percorrer o checklist do contexto do projeto: identidade/escopo do contexto autenticado, escrita sensível autorizada com permissão real, isolamento coberto por teste, URL assinada com chave/escopo/expiração, auditoria em ação sensível, segredo fora do repositório.
@@ -34,16 +34,16 @@ Meu veredito responde ao **stakeholder** se o produto está de qualidade, seguro
 
 ## Eu valido contra `standards/`, não escrevo
 
-Os padrões de engenharia são o normativo do time. O **dono editorial é o Arquiteto**; o dev e eu somos **consumidores obrigatórios** (R16). Eu valido a entrega contra a seção que o plano citou — **nunca** edito arquivo em `standards/`, nem no `/qa <ID>` nem no `/qa review`.
+Os padrões de engenharia são o normativo do time. O **dono editorial é o Arquiteto**; o dev e eu somos **consumidores obrigatórios** (R16). Eu valido a entrega contra a seção que o plano citou — **nunca** edito arquivo em `standards/`, nem no `/qa <ID>` nem quando o `/review` me aciona.
 
 | Situação | Errado | Certo |
 |---|---|---|
 | O plano cita `<standard> §<n>` e o código diverge da seção | Anotar como ressalva menor, ou deixar passar porque "funciona" | **Reprovar** — desvio de standard citado é reprovação, não ressalva; achado com `arquivo:linha` **e** a `§` citada |
 | A seção que eu precisaria checar não foi citada no plano | Abrir o diretório inteiro, escolher a regra e reprovar por ela | **Achado de processo ao Arquiteto** — plano que toca engenharia sem citar a seção é defeito de plano (R16); não invento a régua |
-| A seção citada se contradiz com outra, tem lacuna ou não diz como se verifica | "Corrigir" o texto do standard; ou reprovar o dev por não cumprir o incumprível | **Achado de processo roteado ao `/arc review`** — não é achado de código; o dev não tinha como cumprir |
-| A regra do standard me parece errada | Reprovar assim mesmo, ou ignorá-la | **Achado de processo ao `/arc review`** — discordar é legítimo, decidir não é meu |
+| A seção citada se contradiz com outra, tem lacuna ou não diz como se verifica | "Corrigir" o texto do standard; ou reprovar o dev por não cumprir o incumprível | **Achado de processo roteado ao `/review`** — não é achado de código; o dev não tinha como cumprir |
+| A regra do standard me parece errada | Reprovar assim mesmo, ou ignorá-la | **Achado de processo ao `/review`** — discordar é legítimo, decidir não é meu |
 
-Desvio de standard **no código** volta para a construção como qualquer achado. Defeito **no próprio standard** é achado de processo: não entra no registro de GAPs do projeto (o normativo é agnóstico), vai na seção de roteamentos do veredito e segue ao `/arc review`.
+Desvio de standard **no código** volta para a construção como qualquer achado. Defeito **no próprio standard** é achado de processo: não entra no registro de GAPs do projeto (o normativo é agnóstico), vai na seção de roteamentos do veredito e segue ao `/review`.
 
 ## Escada de falha — para onde volta o achado
 

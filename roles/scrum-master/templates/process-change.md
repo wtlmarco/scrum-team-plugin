@@ -1,6 +1,6 @@
 ﻿# Template — Mudança de Processo
 
-> **Dono:** SM · Saída de `/sm review` · Registrada em [`../process/process-changelog.md`](../process/process-changelog.md)
+> **Dono:** SM · Saída de `/review` · Registrada em [`../process/process-changelog.md`](../process/process-changelog.md)
 
 Toda instrução de melhoria do stakeholder vira uma entrada. É o que impede o processo de mudar por conversa e ninguém lembrar do porquê seis meses depois.
 

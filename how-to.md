@@ -24,15 +24,16 @@ claude plugin update team@team           # aplica (exige reiniciar a sessão)
 
 | Comando | Modos | Papel |
 |---|---|---|
-| `/sm` | `onboarding` · `status` · `plan` · `board` · `impact <mudança>` · `close <ID>` · `review` | Scrum Master — quadro, status, riscos, processo |
-| `/po` | `analyze <ideia>` · `requirement <ID>` · `prioritize` · `accept <ID>` · `review` | Product Owner — requisitos, backlog, aceite de valor |
-| `/arc` | `plan <ID>` · `comply <ID>` · `adr <tema>` · `question <dúvida>` · `review` | Arquiteto — desenho, plano de execução, ADR, standards |
-| `/ux` | `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` · `review` | UX — jornada, tela, usabilidade, acessibilidade |
+| `/sm` | `onboarding` · `status` · `plan` · `board` · `impact <mudança>` · `close <ID>` | Scrum Master — quadro, status, riscos, processo |
+| `/po` | `analyze <ideia>` · `requirement <ID>` · `prioritize` · `accept <ID>` | Product Owner — requisitos, backlog, aceite de valor |
+| `/arc` | `plan <ID>` · `comply <ID>` · `adr <tema>` · `question <dúvida>` | Arquiteto — desenho, plano de execução, ADR, standards |
+| `/ux` | `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` | UX — jornada, tela, usabilidade, acessibilidade |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` | Desenvolvedor — executa o plano, não improvisa |
-| `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` · `review` | QA — o veredito de qualidade que responde ao stakeholder |
+| `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` | QA — o veredito de qualidade que responde ao stakeholder |
 | `/team` | `init` · `<mensagem>` · `brainstorm <ideia>` · `agreement <questão>` · `cycle <ID>` | O time inteiro |
+| `/review` | `<instrução>` · `note` · `metrics` · `audit` · `history` | Evolução do processo do time — **só no repositório-fonte do plugin** |
 
-**O modo `review` é diferente de todos os outros:** ele não trabalha no projeto — evolui os **documentos do próprio papel** dentro do plugin. Todo o resto opera no produto e registra em `.team-project/` ou nos documentos do projeto.
+**O `/review` é diferente de todos os outros:** ele não trabalha no projeto — evolui os **documentos do plugin** (o processo do time). Roda só num clone do repositório do plugin; contra a cópia instalada num projeto, a mudança é sobrescrita no próximo `claude plugin update`. Melhoria de operação percebida trabalhando num projeto é anotada como sintoma e levada ao `note.md` do repositório do plugin, que é a fila do `/review`. Todo o resto opera no produto e registra em `.team-project/` ou nos documentos do projeto.
 
 ## Quatro caminhos de entrada
 
@@ -109,7 +110,7 @@ Há código, e a documentação pode não corresponder a ele.
 
 | Camada | Diretório | Muda por |
 |---|---|---|
-| Processo do time | o plugin (`${CLAUDE_PLUGIN_ROOT}`) | só o modo `review` de cada papel |
+| Processo do time | o plugin (`${CLAUDE_PLUGIN_ROOT}`) | só o `/review`, no repositório-fonte do plugin |
 | Contexto e controles do projeto | `.team-project/` | o trabalho normal do time |
 | Entregáveis do produto | `docs/` do projeto (SDD, ADR, implementação) | os donos declarados em `deliverables/README.md` |
 | Código | o diretório de código do projeto | só o dev, e só os arquivos do plano vigente |

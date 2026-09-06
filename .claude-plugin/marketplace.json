@@ -8,7 +8,7 @@
     {
       "name": "team",
       "source": "./",
-      "description": "Time Scrum completo — SM, PO, Arquiteto, UX, Dev e QA. Comandos: /sm /po /arc /ux /dev /qa /team."
+      "description": "Time Scrum completo — SM, PO, Arquiteto, UX, Dev e QA. Comandos: /sm /po /arc /ux /dev /qa /team /review."
     }
   ]
 }
