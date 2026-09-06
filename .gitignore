@@ -1,0 +1,4 @@
+# Configuração pessoal do Claude Code — específica da máquina do mantenedor.
+# Aqui é onde o plugin é habilitado em modo desenvolvimento (marketplace por diretório
+# apontando para este próprio clone), para o /review rodar contra a árvore de trabalho.
+.claude/settings.local.json

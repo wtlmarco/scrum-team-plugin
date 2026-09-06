@@ -8,7 +8,7 @@
 
 ## Abertas
 
-- *(nada)*
+- preciso que faça um teste comparativo desse plugin para a criação de um projeto simples por ele e por prompt independente para avaliar o consumo de token e a qualidade do que foi desenvolvido como podemos fazer? Um tipo de teste de performance para calibrarmos nosso processo e aperfeiçoá-lo; Abra e sessões de claude e gere os 2 projetos de exemplo em 2 pastas para depois compararmos; estou aberto a responder o necessário do que cada agente precisar para desenvolvê-lo.
 
 ## Como usar esta lista
 
