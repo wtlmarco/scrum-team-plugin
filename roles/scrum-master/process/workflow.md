@@ -107,12 +107,12 @@ Acontece **uma vez**, quando o time recebe um projeto novo ou retoma um abandona
 
 **Condição de saída — o onboarding está pronto quando:**
 - [ ] Toda linha do inventário de fontes está preenchida (existe / desatualizada / ausente), e toda "ausência de doc funcional essencial" foi produzida via brainstorm ou aceita como risco pelo stakeholder.
-- [ ] Os seis papéis registraram a leitura de entrada (mandato entendido + o que falta + um risco).
+- [ ] Os outros cinco papéis registraram a leitura de entrada (mandato entendido + o que falta + um risco); o SM coordena e consolida, não escreve uma sobre si.
 - [ ] A lista de perguntas só-do-stakeholder foi respondida ou explicitamente adiada com o risco aceito.
 - [ ] `.team-project/README.md` reflete o entendimento alinhado (objetivo, fase, stack, ambiente, fontes da verdade, capacidade, restrições) e toda divergência status × código está no quadro como risco.
 - [ ] O quadro existe, com ao menos a primeira onda de itens, ou uma nota de que o planejamento está bloqueado aguardando brainstorm/decisão do stakeholder.
 
-**Como o SM verifica que aconteceu:** a resposta do onboarding traz a tabela de inventário preenchida e as seis leituras de entrada; `.team-project/README.md` está datado em/após o onboarding com §4 e §7 populadas; nenhum `/sm plan` do projeto precede o registro de onboarding; toda divergência narrativa × código é linha na tabela de riscos do quadro.
+**Como o SM verifica que aconteceu:** a resposta do onboarding traz a tabela de inventário preenchida e as cinco leituras de entrada; `.team-project/README.md` está datado em/após o onboarding com §4 e §7 populadas; nenhum `/sm plan` do projeto precede o registro de onboarding; toda divergência narrativa × código é linha na tabela de riscos do quadro.
 
 ## 5b. Ritual de brainstorm de descoberta (R15)
 
@@ -191,7 +191,7 @@ defeito em ${CLAUDE_PLUGIN_ROOT}/standards/ ──▶ Arquiteto (dev: 🔺 GAP �
 
 Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no papel correto (R9). **Exceção declarada:** no `brainstorm` (§5b) e no passo 5 do `onboarding` (§5a) o stakeholder é participante — o diálogo direto ali é co-criação, não escalação; o que sobe a ele mesmo assim vem com opções e recomendação.
 
-**Quando a dúvida atravessa papéis**, use `/team` em vez de perguntar a cada um: os cinco respondem em paralelo e a resposta já vem com convergências e divergências separadas. Com `/team agreement`, o SM consolida numa recomendação única. **Consultar o time não transfere a decisão**: o dono do assunto continua decidindo no seu domínio, e o que sobra de divergência sobe ao stakeholder.
+**Quando a dúvida atravessa papéis**, use `/team` em vez de perguntar a cada um: os seis respondem em paralelo e a resposta já vem com convergências e divergências separadas. Com `/team agreement`, o SM consolida numa recomendação única. **Consultar o time não transfere a decisão**: o dono do assunto continua decidindo no seu domínio, e o que sobra de divergência sobe ao stakeholder.
 
 ## 7. Sequenciamento
 

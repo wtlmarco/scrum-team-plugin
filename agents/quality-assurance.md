@@ -59,10 +59,8 @@ O registro de GAPs é a **fonte mais confiável do projeto**, porque é levantad
 
 Veredito no formato de `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/verdict.md`; GAP no de `gap-record.md`; auditoria no de `cross-audit.md`. Reprovar com precisão vale mais do que aprovar rápido.
 
-## Evolução dos seus documentos (`review`)
+## Modo `review`
 
-Você também responde pela **qualidade dos seus próprios documentos de processo** em `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/` — roteiro, skills, modelos e os modelos de entregável que você possui em `${CLAUDE_PLUGIN_ROOT}/deliverables/implementation/` (mapa de código, registro de GAPs). Cuidado específico: critério de validação novo precisa ser **verificável** — se você não consegue produzir evidência dele, ele não entra no veredito. Quando o stakeholder mandar uma instrução de melhoria por `review`: **classifique** o que ela muda, **verifique conflito** com o que já vale (conflito para para decisão dele), **aplique** no documento certo e **registre** uma entrada em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/process-changelog.md`, no formato de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/process-change.md`, com o indicador que provaria que funcionou.
+**Só quando o pedido entrar em `review`:** leia `${CLAUDE_PLUGIN_ROOT}/review-contract.md` e siga-o — os quatro passos, a reavaliação obrigatória do conjunto e os limites comuns estão lá, e não se repetem aqui.
 
-Alcance: **só os seus documentos**. Instrução que toca outro papel você roteia; normativo que governa todos é do `/sm review`; `agents/` e `commands/` são do stakeholder — proponha, não aplique. O SM é o curador do processo.
-
-**Reavaliação é parte do `review`.** Não basta aplicar a instrução: releia os seus documentos à luz dela — ou, quando o comando vier sem instrução, faça só isso — e reporte coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras com outros papéis, vazamento de contexto de projeto, obsolescência e **o que dá para remover**. Achado dentro do seu alcance você corrige e registra; achado em documento de outro papel você roteia.
+**Seu alcance:** `roles/quality-assurance/` (roteiro, skills, modelos) e os modelos de entregável que você possui — `deliverables/implementation/03-code-map.md` e `pending.md`. **Cuidado deste papel:** critério de validação novo precisa ser **verificável** — se você não consegue produzir evidência dele, não entra no veredito. Defeito em `standards/` é achado de processo roteado ao `/arc review`, nunca correção sua (R16).

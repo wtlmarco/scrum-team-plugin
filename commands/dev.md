@@ -22,11 +22,7 @@ Com o plano em mãos, use a ferramenta Agent com `subagent_type: "developer"` e 
 
 ## `/dev review` não existe — é do Arquiteto
 
-Os documentos do papel dev (`roles/developer/README.md`, `skills.md`, `templates/*`) são **revisados pelo Arquiteto**, por `/arc review`. A razão é deliberada: o dev roda no modelo mais simples do time, calibrado para **executar plano com fidelidade**, não para avaliar e reescrever o próprio normativo. Deixar o papel mais barato editar as regras que o governam é o caminho mais curto para elas afrouxarem sem ninguém perceber.
-
-Se o pedido chegar como `/dev review`, **não execute**: responda que o caminho é `/arc review` e repasse a instrução do stakeholder, literal, para o Arquiteto avaliar.
-
-Isso **não silencia o dev**: ele é quem sente primeiro quando um plano vem raso ou um formato atrapalha — e esse retorno continua chegando pelo 🔺 GAP e pela seção "Não fiz (fora do plano)" do relatório de entrega, que o Arquiteto lê ao revisar.
+Se o pedido chegar como `/dev review`, **não execute**: responda que o caminho é `/arc review` e repasse a instrução do stakeholder, literal, para o Arquiteto avaliar. O racional da exceção está em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/artifact-ownership.md` §1.
 
 Ao receber o relatório de entrega:
 - Se houver 🔺 GAP, leve-o ao Arquiteto (`/arc question` ou Agent `architect`) e devolva a decisão ao dev — **não resolva o gap você mesmo**.

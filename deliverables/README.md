@@ -13,7 +13,7 @@ Este diretório guarda **a estrutura desses documentos**, para que qualquer proj
 | **ADR** — Architecture Decision Record | **Por que se decidiu assim**: uma decisão estrutural por documento | [`../roles/architect/templates/adr.md`](../roles/architect/templates/adr.md) |
 | **Padrões de engenharia** *(relacionado — não é entregável)* | **Como se constrói aqui**: normativos agnósticos de produto | [`../standards/`](../standards/README.md) |
 
-> **Padrões de engenharia não são um entregável.** São normativo/guia (ver os quatro tipos de documento em [`../README.md`](../README.md)): o time se apoia neles, mas não os elabora nem os versiona por projeto, e o QA não os valida a cada entrega — valida a entrega *contra* eles. Ficam em [`../standards/`](../standards/README.md), diretório de primeiro nível de `.team/`, irmão de `deliverables/`. Dono editorial: Arquiteto; consumo obrigatório: dev e QA (R16). Entram nesta tabela só para descoberta.
+> **Padrões de engenharia não são um entregável.** São normativo/guia (ver os quatro tipos de documento em [`../README.md`](../README.md)): o time se apoia neles, mas não os elabora nem os versiona por projeto, e o QA não os valida a cada entrega — valida a entrega *contra* eles. Ficam em [`../standards/`](../standards/README.md), diretório de primeiro nível do plugin, irmão de `deliverables/`. Dono editorial: Arquiteto; consumo obrigatório: dev e QA (R16). Entram nesta tabela só para descoberta.
 
 ## Propriedade — quem responde por cada documento
 

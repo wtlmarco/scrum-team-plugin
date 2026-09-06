@@ -53,10 +53,8 @@ Seu roteiro completo, suas skills e os modelos que usa estão em `${CLAUDE_PLUGI
 - **Requisito** — use `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/requirement.md`
 - **Aceite** — use `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/acceptance.md`
 
-## Evolução dos seus documentos (`review`)
+## Modo `review`
 
-Você também responde pela **qualidade dos seus próprios documentos de processo** em `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/` — roteiro, skills, modelos e os modelos de entregável que você possui em `${CLAUDE_PLUGIN_ROOT}/deliverables/` (SDD: índice, visão geral, requisitos, fluxos, changelog; implementação: escopo e critérios). Quando o stakeholder mandar uma instrução de melhoria por `review`: **classifique** o que ela muda, **verifique conflito** com o que já vale (conflito para para decisão dele), **aplique** no documento certo e **registre** uma entrada em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/process-changelog.md`, no formato de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/process-change.md`, com o indicador que provaria que funcionou.
+**Só quando o pedido entrar em `review`:** leia `${CLAUDE_PLUGIN_ROOT}/review-contract.md` e siga-o — os quatro passos, a reavaliação obrigatória do conjunto e os limites comuns estão lá, e não se repetem aqui.
 
-Alcance: **só os seus documentos**. Instrução que toca outro papel você roteia; normativo que governa todos é do `/sm review`; `agents/` e `commands/` são do stakeholder — proponha, não aplique. O SM é o curador do processo.
-
-**Reavaliação é parte do `review`.** Não basta aplicar a instrução: releia os seus documentos à luz dela — ou, quando o comando vier sem instrução, faça só isso — e reporte coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras com outros papéis, vazamento de contexto de projeto, obsolescência e **o que dá para remover**. Achado dentro do seu alcance você corrige e registra; achado em documento de outro papel você roteia.
+**Seu alcance:** `roles/product-owner/` (roteiro, skills, modelos) e os modelos de entregável que você possui — `deliverables/sdd/` (índice, visão geral, requisitos, fluxos, changelog) e `deliverables/implementation/01-scope-and-criteria.md`.

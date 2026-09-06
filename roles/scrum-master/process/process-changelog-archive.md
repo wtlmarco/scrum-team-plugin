@@ -6,6 +6,55 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v2.4 — Aderência ao plano × aderência ao standard: `/arc comply` e a frente 2 do QA verificam objetos diferentes — 06/09/2026
+
+**Instrução:** *(roteada pelo QA, `/qa review` v2.2, para decisão de fluxo do SM)* "decidir a divisão de trabalho entre `/arc comply` e `/qa <ID>` na verificação de aderência à seção de standard citada no plano." **Decisão do stakeholder: Opção C — não é duplicação, é sobreposição mal definida.** `/arc comply` afere **plano → código** (o autor conferindo a execução da sua instrução); a frente 2 afere **standard → código** e a **completude do plano ante o item** (o plano omitiu uma seção obrigatória ou citou a errada). A interseção — seção citada aplicada no código — o QA reverifica de forma independente por ser o gate ao stakeholder.
+**Classificação:** fluxo (posicionamento do `/arc comply` e objeto de cada verificação de aderência) + formato de documento (linha de gate em `workflow.md`, linha de conflito em `artifact-ownership.md`).
+**Registrada por:** SM, via `/sm review`. **Escopo fechado.** *(Deliberação e reavaliação do conjunto na resposta do `review`, não aqui — R17.)*
+
+### O que mudou
+| Documento | Mudança |
+|---|---|
+| `process/workflow.md` | **§4a nova** — "Aderência: `/arc comply` e a frente 2 do QA verificam objetos diferentes": o `/arc comply` **não é etapa do ciclo**, é revisão sob demanda em dois momentos (proativa antes do QA · rota de volta de achado de aderência ⚠️/❌ antes do `/dev resume`); tabela objeto × pergunta; critério verificável de que o veredito da frente 2 traz "seção exigida pelo item × seção citada" com quatro estados. §8 — gate novo: "seção de standard exigida pelo item presente no plano e aplicada no código · veredito · QA · R16 · §4a" |
+| `process/artifact-ownership.md` | §3 — linha nova em "Conflitos comuns": frente 2 que parece repetir o `/arc comply` → checar o que o comply não vê (plano omitiu/errou a seção que o item exigia), ponteiro a `workflow.md` §4a |
+
+### Por quê (modo de falha evitado)
+A frente 2 do QA (v2.2) e `compliance-review.md:29` checavam ambos "seção de standard citada aplicada de fato" — trabalho e tokens potencialmente duplicados, e a frente 2 carregava nota provisória "pendente do SM". Sem a separação de objeto: ou o QA repete a revisão do Arquiteto (custo sem ganho), ou abandona a frente por parecer redundante — e aí ninguém pega o defeito que o autor do plano **estruturalmente não vê**: a seção obrigatória omitida ou a citada errada. O processo também se contradizia sobre quando o comply roda (`architect/README.md:51` "antes do QA" × `commands/qa.md:30` comply como remediação pós-QA) e `workflow.md` era silencioso.
+
+### Resolução da contradição de fluxo
+`/arc comply` **fora do ciclo**, sob demanda, nos dois momentos (antes do QA por iniciativa do Arquiteto · rota de volta de achado de aderência). **Não vira etapa formal** entre dev e QA — isso adicionaria uma invocação de agente por item, e a Opção C torna a frente 2 independente do comply de qualquer forma. `workflow.md` §4a é a fonte; os textos "antes do QA" em `architect/README.md:51` e `compliance-review.md:1` são roteados ao `/arc review`. Sem mudança de custo por item.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| QA | Frente 2 nomeia, por área de engenharia do item, a seção **exigida** × a seção **citada**; omissão ou erro de citação = achado de processo ao `/arc review`, não achado de código; a interseção é reverificada, não delegada ao comply |
+| Arquiteto | `/arc comply` declarado sob demanda, não etapa de ciclo; o comply responde só pela **aplicação** do que citou, não pela completude da citação |
+| SM | Verifica que o veredito da frente 2 traz a coluna "seção exigida × citada"; veredito que só replica a tabela do comply = achado de processo |
+
+### Conflitos com o processo vigente
+- **`architect/README.md:51` / `compliance-review.md:1` "antes do QA" × `commands/qa.md:30` comply como remediação pós-QA.** Resolvido: comply é sob demanda nos dois momentos; `workflow.md` §4a é a fonte; edições de texto roteadas ao `/arc review`.
+- Nenhum conflito com R16 — a frente 2 já era consumo obrigatório; §4a só define o objeto. Nenhuma regra nova (R18 avaliada e descartada — ver resposta do `review`).
+
+### Como saberemos que funcionou
+- Todo veredito de frente 2 do período traz a coluna "seção exigida pelo item × seção citada"; ausência = achado de processo.
+- Nenhum veredito de frente 2 que apenas reproduz a tabela passo × conforme do `/arc comply`.
+- Ao menos um achado de "seção obrigatória omitida do plano" ou "seção citada errada" roteado ao `/arc review` em até 3 ciclos que toquem engenharia — sinal de que a frente pega o que o comply não vê. Zero em 6 ciclos com itens de engenharia → §4a encolhe para nota e a frente 2 volta a confiar no comply.
+- **Footprint (§5c):** `/sm` (`agents/scrum-master.md` + `commands/sm.md`) = 11,3 KB · `roles/scrum-master/` = 119,3 KB ativo (+ 90,2 KB de `process-changelog-archive.md`, frio). Total do papel = 130,6 KB. Esta rodada: `workflow.md` 20,6 → 23,1 KB (+2,5); `artifact-ownership.md` 8,3 → 8,6 KB (+0,3); `process-changelog.md` +7,8 KB (entrada v2.4). Primeira medição do footprint do SM pós-v2.0 — sem valor anterior para Δ. **Remoção candidata p/ a próxima `review metrics`:** os dois parágrafos finais de `workflow.md` §5a ("O que o SM pergunta primeiro..." / "O que o SM escala...") reafirmam a tabela de passos e a §6 — colapsáveis a ponteiro, ~0,6 KB. Não removido agora — escopo fechado.
+
+### Roteamentos
+| Achado | Para quem |
+|---|---|
+| `compliance-review.md:29` e §2 do template não delimitam que o comply afere só a **aplicação** do que o plano citou; `compliance-review.md:1` e o título `architect/README.md:51` dizem "antes do QA" — refletir o posicionamento sob demanda de `workflow.md` §4a | **`/arc review`** — instrução pronta na resposta do `review` |
+| Nota provisória da frente 2 (`quality-assurance/README.md:23`) "pendente de decisão do SM — changelog v2.2" — trocar pela redação final da Opção C (objeto da frente 2, quatro estados, coluna "seção exigida × citada" no `verdict.md`, ajuste em `skills.md` §9) | **`/qa review`** — instrução pronta na resposta do `review` |
+| *(carona, roteamento pendente do PO — v2.3)* `deliverables/sdd/03-architecture.md` §2b diz "A tabela **V1–V17**" e não reflete V18–V21 | **`/arc review`** — mesma instrução da v2.3 |
+| Com a v2.4, o changelog vivo passa de 3 entradas | **stakeholder** — arquivar a v2.1; não toquei no arquivamento (R17) |
+
+### Pendente do stakeholder
+- **`commands/qa.md:30`, `commands/arc.md:16`, `commands/team.md` (passo 6 do `cycle`):** propostas de uma linha cada, texto pronto na resposta do `review`, para alinhar a linguagem do comply ("sob demanda", rota de achado de aderência). Não obrigatórias; vigoram só após reiniciar a sessão.
+- **Confirmar** que `/arc comply` permanece **fora do ciclo** (resolução do SM) — ou, se quiser o comply como etapa formal entre dev e QA, isso adiciona uma invocação de agente por item e precisa do seu aval.
+
+---
+
 ## v2.3 — PO ganha a forma completa do RNF de performance e a cadeia RNF → V18 → veredito — 06/09/2026
 
 **Instrução:** *(roteada pelo Arquiteto, `/arc review` das v2.1–v2.2)* "P1 cobra do PO uma forma de escrever RNF que os modelos dele não ensinam. Ensinar em `deliverables/sdd/01-requirements.md` a forma completa do RNF de performance — os cinco campos de P1, com exemplo preenchido e contraexemplo, mantendo o princípio que já está lá. Fazer `templates/requirement.md` carregar os cinco campos quando o requisito for de performance. Deixar explícita a cadeia: PO escreve o RNF com os cinco campos → Arquiteto transporta para a Ficha V18–V21 (V18 = lista fechada) → QA valida e registra três estados (dentro · fora · não exercitado); operação fora de um RNF não é medida por ninguém. Decidir se o critério de aceite de item que toca operação sob orçamento menciona desempenho explicitamente ou basta o RNF existir."

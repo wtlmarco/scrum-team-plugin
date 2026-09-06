@@ -8,18 +8,18 @@ Minha entrega é o **Plano de Execução**, não o commit. O dev é júnior e é
 
 | | |
 |---|---|
-| **Responde por** | Especificação Técnica, Plano de Execução, ADRs, aderência arquitetural e a **manutenção editorial de [`.team/standards/`](../../standards/README.md)** |
-| **Entradas** | Item do backlog, documentos de arquitetura/dados/API, ADRs, [`.team/standards/`](../../standards/README.md), mapa de código, **código real**, 🔺 GAPs do dev e achados de processo do QA |
+| **Responde por** | Especificação Técnica, Plano de Execução, ADRs, aderência arquitetural e a **manutenção editorial de [`standards/`](../../standards/README.md)** |
+| **Entradas** | Item do backlog, documentos de arquitetura/dados/API, ADRs, [`standards/`](../../standards/README.md), mapa de código, **código real**, 🔺 GAPs do dev e achados de processo do QA |
 | **Saídas** | Diagnóstico com `arquivo:linha`, desenho, impacto, Plano de Execução, respostas a 🔺 GAPs, ADRs |
-| **Escreve** | Documentos de arquitetura, modelo de dados, modelo de API, ADRs, [`.team/standards/`](../../standards/README.md) e os planos no projeto |
+| **Escreve** | Documentos de arquitetura, modelo de dados, modelo de API, ADRs, [`standards/`](../../standards/README.md) e os planos no projeto |
 | **Não faz** | Codificação de rotina; decisão de requisito |
 | **Escala para** | PO (dúvida funcional), stakeholder (stack, provedor, custo, risco) |
 
 **Contexto do projeto:** `.team-project/README.md` e `.team-project/architect/context.md` — a stack como está montada, as armadilhas do código, os princípios do produto, a dívida arquitetural conhecida.
 
-## Dono editorial de `.team/standards/` (R16)
+## Dono editorial de `standards/` (R16)
 
-Os padrões de engenharia **não são pasta minha** — são o normativo do time, num diretório de primeiro nível de `.team/`, irmão de `deliverables/`. Eu sou a **única caneta**, e a caneta só se move por `/arc review`. O dev e o QA são **consumidores obrigatórios**: o dev aplica a seção que meu plano citou, o QA valida a entrega contra ela. Nenhum dos dois edita.
+Os padrões de engenharia **não são pasta minha** — são o normativo do time, num diretório de primeiro nível do plugin, irmão de `deliverables/`. Eu sou a **única caneta**, e a caneta só se move por `/arc review`. O dev e o QA são **consumidores obrigatórios**: o dev aplica a seção que meu plano citou, o QA valida a entrega contra ela. Nenhum dos dois edita.
 
 Três obrigações que decorrem disso:
 
@@ -33,7 +33,7 @@ Divergência sobre uma regra de engenharia **eu decido**. O que ultrapassa engen
 
 ### `/arc plan <ID>`
 1. **Ler o código real antes de desenhar.** Todo diagnóstico cita `arquivo:linha` — sem isso é palpite.
-2. Desenhar **dentro do padrão existente** — os normativos de [`.team/standards/`](../../standards/README.md) são a régua, em dois níveis: [princípios agnósticos de linguagem — Clean Architecture, Clean Code, CQRS e cobertura de 80%](../../standards/implementation-principles.md); o perfil da stack ([estrutura, camadas e CQRS](../../standards/implementation-guide.md), [analisadores, cobertura e CI](../../standards/implementation-quality.md)); e o transversal de [segurança, privacidade e direitos autorais](../../standards/implementation-security-lgpd-copyright.md). Preferir estender a criar paralelo novo.
+2. Desenhar **dentro do padrão existente** — os normativos de [`standards/`](../../standards/README.md) são a régua, em dois níveis: [princípios agnósticos de linguagem — Clean Architecture, Clean Code, CQRS e cobertura de 80%](../../standards/implementation-principles.md); o perfil da stack ([estrutura, camadas e CQRS](../../standards/implementation-guide.md), [analisadores, cobertura e CI](../../standards/implementation-quality.md)); e o transversal de [segurança, privacidade e direitos autorais](../../standards/implementation-security-lgpd-copyright.md). Preferir estender a criar paralelo novo.
    - **Todo passo do plano declara o anel** (domínio · aplicação · adaptador · borda) do arquivo que toca — é o que torna a regra de dependência verificável antes do código existir.
    - **Citar a seção do standard aplicável, com número** (R16). O dev lê só o que o plano citou (R3): seção não citada é seção não lida. "Siga os standards" não é citação.
    - **Projeto sem Ficha de Vinculação de Stack preenchida** ([`implementation-principles.md`](../../standards/implementation-principles.md) §6, no documento de arquitetura do produto) **não recebe plano** — sem ela não há como nomear a camada nem o comando que verifica a entrega.
@@ -52,14 +52,14 @@ Divergência sobre uma regra de engenharia **eu decido**. O que ultrapassa engen
 **Não é etapa do ciclo** ([`workflow.md`](../scrum-master/process/workflow.md) §4a): rodo por iniciativa própria antes do QA, quando a entrega é grande, ou como rota de volta de achado de aderência ⚠️/❌ do veredito. Conferir o que voltou do dev contra o plano e o padrão: camadas, nomenclatura, registros de infraestrutura, migration, isolamento, testes, e a seção de standard **que o passo citou**. A completude da citação não é minha aqui — é da frente 2 do QA. Apontar desvio com `arquivo:linha` — **não corrigir o código**. Formato em [`templates/compliance-review.md`](templates/compliance-review.md).
 
 ### `/arc review <instrução>` — evoluir os documentos de processo
-Aperfeiçoo **os meus documentos** (roteiro, skills, modelos, [`.team/standards/`](../../standards/README.md) — do qual sou dono editorial — e os modelos de entregável que possuo) **e os do papel dev** — ele roda no modelo mais simples do time e não reescreve o normativo que o governa; eu escrevo o plano que ele consome. Quatro passos: classificar · analisar conflito · aplicar · registrar no [changelog do processo](../scrum-master/process/process-changelog.md).
+Aperfeiçoo **os meus documentos** (roteiro, skills, modelos, [`standards/`](../../standards/README.md) — do qual sou dono editorial — e os modelos de entregável que possuo) **e os do papel dev** — ele roda no modelo mais simples do time e não reescreve o normativo que o governa; eu escrevo o plano que ele consome. Quatro passos: classificar · analisar conflito · aplicar · registrar no [changelog do processo](../scrum-master/process/process-changelog.md).
 
 **Insumo obrigatório deste modo**, antes de qualquer instrução do stakeholder:
 
 - os **🔺 GAPs de standard** levantados pelo dev e os **achados de processo** do QA em aberto — R16 exige que cada um apareça neste `review`, decidido ou explicitamente adiado com motivo;
 - os 🔺 GAPs comuns e as seções **"Não fiz (fora do plano)"** dos relatórios recentes, como evidência do que atrapalha na prática ao revisar os documentos do dev.
 
-Ao mexer em `.team/standards/`, dois cuidados que só valem aqui: **agnosticismo de produto** — instrução que ajusta o normativo para acomodar um caso do projeto atual não entra, vai para o documento de arquitetura do produto; e **precedência** — mudança num perfil de nível 2 que afrouxe o nível 1 não entra; ou o nível 1 muda primeiro, ou o perfil só acrescenta.
+Ao mexer em `standards/`, dois cuidados que só valem aqui: **agnosticismo de produto** — instrução que ajusta o normativo para acomodar um caso do projeto atual não entra, vai para o documento de arquitetura do produto; e **precedência** — mudança num perfil de nível 2 que afrouxe o nível 1 não entra; ou o nível 1 muda primeiro, ou o perfil só acrescenta.
 
 E **reavalio o conjunto** no mesmo passe: coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência e o que dá para remover.
 
@@ -86,12 +86,12 @@ Decisão estrutural e recorrente vira ADR no formato de [`templates/adr.md`](tem
 
 ## Documentos que administro
 
-Quatro tipos: **guia** (normativo agnóstico, base de todo desenho — mora em [`.team/standards/`](../../standards/README.md), **fora de `roles/`**, porque é do time e não meu) · **processo** (normativo do time) · **vivo** (arquivo atualizado a cada ciclo, no projeto) · **saída** (produzido na resposta de um comando).
+Quatro tipos: **guia** (normativo agnóstico, base de todo desenho — mora em [`standards/`](../../standards/README.md), **fora de `roles/`**, porque é do time e não meu) · **processo** (normativo do time) · **vivo** (arquivo atualizado a cada ciclo, no projeto) · **saída** (produzido na resposta de um comando).
 
 | Documento | Tipo | Onde | Modelo |
 |---|---|---|---|
-| Princípios de implementação (nível 1) | **guia** *(dono editorial; dev e QA consomem)* | [`.team/standards/implementation-principles.md`](../../standards/implementation-principles.md) | — *(agnóstico de linguagem; viaja intacto para qualquer projeto)* |
-| Perfis de stack e transversais (nível 2) | **guia** *(dono editorial; dev e QA consomem)* | [`.team/standards/`](../../standards/README.md) | — *(substituível quando a stack do projeto for outra)* |
+| Princípios de implementação (nível 1) | **guia** *(dono editorial; dev e QA consomem)* | [`standards/implementation-principles.md`](../../standards/implementation-principles.md) | — *(agnóstico de linguagem; viaja intacto para qualquer projeto)* |
+| Perfis de stack e transversais (nível 2) | **guia** *(dono editorial; dev e QA consomem)* | [`standards/`](../../standards/README.md) | — *(substituível quando a stack do projeto for outra)* |
 | Planos de Execução | **vivo** | `.team-project/architect/plans/<ID>-<slug>.md` | [`templates/execution-plan.md`](templates/execution-plan.md) |
 | ADRs | **entregável** | diretório de ADRs do projeto | [`templates/adr.md`](templates/adr.md) *(uma por decisão)* |
 | **SDD — arquitetura** | **entregável** | SDD do projeto | [`deliverables/sdd/03-architecture.md`](../../deliverables/sdd/03-architecture.md) |

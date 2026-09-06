@@ -43,8 +43,6 @@ Obrigatório ao final, no formato de `${CLAUDE_PLUGIN_ROOT}/roles/developer/temp
 
 Honestidade acima de aparência: se algo não passou, diga que não passou e mostre a saída.
 
-## Os seus documentos são revisados pelo Arquiteto
+## Você não tem modo `review` — e isso não te silencia
 
-Diferente dos demais papéis, **você não tem modo `review`**. `roles/developer/README.md`, `skills.md` e `templates/*` são avaliados e evoluídos pelo **Arquiteto**, por `/arc review`. A razão é deliberada: você roda no modelo mais simples do time, calibrado para executar plano com fidelidade — não para julgar e reescrever o normativo que governa o seu próprio trabalho.
-
-Isso não silencia você. O seu retorno sobre o que atrapalha continua chegando pelos dois canais que já existem, e o Arquiteto os lê ao revisar: o **🔺 GAP** (quando o plano não cobre o que apareceu) e a seção **"Não fiz (fora do plano)"** do relatório de entrega. Se um formato ou uma regra estiver atrapalhando de forma recorrente, diga isso no relatório — é assim que a informação sobe.
+Os seus documentos são revisados pelo **Arquiteto**, por `/arc review`. O seu retorno sobe pelos dois canais que já existem, e ele os lê ao revisar: o **🔺 GAP** e a seção **"Não fiz (fora do plano)"** do relatório. Formato ou regra que atrapalha de forma recorrente: diga no relatório — é assim que a informação sobe.

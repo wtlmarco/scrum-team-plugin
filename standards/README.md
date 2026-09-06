@@ -1,6 +1,6 @@
 # Standards — Normativo de Engenharia do Time
 
-> **Normativo de engenharia do time, mantido pelo Arquiteto.** Não é pasta de um papel: é **diretório de primeiro nível de `.team/`**, irmão de [`deliverables/`](../deliverables/README.md), porque o dev executa contra ele e o QA valida contra ele todo ciclo. Fica aqui — e não junto da documentação do produto — porque é **agnóstico de produto** e viaja intacto quando o time é replicado em outro projeto (ver [`replicate-in-new-project.md`](../replicate-in-new-project.md)).
+> **Normativo de engenharia do time, mantido pelo Arquiteto.** Não é pasta de um papel: é **diretório de primeiro nível do plugin**, irmão de [`deliverables/`](../deliverables/README.md), porque o dev executa contra ele e o QA valida contra ele todo ciclo. Fica aqui — e não junto da documentação do produto — porque é **agnóstico de produto** e viaja intacto quando o time é replicado em outro projeto (ver [`replicate-in-new-project.md`](../replicate-in-new-project.md)).
 
 ## Quem escreve, quem consome, por onde entra defeito (R16)
 

@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v2.4`](process-changelog-archive.md) | Aderência ao plano × aderência ao standard: `/arc comply` e a frente 2 do QA verificam objetos diferentes — 06/09/2026 |
 | [`v2.3`](process-changelog-archive.md) | PO ganha a forma completa do RNF de performance e a cadeia RNF → V18 → veredito — 06/09/2026 |
 | [`v2.2`](process-changelog-archive.md) | QA alinhado a R16 e ganha a frente de desempenho; veredito endereçado ao stakeholder — 06/09/2026 |
 | [`v2.1`](process-changelog-archive.md) | PERF-TEST fechada: desempenho vira obrigação verificável nos dois níveis do `standards/` — 06/09/2026 |
@@ -27,6 +28,54 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v2.7 — Faxina pós-isolamento em plugin: resíduo de caminho, contagens do UX e extração dos modos frios — 06/09/2026
+
+**Instrução:** *(stakeholder, direta)* "agora que isolamos em um plugin, revise tudo para remover redundância, validar links e relações entre os arquivos e otimizar o processo para menor consumo de tokens."
+**Classificação:** formato de documento (caminhos e contagens obsoletos) + comportamento de agente (`agents/*` e `commands/*` compactados) — aplicada pelo **stakeholder**, não por um `review` de papel.
+**Registrada por:** stakeholder. **Escopo fechado — uma faxina, sem mudança de regra, fluxo ou propriedade.**
+
+### O que mudou
+| Documento | Mudança |
+|---|---|
+| `.claude-plugin/plugin.json` · `marketplace.json` | Descrições listavam 5 papéis — **UX ausente**. Corrigido nos dois manifestos |
+| `process/artifact-ownership.md` | §1 — **linha duplicada removida** (`roles/<papel>/README.md, skills.md, templates/` aparecia 2×, com regras diferentes); prefixos `team/roles/…` → `${CLAUDE_PLUGIN_ROOT}/roles/…` e `team-project/` → `.team-project/` (6 linhas) |
+| `standards/README.md` · `deliverables/README.md` · `roles/{architect,developer,quality-assurance,scrum-master}/README.md` | Resíduo `.team/standards/` → `standards/` e "diretório de primeiro nível de `.team/`" → "do plugin" (25 ocorrências). O repositório **é** o plugin desde a v2.0; o prefixo `.team/` descrevia a estrutura anterior |
+| `agents/{product-owner,architect,user-experience,quality-assurance,scrum-master}.md` | Bloco "Evolução dos seus documentos (`review`)" — 3–4 parágrafos reproduzindo `review-contract.md` — **colapsado em ponteiro + alcance do papel**. O mesmo movimento que a v2.0 fez nos `commands/`, agora nos `agents/` |
+| `agents/developer.md` · `commands/dev.md` | A justificativa de por que o dev não tem `review` estava **inteira nos dois**; fica o essencial em cada um, com o racional em `artifact-ownership.md` §1 |
+| `commands/team.md` | Modo `init` (32 linhas) extraído para **`team-init.md`** — roda uma vez por projeto e pagava contexto em toda invocação de `/team`. Modo `brainstorm` colapsado em despacho + ponteiro para `workflow.md` §5b, que já continha o ritual completo |
+| `team-init.md` | **Novo** — ritual do `/team init`, lido só nesse modo |
+| `commands/team.md` · `commands/sm.md` · `process/workflow.md` · `scrum-master/{README,skills}.md` | Contagens obsoletas da entrada do UX: "cinco agentes/respondem" → **seis** no broadcast; e o onboarding §5a se contradizia — passo 4 dizia "os outros cinco papéis / Cinco leituras", a checklist de saída e três outros documentos diziam "seis". Unificado em **cinco leituras** (PO · Arquiteto · UX · dev · QA); o SM coordena e consolida, não escreve uma sobre si |
+| `README.md` | Índice de estrutura não listava `how-to.md`, `review-contract.md`, `note.md` — nem o novo `team-init.md` |
+| `process/process-changelog.md` | v2.4 arquivada (teto de 3 entradas, R17) — pendência aberta desde a v2.5 |
+
+### Por quê (modo de falha evitado)
+Dois modos, ambos já observados neste changelog. **Obsolescência silenciosa:** a v2.0 isolou o time num plugin, mas os caminhos `.team/` e `team/roles/` continuaram escritos em 6 roteiros — um agente que os siga procura um diretório que não existe, e o `review audit` os lê como se fossem verdade. Os manifestos omitindo o UX são a mesma falha na porta de entrada: quem instala o plugin lê que o time tem cinco papéis. **Custo fixo por invocação:** o contrato do `review` foi extraído dos `commands/` na v2.0 exatamente porque era injetado em toda invocação — mas ficou intacto nos `agents/`, onde tem o mesmo custo e a mesma raridade de uso; e o `init`, que roda **uma vez na vida do projeto**, era carregado em todo `/team`.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| Todos com `review` | O contrato não está mais no corpo do agente: **ler `review-contract.md` ao entrar no modo** deixa de ser redundância e passa a ser obrigatório. O alcance do papel continua declarado no agente e no comando |
+| SM (onboarding) | A entrega são **cinco** leituras de entrada, não seis. O SM coordena e consolida |
+| `/team init` | Lê `team-init.md` antes de criar o `.team-project/` |
+| Nenhum | Nenhuma regra (R1–R17), gate, DoR/DoD ou matriz de propriedade mudou de conteúdo |
+
+### Conflitos com o processo vigente
+Nenhum. Nenhuma regra nova, nenhuma removida. A contradição interna do onboarding (cinco × seis leituras) foi **resolvida em favor do passo 4 de `workflow.md` §5a**, que já nomeava os cinco papéis explicitamente — a checklist e os três documentos derivados é que estavam errados.
+
+### Como saberemos que funcionou
+- **Footprint (§5c) — carga fixa por invocação (`agents/<papel>.md` + `commands/<cmd>.md`), antes → depois:** `/sm` 11,5 → 10,7 KB · `/po` 8,7 → 7,6 · `/arc` 12,8 → 11,7 · `/ux` 9,4 → 8,5 · `/dev` 7,6 → 6,6 · `/qa` 11,6 → 10,7 · `/team` 13,1 → 8,7. **Total 74,7 → 64,5 KB (−10,2 KB, −14%);** `/team` sozinho −33%. Movido para leitura sob demanda: `team-init.md` 3,2 KB. Primeira redução líquida registrada desde a v2.0.
+- `grep -r '\.team/' --exclude='*changelog*'` retorna **zero** — e volta a zero em toda `review audit`.
+- Validação mecânica de links: **0 links relativos quebrados, 0 refs `${CLAUDE_PLUGIN_ROOT}` quebradas** (era 1 e 0). Repetir a cada `review audit`.
+- `claude plugin details team@team` continua listando **7 comandos e 6 agents**.
+- Se em 3 ciclos algum papel executar `review` sem os quatro passos, o ponteiro para `review-contract.md` não bastou e o contrato volta, resumido, ao corpo do agente.
+
+### Pendente do stakeholder
+- **Reiniciar a sessão** — mudança em `agents/` e `commands/` só entra em vigor no próximo carregamento.
+- `note.md` continua com o item aberto "revise"; esta faxina o consome parcialmente. O que sobra e não foi tocado: a duplicação dos "Princípios inegociáveis" entre `agents/architect.md` e `roles/architect/README.md` — mantida de propósito (o agente é caminho quente, o roteiro é referência), mas é candidata a remoção numa `review metrics`.
+- **Pendências herdadas, não tocadas aqui** (continuam roteadas): `agents/architect.md:33` "antes do QA" → `/arc review` (v2.5); `compliance-review.md:29` e `deliverables/sdd/03-architecture.md` §2b "V1–V17" → `/arc review` (v2.3/v2.4).
 
 ---
 
@@ -100,54 +149,5 @@ Nenhum. `commands/arc.md:16` e `commands/team.md` passo 6 já traziam a delimita
 ### Pendente do stakeholder
 - **`agents/architect.md:33`** — "revisar o que voltou do dev contra o padrão **antes do QA**" é o último texto obsoleto e está fora da minha caneta. Substituição proposta: *"**Aderência** — sob demanda, revisar o que voltou do dev contra o plano e o padrão: cada passo como escrito e a seção de standard que o passo citou aplicada de fato (`workflow.md` §4a)."* Não obrigatória; vigora só após reiniciar a sessão.
 - Com a v2.5 o changelog vivo fica com **4 entradas** (teto = 3): arquivar a v2.1 continua pendente da v2.4. Não toquei no arquivamento (R17).
-
----
-
-## v2.4 — Aderência ao plano × aderência ao standard: `/arc comply` e a frente 2 do QA verificam objetos diferentes — 06/09/2026
-
-**Instrução:** *(roteada pelo QA, `/qa review` v2.2, para decisão de fluxo do SM)* "decidir a divisão de trabalho entre `/arc comply` e `/qa <ID>` na verificação de aderência à seção de standard citada no plano." **Decisão do stakeholder: Opção C — não é duplicação, é sobreposição mal definida.** `/arc comply` afere **plano → código** (o autor conferindo a execução da sua instrução); a frente 2 afere **standard → código** e a **completude do plano ante o item** (o plano omitiu uma seção obrigatória ou citou a errada). A interseção — seção citada aplicada no código — o QA reverifica de forma independente por ser o gate ao stakeholder.
-**Classificação:** fluxo (posicionamento do `/arc comply` e objeto de cada verificação de aderência) + formato de documento (linha de gate em `workflow.md`, linha de conflito em `artifact-ownership.md`).
-**Registrada por:** SM, via `/sm review`. **Escopo fechado.** *(Deliberação e reavaliação do conjunto na resposta do `review`, não aqui — R17.)*
-
-### O que mudou
-| Documento | Mudança |
-|---|---|
-| `process/workflow.md` | **§4a nova** — "Aderência: `/arc comply` e a frente 2 do QA verificam objetos diferentes": o `/arc comply` **não é etapa do ciclo**, é revisão sob demanda em dois momentos (proativa antes do QA · rota de volta de achado de aderência ⚠️/❌ antes do `/dev resume`); tabela objeto × pergunta; critério verificável de que o veredito da frente 2 traz "seção exigida pelo item × seção citada" com quatro estados. §8 — gate novo: "seção de standard exigida pelo item presente no plano e aplicada no código · veredito · QA · R16 · §4a" |
-| `process/artifact-ownership.md` | §3 — linha nova em "Conflitos comuns": frente 2 que parece repetir o `/arc comply` → checar o que o comply não vê (plano omitiu/errou a seção que o item exigia), ponteiro a `workflow.md` §4a |
-
-### Por quê (modo de falha evitado)
-A frente 2 do QA (v2.2) e `compliance-review.md:29` checavam ambos "seção de standard citada aplicada de fato" — trabalho e tokens potencialmente duplicados, e a frente 2 carregava nota provisória "pendente do SM". Sem a separação de objeto: ou o QA repete a revisão do Arquiteto (custo sem ganho), ou abandona a frente por parecer redundante — e aí ninguém pega o defeito que o autor do plano **estruturalmente não vê**: a seção obrigatória omitida ou a citada errada. O processo também se contradizia sobre quando o comply roda (`architect/README.md:51` "antes do QA" × `commands/qa.md:30` comply como remediação pós-QA) e `workflow.md` era silencioso.
-
-### Resolução da contradição de fluxo
-`/arc comply` **fora do ciclo**, sob demanda, nos dois momentos (antes do QA por iniciativa do Arquiteto · rota de volta de achado de aderência). **Não vira etapa formal** entre dev e QA — isso adicionaria uma invocação de agente por item, e a Opção C torna a frente 2 independente do comply de qualquer forma. `workflow.md` §4a é a fonte; os textos "antes do QA" em `architect/README.md:51` e `compliance-review.md:1` são roteados ao `/arc review`. Sem mudança de custo por item.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda |
-|---|---|
-| QA | Frente 2 nomeia, por área de engenharia do item, a seção **exigida** × a seção **citada**; omissão ou erro de citação = achado de processo ao `/arc review`, não achado de código; a interseção é reverificada, não delegada ao comply |
-| Arquiteto | `/arc comply` declarado sob demanda, não etapa de ciclo; o comply responde só pela **aplicação** do que citou, não pela completude da citação |
-| SM | Verifica que o veredito da frente 2 traz a coluna "seção exigida × citada"; veredito que só replica a tabela do comply = achado de processo |
-
-### Conflitos com o processo vigente
-- **`architect/README.md:51` / `compliance-review.md:1` "antes do QA" × `commands/qa.md:30` comply como remediação pós-QA.** Resolvido: comply é sob demanda nos dois momentos; `workflow.md` §4a é a fonte; edições de texto roteadas ao `/arc review`.
-- Nenhum conflito com R16 — a frente 2 já era consumo obrigatório; §4a só define o objeto. Nenhuma regra nova (R18 avaliada e descartada — ver resposta do `review`).
-
-### Como saberemos que funcionou
-- Todo veredito de frente 2 do período traz a coluna "seção exigida pelo item × seção citada"; ausência = achado de processo.
-- Nenhum veredito de frente 2 que apenas reproduz a tabela passo × conforme do `/arc comply`.
-- Ao menos um achado de "seção obrigatória omitida do plano" ou "seção citada errada" roteado ao `/arc review` em até 3 ciclos que toquem engenharia — sinal de que a frente pega o que o comply não vê. Zero em 6 ciclos com itens de engenharia → §4a encolhe para nota e a frente 2 volta a confiar no comply.
-- **Footprint (§5c):** `/sm` (`agents/scrum-master.md` + `commands/sm.md`) = 11,3 KB · `roles/scrum-master/` = 119,3 KB ativo (+ 90,2 KB de `process-changelog-archive.md`, frio). Total do papel = 130,6 KB. Esta rodada: `workflow.md` 20,6 → 23,1 KB (+2,5); `artifact-ownership.md` 8,3 → 8,6 KB (+0,3); `process-changelog.md` +7,8 KB (entrada v2.4). Primeira medição do footprint do SM pós-v2.0 — sem valor anterior para Δ. **Remoção candidata p/ a próxima `review metrics`:** os dois parágrafos finais de `workflow.md` §5a ("O que o SM pergunta primeiro..." / "O que o SM escala...") reafirmam a tabela de passos e a §6 — colapsáveis a ponteiro, ~0,6 KB. Não removido agora — escopo fechado.
-
-### Roteamentos
-| Achado | Para quem |
-|---|---|
-| `compliance-review.md:29` e §2 do template não delimitam que o comply afere só a **aplicação** do que o plano citou; `compliance-review.md:1` e o título `architect/README.md:51` dizem "antes do QA" — refletir o posicionamento sob demanda de `workflow.md` §4a | **`/arc review`** — instrução pronta na resposta do `review` |
-| Nota provisória da frente 2 (`quality-assurance/README.md:23`) "pendente de decisão do SM — changelog v2.2" — trocar pela redação final da Opção C (objeto da frente 2, quatro estados, coluna "seção exigida × citada" no `verdict.md`, ajuste em `skills.md` §9) | **`/qa review`** — instrução pronta na resposta do `review` |
-| *(carona, roteamento pendente do PO — v2.3)* `deliverables/sdd/03-architecture.md` §2b diz "A tabela **V1–V17**" e não reflete V18–V21 | **`/arc review`** — mesma instrução da v2.3 |
-| Com a v2.4, o changelog vivo passa de 3 entradas | **stakeholder** — arquivar a v2.1; não toquei no arquivamento (R17) |
-
-### Pendente do stakeholder
-- **`commands/qa.md:30`, `commands/arc.md:16`, `commands/team.md` (passo 6 do `cycle`):** propostas de uma linha cada, texto pronto na resposta do `review`, para alinhar a linguagem do comply ("sob demanda", rota de achado de aderência). Não obrigatórias; vigoram só após reiniciar a sessão.
-- **Confirmar** que `/arc comply` permanece **fora do ciclo** (resolução do SM) — ou, se quiser o comply como etapa formal entre dev e QA, isso adiciona uma invocação de agente por item e precisa do seu aval.
 
 ---

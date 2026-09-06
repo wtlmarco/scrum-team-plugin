@@ -137,7 +137,7 @@ Antes de haver fila, é preciso haver entendimento comum do projeto. Duas ativid
 - **O stakeholder responde só o buraco.** A lista que sobe a ele é única, com perguntas estratégicas e lacunas pequenas — cada uma com opções e recomendação do time (R9: o time tentou responder antes).
 - **Divergência não se arredonda.** Status que diz "concluído" sobre código que os GAPs mostram parcial vira risco no quadro + `/qa audit`, não uma nota otimista. É o modo de falha que define este ofício.
 - **Doc funcional essencial ausente para o onboarding é gatilho de brainstorm** — o onboarding pausa até ele fechar.
-- **Saída:** contexto do projeto preenchido e datado, seis leituras de entrada registradas, quadro aberto. Sem isso, `/sm plan` não roda.
+- **Saída:** contexto do projeto preenchido e datado, cinco leituras de entrada registradas, quadro aberto. Sem isso, `/sm plan` não roda.
 
 ### Brainstorm — moldar uma ideia sem documentação
 

@@ -33,7 +33,11 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 │   ├── implementation-quality.md       nível 2 — perfil de stack (.NET/GitLab)
 │   └── implementation-security-lgpd-copyright.md   transversal
 ├── README.md                        ← este índice
-├── replicate-in-new-project.md      ← como levar este time para outro projeto
+├── how-to.md                        guia do stakeholder — instalar, atualizar, os 4 caminhos de entrada
+├── replicate-in-new-project.md      como levar este time para outro projeto
+├── review-contract.md               contrato do modo `review` — lido só quando um comando entra em `review`
+├── team-init.md                     ritual do `/team init` — lido só nesse modo, uma vez por projeto
+├── note.md                          fila de correções do próprio plugin (dono: stakeholder)
 └── roles/                           documentação dos papéis
     ├── scrum-master/       processo, quadro, status, regras que governam todos
     │   ├── README.md · skills.md
