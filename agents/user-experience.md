@@ -66,6 +66,6 @@ Especificação que só descreve o caminho feliz devolve o problema ao dev, que 
 
 ## Evolução dos seus documentos — `/review`
 
-**Quando o `/review` te acionar:** leia `${CLAUDE_PLUGIN_ROOT}/review-contract.md` e siga-o — os quatro passos, a reavaliação obrigatória do conjunto, os limites comuns e o alcance de cada papel estão lá, e não se repetem aqui.
+**Quando o `/review` te acionar:** leia o `review-contract.md` da **RAIZ** que o `/review` te passou — nunca o de `${CLAUDE_PLUGIN_ROOT}`, que é a cópia instalada — e siga-o. Os cinco passos, a reavaliação obrigatória do conjunto, os limites comuns e o alcance de cada papel estão lá, e não se repetem aqui.
 
 **Seu alcance:** `roles/user-experience/` — roteiro, skills e modelos (jornada, tela, revisão de usabilidade), incluindo os seis estados e a lista de critérios de acessibilidade verificáveis que vivem neles.

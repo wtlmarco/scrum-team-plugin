@@ -62,7 +62,7 @@ Duas consequências práticas:
 5. `04-data-model` e `05-api-model` — junto com o primeiro Plano de Execução que os exija.
 6. `06-changelog` — a partir da primeira mudança funcional aceita.
 
-**Não escreva os sete de uma vez.** Documento escrito antes da necessidade envelhece antes de ser lido. O que precisa existir desde o dia 1 é o `README` do conjunto, para que cada documento tenha lugar quando nascer.
+**Não escreva os sete documentos de conteúdo (`00`–`06`) de uma vez.** Documento escrito antes da necessidade envelhece antes de ser lido. O que precisa existir desde o dia 1 é o `README` do conjunto — o oitavo arquivo do SDD, e o único índice —, para que cada documento tenha lugar quando nascer.
 
 ## Critérios de qualidade — o que o QA verifica
 

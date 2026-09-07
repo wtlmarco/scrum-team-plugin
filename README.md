@@ -151,14 +151,14 @@ Nenhum atalho: item com interface não é planejado sem especificação de tela,
 
 Geridas pelo SM, válidas para todos os papéis e para o stakeholder:
 
-- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 18 regras (eficiência R1-R6, qualidade R7-R12, método R13-R18), o que cada uma evita e como o SM verifica
+- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 19 regras (eficiência R1-R6, qualidade R7-R12, método R13-R19), o que cada uma evita e como o SM verifica
 - [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) — ciclo, cerimônias, DoR/DoD, gates, escalação
 - [`roles/scrum-master/process/artifact-ownership.md`](roles/scrum-master/process/artifact-ownership.md) — quem escreve o quê
 - [`roles/scrum-master/process/process-changelog.md`](roles/scrum-master/process/process-changelog.md) — como o processo chegou até aqui
 
 ### Como o processo evolui — `/review`
 
-O processo não muda por conversa: muda pelo comando **`/review`**, e **só no repositório-fonte do plugin** — rodá-lo contra a cópia instalada num projeto edita algo que o próximo `claude plugin update` sobrescreve. A fila de melhorias é [`note.md`](note.md): o item é escrito como **sintoma**, e o `/review` (Agent `scrum-master`) o **classifica e roteia** ao papel dono, que aplica seguindo [`review-contract.md`](review-contract.md) — quatro passos (classificar · analisar conflito · aplicar · registrar) e, no mesmo passe, **reavaliação do conjunto** (coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência, excesso). `/review` sem instrução faz só a reavaliação + a triagem de `note.md`.
+O processo não muda por conversa: muda pelo comando **`/review`**, e **só no repositório-fonte do plugin** — rodá-lo contra a cópia instalada num projeto edita algo que o próximo `claude plugin update` sobrescreve. A fila de melhorias é [`note.md`](note.md): o item é escrito como **sintoma**, e o `/review` (Agent `scrum-master`) o **classifica e roteia** ao papel dono, que aplica seguindo [`review-contract.md`](review-contract.md) — cinco passos (classificar · analisar conflito · aplicar · registrar) e, no mesmo passe, **reavaliação do conjunto** (coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência, excesso). `/review` sem instrução faz só a reavaliação + a triagem de `note.md`.
 
 **O invariante de dono único não muda** — `/review` roteia, o dono aplica:
 

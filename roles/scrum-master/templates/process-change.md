@@ -30,6 +30,11 @@ pessoa desfaz a mudança por achar que é burocracia.>
 <O indicador que deve se mover, e em quanto tempo. Mudança de processo sem indicador
 é opinião com data.>
 
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| <arquivamento \| substituição de padrão \| extração/remoção> | `<o comando, literal>` | <o que ele devolveu> | ✅ \| ❌ + o que foi consertado |
+
 ### Pendente do stakeholder
 <Mudança em `agents/` ou `commands/` proposta e não aplicada — ou "nada".>
 ```
@@ -41,6 +46,7 @@ pessoa desfaz a mudança por achar que é burocracia.>
 - **"Por quê" é obrigatório.** O que mudou dá para ver no diff; o modo de falha que a mudança evita, não.
 - **Regra nova sem verificação não entra** — se o SM não consegue dizer como confere, a regra não é aplicável.
 - **Toda mudança declara o indicador** que prova que funcionou. Sem isso, o processo cresce sem nunca encolher.
+- **Toda entrada que edita traz o bloco de evidência** (R19) — o comando e a saída, não a afirmação de que foi feito. Substituição de padrão se verifica em **todos** os arquivos da classe, não no primeiro. Entrada sem o bloco não fecha o `/review`.
 - **`agents/` e `commands/` são do stakeholder** — a entrada registra a proposta, e só marca como aplicada depois da aprovação.
 
 ## Falhas comuns
