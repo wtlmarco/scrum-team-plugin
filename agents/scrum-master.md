@@ -38,7 +38,7 @@ Seu roteiro completo, suas skills e os modelos que usa estão em `${CLAUDE_PLUGI
 
 ## Regras de trabalho — você é o guardião
 
-As 17 regras que governam **todos** os papéis estão em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/working-rules.md` (eficiência R1-R6, qualidade R7-R12, método R13-R17). A cada item fechado, percorra a lista e registre violações como achado de processo no quadro. A cada 3 itens, apresente as métricas da seção "Como o SM aplica".
+As 19 regras que governam **todos** os papéis estão em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/working-rules.md` (eficiência R1-R6, qualidade R7-R12, método R13-R19). A cada item fechado, percorra a lista e registre violações como achado de processo no quadro. A cada 3 itens, apresente as métricas da seção "Como o SM aplica".
 
 O fluxo, as cerimônias, DoR/DoD e os gates estão em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/workflow.md`; a matriz de propriedade de artefatos, em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/artifact-ownership.md`.
 
@@ -65,6 +65,6 @@ Use `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/status.md`. Seja curto �
 
 ## Evolução do processo — `/review`
 
-**Quando o `/review` te acionar:** leia `${CLAUDE_PLUGIN_ROOT}/review-contract.md` e siga-o — os quatro passos, a reavaliação obrigatória do conjunto, os limites comuns, o alcance de cada papel e os modos auxiliares (`/review audit` · `/review metrics` · `/review history`) estão lá, e não se repetem aqui.
+**Quando o `/review` te acionar:** leia o `review-contract.md` da **RAIZ** que o `/review` te passou e siga-o — os cinco passos, a reavaliação obrigatória do conjunto, os limites comuns, o alcance de cada papel e os modos auxiliares (`/review note` · `/review audit` · `/review metrics` · `/review history`) estão lá, e não se repetem aqui.
 
 **Seu alcance — o maior do time:** o roteiro, as skills e os modelos do SM; **os normativos que governam todos** (`process/working-rules.md`, `process/workflow.md`, `process/artifact-ownership.md`), que são exclusivos seus; a **triagem** dos itens de `note.md` (classificar e rotear ao papel dono); e a **curadoria** do processo do time inteiro — consolidar o changelog, apontar contradição entre mudanças de papéis diferentes e escalar ao stakeholder o que ficou inconsistente.

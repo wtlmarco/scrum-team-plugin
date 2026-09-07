@@ -4,14 +4,49 @@ Guia do **stakeholder**. Vive no plugin — uma cópia serve todos os projetos e
 
 ## Instalar em um projeto
 
+O projeto-alvo **não precisa ser repositório git** — só o `/review` e o `/team update` dependem de `.git`, e ambos rodam no repositório-fonte do plugin, não aqui.
+
+**1. Adicione o marketplace** — sempre com a **URL `.git` completa**, nunca `owner/repo`:
+
 ```powershell
-claude plugin marketplace add <caminho-ou-repo-do-time> --scope project
-claude plugin install team@team --scope project -y
-# reinicie a sessão — comandos e agentes só aparecem no próximo carregamento
-/team init
+claude plugin marketplace add https://github.com/wtlmarco/scrum-team-plugin.git --scope project
 ```
 
-`/team init` cria o `.team-project/` padrão e conduz o preenchimento. **Sem `.team-project/`, todo papel para e pede que ele seja criado** — é a fonte de contexto de projeto do time.
+A forma do identificador importa: `{"source":"github","repo":"owner/nome"}` e `{"source":"git","url":"…​.git"}` são **dois identificadores para o mesmo marketplace**, e o resolvedor não casa o plugin habilitado com o cache já baixado quando as duas formas se misturam. Um caminho local também serve (útil para desenvolver o próprio plugin), desde que seja o mesmo em todos os registros.
+
+**2. Confirme que o registro caiu no projeto**, não no perfil do usuário:
+
+```powershell
+claude plugin marketplace list
+```
+
+O `team` tem de aparecer como declarado nas **settings do projeto**. Se caiu em user settings, remova e refaça com `--scope project` — instalar sem escopo registra fora do projeto e o plugin "some" na sessão. O `.claude/settings.json` do projeto deve ficar assim:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "team": { "source": { "source": "git", "url": "https://github.com/wtlmarco/scrum-team-plugin.git" } }
+  },
+  "enabledPlugins": { "team@team": true }
+}
+```
+
+**3. Instale:**
+
+```powershell
+claude plugin install team@team --scope project -y
+```
+
+**4. Reinicie a sessão.** Não é detalhe: plugin só carrega na inicialização do Claude Code. Depois de reiniciar, verifique — `/plugin` mostra `team@team` como **enabled**, e `/help` lista os **8 comandos** (`/sm /po /arc /ux /dev /qa /team /review`) e os **6 agentes**. Se não listar, a instalação não pegou; volte ao passo 2.
+
+**5. `/team init`** — cria o `.team-project/` padrão e conduz o preenchimento. **Sem `.team-project/`, todo papel para e pede que ele seja criado** — é a fonte de contexto de projeto do time.
+
+### Windows e múltiplos perfis
+
+- **Um `CLAUDE_CONFIG_DIR` por vez.** Numa máquina com mais de um perfil de config (ex.: `~/.claude` de trabalho e `~/.claude-pessoal`), rode **todos** os `claude plugin …` no mesmo ambiente com que você abre o Claude Code. Fora dele, o marketplace, o cache e o registro vão para o perfil errado, e o plugin nunca aparece na sessão.
+- **Caixa da letra do drive.** Abra o projeto sempre pelo mesmo caminho. Se o plugin não habilitar apesar de instalado, confira em `plugins/installed_plugins.json` se o `projectPath` do `team@team` bate **exatamente** com o caminho que o Claude Code mostra, inclusive `C:` × `c:` — chave que não bate não associa a instalação ao projeto. *(Contorno de comportamento do Claude Code; some quando ele normalizar a caixa.)*
+- **`git clone` "vermelho" no PowerShell 5.1.** O progresso do clone sai em stderr e o PS 5.1 o embrulha como `NativeCommandError`, às vezes com exit 128, mesmo quando o clone deu certo. Confira `$LASTEXITCODE` e os arquivos gerados, não o texto vermelho. Caminho longo: `git -c core.longpaths=true clone …`.
+- **`claude plugin list` mostrando `team@team` duas vezes** é ruído de exibição, não instalação duplicada.
 
 Manter atualizado — **`/team update`** faz a checagem e a aplicação: compara a versão instalada com a do `main` da origem canônica (`https://github.com/wtlmarco/scrum-team-plugin`), mostra o que mudou e, após confirmação, aplica. Roda **na cópia instalada**, nunca no repositório-fonte.
 

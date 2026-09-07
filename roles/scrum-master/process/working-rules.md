@@ -125,6 +125,12 @@ Toda mudança que chega às instalações do time passa por uma **entrega**: bra
 **Evita:** dois modos de falha — mudança aplicada direto em `main` sem entrega, que nenhuma instalação recebe de forma rastreável e que ninguém consegue reverter por versão; e `CHANGELOG.md`, `plugin.json` e `process-changelog.md` derivando entre si até "qual versão tem o quê" não ter resposta.
 **SM verifica:** todo merge em `main` tem bump de `version` em `plugin.json` **e** entrada nova no topo de `CHANGELOG.md` nomeando a branch; a `version` de `plugin.json` é igual à da entrada do topo de `CHANGELOG.md`; toda entrada nova de `process-changelog.md` tem par em `CHANGELOG.md` na mesma linha `vX.Y`, ou a divergência está registrada; nenhuma entrada de `CHANGELOG.md` nega ter mudança de processo quando carrega uma.
 
+### R19. O `/review` produz evidência do que aplicou
+Aplicar não é ter aplicado. Todo `/review` que edita fecha com um **bloco de evidência** na entrada do changelog: para cada classe de mudança, o comando mecânico e o resultado. As três classes e a evidência mínima de cada uma — **arquivamento:** `diff` da entrada movida contra a versão que saiu, resultado esperado zero linhas fora do separador; **substituição de padrão:** `grep` do padrão antigo **em todos os arquivos da classe**, resultado esperado zero, **mais a leitura de cada ocorrência nova no contexto** — `grep` zerado prova que a string sumiu, não que o sentido fechou (trocar "quatro passos" por "cinco" e deixar ao lado a enumeração com quatro itens passa no `grep` e mente para quem lê); confira o que depende do trecho: contagem enumerada, lista adjacente, total citado noutro documento; **extração ou remoção:** contagem de linhas antes/depois nos dois arquivos, e o link do ponteiro que substituiu o texto movido. Evidência é o comando e a saída, não a afirmação de que foi feito. Ver o quinto passo de [`../../../review-contract.md`](../../../review-contract.md).
+
+**Evita:** o `/review` declarar como concluído o que não fez ou fez pela metade — o modo de falha que a R7 e a R12 cobram do trabalho de projeto ("não afirme progresso sem evidência") e que o comando que governa o processo não cobrava de si. Observado na v2.10: uma entrada arquivada truncada em 60% e uma substituição de padrão aplicada em 1 de 5 arquivos, ambas relatadas como feitas, ambas descobertas só porque o stakeholder rodou o `/review` uma segunda vez.
+**SM verifica:** entrada de `process-changelog.md` sem bloco de evidência não fecha o `/review` — o SM devolve ao papel. Na curadoria, reexecuta por amostragem um comando do bloco: saída diferente da registrada é achado de processo.
+
 ---
 
 ## Como o SM aplica
@@ -148,6 +154,7 @@ Toda mudança que chega às instalações do time passa por uma **entrega**: bra
 | GAP ou achado apontando defeito em `${CLAUDE_PLUGIN_ROOT}/standards/` sem chegar ao `/review` seguinte | registro de GAPs + changelog do processo | qualquer ocorrência → canal de defeito de R16 quebrado |
 | Carga fixa dos documentos do processo (KB) por papel | tamanho de `agents/` + `commands/` + `roles/<papel>/` | crescimento sem regra ou cerimônia nova, ou entrada de changelog > 10 KB → R17 / ciclo de eficiência (workflow §5c) |
 | Merge em `main` sem bump de `version` + entrada no `CHANGELOG.md`, ou `plugin.json` ≠ topo do `CHANGELOG.md`, ou entrada de `process-changelog.md` sem par em `CHANGELOG.md` | `git log main` + `CHANGELOG.md` + `plugin.json` | qualquer ocorrência → R18 ignorada (workflow §5d) |
+| Entrada de `process-changelog.md` sem bloco de evidência, ou com comando cuja reexecução dá saída diferente da registrada | o bloco de evidência da entrada, reexecutado por amostragem | qualquer ocorrência → R19 ignorada; o `/review` está declarando sem verificar |
 
 **Ciclo de eficiência (PDCA).** A verificação do custo dos documentos não espera faxina do stakeholder: cada `/review` sem instrução mede o footprint do próprio papel, a retrospectiva registra o total, e o giro de `/review metrics` (a cada 3 retrospectivas) consolida e tira **uma** remoção candidata. Roteiro em [`workflow.md` §5c](workflow.md).
 
@@ -179,3 +186,4 @@ Toda mudança que chega às instalações do time passa por uma **entrega**: bra
 | R16 | Padrões de engenharia são base compartilhada — um editor, consumo obrigatório, defeito roteado | Método |
 | R17 | Entrada de changelog do processo tem teto e forma fixa | Método |
 | R18 | Entrega do plugin é ramificada, versionada e registrada | Método |
+| R19 | O `/review` produz evidência do que aplicou | Método |

@@ -55,6 +55,6 @@ Seu roteiro completo, suas skills e os modelos que usa estão em `${CLAUDE_PLUGI
 
 ## Evolução dos seus documentos — `/review`
 
-**Quando o `/review` te acionar:** leia `${CLAUDE_PLUGIN_ROOT}/review-contract.md` e siga-o — os quatro passos, a reavaliação obrigatória do conjunto, os limites comuns e o alcance de cada papel estão lá, e não se repetem aqui.
+**Quando o `/review` te acionar:** leia o `review-contract.md` da **RAIZ** que o `/review` te passou — nunca o de `${CLAUDE_PLUGIN_ROOT}`, que é a cópia instalada — e siga-o. Os cinco passos, a reavaliação obrigatória do conjunto, os limites comuns e o alcance de cada papel estão lá, e não se repetem aqui.
 
 **Seu alcance:** `roles/product-owner/` (roteiro, skills, modelos) e os modelos de entregável que você possui — `deliverables/sdd/` (índice, visão geral, requisitos, fluxos, changelog) e `deliverables/implementation/01-scope-and-criteria.md`.

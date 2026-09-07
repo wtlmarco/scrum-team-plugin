@@ -205,7 +205,7 @@ O **processo do time** (os documentos de `${CLAUDE_PLUGIN_ROOT}/`) evolui por `/
 - Nenhuma entrada de `CHANGELOG.md` afirma "sem mudança de processo" quando a entrega, de fato, carrega uma.
 
 ### `/team update` — lado da instalação
-Roda **na cópia instalada**, nunca no repositório-fonte (guarda: recusa se `${CLAUDE_PLUGIN_ROOT}/.git/` existir). Compara a `version` instalada com a do `main` da origem canônica, mostra o delta do `CHANGELOG.md` e, após confirmação, aplica. Reiniciar a sessão continua manual. Detalhe do comando em `commands/team.md` modo `update`.
+Roda **na cópia instalada**, nunca no repositório-fonte (guarda: recusa se `${CLAUDE_PLUGIN_ROOT}/.git/` existir). Compara a `version` instalada com a do `main` da origem canônica, mostra o delta do `CHANGELOG.md` e, após confirmação, aplica. Reiniciar a sessão continua manual. Os sete passos estão em [`team-update.md`](../../../team-update.md), lido só nesse modo; `commands/team.md` só aponta para lá.
 
 ## 6. Escalação
 

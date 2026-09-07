@@ -2,7 +2,7 @@
 
 O SDD é o desenho do sistema, dividido por responsabilidade para que qualquer pessoa (ou agente) implemente uma parte sem carregar o documento inteiro — princípio de contexto mínimo suficiente (regra R3).
 
-## Os sete documentos
+## Os sete documentos de conteúdo
 
 | Arquivo | Conteúdo | Dono | Modelo |
 |---|---|---|---|

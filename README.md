@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v2.8.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v2.9.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `main`, via PR para aprovação. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -41,6 +41,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 ├── replicate-in-new-project.md      como levar este time para outro projeto
 ├── review-contract.md               contrato do `/review` — lido só quando o `/review` aciona o agente de um papel
 ├── team-init.md                     ritual do `/team init` — lido só nesse modo, uma vez por projeto
+├── team-update.md                   ritual do `/team update` — lido só nesse modo, uma vez por bump de versão
 ├── note.md                          fila de melhorias do próprio plugin, entrada do `/review` (dono: stakeholder)
 └── roles/                           documentação dos papéis
     ├── scrum-master/       processo, quadro, status, regras que governam todos
@@ -151,14 +152,14 @@ Nenhum atalho: item com interface não é planejado sem especificação de tela,
 
 Geridas pelo SM, válidas para todos os papéis e para o stakeholder:
 
-- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 18 regras (eficiência R1-R6, qualidade R7-R12, método R13-R18), o que cada uma evita e como o SM verifica
+- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 19 regras (eficiência R1-R6, qualidade R7-R12, método R13-R19), o que cada uma evita e como o SM verifica
 - [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) — ciclo, cerimônias, DoR/DoD, gates, escalação
 - [`roles/scrum-master/process/artifact-ownership.md`](roles/scrum-master/process/artifact-ownership.md) — quem escreve o quê
 - [`roles/scrum-master/process/process-changelog.md`](roles/scrum-master/process/process-changelog.md) — como o processo chegou até aqui
 
 ### Como o processo evolui — `/review`
 
-O processo não muda por conversa: muda pelo comando **`/review`**, e **só no repositório-fonte do plugin** — rodá-lo contra a cópia instalada num projeto edita algo que o próximo `claude plugin update` sobrescreve. A fila de melhorias é [`note.md`](note.md): o item é escrito como **sintoma**, e o `/review` (Agent `scrum-master`) o **classifica e roteia** ao papel dono, que aplica seguindo [`review-contract.md`](review-contract.md) — quatro passos (classificar · analisar conflito · aplicar · registrar) e, no mesmo passe, **reavaliação do conjunto** (coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência, excesso). `/review` sem instrução faz só a reavaliação + a triagem de `note.md`.
+O processo não muda por conversa: muda pelo comando **`/review`**, e **só no repositório-fonte do plugin** — rodá-lo contra a cópia instalada num projeto edita algo que o próximo `claude plugin update` sobrescreve. A fila de melhorias é [`note.md`](note.md): o item é escrito como **sintoma**, e o `/review` (Agent `scrum-master`) o **classifica e roteia** ao papel dono, que aplica seguindo [`review-contract.md`](review-contract.md) — cinco passos (classificar · analisar conflito · aplicar · registrar · verificar com evidência) e, no mesmo passe, **reavaliação do conjunto** (coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência, excesso). `/review` sem instrução faz só a reavaliação + a triagem de `note.md`.
 
 **O invariante de dono único não muda** — `/review` roteia, o dono aplica:
 

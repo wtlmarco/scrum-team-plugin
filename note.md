@@ -8,7 +8,7 @@
 
 ## Abertas
 
-- *(nada)*
+_(vazia)_
 
 ## Como usar esta lista
 

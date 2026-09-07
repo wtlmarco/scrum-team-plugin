@@ -84,7 +84,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | `/ux` | `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` |
 | `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` |
-| `/team` | `init` · `<mensagem>` · `brainstorm <ideia>` · `agreement <questão>` · `cycle <ID>` |
+| `/team` | `init` · `update` · `<mensagem>` · `brainstorm <ideia>` · `agreement <questão>` · `cycle <ID>` · `plan <ID>` · `build <ID>` · `qa <ID>` |
 
 A evolução do processo do time é pelo comando **`/review`**, executado num clone do repositório-fonte do plugin — **não neste projeto**.
 
