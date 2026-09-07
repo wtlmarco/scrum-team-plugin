@@ -41,6 +41,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 ├── replicate-in-new-project.md      como levar este time para outro projeto
 ├── review-contract.md               contrato do `/review` — lido só quando o `/review` aciona o agente de um papel
 ├── team-init.md                     ritual do `/team init` — lido só nesse modo, uma vez por projeto
+├── team-update.md                   ritual do `/team update` — lido só nesse modo, uma vez por bump de versão
 ├── note.md                          fila de melhorias do próprio plugin, entrada do `/review` (dono: stakeholder)
 └── roles/                           documentação dos papéis
     ├── scrum-master/       processo, quadro, status, regras que governam todos
@@ -158,7 +159,7 @@ Geridas pelo SM, válidas para todos os papéis e para o stakeholder:
 
 ### Como o processo evolui — `/review`
 
-O processo não muda por conversa: muda pelo comando **`/review`**, e **só no repositório-fonte do plugin** — rodá-lo contra a cópia instalada num projeto edita algo que o próximo `claude plugin update` sobrescreve. A fila de melhorias é [`note.md`](note.md): o item é escrito como **sintoma**, e o `/review` (Agent `scrum-master`) o **classifica e roteia** ao papel dono, que aplica seguindo [`review-contract.md`](review-contract.md) — cinco passos (classificar · analisar conflito · aplicar · registrar) e, no mesmo passe, **reavaliação do conjunto** (coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência, excesso). `/review` sem instrução faz só a reavaliação + a triagem de `note.md`.
+O processo não muda por conversa: muda pelo comando **`/review`**, e **só no repositório-fonte do plugin** — rodá-lo contra a cópia instalada num projeto edita algo que o próximo `claude plugin update` sobrescreve. A fila de melhorias é [`note.md`](note.md): o item é escrito como **sintoma**, e o `/review` (Agent `scrum-master`) o **classifica e roteia** ao papel dono, que aplica seguindo [`review-contract.md`](review-contract.md) — cinco passos (classificar · analisar conflito · aplicar · registrar · verificar com evidência) e, no mesmo passe, **reavaliação do conjunto** (coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência, excesso). `/review` sem instrução faz só a reavaliação + a triagem de `note.md`.
 
 **O invariante de dono único não muda** — `/review` roteia, o dono aplica:
 

@@ -48,10 +48,11 @@ Este comando é **seu** — a sessão principal orquestra. A triagem e a curador
    | roteiro, skills, templates de um papel, e os entregáveis que ele possui | `RAIZ/roles/<papel>/*`, `RAIZ/deliverables/*` do papel | agente daquele papel |
    | `RAIZ/standards/*` **e** os documentos do papel dev (`RAIZ/roles/developer/*`) | esses arquivos | Agent `architect` |
    | `RAIZ/agents/*`, `RAIZ/commands/*`, `RAIZ/.claude-plugin/*` | — | **proposta ao stakeholder**, não aplicada |
+   | Guias de raiz — `RAIZ/{README,how-to,replicate-in-new-project,review-contract,team-init,team-update}.md` | — | **proposta ao stakeholder**, não aplicada. Exceção: coerência de referência cruzada (contagem, ponteiro, nome de modo, índice) é curadoria do Agent `scrum-master` |
 
    Conflito com regra vigente **não se resolve sozinho**: apresente as duas posições e **pare** para decisão do stakeholder.
 
-2. **Aplicação (agente do papel dono).** Dispare o agente dono com: a instrução literal; o caminho absoluto de **RAIZ**; a ordem de **ler `RAIZ/review-contract.md` e seguir os cinco passos** (classificar · analisar conflito · aplicar no documento certo · registrar no changelog); e a reavaliação obrigatória do conjunto do alcance daquele papel. O alcance de cada papel está em `RAIZ/review-contract.md`.
+2. **Aplicação (agente do papel dono).** Dispare o agente dono com: a instrução literal; o caminho absoluto de **RAIZ**; a ordem de **ler `RAIZ/review-contract.md` e seguir os cinco passos** (classificar · analisar conflito · aplicar no documento certo · registrar no changelog · **verificar com evidência**, R19); e a reavaliação obrigatória do conjunto do alcance daquele papel. O alcance de cada papel está em `RAIZ/review-contract.md`.
 
 3. **Curadoria (Agent `scrum-master`).** Ao final, o SM consolida o changelog, aponta contradição entre mudanças de papéis diferentes e escala ao stakeholder o que ficou inconsistente. `/review metrics` sempre considera **remover** algo.
 

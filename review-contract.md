@@ -37,10 +37,12 @@ O que cada agente pode editar quando `/review` o aciona:
    | Classe | Evidência mínima | Esperado |
    |---|---|---|
    | Arquivamento de entrada | `diff` da entrada movida contra a versão que saiu | zero linhas fora do separador |
-   | Substituição de padrão | `grep` do padrão antigo **em todos os arquivos da classe**, não só no primeiro | zero, mais a contagem dos que têm o padrão novo |
+   | Substituição de padrão | `grep` do padrão antigo **em todos os arquivos da classe**, não só no primeiro; **mais a leitura de cada ocorrência nova no contexto** | zero do antigo; e cada ocorrência nova coerente com o que está ao lado dela |
    | Extração ou remoção | contagem de linhas antes/depois nos dois arquivos | o ponteiro que substituiu o texto movido resolve |
 
-   Saída diferente da esperada: **conserte antes de fechar**, e registre o desvio na entrada. Não reporte ao stakeholder como aplicado o que a evidência não confirma.
+   **`grep` zerado não é substituição completa.** Ele prova que a string sumiu, não que o sentido fechou: trocar "quatro passos" por "cinco passos" e deixar ao lado a enumeração com quatro itens passa no `grep` e mente para quem lê. Toda substituição de padrão exige **ler cada ocorrência nova no contexto** e conferir o que depende dela — contagem enumerada, lista adjacente, total citado noutro documento.
+
+   Anote o resultado no bloco `### Evidência (R19)` da entrada, no formato de `RAIZ/roles/scrum-master/templates/process-change.md` (`Classe · Comando · Saída · Ok?`). Saída diferente da esperada: **conserte antes de fechar**, e registre o desvio na entrada. Não reporte ao stakeholder como aplicado o que a evidência não confirma.
 
 ## Reavaliação do conjunto — sempre
 
@@ -64,7 +66,7 @@ Achado dentro do seu alcance: corrija e registre no changelog. Achado no documen
 - **Só os documentos do seu alcance.** Instrução que toca outro papel volta ao SM: *"isso é do Arquiteto"*.
 - **Normativo que governa todos** (regras de trabalho, fluxo, propriedade de artefatos) é exclusivo do **Agent `scrum-master`**.
 - **Não altera `.team-project/`, o código, o quadro nem o backlog** — só o processo.
-- **`agents/` e `commands/` são do stakeholder:** **proponha** com o texto pronto, não aplique.
+- **`agents/`, `commands/`, `.claude-plugin/` e os guias de raiz são do stakeholder** (`README.md`, `how-to.md`, `replicate-in-new-project.md`, `review-contract.md`, `team-init.md`, `team-update.md`): **proponha** com o texto pronto, não aplique. Exceção do SM: manter **coerência de referência cruzada** nesses arquivos — contagem, ponteiro, nome de modo, índice de estrutura — é curadoria, não reescrita, e ele aplica.
 - **O SM é o curador:** consolida o changelog, remove duplicidade, aponta contradição entre mudanças de papéis diferentes e leva ao stakeholder o que ficou inconsistente.
 - **Mudança de comportamento de agente só entra em vigor após reiniciar a sessão** — diga isso ao stakeholder ao reportar.
 

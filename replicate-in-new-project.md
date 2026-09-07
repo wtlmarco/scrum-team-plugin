@@ -11,7 +11,8 @@ O plugin é **inteiramente genérico**: não contém nada de um produto específ
 
 Este repositório **é** um plugin do Claude Code autocontido. Os comandos `claude plugin marketplace add` / `install` / `update` e o passo de reiniciar a sessão estão em [`how-to.md` § "Instalar em um projeto"](how-to.md) — a fonte única desse bloco. O que é próprio da replicação:
 
-- A origem pode ser um caminho local (`../scrum-team-plugin`) ou o repositório git. O registro vai para `.claude/settings.json` do novo projeto; **caminho relativo é preservado**, então pode ser versionado.
+- A origem pode ser um caminho local (`../scrum-team-plugin`) ou o repositório git. O registro vai para `.claude/settings.json` do novo projeto; **caminho relativo é preservado**, então pode ser versionado. **Use a mesma forma de identificador em todos os registros** — URL `.git` completa ou caminho local, nunca `owner/repo` misturado com URL (`how-to.md` passo 1).
+- O novo projeto **não precisa ser repositório git** para receber o time.
 - **Uma origem, vários projetos.** Melhorias no processo chegam a todos de uma vez por `claude plugin marketplace update team` + `claude plugin update team@team`. Copiar a pasta para dentro de cada projeto cria versões que divergem — não faça isso.
 
 ## Passo 2 — Criar o contexto do projeto: `/team init`
@@ -76,9 +77,10 @@ Se o primeiro plano do Arquiteto precisar de mais de dois 🔺 GAPs para ser exe
 
 ## Checklist de replicação
 
-- [ ] Plugin instalado (`claude plugin list` mostra `team@team` habilitado)
+- [ ] `claude plugin marketplace list` mostra o `team` declarado nas **settings do projeto**, não nas do usuário
+- [ ] Plugin instalado (`claude plugin list` mostra `team@team` habilitado — exibição duplicada é ruído, não instalação dupla)
 - [ ] `claude plugin details team@team` lista os 8 comandos (`sm` `po` `arc` `ux` `dev` `qa` `team` `review`) e os 6 agents
-- [ ] Comandos aparecem após reiniciar a sessão
+- [ ] Sessão reiniciada; `/plugin` mostra `team@team` **enabled** e `/help` lista os 8 comandos e os 6 agentes
 - [ ] `/team init` executado; `.team-project/README.md` escrito, com stack, fontes da verdade, comandos e limitações
 - [ ] Os seis `context.md` escritos, com as armadilhas do projeto
 - [ ] Índice do SDD e documento de escopo criados a partir de `deliverables/`; demais conforme a necessidade

@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v2.8`](process-changelog-archive.md) | Evolução do processo num comando só: `/review`, guardado ao repositório-fonte, com `note.md` como fila — 06/09/2026 |
 | [`v2.7`](process-changelog-archive.md) | Faxina pós-isolamento em plugin: resíduo de caminho, contagens do UX e extração dos modos frios — 06/09/2026 |
 | [`v2.6`](process-changelog-archive.md) | QA frente 2 ganha a redação final: objeto próprio e o terceiro achado de processo — 06/09/2026 |
 | [`v2.5`](process-changelog-archive.md) | Obsolescência corrigida nos documentos do Arquiteto: comply sob demanda e Ficha até V21 — 06/09/2026 |
@@ -31,6 +32,62 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v2.11 — Guias de raiz ganham dono; roteiro de instalação endurecido; R19 passa a exigir checagem semântica — 07/09/2026
+
+**Instrução:** *(stakeholder)* "por corrigir" — sobre a triagem do relato de instalação em `note.md` e os achados da reavaliação.
+**Classificação:** **propriedade de artefato** (guias de raiz sem dono na matriz) + formato de documento (roteiro de instalação; resíduo da v2.10) + regra (R19 ganha a checagem semântica).
+**Registrada por:** SM (curador), acionado pelo `/review`. **Escopo:** fecha o buraco de titularidade que impedia o roteamento de 5 dos 6 sub-itens do relato, e aplica o relato.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `process/artifact-ownership.md` | §1 matriz | **Linha nova:** guias e rituais de raiz (`README.md`, `how-to.md`, `replicate-in-new-project.md`, `review-contract.md`, `team-init.md`, `team-update.md`) → dono **stakeholder**; o SM mantém a **coerência de referência cruzada** (contagem, ponteiro, nome de modo, índice) como curadoria. Eram os únicos arquivos do plugin sem dono declarado |
+| `review-contract.md` · `commands/review.md` | §Limites · tabela de triagem | Os guias de raiz entram como classe própria: proposta ao stakeholder, com a exceção de curadoria do SM |
+| `how-to.md` | §"Instalar em um projeto" | Reescrito em **5 passos numerados**, do relato de campo: URL `.git` completa obrigatória (nunca `owner/repo` — duas formas do mesmo marketplace não casam no resolvedor); bloco esperado do `.claude/settings.json`; passo de verificação `marketplace list` (project × user settings); **reinício como passo numerado e verificável** (`/plugin` enabled, `/help` com 8 comandos e 6 agentes); e a afirmação positiva de que o projeto-alvo **não precisa ser repo git**. Nova subseção **"Windows e múltiplos perfis"**: um `CLAUDE_CONFIG_DIR` por vez, caixa da letra do drive em `installed_plugins.json`, `git clone` "vermelho" no PS 5.1, exibição duplicada em `plugin list` — os três últimos **marcados como contorno de bug externo**, que envelhecem quando a ferramenta corrigir |
+| `replicate-in-new-project.md` | passo 1 · checklist | Mesma forma de identificador em todos os registros; projeto-alvo não precisa ser repo git; checklist ganha a verificação de **escopo** (project × user) e o reinício verificável |
+| `process/working-rules.md` · `review-contract.md` | R19 · passo 5 | **`grep` zerado não é substituição completa.** A classe "substituição de padrão" passa a exigir **ler cada ocorrência nova no contexto** e conferir o que depende dela — contagem enumerada, lista adjacente, total citado noutro documento |
+| `README.md` · `commands/review.md` · `roles/architect/README.md` | resumos do `/review` | "cinco passos" com enumeração de **quatro** → os cinco, com `verificar com evidência`. Resíduo da v2.10 |
+| `roles/scrum-master/templates/retrospective.md` | Métricas | **Linha de R19** — o mesmo gap que a v2.10 fechou para R18 ficara aberto para a regra que ela própria criou |
+| `README.md` · `process/workflow.md` | índice · §5d | `team-update.md` no índice de estrutura; o ponteiro de §5d passa a citar `team-update.md`, não `commands/team.md` (os passos saíram de lá em `450adce`) |
+| `process/process-changelog.md` | — | v2.8 arquivada íntegra (teto de 3 — R17); linha no índice |
+
+### Por quê
+**Titularidade.** A matriz cobria `CHANGELOG.md`, `agents/`, `commands/`, `roles/`, `standards/` — e nenhum dos guias de raiz, que são a **face de instalação** do plugin. Sem dono não há rota: 5 dos 6 sub-itens acionáveis do relato de campo não tinham para onde ser roteados, e um relato bom ficaria parado por falta de linha na tabela. **Evita:** item legítimo que morre na triagem porque o alvo não pertence a ninguém.
+
+**Roteiro de instalação.** O relato documenta uma instalação que falhou em silêncio por três causas independentes — identificador do marketplace em duas formas, registro caindo em user settings apesar do `--scope project`, e caixa da letra do drive. O roteiro anterior tinha 4 linhas e um comentário; não verificava nada. **Evita:** "Successfully installed" seguido de plugin que nunca aparece.
+
+**R19.** A regra nasceu na v2.10 para o `/review` não declarar o que não verificou — e a própria v2.10 passou no `grep` de "quatro passos" (0 antigo / 10 novo) deixando ao lado três enumerações com quatro itens. O `grep` provou que a string sumiu, não que o sentido fechou.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| **SM** | Ganha a curadoria de referência cruzada nos guias de raiz — e a retrospectiva coleta o indicador de R19 |
+| **Todos os papéis** | Substituição de padrão não fecha com `grep` zerado: exige ler cada ocorrência nova no contexto |
+| **stakeholder** | Passa a ser dono declarado dos guias de raiz; o `/review` propõe o texto, não aplica |
+
+### Conflitos com o processo vigente
+Nenhum. A recomendação de `--scope project` do relato **reforça** o que `how-to.md` e `replicate-in-new-project.md` já prescreviam; a remoção do registro global foi limpeza da máquina do relator, fora do escopo do plugin. A linha nova da matriz não retira caneta de ninguém — cobre arquivos que não estavam em linha alguma.
+
+### Como saberemos que funcionou
+Nas próximas três instalações em máquina nova: **zero** casos de "instalou e não apareceu" que o roteiro não antecipe. E nos próximos três `/review`: **zero** achados de contagem/enumeração incoerente sobrevivendo ao passo 5 — o teste é a v2.10, que hoje seria pega. Se o `grep` continuar passando defeito semântico, a classe precisa de comando próprio, não de instrução.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento | `Compare-Object` v2.8 do archive × `450adce` | 47/47 linhas, **0 de diferença** | ✅ |
+| Substituição **semântica** | contar `·` nas 3 linhas de "cinco passos" | `README.md:162`, `commands/review.md:55`, `roles/architect/README.md:55` → **5/5 itens** cada | ✅ |
+| Substituição | R19 nos três lugares (regra · indicador · instrumento) | `working-rules` 3 · `retrospective` 1 · template `Evidência` 2 | ✅ |
+| Substituição | guias de raiz na matriz de propriedade | 5/5 (`how-to`, `replicate`, `review-contract`, `team-init`, `team-update`) | ✅ |
+| Extração | `team-update.md` referenciado de todos os pontos | índice do `README` 1 · `workflow` §5d 1 · `commands/team.md` 1 | ✅ |
+| Manifesto | `claude plugin validate . --strict` | passou | ✅ |
+
+### Pendente do stakeholder
+- **Fecho da entrega:** bump de `plugin.json` e entrada `v2.9.0` no `CHANGELOG.md` (R18), com a divergência de numeração §5d declarada — a entrega carrega agora **duas** entradas de processo (v2.10 e v2.11).
+- **Reiniciar a sessão** — `commands/review.md` e `agents/*` só valem no próximo carregamento.
+- `note.md`: o lote do relato de instalação foi **consumido**; a fila `## Abertas` volta a ficar vazia.
 
 ---
 
@@ -145,53 +202,4 @@ O modelo de lançamento existia só no cabeçalho do `CHANGELOG.md`, no `how-to.
 - **`commands/team.md` modo `cycle`** numera as etapas num índice local 0–6 que colide com a numeração da §2 de `workflow.md`. Proposta de texto pronto na resposta do `/review` — acrescentar uma linha de nota, sem renumerar.
 - **`commands/sm.md`** e **`agents/scrum-master.md`** — o resumo dos modos de `/review` omite `note`; `agents/scrum-master.md:41` diz "As 17 regras … R13-R17". Propostas de texto pronto na resposta.
 - Reiniciar a sessão não é necessário: nada em `agents/` / `commands/` foi alterado por esta entrada.
-
----
-
-## v2.8 — Evolução do processo num comando só: `/review`, guardado ao repositório-fonte, com `note.md` como fila — 06/09/2026
-
-**Instrução:** *(stakeholder, direta)* "vamos mudar e criar um comando `review` que somente roda no contexto desse projeto (removendo dos roles o comando) e o SM usa o arquivo `note.md` para levantar e melhor direcionar a melhoria na role ou processo."
-**Classificação:** comportamento de agente (`agents/*` e `commands/*` — novo `/review`, removido o modo `review` de cinco comandos) + fluxo (a evolução do processo deixa de ser cinco portas e passa a ser uma, com triagem do SM sobre `note.md`) + formato de documento (todas as referências a `/<papel> review` reapontadas).
-**Registrada por:** stakeholder. **Escopo fechado — troca de mecanismo, sem mudança de regra, gate, DoR/DoD ou matriz de propriedade.**
-
-### O que mudou
-| Documento | Mudança |
-|---|---|
-| `commands/review.md` | **Novo.** Comando único de evolução do processo. Pré-condição: recusa se `${CLAUDE_PLUGIN_ROOT}` não tiver `.git/` **e** `.claude-plugin/marketplace.json` (não é o repositório-fonte). Modos: `<instrução>` · `note` (processa a fila de `note.md`) · vazio (reavaliação + triagem) · `metrics` · `audit` · `history`. Triagem e curadoria no Agent `scrum-master`; a edição de cada documento no agente do papel dono |
-| `review-contract.md` | Deixa de ser "contrato comum dos papéis" e passa a ser o **contrato do `/review`**. Recebe a **tabela de alcance por papel** que estava espalhada nos cinco `commands/<papel>.md`. Quatro passos, reavaliação do conjunto e limites mantidos |
-| `commands/{sm,po,arc,ux,qa}.md` | Modo `review` **removido** do `argument-hint` e da lista de modos; a seção `## Modo review …` vira um parágrafo curto "Evolução dos documentos deste papel — não é aqui: `/review`" |
-| `commands/dev.md` | "`/dev review` não existe — é do Arquiteto" → "a evolução é pelo `/review`, que roteia os documentos do dev ao Arquiteto" |
-| `agents/{scrum-master,architect,product-owner,user-experience,quality-assurance,developer}.md` | Seção `## Modo review` → `## Evolução dos …documentos — /review`, apontando `review-contract.md`; alcance do papel mantido |
-| `process/{workflow,artifact-ownership,working-rules,process-changelog}.md` · `templates/{process-change,retrospective}.md` · `roles/*/README.md` · `roles/*/skills.md` · `standards/README.md` · `replicate-in-new-project.md` · `templates/project-context.md` | Toda referência a `/sm review` · `/arc review` · `/<papel> review` · `review metrics/audit/history` → `/review` (· `/review metrics` etc.). O invariante de dono único é reafirmado: `/review` roteia, o dono aplica |
-| `README.md` · `how-to.md` | Bloco de comandos e a seção "Como o processo evolui" reescritos para o comando único e a fila `note.md`; contagem **7 → 8 comandos** (`sm po arc ux dev qa team review`); guarda do repositório-fonte documentada |
-| `note.md` | Reescrito como **entrada do `/review`**: o item continua sendo sintoma, mas quem classifica e roteia é o `/review` (SM), não o stakeholder escolhendo a porta. Nota de que melhoria percebida noutro projeto é trazida para cá |
-| `.claude-plugin/{plugin.json,marketplace.json}` | Descrições ganham `/review` na lista de comandos |
-| `process/process-changelog.md` | v2.5 arquivada (teto de 3 entradas, R17) — pendência aberta desde a v2.4 |
-
-### Por quê (modo de falha evitado)
-O modo `review` existia em cada comando de papel e, portanto, em **qualquer projeto onde o plugin estivesse instalado**. Rodá-lo lá edita `${CLAUDE_PLUGIN_ROOT}`, que nesse caso é a **cópia instalada no cache do Claude Code** — não versionada, e **sobrescrita no próximo `claude plugin update`**. A melhoria de processo era feita e se perdia, sem chegar à origem nem se replicar. A guarda de repositório-fonte torna o erro impossível de cometer em silêncio. E cinco portas de entrada (`/sm review`, `/arc review`, …) faziam o stakeholder decidir o roteamento que é trabalho do curador: uma porta só, com o SM triando `note.md`, põe a classificação onde ela pertence.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda |
-|---|---|
-| Todos com `review` | Não há mais `/<papel> review`. O papel é **acionado pelo `/review`** para aplicar a mudança nos próprios documentos, seguindo `review-contract.md`. O alcance de cada um é o mesmo, agora listado num só lugar |
-| SM | Ganha a **triagem** de `note.md` (classificar + rotear) como parte do `/review`, além da curadoria que já era sua. Continua sendo o único a editar os normativos que governam todos |
-| Arquiteto | Continua sendo quem aplica as mudanças em `standards/` e nos documentos do dev — agora acionado pelo `/review`, não por `/arc review` |
-| dev | Sem mudança de conduta: o retorno segue subindo por 🔺 GAP e "Não fiz" |
-| Nenhum | Nenhuma regra (R1–R17), gate, DoR/DoD ou matriz de propriedade mudou de conteúdo — só o comando que as evolui |
-
-### Conflitos com o processo vigente
-Nenhum. O invariante de dono único (`artifact-ownership.md` §1) é preservado — `/review` roteia ao dono, não centraliza a caneta. O invariante do changelog (entrada antiga nunca reescrita) é respeitado: as entradas v2.5–v2.7 e o arquivo **não** foram reapontados de `/arc review` para `/review` — são registro histórico do comando que existia à época.
-
-### Como saberemos que funcionou
-- `claude plugin details team@team` lista **8 comandos** (`sm po arc ux dev qa team review`) e 6 agents — após reiniciar a sessão.
-- `grep -rn "/sm review\|/arc review\|/po review\|/ux review\|/qa review\|/<papel> review"` retorna **zero fora de `process-changelog.md` e `process-changelog-archive.md`**.
-- `/review` invocado fora de um clone do repositório-fonte **recusa** com a mensagem de repositório-fonte; dentro dele, sem argumento, devolve reavaliação + triagem de `note.md` sem editar.
-- Em 3 ciclos, toda melhoria de processo entra por `note.md` + `/review` — nenhuma tentativa de `/<papel> review`. Se aparecerem tentativas, o redirecionamento nos comandos não bastou e o modo volta como alias explícito.
-- **Footprint (§5c):** medição na próxima `/review metrics`. Esperado: `commands/` −5 seções `review` (~0,5 KB cada) +1 arquivo `review.md`; `agents/` sem mudança líquida (seção renomeada, não removida); `review-contract.md` cresce (recebe a tabela de alcance). Δ do conjunto por papel na próxima retrospectiva.
-
-### Pendente do stakeholder
-- **Reiniciar a sessão** — `commands/review.md` novo e as mudanças em `commands/*` e `agents/*` só entram em vigor no próximo carregamento.
-- Confirmar em sessão interativa que `claude plugin validate . --strict` passa e que `claude plugin details` lista os 8 comandos.
-- `note.md`: item "revise" segue fechado (v2.7). Nenhum item novo aberto por esta entrada.
 
