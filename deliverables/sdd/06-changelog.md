@@ -32,7 +32,7 @@
 ## Regras
 
 - **Cumulativo e em ordem inversa** — a versão mais recente no topo. Nunca reescrever entrada antiga: correção vira entrada nova.
-- **Uma entrada por mudança de versão do conjunto**, não por arquivo alterado. Os sete documentos do SDD evoluem juntos.
+- **Uma entrada por mudança de versão do conjunto**, não por arquivo alterado. Os sete documentos de conteúdo do SDD evoluem juntos.
 - **Motivação é obrigatória.** O que mudou dá para ver no diff; *por que* mudou, não.
 - **Decisão relevante aparece aqui e no seu lugar próprio** — ADR se for estrutural, "decisões tomadas" no documento de status se for de implementação. O changelog registra que existiu.
 - **Mudança funcional aceita sem entrada no changelog bloqueia o fechamento do item** (regra R12).

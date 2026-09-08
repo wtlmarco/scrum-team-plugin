@@ -142,7 +142,7 @@ Objetivo: um **entendimento funcional base** — o problema do usuário, quem s�
 - [ ] O Arquiteto declarou, em um parágrafo, que a ideia moldada é construível dentro da capacidade declarada — ou nomeou a restrição que precisa ser aceita.
 
 ### Transição para o SDD (conforme [`deliverables/README.md`](../../../deliverables/README.md))
-No fechamento, o SM registra o brief e distribui a elaboração — **sem escrever os sete documentos de uma vez**, só o que a primeira fatia exige:
+No fechamento, o SM registra o brief e distribui a elaboração — **sem escrever os sete documentos de conteúdo de uma vez**, só o que a primeira fatia exige:
 
 | Documento | Dono | Comando |
 |---|---|---|

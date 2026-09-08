@@ -6,7 +6,6 @@ O SDD é o desenho do sistema, dividido por responsabilidade para que qualquer p
 
 | Arquivo | Conteúdo | Dono | Modelo |
 |---|---|---|---|
-| `README.md` | Índice, versão e stack | PO | este documento |
 | `00-overview-objectives.md` | Visão geral, objetivos, fases, roadmap | PO | [modelo](00-overview-objectives.md) |
 | `01-requirements.md` | Requisitos funcionais e não funcionais | PO | [modelo](01-requirements.md) |
 | `02-flows-and-roles.md` | Modelo conceitual, atores e fluxos | PO | [modelo](02-flows-and-roles.md) |
@@ -14,6 +13,8 @@ O SDD é o desenho do sistema, dividido por responsabilidade para que qualquer p
 | `04-data-model.md` | Entidades, campos, enums, relacionamentos | Arquiteto | [modelo](04-data-model.md) |
 | `05-api-model.md` | Endpoints, contratos e formato de erro | Arquiteto | [modelo](05-api-model.md) |
 | `06-changelog.md` | Histórico cumulativo de mudanças | PO | [modelo](06-changelog.md) |
+
+> **O oitavo arquivo é o índice.** O `README.md` do SDD no projeto (dono: **PO**) não é documento de conteúdo — é o único índice do conjunto, e o que precisa existir desde o dia 1, para que cada documento tenha lugar quando nascer. Seu modelo é a seção seguinte. Por isso o conjunto tem **oito arquivos: sete de conteúdo (`00`–`06`) mais o índice**.
 
 ## Modelo do índice (`README.md` do SDD no projeto)
 
@@ -51,7 +52,7 @@ O SDD é o desenho do sistema, dividido por responsabilidade para que qualquer p
 
 ## Regras do conjunto
 
-- **Versão única para o conjunto.** Os sete documentos evoluem juntos; a versão fica no índice e no changelog, não espalhada por arquivo.
+- **Versão única para o conjunto.** Os sete documentos de conteúdo (`00`–`06`) evoluem juntos; a versão fica no índice e no changelog, não espalhada por arquivo.
 - **Marque o que mudou.** A convenção `*(novo vX.Y)*` / `*(revisado vX.Y)*` ao lado do título de uma seção permite ler a evolução sem abrir o changelog.
 - **Referência cruzada em vez de repetição.** Um fato vive num documento só; os outros apontam para ele. Duplicar é criar duas verdades para manter.
 - **Nada de código de implementação.** O SDD descreve o desenho; exemplos existem para desambiguar contrato, não para servir de fonte.
