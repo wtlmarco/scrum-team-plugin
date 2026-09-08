@@ -8,8 +8,10 @@ Os caminhos concretos dos documentos do projeto estão em `.team-project/README.
 
 | Artefato | Dono | Regra |
 |---|---|---|
-| Código-fonte | dev | Só os arquivos listados no Plano de Execução vigente |
-| Planos de Execução (`.team-project/architect/plans/`) | Arquiteto | Um plano por item, nome `<ID>-<slug>.md` |
+| Código-fonte | dev | Só os arquivos listados no Plano de Implementação vigente |
+| **Histórias** (`.team-project/product-owner/`) | **PO** | Unidade de valor. Conteúdo **só funcional** — regra, protótipo, critério de aceite; decisão técnica ali é achado de processo (R20). Modelo em [`../../product-owner/templates/user-story.md`](../../product-owner/templates/user-story.md) |
+| **Tasks** (linhas do Sprint Backlog) | **SM** (a linha) · **Arquiteto** (o plano dentro dela) | Unidade de trabalho. Toda Task pertence a exatamente uma História (R20); a Task carrega estimativa, dependências, evidência esperada e o Plano de Implementação |
+| Planos de Implementação (`.team-project/architect/plans/`) | Arquiteto | Um plano por Task, nome `<Task-ID>-<slug>.md`. É o conteúdo técnico da Task, não um artefato irmão dela |
 | Arquitetura, modelo de dados, modelo de API (SDD) | Arquiteto | Grafia de entidades e endpoints é contrato — modelos em [`../../../deliverables/sdd/README.md`](../../../deliverables/sdd/README.md) |
 | ADRs | Arquiteto | Decisão estrutural recorrente |
 | `${CLAUDE_PLUGIN_ROOT}/standards/**` | **Arquiteto (dono editorial)** · dev e QA consumidores obrigatórios | Base de qualidade comum dos três (R16). Única caneta é do Arquiteto — muda só por `/review`. Agnóstico de produto — nunca ajustar para acomodar caso específico. Dev roteia defeito por 🔺 GAP, QA por achado de processo; os dois ao Arquiteto. Divergência de engenharia entre os três decide o Arquiteto; o que ultrapassa engenharia sobe ao stakeholder pelo SM |
@@ -18,9 +20,10 @@ Os caminhos concretos dos documentos do projeto estão em `.team-project/README.
 | Protótipos | UX | Exploração, não código de produção |
 | Objetivos, requisitos, fluxos, changelog funcional (SDD) | PO | Modelos e critérios em [`../../../deliverables/README.md`](../../../deliverables/README.md) |
 | Escopo e critérios de sucesso | PO | Marcação exige evidência do QA — modelo em [`../../../deliverables/implementation/01-scope-and-criteria.md`](../../../deliverables/implementation/01-scope-and-criteria.md) |
-| Product Backlog (`.team-project/product-owner/`) | PO | Priorizado por valor e risco funcional |
+| Product Backlog (`.team-project/product-owner/`) | PO | **O conjunto das Histórias.** Priorizado por valor e risco funcional; recebe também os gaps, débitos e ressalvas levantados na Sprint Review |
 | Documento de status/progresso | SM | Memória de progresso e decisões — modelo em [`../../../deliverables/implementation/02-status.md`](../../../deliverables/implementation/02-status.md) |
-| Quadro de trabalho (`.team-project/scrum-master/`) | SM | Sprint Backlog vivo |
+| Sprint Backlog / quadro de trabalho (`.team-project/scrum-master/`) | SM | As Tasks do sprint corrente, com objetivo do sprint, estimativa e capacidade. Fechado na Planning Meeting; **não cresce durante o sprint** (R4 · [`workflow.md` §5e](workflow.md)) |
+| Registro de sprint — objetivo, Review e retrospectiva | SM | Um por sprint. O aceite registrado ali é do PO (R21); o SM registra, não aceita |
 | Registro de onboarding · brief de `brainstorm` | SM (**facilitação**) | Saída de `/sm onboarding` e `/team brainstorm` — registro do entendimento alinhado e do brief funcional. **Não substitui** a propriedade do PO sobre o requisito nem a divisão de autoria do SDD (PO: visão/requisitos/fluxos; Arquiteto: arquitetura/dados/API). Não vira arquivo permanente sem lugar declarado em `.team-project/` |
 | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/**` | SM | Processo — muda só a pedido do stakeholder, via `/review` (Agent `scrum-master`) |
 | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/process-changelog.md` | SM (**curador**) | **Exceção à regra de dono único:** todo papel acrescenta a entrada da sua própria mudança de processo; o SM cura — consolida, aponta contradição e escala o que ficou inconsistente. Entrada nunca é reescrita |
@@ -53,14 +56,23 @@ Os caminhos concretos dos documentos do projeto estão em `.team-project/README.
 [projeto novo/retomado] ─▶ SM conduz onboarding (§5a) ─▶ contexto do projeto alinhado
 [ideia sem documentação] ─▶ SM facilita brainstorm (§5b): PO+UX, depois +Arquiteto ─▶ brief funcional
            │
-ideia ─────▶ PO escreve requisito e prioriza no backlog
-              └─▶ SM cria item no quadro
-                    └─▶ Arquiteto escreve plano
-                          └─▶ dev escreve código+testes
-                                └─▶ QA registra evidência
-                                      ├─▶ QA atualiza inventário de código e registro de GAPs
-                                      └─▶ SM atualiza o documento de status no fechamento
+ideia ─────▶ PO escreve o SDD funcional ──① stakeholder aprova
+              └─▶ Arquiteto escreve o SDD técnico ──② aprovado
+                    └─▶ PO escreve a História e a prioriza no Product Backlog
+                          └─▶ PO detalha (UX faz o protótipo) ──③ stakeholder aprova
+                                └─▶ Planning: o time quebra em Tasks e estima
+                                      └─▶ SM fecha o Sprint Backlog
+                                            └─▶ Arquiteto escreve o Plano de Implementação
+                                                  └─▶ dev escreve código+testes
+                                                        └─▶ QA registra evidência
+                                        ┌───────────────────────┘
+                                        ├─▶ QA atualiza inventário de código e registro de GAPs
+                                        ├─▶ SM atualiza o status e fecha a Task
+                                        └─▶ Sprint Review: ④ PO aceita a História
+                                              └─▶ SM conduz a retrospectiva e fecha o sprint
 ```
+
+Os quatro portões numerados são os gates de [`workflow.md` §8](workflow.md). Repare que o **fechamento da Task é do SM e é técnico**; o **aceite é do PO, por História, na Review** (R21). Os dois nunca são o mesmo ato, e nunca são do mesmo papel.
 
 ## 3. Conflitos comuns e como resolver
 
@@ -71,7 +83,11 @@ ideia ─────▶ PO escreve requisito e prioriza no backlog
 | UX precisa de um dado que a API não expõe | Supor o contrato | Levantar ao Arquiteto antes de fechar a especificação |
 | UX quer mudar uma regra para simplificar a tela | Mudar no desenho | Escalação ao PO — regra é dele |
 | Arquiteto quer renomear entidade da especificação | Renomear no plano | Mudança formal: PO aprova, Arquiteto atualiza o modelo, migration explícita |
-| QA encontra defeito fora do item | Corrigir de passagem | Abrir GAP; SM entra na fila |
+| QA encontra defeito fora da Task | Corrigir de passagem | Abrir GAP; SM entra na fila |
+| PO detalha a História citando arquivo, classe ou endpoint | Deixar passar — "é só contexto" | Devolver ao PO: o detalhamento é só funcional; o técnico nasce no Plano de Implementação (R20) |
+| Surge trabalho técnico que nenhuma História cobre | Criar Task solta no sprint | PO escreve a História que declara o valor, ainda que o beneficiário seja o time (R20) |
+| Task pronta dentro de uma História rejeitada na Review | Fechar a Task e seguir | Toda a História volta ao Product Backlog, com as Tasks boas junto (R21) |
+| Stakeholder pede escopo novo no meio do sprint | Encaixar no Sprint Backlog | Vai ao Product Backlog e concorre na Planning seguinte; exceção só para GAP que bloqueia História já no sprint, com "o que saiu para caber" registrado |
 | Frente 2 do QA parece repetir o `/arc comply` | Reexecutar a tabela passo × conforme do comply | Checar o que o comply não vê: plano omitiu ou errou a seção que o item exigia — [`workflow.md` §4a](workflow.md) |
 | SM vê status divergente do código | Ajustar o status pela intuição | Acionar `/qa audit`; corrigir com o achado |
 | Mudança de `/review` aplicada mas não lançada | Assumir que as instalações já a têm | Entra numa entrega: branch, bump de `version`, entrada no `CHANGELOG.md` (R18 · [`workflow.md` §5d](workflow.md)) |
@@ -80,8 +96,8 @@ ideia ─────▶ PO escreve requisito e prioriza no backlog
 ## 4. Convenções
 
 - **Idioma:** documentação e comunicação no idioma do time; código, identificadores e mensagens de commit seguem o padrão já existente no repositório.
-- **IDs:** padrão definido no contexto do projeto; nunca reaproveitados.
-- **Commits:** um item por commit sempre que possível, referenciando o ID.
-- **Resolver GAP:** o QA remove o item do registro de GAPs e o SM registra a correção no documento de status — nunca os dois no mesmo arquivo.
+- **IDs:** padrão definido no contexto do projeto; nunca reaproveitados. Convenção padrão: `H-nnn` para História, `T-nnn` para Task, sufixo para quebra (`T-012a`, `T-012b`); Task nascida de um GAP reusa o ID do GAP.
+- **Commits:** uma Task por commit sempre que possível, referenciando o ID da Task.
+- **Resolver GAP:** o QA remove a entrada do registro de GAPs e o SM registra a correção no documento de status — nunca os dois no mesmo arquivo.
 - **Documento vivo** traz no topo a marcação **DOCUMENTO VIVO**, o dono e a data da última atualização.
 - **Nomes de arquivo em `${CLAUDE_PLUGIN_ROOT}/` e `.team-project/`:** inglês, kebab-case, sem acento. Conteúdo no idioma do time. Documento vivo e modelo compartilham o nome — o modelo fica em `templates/`.
