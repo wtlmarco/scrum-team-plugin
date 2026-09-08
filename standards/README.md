@@ -7,7 +7,7 @@
 | Papel | Relação com este diretório | Quando encontra defeito aqui |
 |---|---|---|
 | **Arquiteto** | **Dono editorial** — a única caneta. Escreve, versiona e responde pela coerência entre o **nível 1** e os **perfis de nível 2** | edita, por **`/review`** |
-| **dev** | **Consumidor obrigatório** — aplica a seção que o Plano de Execução cita, literalmente | abre **🔺 GAP** ao Arquiteto e **para de codificar** |
+| **dev** | **Consumidor obrigatório** — aplica a seção que o Plano de Implementação cita, literalmente | abre **🔺 GAP** ao Arquiteto e **para de codificar** |
 | **QA** | **Consumidor obrigatório** — valida a entrega contra estas regras; desvio de standard no código é **reprovação**, não ressalva | abre **achado de processo** roteado ao `/review` — não é achado de código |
 
 **Defeito num standard não se corrige de passagem.** Contradição entre seções, lacuna que impede executar um passo, ou regra sem forma de verificação: o dev levanta 🔺 GAP, o QA levanta achado de processo, os dois vão ao Arquiteto, que resolve por `/review`. Quem consome **lê, cita e levanta** — não edita.
@@ -48,13 +48,13 @@ Estes documentos nunca devem ser editados para acomodar uma decisão de um produ
 
 | Papel | Como consome |
 |---|---|
-| **Arquiteto** | Cita a seção aplicável em **cada Plano de Execução** que toca engenharia — anel, nomenclatura, testes/cobertura e, em item sensível, a seção de segurança |
+| **Arquiteto** | Cita a seção aplicável em **cada Plano de Implementação** que toca engenharia — anel, nomenclatura, testes/cobertura e, em Task sensível, a seção de segurança |
 | **dev** | Lê **as seções que o plano citou**, não o diretório inteiro (R3). O que o plano não citou e o passo exige é 🔺 GAP |
 | **QA** | Valida a entrega contra as seções citadas no plano e contra os gates de cobertura e de análise estática |
 
 **Por dúvida:**
 
-- Projeto novo, ou stack sem perfil → **começar por `implementation-principles.md`** e preencher a Ficha de Vinculação (§6) antes do primeiro Plano de Execução
+- Projeto novo, ou stack sem perfil → **começar por `implementation-principles.md`** e preencher a Ficha de Vinculação (§6) antes do primeiro Plano de Implementação
 - Dúvida sobre camadas, CQRS, nomes, limites de código, testes ou cobertura → `implementation-principles.md`
 - Dúvida sobre como isso se escreve em .NET (estrutura de pastas, contratos, logging, configuração) → `implementation-guide.md`
 - Dúvida sobre analisadores, ferramenta de cobertura ou pipeline → `implementation-quality.md`

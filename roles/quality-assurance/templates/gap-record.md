@@ -32,21 +32,21 @@ Espelha o `Tipo: plano | standard` do [`gap.md` do dev](../../developer/template
 | O que é | Defeito na entrega: requisito não atendido, exposição, divergência especificação × código, desvio de seção de standard **citada** no plano | Defeito no próprio `${CLAUDE_PLUGIN_ROOT}/standards/`: contradição entre seções, lacuna que impede executar um passo, regra sem forma de verificação |
 | Entra no registro de GAPs do projeto? | Sim, na seção da criticidade | **Não** — o normativo é agnóstico, não é do projeto |
 | Onde fica registrado | Este documento (`pending.md` ou o indicado no contexto) | Seção de roteamentos do veredito → `/review` |
-| Fecha quando | O código é corrigido e revalidado | O Arquiteto corrige o texto no `/review` seguinte; a decisão técnica que desbloqueia o item **não** fecha o achado de processo |
+| Fecha quando | O código é corrigido e revalidado | O Arquiteto corrige o texto no `/review` seguinte; a decisão técnica que desbloqueia a Task **não** fecha o achado de processo |
 | Citação obrigatória | `arquivo:linha` | `arquivo:linha` do código que expôs o problema **+** `<arquivo do standard> §<n>` |
 
 **Três sinais de defeito de standard:** contradição · lacuna · regra inverificável. **Não são defeito:** regra que dá mais trabalho, regra que eu faria diferente, regra que não entendi (reler antes).
 
 ## Fechar um GAP
 
-1. Remover o item da seção de criticidade.
+1. Remover a Task da seção de criticidade.
 2. Registrar na lista de resolvidos, no topo do documento: `<ID> (<o que resolveu>, <data>)`.
 3. Atualizar as tabelas de contagem.
 4. Avisar o SM — o registro histórico vai para o documento de status, não aqui (R12: cada dono no seu documento).
 
 ## Confirmar um **não-gap**
 
-Item que parecia lacuna e foi verificado como correto vai para a seção de não-gaps, com a evidência. Isso poupa a próxima auditoria de reabrir a mesma suspeita.
+Task que parecia lacuna e foi verificado como correto vai para a seção de não-gaps, com a evidência. Isso poupa a próxima auditoria de reabrir a mesma suspeita.
 
 ```markdown
 - **<tema>** — <por que está correto>, com evidência em [<arquivo>:<linha>](<caminho>#L<linha>).
@@ -58,8 +58,8 @@ Item que parecia lacuna e foi verificado como correto vai para a seção de não
 - **Evidência é fato observado no código**, com caminho e linha — não "parece que".
 - **Impacto em linguagem de consequência**, não de código: quem é prejudicado e como.
 - **Ação sugerida é direção, não plano.** O plano é do Arquiteto.
-- Sem evidência conclusiva, o item **não entra**: fica como suspeita no veredito até ser confirmado.
-- **Tipo `processo` não abre item aqui.** É achado de processo: registra-se na seção de roteamentos do veredito e segue ao `/review` (R16). Este documento só recebe defeitos do projeto.
+- Sem evidência conclusiva, a Task **não entra**: fica como suspeita no veredito até ser confirmado.
+- **Tipo `processo` não abre Task aqui.** É achado de processo: registra-se na seção de roteamentos do veredito e segue ao `/review` (R16). Este documento só recebe defeitos do projeto.
 
 ## Exemplo
 

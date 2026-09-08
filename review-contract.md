@@ -1,12 +1,12 @@
 # Contrato do `/review` — evolução do processo
 
-> Lido **quando `/review` roteia um item ao agente de um papel**. O comando `/review` está em [`commands/review.md`](commands/review.md); aqui está o que o **agente** faz ao receber o item. Vive fora dos arquivos de comando de papel para não ser injetado nas invocações que nunca evoluem o processo.
+> Lido **quando `/review` roteia uma Task ao agente de um papel**. O comando `/review` está em [`commands/review.md`](commands/review.md); aqui está o que o **agente** faz ao receber a Task. Vive fora dos arquivos de comando de papel para não ser injetado nas invocações que nunca evoluem o processo.
 >
 > **Todo caminho deste contrato é relativo à RAIZ** — o clone do repositório do plugin, cujo caminho absoluto o `/review` te passa ao te acionar ([`commands/review.md`](commands/review.md) §pré-condição). **Nunca escreva em `${CLAUDE_PLUGIN_ROOT}`:** essa é a cópia *instalada*, um snapshot descartável que o próximo `claude plugin update` sobrescreve — mudança feita lá se perde. Se não recebeu a RAIZ, **pare e peça**; não deduza do diretório atual.
 
 ## O que o `/review` é
 
-O processo de trabalho do time — os documentos em `RAIZ/` — **não muda por conversa**: muda pelo `/review`. Cada papel aperfeiçoa **os próprios documentos** a partir de uma instrução do stakeholder ou de um item de `note.md` que o SM classificou e roteou.
+O processo de trabalho do time — os documentos em `RAIZ/` — **não muda por conversa**: muda pelo `/review`. Cada papel aperfeiçoa **os próprios documentos** a partir de uma instrução do stakeholder ou de uma Task de `note.md` que o SM classificou e roteou.
 
 O **Agent `scrum-master`** faz a triagem e a curadoria e tem alcance maior: além do roteiro, das skills e dos modelos do SM, é o único que altera os **normativos que governam todos** — `process/working-rules.md`, `process/workflow.md`, `process/artifact-ownership.md`.
 
@@ -40,7 +40,7 @@ O que cada agente pode editar quando `/review` o aciona:
    | Substituição de padrão | `grep` do padrão antigo **em todos os arquivos da classe**, não só no primeiro; **mais a leitura de cada ocorrência nova no contexto** | zero do antigo; e cada ocorrência nova coerente com o que está ao lado dela |
    | Extração ou remoção | contagem de linhas antes/depois nos dois arquivos | o ponteiro que substituiu o texto movido resolve |
 
-   **`grep` zerado não é substituição completa.** Ele prova que a string sumiu, não que o sentido fechou: trocar "quatro passos" por "cinco passos" e deixar ao lado a enumeração com quatro itens passa no `grep` e mente para quem lê. Toda substituição de padrão exige **ler cada ocorrência nova no contexto** e conferir o que depende dela — contagem enumerada, lista adjacente, total citado noutro documento.
+   **`grep` zerado não é substituição completa.** Ele prova que a string sumiu, não que o sentido fechou: trocar "quatro passos" por "cinco passos" e deixar ao lado a enumeração com quatro Tasks passa no `grep` e mente para quem lê. Toda substituição de padrão exige **ler cada ocorrência nova no contexto** e conferir o que depende dela — contagem enumerada, lista adjacente, total citado noutro documento.
 
    Anote o resultado no bloco `### Evidência (R19)` da entrada, no formato de `RAIZ/roles/scrum-master/templates/process-change.md` (`Classe · Comando · Saída · Ok?`). Saída diferente da esperada: **conserte antes de fechar**, e registre o desvio na entrada. Não reporte ao stakeholder como aplicado o que a evidência não confirma.
 
@@ -72,7 +72,7 @@ Achado dentro do seu alcance: corrija e registre no changelog. Achado no documen
 
 ## Modos auxiliares (conduzidos pelo Agent `scrum-master`)
 
-- **`/review note`** — processa a fila **Abertas** de `RAIZ/note.md`, um item por vez: o SM classifica e roteia cada um ao papel dono, que aplica por este contrato. Item aplicado sai de `note.md` e passa a viver no changelog do processo.
+- **`/review note`** — processa a fila **Abertas** de `RAIZ/note.md`, uma Task por vez: o SM classifica e roteia cada um ao papel dono, que aplica por este contrato. Task aplicado sai de `note.md` e passa a viver no changelog do processo.
 - **`/review audit`** — coerência interna de `RAIZ/`: regras contraditórias, regra sem verificação, papel com fronteira ambígua, documento sem dono, modelo órfão, vazamento de contexto de projeto, links quebrados.
 - **`/review metrics`** — revisão por evidência a partir dos indicadores do período, com **uma** proposta de mudança. Inclui o giro **Act** do ciclo de eficiência (`workflow.md` §5c): cada papel reporta o footprint dos próprios documentos (KB da carga fixa do comando + KB de `roles/<papel>/`), o SM consolida na tabela por papel, e a proposta única do período pode ser uma **remoção**.
 - **`/review history`** — apresenta o changelog do processo.

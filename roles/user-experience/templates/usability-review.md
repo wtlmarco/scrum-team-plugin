@@ -1,77 +1,77 @@
-# Template — Revisão de Usabilidade e Acessibilidade
+# Template ï¿½ Revisï¿½o de Usabilidade e Acessibilidade
 
-> **Dono:** UX · Saída de `/ux review-ui` · Achado fora do item vira registro para o backlog, nunca correção de passagem.
+> **Dono:** UX ï¿½ Saï¿½da de `/ux review-ui` ï¿½ Achado fora da Task vira registro para o backlog, nunca correï¿½ï¿½o de passagem.
 
 ```markdown
-## Revisão de UX — <tela ou fluxo> — <data>
+## Revisï¿½o de UX ï¿½ <tela ou fluxo> ï¿½ <data>
 
-**Escopo:** <o que foi revisado, e contra qual especificação/requisito>
-**Método:** inspeção heurística da especificação · navegação no protótipo · uso da tela real · **teste de usabilidade com <N> participantes em <data>** — diga qual. *Sem participante real, é inspeção.*
+**Escopo:** <o que foi revisado, e contra qual especificaï¿½ï¿½o/requisito>
+**Mï¿½todo:** inspeï¿½ï¿½o heurï¿½stica da especificaï¿½ï¿½o ï¿½ navegaï¿½ï¿½o no protï¿½tipo ï¿½ uso da tela real ï¿½ **teste de usabilidade com <N> participantes em <data>** ï¿½ diga qual. *Sem participante real, ï¿½ inspeï¿½ï¿½o.*
 
 ### Veredito
 **? Adequado | ?? Adequado com ressalva | ? Inadequado**
 
 ### Achados
-| # | Severidade | Achado | Onde | Critério violado | Correção sugerida |
+| # | Severidade | Achado | Onde | Critï¿½rio violado | Correï¿½ï¿½o sugerida |
 |---|---|---|---|---|---|
-| 1 | ??/??/??/?? | <o que o usuário sofre> | <tela/componente> | <heurística · critério de acessibilidade · convenção do produto> | <direção, não implementação> |
+| 1 | ??/??/??/?? | <o que o usuï¿½rio sofre> | <tela/componente> | <heurï¿½stica ï¿½ critï¿½rio de acessibilidade ï¿½ convenï¿½ï¿½o do produto> | <direï¿½ï¿½o, nï¿½o implementaï¿½ï¿½o> |
 
 ### Estados da tela verificados
-| Estado | Situação | Como verifiquei |
+| Estado | Situaï¿½ï¿½o | Como verifiquei |
 |---|---|---|
-| Vazio | ok / falha / não verificável | |
-| Carregando | ok / falha / não verificável | |
-| Sucesso | ok / falha / não verificável | |
-| Erro | ok / falha / não verificável | |
-| Sem permissão | ok / falha / não verificável | |
-| Volume extremo | ok / falha / não verificável | |
+| Vazio | ok / falha / nï¿½o verificï¿½vel | |
+| Carregando | ok / falha / nï¿½o verificï¿½vel | |
+| Sucesso | ok / falha / nï¿½o verificï¿½vel | |
+| Erro | ok / falha / nï¿½o verificï¿½vel | |
+| Sem permissï¿½o | ok / falha / nï¿½o verificï¿½vel | |
+| Volume extremo | ok / falha / nï¿½o verificï¿½vel | |
 
-### Estados de interação dos controles
+### Estados de interaï¿½ï¿½o dos controles
 | Controle | Repouso | Foco | Pressionado | Desabilitado |
 |---|---|---|---|---|
 | <controle> | ok / falha | ok / falha | ok / falha | ok / falha / n/a |
 
 ### Acessibilidade
-| Critério | Resultado | Como verifiquei |
+| Critï¿½rio | Resultado | Como verifiquei |
 |---|---|---|
-| Navegação por teclado e foco visível | ok / falha | |
-| Rótulo acessível em todo controle | ok / falha | |
+| Navegaï¿½ï¿½o por teclado e foco visï¿½vel | ok / falha | |
+| Rï¿½tulo acessï¿½vel em todo controle | ok / falha | |
 | Contraste | ok / falha | |
 | Alvo de toque | ok / falha | |
-| Hierarquia semântica | ok / falha | |
-| Informação não dependente só de cor | ok / falha | |
+| Hierarquia semï¿½ntica | ok / falha | |
+| Informaï¿½ï¿½o nï¿½o dependente sï¿½ de cor | ok / falha | |
 | Zoom 200% e viewport de 320 px sem rolagem horizontal | ok / falha | |
-| Sem função presa a gesto complexo ou a movimento | ok / falha | |
-| Condição de uso limitante declarada e atendida | ok / falha | |
+| Sem funï¿½ï¿½o presa a gesto complexo ou a movimento | ok / falha | |
+| Condiï¿½ï¿½o de uso limitante declarada e atendida | ok / falha | |
 
 ### Resultado do teste com participantes
-*(Só quando houve teste. Sem teste, escreva "não houve — revisão por inspeção".)*
+*(Sï¿½ quando houve teste. Sem teste, escreva "nï¿½o houve ï¿½ revisï¿½o por inspeï¿½ï¿½o".)*
 
-| Tarefa | Participantes que concluíram | Onde travaram | O que mudou por causa disso |
+| Tarefa | Participantes que concluï¿½ram | Onde travaram | O que mudou por causa disso |
 |---|---|---|---|
 
-### Fora do item
-<Achados em outras telas — viram registro no backlog, com severidade. Não corrigidos aqui.>
+### Fora da Task
+<Achados em outras telas ï¿½ viram registro no backlog, com severidade. Nï¿½o corrigidos aqui.>
 
-### Não verificado
-<O que não pôde ser checado e por quê — protótipo indisponível, tela não implementada, dado insuficiente.>
+### Nï¿½o verificado
+<O que nï¿½o pï¿½de ser checado e por quï¿½ ï¿½ protï¿½tipo indisponï¿½vel, tela nï¿½o implementada, dado insuficiente.>
 ```
 
 ## Severidade
 
-| Nível | Significado |
+| Nï¿½vel | Significado |
 |---|---|
-| ?? **Crítica** | O usuário não consegue completar a tarefa, ou a tela é inacessível por teclado/leitor de tela |
-| ?? **Alta** | O usuário completa, mas com erro provável, retrabalho ou confusão consistente |
-| ?? **Média** | Atrito perceptível; inconsistência com o padrão do produto |
-| ?? **Baixa** | Polimento, microcópia, alinhamento |
+| ?? **Crï¿½tica** | O usuï¿½rio nï¿½o consegue completar a tarefa, ou a tela ï¿½ inacessï¿½vel por teclado/leitor de tela |
+| ?? **Alta** | O usuï¿½rio completa, mas com erro provï¿½vel, retrabalho ou confusï¿½o consistente |
+| ?? **Mï¿½dia** | Atrito perceptï¿½vel; inconsistï¿½ncia com o padrï¿½o do produto |
+| ?? **Baixa** | Polimento, microcï¿½pia, alinhamento |
 
 ## Regras
 
-- **Achado descreve o que o usuário sofre**, não a preferência estética de quem revisa.
-- **Todo achado cita o critério violado** — heurística de usabilidade, critério de acessibilidade ou convenção do produto (`../skills.md` §8). Sem isso é opinião, e opinião não se prioriza.
-- **Correção sugerida é direção, não implementação.**
-- **Método declarado, e declarado com honestidade.** Sem participante real não existe "os usuários acharam": o que houve foi inspeção. Alegação de comportamento de usuário sem participante, data e número invalida o achado inteiro.
-- **"Não verificado" é obrigatório** — mesma disciplina do QA: o que não foi exercitado se declara.
-- **Barreira de acessibilidade é ?? por padrão**; rebaixe só com justificativa explícita.
-- **Um estado por linha.** Veredito único para os seis estados esconde exatamente o estado que falhou.
+- **Achado descreve o que o usuï¿½rio sofre**, nï¿½o a preferï¿½ncia estï¿½tica de quem revisa.
+- **Todo achado cita o critï¿½rio violado** ï¿½ heurï¿½stica de usabilidade, critï¿½rio de acessibilidade ou convenï¿½ï¿½o do produto (`../skills.md` ï¿½8). Sem isso ï¿½ opiniï¿½o, e opiniï¿½o nï¿½o se prioriza.
+- **Correï¿½ï¿½o sugerida ï¿½ direï¿½ï¿½o, nï¿½o implementaï¿½ï¿½o.**
+- **Mï¿½todo declarado, e declarado com honestidade.** Sem participante real nï¿½o existe "os usuï¿½rios acharam": o que houve foi inspeï¿½ï¿½o. Alegaï¿½ï¿½o de comportamento de usuï¿½rio sem participante, data e nï¿½mero invalida o achado inteiro.
+- **"Nï¿½o verificado" ï¿½ obrigatï¿½rio** ï¿½ mesma disciplina do QA: o que nï¿½o foi exercitado se declara.
+- **Barreira de acessibilidade ï¿½ ?? por padrï¿½o**; rebaixe sï¿½ com justificativa explï¿½cita.
+- **Um estado por linha.** Veredito ï¿½nico para os seis estados esconde exatamente o estado que falhou.

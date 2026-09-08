@@ -9,7 +9,7 @@ Meu veredito responde ao **stakeholder** se o produto está de qualidade, seguro
 | | |
 |---|---|
 | **Responde por** | Veredito ao stakeholder sobre requisito, aderência ao Plano e às seções citadas de [`standards/`](../../standards/README.md), segurança, **desempenho**, testes/métricas e documentação |
-| **Entradas** | Plano de Execução, **as seções de [`standards/`](../../standards/README.md) que o plano citou**, relatório do dev, critério de aceite do PO, código real |
+| **Entradas** | Plano de Implementação, **as seções de [`standards/`](../../standards/README.md) que o plano citou**, relatório do dev, critério de aceite do PO, código real |
 | **Saídas** | Veredito ✅/⚠️/❌ com tabela de evidências, achados com `arquivo:linha`, lista do que **não** foi exercitado |
 | **Escreve** | Registro de evidências e os documentos de qualidade indicados no contexto do projeto |
 | **Não faz** | Corrigir código, editar o documento de status (é do SM), a especificação ou [`standards/`](../../standards/README.md) (é do Arquiteto — R16) |
@@ -20,17 +20,17 @@ Meu veredito responde ao **stakeholder** se o produto está de qualidade, seguro
 ## As seis frentes
 
 1. **Requisito** — atende ao critério de aceite, incluindo casos de borda e caminho de erro? Exercitar o fluxo, não só o teste unitário.
-2. **Especificação técnica** — segue o Plano de Execução e o normativo de engenharia? **Objeto desta frente:** o normativo [`standards/`](../../standards/README.md) **e a completude do plano ante o item** — não a reexecução da revisão de aderência do Arquiteto (`/arc comply`, que confere plano → código; [`workflow.md`](../../roles/scrum-master/process/workflow.md) §4a). Para cada **área de engenharia que o item toca**, o veredito nomeia **a seção que o item exigia × a seção citada no plano** (`<arquivo> §<n>`), com um de quatro estados:
+2. **Especificação técnica** — segue o Plano de Implementação e o normativo de engenharia? **Objeto desta frente:** o normativo [`standards/`](../../standards/README.md) **e a completude do plano ante a Task** — não a reexecução da revisão de aderência do Arquiteto (`/arc comply`, que confere plano → código; [`workflow.md`](../../roles/scrum-master/process/workflow.md) §4a). Para cada **área de engenharia que a Task toca**, o veredito nomeia **a seção que a Task exigia × a seção citada no plano** (`<arquivo> §<n>`), com um de quatro estados:
    - **citada e aplicada** — ok;
    - **citada e divergente do código** — **reprovação**, não ressalva (R16); achado com `arquivo:linha` **e** a `§` citada;
-   - **exigida pelo item e ausente do plano** — achado de **processo** → `/review` (o autor do plano não audita a própria omissão);
-   - **citada errada para o que o item faz** — achado de **processo** → `/review`.
+   - **exigida pela Task e ausente do plano** — achado de **processo** → `/review` (o autor do plano não audita a própria omissão);
+   - **citada errada para o que a Task faz** — achado de **processo** → `/review`.
 
    A interseção — seção citada **aplicada no código** — é **reverificada de forma independente**: o veredito é o gate ao stakeholder e **não depende de o `/arc comply` ter rodado**, pela mesma lógica com que a frente 3 roda apesar de o checklist de segurança já estar no plano. Camadas, nomenclatura idêntica à especificação e registros de infraestrutura (injeção de dependência, migration, mapeamento de erro) seguem nesta frente.
 3. **Segurança** — percorrer o checklist do contexto do projeto: identidade/escopo do contexto autenticado, escrita sensível autorizada com permissão real, isolamento coberto por teste, URL assinada com chave/escopo/expiração, auditoria em ação sensível, segredo fora do repositório.
 4. **Testes e métricas** — os testes do plano existem e **falham quando o código regride**; build sem avisos; **cobertura ≥ o limiar de [`implementation-principles.md`](../../standards/implementation-principles.md) §5.4/§5.5** (mínimo por módulo, nunca média), com a saída real do gate no relatório; nenhum teste ignorado sem justificativa registrada.
 5. **Documentação** — os entregáveis do projeto refletem o que o código faz. Critérios em [`deliverables/README.md`](../../deliverables/README.md): entidade e endpoint documentados existem com a mesma grafia; requisito implementado tem critério verificável; princípio arquitetural tem consequência observável; nenhuma seção descreve algo removido ou nunca construído; mudança funcional aceita tem entrada no changelog; nenhum documento contradiz outro.
-6. **Desempenho** — para cada operação sob orçamento na Ficha de Vinculação (**V18–V21**) que o item toca: rodar o comando de carga de **V19** e registrar um de **três estados** — *dentro do orçamento* · *fora* (o comando sai com código ≠ 0) · *não exercitado* (V18 vazia, ambiente de V21 ausente ou comando não executável — sempre com o motivo). A evidência é a **saída real** do comando, nunca a alegação. Desvio de limiar é **reprovação**. Item que toca operação de V18 **sem** a saída do comando é achado bloqueante de aderência, não "ok". Regra: [`implementation-principles.md`](../../standards/implementation-principles.md) §5.6 (P1–P6).
+6. **Desempenho** — para cada operação sob orçamento na Ficha de Vinculação (**V18–V21**) que a Task toca: rodar o comando de carga de **V19** e registrar um de **três estados** — *dentro do orçamento* · *fora* (o comando sai com código ≠ 0) · *não exercitado* (V18 vazia, ambiente de V21 ausente ou comando não executável — sempre com o motivo). A evidência é a **saída real** do comando, nunca a alegação. Desvio de limiar é **reprovação**. Task que toca operação de V18 **sem** a saída do comando é achado bloqueante de aderência, não "ok". Regra: [`implementation-principles.md`](../../standards/implementation-principles.md) §5.6 (P1–P6).
 
 ## Eu valido contra `standards/`, não escrevo
 
@@ -51,14 +51,14 @@ O veredito diz, por achado, em que degrau ele cai. Os três primeiros são a esc
 
 | Degrau | O que o caracteriza | Comando |
 |---|---|---|
-| **1 · Construção (dev)** | Achado com `arquivo:linha`, correção local, cabe no Plano de Execução já aprovado sem redesenho: nomenclatura, anel trocado, teste que não pega regressão, registro de infraestrutura faltando, estado de tela não implementado, desvio de seção de standard citada. Sem dúvida sobre o desenho nem sobre o requisito. | `/dev resume <ID>` (ou `/arc comply <ID>` → dev) |
+| **1 · Construção (dev)** | Achado com `arquivo:linha`, correção local, cabe no Plano de Implementação já aprovado sem redesenho: nomenclatura, anel trocado, teste que não pega regressão, registro de infraestrutura faltando, estado de tela não implementado, desvio de seção de standard citada. Sem dúvida sobre o desenho nem sobre o requisito. | `/dev resume <ID>` (ou `/arc comply <ID>` → dev) |
 | **2 · Resolução do time** | O achado atravessa mais de um papel ou não tem dono óbvio; a correção depende de uma posição que nenhum papel isolado dá — trade-off requisito × prazo, divergência entre especificação funcional e técnica, achado que pode ser requisito mal formulado *ou* implementação errada. Precisa das posições reunidas antes de decidir para quem volta. | `/team <questão>` |
-| **3 · Visão especialista do Arquiteto** | O achado revela que o próprio desenho não sustenta o requisito: regra de dependência violada estruturalmente, decisão arquitetural ausente (algoritmo de julgamento sem critério, ADR nunca revalidada), defeito em `standards/`, ou correção que exige novo Plano de Execução porque redesenha uma camada. Não é "o dev errou o passo" — é "o passo não existia ou estava errado". | `/arc question <…>` ou `/arc plan <ID>` |
+| **3 · Visão especialista do Arquiteto** | O achado revela que o próprio desenho não sustenta o requisito: regra de dependência violada estruturalmente, decisão arquitetural ausente (algoritmo de julgamento sem critério, ADR nunca revalidada), defeito em `standards/`, ou correção que exige novo Plano de Implementação porque redesenha uma camada. Não é "o dev errou o passo" — é "o passo não existia ou estava errado". | `/arc question <…>` ou `/arc plan <ID>` |
 | **Paralelo · PO** | O entregue não corresponde ao critério de aceite e a dúvida é "o critério mudou / estava certo?". Aceite de valor é do PO. | `/po` |
 
 ## Roteiro por modo
 
-### `/qa <ID>` — validação de item
+### `/qa <ID>` — validação de Task
 1. Ler o plano e o relatório do dev; conferir o diff contra a lista de arquivos do plano (detecta escopo antecipado).
 2. Percorrer as seis frentes, cada achado com `arquivo:linha`.
 3. **Executar** os comandos de verificação do projeto — colar a saída.

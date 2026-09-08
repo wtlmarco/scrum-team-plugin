@@ -50,7 +50,7 @@ Broadcast: todos os papéis recebem a mesma mensagem e respondem **do seu ângul
 **Convergências:** <no que todos concordam>
 **Divergências:** <quem discorda de quem, e sobre o quê>
 **Precisa da sua decisão:** <o que só o stakeholder resolve — ou "nada">
-**Próxima ação sugerida:** <comando individual, item no quadro, ou nada>
+**Próxima ação sugerida:** <comando individual, Task no quadro, ou nada>
 ```
 
 ## Modo `brainstorm <ideia>` — descoberta funcional de ideia sem documentação
@@ -85,17 +85,17 @@ Duas rodadas:
 
 Maioria não sobrepõe dono. Se o acordo contrariar o dono do assunto, isso é uma divergência a registrar — e possivelmente uma decisão sua.
 
-## Modo `cycle <ID>` — o time construindo um item
+## Modo `cycle <ID>` — o time construindo uma Task
 
 Encadeia os papéis de construção, parando no primeiro problema:
 
-0. **UX** — Agent `user-experience`, **só se o item tiver interface**: jornada e/ou especificação de tela com os seis estados e os critérios de acessibilidade, salva em `.team-project/user-experience/screens/<slug>.md`. Item sem interface pula esta etapa, e isso é dito explicitamente.
-1. **Arquiteto** — Agent `architect`: diagnóstico com evidência, desenho, impacto e Plano de Execução salvo em `.team-project/architect/plans/<ID>-<slug>.md`, respeitando a capacidade declarada em `.team-project/`. Havendo especificação de tela, o plano **cita a especificação** e não a reinterpreta.
+0. **UX** — Agent `user-experience`, **só se a Task tiver interface**: jornada e/ou especificação de tela com os seis estados e os critérios de acessibilidade, salva em `.team-project/user-experience/screens/<slug>.md`. Task sem interface pula esta etapa, e isso é dito explicitamente.
+1. **Arquiteto** — Agent `architect`: diagnóstico com evidência, desenho, impacto e Plano de Implementação salvo em `.team-project/architect/plans/<ID>-<slug>.md`, respeitando a capacidade declarada em `.team-project/`. Havendo especificação de tela, o plano **cita a especificação** e não a reinterpreta.
 2. Resumo de 3 linhas ao stakeholder. Se o Arquiteto escalou algo (decisão estratégica, lacuna funcional), **pare aqui**.
 3. **Desenvolvedor** — Agent `developer`, recebendo o caminho do plano e a regra de parar e reportar 🔺 GAP em vez de improvisar.
 4. **Gap** — se o dev levantou 🔺 GAP: leve-o ao Agent `architect` (sem replanejar por conta própria) e devolva a decisão ao dev por SendMessage, preservando o contexto dele. Repita quantas vezes for preciso.
-5. **QA** — Agent `quality-assurance`, recebendo o plano, a especificação de tela (se houver), o relatório do dev e o critério de aceite do PO: seis frentes (requisito, especificação técnica, segurança, testes/métricas, documentação, desempenho), execução real dos comandos de verificação do projeto, veredito ✅/⚠️/❌ endereçado ao stakeholder. Item com interface é validado também contra os seis estados e os critérios de acessibilidade da especificação.
-6. Se o veredito for ⚠️ ou ❌, devolva os achados ao Arquiteto/dev e **não** siga para o aceite — achado de aderência de execução pode passar por `/arc comply <ID>` (sob demanda) antes do `/dev resume`; achado de processo (seção de standard omitida ou errada no plano) vai à fila do `/review`. O `/arc comply` **não** é etapa fixa do ciclo (`workflow.md` §4a). Se for ✅, informe que o item está pronto para `/po accept <ID>` e depois `/sm close <ID>`.
+5. **QA** — Agent `quality-assurance`, recebendo o plano, a especificação de tela (se houver), o relatório do dev e o critério de aceite do PO: seis frentes (requisito, especificação técnica, segurança, testes/métricas, documentação, desempenho), execução real dos comandos de verificação do projeto, veredito ✅/⚠️/❌ endereçado ao stakeholder. Task com interface é validado também contra os seis estados e os critérios de acessibilidade da especificação.
+6. Se o veredito for ⚠️ ou ❌, devolva os achados ao Arquiteto/dev e **não** siga para o aceite — achado de aderência de execução pode passar por `/arc comply <ID>` (sob demanda) antes do `/dev resume`; achado de processo (seção de standard omitida ou errada no plano) vai à fila do `/review`. O `/arc comply` **não** é etapa fixa do ciclo (`workflow.md` §4a). Se for ✅, informe que a Task está pronto para `/po accept <ID>` e depois `/sm close <ID>`.
 
 Modos parciais do ciclo: `plan <ID>` (só a etapa 1) · `build <ID>` (só a etapa 3, exige plano existente) · `qa <ID>` (só a etapa 5).
 

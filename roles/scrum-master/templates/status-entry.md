@@ -1,4 +1,4 @@
-# Template — Entrada no documento de status (fechamento de item)
+# Template — Entrada no documento de status (fechamento de Task)
 
 O SM escreve isto no documento de progresso do projeto (caminho em `.team-project/README.md` §4) ao rodar `/sm close <ID>` — **só depois** de veredito ✅ do QA e aceite do PO.
 

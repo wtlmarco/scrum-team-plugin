@@ -48,7 +48,7 @@ Os caminhos concretos dos documentos do projeto estão em `.team-project/README.
 | **dev** | Consumidor obrigatório: aplica a regra ao executar o plano | 🔺 GAP apontando contradição / lacuna / regra inverificável → Arquiteto decide → `/review` roteia a correção do texto ao Arquiteto (o dev não edita os próprios normativos — v1.3) |
 | **QA** | Consumidor obrigatório: valida a entrega contra os standards | Achado de processo (não achado de código) → `/review` roteia ao Arquiteto |
 
-**Desempate:** quando os três discordam sobre uma regra de engenharia, decide o **Arquiteto** — é o dono do desenho técnico. A divergência que ultrapassa engenharia (custo, prazo, escopo, política) sobe ao **stakeholder pelo SM**, com as posições lado a lado (consolidação de acordo). Defeito num standard **não se corrige de passagem** — vale a mesma regra do QA que acha defeito fora do item (abrir registro, não corrigir).
+**Desempate:** quando os três discordam sobre uma regra de engenharia, decide o **Arquiteto** — é o dono do desenho técnico. A divergência que ultrapassa engenharia (custo, prazo, escopo, política) sobe ao **stakeholder pelo SM**, com as posições lado a lado (consolidação de acordo). Defeito num standard **não se corrige de passagem** — vale a mesma regra do QA que acha defeito fora da Task (abrir registro, não corrigir).
 
 ## 2. Fluxo de um artefato entre papéis
 
@@ -88,7 +88,7 @@ Os quatro portões numerados são os gates de [`workflow.md` §8](workflow.md). 
 | Surge trabalho técnico que nenhuma História cobre | Criar Task solta no sprint | PO escreve a História que declara o valor, ainda que o beneficiário seja o time (R20) |
 | Task pronta dentro de uma História rejeitada na Review | Fechar a Task e seguir | Toda a História volta ao Product Backlog, com as Tasks boas junto (R21) |
 | Stakeholder pede escopo novo no meio do sprint | Encaixar no Sprint Backlog | Vai ao Product Backlog e concorre na Planning seguinte; exceção só para GAP que bloqueia História já no sprint, com "o que saiu para caber" registrado |
-| Frente 2 do QA parece repetir o `/arc comply` | Reexecutar a tabela passo × conforme do comply | Checar o que o comply não vê: plano omitiu ou errou a seção que o item exigia — [`workflow.md` §4a](workflow.md) |
+| Frente 2 do QA parece repetir o `/arc comply` | Reexecutar a tabela passo × conforme do comply | Checar o que o comply não vê: plano omitiu ou errou a seção que a Task exigia — [`workflow.md` §4a](workflow.md) |
 | SM vê status divergente do código | Ajustar o status pela intuição | Acionar `/qa audit`; corrigir com o achado |
 | Mudança de `/review` aplicada mas não lançada | Assumir que as instalações já a têm | Entra numa entrega: branch, bump de `version`, entrada no `CHANGELOG.md` (R18 · [`workflow.md` §5d](workflow.md)) |
 | PO quer marcar critério de sucesso como atendido | Marcar direto | Exige evidência no registro do QA |

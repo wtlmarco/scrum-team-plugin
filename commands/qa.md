@@ -10,7 +10,7 @@ Pedido do stakeholder: **$ARGUMENTS**
 Use a ferramenta Agent com `subagent_type: "quality-assurance"` e `run_in_background: false`, passando ao agente:
 
 1. O pedido acima, literal.
-2. A instrução de ler antes de validar: `.team-project/README.md`, `.team-project/quality-assurance/context.md` (comandos, limiares, checklist de segurança, limitações do ambiente), o plano em `.team-project/architect/plans/<ID>-*.md` (se existir), o relatório de entrega do dev, o critério de aceite do PO e o item no quadro do SM.
+2. A instrução de ler antes de validar: `.team-project/README.md`, `.team-project/quality-assurance/context.md` (comandos, limiares, checklist de segurança, limitações do ambiente), o plano em `.team-project/architect/plans/<ID>-*.md` (se existir), o relatório de entrega do dev, o critério de aceite do PO e a Task no quadro do SM.
 3. O modo de operação, conforme o pedido:
    - **`<ID>`** → validação completa nas seis frentes (requisito, especificação técnica, segurança, testes/métricas, documentação, desempenho), com **execução real** dos comandos e veredito no formato de `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/verdict.md`. Atualizar os documentos de qualidade indicados no contexto e `.team-project/quality-assurance/evidence.md`.
    - **baseline** → reproduzir no ambiente atual os números declarados na documentação do projeto (build, testes, cobertura, lint) e substituir os "⏳ a reproduzir" de `evidence.md` pela saída real. Divergência vira GAP novo, e o SM é avisado para corrigir o documento de status.

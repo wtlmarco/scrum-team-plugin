@@ -1,6 +1,6 @@
 ---
-description: Aciona o desenvolvedor — executa um Plano de Execução já escrito pelo Arquiteto e devolve código, testes e verificação real.
-argument-hint: "<ID do item> [ | resume <ID> | gap <resposta do arquiteto>]"
+description: Aciona o desenvolvedor — executa um Plano de Implementação já escrito pelo Arquiteto e devolve código, testes e verificação real.
+argument-hint: "<ID da Task> [ | resume <ID> | gap <resposta do arquiteto>]"
 ---
 
 Aciona o **desenvolvedor** do time.
@@ -11,7 +11,7 @@ Pedido do stakeholder: **$ARGUMENTS**
 
 Com o plano em mãos, use a ferramenta Agent com `subagent_type: "developer"` e `run_in_background: false`, passando ao agente:
 
-1. O caminho do Plano de Execução e o ID do item.
+1. O caminho do Plano de Implementação e o ID da Task.
 2. A instrução de ler `.team-project/developer/context.md` antes de escrever a primeira linha.
 3. O modo de operação, conforme o pedido:
    - **`<ID>`** → executar o plano do início ao fim, na ordem dos passos.

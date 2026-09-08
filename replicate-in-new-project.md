@@ -51,13 +51,13 @@ A distribuição de modelos é uma escolha de custo/qualidade, não uma regra:
 | SM, PO, QA | Sonnet | Leitura, julgamento e verificação — não precisam de desenho original |
 | Dev | Haiku | Executa plano detalhado; a qualidade vem do plano, não do modelo |
 
-**Dois papéis em Opus custam mais.** É deliberado: são os dois que produzem especificação que os outros executam — plano raso e tela mal especificada custam o item inteiro. Projeto **sem interface** (biblioteca, serviço, CLI) pode dispensar o UX; projeto sem base de código legada pode dispensar o QA no começo. Projeto com mais de uma frente independente justifica um segundo dev — nesse caso, reative as regras de faixas descritas em [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) §7.
+**Dois papéis em Opus custam mais.** É deliberado: são os dois que produzem especificação que os outros executam — plano raso e tela mal especificada custam a Task inteira. Projeto **sem interface** (biblioteca, serviço, CLI) pode dispensar o UX; projeto sem base de código legada pode dispensar o QA no começo. Projeto com mais de uma frente independente justifica um segundo dev — nesse caso, reative as regras de faixas descritas em [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) §7.
 
 Os princípios de engenharia de **nível 1** ([`standards/implementation-principles.md`](standards/implementation-principles.md)) são agnósticos de linguagem e plataforma — não mudam entre projetos. Só o **perfil de stack de nível 2** (os guias `implementation-guide` / `implementation-quality`, hoje calibrados para .NET/GitLab) é substituído quando a stack do novo projeto é outra — é o único ponto do plugin que pode precisar de troca, feita pelo Arquiteto via `/review`, num clone do repositório-fonte do plugin.
 
 ## Passo 5 — Semear o backlog inicial
 
-O time só arranca com uma **lista de itens com ID**:
+O time só arranca com uma **lista de Tasks com ID**:
 
 - **Projeto existente** — rode `/qa audit` e `/qa baseline` primeiro. O resultado (pendências com evidência + números reais de build/teste) vira o backlog inicial.
 - **Projeto novo** — `/po analyze <visão do produto>` para os primeiros requisitos, depois `/sm plan`.

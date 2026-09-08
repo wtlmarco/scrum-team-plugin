@@ -726,7 +726,7 @@ services.AddOptions<{Integração}Options>()
 | **Integration** | xUnit + EF Core + dependências reais (fila, cache) | Staging | Fluxos críticos por componente | Merge para `develop` e `main` |
 | **E2E** | xUnit + HttpClient (API) | Staging | Happy path + principais variantes | Merge para `main` |
 | **Contract** | PactNet | Staging | Endpoints entre serviços internos, quando aplicável | Merge para `main` |
-| **Load** | k6 (borda HTTP) · NBomber (alvo não-HTTP) | Ambiente de medição declarado em V21 | Só as operações de V18 — sem threshold próprio de cobertura | Merge para `main` **e** todo item que toca operação de V18 |
+| **Load** | k6 (borda HTTP) · NBomber (alvo não-HTTP) | Ambiente de medição declarado em V21 | Só as operações de V18 — sem threshold próprio de cobertura | Merge para `main` **e** toda Task que toca operação de V18 |
 
 ### 9.2 Unit Tests
 
@@ -850,7 +850,7 @@ k6 run tests/perf/{operacao}.perf.js \
 echo $?   # 0 = dentro do orçamento · != 0 = orçamento violado
 ```
 
-A saída real deste comando — não a alegação — é o que vai no relatório de entrega do item que toca uma operação de V18 (§5.6 P6).
+A saída real deste comando — não a alegação — é o que vai no relatório de entrega da Task que toca uma operação de V18 (§5.6 P6).
 
 ---
 

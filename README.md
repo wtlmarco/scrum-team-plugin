@@ -50,7 +50,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
     │   └── templates/   work-board · status · status-entry · impact-analysis · retrospective · project-context · process-change
     ├── product-owner/      requisitos, backlog, aceite
     │   └── templates/   product-backlog · requirement · functional-analysis · acceptance
-    ├── architect/          especificação técnica, planos de execução, ADRs
+    ├── architect/          especificação técnica, Planos de Implementação, ADRs
     │   └── templates/   execution-plan · adr · compliance-review · technical-decision
     ├── user-experience/   jornadas, telas, protótipos, usabilidade e acessibilidade
     │   └── templates/   journey-map · screen-spec · usability-review
@@ -62,7 +62,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 
 Cada pasta em `roles/`:
 
-| Item | Conteúdo |
+| Arquivo / pasta | Conteúdo |
 |---|---|
 | `README.md` | **Roteiro de atuação** — o que o papel faz, como decide, o que entrega, o que nunca faz. Traz a tabela **documento → tipo → modelo** |
 | `skills.md` | Competências transferíveis do papel — o que vale em qualquer projeto |
@@ -80,7 +80,7 @@ Cada pasta em `roles/`:
 | **Vivo** | Arquivo atualizado a cada ciclo em `.team-project/` — quadro, backlog, planos, evidências. | `roles/<papel>/templates/` |
 | **Saída** | Produzido na resposta de um comando, não vira arquivo — status, análise de impacto, veredito, relatório de entrega, 🔺 GAP. | `roles/<papel>/templates/` |
 
-Os **entregáveis** são a diferença entre um time que escreve código e um time que entrega um sistema mantenível: são a memória que permite retomar o projeto meses depois, e a referência contra a qual o QA valida cada item. Cada um tem um dono explícito — 5 documentos do SDD são do PO, 3 são do Arquiteto — e documento desatualizado é tratado como defeito, não como pendência de organização.
+Os **entregáveis** são a diferença entre um time que escreve código e um time que entrega um sistema mantenível: são a memória que permite retomar o projeto meses depois, e a referência contra a qual o QA valida cada Task. Cada um tem um dono explícito — 5 documentos do SDD são do PO, 3 são do Arquiteto — e documento desatualizado é tratado como defeito, não como pendência de organização.
 
 ## O time
 
@@ -117,13 +117,13 @@ Os seis primeiros falam com **um** papel. `/team` fala com **todos**; `/review` 
 | `/team <mensagem>` | Broadcast: os seis respondem do seu ângulo, em paralelo; a resposta consolida posições, convergências e divergências | Uma ideia, um problema ou uma dúvida que atravessa papéis |
 | `/team brainstorm <ideia>` | Descoberta funcional de ideia sem documentação, facilitada pelo SM: fase 1 stakeholder + PO + UX; fase 2 entra o Arquiteto, em rodadas até fechar para o SDD (R15, [`workflow.md` §5b](roles/scrum-master/process/workflow.md)) | Ideia greenfield que ainda não tem visão, requisitos nem fluxos |
 | `/team agreement <questão>` | Mesma rodada + consolidação do SM em **uma recomendação única**, com a divergência registrada | Quando você quer uma posição do time, não seis opiniões |
-| `/team cycle <ID>` | Encadeia UX → Arquiteto → dev → QA num item, parando no primeiro problema | Levar um item do plano ao veredito |
+| `/team cycle <ID>` | Encadeia UX → Arquiteto → dev → QA numa Task, parando no primeiro problema | Levar uma Task do plano ao veredito |
 
 **Acordo coletivo não é votação.** A propriedade dos papéis sobrevive à consulta: requisito é do PO, desenho é do Arquiteto, prazo é do SM, evidência é do QA — os outros aconselham. Maioria não sobrepõe dono; divergência que sobra vira decisão sua.
 
 Consulta e acordo **não escrevem em disco** — são conversa. O que virar ação é atribuído ao dono e executado pelo comando individual.
 
-## Caminho padrão de um item
+## Caminho padrão de uma Task
 
 ```
 [projeto novo/retomado] ──▶ /sm onboarding ──▶ entendimento alinhado + contexto do projeto  (uma vez, R14)
@@ -132,12 +132,12 @@ Consulta e acordo **não escrevem em disco** — são conversa. O que virar aç�
 stakeholder ──▶ /po analyze ──▶ requisito + critério de aceite
                      │
                      ▼
-              /sm plan ──▶ item no quadro (ID, dono, dependência, evidência esperada)
+              /sm plan ──▶ Task no quadro (ID, dono, dependência, evidência esperada)
                      │
                      ▼
               /team cycle <ID>   (ou /ux → /arc plan → /dev → /qa, passo a passo)
-                     ├─ user-experience ──▶ jornada e especificação de tela  (só se o item tem interface)
-                     ├─ architect ──▶ Plano de Execução (citando a especificação de tela)
+                     ├─ user-experience ──▶ jornada e especificação de tela  (só se a Task tem interface)
+                     ├─ architect ──▶ Plano de Implementação (citando a especificação de tela)
                      ├─ developer ──▶ código + testes, na ordem dos passos
                      │     └─ 🔺 GAP ──▶ architect decide ──▶ /dev gap ──▶ developer retoma
                      └─ quality-assurance ──▶ veredito com evidência real (inclui acessibilidade)
@@ -146,7 +146,7 @@ stakeholder ──▶ /po analyze ──▶ requisito + critério de aceite
               /po accept <ID> ──▶ /sm close <ID> ──▶ status atualizado
 ```
 
-Nenhum atalho: item com interface não é planejado sem especificação de tela, dev sem plano não codifica, QA sem saída de comando não aprova, PO sem QA não aceita, SM sem aceite não fecha.
+Nenhum atalho: Task com interface não é planejado sem especificação de tela, dev sem plano não codifica, QA sem saída de comando não aprova, PO sem QA não aceita, SM sem aceite não fecha.
 
 ## Regras que governam todos
 
@@ -159,11 +159,11 @@ Geridas pelo SM, válidas para todos os papéis e para o stakeholder:
 
 ### Como o processo evolui — `/review`
 
-O processo não muda por conversa: muda pelo comando **`/review`**, e **só no repositório-fonte do plugin** — rodá-lo contra a cópia instalada num projeto edita algo que o próximo `claude plugin update` sobrescreve. A fila de melhorias é [`note.md`](note.md): o item é escrito como **sintoma**, e o `/review` (Agent `scrum-master`) o **classifica e roteia** ao papel dono, que aplica seguindo [`review-contract.md`](review-contract.md) — cinco passos (classificar · analisar conflito · aplicar · registrar · verificar com evidência) e, no mesmo passe, **reavaliação do conjunto** (coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência, excesso). `/review` sem instrução faz só a reavaliação + a triagem de `note.md`.
+O processo não muda por conversa: muda pelo comando **`/review`**, e **só no repositório-fonte do plugin** — rodá-lo contra a cópia instalada num projeto edita algo que o próximo `claude plugin update` sobrescreve. A fila de melhorias é [`note.md`](note.md): a Task é escrito como **sintoma**, e o `/review` (Agent `scrum-master`) o **classifica e roteia** ao papel dono, que aplica seguindo [`review-contract.md`](review-contract.md) — cinco passos (classificar · analisar conflito · aplicar · registrar · verificar com evidência) e, no mesmo passe, **reavaliação do conjunto** (coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência, excesso). `/review` sem instrução faz só a reavaliação + a triagem de `note.md`.
 
 **O invariante de dono único não muda** — `/review` roteia, o dono aplica:
 
-| Classificação do item | Quem aplica |
+| Classificação da Task | Quem aplica |
 |---|---|
 | regra / fluxo / propriedade de artefato / cerimônia | Agent `scrum-master` (normativos que governam todos + curadoria) |
 | roteiro, skills, templates de um papel, entregáveis que ele possui | agente daquele papel (PO · UX · QA · Arquiteto) |
@@ -172,7 +172,7 @@ O processo não muda por conversa: muda pelo comando **`/review`**, e **só no r
 
 Limites que mantêm a evolução saudável:
 
-- **Cada papel só mexe nos próprios documentos.** Item que toca outro o SM roteia; normativo que governa todos é exclusivo do Agent `scrum-master`.
+- **Cada papel só mexe nos próprios documentos.** Task que toca outro o SM roteia; normativo que governa todos é exclusivo do Agent `scrum-master`.
 - **O dev não edita os próprios normativos.** O retorno dele sobe pelos 🔺 GAPs e pelas seções "Não fiz" dos relatórios, que o Arquiteto lê ao ser acionado pelo `/review` — não por edição direta.
 - **Regra sem forma de verificação não entra.**
 - **Conflito com regra vigente não se resolve sozinho** — as duas posições vão ao stakeholder.

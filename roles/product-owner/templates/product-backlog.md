@@ -43,7 +43,7 @@ O conteúdo de cada História segue [`user-story.md`](user-story.md), no arquivo
 
 ## Fora de escopo (registrado para não voltar toda semana)
 
-| Item | Por que está fora | Reavaliar quando |
+| O que | Por que está fora | Reavaliar quando |
 |---|---|---|
 
 ---

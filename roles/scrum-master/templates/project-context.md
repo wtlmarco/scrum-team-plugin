@@ -25,7 +25,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | `scrum-master/work-board.md` | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/work-board.md` |
 | `product-owner/product-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/product-backlog.md` |
 | `quality-assurance/evidence.md` | `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/evidence.md` |
-| `architect/plans/` | pasta vazia; os planos nascem de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/execution-plan.md` |
+| `architect/plans/` | pasta vazia; os planos nascem de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md` |
 | `user-experience/journeys/` · `screens/` | pastas vazias; nascem dos modelos de `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/templates/` |
 | `<papel>/context.md` | ver "O que vai em cada context.md", abaixo |
 

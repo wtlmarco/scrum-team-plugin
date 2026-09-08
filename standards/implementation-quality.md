@@ -44,7 +44,7 @@
 | **Code Analysis** (Roslyn Analyzers) | Detecta problemas no código-fonte em tempo de compilação: bugs potenciais, violações de estilo, más práticas | Build (todo commit) | Sim — warnings tratados como errors |
 | **Code Coverage** (Coverlet + ReportGenerator) | Mede quais linhas/branches são exercitadas pelos testes | Após execução dos testes unitários | Sim — abaixo do threshold definido |
 | **Code Metrics** (Microsoft.CodeAnalysis.Metrics) | Mede complexidade ciclomática, Maintainability Index, acoplamento | Build (target `Metrics`) | Sim — abaixo dos limites definidos |
-| **Load Testing** (k6 · NBomber) | Mede a latência das operações sob orçamento de desempenho (nível 1 §5.6, Ficha V18) sob a carga declarada | Merge para `main` e todo item que toca operação de V18 | Sim — limiar violado, ou regressão acima da margem medida |
+| **Load Testing** (k6 · NBomber) | Mede a latência das operações sob orçamento de desempenho (nível 1 §5.6, Ficha V18) sob a carga declarada | Merge para `main` e toda Task que toca operação de V18 | Sim — limiar violado, ou regressão acima da margem medida |
 
 ---
 
@@ -58,7 +58,7 @@ O Roslyn é o compilador do .NET e expõe uma API de análise estática. Pacotes
 
 ```xml
 <!-- Em cada .csproj de produção (não em projetos de teste) -->
-<ItemGroup>
+<TaskGroup>
   <!-- Analyzers oficiais Microsoft — habilitados por padrão no .NET 10 -->
   <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers"
                     Version="*" PrivateAssets="all" />
@@ -70,7 +70,7 @@ O Roslyn é o compilador do .NET e expõe uma API de análise estática. Pacotes
   <!-- Análise de segurança -->
   <PackageReference Include="SecurityCodeScan.VS2019"
                     Version="*" PrivateAssets="all" />
-</ItemGroup>
+</TaskGroup>
 ```
 
 ### Configuração no `Directory.Build.props` (raiz da solution)
@@ -137,10 +137,10 @@ Coverage mede o percentual do código-fonte exercitado pelos testes. Não garant
 
 ```xml
 <!-- Em cada *.Unit.Tests.csproj -->
-<ItemGroup>
+<TaskGroup>
   <PackageReference Include="coverlet.collector" Version="*" PrivateAssets="all" />
   <PackageReference Include="coverlet.msbuild"   Version="*" PrivateAssets="all" />
-</ItemGroup>
+</TaskGroup>
 ```
 
 Instalar o ReportGenerator como dotnet tool (uma vez por runner):
@@ -191,7 +191,7 @@ dotnet test tests/Unit/ \
 
 Exit code ≠ 0 quando **qualquer módulo** fica abaixo do threshold — bloqueia o pipeline automaticamente.
 
-> `ThresholdStat=minimum` é a configuração normativa. `average` e `total` **não** são aceitos: os dois permitem que um assembly sem teste passe às custas de outro bem coberto, que é precisamente o que o gate existe para impedir (nível 1 §5.4).
+> `ThresholdStat=minimum` é a configuração normativa. `average` e `total` **não** são aceitos: os dois permTask que um assembly sem teste passe às custas de outro bem coberto, que é precisamente o que o gate existe para impedir (nível 1 §5.4).
 
 ---
 
@@ -230,11 +230,11 @@ Adicionar ao `Directory.Build.props`:
 
 ```xml
 <Project>
-  <ItemGroup>
+  <TaskGroup>
     <!-- Habilita o target Metrics via dotnet build /t:Metrics -->
     <PackageReference Include="Microsoft.CodeAnalysis.Metrics"
                       Version="*" PrivateAssets="all" />
-  </ItemGroup>
+  </TaskGroup>
 </Project>
 ```
 
@@ -277,7 +277,7 @@ O pipeline abaixo cobre a unidade .NET. **Repositório com mais de uma unidade i
 | **Front-end / app** | `test-unit-frontend` | o comando declarado em V12 da Ficha de Vinculação — runner e ferramenta de cobertura do próprio ecossistema, mesmo limiar de 80% mínimo por módulo |
 | Qualquer outra unidade com código próprio | um job por unidade | idem |
 
-**Unidade implantável sem job de cobertura no pipeline é achado bloqueante de auditoria** (nível 1 §5.5) — não "pendência de configuração". Enquanto o job não existir, o item que toca aquela unidade não é dado como verificado.
+**Unidade implantável sem job de cobertura no pipeline é achado bloqueante de auditoria** (nível 1 §5.5) — não "pendência de configuração". Enquanto o job não existir, a Task que toca aquela unidade não é dado como verificado.
 
 ### `.gitlab-ci.yml`
 
@@ -480,7 +480,7 @@ O GitLab exibe automaticamente o percentual de coverage no MR quando o artifact 
 |---|---|---|---|
 | Analyzer warning no código | Roslyn + `TreatWarningsAsErrors` | `analyze` | **Bloqueia** — build falha |
 | Coverage < 80% em **qualquer módulo** de **qualquer unidade implantável** (front-end incluído) | Coverlet + `ThresholdStat=minimum` (.NET) · ferramenta de V12 (demais unidades) | `test-unit` | **Bloqueia** — exit code ≠ 0 |
-| Unidade implantável sem job de cobertura no pipeline | Inspeção do `.gitlab-ci.yml` (§4.1) | auditoria | **Bloqueia** — item não é dado como verificado |
+| Unidade implantável sem job de cobertura no pipeline | Inspeção do `.gitlab-ci.yml` (§4.1) | auditoria | **Bloqueia** — Task não é dado como verificado |
 | Maintainability Index < 20 | Microsoft.CodeAnalysis.Metrics | `test-unit` | **Bloqueia** — desde o primeiro commit |
 | Teste unitário falhando | xUnit | `test-unit` | **Bloqueia** — sempre |
 | Teste de integração falhando | xUnit | `test-integration` | **Bloqueia** — em `develop` e `main` |
@@ -488,13 +488,13 @@ O GitLab exibe automaticamente o percentual de coverage no MR quando o artifact 
 | Query sem filtro de escopo (tenant/sub-recurso) | Roslyn customizado | `analyze` | **Bloqueia** — build falha |
 | Log direto sem `[LoggerMessage]` | Roslyn customizado | `analyze` | **Bloqueia** — build falha |
 | Violação da regra de dependência entre camadas | Teste de arquitetura (`{Produto}.Architecture.Tests`) | `test-unit` | **Bloqueia** — nível 1 §2.3 |
-| `TODO`/`FIXME` sem ID de item aberto | Busca por padrão no script do estágio | `analyze` | **Bloqueia** — nível 1 §4.3 |
+| `TODO`/`FIXME` sem ID de Task aberta | Busca por padrão no script do estágio | `analyze` | **Bloqueia** — nível 1 §4.3 |
 | Limiar de orçamento de desempenho violado | k6 `thresholds` (ou NBomber `assertions`), exit code ≠ 0 | `test-perf` | **Bloqueia** — nível 1 §5.6 P3 |
 | Regressão acima da margem medida (V20) | `perf-compare` contra `tests/perf/baseline.json` (§4.2) | `test-perf` | **Bloqueia** — só passa com baseline atualizada no mesmo merge |
-| Operação de V18 sem cenário `*.perf.js` e sem job | Inspeção: uma linha de V18 ↔ um cenário ↔ um job | auditoria | **Bloqueia** — item não é dado como verificado |
+| Operação de V18 sem cenário `*.perf.js` e sem job | Inspeção: uma linha de V18 ↔ um cenário ↔ um job | auditoria | **Bloqueia** — Task não é dado como verificado |
 | Cenário de carga sem `thresholds` declarado | Busca por padrão em `tests/perf/*.perf.js` | `test-perf` | **Bloqueia** — relatório não é gate |
 
-> A lista completa do que bloqueia, independente de stack, está em [`implementation-principles.md`](implementation-principles.md) §7. Item daquele quadro **sem** linha correspondente aqui é gate não configurado nesta stack — achado de auditoria, não pendência de organização.
+> A lista completa do que bloqueia, independente de stack, está em [`implementation-principles.md`](implementation-principles.md) §7. Task daquele quadro **sem** linha correspondente aqui é gate não configurado nesta stack — achado de auditoria, não pendência de organização.
 
 > **Regra para projetos novos:** threshold de métricas é bloqueante desde o primeiro commit — nenhum código entra fora do limite.
 >

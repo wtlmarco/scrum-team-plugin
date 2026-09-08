@@ -27,7 +27,7 @@ Levantado pelo dev quando o plano — ou a seção de standard que ele citou —
 - Classe, método ou propriedade que o plano assume e não existe
 - Ambiguidade de nome (dois candidatos plausíveis)
 - Regra de negócio não especificada
-- Autorização não indicada num item que mexe com dado sensível
+- Autorização não indicada numa Task que mexe com dado sensível
 - Passo que exige tocar arquivo fora da lista do plano
 - Teste previsto que não faz sentido contra o código real
 - Identidade/escopo que o plano pede vindo do request
@@ -65,7 +65,7 @@ O que caracteriza:
 - **Citar `arquivo:linha`**, não a impressão. O Arquiteto vai ler o código antes de responder. No GAP de tipo `standard`, citar também `<arquivo do standard> §<n>`.
 - **Dizer o que já foi entregue e como o repositório ficou** — permite ao Arquiteto decidir se vale continuar ou reverter.
 - Depois da resposta, retomar por `/dev gap <resposta>` (ou continuar o mesmo agente), do passo em que parou.
-- **GAP de tipo `standard` não fecha com a resposta.** A decisão técnica desbloqueia o item; a correção do documento é do `/review` seguinte (R16). O dev registra o GAP no relatório de entrega mesmo quando já voltou a codificar.
+- **GAP de tipo `standard` não fecha com a resposta.** A decisão técnica desbloqueia a Task; a correção do documento é do `/review` seguinte (R16). O dev registra o GAP no relatório de entrega mesmo quando já voltou a codificar.
 
 ## Exemplo 1 — tipo `plano`
 
@@ -78,8 +78,8 @@ O que caracteriza:
 e nenhuma da família `documento.*`.
 **Por que não consigo seguir:** a permissão referenciada não existe; sem cadastro, a verificação
 vai negar toda requisição, inclusive a do perfil administrador.
-**Opções que enxergo:** A) criar a migration de cadastro neste mesmo item, incluindo o vínculo
-aos perfis padrão; B) usar uma permissão já existente e deixar a dedicada para outro item.
+**Opções que enxergo:** A) criar a migration de cadastro neste mesma Task, incluindo o vínculo
+aos perfis padrão; B) usar uma permissão já existente e deixar a dedicada para outra Task.
 (não escolhi nenhuma)
 **O que já entreguei até aqui:** passos 1 e 2 — os 5 comandos marcados, sem a permissão.
 **Estado do repositório:** compila; testes passam (nenhum cobre o caminho autorizado ainda).
@@ -100,9 +100,9 @@ campos diferentes, e nenhum teste cobre a emissão.
 **Por que não consigo seguir:** o passo exige "auditar conforme o standard", e o standard não fixa
 o conteúdo nem o critério de aceite — qualquer escolha minha vira decisão de desenho.
 **Opções que enxergo:** A) espelhar o uso mais recente e cobrir com teste de emissão;
-B) o Arquiteto fixar o conjunto mínimo de campos no plano deste item. (não escolhi nenhuma)
+B) o Arquiteto fixar o conjunto mínimo de campos no plano desta Task. (não escolhi nenhuma)
 **O que já entreguei até aqui:** passo 1 — o comando e o handler, sem auditoria.
 **Estado do repositório:** compila; testes passam.
 ```
 
-*(A resposta do Arquiteto desbloqueia o item. A correção do texto do standard entra no `/review` seguinte — R16.)*
+*(A resposta do Arquiteto desbloqueia a Task. A correção do texto do standard entra no `/review` seguinte — R16.)*

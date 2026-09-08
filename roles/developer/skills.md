@@ -4,7 +4,7 @@ Competências transferíveis do papel. Caminhos, comandos, armadilhas e convenç
 
 ## 1. Ler antes de escrever
 
-Antes de alterar um arquivo listado no plano, abrir e conferir se a assinatura descrita bate com o código real. Divergência → 🔺 GAP, não adaptação criativa. É a diferença entre um item que passa no QA e um que volta.
+Antes de alterar um arquivo listado no plano, abrir e conferir se a assinatura descrita bate com o código real. Divergência → 🔺 GAP, não adaptação criativa. É a diferença entre uma Task que passa no QA e um que volta.
 
 ## 2. Executar na ordem
 
@@ -57,7 +57,7 @@ Regras mecânicas, sem julgamento — a fonte é [`${CLAUDE_PLUGIN_ROOT}/standar
 
 - **Nome sai literal** da especificação e do plano; nunca abreviado, nunca "melhorado".
 - **Sem número ou texto mágico solto** no código. Se o plano não deu a constante nem onde ela vive → 🔺 GAP.
-- **Sem código comentado** e sem `TODO`/`FIXME` sem o ID de um item aberto.
+- **Sem código comentado** e sem `TODO`/`FIXME` sem o ID de uma Task aberta.
 - **Sem captura de exceção vazia** — bloco que engole o erro não passa.
 - **Formatter e linter antes de fechar o passo**, com o comando do projeto.
 - **A função passou de 50 linhas, 10 de complexidade ou 4 parâmetros?** → 🔺 GAP. Quebrar a função é decisão de desenho, não iniciativa de execução.

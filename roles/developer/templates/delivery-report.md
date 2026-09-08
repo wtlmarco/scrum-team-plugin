@@ -49,9 +49,9 @@ Fecha toda execução de `/dev <ID>`. É o que o Arquiteto revisa e o QA usa com
 ## Regras
 
 - **Saída real, sempre** (R7). "Build ok" sem saída não conta; se falhou, mostrar a falha.
-- **Cobertura é saída, não alegação.** Todo item que altera código de produção — **inclusive front-end** — traz a saída do gate de 80% da unidade que tocou. Sem ela, o QA trata como não verificado (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.4/§5.5).
+- **Cobertura é saída, não alegação.** Toda Task que altera código de produção — **inclusive front-end** — traz a saída do gate de 80% da unidade que tocou. Sem ela, o QA trata como não verificado (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.4/§5.5).
 - **Grupo vazio é declarado**, não omitido — evita ambiguidade na hora do QA.
-- **GAP de tipo `standard` fica no relatório mesmo depois de respondido** (R16). A decisão do Arquiteto desbloqueia o item; o defeito no documento só se fecha no `/review` seguinte, e o relatório é a trilha que garante que ele chegue lá. Citar `<arquivo do standard> §<n>`.
+- **GAP de tipo `standard` fica no relatório mesmo depois de respondido** (R16). A decisão do Arquiteto desbloqueia a Task; o defeito no documento só se fecha no `/review` seguinte, e o relatório é a trilha que garante que ele chegue lá. Citar `<arquivo do standard> §<n>`.
 - **Nenhum arquivo de `${CLAUDE_PLUGIN_ROOT}/standards/` aparece em CRIADOS/ALTERADOS/REMOVIDOS.** O dev consome o normativo, não o edita — a caneta é do Arquiteto (R16).
 - **"Não fiz (fora do plano)"** é obrigatório: é onde o time descobre gap de escopo sem que ninguém tenha antecipado nada.
 - **"Parei no passo"** é obrigatório mesmo quando terminou tudo (`<m> de <m>` — repositório íntegro).
@@ -93,7 +93,7 @@ Passed! - Failed: 0, Passed: 311, Skipped: 0
 nenhum
 
 ### Não fiz (fora do plano)
-A configuração ainda aponta para uma rota de download que não existe — é o item seguinte (ABC-01), não toquei.
+A configuração ainda aponta para uma rota de download que não existe — é a Task seguinte (ABC-01), não toquei.
 
 ### Parei no passo
 4 de 4 — repositório compila, todos os testes passam.

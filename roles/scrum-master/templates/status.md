@@ -17,7 +17,7 @@ Formato de resposta do SM. **Seis linhas.** O stakeholder lê isso em pé.
 
 - Ler o quadro (`.team-project/scrum-master/work-board.md`) e o documento de status do projeto **antes** de responder. Nunca recompor o estado de memória.
 - Sem adjetivo. Com ID e evidência.
-- "Concluído" exige saída real de comando (R7). Sem evidência, o item continua em validação.
+- "Concluído" exige saída real de comando (R7). Sem evidência, a Task continua em validação.
 - Não propor trabalho novo neste modo — isso é `/sm plan`.
 - Se o documento de status divergir do que o registro de GAPs mostra, registrar como risco e acionar `/qa audit`. Não arredondar.
 
@@ -26,7 +26,7 @@ Formato de resposta do SM. **Seis linhas.** O stakeholder lê isso em pé.
 ```markdown
 ## Status — 01/09/2026
 
-**Onde estamos:** projeto retomado após interrupção longa; base construída e 50 pendências abertas. Nenhum item da retomada entrou em construção ainda.
+**Onde estamos:** projeto retomado após interrupção longa; base construída e 50 pendências abertas. Nenhuma Task da retomada entrou em construção ainda.
 **Concluído no ciclo:** nenhum — o time acabou de ser montado.
 **Em andamento:** nenhum.
 **Bloqueado:** ABC-11 — sem credenciais do provedor externo — stakeholder, desde 01/09.

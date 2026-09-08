@@ -69,4 +69,4 @@ O requisito precisa sobreviver a ser lido por um dev júnior sem contexto:
 
 ## 7. Registrar o "fora de escopo"
 
-Decisão de não fazer também é decisão. Registre o item, o motivo e o gatilho de reavaliação — poupa a discussão de voltar toda semana e evita que a mesma ideia seja reintroduzida por esquecimento.
+Decisão de não fazer também é decisão. Registre a Task, o motivo e o gatilho de reavaliação — poupa a discussão de voltar toda semana e evita que a mesma ideia seja reintroduzida por esquecimento.

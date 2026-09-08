@@ -30,11 +30,11 @@ Um documento tem **um dono**, que responde pelo conteúdo e pela atualização. 
 | `06-changelog` | **PO** | Toda mudança funcional aceita | SM (fechamento) |
 | `README` (índice) | **PO** | Documento novo entra no conjunto | — |
 | `01-scope-and-criteria` | **PO** | Escopo de um ciclo é definido, concluído ou revisto | SM, QA |
-| `02-status` | **SM** | Um item é fechado ou um ciclo termina | QA (auditoria) |
+| `02-status` | **SM** | Uma Task é fechado ou um ciclo termina | QA (auditoria) |
 | `03-code-map` | **QA** | Arquivo de código criado, alterado ou removido | Arquiteto |
 | `pending` | **QA** | GAP aberto, fechado ou confirmado como não-gap | SM, Arquiteto |
 
-O SM não escreve nenhum documento do SDD — mas **bloqueia o fechamento de um item** cuja mudança não tenha sido refletida neles (regra R12). Em compensação, é o único dono do documento de status.
+O SM não escreve nenhum documento do SDD — mas **bloqueia o fechamento de uma Task** cuja mudança não tenha sido refletida neles (regra R12). Em compensação, é o único dono do documento de status.
 
 **Cobertura por papel:** PO 6 documentos · Arquiteto 3 + ADRs (e é o **dono editorial** dos padrões de engenharia, que não são entregável) · QA 2 · SM 1. O dev não é dono de nenhum — sua entrega é código, testes e relatório.
 
@@ -42,7 +42,7 @@ O SM não escreve nenhum documento do SDD — mas **bloqueia o fechamento de um 
 
 ```
 PO escreve objetivo e requisito ──▶ Arquiteto desenha arquitetura, dados e API
-                                        └──▶ Plano de Execução cita a seção aplicável
+                                        └──▶ Plano de Implementação cita a seção aplicável
                                               └──▶ dev implementa com a grafia exata
                                                     └──▶ QA valida código × documento
                                                           └──▶ PO registra no changelog
@@ -59,7 +59,7 @@ Duas consequências práticas:
 2. `01-requirements` — o suficiente para o primeiro ciclo, não o catálogo inteiro.
 3. `02-flows-and-roles` — quando houver mais de um ator ou etapa assíncrona.
 4. `03-architecture` — depois que os requisitos do primeiro ciclo estiverem estáveis.
-5. `04-data-model` e `05-api-model` — junto com o primeiro Plano de Execução que os exija.
+5. `04-data-model` e `05-api-model` — junto com o primeiro Plano de Implementação que os exija.
 6. `06-changelog` — a partir da primeira mudança funcional aceita.
 
 **Não escreva os sete documentos de conteúdo (`00`–`06`) de uma vez.** Documento escrito antes da necessidade envelhece antes de ser lido. O que precisa existir desde o dia 1 é o `README` do conjunto — o oitavo arquivo do SDD, e o único índice —, para que cada documento tenha lugar quando nascer.
@@ -75,12 +75,12 @@ Duas consequências práticas:
 | Nenhuma seção descreve funcionalidade removida ou nunca construída | todos |
 | Mudança funcional aceita tem entrada no changelog | `06` |
 | Nenhum documento contradiz outro do conjunto | todos |
-| Item concluído tem arquivo correspondente no mapa de código | `01-scope` × `03-code-map` |
-| Item concluído tem evidência (comando + saída), não só narrativa | `02-status` |
+| Task concluída tem arquivo correspondente no mapa de código | `01-scope` × `03-code-map` |
+| Task concluída tem evidência (comando + saída), não só narrativa | `02-status` |
 | Todo GAP tem `arquivo:linha`, impacto e criticidade | `pending` |
 | Nenhum critério marcado como atendido sem evidência | `01-scope` × `02-status` |
 
-A auditoria cruzada (`/qa audit`) existe justamente para verificar periodicamente os critérios que atravessam documentos, não só os de um item.
+A auditoria cruzada (`/qa audit`) existe justamente para verificar periodicamente os critérios que atravessam documentos, não só os de uma Task.
 
 ## A regra de confiança entre documentos
 

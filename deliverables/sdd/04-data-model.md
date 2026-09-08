@@ -44,7 +44,7 @@ Entidades transversais (não pertencem a uma única ramificação): <lista>.
 - **Enum documentado é enum fechado.** Valor novo é mudança de contrato: passa pelo Arquiteto e gera migration.
 - **Toda entidade declara suas invariantes.** É o que o dev transforma em guarda no construtor e o QA transforma em teste.
 - **Campo opcional precisa dizer por quê.** Nulo sem justificativa vira interpretação livre na implementação.
-- **Uma migration por mudança de item.** O nome da migration entra no Plano de Execução, não é escolhido pelo dev.
+- **Uma migration por mudança de Task.** O nome da migration entra no Plano de Implementação, não é escolhido pelo dev.
 - **Numere as seções e mantenha a ordem estável.** Entidade nova entra com sufixo (`17a`) em vez de renumerar tudo — há referências cruzadas apontando para os números.
 
 ## Falhas comuns

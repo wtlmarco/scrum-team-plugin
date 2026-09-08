@@ -28,12 +28,12 @@ O que separa um plano bom de um plano raso:
 
 ## 3. Dimensionar
 
-Plano grande é item inacabado. Limites que valem em qualquer projeto:
+Plano grande é Task inacabado. Limites que valem em qualquer projeto:
 
 - ~10 passos;
-- uma área do sistema por item (backend **ou** frontend);
-- **uma** migration de banco por item;
-- itens que compartilham a mesma migration viram um item só.
+- uma área do sistema por Task (backend **ou** frontend);
+- **uma** migration de banco por Task;
+- Tasks que compartilham a mesma migration viram uma Task só.
 
 Passando disso: quebrar em `<ID>a`/`<ID>b` encadeados e avisar o SM.
 
@@ -52,10 +52,10 @@ Quando o dev levanta 🔺 GAP:
 
 ## 6. Segurança no desenho, não na revisão
 
-Checklist que todo plano de item sensível carrega:
+Checklist que todo plano de Task sensível carrega:
 
 - [ ] Identidade e escopo (tenant/usuário) do contexto autenticado, nunca do request
-- [ ] Autorização explícita, com permissão **existente no catálogo** (ou criada no mesmo item, com seed e vínculo aos perfis)
+- [ ] Autorização explícita, com permissão **existente no catálogo** (ou criada no mesma Task, com seed e vínculo aos perfis)
 - [ ] Teste de isolamento entre escopos
 - [ ] Auditoria quando a ação é sensível
 - [ ] Segredo por configuração validada no start, nunca com default vazio
@@ -79,7 +79,7 @@ Sinais de que algo foi implementado sem respaldo e vai cobrar juros:
 - componente de infraestrutura provisionado e não consumido por nenhum código;
 - gate previsto no normativo e **não configurado** no pipeline daquela unidade implantável.
 
-Levante isso no diagnóstico mesmo quando não for o item em mãos — vira backlog, não silêncio.
+Levante isso no diagnóstico mesmo quando não for a Task em mãos — vira backlog, não silêncio.
 
 ## 9. Vincular qualquer stack aos princípios
 
@@ -87,7 +87,7 @@ Os princípios ([`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md`]
 
 1. Nomear os quatro anéis com os nomes reais da stack (§2.1) e as unidades implantáveis.
 2. Escolher, para cada regra, a ferramenta que a verifica — regra de dependência, formatter, linter, duplicação, cobertura, métricas (§6, V1–V17).
-3. Registrar a ficha preenchida no documento de arquitetura do produto e **ligar os gates antes do primeiro item de negócio**.
+3. Registrar a ficha preenchida no documento de arquitetura do produto e **ligar os gates antes do primeira Task de negócio**.
 
 Duas armadilhas:
 
@@ -98,16 +98,16 @@ Duas armadilhas:
 
 `${CLAUDE_PLUGIN_ROOT}/standards/` não é anotação pessoal: o dev executa contra ele e o QA valida contra ele. Ser **dono editorial** (R16) é uma competência de manutenção, não um título.
 
-**Escrever para quem consome, não para quem escreveu.** Cada regra precisa de três coisas — a obrigação em uma frase afirmativa, **como se verifica** (comando, teste, revisão nomeada) e a fronteira do que ela *não* cobre. Regra sem forma de verificação não entra; regra sem fronteira vira discussão a cada item.
+**Escrever para quem consome, não para quem escreveu.** Cada regra precisa de três coisas — a obrigação em uma frase afirmativa, **como se verifica** (comando, teste, revisão nomeada) e a fronteira do que ela *não* cobre. Regra sem forma de verificação não entra; regra sem fronteira vira discussão a cada Task.
 
 **Guardar a precedência nível 1 × nível 2.** Toda vez que mexer num perfil de stack, pergunte: isto *acrescenta* obrigação ao nível 1 ou *afrouxa* uma? Afrouxar é defeito de documento — ou o nível 1 muda primeiro, ou o perfil não muda. Regra repetida nos dois níveis com redação diferente é o começo da divergência: no nível 2 fica a **tradução** (nome de camada, ferramenta, comando), no nível 1 fica a **obrigação**.
 
 **Tratar defeito reportado como defeito, não como dúvida.** Quando o 🔺 GAP do dev ou o achado do QA diz "o standard se contradiz aqui" / "não diz como verificar isto" / "manda fazer X e a seção Y proíbe":
 
-1. desbloquear o item primeiro, com uma decisão técnica válida para ele;
+1. desbloquear a Task primeiro, com uma decisão técnica válida para ele;
 2. classificar: **defeito do standard** (corrigir por `/review`) ou **leitura errada** (então o defeito é de clareza — o texto ainda tem culpa);
 3. corrigir no `/review` seguinte. Defeito de standard aberto por mais de um ciclo vira bloqueio no quadro.
 
-Dois erros a evitar: **corrigir o standard no meio do item**, sem registro nem changelog — vira normativo que muda por conversa, exatamente o que R16 impede; e **ajustar o normativo para caber no caso do projeto atual** — isso é conteúdo do documento de arquitetura do produto, não do padrão agnóstico.
+Dois erros a evitar: **corrigir o standard no meio da Task**, sem registro nem changelog — vira normativo que muda por conversa, exatamente o que R16 impede; e **ajustar o normativo para caber no caso do projeto atual** — isso é conteúdo do documento de arquitetura do produto, não do padrão agnóstico.
 
 **Sinal de que o normativo virou enfeite:** três ciclos sem nenhum plano citar uma seção e sem nenhum defeito levantado. Ou o time parou de usar, ou o documento cresceu além do que alguém lê — nos dois casos, a ação é **encolher**, não reforçar.

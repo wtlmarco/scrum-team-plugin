@@ -1,5 +1,5 @@
 ---
-description: Aciona o Arquiteto — diagnóstico técnico, desenho de solução, Plano de Execução, ADR e decisão sobre gap de implementação.
+description: Aciona o Arquiteto — diagnóstico técnico, desenho de solução, Plano de Implementação, ADR e decisão sobre gap de implementação.
 argument-hint: "[plan <ID> | comply <ID> | adr <tema> | question <dúvida>] ou descrição livre"
 ---
 
@@ -12,7 +12,7 @@ Use a ferramenta Agent com `subagent_type: "architect"` e `run_in_background: fa
 1. O pedido acima, literal.
 2. A instrução de ler antes de responder: `.team-project/README.md`, `.team-project/architect/context.md`, os normativos em `${CLAUDE_PLUGIN_ROOT}/standards/`, os documentos de arquitetura/dados/API indicados no contexto, e **o código real** envolvido (com `arquivo:linha` como evidência).
 3. O modo de operação, conforme o primeiro termo do pedido:
-   - **plan `<ID>`** → diagnóstico com evidência, desenho da solução, alternativas descartadas em uma linha cada, impacto (arquivos, migration, contrato de API, risco de regressão) e o **Plano de Execução** no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/execution-plan.md`, salvo em `.team-project/architect/plans/<ID>-<slug>.md`, respeitando a capacidade declarada no contexto do projeto.
+   - **plan `<ID>`** → diagnóstico com evidência, desenho da solução, alternativas descartadas em uma linha cada, impacto (arquivos, migration, contrato de API, risco de regressão) e o **Plano de Implementação** no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md`, salvo em `.team-project/architect/plans/<ID>-<slug>.md`, respeitando a capacidade declarada no contexto do projeto.
    - **comply `<ID>`** → revisão de aderência do que voltou do dev, no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/compliance-review.md`. Aponte desvio com `arquivo:linha`; não corrija o código. É revisão **sob demanda**, não etapa do ciclo (`workflow.md` §4a): roda por iniciativa do Arquiteto antes do QA, ou como rota de volta de achado de aderência ⚠️/❌. Confere a **aplicação** do que o plano citou — não se o plano citou o conjunto certo de seções, o que é a frente 2 do QA.
    - **adr `<tema>`** → escrever/atualizar a ADR no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/adr.md`, no diretório de ADRs do projeto, com checklist de aceitação verificável.
    - **question `<dúvida>`** → responder e **decidir** no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/technical-decision.md`, não devolver a pergunta. Se for dúvida funcional, dizer que o caminho é `/po`; se for estratégica (stack, provedor, custo), escalar ao stakeholder com recomendação.
