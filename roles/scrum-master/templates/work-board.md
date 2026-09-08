@@ -1,29 +1,49 @@
-# Quadro de Trabalho — Sprint Backlog
+# Sprint Backlog — quadro de trabalho
 
 > **DOCUMENTO VIVO** · **Dono:** SM · **Atualizado em:** <data> · **Estado:** <proposta | vigente>
-> Vive em `.team-project/scrum-master/work-board.md`. Fonte dos itens: <origem — levantamento de GAPs, backlog do PO>
+> Vive em `.team-project/scrum-master/work-board.md`. As Tasks saem da quebra das Histórias aprovadas, na Planning Meeting ([`../process/workflow.md` §5e](../process/workflow.md)).
 
-Legenda de estado: ⬜ backlog · 🟦 plano · 🟨 construção · 🟪 QA · 🟩 aceite · ✅ fechado · 🔴 bloqueado
+## Sprint <n>
 
-**Capacidade:** <n> desenvolvedor(es). Com um só dev, este quadro é uma **fila** — um item em 🟨 por vez. *Est.* é na unidade declarada no contexto do projeto.
+| | |
+|---|---|
+| **Objetivo do sprint** | <uma frase, derivada das Histórias que entraram> |
+| **Janela** | <início> → <fim> · duração declarada em `.team-project/README.md` |
+| **Capacidade** | <n> · média entregue nos 3 sprints anteriores: <n> |
+| **Somatório planejado** | <n> — <dentro da capacidade \| acima, com a justificativa em nota> |
+
+**Capacidade:** <n> desenvolvedor(es). Com um só dev, este quadro é uma **fila** — uma Task em 🟨 por vez (R1). *Est.* é na unidade declarada no contexto do projeto.
+
+Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · ✅ fechada (técnica) · 🔴 bloqueada
+
+> **Fechada ≠ aceita.** ✅ significa veredito ✅ do QA e `/sm close`. O aceite é da **História**, pelo PO, na Sprint Review (R21).
 
 ---
 
-## Bloco <n> — <objetivo do bloco> (<criticidade>)
+## História H-<nnn> — <título> (<criticidade>)
 
-<Uma frase dizendo o que este bloco destrava e por que vem nesta posição.>
+<Uma frase dizendo que valor esta História destrava e por que vem nesta posição.>
 
-| ID | Item | Est. | Dono | Depende de | Critério de pronto / evidência |
+**Detalhamento aprovado pelo stakeholder em:** <data — portão ③. Sem isso a História não deveria estar aqui.>
+
+| ID | Task | Est. | Dono | Depende de | Critério de pronto / evidência |
 |---|---|---|---|---|---|
-| ⬜ <ID> | <o que é feito, em uma linha> | <n> | dev | <IDs ou —> | <como se prova que ficou pronto> |
+| ⬜ T-<nnn> | <o que é feito, em uma linha> | <n> | dev | <IDs ou —> | <como se prova que ficou pronto> |
 
 > Nota do SM: <serialização forçada, migration compartilhada, risco específico — só quando houver>
 
 ---
 
+## Entradas fora da Planning
+
+> O Sprint Backlog **não cresce** durante o sprint (R4). A única exceção é o GAP que bloqueia uma História já no sprint. Toda entrada aqui declara **o que saiu para caber**.
+
+| Task | História | Por que entrou fora da Planning | O que saiu para caber | Data |
+|---|---|---|---|---|
+
 ## Bloqueios e riscos abertos
 
-| # | Item | Natureza | Quem destrava | Desde |
+| # | Task / História | Natureza | Quem destrava | Desde |
 |---|---|---|---|---|
 
 ## Decisões pendentes do stakeholder
@@ -32,20 +52,29 @@ Legenda de estado: ⬜ backlog · 🟦 plano · 🟨 construção · 🟪 QA · 
 
 ---
 
-*Atualizado pelo SM a cada `/sm plan`, `/sm board` e `/sm close <ID>`.*
+*Atualizado pelo SM na Planning (`/sm sprint plan`), no acompanhamento (`/sm board`) e a cada `/sm close <T-ID>`. Encerrado em `/sm sprint close`.*
 
 ---
 
 ## Como preencher
 
-- **ID** — segue a convenção do projeto (`.team-project/scrum-master/context.md`): reusa o ID do GAP quando existir; escopo novo usa o do requisito; item de processo usa `OPS-nn`; quebra usa sufixo (`<ID>a`).
-- **Est.** — na unidade declarada no projeto. Item acima de uma unidade é candidato a quebra (R2).
+- **ID** — segue a convenção do projeto (`.team-project/scrum-master/context.md`): `T-nnn` para Task, `H-nnn` para História; Task nascida de GAP reusa o ID do GAP; quebra usa sufixo (`T-012a`).
+- **Toda Task fica sob a História a que pertence.** Task sem História é violação de R20 e não entra no quadro.
+- **Est.** — na unidade declarada no projeto, atribuída pelo time na Planning. Task acima de uma unidade é candidata a quebra (R2), sempre dentro da mesma História.
 - **Depende de** — dependência real de execução, não de preferência. É o que define a ordem, mais do que a criticidade.
 - **Critério de pronto / evidência** — precisa citar o comando, teste ou passo de UI que prova a conclusão. "Funcionando" não é critério.
-- **Uma migration por item.** Itens que compartilham a mesma migration viram um item só.
+- **Uma migration por Task.** Tasks que compartilham a mesma migration viram uma Task só.
+- **No fechamento do sprint**, Task não concluída volta ao Product Backlog **junto com a História** — não fica pendurada no quadro do sprint seguinte (R5 · §5e).
 
 ### Exemplo
 
 ```
-| ⬜ ABC-01 | Endpoint de download validando assinatura e expiração | 1 | dev | ABC-02 | Teste de integração: assinatura válida (200), expirada (410), adulterada (403) · smoke baixando um arquivo real |
+## História H-014 — Exportar o resultado da análise (alta)
+
+Destrava a saída do dado da plataforma: hoje o analista refaz o quadro no slide.
+Detalhamento aprovado pelo stakeholder em: 03/09/2026
+
+| ⬜ T-041 | Endpoint de exportação respeitando o filtro aplicado | 1 | dev | — | Teste de integração: 214 linhas na tela = 214 no arquivo |
+| ⬜ T-042 | Assinatura e expiração de 24h no link de download | 1 | dev | T-041 | Teste: assinatura válida (200), expirada (410), adulterada (403) |
+| ⬜ T-043 | Filtro de colunas por permissão do perfil | 1 | dev | T-041 | Teste de isolamento: perfil júnior não recebe a coluna de custo |
 ```
