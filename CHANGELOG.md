@@ -13,6 +13,58 @@
 
 ---
 
+## v3.0.0 — 2026-09-08
+
+**Branch:** `feat/v3.0.0` · **Base:** `main` (v2.9.0) · **PR** para `main`.
+
+**MAJOR — redesenho do modelo de trabalho.** Carrega a entrada `v3.0` do [changelog do processo](roles/scrum-master/process/process-changelog.md). É a primeira entrega que **quebra vocabulário e superfície de comandos**: projetos instalados precisam de leitura antes de aplicar.
+
+### O que muda para quem usa o time
+
+- **Duas unidades onde havia uma.** A **História** é a unidade de valor (dona: PO, conteúdo **só funcional** — regra, protótipo, critério de aceite); a **Task** é a unidade de trabalho, no Sprint Backlog do SM, com o **Plano de Implementação** do Arquiteto dentro dela. Toda Task pertence a exatamente uma História (**R20**). O que se chamava `item` **deixou de existir**.
+- **O sprint virou caixa de tempo.** Duração e unidade de estimativa são declaradas por projeto no `.team-project/README.md` §2a e respondidas no onboarding. A Planning Meeting (`/sm sprint plan`) quebra as Histórias aprovadas em Tasks, o time estima, e a soma é cortada na **capacidade observada** — a média entregue, não o desejo. O Sprint Backlog **não cresce** depois disso.
+- **O aceite mudou de alvo e de lugar** (**R21**). O `/sm close <T-ID>` passa a ser **fechamento técnico** (veredito ✅ do QA); quem diz que o valor chegou é o PO, **por História, na Sprint Review**. Consequência aceita conscientemente: **História rejeitada devolve todas as Tasks, inclusive as aprovadas pelo QA**.
+- **Quatro portões de aprovação do stakeholder**, onde antes havia zero: ① SDD funcional (`00`,`01`,`02`) antes do técnico · ② SDD técnico (`03`,`04`,`05`) antes da primeira História · ③ detalhamento da História antes da Planning · ④ aceite na Sprint Review.
+- **Três comandos novos:** `/po story <H-ID>` (escrever e detalhar História) · `/sm sprint plan|close` (abrir e encerrar sprint) · `/sm review` (Sprint Review). **`/sm review` não é `/review`** — o primeiro roda no projeto e aceita Histórias; o segundo evolui o processo do time e roda só no repositório-fonte.
+- **O `/team update` passou a reconciliar o `.team-project/`** (passo 7 novo, 7 → 8 passos). Antes ele atualizava só `${CLAUDE_PLUGIN_ROOT}` e **tudo que o `init` havia instanciado derivava em silêncio** — `.team-project/how-to.md` incluído. Agora compara contra o manifesto de `deliverables/team-project/README.md` e **propõe** o delta, sem nunca apagar conteúdo do projeto sem aprovação.
+
+### Renomeações que quebram compatibilidade
+
+| Antes | Agora |
+|---|---|
+| `item` / `<ID>` | `Task` / `<T-ID>` — e `<H-ID>` para História |
+| `Plano de Execução` · `templates/execution-plan.md` | `Plano de Implementação` · `templates/implementation-plan.md` |
+| `/sm plan` | `/sm sprint plan` |
+| `/po accept <ID>` (por item, após o QA) | `/po accept <H-ID>` (por História, na Sprint Review) |
+| Quadro de trabalho | Sprint Backlog (mesmo arquivo, cabeçalho de sprint novo) |
+| Product Backlog = lista de itens | Product Backlog = **conjunto das Histórias** |
+
+### Arquivos novos
+
+- `roles/product-owner/templates/user-story.md` — a História em dois estados, com o portão ③
+- `roles/scrum-master/templates/sprint-review.md` — registro da Review
+- `deliverables/team-project/README.md` — manifesto do `.team-project/` e as três classes de reconciliação
+
+### Regras
+
+**19 → 21.** R20 (História é valor, Task é trabalho) e R21 (aceite por História, na Review) são novas; R1–R2, R4–R8 e R11–R17 foram reescritas sobre o novo modelo. R14 passa a bloquear a **primeira Planning Meeting**; R15 ganha os portões ① e ②.
+
+### Como verificar
+
+- `claude plugin details team@team` mostra **v3.0.0** e continua listando **8 comandos** (`sm po arc ux dev qa team review`) e 6 agents — após reiniciar a sessão.
+- `/help` mostra os modos novos no `argument-hint` de `/sm` e `/po`.
+- `grep -r "Plano de Execução" --include=*.md .` → só nos changelogs, que por R17 não se reescrevem.
+- A entrada `v3.0` do changelog do processo traz o bloco de evidência exigido por R19, incluindo a checagem semântica que pegou 4 falsos positivos da substituição `item` → `Task`.
+
+### Migração de um projeto já instalado
+
+1. `/team update` — ele agora mostra o delta dos modelos e pede aprovação por arquivo.
+2. Reiniciar a sessão.
+3. `/sm onboarding` para registrar **duração do sprint** e **unidade de estimativa** no `.team-project/README.md` §2a.
+4. O backlog existente precisa virar Histórias (`/po story`) antes da primeira `/sm sprint plan` — Task sem História não entra no quadro (R20).
+
+---
+
 ## v2.9.0 — 2026-09-07
 
 **Branch:** `fix/v2.9.0` · **Base:** `main` (v1.0.0) · **PR** para `main`.

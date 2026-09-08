@@ -10,6 +10,7 @@ Este diretório guarda **a estrutura desses documentos**, para que qualquer proj
 |---|---|---|
 | **SDD** — Software Design Document | **O que o sistema é**: objetivos, requisitos, fluxos, arquitetura, dados, API e histórico | [`sdd/`](sdd/README.md) |
 | **Implementação** | **Como a construção está indo**: escopo combinado, progresso, mapa de código, pendências | [`implementation/`](implementation/README.md) |
+| **`.team-project/`** | **Como o time opera neste projeto**: o contexto que o `/team init` cria e o `/team update` reconcilia | [`team-project/`](team-project/README.md) |
 | **ADR** — Architecture Decision Record | **Por que se decidiu assim**: uma decisão estrutural por documento | [`../roles/architect/templates/adr.md`](../roles/architect/templates/adr.md) |
 | **Padrões de engenharia** *(relacionado — não é entregável)* | **Como se constrói aqui**: normativos agnósticos de produto | [`../standards/`](../standards/README.md) |
 
@@ -53,16 +54,30 @@ Duas consequências práticas:
 - **A grafia é contrato.** Nome de entidade, campo, enum e rota nascem em `04-data-model` e `05-api-model`; qualquer divergência no código é achado de QA, não detalhe (regra R10).
 - **Documento desatualizado é defeito.** O QA valida a frente "documentação" em toda entrega; documento que não reflete o código vira GAP.
 
-## Ordem de elaboração num projeto novo
+## Ordem de elaboração num projeto novo — e os dois portões
+
+O SDD sobe em **duas etapas, com aprovação entre elas** (R15 · [`workflow.md` §8](../roles/scrum-master/process/workflow.md)). O conjunto continua sendo **um só, com versão única**: os portões são de **aprovação**, não de arquivo.
+
+| Etapa | Documentos | Dono | Portão |
+|---|---|---|---|
+| **SDD funcional** | `00-overview-objectives` · `01-requirements` · `02-flows-and-roles` | PO | **① o stakeholder aprova** — e só então o técnico começa |
+| **SDD técnico** | `03-architecture` · `04-data-model` · `05-api-model` | Arquiteto | **② aprovado** — e só então nascem as Histórias |
+| *(contínuo)* | `06-changelog` | PO | a partir da primeira mudança funcional aceita |
+
+Dentro de cada etapa, a ordem:
 
 1. `00-overview-objectives` — sem objetivo declarado, priorizar é chute.
-2. `01-requirements` — o suficiente para o primeiro ciclo, não o catálogo inteiro.
+2. `01-requirements` — o suficiente para a primeira fatia, não o catálogo inteiro.
 3. `02-flows-and-roles` — quando houver mais de um ator ou etapa assíncrona.
-4. `03-architecture` — depois que os requisitos do primeiro ciclo estiverem estáveis.
-5. `04-data-model` e `05-api-model` — junto com o primeiro Plano de Implementação que os exija.
+4. `03-architecture` — depois do portão ①, com os requisitos da primeira fatia estáveis.
+5. `04-data-model` e `05-api-model` — as partes que a primeira fatia exige.
 6. `06-changelog` — a partir da primeira mudança funcional aceita.
 
+**Por que o portão ① existe:** desenhar arquitetura, modelo de dados e contrato de API sobre um entendimento funcional que o stakeholder ainda não referendou é o jeito mais caro de descobrir que ele queria outra coisa — joga-se fora desenho técnico, não texto. **Por que o ② existe:** História escrita antes de o técnico ser viável promete valor que o time ainda não sabe se consegue entregar.
+
 **Não escreva os sete documentos de conteúdo (`00`–`06`) de uma vez.** Documento escrito antes da necessidade envelhece antes de ser lido. O que precisa existir desde o dia 1 é o `README` do conjunto — o oitavo arquivo do SDD, e o único índice —, para que cada documento tenha lugar quando nascer.
+
+**Depois do portão ②, o SDD vira Histórias** (R20). O PO escreve cada uma com o valor declarado ([`user-story.md`](../roles/product-owner/templates/user-story.md)); o conjunto delas **é** o Product Backlog. A História é detalhada só quando candidata a um sprint, e passa pelo **portão ③** — aprovação do stakeholder — antes da Planning Meeting.
 
 ## Critérios de qualidade — o que o QA verifica
 

@@ -24,11 +24,11 @@ A partir de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/project-context.
 └── quality-assurance/        context.md · evidence.md
 ```
 
-Os arquivos-semente saem dos modelos do plugin: `work-board.md`, `product-backlog.md` e `evidence.md` dos `templates/` dos respectivos papéis; os seis `context.md` da seção "O que vai em cada `context.md`" do modelo de contexto. `plans/`, `journeys/` e `screens/` nascem vazios — são preenchidos por `/arc plan` e `/ux`. O `how-to.md` é **cópia literal** de `${CLAUDE_PLUGIN_ROOT}/how-to.md`, com um comentário no topo dizendo que não deve ser editado ali — é o guia de uso à mão de quem trabalha no projeto.
+**O manifesto do que criar, com a origem de cada arquivo e a classe de reconciliação, está em `${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/README.md`** — é a lista única, e é ela que o `/team update` relê depois para reconciliar o que aqui foi instanciado. Em resumo: `work-board.md`, `product-backlog.md` e `evidence.md` saem dos `templates/` dos respectivos papéis; os seis `context.md`, da seção "O que vai em cada `context.md`" do modelo de contexto. `plans/`, `journeys/` e `screens/` nascem vazios — são preenchidos por `/arc plan` e `/ux`. O `how-to.md` é **cópia literal** de `${CLAUDE_PLUGIN_ROOT}/how-to.md`, com um comentário no topo dizendo que não deve ser editado ali — é o guia de uso à mão de quem trabalha no projeto.
 
 ## 3. Pergunte ao stakeholder, numa lista só
 
-O que nenhum arquivo do repositório responde: o que é o produto e para quem · a stack e onde cada parte vive · os comandos reais de build/teste/lint e o que o ambiente **não** consegue rodar · a capacidade do time (quantos devs, unidade de estimativa) · se é projeto novo ou retomada.
+O que nenhum arquivo do repositório responde: o que é o produto e para quem · a stack e onde cada parte vive · os comandos reais de build/teste/lint e o que o ambiente **não** consegue rodar · **a duração do sprint** e **a unidade de estimativa** (as duas vão para a §2a do `README.md` e são usadas na Planning Meeting) · a capacidade do time (quantos devs) · se é projeto novo ou retomada.
 
 Antes de perguntar, **leia o repositório** — README, arquivos de projeto, CI, compose — e traga preenchido tudo o que já der para inferir, com o que inferiu marcado como tal. Perguntar o que está escrito no repo é desperdício (R9).
 
@@ -40,8 +40,10 @@ Com as respostas, incluindo a seção compacta "Como usar o time neste projeto" 
 
 Conforme a resposta do passo 3:
 
-- **projeto retomado** → `/sm onboarding`, depois `/qa audit` e `/qa baseline` — o levantamento sobre código vira o backlog inicial;
+- **projeto retomado** → `/sm onboarding`, depois `/qa audit` e `/qa baseline` — o levantamento sobre código vira as primeiras Histórias;
 - **projeto novo com ideia ainda aberta** → `/team brainstorm <ideia>`;
 - **projeto novo com requisitos já claros** → `/po analyze <visão do produto>`.
+
+Em qualquer um dos três, o caminho depois é o mesmo: SDD funcional → **①** → SDD técnico → **②** → `/po story` → detalhamento → **③** → `/sm sprint plan`.
 
 Ao final, liste os arquivos criados e as decisões que ficaram pendentes do stakeholder.

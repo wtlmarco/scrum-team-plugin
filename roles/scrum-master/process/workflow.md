@@ -255,7 +255,9 @@ O **processo do time** (os documentos de `${CLAUDE_PLUGIN_ROOT}/`) evolui por `/
 - Nenhuma entrada de `CHANGELOG.md` afirma "sem mudança de processo" quando a entrega, de fato, carrega uma.
 
 ### `/team update` — lado da instalação
-Roda **na cópia instalada**, nunca no repositório-fonte (guarda: recusa se `${CLAUDE_PLUGIN_ROOT}/.git/` existir). Compara a `version` instalada com a do `main` da origem canônica, mostra o delta do `CHANGELOG.md` e, após confirmação, aplica. Reiniciar a sessão continua manual. Os passos estão em [`team-update.md`](../../../team-update.md), lido só nesse modo; `commands/team.md` só aponta para lá.
+Roda **na cópia instalada**, nunca no repositório-fonte (guarda: recusa se `${CLAUDE_PLUGIN_ROOT}/.git/` existir). Compara a `version` instalada com a do `main` da origem canônica, mostra o delta do `CHANGELOG.md` e, após confirmação, aplica. **Depois disso, reconcilia o `.team-project/`** com os modelos da versão nova, conforme o manifesto de [`deliverables/team-project/README.md`](../../../deliverables/team-project/README.md) — porque atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` e nada do que o `init` instanciou, que derivaria em silêncio a cada versão. Reiniciar a sessão continua manual. Os oito passos estão em [`team-update.md`](../../../team-update.md), lido só nesse modo; `commands/team.md` só aponta para lá.
+
+**O `update` nunca apaga conteúdo do projeto sem aprovação.** Cópia literal ele substitui avisando; estrutura com conteúdo local ele **propõe** o delta, arquivo por arquivo; conflito entre o que o time editou e o que o modelo mudou vai ao stakeholder ou vira pendência no quadro.
 
 ## 5e. O sprint — caixa de tempo
 

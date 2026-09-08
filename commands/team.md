@@ -19,7 +19,7 @@ Não dispare agente nenhum: este modo é seu, e é conversa com o stakeholder.
 
 ## Modo `update` — atualizar o plugin do time neste projeto
 
-**Leia `${CLAUDE_PLUGIN_ROOT}/team-update.md` e siga-o** — os sete passos estão lá. Só neste modo: `update` roda uma vez por bump de versão e não paga contexto nas demais invocações.
+**Leia `${CLAUDE_PLUGIN_ROOT}/team-update.md` e siga-o** — os oito passos estão lá, incluindo a **reconciliação do `.team-project/`** com os modelos da versão nova (passo 7). Só neste modo: `update` roda uma vez por bump de versão e não paga contexto nas demais invocações.
 
 Não dispare agente nenhum: este modo é do comando, e é conversa com o stakeholder.
 
