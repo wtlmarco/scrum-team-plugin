@@ -22,8 +22,10 @@ Os caminhos concretos dos documentos do projeto estão em `.team-project/README.
 | Objetivos, requisitos, fluxos, changelog funcional (SDD) | PO | Modelos e critérios em [`../../../deliverables/README.md`](../../../deliverables/README.md) |
 | Escopo e critérios de sucesso | PO | Marcação exige evidência do QA — modelo em [`../../../deliverables/implementation/01-scope-and-criteria.md`](../../../deliverables/implementation/01-scope-and-criteria.md) |
 | Product Backlog (`.team-project/product-owner/`) | PO | **O conjunto das Histórias.** Priorizado por valor e risco funcional; recebe também os gaps, débitos e ressalvas levantados na Sprint Review |
+| **Plano de entrega** — que Histórias saem em que sprint | **PO** | Ele recebe do time as estimativas e do SM a capacidade, e **decide o que entra e quando sai**. Seção do Product Backlog, não documento novo |
+| **Status executivo ao stakeholder** | **PO** | "Onde estamos, o que está bloqueado, o que vem" — em nível de **História**, não de Task. Lê o Sprint Backlog do SM e o registro de evidências do QA; não os edita. Saída de `/po status` |
 | Documento de status/progresso | SM | Memória de progresso e decisões — modelo em [`../../../deliverables/implementation/02-status.md`](../../../deliverables/implementation/02-status.md) |
-| Sprint Backlog / quadro de trabalho (`.team-project/scrum-master/`) | SM | As Tasks do sprint corrente, com objetivo do sprint, estimativa e capacidade. Fechado na Planning Meeting; **não cresce durante o sprint** (R4 · [`workflow.md` §5e](workflow.md)) |
+| Sprint Backlog / quadro de trabalho (`.team-project/scrum-master/`) | SM | As Tasks do sprint corrente, com objetivo do sprint, estimativa e capacidade. Fechado na Planning Meeting; **não cresce durante o sprint** (R4 · [`workflow.md` §5e](workflow.md)). O SM responde por **quanto cabe, em que ordem e o que está bloqueado** — não por prazo nem por prioridade de valor, que são do PO (§6a) |
 | Registro de sprint — objetivo, Review e retrospectiva | SM | Um por sprint. O aceite registrado ali é do PO (R21); o SM registra, não aceita |
 | Registro de onboarding · brief de `brainstorm` | SM (**facilitação**) | Saída de `/sm onboarding` e `/team brainstorm` — registro do entendimento alinhado e do brief funcional. **Não substitui** a propriedade do PO sobre o requisito nem a divisão de autoria do SDD (PO: visão/requisitos/fluxos; Arquiteto: arquitetura/dados/API). Não vira arquivo permanente sem lugar declarado em `.team-project/` |
 | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/**` | SM | Processo — muda só a pedido do stakeholder, via `/review` (Agent `scrum-master`) |
@@ -86,6 +88,10 @@ Os quatro portões numerados são os gates de [`workflow.md` §8](workflow.md). 
 | UX quer mudar uma regra para simplificar a tela | Mudar no desenho | Escalação ao PO — regra é dele |
 | Arquiteto quer renomear entidade da especificação | Renomear no plano | Mudança formal: PO aprova, Arquiteto atualiza o modelo, migration explícita |
 | QA encontra defeito fora da Task | Corrigir de passagem | Abrir GAP; SM entra na fila |
+| Stakeholder quer saber prazo ou andamento | Perguntar ao SM | É do **PO**: ele detém o plano de entrega e o status (§6a). O SM responde quanto cabe, não quando sai |
+| Achado do QA atravessa papéis | Reunir os seis, ou empurrar ao PO por ser o canal | O QA roteia pelo **objeto da dúvida** (§6b); só quando não consegue classificar é que o SM facilita por `/sm agreement` |
+| PO quer refazer a conta de capacidade para caber mais | Renegociar a média entregue | A capacidade é **observada**. O PO decide o que **sai**, não quanto cabe |
+| SM quer tirar uma História do sprint por achá-la de baixo valor | Cortar do Sprint Backlog | Valor é do PO. O SM aponta risco e capacidade; quem corta por valor é o PO |
 | PO detalha a História citando arquivo, classe ou endpoint | Deixar passar — "é só contexto" | Devolver ao PO: o detalhamento é só funcional; o técnico nasce no Plano de Implementação (R20) |
 | Surge trabalho técnico que nenhuma História cobre | Criar Task solta no sprint | PO escreve a História que declara o valor, ainda que o beneficiário seja o time (R20) |
 | Task pronta dentro de uma História rejeitada na Review | Fechar a Task e seguir | Toda a História volta ao Product Backlog, com as Tasks boas junto (R21) |

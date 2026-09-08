@@ -8,6 +8,77 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.0 — Redesenho do modelo de trabalho: História e Task, sprint como caixa de tempo, aceite na Sprint Review — 08/09/2026
+
+**Instrução:** *(stakeholder, via questionário)* o bloco "Revisão do Processo" de `note.md` (15 linhas descrevendo uma cadeia Scrum completa) mais as respostas a seis decisões: sprint como caixa de tempo · SDD funcional/técnico como **portão**, não documento · hierarquia História → Task, com o plano dentro da Task · **aceite só na Sprint Review** · estimativa da Task pelo time na Planning · comandos novos `/po story`, `/sm sprint`, `/sm review`.
+
+**Classificação:** fluxo (§2, §2a, §3, §4, §5, §5e nova) + regra (R1–R2, R4–R8, R11–R17 reescritas; **R20 e R21 novas**) + propriedade de artefato (História, Task, Sprint Backlog, registro de sprint) + formato de documento (modelos de História, Sprint Review, quadro, backlog, aceite, retrospectiva, plano) + comportamento de agente (6 agents, 8 commands) + escopo de papel (PO ganha a História; SM ganha a cadência; QA deixa de ser "o último passo antes do PO").
+
+### O que mudou
+
+| Documento | Onde | O quê |
+|---|---|---|
+| `process/workflow.md` | §1, §2, §2a | Duas unidades declaradas: **História** (valor, PO, só funcional) e **Task** (trabalho, SM + Arquiteto). Cadeia SDD → História → Sprint → Task com **quatro portões**. Ciclo da Task em 11 etapas |
+| | §3, §4 | DoR e DoD **desdobradas em duas**: da História (§3a, §4a-ii) e da Task (§3b, §4a-i). "Aceite do PO" sai da DoD da Task |
+| | §5, **§5e nova** | Planning Meeting, Sprint Review e Sprint Retrospective entram nas cerimônias; §5e descreve o sprint como caixa de tempo — Planning em 6 passos com estimativa e **capacidade observada**, escopo congelado, Review, retrospectiva, e como o SM verifica |
+| | §5b, §8 | Transição para o SDD ganha os portões ① (funcional) e ② (técnico); a tabela de gates ganha os quatro |
+| | §5d | `/team update` passa a **reconciliar o `.team-project/`** (item 29 de `note.md`) |
+| `process/working-rules.md` | R1–R17 | Reescritas sobre Task/História/sprint. R14 passa a bloquear a **primeira Planning**; R15 ganha os dois portões do SDD |
+| | **R20 nova** | *História é a unidade de valor; Task é a unidade de trabalho.* Toda Task pertence a uma História; detalhamento é **só funcional**; trabalho técnico precisa de História que declare o valor |
+| | **R21 nova** | *Aceite funcional é por História, na Sprint Review.* Fechar Task é técnico. **História rejeitada devolve todas as Tasks, inclusive as aprovadas pelo QA** — preço aceito conscientemente |
+| | indicadores | Passam a rodar por sprint; linhas novas de R20, R21 e estimado × entregue. **19 → 21 regras** |
+| `process/artifact-ownership.md` | matriz, §2, §3, §4 | História (PO), Task (SM + Arquiteto), registro de sprint; Product Backlog = conjunto das Histórias; fluxo com os quatro portões; 5 conflitos novos; IDs `H-nnn`/`T-nnn` |
+| `roles/product-owner/` | **`templates/user-story.md` novo** | A História em dois estados (esboço · detalhada), com o portão ③ |
+| | `product-backlog.md`, `acceptance.md`, README | Backlog vira o conjunto das Histórias, com estados; aceite muda de alvo (História) e de lugar (Review); modo `/po story` |
+| `roles/scrum-master/` | **`templates/sprint-review.md` novo** | Registro da Review: o SM conduz e registra, o PO aceita |
+| | `work-board.md`, `retrospective.md`, `status-entry.md`, README | Quadro vira Sprint Backlog com cabeçalho de sprint e Tasks sob a História; retro roda por sprint, depois da Review; status-entry registra fechamento técnico; modos `sprint plan`, `sprint close`, `review` |
+| `roles/architect/` | `execution-plan.md` → **`implementation-plan.md`** | Renomeado e reposicionado: **é o conteúdo técnico da Task**, não um artefato irmão. É o primeiro e único lugar onde entra decisão técnica |
+| `deliverables/` | `README.md`, `sdd/README.md` | Os dois portões do SDD documentados, com o porquê de cada um. O conjunto continua **um só, com versão única** |
+| | **`team-project/README.md` novo** | Manifesto do `.team-project/` (itens 27–28 de `note.md`): o que o `init` cria, de onde cada arquivo nasce e **a classe de reconciliação** de cada um. É índice, não cópia |
+| `team-update.md` | **passo 7 novo** | Reconciliação do `.team-project/` em três classes, **sem apagar conteúdo do projeto sem aprovação**. 7 → 8 passos |
+| `team-init.md` | passos 2, 3, 5 | Aponta o manifesto; coleta **duração do sprint** e **unidade de estimativa** |
+| raiz | `README.md`, `how-to.md` | Superfície de comandos com `<H-ID>` × `<T-ID>`; caminho padrão redesenhado com os portões; desambiguação `/sm review` × `/review` |
+| `agents/*`, `commands/*` | 6 + 8 arquivos | Superfície, contagens e limites atualizados *(propriedade do stakeholder — aplicado por instrução direta dele, não por proposta do `/review`)* |
+
+**Modo de falha que evita:** o time entregar Tasks tecnicamente corretas que, somadas, não entregam nada que o stakeholder reconheça como valor — e não haver momento formal em que isso apareça. Antes, "entregue" era a soma de aprovações técnicas por item; agora é o aceite de uma História, ante o stakeholder, contra critérios que ele mesmo aprovou.
+
+**Quem passa a ser cobrado de forma diferente:** o **PO** (escreve e detalha Histórias, e só aceita na Review); o **SM** (conduz a cadência do sprint e **não aceita nada**); o **QA** (valida por Task e fornece evidência na Review, em vez de ser "o último passo antes do PO"); o **UX** (protótipo migra para o detalhamento da História, antes da Planning); o **stakeholder** (passa a ter quatro portões de aprovação).
+
+**Indicador de sucesso:** nenhuma Task sem História de origem no Sprint Backlog; nenhuma História na Planning sem o portão ③ registrado; nenhum aceite fora da Review; desvio estimado × entregue abaixo de 25% a partir do terceiro sprint.
+
+### Conflitos resolvidos
+
+| Conflito | Com que regra | Resolução |
+|---|---|---|
+| "Sprint Backlog" era apelido do quadro do SM; `note.md` dava o artefato ao PO | dono único (`artifact-ownership.md`) | O Sprint Backlog **continua do SM**; o que é do PO é a História e o Product Backlog |
+| "Task" e "Plano de Execução" seriam dois artefatos | referência cruzada em vez de repetição | O plano vira **conteúdo da Task**; um nome só, `Plano de Implementação` |
+| SDD funcional/técnico como dois documentos | "versão única para o conjunto" (`sdd/README.md`) | Viraram **portões de aprovação**; a estrutura de 8 arquivos fica intacta |
+| Sprint como 2º relógio ao lado de "a cada 3 itens" | gatilhos de §5, §5c | Todos os gatilhos passam a contar **sprints**; o relógio por item foi removido |
+| `/sm review` colidia com o `/review` do processo | `commands/sm.md` dizia "não há mais `/sm review`" | Mantido o nome escolhido pelo stakeholder, com **tabela de desambiguação** em `commands/sm.md`, `roles/scrum-master/README.md`, `README.md`, `how-to.md` e no `project-context.md` |
+| Item 27 pedia mover todos os modelos para `deliverables/` | `roles/<papel>/templates/` é do papel | `deliverables/team-project/` é **manifesto/índice**, não cópia — resolve o sintoma sem criar duas verdades |
+
+### Evidência (R19)
+
+| Classe | Comando | Resultado |
+|---|---|---|
+| Arquivamento | `Compare-Object` do bloco `## v2.9` movido × `git show HEAD:…/process-changelog.md` linhas 159–205 | **47 linhas × 47 linhas, diff = 0.** Relocado íntegro; índice de arquivadas ganhou a linha `v2.9` |
+| Substituição de padrão | `Plano de Execução` → `Plano de Implementação` e `execution-plan.md` → `implementation-plan.md`, em todo `*.md` menos changelogs e `note.md` | 19 arquivos alterados; `grep` do padrão antigo = 0 |
+| Substituição de padrão | `item` → `Task` com concordância de gênero, idiom `item a item` protegido | 56 arquivos alterados |
+| **Checagem semântica** da substituição acima | varredura de concordância + **leitura de cada ocorrência no contexto** | **13 erros de concordância** corrigidos (`um Task aberta`, `a Task inteiro`, `Task concluído`…) e **4 falsos positivos** revertidos, onde `Item` era rótulo genérico de linha de tabela: `README.md` → "Arquivo / pasta"; `compliance-review.md` → "Verificação"; `cross-audit.md` → "Especificação"; `product-backlog.md` → "O que". O `grep` zerado teria mentido nos quatro |
+| Substituição de padrão | `19 regras` → `21 regras`, `R13-R19` → `R13-R21`, `/sm plan` → `/sm sprint plan` | 6 arquivos; residual dos três padrões e de `sprint sprint` = 0 |
+| Extração / criação | `deliverables/team-project/README.md`, `templates/user-story.md`, `templates/sprint-review.md` | 3 novos, referenciados de `deliverables/README.md`, dos READMEs dos papéis e da matriz |
+| Renomeação | `git mv execution-plan.md → implementation-plan.md` | rename detectado pelo git (77%); nenhum ponteiro órfão |
+
+### Pendente do stakeholder
+
+- **Fecho da entrega:** bump para `3.0.0` e entrada `v3.0.0` no `CHANGELOG.md` (R18), na branch `feat/v3.0.0`.
+- **Reiniciar a sessão** — `agents/` e `commands/` só entram em vigor no próximo carregamento.
+- **Projetos instalados** precisam de `/team update`; o vocabulário mudou, então quadro e backlog existentes pedem leitura antes de aplicar.
+- **`note.md`:** o bloco "Revisão do Processo" e os itens 27–29 saem da fila, consumidos aqui.
+
+
+---
+
 ## v2.11 — Guias de raiz ganham dono; roteiro de instalação endurecido; R19 passa a exigir checagem semântica — 07/09/2026
 
 **Instrução:** *(stakeholder)* "por corrigir" — sobre a triagem do relato de instalação em `note.md` e os achados da reavaliação.

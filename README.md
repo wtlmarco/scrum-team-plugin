@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.2.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.3.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `main`, via PR para aprovação. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -46,12 +46,12 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 ├── team-update.md                   ritual do `/team update` — lido só nesse modo, uma vez por bump de versão
 ├── note.md                          fila de melhorias do próprio plugin, entrada do `/review` (dono: stakeholder)
 └── roles/                           documentação dos papéis
-    ├── scrum-master/       processo, quadro, status, regras que governam todos
+    ├── scrum-master/       processo, Sprint Backlog, rituais, regras que governam todos
     │   ├── README.md · skills.md
     │   ├── process/     working-rules · workflow · artifact-ownership · process-changelog
-    │   └── templates/   sprint-backlog · sprint-review · status · status-entry · impact-analysis · retrospective · project-context · process-change
+    │   └── templates/   sprint-backlog · sprint-review · status-entry · impact-analysis · retrospective · project-context · process-change
     ├── product-owner/      requisitos, Histórias, backlog, aceite
-    │   └── templates/   user-story · product-backlog · requirement · functional-analysis · acceptance
+    │   └── templates/   user-story · product-backlog · status · requirement · functional-analysis · acceptance
     ├── architect/          especificação técnica, Planos de Implementação, ADRs
     │   └── templates/   implementation-plan · adr · compliance-review · technical-decision
     ├── user-experience/   jornadas, telas, protótipos, usabilidade e acessibilidade
@@ -100,13 +100,13 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 ## Comandos
 
 ```
-/sm     onboarding | status | sprint plan | sprint close | review | board | impact <mudança> | close <T-ID>
-/po     analyze <ideia> | requirement <ID> | story <H-ID> | prioritize | accept <H-ID>
+/sm     onboarding | sprint plan | sprint close | review | board | agreement <questão> | impact <mudança> | close <T-ID>
+/po     status | analyze <ideia> | requirement <ID> | story <H-ID> | prioritize | accept <H-ID>
 /arc    plan <T-ID> | comply <T-ID> | adr <tema> | question <dúvida>
 /ux     prototype | journey <fluxo> | screen <H-ID> | prototype <tela> | review-ui <tela>
 /dev    <T-ID> | resume <T-ID> | gap <resposta do arquiteto>
 /qa     <T-ID> | baseline | audit | security <T-ID>
-/team   init | update | <mensagem ou pergunta> | brainstorm <ideia> | agreement <questão> | cycle <T-ID> | plan <T-ID> | build <T-ID> | qa <T-ID>
+/team   init | update | brainstorm <ideia> | cycle <T-ID> | plan <T-ID> | build <T-ID> | qa <T-ID>
 /review <instrução> | note | metrics | audit | history            (só no repositório-fonte do plugin)
 ```
 
@@ -114,18 +114,24 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 
 Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. Três pares se parecem e não são a mesma coisa: **`/ux review-ui`** (usabilidade de uma tela) e **`/arc comply`** (aderência do código ao plano) são trabalho no produto; **`/sm review`** é a **Sprint Review**, também no produto; e **`/review`** evolui o processo do time e roda só no repositório-fonte do plugin.
 
-Os seis primeiros falam com **um** papel. `/team` fala com **todos**; `/review` evolui os documentos do plugin:
+### Com quem o stakeholder fala
+
+**O canal é o PO** ([`workflow.md` §6a](roles/scrum-master/process/workflow.md)): demanda, valor, escopo, prioridade, **prazo, plano de entrega e status**. Questão técnica vai direto ao **Arquiteto**; de tela, ao **UX**.
+
+O **SM não é canal de demanda** — é **processo, organização e eficiência**, e facilitador de todos os envolvidos. Você o encontra nos **rituais do Scrum**, que ele gere; no **`/sm agreement`**, quando uma questão atravessa papéis; e na cobrança dos portões que dependem de você.
+
+**Não existe broadcast.** `/team` não fala com os seis: ele **orquestra o time trabalhando**.
 
 | Modo | O que faz | Quando usar |
 |---|---|---|
-| `/team <mensagem>` | Broadcast: os seis respondem do seu ângulo, em paralelo; a resposta consolida posições, convergências e divergências | Uma ideia, um problema ou uma dúvida que atravessa papéis |
+| `/po status` | Onde estamos, em **Histórias** — entregue, em andamento, bloqueado, próximo, risco ao plano | O seu "como está o projeto?" |
+| `/sm agreement <questão>` | O SM chama **só os papéis que a questão toca**, consolida **uma** recomendação e registra a divergência que sobrou | Questão que atravessa papéis e precisa de uma posição |
 | `/team brainstorm <ideia>` | Descoberta funcional de ideia sem documentação, facilitada pelo SM: fase 1 stakeholder + PO + UX; fase 2 entra o Arquiteto, em rodadas até fechar para o SDD (R15, [`workflow.md` §5b](roles/scrum-master/process/workflow.md)) | Ideia greenfield que ainda não tem visão, requisitos nem fluxos |
-| `/team agreement <questão>` | Mesma rodada + consolidação do SM em **uma recomendação única**, com a divergência registrada | Quando você quer uma posição do time, não seis opiniões |
 | `/team cycle <T-ID>` | Encadeia Arquiteto → dev → QA numa Task, parando no primeiro problema | Levar uma Task do plano ao veredito |
 
-**Acordo coletivo não é votação.** A propriedade dos papéis sobrevive à consulta: requisito é do PO, desenho é do Arquiteto, prazo é do SM, evidência é do QA — os outros aconselham. Maioria não sobrepõe dono; divergência que sobra vira decisão sua.
+**Acordo não é votação.** A propriedade dos papéis sobrevive à facilitação: requisito, valor, escopo e **prazo** são do PO; desenho é do Arquiteto; tela é do UX; evidência é do QA — os outros aconselham. Maioria não sobrepõe dono; divergência que sobra vira decisão sua. O SM facilita **porque não é dono de nenhum desses assuntos**.
 
-Consulta e acordo **não escrevem em disco** — são conversa. O que virar ação é atribuído ao dono e executado pelo comando individual.
+Acordo e status **não escrevem em disco** — são conversa e leitura. O que virar ação é atribuído ao dono e executado pelo comando dele.
 
 ## Caminho padrão — do SDD à entrega
 

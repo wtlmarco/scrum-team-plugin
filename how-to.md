@@ -61,13 +61,13 @@ claude plugin update team@team           # aplica (exige reiniciar a sessão)
 
 | Comando | Modos | Papel |
 |---|---|---|
-| `/sm` | `onboarding` · `status` · `sprint plan` · `sprint close` · `review` · `board` · `impact <mudança>` · `close <T-ID>` | Scrum Master — sprint, Sprint Backlog, status, riscos, processo |
-| `/po` | `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` | Product Owner — requisitos, Histórias, backlog, aceite de valor |
+| `/sm` | `onboarding` · `sprint plan` · `sprint close` · `review` · `board` · `agreement <questão>` · `impact <mudança>` · `close <T-ID>` | Scrum Master — rituais, Sprint Backlog, capacidade, riscos, processo |
+| `/po` | `status` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` | Product Owner — **o seu canal**: status, prazo, requisitos, Histórias, backlog, aceite |
 | `/arc` | `plan <ID>` · `comply <ID>` · `adr <tema>` · `question <dúvida>` | Arquiteto — desenho, Plano de Implementação, ADR, standards |
 | `/ux` | `prototype` · `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` | UX — **protótipo funcional (portão ①)**, jornada, tela, usabilidade, acessibilidade |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` | Desenvolvedor — executa o plano, não improvisa |
 | `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` | QA — o veredito de qualidade que responde ao stakeholder |
-| `/team` | `init` · `update` · `<mensagem>` · `brainstorm <ideia>` · `agreement <questão>` · `cycle <ID>` · `plan <ID>` · `build <ID>` · `qa <ID>` | O time inteiro |
+| `/team` | `init` · `update` · `brainstorm <ideia>` · `cycle <T-ID>` · `plan <T-ID>` · `build <T-ID>` · `qa <T-ID>` | Orquestra o time trabalhando — **não é broadcast** |
 | `/review` | `<instrução>` · `note` · `metrics` · `audit` · `history` | Evolução do processo do time — **só no repositório-fonte do plugin** |
 
 **Os três últimos modos do `/team` são fatias do `cycle`**, para quando você não quer o ciclo inteiro: `plan <T-ID>` só planeja, `build <T-ID>` só constrói (exige plano existente) e `qa <T-ID>` só valida.
@@ -136,7 +136,8 @@ Há código, e a documentação pode não corresponder a ele.
 | Degrau | Quando | Para onde |
 |---|---|---|
 | **1 · Construção** | Correção local que cabe no plano aprovado, sem redesenho | `/dev resume <ID>` |
-| **2 · Time** | O achado atravessa mais de um papel, ou pode ser requisito mal formulado *ou* implementação errada | `/team <questão>` |
+| **2 · Outro dono** | O achado é do domínio de outro papel — o QA classifica pelo objeto e entrega | `/po` · `/arc question` · `/ux` |
+| **2b · Não dá para classificar** | O achado toca dois donos e o QA não sabe qual é o objeto (ex.: requisito errado *ou* implementação errada) | `/sm agreement <questão>` |
 | **3 · Especialista** | O desenho não sustenta o requisito — o passo não existia ou estava errado | `/arc question` ou `/arc plan` |
 | **Paralelo · PO** | A dúvida é se o **critério** estava certo | `/po` |
 

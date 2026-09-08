@@ -87,13 +87,15 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 
 | Comando | Modos |
 |---|---|
-| `/sm` | `onboarding` · `status` · `sprint plan` · `sprint close` · `review` · `board` · `impact <mudança>` · `close <T-ID>` |
-| `/po` | `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` |
+| `/sm` | `onboarding` · `sprint plan` · `sprint close` · `review` · `board` · `agreement <questão>` · `impact <mudança>` · `close <T-ID>` |
+| `/po` | `status` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` |
 | `/arc` | `plan <T-ID>` · `comply <T-ID>` · `adr <tema>` · `question <dúvida>` |
 | `/ux` | `prototype` · `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` |
 | `/dev` | `<T-ID>` · `resume <T-ID>` · `gap <resposta>` |
 | `/qa` | `<T-ID>` · `baseline` · `audit` · `security <T-ID>` |
-| `/team` | `init` · `update` · `<mensagem>` · `brainstorm <ideia>` · `agreement <questão>` · `cycle <T-ID>` · `plan <T-ID>` · `build <T-ID>` · `qa <T-ID>` |
+| `/team` | `init` · `update` · `brainstorm <ideia>` · `cycle <T-ID>` · `plan <T-ID>` · `build <T-ID>` · `qa <T-ID>` |
+
+**O canal do stakeholder é o PO** — demanda, valor, escopo, prioridade, **prazo, plano de entrega e status**. Questão técnica vai ao **Arquiteto**, de tela ao **UX**, diretamente. O **SM não é canal de demanda**: é processo, organização e eficiência, gere os rituais e facilita acordo. **Não há broadcast** — `/team` orquestra o time trabalhando, não fala com os seis.
 
 **`<H-ID>` é História (valor, dona: PO); `<T-ID>` é Task (trabalho, no Sprint Backlog).** Toda Task pertence a uma História (R20). O aceite é da História, na Sprint Review — `/sm close` fecha a Task tecnicamente e não aceita nada (R21).
 
@@ -109,7 +111,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | **Melhoria** | `/po analyze` (área já documentada) ou `/team brainstorm` (capacidade nova) → `/sm impact` → `/po story` → `/sm sprint plan` → `/team cycle` |
 | **Fim de sprint** | `/sm review` (PO aceita as Histórias) → `/sm sprint close` (retrospectiva) → `/sm sprint plan` (abre o próximo) |
 
-Achado do QA volta pelo **degrau certo**: correção local → `/dev resume <ID>` · atravessa papéis → `/team <questão>` · o desenho não sustenta o requisito → `/arc question` · a dúvida é o critério → `/po`.
+Achado do QA volta pelo **degrau certo**: correção local → `/dev resume <ID>` · atravessa papéis → o QA roteia pelo dono, ou `/sm agreement` · o desenho não sustenta o requisito → `/arc question` · a dúvida é o critério → `/po`.
 
 Guia completo — instalação, atualização, os quatro caminhos em detalhe e as regras que valem sempre: [`how-to.md`](how-to.md), neste mesmo diretório (cópia do guia do plugin, atualizada pelo `/team init`). Para levar o time a outro projeto: `/team init`.
 ```

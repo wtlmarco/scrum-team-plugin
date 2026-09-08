@@ -124,14 +124,13 @@ Veredito de frente 2 que só reproduz a tabela passo × conforme do comply, sem 
 | **Protótipo funcional** | junto com o SDD funcional, antes do portão ① | `/ux prototype` | HTML navegável ([`deliverables/prototype/`](../../../deliverables/prototype/README.md)) |
 | Escrita e detalhamento de História | História nasce do SDD; é detalhada quando candidata a um sprint | `/po story <ID>` | 1 História |
 | **Planning Meeting** | abre cada sprint | `/sm sprint plan` | Sprint Backlog fechado (§5e) |
-| Daily | início de cada sessão | `/sm status` | 6 linhas |
+| Daily | início de cada sessão | `/po status` | 6 linhas |
 | Refinamento técnico | antes de construir uma Task | `/arc plan <Task>` | 1 plano |
 | Validação | ao fim de cada Task | `/qa <Task>` | veredito com evidência |
 | **Sprint Review** | fecha cada sprint, antes da retrospectiva | `/sm review` | aceite por História + gaps e débitos (§5e) |
 | **Sprint Retrospective** | fecha cada sprint, depois da Review | `/sm sprint close` | [template](../templates/retrospective.md) · mede o footprint do processo (§5c) |
 | Auditoria cruzada | a cada 3 sprints | `/qa audit` | achados, sem correção |
-| Consulta ao time | decisão que atravessa papéis | `/team <pergunta>` | posições + convergências + divergências |
-| Acordo | quando se quer uma posição única | `/team agreement <questão>` | recomendação do SM, com a divergência registrada |
+| Acordo facilitado | questão que atravessa papéis e precisa de **uma** posição | `/sm agreement <questão>` | o SM chama **só os papéis que a questão toca**, consolida uma recomendação e registra a divergência que sobrou |
 | Melhoria de processo | quando o stakeholder instrui uma mudança de método | `/review <instrução>` | documento do papel atualizado + entrada no changelog do processo |
 | Revisão de processo | a cada 3 retrospectivas, ou quando uma métrica estoura | `/review metrics` | **uma** proposta de mudança, com o indicador que a valida; é também o giro **Act** do ciclo de eficiência (§5c) |
 | Curadoria do processo | quando dois papéis mudam algo que se contradiz | `/review` | consolidação do changelog e escalação do que ficou inconsistente |
@@ -235,12 +234,13 @@ O custo dos documentos de `${CLAUDE_PLUGIN_ROOT}/` não pode depender de uma fax
 
 | Comando | Carga fixa | O que dispara |
 |---|---|---|
-| `/team agreement <questão>` | ~55 KB | os seis, mais a consolidação do SM |
-| `/team <mensagem>` | ~48 KB | os seis, em paralelo |
 | `/team brainstorm <ideia>` | ~37 KB | SM + PO + UX, depois + Arquiteto |
 | `/team cycle <T-ID>` | ~28 KB | Arquiteto → dev → QA, em série |
+| `/sm agreement <questão>` | ~13 KB + os papéis que a questão toca (2–3 típicos) | SM + os envolvidos |
 | `/review <instrução>` | ~14 KB + ~10 KB do contrato por papel roteado | SM (triagem) + o papel dono |
 | `/sm` · `/ux` · `/po` · `/arc` · `/qa` · `/dev` | 13 · 11 · 10 · 10 · 10 · 7 KB | um papel |
+
+**Não existe mais broadcast dos seis.** O modo `consult` de `/team` foi removido: o canal do stakeholder é o PO (§6a), e questão que atravessa papéis vai por `/sm agreement`, que chama **só quem a questão toca**. Os dois comandos mais caros do time deixaram de existir.
 
 **Três coisas que a carga fixa não mostra, e que costumam dominar o custo real:**
 1. **O modelo importa mais que os KB.** `/arc` e `/ux` rodam em **Opus**; `/dev` em **Haiku**. `/arc` carrega menos que `/sm` e custa mais.
@@ -296,16 +296,19 @@ O sprint é a **unidade de cadência do time**: uma caixa de tempo de duração 
 
 ### Planning Meeting — abre o sprint (`/sm sprint plan`)
 
+**O SM facilita o ritual; o PO decide o conteúdo.** O SM mantém a caixa de tempo, cobra a DoR, conduz a quebra e fecha a conta da capacidade — **não escolhe o que entra**. Quem escolhe é o PO, que detém o plano de entrega.
+
 | # | Passo | Quem | Saída |
 |---|---|---|---|
-| 1 | Fechar o sprint anterior, se houver: Review feita, retrospectiva registrada, Tasks não concluídas devolvidas ao Product Backlog **com a História a que pertencem** | SM | Sprint anterior encerrado |
-| 2 | Selecionar as Histórias candidatas do Product Backlog, na ordem do PO, **só as que passaram na DoR da História** (§3a) | PO propõe, SM confere a DoR | Lista de candidatas |
+| 1 | Fechar o sprint anterior, se houver: Review feita, retrospectiva registrada, Tasks não concluídas devolvidas ao Product Backlog **com a História a que pertencem** | SM (facilita) | Sprint anterior encerrado |
+| 2 | Selecionar as Histórias candidatas, na ordem do Product Backlog e conforme o **plano de entrega** — **só as que passaram na DoR da História** (§3a) | **PO decide** · SM confere a DoR e devolve o que não passou | Lista de candidatas |
 | 3 | Quebrar cada História em **Tasks** | o time (Arquiteto conduz, dev e QA contribuem) | Tasks com título, dependências e critério de pronto |
 | 4 | **Estimar cada Task** na unidade declarada em `.team-project/README.md` | o time | Estimativa por Task |
-| 5 | Somar as estimativas e cortar no limite da **capacidade do sprint** — a capacidade sai da média das entregas anteriores, não do desejo | SM | Sprint Backlog fechado |
-| 6 | Declarar o **objetivo do sprint** em uma frase, derivado das Histórias que entraram | PO | Objetivo do sprint no quadro |
+| 5 | Somar e comparar com a **capacidade do sprint** — observada, não negociada | SM apresenta a conta | Quanto cabe |
+| 6 | **Cortar no limite da capacidade**: o que sai, sai por decisão de valor | **PO decide** o que fica de fora | Sprint Backlog fechado |
+| 7 | Declarar o **objetivo do sprint** em uma frase, derivado das Histórias que entraram | PO | Objetivo do sprint no quadro |
 
-**A capacidade é observada, não negociada.** Sprint que entra com soma acima da média entregue nos três sprints anteriores exige justificativa escrita no quadro — é o gatilho de R2 aplicado ao lote.
+**A capacidade é observada, não negociada.** O SM apresenta a média entregue nos três sprints anteriores; sprint que entra acima dela exige justificativa escrita no quadro — é o gatilho de R2 aplicado ao lote. **O SM não veta escopo por valor e o PO não altera a conta de capacidade**: o primeiro diz *se cabe*, o segundo diz *o que entra*.
 
 ### Durante o sprint
 
@@ -333,16 +336,41 @@ Roda **depois** da Review, com o resultado dela à vista. Usa o [modelo de retro
 dúvida de implementação  ──▶ Arquiteto        (dev nunca decide sozinho)
 dúvida de regra/fluxo    ──▶ PO
 dúvida de tela/jornada   ──▶ UX
-dúvida de prioridade     ──▶ SM
+prioridade, prazo, plano ──▶ PO               (detém o plano de entrega — §6a)
+capacidade, fila, bloqueio ─▶ SM              (quanto cabe, em que ordem)
 lacuna de especificação  ──▶ PO ──▶ stakeholder (3 opções + recomendação)
 decisão estratégica      ──▶ stakeholder       (stack, provedor, custo, risco aceito)
 exceção a um padrão      ──▶ stakeholder ──▶ ADR escrita pelo Arquiteto
 defeito em ${CLAUDE_PLUGIN_ROOT}/standards/ ──▶ Arquiteto (dev: 🔺 GAP · QA: achado de processo) ──▶ /review   (R16)
+achado que atravessa papéis ──▶ o QA roteia pelo objeto da dúvida (§6b)
 ```
+
+### 6a. O canal do stakeholder é o PO
+
+O stakeholder **não consulta os seis papéis**. Ele se relaciona com o **PO**, que controla as suas demandas e responde por **valor, escopo, prioridade, prazo, plano de entrega e status**; e pode levar questão **técnica ao Arquiteto** ou **de tela ao UX** diretamente, quando quiser.
+
+O **SM não é canal de demanda** — é **processo, organização e eficiência**, e **facilitador de todos os envolvidos**. O stakeholder o encontra em três lugares: nos **rituais do Scrum**, que o SM gere; no **`/sm agreement`**, quando uma questão atravessa papéis e precisa de uma posição única; e na **cobrança dos portões** que dependem dele. O `/review` — aperfeiçoamento do processo — é do SM e roda só no repositório-fonte do plugin.
+
+**O que mudou de dono, e por quê.** Prazo, planejamento e status eram do SM e passaram ao **PO**: quem ordena o Product Backlog por valor × risco e é dono das Histórias é quem pode dizer **quando o valor chega**. Ao SM fica a pergunta vizinha e diferente — **quanto cabe**: capacidade observada, fila, dependência e bloqueio. Um diz *o que entra e quando sai*; o outro, *se cabe*.
+
+### 6b. Achado que atravessa papéis — o QA roteia pelo objeto
+
+Não há orquestrador. O QA classifica o achado pelo **objeto da dúvida** e o entrega ao dono:
+
+| A dúvida é sobre… | Vai para | Comando |
+|---|---|---|
+| regra, valor, escopo ou critério de aceite | **PO** | `/po` |
+| desenho, contrato, camada ou seção de standard | **Arquiteto** | `/arc question` |
+| jornada, tela, usabilidade ou acessibilidade | **UX** | `/ux` |
+| o achado toca dois donos e o QA **não consegue** classificar | **SM**, que facilita o acordo | `/sm agreement` |
+
+**Quem recebe e não é dono devolve** — dizendo de quem é. Devolução não é recusa: é a classificação sendo corrigida por quem tem o contexto. Errar a rota custa uma devolução; reunir seis papéis para não errar custa muito mais.
+
+**Por que não há um orquestrador único:** o achado de degrau 2 é, com frequência, *"o requisito está errado ou a implementação está?"* — e o PO é **parte** nessa pergunta. Pedir a ele que conduza o julgamento do próprio artefato contraria o mesmo princípio que sustenta a frente 2 do QA (§4a: *um autor não audita a própria omissão*) e a regra de que o dev não revisa os próprios normativos. Quando é preciso reunir posições, quem facilita é o **SM**, que não é dono de requisito, desenho nem evidência.
 
 Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no papel correto (R9). **Exceções declaradas:** no `brainstorm` (§5b), no passo 5 do `onboarding` (§5a), na **aprovação do detalhamento da História** (portão ③) e na **Sprint Review** (portão ④) o stakeholder é participante — o diálogo direto ali é co-criação ou aceite, não escalação; o que sobe a ele mesmo assim vem com opções e recomendação.
 
-**Quando a dúvida atravessa papéis**, use `/team` em vez de perguntar a cada um: os seis respondem em paralelo e a resposta já vem com convergências e divergências separadas. Com `/team agreement`, o SM consolida numa recomendação única. **Consultar o time não transfere a decisão**: o dono do assunto continua decidindo no seu domínio, e o que sobra de divergência sobe ao stakeholder.
+**Quando a dúvida atravessa papéis**, use `/sm agreement <questão>`: o SM identifica **quais papéis a questão toca**, chama só esses, consolida **uma** recomendação e registra a divergência que sobrou. Não é broadcast — reunir os seis para uma questão de dois é desperdício (R3). **Acordo não transfere a decisão**: o dono do assunto continua decidindo no seu domínio, e o que sobra de divergência sobe ao stakeholder.
 
 ## 7. Sequenciamento
 

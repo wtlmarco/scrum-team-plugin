@@ -68,7 +68,7 @@ Nesta ordem, para confirmar que o time está calibrado antes de confiar nele:
 
 ```
 /qa baseline          → os números declarados batem com a realidade?
-/sm status            → o status sai em 6 linhas, com ID e evidência?
+/po status            → o status sai em 6 linhas, em Historias, com evidência?
 /arc plan <ID>       → o plano é executável por um júnior sem decidir nada?
 /team cycle <ID>      → o ciclo fecha com veredito e evidência real?
 ```

@@ -1,15 +1,15 @@
 ---
-description: Fala com o time inteiro — envia uma mensagem, comando ou dúvida a todos os papéis e devolve as respostas individuais, um acordo coletivo, ou executa um ciclo completo de construção.
-argument-hint: "init | update | <mensagem ou pergunta> | brainstorm <ideia> | agreement <questão> | cycle <ID> | plan <ID> | build <ID> | qa <ID>"
+description: Orquestra o time trabalhando — instala ou atualiza o time no projeto, conduz o brainstorm de descoberta, ou executa um ciclo de construção de uma Task. Não é broadcast: mensagem solta é roteada ao papel dono.
+argument-hint: "init | update | brainstorm <ideia> | cycle <T-ID> | plan <T-ID> | build <T-ID> | qa <T-ID>"
 ---
 
-Aciona **o time inteiro**: Scrum Master (`scrum-master`), Product Owner (`product-owner`), Arquiteto (`architect`), UX (`user-experience`), Desenvolvedor (`developer`) e QA (`quality-assurance`).
+Orquestra **o time trabalhando**: Scrum Master (`scrum-master`), Product Owner (`product-owner`), Arquiteto (`architect`), UX (`user-experience`), Desenvolvedor (`developer`) e QA (`quality-assurance`).
 
 Mensagem do stakeholder: **$ARGUMENTS**
 
-> Para falar com **um** papel, use o comando dedicado: `/sm`, `/po`, `/arc`, `/ux`, `/dev`, `/qa`. Este comando é para quando a mensagem interessa a mais de um papel — ou quando você quer as várias leituras antes de decidir.
+> **Este comando não é um canal de conversa.** O canal do stakeholder é o **PO** ([`workflow.md` §6a](../roles/scrum-master/process/workflow.md)) — demanda, valor, escopo, prioridade, prazo, status e plano de entrega. Questão técnica vai ao Arquiteto e de tela ao UX, diretamente. Questão que atravessa papéis vai por `/sm agreement`. Aqui só se **instala** (`init`), **atualiza** (`update`), **descobre** (`brainstorm`) ou **constrói** (`cycle` e suas fatias).
 
-Identifique o modo pelo primeiro termo. Sem termo reconhecido, o modo é **consulta**.
+Identifique o modo pelo primeiro termo. **Sem termo reconhecido, não dispare agente nenhum** — roteie, conforme a tabela abaixo.
 
 ## Modo `init` — instalar o time neste projeto
 
@@ -23,35 +23,19 @@ Não dispare agente nenhum: este modo é seu, e é conversa com o stakeholder.
 
 Não dispare agente nenhum: este modo é do comando, e é conversa com o stakeholder.
 
-## Modo `consult` (padrão) — `/team <mensagem ou pergunta>`
+## Sem modo reconhecido — roteie, não dispare
 
-Broadcast: todos os papéis recebem a mesma mensagem e respondem **do seu ângulo**.
+**Não existe broadcast.** `/team` não fala com os seis papéis: ele **orquestra o time trabalhando**. Mensagem solta ou pergunta livre não dispara agente nenhum — responda com a rota certa:
 
-1. **Antes de disparar**, avalie se a mensagem pertence claramente a um único papel. Se pertencer, diga isso e sugira o comando individual — acionar seis agentes para uma pergunta de um só é desperdício de contexto (regra R3). Só siga se o stakeholder insistir.
-2. Dispare os seis agentes **em paralelo** (`run_in_background: true`), cada um recebendo:
-   - a mensagem literal do stakeholder;
-   - a instrução de ler `.team-project/README.md` e o `context.md` do seu papel antes de responder;
-   - a regra de responder **só do seu papel**, em no máximo 10 linhas, e de dizer *"nada a acrescentar do meu papel"* quando for o caso — resposta curta e honesta vale mais que texto de preenchimento;
-   - a regra de **não escrever em disco**: consulta é conversa, não execução. Nenhum documento é alterado a menos que a mensagem peça explicitamente.
-3. Consolide as respostas para o stakeholder:
+| O que o stakeholder trouxe | Rota |
+|---|---|
+| demanda, valor, escopo, prioridade, **prazo**, **status**, plano de entrega | **`/po`** — o PO é o canal do stakeholder ([`workflow.md` §6a](../roles/scrum-master/process/workflow.md)) |
+| dúvida técnica, desenho, contrato, dívida | `/arc question <dúvida>` |
+| jornada, tela, usabilidade, acessibilidade | `/ux` |
+| questão que atravessa papéis e precisa de **uma** posição | `/sm agreement <questão>` — o SM chama só quem a questão toca |
+| ideia sem cobertura em visão geral / requisitos / fluxos | `/team brainstorm <ideia>` (R15) |
 
-```
-## Time — <mensagem> — <data>
-
-| Papel | Posição | Impacto no seu domínio |
-|---|---|---|
-| Scrum Master | <uma linha> | <prazo, fila, risco> |
-| Product Owner | <uma linha> | <requisito, escopo, aceite> |
-| Arquiteto | <uma linha> | <desenho, contrato, dívida> |
-| UX | <uma linha> | <jornada, tela, usabilidade, acessibilidade> |
-| Desenvolvedor | <uma linha> | <execução, esforço, armadilha> |
-| QA | <uma linha> | <verificabilidade, evidência, risco> |
-
-**Convergências:** <no que todos concordam>
-**Divergências:** <quem discorda de quem, e sobre o quê>
-**Precisa da sua decisão:** <o que só o stakeholder resolve — ou "nada">
-**Próxima ação sugerida:** <comando individual, Task no quadro, ou nada>
-```
+Diga qual é a rota e por quê, em uma linha. **Não peça permissão para rotear** e não dispare os seis "por garantia": reunir seis papéis para uma pergunta de um é desperdício de contexto (R3), e era o modo mais caro do time.
 
 ## Modo `brainstorm <ideia>` — descoberta funcional de ideia sem documentação
 
@@ -66,24 +50,6 @@ O que este comando faz na prática:
 3. O Agent `scrum-master` **facilita**: mantém as fases, consolida o brief, registra o delta de cada rodada e declara o fechamento — **não decide conteúdo funcional**.
 
 **Não escreve em disco durante as fases** — o brief é conversa até o fechamento e não vira arquivo permanente sem lugar declarado em `.team-project/`.
-
-## Modo `agreement <questão>` — quando você quer uma recomendação única
-
-Duas rodadas:
-
-1. **Posições** — igual à consulta: os seis respondem em paralelo, cada um do seu ângulo.
-2. **Consolidação** — envie todas as posições ao Agent `scrum-master`, que produz **uma recomendação única**, no formato de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/impact-analysis.md` quando houver impacto de escopo ou prazo. O SM registra a divergência que sobrou, com nome e motivo — não a apaga.
-
-**Acordo coletivo não é votação.** A propriedade dos papéis continua valendo:
-
-- questão de **requisito ou valor de produto** → os outros aconselham, **o PO decide**;
-- questão de **desenho, contrato ou padrão** → os outros aconselham, **o Arquiteto decide**;
-- questão de **jornada, tela, usabilidade ou acessibilidade** → os outros aconselham, **o UX decide**;
-- questão de **prazo, fila ou processo** → **o SM decide**;
-- questão de **evidência e qualidade** → **o QA decide**;
-- questão **estratégica** (stack, provedor, custo, risco aceito, prioridade acima da ordem do SM) → **sobe ao stakeholder** com a recomendação do time e as posições divergentes.
-
-Maioria não sobrepõe dono. Se o acordo contrariar o dono do assunto, isso é uma divergência a registrar — e possivelmente uma decisão sua.
 
 ## Modo `cycle <ID>` — o time construindo uma Task
 

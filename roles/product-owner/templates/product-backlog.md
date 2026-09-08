@@ -21,6 +21,20 @@
 
 O conteúdo de cada História segue [`user-story.md`](user-story.md), no arquivo da História ou em seção própria deste documento — a escolha é do projeto, declarada em `.team-project/product-owner/context.md`.
 
+## Plano de entrega
+
+> **Dono: PO.** É aqui que se responde *quando o valor chega*. O time dá as **estimativas** e o SM dá a **capacidade observada**; a decisão de o que entra em que sprint é sua ([`workflow.md` §6a](../../scrum-master/process/workflow.md)). Não é documento novo — é seção desta lista, para não haver duas verdades sobre prazo.
+
+| Sprint | Histórias previstas | Soma estimada | Capacidade (SM) | Compromisso externo |
+|---|---|---|---|---|
+| <n> *(corrente)* | H-<nnn>, H-<nnn> | <n> | <n> | <data prometida a alguém de fora, ou "nenhum"> |
+| <n+1> | H-<nnn> | <n> | <n> | |
+| adiante | H-<nnn>, H-<nnn> | — | — | |
+
+**Como manter.** Reordenar junto com o backlog, a cada `/po prioritize`. Revisar na Planning (o que entrou) e na Review (o que deslocou). **Estimativa que ainda não existe fica em branco** — não invente número para preencher a tabela: História só é estimada quando o time a quebra em Tasks, na Planning.
+
+**Quando uma História desloca**, registre o motivo em uma linha. Deslocamento sem motivo escrito é o que faz o plano perder credibilidade antes de perder a data.
+
 ## Requisitos em elaboração
 
 | RF | Título | Situação | Bloqueio |
