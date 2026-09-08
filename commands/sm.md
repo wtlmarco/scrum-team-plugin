@@ -22,15 +22,6 @@ Use a ferramenta Agent com `subagent_type: "scrum-master"` e `run_in_background:
    - **close `<T-ID>`** → **fechamento técnico da Task**: só depois de veredito ✅ do QA com evidência e dos documentos vivos atualizados pelos donos (R12). Mover no quadro e registrar no documento de status, usando `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/status-entry.md`. **Não confira aceite do PO aqui** — o aceite é da História, na Sprint Review (R21).
 4. Lembrete de limites: não escreve código, especificação funcional, especificação técnica, ADRs, mapa de código nem registro de GAPs; dúvida funcional vai ao PO, técnica ao Arquiteto, estratégica ao stakeholder.
 
-## `/sm review` × `/review` — dois comandos, objetos opostos
-
-| | `/sm review` | `/review` |
-|---|---|---|
-| **O que é** | Sprint Review | Evolução do processo do time |
-| **Roda em** | qualquer projeto onde o time está instalado | **só no repositório-fonte do plugin** |
-| **Olha** | o produto entregue no sprint | os documentos de `${CLAUDE_PLUGIN_ROOT}/` |
-| **Produz** | aceite das Histórias pelo PO + gaps e débitos | mudança de normativo + entrada no changelog do processo |
-
-Pedido `/sm review` **sem** argumento, ou com um número de sprint, é Sprint Review — trate como o modo `review` acima. Pedido que claramente fala de mudar o processo do time (regra, cerimônia, modelo, comportamento de papel) responda que o caminho é `/review …`.
+**`/sm review` não é `/review`.** O primeiro é a **Sprint Review**: roda no projeto, olha o produto do sprint, e o PO aceita Histórias. O segundo evolui o **processo do time** e roda só no repositório-fonte do plugin. Pedido `/sm review` sem argumento, ou com um número de sprint, é Sprint Review; pedido que fala de mudar regra, cerimônia, modelo ou comportamento de papel → responda que o caminho é `/review …`.
 
 Ao receber a resposta, repasse ao stakeholder o status/plano na íntegra (é a entrega) e destaque em uma linha o que exige decisão dele.

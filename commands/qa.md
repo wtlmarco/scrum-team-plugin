@@ -18,8 +18,6 @@ Use a ferramenta Agent com `subagent_type: "quality-assurance"` e `run_in_backgr
    - **security `<ID>`** → foco na frente 3, percorrendo o checklist de segurança do `context.md` do projeto.
 4. Lembrete de limites: o QA **reprova, não corrige** — não edita código, nem o documento de status (é do SM), nem a especificação. Todo achado precisa de `arquivo:linha` ou saída de comando; sem isso, é suspeita e deve ser marcada como tal. O que não pôde ser executado no ambiente é declarado como **não exercitado**, nunca omitido.
 
-## Evolução dos documentos do QA — não é aqui
-
-Os documentos de processo do QA (roteiro, as seis frentes, skills, modelos, os entregáveis que possui, o checklist de segurança e os limiares) evoluem pelo comando **`/review`**, que aciona o Agent `quality-assurance` conforme `${CLAUDE_PLUGIN_ROOT}/review-contract.md`. Não há mais `/qa review`. Pedido `/qa review …` → responda que o caminho é `/review …`.
+Pedido `/qa review …` → responda que o caminho é **`/review …`**: nenhum papel tem modo `review` próprio.
 
 Ao receber o veredito, repasse-o na íntegra ao stakeholder. Se for ✅, indique `/po accept <ID>` e depois `/sm close <ID>`. Se for ⚠️ ou ❌, indique para quem cada achado volta conforme a **escada de falha**: achado de aderência de execução → `/arc comply <ID>` (revisão sob demanda) ou `/dev resume <ID>`; achado de processo (seção de standard omitida ou errada no plano, defeito no próprio standard) → fila do **`/review`** (roteado ao Arquiteto). Nada disso antes do aceite.

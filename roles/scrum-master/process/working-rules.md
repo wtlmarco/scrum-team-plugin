@@ -169,7 +169,8 @@ O fechamento da Task é **técnico**: veredito ✅ do QA com evidência, e o `/s
 | História aceita fora da Sprint Review, ou aceite mirando uma Task | registro de aceites | qualquer ocorrência → R21 ignorada |
 | Plano ou veredito que toca engenharia sem citar a seção de standard aplicável | planos + vereditos do sprint | recorrente → standard virou enfeite (R16) |
 | GAP ou achado apontando defeito em `${CLAUDE_PLUGIN_ROOT}/standards/` sem chegar ao `/review` seguinte | registro de GAPs + changelog do processo | qualquer ocorrência → canal de defeito de R16 quebrado |
-| Carga fixa dos documentos do processo (KB) por papel | tamanho de `agents/` + `commands/` + `roles/<papel>/` | crescimento sem regra ou cerimônia nova, ou entrada de changelog > 10 KB → R17 / ciclo de eficiência (workflow §5c) |
+| Carga fixa por invocação (KB) por papel — `agents/<papel>.md` + `commands/<papel>.md` | tamanho dos dois arquivos | crescimento sem regra ou cerimônia nova → ciclo de eficiência (workflow §5c) |
+| Conjunto sob demanda (KB) por papel — `roles/<papel>/` **sem os changelogs** | tamanho do diretório menos `process-changelog*.md` | idem. Somar o changelog aqui é o erro que faz o Act apontar sempre para o SM (§5c) |
 | Merge em `main` sem bump de `version` + entrada no `CHANGELOG.md`, ou `plugin.json` ≠ topo do `CHANGELOG.md`, ou entrada de `process-changelog.md` sem par em `CHANGELOG.md` | `git log main` + `CHANGELOG.md` + `plugin.json` | qualquer ocorrência → R18 ignorada (workflow §5d) |
 | Entrada de `process-changelog.md` sem bloco de evidência, ou com comando cuja reexecução dá saída diferente da registrada | o bloco de evidência da entrada, reexecutado por amostragem | qualquer ocorrência → R19 ignorada; o `/review` está declarando sem verificar |
 

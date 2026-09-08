@@ -27,7 +27,9 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 | História aceita fora da Sprint Review, ou aceite mirando uma Task | <n> | qualquer | R21 |
 | Plano/veredito de engenharia sem citar a seção de `${CLAUDE_PLUGIN_ROOT}/standards/` aplicável | <n> | recorrente | R16 |
 | Defeito em `${CLAUDE_PLUGIN_ROOT}/standards/` sem chegar ao `/review` seguinte | <n> | qualquer | R16 |
-| Carga fixa dos documentos do processo (KB) — fase Check do PDCA (workflow §5c) | <atual> / <retro anterior> / <Δ> · causa se cresceu · ação: nenhuma \| corte candidato para `/review metrics` | crescimento sem regra ou cerimônia nova; entrada de changelog > 10 KB | R17 |
+| **Carga fixa** por invocação (KB) — `agents/` + `commands/` — fase Check do PDCA (workflow §5c) | <atual> / <retro anterior> / <Δ> · causa se cresceu · ação: nenhuma \| corte candidato para `/review metrics` | crescimento sem regra ou cerimônia nova | §5c |
+| **Conjunto sob demanda** (KB) — `roles/<papel>/` **sem os changelogs** | <atual> / <retro anterior> / <Δ> | idem | §5c |
+| Entrada de changelog acima do teto | maior bloco `## vX.Y` de `process-changelog.md` | > 10 KB | R17 |
 | Entrega sem bump: merge em `main` sem `version` + entrada no `CHANGELOG.md`, ou `plugin.json` ≠ topo do `CHANGELOG.md`, ou entrada de `process-changelog.md` sem par — *só quando a retro roda sobre o repositório-fonte do plugin; num projeto consumidor, `n/a`* | <n> \| n/a | qualquer | R18 |
 | Entrada de `process-changelog.md` sem bloco de evidência, ou com comando cuja reexecução dá saída diferente da registrada — *idem: só no repositório-fonte* | <n> \| n/a | qualquer | R19 |
 

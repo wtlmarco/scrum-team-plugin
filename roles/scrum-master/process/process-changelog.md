@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v2.11`](process-changelog-archive.md) | Guias de raiz ganham dono; roteiro de instalação endurecido; R19 passa a exigir checagem semântica — 07/09/2026 |
 | [`v2.10`](process-changelog-archive.md) | Reavaliação do conjunto: caminho de escrita do `/review`, contagem de regras e modo `note` reconciliados — 07/09/2026 |
 | [`v2.9`](process-changelog-archive.md) | Processo de atualização e lançamento do plugin ganha documento e dono — 06/09/2026 |
 | [`v2.8`](process-changelog-archive.md) | Evolução do processo num comando só: `/review`, guardado ao repositório-fonte, com `note.md` como fila — 06/09/2026 |
@@ -34,6 +35,73 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.2 — A métrica de eficiência para de medir história fria; o `/review` sai do caminho quente — 08/09/2026
+
+**Instrução:** *(stakeholder, direta)* "faça uma revisão de processo geral e otimização sempre com o objetivo de otimizar o gasto com tokens e garantia de qualidade do processo e do produto desenvolvido pelo time."
+
+**Classificação:** formato de documento (extração de conteúdo frio do caminho quente) + regra (a métrica de §5c e os indicadores de retrospectiva mudam de definição). Nenhum fluxo, cerimônia, portão ou propriedade de artefato alterado — **a garantia de qualidade não foi tocada**, e a auditoria abaixo confirma que continua íntegra.
+
+### Medição — a fase Check do PDCA (§5c)
+
+| Papel | Carga fixa antes | Carga fixa depois | Δ |
+|---|---|---|---|
+| scrum-master | 13,5 KB | 12,7 KB | −6% |
+| product-owner | 10,4 KB | 10,0 KB | −4% |
+| architect | 10,9 KB | 9,8 KB | −10% |
+| user-experience | 11,2 KB | 10,7 KB | −4% |
+| developer | 7,4 KB | 6,9 KB | −7% |
+| quality-assurance | 10,2 KB | 9,6 KB | −6% |
+| **Total** | **63,6 KB** | **59,7 KB** | **−6%** |
+
+Custo de um broadcast `/team <mensagem>`: **69 KB** (os seis fixos + `commands/team.md`), antes de qualquer leitura de `.team-project/`. É a operação mais cara do time por uma ordem de grandeza.
+
+### O que mudou
+
+| Documento | Onde | O quê |
+|---|---|---|
+| `agents/{scrum-master,product-owner,architect,user-experience,quality-assurance}.md` | seção final | A seção "Evolução dos seus documentos" **era duplicação literal** de `review-contract.md` §"Alcance por papel" — inclusive os "cuidados do Arquiteto sobre `standards/`", quase palavra por palavra. Reduzida a **um parágrafo** que aponta para o contrato e preserva a única regra que precisa ser lida antes dele: *escreva na RAIZ, nunca em `${CLAUDE_PLUGIN_ROOT}`*. **−1,9 KB de caminho quente, zero informação perdida** |
+| `commands/{po,arc,qa,ux,dev,sm}.md` | seção final | O parágrafo "Evolução dos documentos do X — não é aqui" repetia o que o `review-contract.md` já diz. Comprimido a **uma linha de roteamento** (`/X review …` → `/review …`), que é a única parte usada em tempo de invocação. As instruções operacionais ("ao receber o veredito/relatório…") foram **preservadas na íntegra** |
+| `process/workflow.md` | §5c, "Métrica por papel" | **Passa a ser dois números, nunca somados:** *carga fixa* (`agents/` + `commands/`, paga em toda invocação) e *conjunto sob demanda* (`roles/<papel>/`, **sem os changelogs**). Seção nova ordenando onde o corte rende mais, e o custo do broadcast declarado |
+| `process/working-rules.md` | indicadores | A linha única de footprint vira **duas**, alinhadas à métrica nova |
+| `templates/retrospective.md` | métricas | Idem: carga fixa e conjunto separados; o teto de entrada de changelog (R17) vira linha própria |
+| `review-contract.md` | `/review metrics` | O giro **Act** passa a exigir os dois números separados, e a preferir a remoção na carga fixa |
+
+**O defeito que a métrica tinha.** `roles/scrum-master/` mede **320,9 KB**, dos quais **159,4 KB (50%) são o changelog arquivado** — frio por construção (só lido em `/review history`) e **monotonicamente crescente por decisão do próprio processo**, já que R17 manda arquivar em vez de apagar. Contra ~30 KB dos outros papéis, o SM aparecia dez vezes mais pesado por causa de história que ninguém carrega. O giro **Act** apontaria sempre para o SM e nunca para o desperdício real, que estava nos 63,6 KB de carga fixa. **Métrica errada não deixa de corrigir — dirige o corte para o lugar errado**, e teria custado ao time um giro inteiro de PDCA cortando o documento errado.
+
+**Modo de falha que evita:** o ciclo de eficiência otimizar o que não custa e ignorar o que custa. É o análogo, para o processo, do que R7 evita no produto: decidir sem medir o que importa.
+
+**Quem passa a ser cobrado de forma diferente:** o **SM** (reporta dois números na retrospectiva, não um) e **todo papel** no `/review metrics`.
+
+**Indicador de sucesso:** a carga fixa total não volta a subir sem regra ou cerimônia nova que a justifique; o próximo `/review metrics` propõe remoção na carga fixa, não no conjunto sob demanda.
+
+### Auditoria de qualidade — o que foi verificado e está íntegro
+
+| Verificação | Resultado |
+|---|---|
+| Toda regra tem forma de verificação ("SM verifica") | **21/21** |
+| Contagem declarada × real de regras | 21 × 21, e 21 linhas no resumo |
+| Modelo órfão (template que ninguém referencia) | **0** |
+| Links `.md` quebrados | **0** *(1 falso positivo: link dentro do bloco markdown gerado de `project-context.md`)* |
+| Portões, gates, DoR/DoD, escada de falha, seis frentes do QA | **inalterados** — nenhum controle de qualidade foi removido nesta entrada |
+
+### Evidência (R19)
+
+| Classe | Comando | Resultado |
+|---|---|---|
+| Arquivamento | `Compare-Object` do bloco `## v2.11` movido × `git show HEAD` | **53 × 53 linhas, diff = 0.** Índice de arquivadas ganhou a linha `v2.11` |
+| Extração | tamanho de `agents/` + `commands/` antes e depois | 63,6 KB → 59,7 KB (−6%); por papel, na tabela acima |
+| **Integridade da extração** | `grep` de "Alcance por papel" e dos 5 papéis em `review-contract.md`; `grep` do roteamento `/X review` nos 6 comandos | contrato cobre **5/5** papéis e os cuidados de `standards/`; roteamento preservado em **6/6** comandos |
+| **Encoding** | contagem de mojibake (`Ã`, `â€`, `Â`) em `agents/` e `commands/` | **0.** Uma primeira tentativa da extração usou `Get-Content` (ANSI no PS 5.1) com `WriteAllLines` (UTF-8) e **corrompeu 5 arquivos por dupla codificação** — detectado porque os *bytes subiram enquanto as linhas caíam*; revertido com `git checkout` e refeito com `ReadAllText`/`WriteAllText` |
+| Auditoria | varredura de regras sem verificação, modelos órfãos, contagens e links | tabela acima |
+
+### Pendente do stakeholder
+
+- **Fecho da entrega:** a entrega passa a **`v3.2.0`** — carrega três entradas de processo (v3.0, v3.1, v3.2).
+- **Reiniciar a sessão** — `agents/*` e `commands/*` mudaram.
+- **Não aplicado, proposto:** o bloco fixo §8 do `.team-project/README.md` custa **2,6 KB lidos por todo papel em toda invocação**. Cortá-lo exige decidir o que o agente precisa saber de cor sobre a superfície de comandos — é a maior economia restante, e é sua a caneta sobre esse bloco.
 
 ---
 
@@ -161,60 +229,4 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 - **Reiniciar a sessão** — `agents/` e `commands/` só entram em vigor no próximo carregamento.
 - **Projetos instalados** precisam de `/team update`; o vocabulário mudou, então quadro e backlog existentes pedem leitura antes de aplicar.
 - **`note.md`:** o bloco "Revisão do Processo" e os itens 27–29 saem da fila, consumidos aqui.
-
----
-
-## v2.11 — Guias de raiz ganham dono; roteiro de instalação endurecido; R19 passa a exigir checagem semântica — 07/09/2026
-
-**Instrução:** *(stakeholder)* "por corrigir" — sobre a triagem do relato de instalação em `note.md` e os achados da reavaliação.
-**Classificação:** **propriedade de artefato** (guias de raiz sem dono na matriz) + formato de documento (roteiro de instalação; resíduo da v2.10) + regra (R19 ganha a checagem semântica).
-**Registrada por:** SM (curador), acionado pelo `/review`. **Escopo:** fecha o buraco de titularidade que impedia o roteamento de 5 dos 6 sub-itens do relato, e aplica o relato.
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `process/artifact-ownership.md` | §1 matriz | **Linha nova:** guias e rituais de raiz (`README.md`, `how-to.md`, `replicate-in-new-project.md`, `review-contract.md`, `team-init.md`, `team-update.md`) → dono **stakeholder**; o SM mantém a **coerência de referência cruzada** (contagem, ponteiro, nome de modo, índice) como curadoria. Eram os únicos arquivos do plugin sem dono declarado |
-| `review-contract.md` · `commands/review.md` | §Limites · tabela de triagem | Os guias de raiz entram como classe própria: proposta ao stakeholder, com a exceção de curadoria do SM |
-| `how-to.md` | §"Instalar em um projeto" | Reescrito em **5 passos numerados**, do relato de campo: URL `.git` completa obrigatória (nunca `owner/repo` — duas formas do mesmo marketplace não casam no resolvedor); bloco esperado do `.claude/settings.json`; passo de verificação `marketplace list` (project × user settings); **reinício como passo numerado e verificável** (`/plugin` enabled, `/help` com 8 comandos e 6 agentes); e a afirmação positiva de que o projeto-alvo **não precisa ser repo git**. Nova subseção **"Windows e múltiplos perfis"**: um `CLAUDE_CONFIG_DIR` por vez, caixa da letra do drive em `installed_plugins.json`, `git clone` "vermelho" no PS 5.1, exibição duplicada em `plugin list` — os três últimos **marcados como contorno de bug externo**, que envelhecem quando a ferramenta corrigir |
-| `replicate-in-new-project.md` | passo 1 · checklist | Mesma forma de identificador em todos os registros; projeto-alvo não precisa ser repo git; checklist ganha a verificação de **escopo** (project × user) e o reinício verificável |
-| `process/working-rules.md` · `review-contract.md` | R19 · passo 5 | **`grep` zerado não é substituição completa.** A classe "substituição de padrão" passa a exigir **ler cada ocorrência nova no contexto** e conferir o que depende dela — contagem enumerada, lista adjacente, total citado noutro documento |
-| `README.md` · `commands/review.md` · `roles/architect/README.md` | resumos do `/review` | "cinco passos" com enumeração de **quatro** → os cinco, com `verificar com evidência`. Resíduo da v2.10 |
-| `roles/scrum-master/templates/retrospective.md` | Métricas | **Linha de R19** — o mesmo gap que a v2.10 fechou para R18 ficara aberto para a regra que ela própria criou |
-| `README.md` · `process/workflow.md` | índice · §5d | `team-update.md` no índice de estrutura; o ponteiro de §5d passa a citar `team-update.md`, não `commands/team.md` (os passos saíram de lá em `450adce`) |
-| `process/process-changelog.md` | — | v2.8 arquivada íntegra (teto de 3 — R17); linha no índice |
-
-### Por quê
-**Titularidade.** A matriz cobria `CHANGELOG.md`, `agents/`, `commands/`, `roles/`, `standards/` — e nenhum dos guias de raiz, que são a **face de instalação** do plugin. Sem dono não há rota: 5 dos 6 sub-itens acionáveis do relato de campo não tinham para onde ser roteados, e um relato bom ficaria parado por falta de linha na tabela. **Evita:** item legítimo que morre na triagem porque o alvo não pertence a ninguém.
-
-**Roteiro de instalação.** O relato documenta uma instalação que falhou em silêncio por três causas independentes — identificador do marketplace em duas formas, registro caindo em user settings apesar do `--scope project`, e caixa da letra do drive. O roteiro anterior tinha 4 linhas e um comentário; não verificava nada. **Evita:** "Successfully installed" seguido de plugin que nunca aparece.
-
-**R19.** A regra nasceu na v2.10 para o `/review` não declarar o que não verificou — e a própria v2.10 passou no `grep` de "quatro passos" (0 antigo / 10 novo) deixando ao lado três enumerações com quatro itens. O `grep` provou que a string sumiu, não que o sentido fechou.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda |
-|---|---|
-| **SM** | Ganha a curadoria de referência cruzada nos guias de raiz — e a retrospectiva coleta o indicador de R19 |
-| **Todos os papéis** | Substituição de padrão não fecha com `grep` zerado: exige ler cada ocorrência nova no contexto |
-| **stakeholder** | Passa a ser dono declarado dos guias de raiz; o `/review` propõe o texto, não aplica |
-
-### Conflitos com o processo vigente
-Nenhum. A recomendação de `--scope project` do relato **reforça** o que `how-to.md` e `replicate-in-new-project.md` já prescreviam; a remoção do registro global foi limpeza da máquina do relator, fora do escopo do plugin. A linha nova da matriz não retira caneta de ninguém — cobre arquivos que não estavam em linha alguma.
-
-### Como saberemos que funcionou
-Nas próximas três instalações em máquina nova: **zero** casos de "instalou e não apareceu" que o roteiro não antecipe. E nos próximos três `/review`: **zero** achados de contagem/enumeração incoerente sobrevivendo ao passo 5 — o teste é a v2.10, que hoje seria pega. Se o `grep` continuar passando defeito semântico, a classe precisa de comando próprio, não de instrução.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Arquivamento | `Compare-Object` v2.8 do archive × `450adce` | 47/47 linhas, **0 de diferença** | ✅ |
-| Substituição **semântica** | contar `·` nas 3 linhas de "cinco passos" | `README.md:162`, `commands/review.md:55`, `roles/architect/README.md:55` → **5/5 itens** cada | ✅ |
-| Substituição | R19 nos três lugares (regra · indicador · instrumento) | `working-rules` 3 · `retrospective` 1 · template `Evidência` 2 | ✅ |
-| Substituição | guias de raiz na matriz de propriedade | 5/5 (`how-to`, `replicate`, `review-contract`, `team-init`, `team-update`) | ✅ |
-| Extração | `team-update.md` referenciado de todos os pontos | índice do `README` 1 · `workflow` §5d 1 · `commands/team.md` 1 | ✅ |
-| Manifesto | `claude plugin validate . --strict` | passou | ✅ |
-
-### Pendente do stakeholder
-- **Fecho da entrega:** bump de `plugin.json` e entrada `v2.9.0` no `CHANGELOG.md` (R18), com a divergência de numeração §5d declarada — a entrega carrega agora **duas** entradas de processo (v2.10 e v2.11).
-- **Reiniciar a sessão** — `commands/review.md` e `agents/*` só valem no próximo carregamento.
-- `note.md`: o lote do relato de instalação foi **consumido**; a fila `## Abertas` volta a ficar vazia.
 

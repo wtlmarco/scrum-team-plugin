@@ -218,7 +218,18 @@ O custo dos documentos de `${CLAUDE_PLUGIN_ROOT}/` não pode depender de uma fax
 | **Check** | `/review` sem instrução (reavaliação do conjunto, linha "Excesso") + retrospectiva | Passa a ser quantitativo: o papel mede seu footprint e compara com o valor anterior registrado; a retrospectiva registra total e Δ |
 | **Act** | `/review metrics` + `/review <instrução>` | O SM consolida os footprints numa tabela por papel, escolhe **uma** mudança, roteia o corte ao dono; entrada no changelog com o indicador (KB antes/depois) |
 
-**Métrica por papel:** KB da carga fixa por invocação (`agents/<papel>.md` + `commands/<papel>.md`) **+** KB do conjunto do papel (`roles/<papel>/` — README, skills, templates; para o SM, também `process/`).
+**Métrica por papel — dois números, nunca somados num só:**
+
+| Número | O que mede | Como | Por que separado |
+|---|---|---|---|
+| **Carga fixa** | o que entra no prompt em **toda** invocação daquele papel | `agents/<papel>.md` + `commands/<papel>.md` | é o único custo que se paga sempre; **é aqui que corte vale mais** |
+| **Conjunto sob demanda** | o que o papel **pode** ler, conforme a tarefa | `roles/<papel>/` — README, skills, templates; para o SM, também `process/`, **exceto `process-changelog.md` e `process-changelog-archive.md`** | é pago por leitura, não por invocação (R3) |
+
+**Por que o changelog fica fora da conta.** O arquivo de changelog é **frio por construção** — só é lido em `/review history` — e **cresce de forma monotônica por decisão do próprio processo**: R17 manda arquivar, não apagar. Contá-lo faz o SM aparecer com ~320 KB contra ~30 KB dos outros papéis, dos quais metade é história arquivada; o giro **Act** então aponta sempre para o SM e nunca para o desperdício real, que está na carga fixa. **Medida errada não corrige nada — dirige o corte para o lugar errado.**
+
+**Onde o corte rende mais, em ordem:** (1) a **carga fixa** dos 12 arquivos de `agents/` + `commands/`, porque é multiplicada por toda invocação; (2) o **bloco fixo §8 do `.team-project/README.md`**, lido por todo papel em toda invocação; (3) o conjunto sob demanda, que já é protegido por R3.
+
+**Custo de um broadcast.** `/team <mensagem>` dispara os seis papéis: paga `commands/team.md` **mais a carga fixa dos seis**, antes de qualquer leitura de `.team-project/`. É a operação mais cara do time por uma ordem de grandeza — daí o passo 1 do modo `consult` mandar avaliar se a mensagem pertence a um papel só (R3).
 
 **Gatilhos:**
 - *Medição* — em todo `/review` sem instrução (o papel já faz a reavaliação do conjunto ali; passa a anexar os dois números) e na retrospectiva de cada sprint (o SM mede o total do processo).

@@ -66,8 +66,6 @@ O fluxo, as cerimônias, DoR/DoD e os gates estão em `${CLAUDE_PLUGIN_ROOT}/rol
 
 Use `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/status.md`. Seja curto — o stakeholder lê isso em pé.
 
-## Evolução do processo — `/review`
+## Evolução dos seus documentos — `/review`
 
-**Quando o `/review` te acionar:** leia o `review-contract.md` da **RAIZ** que o `/review` te passou e siga-o — os cinco passos, a reavaliação obrigatória do conjunto, os limites comuns, o alcance de cada papel e os modos auxiliares (`/review note` · `/review audit` · `/review metrics` · `/review history`) estão lá, e não se repetem aqui.
-
-**Seu alcance — o maior do time:** o roteiro, as skills e os modelos do SM; **os normativos que governam todos** (`process/working-rules.md`, `process/workflow.md`, `process/artifact-ownership.md`), que são exclusivos seus; a **triagem** dos Tasks de `note.md` (classificar e rotear ao papel dono); e a **curadoria** do processo do time inteiro — consolidar o changelog, apontar contradição entre mudanças de papéis diferentes e escalar ao stakeholder o que ficou inconsistente.
+Quando o `/review` te acionar, ele te passa o caminho da **RAIZ** (o clone do repositório-fonte). Leia `RAIZ/review-contract.md` e siga-o: **o seu alcance**, os cinco passos, a reavaliação obrigatória do conjunto e os limites comuns estão lá — e não se repetem aqui. **Nunca escreva em `${CLAUDE_PLUGIN_ROOT}`**: é a cópia instalada, que o próximo `claude plugin update` sobrescreve. Sem a RAIZ, pare e peça.

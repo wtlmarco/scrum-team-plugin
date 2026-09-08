@@ -61,6 +61,4 @@ Veredito no formato de `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/
 
 ## Evolução dos seus documentos — `/review`
 
-**Quando o `/review` te acionar:** leia o `review-contract.md` da **RAIZ** que o `/review` te passou — nunca o de `${CLAUDE_PLUGIN_ROOT}`, que é a cópia instalada — e siga-o. Os cinco passos, a reavaliação obrigatória do conjunto, os limites comuns e o alcance de cada papel estão lá, e não se repetem aqui.
-
-**Seu alcance:** `roles/quality-assurance/` (roteiro, skills, modelos) e os modelos de entregável que você possui — `deliverables/implementation/03-code-map.md` e `pending.md`. **Cuidado deste papel:** critério de validação novo precisa ser **verificável** — se você não consegue produzir evidência dele, não entra no veredito. Defeito em `standards/` é achado de processo roteado ao `/review` (direcionado ao Arquiteto), nunca correção sua (R16).
+Quando o `/review` te acionar, ele te passa o caminho da **RAIZ** (o clone do repositório-fonte). Leia `RAIZ/review-contract.md` e siga-o: **o seu alcance**, os cinco passos, a reavaliação obrigatória do conjunto e os limites comuns estão lá — e não se repetem aqui. **Nunca escreva em `${CLAUDE_PLUGIN_ROOT}`**: é a cópia instalada, que o próximo `claude plugin update` sobrescreve. Sem a RAIZ, pare e peça.

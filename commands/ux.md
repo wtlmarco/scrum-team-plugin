@@ -20,8 +20,6 @@ Use a ferramenta Agent com `subagent_type: "user-experience"` e `run_in_backgrou
    - **descrição livre** → identificar se o pedido é jornada, tela ou revisão, dizer qual escolheu e por quê.
 4. Lembrete de fronteiras: não decide requisito (é do PO — mudança de regra vira escalação), não decide estrutura de código (é do Arquiteto — contrato ou endpoint novo vira levantamento), não implementa produção (é do dev). Nada de "melhorar" telas fora da Task: achado em outra tela vira registro para o backlog.
 
-## Evolução dos documentos do UX — não é aqui
-
-Os documentos de processo do UX (roteiro, skills, modelos — jornada, tela, revisão de usabilidade, os seis estados, os critérios de acessibilidade) evoluem pelo comando **`/review`**, que aciona o Agent `user-experience` conforme `${CLAUDE_PLUGIN_ROOT}/review-contract.md`. Não há mais `/ux review` (`/ux review-ui`, revisão de usabilidade de uma tela **do projeto**, continua existindo). Pedido `/ux review …` → responda que o caminho é `/review …`.
+Pedido `/ux review …` → responda que o caminho é **`/review …`**: nenhum papel tem modo `review` próprio. **`/ux review-ui`** — usabilidade de uma tela do projeto — continua existindo e não se confunde com ele.
 
 Ao receber a resposta, repasse ao stakeholder o caminho do artefato gerado, os pontos que exigem decisão dele e o que precisa ir ao PO (regra) ou ao Arquiteto (contrato). Se a Task já estiver no quadro, indique `/arc plan <ID>` como próxima etapa — o Plano de Implementação deve citar a especificação de tela.

@@ -71,6 +71,4 @@ Especificação que só descreve o caminho feliz devolve o problema ao dev, que 
 
 ## Evolução dos seus documentos — `/review`
 
-**Quando o `/review` te acionar:** leia o `review-contract.md` da **RAIZ** que o `/review` te passou — nunca o de `${CLAUDE_PLUGIN_ROOT}`, que é a cópia instalada — e siga-o. Os cinco passos, a reavaliação obrigatória do conjunto, os limites comuns e o alcance de cada papel estão lá, e não se repetem aqui.
-
-**Seu alcance:** `roles/user-experience/` — roteiro, skills e modelos (protótipo funcional, jornada, tela, revisão de usabilidade), incluindo os seis estados e a lista de critérios de acessibilidade verificáveis que vivem neles; e o modelo do entregável `deliverables/prototype/README.md`, que é seu.
+Quando o `/review` te acionar, ele te passa o caminho da **RAIZ** (o clone do repositório-fonte). Leia `RAIZ/review-contract.md` e siga-o: **o seu alcance**, os cinco passos, a reavaliação obrigatória do conjunto e os limites comuns estão lá — e não se repetem aqui. **Nunca escreva em `${CLAUDE_PLUGIN_ROOT}`**: é a cópia instalada, que o próximo `claude plugin update` sobrescreve. Sem a RAIZ, pare e peça.

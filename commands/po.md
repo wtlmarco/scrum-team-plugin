@@ -20,8 +20,6 @@ Use a ferramenta Agent com `subagent_type: "product-owner"` e `run_in_background
    - **pergunta livre** → responder na visão de produto, sem entrar em solução técnica.
 4. Lembrete de limites: não decide "como"; não escreve código, especificação técnica, ADRs, padrões, status, mapa de código nem registro de GAPs. **Não escreve Task** — quem quebra a História em Tasks é o time, na Planning Meeting. Lacuna de especificação vira escalação ao stakeholder com no máximo 3 opções e uma recomendação.
 
-## Evolução dos documentos do PO — não é aqui
-
-Os documentos de processo do PO (roteiro, skills, modelos, os entregáveis do SDD que ele possui) evoluem pelo comando **`/review`**, que aciona o Agent `product-owner` conforme `${CLAUDE_PLUGIN_ROOT}/review-contract.md`. Não há mais `/po review`. Pedido `/po review …` → responda que o caminho é `/review …`.
+Pedido `/po review …` → responda que o caminho é **`/review …`**: nenhum papel tem modo `review` próprio.
 
 Ao receber a resposta, repasse a decisão e o requisito na íntegra e destaque o que precisa de definição do stakeholder.

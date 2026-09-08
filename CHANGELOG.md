@@ -13,11 +13,19 @@
 
 ---
 
-## v3.1.0 — 2026-09-08
+## v3.2.0 — 2026-09-08
 
 **Branch:** `feat/v3.0.0` · **Base:** `main` (v2.9.0) · **PR** para `main`.
 
-**MAJOR — redesenho do modelo de trabalho.** Carrega **duas** entradas do [changelog do processo](roles/scrum-master/process/process-changelog.md): `v3.0` (o redesenho) e `v3.1` (protótipo funcional e o nome do Sprint Backlog) — daí a entrega sair como `v3.1.0`, e não `v3.0.0`. É a primeira entrega que **quebra vocabulário e superfície de comandos**: projetos instalados precisam de leitura antes de aplicar.
+**MAJOR — redesenho do modelo de trabalho.** Carrega **três** entradas do [changelog do processo](roles/scrum-master/process/process-changelog.md): `v3.0` (o redesenho), `v3.1` (protótipo funcional e o nome do Sprint Backlog) e `v3.2` (otimização de custo de contexto) — daí a entrega sair como `v3.2.0`. É a primeira entrega que **quebra vocabulário e superfície de comandos**: projetos instalados precisam de leitura antes de aplicar.
+
+### Custo de contexto — o que ficou mais barato
+
+- **Carga fixa por invocação: 63,6 KB → 59,7 KB (−6%)**, sem perder uma linha de informação. A seção "Evolução dos seus documentos" dos 5 agents era **duplicação literal** de `review-contract.md`, e o parágrafo equivalente dos 6 comandos repetia o mesmo — os dois foram reduzidos a um ponteiro e a uma linha de roteamento. O conteúdo continua inteiro no `review-contract.md`, que só é lido quando o `/review` roda.
+- **A métrica de eficiência (§5c) parou de medir história fria.** Ela somava `roles/<papel>/` inteiro, e no caso do SM **50% disso é changelog arquivado** — frio por construção e crescente por decisão de R17. O SM aparecia dez vezes mais pesado que os outros por causa de história que ninguém carrega, e o ciclo PDCA apontaria sempre para o documento errado. Agora são **dois números separados**: carga fixa (paga sempre) e conjunto sob demanda (pago por leitura, sem os changelogs).
+- **Custo declarado do broadcast:** `/team <mensagem>` paga **69 KB** — os seis fixos mais `commands/team.md` — antes de qualquer leitura de `.team-project/`. Fica escrito em §5c para que a escolha entre `/team` e o comando individual seja informada.
+
+**Nenhum controle de qualidade foi removido.** Auditoria da entrega: 21/21 regras com forma de verificação · 0 modelos órfãos · 0 links quebrados · portões, gates, DoR/DoD, escada de falha e as seis frentes do QA inalterados.
 
 ### O que muda para quem usa o time
 
@@ -55,7 +63,7 @@
 
 ### Como verificar
 
-- `claude plugin details team@team` mostra **v3.1.0** e continua listando **8 comandos** (`sm po arc ux dev qa team review`) e 6 agents — após reiniciar a sessão.
+- `claude plugin details team@team` mostra **v3.2.0** e continua listando **8 comandos** (`sm po arc ux dev qa team review`) e 6 agents — após reiniciar a sessão.
 - `/help` mostra os modos novos no `argument-hint` de `/sm` e `/po`.
 - `grep -r "Plano de Execução" --include=*.md .` → só nos changelogs, que por R17 não se reescrevem.
 - A entrada `v3.0` do changelog do processo traz o bloco de evidência exigido por R19, incluindo a checagem semântica que pegou 4 falsos positivos da substituição `item` → `Task`.

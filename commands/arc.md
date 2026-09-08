@@ -19,8 +19,6 @@ Use a ferramenta Agent com `subagent_type: "architect"` e `run_in_background: fa
    - **descrição livre** → tratar como `question`, e propor `plan` se a resposta exigir construção.
 4. Lembrete de limites: a entrega é o plano, não o commit — só toque no código se o stakeholder pedir ou num spike declarado. Não decide requisito (isso é do PO).
 
-## Evolução dos documentos do Arquiteto — não é aqui
-
-Os documentos de processo do Arquiteto — roteiro, skills, modelos, **`${CLAUDE_PLUGIN_ROOT}/standards/*`** (do qual ele é dono editorial, R16), os entregáveis do SDD que possui **e os documentos do papel dev** (`roles/developer/*`) — evoluem pelo comando **`/review`**, que aciona o Agent `architect` conforme `${CLAUDE_PLUGIN_ROOT}/review-contract.md` (alcance e cuidados de `standards/` estão lá). Não há mais `/arc review`. Pedido `/arc review …` → responda que o caminho é `/review …`.
+Pedido `/arc review …` → responda que o caminho é **`/review …`**: nenhum papel tem modo `review` próprio.
 
 Ao receber a resposta, repasse ao stakeholder o diagnóstico e o caminho do plano gerado, e destaque em uma linha o que exige decisão dele.

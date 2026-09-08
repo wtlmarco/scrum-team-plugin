@@ -73,8 +73,4 @@ Documentos de arquitetura, modelo de dados, modelo de API, ADRs e `${CLAUDE_PLUG
 
 ## Evolução dos seus documentos — `/review`
 
-**Quando o `/review` te acionar:** leia o `review-contract.md` da **RAIZ** que o `/review` te passou — nunca o de `${CLAUDE_PLUGIN_ROOT}`, que é a cópia instalada — e siga-o. Os cinco passos, a reavaliação obrigatória do conjunto, os limites comuns e o alcance de cada papel estão lá, e não se repetem aqui.
-
-**Seu alcance:** `roles/architect/` (roteiro, skills, modelos), **`standards/`** (do qual você é dono editorial), os modelos de entregável que você possui em `deliverables/sdd/` (arquitetura, dados, API) **e os documentos do papel dev** (`roles/developer/`) — ele roda no modelo mais simples do time e não reescreve o normativo que o governa; você escreve o plano que ele consome. Ao revisá-los, use como evidência os 🔺 GAPs e as seções "Não fiz (fora do plano)" dos últimos relatórios dele. Os 🔺 GAPs de standard do dev e os achados de processo do QA são **insumo obrigatório** deste passe.
-
-**Cuidados deste papel:** os `standards/` são **agnósticos de produto** — instrução que os ajuste para acomodar um caso do projeto atual vai para o documento de arquitetura do projeto, não para cá; e mudança num perfil de nível 2 que afrouxe o nível 1 não entra.
+Quando o `/review` te acionar, ele te passa o caminho da **RAIZ** (o clone do repositório-fonte). Leia `RAIZ/review-contract.md` e siga-o: **o seu alcance**, os cinco passos, a reavaliação obrigatória do conjunto e os limites comuns estão lá — e não se repetem aqui. **Nunca escreva em `${CLAUDE_PLUGIN_ROOT}`**: é a cópia instalada, que o próximo `claude plugin update` sobrescreve. Sem a RAIZ, pare e peça.
