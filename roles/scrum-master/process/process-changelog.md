@@ -103,6 +103,18 @@ Custo de um broadcast `/team <mensagem>`: **69 KB** (os seis fixos + `commands/t
 - **Reiniciar a sessão** — `agents/*` e `commands/*` mudaram.
 - **Não aplicado, proposto:** o bloco fixo §8 do `.team-project/README.md` custa **2,6 KB lidos por todo papel em toda invocação**. Cortá-lo exige decidir o que o agente precisa saber de cor sobre a superfície de comandos — é a maior economia restante, e é sua a caneta sobre esse bloco.
 
+### Addendum — 08/09/2026 · correção do custo de broadcast
+
+*(Anexado, não reescrito — R17. A entrada acima fica como foi registrada.)*
+
+O número **"69 KB por broadcast"** registrado acima **está errado**. Ele somava os seis arquivos de `commands/` à carga do broadcast, e eles **não são carregados ali**: `commands/<x>.md` entra no **contexto principal** quando o stakeholder digita `/x`; `agents/<papel>.md` entra no contexto do **subagente**. Um broadcast carrega `commands/team.md` **uma vez** mais um `agents/<papel>.md` por subagente — nunca os seis arquivos de comando.
+
+**Valores corretos:** `/team <mensagem>` = **47,9 KB** · `/team agreement` = 55,1 KB · `/team brainstorm` = 36,6 KB · `/team cycle` = 27,6 KB. A ordem de grandeza e a conclusão não mudam — o broadcast continua sendo a operação mais cara —, mas o número estava 44% acima do real.
+
+**O que a correção acrescentou ao normativo:** `workflow.md` §5c passou a declarar **onde cada arquivo é carregado** (principal × subagente), a tabela de custo por comando, e as **três coisas que a carga fixa não mostra** e costumam dominar o custo real — o **modelo** de cada agente (`/arc` e `/ux` em Opus, `/dev` em Haiku: `/arc` carrega menos que `/sm` e custa mais), a **leitura em tempo de execução** (que costuma superar a carga fixa e é multiplicada pelo número de subagentes) e o **retorno das respostas** ao contexto principal na consolidação.
+
+**Como foi detectado:** o stakeholder perguntou quais são os comandos mais caros do time; a conta refeita papel a papel não fechou com o registrado. **Modo de falha que isto expõe:** medir sem declarar *onde* cada arquivo é carregado produz número plausível e errado — e a v3.2 é exatamente uma entrada sobre não confiar em métrica mal definida.
+
 ---
 
 ## v3.1 — Protótipo funcional em HTML vira entregável e pré-condição do portão ①; o Sprint Backlog ganha o próprio nome — 08/09/2026

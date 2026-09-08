@@ -229,7 +229,25 @@ O custo dos documentos de `${CLAUDE_PLUGIN_ROOT}/` não pode depender de uma fax
 
 **Onde o corte rende mais, em ordem:** (1) a **carga fixa** dos 12 arquivos de `agents/` + `commands/`, porque é multiplicada por toda invocação; (2) o **bloco fixo §8 do `.team-project/README.md`**, lido por todo papel em toda invocação; (3) o conjunto sob demanda, que já é protegido por R3.
 
-**Custo de um broadcast.** `/team <mensagem>` dispara os seis papéis: paga `commands/team.md` **mais a carga fixa dos seis**, antes de qualquer leitura de `.team-project/`. É a operação mais cara do time por uma ordem de grandeza — daí o passo 1 do modo `consult` mandar avaliar se a mensagem pertence a um papel só (R3).
+**Onde cada arquivo é carregado — e por que isso muda a conta.** `commands/<x>.md` entra no **contexto principal** quando o stakeholder digita `/x`; `agents/<papel>.md` entra no contexto do **subagente** que aquele comando dispara. Os dois nunca se somam no mesmo contexto para o mesmo papel: um comando de papel só custa `commands/<x>.md` + `agents/<papel>.md`, mas um broadcast custa **`commands/team.md` uma vez, mais um `agents/<papel>.md` por subagente disparado** — nunca os seis arquivos de comando.
+
+**Custo por comando, em carga fixa** (antes de qualquer leitura de `.team-project/`):
+
+| Comando | Carga fixa | O que dispara |
+|---|---|---|
+| `/team agreement <questão>` | ~55 KB | os seis, mais a consolidação do SM |
+| `/team <mensagem>` | ~48 KB | os seis, em paralelo |
+| `/team brainstorm <ideia>` | ~37 KB | SM + PO + UX, depois + Arquiteto |
+| `/team cycle <T-ID>` | ~28 KB | Arquiteto → dev → QA, em série |
+| `/review <instrução>` | ~14 KB + ~10 KB do contrato por papel roteado | SM (triagem) + o papel dono |
+| `/sm` · `/ux` · `/po` · `/arc` · `/qa` · `/dev` | 13 · 11 · 10 · 10 · 10 · 7 KB | um papel |
+
+**Três coisas que a carga fixa não mostra, e que costumam dominar o custo real:**
+1. **O modelo importa mais que os KB.** `/arc` e `/ux` rodam em **Opus**; `/dev` em **Haiku**. `/arc` carrega menos que `/sm` e custa mais.
+2. **A leitura em tempo de execução costuma superar a carga fixa.** Todo agente lê `.team-project/README.md` e o seu `context.md`; o QA lê ainda o plano, o relatório do dev, as seções de `standards/` citadas e o código. Num broadcast isso é multiplicado pelo número de subagentes.
+3. **As respostas voltam.** No broadcast, as seis saídas retornam ao contexto principal para consolidação.
+
+Daí o passo 1 do modo `consult` mandar avaliar se a mensagem pertence a um papel só (R3): trocar um `/team` por um `/qa` economiza ~38 KB de carga fixa **e** cinco leituras de contexto de projeto.
 
 **Gatilhos:**
 - *Medição* — em todo `/review` sem instrução (o papel já faz a reavaliação do conjunto ali; passa a anexar os dois números) e na retrospectiva de cada sprint (o SM mede o total do processo).
