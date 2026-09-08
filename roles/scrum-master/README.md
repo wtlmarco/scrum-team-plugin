@@ -109,7 +109,7 @@ Três tipos: **processo** (normativo, muda só a pedido do stakeholder) · **viv
 | Fluxo, cerimônias, DoR/DoD, gates | processo | [`process/workflow.md`](process/workflow.md) | — *(idem)* |
 | Propriedade de artefatos | processo | [`process/artifact-ownership.md`](process/artifact-ownership.md) | — *(idem)* |
 | **Changelog do processo** | **vivo** | [`process/process-changelog.md`](process/process-changelog.md) | [`templates/process-change.md`](templates/process-change.md) *(uma entrada por instrução)* |
-| **Sprint Backlog** (quadro de trabalho) | **vivo** | `.team-project/scrum-master/work-board.md` | [`templates/work-board.md`](templates/work-board.md) |
+| **Sprint Backlog** (quadro de trabalho) | **vivo** | `.team-project/scrum-master/sprint-backlog.md` | [`templates/sprint-backlog.md`](templates/sprint-backlog.md) |
 | Contexto do projeto | **vivo** | `.team-project/README.md` | [`templates/project-context.md`](templates/project-context.md) |
 | **Status de implementação** | **entregável** | indicado no contexto do projeto | [`deliverables/implementation/02-status.md`](../../deliverables/implementation/02-status.md) · entrada individual: [`templates/status-entry.md`](templates/status-entry.md) |
 | Status executivo | saída | resposta de `/sm status` | [`templates/status.md`](templates/status.md) |

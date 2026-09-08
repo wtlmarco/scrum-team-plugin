@@ -64,7 +64,7 @@ claude plugin update team@team           # aplica (exige reiniciar a sessão)
 | `/sm` | `onboarding` · `status` · `sprint plan` · `sprint close` · `review` · `board` · `impact <mudança>` · `close <T-ID>` | Scrum Master — sprint, Sprint Backlog, status, riscos, processo |
 | `/po` | `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` | Product Owner — requisitos, Histórias, backlog, aceite de valor |
 | `/arc` | `plan <ID>` · `comply <ID>` · `adr <tema>` · `question <dúvida>` | Arquiteto — desenho, Plano de Implementação, ADR, standards |
-| `/ux` | `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` | UX — jornada, tela, usabilidade, acessibilidade |
+| `/ux` | `prototype` · `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` | UX — **protótipo funcional (portão ①)**, jornada, tela, usabilidade, acessibilidade |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` | Desenvolvedor — executa o plano, não improvisa |
 | `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` | QA — o veredito de qualidade que responde ao stakeholder |
 | `/team` | `init` · `update` · `<mensagem>` · `brainstorm <ideia>` · `agreement <questão>` · `cycle <ID>` · `plan <ID>` · `build <ID>` · `qa <ID>` | O time inteiro |
@@ -90,7 +90,8 @@ Ideia sua, sem documentação nenhuma.
                                 fase 2: entra o Arquiteto (viabilidade)
                                 fecha quando não há objeção bloqueante
 /po requirement <ID>            o brief vira requisito com critério verificável
-                                ① você aprova o SDD funcional
+/ux prototype                   protótipo funcional em HTML dos fluxos principais
+                                ① você NAVEGA o protótipo e aprova o SDD funcional
                                 ② o Arquiteto escreve o SDD técnico e você aprova
 /po story <H-ID>                o requisito vira História; depois, detalhada
 /ux screen <H-ID>               protótipo, se a História tem interface
@@ -152,6 +153,7 @@ Há código, e a documentação pode não corresponder a ele.
 
 ## Regras que valem em qualquer caminho
 
+- **Você não aprova o SDD funcional lendo — você navega o protótipo** (portão ①). Ler texto é aprovar uma descrição; a divergência entre o que você imaginou e o que o time entendeu só aparece quando você atravessa o fluxo. Ali o que se joga fora é HTML; depois, é arquitetura e código.
 - **Toda Task pertence a uma História, e nenhuma História entra no sprint sem a sua aprovação** (portão ③). Trabalho técnico sem valor declarado não entra.
 - **Sem plano, sem código.** O dev executa o Plano de Implementação do Arquiteto; lacuna vira 🔺 GAP, não improviso.
 - **Nada é "pronto" sem saída real de comando.** O que não foi exercitado é declarado como não exercitado, nunca omitido.

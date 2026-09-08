@@ -16,8 +16,8 @@ A Task carrega ID, título, História de origem, dono, dependências, estimativa
 ## 2. Do SDD à entrega — a cadeia
 
 ```
-SDD funcional (PO: 00, 01, 02)
-  └─ ① stakeholder aprova ──▶ SDD técnica (Arquiteto: 03, 04, 05)
+SDD funcional (PO: 00, 01, 02) + protótipo funcional em HTML (UX)
+  └─ ① stakeholder NAVEGA o protótipo e aprova ──▶ SDD técnica (Arquiteto: 03, 04, 05)
        └─ ② aprovada ──▶ Histórias (PO)  ═══ conjunto = Product Backlog
             └─ detalhamento da História: regras · protótipos (UX) · critérios de aceite
                  └─ ③ stakeholder aprova, apresentado pelo PO
@@ -121,6 +121,7 @@ Veredito de frente 2 que só reproduz a tabela passo × conforme do comply, sem 
 | Onboarding do projeto | projeto novo ou retomado, antes do primeiro sprint | `/sm onboarding` | resposta única + registro (§5a) |
 | Brainstorm de descoberta | ideia nova cuja área não tem documentação (visão / requisitos / fluxos) | `/team brainstorm <ideia>` | rodadas até ponto fixo (§5b) |
 | Refinamento funcional | ideia nova em área já documentada | `/po analyze <ideia>` | resposta única |
+| **Protótipo funcional** | junto com o SDD funcional, antes do portão ① | `/ux prototype` | HTML navegável ([`deliverables/prototype/`](../../../deliverables/prototype/README.md)) |
 | Escrita e detalhamento de História | História nasce do SDD; é detalhada quando candidata a um sprint | `/po story <ID>` | 1 História |
 | **Planning Meeting** | abre cada sprint | `/sm sprint plan` | Sprint Backlog fechado (§5e) |
 | Daily | início de cada sessão | `/sm status` | 6 linhas |
@@ -196,14 +197,15 @@ No fechamento, o SM registra o brief e distribui a elaboração — **sem escrev
 |---|---|---|---|
 | 1 | `00-overview-objectives`, `01-requirements` (com critério de aceite + como verificar), `02-flows-and-roles`, início do `06-changelog`, índice do SDD — **o SDD funcional** | **PO** | `/po requirement <ID>` por requisito · `/po analyze` se uma sub-ideia ainda precisa de decisão formal |
 | 1 | Mapas de jornada das jornadas moldadas | **UX** | `/ux journey <fluxo>` |
-| — | **Portão ①: o stakeholder aprova o SDD funcional** | stakeholder | — |
+| 1 | **Protótipo funcional em HTML** — todo fluxo principal de `02-flows-and-roles` navegável ponta a ponta, com os estados de exceção e o "fora" declarado na página | **UX** | `/ux prototype` |
+| — | **Portão ①: o stakeholder NAVEGA o protótipo e aprova o SDD funcional** — aprovar lendo texto é aprovar uma descrição; o que se valida aqui é o entendimento, e ele só aparece na navegação | stakeholder | — |
 | 2 | `03-architecture` (incl. Ficha de Vinculação de Stack §2b), `04-data-model`, `05-api-model` — só as partes da primeira fatia — **o SDD técnico** | **Arquiteto** | — |
 | — | **Portão ②: o SDD técnico é aprovado** | stakeholder | — |
 | 3 | Histórias a partir dos requisitos aprovados | **PO** | `/po story <ID>` |
 
 O brief de brainstorm **não** é entregável permanente: é absorvido por `00-overview` / `01-requirements` e pelo registro de processo, e não vira arquivo novo sem lugar declarado em `.team-project/`.
 
-**Como o SM verifica:** a saída do brainstorm mostra as duas fases com os participantes declarados — fase 1 sem o Arquiteto, fase 2 com ele; cada rodada de fase 2 tem delta registrado ou "sem mudança — ponto fixo"; no fechamento, `00-overview` + `01-requirements` + `02-flows` são criados/atualizados pelo PO no mesmo ciclo (R12) e o índice do SDD mostra a versão nova; **nenhum documento do SDD técnico foi escrito antes do portão ①, e nenhuma História antes do portão ②**; o brief não virou arquivo sem lugar declarado.
+**Como o SM verifica:** a saída do brainstorm mostra as duas fases com os participantes declarados — fase 1 sem o Arquiteto, fase 2 com ele; cada rodada de fase 2 tem delta registrado ou "sem mudança — ponto fixo"; no fechamento, `00-overview` + `01-requirements` + `02-flows` são criados/atualizados pelo PO no mesmo ciclo (R12) e o índice do SDD mostra a versão nova; **o protótipo funcional existe, cobre todo fluxo principal de `02-flows` e tem o registro de navegação do stakeholder datado**; **nenhum documento do SDD técnico foi escrito antes do portão ①, e nenhuma História antes do portão ②**; o brief não virou arquivo sem lugar declarado.
 
 ## 5c. Ciclo de eficiência dos documentos do processo (PDCA)
 
@@ -330,7 +332,8 @@ Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no pa
 |---|---|---|---|
 | Onboarding concluído | primeira Planning Meeting do projeto | SM | R14 |
 | Ideia sem documentação passou por `brainstorm` | primeiro documento do SDD daquela área | SM | R15 |
-| **① SDD funcional (`00`,`01`,`02`) aprovado pelo stakeholder** | primeira escrita do SDD técnico (`03`,`04`,`05`) | PO apresenta · SM verifica | R15 · §5b |
+| **Protótipo funcional em HTML existe e cobre os fluxos principais** | o portão ① | UX | R8 · R15 |
+| **① SDD funcional (`00`,`01`,`02`) aprovado pelo stakeholder, com o protótipo NAVEGADO** | primeira escrita do SDD técnico (`03`,`04`,`05`) | PO e UX apresentam · SM verifica | R15 · §5b |
 | **② SDD técnico aprovado** | escrita da primeira História daquela área | Arquiteto apresenta · SM verifica | §5b |
 | **③ Detalhamento da História aprovado pelo stakeholder** | entrada da História na Planning Meeting | PO apresenta · SM verifica | R20 · §3a |
 | Protótipo de tela existe *(História com interface)* | aprovação do detalhamento | UX | R8 |

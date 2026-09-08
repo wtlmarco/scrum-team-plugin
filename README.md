@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.0.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.1.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `main`, via PR para aprovação. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -27,8 +27,10 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 ├── commands/    sm · po · arc · ux · dev · qa · team · review   definições dos 8 comandos
 ├── deliverables/                    estrutura dos documentos que o time entrega
 │   ├── README.md                    os conjuntos: donos, ordem de elaboração, critérios de qualidade
+│   ├── prototype/                   protótipo funcional em HTML — pré-condição do portão ①
 │   ├── sdd/                         o que o sistema é — 8 documentos
-│   └── implementation/              como a construção está indo — 4 documentos
+│   ├── implementation/              como a construção está indo — 4 documentos
+│   └── team-project/                manifesto do .team-project/ criado pelo /team init
 ├── standards/                       padrões de engenharia — normativo agnóstico de produto, base de qualidade comum de Arquiteto, dev e QA (R16)
 │   ├── README.md                       índice e os dois níveis
 │   ├── implementation-principles.md    nível 1 — princípios agnósticos de linguagem (não mudam entre projetos)
@@ -47,13 +49,13 @@ este repositório   processo   → genérico, um só, serve todos os projetos
     ├── scrum-master/       processo, quadro, status, regras que governam todos
     │   ├── README.md · skills.md
     │   ├── process/     working-rules · workflow · artifact-ownership · process-changelog
-    │   └── templates/   work-board · sprint-review · status · status-entry · impact-analysis · retrospective · project-context · process-change
+    │   └── templates/   sprint-backlog · sprint-review · status · status-entry · impact-analysis · retrospective · project-context · process-change
     ├── product-owner/      requisitos, Histórias, backlog, aceite
     │   └── templates/   user-story · product-backlog · requirement · functional-analysis · acceptance
     ├── architect/          especificação técnica, Planos de Implementação, ADRs
     │   └── templates/   implementation-plan · adr · compliance-review · technical-decision
     ├── user-experience/   jornadas, telas, protótipos, usabilidade e acessibilidade
-    │   └── templates/   journey-map · screen-spec · usability-review
+    │   └── templates/   functional-prototype · journey-map · screen-spec · usability-review
     ├── developer/          execução do plano, entrega, gaps
     │   └── templates/   delivery-report · gap
     └── quality-assurance/  validação, evidências, registro de GAPs
@@ -101,7 +103,7 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 /sm     onboarding | status | sprint plan | sprint close | review | board | impact <mudança> | close <T-ID>
 /po     analyze <ideia> | requirement <ID> | story <H-ID> | prioritize | accept <H-ID>
 /arc    plan <T-ID> | comply <T-ID> | adr <tema> | question <dúvida>
-/ux     journey <fluxo> | screen <H-ID> | prototype | review-ui <tela>
+/ux     prototype | journey <fluxo> | screen <H-ID> | prototype <tela> | review-ui <tela>
 /dev    <T-ID> | resume <T-ID> | gap <resposta do arquiteto>
 /qa     <T-ID> | baseline | audit | security <T-ID>
 /team   init | update | <mensagem ou pergunta> | brainstorm <ideia> | agreement <questão> | cycle <T-ID> | plan <T-ID> | build <T-ID> | qa <T-ID>
@@ -134,8 +136,9 @@ Consulta e acordo **não escrevem em disco** — são conversa. O que virar aç�
 stakeholder ──▶ /po analyze ──▶ requisito + critério de aceite
                      │
                      ▼
-              SDD funcional (PO: 00,01,02)   ──① stakeholder aprova
-                     │
+              SDD funcional (PO: 00,01,02)
+                     │  + protótipo funcional em HTML (UX)
+                     │  ──① stakeholder NAVEGA o protótipo e aprova
                      ▼
               SDD técnico (Arquiteto: 03,04,05)   ──② aprovado
                      │
@@ -163,7 +166,7 @@ stakeholder ──▶ /po analyze ──▶ requisito + critério de aceite
               /sm sprint close ──▶ retrospectiva ──▶ fim do sprint
 ```
 
-Nenhum atalho: SDD técnico não é escrito antes do portão ①, História não nasce antes do ②, História com interface não é detalhada sem protótipo, História sem aprovação do stakeholder não entra na Planning (③), Task sem História não existe (R20), dev sem plano não codifica, QA sem saída de comando não aprova, e **fechar Tasks não aceita a História** — o aceite é do PO, na Review (④ · R21).
+Nenhum atalho: o portão ① não abre sem o stakeholder **navegar** o protótipo funcional — aprovar por leitura não vale —, SDD técnico não é escrito antes do ①, História não nasce antes do ②, História com interface não é detalhada sem protótipo, História sem aprovação do stakeholder não entra na Planning (③), Task sem História não existe (R20), dev sem plano não codifica, QA sem saída de comando não aprova, e **fechar Tasks não aceita a História** — o aceite é do PO, na Review (④ · R21).
 
 ## Regras que governam todos
 

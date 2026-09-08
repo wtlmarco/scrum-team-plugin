@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v2.10`](process-changelog-archive.md) | Reavaliação do conjunto: caminho de escrita do `/review`, contagem de regras e modo `note` reconciliados — 07/09/2026 |
 | [`v2.9`](process-changelog-archive.md) | Processo de atualização e lançamento do plugin ganha documento e dono — 06/09/2026 |
 | [`v2.8`](process-changelog-archive.md) | Evolução do processo num comando só: `/review`, guardado ao repositório-fonte, com `note.md` como fila — 06/09/2026 |
 | [`v2.7`](process-changelog-archive.md) | Faxina pós-isolamento em plugin: resíduo de caminho, contagens do UX e extração dos modos frios — 06/09/2026 |
@@ -33,6 +34,63 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.1 — Protótipo funcional em HTML vira entregável e pré-condição do portão ①; o Sprint Backlog ganha o próprio nome — 08/09/2026
+
+**Instrução:** *(stakeholder, direta)* "nos documentos do team-project está faltando o SprintBacklog; a elaboração do protótipo funcional em html também é entregável e requisito antes de aprovar a sdd funcional."
+
+**Classificação:** entregável novo (protótipo funcional) + regra (R15 ganha a pré-condição do ①) + fluxo (§5b, §5, §8) + propriedade de artefato (o protótipo deixa de ser "exploração" e vira entregável do UX) + formato de documento (modelo novo, renomeação do quadro) + escopo de papel (o UX passa a ter entregável que **bloqueia um portão**).
+
+**Complementa a [`v3.0`](#), não a corrige.** A v3.0 fica como está (R17: entrada nunca é reescrita); o que ela descreveu como "portão ① — o stakeholder aprova o SDD funcional" passa a exigir, a partir daqui, **protótipo navegado**.
+
+### O que mudou
+
+| Documento | Onde | O quê |
+|---|---|---|
+| **`deliverables/prototype/README.md` novo** | — | O **protótipo funcional** como entregável: por que vem antes do ①, a tabela que o distingue do protótipo de tela do ③, as 7 exigências, o que ele **não** é, os critérios verificados no portão e como ele vence quando a fatia fecha |
+| **`roles/user-experience/templates/functional-prototype.md` novo** | — | Estrutura de arquivos (`index.html` + `flows/` + `assets/`, sem build) e a **ficha** com a tabela fluxo × caminho completo, os requisitos representados, o "fora", as premissas e o **registro datado da navegação do stakeholder** |
+| `process/working-rules.md` | **R15** | Título e corpo ganham "o ① com protótipo navegado". O modo de falha evitado passa de três para quatro: *o stakeholder aprovar por escrito um produto que só vai **ver** depois de construído* — o mais caro dos quatro, porque o retrabalho já é código. "SM verifica" ganha a exigência do registro de navegação |
+| | indicadores | Linha nova: portão ① sem protótipo, sem registro datado de navegação, ou com fluxo principal de `02-flows` sem caminho no protótipo → **o ① foi aprovado por leitura** |
+| `process/workflow.md` | §2, §5, §5b, §8 | O diagrama da cadeia mostra o protótipo antes do ①; cerimônia nova na tabela de §5; a transição do brainstorm ganha a linha do protótipo e o ① passa a ler "o stakeholder **NAVEGA** o protótipo e aprova"; §8 ganha **duas** linhas de gate (o protótipo existe · o ① com protótipo navegado); "como o SM verifica" do §5b exige o registro |
+| `process/artifact-ownership.md` | matriz, §2 | A linha "Protótipos \| UX \| Exploração, não código de produção" **vira duas**: o **protótipo funcional** (entregável, pré-condição do ①) e os **protótipos de tela e explorações** (portão ③, que **não substituem** o primeiro). O fluxo de §2 mostra o UX no ramo do ① |
+| `roles/user-experience/` | README, `/ux prototype` | O modo se desdobra: **`/ux prototype` sem argumento** é o protótipo funcional (7 passos, incluindo conduzir a navegação e registrar); **`/ux prototype <tela>`** continua sendo exploração de tela. Tabela de documentos ganha o entregável |
+| `agents/user-experience.md` · `commands/ux.md` | descrição, responsabilidades, modos | O protótipo funcional vira a **responsabilidade 1** do papel; `argument-hint` e a descrição do agente passam a nomeá-lo *(propriedade do stakeholder — aplicado por instrução direta dele)* |
+| `deliverables/README.md` | conjuntos, ordem, propriedade | Conjunto novo na tabela; o ① passa a ler "NAVEGA o protótipo e aprova"; linha nova em "por que o portão ① existe"; o protótipo entra na matriz de propriedade (dono UX, revisa stakeholder) |
+| **Sprint Backlog** | `templates/work-board.md` → **`sprint-backlog.md`** | O achado do stakeholder: a v3.0 renomeou o **título** do quadro para "Sprint Backlog" e deixou o **arquivo** como `work-board.md`, de modo que em `.team-project/scrum-master/` o artefato central do sprint continuava com o nome antigo. `git mv` + 9 arquivos reapontados, incluindo o manifesto e o passo 7 do `team-update.md` |
+| `.team-project/` | estrutura | `user-experience/` ganha `prototype/`; `scrum-master/` passa a listar `sprint-backlog.md`. Refletido em `team-init.md`, `project-context.md`, no manifesto `deliverables/team-project/` e no `README.md` da raiz |
+
+**Modo de falha que evita:** o stakeholder aprovar `00`/`01`/`02` **lendo** e descobrir a divergência só quando o produto existe. A divergência entre o que ele imaginou e o que o time entendeu aparece sempre na primeira vez que ele atravessa o fluxo; a única variável é quanto já foi construído até lá. O protótipo antecipa esse momento para o ponto em que o descarte custa HTML, não arquitetura e código.
+
+**Quem passa a ser cobrado de forma diferente:** o **UX** (ganha um entregável que **bloqueia** um portão, e a obrigação de conduzir a navegação, não de apresentar); o **stakeholder** (não aprova o SDD funcional sem navegar); o **Arquiteto** (não começa o SDD técnico sem o registro de navegação); o **SM** (passa a verificar o registro datado como parte de R15).
+
+**Indicador de sucesso:** todo portão ① com registro datado de navegação e com 100% dos fluxos principais de `02-flows-and-roles` cobertos; nenhuma ocorrência de "aprovado sem navegar" nas retrospectivas.
+
+### Conflitos resolvidos
+
+| Conflito | Com que regra | Resolução |
+|---|---|---|
+| `artifact-ownership.md` dizia "Protótipos — exploração, **não** entregável" | a instrução do stakeholder diz que é entregável | A linha virou **duas**: o funcional é entregável; o de tela segue exploração. Nenhuma das duas verdades foi apagada |
+| O detalhamento da História (③) já exigia protótipo | R20 · DoR da História | São **dois protótipos com escopos diferentes** — produto × tela —, e a tabela de `deliverables/prototype/README.md` declara a distinção para que um não seja usado como desculpa para não fazer o outro |
+| "Protótipo é descartável" × "protótipo é entregável" | — | Convivem: é entregável **e** descartável. A ficha marca **vencido** quando a fatia fecha, e a verdade passa a ser o produto |
+
+### Evidência (R19)
+
+| Classe | Comando | Resultado |
+|---|---|---|
+| Arquivamento | `Compare-Object` do bloco `## v2.10` movido × `git show HEAD:…/process-changelog.md` | **62 × 63 linhas, diferença = 1 linha em branco final**; conteúdo idêntico. Índice de arquivadas ganhou a linha `v2.10` |
+| Substituição de padrão | `work-board.md` → `sprint-backlog.md` (+ `git mv` do modelo) | 9 arquivos alterados; **`grep 'work-board'` fora dos changelogs = 0** |
+| **Checagem semântica** | leitura das linhas de estrutura do `.team-project/` e das tabelas de comando em cada arquivo | `README.md` da raiz tinha a árvore de `roles/` com `work-board`, fora do padrão de caminho — pego na leitura, não pelo `grep` de caminho |
+| Extração / criação | `deliverables/prototype/README.md`, `templates/functional-prototype.md` | 2 novos, referenciados de `deliverables/README.md`, da matriz de propriedade, do README e do agent do UX |
+| Ponteiros | varredura de todo `](…​.md)` relativo contra o disco | **1 link quebrado real encontrado e corrigido**: o manifesto `deliverables/team-project/README.md` apontava `sdd/README.md` e `implementation/README.md` como se estivesse em `deliverables/` — corrigidos para `../sdd/` e `../implementation/`. Restante: 0 |
+| Manifesto | `claude plugin validate . --strict` | passou |
+
+### Pendente do stakeholder
+
+- **Fecho da entrega:** a entrega passa de `v3.0.0` para **`v3.1.0`** — carrega **duas** entradas de processo (v3.0 e v3.1), como a v2.9.0 carregou três. Bump e entrada única no `CHANGELOG.md` (R18), na branch `feat/v3.0.0`.
+- **Reiniciar a sessão** — `agents/user-experience.md` e `commands/ux.md` mudaram.
+- **Nome da branch:** continua `feat/v3.0.0` embora a entrega saia como `v3.1.0`. Renomear ou aceitar a divergência é decisão sua; a entrada do `CHANGELOG.md` nomeia a branch real.
 
 ---
 
@@ -159,69 +217,4 @@ Nas próximas três instalações em máquina nova: **zero** casos de "instalou 
 - **Fecho da entrega:** bump de `plugin.json` e entrada `v2.9.0` no `CHANGELOG.md` (R18), com a divergência de numeração §5d declarada — a entrega carrega agora **duas** entradas de processo (v2.10 e v2.11).
 - **Reiniciar a sessão** — `commands/review.md` e `agents/*` só valem no próximo carregamento.
 - `note.md`: o lote do relato de instalação foi **consumido**; a fila `## Abertas` volta a ficar vazia.
-
----
-
-## v2.10 — Reavaliação do conjunto: caminho de escrita do `/review`, contagem de regras e modo `note` reconciliados — 07/09/2026
-
-**Instrução:** *(stakeholder, direta)* "faça a correção dos itens encontrados na review" — e, na segunda rodada, a decisão de aplicar a R19, extrair o modo `update` e manter a numeração da entrega em `v2.9.0`.
-**Classificação:** formato de documento (contagens e listas de modo obsoletas) + comportamento de agente (`agents/*`, `commands/team.md`) + **regra nova (R19)** — as mudanças em `agents/` e `commands/` foram **aplicadas com autorização direta do stakeholder**, dono desses diretórios, em vez de ficarem como proposta.
-**Registrada por:** SM (curador), acionado pelo `/review` em modo reavaliação — **duas rodadas**: a primeira aplicou as correções, a segunda pegou dois defeitos da primeira e produziu a R19.
-**Escopo:** correção de coerência + uma regra de método. Nenhum fluxo, cerimônia ou propriedade de artefato novo.
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `review-contract.md` | cabeçalho | **Caminho de escrita corrigido:** todo caminho do contrato passa a ser relativo à **RAIZ** — o clone, cujo caminho absoluto o `/review` passa ao agente — e não a `${CLAUDE_PLUGIN_ROOT}`. Nota explícita: nunca escrever na cópia instalada; sem RAIZ, parar e pedir. Justificativa histórica da extração ("ocupava 53–63% de cada comando de papel") enxugada |
-| `review-contract.md` | §"O que o `/review` é" · passo 4 · "Reavaliação" · "Modos auxiliares" | Quatro ocorrências de `${CLAUDE_PLUGIN_ROOT}/` → `RAIZ/`, inclusive o **destino do `process-changelog.md`** no passo 4 |
-| `review-contract.md` | modos auxiliares | **`/review note` acrescentado** à lista, que só citava `audit · metrics · history` |
-| `agents/scrum-master.md` | "Regras de trabalho" | "As **17** regras … método **R13-R17**" → "**18** … **R13-R18**" (R18 entrou na v2.9) |
-| `agents/scrum-master.md` | "Evolução do processo" | Lê o `review-contract.md` **da RAIZ recebida**, não de `${CLAUDE_PLUGIN_ROOT}`; `/review note` acrescentado aos modos auxiliares |
-| `agents/{architect,product-owner,user-experience,quality-assurance}.md` | "Evolução do processo" | Mesma correção de RAIZ, replicada nos outros quatro agentes que rodam `/review`. **Achada na segunda reavaliação**: a primeira passada corrigiu só o do SM, deixando quatro papéis lendo o contrato da cópia instalada — o modo de falha que esta entrada existe para fechar, aberto em 4 de 5 papéis. (`agents/developer.md` não referencia o contrato: o dev não roda `/review`) |
-| `roles/scrum-master/templates/retrospective.md` | Métricas do período | **Linha de R18** ("entrega sem bump / `plugin.json` ≠ topo do `CHANGELOG.md` / entrada de `process-changelog.md` sem par") — o indicador existia em `working-rules.md` §"Como o SM aplica" desde a v2.9, mas não no instrumento que o coleta. Marcada **`n/a` quando a retro roda num projeto consumidor**, que não tem `plugin.json` para versionar |
-| `roles/scrum-master/templates/project-context.md` | §8 (bloco fixo) | Linha `/team` ganha `update`; a seção é copiada literalmente em todo `.team-project/` novo, que nascia sem a referência |
-| `commands/team.md` | frontmatter | `argument-hint` ganha `plan <ID> \| build <ID> \| qa <ID>`, modos parciais que o corpo documentava e o hint omitia |
-| `deliverables/README.md` · `deliverables/sdd/README.md` | "Ordem de elaboração" · título §5 | "os sete" → "os sete documentos **de conteúdo** (`00`–`06`)", com o `README` nomeado como oitavo arquivo; o título do índice do SDD ganha o mesmo qualificador. Desambigua o "sete" (documentos de conteúdo) do "oito" (com o índice) que `agents/{product-owner,architect}.md` usam. **Não reconciliado:** `deliverables/sdd/README.md:54`, `06-changelog.md:35` e `workflow.md:145` seguem dizendo "os sete documentos" — corretos em contexto, mas sem o qualificador |
-| `process/process-changelog.md` · `-archive.md` | — | v2.7 arquivada em `process-changelog-archive.md` (teto de 3 — R17); linha acrescentada ao índice. **A primeira tentativa truncou a entrada em ~40%** (12 das 48 linhas), deixando o resto órfão no arquivo vivo colado à v2.8 — detectado na segunda reavaliação e refeito; a v2.7 no arquivo foi conferida **linha a linha contra o `HEAD`** e está íntegra |
-| `process/working-rules.md` | **nova R19** · resumo · "Como o SM aplica" | "O `/review` produz evidência do que aplicou": bloco de evidência obrigatório na entrada, com a evidência mínima das três classes (arquivamento · substituição de padrão · extração/remoção). Linha nova na tabela de indicadores. **19 regras** (método R13-R19) |
-| `review-contract.md` | §"Cinco passos" | Quinto passo — **verificar e anexar o bloco de evidência**. O título e as 9 referências a "quatro passos" no plugin viraram "cinco" |
-| `roles/scrum-master/templates/process-change.md` | modelo · regras | Seção `### Evidência (R19)` no modelo da entrada, e a regra correspondente |
-| `commands/team.md` · **`team-update.md`** | `## Modo update` | **E1 aplicado:** os sete passos (~18 linhas) extraídos para `team-update.md`, lido só nesse modo; no comando fica ponteiro + "não dispare agente". Mesmo movimento que a v2.7 fez com `Modo init` → `team-init.md` |
-| `roles/scrum-master/templates/project-context.md` | §8 | Linha `/team` também ganha `plan/build/qa <ID>` |
-| `note.md` | `## Abertas` | Bullet órfão → `_(vazia)_`. A fila foi esvaziada pelo stakeholder |
-
-### Por quê
-**Caminho de escrita (o achado que motiva a entrada).** A v2.9 e o commit `6bf8f7c` moveram a pré-condição do `/review` para `git rev-parse --show-toplevel` (→ RAIZ), porque a cópia instalada é descartável e, no Windows, não há como apontá-la para o working tree. Mas `review-contract.md` — o documento que o **agente de papel** obedece — continuou em `${CLAUDE_PLUGIN_ROOT}`, inclusive no passo "registrar o changelog": o agente era mandado escrever a evolução do processo na árvore que o próximo `claude plugin update` sobrescreve. **Evita:** mudança aplicada, reportada como feita, e perdida sem sinal.
-
-**R19.** Os passos do `/review` terminavam em "registrar", sem verificação — e nesta rodada isso produziu dois defeitos declarados como feitos (v2.7 truncada em 60%; RAIZ corrigida em 1 de 5 agentes), pegos só porque o stakeholder rodou o comando uma segunda vez. É a R7/R12 ("não afirme progresso sem evidência") que o `/review` cobrava do projeto e não de si.
-
-**O resto** são derivas de contagem e de lista de entregas anteriores, todas com o mesmo efeito: o agente carrega no prompt uma descrição do processo que já não é o processo.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda |
-|---|---|
-| **Todos os papéis** | Escrevem na **RAIZ recebida**; sem RAIZ, param e pedem. E **fecham com bloco de evidência** — sem ele o `/review` não fecha (R19) |
-| **SM** | A retrospectiva coleta o indicador de R18; a curadoria reexecuta por amostragem um comando do bloco de evidência |
-| **SM** | Todo `.team-project/` novo nasce com `/team update` na tabela de comandos |
-
-### Conflitos com o processo vigente
-Dois, ambos decididos pelo stakeholder. **(1)** `agents/` e `commands/` são dele e o `/review` só **propõe** — a instrução "faça a correção dos itens encontrados" valeu como aprovação das propostas em aberto, aplicadas aqui; sem instrução explícita a regra permanece. **(2)** `workflow.md` §5d manda a entrega pareada com a entrada nova do processo sair como `v2.10.0`; o stakeholder **decidiu manter `v2.9.0`**, o nome da branch. A divergência tem de ser declarada na entrada do `CHANGELOG.md` no fecho, como foi na v2.8.0 — senão a reconciliação do SM a acusa (§5d).
-
-### Como saberemos que funcionou
-Nos próximos três `/review` que roteiem item a agente de papel: **zero** entradas escritas fora do clone, **zero** achados de "contagem divergente" (hoje foram cinco) e **zero** entradas sem bloco de evidência. Se a contagem divergente reaparecer, o problema não é o número: é que a informação está duplicada em N lugares e a correção deve virar ponteiro.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Arquivamento | `Compare-Object` v2.7 do archive × `HEAD` | 0 linhas fora do separador | ✅ |
-| Substituição | `grep '[Qq]uatro passos'` em todo o plugin | 0 antigo / 10 novo | ✅ |
-| Substituição | `grep 'leia ${CLAUDE_PLUGIN_ROOT}/review-contract'` em `agents/*` | 0 antigo / 5 em RAIZ | ✅ |
-| Substituição | `grep '18 regras\|R13-R18'` | 1 restante — `CHANGELOG.md:65`, registro histórico da v2.8.0, imutável por R17 | ✅ |
-| Extração | `wc -l` `commands/team.md` antes/depois | 125 → 111; `team-update.md` 41 linhas; ponteiro resolve | ✅ |
-| Teto R17 | tamanho do bloco `## v2.10` | **10280 bytes na 1ª medição — acima da barreira de 10240; entrada enxugada antes de registrar** | ✅ após corte |
-| Manifesto | `claude plugin validate . --strict` | passou | ✅ |
-
-### Pendente do stakeholder
-- **Fecho da entrega:** bump de `plugin.json` e entrada `v2.9.0` no `CHANGELOG.md` (R18), com a nota da divergência §5d acima e o registro de que as propostas de "Proposto ao stakeholder" da v2.8.0 foram consumidas aqui.
-- **Reiniciar a sessão** — as mudanças em `agents/` e `commands/` só entram em vigor no próximo carregamento.
 

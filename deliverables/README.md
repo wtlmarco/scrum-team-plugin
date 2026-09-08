@@ -8,6 +8,7 @@ Este diretório guarda **a estrutura desses documentos**, para que qualquer proj
 
 | Conjunto | Responde | Onde está o modelo |
 |---|---|---|
+| **Protótipo funcional** | **O que o stakeholder aprova antes de aprovar o texto**: HTML navegável dos fluxos principais — pré-condição do portão ① | [`prototype/`](prototype/README.md) |
 | **SDD** — Software Design Document | **O que o sistema é**: objetivos, requisitos, fluxos, arquitetura, dados, API e histórico | [`sdd/`](sdd/README.md) |
 | **Implementação** | **Como a construção está indo**: escopo combinado, progresso, mapa de código, pendências | [`implementation/`](implementation/README.md) |
 | **`.team-project/`** | **Como o time opera neste projeto**: o contexto que o `/team init` cria e o `/team update` reconcilia | [`team-project/`](team-project/README.md) |
@@ -30,6 +31,7 @@ Um documento tem **um dono**, que responde pelo conteúdo e pela atualização. 
 | `05-api-model` | **Arquiteto** | Endpoint, contrato ou formato de erro | QA (rota × documento) |
 | `06-changelog` | **PO** | Toda mudança funcional aceita | SM (fechamento) |
 | `README` (índice) | **PO** | Documento novo entra no conjunto | — |
+| Protótipo funcional (HTML) | **UX** | Fluxo principal muda, antes do ① | Stakeholder (navega e aprova) |
 | `01-scope-and-criteria` | **PO** | Escopo de um ciclo é definido, concluído ou revisto | SM, QA |
 | `02-status` | **SM** | Uma Task é fechado ou um ciclo termina | QA (auditoria) |
 | `03-code-map` | **QA** | Arquivo de código criado, alterado ou removido | Arquiteto |
@@ -60,7 +62,8 @@ O SDD sobe em **duas etapas, com aprovação entre elas** (R15 · [`workflow.md`
 
 | Etapa | Documentos | Dono | Portão |
 |---|---|---|---|
-| **SDD funcional** | `00-overview-objectives` · `01-requirements` · `02-flows-and-roles` | PO | **① o stakeholder aprova** — e só então o técnico começa |
+| **SDD funcional** | `00-overview-objectives` · `01-requirements` · `02-flows-and-roles` | PO | **① o stakeholder NAVEGA o protótipo e aprova** — e só então o técnico começa |
+| **Protótipo funcional** | HTML navegável dos fluxos principais de `02` ([`prototype/`](prototype/README.md)) | UX | pré-condição do ① |
 | **SDD técnico** | `03-architecture` · `04-data-model` · `05-api-model` | Arquiteto | **② aprovado** — e só então nascem as Histórias |
 | *(contínuo)* | `06-changelog` | PO | a partir da primeira mudança funcional aceita |
 
@@ -73,7 +76,7 @@ Dentro de cada etapa, a ordem:
 5. `04-data-model` e `05-api-model` — as partes que a primeira fatia exige.
 6. `06-changelog` — a partir da primeira mudança funcional aceita.
 
-**Por que o portão ① existe:** desenhar arquitetura, modelo de dados e contrato de API sobre um entendimento funcional que o stakeholder ainda não referendou é o jeito mais caro de descobrir que ele queria outra coisa — joga-se fora desenho técnico, não texto. **Por que o ② existe:** História escrita antes de o técnico ser viável promete valor que o time ainda não sabe se consegue entregar.
+**Por que o portão ① existe:** desenhar arquitetura, modelo de dados e contrato de API sobre um entendimento funcional que o stakeholder ainda não referendou é o jeito mais caro de descobrir que ele queria outra coisa — joga-se fora desenho técnico, não texto. **Por que o ① exige protótipo navegado:** aprovar `00`/`01`/`02` lendo é aprovar uma descrição; a divergência entre o que o stakeholder imaginou e o que o time entendeu só aparece quando ele **atravessa o fluxo**, e o que se joga fora ali é HTML descartável. **Por que o ② existe:** História escrita antes de o técnico ser viável promete valor que o time ainda não sabe se consegue entregar.
 
 **Não escreva os sete documentos de conteúdo (`00`–`06`) de uma vez.** Documento escrito antes da necessidade envelhece antes de ser lido. O que precisa existir desde o dia 1 é o `README` do conjunto — o oitavo arquivo do SDD, e o único índice —, para que cada documento tenha lugar quando nascer.
 

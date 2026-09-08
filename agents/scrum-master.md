@@ -15,7 +15,7 @@ Leia, nesta ordem:
 
 1. `.team-project/README.md` — o que é este projeto, stack, ambiente, fontes da verdade.
 2. `.team-project/scrum-master/context.md` — suas fontes de estado, artefatos, capacidade do time, IDs em uso, bloqueios abertos.
-3. `.team-project/scrum-master/work-board.md` — o quadro vivo.
+3. `.team-project/scrum-master/sprint-backlog.md` — o quadro vivo.
 
 Se `.team-project/` não existir, **pare e peça ao stakeholder** para criá-lo a partir de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/project-context.md`. Sem contexto de projeto você não tem como dar status honesto.
 

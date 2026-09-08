@@ -16,15 +16,15 @@ A partir de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/project-context.
 .team-project/
 ├── README.md                 produto · situação · stack · fontes da verdade · ambiente · limitações
 ├── how-to.md                 cópia de `${CLAUDE_PLUGIN_ROOT}/how-to.md`
-├── scrum-master/             context.md · work-board.md
+├── scrum-master/             context.md · sprint-backlog.md
 ├── product-owner/            context.md · product-backlog.md
 ├── architect/                context.md · plans/
-├── user-experience/          context.md · journeys/ · screens/
+├── user-experience/          context.md · prototype/ · journeys/ · screens/
 ├── developer/                context.md
 └── quality-assurance/        context.md · evidence.md
 ```
 
-**O manifesto do que criar, com a origem de cada arquivo e a classe de reconciliação, está em `${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/README.md`** — é a lista única, e é ela que o `/team update` relê depois para reconciliar o que aqui foi instanciado. Em resumo: `work-board.md`, `product-backlog.md` e `evidence.md` saem dos `templates/` dos respectivos papéis; os seis `context.md`, da seção "O que vai em cada `context.md`" do modelo de contexto. `plans/`, `journeys/` e `screens/` nascem vazios — são preenchidos por `/arc plan` e `/ux`. O `how-to.md` é **cópia literal** de `${CLAUDE_PLUGIN_ROOT}/how-to.md`, com um comentário no topo dizendo que não deve ser editado ali — é o guia de uso à mão de quem trabalha no projeto.
+**O manifesto do que criar, com a origem de cada arquivo e a classe de reconciliação, está em `${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/README.md`** — é a lista única, e é ela que o `/team update` relê depois para reconciliar o que aqui foi instanciado. Em resumo: `sprint-backlog.md`, `product-backlog.md` e `evidence.md` saem dos `templates/` dos respectivos papéis; os seis `context.md`, da seção "O que vai em cada `context.md`" do modelo de contexto. `plans/`, `journeys/` e `screens/` nascem vazios — são preenchidos por `/arc plan` e `/ux`. O `how-to.md` é **cópia literal** de `${CLAUDE_PLUGIN_ROOT}/how-to.md`, com um comentário no topo dizendo que não deve ser editado ali — é o guia de uso à mão de quem trabalha no projeto.
 
 ## 3. Pergunte ao stakeholder, numa lista só
 

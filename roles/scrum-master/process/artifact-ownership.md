@@ -17,7 +17,8 @@ Os caminhos concretos dos documentos do projeto estão em `.team-project/README.
 | `${CLAUDE_PLUGIN_ROOT}/standards/**` | **Arquiteto (dono editorial)** · dev e QA consumidores obrigatórios | Base de qualidade comum dos três (R16). Única caneta é do Arquiteto — muda só por `/review`. Agnóstico de produto — nunca ajustar para acomodar caso específico. Dev roteia defeito por 🔺 GAP, QA por achado de processo; os dois ao Arquiteto. Divergência de engenharia entre os três decide o Arquiteto; o que ultrapassa engenharia sobe ao stakeholder pelo SM |
 | Mapas de jornada (`.team-project/user-experience/journeys/`) | UX | Um por objetivo do usuário |
 | Especificações de tela (`.team-project/user-experience/screens/`) | UX | Os seis estados e os critérios de acessibilidade são obrigatórios |
-| Protótipos | UX | Exploração, não código de produção |
+| **Protótipo funcional** (`.team-project/user-experience/prototype/`) | **UX** | **Entregável** e **pré-condição do portão ①**: HTML navegável cobrindo os fluxos principais de `02-flows-and-roles`. O stakeholder **navega** antes de aprovar o SDD funcional — aprovação por leitura não vale (R15). Modelo em [`../../user-experience/templates/functional-prototype.md`](../../user-experience/templates/functional-prototype.md); critérios em [`../../../deliverables/prototype/README.md`](../../../deliverables/prototype/README.md) |
+| Protótipos de tela e explorações | UX | Exploração da tela de uma História, no detalhamento (portão ③). Não é código de produção, e **não substitui** o protótipo funcional do ① |
 | Objetivos, requisitos, fluxos, changelog funcional (SDD) | PO | Modelos e critérios em [`../../../deliverables/README.md`](../../../deliverables/README.md) |
 | Escopo e critérios de sucesso | PO | Marcação exige evidência do QA — modelo em [`../../../deliverables/implementation/01-scope-and-criteria.md`](../../../deliverables/implementation/01-scope-and-criteria.md) |
 | Product Backlog (`.team-project/product-owner/`) | PO | **O conjunto das Histórias.** Priorizado por valor e risco funcional; recebe também os gaps, débitos e ressalvas levantados na Sprint Review |
@@ -56,7 +57,8 @@ Os caminhos concretos dos documentos do projeto estão em `.team-project/README.
 [projeto novo/retomado] ─▶ SM conduz onboarding (§5a) ─▶ contexto do projeto alinhado
 [ideia sem documentação] ─▶ SM facilita brainstorm (§5b): PO+UX, depois +Arquiteto ─▶ brief funcional
            │
-ideia ─────▶ PO escreve o SDD funcional ──① stakeholder aprova
+ideia ─────▶ PO escreve o SDD funcional · UX faz o protótipo em HTML
+              └─▶ ① stakeholder NAVEGA o protótipo e aprova
               └─▶ Arquiteto escreve o SDD técnico ──② aprovado
                     └─▶ PO escreve a História e a prioriza no Product Backlog
                           └─▶ PO detalha (UX faz o protótipo) ──③ stakeholder aprova

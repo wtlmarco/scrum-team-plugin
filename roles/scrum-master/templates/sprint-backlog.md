@@ -1,7 +1,7 @@
-# Sprint Backlog — quadro de trabalho
+# Sprint Backlog
 
 > **DOCUMENTO VIVO** · **Dono:** SM · **Atualizado em:** <data> · **Estado:** <proposta | vigente>
-> Vive em `.team-project/scrum-master/work-board.md`. As Tasks saem da quebra das Histórias aprovadas, na Planning Meeting ([`../process/workflow.md` §5e](../process/workflow.md)).
+> Vive em `.team-project/scrum-master/sprint-backlog.md`. As Tasks saem da quebra das Histórias aprovadas, na Planning Meeting ([`../process/workflow.md` §5e](../process/workflow.md)).
 
 ## Sprint <n>
 

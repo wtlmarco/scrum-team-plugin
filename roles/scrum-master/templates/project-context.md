@@ -8,10 +8,10 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 .team-project/
 ├── README.md                 ← este modelo
 ├── how-to.md                 cópia de `${CLAUDE_PLUGIN_ROOT}/how-to.md` — guia de uso, não editar aqui
-├── scrum-master/             context.md · work-board.md
+├── scrum-master/             context.md · sprint-backlog.md
 ├── product-owner/            context.md · product-backlog.md
 ├── architect/                context.md · plans/
-├── user-experience/          context.md · journeys/ · screens/
+├── user-experience/          context.md · prototype/ · journeys/ · screens/
 ├── developer/                context.md
 └── quality-assurance/        context.md · evidence.md
 ```
@@ -22,10 +22,11 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 |---|---|
 | `README.md` | este documento |
 | `how-to.md` | cópia literal de `${CLAUDE_PLUGIN_ROOT}/how-to.md` |
-| `scrum-master/work-board.md` | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/work-board.md` *(o Sprint Backlog)* |
+| `scrum-master/sprint-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/sprint-backlog.md` *(o Sprint Backlog)* |
 | `product-owner/product-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/product-backlog.md` *(o conjunto das Histórias; cada uma segue `templates/user-story.md`)* |
 | `quality-assurance/evidence.md` | `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/evidence.md` |
 | `architect/plans/` | pasta vazia; os planos nascem de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md` |
+| `user-experience/prototype/` | pasta vazia; o **protótipo funcional em HTML** nasce de `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/templates/functional-prototype.md` — entregável e pré-condição do portão ① |
 | `user-experience/journeys/` · `screens/` | pastas vazias; nascem dos modelos de `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/templates/` |
 | `<papel>/context.md` | ver "O que vai em cada context.md", abaixo |
 
@@ -89,7 +90,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | `/sm` | `onboarding` · `status` · `sprint plan` · `sprint close` · `review` · `board` · `impact <mudança>` · `close <T-ID>` |
 | `/po` | `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` |
 | `/arc` | `plan <T-ID>` · `comply <T-ID>` · `adr <tema>` · `question <dúvida>` |
-| `/ux` | `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` |
+| `/ux` | `prototype` · `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` |
 | `/dev` | `<T-ID>` · `resume <T-ID>` · `gap <resposta>` |
 | `/qa` | `<T-ID>` · `baseline` · `audit` · `security <T-ID>` |
 | `/team` | `init` · `update` · `<mensagem>` · `brainstorm <ideia>` · `agreement <questão>` · `cycle <T-ID>` · `plan <T-ID>` · `build <T-ID>` · `qa <T-ID>` |
@@ -102,7 +103,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 
 | Situação | Sequência |
 |---|---|
-| **Projeto novo** | `/team brainstorm <ideia>` → `/po requirement <ID>` → ① → ② → `/po story <H-ID>` → ③ → `/sm sprint plan` → `/team cycle <T-ID>` → `/sm review` |
+| **Projeto novo** | `/team brainstorm <ideia>` → `/po requirement <ID>` → `/ux prototype` → ① → ② → `/po story <H-ID>` → ③ → `/sm sprint plan` → `/team cycle <T-ID>` → `/sm review` |
 | **Projeto retomado** | `/sm onboarding` → `/qa audit` → `/qa baseline` → `/po story <H-ID>` → `/sm sprint plan` |
 | **Bug** | `/arc question <dúvida>` (diagnóstico) → `/arc plan <T-ID>` → `/dev <T-ID>` → `/qa <T-ID>` → `/sm close <T-ID>` → aceite na `/sm review` |
 | **Melhoria** | `/po analyze` (área já documentada) ou `/team brainstorm` (capacidade nova) → `/sm impact` → `/po story` → `/sm sprint plan` → `/team cycle` |
