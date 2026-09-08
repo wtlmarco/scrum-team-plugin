@@ -60,7 +60,7 @@ Os princípios de engenharia de **nível 1** ([`standards/implementation-princip
 O time só arranca com uma **lista de Tasks com ID**:
 
 - **Projeto existente** — rode `/qa audit` e `/qa baseline` primeiro. O resultado (pendências com evidência + números reais de build/teste) vira o backlog inicial.
-- **Projeto novo** — `/po analyze <visão do produto>` para os primeiros requisitos, depois `/sm plan`.
+- **Projeto novo** — `/po analyze <visão do produto>` para os primeiros requisitos, depois `/sm sprint plan`.
 
 ## Passo 6 — Primeira rodada de validação
 

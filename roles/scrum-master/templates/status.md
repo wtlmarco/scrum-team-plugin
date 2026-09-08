@@ -18,7 +18,7 @@ Formato de resposta do SM. **Seis linhas.** O stakeholder lê isso em pé.
 - Ler o quadro (`.team-project/scrum-master/work-board.md`) e o documento de status do projeto **antes** de responder. Nunca recompor o estado de memória.
 - Sem adjetivo. Com ID e evidência.
 - "Concluído" exige saída real de comando (R7). Sem evidência, a Task continua em validação.
-- Não propor trabalho novo neste modo — isso é `/sm plan`.
+- Não propor trabalho novo neste modo — isso é `/sm sprint plan`.
 - Se o documento de status divergir do que o registro de GAPs mostra, registrar como risco e acionar `/qa audit`. Não arredondar.
 
 ## Exemplo

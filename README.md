@@ -47,11 +47,11 @@ este repositório   processo   → genérico, um só, serve todos os projetos
     ├── scrum-master/       processo, quadro, status, regras que governam todos
     │   ├── README.md · skills.md
     │   ├── process/     working-rules · workflow · artifact-ownership · process-changelog
-    │   └── templates/   work-board · status · status-entry · impact-analysis · retrospective · project-context · process-change
-    ├── product-owner/      requisitos, backlog, aceite
-    │   └── templates/   product-backlog · requirement · functional-analysis · acceptance
+    │   └── templates/   work-board · sprint-review · status · status-entry · impact-analysis · retrospective · project-context · process-change
+    ├── product-owner/      requisitos, Histórias, backlog, aceite
+    │   └── templates/   user-story · product-backlog · requirement · functional-analysis · acceptance
     ├── architect/          especificação técnica, Planos de Implementação, ADRs
-    │   └── templates/   execution-plan · adr · compliance-review · technical-decision
+    │   └── templates/   implementation-plan · adr · compliance-review · technical-decision
     ├── user-experience/   jornadas, telas, protótipos, usabilidade e acessibilidade
     │   └── templates/   journey-map · screen-spec · usability-review
     ├── developer/          execução do plano, entrega, gaps
@@ -98,17 +98,19 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 ## Comandos
 
 ```
-/sm     onboarding | status | plan | board | impact <mudança> | close <ID>
-/po     analyze <ideia> | requirement <ID> | prioritize | accept <ID>
-/arc    plan <ID> | comply <ID> | adr <tema> | question <dúvida>
-/ux     journey <fluxo> | screen <ID> | prototype | review-ui <tela>
-/dev    <ID> | resume <ID> | gap <resposta do arquiteto>
-/qa     <ID> | baseline | audit | security <ID>
-/team   init | update | <mensagem ou pergunta> | brainstorm <ideia> | agreement <questão> | cycle <ID>
+/sm     onboarding | status | sprint plan | sprint close | review | board | impact <mudança> | close <T-ID>
+/po     analyze <ideia> | requirement <ID> | story <H-ID> | prioritize | accept <H-ID>
+/arc    plan <T-ID> | comply <T-ID> | adr <tema> | question <dúvida>
+/ux     journey <fluxo> | screen <H-ID> | prototype | review-ui <tela>
+/dev    <T-ID> | resume <T-ID> | gap <resposta do arquiteto>
+/qa     <T-ID> | baseline | audit | security <T-ID>
+/team   init | update | <mensagem ou pergunta> | brainstorm <ideia> | agreement <questão> | cycle <T-ID> | plan <T-ID> | build <T-ID> | qa <T-ID>
 /review <instrução> | note | metrics | audit | history            (só no repositório-fonte do plugin)
 ```
 
-Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. **`/ux review-ui`** (revisão de usabilidade de uma tela do projeto) e **`/arc comply`** (revisão de aderência do código ao plano) são trabalho no produto — não confundir com **`/review`**, que evolui o processo do time.
+**`<H-ID>` opera sobre valor, `<T-ID>` sobre trabalho.** A História é a unidade de valor (dona: PO, conteúdo só funcional); a Task é a unidade de trabalho (no Sprint Backlog do SM, com o Plano de Implementação do Arquiteto dentro). Toda Task pertence a exatamente uma História (R20).
+
+Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. Três pares se parecem e não são a mesma coisa: **`/ux review-ui`** (usabilidade de uma tela) e **`/arc comply`** (aderência do código ao plano) são trabalho no produto; **`/sm review`** é a **Sprint Review**, também no produto; e **`/review`** evolui o processo do time e roda só no repositório-fonte do plugin.
 
 Os seis primeiros falam com **um** papel. `/team` fala com **todos**; `/review` evolui os documentos do plugin:
 
@@ -117,13 +119,13 @@ Os seis primeiros falam com **um** papel. `/team` fala com **todos**; `/review` 
 | `/team <mensagem>` | Broadcast: os seis respondem do seu ângulo, em paralelo; a resposta consolida posições, convergências e divergências | Uma ideia, um problema ou uma dúvida que atravessa papéis |
 | `/team brainstorm <ideia>` | Descoberta funcional de ideia sem documentação, facilitada pelo SM: fase 1 stakeholder + PO + UX; fase 2 entra o Arquiteto, em rodadas até fechar para o SDD (R15, [`workflow.md` §5b](roles/scrum-master/process/workflow.md)) | Ideia greenfield que ainda não tem visão, requisitos nem fluxos |
 | `/team agreement <questão>` | Mesma rodada + consolidação do SM em **uma recomendação única**, com a divergência registrada | Quando você quer uma posição do time, não seis opiniões |
-| `/team cycle <ID>` | Encadeia UX → Arquiteto → dev → QA numa Task, parando no primeiro problema | Levar uma Task do plano ao veredito |
+| `/team cycle <T-ID>` | Encadeia Arquiteto → dev → QA numa Task, parando no primeiro problema | Levar uma Task do plano ao veredito |
 
 **Acordo coletivo não é votação.** A propriedade dos papéis sobrevive à consulta: requisito é do PO, desenho é do Arquiteto, prazo é do SM, evidência é do QA — os outros aconselham. Maioria não sobrepõe dono; divergência que sobra vira decisão sua.
 
 Consulta e acordo **não escrevem em disco** — são conversa. O que virar ação é atribuído ao dono e executado pelo comando individual.
 
-## Caminho padrão de uma Task
+## Caminho padrão — do SDD à entrega
 
 ```
 [projeto novo/retomado] ──▶ /sm onboarding ──▶ entendimento alinhado + contexto do projeto  (uma vez, R14)
@@ -132,27 +134,42 @@ Consulta e acordo **não escrevem em disco** — são conversa. O que virar aç�
 stakeholder ──▶ /po analyze ──▶ requisito + critério de aceite
                      │
                      ▼
-              /sm plan ──▶ Task no quadro (ID, dono, dependência, evidência esperada)
+              SDD funcional (PO: 00,01,02)   ──① stakeholder aprova
                      │
                      ▼
-              /team cycle <ID>   (ou /ux → /arc plan → /dev → /qa, passo a passo)
-                     ├─ user-experience ──▶ jornada e especificação de tela  (só se a Task tem interface)
-                     ├─ architect ──▶ Plano de Implementação (citando a especificação de tela)
+              SDD técnico (Arquiteto: 03,04,05)   ──② aprovado
+                     │
+                     ▼
+              /po story <H-ID> ──▶ História no Product Backlog (valor declarado)
+                     │            └─ /ux screen ──▶ protótipo, se tem interface
+                     │            └─ detalhamento: regras + critérios de aceite   ──③ stakeholder aprova
+                     ▼
+              /sm sprint plan ──▶ Planning: o time quebra em Tasks e estima; Sprint Backlog fechado
+                     │
+                     ▼
+              /team cycle <T-ID>   (ou /arc plan → /dev → /qa, passo a passo)
+                     ├─ architect ──▶ Plano de Implementação (dentro da Task, citando o protótipo)
                      ├─ developer ──▶ código + testes, na ordem dos passos
                      │     └─ 🔺 GAP ──▶ architect decide ──▶ /dev gap ──▶ developer retoma
                      └─ quality-assurance ──▶ veredito com evidência real (inclui acessibilidade)
                      │
                      ▼
-              /po accept <ID> ──▶ /sm close <ID> ──▶ status atualizado
+              /sm close <T-ID> ──▶ Task fechada (técnico) + status atualizado
+                     │
+                     ▼
+              /sm review ──▶ Sprint Review: ④ /po accept <H-ID> ──▶ História aceita
+                     │
+                     ▼
+              /sm sprint close ──▶ retrospectiva ──▶ fim do sprint
 ```
 
-Nenhum atalho: Task com interface não é planejado sem especificação de tela, dev sem plano não codifica, QA sem saída de comando não aprova, PO sem QA não aceita, SM sem aceite não fecha.
+Nenhum atalho: SDD técnico não é escrito antes do portão ①, História não nasce antes do ②, História com interface não é detalhada sem protótipo, História sem aprovação do stakeholder não entra na Planning (③), Task sem História não existe (R20), dev sem plano não codifica, QA sem saída de comando não aprova, e **fechar Tasks não aceita a História** — o aceite é do PO, na Review (④ · R21).
 
 ## Regras que governam todos
 
 Geridas pelo SM, válidas para todos os papéis e para o stakeholder:
 
-- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 19 regras (eficiência R1-R6, qualidade R7-R12, método R13-R19), o que cada uma evita e como o SM verifica
+- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 21 regras (eficiência R1-R6, qualidade R7-R12, método R13-R21), o que cada uma evita e como o SM verifica
 - [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) — ciclo, cerimônias, DoR/DoD, gates, escalação
 - [`roles/scrum-master/process/artifact-ownership.md`](roles/scrum-master/process/artifact-ownership.md) — quem escreve o quê
 - [`roles/scrum-master/process/process-changelog.md`](roles/scrum-master/process/process-changelog.md) — como o processo chegou até aqui

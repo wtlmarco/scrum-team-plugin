@@ -22,8 +22,8 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 |---|---|
 | `README.md` | este documento |
 | `how-to.md` | cópia literal de `${CLAUDE_PLUGIN_ROOT}/how-to.md` |
-| `scrum-master/work-board.md` | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/work-board.md` |
-| `product-owner/product-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/product-backlog.md` |
+| `scrum-master/work-board.md` | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/work-board.md` *(o Sprint Backlog)* |
+| `product-owner/product-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/product-backlog.md` *(o conjunto das Histórias; cada uma segue `templates/user-story.md`)* |
 | `quality-assurance/evidence.md` | `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/evidence.md` |
 | `architect/plans/` | pasta vazia; os planos nascem de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md` |
 | `user-experience/journeys/` · `screens/` | pastas vazias; nascem dos modelos de `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/templates/` |
@@ -45,10 +45,18 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | | |
 |---|---|
 | **Estado** | <em construção / em manutenção / retomado após interrupção> |
-| **Missão** | <o objetivo do ciclo atual> |
+| **Sprint corrente** | <n> — <objetivo em uma frase> |
 | **Critérios de sucesso** | <n de m confirmados> |
 | **Pendências abertas** | <contagem por criticidade> |
 | **Leitura de uma frase** | <onde estão os buracos> |
+
+## 2a. Cadência — respondida pelo stakeholder no onboarding (R14)
+| | |
+|---|---|
+| **Duração do sprint** | <n dias / semanas — fixa; não muda dentro do sprint> |
+| **Unidade de estimativa** | <sessões de trabalho / pontos / dias — usada pelo time na Planning> |
+| **Capacidade do sprint** | <n na unidade acima — média entregue nos 3 sprints anteriores, não o desejo> |
+| **Capacidade de dev** | <quantos desenvolvedores; com um só, o Sprint Backlog é fila (R1)> |
 
 ## 3. Stack
 <Tecnologias e a árvore de diretórios do código.>
@@ -78,24 +86,27 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 
 | Comando | Modos |
 |---|---|
-| `/sm` | `onboarding` · `status` · `plan` · `board` · `impact <mudança>` · `close <ID>` |
-| `/po` | `analyze <ideia>` · `requirement <ID>` · `prioritize` · `accept <ID>` |
-| `/arc` | `plan <ID>` · `comply <ID>` · `adr <tema>` · `question <dúvida>` |
+| `/sm` | `onboarding` · `status` · `sprint plan` · `sprint close` · `review` · `board` · `impact <mudança>` · `close <T-ID>` |
+| `/po` | `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` |
+| `/arc` | `plan <T-ID>` · `comply <T-ID>` · `adr <tema>` · `question <dúvida>` |
 | `/ux` | `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` |
-| `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` |
-| `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` |
-| `/team` | `init` · `update` · `<mensagem>` · `brainstorm <ideia>` · `agreement <questão>` · `cycle <ID>` · `plan <ID>` · `build <ID>` · `qa <ID>` |
+| `/dev` | `<T-ID>` · `resume <T-ID>` · `gap <resposta>` |
+| `/qa` | `<T-ID>` · `baseline` · `audit` · `security <T-ID>` |
+| `/team` | `init` · `update` · `<mensagem>` · `brainstorm <ideia>` · `agreement <questão>` · `cycle <T-ID>` · `plan <T-ID>` · `build <T-ID>` · `qa <T-ID>` |
 
-A evolução do processo do time é pelo comando **`/review`**, executado num clone do repositório-fonte do plugin — **não neste projeto**.
+**`<H-ID>` é História (valor, dona: PO); `<T-ID>` é Task (trabalho, no Sprint Backlog).** Toda Task pertence a uma História (R20). O aceite é da História, na Sprint Review — `/sm close` fecha a Task tecnicamente e não aceita nada (R21).
+
+**`/sm review` é a Sprint Review, neste projeto.** A evolução do processo do time é pelo comando **`/review`**, executado num clone do repositório-fonte do plugin — **não neste projeto**.
 
 **Por onde começar**
 
 | Situação | Sequência |
 |---|---|
-| **Projeto novo** | `/team brainstorm <ideia>` → `/po requirement <ID>` → `/arc plan <ID>` → `/sm plan` → `/team cycle <ID>` |
-| **Projeto retomado** | `/sm onboarding` → `/qa audit` → `/qa baseline` → `/sm plan` |
-| **Bug** | `/arc question <dúvida>` (diagnóstico) → `/arc plan <ID>` → `/dev <ID>` → `/qa <ID>` → `/po accept <ID>` → `/sm close <ID>` |
-| **Melhoria** | `/po analyze` (área já documentada) ou `/team brainstorm` (capacidade nova) → `/sm impact` → `/arc plan` → `/team cycle` |
+| **Projeto novo** | `/team brainstorm <ideia>` → `/po requirement <ID>` → ① → ② → `/po story <H-ID>` → ③ → `/sm sprint plan` → `/team cycle <T-ID>` → `/sm review` |
+| **Projeto retomado** | `/sm onboarding` → `/qa audit` → `/qa baseline` → `/po story <H-ID>` → `/sm sprint plan` |
+| **Bug** | `/arc question <dúvida>` (diagnóstico) → `/arc plan <T-ID>` → `/dev <T-ID>` → `/qa <T-ID>` → `/sm close <T-ID>` → aceite na `/sm review` |
+| **Melhoria** | `/po analyze` (área já documentada) ou `/team brainstorm` (capacidade nova) → `/sm impact` → `/po story` → `/sm sprint plan` → `/team cycle` |
+| **Fim de sprint** | `/sm review` (PO aceita as Histórias) → `/sm sprint close` (retrospectiva) → `/sm sprint plan` (abre o próximo) |
 
 Achado do QA volta pelo **degrau certo**: correção local → `/dev resume <ID>` · atravessa papéis → `/team <questão>` · o desenho não sustenta o requisito → `/arc question` · a dúvida é o critério → `/po`.
 

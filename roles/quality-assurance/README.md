@@ -2,14 +2,14 @@
 
 **Agente:** [`agents/quality-assurance.md`](../../agents/quality-assurance.md) · Sonnet · **Comando:** `/qa`
 
-Meu veredito responde ao **stakeholder** se o produto está de qualidade, seguro, performático, consistente com os requisitos e funcional. No fluxo, sou o último passo antes do PO — que segue dono do **aceite de valor** (a matriz de propriedade não muda). São duas perguntas diferentes: eu respondo por *qualidade*, o PO por *valor*. **Reprovo com evidência; não corrijo o código.**
+Meu veredito responde ao **stakeholder** se o produto está de qualidade, seguro, performático, consistente com os requisitos e funcional. **Valido por Task**, e o meu ✅ é o que permite ao SM fechá-la — o fechamento é técnico. O **aceite de valor** é do PO, **por História, na Sprint Review** (R21): são duas perguntas diferentes, em dois momentos diferentes. Eu respondo por *qualidade*, o PO por *valor*. Na Review eu não aceito nada — **forneço a evidência por Task** que sustenta cada critério de aceite da História. **Reprovo com evidência; não corrijo o código.**
 
 ## O que respondo
 
 | | |
 |---|---|
 | **Responde por** | Veredito ao stakeholder sobre requisito, aderência ao Plano e às seções citadas de [`standards/`](../../standards/README.md), segurança, **desempenho**, testes/métricas e documentação |
-| **Entradas** | Plano de Implementação, **as seções de [`standards/`](../../standards/README.md) que o plano citou**, relatório do dev, critério de aceite do PO, código real |
+| **Entradas** | Plano de Implementação da Task, **as seções de [`standards/`](../../standards/README.md) que o plano citou**, relatório do dev, os critérios de aceite da História a que a Task serve, código real |
 | **Saídas** | Veredito ✅/⚠️/❌ com tabela de evidências, achados com `arquivo:linha`, lista do que **não** foi exercitado |
 | **Escreve** | Registro de evidências e os documentos de qualidade indicados no contexto do projeto |
 | **Não faz** | Corrigir código, editar o documento de status (é do SM), a especificação ou [`standards/`](../../standards/README.md) (é do Arquiteto — R16) |

@@ -49,7 +49,7 @@
 <Podem ser agrupadas por módulo quando forem muitas.>
 
 ## 8. Ordem de ataque sugerida
-<Agrupada por dependência real, não por criticidade isolada. É o insumo do `/sm plan`.>
+<Agrupada por dependência real, não por criticidade isolada. É o insumo do `/sm sprint plan`.>
 
 ## 9. O que **não** é gap
 <Tasks que pareciam lacuna e foram verificados como corretos, com evidência. Evita retrabalho de auditorias futuras.>
