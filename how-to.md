@@ -61,8 +61,8 @@ claude plugin update team@team           # aplica (exige reiniciar a sessão)
 
 | Comando | Modos | Papel |
 |---|---|---|
-| `/sm` | `onboarding` · `sprint plan` · `sprint close` · `review` · `board` · `agreement <questão>` · `impact <mudança>` · `close <T-ID>` | Scrum Master — rituais, Sprint Backlog, capacidade, riscos, processo |
-| `/po` | `status` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` | Product Owner — **o seu canal**: status, prazo, requisitos, Histórias, backlog, aceite |
+| `/sm` | `onboarding` · `sprint plan` · `sprint close` · `review` · `board` · `agreement <questão>` · `close <T-ID>` | Scrum Master — rituais, Sprint Backlog, capacidade, riscos, processo |
+| `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` | Product Owner — **o seu canal**: status, prazo, requisitos, Histórias, backlog, aceite |
 | `/arc` | `plan <ID>` · `comply <ID>` · `adr <tema>` · `question <dúvida>` | Arquiteto — desenho, Plano de Implementação, ADR, standards |
 | `/ux` | `prototype` · `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` | UX — **protótipo funcional (portão ①)**, jornada, tela, usabilidade, acessibilidade |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` | Desenvolvedor — executa o plano, não improvisa |
@@ -146,11 +146,11 @@ Há código, e a documentação pode não corresponder a ele.
 ```
 /po analyze <ideia>             se a área já é documentada
 /team brainstorm <ideia>        se é capacidade nova, sem cobertura
-/sm impact <mudança>            o que essa mudança custa e quebra
+/po impact <mudança>            o que essa mudança custa e quebra
 /arc plan <ID>  →  /team cycle <ID>
 ```
 
-`/sm impact` antes de planejar: mudança de escopo passa por análise de impacto antes de virar Task.
+`/po impact` antes de planejar: mudança de escopo passa por análise de impacto antes de virar Task.
 
 ## Regras que valem em qualquer caminho
 

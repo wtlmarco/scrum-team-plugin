@@ -100,8 +100,8 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 ## Comandos
 
 ```
-/sm     onboarding | sprint plan | sprint close | review | board | agreement <questão> | impact <mudança> | close <T-ID>
-/po     status | analyze <ideia> | requirement <ID> | story <H-ID> | prioritize | accept <H-ID>
+/sm     onboarding | sprint plan | sprint close | review | board | agreement <questão> | close <T-ID>
+/po     status | impact <mudança> | analyze <ideia> | requirement <ID> | story <H-ID> | prioritize | accept <H-ID>
 /arc    plan <T-ID> | comply <T-ID> | adr <tema> | question <dúvida>
 /ux     prototype | journey <fluxo> | screen <H-ID> | prototype <tela> | review-ui <tela>
 /dev    <T-ID> | resume <T-ID> | gap <resposta do arquiteto>

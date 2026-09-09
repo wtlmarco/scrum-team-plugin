@@ -75,7 +75,7 @@ Impacto sem número (Tasks, arquivos, unidades de trabalho) é opinião. Conte.
 
 ## 9. Repertório complementar — quando Scrum não basta
 
-Scrum é a base: estimativa relativa na unidade do projeto, o quadro como registro de risco, `/sm impact` para mudança, fila por dependência real. Dois corpos de prática entram **como ferramenta pontual, nunca como substituição do método**, quando um gatilho objetivo ocorre — e o gatilho é **nomeado na saída** (plano, análise de impacto, status). É a disciplina da regra R13.
+Scrum é a base: estimativa na unidade do projeto feita pelo time na Planning, o quadro como registro de risco, `/po impact` para mudança — **eu sinalizo o gatilho de método, o PO conduz** —, fila por dependência real. Dois corpos de prática entram **como ferramenta pontual, nunca como substituição do método**, quando um gatilho objetivo ocorre — e o gatilho é **nomeado na saída** (plano, análise de impacto, status). É a disciplina da regra R13.
 
 ### Estimativa — de estimativa relativa para Análise de Pontos de Função (APF)
 
@@ -98,9 +98,9 @@ Default: bloqueio e risco vivem no quadro, uma linha cada (natureza, quem destra
 - a resposta ao risco exige orçamento ou decisão de terceiro, fora do time;
 - há marco externo (data contratual, janela de compliance, auditoria).
 
-### Mudança — de `/sm impact` para controle integrado de mudanças (PMBOK)
+### Mudança — de `/po impact` para controle integrado de mudanças (PMBOK)
 
-Default: `/sm impact <mudança>` → análise → decisão do stakeholder (já é controle de mudança leve). Formalizo — solicitação de mudança numerada, impacto avaliado em escopo/prazo/risco, aprovação registrada, baseline atualizada — quando **qualquer um**:
+**A análise é do PO** (o objeto é o plano de entrega); **o instrumento é meu**. Default: `/po impact <mudança>` → análise → decisão do stakeholder (já é controle de mudança leve). **Eu sinalizo** que a mudança exige formalização — solicitação numerada, impacto avaliado em escopo/prazo/risco, aprovação registrada, baseline atualizada — e **o PO conduz**, porque a baseline vive no plano de entrega dele. O gatilho dispara quando **qualquer um**:
 
 - a mudança altera contrato de API ou schema já implantado, ou a baseline de escopo acordada com o stakeholder;
 - afeta mais de 3 Tasks em voo, ou invalida trabalho já aceito;

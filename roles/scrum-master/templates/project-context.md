@@ -87,8 +87,8 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 
 | Comando | Modos |
 |---|---|
-| `/sm` | `onboarding` · `sprint plan` · `sprint close` · `review` · `board` · `agreement <questão>` · `impact <mudança>` · `close <T-ID>` |
-| `/po` | `status` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` |
+| `/sm` | `onboarding` · `sprint plan` · `sprint close` · `review` · `board` · `agreement <questão>` · `close <T-ID>` |
+| `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` |
 | `/arc` | `plan <T-ID>` · `comply <T-ID>` · `adr <tema>` · `question <dúvida>` |
 | `/ux` | `prototype` · `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` |
 | `/dev` | `<T-ID>` · `resume <T-ID>` · `gap <resposta>` |
@@ -108,7 +108,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | **Projeto novo** | `/team brainstorm <ideia>` → `/po requirement <ID>` → `/ux prototype` → ① → ② → `/po story <H-ID>` → ③ → `/sm sprint plan` → `/team cycle <T-ID>` → `/sm review` |
 | **Projeto retomado** | `/sm onboarding` → `/qa audit` → `/qa baseline` → `/po story <H-ID>` → `/sm sprint plan` |
 | **Bug** | `/arc question <dúvida>` (diagnóstico) → `/arc plan <T-ID>` → `/dev <T-ID>` → `/qa <T-ID>` → `/sm close <T-ID>` → aceite na `/sm review` |
-| **Melhoria** | `/po analyze` (área já documentada) ou `/team brainstorm` (capacidade nova) → `/sm impact` → `/po story` → `/sm sprint plan` → `/team cycle` |
+| **Melhoria** | `/po analyze` (área já documentada) ou `/team brainstorm` (capacidade nova) → `/po impact` → `/po story` → `/sm sprint plan` → `/team cycle` |
 | **Fim de sprint** | `/sm review` (PO aceita as Histórias) → `/sm sprint close` (retrospectiva) → `/sm sprint plan` (abre o próximo) |
 
 Achado do QA volta pelo **degrau certo**: correção local → `/dev resume <ID>` · atravessa papéis → o QA roteia pelo dono, ou `/sm agreement` · o desenho não sustenta o requisito → `/arc question` · a dúvida é o critério → `/po`.

@@ -86,7 +86,23 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 - **Fecho da entrega:** passa a **`v3.3.0`** — carrega quatro entradas de processo (v3.0, v3.1, v3.2, v3.3).
 - **Reiniciar a sessão** — `agents/` e `commands/` mudaram.
-- **`impact-analysis.md` continua no SM**, usado como formato da recomendação de acordo. Se o plano de entrega for do PO, vale decidir num próximo giro se a análise de impacto de **escopo/prazo** também migra — hoje ela é do SM e cita prazo.
+- ~~**`impact-analysis.md` continua no SM**~~ — **resolvida no addendum abaixo.**
+
+### Addendum — 08/09/2026 · a análise de impacto migra ao PO
+
+*(Anexado, não reescrito — R17. Resolve a pendência que esta mesma entrada declarou; não corrige nada acima.)*
+
+**Instrução:** *(stakeholder, direta)* "sim, migra também."
+
+**O que mudou:** `templates/impact-analysis.md` sai de `roles/scrum-master/` e vai para `roles/product-owner/` (`git mv`); **`/sm impact` vira `/po impact <mudança>`**. O objeto da análise é o **plano de entrega** — manter a análise no SM deixaria o dono do plano sem o instrumento que o altera.
+
+**A fronteira que não migrou.** O template passa a declarar **três insumos com dono explícito**, e o PO **consolida sem inventar nenhum**: quadro, capacidade e "o que sai para caber" vêm do **SM**; retrabalho, contrato e migration vêm do **Arquiteto**, porque **o PO não decide "como"**; risco e recomendação são dele. Regras novas: *"não invente insumo técnico — estimar retrabalho sem o Arquiteto é opinião com aparência de número"* e *"não recalcule capacidade — a conta é do SM"*.
+
+**Por que isto não contradiz o `/sm agreement` desta mesma entrada.** Lá o SM facilita porque há **disputa** e o PO seria **parte** (*"o requisito está errado ou a implementação está?"*). Aqui **não há disputa**: é a análise de uma mudança a um plano que é do PO. **Reunir insumo para informar a própria decisão não é arbitrar** — arbitrar é decidir entre duas partes, e o PO não está julgando ninguém. A distinção está escrita nos dois documentos, para que a próxima leitura não os veja como contraditórios.
+
+**R13 se divide, e continua coerente:** **nomear o instrumento é do SM** — método é o domínio dele, e ele **sinaliza o gatilho** de controle integrado de mudanças; **conduzir a mudança de baseline é do PO**, porque a baseline vive no plano de entrega. Refletido em `skills.md` §9, `working-rules.md` R13, `commands/{sm,po}.md` e nos dois roteiros.
+
+**Evidência (R19):** `git mv` detectado como rename; **`grep '/sm impact'` fora dos changelogs = 0**; a **leitura no contexto** pegou três ocorrências que a substituição de padrão não casaria — o título da seção no roteiro do SM, a linha da tabela de documentos dele e o texto de `skills.md` §9, todos reescritos à mão para a divisão insumo/instrumento. **Sem bump de versão:** a entrega segue `v3.3.0`, porque isto completa uma decisão já registrada, não abre uma nova.
 
 ---
 
