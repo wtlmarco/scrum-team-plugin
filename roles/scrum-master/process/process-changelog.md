@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.1`](process-changelog-archive.md) | Protótipo funcional em HTML vira entregável e pré-condição do portão ①; o Sprint Backlog ganha o próprio nome — 08/09/2026 |
 | [`v3.0`](process-changelog-archive.md) | Redesenho do modelo de trabalho: História e Task, sprint como caixa de tempo, aceite na Sprint Review — 08/09/2026 |
 | [`v2.11`](process-changelog-archive.md) | Guias de raiz ganham dono; roteiro de instalação endurecido; R19 passa a exigir checagem semântica — 07/09/2026 |
 | [`v2.10`](process-changelog-archive.md) | Reavaliação do conjunto: caminho de escrita do `/review`, contagem de regras e modo `note` reconciliados — 07/09/2026 |
@@ -36,6 +37,80 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.4 — Substantivo homônimo em lista de proibição: a régua, as cinco correções e o fecho do `/review note` — 09/09/2026
+
+**Instrução (1):** *(stakeholder, após triagem de `note.md` — Tasks 2, 3 e 4 fundidos)* "Escreva em `artifact-ownership.md` a nota de nomenclatura que fecha o círculo: quando um substantivo nomeia **dois artefatos de donos diferentes** (o caso `status`: executivo ao stakeholder = PO, documento de progresso = SM), toda menção em lista de proibição precisa **qualificar qual** e **nomear o dono** — porque proibição curta num papel cujo modo tem o mesmo nome derruba o modo. Cite o padrão que já funciona como forma a copiar. Deixe a nota utilizável como critério de verificação."
+
+**Instrução (2), fecho do `/review note`:** curadoria das cinco correções · registrar `team-version.md` na matriz · corrigir a sobra da v3.3 no §5c, onde a mesma seção declara o `consult` extinto e sete linhas abaixo instrui a partir dele.
+
+**Classificação:** propriedade de artefato (nomenclatura da fronteira entre artefatos homônimos; dono de guia de raiz) + escopo de papel (as cinco linhas de fronteira corrigidas) + obsolescência (§5c).
+
+**Como esta mudança entrou — desvio de roteamento.** A triagem roteou as três fichas aos agentes donos (PO, QA e Arquiteto-pelo-dev); **os três caíram por limite de sessão e a sessão principal aplicou as três**, seguindo §1b, mais os dois cards autorizados pelo stakeholder. As fichas mudaram **sem passar pelo dono e sem entrada de changelog própria** — esta entrada as absorve, depois de o SM conferi-las por leitura. **Não vira precedente:** o atalho existiu porque o sintoma estava aberto em campo e a régua já estava escrita. Fica registrado porque quem ler o diff daqui a seis meses veria três papéis "concordando" com uma correção que nenhum deles escreveu.
+
+**Curadoria:** as cinco linhas passaram nos três passos de §1b — qualificador **e** dono em 5/5, artefato próprio preservado na mesma linha em 3/5 (nos dois cards, em outra seção). Detalhe por arquivo no bloco de evidência. **O que a curadoria devolveu à régua:** o caso do QA mostrou que o substantivo cru é só metade do defeito — *"a especificação"* não diz se o vedado é **escrever** ou também **validar contra**, e validar contra é a frente 2 do papel. §1b ganhou o **verbo** como terceiro elemento da forma completa.
+
+### O que mudou
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `process/artifact-ownership.md` | **§1b nova** | *Substantivo homônimo — como se escreve uma proibição sem derrubar um modo.* Os 4 homônimos vivos (`status`, `especificação`, `protótipo`, `documentação`), a forma obrigatória (**qualificador + dono + verbo**, nunca o substantivo cru), por que a lista de proibição vence a linha que concede, e os **3 passos de verificação** do SM |
+| | §3 · matriz | Conflito novo (*papel recusa o próprio modo citando "Não faz"*); a linha do documento de status passa a apontar o homônimo do PO e §1b; **`team-version.md` registrado** entre os guias de raiz, ao lado de `team-init`/`team-update`, que já estavam — dono stakeholder |
+| 3 fichas + 2 cards | "Não faz" / "Proibido" | `status` (PO), `especificação` (QA) e `documentação` (dev) deixam de aparecer cruas, nas fichas e nos dois cards que carregam no subagente. **Aplicadas pela sessão principal, não pelos donos** — ver o desvio acima |
+| `process/workflow.md` | §5c | **Sobra da v3.3 removida:** a seção declarava o `consult` extinto e, 7 linhas abaixo, instruía a partir dele com uma economia de "~38 KB" medida contra o broadcast que já não existe. A lição de R3 foi reancorada no **passo 1 do `/sm agreement`**, e ficou **sem número fechado** porque a tabela não sustenta o delta — ela soma `commands/` + `agents/`, e o `agreement` só acrescenta `agents/` |
+| | §5c, custo | **Remedido:** `/sm` 13 → **15**, `/po` 10 → **13**, `/team cycle` 28 → **26**, `/review` 14 → **15**. Nota nova: os números somam `commands/` + `agents/`, e remedir é fase **Check** |
+
+**Modo de falha que evita:** um papel recusar o modo que a própria ficha lhe dá, e devolver ao stakeholder um comando extinto. Em campo: `/po status` numa instalação v3.3.0 entregou a leitura de produto e **em seguida se desautorizou**, dizendo que status "é tipicamente papel do Scrum Master" e oferecendo um `/sm status` que a v3.3 havia removido. Instalação e contexto do projeto foram descartados como causa; era a palavra `status` **crua** na lista "Não faz" do PO, quatro linhas abaixo da que lhe dá "prazo, plano de entrega e status". A lista curta venceu a tabela, com o prior de Scrum empurrando junto.
+
+### Quem passa a ser cobrado de forma diferente
+
+| Papel | O que muda para ele |
+|---|---|
+| **SM** | Passo de verificação novo na reavaliação do `/review`: cruzar "Não faz" × modos declarados, papel a papel, **por leitura** — `grep` não distingue uso qualificado de uso cru |
+| **PO · QA · dev** | Nenhuma conduta muda **exceto deixar de recusar o próprio modo**: o PO responde `/po status` sem se desautorizar, o QA mantém a frente 2, o dev entrega relatório e GAP |
+| **Arquiteto · stakeholder** | Herdam o roteamento do §7 do dev (abaixo), cada um no seu arquivo |
+
+### Roteamentos abertos
+
+`Documentação não é minha/sua` continua cru no **Contrato §7** do dev — `roles/developer/README.md:28` (dono: **Arquiteto**) e `agents/developer.md:32` (dono: **stakeholder**). Está **fora** da superfície que §1b verifica e a frase seguinte preserva a exceção (*"Minha entrega é código, testes e o relatório"*), mas ficou em forma inconsistente com a linha 15, agora qualificada. É conteúdo do papel, não coerência de referência: **o SM roteia, não reescreve**.
+
+### Conflitos com o processo vigente
+
+**A régua poderia virar R22** em `working-rules.md` — R1–R21 governam como o time trabalha **num projeto**, e esta governa como os normativos do plugin são redigidos. **Escalado e decidido pelo stakeholder:** fica em `artifact-ownership.md`; regra que não se verifica numa Task não entra na lista percorrida a cada Task fechada. Precedente de forma: §1a, que R17 já nomeia como o lugar da "nota de racional no próprio documento normativo que ela governa".
+
+### Como saberemos que funcionou
+
+Zero ocorrências, nas próximas três versões, de papel recusando modo próprio ou oferecendo comando extinto. Verificável já no `/review` seguinte: o cruzamento "Não faz" × modos fecha **limpo nos seis papéis** — na abertura eram 3 sujos (PO, QA, dev), no fecho são 6 limpos na superfície verificada, com 2 resíduos roteados fora dela. O teste real é o próximo `/po status` em campo: entrega a leitura e **para**.
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento | `Compare-Object` bloco `## v3.1` × `git show HEAD:` | 55 linhas, **0 diferenças**; arquivo 1244 → 1301; índice ganhou `v3.1` | ✅ |
+| Extração / criação | `git show HEAD:…/artifact-ownership.md` × disco | **112 → 145 linhas**; §1b em 57–87; conflito novo em §3 | ✅ ¹ |
+| Checagem semântica | leitura dos 4 homônimos de §1b na origem | os 4 conferem: `status` · `especificação` · `protótipo` · `documentação` | ✅ |
+| Forma a copiar | leitura da linha "Não faz" de `roles/scrum-master/README.md` | *"…nem status **ao stakeholder** — é do PO (§6a)"*: qualificador + dono | ✅ |
+| Teto de leitura | `^## v` no changelog quente | 3 entradas — v3.4, v3.3, v3.2 | ✅ |
+| Curadoria das 5 correções | leitura contra os 3 passos de §1b (**não `grep`**) | 5/5 qualificador + dono; 3/5 preservam o próprio na mesma linha; 1 defeito de **verbo** → virou régua em §1b | ✅ |
+| Resíduo do defeito | leitura de `Documentação não é (minha\|sua)` | 2 cruas: `roles/developer/README.md:28`, `agents/developer.md:32` — fora da superfície de §1b | ✅ roteado |
+| Obsolescência §5c | `consult` em `workflow.md` | 2 na seção: `:245` declara a remoção, `:252` cita a origem histórica. Nenhuma instrui no presente | ✅ |
+| Substituição do número | `38 KB` em `process/*.md` | 1, nesta entrada, citando o número errado como defeito. Zero no normativo | ✅ |
+| Remedição do custo | `.Length` de `agents/*` + `commands/*` | sm 15,1 · po 13,0 · ux 10,7 · arc 9,7 · qa 9,8 · dev 6,9 KB — `/sm` e `/po` errados | ✅ |
+| Guia sem dono | `team-version` na matriz + `Test-Path` | linha 41, com `team-init`/`team-update` que **já estavam**; arquivo existe | ✅ |
+| Links | `](*.md)` nos 5 arquivos tocados | 2 achados, ambos **falsos positivos** (notação em crase). Reais: **0** | ✅ |
+| **R17 — teto da entrada** | contagem do bloco `## v3.4` | **13,7 KB na 1ª medição — acima da barreira de 10 KB.** Excedente movido (curadoria detalhada → evidência; análise da régua → §1b); remedido | ✅ ² |
+
+¹ Desvio: escrevi "113 → 148" antes de contar; o real era 112 → 145. Contagem estimada não é evidência.
+² A própria R17 reprovou esta entrada, duas vezes. O corte seguiu o critério dela: sai o raciocínio de uma vez, fica o registro permanente, e a análise que precisava sobreviver foi para §1b — o normativo que ela governa.
+
+### Pendente do stakeholder
+
+- **`agents/developer.md:32`** — o último `Documentação não é sua` cru, agora fora de forma com a ficha corrigida. Roteado acima.
+- **`/team version`** (Task 1 de `note.md`) — reenquadrado por ele como **modo meta**, ao lado de `init` e `update`, e por isso sem colisão com a linha 10 de `commands/team.md`, que proíbe conversa. `commands/team.md` e `team-version.md` foram aplicados por ele; o que coube a mim foi **registrar o dono na matriz**, feito.
+- **Reiniciar a sessão** — `agents/product-owner.md` e `agents/quality-assurance.md` mudaram, e comportamento de agente só entra em vigor depois.
+- **Entrega:** esta versão de processo ainda não chegou a instalação nenhuma. `git commit` + `push` + `claude plugin marketplace update team` + `claude plugin update team@team` (R18). O sintoma de campo que abriu a v3.4 **continua vivo na instalação do cliente** até esse passo.
 
 ---
 
@@ -182,61 +257,4 @@ O número **"69 KB por broadcast"** registrado acima **está errado**. Ele somav
 **O que a correção acrescentou ao normativo:** `workflow.md` §5c passou a declarar **onde cada arquivo é carregado** (principal × subagente), a tabela de custo por comando, e as **três coisas que a carga fixa não mostra** e costumam dominar o custo real — o **modelo** de cada agente (`/arc` e `/ux` em Opus, `/dev` em Haiku: `/arc` carrega menos que `/sm` e custa mais), a **leitura em tempo de execução** (que costuma superar a carga fixa e é multiplicada pelo número de subagentes) e o **retorno das respostas** ao contexto principal na consolidação.
 
 **Como foi detectado:** o stakeholder perguntou quais são os comandos mais caros do time; a conta refeita papel a papel não fechou com o registrado. **Modo de falha que isto expõe:** medir sem declarar *onde* cada arquivo é carregado produz número plausível e errado — e a v3.2 é exatamente uma entrada sobre não confiar em métrica mal definida.
-
----
-
-## v3.1 — Protótipo funcional em HTML vira entregável e pré-condição do portão ①; o Sprint Backlog ganha o próprio nome — 08/09/2026
-
-**Instrução:** *(stakeholder, direta)* "nos documentos do team-project está faltando o SprintBacklog; a elaboração do protótipo funcional em html também é entregável e requisito antes de aprovar a sdd funcional."
-
-**Classificação:** entregável novo (protótipo funcional) + regra (R15 ganha a pré-condição do ①) + fluxo (§5b, §5, §8) + propriedade de artefato (o protótipo deixa de ser "exploração" e vira entregável do UX) + formato de documento (modelo novo, renomeação do quadro) + escopo de papel (o UX passa a ter entregável que **bloqueia um portão**).
-
-**Complementa a [`v3.0`](#), não a corrige.** A v3.0 fica como está (R17: entrada nunca é reescrita); o que ela descreveu como "portão ① — o stakeholder aprova o SDD funcional" passa a exigir, a partir daqui, **protótipo navegado**.
-
-### O que mudou
-
-| Documento | Onde | O quê |
-|---|---|---|
-| **`deliverables/prototype/README.md` novo** | — | O **protótipo funcional** como entregável: por que vem antes do ①, a tabela que o distingue do protótipo de tela do ③, as 7 exigências, o que ele **não** é, os critérios verificados no portão e como ele vence quando a fatia fecha |
-| **`roles/user-experience/templates/functional-prototype.md` novo** | — | Estrutura de arquivos (`index.html` + `flows/` + `assets/`, sem build) e a **ficha** com a tabela fluxo × caminho completo, os requisitos representados, o "fora", as premissas e o **registro datado da navegação do stakeholder** |
-| `process/working-rules.md` | **R15** | Título e corpo ganham "o ① com protótipo navegado". O modo de falha evitado passa de três para quatro: *o stakeholder aprovar por escrito um produto que só vai **ver** depois de construído* — o mais caro dos quatro, porque o retrabalho já é código. "SM verifica" ganha a exigência do registro de navegação |
-| | indicadores | Linha nova: portão ① sem protótipo, sem registro datado de navegação, ou com fluxo principal de `02-flows` sem caminho no protótipo → **o ① foi aprovado por leitura** |
-| `process/workflow.md` | §2, §5, §5b, §8 | O diagrama da cadeia mostra o protótipo antes do ①; cerimônia nova na tabela de §5; a transição do brainstorm ganha a linha do protótipo e o ① passa a ler "o stakeholder **NAVEGA** o protótipo e aprova"; §8 ganha **duas** linhas de gate (o protótipo existe · o ① com protótipo navegado); "como o SM verifica" do §5b exige o registro |
-| `process/artifact-ownership.md` | matriz, §2 | A linha "Protótipos \| UX \| Exploração, não código de produção" **vira duas**: o **protótipo funcional** (entregável, pré-condição do ①) e os **protótipos de tela e explorações** (portão ③, que **não substituem** o primeiro). O fluxo de §2 mostra o UX no ramo do ① |
-| `roles/user-experience/` | README, `/ux prototype` | O modo se desdobra: **`/ux prototype` sem argumento** é o protótipo funcional (7 passos, incluindo conduzir a navegação e registrar); **`/ux prototype <tela>`** continua sendo exploração de tela. Tabela de documentos ganha o entregável |
-| `agents/user-experience.md` · `commands/ux.md` | descrição, responsabilidades, modos | O protótipo funcional vira a **responsabilidade 1** do papel; `argument-hint` e a descrição do agente passam a nomeá-lo *(propriedade do stakeholder — aplicado por instrução direta dele)* |
-| `deliverables/README.md` | conjuntos, ordem, propriedade | Conjunto novo na tabela; o ① passa a ler "NAVEGA o protótipo e aprova"; linha nova em "por que o portão ① existe"; o protótipo entra na matriz de propriedade (dono UX, revisa stakeholder) |
-| **Sprint Backlog** | `templates/work-board.md` → **`sprint-backlog.md`** | O achado do stakeholder: a v3.0 renomeou o **título** do quadro para "Sprint Backlog" e deixou o **arquivo** como `work-board.md`, de modo que em `.team-project/scrum-master/` o artefato central do sprint continuava com o nome antigo. `git mv` + 9 arquivos reapontados, incluindo o manifesto e o passo 7 do `team-update.md` |
-| `.team-project/` | estrutura | `user-experience/` ganha `prototype/`; `scrum-master/` passa a listar `sprint-backlog.md`. Refletido em `team-init.md`, `project-context.md`, no manifesto `deliverables/team-project/` e no `README.md` da raiz |
-
-**Modo de falha que evita:** o stakeholder aprovar `00`/`01`/`02` **lendo** e descobrir a divergência só quando o produto existe. A divergência entre o que ele imaginou e o que o time entendeu aparece sempre na primeira vez que ele atravessa o fluxo; a única variável é quanto já foi construído até lá. O protótipo antecipa esse momento para o ponto em que o descarte custa HTML, não arquitetura e código.
-
-**Quem passa a ser cobrado de forma diferente:** o **UX** (ganha um entregável que **bloqueia** um portão, e a obrigação de conduzir a navegação, não de apresentar); o **stakeholder** (não aprova o SDD funcional sem navegar); o **Arquiteto** (não começa o SDD técnico sem o registro de navegação); o **SM** (passa a verificar o registro datado como parte de R15).
-
-**Indicador de sucesso:** todo portão ① com registro datado de navegação e com 100% dos fluxos principais de `02-flows-and-roles` cobertos; nenhuma ocorrência de "aprovado sem navegar" nas retrospectivas.
-
-### Conflitos resolvidos
-
-| Conflito | Com que regra | Resolução |
-|---|---|---|
-| `artifact-ownership.md` dizia "Protótipos — exploração, **não** entregável" | a instrução do stakeholder diz que é entregável | A linha virou **duas**: o funcional é entregável; o de tela segue exploração. Nenhuma das duas verdades foi apagada |
-| O detalhamento da História (③) já exigia protótipo | R20 · DoR da História | São **dois protótipos com escopos diferentes** — produto × tela —, e a tabela de `deliverables/prototype/README.md` declara a distinção para que um não seja usado como desculpa para não fazer o outro |
-| "Protótipo é descartável" × "protótipo é entregável" | — | Convivem: é entregável **e** descartável. A ficha marca **vencido** quando a fatia fecha, e a verdade passa a ser o produto |
-
-### Evidência (R19)
-
-| Classe | Comando | Resultado |
-|---|---|---|
-| Arquivamento | `Compare-Object` do bloco `## v2.10` movido × `git show HEAD:…/process-changelog.md` | **62 × 63 linhas, diferença = 1 linha em branco final**; conteúdo idêntico. Índice de arquivadas ganhou a linha `v2.10` |
-| Substituição de padrão | `work-board.md` → `sprint-backlog.md` (+ `git mv` do modelo) | 9 arquivos alterados; **`grep 'work-board'` fora dos changelogs = 0** |
-| **Checagem semântica** | leitura das linhas de estrutura do `.team-project/` e das tabelas de comando em cada arquivo | `README.md` da raiz tinha a árvore de `roles/` com `work-board`, fora do padrão de caminho — pego na leitura, não pelo `grep` de caminho |
-| Extração / criação | `deliverables/prototype/README.md`, `templates/functional-prototype.md` | 2 novos, referenciados de `deliverables/README.md`, da matriz de propriedade, do README e do agent do UX |
-| Ponteiros | varredura de todo `](…​.md)` relativo contra o disco | **1 link quebrado real encontrado e corrigido**: o manifesto `deliverables/team-project/README.md` apontava `sdd/README.md` e `implementation/README.md` como se estivesse em `deliverables/` — corrigidos para `../sdd/` e `../implementation/`. Restante: 0 |
-| Manifesto | `claude plugin validate . --strict` | passou |
-
-### Pendente do stakeholder
-
-- **Fecho da entrega:** a entrega passa de `v3.0.0` para **`v3.1.0`** — carrega **duas** entradas de processo (v3.0 e v3.1), como a v2.9.0 carregou três. Bump e entrada única no `CHANGELOG.md` (R18), na branch `feat/v3.0.0`.
-- **Reiniciar a sessão** — `agents/user-experience.md` e `commands/ux.md` mudaram.
-- **Nome da branch:** continua `feat/v3.0.0` embora a entrega saia como `v3.1.0`. Renomear ou aceitar a divergência é decisão sua; a entrada do `CHANGELOG.md` nomeia a branch real.
 

@@ -1,6 +1,6 @@
 ---
-description: Orquestra o time trabalhando — instala ou atualiza o time no projeto, conduz o brainstorm de descoberta, ou executa um ciclo de construção de uma Task. Não é broadcast: mensagem solta é roteada ao papel dono.
-argument-hint: "init | update | brainstorm <ideia> | cycle <T-ID> | plan <T-ID> | build <T-ID> | qa <T-ID>"
+description: Orquestra o time trabalhando — instala, atualiza ou informa a versão do time no projeto, conduz o brainstorm de descoberta, ou executa um ciclo de construção de uma Task. Não é broadcast: mensagem solta é roteada ao papel dono.
+argument-hint: "init | update | version | brainstorm <ideia> | cycle <T-ID> | plan <T-ID> | build <T-ID> | qa <T-ID>"
 ---
 
 Orquestra **o time trabalhando**: Scrum Master (`scrum-master`), Product Owner (`product-owner`), Arquiteto (`architect`), UX (`user-experience`), Desenvolvedor (`developer`) e QA (`quality-assurance`).
@@ -22,6 +22,12 @@ Não dispare agente nenhum: este modo é seu, e é conversa com o stakeholder.
 **Leia `${CLAUDE_PLUGIN_ROOT}/team-update.md` e siga-o** — os oito passos estão lá, incluindo a **reconciliação do `.team-project/`** com os modelos da versão nova (passo 7). Só neste modo: `update` roda uma vez por bump de versão e não paga contexto nas demais invocações.
 
 Não dispare agente nenhum: este modo é do comando, e é conversa com o stakeholder.
+
+## Modo `version` — que versão está rodando aqui
+
+**Leia `${CLAUDE_PLUGIN_ROOT}/team-version.md` e siga-o.** Versão instalada, o que ela trouxe, guia rápido de comandos e o que o time custa em contexto. **Não usa rede** — quem verifica se há versão nova é o `update`.
+
+Não dispare agente nenhum.
 
 ## Sem modo reconhecido — roteie, não dispare
 
