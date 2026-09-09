@@ -1,4 +1,4 @@
-﻿# Implementação — Modelo do conjunto
+# Implementação — Modelo do conjunto
 
 Enquanto o SDD descreve **o que o sistema é**, este conjunto descreve **como a construção está indo**. São os quatro documentos que respondem, a qualquer momento: o que foi combinado, o que já foi feito, onde está cada coisa no código, e o que ainda está quebrado.
 
@@ -34,7 +34,7 @@ saída real de comando  >  pending.md  >  03-code-map.md  >  02-status.md
 
 Quando `02-status` diz que algo está concluído e `pending` mostra o contrário, **o levantamento sobre código vence**. Essa divergência não é resolvida por opinião: vira risco no quadro do SM e um `/qa audit`.
 
-## Como circulam num item
+## Como circulam numa Task
 
 ```
 PO marca escopo/critério ──▶ dev implementa
@@ -54,8 +54,8 @@ Se um projeto herdar um documento desses, ele pode ser mantido como referência 
 
 | Critério | Documento |
 |---|---|
-| Item marcado como concluído tem arquivo correspondente no mapa de código | `01` × `03` |
-| Item concluído tem evidência (comando + saída), não só narrativa | `02` |
+| Task marcada como concluído tem arquivo correspondente no mapa de código | `01` × `03` |
+| Task concluída tem evidência (comando + saída), não só narrativa | `02` |
 | Toda decisão fora da especificação está registrada, com data e justificativa | `02` |
 | Todo GAP tem `arquivo:linha`, impacto e criticidade | `pending` |
 | Nenhum arquivo de código relevante está ausente do mapa | `03` |

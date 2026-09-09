@@ -52,8 +52,8 @@ Entra no documento de requisitos do projeto (caminho em `.team-project/README.md
 - Critério de aceite sem "como verificar" não é critério.
 - "Fora do escopo" é obrigatório — é o que impede o dev de antecipar escopo (R4).
 - O contrato de erro do projeto (formato, tipos, status) está no contexto do PO.
-- **Requisito de performance só entra com os cinco campos do orçamento** (operação · métrica/percentil · limiar · condição de carga com duração · ambiente). Menos que isso, o Arquiteto devolve e o item não entra em construção (§7 #18). A forma completa, com exemplo e contraexemplo, está em [`../../../deliverables/sdd/01-requirements.md`](../../../deliverables/sdd/01-requirements.md).
-- **Se o requisito toca uma operação sob orçamento** (Ficha V18), o critério de aceite **menciona o desempenho** — operação, percentil, limiar — com "como verificar" apontando o comando de carga (V19). RNF no documento de requisitos **não** substitui o critério verificável no item.
+- **Requisito de performance só entra com os cinco campos do orçamento** (operação · métrica/percentil · limiar · condição de carga com duração · ambiente). Menos que isso, o Arquiteto devolve e a Task não entra em construção (§7 #18). A forma completa, com exemplo e contraexemplo, está em [`../../../deliverables/sdd/01-requirements.md`](../../../deliverables/sdd/01-requirements.md).
+- **Se o requisito toca uma operação sob orçamento** (Ficha V18), o critério de aceite **menciona o desempenho** — operação, percentil, limiar — com "como verificar" apontando o comando de carga (V19). RNF no documento de requisitos **não** substitui o critério verificável na Task.
 
 ## Exemplo
 
@@ -97,7 +97,7 @@ GET <url expirada>          → 410
 **Fora do escopo**
 - Download em lote; player inline; armazenamento remoto.
 
-**Impacto:** complementa RF-017; depende do item que torna a chave de assinatura obrigatória.
+**Impacto:** complementa RF-017; depende da Task que torna a chave de assinatura obrigatória.
 ```
 
 ## Exemplo — requisito de performance

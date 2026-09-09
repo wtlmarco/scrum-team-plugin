@@ -36,6 +36,24 @@ claude plugin marketplace update team
 claude plugin update team@team
 ```
 
-## 7. Feche
+## 7. Reconcilie o `.team-project/` com os modelos novos
 
-Diga que a nova versão **só entra em vigor após reiniciar a sessão**, e que depois `claude plugin details team@team` deve mostrar a versão nova. Resuma em uma linha o que mudou (do CHANGELOG).
+Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.
+
+O manifesto do que foi instanciado, com a classe de reconciliação de cada arquivo, está em `${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/README.md`. Para cada linha marcada como reconciliável:
+
+1. **Compare** o arquivo no projeto com o modelo da versão nova.
+2. **Classifique** a diferença conforme o manifesto:
+   - **cópia literal** (`how-to.md`) → substitua, avisando em uma linha o que mudou;
+   - **estrutura + conteúdo local** (`sprint-backlog.md`, `product-backlog.md`, `evidence.md`, §8 do `README.md`) → **mostre o delta da estrutura** — seção nova, coluna nova, cabeçalho renomeado — e **peça aprovação por arquivo**. Nunca sobrescreva conteúdo escrito pelo time;
+   - **só conteúdo local** (os seis `context.md`) → não toque; liste como "conferir manualmente" se o modelo mudou de forma relevante.
+3. **Apresente um resumo antes de aplicar qualquer coisa:** arquivo · classe · o que muda · o que se perde se aplicar. Sem confirmação, não aplique.
+4. **Conflito** — o time editou a mesma seção que o modelo mudou — não se resolve sozinho: mostre os dois lados e deixe o stakeholder escolher, ou registre como pendência no quadro.
+
+> **Regra que não se negocia:** o `update` **nunca apaga conteúdo do projeto** sem aprovação explícita. Na dúvida, proponha e registre — não aplique.
+
+Se nada mudou nos modelos entre as duas versões, diga isso em uma linha e siga.
+
+## 8. Feche
+
+Diga que a nova versão **só entra em vigor após reiniciar a sessão**, e que depois `claude plugin details team@team` deve mostrar a versão nova. Resuma em uma linha o que mudou (do CHANGELOG) e liste, se houve, o que foi reconciliado no `.team-project/` e o que ficou pendente de decisão.

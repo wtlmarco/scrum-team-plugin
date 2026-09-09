@@ -22,7 +22,7 @@ Os quatro pontos que uma jornada precisa marcar:
 Dois deles são os mais esquecidos e os mais caros:
 
 - **Vazio** — é a primeira tela que todo usuário novo vê. Se ela não ensina o próximo passo, o produto perde a pessoa no primeiro minuto.
-- **Volume extremo** — nome de 80 caracteres, lista de 500 itens, texto sem quebra. O layout que só foi pensado com dado de exemplo quebra com dado real.
+- **Volume extremo** — nome de 80 caracteres, lista de 500 Tasks, texto sem quebra. O layout que só foi pensado com dado de exemplo quebra com dado real.
 
 Os seis estados são da **tela**. Cada controle dentro dela tem o seu próprio eixo de estados — ver §8.
 
@@ -75,11 +75,11 @@ Se o dev puder escolher entre duas formas, a especificação está incompleta.
 
 ## 6. Separar achado de mudança
 
-Revisar uma tela sempre revela problemas fora do item. A disciplina é:
+Revisar uma tela sempre revela problemas fora da Task. A disciplina é:
 
-- **dentro do item** → corrige na especificação;
-- **fora do item** → vira achado registrado, com severidade, para o backlog do PO;
-- **nunca** → mudança silenciosa de passagem em tela alheia ao item.
+- **dentro da Task** → corrige na especificação;
+- **fora da Task** → vira achado registrado, com severidade, para o backlog do PO;
+- **nunca** → mudança silenciosa de passagem em tela alheia à Task.
 
 ## 7. Saber onde termina o seu papel
 
@@ -97,7 +97,7 @@ Revisar uma tela sempre revela problemas fora do item. A disciplina é:
 
 Perfil de uso **descreve** um ator que o PO já definiu; não cria ator novo nem permissão nova. Se o perfil que você precisa desenhar não existe no requisito, isso é escalação ao PO — não um personagem inventado na jornada.
 
-Levantar cedo custa uma pergunta; descobrir na implementação custa o item inteiro.
+Levantar cedo custa uma pergunta; descobrir na implementação custa a Task inteira.
 
 ## 8. Repertório de padrões consolidados — não inventar o que já está resolvido
 
@@ -130,7 +130,7 @@ Uma tela em pleno estado de sucesso pode ter um botão invisível em repouso. O 
 
 ## 9. Método de pesquisa e prototipação — etapa acionada por gatilho
 
-O método que o *Google UX Design Certificate* sistematiza — **empatizar · definir · idear · prototipar · testar**, com iteração — é o repertório completo do papel. Rodá-lo inteiro em todo item afogaria um time pequeno; ignorá-lo é desenhar no escuro. A régua é a mesma do dimensionamento: **cada etapa é acionada por um gatilho objetivo, e o default é desenhar a partir do requisito e do critério de aceite do PO.**
+O método que o *Google UX Design Certificate* sistematiza — **empatizar · definir · idear · prototipar · testar**, com iteração — é o repertório completo do papel. Rodá-lo inteiro em toda Task afogaria um time pequeno; ignorá-lo é desenhar no escuro. A régua é a mesma do dimensionamento: **cada etapa é acionada por um gatilho objetivo, e o default é desenhar a partir do requisito e do critério de aceite do PO.**
 
 | Etapa | O que produz | Gatilho objetivo | Sem o gatilho |
 |---|---|---|---|

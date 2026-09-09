@@ -1,6 +1,6 @@
 # Modelo — `06-changelog.md`
 
-> **Dono:** PO · **Muda quando:** toda mudança funcional aceita · **Revisa:** SM (no fechamento do item)
+> **Dono:** PO · **Muda quando:** toda mudança funcional aceita · **Revisa:** SM (no fechamento da Task)
 
 É a memória de **como o desenho chegou até aqui**. Sem ele, retomar um projeto meses depois exige arqueologia: o "por quê" de cada decisão desaparece e volta a ser discutido do zero.
 
@@ -32,10 +32,10 @@
 ## Regras
 
 - **Cumulativo e em ordem inversa** — a versão mais recente no topo. Nunca reescrever entrada antiga: correção vira entrada nova.
-- **Uma entrada por mudança de versão do conjunto**, não por arquivo alterado. Os sete documentos do SDD evoluem juntos.
+- **Uma entrada por mudança de versão do conjunto**, não por arquivo alterado. Os sete documentos de conteúdo do SDD evoluem juntos.
 - **Motivação é obrigatória.** O que mudou dá para ver no diff; *por que* mudou, não.
 - **Decisão relevante aparece aqui e no seu lugar próprio** — ADR se for estrutural, "decisões tomadas" no documento de status se for de implementação. O changelog registra que existiu.
-- **Mudança funcional aceita sem entrada no changelog bloqueia o fechamento do item** (regra R12).
+- **Mudança funcional aceita sem entrada no changelog bloqueia o fechamento da Task** (regra R12).
 
 ## Falhas comuns
 

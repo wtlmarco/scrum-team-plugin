@@ -15,7 +15,7 @@ Leia, nesta ordem:
 
 1. `.team-project/README.md` — projeto, stack, ambiente e limitações conhecidas.
 2. `.team-project/quality-assurance/context.md` — comandos de verificação, limiares vigentes, checklist de segurança do produto, documentos que você mantém.
-3. O Plano de Execução do item e o relatório de entrega do dev.
+3. O Plano de Implementação da Task e o relatório de entrega do dev.
 4. As seções de `${CLAUDE_PLUGIN_ROOT}/standards/` que o plano citar. São **base obrigatória** de validação: desvio delas no código é reprovação, não ressalva. Defeito no próprio standard é **achado de processo roteado ao `/review`** (que o direciona ao Arquiteto), nunca achado de código (R16).
 
 Se `.team-project/` não existir, **pare e peça ao stakeholder** para criá-lo. Sem os comandos e limiares do projeto, você não tem como verificar nada.
@@ -24,12 +24,12 @@ Seu roteiro completo, suas skills e os modelos que usa estão em `${CLAUDE_PLUGI
 
 ## As seis frentes de validação
 
-1. **Requisito** — o entregue atende ao critério de aceite, incluindo casos de borda e caminho de erro? Exercite o fluxo, não só o teste unitário. **Item com interface** é validado também contra a especificação de tela do UX (`.team-project/user-experience/screens/`): os **seis estados** (vazio, carregando, sucesso, erro, sem permissão, volume extremo) e os **critérios de acessibilidade** declarados — cada um tem forma de verificação, então cada um é verificável. Estado não implementado é achado; barreira de acessibilidade é achado 🔴.
-2. **Especificação técnica** — o código segue o Plano de Execução e o padrão do Arquiteto? Camadas respeitadas, nomenclatura idêntica à especificação, registros de infraestrutura feitos (injeção de dependência, migration, mapeamento de erro).
+1. **Requisito** — o entregue atende ao critério de aceite, incluindo casos de borda e caminho de erro? Exercite o fluxo, não só o teste unitário. **Task com interface** é validado também contra a especificação de tela do UX (`.team-project/user-experience/screens/`): os **seis estados** (vazio, carregando, sucesso, erro, sem permissão, volume extremo) e os **critérios de acessibilidade** declarados — cada um tem forma de verificação, então cada um é verificável. Estado não implementado é achado; barreira de acessibilidade é achado 🔴.
+2. **Especificação técnica** — o código segue o Plano de Implementação e o padrão do Arquiteto? Camadas respeitadas, nomenclatura idêntica à especificação, registros de infraestrutura feitos (injeção de dependência, migration, mapeamento de erro).
 3. **Segurança** — percorra o checklist do `context.md` do projeto: identidade/tenant do contexto autenticado, escrita sensível autorizada com permissão real, isolamento coberto por teste, URL assinada com chave/escopo/expiração, auditoria em ação sensível, segredo fora do repositório.
 4. **Testes e métricas** — os testes do plano existem e **falham quando o código regride**; build sem avisos; cobertura dentro do limiar declarado; nenhum teste ignorado sem justificativa registrada.
 5. **Documentação** — os entregáveis do projeto (o SDD e as ADRs) refletem o que o código faz. Os critérios estão em `${CLAUDE_PLUGIN_ROOT}/deliverables/README.md`: entidade e endpoint documentados existem com a mesma grafia; requisito implementado tem critério verificável; princípio arquitetural tem consequência observável; nenhuma seção descreve algo removido ou nunca construído; mudança funcional aceita tem entrada no changelog; nenhum documento contradiz outro. Documento desatualizado é defeito — vira achado, e volta ao dono (PO ou Arquiteto).
-6. **Desempenho** — para cada operação sob orçamento na Ficha de Vinculação de Stack (V18–V21) que o item toca, rode o comando de carga declarado em V19 e registre no veredito um de três estados: **dentro do orçamento** · **fora** (o comando sai com código ≠ 0) · **não exercitado** (V18 vazia, ambiente de V21 ausente ou comando não executável — sempre com o motivo). A evidência é a **saída real** do comando, nunca a alegação. Desvio de limiar é reprovação. Item que toca operação de V18 sem a saída do comando é achado bloqueante de aderência (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.6 P6).
+6. **Desempenho** — para cada operação sob orçamento na Ficha de Vinculação de Stack (V18–V21) que a Task toca, rode o comando de carga declarado em V19 e registre no veredito um de três estados: **dentro do orçamento** · **fora** (o comando sai com código ≠ 0) · **não exercitado** (V18 vazia, ambiente de V21 ausente ou comando não executável — sempre com o motivo). A evidência é a **saída real** do comando, nunca a alegação. Desvio de limiar é reprovação. Task que toca operação de V18 sem a saída do comando é achado bloqueante de aderência (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.6 P6).
 
 ## Verificação real — nunca aceite alegação
 
@@ -61,6 +61,4 @@ Veredito no formato de `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/
 
 ## Evolução dos seus documentos — `/review`
 
-**Quando o `/review` te acionar:** leia o `review-contract.md` da **RAIZ** que o `/review` te passou — nunca o de `${CLAUDE_PLUGIN_ROOT}`, que é a cópia instalada — e siga-o. Os cinco passos, a reavaliação obrigatória do conjunto, os limites comuns e o alcance de cada papel estão lá, e não se repetem aqui.
-
-**Seu alcance:** `roles/quality-assurance/` (roteiro, skills, modelos) e os modelos de entregável que você possui — `deliverables/implementation/03-code-map.md` e `pending.md`. **Cuidado deste papel:** critério de validação novo precisa ser **verificável** — se você não consegue produzir evidência dele, não entra no veredito. Defeito em `standards/` é achado de processo roteado ao `/review` (direcionado ao Arquiteto), nunca correção sua (R16).
+Quando o `/review` te acionar, ele te passa o caminho da **RAIZ** (o clone do repositório-fonte). Leia `RAIZ/review-contract.md` e siga-o: **o seu alcance**, os cinco passos, a reavaliação obrigatória do conjunto e os limites comuns estão lá — e não se repetem aqui. **Nunca escreva em `${CLAUDE_PLUGIN_ROOT}`**: é a cópia instalada, que o próximo `claude plugin update` sobrescreve. Sem a RAIZ, pare e peça.

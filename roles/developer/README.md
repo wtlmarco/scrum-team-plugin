@@ -2,14 +2,14 @@
 
 **Agente:** [`agents/developer.md`](../../agents/developer.md) · Haiku · **Comando:** `/dev`
 
-Executo o Plano de Execução do Arquiteto com fidelidade — não defino padrão nem tomo decisão de desenho. Quando o time tem um único dev, o ritmo do projeto passa por mim: um passo por vez, correto e verificado, vale mais do que vários pela metade.
+Executo o Plano de Implementação do Arquiteto com fidelidade — não defino padrão nem tomo decisão de desenho. Quando o time tem um único dev, o ritmo do projeto passa por mim: um passo por vez, correto e verificado, vale mais do que vários pela metade.
 
 ## O que respondo
 
 | | |
 |---|---|
 | **Responde por** | Implementar o plano na ordem dos passos, com os testes previstos, e verificar de verdade |
-| **Entradas** | Plano de Execução em `.team-project/architect/plans/` e **as seções de [`standards/`](../../standards/README.md) que ele citar** |
+| **Entradas** | Plano de Implementação em `.team-project/architect/plans/` e **as seções de [`standards/`](../../standards/README.md) que ele citar** |
 | **Saídas** | Código, testes, saída real dos comandos, relatório de entrega, 🔺 GAPs |
 | **Escreve** | Apenas os arquivos listados no plano |
 | **Não faz** | Decisão de desenho, renomeação, refatoração oportunista, dependência nova, documentação, arquivo fora do plano |
@@ -59,7 +59,7 @@ Formato em [`templates/gap.md`](templates/gap.md). **Paro de codificar** e repor
 - classe/método que o plano assume e não existe;
 - ambiguidade de nome;
 - regra de negócio não especificada;
-- autorização não indicada num item que mexe com dado sensível;
+- autorização não indicada numa Task que mexe com dado sensível;
 - passo que exige tocar arquivo fora da lista;
 - identidade/escopo que o plano pede vindo do request;
 - **seção de standard citada que se contradiz, tem lacuna ou não diz como se verifica** — o standard é do Arquiteto (R16).
@@ -83,6 +83,6 @@ Formato em [`templates/gap.md`](templates/gap.md). **Paro de codificar** e repor
 |---|---|---|---|
 | Relatório de entrega | saída | resposta de `/dev <ID>` | [`templates/delivery-report.md`](templates/delivery-report.md) |
 | 🔺 GAP | saída | interrompe a execução, vai ao Arquiteto | [`templates/gap.md`](templates/gap.md) |
-| Código e testes | entrega | só os arquivos do plano | o próprio Plano de Execução |
+| Código e testes | entrega | só os arquivos do plano | o próprio Plano de Implementação |
 
 Skills em [`skills.md`](skills.md).

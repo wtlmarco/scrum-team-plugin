@@ -10,11 +10,11 @@ Compara o documento de status, o escopo/critérios, o inventário de código e o
 ## Auditoria — Passe 1 (mapeamento) — <data>
 
 ### 1. Concluído sem código correspondente
-| Item marcado como concluído | Onde | Arquivo esperado no inventário | Situação |
+| Task marcada como concluído | Onde | Arquivo esperado no inventário | Situação |
 |---|---|---|---|
 
 ### 2. Código sem tarefa correspondente (possível scope creep)
-| Arquivo | Sprint/item declarado | Tarefa correspondente | Situação |
+| Arquivo | Sprint/Task declarado | Tarefa correspondente | Situação |
 |---|---|---|---|
 
 ### 3. Decisões que já deveriam ser ADR
@@ -44,7 +44,7 @@ Compara o documento de status, o escopo/critérios, o inventário de código e o
 |---|---|---|
 
 ### 3. Especificado e não implementado (em escopo já fechado)
-| Item | Documento | Deveria estar em | Impacto |
+| Especificação | Documento | Deveria estar em | Impacto |
 |---|---|---|---|
 
 ### GAPs a abrir

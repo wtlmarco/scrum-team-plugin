@@ -1,15 +1,18 @@
-# Template — Plano de Execução
+# Template — Plano de Implementação
 
-Salvo em `.team-project/architect/plans/<ID>-<slug>.md`. É o contrato entre o Arquiteto e o dev: **o que não estiver aqui vira 🔺 GAP, nunca improviso.**
+Salvo em `.team-project/architect/plans/<T-ID>-<slug>.md`. **É o conteúdo técnico da Task**, não um artefato irmão dela: a Task é a unidade de trabalho no Sprint Backlog, e o plano é o que diz como ela se faz. É o contrato entre o Arquiteto e o dev: **o que não estiver aqui vira 🔺 GAP, nunca improviso.**
+
+> **A fronteira funcional × técnica passa aqui** (R20). O "o quê" e o "para quê" já foram decididos na História, pelo PO, e aprovados pelo stakeholder no portão ③. Este plano é o primeiro lugar onde aparece decisão técnica — e o único.
 
 ```markdown
-# Plano de Execução — <ID> <título>
+# Plano de Implementação — <T-ID> <título da Task>
 
-**Dono:** dev · **Origem:** GAP <ID> / requisito <ID> · **Estimativa:** <n> unidade(s) de trabalho
+**História:** H-<nnn> <título> · **Dono:** dev · **Origem:** GAP <ID> / critério de aceite <n> da História
+**Estimativa:** <n> unidade(s) — a que o time deu na Planning
 **Arquivos tocados:** <lista completa, caminho completo>
 
 ## 1. Objetivo e fora de escopo
-<Um parágrafo: o que passa a funcionar depois deste item.>
+<Um parágrafo: o que passa a funcionar depois desta Task, e a que critério de aceite da História ela serve.>
 
 **Fora do escopo:** <o que explicitamente NÃO se faz aqui — R4>
 
@@ -43,14 +46,14 @@ Salvo em `.team-project/architect/plans/<ID>-<slug>.md`. É o contrato entre o A
 | Arquivo | Nome do teste | Caso coberto | Deve falhar se… |
 |---|---|---|---|
 
-**Cobertura:** o item mantém o gate de **80% mínimo por módulo** na unidade implantável que ele toca —
+**Cobertura:** a Task mantém o gate de **80% mínimo por módulo** na unidade implantável que ela toca —
 back-end, worker **ou front-end**. O dev cola a saída real do comando de cobertura no relatório
 (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.4 e §5.5).
 
 ## 6. Comandos de verificação
 <Os comandos do projeto — ver `.team-project/developer/context.md`. Incluir **sempre** o comando do gate
 de cobertura da unidade tocada; se aquela unidade ainda não tem comando de cobertura, isso é gap de
-configuração e entra na seção 8, não vira item sem verificação.>
+configuração e entra na seção 8, não vira Task sem verificação.>
 
 ## 7. Critérios de aceite técnicos
 - [ ] <checklist binário, verificável>
@@ -59,7 +62,7 @@ configuração e entra na seção 8, não vira item sem verificação.>
 - <ponto em que o dev deve levantar GAP em vez de decidir>
 - *(fixo)* Se uma seção de standard citada aqui **se contradisser, tiver lacuna ou não disser como se verifica**: 🔺 GAP ao Arquiteto — o standard não se corrige de passagem (R16)
 
-## 9. Segurança (obrigatório se o item toca autenticação, autorização, escopo, dado pessoal ou conteúdo de terceiro)
+## 9. Segurança (obrigatório se a Task toca autenticação, autorização, escopo, dado pessoal ou conteúdo de terceiro)
 - [ ] Identidade/escopo do contexto autenticado, nunca do request
 - [ ] Autorização declarada com permissão <nome> (existe no catálogo? senão, cadastro nesta migration)
 - [ ] Teste de isolamento entre escopos
@@ -72,21 +75,22 @@ configuração e entra na seção 8, não vira item sem verificação.>
 ## Regras do formato
 
 1. **Sequência linear** quando o time tem um único dev; sem faixas paralelas.
-2. **Cabe em uma unidade de trabalho** — acima de ~10 passos ou duas áreas do sistema, quebrar em `<ID>a`/`<ID>b`.
+2. **Cabe em uma unidade de trabalho** — acima de ~10 passos ou duas áreas do sistema, quebrar em `<T-ID>a`/`<T-ID>b`, **sempre dentro da mesma História** (R2 · R20).
 3. **Ordem preserva o repositório íntegro** no maior número de pontos intermediários.
-4. **Uma migration de banco por item.**
+4. **Uma migration de banco por Task.**
 5. **Nomes exatamente como na especificação** — grafia é contrato.
 6. **Nada de "siga o padrão"** — aponte o arquivo concreto a espelhar.
 7. **Se o dev puder escolher entre duas formas, o plano está incompleto.**
 8. **Todo passo declara o anel** do arquivo que toca. Passo que faz o domínio depender de fora, ou que põe regra de negócio na borda, é erro de plano — não de execução (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §2).
-9. **Nenhum passo de refatoração "de passagem".** Melhoria fora do objetivo do item vira item próprio (§4.5 do mesmo normativo).
+9. **Nenhum passo de refatoração "de passagem".** Melhoria fora do objetivo da Task vira Task própria — e, se nenhuma História a cobre, o PO escreve a História que declara o valor (§4.5 do mesmo normativo · R20).
 10. **Todo passo com regra de engenharia cita a seção de `${CLAUDE_PLUGIN_ROOT}/standards/` aplicável, com número** (R16). O dev lê só o que o plano citou — seção não citada é seção não lida. "Seguir os standards" não é citação. Se a regra de que o passo precisa **não existe** no normativo, ou existe contraditória, isso é defeito do standard e é do Arquiteto: resolver por `/review` antes de liberar o plano.
 
 ## Exemplo abreviado
 
 ```markdown
-# Plano de Execução — ABC-02 Chave de assinatura obrigatória
+# Plano de Implementação — T-042 Chave de assinatura obrigatória
 
+**História:** H-014 Exportar o resultado da análise
 **Arquivos tocados:** `Infrastructure/Storage/StorageOptions.cs`, `Infrastructure/Storage/UrlSigner.cs`,
 `Api/Program.cs`, `Api/appsettings.json`, `infra/.env.Development`, `Tests/Unit/UrlSignerTests.cs`
 

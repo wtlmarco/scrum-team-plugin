@@ -2,7 +2,7 @@
 
 Revisão de aderência **sob demanda** — **não é etapa do ciclo** ([`workflow.md`](../../scrum-master/process/workflow.md) §4a). Roda em um de dois momentos: **(a)** por iniciativa do Arquiteto, antes de entregar ao QA, quando a entrega é grande ou tocou muitos passos; **(b)** como rota de volta de achado de aderência de execução ⚠️/❌ do veredito, antes do `/dev resume`. Aponta desvio; **não corrige o código**.
 
-**Objeto: o Plano de Execução vigente** — cada passo foi executado como escrito, e a seção de standard **que o passo citou** está aplicada no código. O comply **não julga se o plano citou o conjunto certo e completo de seções**: isso é a frente 2 do `/qa <ID>` (§4a) — o autor não audita a própria omissão.
+**Objeto: o Plano de Implementação vigente** — cada passo foi executado como escrito, e a seção de standard **que o passo citou** está aplicada no código. O comply **não julga se o plano citou o conjunto certo e completo de seções**: isso é a frente 2 do `/qa <ID>` (§4a) — o autor não audita a própria omissão.
 
 ```markdown
 ## Revisão de Aderência — <ID> <título> — <data>
@@ -16,9 +16,9 @@ Revisão de aderência **sob demanda** — **não é etapa do ciclo** ([`workflo
 
 ### 2. Padrão arquitetural
 *(Escopo desta seção: o padrão aplicado ao que o plano mandou fazer. A última linha afere **a aplicação da seção
-que o passo citou** — não se a citação estava completa ou correta para o item; isso é da frente 2 do QA, §4a.)*
+que o passo citou** — não se a citação estava completa ou correta para a Task; isso é da frente 2 do QA, §4a.)*
 
-| Item | Resultado | Evidência |
+| Verificação | Resultado | Evidência |
 |---|---|---|
 | Regra de dependência entre anéis — domínio sem dependência externa | ok / falha | teste de arquitetura + <arquivo:linha> |
 | Cada arquivo no anel que o plano declarou | ok / falha | <arquivo:linha> |
@@ -51,13 +51,13 @@ que o passo citou** — não se a citação estava completa ou correta para o it
 ### 5. Aprendizado para o próximo plano
 <Se o dev levantou gaps, o que faltou no plano — R8/métrica de "gaps por plano".>
 
-**Defeito de standard levantado neste item:** <🔺 GAP apontando contradição, lacuna ou regra inverificável em
+**Defeito de standard levantado nesta Task:** <🔺 GAP apontando contradição, lacuna ou regra inverificável em
 `${CLAUDE_PLUGIN_ROOT}/standards/` — entra na fila do próximo `/review` (R16); ou "nenhum">
 ```
 
 ## Regras
 
-- **Aplicação, não completude da citação.** Este modelo afere se a seção que o passo **citou** está no código. Plano que **omitiu** uma seção exigida pelo item, ou que **citou a errada**, é defeito que o autor do plano estruturalmente não vê — quem pega é a frente 2 do `/qa <ID>` ([`workflow.md`](../../scrum-master/process/workflow.md) §4a). Se eu mesmo perceber a omissão aqui, ela vai para a seção 5 como 🔺 GAP do próximo `/review`, nunca como linha da tabela da §2.
+- **Aplicação, não completude da citação.** Este modelo afere se a seção que o passo **citou** está no código. Plano que **omitiu** uma seção exigida pela Task, ou que **citou a errada**, é defeito que o autor do plano estruturalmente não vê — quem pega é a frente 2 do `/qa <ID>` ([`workflow.md`](../../scrum-master/process/workflow.md) §4a). Se eu mesmo perceber a omissão aqui, ela vai para a seção 5 como 🔺 GAP do próximo `/review`, nunca como linha da tabela da §2.
 - Cada achado precisa de `arquivo:linha`. Sem isso é suspeita — e deve ser marcada como tal.
 - **Não corrigir o código.** Ajuste volta ao dev com instrução concreta.
 - Desvio de nomenclatura conta como falha, não como detalhe (R10).

@@ -8,7 +8,9 @@
 
 ## Abertas
 
-_(vazia)_
+*(vazia)*
+
+> O bloco "Revisão do Processo" e os três itens sobre `deliverables/` e o `update` foram aplicados na **v3.0** e saíram daqui, conforme a regra 4 abaixo. O que foi feito, por quê e com que evidência está na entrada [`v3.0` do changelog do processo](roles/scrum-master/process/process-changelog.md).
 
 ## Como usar esta lista
 

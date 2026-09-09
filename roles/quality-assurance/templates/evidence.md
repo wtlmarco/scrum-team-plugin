@@ -1,7 +1,7 @@
-﻿# Evidências — Registro de Verificação
+# Evidências — Registro de Verificação
 
 > **DOCUMENTO VIVO** · **Dono:** QA · **Atualizado em:** <data>
-> Um bloco por item validado. **Sem bloco aqui, o SM não fecha o item.**
+> Um bloco por Task validado. **Sem bloco aqui, o SM não fecha a Task.**
 > Regra: **saída real de comando, ou não aconteceu** (R7). O que não pôde ser executado é declarado como não exercitado, com o motivo.
 
 ## Linha de base
@@ -18,7 +18,7 @@ Registrar aqui os números do projeto **antes** de qualquer construção, reprod
 
 ---
 
-## Blocos por item
+## Blocos por Task
 
 ```markdown
 ## <ID> — <título> — <data>
@@ -51,6 +51,6 @@ Registrar aqui os números do projeto **antes** de qualquer construção, reprod
 
 ## Como manter
 
-- Um bloco por item, em ordem cronológica inversa (mais recente no topo dos blocos).
+- Um bloco por Task, em ordem cronológica inversa (mais recente no topo dos blocos).
 - Nunca editar bloco antigo: correção vira bloco novo com a data de hoje.
 - A linha de base é reproduzida de novo sempre que o ambiente mudar (máquina nova, dependência atualizada).

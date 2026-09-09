@@ -7,7 +7,7 @@
 ```markdown
 # Tela — <nome>
 
-**Rota:** <caminho> · **Requisitos atendidos:** <IDs> · **Item:** <ID no quadro>
+**Rota:** <caminho> · **Requisitos atendidos:** <IDs> · **Task:** <ID no quadro>
 **Reaproveita:** <telas/componentes existentes que servem de base>
 **Fidelidade do entregável:** só especificação | baixa (estrutura) | alta (navegável) — <gatilho que justifica o nível>
 
@@ -28,7 +28,7 @@ Use um esboço em texto quando ajudar.>
 
 | Controle | Repouso | Foco | Pressionado | Desabilitado — e por quê |
 |---|---|---|---|---|
-| <botão/campo/item> | <como aparece parado — obrigatório> | <como se distingue quando focado> | <retorno imediato ao acionar> | <quando fica assim e o que explica ao usuário> |
+| <botão/campo/Task> | <como aparece parado — obrigatório> | <como se distingue quando focado> | <retorno imediato ao acionar> | <quando fica assim e o que explica ao usuário> |
 
 ## 4. Conteúdo
 <Rótulos, títulos, mensagens e microcópia — texto real, não placeholder.

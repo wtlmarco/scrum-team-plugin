@@ -1,9 +1,12 @@
-# Template — Entrada no documento de status (fechamento de item)
+# Template — Entrada no documento de status (fechamento de Task)
 
-O SM escreve isto no documento de progresso do projeto (caminho em `.team-project/README.md` §4) ao rodar `/sm close <ID>` — **só depois** de veredito ✅ do QA e aceite do PO.
+O SM escreve isto no documento de progresso do projeto (caminho em `.team-project/README.md` §4) ao rodar `/sm close <T-ID>` — **só depois** de veredito ✅ do QA com evidência e dos documentos vivos atualizados pelos donos (R12).
+
+> **Isto registra fechamento técnico, não aceite** (R21). "Concluída" aqui significa que o trabalho da Task acabou e passou no QA. Se a História a que ela pertence for rejeitada na Sprint Review, esta Task volta ao Product Backlog junto com as demais — e a entrada de status ganha um addendum dizendo isso, nunca é reescrita.
 
 ```markdown
-- **<data> — <ID> (<título>) concluído.** <O que passou a funcionar, em uma frase, na linguagem do produto.>
+- **<data> — <T-ID> (<título>) concluída.** <O que passou a funcionar, em uma frase, na linguagem do produto.>
+  - **História:** H-<nnn> <título> — <n de m Tasks da História fechadas>
   - **Evidência:** <comando> → <saída real resumida>; <teste específico que cobre>; <smoke, se houve>.
   - **Arquivos:** <n> criados, <n> alterados — detalhe no inventário de código.
   - **Decisões fora da especificação:** <cada uma, com justificativa — ou "nenhuma">.

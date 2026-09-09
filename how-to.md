@@ -61,14 +61,20 @@ claude plugin update team@team           # aplica (exige reiniciar a sessão)
 
 | Comando | Modos | Papel |
 |---|---|---|
-| `/sm` | `onboarding` · `status` · `plan` · `board` · `impact <mudança>` · `close <ID>` | Scrum Master — quadro, status, riscos, processo |
-| `/po` | `analyze <ideia>` · `requirement <ID>` · `prioritize` · `accept <ID>` | Product Owner — requisitos, backlog, aceite de valor |
-| `/arc` | `plan <ID>` · `comply <ID>` · `adr <tema>` · `question <dúvida>` | Arquiteto — desenho, plano de execução, ADR, standards |
-| `/ux` | `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` | UX — jornada, tela, usabilidade, acessibilidade |
+| `/sm` | `onboarding` · `sprint plan` · `sprint close` · `review` · `board` · `agreement <questão>` · `close <T-ID>` | Scrum Master — rituais, Sprint Backlog, capacidade, riscos, processo |
+| `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` | Product Owner — **o seu canal**: status, prazo, requisitos, Histórias, backlog, aceite |
+| `/arc` | `plan <ID>` · `comply <ID>` · `adr <tema>` · `question <dúvida>` | Arquiteto — desenho, Plano de Implementação, ADR, standards |
+| `/ux` | `prototype` · `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` | UX — **protótipo funcional (portão ①)**, jornada, tela, usabilidade, acessibilidade |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` | Desenvolvedor — executa o plano, não improvisa |
 | `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` | QA — o veredito de qualidade que responde ao stakeholder |
-| `/team` | `init` · `update` · `<mensagem>` · `brainstorm <ideia>` · `agreement <questão>` · `cycle <ID>` | O time inteiro |
+| `/team` | `init` · `update` · `brainstorm <ideia>` · `cycle <T-ID>` · `plan <T-ID>` · `build <T-ID>` · `qa <T-ID>` | Orquestra o time trabalhando — **não é broadcast** |
 | `/review` | `<instrução>` · `note` · `metrics` · `audit` · `history` | Evolução do processo do time — **só no repositório-fonte do plugin** |
+
+**Os três últimos modos do `/team` são fatias do `cycle`**, para quando você não quer o ciclo inteiro: `plan <T-ID>` só planeja, `build <T-ID>` só constrói (exige plano existente) e `qa <T-ID>` só valida.
+
+**Duas unidades, dois donos, dois momentos.** A **História** é a unidade de valor: escrita pelo PO, detalhada e aprovada por você antes de entrar no sprint. A **Task** é a unidade de trabalho: nasce da quebra da História na Planning Meeting e carrega o Plano de Implementação do Arquiteto. Comando que recebe `<H-ID>` opera sobre valor; comando que recebe `<T-ID>` opera sobre trabalho.
+
+**`/sm review` não é `/review`.** O primeiro é a Sprint Review, roda no projeto e é onde você aceita as Histórias. O segundo evolui o processo do time e roda só no repositório-fonte do plugin.
 
 **O `/review` é diferente de todos os outros:** ele não trabalha no projeto — evolui os **documentos do plugin** (o processo do time). Roda só num clone do repositório do plugin; contra a cópia instalada num projeto, a mudança é sobrescrita no próximo `claude plugin update`. Melhoria de operação percebida trabalhando num projeto é anotada como sintoma e levada ao `note.md` do repositório do plugin, que é a fila do `/review`. Todo o resto opera no produto e registra em `.team-project/` ou nos documentos do projeto.
 
@@ -84,9 +90,18 @@ Ideia sua, sem documentação nenhuma.
                                 fase 2: entra o Arquiteto (viabilidade)
                                 fecha quando não há objeção bloqueante
 /po requirement <ID>            o brief vira requisito com critério verificável
-/arc plan <ID>                  plano de execução da primeira fatia
-/sm plan                        itens no quadro
-/team cycle <ID>                UX → Arquiteto → dev → QA
+/ux prototype                   protótipo funcional em HTML dos fluxos principais
+                                ① você NAVEGA o protótipo e aprova o SDD funcional
+                                ② o Arquiteto escreve o SDD técnico e você aprova
+/po story <H-ID>                o requisito vira História; depois, detalhada
+/ux screen <H-ID>               protótipo, se a História tem interface
+                                ③ você aprova o detalhamento
+/sm sprint plan                 Planning: o time quebra em Tasks e estima
+/arc plan <T-ID>                Plano de Implementação da Task
+/team cycle <T-ID>              Arquiteto → dev → QA
+/sm close <T-ID>                fecha a Task (técnico)
+/sm review                      Sprint Review: ④ você aceita a História
+/sm sprint close                retrospectiva e fim do sprint
 ```
 
 O `brainstorm` existe porque ideia sem documentação não deve virar requisito por um papel só: a inviabilidade técnica apareceria só na construção. Ideia em área **já documentada** pula o brainstorm e vai direto a `/po analyze`.
@@ -99,7 +114,8 @@ Há código, e a documentação pode não corresponder a ele.
 /sm onboarding                  o time lê tudo e diz o que falta
 /qa audit                       cruza documentos com o código real
 /qa baseline                    reproduz os números declarados (build, testes, cobertura)
-/sm plan                        backlog a partir do que a auditoria achou
+/po story <H-ID>                o que a auditoria achou vira História, com valor declarado
+/sm sprint plan                 Planning: as Histórias aprovadas viram Tasks estimadas
 ```
 
 **Comece pela auditoria, não pelo plano.** O `status` de um projeto retomado costuma declarar mais pronto do que o código sustenta; o levantamento sobre código vence a narrativa, e a divergência vira risco no quadro.
@@ -107,12 +123,12 @@ Há código, e a documentação pode não corresponder a ele.
 ### C · Corrigir um bug
 
 ```
-/qa <ID>                        se já há item: valida e produz o achado com arquivo:linha
+/qa <ID>                        se já há Task: valida e produz o achado com arquivo:linha
 /arc question <dúvida>          se a causa não é óbvia: diagnóstico com evidência
 /arc plan <ID>                  correção desenhada, não improvisada
 /dev <ID>                       executa o plano
-/qa <ID>                        veredito ✅/⚠️/❌
-/po accept <ID>  →  /sm close <ID>
+/qa <T-ID>                      veredito ✅/⚠️/❌
+/sm close <T-ID>                fecha a Task; o aceite vem na Sprint Review
 ```
 
 **Achado não volta sempre para o mesmo lugar.** A escada:
@@ -120,7 +136,8 @@ Há código, e a documentação pode não corresponder a ele.
 | Degrau | Quando | Para onde |
 |---|---|---|
 | **1 · Construção** | Correção local que cabe no plano aprovado, sem redesenho | `/dev resume <ID>` |
-| **2 · Time** | O achado atravessa mais de um papel, ou pode ser requisito mal formulado *ou* implementação errada | `/team <questão>` |
+| **2 · Outro dono** | O achado é do domínio de outro papel — o QA classifica pelo objeto e entrega | `/po` · `/arc question` · `/ux` |
+| **2b · Não dá para classificar** | O achado toca dois donos e o QA não sabe qual é o objeto (ex.: requisito errado *ou* implementação errada) | `/sm agreement <questão>` |
 | **3 · Especialista** | O desenho não sustenta o requisito — o passo não existia ou estava errado | `/arc question` ou `/arc plan` |
 | **Paralelo · PO** | A dúvida é se o **critério** estava certo | `/po` |
 
@@ -129,18 +146,22 @@ Há código, e a documentação pode não corresponder a ele.
 ```
 /po analyze <ideia>             se a área já é documentada
 /team brainstorm <ideia>        se é capacidade nova, sem cobertura
-/sm impact <mudança>            o que essa mudança custa e quebra
+/po impact <mudança>            o que essa mudança custa e quebra
 /arc plan <ID>  →  /team cycle <ID>
 ```
 
-`/sm impact` antes de planejar: mudança de escopo passa por análise de impacto antes de virar item.
+`/po impact` antes de planejar: mudança de escopo passa por análise de impacto antes de virar Task.
 
 ## Regras que valem em qualquer caminho
 
-- **Sem plano, sem código.** O dev executa o Plano de Execução do Arquiteto; lacuna vira 🔺 GAP, não improviso.
+- **Você não aprova o SDD funcional lendo — você navega o protótipo** (portão ①). Ler texto é aprovar uma descrição; a divergência entre o que você imaginou e o que o time entendeu só aparece quando você atravessa o fluxo. Ali o que se joga fora é HTML; depois, é arquitetura e código.
+- **Toda Task pertence a uma História, e nenhuma História entra no sprint sem a sua aprovação** (portão ③). Trabalho técnico sem valor declarado não entra.
+- **Sem plano, sem código.** O dev executa o Plano de Implementação do Arquiteto; lacuna vira 🔺 GAP, não improviso.
 - **Nada é "pronto" sem saída real de comando.** O que não foi exercitado é declarado como não exercitado, nunca omitido.
-- **O QA reprova, não corrige.** O veredito responde ao stakeholder sobre qualidade, segurança, desempenho, consistência e funcionalidade; o **aceite de valor** é do PO.
-- **Cada papel escreve só o que lhe pertence.** Requisito é do PO; desenho, ADR e standards são do Arquiteto; quadro e status são do SM; evidências e mapa de código são do QA; código é do dev.
+- **O QA reprova, não corrige.** O veredito responde ao stakeholder sobre qualidade, segurança, desempenho, consistência e funcionalidade; o **aceite de valor** é do PO, por História, na Sprint Review.
+- **Fechar uma Task não é aceitar a História.** O `/sm close` é técnico. Se a História for rejeitada na Review, todas as Tasks dela voltam — inclusive as que passaram no QA.
+- **O sprint não cresce depois da Planning.** Pedido novo no meio do sprint vai ao Product Backlog e concorre na Planning seguinte.
+- **Cada papel escreve só o que lhe pertence.** Requisito e História são do PO; desenho, ADR e standards são do Arquiteto; Sprint Backlog e status são do SM; evidências e mapa de código são do QA; código é do dev.
 - **Dúvida funcional vai ao PO, técnica ao Arquiteto, estratégica ao stakeholder.**
 
 ## Onde cada coisa mora

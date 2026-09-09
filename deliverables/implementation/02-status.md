@@ -1,6 +1,6 @@
-﻿# Modelo — `02-status.md`
+# Modelo — `02-status.md`
 
-> **Dono:** SM · **Muda quando:** um item é fechado ou um ciclo termina · **Revisa:** QA (na auditoria cruzada)
+> **Dono:** SM · **Muda quando:** uma Task é fechado ou um ciclo termina · **Revisa:** QA (na auditoria cruzada)
 
 É a **memória viva de progresso e decisões**. O documento que permite alguém retomar o projeto meses depois e entender não só o que foi feito, mas por quê foi feito assim.
 
@@ -42,7 +42,7 @@ Legenda: ⬜ Não iniciado · 🟨 Em andamento · ✅ Concluído · 🔴 Bloque
 <O que trava, quem destrava, desde quando. Aponta para `pending.md` quando for GAP catalogado.>
 
 ## Como atualizar
-1. Ao fechar um item (`/sm close <ID>`), adicionar a entrada de decisão correspondente.
+1. Ao fechar uma Task (`/sm close <ID>`), adicionar a entrada de decisão correspondente.
 2. Ao concluir um ciclo, atualizar a tabela de progresso e o resumo executivo.
 3. Decisão fora da especificação é registrada **antes** de codificar, não depois.
 ```

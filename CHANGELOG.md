@@ -13,6 +13,92 @@
 
 ---
 
+## v3.3.0 — 2026-09-08
+
+**Branch:** `feat/v3.0.0` · **Base:** `main` (v2.9.0) · **PR** para `main`.
+
+**MAJOR — redesenho do modelo de trabalho e da governança.** Carrega **quatro** entradas do [changelog do processo](roles/scrum-master/process/process-changelog.md): `v3.0` (o redesenho), `v3.1` (protótipo funcional e o nome do Sprint Backlog), `v3.2` (otimização de custo de contexto) e `v3.3` (o canal do stakeholder) — daí a entrega sair como `v3.3.0`. É a primeira entrega que **quebra vocabulário e superfície de comandos**: projetos instalados precisam de leitura antes de aplicar.
+
+### Governança — com quem você fala
+
+- **O canal do stakeholder é o PO.** Demanda, valor, escopo, prioridade, **prazo, plano de entrega e status** são dele. Questão técnica vai direto ao **Arquiteto**; de tela, ao **UX**. O **SM não é canal de demanda**: é **processo, organização e eficiência**, gere os **rituais do Scrum** e o `/review`, e você o encontra nos rituais, no `/sm agreement` e quando ele cobra um portão que depende de você.
+- **Prazo mudou de dono — e isso corrigia uma contradição.** O processo dizia em três lugares que prazo era do SM, enquanto o PO ordenava o backlog por valor × risco e era dono das Histórias: **duas cabeças respondendo quando o valor chega**. Agora o **PO diz o que entra e quando sai** (plano de entrega, seção nova do Product Backlog); o **SM diz quanto cabe** (capacidade observada, fila, dependência, bloqueio). Na Planning: o SM facilita e apresenta a conta, o PO seleciona e corta.
+- **Não existe mais broadcast.** `/team <mensagem>` e `/team agreement` — os dois comandos mais caros do time, 48 e 55 KB — **foram removidos**. `/team` passa a orquestrar o time trabalhando; mensagem solta é **roteada sem disparar agente**.
+- **`/sm agreement <questão>` no lugar do acordo por broadcast**: o SM chama **só os papéis que a questão toca** (2–3, não 6), consolida uma recomendação e registra a divergência. Ele facilita **porque não é dono de requisito, desenho nem evidência** — o mesmo princípio da frente 2 do QA.
+- **`/po status` no lugar de `/sm status`**, e ele **fala em Histórias**: "entregue" é História **aceita na Sprint Review**, não Task fechada nem soma de Tasks fechadas.
+- **O QA roteia o achado pelo objeto da dúvida**, sem orquestrador: regra e critério ao PO, desenho e standard ao Arquiteto, tela ao UX. Quem recebe e não é dono devolve. Só o achado que ele **não consegue classificar** vai a `/sm agreement`.
+
+### Renomeações que quebram compatibilidade *(além das da v3.0)*
+
+| Antes | Agora |
+|---|---|
+| `/team <mensagem>` (broadcast dos seis) | **removido** — roteie ao dono |
+| `/team agreement <questão>` | `/sm agreement <questão>`, sem broadcast |
+| `/sm status` | `/po status`, em Histórias |
+| `roles/scrum-master/templates/status.md` | `roles/product-owner/templates/status.md` |
+| "prazo é do SM" | prazo, plano de entrega e status são do **PO** |
+
+### Custo de contexto — o que ficou mais barato
+
+- **Carga fixa por invocação: 63,6 KB → 59,7 KB (−6%)**, sem perder uma linha de informação. A seção "Evolução dos seus documentos" dos 5 agents era **duplicação literal** de `review-contract.md`, e o parágrafo equivalente dos 6 comandos repetia o mesmo — os dois foram reduzidos a um ponteiro e a uma linha de roteamento. O conteúdo continua inteiro no `review-contract.md`, que só é lido quando o `/review` roda.
+- **A métrica de eficiência (§5c) parou de medir história fria.** Ela somava `roles/<papel>/` inteiro, e no caso do SM **50% disso é changelog arquivado** — frio por construção e crescente por decisão de R17. O SM aparecia dez vezes mais pesado que os outros por causa de história que ninguém carrega, e o ciclo PDCA apontaria sempre para o documento errado. Agora são **dois números separados**: carga fixa (paga sempre) e conjunto sob demanda (pago por leitura, sem os changelogs).
+- **Custo por comando declarado em §5c**, com a distinção que faltava: `commands/<x>.md` carrega no **contexto principal**, `agents/<papel>.md` no do **subagente**. `/team <mensagem>` custa **47,9 KB** de carga fixa; `/team agreement`, 55,1 KB; um comando de papel só, 7–13 KB. E as três coisas que a carga fixa **não** mostra: o **modelo** de cada agente (`/arc` e `/ux` em Opus, `/dev` em Haiku), a **leitura em tempo de execução** (que costuma superar a carga fixa) e o **retorno das respostas** ao contexto principal num broadcast.
+
+**Nenhum controle de qualidade foi removido.** Auditoria da entrega: 21/21 regras com forma de verificação · 0 modelos órfãos · 0 links quebrados · portões, gates, DoR/DoD, escada de falha e as seis frentes do QA inalterados.
+
+### O que muda para quem usa o time
+
+- **Duas unidades onde havia uma.** A **História** é a unidade de valor (dona: PO, conteúdo **só funcional** — regra, protótipo, critério de aceite); a **Task** é a unidade de trabalho, no Sprint Backlog do SM, com o **Plano de Implementação** do Arquiteto dentro dela. Toda Task pertence a exatamente uma História (**R20**). O que se chamava `item` **deixou de existir**.
+- **O sprint virou caixa de tempo.** Duração e unidade de estimativa são declaradas por projeto no `.team-project/README.md` §2a e respondidas no onboarding. A Planning Meeting (`/sm sprint plan`) quebra as Histórias aprovadas em Tasks, o time estima, e a soma é cortada na **capacidade observada** — a média entregue, não o desejo. O Sprint Backlog **não cresce** depois disso.
+- **O aceite mudou de alvo e de lugar** (**R21**). O `/sm close <T-ID>` passa a ser **fechamento técnico** (veredito ✅ do QA); quem diz que o valor chegou é o PO, **por História, na Sprint Review**. Consequência aceita conscientemente: **História rejeitada devolve todas as Tasks, inclusive as aprovadas pelo QA**.
+- **Quatro portões de aprovação do stakeholder**, onde antes havia zero: ① SDD funcional (`00`,`01`,`02`) antes do técnico · ② SDD técnico (`03`,`04`,`05`) antes da primeira História · ③ detalhamento da História antes da Planning · ④ aceite na Sprint Review.
+- **O portão ① exige protótipo funcional em HTML, navegado.** Entregável novo, do UX: HTML navegável cobrindo **todo fluxo principal de `02-flows-and-roles`**, sem build, sem servidor, sem back-end, com estados de exceção, dados plausíveis e o "fora do escopo" escrito na própria página. **Você não aprova o SDD funcional lendo — você navega**; print, gravação e apresentação não abrem o portão. Critérios em `deliverables/prototype/README.md`, modelo em `roles/user-experience/templates/functional-prototype.md`, comando `/ux prototype`.
+- **O Sprint Backlog passou a se chamar Sprint Backlog no disco.** O arquivo em `.team-project/scrum-master/` era `work-board.md`; agora é `sprint-backlog.md`.
+- **Três comandos novos:** `/po story <H-ID>` (escrever e detalhar História) · `/sm sprint plan|close` (abrir e encerrar sprint) · `/sm review` (Sprint Review). **`/sm review` não é `/review`** — o primeiro roda no projeto e aceita Histórias; o segundo evolui o processo do time e roda só no repositório-fonte.
+- **O `/team update` passou a reconciliar o `.team-project/`** (passo 7 novo, 7 → 8 passos). Antes ele atualizava só `${CLAUDE_PLUGIN_ROOT}` e **tudo que o `init` havia instanciado derivava em silêncio** — `.team-project/how-to.md` incluído. Agora compara contra o manifesto de `deliverables/team-project/README.md` e **propõe** o delta, sem nunca apagar conteúdo do projeto sem aprovação.
+
+### Renomeações que quebram compatibilidade
+
+| Antes | Agora |
+|---|---|
+| `item` / `<ID>` | `Task` / `<T-ID>` — e `<H-ID>` para História |
+| `Plano de Execução` · `templates/execution-plan.md` | `Plano de Implementação` · `templates/implementation-plan.md` |
+| `/sm plan` | `/sm sprint plan` |
+| `/po accept <ID>` (por item, após o QA) | `/po accept <H-ID>` (por História, na Sprint Review) |
+| Quadro de trabalho · `work-board.md` | Sprint Backlog · `sprint-backlog.md` |
+| Product Backlog = lista de itens | Product Backlog = **conjunto das Histórias** |
+
+### Arquivos novos
+
+- `roles/product-owner/templates/user-story.md` — a História em dois estados, com o portão ③
+- `roles/scrum-master/templates/sprint-review.md` — registro da Review
+- `roles/user-experience/templates/functional-prototype.md` — estrutura e ficha do protótipo funcional
+- `deliverables/prototype/README.md` — o protótipo funcional como entregável e pré-condição do ①
+- `deliverables/team-project/README.md` — manifesto do `.team-project/` e as três classes de reconciliação
+
+### Regras
+
+**19 → 21.** R20 (História é valor, Task é trabalho) e R21 (aceite por História, na Review) são novas; R1–R2, R4–R8 e R11–R17 foram reescritas sobre o novo modelo. R14 passa a bloquear a **primeira Planning Meeting**; R15 ganha os portões ① e ② **e a exigência de protótipo navegado no ①**.
+
+### Como verificar
+
+- `claude plugin details team@team` mostra **v3.3.0** e continua listando **8 comandos** (`sm po arc ux dev qa team review`) e 6 agents — após reiniciar a sessão.
+- `/help` mostra os modos novos no `argument-hint` de `/sm` e `/po`.
+- `grep -r "Plano de Execução" --include=*.md .` → só nos changelogs, que por R17 não se reescrevem.
+- A entrada `v3.0` do changelog do processo traz o bloco de evidência exigido por R19, incluindo a checagem semântica que pegou 4 falsos positivos da substituição `item` → `Task`.
+
+### Migração de um projeto já instalado
+
+1. `/team update` — ele agora mostra o delta dos modelos e pede aprovação por arquivo.
+2. Reiniciar a sessão.
+3. `/sm onboarding` para registrar **duração do sprint** e **unidade de estimativa** no `.team-project/README.md` §2a.
+4. Renomear `.team-project/scrum-master/work-board.md` para `sprint-backlog.md`.
+4b. Acrescentar a seção **Plano de entrega** ao `product-backlog.md` do projeto, e parar de pedir prazo ao SM.
+5. O backlog existente precisa virar Histórias (`/po story`) antes da primeira `/sm sprint plan` — Task sem História não entra no quadro (R20).
+6. Se a fatia em andamento ainda não passou pelo ①, `/ux prototype` antes de o Arquiteto tocar em `03`/`04`/`05`.
+
+---
+
 ## v2.9.0 — 2026-09-07
 
 **Branch:** `fix/v2.9.0` · **Base:** `main` (v1.0.0) · **PR** para `main`.

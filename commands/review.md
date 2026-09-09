@@ -29,9 +29,9 @@ Identifique pelo primeiro termo. Sem termo, o modo é **reavaliação**.
 
 | Modo | O que faz | Edita? |
 |---|---|---|
-| `/review` *(vazio)* | Reavaliação do conjunto de `RAIZ/` (coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência, excesso) **+** triagem de `RAIZ/note.md`: tabela `item → classificação → documento-alvo → papel dono` | não |
-| `/review <instrução>` | Trata a instrução como um item de melhoria: classifica, roteia ao dono, aplica, registra no changelog | sim |
-| `/review note` | Processa a fila **Abertas** de `RAIZ/note.md`, um item por vez, roteando cada um como acima | sim |
+| `/review` *(vazio)* | Reavaliação do conjunto de `RAIZ/` (coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência, excesso) **+** triagem de `RAIZ/note.md`: tabela `Task → classificação → documento-alvo → papel dono` | não |
+| `/review <instrução>` | Trata a instrução como uma Task de melhoria: classifica, roteia ao dono, aplica, registra no changelog | sim |
+| `/review note` | Processa a fila **Abertas** de `RAIZ/note.md`, uma Task por vez, roteando cada um como acima | sim |
 | `/review audit` | Coerência interna de `RAIZ/`: regra contraditória, regra sem verificação, papel com fronteira ambígua, documento sem dono, modelo órfão, vazamento de contexto de projeto, link quebrado | não |
 | `/review metrics` | Revisão por evidência a partir dos indicadores do período, com **uma** proposta de mudança; inclui o giro **Act** do ciclo de eficiência (`workflow.md` §5c) | sim (uma mudança) |
 | `/review history` | Apresenta o changelog do processo | não |
@@ -40,7 +40,7 @@ Identifique pelo primeiro termo. Sem termo, o modo é **reavaliação**.
 
 Este comando é **seu** — a sessão principal orquestra. A triagem e a curadoria são do **Agent `scrum-master`**; a edição de cada documento é do **agente do papel dono**.
 
-1. **Triagem (Agent `scrum-master`).** Para cada item, classifique — regra de trabalho · etapa de fluxo · cerimônia · propriedade de artefato · formato de documento · escopo de papel · comportamento de agente — e mapeie ao documento-alvo e ao papel dono:
+1. **Triagem (Agent `scrum-master`).** Para cada Task, classifique — regra de trabalho · etapa de fluxo · cerimônia · propriedade de artefato · formato de documento · escopo de papel · comportamento de agente — e mapeie ao documento-alvo e ao papel dono:
 
    | Classificação | Documento-alvo | Quem aplica |
    |---|---|---|
@@ -56,7 +56,7 @@ Este comando é **seu** — a sessão principal orquestra. A triagem e a curador
 
 3. **Curadoria (Agent `scrum-master`).** Ao final, o SM consolida o changelog, aponta contradição entre mudanças de papéis diferentes e escala ao stakeholder o que ficou inconsistente. `/review metrics` sempre considera **remover** algo.
 
-4. **Fecho.** Item aplicado sai de `RAIZ/note.md` — passa a viver no changelog do processo. Mudança em `RAIZ/agents/`, `RAIZ/commands/` ou `RAIZ/.claude-plugin/` fica só como **proposta** com o texto pronto. Diga ao stakeholder o que mudou e onde, quais papéis passam a ser cobrados de forma diferente, que a mudança só chega aos outros projetos após `git commit` + `git push` + `claude plugin marketplace update team` + `claude plugin update team@team`, e que mudança de comportamento de agente **só entra em vigor após reiniciar a sessão**.
+4. **Fecho.** Task aplicado sai de `RAIZ/note.md` — passa a viver no changelog do processo. Mudança em `RAIZ/agents/`, `RAIZ/commands/` ou `RAIZ/.claude-plugin/` fica só como **proposta** com o texto pronto. Diga ao stakeholder o que mudou e onde, quais papéis passam a ser cobrados de forma diferente, que a mudança só chega aos outros projetos após `git commit` + `git push` + `claude plugin marketplace update team` + `claude plugin update team@team`, e que mudança de comportamento de agente **só entra em vigor após reiniciar a sessão**.
 
 ## Limites
 

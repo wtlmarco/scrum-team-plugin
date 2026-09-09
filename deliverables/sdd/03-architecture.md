@@ -50,7 +50,7 @@ e onde vive a baseline. Linha sem valor é gate ausente, não campo em branco: e
 <**V18 transcreve, não origina, o número.** A origem de cada linha é o RNF de performance de
 `01-requirements.md`, escrito pelo PO com os cinco campos de P1 (operação · métrica/percentil · limiar ·
 condição de carga · ambiente). Número que aparece aqui sem RNF correspondente é orçamento inventado;
-RNF com menos de cinco campos volta ao PO e o item não entra em construção.>
+RNF com menos de cinco campos volta ao PO e a Task não entra em construção.>
 
 # 3. <Padrão estrutural adotado>
 <Camadas, dependências permitidas e proibidas.>
@@ -69,7 +69,7 @@ observabilidade, configuração, segurança de infraestrutura.>
 
 ## Regras
 
-- **Ficha de Vinculação de Stack é pré-requisito do primeiro Plano de Execução.** Sem a §2b preenchida, o Arquiteto não consegue nomear o anel de cada arquivo nem o comando que verifica a entrega — e o dev decide por conta. Ficha com **V18–V21 ausentes** é ficha incompleta, não ficha "sem performance": "nenhuma operação sob orçamento" é resposta válida, mas escrita (§7 #22 do normativo).
+- **Ficha de Vinculação de Stack é pré-requisito do primeiro Plano de Implementação.** Sem a §2b preenchida, o Arquiteto não consegue nomear o anel de cada arquivo nem o comando que verifica a entrega — e o dev decide por conta. Ficha com **V18–V21 ausentes** é ficha incompleta, não ficha "sem performance": "nenhuma operação sob orçamento" é resposta válida, mas escrita (§7 #22 do normativo).
 - **Princípio sem consequência observável é slogan.** Cada `P-nnn` precisa dizer o que se vê no código quando é respeitado — senão o QA não consegue verificar e ninguém percebe quando é violado.
 - **Aplicação, não repetição.** Se o padrão genérico já explica *como fazer*, aqui só entra o *o que foi escolhido* e o *por quê deste produto*.
 - **Índice obrigatório.** Este documento cresce mais que os outros; sem índice, vira arquivo morto.
@@ -85,4 +85,4 @@ observabilidade, configuração, segurança de infraestrutura.>
 | Linha de V18 sem RNF de origem em `01-requirements.md` | Orçamento inventado aqui: o limiar não foi decidido pelo PO e ninguém o aceita ou rejeita |
 | Documento que repete o padrão genérico | Duas verdades para manter; uma delas envelhece |
 | Decisão estrutural registrada só aqui, sem ADR | A decisão é encontrada por acaso, sem contexto nem alternativas |
-| Árvore de diretórios desatualizada | Confere contra o repositório numa auditoria — é o item mais barato de checar |
+| Árvore de diretórios desatualizada | Confere contra o repositório numa auditoria — é a Task mais barato de checar |

@@ -1,8 +1,8 @@
-﻿# Modelo — `01-requirements.md`
+# Modelo — `01-requirements.md`
 
 > **Dono:** PO · **Muda quando:** requisito novo, alterado ou descontinuado · **Revisa:** QA (verificabilidade)
 
-É a fonte da verdade sobre **o que o sistema faz**. Todo item do backlog nasce daqui ou de um GAP; todo aceite é conferido contra aqui.
+É a fonte da verdade sobre **o que o sistema faz**. Toda Task do backlog nasce daqui ou de um GAP; todo aceite é conferido contra aqui.
 
 ## Estrutura
 
@@ -59,7 +59,7 @@ O princípio "RNF precisa ser verificável" continua valendo igual; performance 
 | Condição de carga | taxa **ou** usuários simultâneos **e** duração | só a taxa, sem duração |
 | Ambiente de medição | onde aquele número vale | medir na máquina do dev e comparar com produção |
 
-Falta um campo, não é RNF — é intenção. O Arquiteto devolve e o item **não entra em construção** (§7 #18).
+Falta um campo, não é RNF — é intenção. O Arquiteto devolve e a Task **não entra em construção** (§7 #18).
 
 **Exemplo — preenchido** *(números ilustrativos; o valor real é do projeto, não deste modelo)*
 
@@ -84,9 +84,9 @@ Falta um campo, não é RNF — é intenção. O Arquiteto devolve e o item **n�
 
 Consequência direta de V18 ser lista fechada: **operação que você não colocar num RNF de performance não entra em V18 e não é medida por ninguém.** O que entra na lista é decisão sua — priorize a operação síncrona que o produto declara como caminho principal e a operação assíncrona cuja demora o usuário percebe. Projeto sem nenhuma operação sob orçamento é estado válido, desde que **declarado** (V18 vazia com motivo), nunca omitido.
 
-### Critério de aceite de item que toca operação sob orçamento
+### Critério de aceite de Task que toca operação sob orçamento
 
-O RNF existir **não basta**. O item que toca uma operação de V18 leva o desempenho no **próprio critério de aceite**, com "como verificar" apontando o comando de V19 e o estado esperado. Número que só vive aqui não protege a entrega; o critério de aceite do item é o gancho que prova que *aquela* entrega foi medida — sem ele o aceite vira opinião, e "implementado" não é "funcionando".
+O RNF existir **não basta**. A Task que toca uma operação de V18 leva o desempenho no **próprio critério de aceite**, com "como verificar" apontando o comando de V19 e o estado esperado. Número que só vive aqui não protege a entrega; o critério de aceite da Task é o gancho que prova que *aquela* entrega foi medida — sem ele o aceite vira opinião, e "implementado" não é "funcionando".
 
 ## Regras
 
@@ -94,7 +94,7 @@ O RNF existir **não basta**. O item que toca uma operação de V18 leva o desem
 - **Sufixo para desdobramento** (`RF-004a`) quando um requisito ganha uma variação que não cabe no original.
 - **Critério de aceite sem "como verificar" não existe** — é a regra que impede aceite por opinião.
 - **RNF também precisa ser verificável.** "Deve ser performático" não é RNF; "responder em até 500 ms no percentil 95" já se pode medir.
-- **RNF de performance só existe com os cinco campos** de P1 — ver a seção "RNF de performance — a forma completa" acima. Faltando um, o Arquiteto devolve e o item não entra em construção (§7 #18).
+- **RNF de performance só existe com os cinco campos** de P1 — ver a seção "RNF de performance — a forma completa" acima. Faltando um, o Arquiteto devolve e a Task não entra em construção (§7 #18).
 - **Grafia das entidades igual a `04-data-model`.** O requisito é lido por quem implementa.
 
 ## Falhas comuns

@@ -15,9 +15,9 @@ Hierarquia de confiabilidade das fontes, que vale em qualquer projeto:
 
 **Regra:** quando a narrativa de sprint divergir do levantamento sobre código, **o levantamento vence** — e a divergência vira risco no quadro, não um arredondamento no status.
 
-## 2. Escrever item que não gera retrabalho
+## 2. Escrever Task que não gera retrabalho
 
-Um item bem escrito responde, sem ambiguidade: o que é feito, quem faz, o que precisa estar pronto antes, como se prova que terminou.
+Uma Task bem escrito responde, sem ambiguidade: o que é feito, quem faz, o que precisa estar pronto antes, como se prova que terminou.
 
 ```
 ❌ "Corrigir o download"
@@ -29,25 +29,25 @@ Um item bem escrito responde, sem ambiguidade: o que é feito, quem faz, o que p
 
 ## 3. Sequenciar por dependência real, não por criticidade
 
-Criticidade diz o que dói mais; dependência diz o que é possível fazer agora. Um item 🔴 que depende de outro 🔴 entra depois — e o quadro explica por quê. Ordenar por dor produz fila travada.
+Criticidade diz o que dói mais; dependência diz o que é possível fazer agora. Uma Task 🔴 que depende de outro 🔴 entra depois — e o quadro explica por quê. Ordenar por dor produz fila travada.
 
 ## 4. Proteger a capacidade do time
 
-- Um item em construção por vez, quando há um único dev; o quadro é fila, não board paralelo.
-- Item que não cabe em uma unidade de trabalho volta ao Arquiteto para quebra — item grande é item inacabado.
-- Manter o **próximo** item já planejado enquanto o atual está em construção: é o paralelismo que existe de fato.
-- Uma migration de banco por item; itens que compartilham migration viram um item só.
+- Uma Task em construção por vez, quando há um único dev; o quadro é fila, não board paralelo.
+- Task que não cabe em uma unidade de trabalho volta ao Arquiteto para quebra — Task grande é Task inacabado.
+- Manter o **próximo** Task já planejado enquanto o atual está em construção: é o paralelismo que existe de fato.
+- Uma migration de banco por Task; Tasks que compartilham migration viram uma Task só.
 
 ## 5. Analisar impacto antes de aceitar mudança
 
 Checklist de quatro perguntas, sempre as mesmas:
 
-1. **Toca item em voo?** Qual, e em que estado?
+1. **Toca Task em voo?** Qual, e em que estado?
 2. **Invalida trabalho feito?** Quanto, e é recuperável?
 3. **Muda contrato?** API, schema, migration já aplicada?
 4. **Move a data de quê?** Qual bloco atrasa, e em quanto?
 
-Impacto sem número (itens, arquivos, unidades de trabalho) é opinião. Conte.
+Impacto sem número (Tasks, arquivos, unidades de trabalho) é opinião. Conte.
 
 ## 6. Manter status honesto
 
@@ -60,11 +60,11 @@ Impacto sem número (itens, arquivos, unidades de trabalho) é opinião. Conte.
 | Métrica | Como medir | Sinal de alerta |
 |---|---|---|
 | **Gaps por plano** | 🔺 GAPs levantados pelo dev ÷ planos entregues | > 2 → o plano do Arquiteto está raso |
-| **Taxa de reprovação no QA** | vereditos ❌ ÷ itens validados | > 30% → DoR fraca ou plano ambíguo |
-| **Retrabalho** | itens reabertos após fechamento | > 1 por ciclo → gate do QA passando batido |
-| **Lead time por item** | unidades de trabalho entre construção e fechamento | > 2× a estimativa → item mal dimensionado |
-| **Itens bloqueados** | contagem e idade do bloqueio | bloqueio com mais de 2 ciclos → escalar ao stakeholder |
-| **Dívida de evidência** | itens fechados sem registro de evidência | qualquer ocorrência → falha de processo |
+| **Taxa de reprovação no QA** | vereditos ❌ ÷ Tasks validados | > 30% → DoR fraca ou plano ambíguo |
+| **Retrabalho** | Tasks reabertas após fechamento | > 1 por ciclo → gate do QA passando batido |
+| **Lead time por Task** | unidades de trabalho entre construção e fechamento | > 2× a estimativa → Task mal dimensionado |
+| **Tasks bloqueados** | contagem e idade do bloqueio | bloqueio com mais de 2 ciclos → escalar ao stakeholder |
+| **Dívida de evidência** | Tasks fechadas sem registro de evidência | qualquer ocorrência → falha de processo |
 | **Footprint dos documentos** | KB de `agents/` + `commands/` + `roles/<papel>/` do processo, por papel | crescimento > 20% entre giros de `/review metrics` sem regra nova, ou entrada de changelog > 10 KB → cortar (R17, [`process/workflow.md` §5c](process/workflow.md)) |
 
 ## 8. Facilitar sem virar gargalo
@@ -75,7 +75,7 @@ Impacto sem número (itens, arquivos, unidades de trabalho) é opinião. Conte.
 
 ## 9. Repertório complementar — quando Scrum não basta
 
-Scrum é a base: estimativa relativa na unidade do projeto, o quadro como registro de risco, `/sm impact` para mudança, fila por dependência real. Dois corpos de prática entram **como ferramenta pontual, nunca como substituição do método**, quando um gatilho objetivo ocorre — e o gatilho é **nomeado na saída** (plano, análise de impacto, status). É a disciplina da regra R13.
+Scrum é a base: estimativa na unidade do projeto feita pelo time na Planning, o quadro como registro de risco, `/po impact` para mudança — **eu sinalizo o gatilho de método, o PO conduz** —, fila por dependência real. Dois corpos de prática entram **como ferramenta pontual, nunca como substituição do método**, quando um gatilho objetivo ocorre — e o gatilho é **nomeado na saída** (plano, análise de impacto, status). É a disciplina da regra R13.
 
 ### Estimativa — de estimativa relativa para Análise de Pontos de Função (APF)
 
@@ -83,7 +83,7 @@ Aciono APF quando **qualquer um**:
 
 - o escopo vai ser dimensionado para contrato, orçamento ou comparação entre fornecedores — precisa de número absoluto e auditável, independente de quem estima;
 - o time não tem histórico de velocidade calibrado (projeto novo, ou retomado sem dados de ciclos anteriores);
-- lote grande de itens homogêneos (N telas de CRUD, N endpoints equivalentes) — contar função sai mais barato que estimar um a um;
+- lote grande de Tasks homogêneos (N telas de CRUD, N endpoints equivalentes) — contar função sai mais barato que estimar um a um;
 - épico acima de 3× a unidade de trabalho do projeto, candidato a quebra, e a quebra precisa de base objetiva;
 - a estimativa relativa divergiu mais de 2× entre papéis e não convergiu em uma rodada.
 
@@ -98,26 +98,26 @@ Default: bloqueio e risco vivem no quadro, uma linha cada (natureza, quem destra
 - a resposta ao risco exige orçamento ou decisão de terceiro, fora do time;
 - há marco externo (data contratual, janela de compliance, auditoria).
 
-### Mudança — de `/sm impact` para controle integrado de mudanças (PMBOK)
+### Mudança — de `/po impact` para controle integrado de mudanças (PMBOK)
 
-Default: `/sm impact <mudança>` → análise → decisão do stakeholder (já é controle de mudança leve). Formalizo — solicitação de mudança numerada, impacto avaliado em escopo/prazo/risco, aprovação registrada, baseline atualizada — quando **qualquer um**:
+**A análise é do PO** (o objeto é o plano de entrega); **o instrumento é meu**. Default: `/po impact <mudança>` → análise → decisão do stakeholder (já é controle de mudança leve). **Eu sinalizo** que a mudança exige formalização — solicitação numerada, impacto avaliado em escopo/prazo/risco, aprovação registrada, baseline atualizada — e **o PO conduz**, porque a baseline vive no plano de entrega dele. O gatilho dispara quando **qualquer um**:
 
 - a mudança altera contrato de API ou schema já implantado, ou a baseline de escopo acordada com o stakeholder;
-- afeta mais de 3 itens em voo, ou invalida trabalho já aceito;
+- afeta mais de 3 Tasks em voo, ou invalida trabalho já aceito;
 - é a segunda mudança de escopo no mesmo ciclo (escopo instável — passa a haver cadência de rastreio);
 - existe compromisso externo de prazo ou custo que a mudança desloca.
 
 ### Planejamento — da fila para EAP e caminho crítico (PMBOK)
 
-Default: fila de itens ordenada por dependência real, um item em construção por dev. Uso decomposição em EAP (entregável → pacotes de trabalho → itens) e diagrama de dependências quando **qualquer um**:
+Default: fila de Tasks ordenada por dependência real, uma Task em construção por dev. Uso decomposição em EAP (entregável → pacotes de trabalho → Tasks) e diagrama de dependências quando **qualquer um**:
 
-- entregável com mais de ~8 itens e dependências não-lineares — a fila simples não mostra o caminho crítico;
+- entregável com mais de ~8 Tasks e dependências não-lineares — a fila simples não mostra o caminho crítico;
 - o stakeholder precisa enxergar o efeito de um atraso sobre a data de conclusão (expressa na unidade do projeto + a premissa de velocidade);
 - há mais de um dev — o sequenciamento passa a ser por pacotes de arquivos disjuntos (workflow §7).
 
-### Escopo — da rastreabilidade item↔GAP para baseline de escopo (PMBOK)
+### Escopo — da rastreabilidade Task↔GAP para baseline de escopo (PMBOK)
 
-Default: escopo = itens no quadro, cada um originado de GAP registrado ou requisito especificado. Formalizo declaração de escopo + matriz de rastreabilidade (requisito → item → evidência) + medição de escopo entregue vs. baseline quando **qualquer um**:
+Default: escopo = Tasks no quadro, cada um originado de GAP registrado ou requisito especificado. Formalizo declaração de escopo + matriz de rastreabilidade (requisito → Task → evidência) + medição de escopo entregue vs. baseline quando **qualquer um**:
 
 - o stakeholder pede previsão de conclusão — exige escopo fechado e medível;
 - o escopo cresceu mais de ~20% desde o início do ciclo sem baseline nova;
@@ -137,7 +137,7 @@ Antes de haver fila, é preciso haver entendimento comum do projeto. Duas ativid
 - **O stakeholder responde só o buraco.** A lista que sobe a ele é única, com perguntas estratégicas e lacunas pequenas — cada uma com opções e recomendação do time (R9: o time tentou responder antes).
 - **Divergência não se arredonda.** Status que diz "concluído" sobre código que os GAPs mostram parcial vira risco no quadro + `/qa audit`, não uma nota otimista. É o modo de falha que define este ofício.
 - **Doc funcional essencial ausente para o onboarding é gatilho de brainstorm** — o onboarding pausa até ele fechar.
-- **Saída:** contexto do projeto preenchido e datado, cinco leituras de entrada registradas, quadro aberto. Sem isso, `/sm plan` não roda.
+- **Saída:** contexto do projeto preenchido e datado, cinco leituras de entrada registradas, quadro aberto. Sem isso, `/sm sprint plan` não roda.
 
 ### Brainstorm — moldar uma ideia sem documentação
 
