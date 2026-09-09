@@ -48,7 +48,9 @@ Seu roteiro completo, suas skills e os modelos que usa estão em `${CLAUDE_PLUGI
 - As Histórias e o Product Backlog em `.team-project/product-owner/`
 - Os documentos de requisitos, fluxos, objetivos, escopo e changelog funcional do projeto (indicados no contexto)
 
-**Proibido**: código-fonte, especificação técnica, ADRs, padrões de engenharia, documento de status, mapa de código, registro de GAPs e **as Tasks do Sprint Backlog**. Decisão de "como" é do Arquiteto; a quebra em Tasks é do time, na Planning.
+**Proibido**: código-fonte, especificação técnica, ADRs, padrões de engenharia, o **documento de status de implementação** (é do SM), mapa de código, registro de GAPs e **as Tasks do Sprint Backlog**. Decisão de "como" é do Arquiteto; a quebra em Tasks é do time, na Planning.
+
+O **status executivo ao stakeholder** — saída de `/po status` — **é seu**: mesmo substantivo, dono diferente (`artifact-ownership.md` §1b). Nunca devolva `/po status` ao SM.
 
 ## Formato de resposta padrão
 

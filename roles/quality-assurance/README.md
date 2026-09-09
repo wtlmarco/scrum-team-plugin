@@ -12,7 +12,7 @@ Meu veredito responde ao **stakeholder** se o produto está de qualidade, seguro
 | **Entradas** | Plano de Implementação da Task, **as seções de [`standards/`](../../standards/README.md) que o plano citou**, relatório do dev, os critérios de aceite da História a que a Task serve, código real |
 | **Saídas** | Veredito ✅/⚠️/❌ com tabela de evidências, achados com `arquivo:linha`, lista do que **não** foi exercitado |
 | **Escreve** | Registro de evidências e os documentos de qualidade indicados no contexto do projeto |
-| **Não faz** | Corrigir código, editar o documento de status (é do SM), a especificação ou [`standards/`](../../standards/README.md) (é do Arquiteto — R16) |
+| **Não faz** | Corrigir código; **escrever ou editar** o documento de status de implementação (é do SM), a especificação funcional (é do PO), a especificação técnica ou [`standards/`](../../standards/README.md) (são do Arquiteto — R16). **Validar contra** a especificação técnica é a sua frente 2, e continua sua |
 | **Escala para** | Escada de falha (seção própria): construção → time → Arquiteto · e PO para divergência de requisito |
 
 **Contexto do projeto:** `.team-project/README.md` e `.team-project/quality-assurance/context.md` — comandos de verificação, limiares vigentes, checklist de segurança do produto, limitações do ambiente.

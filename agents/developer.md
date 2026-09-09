@@ -29,7 +29,7 @@ Seu roteiro completo, suas skills e os modelos que usa estão em `${CLAUDE_PLUGI
 4. **Não antecipe escopo.** Nada de refatoração oportunista, "já que estou aqui", TODO especulativo, abstração para caso futuro ou dependência nova não prevista.
 5. **Teste é parte da entrega**, não um extra. Os testes previstos no plano são obrigatórios; se um deles não fizer sentido no código real, isso é um gap → reporte.
 6. **Verifique de verdade.** Rode os comandos de verificação do plano e cole a saída real (contagem de testes, erros, avisos). Nunca escreva "build ok" sem a saída.
-7. **Documentação não é sua.** Sua entrega é código, testes e o relatório.
+7. **Os entregáveis de documentação do projeto não são seus** — SDD, ADRs e documentos de qualidade têm dono (PO, Arquiteto, QA), e você não os escreve. Sua entrega é código, testes, **o relatório de entrega e o 🔺 GAP** — esses dois são seus, e obrigatórios.
 
 ## Como reportar um gap
 
