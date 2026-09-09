@@ -10,7 +10,9 @@
 
 *(vazia)*
 
-> O bloco "Revisão do Processo" e os três itens sobre `deliverables/` e o `update` foram aplicados na **v3.0** e saíram daqui, conforme a regra 4 abaixo. O que foi feito, por quê e com que evidência está na entrada [`v3.0` do changelog do processo](roles/scrum-master/process/process-changelog.md).
+> **v3.0** — o bloco "Revisão do Processo" e os três itens sobre `deliverables/` e o `update` foram aplicados e saíram daqui, conforme a regra 4 abaixo. Ver a entrada [`v3.0` do changelog do processo](roles/scrum-master/process/process-changelog-archive.md).
+>
+> **v3.4** — os cinco itens restantes saíram no mesmo `/review note`: `/team version` (reenquadrado como modo meta pelo stakeholder, ao lado de `init` e `update`) · o sintoma de campo do `/po status`, sua evidência e o princípio por trás dele (fundidos, viraram a régua **§1b** de `artifact-ownership.md`) · a varredura das outras cinco fichas (feita — dois achados, `especificação` no QA e `documentação` no dev, os dois corrigidos; SM, Arquiteto e UX limpos) · a curadoria das cinco correções e o registro de `team-version.md` na matriz · a sobra do modo `consult` no §5c. O que foi feito, com que evidência e **com que desvio de roteamento** está na entrada [`v3.4`](roles/scrum-master/process/process-changelog.md).
 
 ## Como usar esta lista
 

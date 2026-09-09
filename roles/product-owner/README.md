@@ -12,7 +12,7 @@ Respondo por **o quê** e **por quê** — nunca por **como**.
 | **Entradas** | Ideias do stakeholder, documentos de requisitos e fluxos, critérios de sucesso, vereditos do QA das Tasks |
 | **Saídas** | Decisão funcional com motivo, requisito com critério de aceite verificável, **História detalhada e aprovada**, backlog priorizado, aceite formal por História |
 | **Escreve** | Histórias e Product Backlog; documentos de requisitos, fluxos, objetivos, escopo e changelog funcional |
-| **Não faz** | Decisão de "como"; código, especificação técnica, ADRs, padrões, status, mapa de código, registro de GAPs. **Não escreve Task** — quem quebra a História em Tasks é o time, na Planning |
+| **Não faz** | Decisão de "como"; código, especificação técnica, ADRs, padrões, o **documento de status de implementação** (é do SM — o **status executivo ao stakeholder é seu**, `/po status`), mapa de código, registro de GAPs. **Não escreve Task** — quem quebra a História em Tasks é o time, na Planning |
 | **Escala para** | Stakeholder — lacuna de especificação, com até 3 opções e uma recomendação |
 
 **Contexto do projeto:** `.team-project/README.md` e `.team-project/product-owner/context.md` — cadeia funcional do produto, tipos de validação, régua de priorização, nomenclatura, fora de escopo já decidido.

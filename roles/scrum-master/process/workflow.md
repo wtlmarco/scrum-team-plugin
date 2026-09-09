@@ -235,10 +235,12 @@ O custo dos documentos de `${CLAUDE_PLUGIN_ROOT}/` não pode depender de uma fax
 | Comando | Carga fixa | O que dispara |
 |---|---|---|
 | `/team brainstorm <ideia>` | ~37 KB | SM + PO + UX, depois + Arquiteto |
-| `/team cycle <T-ID>` | ~28 KB | Arquiteto → dev → QA, em série |
-| `/sm agreement <questão>` | ~13 KB + os papéis que a questão toca (2–3 típicos) | SM + os envolvidos |
-| `/review <instrução>` | ~14 KB + ~10 KB do contrato por papel roteado | SM (triagem) + o papel dono |
-| `/sm` · `/ux` · `/po` · `/arc` · `/qa` · `/dev` | 13 · 11 · 10 · 10 · 10 · 7 KB | um papel |
+| `/team cycle <T-ID>` | ~26 KB | Arquiteto → dev → QA, em série |
+| `/sm agreement <questão>` | ~15 KB + um `agents/<papel>.md` por papel chamado (2–3 típicos) | SM + os envolvidos |
+| `/review <instrução>` | ~15 KB + ~10 KB do contrato por papel roteado | SM (triagem) + o papel dono |
+| `/sm` · `/po` · `/ux` · `/arc` · `/qa` · `/dev` | 15 · 13 · 11 · 10 · 10 · 7 KB | um papel |
+
+> Os números por papel somam `commands/<x>.md` + `agents/<papel>.md`. **Medidos em v3.4** — `/sm` e `/po` cresceram desde a v3.2 (13 → 15 e 10 → 13) com o mandato que a v3.3 moveu entre eles. Remedir é parte da fase **Check**; tabela de custo que não se remede vira folclore.
 
 **Não existe mais broadcast dos seis.** O modo `consult` de `/team` foi removido: o canal do stakeholder é o PO (§6a), e questão que atravessa papéis vai por `/sm agreement`, que chama **só quem a questão toca**. Os dois comandos mais caros do time deixaram de existir.
 
@@ -247,7 +249,9 @@ O custo dos documentos de `${CLAUDE_PLUGIN_ROOT}/` não pode depender de uma fax
 2. **A leitura em tempo de execução costuma superar a carga fixa.** Todo agente lê `.team-project/README.md` e o seu `context.md`; o QA lê ainda o plano, o relatório do dev, as seções de `standards/` citadas e o código. Num broadcast isso é multiplicado pelo número de subagentes.
 3. **As respostas voltam.** No broadcast, as seis saídas retornam ao contexto principal para consolidação.
 
-Daí o passo 1 do modo `consult` mandar avaliar se a mensagem pertence a um papel só (R3): trocar um `/team` por um `/qa` economiza ~38 KB de carga fixa **e** cinco leituras de contexto de projeto.
+**A lição de R3 sobreviveu ao comando que a originou.** Ela nasceu no passo 1 do `consult`, que mandava avaliar se a mensagem pertencia a um papel só; hoje mora no **passo 1 do `/sm agreement`**, que manda identificar **quais papéis a questão toca** — dois ou três, nunca os seis por precaução. O ganho é nos dois eixos: menos um `agents/<papel>.md` de carga fixa por papel não chamado, e — o que costuma pesar mais — menos uma rodada de **leitura de contexto de projeto** por subagente que deixa de ser disparado.
+
+**Sem número fechado, de propósito.** Dúvida que é só de evidência, levada direto ao `/qa`, custa 10 KB e uma leitura de contexto; a mesma dúvida no `/sm agreement` custa ~15 KB mais um `agents/` e um par de leituras **por papel chamado**. O delta exato **não é derivável da tabela acima**: a coluna por papel soma `commands/` + `agents/`, e o que o `agreement` acrescenta é só `agents/`. O que a tabela sustenta é a **ordem de grandeza**, e a ordem basta para a decisão — estimar o resto seria repetir o erro que a v3.2 corrigiu.
 
 **Gatilhos:**
 - *Medição* — em todo `/review` sem instrução (o papel já faz a reavaliação do conjunto ali; passa a anexar os dois números) e na retrospectiva de cada sprint (o SM mede o total do processo).

@@ -13,6 +13,48 @@
 
 ---
 
+## v3.4.0 — 2026-09-09
+
+**Branch:** `fix/v3.4.0` · **Base:** `main` (v3.3.0) · **PR** para `develop`.
+
+**PATCH de comportamento com uma regra de redação nova.** Carrega a entrada `v3.4` do [changelog do processo](roles/scrum-master/process/process-changelog.md). Nasceu de um defeito visto em campo, não de planejamento.
+
+### O defeito
+
+`/po status` numa instalação v3.3.0 entregava a leitura de produto e **em seguida se desautorizava**: dizia que status "é tipicamente papel do Scrum Master" e oferecia ao stakeholder um `/sm status` **extinto na própria v3.3**. O papel recusava o seu modo mais usado.
+
+A causa não era a instalação — plugin na versão certa, `.team-project/` correto. Era uma palavra: a célula "Não faz" da ficha do PO listava `status` **cru**, sem dizer qual status nem de quem era, contradizendo a célula "Responde por" da **mesma tabela**. Entre a linha que concede e a linha que proíbe, venceu a que proíbe.
+
+### A regra que saiu disso — `artifact-ownership.md` §1b
+
+Substantivo que nomeia **dois artefatos de donos diferentes** nunca entra cru numa lista de "Não faz" / "Proibido". Toda menção traz **qualificador + dono + verbo**. O verbo entrou depois, quando o caso do QA mostrou que dizer *qual* artefato ainda não basta: era preciso dizer se o vedado é **escrever** ou também **validar contra** — e validar contra é a frente 2 do papel.
+
+Por que essas listas e não qualquer menção: elas são lidas como a fronteira do papel e, na prática, **vencem a linha que concede o modo** — são mais curtas, estão mais perto do fim e costumam ser a última coisa que o agente lê antes de agir. Quando o prior do domínio empurra na mesma direção (*"status é do Scrum Master"*), a palavra crua não precisa convencer: basta não contradizer.
+
+### As cinco correções
+
+| Arquivo | Palavra crua | Modo que ela derrubava |
+|---|---|---|
+| `roles/product-owner/README.md` · `agents/product-owner.md` | `status` | `/po status` — **defeito confirmado em campo** |
+| `roles/quality-assurance/README.md` · `agents/quality-assurance.md` | `especificação` | frente 2 do QA, chamada "Especificação técnica" |
+| `roles/developer/README.md` · `agents/developer.md` | `documentação` | relatório de entrega e 🔺 GAP, as saídas obrigatórias do dev |
+
+Varredura completa das seis fichas e dos seis cards: SM, Arquiteto e UX estão limpos — o SM é o **controle positivo**, e é dele a forma que as outras copiaram.
+
+### Comando novo — `/team version`
+
+Versão instalada, o que ela trouxe, guia rápido de comandos e o que o time custa em contexto. Fica na família **meta** de `init` e `update` — fala da instalação, não do produto — e por isso não colide com a regra de que `/team` não é canal de conversa. **Não usa rede:** quem verifica se há versão nova continua sendo o `update`, e assim o `version` nunca afirma que a instalação está atualizada sem ter olhado a origem.
+
+### Tabela de custo do §5c remedida
+
+A remedição achou drift que ninguém tinha visto: `/sm` declarava 13 KB e pesa **15,1**; `/po` declarava 10 e pesa **13,0** — é o mandato que a v3.3 moveu entre os dois papéis e que ninguém remediu depois. Também `/team cycle` 28 → 26 e `/review` 14 → 15. Onde o delta não era derivável da própria tabela, ficou escrito que **não é** em vez de estimado.
+
+### Ressalva de processo, registrada e não normalizada
+
+O limite de sessão derrubou os três agentes de papel no meio da aplicação, e as fichas de PO, QA e dev foram corrigidas pela sessão principal, não pelos donos. O texto passa no critério do §1b, mas **não passou pelo papel dono**. Está escrito na entrada `v3.4` do changelog do processo, com o motivo: sem esse registro, quem lesse o diff veria três papéis "concordando" com uma correção que nenhum escreveu.
+
+---
+
 ## v3.3.0 — 2026-09-08
 
 **Branch:** `feat/v3.0.0` · **Base:** `main` (v2.9.0) · **PR** para `main`.

@@ -106,7 +106,7 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 /ux     prototype | journey <fluxo> | screen <H-ID> | prototype <tela> | review-ui <tela>
 /dev    <T-ID> | resume <T-ID> | gap <resposta do arquiteto>
 /qa     <T-ID> | baseline | audit | security <T-ID>
-/team   init | update | brainstorm <ideia> | cycle <T-ID> | plan <T-ID> | build <T-ID> | qa <T-ID>
+/team   init | update | version | brainstorm <ideia> | cycle <T-ID> | plan <T-ID> | build <T-ID> | qa <T-ID>
 /review <instrução> | note | metrics | audit | history            (só no repositório-fonte do plugin)
 ```
 
