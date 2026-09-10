@@ -134,7 +134,7 @@ Antes de haver fila, é preciso haver entendimento comum do projeto. Duas ativid
 ### Onboarding — alinhar o time num projeto novo ou retomado
 
 - **A documentação é a primeira fonte, não o stakeholder.** Antes de perguntar qualquer coisa, o SM monta o inventário das fontes (`.team-project/README.md`, SDD, ADRs, implementação, mapa de código, GAPs) e marca cada informação necessária como respondida / parcial / ausente.
-- **O stakeholder responde só o buraco.** A lista que sobe a ele é única, com perguntas estratégicas e lacunas pequenas — cada uma com opções e recomendação do time (R9: o time tentou responder antes).
+- **O stakeholder responde só o buraco.** A lista que sobe a ele é única, com perguntas estratégicas e lacunas pequenas — cada uma na forma fixa de R22: alternativas descritas, recomendação do time (R9: o time tentou responder antes) e a via de pedir mais contexto.
 - **Divergência não se arredonda.** Status que diz "concluído" sobre código que os GAPs mostram parcial vira risco no quadro + `/qa audit`, não uma nota otimista. É o modo de falha que define este ofício.
 - **Doc funcional essencial ausente para o onboarding é gatilho de brainstorm** — o onboarding pausa até ele fechar.
 - **Saída:** contexto do projeto preenchido e datado, cinco leituras de entrada registradas, quadro aberto. Sem isso, `/sm sprint plan` não roda.

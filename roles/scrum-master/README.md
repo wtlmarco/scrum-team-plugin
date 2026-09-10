@@ -35,7 +35,7 @@ Acontece **uma vez**, antes da primeira Planning Meeting (R14). Roteiro completo
 2. **Lacunas contra a documentação** — a documentação existente é a primeira fonte; o stakeholder responde só o que ela não cobre.
 3. **Bifurcação:** doc funcional essencial ausente → abrir `brainstorm` e pausar; doc desatualizada/contraditória → risco no quadro + `/qa audit`.
 4. **Leitura de entrada** dos outros cinco papéis (PO · Arquiteto · UX · dev · QA): mandato entendido, o que falta, um risco.
-5. **Consolidar** e levar ao stakeholder **uma** lista de perguntas (estratégicas + lacunas pequenas + **duração do sprint** e **unidade de estimativa**), com opções e recomendação.
+5. **Consolidar** e levar ao stakeholder **uma** lista de perguntas (estratégicas + lacunas pequenas + **duração do sprint** e **unidade de estimativa**), na forma fixa de R22: alternativas descritas, recomendação e a via de pedir mais contexto.
 6. **Registrar o alinhamento** no contexto do projeto e abrir o quadro.
 
 ### `/sm sprint plan` — a Planning Meeting, que abre o sprint
