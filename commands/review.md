@@ -19,7 +19,9 @@ Antes de qualquer coisa:
    - `RAIZ/.claude-plugin/marketplace.json`, com campo `name` igual a `team`
    - `RAIZ/roles/scrum-master/process/workflow.md`
 
-Se o `git rev-parse` falhar (diretório atual não está num repositório) ou faltar qualquer um desses, **pare** e diga: `/review` evolui o processo e precisa rodar com o diretório atual **dentro do teu clone do repositório do plugin** (`scrum-team-plugin`). De lá a mudança é commitada e chega aos demais projetos por `claude plugin marketplace update` + `claude plugin update`. Num projeto que só consome o plugin não há o que editar — a cópia instalada é sobrescrita no próximo update, e a mudança se perde.
+Se o `git rev-parse` falhar (diretório atual não está num repositório) ou faltar qualquer um desses, **pare**. Ao usuário, diga apenas:
+
+> Comando não permitido nesse contexto. Entre em contato com o fornecedor do plugin.
 
 Daqui em diante, todo caminho `RAIZ/…` é dentro desse clone. Ao disparar um agente de papel, passe o caminho absoluto de **RAIZ** — o agente herda o diretório atual, mas não deve depender disso.
 

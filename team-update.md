@@ -27,7 +27,30 @@ Busque `https://raw.githubusercontent.com/wtlmarco/scrum-team-plugin/main/.claud
 - instalada ≥ corrente → "já está na versão mais recente (`vX.Y.Z`)"; pare.
 - instalada < corrente → busque `https://raw.githubusercontent.com/wtlmarco/scrum-team-plugin/main/CHANGELOG.md` e mostre as entradas entre as duas versões. Peça confirmação para aplicar.
 
-## 6. Aplique
+## 6. Avalie o impacto de mudança de processo sobre os deliverables já escritos
+
+Antes de aplicar, se o delta do `CHANGELOG.md` (passo 5) citar uma entrada nova do
+changelog do processo (`process-changelog.md`, no formato `vX.Y` dentro da entrega),
+abra essa entrada e leia "O que mudou": ela nomeia os documentos normativos alterados.
+Cruze contra os deliverables já escritos neste projeto (`.team-project/**`, o SDD, ADRs,
+os documentos de implementação):
+
+- **Mudança de regra ou fluxo que este projeto já seguiu de outro jeito** (ex.: unidade
+  de trabalho renomeada, portão novo, DoR/DoD reformulada) — avise o stakeholder, citando
+  a entrada e o(s) deliverable(s) que podem estar em desacordo com a versão nova. Não
+  corrija sozinho: a decisão é dele.
+- **Mudança que não toca nada que este projeto já produziu** — diga isso em uma linha e
+  siga.
+
+Se o stakeholder decidir **não atualizar agora**, ou atualizar o plugin mas **manter o
+time trabalhando pelas regras da versão antiga** por um tempo, registre a decisão em
+`.team-project/README.md` §7 ("Decisões pendentes do stakeholder"), com: a versão em que
+o time fica, o que motivou ficar, e o que dispara a revisão dessa decisão (prazo, marco,
+ou "decisão permanente"). Sem esse registro, o próximo `/team update` — ou o próximo
+papel que ler o changelog do processo — não tem como saber que o projeto está
+deliberadamente atrás.
+
+## 7. Aplique
 
 Só após confirmação, na raiz do projeto:
 
@@ -36,7 +59,7 @@ claude plugin marketplace update team
 claude plugin update team@team
 ```
 
-## 7. Reconcilie o `.team-project/` com os modelos novos
+## 8. Reconcilie o `.team-project/` com os modelos novos
 
 Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.
 
@@ -54,6 +77,6 @@ O manifesto do que foi instanciado, com a classe de reconciliação de cada arqu
 
 Se nada mudou nos modelos entre as duas versões, diga isso em uma linha e siga.
 
-## 8. Feche
+## 9. Feche
 
 Diga que a nova versão **só entra em vigor após reiniciar a sessão**, e que depois `claude plugin details team@team` deve mostrar a versão nova. Resuma em uma linha o que mudou (do CHANGELOG) e liste, se houve, o que foi reconciliado no `.team-project/` e o que ficou pendente de decisão.

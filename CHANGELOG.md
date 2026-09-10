@@ -13,6 +13,29 @@
 
 ---
 
+## v3.6.0 — 2026-09-10
+
+**Branch:** `fix/v3.6.0` · **Base:** `main` (v3.4.0) · **PR** para `develop`.
+
+**MINOR de processo, sem defeito de produto.** Carrega as entradas [`v3.5`](roles/scrum-master/process/process-changelog.md) e [`v3.6`](roles/scrum-master/process/process-changelog.md) do changelog do processo, fechadas na mesma sessão de `/review note`. Nasceu de um sintoma de campo (README desatualizado após a `v3.4.0`) e, a partir dele, endereçou mais dois itens da fila.
+
+### O que entrou
+
+- **Gate de fechamento de entrega ganha uma terceira checagem.** R18 já conferia `plugin.json` == topo do `CHANGELOG.md`; agora também confere o banner "Versão atual" do `README.md`. É a régua que teria pego o próprio defeito que abriu esta entrega.
+- **Mensagem de bloqueio do `/review` fora do clone-fonte, simplificada.** Deixou de expor `git rev-parse`/`.claude-plugin/marketplace.json`; agora diz só "Comando não permitido nesse contexto. Entre em contato com o fornecedor do plugin." — decisão editorial do stakeholder, registrada com ressalva no changelog do processo (perde a indicação de onde rodar e o que fazer).
+- **`/team update` ganha um passo novo (6 de 9)** para avaliar se uma mudança de processo do plugin invalida deliverables já escritos num projeto, e onde registrar a decisão de manter uma versão antiga (`.team-project/README.md` §7).
+- **R22 — pergunta ao stakeholder ganha forma fixa.** Toda pergunta que qualquer papel escala ao stakeholder passa a trazer: por que bloqueia, cada alternativa descrita, recomendação do time (R9) e uma via fixa de pedir mais contexto antes de decidir.
+
+### Pendências abertas por esta entrega
+
+- Roteamento ao PO e ao Arquiteto: a convenção antiga ("até 3 opções e recomendação") ainda aparece em `roles/product-owner/README.md`, `roles/product-owner/templates/functional-analysis.md` e `roles/architect/README.md` — fora do alcance do SM, fica para o próximo `/review` de cada papel.
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.6.0`; o gate novo de R18, aplicado ao estado desta entrega, passa. Detalhe completo de diffs e evidência (R19) nas entradas `v3.5`/`v3.6` do changelog do processo.
+
+---
+
 ## v3.4.0 — 2026-09-09
 
 **Branch:** `fix/v3.4.0` · **Base:** `main` (v3.3.0) · **PR** para `develop`.
