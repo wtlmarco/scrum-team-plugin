@@ -13,6 +13,8 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.3`](process-changelog-archive.md) | O canal do stakeholder é o PO; o broadcast acaba; prazo, plano e status mudam de dono — 08/09/2026 |
+| [`v3.2`](process-changelog-archive.md) | A métrica de eficiência para de medir história fria; o `/review` sai do caminho quente — 08/09/2026 |
 | [`v3.1`](process-changelog-archive.md) | Protótipo funcional em HTML vira entregável e pré-condição do portão ①; o Sprint Backlog ganha o próprio nome — 08/09/2026 |
 | [`v3.0`](process-changelog-archive.md) | Redesenho do modelo de trabalho: História e Task, sprint como caixa de tempo, aceite na Sprint Review — 08/09/2026 |
 | [`v2.11`](process-changelog-archive.md) | Guias de raiz ganham dono; roteiro de instalação endurecido; R19 passa a exigir checagem semântica — 07/09/2026 |
@@ -37,6 +39,123 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.6 — Pergunta ao stakeholder ganha forma fixa: opções descritas, recomendação e a via de pedir mais contexto (R22) — 10/09/2026
+
+**Instrução:** *(stakeholder, via `/review note` — item único de `note.md`)* "Ao apresentar uma questão que necessita de resposta pelo stakeholder deve ser apresentada no modelo de questionamento com a interface de opções para escolha com a descrição o mais clara possível para entendimento e ao final adicionar uma opção do stakeholder pedir mais detalhes para a tomada de decisão."
+
+**Classificação:** regra nova (**R22**, Bloco C — Método, ligada a R9). O item chegou como solução pronta (formato de interface), não como sintoma; traduzido: R9 diz **para quem** escalar, mas nenhum normativo dizia **como** a pergunta chega ao stakeholder — "opções + recomendação" já vivia espalhada e informal em `workflow.md` (§5a, §6), sem forma verificável nem a via de pedir mais contexto.
+
+**Por que regra nova, e não extensão de R9.** R9 governa a **escalação em si** (quem escala para quem, e que quem recebe decide) — dev → Arquiteto, funcional → PO, estratégico → stakeholder. A instrução do item cobre só a **apresentação** do ramo que pousa no stakeholder, e esse ramo também nasce fora de R9 (onboarding R14 §5a, brainstorm R15 §5b, lacuna de especificação e exceção de padrão em §6). Sobrecarregar R9 misturaria "escalar" com "como formular" e não cobriria as origens que não são gap de dev. R22, **ligada a R9** (cita-a como parte da forma), cobre a fração comum a todas as origens: toda vez que a pergunta pousa no stakeholder.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `process/working-rules.md` | **R22 nova**, Bloco C | Pergunta em uma frase + por que bloqueia; alternativas **descritas**, não só nomeadas; recomendação do time (R9); alternativa fixa de **pedir mais contexto** — escolhê-la não é "não decidiu", é resposta válida |
+| | Resumo em uma tela · indicadores de retrospectiva | Linha R22 nas duas tabelas |
+| `process/workflow.md` | §5a passo 5 · §5a "O que o SM escala" | "opções · recomendação" → forma fixa de R22, com a via de mais contexto citada |
+| | §6, diagrama de escalação | `(3 opções + recomendação)` → `(opções descritas + recomendação + pedir mais contexto — R22)` — o "3" caía porque R22 não fixa quantidade, só forma |
+| | §6, texto após o diagrama | "vem com opções e recomendação" → "vem na forma fixa de R22" |
+| `roles/scrum-master/skills.md` §10 · `roles/scrum-master/README.md` (`/sm onboarding`) | onboarding | Mesma reescrita — as duas cópias do papel do SM citavam a convenção antiga e ficariam em forma divergente do normativo que acabaram de referenciar |
+
+### Por quê
+Sintoma por trás do pedido: R9 diz para quem escalar, não como a pergunta chega. "Opções + recomendação" já era prática registrada em quatro pontos de `workflow.md`, mas nenhum obrigava **descrever** cada alternativa nem previa a via de o stakeholder **pedir mais contexto** — a pergunta podia chegar como lista de rótulos, forçando-o a adivinhar a implicação de cada opção, ou a decidir sem munição e sem saída formal para pedir mais.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| **Todos os papéis** | Pergunta que escalam ao stakeholder (R9, onboarding, brainstorm, §6) traz alternativas descritas, recomendação e a via de pedir mais contexto — não mais texto livre |
+| **SM** | Verifica a forma na curadoria; devolve pergunta incompleta antes que chegue ao stakeholder |
+| **stakeholder** | Ganha via explícita e sem custo de pedir mais contexto antes de decidir |
+
+### Conflitos com o processo vigente
+Nenhum. Aditiva sobre uma convenção que já existia informalmente em `workflow.md` (§5a, §6); não contradiz regra vigente, formaliza o que já era prática e fecha a lacuna que ela deixava (descrição da alternativa + via de mais contexto).
+
+### Como saberemos que funcionou
+Nas próximas três perguntas escaladas ao stakeholder por qualquer via (R9, onboarding, brainstorm, §6): **zero** em texto corrido ou lista de rótulos sem descrição; **100%** com a via de pedir mais contexto presente. Uso real dessa via numa das três é o teste de que não é decorativa.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | leitura de cada ocorrência de "opções"/"recomendação" em `workflow.md`, `skills.md`, `roles/scrum-master/README.md` (checagem semântica, não só `grep`) | 6 ocorrências normativas do SM reescritas citando R22 (`workflow.md` §5a×2, §6×2; `skills.md` §10; `roles/scrum-master/README.md`) | ✅ |
+| Extração/relocação (pré-condição de R17 — teto de 3 quentes) | leitura do bloco `## v3.3` + addendum movido para `process-changelog-archive.md` linha a linha contra o texto removido de `process-changelog.md` | idêntico, 66 linhas de conteúdo (11–76 no arquivo); changelog vivo caiu a 2 entradas (v3.5, v3.4) antes de `v3.6` entrar | ✅ |
+| Checagem semântica | contagem de `^\| R\d+ \|` no "Resumo em uma tela" | **22** — R1–R22, sem buraco nem duplicata | ✅ |
+
+### Pendente do stakeholder
+- **Roteamento aberto (fora do meu alcance nesta sessão):** `roles/product-owner/README.md:16,89`, `roles/product-owner/templates/functional-analysis.md:38,46` e `roles/architect/README.md:48` seguem com "até 3 opções e recomendação" / "com recomendação", sem citar R22 nem a via de pedir mais contexto. São do PO e do Arquiteto — roteados a eles no `/review` seguinte.
+- **Fecho da entrega:** carrega a entrada `v3.6` — sai como `vX.6.0` (R18).
+- **Reiniciar a sessão** — não é necessária: nenhum `agents/`/`commands/` mudou nesta entrada; R22 é normativo lido sob demanda, não carga fixa de agente.
+- `note.md`: item único da fila **consumido**.
+
+---
+
+## v3.5 — Três reforços de coerência: o banner do README no gate de fechamento, a mensagem de bloqueio do `/review` e a avaliação de impacto de processo no `/team update` — 10/09/2026
+
+**Instrução (Item 1):** *(stakeholder, via `/review note` — Item 1 de `note.md`)* "Depois de uma entrega (`v3.4.0`), o README continuou anunciando a versão anterior (`v3.3.0`) — só o `CHANGELOG.md` e o `plugin.json` tinham sido atualizados. Nenhuma rotina de revisão/QA confere se o número de versão anunciado no README bate com o do `CHANGELOG.md`/`plugin.json` antes de fechar a entrega."
+
+**Instrução (Item 2):** *(stakeholder, via `/review note` — Item 2 de `note.md`)* aprovada e aplicada **no texto exato proposto pelo SM**: `/team update` passa a avaliar, antes de aplicar, se a entrada nova do changelog do processo desacorda de algo que os deliverables já escritos seguiram de outro jeito; decisão de ficar numa versão antiga vai para `.team-project/README.md` §7.
+
+**Classificação:** regra (R18 ganha uma terceira checagem, no mesmo padrão que já aplica às outras duas) + fluxo (o ciclo de uma entrega de `workflow.md` §5d ganha um passo, a curadoria do SM em §5d/§8 ganha a mesma checagem, e `team-update.md` ganha um passo novo antes de aplicar a atualização, com renumeração dos passos seguintes).
+
+### O que mudou
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `process/working-rules.md` | R18, corpo | O trio de requisitos de uma entrega ganha o banner "Versão atual" do `README.md`; **evita** passa de dois para três modos de falha, nomeando o defeito de campo da `v3.4.0`; **SM verifica** ganha a igualdade `plugin.json` == topo do `CHANGELOG.md` == banner do `README.md` |
+| | indicador de retrospectiva (R18) | A linha de violação ganha a condição "banner ≠ `plugin.json`/`CHANGELOG.md`", e a fonte ganha `README.md` |
+| `process/workflow.md` | §5d, "Ciclo de uma entrega" | **Passo 5 novo** — atualizar o banner do `README.md` — inserido entre o bump de `version` (4) e a entrada do `CHANGELOG.md` (6, era 5); passo 7 (era 6) renumerado |
+| | §5d, "O que o SM reconcilia" | Bullet novo: banner do `README.md` == `plugin.json` == topo do `CHANGELOG.md` |
+| | §8, gate de entrega | A linha do gate de merge em `main` passa a nomear os três artefatos, não dois |
+| `process/artifact-ownership.md` | matriz, linha `CHANGELOG.md` | A mesma igualdade de três pontas, para a linha ficar coerente com `workflow.md` §5d (reavaliação do conjunto — coerência interna) |
+| `commands/review.md` | Pré-condição — só no clone do repositório-fonte | *(Item 3 de `note.md`, aplicado pelo stakeholder — `commands/` é domínio dele, não do SM, `review-contract.md`)* A mensagem de bloqueio (clone errado ou marcador ausente) perde a explicação de onde rodar `/review` e o que fazer; vira só *"Comando não permitido nesse contexto. Entre em contato com o fornecedor do plugin."* — texto mais curto que a proposta original do SM |
+| `team-update.md` | **passo 6 novo** — "Avalie o impacto de mudança de processo sobre os deliverables já escritos" | *(Item 2, aplicado no texto exato do SM)* Entre "Compare (semver)" (5) e "Aplique" (era 6); cruza a entrada nova do changelog do processo contra `.team-project/**`/SDD/ADRs, avisa sem corrigir sozinho; decisão de ficar em versão antiga vai a `.team-project/README.md` §7. Renumerado: 6→7 "Aplique", 7→8 "Reconcilie", 8→9 "Feche" |
+| `commands/team.md` · `process/workflow.md` §5d | ponteiro de contagem | `workflow.md:295` dizia "os oito passos" — **corrigido pelo SM (curadoria)** para "os nove passos"; `commands/team.md:22` já dizia "nove… passo 8", coerente |
+
+### Por quê
+
+R18 já obrigava `plugin.json` e `CHANGELOG.md` a baterem entre si no fechamento de uma entrega, e o SM verificava essa igualdade. O `README.md` carrega o mesmo número, no mesmo tipo de banner, e **não estava na lista** — nada no gate de fechamento olhava para ele. Na `v3.4.0`, só `plugin.json` e `CHANGELOG.md` foram tocados no fechamento; o README ficou anunciando `v3.3.0`, e nenhuma rotina pegou. A régua nova fecha o mesmo buraco que R18 já fechava para os outros dois, sem criar checagem nova de espécie — só estende a existente a um terceiro arquivo com o mesmo número.
+
+### Quem passa a ser cobrado de forma diferente
+
+| Papel | O que muda para ele |
+|---|---|
+| **SM** | Ao fechar/verificar uma entrega, cruza três arquivos, não dois: `plugin.json`, `CHANGELOG.md` e o banner do `README.md` |
+| **stakeholder** | O ciclo de uma entrega (§5d) ganha um passo explícito (5) entre o bump de `version` e a entrada do `CHANGELOG.md` |
+| **quem opera `/review` fora do clone-fonte** | Recebe uma mensagem de bloqueio mais curta — sem indicação de onde rodar o comando nem do que fazer, só que não é permitido e para contatar o fornecedor do plugin |
+| **quem roda `/team update`** | Ganha um passo a mais antes de "Aplique": conferir se a entrega desacorda de algo que o projeto já escreveu |
+
+### Conflitos com o processo vigente
+
+Para a checagem do banner (Item 1): nenhum. A checagem é aditiva — estende o mesmo padrão de igualdade que R18 já aplicava a `plugin.json`/`CHANGELOG.md` a um terceiro arquivo, sem alterar o que já existia nem introduzir uma regra nova de espécie diferente.
+
+Para a mensagem curta em `commands/review.md` (Item 3): **ressalva, não bloqueio.** O SM havia proposto um texto mais longo, dizendo onde rodar `/review` e o que fazer; o stakeholder escolheu a frase curta acima, que não diz nenhuma das duas coisas. Não há, em `working-rules.md`/`workflow.md`, um padrão vigente de UX de erro que essa escolha contradiga — não é uma regra de trabalho do time, é o teor de uma mensagem num arquivo que é do stakeholder (`commands/`). Fica registrado como decisão editorial dele, no domínio dele, sem correção do SM.
+
+Para o passo novo em `team-update.md` (Item 2): nenhum — só lê e avisa, não decide nem corrige sozinho; renumeração conferida em `commands/team.md` e `workflow.md` §5d.
+
+### Como saberemos que funcionou
+
+Zero ocorrências, nas próximas entregas, de `README.md` anunciando versão diferente de `plugin.json`/topo do `CHANGELOG.md` no fechamento. A `v3.4.0` é o defeito de campo que abriu esta entrada; a entrega que carrega esta mudança de processo (`vX.5.0`) é a primeira em que o SM confere as três pontas antes de considerar o fechamento válido.
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição/extensão de padrão | `Select-String -Pattern 'Versão atual'` em `working-rules.md`, `workflow.md`, `artifact-ownership.md` | 7 ocorrências: 3 em `working-rules.md` (R18 corpo, "SM verifica", indicador), 3 em `workflow.md` (§5d passo 5, "O que o SM reconcilia", gate §8), 1 em `artifact-ownership.md` (matriz) — todas lidas no contexto, coerentes com o que está ao lado | ✅ |
+| **Checagem semântica — o gate hoje** | leitura de `README.md` linha 3, `.claude-plugin/plugin.json` campo `version`, topo de `CHANGELOG.md` | `v3.4.0` nos três — a régua nova, aplicada ao estado atual do repositório, **passaria** | ✅ |
+| Arquivamento (pré-condição de R17 — teto de 3 entradas quentes) | `Compare-Object` do bloco `## v3.2` movido para `process-changelog-archive.md` × `git show HEAD:` do original | **76 × 76 linhas, 0 diferenças** fora do separador; índice de arquivadas ganhou a linha `v3.2` | ✅ |
+| Teto de leitura | `Select-String -Pattern '^## v'` no changelog quente, após a mudança | 3 entradas: v3.5, v3.4, v3.3 | ✅ |
+| Checagem semântica — Item 3 aplicado | leitura de `commands/review.md`, seção "Pré-condição", linhas 22-24 | Texto confere com o aplicado pelo stakeholder: *"pare. Ao usuário, diga apenas: Comando não permitido nesse contexto. Entre em contato com o fornecedor do plugin."* — sem instrução de onde rodar `/review` nem do que fazer, ao contrário da proposta original do SM | ✅ |
+| Checagem semântica + numeração — Item 2 | leitura de `team-update.md` linha a linha; contagem dos cabeçalhos `## N.` | Passo 6 idêntico à proposta do SM; **1–9 sem buraco nem duplicata** | ✅ |
+| Substituição/extensão de padrão | `Select-String 'oito passos\|nove passos'` em `commands/team.md`, `workflow.md` | `commands/team.md:22` já "nove… passo 8"; `workflow.md:295` "oito"→"nove", corrigido nesta entrada | ✅ |
+
+### Pendente do stakeholder
+
+- **Fecho da entrega:** carrega a entrada `v3.5` do changelog do processo — sai como `vX.5.0` (R18).
+- **Reiniciar a sessão** — passa a ser **necessária**: `commands/review.md` mudou nesta entrada (Item 3, aplicado pelo stakeholder). Mudança de comportamento de comando só entra em vigor depois de reiniciar (fecho do `/review`, `review.md` §4).
+- **Item 2 de `note.md`** — **aplicado** pelo stakeholder em `team-update.md`, no texto exato proposto pelo SM, sem ressalva de conteúdo (ao contrário do Item 3). Sai de pendente.
+- **Item 3 de `note.md`** — **aplicado** pelo stakeholder em `commands/review.md`, com texto mais curto do que a proposta original do SM. Ver a linha nova na tabela "O que mudou" e a ressalva em "Conflitos com o processo vigente".
 
 ---
 
@@ -112,149 +231,4 @@ Zero ocorrências, nas próximas três versões, de papel recusando modo própri
 - **Reiniciar a sessão** — `agents/product-owner.md` e `agents/quality-assurance.md` mudaram, e comportamento de agente só entra em vigor depois.
 - **Entrega:** esta versão de processo ainda não chegou a instalação nenhuma. `git commit` + `push` + `claude plugin marketplace update team` + `claude plugin update team@team` (R18). O sintoma de campo que abriu a v3.4 **continua vivo na instalação do cliente** até esse passo.
 
----
-
-## v3.3 — O canal do stakeholder é o PO; o broadcast acaba; prazo, plano e status mudam de dono — 08/09/2026
-
-**Instrução:** *(stakeholder, direta)* "podemos remover o comando `/team <mensagem>` pois eu como stakeholder devo me relacionar com o PO prioritariamente pois ele controla as minhas demandas, mas posso levar questões ao Arquiteto ou UX diretamente. O SM como mantenedor do processo tem como responsabilidade o PDCA do processo… Um acerto é o prazo, ele também é definido pelo PO e não o SM, o PO recebe as estimativas das tarefas do time mas como o representante do Produto ele detém o plano de entrega. O SM é processo, organização e eficiência. No caso do `/team agreement` podemos direcionar o comando ao PO que deverá orquestrar os envolvidos." Mais três decisões por questionário: **árbitro pelo tipo do achado** para o degrau 2 do QA · **SM mantém os rituais**, e prazo/status/planejamento vão ao PO · o acordo vira **`/sm agreement`**, não broadcast.
-
-**Classificação:** escopo de papel (governança: quem fala com quem, e quem detém prazo, plano e status) + comportamento de agente (dois modos removidos, dois criados) + fluxo (§6 escalação, §6a e §6b novas, §5e Planning) + propriedade de artefato (plano de entrega e status executivo ganham dono) + formato de documento (modelo de status muda de papel e de unidade).
-
-**Uma proposta foi aceita com correção.** O stakeholder propôs que o **PO orquestrasse o acordo**. Isso foi apontado como conflito e a proposta virou **`/sm agreement`**: o achado que atravessa papéis é, com frequência, *"o requisito está errado ou a implementação está?"* — e nessa pergunta **o PO é parte**. Fazê-lo conduzir o julgamento do próprio artefato contraria o princípio que já sustenta a frente 2 do QA (§4a: *um autor não audita a própria omissão*) e a regra de que o dev não revisa os próprios normativos. **Quem facilita é o SM, porque não é dono de requisito, desenho nem evidência.** O stakeholder acatou.
-
-### O que mudou
-
-| Documento | Onde | O quê |
-|---|---|---|
-| `commands/team.md` | modos | **`consult` removido** — não há mais broadcast. Sem termo reconhecido, `/team` **roteia sem disparar agente**: demanda ao PO, técnica ao Arquiteto, tela ao UX, questão que atravessa a `/sm agreement`, ideia sem cobertura a `brainstorm`. **`agreement` removido** daqui |
-| `commands/sm.md` · `agents/scrum-master.md` · `roles/scrum-master/README.md` | modos, mandato | **`agreement` criado** — facilitação, não broadcast: o SM identifica **quais papéis a questão toca** (2–3, nunca os seis), consolida uma recomendação e registra a divergência. **`status` removido** |
-| `commands/po.md` · `agents/product-owner.md` · `roles/product-owner/README.md` | modos, mandato | **`status` criado.** O PO passa a ser declarado **o canal do stakeholder** e dono de **prazo, plano de entrega e status** |
-| `templates/status.md` | `roles/scrum-master/` → **`roles/product-owner/`** | Muda de dono **e de unidade**: fala em **Histórias**, não em Tasks. "Entregue" é História **aceita na Review** (R21) — não Task fechada nem soma delas. Lê o Sprint Backlog do SM, não o edita |
-| `templates/product-backlog.md` | **seção nova** | **Plano de entrega** — que Histórias saem em que sprint, com soma estimada, capacidade do SM e compromisso externo. Seção do backlog, **não documento novo**, para não haver duas verdades sobre prazo |
-| `process/workflow.md` | **§6a nova** | *O canal do stakeholder é o PO.* Declara o que mudou de dono e por quê: **quem ordena o backlog por valor e é dono das Histórias é quem pode dizer quando o valor chega**. Ao SM fica a pergunta vizinha — **quanto cabe** |
-| | **§6b nova** | *Achado que atravessa papéis — o QA roteia pelo objeto.* Tabela de objeto → dono, a regra de que **quem recebe e não é dono devolve**, e o porquê de não haver orquestrador |
-| | §6 escalação | "dúvida de prioridade → SM" **vira** "prioridade, prazo, plano → PO" e "capacidade, fila, bloqueio → SM" |
-| | §5e Planning | **O SM facilita, o PO decide o conteúdo**: passa a 7 passos — o PO seleciona (2) e o PO corta no limite (6); o SM confere a DoR e **apresenta a conta** da capacidade (5). *"O SM não veta escopo por valor e o PO não altera a conta de capacidade"* |
-| | §5, §5c | Daily passa a `/po status`; "Consulta ao time" e "Acordo" viram uma linha só, `/sm agreement`; a tabela de custo por comando perde os dois broadcasts |
-| `process/artifact-ownership.md` | matriz, §3 | **Plano de entrega** e **status executivo** entram com dono PO; o Sprint Backlog ganha a fronteira explícita (*quanto cabe, não quando sai*); **4 conflitos novos**, entre eles "stakeholder quer saber prazo → é do PO" e "SM quer tirar História por baixo valor → valor é do PO" |
-| `roles/quality-assurance/README.md` | escada de falha | Degrau 2 **vira dois**: `2 · Outro dono` (o QA classifica pelo objeto e entrega) e `2b · Não consigo classificar` (raro — vai a `/sm agreement`) |
-| raiz e `.team-project/` | `README.md`, `how-to.md`, `project-context.md`, `replicate-in-new-project.md` | Superfície de comandos, seção "com quem o stakeholder fala", escada de falha e o bloco fixo §8 |
-
-**Modo de falha que evita:** duas cabeças respondendo *quando o valor chega*. O SM detinha "prazos" enquanto o PO ordenava o backlog por valor e era dono das Histórias — e o stakeholder tinha seis interlocutores para uma pergunta que tem um dono. Também mata a via mais cara do time: o broadcast que reunia seis papéis para uma pergunta que quase sempre tinha um só.
-
-**Quem passa a ser cobrado de forma diferente:** o **PO** (ganha prazo, plano de entrega e status, e passa a ser o canal); o **SM** (perde prazo e status, ganha a facilitação de acordo e a ênfase em rituais); o **QA** (roteia pelo objeto em vez de convocar o time); o **stakeholder** (fala com o PO, e com Arquiteto/UX quando quiser).
-
-**Indicador de sucesso:** nenhum pedido de prazo ou status respondido pelo SM; nenhum acordo facilitado que tenha chamado papel que a questão não tocava; nenhuma História no Sprint Backlog escolhida por outro que não o PO.
-
-### Evidência (R19)
-
-| Classe | Comando | Resultado |
-|---|---|---|
-| Arquivamento | `Compare-Object` do bloco `## v3.0` movido × `git show HEAD` | **67 × 67 linhas, diff = 0.** Índice de arquivadas ganhou a linha `v3.0` |
-| Renomeação | `git mv roles/scrum-master/templates/status.md → roles/product-owner/templates/status.md` | rename detectado pelo git; conteúdo reescrito para a unidade História |
-| Substituição de padrão | `/team <mensagem>` · `/team <questão>` · `/team agreement` · `/sm status` · `prazo é do SM` | **0 ocorrências** de cada, fora dos changelogs |
-| **Checagem semântica** | leitura de cada tabela de comando e de cada escada de falha | a tabela do `/team` em `how-to.md` usava `<ID>` e **não casou** com a substituição automática — pego na leitura, corrigido à mão. Idem a linha de estrutura `scrum-master/ processo, quadro, status` no `README.md` |
-| Ponteiros | varredura de todo `](….md)` relativo | **0 quebrados** *(1 falso positivo conhecido: link dentro do bloco gerado de `project-context.md`)* |
-| Encoding | decodificação UTF-8 estrita de todo `*.md` | **0 arquivos inválidos** |
-
-### Pendente do stakeholder
-
-- **Fecho da entrega:** passa a **`v3.3.0`** — carrega quatro entradas de processo (v3.0, v3.1, v3.2, v3.3).
-- **Reiniciar a sessão** — `agents/` e `commands/` mudaram.
-- ~~**`impact-analysis.md` continua no SM**~~ — **resolvida no addendum abaixo.**
-
-### Addendum — 08/09/2026 · a análise de impacto migra ao PO
-
-*(Anexado, não reescrito — R17. Resolve a pendência que esta mesma entrada declarou; não corrige nada acima.)*
-
-**Instrução:** *(stakeholder, direta)* "sim, migra também."
-
-**O que mudou:** `templates/impact-analysis.md` sai de `roles/scrum-master/` e vai para `roles/product-owner/` (`git mv`); **`/sm impact` vira `/po impact <mudança>`**. O objeto da análise é o **plano de entrega** — manter a análise no SM deixaria o dono do plano sem o instrumento que o altera.
-
-**A fronteira que não migrou.** O template passa a declarar **três insumos com dono explícito**, e o PO **consolida sem inventar nenhum**: quadro, capacidade e "o que sai para caber" vêm do **SM**; retrabalho, contrato e migration vêm do **Arquiteto**, porque **o PO não decide "como"**; risco e recomendação são dele. Regras novas: *"não invente insumo técnico — estimar retrabalho sem o Arquiteto é opinião com aparência de número"* e *"não recalcule capacidade — a conta é do SM"*.
-
-**Por que isto não contradiz o `/sm agreement` desta mesma entrada.** Lá o SM facilita porque há **disputa** e o PO seria **parte** (*"o requisito está errado ou a implementação está?"*). Aqui **não há disputa**: é a análise de uma mudança a um plano que é do PO. **Reunir insumo para informar a própria decisão não é arbitrar** — arbitrar é decidir entre duas partes, e o PO não está julgando ninguém. A distinção está escrita nos dois documentos, para que a próxima leitura não os veja como contraditórios.
-
-**R13 se divide, e continua coerente:** **nomear o instrumento é do SM** — método é o domínio dele, e ele **sinaliza o gatilho** de controle integrado de mudanças; **conduzir a mudança de baseline é do PO**, porque a baseline vive no plano de entrega. Refletido em `skills.md` §9, `working-rules.md` R13, `commands/{sm,po}.md` e nos dois roteiros.
-
-**Evidência (R19):** `git mv` detectado como rename; **`grep '/sm impact'` fora dos changelogs = 0**; a **leitura no contexto** pegou três ocorrências que a substituição de padrão não casaria — o título da seção no roteiro do SM, a linha da tabela de documentos dele e o texto de `skills.md` §9, todos reescritos à mão para a divisão insumo/instrumento. **Sem bump de versão:** a entrega segue `v3.3.0`, porque isto completa uma decisão já registrada, não abre uma nova.
-
----
-
-## v3.2 — A métrica de eficiência para de medir história fria; o `/review` sai do caminho quente — 08/09/2026
-
-**Instrução:** *(stakeholder, direta)* "faça uma revisão de processo geral e otimização sempre com o objetivo de otimizar o gasto com tokens e garantia de qualidade do processo e do produto desenvolvido pelo time."
-
-**Classificação:** formato de documento (extração de conteúdo frio do caminho quente) + regra (a métrica de §5c e os indicadores de retrospectiva mudam de definição). Nenhum fluxo, cerimônia, portão ou propriedade de artefato alterado — **a garantia de qualidade não foi tocada**, e a auditoria abaixo confirma que continua íntegra.
-
-### Medição — a fase Check do PDCA (§5c)
-
-| Papel | Carga fixa antes | Carga fixa depois | Δ |
-|---|---|---|---|
-| scrum-master | 13,5 KB | 12,7 KB | −6% |
-| product-owner | 10,4 KB | 10,0 KB | −4% |
-| architect | 10,9 KB | 9,8 KB | −10% |
-| user-experience | 11,2 KB | 10,7 KB | −4% |
-| developer | 7,4 KB | 6,9 KB | −7% |
-| quality-assurance | 10,2 KB | 9,6 KB | −6% |
-| **Total** | **63,6 KB** | **59,7 KB** | **−6%** |
-
-Custo de um broadcast `/team <mensagem>`: **69 KB** (os seis fixos + `commands/team.md`), antes de qualquer leitura de `.team-project/`. É a operação mais cara do time por uma ordem de grandeza.
-
-### O que mudou
-
-| Documento | Onde | O quê |
-|---|---|---|
-| `agents/{scrum-master,product-owner,architect,user-experience,quality-assurance}.md` | seção final | A seção "Evolução dos seus documentos" **era duplicação literal** de `review-contract.md` §"Alcance por papel" — inclusive os "cuidados do Arquiteto sobre `standards/`", quase palavra por palavra. Reduzida a **um parágrafo** que aponta para o contrato e preserva a única regra que precisa ser lida antes dele: *escreva na RAIZ, nunca em `${CLAUDE_PLUGIN_ROOT}`*. **−1,9 KB de caminho quente, zero informação perdida** |
-| `commands/{po,arc,qa,ux,dev,sm}.md` | seção final | O parágrafo "Evolução dos documentos do X — não é aqui" repetia o que o `review-contract.md` já diz. Comprimido a **uma linha de roteamento** (`/X review …` → `/review …`), que é a única parte usada em tempo de invocação. As instruções operacionais ("ao receber o veredito/relatório…") foram **preservadas na íntegra** |
-| `process/workflow.md` | §5c, "Métrica por papel" | **Passa a ser dois números, nunca somados:** *carga fixa* (`agents/` + `commands/`, paga em toda invocação) e *conjunto sob demanda* (`roles/<papel>/`, **sem os changelogs**). Seção nova ordenando onde o corte rende mais, e o custo do broadcast declarado |
-| `process/working-rules.md` | indicadores | A linha única de footprint vira **duas**, alinhadas à métrica nova |
-| `templates/retrospective.md` | métricas | Idem: carga fixa e conjunto separados; o teto de entrada de changelog (R17) vira linha própria |
-| `review-contract.md` | `/review metrics` | O giro **Act** passa a exigir os dois números separados, e a preferir a remoção na carga fixa |
-
-**O defeito que a métrica tinha.** `roles/scrum-master/` mede **320,9 KB**, dos quais **159,4 KB (50%) são o changelog arquivado** — frio por construção (só lido em `/review history`) e **monotonicamente crescente por decisão do próprio processo**, já que R17 manda arquivar em vez de apagar. Contra ~30 KB dos outros papéis, o SM aparecia dez vezes mais pesado por causa de história que ninguém carrega. O giro **Act** apontaria sempre para o SM e nunca para o desperdício real, que estava nos 63,6 KB de carga fixa. **Métrica errada não deixa de corrigir — dirige o corte para o lugar errado**, e teria custado ao time um giro inteiro de PDCA cortando o documento errado.
-
-**Modo de falha que evita:** o ciclo de eficiência otimizar o que não custa e ignorar o que custa. É o análogo, para o processo, do que R7 evita no produto: decidir sem medir o que importa.
-
-**Quem passa a ser cobrado de forma diferente:** o **SM** (reporta dois números na retrospectiva, não um) e **todo papel** no `/review metrics`.
-
-**Indicador de sucesso:** a carga fixa total não volta a subir sem regra ou cerimônia nova que a justifique; o próximo `/review metrics` propõe remoção na carga fixa, não no conjunto sob demanda.
-
-### Auditoria de qualidade — o que foi verificado e está íntegro
-
-| Verificação | Resultado |
-|---|---|
-| Toda regra tem forma de verificação ("SM verifica") | **21/21** |
-| Contagem declarada × real de regras | 21 × 21, e 21 linhas no resumo |
-| Modelo órfão (template que ninguém referencia) | **0** |
-| Links `.md` quebrados | **0** *(1 falso positivo: link dentro do bloco markdown gerado de `project-context.md`)* |
-| Portões, gates, DoR/DoD, escada de falha, seis frentes do QA | **inalterados** — nenhum controle de qualidade foi removido nesta entrada |
-
-### Evidência (R19)
-
-| Classe | Comando | Resultado |
-|---|---|---|
-| Arquivamento | `Compare-Object` do bloco `## v2.11` movido × `git show HEAD` | **53 × 53 linhas, diff = 0.** Índice de arquivadas ganhou a linha `v2.11` |
-| Extração | tamanho de `agents/` + `commands/` antes e depois | 63,6 KB → 59,7 KB (−6%); por papel, na tabela acima |
-| **Integridade da extração** | `grep` de "Alcance por papel" e dos 5 papéis em `review-contract.md`; `grep` do roteamento `/X review` nos 6 comandos | contrato cobre **5/5** papéis e os cuidados de `standards/`; roteamento preservado em **6/6** comandos |
-| **Encoding** | contagem de mojibake (`Ã`, `â€`, `Â`) em `agents/` e `commands/` | **0.** Uma primeira tentativa da extração usou `Get-Content` (ANSI no PS 5.1) com `WriteAllLines` (UTF-8) e **corrompeu 5 arquivos por dupla codificação** — detectado porque os *bytes subiram enquanto as linhas caíam*; revertido com `git checkout` e refeito com `ReadAllText`/`WriteAllText` |
-| Auditoria | varredura de regras sem verificação, modelos órfãos, contagens e links | tabela acima |
-
-### Pendente do stakeholder
-
-- **Fecho da entrega:** a entrega passa a **`v3.2.0`** — carrega três entradas de processo (v3.0, v3.1, v3.2).
-- **Reiniciar a sessão** — `agents/*` e `commands/*` mudaram.
-- **Não aplicado, proposto:** o bloco fixo §8 do `.team-project/README.md` custa **2,6 KB lidos por todo papel em toda invocação**. Cortá-lo exige decidir o que o agente precisa saber de cor sobre a superfície de comandos — é a maior economia restante, e é sua a caneta sobre esse bloco.
-
-### Addendum — 08/09/2026 · correção do custo de broadcast
-
-*(Anexado, não reescrito — R17. A entrada acima fica como foi registrada.)*
-
-O número **"69 KB por broadcast"** registrado acima **está errado**. Ele somava os seis arquivos de `commands/` à carga do broadcast, e eles **não são carregados ali**: `commands/<x>.md` entra no **contexto principal** quando o stakeholder digita `/x`; `agents/<papel>.md` entra no contexto do **subagente**. Um broadcast carrega `commands/team.md` **uma vez** mais um `agents/<papel>.md` por subagente — nunca os seis arquivos de comando.
-
-**Valores corretos:** `/team <mensagem>` = **47,9 KB** · `/team agreement` = 55,1 KB · `/team brainstorm` = 36,6 KB · `/team cycle` = 27,6 KB. A ordem de grandeza e a conclusão não mudam — o broadcast continua sendo a operação mais cara —, mas o número estava 44% acima do real.
-
-**O que a correção acrescentou ao normativo:** `workflow.md` §5c passou a declarar **onde cada arquivo é carregado** (principal × subagente), a tabela de custo por comando, e as **três coisas que a carga fixa não mostra** e costumam dominar o custo real — o **modelo** de cada agente (`/arc` e `/ux` em Opus, `/dev` em Haiku: `/arc` carrega menos que `/sm` e custa mais), a **leitura em tempo de execução** (que costuma superar a carga fixa e é multiplicada pelo número de subagentes) e o **retorno das respostas** ao contexto principal na consolidação.
-
-**Como foi detectado:** o stakeholder perguntou quais são os comandos mais caros do time; a conta refeita papel a papel não fechou com o registrado. **Modo de falha que isto expõe:** medir sem declarar *onde* cada arquivo é carregado produz número plausível e errado — e a v3.2 é exatamente uma entrada sobre não confiar em métrica mal definida.
 

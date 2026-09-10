@@ -147,12 +147,12 @@ Acontece **uma vez**, quando o time recebe um projeto novo ou retoma um abandona
 | 2 | **Lista de lacunas contra a documentação** — para cada coisa que o time precisa saber para planejar (objetivo do produto, fase, stack, ambiente, fontes da verdade, capacidade, duração do sprint, unidade de estimativa, restrições, riscos abertos), marcar: respondido pelo doc X / parcial / ausente | SM, sozinho | Lista de lacunas com origem |
 | 3 | **Bifurcação** — (a) documentação funcional essencial **ausente** (sem visão geral, sem requisitos, sem fluxos) → abrir `brainstorm` (§5b) e **pausar** o onboarding até ele fechar; (b) documentação **desatualizada ou contraditória** (ex.: status diz "concluído", GAPs dizem o contrário) → registrar a divergência como risco no quadro e acionar `/qa audit`; o onboarding segue com a divergência declarada, não arredondada | SM | Decisão de rota registrada |
 | 4 | **Leitura de entrada do time** — cada um dos outros cinco papéis lê `.team-project/README.md` + o seu `context.md` e reporta, em ≤10 linhas: o que entendeu como seu mandato neste projeto, o que precisa e não está documentado, um risco que enxerga do seu ângulo | PO · Arquiteto · UX · dev · QA | Cinco leituras de entrada |
-| 5 | **Consolidação + perguntas ao stakeholder** — o SM funde as leituras num quadro único e produz **uma** lista de perguntas que só o stakeholder responde: estratégicas (provedor, alvo da retomada, ordem de prioridade), a **duração do sprint** e a **unidade de estimativa** se ainda não estiverem no contexto, e lacunas funcionais pequenas que a documentação não cobriu e que não justificam um brainstorm. Cada pergunta traz: por que bloqueia · opções · recomendação do time (R9 — o time tentou responder antes) | SM | Lista de decisões pendentes do stakeholder |
+| 5 | **Consolidação + perguntas ao stakeholder** — o SM funde as leituras num quadro único e produz **uma** lista de perguntas que só o stakeholder responde: estratégicas (provedor, alvo da retomada, ordem de prioridade), a **duração do sprint** e a **unidade de estimativa** se ainda não estiverem no contexto, e lacunas funcionais pequenas que a documentação não cobriu e que não justificam um brainstorm. Cada pergunta segue a forma fixa de R22: por que bloqueia · alternativas descritas · recomendação do time (R9 — o time tentou responder antes) · a via de pedir mais contexto | SM | Lista de decisões pendentes do stakeholder |
 | 6 | **Registro do alinhamento** — o SM escreve o entendimento comum no contexto do projeto (`.team-project/README.md` e os `context.md` recebem aporte de cada papel) e abre o quadro de trabalho | SM | Contexto do projeto preenchido e datado, quadro aberto |
 
 **O que o SM pergunta primeiro à documentação:** propósito e fase do produto (`00-overview`), requisitos e seus critérios de aceite (`01-requirements`), atores e fluxos (`02-flows`), princípios de arquitetura e vinculação de stack (`03-architecture`), contratos de dados e API (`04`/`05`), o que está construído e com que evidência (`02-status`, `03-code-map`, `pending`), ambiente e comandos de verificação, capacidade declarada, limitações conhecidas, riscos e bloqueios abertos.
 
-**O que o SM escala ao stakeholder** (só depois de esgotar a documentação e o time): decisões estratégicas (stack, provedor, custo, alvo da retomada, prioridade acima da ordem de dependência do SM), os dois parâmetros de cadência (duração do sprint, unidade de estimativa) e lacunas funcionais pequenas não respondíveis pela documentação — sempre com opções + recomendação.
+**O que o SM escala ao stakeholder** (só depois de esgotar a documentação e o time): decisões estratégicas (stack, provedor, custo, alvo da retomada, prioridade acima da ordem de dependência do SM), os dois parâmetros de cadência (duração do sprint, unidade de estimativa) e lacunas funcionais pequenas não respondíveis pela documentação — sempre na forma fixa de R22: opções descritas, recomendação e a via de pedir mais contexto.
 
 **Condição de saída — o onboarding está pronto quando:**
 - [ ] Toda linha do inventário de fontes está preenchida (existe / desatualizada / ausente), e toda "ausência de doc funcional essencial" foi produzida via brainstorm ou aceita como risco pelo stakeholder.
@@ -276,8 +276,9 @@ O **processo do time** (os documentos de `${CLAUDE_PLUGIN_ROOT}/`) evolui por `/
 2. As correções e melhorias da entrega — inclusive as aplicadas por `/review` — vão nessa branch, que acumula até o stakeholder sinalizar o fechamento da versão.
 3. **PR para `main`**, para aprovação do stakeholder.
 4. **Bump** de `version` em `.claude-plugin/plugin.json` para `vX.Y.Z`.
-5. **Entrada** no topo de `CHANGELOG.md`: o que foi entregue, a branch e como verificar.
-6. No merge, os clientes são avisados e atualizam com **`/team update`** (ou os comandos nativos `claude plugin marketplace update` + `claude plugin update`).
+5. **Banner** "Versão atual" no topo do `README.md` (raiz) atualizado para `vX.Y.Z` — mesma checagem que os passos 4 e 6 já pedem para `plugin.json` e `CHANGELOG.md`; é o passo que faltou no fechamento da `v3.4.0`, quando só `plugin.json` e `CHANGELOG.md` foram tocados e o README ficou anunciando `v3.3.0`.
+6. **Entrada** no topo de `CHANGELOG.md`: o que foi entregue, a branch e como verificar.
+7. No merge, os clientes são avisados e atualizam com **`/team update`** (ou os comandos nativos `claude plugin marketplace update` + `claude plugin update`).
 
 ### Regra de numeração
 - `MAJOR.MINOR` acompanham a versão do changelog do processo **quando a entrega inclui mudança de processo**: uma entrega que carrega uma entrada nova de `process-changelog.md` (`vX.Y`) é lançada como `vX.Y.0`. A colisão numérica entre os dois changelogs é intencional e sinaliza o par.
@@ -287,10 +288,11 @@ O **processo do time** (os documentos de `${CLAUDE_PLUGIN_ROOT}/`) evolui por `/
 ### O que o SM reconcilia (curadoria do `/review`)
 - Toda entrada nova de `process-changelog.md` tem entrada correspondente em `CHANGELOG.md` na mesma linha `vX.Y`, ou a divergência é registrada.
 - `version` de `.claude-plugin/plugin.json` == a versão da entrada do topo de `CHANGELOG.md`.
+- O banner "Versão atual" no topo do `README.md` (raiz) == `version` de `.claude-plugin/plugin.json` == a versão da entrada do topo de `CHANGELOG.md`.
 - Nenhuma entrada de `CHANGELOG.md` afirma "sem mudança de processo" quando a entrega, de fato, carrega uma.
 
 ### `/team update` — lado da instalação
-Roda **na cópia instalada**, nunca no repositório-fonte (guarda: recusa se `${CLAUDE_PLUGIN_ROOT}/.git/` existir). Compara a `version` instalada com a do `main` da origem canônica, mostra o delta do `CHANGELOG.md` e, após confirmação, aplica. **Depois disso, reconcilia o `.team-project/`** com os modelos da versão nova, conforme o manifesto de [`deliverables/team-project/README.md`](../../../deliverables/team-project/README.md) — porque atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` e nada do que o `init` instanciou, que derivaria em silêncio a cada versão. Reiniciar a sessão continua manual. Os oito passos estão em [`team-update.md`](../../../team-update.md), lido só nesse modo; `commands/team.md` só aponta para lá.
+Roda **na cópia instalada**, nunca no repositório-fonte (guarda: recusa se `${CLAUDE_PLUGIN_ROOT}/.git/` existir). Compara a `version` instalada com a do `main` da origem canônica, mostra o delta do `CHANGELOG.md` e, após confirmação, aplica. **Depois disso, reconcilia o `.team-project/`** com os modelos da versão nova, conforme o manifesto de [`deliverables/team-project/README.md`](../../../deliverables/team-project/README.md) — porque atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` e nada do que o `init` instanciou, que derivaria em silêncio a cada versão. Reiniciar a sessão continua manual. Os nove passos estão em [`team-update.md`](../../../team-update.md), lido só nesse modo; `commands/team.md` só aponta para lá.
 
 **O `update` nunca apaga conteúdo do projeto sem aprovação.** Cópia literal ele substitui avisando; estrutura com conteúdo local ele **propõe** o delta, arquivo por arquivo; conflito entre o que o time editou e o que o modelo mudou vai ao stakeholder ou vira pendência no quadro.
 
@@ -342,7 +344,7 @@ dúvida de regra/fluxo    ──▶ PO
 dúvida de tela/jornada   ──▶ UX
 prioridade, prazo, plano ──▶ PO               (detém o plano de entrega — §6a)
 capacidade, fila, bloqueio ─▶ SM              (quanto cabe, em que ordem)
-lacuna de especificação  ──▶ PO ──▶ stakeholder (3 opções + recomendação)
+lacuna de especificação  ──▶ PO ──▶ stakeholder (opções descritas + recomendação + pedir mais contexto — R22)
 decisão estratégica      ──▶ stakeholder       (stack, provedor, custo, risco aceito)
 exceção a um padrão      ──▶ stakeholder ──▶ ADR escrita pelo Arquiteto
 defeito em ${CLAUDE_PLUGIN_ROOT}/standards/ ──▶ Arquiteto (dev: 🔺 GAP · QA: achado de processo) ──▶ /review   (R16)
@@ -372,7 +374,7 @@ Não há orquestrador. O QA classifica o achado pelo **objeto da dúvida** e o e
 
 **Por que não há um orquestrador único:** o achado de degrau 2 é, com frequência, *"o requisito está errado ou a implementação está?"* — e o PO é **parte** nessa pergunta. Pedir a ele que conduza o julgamento do próprio artefato contraria o mesmo princípio que sustenta a frente 2 do QA (§4a: *um autor não audita a própria omissão*) e a regra de que o dev não revisa os próprios normativos. Quando é preciso reunir posições, quem facilita é o **SM**, que não é dono de requisito, desenho nem evidência.
 
-Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no papel correto (R9). **Exceções declaradas:** no `brainstorm` (§5b), no passo 5 do `onboarding` (§5a), na **aprovação do detalhamento da História** (portão ③) e na **Sprint Review** (portão ④) o stakeholder é participante — o diálogo direto ali é co-criação ou aceite, não escalação; o que sobe a ele mesmo assim vem com opções e recomendação.
+Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no papel correto (R9). **Exceções declaradas:** no `brainstorm` (§5b), no passo 5 do `onboarding` (§5a), na **aprovação do detalhamento da História** (portão ③) e na **Sprint Review** (portão ④) o stakeholder é participante — o diálogo direto ali é co-criação ou aceite, não escalação; o que sobe a ele mesmo assim vem na forma fixa de R22 — opções descritas, recomendação e a via de pedir mais contexto.
 
 **Quando a dúvida atravessa papéis**, use `/sm agreement <questão>`: o SM identifica **quais papéis a questão toca**, chama só esses, consolida **uma** recomendação e registra a divergência que sobrou. Não é broadcast — reunir os seis para uma questão de dois é desperdício (R3). **Acordo não transfere a decisão**: o dono do assunto continua decidindo no seu domínio, e o que sobra de divergência sobe ao stakeholder.
 
@@ -408,7 +410,7 @@ Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no pa
 | Documentação atualizada | fechamento da Task | QA | R12 |
 | Evidência registrada | fechamento da Task | QA/SM | R7 |
 | **④ Aceite funcional da História, na Sprint Review** | encerramento do sprint | PO | R21 · §5e |
-| Bump de `version` + entrada no `CHANGELOG.md` nomeando a branch | merge do PR em `main` | stakeholder (SM verifica) | R18 · §5d |
+| Bump de `version` + banner "Versão atual" do `README.md` + entrada no `CHANGELOG.md` nomeando a branch | merge do PR em `main` | stakeholder (SM verifica) | R18 · §5d |
 
 ## 9. Ambiente de verificação
 

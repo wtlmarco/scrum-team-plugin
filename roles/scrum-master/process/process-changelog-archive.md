@@ -8,6 +8,152 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.3 — O canal do stakeholder é o PO; o broadcast acaba; prazo, plano e status mudam de dono — 08/09/2026
+
+**Instrução:** *(stakeholder, direta)* "podemos remover o comando `/team <mensagem>` pois eu como stakeholder devo me relacionar com o PO prioritariamente pois ele controla as minhas demandas, mas posso levar questões ao Arquiteto ou UX diretamente. O SM como mantenedor do processo tem como responsabilidade o PDCA do processo… Um acerto é o prazo, ele também é definido pelo PO e não o SM, o PO recebe as estimativas das tarefas do time mas como o representante do Produto ele detém o plano de entrega. O SM é processo, organização e eficiência. No caso do `/team agreement` podemos direcionar o comando ao PO que deverá orquestrar os envolvidos." Mais três decisões por questionário: **árbitro pelo tipo do achado** para o degrau 2 do QA · **SM mantém os rituais**, e prazo/status/planejamento vão ao PO · o acordo vira **`/sm agreement`**, não broadcast.
+
+**Classificação:** escopo de papel (governança: quem fala com quem, e quem detém prazo, plano e status) + comportamento de agente (dois modos removidos, dois criados) + fluxo (§6 escalação, §6a e §6b novas, §5e Planning) + propriedade de artefato (plano de entrega e status executivo ganham dono) + formato de documento (modelo de status muda de papel e de unidade).
+
+**Uma proposta foi aceita com correção.** O stakeholder propôs que o **PO orquestrasse o acordo**. Isso foi apontado como conflito e a proposta virou **`/sm agreement`**: o achado que atravessa papéis é, com frequência, *"o requisito está errado ou a implementação está?"* — e nessa pergunta **o PO é parte**. Fazê-lo conduzir o julgamento do próprio artefato contraria o princípio que já sustenta a frente 2 do QA (§4a: *um autor não audita a própria omissão*) e a regra de que o dev não revisa os próprios normativos. **Quem facilita é o SM, porque não é dono de requisito, desenho nem evidência.** O stakeholder acatou.
+
+### O que mudou
+
+| Documento | Onde | O quê |
+|---|---|---|
+| `commands/team.md` | modos | **`consult` removido** — não há mais broadcast. Sem termo reconhecido, `/team` **roteia sem disparar agente**: demanda ao PO, técnica ao Arquiteto, tela ao UX, questão que atravessa a `/sm agreement`, ideia sem cobertura a `brainstorm`. **`agreement` removido** daqui |
+| `commands/sm.md` · `agents/scrum-master.md` · `roles/scrum-master/README.md` | modos, mandato | **`agreement` criado** — facilitação, não broadcast: o SM identifica **quais papéis a questão toca** (2–3, nunca os seis), consolida uma recomendação e registra a divergência. **`status` removido** |
+| `commands/po.md` · `agents/product-owner.md` · `roles/product-owner/README.md` | modos, mandato | **`status` criado.** O PO passa a ser declarado **o canal do stakeholder** e dono de **prazo, plano de entrega e status** |
+| `templates/status.md` | `roles/scrum-master/` → **`roles/product-owner/`** | Muda de dono **e de unidade**: fala em **Histórias**, não em Tasks. "Entregue" é História **aceita na Review** (R21) — não Task fechada nem soma delas. Lê o Sprint Backlog do SM, não o edita |
+| `templates/product-backlog.md` | **seção nova** | **Plano de entrega** — que Histórias saem em que sprint, com soma estimada, capacidade do SM e compromisso externo. Seção do backlog, **não documento novo**, para não haver duas verdades sobre prazo |
+| `process/workflow.md` | **§6a nova** | *O canal do stakeholder é o PO.* Declara o que mudou de dono e por quê: **quem ordena o backlog por valor e é dono das Histórias é quem pode dizer quando o valor chega**. Ao SM fica a pergunta vizinha — **quanto cabe** |
+| | **§6b nova** | *Achado que atravessa papéis — o QA roteia pelo objeto.* Tabela de objeto → dono, a regra de que **quem recebe e não é dono devolve**, e o porquê de não haver orquestrador |
+| | §6 escalação | "dúvida de prioridade → SM" **vira** "prioridade, prazo, plano → PO" e "capacidade, fila, bloqueio → SM" |
+| | §5e Planning | **O SM facilita, o PO decide o conteúdo**: passa a 7 passos — o PO seleciona (2) e o PO corta no limite (6); o SM confere a DoR e **apresenta a conta** da capacidade (5). *"O SM não veta escopo por valor e o PO não altera a conta de capacidade"* |
+| | §5, §5c | Daily passa a `/po status`; "Consulta ao time" e "Acordo" viram uma linha só, `/sm agreement`; a tabela de custo por comando perde os dois broadcasts |
+| `process/artifact-ownership.md` | matriz, §3 | **Plano de entrega** e **status executivo** entram com dono PO; o Sprint Backlog ganha a fronteira explícita (*quanto cabe, não quando sai*); **4 conflitos novos**, entre eles "stakeholder quer saber prazo → é do PO" e "SM quer tirar História por baixo valor → valor é do PO" |
+| `roles/quality-assurance/README.md` | escada de falha | Degrau 2 **vira dois**: `2 · Outro dono` (o QA classifica pelo objeto e entrega) e `2b · Não consigo classificar` (raro — vai a `/sm agreement`) |
+| raiz e `.team-project/` | `README.md`, `how-to.md`, `project-context.md`, `replicate-in-new-project.md` | Superfície de comandos, seção "com quem o stakeholder fala", escada de falha e o bloco fixo §8 |
+
+**Modo de falha que evita:** duas cabeças respondendo *quando o valor chega*. O SM detinha "prazos" enquanto o PO ordenava o backlog por valor e era dono das Histórias — e o stakeholder tinha seis interlocutores para uma pergunta que tem um dono. Também mata a via mais cara do time: o broadcast que reunia seis papéis para uma pergunta que quase sempre tinha um só.
+
+**Quem passa a ser cobrado de forma diferente:** o **PO** (ganha prazo, plano de entrega e status, e passa a ser o canal); o **SM** (perde prazo e status, ganha a facilitação de acordo e a ênfase em rituais); o **QA** (roteia pelo objeto em vez de convocar o time); o **stakeholder** (fala com o PO, e com Arquiteto/UX quando quiser).
+
+**Indicador de sucesso:** nenhum pedido de prazo ou status respondido pelo SM; nenhum acordo facilitado que tenha chamado papel que a questão não tocava; nenhuma História no Sprint Backlog escolhida por outro que não o PO.
+
+### Evidência (R19)
+
+| Classe | Comando | Resultado |
+|---|---|---|
+| Arquivamento | `Compare-Object` do bloco `## v3.0` movido × `git show HEAD` | **67 × 67 linhas, diff = 0.** Índice de arquivadas ganhou a linha `v3.0` |
+| Renomeação | `git mv roles/scrum-master/templates/status.md → roles/product-owner/templates/status.md` | rename detectado pelo git; conteúdo reescrito para a unidade História |
+| Substituição de padrão | `/team <mensagem>` · `/team <questão>` · `/team agreement` · `/sm status` · `prazo é do SM` | **0 ocorrências** de cada, fora dos changelogs |
+| **Checagem semântica** | leitura de cada tabela de comando e de cada escada de falha | a tabela do `/team` em `how-to.md` usava `<ID>` e **não casou** com a substituição automática — pego na leitura, corrigido à mão. Idem a linha de estrutura `scrum-master/ processo, quadro, status` no `README.md` |
+| Ponteiros | varredura de todo `](….md)` relativo | **0 quebrados** *(1 falso positivo conhecido: link dentro do bloco gerado de `project-context.md`)* |
+| Encoding | decodificação UTF-8 estrita de todo `*.md` | **0 arquivos inválidos** |
+
+### Pendente do stakeholder
+
+- **Fecho da entrega:** passa a **`v3.3.0`** — carrega quatro entradas de processo (v3.0, v3.1, v3.2, v3.3).
+- **Reiniciar a sessão** — `agents/` e `commands/` mudaram.
+- ~~**`impact-analysis.md` continua no SM**~~ — **resolvida no addendum abaixo.**
+
+### Addendum — 08/09/2026 · a análise de impacto migra ao PO
+
+*(Anexado, não reescrito — R17. Resolve a pendência que esta mesma entrada declarou; não corrige nada acima.)*
+
+**Instrução:** *(stakeholder, direta)* "sim, migra também."
+
+**O que mudou:** `templates/impact-analysis.md` sai de `roles/scrum-master/` e vai para `roles/product-owner/` (`git mv`); **`/sm impact` vira `/po impact <mudança>`**. O objeto da análise é o **plano de entrega** — manter a análise no SM deixaria o dono do plano sem o instrumento que o altera.
+
+**A fronteira que não migrou.** O template passa a declarar **três insumos com dono explícito**, e o PO **consolida sem inventar nenhum**: quadro, capacidade e "o que sai para caber" vêm do **SM**; retrabalho, contrato e migration vêm do **Arquiteto**, porque **o PO não decide "como"**; risco e recomendação são dele. Regras novas: *"não invente insumo técnico — estimar retrabalho sem o Arquiteto é opinião com aparência de número"* e *"não recalcule capacidade — a conta é do SM"*.
+
+**Por que isto não contradiz o `/sm agreement` desta mesma entrada.** Lá o SM facilita porque há **disputa** e o PO seria **parte** (*"o requisito está errado ou a implementação está?"*). Aqui **não há disputa**: é a análise de uma mudança a um plano que é do PO. **Reunir insumo para informar a própria decisão não é arbitrar** — arbitrar é decidir entre duas partes, e o PO não está julgando ninguém. A distinção está escrita nos dois documentos, para que a próxima leitura não os veja como contraditórios.
+
+**R13 se divide, e continua coerente:** **nomear o instrumento é do SM** — método é o domínio dele, e ele **sinaliza o gatilho** de controle integrado de mudanças; **conduzir a mudança de baseline é do PO**, porque a baseline vive no plano de entrega. Refletido em `skills.md` §9, `working-rules.md` R13, `commands/{sm,po}.md` e nos dois roteiros.
+
+**Evidência (R19):** `git mv` detectado como rename; **`grep '/sm impact'` fora dos changelogs = 0**; a **leitura no contexto** pegou três ocorrências que a substituição de padrão não casaria — o título da seção no roteiro do SM, a linha da tabela de documentos dele e o texto de `skills.md` §9, todos reescritos à mão para a divisão insumo/instrumento. **Sem bump de versão:** a entrega segue `v3.3.0`, porque isto completa uma decisão já registrada, não abre uma nova.
+
+---
+
+## v3.2 — A métrica de eficiência para de medir história fria; o `/review` sai do caminho quente — 08/09/2026
+
+**Instrução:** *(stakeholder, direta)* "faça uma revisão de processo geral e otimização sempre com o objetivo de otimizar o gasto com tokens e garantia de qualidade do processo e do produto desenvolvido pelo time."
+
+**Classificação:** formato de documento (extração de conteúdo frio do caminho quente) + regra (a métrica de §5c e os indicadores de retrospectiva mudam de definição). Nenhum fluxo, cerimônia, portão ou propriedade de artefato alterado — **a garantia de qualidade não foi tocada**, e a auditoria abaixo confirma que continua íntegra.
+
+### Medição — a fase Check do PDCA (§5c)
+
+| Papel | Carga fixa antes | Carga fixa depois | Δ |
+|---|---|---|---|
+| scrum-master | 13,5 KB | 12,7 KB | −6% |
+| product-owner | 10,4 KB | 10,0 KB | −4% |
+| architect | 10,9 KB | 9,8 KB | −10% |
+| user-experience | 11,2 KB | 10,7 KB | −4% |
+| developer | 7,4 KB | 6,9 KB | −7% |
+| quality-assurance | 10,2 KB | 9,6 KB | −6% |
+| **Total** | **63,6 KB** | **59,7 KB** | **−6%** |
+
+Custo de um broadcast `/team <mensagem>`: **69 KB** (os seis fixos + `commands/team.md`), antes de qualquer leitura de `.team-project/`. É a operação mais cara do time por uma ordem de grandeza.
+
+### O que mudou
+
+| Documento | Onde | O quê |
+|---|---|---|
+| `agents/{scrum-master,product-owner,architect,user-experience,quality-assurance}.md` | seção final | A seção "Evolução dos seus documentos" **era duplicação literal** de `review-contract.md` §"Alcance por papel" — inclusive os "cuidados do Arquiteto sobre `standards/`", quase palavra por palavra. Reduzida a **um parágrafo** que aponta para o contrato e preserva a única regra que precisa ser lida antes dele: *escreva na RAIZ, nunca em `${CLAUDE_PLUGIN_ROOT}`*. **−1,9 KB de caminho quente, zero informação perdida** |
+| `commands/{po,arc,qa,ux,dev,sm}.md` | seção final | O parágrafo "Evolução dos documentos do X — não é aqui" repetia o que o `review-contract.md` já diz. Comprimido a **uma linha de roteamento** (`/X review …` → `/review …`), que é a única parte usada em tempo de invocação. As instruções operacionais ("ao receber o veredito/relatório…") foram **preservadas na íntegra** |
+| `process/workflow.md` | §5c, "Métrica por papel" | **Passa a ser dois números, nunca somados:** *carga fixa* (`agents/` + `commands/`, paga em toda invocação) e *conjunto sob demanda* (`roles/<papel>/`, **sem os changelogs**). Seção nova ordenando onde o corte rende mais, e o custo do broadcast declarado |
+| `process/working-rules.md` | indicadores | A linha única de footprint vira **duas**, alinhadas à métrica nova |
+| `templates/retrospective.md` | métricas | Idem: carga fixa e conjunto separados; o teto de entrada de changelog (R17) vira linha própria |
+| `review-contract.md` | `/review metrics` | O giro **Act** passa a exigir os dois números separados, e a preferir a remoção na carga fixa |
+
+**O defeito que a métrica tinha.** `roles/scrum-master/` mede **320,9 KB**, dos quais **159,4 KB (50%) são o changelog arquivado** — frio por construção (só lido em `/review history`) e **monotonicamente crescente por decisão do próprio processo**, já que R17 manda arquivar em vez de apagar. Contra ~30 KB dos outros papéis, o SM aparecia dez vezes mais pesado por causa de história que ninguém carrega. O giro **Act** apontaria sempre para o SM e nunca para o desperdício real, que estava nos 63,6 KB de carga fixa. **Métrica errada não deixa de corrigir — dirige o corte para o lugar errado**, e teria custado ao time um giro inteiro de PDCA cortando o documento errado.
+
+**Modo de falha que evita:** o ciclo de eficiência otimizar o que não custa e ignorar o que custa. É o análogo, para o processo, do que R7 evita no produto: decidir sem medir o que importa.
+
+**Quem passa a ser cobrado de forma diferente:** o **SM** (reporta dois números na retrospectiva, não um) e **todo papel** no `/review metrics`.
+
+**Indicador de sucesso:** a carga fixa total não volta a subir sem regra ou cerimônia nova que a justifique; o próximo `/review metrics` propõe remoção na carga fixa, não no conjunto sob demanda.
+
+### Auditoria de qualidade — o que foi verificado e está íntegro
+
+| Verificação | Resultado |
+|---|---|
+| Toda regra tem forma de verificação ("SM verifica") | **21/21** |
+| Contagem declarada × real de regras | 21 × 21, e 21 linhas no resumo |
+| Modelo órfão (template que ninguém referencia) | **0** |
+| Links `.md` quebrados | **0** *(1 falso positivo: link dentro do bloco markdown gerado de `project-context.md`)* |
+| Portões, gates, DoR/DoD, escada de falha, seis frentes do QA | **inalterados** — nenhum controle de qualidade foi removido nesta entrada |
+
+### Evidência (R19)
+
+| Classe | Comando | Resultado |
+|---|---|---|
+| Arquivamento | `Compare-Object` do bloco `## v2.11` movido × `git show HEAD` | **53 × 53 linhas, diff = 0.** Índice de arquivadas ganhou a linha `v2.11` |
+| Extração | tamanho de `agents/` + `commands/` antes e depois | 63,6 KB → 59,7 KB (−6%); por papel, na tabela acima |
+| **Integridade da extração** | `grep` de "Alcance por papel" e dos 5 papéis em `review-contract.md`; `grep` do roteamento `/X review` nos 6 comandos | contrato cobre **5/5** papéis e os cuidados de `standards/`; roteamento preservado em **6/6** comandos |
+| **Encoding** | contagem de mojibake (`Ã`, `â€`, `Â`) em `agents/` e `commands/` | **0.** Uma primeira tentativa da extração usou `Get-Content` (ANSI no PS 5.1) com `WriteAllLines` (UTF-8) e **corrompeu 5 arquivos por dupla codificação** — detectado porque os *bytes subiram enquanto as linhas caíam*; revertido com `git checkout` e refeito com `ReadAllText`/`WriteAllText` |
+| Auditoria | varredura de regras sem verificação, modelos órfãos, contagens e links | tabela acima |
+
+### Pendente do stakeholder
+
+- **Fecho da entrega:** a entrega passa a **`v3.2.0`** — carrega três entradas de processo (v3.0, v3.1, v3.2).
+- **Reiniciar a sessão** — `agents/*` e `commands/*` mudaram.
+- **Não aplicado, proposto:** o bloco fixo §8 do `.team-project/README.md` custa **2,6 KB lidos por todo papel em toda invocação**. Cortá-lo exige decidir o que o agente precisa saber de cor sobre a superfície de comandos — é a maior economia restante, e é sua a caneta sobre esse bloco.
+
+### Addendum — 08/09/2026 · correção do custo de broadcast
+
+*(Anexado, não reescrito — R17. A entrada acima fica como foi registrada.)*
+
+O número **"69 KB por broadcast"** registrado acima **está errado**. Ele somava os seis arquivos de `commands/` à carga do broadcast, e eles **não são carregados ali**: `commands/<x>.md` entra no **contexto principal** quando o stakeholder digita `/x`; `agents/<papel>.md` entra no contexto do **subagente**. Um broadcast carrega `commands/team.md` **uma vez** mais um `agents/<papel>.md` por subagente — nunca os seis arquivos de comando.
+
+**Valores corretos:** `/team <mensagem>` = **47,9 KB** · `/team agreement` = 55,1 KB · `/team brainstorm` = 36,6 KB · `/team cycle` = 27,6 KB. A ordem de grandeza e a conclusão não mudam — o broadcast continua sendo a operação mais cara —, mas o número estava 44% acima do real.
+
+**O que a correção acrescentou ao normativo:** `workflow.md` §5c passou a declarar **onde cada arquivo é carregado** (principal × subagente), a tabela de custo por comando, e as **três coisas que a carga fixa não mostra** e costumam dominar o custo real — o **modelo** de cada agente (`/arc` e `/ux` em Opus, `/dev` em Haiku: `/arc` carrega menos que `/sm` e custa mais), a **leitura em tempo de execução** (que costuma superar a carga fixa e é multiplicada pelo número de subagentes) e o **retorno das respostas** ao contexto principal na consolidação.
+
+**Como foi detectado:** o stakeholder perguntou quais são os comandos mais caros do time; a conta refeita papel a papel não fechou com o registrado. **Modo de falha que isto expõe:** medir sem declarar *onde* cada arquivo é carregado produz número plausível e errado — e a v3.2 é exatamente uma entrada sobre não confiar em métrica mal definida.
+
+---
+
 ## v3.1 — Protótipo funcional em HTML vira entregável e pré-condição do portão ①; o Sprint Backlog ganha o próprio nome — 08/09/2026
 
 **Instrução:** *(stakeholder, direta)* "nos documentos do team-project está faltando o SprintBacklog; a elaboração do protótipo funcional em html também é entregável e requisito antes de aprovar a sdd funcional."
