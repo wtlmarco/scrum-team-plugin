@@ -13,6 +13,33 @@
 
 ---
 
+## v3.10.0 — 2026-09-12
+
+**Branch:** `fix/v3.10.0` · **Base:** `main` (v3.6.0) · **PR** para `develop`.
+
+**MINOR de processo, sem defeito de produto.** Carrega as entradas [`v3.7`](roles/scrum-master/process/process-changelog-archive.md), [`v3.8`](roles/scrum-master/process/process-changelog-archive.md), [`v3.9`](roles/scrum-master/process/process-changelog.md) e [`v3.10`](roles/scrum-master/process/process-changelog.md) do changelog do processo, fechadas na mesma sessão de `/review note` a partir de um relato de campo: sessão real de uso intensivo do plugin que bateu o limite de taxa da conta Anthropic repetidas vezes (`feedback-plugin-team-consumo-sessao.md`, não versionado). A entrada [`v3.11`](roles/scrum-master/process/process-changelog.md) da mesma sessão **não** tem par aqui — é o registro de uma proposta avaliada e descartada (delegar tarefa simples de PO/SM/UX/QA ao dev em Haiku), sem mudança de nenhum documento de processo; divergência registrada conforme R18.
+
+### O que entrou
+
+- **Releitura incremental entre invocações do mesmo papel (R3 estendida).** Reinvocar o mesmo papel sobre o mesmo tópico agora relê só o delta desde a última leitura, não o documento inteiro.
+- **Checkpoint de progresso em verificação pesada (R5 estendida).** Spike do Arquiteto e harness completo do UX salvam resultado parcial em disco a cada etapa — um corte de sessão não descarta mais o trabalho já produzido.
+- **Modo "leve" de verificação (R23, nova).** Primeira entrega de uma Task paga verificação plena; follow-up pequeno pode reduzir o **escopo** verificado, nunca a evidência real nem os portões de qualidade. Arquiteto e UX definem, cada um no próprio `skills.md`, o que conta como "leve".
+- **Limite de paralelismo pesado na orquestração** (`workflow.md` §7): evitar disparar 3+ papéis pesados simultâneos fora de fluxo que já prevê isso por desenho — o paralelismo intencional do `/team brainstorm` foi mantido como está.
+- **Spike do Arquiteto para de travar sem relatar.** Chamada externa de spike agora exige timeout curto e backoff limitado no código; etapa que esgota tentativas fecha como "inconclusiva por causa externa" em vez de travar 600s em silêncio (`agents/architect.md`, `commands/arc.md`, `roles/architect/skills.md` §11–§13).
+- **Verificação do protótipo citada no comando `/ux prototype`**, não só no roteiro do UX — exercitar com o escopo certo (R23) e gravar o parcial a cada tela (R5).
+- **Retomada nativa entre invocações do mesmo papel.** `/po`, `/arc`, `/ux`, `/qa` e `/sm` agora checam, antes de abrir uma instância nova do Agent, se já existe uma thread recente do mesmo papel na sessão sobre a mesma Task/tema — e a retomam em vez de reconstruir o contexto do zero.
+- **Duas correções de coerência de referência cruzada**: contagem de regras do README/`agents/scrum-master.md` (21→23) e a linha do UX em `review-contract.md`, que não citava `deliverables/prototype/` como PO e QA já citam os próprios entregáveis.
+
+### Pendências abertas por esta entrega
+
+Nenhuma — as duas propostas que ficaram pendentes ao fechar `v3.8`/`v3.9` (texto para `commands/ux.md` e para `agents/architect.md`/`commands/arc.md`) foram aplicadas nesta mesma entrega, a pedido explícito do stakeholder (`v3.10` do changelog do processo).
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.10.0`. Detalhe completo de diffs e evidência (R19) nas entradas `v3.7`–`v3.11` do changelog do processo (as duas primeiras já arquivadas, por teto de leitura — R17).
+
+---
+
 ## v3.6.0 — 2026-09-10
 
 **Branch:** `fix/v3.6.0` · **Base:** `main` (v3.4.0) · **PR** para `develop`.

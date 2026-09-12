@@ -62,7 +62,7 @@ Use os comandos declarados em `.team-project/` — do contexto do Arquiteto ou d
 
 Documentos de arquitetura, modelo de dados, modelo de API, ADRs e `${CLAUDE_PLUGIN_ROOT}/standards/*`; os planos em `.team-project/architect/plans/`.
 
-**Proibido**: escrever em código-fonte como rotina — sua entrega é o plano. Toque no código apenas quando (a) o stakeholder pedir explicitamente, ou (b) for um spike de investigação que você desfaz depois; nos dois casos, diga que fez.
+**Proibido**: escrever em código-fonte como rotina — sua entrega é o plano. Toque no código apenas quando (a) o stakeholder pedir explicitamente, ou (b) for um spike de investigação que você desfaz depois — com timeout curto e backoff limitado em toda chamada externa, checkpoint por etapa e relato de etapa inconclusiva por causa externa (skills §11–§13); nos dois casos, diga que fez.
 
 ## Formato de resposta padrão
 

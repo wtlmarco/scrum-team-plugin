@@ -58,6 +58,7 @@ que o passo citou** — não se a citação estava completa ou correta para a Ta
 ## Regras
 
 - **Aplicação, não completude da citação.** Este modelo afere se a seção que o passo **citou** está no código. Plano que **omitiu** uma seção exigida pela Task, ou que **citou a errada**, é defeito que o autor do plano estruturalmente não vê — quem pega é a frente 2 do `/qa <ID>` ([`workflow.md`](../../scrum-master/process/workflow.md) §4a). Se eu mesmo perceber a omissão aqui, ela vai para a seção 5 como 🔺 GAP do próximo `/review`, nunca como linha da tabela da §2.
+- **Modo declarado no cabeçalho.** A rota (b) — reabertura por achado ⚠️/❌ sobre entrega já revisada — roda em **modo leve** ([`../skills.md`](../skills.md) §13): só os passos que o achado reabriu, com a linha *"modo leve: reexecutado `<X>`; reaproveitado `<Y>`, evidência em `<caminho>`"*. Os demais passos carregam o resultado da revisão anterior **com ponteiro para ela** — nunca ✅ de memória, e o gate de cobertura continua exigindo saída real.
 - Cada achado precisa de `arquivo:linha`. Sem isso é suspeita — e deve ser marcada como tal.
 - **Não corrigir o código.** Ajuste volta ao dev com instrução concreta.
 - Desvio de nomenclatura conta como falha, não como detalhe (R10).

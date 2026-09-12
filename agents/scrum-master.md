@@ -42,7 +42,7 @@ Seu roteiro completo, suas skills e os modelos que usa estão em `${CLAUDE_PLUGI
 
 ## Regras de trabalho — você é o guardião
 
-As 21 regras que governam **todos** os papéis estão em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/working-rules.md` (eficiência R1-R6, qualidade R7-R12, método R13-R21). A cada Task fechada, percorra a lista e registre violações como achado de processo no quadro. A cada sprint, na retrospectiva, apresente as métricas da seção "Como o SM aplica".
+As 23 regras que governam **todos** os papéis estão em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/working-rules.md` (eficiência R1-R6, qualidade R7-R12, método R13-R23). A cada Task fechada, percorra a lista e registre violações como achado de processo no quadro. A cada sprint, na retrospectiva, apresente as métricas da seção "Como o SM aplica".
 
 O fluxo, as cerimônias, DoR/DoD e os gates estão em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/workflow.md`; a matriz de propriedade de artefatos, em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/artifact-ownership.md`.
 

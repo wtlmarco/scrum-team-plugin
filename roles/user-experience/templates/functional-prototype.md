@@ -9,6 +9,7 @@
 .team-project/user-experience/prototype/
 ├── index.html          ← ponto de entrada único: índice dos fluxos + o que está fora
 ├── README.md           ← esta ficha, preenchida
+├── verification-log.md ← checkpoint da verificação: append-only, uma linha por tela/fluxo
 ├── flows/
 │   ├── <fluxo-1>.html
 │   └── <fluxo-2>.html
@@ -52,11 +53,32 @@ para o stakeholder não confundir escolha com decisão.>
 | Premissa | Se mudar, o que muda no protótipo |
 |---|---|
 
+## Registro de verificação (harness)
+**Modo desta rodada:** <completo | leve> · **Por quê:** <primeira entrega | mudança transversal
+| ajuste pontual em: <telas nomeadas>>
+**Rodadas leves consecutivas desde a última completa:** <n de 3>
+**Telas/fluxos executados nesta rodada:** <lista>
+**O restante está coberto pela verificação completa de:** <data> · protótipo v<n>
+**Checkpoint:** `verification-log.md` — <n> linhas · última em <data/hora>
+
 ## Registro do portão ①
 **Navegado pelo stakeholder em:** <data>
 **Divergências encontradas na navegação:** <lista, ou "nenhuma">
 **Situação:** <aprovado | aprovado com ajuste no SDD funcional | devolvido>
 ```
+
+## Checkpoint da verificação (`verification-log.md`)
+
+Gravado **a cada tela ou fluxo concluído**, durante a execução — não ao final. É o que faz uma sessão cortada no meio custar o que faltava, e não tudo de novo (R5 aplicada à verificação, [`../skills.md` §10](../skills.md)).
+
+```markdown
+# Verificação do protótipo — registro append-only
+| Data/hora | Protótipo | Rodada (modo) | Tela/fluxo | Critérios exercitados | Veredito | O que falhou |
+|---|---|---|---|---|---|---|
+| <aaaa-mm-dd hh:mm> | v<n> | <nº> (completo\|leve) | <tela/fluxo> | <critérios, nomeados> | ✅ \| ❌ | <ou "—"> |
+```
+
+**Nunca reescrever linha antiga.** Reexecução é linha nova. Na retomada, roda-se só o que **não tem linha** da versão corrente.
 
 ## Regras
 
@@ -68,6 +90,8 @@ para o stakeholder não confundir escolha com decisão.>
 - **Nada daqui vira produção.** Reaproveitar HTML de protótipo sem passar por plano é dívida técnica com origem nobre.
 - **É documento vivo enquanto a fatia não fecha** (R12): mudança funcional aprovada que altere fluxo principal atualiza o protótipo no mesmo ciclo. Entregue e aceita a fatia, ele é marcado **vencido** — a verdade passa a ser o produto.
 - **Fidelidade visual é secundária.** O ① aprova entendimento funcional. Discussão de identidade visual não bloqueia o portão; vira registro para o backlog.
+- **Verificação se grava enquanto acontece.** Uma linha no `verification-log.md` por tela/fluxo concluído, durante a execução. Interrupção retoma do checkpoint; o que tem linha da versão corrente não roda de novo.
+- **O escopo da verificação é declarado, não presumido (R23).** Primeira entrega e mudança transversal (paleta, tipografia, grade, componente compartilhado, navegação) exigem harness **completo**; ajuste pontual sobre protótipo já verificado roda **leve** — telas alteradas mais a vizinhança de um salto. Modo leve reduz o que é executado, nunca a execução real: tela do escopo sem saída é **não exercitada** (R7). Três rodadas leves seguidas esgotam o modo — a quarta é completa.
 
 ## Falhas comuns
 
@@ -78,3 +102,6 @@ para o stakeholder não confundir escolha com decisão.>
 | Protótipo que exige explicação para navegar | Não foi navegado — foi apresentado. São coisas diferentes |
 | Protótipo com back-end "só para funcionar direito" | Deixou de ser descartável; agora há custo em jogá-lo fora, e ele vira produção por inércia |
 | "Fora do escopo" só no `README.md`, não na página | Ninguém lê o README antes de navegar |
+| Verificação inteira gravada só no fim | A sessão cortada no meio descarta tudo, e a retomada refaz da primeira tela |
+| Modo leve numa mudança que toca todas as telas | Aprova-se o protótipo inteiro tendo exercitado duas telas — e a quebra aparece na navegação do stakeholder |
+| Modo leve sem declarar o que **não** rodou | O leitor da ficha entende "tudo verificado"; a lacuna some sem nunca ter sido decidida |

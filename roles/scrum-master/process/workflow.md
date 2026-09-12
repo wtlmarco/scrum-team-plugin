@@ -382,6 +382,7 @@ Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no pa
 
 1. **Uma Task em construção por dev** (R1). Com um único dev, o Sprint Backlog é fila, não board paralelo.
 2. **O paralelismo é entre papéis** — dev na Task *n*, Arquiteto planejando a *n+1*, PO detalhando a História do sprint seguinte.
+2a. **Paralelismo de papéis pesados tem limite, fora dos fluxos que já o preveem de propósito.** Quem orquestra evita disparar **três ou mais papéis pesados** (Arquiteto, UX, e qualquer outro que esteja fazendo verificação real custosa — harness completo, chamada real a API externa) **simultaneamente**, porque isso empilha picos de consumo de tokens/tempo na mesma janela e contribui para estourar o limite de taxa da conta. **Não revoga** o paralelismo já desenhado deliberadamente em fluxos como o `brainstorm` (§5b — fase 1 com PO+UX simultâneos, fase 2 com o Arquiteto entrando logo em seguida): esses continuam como estão. **Como o SM verifica:** nenhuma leva de disparo do orquestrador soma três ou mais `agents/<papel>.md` pesados simultâneos fora de um fluxo que já prevê esse paralelismo por desenho (`brainstorm`); ocorrência fora desses fluxos é achado de processo, roteado a quem orquestrou.
 3. **Task cabe em uma unidade de trabalho** (R2); acima disso, quebra em `<ID>a`/`<ID>b` — nunca estourando a fronteira da História.
 4. **Passos ordenados para manter o repositório íntegro** no maior número de pontos intermediários (R5).
 5. **Uma migration de banco por Task**; Tasks que compartilham migration viram uma Task só.

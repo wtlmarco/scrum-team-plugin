@@ -7,7 +7,7 @@ Aciona o **QA** do time — o último portão antes do PO.
 
 Pedido do stakeholder: **$ARGUMENTS**
 
-Use a ferramenta Agent com `subagent_type: "quality-assurance"` e `run_in_background: false`, passando ao agente:
+Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta sessão, um agente `quality-assurance` invocado há pouco sobre a mesma Task/tema; se existir, retome-o com SendMessage em vez de acionar o Agent de novo — evita reler documentos-fonte já lidos (R3). Só na ausência de um agente para retomar, use a ferramenta Agent com `subagent_type: "quality-assurance"` e `run_in_background: false`, passando ao agente:
 
 1. O pedido acima, literal.
 2. A instrução de ler antes de validar: `.team-project/README.md`, `.team-project/quality-assurance/context.md` (comandos, limiares, checklist de segurança, limitações do ambiente), o plano em `.team-project/architect/plans/<ID>-*.md` (se existir), o relatório de entrega do dev, o critério de aceite do PO e a Task no quadro do SM.
