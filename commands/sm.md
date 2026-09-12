@@ -7,7 +7,7 @@ Aciona o **Scrum Master** do time.
 
 Pedido do stakeholder: **$ARGUMENTS**
 
-Use a ferramenta Agent com `subagent_type: "scrum-master"` e `run_in_background: false`, passando ao agente:
+Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta sessão, um agente `scrum-master` invocado há pouco sobre a mesma Task/tema; se existir, retome-o com SendMessage em vez de acionar o Agent de novo — evita reler documentos-fonte já lidos (R3). Só na ausência de um agente para retomar, use a ferramenta Agent com `subagent_type: "scrum-master"` e `run_in_background: false`, passando ao agente:
 
 1. O pedido acima, literal.
 2. A instrução de ler antes de responder: `.team-project/README.md`, `.team-project/scrum-master/context.md` e `.team-project/scrum-master/sprint-backlog.md` — e, se o pedido envolver escopo aberto, o registro de GAPs indicado no contexto.

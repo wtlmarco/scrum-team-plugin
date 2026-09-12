@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.6.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.10.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `main`, via PR para aprovação. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -178,7 +178,7 @@ Nenhum atalho: o portão ① não abre sem o stakeholder **navegar** o protótip
 
 Geridas pelo SM, válidas para todos os papéis e para o stakeholder:
 
-- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 21 regras (eficiência R1-R6, qualidade R7-R12, método R13-R21), o que cada uma evita e como o SM verifica
+- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 23 regras (eficiência R1-R6, qualidade R7-R12, método R13-R23), o que cada uma evita e como o SM verifica
 - [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) — ciclo, cerimônias, DoR/DoD, gates, escalação
 - [`roles/scrum-master/process/artifact-ownership.md`](roles/scrum-master/process/artifact-ownership.md) — quem escreve o quê
 - [`roles/scrum-master/process/process-changelog.md`](roles/scrum-master/process/process-changelog.md) — como o processo chegou até aqui

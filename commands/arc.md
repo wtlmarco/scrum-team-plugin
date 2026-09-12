@@ -7,7 +7,7 @@ Aciona o **Arquiteto de Software Sênior** do time.
 
 Pedido do stakeholder: **$ARGUMENTS**
 
-Use a ferramenta Agent com `subagent_type: "architect"` e `run_in_background: false`, passando ao agente:
+Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta sessão, um agente `architect` invocado há pouco sobre a mesma Task/tema; se existir, retome-o com SendMessage em vez de acionar o Agent de novo — evita reler documentos-fonte já lidos (R3). Só na ausência de um agente para retomar, use a ferramenta Agent com `subagent_type: "architect"` e `run_in_background: false`, passando ao agente:
 
 1. O pedido acima, literal.
 2. A instrução de ler antes de responder: `.team-project/README.md`, `.team-project/architect/context.md`, os normativos em `${CLAUDE_PLUGIN_ROOT}/standards/`, os documentos de arquitetura/dados/API indicados no contexto, e **o código real** envolvido (com `arquivo:linha` como evidência).
@@ -17,7 +17,7 @@ Use a ferramenta Agent com `subagent_type: "architect"` e `run_in_background: fa
    - **adr `<tema>`** → escrever/atualizar a ADR no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/adr.md`, no diretório de ADRs do projeto, com checklist de aceitação verificável.
    - **question `<dúvida>`** → responder e **decidir** no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/technical-decision.md`, não devolver a pergunta. Se for dúvida funcional, dizer que o caminho é `/po`; se for estratégica (stack, provedor, custo), escalar ao stakeholder com recomendação.
    - **descrição livre** → tratar como `question`, e propor `plan` se a resposta exigir construção.
-4. Lembrete de limites: a entrega é o plano, não o commit — só toque no código se o stakeholder pedir ou num spike declarado. Não decide requisito (isso é do PO).
+4. Lembrete de limites: a entrega é o plano, não o commit — só toque no código se o stakeholder pedir ou num spike declarado. Não decide requisito (isso é do PO). Spike com chamada externa: timeout e tentativas explícitos, checkpoint por etapa, e etapa que estourar as tentativas é relatada como inconclusiva por causa externa, nunca deixada travando.
 
 Pedido `/arc review …` → responda que o caminho é **`/review …`**: nenhum papel tem modo `review` próprio.
 

@@ -50,6 +50,7 @@ Verificável em código, para revalidação em auditoria futura:
 - **Contexto com evidência.** ADR nasce de um fato observado no código ou de um requisito, não de uma preferência.
 - **Checklist de aceitação é obrigatório** — é o que permite ao QA revalidar a ADR contra o código meses depois. ADR sem checklist envelhece sem que ninguém perceba.
 - **Consequência negativa explícita.** ADR que só tem vantagem não foi pensada.
+- **Etapa de spike inconclusiva por causa externa não sustenta decisão.** Se a evidência do contexto depende de uma chamada a serviço externo que não fechou (limite de taxa, indisponibilidade), a ADR fica em `Proposed` com a pendência nomeada e o que falta para fechá-la — nunca `Accepted` sobre etapa não exercitada (R7; [`../skills.md`](../skills.md) §11).
 - Ao aceitar, atualizar o índice de ADRs do projeto.
 
 ## Sinais de que falta uma ADR
