@@ -159,3 +159,40 @@ Três regras transversais:
 | **Só especificação** | tudo em texto, quando a tela reaproveita padrão existente ponta a ponta | — |
 
 Subir de fidelidade antes de a estrutura estar acordada é o retrabalho mais comum do papel: discute-se cor quando o problema era ordem de leitura. **Protótipo, em qualquer nível, é exploração — nunca código de produção.**
+
+## 10. Verificar o protótipo sem pagar a verificação duas vezes
+
+O protótipo funcional não se declara pronto: ele é **exercitado**. A verificação executável — o *harness*: um script sem interface que abre cada tela, percorre cada caminho e confere cada critério, no runtime declarado no contexto do projeto — é a evidência de R7 no meu território. Ela é também a coisa mais cara que eu rodo. As duas disciplinas abaixo cortam o custo **do que é executado**, nunca o rigor do que é verificado.
+
+### Checkpoint: verificação interrompida não volta ao zero
+
+Harness completo de um protótipo inteiro é trabalho longo, e trabalho longo é interrompido — limite de sessão, corte de chamada, fim do dia. Sem registro, a retomada recomeça da primeira tela e joga fora tudo o que já tinha passado. É a R5 ("interrupção é estado, não perda") aplicada à verificação.
+
+**A disciplina:** a cada **tela ou fluxo concluído**, gravar o resultado parcial em disco — não ao final, não em memória. O registro vive em `.team-project/user-experience/prototype/verification-log.md` e é **append-only**: uma linha por tela/fluxo verificado, com a versão do protótipo, os critérios exercitados, o veredito e o que falhou.
+
+Na retomada: ler o registro, rodar **só o que ainda não tem linha** e continuar a mesma execução. Duas invalidações — quando o checkpoint deixa de valer e a verificação volta a ser completa:
+
+- **o protótipo mudou de versão** desde a linha gravada — o que passou passou sobre outro artefato;
+- **a linha não diz qual critério foi exercitado** — registro sem critério nomeado não é checkpoint, é lembrança.
+
+**Como se verifica:** o registro existe com linhas anteriores ao corte, e a retomada não repete tela que já tem linha da mesma versão. Verificação que terminou sem registro parcial é indistinguível de verificação afirmada — e vale o mesmo que ela.
+
+### Modo leve: reduzir o escopo executado, nunca a evidência
+
+**É a R23 no meu território** — a regra geral manda cada papel definir, no próprio `skills.md`, o que conta como "leve" para o seu tipo de verificação. Para o UX é isto: a primeira entrega de um protótipo paga o harness completo; um ajuste pontual sobre um protótipo **já verificado por um harness completo** não paga de novo o protótipo inteiro — paga o que a mudança alcança.
+
+| Situação | Escopo do harness |
+|---|---|
+| Primeira entrega do protótipo, ou fatia nova entrando nele | **Completo** — todas as telas, todos os fluxos, todos os critérios |
+| Ajuste pontual (tela isolada nova, rótulo, conteúdo, um passo de um fluxo) | **Leve** — as telas alteradas **mais a vizinhança de navegação de um salto**: de onde se chega nelas e para onde elas levam |
+| Mudança transversal (paleta, tipografia, grade, componente compartilhado, navegação persistente, estrutura de arquivos) | **Completo** — o alcance é todo o protótipo, ainda que o diff seja de uma linha |
+| Não dá para **nomear** as telas afetadas | **Completo** — alcance que não se consegue delimitar não é pontual |
+
+O que o modo leve **não** afrouxa:
+
+1. **Roda de verdade.** Leve reduz *quantas* telas o harness percorre; não troca execução por leitura do código nem por inspeção. Tela do escopo sem saída real é **não exercitada** (R7), não aprovada.
+2. **O que não rodou é declarado.** A ficha nomeia as telas executadas e aponta a verificação completa que cobre o restante (data e versão). Silêncio sobre o resto lê-se como "tudo verificado", e isso seria invenção.
+3. **Portão nenhum muda.** Nenhum gate do fluxo é pulado citando modo leve (R23): o ① continua exigindo o stakeholder **navegando** o protótipo, e o ③ continua exigindo os seis estados e os critérios de acessibilidade. Leve é sobre a minha verificação, não sobre a aprovação de ninguém.
+4. **Não se acumula.** Depois de **três** ajustes seguidos verificados em modo leve sobre a mesma versão base, o próximo passa a completo — deriva que entrou por soma de mudanças pequenas não aparece em nenhuma delas isolada.
+
+**Como se verifica:** o `verification-log.md` mostra, para cada rodada, o modo declarado, a justificativa de alcance e as telas executadas — e a contagem de rodadas leves consecutivas desde a última completa. Modo leve declarado com mudança transversal no diff, ou quarta rodada leve seguida, é reprovação de método.

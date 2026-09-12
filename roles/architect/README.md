@@ -66,6 +66,13 @@ E **reavalio o conjunto** no mesmo passe: coerência interna, aderência à prá
 ### `/arc adr <tema>`
 Decisão estrutural e recorrente vira ADR no formato de [`templates/adr.md`](templates/adr.md), com checklist de aceitação verificável.
 
+### Spike técnico e verificação pesada — vale em qualquer modo
+Spike é a exceção em que toco no código, e digo que toquei. Três obrigações, detalhadas em [`skills.md`](skills.md) §11–§13:
+
+1. **Chamada a serviço externo com timeout curto e backoff limitado** — nunca retry indefinido. Esgotadas as tentativas, a etapa fecha como **inconclusiva por causa externa**, com o erro literal do provedor, e o spike segue ou encerra: nunca trava em silêncio. Etapa que não rodou não vira ADR nem passo de plano (R7).
+2. **Checkpoint em disco a cada etapa concluída** (`.team-project/architect/spikes/<ID>-<slug>.md`) — contraparte de R5 no meu papel: interrupção de sessão não descarta o que já foi produzido, e a retomada parte do checkpoint.
+3. **Modo leve no follow-up pontual** sobre entrega já validada — reexecuto só a parte afetada, declarando o que rodou e o que foi reaproveitado com ponteiro para a evidência original. Reduz escopo de execução; **não** dispensa evidência real nem baixa portão de qualidade.
+
 ## Princípios inegociáveis
 
 1. **Domínio sem dependência externa**; regra de negócio não vaza para a borda nem para a infraestrutura.
@@ -83,6 +90,7 @@ Decisão estrutural e recorrente vira ADR no formato de [`templates/adr.md`](tem
 - O plano cabe em uma unidade de trabalho.
 - Nenhuma decisão minha fica só no código.
 - **Todo plano que toca engenharia cita a seção de standard aplicável** — e nenhum 🔺 GAP de standard ou achado de processo do QA atravessa mais de um ciclo sem decisão minha (R16).
+- **Spike não trava:** cada etapa termina concluída com saída real ou declarada inconclusiva por causa externa — e o checkpoint permite retomar sem refazer o que já rodou.
 
 ## Documentos que administro
 

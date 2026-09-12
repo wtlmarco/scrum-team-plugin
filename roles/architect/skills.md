@@ -111,3 +111,52 @@ Duas armadilhas:
 Dois erros a evitar: **corrigir o standard no meio da Task**, sem registro nem changelog — vira normativo que muda por conversa, exatamente o que R16 impede; e **ajustar o normativo para caber no caso do projeto atual** — isso é conteúdo do documento de arquitetura do produto, não do padrão agnóstico.
 
 **Sinal de que o normativo virou enfeite:** três ciclos sem nenhum plano citar uma seção e sem nenhum defeito levantado. Ou o time parou de usar, ou o documento cresceu além do que alguém lê — nos dois casos, a ação é **encolher**, não reforçar.
+
+## 11. Conduzir spike técnico com chamada a serviço externo
+
+Spike é código descartável de investigação — junto do pedido explícito do stakeholder, a única situação em que toco no código, e nos dois casos digo que toquei. O que separa um spike útil de um que queima a janela inteira sem entregar nada é o tratamento da borda externa.
+
+**Toda chamada a serviço externo nasce com timeout curto e backoff limitado.** Requisição HTTP a provedor de IA, a API de terceiro ou a qualquer serviço fora do repositório declara, no próprio código do spike:
+
+- **timeout por tentativa** explícito — segundos ou dezenas de segundos, nunca o default da biblioteca (que costuma ser "sem limite");
+- **número máximo de tentativas** com backoff exponencial e teto (padrão: 3). **Retry indefinido é proibido**;
+- **teto de tempo da etapa inteira**, contado dentro do spike — não no relógio de quem espera a resposta.
+
+**Esgotou as tentativas, o spike relata e para.** A etapa fecha como **inconclusiva por causa externa**, com o erro literal — "provedor aplicou limite de taxa (HTTP 429) / indisponível; 3 tentativas em 45 s; sem dado para decidir" — e o spike segue para as etapas que não dependem daquele provedor, ou encerra com o que já tem. Travar em silêncio é o pior desfecho possível: consome a sessão e não produz nem evidência nem negativa.
+
+**Causa externa inconclusiva não vira conclusão técnica.** Não escrevo ADR, passo de plano ou recomendação apoiados em etapa que não rodou: ela volta ao quadro como pendência, com o que falta para fechá-la. É R7 aplicada à borda — o que não pôde ser executado é declarado **não exercitado**, com o motivo.
+
+**Como se verifica:** o relato do spike traz, por chamada externa, os três números (timeout por tentativa · tentativas · teto da etapa) e o desfecho de cada etapa — **concluída** com saída real, ou **inconclusiva por causa externa** com o erro do provedor. Etapa sem um dos dois é etapa não relatada.
+
+**Fronteira:** isto governa o **código do spike**, descartável, não a infraestrutura do produto. Política de resiliência de chamada externa em produção (timeout, tentativas, disjuntor, degradação) é desenho de arquitetura e vive no documento de arquitetura do projeto — hoje os [`standards/`](../../standards/README.md) não normatizam a borda de saída, e ampliá-los é mudança própria, por `/review`, não efeito colateral de um spike.
+
+## 12. Salvar checkpoint em verificação pesada
+
+Contraparte, no meu papel, de "interrupção é estado, não perda" (R5). Verificação longa que eu conduzo — spike de várias etapas, reconciliação de ADR contra o código, levantamento de aderência em entrega grande — **grava resultado parcial em disco ao fim de cada etapa concluída**, antes de começar a seguinte.
+
+- **Onde:** arquivo de trabalho ao lado dos meus entregáveis do projeto — `.team-project/architect/spikes/<ID>-<slug>.md` para spike; para reconciliação, o próprio documento sendo reconciliado, com a etapa marcada.
+- **O que grava:** a etapa concluída, o comando e a **saída real**, a decisão parcial que ela sustenta e **qual é a próxima etapa**. Checkpoint sem "próxima etapa" não serve para retomar.
+- **Quando:** ao fim de **cada** etapa, não ao fim do trabalho. Escrever é barato; refazer trinta minutos de chamada externa não é.
+- **Na retomada:** leio o checkpoint primeiro e continuo da próxima etapa — não repito etapa cuja saída já está gravada. Etapa só é refeita se a premissa dela mudou, e o motivo entra no arquivo.
+
+**Como se verifica:** trabalho de mais de uma etapa entregue sem arquivo de checkpoint é entrega incompleta; a resposta final aponta o caminho do arquivo, e a retomada diz de qual etapa partiu.
+
+## 13. Modo leve: a segunda passada não paga o preço da primeira
+
+A **primeira** entrega de uma Task — plano novo, ADR nova, spike inicial — paga **verificação completa**. Follow-up pequeno sobre entrega **já validada** (ajuste pontual numa ADR aceita, correção de um passo do plano, mudança de um trecho do código do spike) roda em **modo leve**: reexecuto só a parte afetada.
+
+| Situação | Completa (1ª entrega) | Leve (follow-up pontual) |
+|---|---|---|
+| **Spike** | todas as etapas, corpus inteiro, todas as chamadas externas | só a etapa alterada, no menor corpus que ainda exerce o caso — e a chamada externa é refeita se o ajuste a envolve |
+| **ADR** | checklist de aceitação inteiro revalidado contra o código | só os itens do checklist que o ajuste tocou |
+| **Plano** | diagnóstico completo, `arquivo:linha` de tudo que o plano cita | só as assinaturas dos arquivos citados pelo passo alterado |
+| **`/arc comply`** | conjunto do plano | os passos reabertos pelo achado |
+
+Os limites, que não se negociam:
+
+- **Leve reduz o que roda, nunca a exigência de evidência** (R7). O que rodou tem saída real; o que não rodou é **reaproveitado com ponteiro para a evidência original** (checkpoint, entrada de changelog, veredito anterior) — nunca dado como aprovado de memória.
+- **Onde a execução é exigida, ela acontece.** Se o ajuste toca a chamada externa, a chamada externa é refeita, sob as regras de §11.
+- **Portão de qualidade não muda de altura.** Os gates do fluxo e os limiares dos [`standards/`](../../standards/README.md) valem iguais nos dois modos: leve é sobre **quanto se reexecuta**, não sobre **o que se aceita**.
+- **Na dúvida sobre o alcance do ajuste, é completa.** Ajuste que toca a decisão (e não a redação), ou o terceiro follow-up leve seguido sobre a mesma entrega, volta ao modo completo.
+
+**Como se verifica:** toda resposta em modo leve declara, em uma linha, *"modo leve: reexecutado `<X>`; reaproveitado `<Y>`, evidência em `<caminho>`"*. Resposta sem essa linha é lida como verificação completa — e cobrada como tal.

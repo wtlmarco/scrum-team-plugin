@@ -13,6 +13,11 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.8`](process-changelog-archive.md) | Harness do protótipo grava enquanto roda e mede o próprio escopo: checkpoint por tela e modo leve (UX) — 12/09/2026 |
+| [`v3.7`](process-changelog-archive.md) | Consumo de sessão em uso intensivo: leitura incremental, checkpoint de verificação pesada, limite de paralelismo e modo leve de verificação (parte geral, SM) — 12/09/2026 |
+| [`v3.6`](process-changelog-archive.md) | Pergunta ao stakeholder ganha forma fixa: opções descritas, recomendação e a via de pedir mais contexto (R22) — 10/09/2026 |
+| [`v3.5`](process-changelog-archive.md) | Três reforços de coerência: banner do README no gate de fechamento, mensagem de bloqueio do `/review` e avaliação de impacto no `/team update` — 10/09/2026 |
+| [`v3.4`](process-changelog-archive.md) | Substantivo homônimo em lista de proibição: a régua, as cinco correções e o fecho do `/review note` — 09/09/2026 |
 | [`v3.3`](process-changelog-archive.md) | O canal do stakeholder é o PO; o broadcast acaba; prazo, plano e status mudam de dono — 08/09/2026 |
 | [`v3.2`](process-changelog-archive.md) | A métrica de eficiência para de medir história fria; o `/review` sai do caminho quente — 08/09/2026 |
 | [`v3.1`](process-changelog-archive.md) | Protótipo funcional em HTML vira entregável e pré-condição do portão ①; o Sprint Backlog ganha o próprio nome — 08/09/2026 |
@@ -42,193 +47,152 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
-## v3.6 — Pergunta ao stakeholder ganha forma fixa: opções descritas, recomendação e a via de pedir mais contexto (R22) — 10/09/2026
+## v3.11 — Delegar tarefa simples de PO/SM/UX/QA ao dev (Haiku): proposta avaliada e descartada — 12/09/2026
 
-**Instrução:** *(stakeholder, via `/review note` — item único de `note.md`)* "Ao apresentar uma questão que necessita de resposta pelo stakeholder deve ser apresentada no modelo de questionamento com a interface de opções para escolha com a descrição o mais clara possível para entendimento e ao final adicionar uma opção do stakeholder pedir mais detalhes para a tomada de decisão."
+> Nenhum documento de processo mudou nesta entrada — é o registro de uma **decisão negativa**, para que a ideia não seja reproposta sem que quem a leia veja por que já foi avaliada e recusada.
 
-**Classificação:** regra nova (**R22**, Bloco C — Método, ligada a R9). O item chegou como solução pronta (formato de interface), não como sintoma; traduzido: R9 diz **para quem** escalar, mas nenhum normativo dizia **como** a pergunta chega ao stakeholder — "opções + recomendação" já vivia espalhada e informal em `workflow.md` (§5a, §6), sem forma verificável nem a via de pedir mais contexto.
+**Instrução:** *(stakeholder, via `/review note` — item único de `note.md`)* "Revisar o modelo para avaliar a adoção do seguinte padrão: quando os membros do time PO, SM, UX e QA (que usam modelos de maior custo) precisam realizar tarefas simples e repetitivas eles podem acionar o DEV que trabalha sobre o Modelo HAIKU desde que esteja bem instruído e, é claro que eles precisam revisar, e assim otimizar o custo da IA. É uma boa proposta?"
 
-**Por que regra nova, e não extensão de R9.** R9 governa a **escalação em si** (quem escala para quem, e que quem recebe decide) — dev → Arquiteto, funcional → PO, estratégico → stakeholder. A instrução do item cobre só a **apresentação** do ramo que pousa no stakeholder, e esse ramo também nasce fora de R9 (onboarding R14 §5a, brainstorm R15 §5b, lacuna de especificação e exceção de padrão em §6). Sobrecarregar R9 misturaria "escalar" com "como formular" e não cobriria as origens que não são gap de dev. R22, **ligada a R9** (cita-a como parte da forma), cobre a fração comum a todas as origens: toda vez que a pergunta pousa no stakeholder.
+**Classificação:** mecanismo operativo de `commands/dev.md`/`agents/developer.md` (**proposta ao stakeholder**, `review-contract.md`) mais possível exceção a **R8** e à matriz de propriedade de artefatos (normativo exclusivo do SM) — mista, e por isso triada e não aplicada por nenhum papel sozinho.
+
+### Análise (Agent scrum-master, triagem)
+
+1. **Conflito com o contrato vigente do dev.** `commands/dev.md`: "sem plano, o dev não codifica"; `agents/developer.md`, contrato item 1: "nunca preencha a lacuna por conta própria"; **R8**: "o dev não escreve uma linha sem Plano de Implementação do Arquiteto". Não existe hoje canal PO/SM/UX/QA → dev; o único fluxo é Arquiteto planeja → dev constrói.
+2. **O que seria "simples e repetitivo" nesses quatro papéis quase sempre é edição do próprio deliverable** (SDD, backlog, protótipo, registro de QA) — cada um com dono explícito na matriz de propriedade de artefatos (`artifact-ownership.md`), não código. Delegar ali ao dev romperia essa matriz, não só R8.
+3. **Revisão prevista não resolve a fronteira**: o dev estaria produzindo conteúdo dentro do domínio de decisão de outro papel; revisão sob a mesma pressão de custo que motivou a delegação tende a virar aprovação rasa, sem checklist de verificação nomeado.
+4. **O ganho de custo alegado já tem endereço**: R23 (modo leve de verificação, `v3.7`) e R3 (releitura incremental, `v3.7`) atacam o mesmo problema — trabalho repetitivo caro — sem abrir canal novo entre papéis; o ciclo de eficiência (`workflow.md` §5c, `/review metrics`) já busca uma remoção a cada 3 sprints.
+
+### Decisão do stakeholder
+
+Apresentadas duas posições — **(1)** não adotar, seguir pelos mecanismos já existentes (R23/R3/`/review metrics`); **(2)** adotar em versão restrita (lista fechada de subtarefas mecânicas, formato de instrução obrigatório escrito pelo papel dono, checklist de revisão nomeado — mudança coordenada em `commands/dev.md`, `agents/developer.md`, exceção a R8 e recorte na matriz de propriedade) — o stakeholder escolheu **(1): descartar a ideia**. Nenhum arquivo de processo foi alterado.
+
+### Por quê
+
+O custo de reabrir a fronteira do dev (mudar `agents/*`, abrir exceção em R8, recortar a matriz de propriedade) supera o ganho, dado que R23/R3/`/review metrics` já perseguem o mesmo objetivo sem tocar em quem decide o quê no time.
+
+### Conflitos com o processo vigente
+
+Identificado e não resolvido por nenhum papel sozinho — escalado ao stakeholder por tocar `agents/*`/`commands/*` e uma possível exceção a R8; decisão tomada acima.
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Checagem de fato | leitura de `commands/dev.md`, `agents/developer.md`, `working-rules.md` R8, `workflow.md` (diagrama de escalação) | confirma: dev só recebe instrução via Plano de Implementação do Arquiteto; nenhum canal PO/SM/UX/QA → dev existe hoje | ✅ |
+| Checagem de fato | `agents/*.md` — campo `model:` | `developer.md: haiku`; `architect.md`/`user-experience.md`: `opus`; `product-owner.md`/`scrum-master.md`/`quality-assurance.md`: `sonnet` | ✅ (confirma a premissa de custo da proposta, sem validar o mecanismo) |
+| Remoção do item da fila | `note.md`, seção "Abertas" | item removido; decisão vive só aqui | ✅ |
+
+### Pendente do stakeholder
+
+Nenhum. Decisão fechada; nada a propagar aos outros projetos (nenhum documento de processo, `agents/` ou `commands/` mudou).
+
+---
+
+## v3.10 — Pendentes de v3.8/v3.9 aplicados a pedido do stakeholder: timeout do Arquiteto, verificação do protótipo no comando e retomada nativa entre invocações — 12/09/2026
+
+> Fecho do `/review note` de `feedback-plugin-team-consumo-sessao.md`. Depois do resumo da rodada (v3.7 SM · v3.8 UX · v3.9 Arquiteto), o stakeholder respondeu **"Pode aplicar os pendentes"** — autorização explícita para tocar `agents/*` e `commands/*`, que normalmente ficam como proposta sem aplicar (`review-contract.md`). Quem aplicou foi o orquestrador do `/review note` (sessão principal), não um agente de papel — são arquivos de ninguém no `review-contract.md`.
+
+**Instrução:** aplicar as duas propostas de texto pronto deixadas em `v3.8` (`commands/ux.md`) e `v3.9` (`agents/architect.md`, `commands/arc.md`), e desenhar e aplicar o **Item 2** do relato original (`feedback-plugin-team-consumo-sessao.md`) — retomada nativa entre invocações do mesmo papel — que a triagem tinha deixado como proposta **sem texto pronto**, por não ter localização/mecanismo óbvio até este fecho.
+
+**Classificação:** comportamento de agente/comando (`agents/architect.md`, `commands/{arc,ux,po,qa,sm}.md`) — aplicada por exceção, com autorização direta do stakeholder.
+
+### O que mudou
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `agents/architect.md` | "Arquivos que você pode escrever", proibição | Texto de `v3.9` aplicado verbatim: exceção de spike agora cita timeout curto, backoff limitado, checkpoint por etapa e relato de causa externa (skills §11–§13) |
+| `commands/arc.md` | item 4, lembrete de limites | Texto de `v3.9` aplicado verbatim: frase nova sobre timeout/tentativas explícitos e etapa inconclusiva por causa externa em spike |
+| `commands/ux.md` | modo `prototype` | Texto de `v3.8` aplicado verbatim: frase sobre exercitar com verificação executável no escopo (R23) e gravar o parcial em `verification-log.md` (R5) |
+| `commands/po.md` · `commands/arc.md` · `commands/ux.md` · `commands/qa.md` · `commands/sm.md` | abertura da invocação do Agent | Passo novo: antes de abrir instância nova, checar com **ListAgents** se já existe, nesta sessão, um agente do mesmo papel invocado há pouco sobre a mesma Task/tema; se existir, retomar com **SendMessage** em vez de acionar o Agent de novo — implementa o Item 2 do relato (retomada nativa), citando R3 como motivo |
+
+`commands/dev.md` **não** foi tocado: seu modo `gap` já tinha o mecanismo equivalente ("se o agente anterior ainda estiver ativo, prefira continuar por SendMessage") desde antes desta rodada — não havia lacuna a fechar.
+
+### Por quê
+
+Duas das três pendências eram só texto esperando autorização (`v3.8`/`v3.9` já tinham a redação pronta). A terceira — retomada nativa — era o item do relato original com o maior potencial de economia (threads retomadas do Arquiteto somaram ~1,2M tokens no relato) e não tinha dono nem texto: nenhum papel tem alcance sobre `commands/`/`agents/` (`review-contract.md`), e a triagem corretamente não inventou um mecanismo sem esse alcance. Com a autorização do stakeholder, o mecanismo concreto é o que a própria orquestração desta sessão já usa: `ListAgents` para achar a thread, `SendMessage` para retomá-la.
+
+### Quem passa a ser cobrado de forma diferente
+
+| Papel | O que muda |
+|---|---|
+| **PO · Arquiteto · UX · QA · SM** | Reinvocado sobre a mesma Task pouco depois, é retomado por `SendMessage` em vez de reaberto do zero — quando há uma thread para retomar |
+| **Arquiteto** | A obrigação de timeout/checkpoint/modo leve em spike (skills §11–§13, de `v3.9`) agora também aparece na instrução do comando e no roteiro do agente, não só no `skills.md` |
+| **UX** | A obrigação de verificação executável no escopo (skills §10, de `v3.8`) agora também aparece na instrução do comando `/ux prototype` |
+
+### Conflitos com o processo vigente
+
+Nenhum. Duas partes são aplicação de proposta já registrada e sem objeção. A terceira (retomada nativa) é aditiva: não muda quando um papel é acionado, só evita reabrir do zero quando já existe thread recente do mesmo papel sobre o mesmo tema — o comportamento sem thread prévia (o caso comum) não muda.
+
+### Como saberemos que funcionou
+
+Na próxima Task com mais de uma invocação do mesmo papel em sequência próxima (ex.: `/arc question` seguido de `/arc plan` sobre a mesma dúvida): a segunda chamada cita a primeira em vez de reler tudo do zero. Próximo spike do Arquiteto acionado por `/arc`: reporta timeout/checkpoint desde a primeira etapa, sem precisar que o agente "lembre" disso sozinho.
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Extração/inserção | `git diff --stat -- agents/architect.md commands/arc.md commands/ux.md commands/po.md commands/qa.md commands/sm.md` | 7 arquivos alterados, cada um com 1–2 linhas adicionadas, nenhuma removida além da linha substituída pela versão estendida | ✅ |
+| Substituição de padrão | `Select-String -Path commands\{po,arc,ux,qa,sm}.md -Pattern 'ListAgents'` | 5 ocorrências, uma por arquivo, cada uma seguida do nome do `subagent_type` correto daquele comando | ✅ |
+| Checagem semântica | leitura de `agents/architect.md` e `commands/arc.md` após a edição, comparada ao texto proposto em `v3.9` | frase aplicada verbatim, sem edição no meio | ✅ |
+| Checagem semântica | leitura de `commands/ux.md` após a edição, comparada ao texto proposto em `v3.8` | frase aplicada verbatim, sem edição no meio | ✅ |
+| Verificação de ferramenta real | `ListAgents` e `SendMessage` conferidas como ferramentas disponíveis nesta sessão (não hipotéticas) | ambas presentes na lista de ferramentas | ✅ |
+
+### Pendente do stakeholder
+
+- **Reiniciar a sessão** para as mudanças de `agents/architect.md` e `commands/{arc,ux,po,qa,sm}.md` entrarem em vigor — mudança de comportamento de agente/comando, R-padrão já citado em `v3.7`/`v3.8`/`v3.9`.
+- Propagar aos demais projetos: `git commit` + `git push` + `claude plugin marketplace update team` + `claude plugin update team@team`.
+
+---
+
+## v3.9 — Spike do Arquiteto para de travar: timeout/backoff na borda externa, checkpoint por etapa e modo leve de verificação — 12/09/2026
+
+> **Entrada irmã da mesma rodada de `/review note`** (consumo de sessão em uso intensivo, `feedback-plugin-team-consumo-sessao.md`). A parte geral — extensão de R3/R5 e a **R23** nova (modo leve) — está em `working-rules.md`, registrada em **v3.7** (SM); a parte do **UX** está em **v3.8**. Esta é a parte do **Arquiteto**. Renumerada pela curadoria do SM (de `v3.7-arc`, sufixo usado para evitar colisão entre agentes concorrentes, para `v3.9`) — mesma curadoria que arquivou `v3.6` e `v3.5` para respeitar o teto de três entradas quentes (R17).
+
+**Instrução:** *(stakeholder, via `/review note`)* Item de `note.md` sobre estouro de limite de taxa da conta em sessão intensiva, detalhado em `feedback-plugin-team-consumo-sessao.md`. Três pontos roteados ao Arquiteto: **(A)** chamada externa de spike sem timeout/backoff explícito — um spike travou 600 s sem progresso e sem relatar; **(B)** verificação pesada sem checkpoint — duas chamadas cortadas por limite de sessão perderam 150–300 mil tokens de trabalho; **(C)** ausência de um modo mais barato para follow-up pequeno sobre entrega já validada.
+
+**Classificação:** competência de papel (skills do Arquiteto) + formato de documento (dois modelos). Não é regra de trabalho nova: a obrigação geral é do SM em `working-rules.md`; aqui fica a **tradução verificável** dela no papel que produz spike, ADR e revisão de aderência. Causa confirmada pelo stakeholder: **código do spike sem timeout/retry explícito**, não ambiente.
 
 ### O que mudou
 | Documento | Seção | Mudança |
 |---|---|---|
-| `process/working-rules.md` | **R22 nova**, Bloco C | Pergunta em uma frase + por que bloqueia; alternativas **descritas**, não só nomeadas; recomendação do time (R9); alternativa fixa de **pedir mais contexto** — escolhê-la não é "não decidiu", é resposta válida |
-| | Resumo em uma tela · indicadores de retrospectiva | Linha R22 nas duas tabelas |
-| `process/workflow.md` | §5a passo 5 · §5a "O que o SM escala" | "opções · recomendação" → forma fixa de R22, com a via de mais contexto citada |
-| | §6, diagrama de escalação | `(3 opções + recomendação)` → `(opções descritas + recomendação + pedir mais contexto — R22)` — o "3" caía porque R22 não fixa quantidade, só forma |
-| | §6, texto após o diagrama | "vem com opções e recomendação" → "vem na forma fixa de R22" |
-| `roles/scrum-master/skills.md` §10 · `roles/scrum-master/README.md` (`/sm onboarding`) | onboarding | Mesma reescrita — as duas cópias do papel do SM citavam a convenção antiga e ficariam em forma divergente do normativo que acabaram de referenciar |
+| `roles/architect/skills.md` | **§11 nova** — *Conduzir spike técnico com chamada a serviço externo* | Timeout por tentativa, máximo de tentativas com backoff e teto (retry indefinido proibido) e teto de tempo da etapa, todos no código do spike; esgotadas as tentativas, a etapa fecha como **inconclusiva por causa externa** com o erro literal e o spike segue ou encerra; etapa não exercitada não vira ADR nem passo de plano (R7). Verificação: os três números e o desfecho por etapa no relato. Fronteira declarada: governa o código do spike, não a resiliência do produto |
+| | **§12 nova** — *Salvar checkpoint em verificação pesada* | Resultado parcial em disco ao fim de **cada** etapa (`.team-project/architect/spikes/<ID>-<slug>.md`), com comando, saída real, decisão parcial e **próxima etapa**; retomada parte do checkpoint. Contraparte de R5 no papel. Verificação: trabalho multietapa sem arquivo de checkpoint é entrega incompleta |
+| | **§13 nova** — *Modo leve: a segunda passada não paga o preço da primeira* | Tabela completa × leve para spike, ADR, plano e `/arc comply`; quatro limites — leve reduz escopo de execução e **nunca** a exigência de evidência (R7), o não reexecutado vem com ponteiro para a evidência original, portão e limiar de `standards/` não mudam de altura, e na dúvida é completa. Verificação: linha obrigatória *"modo leve: reexecutado X; reaproveitado Y, evidência em `<caminho>`"* |
+| `roles/architect/README.md` | **"Spike técnico e verificação pesada"** (nova, após `/arc adr`) · "Como sei que estou funcionando" | O roteiro passa a descrever o que o papel já fazia na prática (spike aparecia só em `agents/architect.md` e `commands/arc.md`); três obrigações em ponteiro para skills §11–§13, mais o indicador "spike não trava" |
+| `roles/architect/templates/adr.md` | Regras | Etapa de spike **inconclusiva por causa externa não sustenta decisão**: ADR fica em `Proposed` com a pendência nomeada, nunca `Accepted` sobre etapa não exercitada |
+| `roles/architect/templates/compliance-review.md` | Regras | Rota (b) — reabertura por achado ⚠️/❌ — roda em modo leve declarado: só os passos reabertos; os demais carregam o resultado anterior **com ponteiro**, nunca ✅ de memória, e o gate de cobertura continua exigindo saída real |
 
 ### Por quê
-Sintoma por trás do pedido: R9 diz para quem escalar, não como a pergunta chega. "Opções + recomendação" já era prática registrada em quatro pontos de `workflow.md`, mas nenhum obrigava **descrever** cada alternativa nem previa a via de o stakeholder **pedir mais contexto** — a pergunta podia chegar como lista de rótulos, forçando-o a adivinhar a implicação de cada opção, ou a decidir sem munição e sem saída formal para pedir mais.
+Três modos de falha observados na sessão relatada. **(A)** Chamada externa sem limite no código do spike consome a janela inteira e devolve **nada** — nem resultado nem negativa; um "inconclusivo por causa externa" relatado em 45 s vale mais que 600 s de silêncio. **(B)** Sem checkpoint, corte de sessão transforma trabalho já produzido em zero, e a retomada paga tudo de novo — o custo que mais se repetiu no relato. **(C)** Sem modo leve declarado, todo follow-up pontual paga o preço da primeira entrega; sem os limites escritos, "leve" vira desculpa para aprovar sem evidência — que é o oposto do que o time é.
 
 ### Quem passa a ser cobrado de forma diferente
 | Papel | O que muda |
 |---|---|
-| **Todos os papéis** | Pergunta que escalam ao stakeholder (R9, onboarding, brainstorm, §6) traz alternativas descritas, recomendação e a via de pedir mais contexto — não mais texto livre |
-| **SM** | Verifica a forma na curadoria; devolve pergunta incompleta antes que chegue ao stakeholder |
-| **stakeholder** | Ganha via explícita e sem custo de pedir mais contexto antes de decidir |
+| **Arquiteto** | Spike com os três números declarados no relato; checkpoint por etapa em trabalho multietapa; follow-up leve com a linha de declaração — sem ela, é cobrado como verificação completa |
+| **QA** | Ganha o que checar num spike/ADR: etapa inconclusiva por causa externa não pode aparecer sustentando decisão `Accepted`; resposta em modo leve sem a linha de declaração é achado |
+| **SM** | Vê no relato do Arquiteto se a etapa fechou ou ficou inconclusiva, e leva a pendência ao quadro em vez de perdê-la na thread |
+| **stakeholder** | Deixa de pagar janela inteira por chamada externa travada, e recebe a negativa explícita quando o provedor limita |
 
 ### Conflitos com o processo vigente
-Nenhum. Aditiva sobre uma convenção que já existia informalmente em `workflow.md` (§5a, §6); não contradiz regra vigente, formaliza o que já era prática e fecha a lacuna que ela deixava (descrição da alternativa + via de mais contexto).
+Nenhum. Aditiva e alinhada a R5 (interrupção é estado) e R7 (sem evidência, não aconteceu) — §13 reafirma R7 explicitamente em vez de abrir exceção a ela. Nada em `process/` foi tocado: a parte normativa geral é da entrada irmã do SM nesta mesma rodada.
 
 ### Como saberemos que funcionou
-Nas próximas três perguntas escaladas ao stakeholder por qualquer via (R9, onboarding, brainstorm, §6): **zero** em texto corrido ou lista de rótulos sem descrição; **100%** com a via de pedir mais contexto presente. Uso real dessa via numa das três é o teste de que não é decorativa.
+Nos próximos três spikes ou verificações pesadas do Arquiteto: **zero** travamentos sem relato (toda etapa termina concluída com saída real ou inconclusiva por causa externa nomeada); **100%** com arquivo de checkpoint citado na resposta; e pelo menos **uma** retomada que parte do checkpoint em vez do zero. Para §13, a queda no tamanho médio da segunda chamada sobre a mesma entrega — sem nenhum veredito de QA apontando aprovação sem evidência.
 
 ### Evidência (R19)
 | Classe | Comando | Saída | Ok? |
 |---|---|---|---|
-| Substituição de padrão | leitura de cada ocorrência de "opções"/"recomendação" em `workflow.md`, `skills.md`, `roles/scrum-master/README.md` (checagem semântica, não só `grep`) | 6 ocorrências normativas do SM reescritas citando R22 (`workflow.md` §5a×2, §6×2; `skills.md` §10; `roles/scrum-master/README.md`) | ✅ |
-| Extração/relocação (pré-condição de R17 — teto de 3 quentes) | leitura do bloco `## v3.3` + addendum movido para `process-changelog-archive.md` linha a linha contra o texto removido de `process-changelog.md` | idêntico, 66 linhas de conteúdo (11–76 no arquivo); changelog vivo caiu a 2 entradas (v3.5, v3.4) antes de `v3.6` entrar | ✅ |
-| Checagem semântica | contagem de `^\| R\d+ \|` no "Resumo em uma tela" | **22** — R1–R22, sem buraco nem duplicata | ✅ |
+| Extração/inserção — numeração de seção | `Select-String -Path roles\architect\skills.md -Pattern '^## \d+\.'` | §1–§13 em sequência contínua, sem número repetido; §11, §12 e §13 são as novas | ✅ |
+| Substituição de padrão — alvo dos ponteiros novos | `Test-Path standards\README.md` · `Test-Path roles\architect\skills.md` | `True` · `True` — os destinos de `../../standards/README.md` (skills §11, §13) e `../skills.md` (adr.md, compliance-review.md) resolvem | ✅ |
+| Substituição de padrão — leitura no contexto | `Select-String -Path roles\architect\*.md, roles\architect\templates\*.md -Pattern 'skills.md\) §1[123]\|modo leve\|inconclusiv\|checkpoint'` | 18 ocorrências: `README.md` 70/72/73/74/93, `skills.md` 125–162, `adr.md` 53, `compliance-review.md` 61 — cada uma lida no contexto: o ponteiro do README §11–§13 bate com a numeração real; o "checkpoint" de `README.md:93` é a linha nova de "Como sei que estou funcionando"; `adr.md:53` e `compliance-review.md:61` estão dentro das respectivas seções "Regras" | ✅ |
+| Cobertura da instrução | leitura das três seções novas contra os itens A, B e C do roteamento | A → §11 (timeout, tentativas, teto, relato de causa externa); B → §12 (checkpoint por etapa, retomada); C → §13 (tabela completa × leve + quatro limites) — nenhum item sem seção, nenhuma seção sem verificação declarada | ✅ |
+| Fronteira não aspiracional | `Select-String -Path standards\*.md -Pattern 'timeout\|resiliên\|retry\|circuit\|backoff' -i` | 3 ocorrências, nenhuma sobre a **borda de saída** (fila com retry interno, nível de log, semântica de `429` recebido) — a frase de fronteira de §11 apontava para um normativo inexistente e foi corrigida: aponta o documento de arquitetura do projeto e registra que ampliar `standards/` é mudança própria, por `/review` | ✅ após correção |
 
 ### Pendente do stakeholder
-- **Roteamento aberto (fora do meu alcance nesta sessão):** `roles/product-owner/README.md:16,89`, `roles/product-owner/templates/functional-analysis.md:38,46` e `roles/architect/README.md:48` seguem com "até 3 opções e recomendação" / "com recomendação", sem citar R22 nem a via de pedir mais contexto. São do PO e do Arquiteto — roteados a eles no `/review` seguinte.
-- **Fecho da entrega:** carrega a entrada `v3.6` — sai como `vX.6.0` (R18).
-- **Reiniciar a sessão** — não é necessária: nenhum `agents/`/`commands/` mudou nesta entrada; R22 é normativo lido sob demanda, não carga fixa de agente.
-- `note.md`: item único da fila **consumido**.
+Duas propostas, **não aplicadas** (arquivos do stakeholder):
 
----
+1. `agents/architect.md`, linha 65 — a única menção a spike fora de `roles/` diz só "spike de investigação que você desfaz depois". Proposta de redação: *"…ou (b) for um spike de investigação que você desfaz depois — com timeout curto e backoff limitado em toda chamada externa, checkpoint por etapa e relato de etapa inconclusiva por causa externa (skills §11–§13); nos dois casos, diga que fez."*
+2. `commands/arc.md`, linha 4 do lembrete de limites — acrescentar ao fim: *"Spike com chamada externa: timeout e tentativas explícitos, checkpoint por etapa, e etapa que estourar as tentativas é relatada como inconclusiva por causa externa, nunca deixada travando."*
 
-## v3.5 — Três reforços de coerência: o banner do README no gate de fechamento, a mensagem de bloqueio do `/review` e a avaliação de impacto de processo no `/team update` — 10/09/2026
-
-**Instrução (Item 1):** *(stakeholder, via `/review note` — Item 1 de `note.md`)* "Depois de uma entrega (`v3.4.0`), o README continuou anunciando a versão anterior (`v3.3.0`) — só o `CHANGELOG.md` e o `plugin.json` tinham sido atualizados. Nenhuma rotina de revisão/QA confere se o número de versão anunciado no README bate com o do `CHANGELOG.md`/`plugin.json` antes de fechar a entrega."
-
-**Instrução (Item 2):** *(stakeholder, via `/review note` — Item 2 de `note.md`)* aprovada e aplicada **no texto exato proposto pelo SM**: `/team update` passa a avaliar, antes de aplicar, se a entrada nova do changelog do processo desacorda de algo que os deliverables já escritos seguiram de outro jeito; decisão de ficar numa versão antiga vai para `.team-project/README.md` §7.
-
-**Classificação:** regra (R18 ganha uma terceira checagem, no mesmo padrão que já aplica às outras duas) + fluxo (o ciclo de uma entrega de `workflow.md` §5d ganha um passo, a curadoria do SM em §5d/§8 ganha a mesma checagem, e `team-update.md` ganha um passo novo antes de aplicar a atualização, com renumeração dos passos seguintes).
-
-### O que mudou
-
-| Documento | Seção | Mudança |
-|---|---|---|
-| `process/working-rules.md` | R18, corpo | O trio de requisitos de uma entrega ganha o banner "Versão atual" do `README.md`; **evita** passa de dois para três modos de falha, nomeando o defeito de campo da `v3.4.0`; **SM verifica** ganha a igualdade `plugin.json` == topo do `CHANGELOG.md` == banner do `README.md` |
-| | indicador de retrospectiva (R18) | A linha de violação ganha a condição "banner ≠ `plugin.json`/`CHANGELOG.md`", e a fonte ganha `README.md` |
-| `process/workflow.md` | §5d, "Ciclo de uma entrega" | **Passo 5 novo** — atualizar o banner do `README.md` — inserido entre o bump de `version` (4) e a entrada do `CHANGELOG.md` (6, era 5); passo 7 (era 6) renumerado |
-| | §5d, "O que o SM reconcilia" | Bullet novo: banner do `README.md` == `plugin.json` == topo do `CHANGELOG.md` |
-| | §8, gate de entrega | A linha do gate de merge em `main` passa a nomear os três artefatos, não dois |
-| `process/artifact-ownership.md` | matriz, linha `CHANGELOG.md` | A mesma igualdade de três pontas, para a linha ficar coerente com `workflow.md` §5d (reavaliação do conjunto — coerência interna) |
-| `commands/review.md` | Pré-condição — só no clone do repositório-fonte | *(Item 3 de `note.md`, aplicado pelo stakeholder — `commands/` é domínio dele, não do SM, `review-contract.md`)* A mensagem de bloqueio (clone errado ou marcador ausente) perde a explicação de onde rodar `/review` e o que fazer; vira só *"Comando não permitido nesse contexto. Entre em contato com o fornecedor do plugin."* — texto mais curto que a proposta original do SM |
-| `team-update.md` | **passo 6 novo** — "Avalie o impacto de mudança de processo sobre os deliverables já escritos" | *(Item 2, aplicado no texto exato do SM)* Entre "Compare (semver)" (5) e "Aplique" (era 6); cruza a entrada nova do changelog do processo contra `.team-project/**`/SDD/ADRs, avisa sem corrigir sozinho; decisão de ficar em versão antiga vai a `.team-project/README.md` §7. Renumerado: 6→7 "Aplique", 7→8 "Reconcilie", 8→9 "Feche" |
-| `commands/team.md` · `process/workflow.md` §5d | ponteiro de contagem | `workflow.md:295` dizia "os oito passos" — **corrigido pelo SM (curadoria)** para "os nove passos"; `commands/team.md:22` já dizia "nove… passo 8", coerente |
-
-### Por quê
-
-R18 já obrigava `plugin.json` e `CHANGELOG.md` a baterem entre si no fechamento de uma entrega, e o SM verificava essa igualdade. O `README.md` carrega o mesmo número, no mesmo tipo de banner, e **não estava na lista** — nada no gate de fechamento olhava para ele. Na `v3.4.0`, só `plugin.json` e `CHANGELOG.md` foram tocados no fechamento; o README ficou anunciando `v3.3.0`, e nenhuma rotina pegou. A régua nova fecha o mesmo buraco que R18 já fechava para os outros dois, sem criar checagem nova de espécie — só estende a existente a um terceiro arquivo com o mesmo número.
-
-### Quem passa a ser cobrado de forma diferente
-
-| Papel | O que muda para ele |
-|---|---|
-| **SM** | Ao fechar/verificar uma entrega, cruza três arquivos, não dois: `plugin.json`, `CHANGELOG.md` e o banner do `README.md` |
-| **stakeholder** | O ciclo de uma entrega (§5d) ganha um passo explícito (5) entre o bump de `version` e a entrada do `CHANGELOG.md` |
-| **quem opera `/review` fora do clone-fonte** | Recebe uma mensagem de bloqueio mais curta — sem indicação de onde rodar o comando nem do que fazer, só que não é permitido e para contatar o fornecedor do plugin |
-| **quem roda `/team update`** | Ganha um passo a mais antes de "Aplique": conferir se a entrega desacorda de algo que o projeto já escreveu |
-
-### Conflitos com o processo vigente
-
-Para a checagem do banner (Item 1): nenhum. A checagem é aditiva — estende o mesmo padrão de igualdade que R18 já aplicava a `plugin.json`/`CHANGELOG.md` a um terceiro arquivo, sem alterar o que já existia nem introduzir uma regra nova de espécie diferente.
-
-Para a mensagem curta em `commands/review.md` (Item 3): **ressalva, não bloqueio.** O SM havia proposto um texto mais longo, dizendo onde rodar `/review` e o que fazer; o stakeholder escolheu a frase curta acima, que não diz nenhuma das duas coisas. Não há, em `working-rules.md`/`workflow.md`, um padrão vigente de UX de erro que essa escolha contradiga — não é uma regra de trabalho do time, é o teor de uma mensagem num arquivo que é do stakeholder (`commands/`). Fica registrado como decisão editorial dele, no domínio dele, sem correção do SM.
-
-Para o passo novo em `team-update.md` (Item 2): nenhum — só lê e avisa, não decide nem corrige sozinho; renumeração conferida em `commands/team.md` e `workflow.md` §5d.
-
-### Como saberemos que funcionou
-
-Zero ocorrências, nas próximas entregas, de `README.md` anunciando versão diferente de `plugin.json`/topo do `CHANGELOG.md` no fechamento. A `v3.4.0` é o defeito de campo que abriu esta entrada; a entrega que carrega esta mudança de processo (`vX.5.0`) é a primeira em que o SM confere as três pontas antes de considerar o fechamento válido.
-
-### Evidência (R19)
-
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Substituição/extensão de padrão | `Select-String -Pattern 'Versão atual'` em `working-rules.md`, `workflow.md`, `artifact-ownership.md` | 7 ocorrências: 3 em `working-rules.md` (R18 corpo, "SM verifica", indicador), 3 em `workflow.md` (§5d passo 5, "O que o SM reconcilia", gate §8), 1 em `artifact-ownership.md` (matriz) — todas lidas no contexto, coerentes com o que está ao lado | ✅ |
-| **Checagem semântica — o gate hoje** | leitura de `README.md` linha 3, `.claude-plugin/plugin.json` campo `version`, topo de `CHANGELOG.md` | `v3.4.0` nos três — a régua nova, aplicada ao estado atual do repositório, **passaria** | ✅ |
-| Arquivamento (pré-condição de R17 — teto de 3 entradas quentes) | `Compare-Object` do bloco `## v3.2` movido para `process-changelog-archive.md` × `git show HEAD:` do original | **76 × 76 linhas, 0 diferenças** fora do separador; índice de arquivadas ganhou a linha `v3.2` | ✅ |
-| Teto de leitura | `Select-String -Pattern '^## v'` no changelog quente, após a mudança | 3 entradas: v3.5, v3.4, v3.3 | ✅ |
-| Checagem semântica — Item 3 aplicado | leitura de `commands/review.md`, seção "Pré-condição", linhas 22-24 | Texto confere com o aplicado pelo stakeholder: *"pare. Ao usuário, diga apenas: Comando não permitido nesse contexto. Entre em contato com o fornecedor do plugin."* — sem instrução de onde rodar `/review` nem do que fazer, ao contrário da proposta original do SM | ✅ |
-| Checagem semântica + numeração — Item 2 | leitura de `team-update.md` linha a linha; contagem dos cabeçalhos `## N.` | Passo 6 idêntico à proposta do SM; **1–9 sem buraco nem duplicata** | ✅ |
-| Substituição/extensão de padrão | `Select-String 'oito passos\|nove passos'` em `commands/team.md`, `workflow.md` | `commands/team.md:22` já "nove… passo 8"; `workflow.md:295` "oito"→"nove", corrigido nesta entrada | ✅ |
-
-### Pendente do stakeholder
-
-- **Fecho da entrega:** carrega a entrada `v3.5` do changelog do processo — sai como `vX.5.0` (R18).
-- **Reiniciar a sessão** — passa a ser **necessária**: `commands/review.md` mudou nesta entrada (Item 3, aplicado pelo stakeholder). Mudança de comportamento de comando só entra em vigor depois de reiniciar (fecho do `/review`, `review.md` §4).
-- **Item 2 de `note.md`** — **aplicado** pelo stakeholder em `team-update.md`, no texto exato proposto pelo SM, sem ressalva de conteúdo (ao contrário do Item 3). Sai de pendente.
-- **Item 3 de `note.md`** — **aplicado** pelo stakeholder em `commands/review.md`, com texto mais curto do que a proposta original do SM. Ver a linha nova na tabela "O que mudou" e a ressalva em "Conflitos com o processo vigente".
-
----
-
-## v3.4 — Substantivo homônimo em lista de proibição: a régua, as cinco correções e o fecho do `/review note` — 09/09/2026
-
-**Instrução (1):** *(stakeholder, após triagem de `note.md` — Tasks 2, 3 e 4 fundidos)* "Escreva em `artifact-ownership.md` a nota de nomenclatura que fecha o círculo: quando um substantivo nomeia **dois artefatos de donos diferentes** (o caso `status`: executivo ao stakeholder = PO, documento de progresso = SM), toda menção em lista de proibição precisa **qualificar qual** e **nomear o dono** — porque proibição curta num papel cujo modo tem o mesmo nome derruba o modo. Cite o padrão que já funciona como forma a copiar. Deixe a nota utilizável como critério de verificação."
-
-**Instrução (2), fecho do `/review note`:** curadoria das cinco correções · registrar `team-version.md` na matriz · corrigir a sobra da v3.3 no §5c, onde a mesma seção declara o `consult` extinto e sete linhas abaixo instrui a partir dele.
-
-**Classificação:** propriedade de artefato (nomenclatura da fronteira entre artefatos homônimos; dono de guia de raiz) + escopo de papel (as cinco linhas de fronteira corrigidas) + obsolescência (§5c).
-
-**Como esta mudança entrou — desvio de roteamento.** A triagem roteou as três fichas aos agentes donos (PO, QA e Arquiteto-pelo-dev); **os três caíram por limite de sessão e a sessão principal aplicou as três**, seguindo §1b, mais os dois cards autorizados pelo stakeholder. As fichas mudaram **sem passar pelo dono e sem entrada de changelog própria** — esta entrada as absorve, depois de o SM conferi-las por leitura. **Não vira precedente:** o atalho existiu porque o sintoma estava aberto em campo e a régua já estava escrita. Fica registrado porque quem ler o diff daqui a seis meses veria três papéis "concordando" com uma correção que nenhum deles escreveu.
-
-**Curadoria:** as cinco linhas passaram nos três passos de §1b — qualificador **e** dono em 5/5, artefato próprio preservado na mesma linha em 3/5 (nos dois cards, em outra seção). Detalhe por arquivo no bloco de evidência. **O que a curadoria devolveu à régua:** o caso do QA mostrou que o substantivo cru é só metade do defeito — *"a especificação"* não diz se o vedado é **escrever** ou também **validar contra**, e validar contra é a frente 2 do papel. §1b ganhou o **verbo** como terceiro elemento da forma completa.
-
-### O que mudou
-
-| Documento | Seção | Mudança |
-|---|---|---|
-| `process/artifact-ownership.md` | **§1b nova** | *Substantivo homônimo — como se escreve uma proibição sem derrubar um modo.* Os 4 homônimos vivos (`status`, `especificação`, `protótipo`, `documentação`), a forma obrigatória (**qualificador + dono + verbo**, nunca o substantivo cru), por que a lista de proibição vence a linha que concede, e os **3 passos de verificação** do SM |
-| | §3 · matriz | Conflito novo (*papel recusa o próprio modo citando "Não faz"*); a linha do documento de status passa a apontar o homônimo do PO e §1b; **`team-version.md` registrado** entre os guias de raiz, ao lado de `team-init`/`team-update`, que já estavam — dono stakeholder |
-| 3 fichas + 2 cards | "Não faz" / "Proibido" | `status` (PO), `especificação` (QA) e `documentação` (dev) deixam de aparecer cruas, nas fichas e nos dois cards que carregam no subagente. **Aplicadas pela sessão principal, não pelos donos** — ver o desvio acima |
-| `process/workflow.md` | §5c | **Sobra da v3.3 removida:** a seção declarava o `consult` extinto e, 7 linhas abaixo, instruía a partir dele com uma economia de "~38 KB" medida contra o broadcast que já não existe. A lição de R3 foi reancorada no **passo 1 do `/sm agreement`**, e ficou **sem número fechado** porque a tabela não sustenta o delta — ela soma `commands/` + `agents/`, e o `agreement` só acrescenta `agents/` |
-| | §5c, custo | **Remedido:** `/sm` 13 → **15**, `/po` 10 → **13**, `/team cycle` 28 → **26**, `/review` 14 → **15**. Nota nova: os números somam `commands/` + `agents/`, e remedir é fase **Check** |
-
-**Modo de falha que evita:** um papel recusar o modo que a própria ficha lhe dá, e devolver ao stakeholder um comando extinto. Em campo: `/po status` numa instalação v3.3.0 entregou a leitura de produto e **em seguida se desautorizou**, dizendo que status "é tipicamente papel do Scrum Master" e oferecendo um `/sm status` que a v3.3 havia removido. Instalação e contexto do projeto foram descartados como causa; era a palavra `status` **crua** na lista "Não faz" do PO, quatro linhas abaixo da que lhe dá "prazo, plano de entrega e status". A lista curta venceu a tabela, com o prior de Scrum empurrando junto.
-
-### Quem passa a ser cobrado de forma diferente
-
-| Papel | O que muda para ele |
-|---|---|
-| **SM** | Passo de verificação novo na reavaliação do `/review`: cruzar "Não faz" × modos declarados, papel a papel, **por leitura** — `grep` não distingue uso qualificado de uso cru |
-| **PO · QA · dev** | Nenhuma conduta muda **exceto deixar de recusar o próprio modo**: o PO responde `/po status` sem se desautorizar, o QA mantém a frente 2, o dev entrega relatório e GAP |
-| **Arquiteto · stakeholder** | Herdam o roteamento do §7 do dev (abaixo), cada um no seu arquivo |
-
-### Roteamentos abertos
-
-`Documentação não é minha/sua` continua cru no **Contrato §7** do dev — `roles/developer/README.md:28` (dono: **Arquiteto**) e `agents/developer.md:32` (dono: **stakeholder**). Está **fora** da superfície que §1b verifica e a frase seguinte preserva a exceção (*"Minha entrega é código, testes e o relatório"*), mas ficou em forma inconsistente com a linha 15, agora qualificada. É conteúdo do papel, não coerência de referência: **o SM roteia, não reescreve**.
-
-### Conflitos com o processo vigente
-
-**A régua poderia virar R22** em `working-rules.md` — R1–R21 governam como o time trabalha **num projeto**, e esta governa como os normativos do plugin são redigidos. **Escalado e decidido pelo stakeholder:** fica em `artifact-ownership.md`; regra que não se verifica numa Task não entra na lista percorrida a cada Task fechada. Precedente de forma: §1a, que R17 já nomeia como o lugar da "nota de racional no próprio documento normativo que ela governa".
-
-### Como saberemos que funcionou
-
-Zero ocorrências, nas próximas três versões, de papel recusando modo próprio ou oferecendo comando extinto. Verificável já no `/review` seguinte: o cruzamento "Não faz" × modos fecha **limpo nos seis papéis** — na abertura eram 3 sujos (PO, QA, dev), no fecho são 6 limpos na superfície verificada, com 2 resíduos roteados fora dela. O teste real é o próximo `/po status` em campo: entrega a leitura e **para**.
-
-### Evidência (R19)
-
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Arquivamento | `Compare-Object` bloco `## v3.1` × `git show HEAD:` | 55 linhas, **0 diferenças**; arquivo 1244 → 1301; índice ganhou `v3.1` | ✅ |
-| Extração / criação | `git show HEAD:…/artifact-ownership.md` × disco | **112 → 145 linhas**; §1b em 57–87; conflito novo em §3 | ✅ ¹ |
-| Checagem semântica | leitura dos 4 homônimos de §1b na origem | os 4 conferem: `status` · `especificação` · `protótipo` · `documentação` | ✅ |
-| Forma a copiar | leitura da linha "Não faz" de `roles/scrum-master/README.md` | *"…nem status **ao stakeholder** — é do PO (§6a)"*: qualificador + dono | ✅ |
-| Teto de leitura | `^## v` no changelog quente | 3 entradas — v3.4, v3.3, v3.2 | ✅ |
-| Curadoria das 5 correções | leitura contra os 3 passos de §1b (**não `grep`**) | 5/5 qualificador + dono; 3/5 preservam o próprio na mesma linha; 1 defeito de **verbo** → virou régua em §1b | ✅ |
-| Resíduo do defeito | leitura de `Documentação não é (minha\|sua)` | 2 cruas: `roles/developer/README.md:28`, `agents/developer.md:32` — fora da superfície de §1b | ✅ roteado |
-| Obsolescência §5c | `consult` em `workflow.md` | 2 na seção: `:245` declara a remoção, `:252` cita a origem histórica. Nenhuma instrui no presente | ✅ |
-| Substituição do número | `38 KB` em `process/*.md` | 1, nesta entrada, citando o número errado como defeito. Zero no normativo | ✅ |
-| Remedição do custo | `.Length` de `agents/*` + `commands/*` | sm 15,1 · po 13,0 · ux 10,7 · arc 9,7 · qa 9,8 · dev 6,9 KB — `/sm` e `/po` errados | ✅ |
-| Guia sem dono | `team-version` na matriz + `Test-Path` | linha 41, com `team-init`/`team-update` que **já estavam**; arquivo existe | ✅ |
-| Links | `](*.md)` nos 5 arquivos tocados | 2 achados, ambos **falsos positivos** (notação em crase). Reais: **0** | ✅ |
-| **R17 — teto da entrada** | contagem do bloco `## v3.4` | **13,7 KB na 1ª medição — acima da barreira de 10 KB.** Excedente movido (curadoria detalhada → evidência; análise da régua → §1b); remedido | ✅ ² |
-
-¹ Desvio: escrevi "113 → 148" antes de contar; o real era 112 → 145. Contagem estimada não é evidência.
-² A própria R17 reprovou esta entrada, duas vezes. O corte seguiu o critério dela: sai o raciocínio de uma vez, fica o registro permanente, e a análise que precisava sobreviver foi para §1b — o normativo que ela governa.
-
-### Pendente do stakeholder
-
-- **`agents/developer.md:32`** — o último `Documentação não é sua` cru, agora fora de forma com a ficha corrigida. Roteado acima.
-- **`/team version`** (Task 1 de `note.md`) — reenquadrado por ele como **modo meta**, ao lado de `init` e `update`, e por isso sem colisão com a linha 10 de `commands/team.md`, que proíbe conversa. `commands/team.md` e `team-version.md` foram aplicados por ele; o que coube a mim foi **registrar o dono na matriz**, feito.
-- **Reiniciar a sessão** — `agents/product-owner.md` e `agents/quality-assurance.md` mudaram, e comportamento de agente só entra em vigor depois.
-- **Entrega:** esta versão de processo ainda não chegou a instalação nenhuma. `git commit` + `push` + `claude plugin marketplace update team` + `claude plugin update team@team` (R18). O sintoma de campo que abriu a v3.4 **continua vivo na instalação do cliente** até esse passo.
-
+**Mudança de comportamento de agente só entra em vigor após reiniciar a sessão.**
 

@@ -24,8 +24,10 @@ Plano com mais de ~10 passos, ou tocando duas áreas do sistema ao mesmo tempo, 
 ### R3. Contexto mínimo suficiente
 Ninguém carrega documentação inteira "por precaução". Cada papel lê a seção que a tarefa exige, listada no plano ou na tabela de fontes da verdade do contexto do projeto. Um inventário de código existe justamente para saber **qual arquivo pedir** sem abrir o repositório todo.
 
-**Evita:** desperdício de contexto e diluição do que importa.
-**SM verifica:** plano lista "contexto de código a ler" com caminhos exatos e o porquê de cada um.
+**Releitura incremental, quando aplicável.** Em invocações consecutivas do **mesmo papel** sobre o **mesmo tópico** — a mesma Task, o mesmo documento de arquitetura/requisitos/backlog em elaboração —, a releitura cobre só **o que mudou desde a última leitura daquele papel**: um changelog curto, o diff da seção tocada, ou uma nota do que já foi visto na invocação anterior. Reler o documento inteiro do zero volta a valer quando não existe registro de leitura anterior, quando o documento mudou extensamente desde então, ou quando o papel está retomando depois de uma lacuna longa o bastante para o delta não ser confiável.
+
+**Evita:** desperdício de contexto e diluição do que importa; e, na forma que a repetição produz, releitura integral de um documento grande que mudou pouco desde a última passagem do mesmo papel — o custo que se paga de novo a cada invocação, mesmo quando quase nada do que se lê é novo.
+**SM verifica:** plano lista "contexto de código a ler" com caminhos exatos e o porquê de cada um; e, quando o mesmo papel é invocado de novo sobre o mesmo tópico dentro da mesma Task/sprint, a saída cita explicitamente **o que mudou desde a última leitura** (changelog curto, diff de seção, ou nota do que já foi visto) em vez de renarrar o documento inteiro — releitura plena sem essa nota, havendo registro de leitura anterior, é achado de processo.
 
 ### R4. Não antecipar escopo
 Implementa-se a Task, não o "enquanto isso". Sem refatoração oportunista, sem TODO especulativo, sem abstração para caso futuro, sem dependência nova fora do plano. No nível do lote, o Sprint Backlog fechado na Planning não cresce durante o sprint (§5e).
@@ -36,8 +38,10 @@ Implementa-se a Task, não o "enquanto isso". Sem refatoração oportunista, sem
 ### R5. Interrupção é estado, não perda
 Quem para no meio registra **em que passo parou e como o repositório ficou** (compila? testes passam?). Os passos do plano são ordenados para o repositório ficar íntegro no maior número possível de pontos intermediários.
 
-**Evita:** retomada que refaz trabalho já feito ou que herda base quebrada.
-**SM verifica:** relatório de entrega tem a linha "Parei no passo"; Task inacabada no fim do sprint volta ao Product Backlog junto com a História, não some.
+**Vale também para verificação pesada de qualquer papel.** Spike técnico do Arquiteto, harness completo de protótipo do UX, ou equivalente — o resultado parcial relevante é salvo em disco **a cada etapa concluída**, não só ao final, pelo mesmo motivo que já vale para a construção: um corte de sessão não pode descartar trabalho já produzido, e a retomada não pode precisar repetir do zero uma etapa que já tinha fechado íntegra.
+
+**Evita:** retomada que refaz trabalho já feito ou que herda base quebrada; e verificação pesada — cara em tokens e tempo por natureza — perdida por inteiro num corte de sessão, porque nada tinha sido salvo em disco antes do fim.
+**SM verifica:** relatório de entrega tem a linha "Parei no passo"; Task inacabada no fim do sprint volta ao Product Backlog junto com a História, não some; e, em verificação pesada de qualquer papel (spike, harness completo), existe artefato em disco de cada etapa concluída antes do corte — não só o resultado final ou nada, quando a sessão foi interrompida no meio.
 
 ### R6. Decisão tomada é decisão registrada
 Toda decisão fora do que a especificação já dizia vira registro — entrada no documento de status (via SM) ou ADR quando for estrutural e recorrente. Nunca embutida silenciosamente no código.
@@ -149,6 +153,12 @@ Toda pergunta que qualquer papel dirige ao stakeholder para uma decisão que só
 **Evita:** apresentar a decisão em texto corrido, obrigando o stakeholder a formular sozinho as alternativas que o time já levantou; e apresentar opções tão resumidas que ele decide sem entender o que está escolhendo, sem ter como pedir mais antes de comprometer a decisão.
 **SM verifica:** toda pergunta escalada ao stakeholder (R9 · R14 §5a · R15 §5b · §6) traz as alternativas descritas — não uma lista de rótulos — e a recomendação do time; e traz explicitamente a via de "preciso de mais contexto" como uma das alternativas. Pergunta sem essa via, ou com opção sem descrição, é forma incompleta: o SM a devolve ao papel antes de ela chegar ao stakeholder.
 
+### R23. Verificação plena na primeira entrega; modo leve em follow-up, nunca abaixo do piso de evidência
+A primeira entrega de uma Task paga a verificação exaustiva que a natureza do trabalho exige — harness inteiro do protótipo, chamada real a API externa, ou equivalente. Follow-up pequeno e correção pontual sobre a **mesma** entrega já verificada por completo podem usar um modo mais barato — "leve". **Condição obrigatória:** o modo leve reduz só o **escopo** do que é executado (ex.: rodar o harness da parte que mudou, não tudo de novo) — ele **nunca** abre mão de evidência real (R7) nem de um gate de qualidade do fluxo (`workflow.md` §8). Cada papel que faz esse tipo de verificação (Arquiteto, UX) define, no próprio `skills.md`, o que conta como "leve" para o seu tipo de verificação; aqui fica só a regra geral e a condição de guarda-corpo.
+
+**Evita:** dois modos de falha opostos — pagar verificação exaustiva em toda correção pontual, inflando o custo médio por chamada sem ganho de rigor onde ele não muda nada; e o modo "leve" virar desculpa para declarar sem evidência real ou para pular um gate do §8, disfarçado de economia.
+**SM verifica:** toda entrega marcada como "leve" declara explicitamente o que foi (e o que não foi) reexecutado, e por quê; nenhum gate do §8 aparece pulado citando "modo leve" como justificativa; primeira entrega de uma Task nunca é reportada com verificação leve — leve só existe sobre uma entrega que já passou por verificação plena antes.
+
 ---
 
 ## Como o SM aplica
@@ -180,6 +190,7 @@ Toda pergunta que qualquer papel dirige ao stakeholder para uma decisão que só
 | Merge em `main` sem bump de `version` + entrada no `CHANGELOG.md`, ou `plugin.json` ≠ topo do `CHANGELOG.md`, ou banner "Versão atual" de `README.md` ≠ `plugin.json`/topo do `CHANGELOG.md`, ou entrada de `process-changelog.md` sem par em `CHANGELOG.md` | `git log main` + `CHANGELOG.md` + `plugin.json` + `README.md` | qualquer ocorrência → R18 ignorada (workflow §5d) |
 | Entrada de `process-changelog.md` sem bloco de evidência, ou com comando cuja reexecução dá saída diferente da registrada | o bloco de evidência da entrada, reexecutado por amostragem | qualquer ocorrência → R19 ignorada; o `/review` está declarando sem verificar |
 | Pergunta ao stakeholder sem alternativas descritas, sem recomendação do time, ou sem a via de "preciso de mais contexto" | perguntas escaladas no sprint (R9, onboarding, brainstorm, §6) | qualquer ocorrência → R22 ignorada |
+| Primeira entrega de uma Task com verificação marcada "leve"; ou entrega "leve" sem declarar o que foi (não) reexecutado; ou gate do §8 pulado citando "modo leve" | relatórios/planos de entrega do sprint (Arquiteto, UX) | qualquer ocorrência → R23 ignorada |
 
 **Ciclo de eficiência (PDCA).** A verificação do custo dos documentos não espera faxina do stakeholder: cada `/review` sem instrução mede o footprint do próprio papel, a retrospectiva de cada sprint registra o total, e o giro de `/review metrics` (a cada 3 retrospectivas, ou seja a cada 3 sprints) consolida e tira **uma** remoção candidata. Roteiro em [`workflow.md` §5c](workflow.md).
 
@@ -215,3 +226,4 @@ Toda pergunta que qualquer papel dirige ao stakeholder para uma decisão que só
 | R20 | História é a unidade de valor; Task é a unidade de trabalho | Método |
 | R21 | Aceite funcional é por História, na Sprint Review | Método |
 | R22 | Pergunta ao stakeholder tem forma fixa — opções descritas, recomendação e a via de pedir mais contexto | Método |
+| R23 | Verificação plena na primeira entrega; modo leve em follow-up, nunca abaixo do piso de evidência | Método |
