@@ -9,7 +9,7 @@ Enquanto o SDD descreve **o que o sistema é**, este conjunto descreve **como a 
 | `01-scope-and-criteria.md` | O que foi combinado construir, e como saber que ficou pronto | PO | [modelo](01-scope-and-criteria.md) |
 | `02-status.md` | O que já foi feito, com que evidência, e que decisões foram tomadas | SM | [modelo](02-status.md) |
 | `03-code-map.md` | Onde está cada arquivo de código e a que entrega pertence | QA | [modelo](03-code-map.md) |
-| `pending.md` | O que está quebrado, com evidência e criticidade | QA | [modelo](pending.md) |
+| `pending.md` | O que está quebrado, com evidência, criticidade e **origem** (`time` \| `stakeholder` — o que ele chama de "bug") | QA | [modelo](pending.md) |
 
 ## Por que este conjunto existe
 
@@ -57,7 +57,7 @@ Se um projeto herdar um documento desses, ele pode ser mantido como referência 
 | Task marcada como concluído tem arquivo correspondente no mapa de código | `01` × `03` |
 | Task concluída tem evidência (comando + saída), não só narrativa | `02` |
 | Toda decisão fora da especificação está registrada, com data e justificativa | `02` |
-| Todo GAP tem `arquivo:linha`, impacto e criticidade | `pending` |
+| Todo GAP tem `arquivo:linha`, impacto, criticidade e origem (`time` \| `stakeholder`) declarados | `pending` |
 | Nenhum arquivo de código relevante está ausente do mapa | `03` |
 | Nenhum critério marcado como atendido sem evidência | `01` × `02` |
 

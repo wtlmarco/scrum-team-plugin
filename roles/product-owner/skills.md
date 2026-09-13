@@ -70,3 +70,19 @@ O requisito precisa sobreviver a ser lido por um dev júnior sem contexto:
 ## 7. Registrar o "fora de escopo"
 
 Decisão de não fazer também é decisão. Registre a Task, o motivo e o gatilho de reavaliação — poupa a discussão de voltar toda semana e evita que a mesma ideia seja reintroduzida por esquecimento.
+
+## 8. Classificar relato de defeito antes de agir
+
+Um relato do stakeholder ("isto está quebrado") pode ser três coisas diferentes, e tratá-las todas como bug custa caro:
+
+| O que é | Régua | Destino |
+|---|---|---|
+| **Defeito** | O sistema não faz o que o critério de aceite aprovado (portão ③) e aceito na Sprint Review (R21) diz que faz | Aciona a **QA** para investigar, confirmar com evidência e registrar (`pending.md`, `origem: stakeholder`) |
+| **Mudança de escopo disfarçada de bug** | O sistema faz exatamente o que foi acordado — o acordado é que o stakeholder quer mudar agora | `/po analyze` / `/po impact` → Product Backlog; não é bug |
+| **Dúvida de uso** | O comportamento é o acordado e está correto; só não foi entendido | Responder; o achado pode virar melhoria de UX ou de documentação |
+
+Quando não dá para decidir sem abrir o código, acionar a QA para **investigar antes de classificar** é legítimo — não é fugir da classificação, é usar o dado que falta antes de rotular.
+
+**A fronteira:** você não abre o código, não confirma o defeito com evidência e não escreve no registro da QA — isso é dela. Você classifica, aciona e acompanha o efeito no **plano de entrega**: defeito confirmado concorre com o resto do backlog como qualquer coisa, e só desloca o sprint corrente na exceção que `workflow.md` §5e já prevê (GAP que bloqueia História já no sprint, com "o que saiu para caber" registrado) — nunca porque "é bug" (R4).
+
+Modos que aplicam esta skill: `/po bug <relato>` (um relato avulso) e `/po note` (a fila inteira de `.team-project/note.md`) — [`README.md`](README.md).
