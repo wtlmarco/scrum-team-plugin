@@ -12,7 +12,7 @@
 > **Data da revisão:** <data>
 > **Escopo:** <o que foi auditado — que partes do código, contra quais documentos>
 > **Método:** leitura direta do código-fonte, não das anotações de progresso. Cada Task traz evidência no arquivo real.
-> **Natureza:** registro de pendências **abertas**. Task resolvido sai daqui e é registrado em `02-status.md`.
+> **Natureza:** registro de pendências e bugs **abertos** — um só registro, distinguido por `Origem: time | stakeholder`, não por arquivo. Task resolvido sai daqui e é registrado em `02-status.md`. Dono único da escrita: QA — outros papéis reportam pelos canais próprios (dev: 🔺 GAP; Arquiteto/PO/UX: achado; stakeholder: relato pelo PO) e o QA transcreve com evidência.
 
 ## 1. Legenda de criticidade
 | Nível | Significado |
@@ -26,9 +26,17 @@
 | Módulo | 🔴 | 🟠 | 🟡 | 🟢 | Total |
 |---|---:|---:|---:|---:|---:|
 
+> **Por origem:** <N> do time · <N> reportados pelo stakeholder (ver §2.1)
+> **Aguardando decisão do stakeholder:** <N> — <IDs>
 > **Resolvidos desde a revisão inicial:** <ID> (<o que resolveu>, <data>)
 
 **Leitura de uma frase:** <onde estão os buracos, em linguagem de consequência>
+
+### 2.1 Visão do stakeholder — só o que ele reportou
+> **Leitura filtrada.** Toda entrada aberta com `Origem: stakeholder` — sem atravessar a lista técnica completa. É o que ele chama de "bug".
+
+| ID | Título | Criticidade | Aguarda decisão dele? | Módulo |
+|---|---|---|---:|---|
 
 ## 3. Critérios de sucesso — reavaliação
 <Cada critério de `01-scope-and-criteria`, com a situação real contra o código.>
@@ -38,7 +46,8 @@
 
 ## 4. 🔴 Críticas
 ### <MÓDULO>-<NN> — <título afirmativo do defeito>
-**Módulo:** <área> · **Criticidade:** 🔴
+**Módulo:** <área> · **Criticidade:** 🔴 · **Origem:** time | stakeholder
+**Aguarda decisão do stakeholder:** não | sim — <pergunta ou ponteiro>
 **Evidência:** [<arquivo>:<linha>](<caminho>#L<linha>) — <o fato observado>
 **Impacto:** <o que deixa de funcionar, e para quem>
 **Ação sugerida:** <direção de correção, não o plano>
@@ -68,6 +77,8 @@ O formato de uma entrada individual está em [`../../roles/quality-assurance/tem
 - **A reavaliação dos critérios é o coração do documento.** É onde a diferença entre "declarado" e "real" fica visível — e onde um projeto retomado descobre o tamanho verdadeiro do trabalho.
 - **Task resolvido sai daqui** e é registrado em `02-status.md`. Nunca os dois no mesmo lugar (R12).
 - **IDs no padrão `MÓDULO-NN`**, nunca reaproveitados.
+- **Toda entrada declara `Origem` e `Aguarda decisão do stakeholder`.** `Origem: stakeholder` é o "bug" — chega sempre pelo PO, nunca direto ao QA, e só entra confirmado com `arquivo:linha` (sem reprodução, fica suspeita no veredito). `Aguarda decisão do stakeholder: sim` só é válido com a pergunta ou o ponteiro para onde ela foi feita (R9, R22). Verificação: cada bloco `### <ID>` tem as duas linhas preenchidas — ausência é formato incompleto, não conta no resumo executivo (§2) nem em §2.1.
+- **§2.1 é leitura, não escrita separada.** O stakeholder lê só as entradas com `Origem: stakeholder` sem precisar atravessar a lista técnica — mas continua no mesmo arquivo, mantido só pelo QA.
 
 ## Falhas comuns
 
@@ -77,6 +88,8 @@ O formato de uma entrada individual está em [`../../roles/quality-assurance/tem
 | Ordem de ataque por criticidade pura | A fila trava: Task 🔴 que depende de outro 🔴 é planejado primeiro |
 | Impacto escrito em linguagem de código | O stakeholder não consegue priorizar — não sabe quem é prejudicado |
 | Documento que só cresce | Sem a seção de resolvidos, ninguém percebe o progresso e a retomada parece infinita |
+| Entrada sem `Origem` preenchida | §2.1 fica incompleta e o resumo por origem mente por omissão |
+| Bug do stakeholder registrado sem `arquivo:linha` | Vira narrativa não verificada disfarçada de fato — mesma falha de qualquer GAP sem evidência, mais visível porque ele vai ler §2.1 |
 
 ## Quando este documento nasce
 

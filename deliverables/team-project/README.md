@@ -14,6 +14,7 @@ Cada modelo pertence ao **papel que o usa** (`roles/<papel>/templates/`), por [`
 |---|---|---|---|
 | `.team-project/README.md` | [`roles/scrum-master/templates/project-context.md`](../../roles/scrum-master/templates/project-context.md) | SM | **Sim — §8 é bloco fixo**, o resto é do projeto |
 | `.team-project/how-to.md` | [`how-to.md`](../../how-to.md) da raiz | stakeholder | **Sim — cópia literal**, sempre substituível |
+| `.team-project/note.md` | [`roles/product-owner/templates/note.md`](../../roles/product-owner/templates/note.md) | PO | **Sim — estrutura**; os itens de "Abertas" são do stakeholder |
 | `.team-project/scrum-master/context.md` | seção "O que vai em cada `context.md`" do modelo de contexto | SM | Não — conteúdo do projeto |
 | `.team-project/scrum-master/sprint-backlog.md` | [`roles/scrum-master/templates/sprint-backlog.md`](../../roles/scrum-master/templates/sprint-backlog.md) | SM | **Sim — estrutura**; as linhas são do projeto |
 | `.team-project/product-owner/context.md` | idem | PO | Não |

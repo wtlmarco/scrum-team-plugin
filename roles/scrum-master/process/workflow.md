@@ -152,6 +152,13 @@ Acontece **uma vez**, quando o time recebe um projeto novo ou retoma um abandona
 
 **O que o SM pergunta primeiro à documentação:** propósito e fase do produto (`00-overview`), requisitos e seus critérios de aceite (`01-requirements`), atores e fluxos (`02-flows`), princípios de arquitetura e vinculação de stack (`03-architecture`), contratos de dados e API (`04`/`05`), o que está construído e com que evidência (`02-status`, `03-code-map`, `pending`), ambiente e comandos de verificação, capacidade declarada, limitações conhecidas, riscos e bloqueios abertos.
 
+**Os quatro documentos de implementação nascem quando o projeto os exige, não no `/team init`.** `01-scope-and-criteria`, `02-status`, `03-code-map` e `pending` não fazem parte do que o `init` semeia ([`deliverables/team-project/README.md`](../../../deliverables/team-project/README.md)) — nascem na primeira vez que o projeto precisa deles (retomada, primeiro fechamento de Task, primeira auditoria). O que faltava não era o manifesto listá-los antecipadamente: era **algo lembrar o SM de declará-los** quando nascem. Regra: todo documento de implementação, no instante em que nasce, entra na mesma sessão em `.team-project/README.md` §4 "Fontes da verdade" ([`templates/project-context.md`](../templates/project-context.md)), com o dono — nunca fica implícito só porque o caminho já é convenção. **Como o SM verifica:** todo caminho citado em `pending`/`02-status`/`03-code-map`/`01-scope-and-criteria` que já tem conteúdo real aparece como linha em `.team-project/README.md` §4; documento com conteúdo e sem linha em §4 é achado de processo contra o próprio SM.
+
+**Rastreio de pendências e bugs existentes, sem duplicar `/qa audit`.** O onboarding é o primeiro momento em que o time vê o projeto — pendência e bug preexistentes que não forem capturados agora se perdem misturados ao trabalho novo. Três fontes, sem sobreposição:
+- **Código, em projeto retomado:** já é a bifurcação (b) do passo 3 e a sequência declarada em `project-context.md` §8 ("Projeto retomado": `/sm onboarding` → `/qa audit` → `/qa baseline`) — o SM não duplica aqui, só confirma no inventário do passo 1 que o registro de GAPs vai nascer dessa sequência, se ainda não existir.
+- **Documentação herdada divergente:** também é a bifurcação (b) do passo 3 — vira risco no quadro e aciona `/qa audit`.
+- **O que o stakeholder já sabe estar quebrado, e ainda não está escrito em lugar nenhum:** é o que faltava. No passo 5, o SM pergunta explicitamente por isso, e cada item vira relato roteado ao **PO** (`/po bug <relato>`, §6a) — nunca uma entrada direta em `pending.md`, que continua sendo escrita só pela QA depois de confirmar.
+
 **O que o SM escala ao stakeholder** (só depois de esgotar a documentação e o time): decisões estratégicas (stack, provedor, custo, alvo da retomada, prioridade acima da ordem de dependência do SM), os dois parâmetros de cadência (duração do sprint, unidade de estimativa) e lacunas funcionais pequenas não respondíveis pela documentação — sempre na forma fixa de R22: opções descritas, recomendação e a via de pedir mais contexto.
 
 **Condição de saída — o onboarding está pronto quando:**
@@ -160,8 +167,9 @@ Acontece **uma vez**, quando o time recebe um projeto novo ou retoma um abandona
 - [ ] A lista de perguntas só-do-stakeholder foi respondida ou explicitamente adiada com o risco aceito.
 - [ ] `.team-project/README.md` reflete o entendimento alinhado (objetivo, fase, stack, ambiente, fontes da verdade, capacidade, **duração do sprint**, **unidade de estimativa**, restrições) e toda divergência status × código está no quadro como risco.
 - [ ] O quadro existe, com ao menos uma onda de Histórias candidatas, ou uma nota de que o planejamento está bloqueado aguardando brainstorm/decisão do stakeholder.
+- [ ] Pendências e bugs preexistentes estão rastreados — por `/qa audit`+`/qa baseline` (projeto retomado) ou por relato do stakeholder roteado ao PO (`/po bug`, projeto novo com defeito conhecido) — nunca perdidos por não caberem em nenhuma pergunta do onboarding.
 
-**Como o SM verifica que aconteceu:** a resposta do onboarding traz a tabela de inventário preenchida e as cinco leituras de entrada; `.team-project/README.md` está datado em/após o onboarding com §4 e §7 populadas; nenhuma Planning Meeting do projeto precede o registro de onboarding; toda divergência narrativa × código é linha na tabela de riscos do quadro.
+**Como o SM verifica que aconteceu:** a resposta do onboarding traz a tabela de inventário preenchida e as cinco leituras de entrada; `.team-project/README.md` está datado em/após o onboarding com §4 e §7 populadas; nenhuma Planning Meeting do projeto precede o registro de onboarding; toda divergência narrativa × código é linha na tabela de riscos do quadro; todo documento de implementação com conteúdo real tem linha em §4; e o passo 5 registra a pergunta ao stakeholder sobre defeito conhecido ainda não documentado, mesmo quando a resposta é "nenhum".
 
 ## 5b. Ritual de brainstorm de descoberta (R15)
 
@@ -343,6 +351,8 @@ dúvida de implementação  ──▶ Arquiteto        (dev nunca decide sozinho
 dúvida de regra/fluxo    ──▶ PO
 dúvida de tela/jornada   ──▶ UX
 prioridade, prazo, plano ──▶ PO               (detém o plano de entrega — §6a)
+bug relatado pelo stakeholder ──▶ PO classifica (defeito · escopo · dúvida de uso) ──▶ defeito aciona a QA (§6a · v3.13)
+bug achado pelo próprio time ──▶ direto ao registro da QA (dev: 🔺 GAP · QA: achado próprio · Arquiteto/UX: §6b) — não passa pelo PO (§6a · v3.14)
 capacidade, fila, bloqueio ─▶ SM              (quanto cabe, em que ordem)
 lacuna de especificação  ──▶ PO ──▶ stakeholder (opções descritas + recomendação + pedir mais contexto — R22)
 decisão estratégica      ──▶ stakeholder       (stack, provedor, custo, risco aceito)
@@ -353,7 +363,11 @@ achado que atravessa papéis ──▶ o QA roteia pelo objeto da dúvida (§6b)
 
 ### 6a. O canal do stakeholder é o PO
 
-O stakeholder **não consulta os seis papéis**. Ele se relaciona com o **PO**, que controla as suas demandas e responde por **valor, escopo, prioridade, prazo, plano de entrega e status**; e pode levar questão **técnica ao Arquiteto** ou **de tela ao UX** diretamente, quando quiser.
+O stakeholder **não consulta os seis papéis**. Ele se relaciona com o **PO**, que controla as suas demandas e responde por **valor, escopo, prioridade, prazo, plano de entrega, status e defeito que ele reporta** (`/po bug <relato>` avulso, ou a fila `.team-project/note.md` tratada em lote por `/po note` — v3.13); e pode levar questão **técnica ao Arquiteto** ou **de tela ao UX** diretamente, quando quiser. **Bug não abre canal novo:** o PO classifica o relato (defeito · mudança de escopo disfarçada · dúvida de uso) e só aciona a **QA** quando é defeito — não existe caminho direto stakeholder→QA.
+
+**A bifurcação do bug é pela origem do achado, não pela gravidade nem pelo tipo (v3.14).** Bug que o **stakeholder relata** entra pelo PO, como acima. Bug que o **próprio time acha durante o trabalho** — QA numa validação, dev implementando (🔺 GAP), Arquiteto ou UX num achado roteado pelo objeto da dúvida (§6b) — vai **direto ao registro da QA**, pelos canais que já existem, e **não passa pelo PO**: ele não é gargalo de achado técnico interno. A diferença está no que o PO agrega — julgar se o que o stakeholder chama de "bug" é de fato defeito, contra o critério de aceite aprovado — e esse julgamento só existe no relato que vem de **fora** do time; achado interno já chega com a evidência `arquivo:linha` e a classificação óbvia, então mandá-lo dar a volta pelo PO seria repasse sem agregar nada.
+
+**Isso não tira do PO a visão de capacidade.** Defeito interno que vira Task segue o roteiro comum de GAP (§5e "Durante o sprint"): entra no Product Backlog e concorre na Planning seguinte, ou — se bloqueia História já no sprint — vira Task da mesma História, com "o que saiu para caber" registrado no quadro. Nos dois casos o PO enxerga o efeito no plano de entrega porque lê o Product Backlog e o Sprint Backlog em `/po status` (`roles/product-owner/README.md`) — não precisa de um segundo canal de aviso para saber que capacidade foi consumida.
 
 O **SM não é canal de demanda** — é **processo, organização e eficiência**, e **facilitador de todos os envolvidos**. O stakeholder o encontra em três lugares: nos **rituais do Scrum**, que o SM gere; no **`/sm agreement`**, quando uma questão atravessa papéis e precisa de uma posição única; e na **cobrança dos portões** que dependem dele. O `/review` — aperfeiçoamento do processo — é do SM e roda só no repositório-fonte do plugin.
 
@@ -371,6 +385,8 @@ Não há orquestrador. O QA classifica o achado pelo **objeto da dúvida** e o e
 | o achado toca dois donos e o QA **não consegue** classificar | **SM**, que facilita o acordo | `/sm agreement` |
 
 **Quem recebe e não é dono devolve** — dizendo de quem é. Devolução não é recusa: é a classificação sendo corrigida por quem tem o contexto. Errar a rota custa uma devolução; reunir seis papéis para não errar custa muito mais.
+
+**A origem do achado não muda o degrau.** Quando o achado nasce de um defeito que o PO acionou (relato do stakeholder, §6a), o QA investiga e roteia pela mesma escada de sempre — construção, outro dono, ou visão especialista do Arquiteto — só registrando `Origem: stakeholder` em `pending.md`. O canal de entrada muda; a classificação pelo objeto da dúvida, não. **É esta a escada que o achado interno (§6a) sempre seguiu** — bug que o próprio time acha entra direto aqui, com `Origem: time`, sem o passo extra do PO.
 
 **Por que não há um orquestrador único:** o achado de degrau 2 é, com frequência, *"o requisito está errado ou a implementação está?"* — e o PO é **parte** nessa pergunta. Pedir a ele que conduza o julgamento do próprio artefato contraria o mesmo princípio que sustenta a frente 2 do QA (§4a: *um autor não audita a própria omissão*) e a regra de que o dev não revisa os próprios normativos. Quando é preciso reunir posições, quem facilita é o **SM**, que não é dono de requisito, desenho nem evidência.
 

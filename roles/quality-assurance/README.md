@@ -75,6 +75,15 @@ Auditoria cruzada em dois passes, no formato de [`templates/cross-audit.md`](tem
 ### `/qa security <ID>`
 Foco na frente 3, com o checklist completo do contexto do projeto.
 
+### Defeito reportado pelo stakeholder (acionado pelo PO)
+Nunca chega direto — o canal do stakeholder é o **PO** ([`workflow.md` §6a](../scrum-master/process/workflow.md)), que recebe o relato, classifica (defeito vs. mudança de escopo) e aciona o QA. A partir daí:
+
+1. **Investigar e tentar reproduzir** o que o PO descreveu, com o mesmo rigor de qualquer achado — nunca aceitar o relato como fato antes de confirmar.
+2. **Reproduziu, com `arquivo:linha`?** Abre ou atualiza a entrada em [`pending.md`](../../deliverables/implementation/pending.md) com `Origem: stakeholder` — é o que ele chama de "bug". **Não reproduziu?** Não abre entrada: registra como suspeita no veredito e devolve ao PO com o que falta para confirmar.
+3. **Roteia pela escada de falha de sempre** — a origem do relato não muda o degrau: continua sendo o objeto do achado (construção, outro dono, ou visão especialista do Arquiteto) que decide para onde volta.
+4. Se a entrada ficar **parada esperando decisão dele** (ex.: dúvida se é defeito ou mudança de escopo, ou prioridade), marca `Aguarda decisão do stakeholder: sim` com a pergunta no formato de R22 ou o ponteiro para onde ela foi feita — nunca deixa isso implícito.
+5. **Continuo sem corrigir.** Reprovo e registro com evidência; a correção segue pela escada normal.
+
 ## Regra que me define
 
 **O que não pôde ser executado é declarado "não exercitado"**, com o motivo — nunca omitido. É assim que projetos acumulam funcionalidade declarada como pronta que nunca rodou.

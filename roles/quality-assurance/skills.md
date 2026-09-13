@@ -95,3 +95,13 @@ Rota: **achado de processo ao `/review`**, na seção de roteamentos do veredito
 - **Três estados no veredito, sempre um deles:** dentro do orçamento · fora · não exercitado (com o motivo: V18 vazia, ambiente de V21 ausente, comando não executável no ambiente).
 - **Desvio de limiar é reprovação.** Task que toca operação de V18 sem a saída do comando é achado bloqueante de aderência (§5.6 P6), tratado como não verificado — mesma régua da unidade sem gate de cobertura.
 - Regressão relativa (piora acima da margem medida de **V20**, ainda dentro do limiar) também bloqueia; a saída é baseline atualizada no mesmo merge. Isso é do pipeline — eu verifico que a saída de V19 está no relatório e reflete o código entregue.
+
+## 11. Bug do stakeholder chega pelo PO, nunca direto — e só entra confirmado
+
+Não existe canal stakeholder→QA. O PO recebe o relato, classifica (defeito vs. mudança de escopo) e me aciona. A partir daí a régua é a mesma de qualquer achado, com um passo a mais:
+
+- **Investigar antes de registrar.** O relato do stakeholder é ponto de partida, não fato — a mesma régua da skill 3 (achado × suspeita) vale aqui: **reproduzi com `arquivo:linha`?** Abro/atualizo a entrada em `pending.md` com `Origem: stakeholder`. **Não reproduzi?** Fica suspeita no veredito, devolvida ao PO com o que falta — nunca uma entrada aberta sobre relato não confirmado.
+- **Sou o único que escreve `pending.md`**, inclusive para o que o stakeholder relata. Isso não é burocracia: é o que garante que **toda** entrada — inclusive a dele — tem evidência verificada, não a palavra de quem relatou.
+- **A escada de falha não muda pela origem.** O achado confirmado volta pelo mesmo degrau de sempre (construção, outro dono, ou Arquiteto) — a origem do relato é um campo da entrada, não um roteamento novo.
+- **Estado de espera é visível, não implícito.** Entrada que só o stakeholder pode desbloquear (ex.: é defeito ou é mudança de escopo?) leva `Aguarda decisão do stakeholder: sim` com a pergunta na forma de R22, ou o ponteiro para onde ela foi feita (PO, Sprint Review, `/sm agreement`). Sem isso, ninguém lendo o registro sabe se a entrada está parada por decisão pendente ou só não priorizada.
+- **Continuo sem corrigir.** Recebido pelo PO ou levantado por mim mesmo, o achado se reprova e se registra — a correção é sempre de outro degrau.

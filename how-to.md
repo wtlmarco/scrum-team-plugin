@@ -62,7 +62,7 @@ claude plugin update team@team           # aplica (exige reiniciar a sessão)
 | Comando | Modos | Papel |
 |---|---|---|
 | `/sm` | `onboarding` · `sprint plan` · `sprint close` · `review` · `board` · `agreement <questão>` · `close <T-ID>` | Scrum Master — rituais, Sprint Backlog, capacidade, riscos, processo |
-| `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` | Product Owner — **o seu canal**: status, prazo, requisitos, Histórias, backlog, aceite |
+| `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` · `bug <relato>` · `note` | Product Owner — **o seu canal**: status, prazo, requisitos, Histórias, backlog, aceite, e o defeito que você reporta |
 | `/arc` | `plan <ID>` · `comply <ID>` · `adr <tema>` · `question <dúvida>` | Arquiteto — desenho, Plano de Implementação, ADR, standards |
 | `/ux` | `prototype` · `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` | UX — **protótipo funcional (portão ①)**, jornada, tela, usabilidade, acessibilidade |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` | Desenvolvedor — executa o plano, não improvisa |
@@ -77,6 +77,8 @@ claude plugin update team@team           # aplica (exige reiniciar a sessão)
 **`/sm review` não é `/review`.** O primeiro é a Sprint Review, roda no projeto e é onde você aceita as Histórias. O segundo evolui o processo do time e roda só no repositório-fonte do plugin.
 
 **O `/review` é diferente de todos os outros:** ele não trabalha no projeto — evolui os **documentos do plugin** (o processo do time). Roda só num clone do repositório do plugin; contra a cópia instalada num projeto, a mudança é sobrescrita no próximo `claude plugin update`. Melhoria de operação percebida trabalhando num projeto é anotada como sintoma e levada ao `note.md` do repositório do plugin, que é a fila do `/review`. Todo o resto opera no produto e registra em `.team-project/` ou nos documentos do projeto.
+
+**`.team-project/note.md` é a fila equivalente, mas do produto, não do processo.** Ao longo do uso, anote ali cada problema que encontrar — um item por linha, na seção **Abertas**. Escreva **sintoma, não solução**: "depois de salvar duas vezes seguidas em X, a tela trava", nunca "corrigir o timeout de X" (isso já é diagnóstico, que é do time) nem "bug: endpoint Y retorna 500" (isso já é solução técnica). Quando quiser, rode **`/po note`**: o PO lê a fila inteira, classifica cada item (defeito · mudança de escopo disfarçada de bug · dúvida de uso) contra o que foi aprovado e aceito, aciona quem resolve, e devolve a você, item a item, o que fez com cada um. **Item tratado sai da fila** — passa a viver só no destino (registro da QA, Product Backlog, ou a resposta já dada), nunca duplicado nos dois lugares. Para um relato avulso, sem esperar o lote, use `/po bug <relato>` na conversa. Não confunda com `RAIZ/note.md`: aquele é a fila do `/review`, que evolui como o **time** trabalha; este é a fila do `/po note`, que evolui o **produto** que o time constrói para você.
 
 ## Quatro caminhos de entrada
 
@@ -122,14 +124,19 @@ Há código, e a documentação pode não corresponder a ele.
 
 ### C · Corrigir um bug
 
+Duas entradas, conforme **quem acha** o defeito.
+
 ```
-/qa <ID>                        se já há Task: valida e produz o achado com arquivo:linha
+/po bug <relato>                você relata, o PO classifica (defeito · escopo · dúvida de uso)
+                                 defeito confirmado pela QA vira o achado com arquivo:linha
 /arc question <dúvida>          se a causa não é óbvia: diagnóstico com evidência
 /arc plan <ID>                  correção desenhada, não improvisada
 /dev <ID>                       executa o plano
 /qa <T-ID>                      veredito ✅/⚠️/❌
 /sm close <T-ID>                fecha a Task; o aceite vem na Sprint Review
 ```
+
+O time também abre defeito direto quando **acha durante o próprio trabalho** — QA numa validação, dev implementando, Arquiteto numa revisão —, sem passar por você nem pelo PO: vai direto ao registro da QA, pelos canais que já existem, e segue a mesma escada de correção a partir de `/arc plan`. `/po bug` é a porta de entrada só para o que **você** relata.
 
 **Achado não volta sempre para o mesmo lugar.** A escada:
 
