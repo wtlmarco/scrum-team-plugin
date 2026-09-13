@@ -13,6 +13,29 @@
 
 ---
 
+## v3.14.1 — 2026-09-12
+
+**Branch:** `fix/v3.14.1` · **Base:** `develop` (v3.14.0) · **PR** para `develop`.
+
+**PATCH sobre a mesma linha — sem mudança de processo.** Não carrega entrada nova de `process-changelog.md`: aplica as duas propostas de texto pronto que as entradas [`v3.12`](roles/scrum-master/process/process-changelog.md) e [`v3.13`](roles/scrum-master/process/process-changelog.md) deixaram para o stakeholder, em arquivos que são dele (`commands/` e `agents/`). O comportamento já estava desenhado e registrado na entrega anterior; o que faltava era ligá-lo aos arquivos que o Claude Code lê.
+
+### O que entrou
+
+- **Modo `bug <descrição>` no `/qa`.** Acionado pelo **PO**, nunca direto pelo stakeholder, com o defeito já classificado. É o **único modo do `/qa` que entra sem Task** — `<ID>` e `security <ID>` exigem uma Task, `baseline` e `audit` varrem o projeto inteiro, e nenhum deles aceitava "investigue este defeito descrito, que ainda não é Task". Era a lacuna no handoff PO→QA. Investiga e tenta reproduzir; confirmado, registra em `pending.md` com `Origem: stakeholder`; não reproduzido, reporta como suspeita — nenhuma entrada sem evidência.
+- **Card do PO (`agents/product-owner.md`) alinhado ao roteiro.** `description`, lista de leitura obrigatória (inclui `.team-project/note.md` nos modos `bug` e `note`), responsabilidade nova com a classificação em três casos e a fronteira explícita (não investiga código, não confirma com evidência, não escreve no registro da QA), e `.team-project/note.md` nos arquivos que ele pode escrever — **só para remover item já tratado**.
+
+### Decisão registrada
+
+A `v3.14.0` deixou em aberto se o modo `/qa bug` teria ficado **redundante** depois da decisão de bifurcar o caminho do bug por origem do achado. Verificado contra os modos existentes: **não ficou**. A bifurcação manda o defeito achado pelo time seguir pelos canais que já existem — mas esses nascem dentro de uma Task (dev construindo abre 🔺 GAP; QA validando abre achado próprio). O relato do stakeholder é justamente o que chega **sem Task**, e nenhum modo o aceitava. O texto aplicado diz isso explicitamente, para os dois caminhos não se confundirem.
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.14.1`. Nenhum arquivo de `roles/`, `deliverables/` ou `standards/` foi tocado — a entrega é só `commands/qa.md` e `agents/product-owner.md`, mais os três arquivos de versão.
+
+**Mudança de comportamento de agente/comando só entra em vigor após reiniciar a sessão.**
+
+---
+
 ## v3.14.0 — 2026-09-12
 
 **Branch:** `fix/v3.14.0` · **Base:** `fix/v3.10.0` (branch empilhada — esta entrega depende das entradas de processo da anterior) · **PR** para `develop`.
