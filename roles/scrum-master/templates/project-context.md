@@ -8,6 +8,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 .team-project/
 ├── README.md                 ← este modelo
 ├── how-to.md                 cópia de `${CLAUDE_PLUGIN_ROOT}/how-to.md` — guia de uso, não editar aqui
+├── note.md                   fila de relatos do stakeholder — escrita por ele, tratada pelo PO via `/po note`
 ├── scrum-master/             context.md · sprint-backlog.md
 ├── product-owner/            context.md · product-backlog.md
 ├── architect/                context.md · plans/
@@ -22,6 +23,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 |---|---|
 | `README.md` | este documento |
 | `how-to.md` | cópia literal de `${CLAUDE_PLUGIN_ROOT}/how-to.md` |
+| `note.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/note.md` *(fila de relatos do stakeholder, tratada por `/po note`/`/po bug`)* |
 | `scrum-master/sprint-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/sprint-backlog.md` *(o Sprint Backlog)* |
 | `product-owner/product-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/product-backlog.md` *(o conjunto das Histórias; cada uma segue `templates/user-story.md`)* |
 | `quality-assurance/evidence.md` | `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/evidence.md` |
@@ -69,6 +71,8 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 
 **Regra de confiança:** <qual fonte vence quando duas divergem.>
 
+**Regra de nascimento.** `01-scope-and-criteria`, `02-status`, `03-code-map` e `pending` não são semeados pelo `/team init` ([`deliverables/team-project/README.md`](../../../deliverables/team-project/README.md)) — nascem quando o projeto os exige (retomada, primeiro fechamento de Task, primeira auditoria). Documento que nasce entra nesta tabela na mesma sessão (R12), com o dono — nunca fica implícito.
+
 ## 5. Ambiente de verificação
 <Shell, comandos de build/teste/lint/execução.>
 
@@ -88,7 +92,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | Comando | Modos |
 |---|---|
 | `/sm` | `onboarding` · `sprint plan` · `sprint close` · `review` · `board` · `agreement <questão>` · `close <T-ID>` |
-| `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` |
+| `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` · `bug <relato>` · `note` |
 | `/arc` | `plan <T-ID>` · `comply <T-ID>` · `adr <tema>` · `question <dúvida>` |
 | `/ux` | `prototype` · `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` |
 | `/dev` | `<T-ID>` · `resume <T-ID>` · `gap <resposta>` |
@@ -107,7 +111,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 |---|---|
 | **Projeto novo** | `/team brainstorm <ideia>` → `/po requirement <ID>` → `/ux prototype` → ① → ② → `/po story <H-ID>` → ③ → `/sm sprint plan` → `/team cycle <T-ID>` → `/sm review` |
 | **Projeto retomado** | `/sm onboarding` → `/qa audit` → `/qa baseline` → `/po story <H-ID>` → `/sm sprint plan` |
-| **Bug** | `/arc question <dúvida>` (diagnóstico) → `/arc plan <T-ID>` → `/dev <T-ID>` → `/qa <T-ID>` → `/sm close <T-ID>` → aceite na `/sm review` |
+| **Bug** | Relatado pelo stakeholder: `/po bug <relato>` ou `.team-project/note.md` via `/po note` (PO classifica, aciona a QA se for defeito). Achado pelo time: direto no registro da QA (🔺 GAP do dev · achado próprio da QA · §6b para Arquiteto/UX), sem passar pelo PO. Dos dois: `/arc question <dúvida>` (diagnóstico, se a causa não é óbvia) → `/arc plan <T-ID>` → `/dev <T-ID>` → `/qa <T-ID>` → `/sm close <T-ID>` → aceite na `/sm review` |
 | **Melhoria** | `/po analyze` (área já documentada) ou `/team brainstorm` (capacidade nova) → `/po impact` → `/po story` → `/sm sprint plan` → `/team cycle` |
 | **Fim de sprint** | `/sm review` (PO aceita as Histórias) → `/sm sprint close` (retrospectiva) → `/sm sprint plan` (abre o próximo) |
 

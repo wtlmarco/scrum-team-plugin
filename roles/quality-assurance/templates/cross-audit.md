@@ -48,8 +48,9 @@ Compara o documento de status, o escopo/critérios, o inventário de código e o
 |---|---|---|---|
 
 ### GAPs a abrir
-| ID proposto | Criticidade | Resumo |
-|---|---|---|
+| ID proposto | Criticidade | Origem | Resumo |
+|---|---|---|---|
+<!-- Origem: quase sempre `time` (auditoria é levantamento do próprio QA); `stakeholder` só quando o achado confirma um relato que já havia chegado pelo PO. -->
 
 ### Achados de processo em `${CLAUDE_PLUGIN_ROOT}/standards/` — rota `/review`
 | Onde (`<arquivo> §<n>`) | Sinal (contradição / lacuna / inverificável) | Resumo |

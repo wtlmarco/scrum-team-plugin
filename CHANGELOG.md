@@ -13,6 +13,34 @@
 
 ---
 
+## v3.14.0 — 2026-09-12
+
+**Branch:** `fix/v3.14.0` · **Base:** `fix/v3.10.0` (branch empilhada — esta entrega depende das entradas de processo da anterior) · **PR** para `develop`.
+
+**MINOR de processo, sem defeito de produto.** Carrega as entradas [`v3.12`](roles/scrum-master/process/process-changelog.md), [`v3.13`](roles/scrum-master/process/process-changelog.md) e [`v3.14`](roles/scrum-master/process/process-changelog.md) do changelog do processo, fechadas numa sessão de `/review note` com seis itens sobre o mesmo tema: onde o projeto registra pendências e bugs, e por onde um defeito entra. A triagem levantou quatro conflitos com regra vigente e **todos foram decididos pelo stakeholder antes da aplicação** — nenhum resolvido por conta própria.
+
+### O que entrou
+
+- **Um registro só para pendências e bugs, distinguidos por campo.** `pending.md` continua sendo o único registro de itens abertos; a entrada ganha `Origem: time | stakeholder` e `Aguarda decisão do stakeholder: não | sim`. O pedido original era de quatro arquivos (`pendings.md`, `bugs.md` e os dois `-resolved`); a decisão foi resolver por campo, porque origem e estado são dois bits e quatro arquivos seriam quatro cargas fixas de leitura.
+- **Leitura filtrada do stakeholder (§2.1 de `pending.md`).** Só as entradas que ele reportou, com a coluna "aguarda decisão dele?" — sem atravessar a lista técnica, e sem sair do mesmo arquivo.
+- **Dono único da escrita preservado.** Só o QA escreve em `pending.md`; os demais papéis reportam pelos canais que já existem (🔺 GAP, achado, relato pelo PO) e o QA transcreve com evidência `arquivo:linha`. Era um dos conflitos: o pedido original abria escrita a todos os papéis.
+- **Resolvido continua no `02-status.md` do SM** (R12 preservada) — o outro conflito decidido: não há arquivo de resolvidos da QA.
+- **O bug entra pelo PO, com bifurcação por origem do achado.** Defeito que o **stakeholder** reporta entra pelo PO (`/po bug <relato>`), que classifica em defeito · mudança de escopo disfarçada · dúvida de uso e aciona a QA quando é defeito. Defeito que o **time** acha durante o trabalho vai direto ao registro da QA pelos canais próprios — o PO não é gargalo de achado técnico interno.
+- **Fila de relatos do projeto: `.team-project/note.md`.** O stakeholder anota problemas ao longo do uso, como sintoma; **`/po note`** trata a fila inteira em lote, item a item, e remove da fila o que foi tratado — que passa a viver só no destino. Semeado pelo `/team init` e explicado no `how-to.md`, que é copiado para dentro do projeto.
+- **O homônimo `note` foi tratado antes de virar defeito.** Agora há três coisas com esse nome (a fila do `/review` na raiz do plugin, a fila do projeto, e o modelo dela). Entraram na tabela de homônimos e na matriz de propriedade de `artifact-ownership.md`; as listas "Não faz" dos seis papéis e "Proibido" dos seis agentes foram lidas uma a uma procurando a palavra crua — nenhuma ocorrência, nada a corrigir. É a régua nascida da `v3.4`, quando um papel recusou o próprio modo por causa disso.
+- **Nascimento dos documentos de implementação declarado.** `01-scope-and-criteria`, `02-status`, `03-code-map` e `pending` não são semeados pelo `init` — nascem quando o projeto precisa. O onboarding agora exige declará-los em `.team-project/README.md` §4 na mesma sessão em que nascem, e rastreia pendências e bugs já conhecidos.
+
+### Pendências abertas por esta entrega
+
+- `commands/qa.md` — o modo `/qa bug <descrição>` foi proposto pela QA **antes** da decisão de bifurcar o caminho do bug. Com achado interno indo direto ao registro por canais que já existem, o modo pode ter ficado redundante. Fica como proposta no changelog do processo (`v3.12`), para reavaliação.
+- `agents/product-owner.md` — proposta de texto pronto em `v3.13`, não aplicada.
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.14.0`. Detalhe completo de diffs e evidência (R19) nas entradas `v3.12`–`v3.14` do changelog do processo.
+
+---
+
 ## v3.10.0 — 2026-09-12
 
 **Branch:** `fix/v3.10.0` · **Base:** `main` (v3.6.0) · **PR** para `develop`.
