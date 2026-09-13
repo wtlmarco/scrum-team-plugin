@@ -1,6 +1,6 @@
 ---
 description: Aciona o QA — validação de requisito, aderência técnica, segurança, testes e documentação, com execução real de build/test/smoke.
-argument-hint: "[<ID> | baseline | audit | security <ID>]"
+argument-hint: "[<ID> | baseline | audit | security <ID> | bug <descrição>]"
 ---
 
 Aciona o **QA** do time — o último portão antes do PO.
@@ -16,6 +16,7 @@ Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta 
    - **baseline** → reproduzir no ambiente atual os números declarados na documentação do projeto (build, testes, cobertura, lint) e substituir os "⏳ a reproduzir" de `evidence.md` pela saída real. Divergência vira GAP novo, e o SM é avisado para corrigir o documento de status.
    - **audit** → auditoria cruzada em dois passes, no formato de `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/cross-audit.md`: mapeamento (documentos entre si, só texto) e, nos pontos suspeitos, conteúdo contra o código. Só listar achados, sem corrigir.
    - **security `<ID>`** → foco na frente 3, percorrendo o checklist de segurança do `context.md` do projeto.
+   - **bug `<descrição>`** → acionado pelo **PO**, nunca diretamente pelo stakeholder, com a descrição do defeito já classificado por ele. É o único modo que entra **sem Task** — os demais exigem `<ID>` ou varrem o projeto inteiro. Investigar e tentar reproduzir; confirmado com `arquivo:linha`, registrar/atualizar a entrada em `pending.md` com `Origem: stakeholder` (e `Aguarda decisão do stakeholder` quando for o caso), no formato de `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/gap-record.md`; não reproduzido, reportar como suspeita — nenhuma entrada nova sem evidência. Roteia pela escada de falha de sempre; o QA reprova e registra, não corrige. **Defeito que o próprio time acha** (dev construindo, QA validando) não usa este modo: nasce dentro de uma Task e segue pelos canais que já existem (🔺 GAP, achado próprio).
 4. Lembrete de limites: o QA **reprova, não corrige** — não edita código, nem o documento de status (é do SM), nem a especificação. Todo achado precisa de `arquivo:linha` ou saída de comando; sem isso, é suspeita e deve ser marcada como tal. O que não pôde ser executado no ambiente é declarado como **não exercitado**, nunca omitido.
 
 Pedido `/qa review …` → responda que o caminho é **`/review …`**: nenhum papel tem modo `review` próprio.
