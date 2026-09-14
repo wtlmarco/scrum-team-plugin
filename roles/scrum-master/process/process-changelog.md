@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.13`](process-changelog-archive.md) | O bug entra pelo PO: classificação do relato do stakeholder, e a fila `.team-project/note.md` tratada em lote (PO) — 12/09/2026 |
 | [`v3.12`](process-changelog-archive.md) | Pendências e bugs num só registro: campo `origem`, leitura filtrada do stakeholder e estado de escalação em `pending.md` (QA) — 12/09/2026 |
 | [`v3.11`](process-changelog-archive.md) | Delegar tarefa simples de PO/SM/UX/QA ao dev (Haiku): proposta avaliada e descartada — 12/09/2026 |
 | [`v3.10`](process-changelog-archive.md) | Pendentes de v3.8/v3.9 aplicados a pedido do stakeholder: timeout do Arquiteto, verificação do protótipo no comando e retomada nativa entre invocações — 12/09/2026 |
@@ -48,6 +49,59 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.16 — Tabela de custo remedida (v3.4 → v3.16) e R18 realinhada ao modelo de branch em uso (`develop`, empilhamento) (SM) — 14/09/2026
+
+> **Duas mudanças do alcance do SM**, roteadas por `/review` direto (sem passar por `note.md`). A primeira fecha o item 1 da fila de `note.md`: a tabela de custo por comando de `workflow.md` §5c avisava, desde a própria v3.4, que "tabela de custo que não se remede vira folclore" — nunca tinha sido remedida. A segunda nasceu de uma observação do stakeholder ao pedir esta própria entrega ("gere uma branch a partir de `develop`"), contrastada com a prática registrada em `CHANGELOG.md` desde a `v3.6.0`.
+
+**Instrução:** *(stakeholder, via `/review`)* Remedir a tabela de custo com os números atuais, anexar o comando de medição e datar; realinhar R18 ao modelo de branch (`develop`) que o time já usa, cobrindo também o caso de branch empilhada — com a alçada de PARAR e escalar se a mudança de modelo de branch fosse julgada decisão estratégica do stakeholder em vez de reconciliação. Avaliada: não é — é reconciliação de normativo contra prática já registrada e confirmada nesta mesma sessão.
+
+**Classificação:** formato de documento (tabela de custo, `workflow.md` §5c) + regra (R18, `working-rules.md`) + coerência de referência cruzada (`workflow.md` §5d/§8, `CHANGELOG.md` cabeçalho, `README.md`, `templates/retrospective.md`).
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `roles/scrum-master/process/workflow.md` | §5c, tabela "Custo por comando" | Números da v3.4 substituídos pelos atuais (SM 15,4 · PO 16,7 · UX 11,2 · Arquiteto 10,4 · QA 11,1 · dev 7,1 KB); `/team brainstorm` ~37→~39 KB, `/team cycle` ~26→~27 KB, `/review` ~15→~14 KB de base; comando de medição anexado (`Get-ChildItem agents,commands -File \| Select-Object Name,Length`) e a nota datada (14/09/2026) |
+| `roles/scrum-master/process/working-rules.md` | R18 (corpo, Evita, SM verifica) | "a partir de `main`, PR para `main`" → "a partir de `develop` — ou empilhada —, PR para `develop`"; `main` descrita como linha estável que recebe `develop` por decisão do stakeholder; "SM verifica" trocado de `git log main` para `git log develop` |
+| `roles/scrum-master/process/workflow.md` | §5d "Ciclo de uma entrega" (passo 1 e 3) | Passo 1 cobre branch empilhada com os dois precedentes (`v3.14.0`, `v3.16.0`); passo 3 explica `main`/`develop`; passo 6 menciona declarar a base quando empilhada |
+| `roles/scrum-master/process/workflow.md` | §8, linha do gate de entrega | "merge do PR em `main`" → "merge do PR em `develop`" |
+| `roles/scrum-master/templates/retrospective.md` | linha de indicador R18 | "merge em `main`" → "merge em `develop`" |
+| `CHANGELOG.md` | cabeçalho do ritual (linhas 6-10) | Realinhado ao mesmo modelo, coerência de referência cruzada com R18 (curadoria do SM em guia de raiz) |
+| `README.md` | linha 4, banner de versionamento | "a partir de `main`" → "a partir de `develop` (ou empilhada), PR para `develop`" — mesma curadoria de referência cruzada |
+
+### Por quê
+A tabela de custo é a base numérica de toda decisão do ciclo de eficiência (`workflow.md` §5c/§5d) — com números de nove versões atrás, o giro **Act** corta no lugar errado. O achado que mais importa: a carga fixa do **PO** cresceu **13 → 16,7 KB (+28%)** sem que nenhum giro de `/review metrics` o notasse, porque a tabela nunca foi remedida para comparar. R18 descrevia um modelo de branch que zero entregas reais seguem desde a `v3.6.0` (evidência no próprio `CHANGELOG.md`: `v3.10.0`, `v3.14.0`, `v3.14.1`, `v3.15.0` todas saem para `develop`) — normativo que a prática já abandonou sem ninguém atualizar é o mesmo modo de falha da tabela de custo, só que em regra em vez de número.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| SM | próxima remedição da tabela de custo é mecânica (comando anexado), não arqueologia; toda entrega nova declara base `develop` (ou a branch empilhada) na entrada do `CHANGELOG.md`, e o SM verifica contra `git log develop`, não `main` |
+| Demais papéis | sem mudança de prática — nenhum já seguia o modelo antigo |
+
+### Conflitos com o processo vigente
+Nenhum de conteúdo. Uma divergência **não** aplicada, registrada abaixo.
+
+**Divergência registrada — proposta recusada.** Eu (SM) havia sugerido, na mesma sessão, remover a seção "Evolução dos seus documentos — `/review`" dos 5 `agents/*.md` (economia de carga fixa). **Recusada na condução do `/review`**, não pelo stakeholder — que depois autorizou a entrega com a recusa já dentro dela. Motivo, registrado sem suavizar: aquele bloco já é o resultado da compressão feita na v2.7 (`process-changelog-archive.md:1031`) e carrega duas salvaguardas ausentes de `commands/review.md:57` — "nunca escreva em `${CLAUDE_PLUGIN_ROOT}`" e "sem a RAIZ, pare e peça" — que corrigem um defeito observado em campo (`process-changelog-archive.md:869`: quatro papéis lendo o contrato da cópia instalada). Cortar 2,4 KB reabriria esse modo de falha. Não aplicada; não entra em `agents/*.md`.
+
+### Como saberemos que funcionou
+Próximo giro de `/review metrics` (§5c) remede a tabela usando o comando anexado sem precisar reconstruir a metodologia; o Δ contra esta remedição aparece sem surpresa de duas dígitos como a do PO nesta entrada. Próxima entrega nova declara `fix/vX.Y.Z` a partir de `develop` (ou empilhada, com a base nomeada) na entrada do `CHANGELOG.md`, sem citar `main` como origem.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | `Get-ChildItem -Recurse -Include *.md \| Where-Object { $_.FullName -notmatch 'changelog' -and $_.FullName -notmatch 'CHANGELOG' } \| Select-String -Pattern "a partir de \`main\`\|PR para \`main\`"` | 0 ocorrências (excluídos `CHANGELOG.md`/`*changelog*.md`, onde entradas históricas narram corretamente o modelo antigo em vigor na época — não se reescrevem, R17) | ✅ |
+| Substituição de padrão | `Select-String -Path roles\scrum-master\process\workflow.md -Pattern "~37 KB\|~26 KB\|Medidos em v3.4\|15 . 13 . 11 . 10 . 10 . 7 KB"` | 0 ocorrências | ✅ |
+| Substituição de padrão — leitura em contexto | `working-rules.md` R18 completa, `workflow.md` §5d passos 1/3/6, §8 linha do gate, `templates/retrospective.md` linha do indicador, `CHANGELOG.md:6-10`, `README.md:4` | cada ocorrência nova é coerente com o texto ao lado — nenhuma menciona `main` como origem de branch; `main` só aparece como linha estável que recebe `develop` | ✅ |
+| Arquivamento de entrada (pré-condição do teto de 3 — `process-changelog.md:10`, esta entrada some a 4ª) | `Compare-Object` do bloco `## v3.13` pré-sessão (64 linhas, índice 178..241 do array de linhas) × relocado em `process-changelog-archive.md` (índice 10..73) | 0 diferenças — bloco idêntico, só a posição mudou | ✅ |
+| Fronteira não ultrapassada | `git status --porcelain` | 8 arquivos, todos do alcance do SM: `plugin.json`, `CHANGELOG.md`, `README.md` (tríade R18 + curadoria de referência cruzada), `process-changelog-archive.md`, `process-changelog.md`, `workflow.md`, `working-rules.md`, `templates/retrospective.md` | ✅ |
+| Tríade do R18 | `plugin.json`, topo `CHANGELOG.md`, banner `README.md` | os três `3.16.0` | ✅ |
+
+### Pendente do stakeholder
+Nada novo. A divergência sobre remover a seção `/review` dos `agents/*.md` já foi decidida (recusada) — ver acima.
+
+**Mudança de comportamento de agente/comando não se aplica** — nenhum `agents/`/`commands/` foi tocado.
 
 ---
 
@@ -173,71 +227,4 @@ Tinha ficado um ponto para sua decisão (R22): caminho C de `how-to.md` só com 
 Aplicado em `workflow.md` §6a/§6b (bifurcação + visão do PO preservada via Product/Sprint Backlog), `how-to.md` caminho C e `project-context.md` §8, ver "O que mudou" acima. Propostas de `agents/`/`commands/` de `v3.12`/`v3.13` seguem como propostas, sem mudança.
 
 **Mudança de comportamento de agente/comando** não se aplica — nenhum `agents/`/`commands/` foi tocado.
-
----
-
-## v3.13 — O bug entra pelo PO: classificação do relato do stakeholder, e a fila `.team-project/note.md` tratada em lote (PO) — 12/09/2026
-
-> **Entrada irmã da mesma rodada de `/review note`.** A triagem do Agent `scrum-master` apontou que `workflow.md` §6a fecha de forma exaustiva os canais diretos do stakeholder (PO, Arquiteto, UX) e que a QA não é canal de entrada — o stakeholder decidiu, antes desta aplicação, que **o bug entra pelo PO**: ele reporta o defeito ao PO, que classifica e aciona a QA, sem abrir canal direto stakeholder→QA. Esta é a parte do **PO**; o Agent `quality-assurance` aplica `roles/quality-assurance/*` e `deliverables/implementation/pending.md` em paralelo (`v3.12`, já registrada acima) e o Agent `scrum-master` fecha a curadoria (`v3.14`). No meio da aplicação, o stakeholder acrescentou um pedido complementar — replicar, no nível do projeto, o mesmo padrão de fila que o próprio plugin usa (`RAIZ/note.md` + `/review note`) — e pediu para manter tudo nesta mesma entrada.
-
-**Instrução:** *(stakeholder, via `/review note`, decisão já fechada na triagem, mais o acréscimo em conversa)* "O stakeholder pediu... um caminho para reportar bugs que ele identifica no sistema, e um comando para a QA tratar" (item de `note.md`) — decidido: "o bug entra por você [PO]... nenhum canal direto stakeholder→QA é criado"; e, na sequência: "quer um arquivo `.team-project/note.md` onde ele anota, ao longo do uso, os problemas que encontra — e um modo `/po note` que lê esse arquivo e faz a tratativa de **todos** os itens reportados de uma vez... o mesmo padrão que o próprio plugin já usa para si."
-
-**Classificação:** escopo de papel (roteiro/skills do PO para tratar relato de defeito) + formato de documento novo (modelo de `.team-project/note.md`, análogo a `RAIZ/note.md`). Não é regra de trabalho nova — `workflow.md` §6a (canal do stakeholder) e R4 (não antecipar escopo) já cobriam a fronteira; o que faltava era o **roteiro do PO instruir** o que fazer quando o relato não é "demanda de valor", e sim "isto está quebrado".
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `roles/product-owner/README.md` | "O que respondo" (Entradas · Saídas · Escreve · Não faz) | **Entradas** ganha relato de defeito do stakeholder (avulso ou pela fila); **Saídas** ganha a classificação com destino acionado; **Escreve** ganha `.team-project/note.md`, só para remover item já tratado; **Não faz** ganha a fronteira explícita — não investiga código, não confirma defeito com evidência, não escreve no registro da QA (é dela) |
-| `roles/product-owner/README.md` | "Roteiro por modo" | Dois modos novos, após `/po accept`: **`/po bug <relato>`** (classifica um relato avulso em defeito · mudança de escopo disfarçada de bug · dúvida de uso, com a régua do portão ③/R21, a fronteira e a rastreabilidade relato→classificação→destino) e **`/po note`** (lê `.team-project/note.md` inteiro, trata todos os itens da fila com a mesma classificação, devolve item a item ao stakeholder e fecha a fila) |
-| `roles/product-owner/README.md` | "Como sei que estou funcionando" | Bullet novo: todo relato de defeito tem linha rastreável relato → classificação → destino, nunca fica só numa conversa |
-| `roles/product-owner/README.md` | "Documentos que administro" | Linha nova: **Relatos do stakeholder (fila)** — vivo, `.team-project/note.md`, modelo `templates/note.md` |
-| `roles/product-owner/skills.md` | **Skill 8 nova** — *Classificar relato de defeito antes de agir* | Tabela de três casos (defeito / mudança de escopo disfarçada de bug / dúvida de uso) com a régua e o destino de cada um; o caso "não dá para decidir sem investigar" (aciona a QA para investigar antes de classificar, o que é legítimo); a fronteira (não investigo, não confirmo, não escrevo no registro da QA) |
-| `roles/product-owner/templates/note.md` | **arquivo novo** | Modelo de `.team-project/note.md` — fila de relatos do stakeholder **deste projeto**: cabeçalho com dono (stakeholder escreve) e quem trata (PO), seção "O que escrever aqui" (relato bruto, com exemplo do que não escrever), seção "Abertas", e "Como este arquivo é fechado" (tabela classificação → destino; item tratado sai da fila e não duplica registro) — mesma mecânica de `RAIZ/note.md` + `/review note`, no nível do projeto |
-
-### Por quê
-Sem um modo explícito, um relato de "isto está quebrado" tinha três destinos plausíveis e nenhuma régua escrita para escolher entre eles: virar bug automático mesmo quando é mudança de escopo disfarçada (inflando indevidamente `pending.md` da QA com o campo `origem: stakeholder` que a v3.12 acabou de criar), ou ser resolvido em conversa sem nunca chegar a um registro (violando o espírito de R6 — decisão registrada). A régua explícita — critério de aceite aprovado no portão ③ e o que foi aceito na Sprint Review (R21) — é o que já existe para julgar se o sistema faz o que devia; faltava só apontá-la para este uso. O `/po note` replica, no nível do projeto, um padrão já comprovado (`RAIZ/note.md` + `/review note`): fila só de sintomas, tratada em lote, sem virar segundo registro que diverge do destino real de cada item.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda |
-|---|---|
-| **PO** | Passa a classificar todo relato de defeito do stakeholder — avulso (`/po bug`) ou pela fila (`/po note`) — contra a régua do critério de aceite aprovado, antes de acionar qualquer destino; não pode mais tratar "está quebrado" como bug automático nem resolver em conversa sem registrar a linha relato→classificação→destino |
-| **QA** | (Aplicado por ela em `v3.12`) passa a receber o defeito **já classificado** pelo PO, nunca diretamente do stakeholder |
-| **stakeholder** | Reporta defeito ao PO, não à QA; ganha um canal de anotação contínua (`.team-project/note.md`), tratado em lote por `/po note` sem precisar reportar item a item em conversa |
-
-### Conflitos com o processo vigente
-Nenhum novo — o único conflito (canal direto stakeholder→QA romperia o fechamento exaustivo de `workflow.md` §6a) já foi decidido pelo stakeholder antes desta aplicação: o bug entra pelo PO. Esta entrada só aplica a decisão já fechada.
-
-### Como saberemos que funcionou
-Todo relato de defeito recebido pelo PO — avulso ou pela fila — aparece na resposta como uma linha relato → classificação → destino (Task/investigação da QA, ID novo no Product Backlog, ou a resposta dada); nenhum relato "some" numa conversa sem essa linha. Depois de um `/po note`, `.team-project/note.md` só mantém os itens ainda não classificáveis (aguardando investigação da QA), nunca um item já tratado.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Substituição/extensão de padrão | `Select-String -Path roles\product-owner\README.md, roles\product-owner\skills.md, roles\product-owner\templates\note.md -Pattern '/po bug\|/po note\|templates/note\.md'` | 11 ocorrências nos 3 arquivos (`README.md`: 6, linhas 12/85/99/101/104/133 · `skills.md`: 1, linha 88 · `note.md`: 4, linhas 1/3/16/24) — cada uma lida no contexto: `README.md` (Entradas, os dois modos completos, referência cruzada `/po bug`↔`/po note`, linha da tabela de documentos), `skills.md` (ponteiro da skill 8 para os dois modos), `note.md` (título, cabeçalho, corpo) — nenhuma ocorrência órfã ou contraditória | ✅ |
-| Checagem semântica | leitura de `roles/product-owner/README.md` completo após a edição | os dois modos novos ficam entre `/po accept` e "Como sei que estou funcionando" (mesma posição de todo modo no roteiro); a tabela "O que respondo" e a tabela "Documentos que administro" foram atualizadas nas quatro linhas certas; nenhuma seção antiga ficou contradizendo o texto novo | ✅ |
-| Extração/criação de arquivo | `(Get-Content roles\product-owner\templates\note.md).Count` antes/depois | antes: arquivo não existia (0); depois: 34 linhas — modelo referenciado por `README.md` linha 133 e pelo próprio corpo do modo `/po note` resolve para um arquivo existente | ✅ |
-| Fronteira não ultrapassada | `git status --porcelain` | dez arquivos modificados/novos no total; os deste agente são exatamente `roles/product-owner/README.md`, `roles/product-owner/skills.md`, `roles/product-owner/templates/note.md` (novo, `??`) e este bloco em `roles/scrum-master/process/process-changelog.md`; os demais (`deliverables/implementation/README.md`, `deliverables/implementation/pending.md`, `roles/quality-assurance/README.md`, `roles/quality-assurance/skills.md`, `roles/quality-assurance/templates/cross-audit.md`, `roles/quality-assurance/templates/gap-record.md`) são do Agent `quality-assurance` em paralelo (`v3.12`), e `note.md` da raiz é da triagem do Agent `scrum-master` — nenhum deles editado por mim; `commands/*`, `agents/*` e `artifact-ownership.md` seguem intocados | ✅ |
-
-### Pendente do stakeholder
-Duas propostas de **texto pronto**, não aplicadas (`commands/po.md` e `agents/product-owner.md` são do stakeholder):
-
-**1. `commands/po.md`** — `argument-hint` (linha 3), acrescentar antes do fecho de aspas:
-```
-| bug <relato> | note
-```
-Descrição (linha 2), acrescentar ao final: `Classifica relato de defeito do stakeholder e trata a fila de .team-project/note.md.`
-
-Novo bullet no passo 3 (lista de modos), após o bullet de **accept**:
-```
-   - **bug `<relato>`** → classificar o relato do stakeholder em **defeito** (aciona a QA para investigar, confirmar com evidência e registrar em `pending.md` com `Origem: stakeholder`) · **mudança de escopo disfarçada de bug** (trata por `/po analyze`/`/po impact`, vai ao Product Backlog) · **dúvida de uso** (responde; o achado pode virar melhoria de UX ou de documentação). Régua: o critério de aceite aprovado no portão ③ e o que foi aceito na Sprint Review (R21). Quando não dá para decidir sem investigar, aciona a QA para investigar **antes** de classificar — legítimo, não é fugir da classificação. Nunca investiga código, nunca confirma com evidência, nunca escreve no registro da QA — isso é dela. Responde sempre com a linha relato → classificação → destino acionado.
-   - **note** → ler `.team-project/note.md` inteiro (modelo em `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/note.md`), seção **Abertas**, e tratar **todos** os itens com a mesma classificação do modo `bug`, um a um. Devolver ao stakeholder, item a item: relato → classificação → destino → o que foi feito. Remover da fila todo item tratado — ele passa a viver só no destino (registro da QA, Product Backlog, ou a resposta já dada); item que só a QA consegue classificar depois de investigar permanece na fila, marcado como "aguardando investigação da QA".
-```
-
-**2. `agents/product-owner.md`** — no card `description` (linha 3), acrescentar: `classifica relato de defeito do stakeholder (bug · mudança de escopo · dúvida de uso) e trata a fila .team-project/note.md`. Na lista de leitura obrigatória (item 2), acrescentar: `Nos modos bug e note, ler também .team-project/note.md, se existir.` No modo (item 3), acrescentar os dois bullets do mesmo texto proposto para `commands/po.md`, acima. Nos "Arquivos que você pode escrever" e na lista de limites (item 4), acrescentar: `.team-project/note.md — só para remover item já tratado; nunca escreve no registro de GAPs da QA`.
-
-**3. Homônimo `note`** — pedido ao Agent `scrum-master` (não aplicado por mim): acrescentar a linha `note` à tabela de homônimos de `artifact-ownership.md` §1b (`RAIZ/note.md` — fila do `/review`, SM · `.team-project/note.md` — fila do `/po note`, PO).
-
-**4. `deliverables/team-project/README.md` e `roles/scrum-master/templates/project-context.md`** — pedido ao Agent `scrum-master` (não aplicado por mim, ambos são dele): semear `.team-project/note.md` a partir de `roles/product-owner/templates/note.md` no `/team init`, e acrescentar `bug <relato> | note` à linha `/po` da seção 8 fixa do `README.md` do projeto.
-
-**Mudança de comportamento de agente/comando só entra em vigor após reiniciar a sessão.**
 

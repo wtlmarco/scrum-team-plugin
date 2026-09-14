@@ -4,12 +4,35 @@
 > **Não confundir** com o [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`), que registra a evolução interna das regras de trabalho do time — esse é alimentado pelo `/review`.
 >
 > **Como funciona uma entrega:**
-> 1. Branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `main`.
+> 1. Branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` — ou empilhada sobre a branch de uma entrega anterior ainda não mesclada, quando há dependência entre elas.
 > 2. As correções/mudanças da entrega vão nessa branch.
-> 3. PR para `main` para aprovação.
-> 4. Uma entrada aqui, mais recente no topo, com **o que foi entregue** e **a branch**.
+> 3. PR para `develop` para aprovação. `main` recebe `develop` quando o stakeholder decide consolidar a linha estável, fora do ciclo por-entrega.
+> 4. Uma entrada aqui, mais recente no topo, com **o que foi entregue**, **a branch** (e a base, se empilhada).
 >
 > `MAJOR.MINOR` acompanham a versão do changelog do processo quando a entrega inclui mudança de processo; `PATCH` (`vX.Y.1`, `vX.Y.2`…) é correção sobre a mesma linha.
+
+---
+
+## v3.16.0 — 2026-09-14
+
+**Branch:** `fix/v3.16.0` · **Base:** `fix/v3.15.0` (empilhada) · **PR** para `develop`.
+
+**MINOR de processo, sem defeito de produto.** Carrega a entrada nova [`v3.16`](roles/scrum-master/process/process-changelog.md) do changelog do processo — por isso a numeração é `vX.Y.0` (R18), não um PATCH sobre a linha `3.15`. Duas mudanças, ambas do alcance do SM (normativos que governam todos): a tabela de custo de `workflow.md` §5c, que trazia números medidos na v3.4 e nunca remedidos, foi remedida; e R18, que descrevia um modelo de branch (`fix/`/`feat/` a partir de `main`, PR para `main`) que **nenhuma entrega real segue** desde a v3.6.0, foi realinhado à prática (`develop` como linha de integração das entregas, `main` como linha estável que a recebe por decisão do stakeholder, e o caso de branch empilhada — já com dois precedentes — passa a ter forma escrita). Ver [`v3.16` do changelog do processo](roles/scrum-master/process/process-changelog.md).
+
+### O que entrou
+
+- **Tabela de custo por comando remedida (`workflow.md` §5c).** Os números da v3.4 viraram folclore, como o próprio `workflow.md:251` avisava. Remedição real: SM 15,4 KB (+3%), **PO 16,7 KB (+28%, o maior salto do grupo)**, UX 11,2 KB (+2%), Arquiteto 10,4 KB (+4%), QA 11,1 KB (+11%), dev 7,1 KB (+1%) — total do grupo 66 → 71,9 KB (+9%). `/team brainstorm` (~37 → ~39 KB) e `/team cycle` (~26 → ~27 KB) remedidos junto, por derivarem dos mesmos arquivos; `/review` corrigido de ~15 para ~14 KB de base (a soma real de `commands/review.md` + `agents/scrum-master.md`). A tabela agora anexa o comando de medição e a data, para a próxima remedição ser mecânica.
+- **R18 realinhada à prática de branch (SM, `working-rules.md` + `workflow.md` §5d).** O normativo dizia "a partir de `main`, PR para `main`"; toda entrega desde a `v3.6.0` (evidência: esta própria série de `CHANGELOG.md`) sai de `develop`, com PR para `develop` — e o stakeholder confirmou a prática explicitamente ao abrir esta mesma entrega. R18 passa a descrever `develop` como a linha de integração das entregas e `main` como a linha estável que a recebe por decisão do stakeholder, fora do ciclo por-entrega; cobre também o caso de **branch empilhada** (base numa entrega anterior ainda não mesclada — precedentes `v3.14.0` e esta `v3.16.0`), sem forma escrita até agora. `workflow.md` §5d (roteiro do ciclo de entrega) e o cabeçalho do ritual em `CHANGELOG.md:6-10` corrigidos junto, por coerência de referência cruzada; mesma correção em três outros pontos achados na reavaliação do conjunto — `workflow.md` §8 (linha do gate de entrega), `working-rules.md` ("Como o SM aplica"), `templates/retrospective.md` e o banner de branch do próprio `README.md`.
+
+### Divergência registrada
+
+A proposta de remover a seção "Evolução dos seus documentos — `/review`" dos 5 `agents/*.md` (economia de ~2,4 KB de carga fixa por papel) foi **recusada na condução do `/review`** — não pelo stakeholder, que autorizou a entrega com a recusa já dentro dela. Motivo: aquele bloco é o resultado da compressão já feita na v2.7 (`process-changelog-archive.md:1031`) e carrega duas salvaguardas ausentes de `commands/review.md:57` — "nunca escreva em `${CLAUDE_PLUGIN_ROOT}`" e "sem a RAIZ, pare e peça" — que corrigem um defeito observado em campo (`process-changelog-archive.md:869`: quatro papéis lendo o contrato da cópia instalada). Cortar reabriria esse modo de falha. Não aplicada.
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.16.0`. Arquivamento de `v3.13` para `process-changelog-archive.md` (pré-condição do teto de 3 entradas — `process-changelog.md:10`) verificado por `Compare-Object` do bloco extraído contra o relocado: zero diferenças fora do separador. Detalhe completo de diffs e o bloco de evidência (R19) na entrada `v3.16` do changelog do processo.
+
+**Mudança de comportamento de agente/comando não se aplica** — nenhum `agents/`/`commands/` foi tocado.
 
 ---
 

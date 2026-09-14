@@ -242,13 +242,17 @@ O custo dos documentos de `${CLAUDE_PLUGIN_ROOT}/` não pode depender de uma fax
 
 | Comando | Carga fixa | O que dispara |
 |---|---|---|
-| `/team brainstorm <ideia>` | ~37 KB | SM + PO + UX, depois + Arquiteto |
-| `/team cycle <T-ID>` | ~26 KB | Arquiteto → dev → QA, em série |
+| `/team brainstorm <ideia>` | ~39 KB | SM + PO + UX, depois + Arquiteto |
+| `/team cycle <T-ID>` | ~27 KB | Arquiteto → dev → QA, em série |
 | `/sm agreement <questão>` | ~15 KB + um `agents/<papel>.md` por papel chamado (2–3 típicos) | SM + os envolvidos |
-| `/review <instrução>` | ~15 KB + ~10 KB do contrato por papel roteado | SM (triagem) + o papel dono |
-| `/sm` · `/po` · `/ux` · `/arc` · `/qa` · `/dev` | 15 · 13 · 11 · 10 · 10 · 7 KB | um papel |
+| `/review <instrução>` | ~14 KB + ~10 KB do contrato por papel roteado | SM (triagem) + o papel dono |
+| `/sm` · `/po` · `/ux` · `/arc` · `/qa` · `/dev` | 15,4 · 16,7 · 11,2 · 10,4 · 11,1 · 7,1 KB | um papel |
 
-> Os números por papel somam `commands/<x>.md` + `agents/<papel>.md`. **Medidos em v3.4** — `/sm` e `/po` cresceram desde a v3.2 (13 → 15 e 10 → 13) com o mandato que a v3.3 moveu entre eles. Remedir é parte da fase **Check**; tabela de custo que não se remede vira folclore.
+> Os números por papel somam `commands/<x>.md` + `agents/<papel>.md`. **Remedidos em v3.16 (14/09/2026)** — a remedição anterior era da v3.4 e nunca tinha sido refeita; o achado que mais importa: a carga fixa do **PO** cresceu **13 → 16,7 KB (+28%)** sem ninguém notar, o maior salto do grupo (SM +3%, UX +2%, Arquiteto +4%, QA +11%, dev +1%; total do grupo 66 → 71,9 KB, +9%). Comando de medição, para a próxima remedição ser mecânica:
+> ```powershell
+> Get-ChildItem agents,commands -File | Select-Object Name,Length
+> ```
+> — soma manualmente `agents/<papel>.md` + `commands/<papel>.md` por papel; `/team brainstorm` e `/team cycle` somam `commands/team.md` + um `agents/<papel>.md` por papel disparado; `/review` soma `commands/review.md` + `agents/scrum-master.md` (triagem), mais `review-contract.md` (~10 KB, também remedido, sem variação relevante) por papel roteado. Remedir é parte da fase **Check**; tabela de custo que não se remede vira folclore — a v3.4 avisou isso e a própria tabela virou o exemplo.
 
 **Não existe mais broadcast dos seis.** O modo `consult` de `/team` foi removido: o canal do stakeholder é o PO (§6a), e questão que atravessa papéis vai por `/sm agreement`, que chama **só quem a questão toca**. Os dois comandos mais caros do time deixaram de existir.
 
@@ -280,12 +284,12 @@ O **processo do time** (os documentos de `${CLAUDE_PLUGIN_ROOT}/`) evolui por `/
 | Entrega do plugin às instalações | `CHANGELOG.md` (raiz) | `vMAJOR.MINOR.PATCH` | fechamento de entrega | stakeholder |
 
 ### Ciclo de uma entrega
-1. **Branch** `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `main`.
+1. **Branch** `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` — ou, se a entrega depende de uma entrega anterior ainda não mesclada, **empilhada** a partir da branch dessa entrega (dois precedentes: `v3.14.0` sobre `fix/v3.10.0`, `v3.16.0` sobre `fix/v3.15.0`); a entrada de `CHANGELOG.md` (passo 6) declara a base nos dois casos.
 2. As correções e melhorias da entrega — inclusive as aplicadas por `/review` — vão nessa branch, que acumula até o stakeholder sinalizar o fechamento da versão.
-3. **PR para `main`**, para aprovação do stakeholder.
+3. **PR para `develop`**, para aprovação do stakeholder. `develop` é a linha de integração contínua; `main` recebe `develop` quando o stakeholder decide consolidar a linha estável — esse merge não é parte do ciclo por-entrega.
 4. **Bump** de `version` em `.claude-plugin/plugin.json` para `vX.Y.Z`.
 5. **Banner** "Versão atual" no topo do `README.md` (raiz) atualizado para `vX.Y.Z` — mesma checagem que os passos 4 e 6 já pedem para `plugin.json` e `CHANGELOG.md`; é o passo que faltou no fechamento da `v3.4.0`, quando só `plugin.json` e `CHANGELOG.md` foram tocados e o README ficou anunciando `v3.3.0`.
-6. **Entrada** no topo de `CHANGELOG.md`: o que foi entregue, a branch e como verificar.
+6. **Entrada** no topo de `CHANGELOG.md`: o que foi entregue, a branch (com a base, se empilhada) e como verificar.
 7. No merge, os clientes são avisados e atualizam com **`/team update`** (ou os comandos nativos `claude plugin marketplace update` + `claude plugin update`).
 
 ### Regra de numeração
@@ -427,7 +431,7 @@ Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no pa
 | Documentação atualizada | fechamento da Task | QA | R12 |
 | Evidência registrada | fechamento da Task | QA/SM | R7 |
 | **④ Aceite funcional da História, na Sprint Review** | encerramento do sprint | PO | R21 · §5e |
-| Bump de `version` + banner "Versão atual" do `README.md` + entrada no `CHANGELOG.md` nomeando a branch | merge do PR em `main` | stakeholder (SM verifica) | R18 · §5d |
+| Bump de `version` + banner "Versão atual" do `README.md` + entrada no `CHANGELOG.md` nomeando a branch | merge do PR em `develop` | stakeholder (SM verifica) | R18 · §5d |
 
 ## 9. Ambiente de verificação
 
