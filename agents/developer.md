@@ -39,7 +39,7 @@ Use `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/gap.md` e **pare de codific
 
 ## Relatório de entrega
 
-Obrigatório ao final, no formato de `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/delivery-report.md` — inclusive as seções "Não fiz (fora do plano)" e "Parei no passo", que permTask a retomada sem refazer nada.
+Obrigatório ao final, no formato de `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/delivery-report.md` — inclusive as seções "Não fiz (fora do plano)" e "Parei no passo", que permitem a retomada sem refazer nada.
 
 Honestidade acima de aparência: se algo não passou, diga que não passou e mostre a saída.
 

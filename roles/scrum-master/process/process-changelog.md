@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.12`](process-changelog-archive.md) | Pendências e bugs num só registro: campo `origem`, leitura filtrada do stakeholder e estado de escalação em `pending.md` (QA) — 12/09/2026 |
 | [`v3.11`](process-changelog-archive.md) | Delegar tarefa simples de PO/SM/UX/QA ao dev (Haiku): proposta avaliada e descartada — 12/09/2026 |
 | [`v3.10`](process-changelog-archive.md) | Pendentes de v3.8/v3.9 aplicados a pedido do stakeholder: timeout do Arquiteto, verificação do protótipo no comando e retomada nativa entre invocações — 12/09/2026 |
 | [`v3.9`](process-changelog-archive.md) | Spike do Arquiteto para de travar: timeout/backoff na borda externa, checkpoint por etapa e modo leve de verificação — 12/09/2026 |
@@ -47,6 +48,64 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.15 — `/po accept` alinhado a R21, vão de alcance do `/review` fechado, resíduo de find-replace e numeração da própria entrada corrigidos (SM + Arquiteto) — 14/09/2026
+
+> **Fecho do `/review audit` desta sessão, em duas rodadas.** 1ª: três achados do audit original — **(1)** alta, `/po accept` mirando Task contra R21 em `commands/qa.md`/`commands/team.md`; **(2)** média, `02-status.md`/`deliverables/README.md` sem linha na tabela de alcance; **(3)** baixa, resíduo `item`→`Task` em 4+1 documentos (parte do Arquiteto em `standards/`, aplicada e verificada por ele, só consolidada aqui). 2ª: um code review independente sobre o trabalho ainda não commitado achou 9 defeitos nesta própria aplicação — corrigidos abaixo, marcados **2ª rodada**.
+
+**Instrução:** *(stakeholder)* 1ª rodada — "dispare todas as correções" em `agents/`/`commands/`/raiz, mais decisão sobre `deliverables/README.md` entrar no alcance do SM e bump da tríade. 2ª rodada — autorização explícita para corrigir os 9 achados do code review, inclusive em `commands/` e na tríade de versão.
+
+**Classificação:** regra (R21) + escopo de papel (alcance do `review-contract.md`) + propriedade de artefato (`artifact-ownership.md`, linha nova) + formato de documento (concordância verbal; numeração da própria entrada).
+
+**Conflito — numeração da entrada (achado 6).** Nasceu `v3.14.2`, três partes, copiando o `CHANGELOG.md` em vez da convenção `vX.Y` deste changelog. Ainda não commitada nem publicada quando corrigida — não é "entrada antiga" protegida contra reescrita (R17/linha 6): terminar de escrevê-la no lugar certo é fechamento, não reescrita. **Resolução:** renumerada `v3.15`. Consequência por R18 ("entrada nova sai como `vX.Y.0`"): a entrega no `CHANGELOG.md` deixava de casar sendo `v3.14.2` (PATCH sobre a linha `3.14`, que não carregava entrada nova) — renumerada `v3.15.0`, com `plugin.json`/banner do `README.md`/branch atualizados junto. Não reescreve `v3.14`/`v3.14.1`. Tratada como reconciliação de referência cruzada dentro do próprio alcance do SM (R18), não escalada; registrada para o stakeholder reverter se discordar do enquadramento.
+
+### O que mudou
+| Documento | Mudança |
+|---|---|
+| `commands/qa.md:24` | `/po accept <ID>` → `/sm close <ID>` no ✅; aceite explicado como posterior (R21) |
+| `commands/team.md:70` | mesma correção; **2ª rodada** — metade ⚠️/❌ ainda dizia "não siga para o **aceite**" → "para o **fechamento**" |
+| `agents/developer.md:42` · `deliverables/README.md:36` · `deliverables/implementation/02-status.md:3` | resíduo `permTask`/"é fechado" → concordância corrigida |
+| `standards/implementation-quality.md:194` *(Arquiteto, R16)* | idem, "os dois permTask que" → "permitem que" |
+| `review-contract.md` (alcance do SM) | **2ª rodada** — passa a citar os **três** índices transversais, não só dois |
+| `artifact-ownership.md` §1 *(2ª rodada, não tocado na 1ª)* | linha nova: `deliverables/README.md`, `deliverables/implementation/README.md`, `deliverables/team-project/README.md` — dono **SM**, curadoria |
+| `process-changelog-archive.md` *(2ª rodada, ausente da 1ª)* | `## v3.12` relocado — pré-condição do teto de 3 (`process-changelog.md:10`) para esta entrada caber |
+| `.claude-plugin/plugin.json` · `CHANGELOG.md` · `README.md` | tríade R18 → `3.15.0` (**2ª rodada**, não `3.14.2` — ver conflito acima) |
+
+### Por quê
+`/po accept <ID>` mirava Task antes de `/sm close`, contra R21 desde a v3.3 — alvo e ordem errados, sugerindo aceite antes do fechamento técnico; a 1ª rodada corrigiu só a metade ✅ de `commands/team.md:70`. `02-status.md` já tinha dono declarado sem linha de alcance; `deliverables/README.md` **não tinha dono em lugar nenhum** (a 1ª rodada afirmou o contrário, por engano) — mesma lacuna, não notada, em `deliverables/implementation/README.md` e `deliverables/team-project/README.md` (este último já tratado como "do SM" desde a `v3.13`, sem nunca entrar na matriz). Resíduo do find-replace `item`→`Task`: 13 ocorrências já corrigidas antes (`process-changelog-archive.md:724`), estas cinco sobreviveram — a de `standards/` deixava a frase sem verbo, standard ilegível é standard não seguido (achado do Arquiteto).
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| SM | orienta `/sm close <ID>` direto no ✅ sem citar `/po accept`; devolução em ⚠️/❌ não sugere mais aceite; cura os três índices transversais, agora também na matriz de propriedade |
+| PO | sem mudança de prática — só sai a instrução divergente dos dois comandos |
+| Arquiteto | corrige a própria frase normativa em `standards/`, sem mudança de prática |
+| dev, QA | leem `standards/implementation-quality.md:194` completo |
+
+### Conflitos com o processo vigente
+Nenhum de conteúdo. O único conflito é de forma (numeração), resolvido dentro do alcance do SM — ver acima.
+
+### Como saberemos que funcionou
+`/qa <ID>`/`/team cycle` com ✅ recomenda `/sm close`; com ⚠️/❌ não sugere aceite em nenhuma das duas metades. Achado de processo em qualquer um dos três índices chega ao SM pela tabela de alcance **e** encontra dono na matriz. Próxima entrada nova deste changelog nasce `vX.Y`, nunca três partes.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | `Grep "permTask" path=agents/` e `path=standards/` | 0 ocorrências | ✅ |
+| Substituição de padrão | `Grep "/po accept <ID>" path=commands/` | 0 — demais usos são `<H-ID>` ou citam a forma antiga como exemplo (`CHANGELOG.md:230` — **2ª rodada:** ponteiro corrigido de `:210`, deslocado pela inserção desta entrada) | ✅ |
+| Substituição de padrão — **2ª rodada, comando reescrito** | `Select-String "Task é fechado\|Task está pronto\|permTask"` em `*.md` de RAIZ **excluindo changelogs** (`*changelog*.md`, `CHANGELOG.md` — convenção de "arquivos vivos" de `working-rules.md` §5c) | 0 ocorrências | ✅ *(a 1ª rodada rodou sem excluir changelogs; deixa de ser reproduzível assim que a própria entrada cita as strings como exemplo — 9 ocorrências sem exclusão, não é regressão)* |
+| Leitura em contexto — **2ª rodada, ampliada** | `commands/qa.md:24`, `commands/team.md:70` (as duas metades), `review-contract.md:17-23`, `artifact-ownership.md` (linha nova) | nenhuma metade sugere aceite antes do fechamento; sem sobreposição com PO/QA/Arquiteto/UX; linha nova da matriz não contradiz dono existente de nenhum documento interno | ✅ |
+| Substituição — leitura em contexto *(Arquiteto)* | linhas 190-195 de `standards/implementation-quality.md` | antecedente plural explícito, concordância correta, referência a nível 1 §5.4 intacta | ✅ |
+| Escopo *(Arquiteto)* | `git --no-pager diff -- standards/implementation-quality.md` | 1 linha, 1 arquivo | ✅ |
+| **Arquivamento de entrada — 2ª rodada, ausente na 1ª** | `Compare-Object` do bloco `## v3.12` pré-sessão (`git show HEAD:...`, 55 linhas) × relocado em `process-changelog-archive.md` (58 linhas) | 0 diferenças de conteúdo — as 3 linhas a mais são o separador (branco + `---` + branco), padrão das linhas 9/67 do arquivo; `## v3.12` sumiu do changelog vivo | ✅ *(números do achado — 55/57/dif. 2 — eram estimativa; real é 55/58/dif. 3, íntegra em separador)* |
+| Tríade do R18 | `plugin.json`, topo `CHANGELOG.md`, banner `README.md` | os três `3.15.0` (**2ª rodada**, renumerado de `3.14.2`) | ✅ |
+| Coerência de referência cruzada *(2ª rodada)* | `Select-String "v3\.14\.2"` em `*.md`, fora de `*changelog*` | 2, ambas narrativas (explicam o número antigo, não apontam para ele): `CHANGELOG.md:20`, esta entrada | ✅ |
+| Fronteira não ultrapassada — **2ª rodada, contagem corrigida** | `git --no-pager diff --stat` | **14 arquivos** (13 nossos + `note.md`, do stakeholder, não tocado): os 9 de "O que mudou" + tríade de versão + este bloco | ✅ *(1ª rodada registrou 11, omitindo `process-changelog-archive.md`)* |
+
+### Pendente do stakeholder
+Nada novo. Renumeração (achado 6): reconciliação de referência cruzada, não escalada — ver "Conflito" acima. Índices do achado 4 (`implementation/README.md`, `team-project/README.md`): fechados nesta entrada, não deixados pendentes — propriedade dedutível dos normativos (índices transversais sem outro papel reivindicando; o segundo já tinha precedente textual na `v3.13`).
 
 ---
 
@@ -182,60 +241,3 @@ Novo bullet no passo 3 (lista de modos), após o bullet de **accept**:
 
 **Mudança de comportamento de agente/comando só entra em vigor após reiniciar a sessão.**
 
----
-
-## v3.12 — Pendências e bugs num só registro: campo `origem`, leitura filtrada do stakeholder e estado de escalação em `pending.md` (QA) — 12/09/2026
-
-> **Entrada irmã da mesma rodada de `/review note`** (item de `note.md` sobre concentrar pendências e bugs em quatro documentos geridos por QA). A triagem do Agent `scrum-master` identificou três conflitos com regra vigente e o stakeholder decidiu todos **antes** desta aplicação — nenhuma reabertura aqui. Esta é a parte do **QA**; o Agent `product-owner` aplica `roles/product-owner/*` em paralelo (`v3.13`) e o Agent `scrum-master` fecha a curadoria (`v3.14`).
-
-**Instrução:** *(stakeholder, via `/review note`, decisão já fechada na triagem)* Um registro só — `pending.md`, sem `pendings.md`/`bugs.md`/`pendings-resolved.md`/`bugs-resolved.md` — distinguindo "bug" (relatado pelo stakeholder) de "pendência" (achado do time) por um campo `origem`, não por arquivo; resolvido continua saindo do registro da QA para `02-status.md` do SM (R12 preservada); só o QA escreve em `pending.md` — os demais papéis reportam pelos canais que já existem e o QA transcreve com evidência; bug do stakeholder entra **pelo PO**, nunca direto na QA.
-
-**Classificação:** formato de documento (entregáveis do QA: `pending.md` e a entrada individual `gap-record.md`) + escopo de papel (roteiro/skills do QA para tratar defeito acionado pelo PO). Não é regra de trabalho nova — R9, R22 e `workflow.md` §6b já cobriam a escalação; o que faltava era o **registro mostrar** esse estado.
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `deliverables/implementation/pending.md` | Cabeçalho (Natureza), §2 Resumo executivo, §4 (entrada-modelo), Regras, Falhas comuns | **Natureza** passa a nomear "pendências e bugs abertos" como um só registro, dono único QA; **§2** ganha as linhas "Por origem" e "Aguardando decisão do stakeholder"; **§2.1 nova** — visão filtrada: só as entradas com `Origem: stakeholder`, sem atravessar a lista técnica (resolve o pedido de leitura separada sem criar arquivo); entrada-modelo ganha `**Origem:** time \| stakeholder` e `**Aguarda decisão do stakeholder:** não \| sim — <pergunta/ponteiro>`; duas regras novas (campos sempre preenchidos, §2.1 é leitura e não escrita separada) e duas falhas comuns novas |
-| `roles/quality-assurance/templates/gap-record.md` | "Abrir um GAP", seções novas `Origem` e `Aguarda decisão do stakeholder`, Regras, Exemplo | Linha de cabeçalho da entrada ganha `**Origem:** time \| stakeholder`; linha nova `**Aguarda decisão do stakeholder:**`; duas seções explicam os campos com verificação própria; Regras ganha "dono único do registro é o QA" (transcrição com evidência, nunca narrativa de terceiro) e "campos sempre preenchidos"; Exemplo atualizado com os dois campos |
-| `roles/quality-assurance/templates/cross-audit.md` | "GAPs a abrir" | Coluna `Origem` acrescentada à tabela, com nota de que é quase sempre `time` (achado de auditoria) — coerência com o campo agora obrigatório em `gap-record.md` |
-| `roles/quality-assurance/README.md` | Nova subseção "Defeito reportado pelo stakeholder (acionado pelo PO)", após `/qa security` | Roteiro de 5 passos: investigar/reproduzir, abrir com `Origem: stakeholder` só se confirmado (senão suspeita), rotear pela escada de falha de sempre, marcar `Aguarda decisão do stakeholder` quando aplicável, e reafirmar a fronteira — reprova e registra, não corrige |
-| `roles/quality-assurance/skills.md` | **§11 nova** — *Bug do stakeholder chega pelo PO, nunca direto — e só entra confirmado* | Competência transferível espelhando a subseção do README: sem canal direto, investigação antes de registro, dono único da escrita, escada de falha inalterada pela origem, estado de espera explícito |
-| `deliverables/implementation/README.md` | Tabela dos quatro documentos; tabela "Critérios de qualidade" | Descrição de `pending.md` passa a citar a origem (`time` \| `stakeholder`); critério "todo GAP tem `arquivo:linha`, impacto e criticidade" ganha "e origem" — descrição ficaria incompleta sem o campo novo |
-
-### Por quê
-O pedido original criava quatro cargas fixas de leitura para separar dois bits (origem e estado), e um canal de escrita paralelo que quebraria a garantia central do registro: **toda entrada tem evidência verificada** porque só um papel escreve nela. Um campo na ficha resolve a mesma necessidade de leitura filtrada sem multiplicar arquivo, e manter o QA como dono único preserva a regra que faz `pending.md` "vencer a narrativa de status" (`deliverables/implementation/README.md`). O estado de escalação já existia em regra (R9/R22/§6b); sem aparecer no registro, uma entrada parada por decisão do stakeholder era indistinguível de uma simplesmente não priorizada — o que gerava cobrança errada no quadro do SM.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda |
-|---|---|
-| **QA** | Toda entrada nova ou existente em `pending.md` declara `Origem` e `Aguarda decisão do stakeholder`; ganha um roteiro explícito para quando o PO aciona com um defeito relatado pelo stakeholder; segue sem escrever `pending.md` para ninguém além de si mesmo |
-| **PO** | (Aplicado por ele em `v3.13`, referenciado aqui) passa a ser o único canal de entrada de bug do stakeholder rumo à QA |
-| **stakeholder** | Ganha uma leitura filtrada (§2.1 de `pending.md`) só do que ele relatou, sem precisar abrir um arquivo novo nem atravessar a lista técnica completa |
-| **SM** | No resumo executivo de `pending.md`, agora vê quantas entradas aguardam decisão do stakeholder e quais IDs — informação que antes só existia implícita numa thread |
-
-### Conflitos com o processo vigente
-Nenhum novo — os três conflitos identificados na triagem já foram decididos pelo stakeholder antes desta aplicação (registrados na origem do item em `note.md`, agora consumido). Esta entrada só aplica as decisões já fechadas: um registro só, resolvido fora do QA (R12 preservada), dono único de escrita.
-
-### Como saberemos que funcionou
-Na próxima vez que o PO acionar a QA com um defeito relatado pelo stakeholder: a entrada resultante em `pending.md` tem `Origem: stakeholder`, evidência `arquivo:linha` (ou aparece como suspeita, nunca como entrada sem confirmação), e aparece em §2.1 sem precisar de outro arquivo. Zero entradas com `Origem` ausente na próxima `/qa audit`. Primeira entrada que ficar de fato esperando decisão do stakeholder carrega `Aguarda decisão do stakeholder: sim` com a pergunta no formato de R22, visível no resumo executivo sem precisar reconstituir a thread.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Substituição de padrão | `Select-String -Path roles\quality-assurance\templates\gap-record.md, deliverables\implementation\pending.md, roles\quality-assurance\templates\cross-audit.md, deliverables\implementation\README.md -Pattern 'Origem'` | 19 ocorrências nos 4 arquivos (`gap-record.md`: 7 · `pending.md`: 8 · `cross-audit.md`: 2 · `README.md`: 2) — cada uma lida no contexto: `gap-record.md` (campo na entrada, seção explicativa, verificação, regra, exemplo), `pending.md` (Natureza, resumo por origem, §2.1, entrada-modelo, regras, falhas comuns), `cross-audit.md` (coluna nova da tabela "GAPs a abrir"), `README.md` (descrição do documento e critério de qualidade) | ✅ |
-| Checagem de fato — decisão 1 não reintroduzida | `Select-String -Path roles\quality-assurance\*.md, roles\quality-assurance\templates\*.md, deliverables\implementation\*.md -Pattern 'pendings\.md\|bugs\.md\|bugs-resolved\|pendings-resolved'` | zero ocorrências — nenhum dos quatro arquivos proibidos pela decisão do stakeholder foi criado ou citado como caminho real | ✅ |
-| Checagem semântica | leitura de `deliverables/implementation/pending.md` completo após a edição | `§2.1` está posicionada logo após o resumo executivo (leitura de topo, antes da lista técnica das seções 4–7); a entrada-modelo da §4 tem os dois campos novos na ordem certa (`Origem` na linha do cabeçalho, `Aguarda decisão…` na linha seguinte); nenhuma seção antiga (1, 3, 8, 9, 10) ficou inconsistente com os campos novos | ✅ |
-| Fronteira não ultrapassada | `git status --porcelain` | únicos arquivos tocados por este agente: `deliverables/implementation/README.md`, `deliverables/implementation/pending.md`, `roles/quality-assurance/README.md`, `roles/quality-assurance/skills.md`, `roles/quality-assurance/templates/cross-audit.md`, `roles/quality-assurance/templates/gap-record.md` — nenhum arquivo de `roles/product-owner/*` (Agent `product-owner`, em paralelo), `roles/scrum-master/*` (exceto esta entrada) ou `commands/*` foi editado | ✅ |
-
-### Pendente do stakeholder
-Proposta de **texto pronto**, não aplicada (`commands/qa.md` é do stakeholder) — modo novo em vez de comando novo, para não somar carga fixa, acionado sempre **pelo PO**:
-
-`argument-hint` (linha 3), acrescentar ao final antes do fecho de aspas:
-```
-| bug <descrição>
-```
-Novo bullet no passo 3 (lista de modos), após o bullet de `security <ID>`:
-```
-   - **bug `<descrição>`** → acionado pelo **PO**, nunca diretamente pelo stakeholder, com a descrição do defeito já classificado por ele. Investigar e tentar reproduzir; confirmado com `arquivo:linha`, registrar/atualizar a entrada em `pending.md` com `Origem: stakeholder` (e `Aguarda decisão do stakeholder` quando for o caso), no formato de `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/gap-record.md`; não reproduzido, reportar como suspeita — nenhuma entrada nova sem evidência. Roteia pela escada de falha de sempre; o QA reprova e registra, não corrige.
-```
-**Mudança de comportamento de agente/comando só entra em vigor após reiniciar a sessão.**

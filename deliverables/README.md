@@ -33,7 +33,7 @@ Um documento tem **um dono**, que responde pelo conteúdo e pela atualização. 
 | `README` (índice) | **PO** | Documento novo entra no conjunto | — |
 | Protótipo funcional (HTML) | **UX** | Fluxo principal muda, antes do ① | Stakeholder (navega e aprova) |
 | `01-scope-and-criteria` | **PO** | Escopo de um ciclo é definido, concluído ou revisto | SM, QA |
-| `02-status` | **SM** | Uma Task é fechado ou um ciclo termina | QA (auditoria) |
+| `02-status` | **SM** | Uma Task é fechada ou um ciclo termina | QA (auditoria) |
 | `03-code-map` | **QA** | Arquivo de código criado, alterado ou removido | Arquiteto |
 | `pending` | **QA** | GAP aberto, fechado ou confirmado como não-gap | SM, Arquiteto |
 

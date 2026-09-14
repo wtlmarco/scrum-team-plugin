@@ -8,6 +8,64 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.12 — Pendências e bugs num só registro: campo `origem`, leitura filtrada do stakeholder e estado de escalação em `pending.md` (QA) — 12/09/2026
+
+> **Entrada irmã da mesma rodada de `/review note`** (item de `note.md` sobre concentrar pendências e bugs em quatro documentos geridos por QA). A triagem do Agent `scrum-master` identificou três conflitos com regra vigente e o stakeholder decidiu todos **antes** desta aplicação — nenhuma reabertura aqui. Esta é a parte do **QA**; o Agent `product-owner` aplica `roles/product-owner/*` em paralelo (`v3.13`) e o Agent `scrum-master` fecha a curadoria (`v3.14`).
+
+**Instrução:** *(stakeholder, via `/review note`, decisão já fechada na triagem)* Um registro só — `pending.md`, sem `pendings.md`/`bugs.md`/`pendings-resolved.md`/`bugs-resolved.md` — distinguindo "bug" (relatado pelo stakeholder) de "pendência" (achado do time) por um campo `origem`, não por arquivo; resolvido continua saindo do registro da QA para `02-status.md` do SM (R12 preservada); só o QA escreve em `pending.md` — os demais papéis reportam pelos canais que já existem e o QA transcreve com evidência; bug do stakeholder entra **pelo PO**, nunca direto na QA.
+
+**Classificação:** formato de documento (entregáveis do QA: `pending.md` e a entrada individual `gap-record.md`) + escopo de papel (roteiro/skills do QA para tratar defeito acionado pelo PO). Não é regra de trabalho nova — R9, R22 e `workflow.md` §6b já cobriam a escalação; o que faltava era o **registro mostrar** esse estado.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `deliverables/implementation/pending.md` | Cabeçalho (Natureza), §2 Resumo executivo, §4 (entrada-modelo), Regras, Falhas comuns | **Natureza** passa a nomear "pendências e bugs abertos" como um só registro, dono único QA; **§2** ganha as linhas "Por origem" e "Aguardando decisão do stakeholder"; **§2.1 nova** — visão filtrada: só as entradas com `Origem: stakeholder`, sem atravessar a lista técnica (resolve o pedido de leitura separada sem criar arquivo); entrada-modelo ganha `**Origem:** time \| stakeholder` e `**Aguarda decisão do stakeholder:** não \| sim — <pergunta/ponteiro>`; duas regras novas (campos sempre preenchidos, §2.1 é leitura e não escrita separada) e duas falhas comuns novas |
+| `roles/quality-assurance/templates/gap-record.md` | "Abrir um GAP", seções novas `Origem` e `Aguarda decisão do stakeholder`, Regras, Exemplo | Linha de cabeçalho da entrada ganha `**Origem:** time \| stakeholder`; linha nova `**Aguarda decisão do stakeholder:**`; duas seções explicam os campos com verificação própria; Regras ganha "dono único do registro é o QA" (transcrição com evidência, nunca narrativa de terceiro) e "campos sempre preenchidos"; Exemplo atualizado com os dois campos |
+| `roles/quality-assurance/templates/cross-audit.md` | "GAPs a abrir" | Coluna `Origem` acrescentada à tabela, com nota de que é quase sempre `time` (achado de auditoria) — coerência com o campo agora obrigatório em `gap-record.md` |
+| `roles/quality-assurance/README.md` | Nova subseção "Defeito reportado pelo stakeholder (acionado pelo PO)", após `/qa security` | Roteiro de 5 passos: investigar/reproduzir, abrir com `Origem: stakeholder` só se confirmado (senão suspeita), rotear pela escada de falha de sempre, marcar `Aguarda decisão do stakeholder` quando aplicável, e reafirmar a fronteira — reprova e registra, não corrige |
+| `roles/quality-assurance/skills.md` | **§11 nova** — *Bug do stakeholder chega pelo PO, nunca direto — e só entra confirmado* | Competência transferível espelhando a subseção do README: sem canal direto, investigação antes de registro, dono único da escrita, escada de falha inalterada pela origem, estado de espera explícito |
+| `deliverables/implementation/README.md` | Tabela dos quatro documentos; tabela "Critérios de qualidade" | Descrição de `pending.md` passa a citar a origem (`time` \| `stakeholder`); critério "todo GAP tem `arquivo:linha`, impacto e criticidade" ganha "e origem" — descrição ficaria incompleta sem o campo novo |
+
+### Por quê
+O pedido original criava quatro cargas fixas de leitura para separar dois bits (origem e estado), e um canal de escrita paralelo que quebraria a garantia central do registro: **toda entrada tem evidência verificada** porque só um papel escreve nela. Um campo na ficha resolve a mesma necessidade de leitura filtrada sem multiplicar arquivo, e manter o QA como dono único preserva a regra que faz `pending.md` "vencer a narrativa de status" (`deliverables/implementation/README.md`). O estado de escalação já existia em regra (R9/R22/§6b); sem aparecer no registro, uma entrada parada por decisão do stakeholder era indistinguível de uma simplesmente não priorizada — o que gerava cobrança errada no quadro do SM.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| **QA** | Toda entrada nova ou existente em `pending.md` declara `Origem` e `Aguarda decisão do stakeholder`; ganha um roteiro explícito para quando o PO aciona com um defeito relatado pelo stakeholder; segue sem escrever `pending.md` para ninguém além de si mesmo |
+| **PO** | (Aplicado por ele em `v3.13`, referenciado aqui) passa a ser o único canal de entrada de bug do stakeholder rumo à QA |
+| **stakeholder** | Ganha uma leitura filtrada (§2.1 de `pending.md`) só do que ele relatou, sem precisar abrir um arquivo novo nem atravessar a lista técnica completa |
+| **SM** | No resumo executivo de `pending.md`, agora vê quantas entradas aguardam decisão do stakeholder e quais IDs — informação que antes só existia implícita numa thread |
+
+### Conflitos com o processo vigente
+Nenhum novo — os três conflitos identificados na triagem já foram decididos pelo stakeholder antes desta aplicação (registrados na origem do item em `note.md`, agora consumido). Esta entrada só aplica as decisões já fechadas: um registro só, resolvido fora do QA (R12 preservada), dono único de escrita.
+
+### Como saberemos que funcionou
+Na próxima vez que o PO acionar a QA com um defeito relatado pelo stakeholder: a entrada resultante em `pending.md` tem `Origem: stakeholder`, evidência `arquivo:linha` (ou aparece como suspeita, nunca como entrada sem confirmação), e aparece em §2.1 sem precisar de outro arquivo. Zero entradas com `Origem` ausente na próxima `/qa audit`. Primeira entrada que ficar de fato esperando decisão do stakeholder carrega `Aguarda decisão do stakeholder: sim` com a pergunta no formato de R22, visível no resumo executivo sem precisar reconstituir a thread.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | `Select-String -Path roles\quality-assurance\templates\gap-record.md, deliverables\implementation\pending.md, roles\quality-assurance\templates\cross-audit.md, deliverables\implementation\README.md -Pattern 'Origem'` | 19 ocorrências nos 4 arquivos (`gap-record.md`: 7 · `pending.md`: 8 · `cross-audit.md`: 2 · `README.md`: 2) — cada uma lida no contexto: `gap-record.md` (campo na entrada, seção explicativa, verificação, regra, exemplo), `pending.md` (Natureza, resumo por origem, §2.1, entrada-modelo, regras, falhas comuns), `cross-audit.md` (coluna nova da tabela "GAPs a abrir"), `README.md` (descrição do documento e critério de qualidade) | ✅ |
+| Checagem de fato — decisão 1 não reintroduzida | `Select-String -Path roles\quality-assurance\*.md, roles\quality-assurance\templates\*.md, deliverables\implementation\*.md -Pattern 'pendings\.md\|bugs\.md\|bugs-resolved\|pendings-resolved'` | zero ocorrências — nenhum dos quatro arquivos proibidos pela decisão do stakeholder foi criado ou citado como caminho real | ✅ |
+| Checagem semântica | leitura de `deliverables/implementation/pending.md` completo após a edição | `§2.1` está posicionada logo após o resumo executivo (leitura de topo, antes da lista técnica das seções 4–7); a entrada-modelo da §4 tem os dois campos novos na ordem certa (`Origem` na linha do cabeçalho, `Aguarda decisão…` na linha seguinte); nenhuma seção antiga (1, 3, 8, 9, 10) ficou inconsistente com os campos novos | ✅ |
+| Fronteira não ultrapassada | `git status --porcelain` | únicos arquivos tocados por este agente: `deliverables/implementation/README.md`, `deliverables/implementation/pending.md`, `roles/quality-assurance/README.md`, `roles/quality-assurance/skills.md`, `roles/quality-assurance/templates/cross-audit.md`, `roles/quality-assurance/templates/gap-record.md` — nenhum arquivo de `roles/product-owner/*` (Agent `product-owner`, em paralelo), `roles/scrum-master/*` (exceto esta entrada) ou `commands/*` foi editado | ✅ |
+
+### Pendente do stakeholder
+Proposta de **texto pronto**, não aplicada (`commands/qa.md` é do stakeholder) — modo novo em vez de comando novo, para não somar carga fixa, acionado sempre **pelo PO**:
+
+`argument-hint` (linha 3), acrescentar ao final antes do fecho de aspas:
+```
+| bug <descrição>
+```
+Novo bullet no passo 3 (lista de modos), após o bullet de `security <ID>`:
+```
+   - **bug `<descrição>`** → acionado pelo **PO**, nunca diretamente pelo stakeholder, com a descrição do defeito já classificado por ele. Investigar e tentar reproduzir; confirmado com `arquivo:linha`, registrar/atualizar a entrada em `pending.md` com `Origem: stakeholder` (e `Aguarda decisão do stakeholder` quando for o caso), no formato de `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/gap-record.md`; não reproduzido, reportar como suspeita — nenhuma entrada nova sem evidência. Roteia pela escada de falha de sempre; o QA reprova e registra, não corrige.
+```
+**Mudança de comportamento de agente/comando só entra em vigor após reiniciar a sessão.**
+
+---
+
 ## v3.11 — Delegar tarefa simples de PO/SM/UX/QA ao dev (Haiku): proposta avaliada e descartada — 12/09/2026
 
 > Nenhum documento de processo mudou nesta entrada — é o registro de uma **decisão negativa**, para que a ideia não seja reproposta sem que quem a leia veja por que já foi avaliada e recusada.

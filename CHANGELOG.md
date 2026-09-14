@@ -13,6 +13,26 @@
 
 ---
 
+## v3.15.0 — 2026-09-14
+
+**Branch:** `fix/v3.15.0` · **Base:** `develop` (v3.14.1) · **PR** para `develop`.
+
+**MINOR de processo, sem defeito de produto.** Carrega a entrada nova [`v3.15`](roles/scrum-master/process/process-changelog.md) do changelog do processo — por isso a numeração é `vX.Y.0` (R18), não um PATCH sobre a linha `3.14`. Aplica os achados do `/review audit` desta sessão: `/po accept` mirando Task contra R21 em dois comandos, um vão de roteamento no `review-contract.md` que não cobria por inteiro os índices transversais do SM, e resíduo de find-replace (`item`→`Task`) espalhado em quatro documentos, dos papéis SM e Arquiteto. Uma segunda rodada, a partir de um code review independente sobre o trabalho ainda não commitado, corrigiu 9 achados na própria aplicação (afirmação falsa sobre dono declarado, contagem de arquivos, evidência de arquivamento ausente, evidência de R19 não reproduzível, ponteiro de linha obsoleto, escopo subdeclarado nesta seção, dois índices transversais que não tinham fechado por inteiro, uma metade de frase residual em `commands/team.md`, e a numeração desta própria entrega — inicialmente `v3.14.2`, três partes, quando o par no changelog do processo usa `vX.Y`). Ver [`v3.15` do changelog do processo](roles/scrum-master/process/process-changelog.md).
+
+### O que entrou
+
+- **`/po accept` alinhado a R21 (SM, `commands/qa.md` e `commands/team.md`).** Os dois comandos indicavam `/po accept <ID>` mirando a Task, na ordem errada (antes do fechamento técnico). Corrigido para `/sm close <ID>` no veredito ✅, com o aceite da História explicado como posterior, na Sprint Review — a regra já valia desde a v3.3, só não tinha chegado aos dois comandos. `commands/team.md:70` tinha ainda a metade ⚠️/❌ da mesma frase preservando o modelo antigo ("não siga para o aceite", que sugere o aceite logo após o fechamento) — alinhada para "não siga para o fechamento".
+- **Vão de alcance do `/review` fechado por inteiro (SM, `review-contract.md` + `artifact-ownership.md`).** `deliverables/implementation/02-status.md` já tinha dono (SM) declarado na matriz de propriedade, mas não aparecia na tabela de alcance do `/review`; `deliverables/README.md`, `deliverables/implementation/README.md` e `deliverables/team-project/README.md` não tinham dono declarado **em nenhum dos dois documentos**. Os quatro entraram: os três índices transversais ganharam linha própria na matriz de propriedade (`artifact-ownership.md`), e a linha do Scrum Master na tabela de alcance do `/review` passou a citá-los.
+- **Resíduo de find-replace corrigido (SM + Arquiteto).** "permTask"/"é fechado" sobreviveram à varredura da v-anterior em `agents/developer.md`, `deliverables/README.md`, `deliverables/implementation/02-status.md` (SM) e `standards/implementation-quality.md` (Arquiteto, R16).
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.15.0`. `git --no-pager diff --stat` confirma **14 arquivos** no total: os 13 nossos — os citados acima, a tríade de versão (`plugin.json`, `CHANGELOG.md`, `README.md`), `roles/scrum-master/process/process-changelog.md` (este bloco) e `roles/scrum-master/process/process-changelog-archive.md` (arquivamento da entrada `v3.12`, pré-condição do teto de 3 entradas quentes — `process-changelog.md:10` — para a entrada `v3.15` caber) — mais `note.md`, modificado pelo stakeholder desde antes desta sessão e **não tocado** por nenhuma das duas rodadas desta entrega.
+
+**Mudança de comportamento de agente/comando só entra em vigor após reiniciar a sessão.**
+
+---
+
 ## v3.14.1 — 2026-09-12
 
 **Branch:** `fix/v3.14.1` · **Base:** `develop` (v3.14.0) · **PR** para `develop`.
