@@ -63,6 +63,7 @@ Este comando é **seu** — a sessão principal orquestra. A triagem e a curador
 ## Limites
 
 - **Só os documentos de `RAIZ/`.** `/review` não toca `.team-project/`, o código, o quadro nem o backlog.
+- **`/review` nunca grava linha no registro de consumo do time.** Esse registro (`consumption-log.md`) só existe em projeto que instala o time, dentro de `.team-project/`; `RAIZ/` — o clone-fonte do plugin, onde `/review` roda — não tem `.team-project/`. Os agentes disparados por `/review` são o Agent `<papel>` direto, não os comandos `/sm`/`/po`/`/arc`/`/ux`/`/qa`/`/dev` — a instrução de gravação vive nesses comandos, não aqui.
 - **Normativo que governa todos** (regras de trabalho, fluxo, propriedade de artefatos) é do **Agent `scrum-master`** — nenhum outro papel edita.
 - **`RAIZ/agents/` e `RAIZ/commands/` são do stakeholder** — propor com o texto pronto, não aplicar.
 - **O dev não edita os próprios normativos** — o Agent `architect` aplica as mudanças em `RAIZ/roles/developer/*`, usando os 🔺 GAPs e as seções "Não fiz" dos relatórios como evidência.

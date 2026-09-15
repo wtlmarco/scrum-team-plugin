@@ -49,6 +49,7 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 ### Encerramento
 - **Tasks não concluídas devolvidas ao Product Backlog, com a História:** <IDs, ou "nenhuma">
 - **Ressalvas e débitos da Review registrados no Product Backlog:** <sim — com dono | nenhum>
+- **Registro de consumo arquivado** *(só quando `.team-project/scrum-master/consumption-log.md` existir)*: <sim — linhas movidas para `consumption-log-archive.md` sob `## Sprint <n>`, tabela limpa | n/a — sem registro no projeto>
 ```
 
 ## Regras
@@ -60,6 +61,7 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 - **O sprint não encerra com pendência sem destino.** Task inacabada volta ao Product Backlog com a História (R5); ressalva da Review vira entrada com dono (R12 · R21).
 - A linha de footprint (KB) é a fase **Check** do ciclo de eficiência ([`../process/workflow.md` §5c](../process/workflow.md)): mede `agents/` + `commands/` + `roles/<papel>/` do processo, compara com a retrospectiva anterior e alimenta o giro de `/review metrics`, que roda a cada 3 sprints. Crescimento sem regra ou cerimônia nova é candidato a corte, não a nota.
 - **Consumo real ≠ footprint.** A linha de consumo real soma o que a sessão que orquestra registrou por invocação de papel — mede **o trabalho dos papéis**, nunca o custo da própria sessão principal, que não se autoobserva. Não some as duas linhas de footprint com a de consumo real: são medidas diferentes, lado a lado, nunca um total único.
+- **O consumo real do sprint é medido antes do arquivamento.** A linha "Consumo real do sprint" acima lê a tabela `## Registro` de `consumption-log.md` **antes** de o passo "Registro de consumo arquivado" da seção Encerramento mover essas linhas para `consumption-log-archive.md` — inverter a ordem mede um sprint que já foi zerado.
 
 ## Exemplo de leitura
 

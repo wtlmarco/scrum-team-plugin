@@ -342,6 +342,8 @@ O PO demonstra cada História do sprint ao stakeholder, **contra os critérios d
 
 Roda **depois** da Review, com o resultado dela à vista. Usa o [modelo de retrospectiva](../templates/retrospective.md), mede o footprint do processo (§5c) e produz as ações corretivas do sprint seguinte. Encerra o sprint: nada mais entra nele.
 
+**Arquivamento do registro de consumo (quando `.team-project/scrum-master/consumption-log.md` existir).** Depois de a retrospectiva registrar o consumo real do sprint (§5c), o SM move todas as linhas da tabela `## Registro` daquele arquivo para `.team-project/scrum-master/consumption-log-archive.md`, sob um cabeçalho `## Sprint <n>`, íntegras — e limpa a tabela para o sprint seguinte. A tabela `## Totais por papel` não se move: soma desde o início do projeto. Mesmo padrão de R17 (teto + arquivamento), aplicado ao registro de consumo em vez do changelog do processo — ver [`templates/consumption-log.md`](../templates/consumption-log.md).
+
 ### Como o SM verifica que o sprint aconteceu como escrito
 
 - Toda Task do Sprint Backlog rastreia a uma História que passou pela DoR da História; Task órfã é violação de R20.
@@ -349,6 +351,7 @@ Roda **depois** da Review, com o resultado dela à vista. Usa o [modelo de retro
 - Nenhuma História foi aceita fora da Sprint Review (R21); nenhum `/po accept` mira uma Task.
 - Toda entrada de escopo fora da Planning tem a linha "o que saiu para caber" no quadro.
 - Review e retrospectiva do sprint anterior estão registradas antes da Planning seguinte.
+- Quando o projeto mantém `consumption-log.md`, todo `/sm sprint close` deixa a tabela `## Registro` vazia (só o cabeçalho) e o sprint fechado íntegro em `consumption-log-archive.md`, sob `## Sprint <n>` — arquivamento sem isso é achado de processo.
 
 ## 6. Escalação
 

@@ -4,6 +4,8 @@
 
 Registra o que a sessão que dispara cada subagente de papel recebe quando ele termina: tokens e duração. Existe porque "quanto o time custou neste projeto" não tinha resposta sem abrir o changelog do processo e somar na mão.
 
+**Escopo — onde este registro existe, e onde não existe.** Só em projeto que **instala** o time — onde `.team-project/` existe. O **clone-fonte do plugin** (o repositório onde o `/review` roda) não tem `.team-project/` e não grava consumo: não há projeto ali, só o processo que o time segue em qualquer projeto. Comando de papel (`/sm`, `/po`, `/arc`, `/ux`, `/qa`, `/dev`, `/team`) só grava quando este arquivo existe; `/review` nunca grava, porque nunca roda com `.team-project/` no caminho.
+
 ```markdown
 # Registro de Consumo do Time — <projeto>
 
@@ -18,6 +20,8 @@ Toda vez que um subagente (`/sm`, `/po`, `/arc`, `/ux`, `/qa`, `/dev`, ou um dos
 | <aaaa-mm-dd> | <sm\|po\|arc\|ux\|qa\|dev> | `/<comando>` | <ID ou "n/a"> | <n> | <mm:ss> | <observação, ou "não disponível — <motivo>"> |
 
 ## Totais por papel (derivado)
+> **Acumulado desde o início do projeto** — nunca reseta no arquivamento por sprint; soma o que está arquivado mais o sprint corrente.
+
 | Papel | Σ tokens | Nº de invocações | Período |
 |---|---|---|---|
 
@@ -29,6 +33,6 @@ Toda vez que um subagente (`/sm`, `/po`, `/arc`, `/ux`, `/qa`, `/dev`, ou um dos
 
 - **Uma linha por invocação.** É a única unidade que a sessão orquestradora observa diretamente — ela recebe tokens e duração quando o subagente termina, nunca o próprio consumo.
 - **Número indisponível vira nota, nunca estimativa** — mesma régua de R7 ("sem evidência, não aconteceu"): escreva "não disponível — <motivo>".
-- **Retenção e arquivamento:** pendente de decisão do stakeholder ([`process-changelog.md` v3.17](../process/process-changelog.md)). Até lá, nenhuma linha é removida — comportamento conservador por padrão, não a política final.
-- **O que entra:** pendente de decisão do stakeholder — toda invocação, ou só as que tocam Task/História (mesma entrada acima). Até lá, registre toda invocação: filtrar depois é mais barato que reconstruir o que não foi gravado.
+- **Retenção e arquivamento — arquivar por sprint fechado, decidido ([`process-changelog.md` v3.18](../process/process-changelog.md)), mesmo padrão de R17 (teto + arquivamento) que já governa o changelog do processo.** No `/sm sprint close` ([`workflow.md` §5e](../process/workflow.md)), depois de a retrospectiva registrar o consumo real do sprint, o SM move **todas** as linhas da tabela `## Registro` para `.team-project/scrum-master/consumption-log-archive.md` — sob um cabeçalho `## Sprint <n>`, íntegras, sem uma vírgula alterada (arquivar é relocar, não reescrever) — e limpa a tabela `## Registro` (só o cabeçalho) para o sprint seguinte. A tabela `## Totais por papel (derivado)` **não é arquivada**: ela soma desde o início do projeto, arquivado ou não. **O registro vivo guarda o sprint corrente (`## Registro`) mais os totais acumulados (`## Totais por papel`)**; o detalhe de um sprint fechado vive, íntegro, no arquivo.
+- **O que entra: toda invocação vira linha, decidido ([`process-changelog.md` v3.18](../process/process-changelog.md)).** Qualquer subagente de papel que termina é uma linha — com Task/História quando houver, `"n/a"` quando não. Não filtra por relevância nem por tamanho da invocação: filtrar depois é mais barato que reconstruir o que não foi gravado.
 - **Quem escreve** é sempre a sessão que orquestrou aquela invocação — o próprio papel não vê o número, então nunca é ele quem grava a própria linha.

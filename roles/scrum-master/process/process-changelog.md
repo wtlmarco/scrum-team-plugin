@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.15`](process-changelog-archive.md) | `/po accept` alinhado a R21, vão de alcance do `/review` fechado, resíduo de find-replace e numeração da própria entrada corrigidos (SM + Arquiteto) — 14/09/2026 |
 | [`v3.14`](process-changelog-archive.md) | Nascimento dos documentos de implementação declarado, rastreio de pendências no onboarding, bug do stakeholder no fluxo e em `.team-project/note.md`, e curadoria da rodada (SM) — 12/09/2026 |
 | [`v3.13`](process-changelog-archive.md) | O bug entra pelo PO: classificação do relato do stakeholder, e a fila `.team-project/note.md` tratada em lote (PO) — 12/09/2026 |
 | [`v3.12`](process-changelog-archive.md) | Pendências e bugs num só registro: campo `origem`, leitura filtrada do stakeholder e estado de escalação em `pending.md` (QA) — 12/09/2026 |
@@ -50,6 +51,61 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.18 — As três decisões escaladas em v3.17 fechadas: arquivamento por sprint, granularidade definitiva, e as duas propostas aplicadas sob a restrição de escopo `.team-project/` (SM) — 15/09/2026
+
+> **Fecho da v3.17.** As duas decisões que ficaram escaladas (retenção, granularidade) e as duas propostas de texto pronto (gravação em `commands/*`, exibição em `team-version.md`) — todas pendentes na entrada anterior — voltam decididas/autorizadas pelo stakeholder, com uma restrição nova sobre a proposta de gravação.
+
+**Instrução:** *(stakeholder)* (1) Retenção: **arquivar por sprint** — "no fechamento do sprint, as linhas do período vão para um arquivo histórico; o registro vivo guarda o sprint corrente mais os totais acumulados", espelhando o padrão de R17. (2) Granularidade: **toda invocação** — qualquer subagente de papel que termina vira linha, com Task/História quando houver e `n/a` quando não; deixa de ser provisório. (3) Aplicar as duas propostas (`commands/*` e `team-version.md`), **com uma condição**: *"esse registro é somente aplicado na versão instalada do plugin, ou seja, nessa em que estamos não há necessidade de registro"* — a gravação só ocorre onde `.team-project/` existe; o clone-fonte do plugin, onde o `/review` roda, não grava.
+
+**Classificação:** propriedade de artefato (retenção e escopo do registro) + cerimônia (arquivamento amarrado ao `/sm sprint close` já existente) + comportamento de agente (gravação em `commands/*`, exibição em `team-version.md`).
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `roles/scrum-master/templates/consumption-log.md` | Regras + corpo do modelo | Retenção: arquivar por sprint no `/sm sprint close`, para `consumption-log-archive.md` (`## Sprint <n>`, íntegro); `## Registro` fica só com o sprint corrente, `## Totais por papel` acumula sem reset; granularidade: "pendente" removido, toda invocação vira linha; linha nova de **escopo** — só existe onde `.team-project/` existe |
+| `roles/scrum-master/process/workflow.md` | §5e (Sprint Retrospective) + "Como o SM verifica que o sprint aconteceu" | Passo de arquivamento do registro de consumo amarrado à cerimônia existente, sem inventar cerimônia nova; item novo na lista de verificação |
+| `roles/scrum-master/README.md` | `/sm sprint close` | Frase do passo de arquivamento |
+| `roles/scrum-master/templates/retrospective.md` | Encerramento + Regras | Linha "Registro de consumo arquivado" na Encerramento; regra nova sobre a ordem (medir o consumo real do sprint antes de arquivar) |
+| `roles/scrum-master/process/artifact-ownership.md` | §1, linha do registro de consumo | "Pendentes do stakeholder" → retenção e escopo decididos, citando esta entrada |
+| `commands/sm.md`, `commands/po.md`, `commands/arc.md`, `commands/ux.md`, `commands/qa.md`, `commands/dev.md` | seção nova, antes do parágrafo de repasse ao stakeholder | "Registro de consumo — só onde o registro existe": grava uma linha se `.team-project/scrum-master/consumption-log.md` existir; nunca no clone-fonte |
+| `commands/team.md` | idem, antes de "Ao final" | Mesmo texto no plural — uma linha por subagente disparado; nota explícita de que `init`/`update`/`version` não disparam agente e não gravam |
+| `commands/review.md` | `## Limites`, linha nova | `/review` nunca grava — roda no clone-fonte, que não tem `.team-project/`, e dispara o Agent do papel direto, não os comandos `/sm`/`/po`/… |
+| `team-version.md` | `## 2.` renumerada para "As cinco respostas" + item `e)` novo | Exibição do consumo real acumulado/por período, condicionada à existência do arquivo, com a mesma ressalva de que mede o trabalho dos papéis, não a sessão |
+| `.team-project/note.md` | `## Abertas` | Item 3 ("Não há onde consultar o consumo acumulado…") removido — resolvido pelo item `e)` de `team-version.md` |
+
+### Por quê
+Sem retenção, o registro de consumo cresceria sem fim — o mesmo modo de falha que R17 já corrigiu no changelog do processo (v1.0→v1.8, 12× em nove versões), agora à espreita num arquivo por projeto em vez de um por plugin. Sem granularidade fechada, cada projeto inventaria seu próprio critério de "o que vale registrar", e o registro deixaria de ser comparável entre sprints. Sem a restrição de escopo explícita, `commands/*` gravaria — ou tentaria gravar — em toda invocação disparada por `/review`, que roda no clone-fonte sem `.team-project/`: a condição "se o arquivo existir" já bastava tecnicamente, mas o stakeholder pediu a intenção por extenso, não só o efeito colateral de uma condição.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| SM | arquiva o registro de consumo a cada `/sm sprint close`, no mesmo ciclo em que fecha a retrospectiva; verifica que a tabela `## Registro` fica vazia depois |
+| PO, Arquiteto, UX, QA, dev | ao terminarem uma invocação, a sessão que os disparou (não eles) grava a linha — sem mudança de prática do próprio papel |
+| stakeholder | as três decisões e as duas propostas saem da fila; nenhuma pendência nova |
+
+### Conflitos com o processo vigente
+Nenhum. A restrição de escopo não contradiz a proposta de v3.17 — ela já dizia "(se `.team-project/scrum-master/consumption-log.md` existir)"; esta entrada só torna a intenção explícita nos três lugares que o stakeholder pediu (`commands/*`, `consumption-log.md`, `artifact-ownership.md`), e acrescenta a quarta menção que ele não pediu mas que fechava o vão (`commands/review.md`).
+
+### Como saberemos que funcionou
+Primeiro `/sm sprint close` de um projeto com `consumption-log.md` deixa a tabela `## Registro` vazia e o sprint fechado íntegro em `consumption-log-archive.md`. Primeira invocação de qualquer comando de papel num projeto com o registro grava uma linha; a mesma invocação disparada por `/review` (clone-fonte) não grava nenhuma. `/team version` responde o item `e)` sem inventar número quando o arquivo não existe.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada (pré-condição do teto de 3 — `process-changelog.md:10`, esta entrada some a 4ª) | `Compare-Object` do bloco `## v3.15` pré-sessão (`git show HEAD:...`, 56 linhas) × relocado em `process-changelog-archive.md` (56 linhas) | 0 diferenças | ✅ |
+| Substituição de padrão | `Select-String -Path roles\scrum-master\templates\consumption-log.md,roles\scrum-master\process\artifact-ownership.md -Pattern "pendente de decisão"` | 0 ocorrências (as duas linhas que diziam isso foram substituídas pela decisão) | ✅ |
+| Substituição de padrão | `Select-String -Path commands\*.md -Pattern "Registro de consumo"` | 7 ocorrências, uma por arquivo (`sm`, `po`, `arc`, `ux`, `qa`, `dev`, `team`), cada uma lida no contexto: singular nos seis primeiros, plural + nota de `init`/`update`/`version` no `team.md` | ✅ |
+| Substituição de padrão | `Select-String -Path commands\review.md -Pattern "nunca grava"` | 1 ocorrência, na seção `## Limites`, coerente com o resto da seção | ✅ |
+| Substituição de padrão | `Select-String -Path team-version.md -Pattern "gastou de fato"` | 1 ocorrência, item `e)` novo, título da seção 2 renumerado para "cinco respostas" | ✅ |
+| Extração/remoção | `.team-project/note.md`: contagem de itens em `## Abertas` antes (1) × depois (0) | seção continua existindo, vazia — estrutura preservada | ✅ |
+| Fronteira não ultrapassada | `git status --porcelain` | arquivos listados em "O que mudou" + tríade de versão + este bloco; nenhum outro documento do plugin tocado | ✅ |
+| Tríade do R18 | `plugin.json`, topo `CHANGELOG.md`, banner `README.md` | os três `3.18.0` | ✅ |
+
+### Pendente do stakeholder
+Nada. As três decisões escaladas em v3.17 e as duas propostas foram fechadas nesta entrada. **Mudança de comportamento de agente/comando se aplica** — `commands/*` e `team-version.md` foram tocados: só valem após reiniciar a sessão, e só chegam aos projetos depois de `git push` + `claude plugin marketplace update` + `claude plugin update`.
 
 ---
 
@@ -183,62 +239,4 @@ Próximo giro de `/review metrics` (§5c) remede a tabela usando o comando anexa
 Nada novo. A divergência sobre remover a seção `/review` dos `agents/*.md` já foi decidida (recusada) — ver acima.
 
 **Mudança de comportamento de agente/comando não se aplica** — nenhum `agents/`/`commands/` foi tocado.
-
----
-
-## v3.15 — `/po accept` alinhado a R21, vão de alcance do `/review` fechado, resíduo de find-replace e numeração da própria entrada corrigidos (SM + Arquiteto) — 14/09/2026
-
-> **Fecho do `/review audit` desta sessão, em duas rodadas.** 1ª: três achados do audit original — **(1)** alta, `/po accept` mirando Task contra R21 em `commands/qa.md`/`commands/team.md`; **(2)** média, `02-status.md`/`deliverables/README.md` sem linha na tabela de alcance; **(3)** baixa, resíduo `item`→`Task` em 4+1 documentos (parte do Arquiteto em `standards/`, aplicada e verificada por ele, só consolidada aqui). 2ª: um code review independente sobre o trabalho ainda não commitado achou 9 defeitos nesta própria aplicação — corrigidos abaixo, marcados **2ª rodada**.
-
-**Instrução:** *(stakeholder)* 1ª rodada — "dispare todas as correções" em `agents/`/`commands/`/raiz, mais decisão sobre `deliverables/README.md` entrar no alcance do SM e bump da tríade. 2ª rodada — autorização explícita para corrigir os 9 achados do code review, inclusive em `commands/` e na tríade de versão.
-
-**Classificação:** regra (R21) + escopo de papel (alcance do `review-contract.md`) + propriedade de artefato (`artifact-ownership.md`, linha nova) + formato de documento (concordância verbal; numeração da própria entrada).
-
-**Conflito — numeração da entrada (achado 6).** Nasceu `v3.14.2`, três partes, copiando o `CHANGELOG.md` em vez da convenção `vX.Y` deste changelog. Ainda não commitada nem publicada quando corrigida — não é "entrada antiga" protegida contra reescrita (R17/linha 6): terminar de escrevê-la no lugar certo é fechamento, não reescrita. **Resolução:** renumerada `v3.15`. Consequência por R18 ("entrada nova sai como `vX.Y.0`"): a entrega no `CHANGELOG.md` deixava de casar sendo `v3.14.2` (PATCH sobre a linha `3.14`, que não carregava entrada nova) — renumerada `v3.15.0`, com `plugin.json`/banner do `README.md`/branch atualizados junto. Não reescreve `v3.14`/`v3.14.1`. Tratada como reconciliação de referência cruzada dentro do próprio alcance do SM (R18), não escalada; registrada para o stakeholder reverter se discordar do enquadramento.
-
-### O que mudou
-| Documento | Mudança |
-|---|---|
-| `commands/qa.md:24` | `/po accept <ID>` → `/sm close <ID>` no ✅; aceite explicado como posterior (R21) |
-| `commands/team.md:70` | mesma correção; **2ª rodada** — metade ⚠️/❌ ainda dizia "não siga para o **aceite**" → "para o **fechamento**" |
-| `agents/developer.md:42` · `deliverables/README.md:36` · `deliverables/implementation/02-status.md:3` | resíduo `permTask`/"é fechado" → concordância corrigida |
-| `standards/implementation-quality.md:194` *(Arquiteto, R16)* | idem, "os dois permTask que" → "permitem que" |
-| `review-contract.md` (alcance do SM) | **2ª rodada** — passa a citar os **três** índices transversais, não só dois |
-| `artifact-ownership.md` §1 *(2ª rodada, não tocado na 1ª)* | linha nova: `deliverables/README.md`, `deliverables/implementation/README.md`, `deliverables/team-project/README.md` — dono **SM**, curadoria |
-| `process-changelog-archive.md` *(2ª rodada, ausente da 1ª)* | `## v3.12` relocado — pré-condição do teto de 3 (`process-changelog.md:10`) para esta entrada caber |
-| `.claude-plugin/plugin.json` · `CHANGELOG.md` · `README.md` | tríade R18 → `3.15.0` (**2ª rodada**, não `3.14.2` — ver conflito acima) |
-
-### Por quê
-`/po accept <ID>` mirava Task antes de `/sm close`, contra R21 desde a v3.3 — alvo e ordem errados, sugerindo aceite antes do fechamento técnico; a 1ª rodada corrigiu só a metade ✅ de `commands/team.md:70`. `02-status.md` já tinha dono declarado sem linha de alcance; `deliverables/README.md` **não tinha dono em lugar nenhum** (a 1ª rodada afirmou o contrário, por engano) — mesma lacuna, não notada, em `deliverables/implementation/README.md` e `deliverables/team-project/README.md` (este último já tratado como "do SM" desde a `v3.13`, sem nunca entrar na matriz). Resíduo do find-replace `item`→`Task`: 13 ocorrências já corrigidas antes (`process-changelog-archive.md:724`), estas cinco sobreviveram — a de `standards/` deixava a frase sem verbo, standard ilegível é standard não seguido (achado do Arquiteto).
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda |
-|---|---|
-| SM | orienta `/sm close <ID>` direto no ✅ sem citar `/po accept`; devolução em ⚠️/❌ não sugere mais aceite; cura os três índices transversais, agora também na matriz de propriedade |
-| PO | sem mudança de prática — só sai a instrução divergente dos dois comandos |
-| Arquiteto | corrige a própria frase normativa em `standards/`, sem mudança de prática |
-| dev, QA | leem `standards/implementation-quality.md:194` completo |
-
-### Conflitos com o processo vigente
-Nenhum de conteúdo. O único conflito é de forma (numeração), resolvido dentro do alcance do SM — ver acima.
-
-### Como saberemos que funcionou
-`/qa <ID>`/`/team cycle` com ✅ recomenda `/sm close`; com ⚠️/❌ não sugere aceite em nenhuma das duas metades. Achado de processo em qualquer um dos três índices chega ao SM pela tabela de alcance **e** encontra dono na matriz. Próxima entrada nova deste changelog nasce `vX.Y`, nunca três partes.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Substituição de padrão | `Grep "permTask" path=agents/` e `path=standards/` | 0 ocorrências | ✅ |
-| Substituição de padrão | `Grep "/po accept <ID>" path=commands/` | 0 — demais usos são `<H-ID>` ou citam a forma antiga como exemplo (`CHANGELOG.md:230` — **2ª rodada:** ponteiro corrigido de `:210`, deslocado pela inserção desta entrada) | ✅ |
-| Substituição de padrão — **2ª rodada, comando reescrito** | `Select-String "Task é fechado\|Task está pronto\|permTask"` em `*.md` de RAIZ **excluindo changelogs** (`*changelog*.md`, `CHANGELOG.md` — convenção de "arquivos vivos" de `working-rules.md` §5c) | 0 ocorrências | ✅ *(a 1ª rodada rodou sem excluir changelogs; deixa de ser reproduzível assim que a própria entrada cita as strings como exemplo — 9 ocorrências sem exclusão, não é regressão)* |
-| Leitura em contexto — **2ª rodada, ampliada** | `commands/qa.md:24`, `commands/team.md:70` (as duas metades), `review-contract.md:17-23`, `artifact-ownership.md` (linha nova) | nenhuma metade sugere aceite antes do fechamento; sem sobreposição com PO/QA/Arquiteto/UX; linha nova da matriz não contradiz dono existente de nenhum documento interno | ✅ |
-| Substituição — leitura em contexto *(Arquiteto)* | linhas 190-195 de `standards/implementation-quality.md` | antecedente plural explícito, concordância correta, referência a nível 1 §5.4 intacta | ✅ |
-| Escopo *(Arquiteto)* | `git --no-pager diff -- standards/implementation-quality.md` | 1 linha, 1 arquivo | ✅ |
-| **Arquivamento de entrada — 2ª rodada, ausente na 1ª** | `Compare-Object` do bloco `## v3.12` pré-sessão (`git show HEAD:...`, 55 linhas) × relocado em `process-changelog-archive.md` (58 linhas) | 0 diferenças de conteúdo — as 3 linhas a mais são o separador (branco + `---` + branco), padrão das linhas 9/67 do arquivo; `## v3.12` sumiu do changelog vivo | ✅ *(números do achado — 55/57/dif. 2 — eram estimativa; real é 55/58/dif. 3, íntegra em separador)* |
-| Tríade do R18 | `plugin.json`, topo `CHANGELOG.md`, banner `README.md` | os três `3.15.0` (**2ª rodada**, renumerado de `3.14.2`) | ✅ |
-| Coerência de referência cruzada *(2ª rodada)* | `Select-String "v3\.14\.2"` em `*.md`, fora de `*changelog*` | 2, ambas narrativas (explicam o número antigo, não apontam para ele): `CHANGELOG.md:20`, esta entrada | ✅ |
-| Fronteira não ultrapassada — **2ª rodada, contagem corrigida** | `git --no-pager diff --stat` | **14 arquivos** (13 nossos + `note.md`, do stakeholder, não tocado): os 9 de "O que mudou" + tríade de versão + este bloco | ✅ *(1ª rodada registrou 11, omitindo `process-changelog-archive.md`)* |
-
-### Pendente do stakeholder
-Nada novo. Renumeração (achado 6): reconciliação de referência cruzada, não escalada — ver "Conflito" acima. Índices do achado 4 (`implementation/README.md`, `team-project/README.md`): fechados nesta entrada, não deixados pendentes — propriedade dedutível dos normativos (índices transversais sem outro papel reivindicando; o segundo já tinha precedente textual na `v3.13`).
 

@@ -80,4 +80,8 @@ Modos parciais do ciclo: `plan <ID>` (só a etapa 1) · `build <ID>` (só a etap
 - **Nenhuma afirmação de "funciona" sem saída real de comando**; o que não foi exercitado é declarado como não exercitado.
 - **Cada papel escreve só o que lhe pertence:** Arquiteto (espec. técnica, ADRs, planos), QA (documentos de qualidade e evidências), SM (quadro e status), PO (requisitos e backlog), dev (só código, dentro do plano).
 
+## Registro de consumo — só onde o registro existe
+
+Se `.team-project/scrum-master/consumption-log.md` existir (projeto que instala o time — nunca o clone-fonte do plugin, que não tem `.team-project/`), a cada subagente disparado nesta invocação (`brainstorm`, `cycle` e suas fatias) retornar, você — a sessão que orquestrou — recebe o total de tokens e a duração daquela invocação. Acrescente **uma linha por subagente disparado nesta invocação**: data, papel, comando, Task/História (se houver, senão `n/a`), tokens, duração. Número indisponível: registre "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, não há o que gravar — nada a fazer aqui. **Os modos `init`, `update` e `version` não disparam agente nenhum** (seções acima) — não há subagente para registrar, e nenhum dos três grava linha.
+
 Ao final, repasse ao stakeholder a consolidação, o que exige decisão dele e a próxima ação recomendada.

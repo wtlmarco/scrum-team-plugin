@@ -13,6 +13,29 @@
 
 ---
 
+## v3.18.0 — 2026-09-15
+
+**Branch:** `fix/v3.18.0` · **Base:** `fix/v3.17.0` (empilhada) · **PR** para `develop`.
+
+**MINOR de processo, sem defeito de produto.** Carrega a entrada nova [`v3.18`](roles/scrum-master/process/process-changelog.md) do changelog do processo — `vX.Y.0` (R18). Fecha as três decisões que ficaram escaladas na `v3.17` sobre o **registro de consumo do time**: **(1)** retenção — arquivar por sprint no `/sm sprint close`, mesmo padrão de R17; **(2)** granularidade — toda invocação vira linha, deixa de ser provisório; **(3)** as duas propostas de texto pronto (gravação em `commands/*`, exibição em `team-version.md`) **aplicadas**, com a restrição explícita de que a gravação só ocorre onde `.team-project/` existe — nunca no clone-fonte do plugin, onde `/review` roda. Ver [`v3.18` do changelog do processo](roles/scrum-master/process/process-changelog.md).
+
+### O que entrou
+
+- **Retenção do registro de consumo (SM).** `consumption-log.md` passa a arquivar por sprint fechado (`consumption-log-archive.md`, sob `## Sprint <n>`) no `/sm sprint close` — passo amarrado à cerimônia já existente, sem cerimônia nova (`workflow.md` §5e, `roles/scrum-master/README.md`, `templates/retrospective.md`). O vivo guarda o sprint corrente mais os totais acumulados.
+- **Granularidade decidida.** Toda invocação de subagente de papel vira linha — com Task/História quando houver, `n/a` quando não. As duas marcações de "pendente de decisão" saem de `consumption-log.md` e `artifact-ownership.md`.
+- **Gravação aplicada em `commands/sm.md`, `commands/po.md`, `commands/arc.md`, `commands/ux.md`, `commands/qa.md`, `commands/dev.md`, `commands/team.md`.** Ao subagente retornar, a sessão que orquestrou grava uma linha — só se `.team-project/scrum-master/consumption-log.md` existir. `commands/review.md` ganha nota explícita de que **nunca** grava — roda no clone-fonte, sem `.team-project/`.
+- **Exibição aplicada em `team-version.md`.** Item novo `e) O que o time gastou de fato`, condicionado à existência do registro.
+- Item 3 de `.team-project/note.md`/`note.md` resolvido por esta entrega — sai da fila.
+- Arquivamento de `v3.15` para `process-changelog-archive.md` (pré-condição do teto de 3 entradas), verificado por `Compare-Object`: zero diferenças.
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.18.0`. Detalhe completo (triagem, o que mudou, bloco de evidência R19, o texto exato aplicado) na entrada `v3.18` do changelog do processo.
+
+**Mudança de comportamento de agente/comando se aplica** — `commands/*` e `team-version.md` foram tocados nesta entrega: só valem depois de reiniciar a sessão, e só chegam aos projetos depois de `git push` + `claude plugin marketplace update` + `claude plugin update`.
+
+---
+
 ## v3.17.0 — 2026-09-15
 
 **Branch:** `fix/v3.17.0` · **Base:** `fix/v3.16.0` (empilhada) · **PR** para `develop`.

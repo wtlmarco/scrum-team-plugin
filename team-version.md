@@ -10,7 +10,7 @@ Modo **meta**, como `init` e `update`: fala sobre a instalação do time no proj
 
 Se `${CLAUDE_PLUGIN_ROOT}/.git/` existir, este é o **repositório-fonte** — diga isso em uma linha, porque ali a versão de `plugin.json` é a que está sendo escrita, não a que algum projeto consome. Caso contrário é uma **cópia instalada**, e a versão é a que está de fato em vigor neste projeto.
 
-## 2. As quatro respostas
+## 2. As cinco respostas
 
 Leia `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` (campo `version`) e `${CLAUDE_PLUGIN_ROOT}/CHANGELOG.md` — **só a entrada da versão instalada**, não o arquivo inteiro. Responda nesta ordem, sem preâmbulo:
 
@@ -21,6 +21,8 @@ Leia `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` (campo `version`) e `${C
 **c) Guia rápido** — a tabela de comandos e modos. Não a reproduza de memória: a fonte é `${CLAUDE_PLUGIN_ROOT}/how-to.md` §"Os comandos". Marque com `*` os modos que entraram nesta versão.
 
 **d) O que o time custa** — a carga fixa por comando, de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/workflow.md` §5c. Diga junto as duas coisas que a tabela não mostra e que costumam dominar o custo real: **o modelo de cada agente** (`/arc` e `/ux` em Opus, `/dev` em Haiku — `/arc` carrega menos KB que `/sm` e custa mais) e a **leitura em tempo de execução**, que costuma superar a carga fixa. Número de carga fixa apresentado sozinho subestima a conta, e quem lê passa a otimizar a coisa errada.
+
+**e) O que o time gastou de fato** *(se houver registro)* — se `.team-project/scrum-master/consumption-log.md` existir, leia os totais (a tabela `## Registro`, que é o sprint corrente, mais `## Totais por papel`, que é o acumulado) e responda a soma por papel do período pedido, ou o acumulado se não especificado — tokens e nº de invocações. Deixe explícito que este número mede **o trabalho dos papéis** — a sessão principal não se autoobserva, e o total de uma sessão inteira não está aqui. Se o registro não existir — inclusive porque este é o clone-fonte do plugin, que nunca tem `.team-project/` — diga isso, sem inventar número.
 
 ## 3. Feche
 

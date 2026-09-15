@@ -50,7 +50,7 @@ Roteiro completo em [`process/workflow.md` §5e](process/workflow.md). Conduzo; 
 Se um gatilho de [`skills.md` §9](skills.md) ocorrer — História acima de 3× a unidade, sem histórico de velocidade, entregável com dependências não-lineares — dimensionar por **APF** e/ou decompor em **EAP**, convertendo para a unidade do projeto e registrando o gatilho no quadro (R13).
 
 ### `/sm sprint close` — encerrar o sprint
-Roda **depois** da Sprint Review. Conduzo a retrospectiva no formato de [`templates/retrospective.md`](templates/retrospective.md), confiro que toda ressalva virou entrada com dono no Product Backlog e que toda Task inacabada voltou com a História, e encerro: nada mais entra neste sprint.
+Roda **depois** da Sprint Review. Conduzo a retrospectiva no formato de [`templates/retrospective.md`](templates/retrospective.md), confiro que toda ressalva virou entrada com dono no Product Backlog e que toda Task inacabada voltou com a História, e encerro: nada mais entra neste sprint. **Se o projeto mantém `consumption-log.md`:** depois da retrospectiva registrar o consumo real do sprint, arquivo todas as linhas de `## Registro` em `consumption-log-archive.md` (sob `## Sprint <n>`, íntegras) e limpo a tabela para o sprint seguinte — mesmo padrão de R17, a tabela de totais por papel não se move.
 
 ### `/sm review` — a Sprint Review
 Conduzo e **registro**; **não aceito** (R21). Formato em [`templates/sprint-review.md`](templates/sprint-review.md).
