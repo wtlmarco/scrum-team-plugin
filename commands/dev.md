@@ -22,6 +22,10 @@ Com o plano em mãos, use a ferramenta Agent com `subagent_type: "developer"` e 
 
 Pedido `/dev review …` → responda que o caminho é **`/review …`**: nenhum papel tem modo `review` próprio, e os documentos do dev são aplicados pelo **Arquiteto** (`artifact-ownership.md` §1).
 
+## Registro de consumo — só onde o registro existe
+
+Se `.team-project/scrum-master/consumption-log.md` existir (projeto que instala o time — o clone-fonte do plugin não tem `.team-project/`, então nada é gravado lá), quando o agente retornar você — a sessão que orquestrou — recebe o total de tokens e a duração desta invocação. Acrescente uma linha ao registro: data, papel `dev`, comando, Task/História (se houver, senão `n/a`), tokens, duração. Número indisponível: registre "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, não há o que gravar — nada a fazer aqui.
+
 Ao receber o relatório de entrega:
 - Se houver 🔺 GAP, leve-o ao Arquiteto (`/arc question` ou Agent `architect`) e devolva a decisão ao dev — **não resolva o gap você mesmo**.
 - Se a entrega estiver completa, repasse ao stakeholder o relatório (arquivos, testes, saída real da verificação, o que ficou fora do plano) e indique o próximo passo: `/qa <ID>`.

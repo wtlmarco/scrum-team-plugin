@@ -17,6 +17,7 @@ Cada modelo pertence ao **papel que o usa** (`roles/<papel>/templates/`), por [`
 | `.team-project/note.md` | [`roles/product-owner/templates/note.md`](../../roles/product-owner/templates/note.md) | PO | **Sim — estrutura**; os itens de "Abertas" são do stakeholder |
 | `.team-project/scrum-master/context.md` | seção "O que vai em cada `context.md`" do modelo de contexto | SM | Não — conteúdo do projeto |
 | `.team-project/scrum-master/sprint-backlog.md` | [`roles/scrum-master/templates/sprint-backlog.md`](../../roles/scrum-master/templates/sprint-backlog.md) | SM | **Sim — estrutura**; as linhas são do projeto |
+| `.team-project/scrum-master/consumption-log.md` | [`roles/scrum-master/templates/consumption-log.md`](../../roles/scrum-master/templates/consumption-log.md) | SM | **Sim — estrutura**; as linhas são do projeto |
 | `.team-project/product-owner/context.md` | idem | PO | Não |
 | `.team-project/product-owner/product-backlog.md` | [`roles/product-owner/templates/product-backlog.md`](../../roles/product-owner/templates/product-backlog.md) | PO | **Sim — estrutura**; as Histórias são do projeto |
 | `.team-project/architect/context.md` | idem | Arquiteto | Não |
