@@ -4,12 +4,100 @@
 > **Não confundir** com o [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`), que registra a evolução interna das regras de trabalho do time — esse é alimentado pelo `/review`.
 >
 > **Como funciona uma entrega:**
-> 1. Branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `main`.
+> 1. Branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` — ou empilhada sobre a branch de uma entrega anterior ainda não mesclada, quando há dependência entre elas.
 > 2. As correções/mudanças da entrega vão nessa branch.
-> 3. PR para `main` para aprovação.
-> 4. Uma entrada aqui, mais recente no topo, com **o que foi entregue** e **a branch**.
+> 3. PR para `develop` para aprovação. `main` recebe `develop` quando o stakeholder decide consolidar a linha estável, fora do ciclo por-entrega.
+> 4. Uma entrada aqui, mais recente no topo, com **o que foi entregue**, **a branch** (e a base, se empilhada).
 >
 > `MAJOR.MINOR` acompanham a versão do changelog do processo quando a entrega inclui mudança de processo; `PATCH` (`vX.Y.1`, `vX.Y.2`…) é correção sobre a mesma linha.
+
+---
+
+## v3.18.0 — 2026-09-15
+
+**Branch:** `fix/v3.18.0` · **Base:** `fix/v3.17.0` (empilhada) · **PR** para `develop`.
+
+**MINOR de processo, sem defeito de produto.** Carrega a entrada nova [`v3.18`](roles/scrum-master/process/process-changelog.md) do changelog do processo — `vX.Y.0` (R18). Fecha as três decisões que ficaram escaladas na `v3.17` sobre o **registro de consumo do time**: **(1)** retenção — arquivar por sprint no `/sm sprint close`, mesmo padrão de R17; **(2)** granularidade — toda invocação vira linha, deixa de ser provisório; **(3)** as duas propostas de texto pronto (gravação em `commands/*`, exibição em `team-version.md`) **aplicadas**, com a restrição explícita de que a gravação só ocorre onde `.team-project/` existe — nunca no clone-fonte do plugin, onde `/review` roda. Ver [`v3.18` do changelog do processo](roles/scrum-master/process/process-changelog.md).
+
+### O que entrou
+
+- **Retenção do registro de consumo (SM).** `consumption-log.md` passa a arquivar por sprint fechado (`consumption-log-archive.md`, sob `## Sprint <n>`) no `/sm sprint close` — passo amarrado à cerimônia já existente, sem cerimônia nova (`workflow.md` §5e, `roles/scrum-master/README.md`, `templates/retrospective.md`). O vivo guarda o sprint corrente mais os totais acumulados.
+- **Granularidade decidida.** Toda invocação de subagente de papel vira linha — com Task/História quando houver, `n/a` quando não. As duas marcações de "pendente de decisão" saem de `consumption-log.md` e `artifact-ownership.md`.
+- **Gravação aplicada em `commands/sm.md`, `commands/po.md`, `commands/arc.md`, `commands/ux.md`, `commands/qa.md`, `commands/dev.md`, `commands/team.md`.** Ao subagente retornar, a sessão que orquestrou grava uma linha — só se `.team-project/scrum-master/consumption-log.md` existir. `commands/review.md` ganha nota explícita de que **nunca** grava — roda no clone-fonte, sem `.team-project/`.
+- **Exibição aplicada em `team-version.md`.** Item novo `e) O que o time gastou de fato`, condicionado à existência do registro.
+- Item 3 de `.team-project/note.md`/`note.md` resolvido por esta entrega — sai da fila.
+- Arquivamento de `v3.15` para `process-changelog-archive.md` (pré-condição do teto de 3 entradas), verificado por `Compare-Object`: zero diferenças.
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.18.0`. Detalhe completo (triagem, o que mudou, bloco de evidência R19, o texto exato aplicado) na entrada `v3.18` do changelog do processo.
+
+**Mudança de comportamento de agente/comando se aplica** — `commands/*` e `team-version.md` foram tocados nesta entrega: só valem depois de reiniciar a sessão, e só chegam aos projetos depois de `git push` + `claude plugin marketplace update` + `claude plugin update`.
+
+---
+
+## v3.17.0 — 2026-09-15
+
+**Branch:** `fix/v3.17.0` · **Base:** `fix/v3.16.0` (empilhada) · **PR** para `develop`.
+
+**MINOR de processo, sem defeito de produto.** Carrega a entrada nova [`v3.17`](roles/scrum-master/process/process-changelog.md) do changelog do processo — `vX.Y.0` (R18). Fecha os três itens de `note.md` sobre "não há contabilidade de custo do time": propriedade e modelo de um **registro de consumo** (`.team-project/scrum-master/consumption-log.md`, SM) e o gancho desse número real no ciclo de eficiência (`workflow.md` §5c, `templates/retrospective.md`) foram **aplicados**; a gravação da linha (`commands/*`) e a consulta agregada (`team-version.md`) ficam como **propostas com texto pronto**, pendentes de aprovação — os dois são do stakeholder. Duas decisões de desenho (retenção e granularidade do registro) foram **escaladas**, não decididas em silêncio. Ver [`v3.17` do changelog do processo](roles/scrum-master/process/process-changelog.md).
+
+### O que entrou
+
+- **Registro de consumo do time (SM).** Novo artefato de projeto — `artifact-ownership.md`, modelo em `roles/scrum-master/templates/consumption-log.md`, linha no manifesto de `/team init` (`deliverables/team-project/README.md` + `team-init.md`). Uma linha por invocação de papel, escrita por **quem orquestra** (a sessão que disparou o subagente) — nunca pelo papel, que não vê o próprio consumo.
+- **Gancho no ciclo de eficiência (`workflow.md` §5c, `templates/retrospective.md`).** A pegada estática de `/review metrics` (proxy de custo do processo) e o consumo real do registro novo passam a conviver lado a lado nas fases Check/Act, **sem se somar nem se substituir** — evitando duas verdades sobre "custo".
+- **Duas propostas de texto pronto, não aplicadas:** gravação da linha em `commands/*` (após cada subagente retornar) e um item novo "O que o time gastou de fato" em `team-version.md`. O item 3 de `note.md` (consulta agregada) permanece na fila — sua resolução inteira é esta segunda proposta.
+- **Duas decisões escaladas ao stakeholder, não fechadas:** retenção/arquivamento do registro (cresce sem fim, sem política) e granularidade do que entra (toda invocação, ou só as ligadas a Task/História).
+- Arquivamento de `v3.14` para `process-changelog-archive.md` (pré-condição do teto de 3 entradas), verificado por `Compare-Object`: zero diferenças fora do separador.
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.17.0`. Detalhe completo (triagem, o que mudou, decisões escaladas, texto das propostas, bloco de evidência R19) na entrada `v3.17` do changelog do processo.
+
+**Mudança de comportamento de agente/comando não se aplica** — nenhum `agents/`/`commands/` foi tocado; as duas propostas só valem, se aprovadas, após reiniciar a sessão.
+
+---
+
+## v3.16.0 — 2026-09-14
+
+**Branch:** `fix/v3.16.0` · **Base:** `fix/v3.15.0` (empilhada) · **PR** para `develop`.
+
+**MINOR de processo, sem defeito de produto.** Carrega a entrada nova [`v3.16`](roles/scrum-master/process/process-changelog.md) do changelog do processo — por isso a numeração é `vX.Y.0` (R18), não um PATCH sobre a linha `3.15`. Duas mudanças, ambas do alcance do SM (normativos que governam todos): a tabela de custo de `workflow.md` §5c, que trazia números medidos na v3.4 e nunca remedidos, foi remedida; e R18, que descrevia um modelo de branch (`fix/`/`feat/` a partir de `main`, PR para `main`) que **nenhuma entrega real segue** desde a v3.6.0, foi realinhado à prática (`develop` como linha de integração das entregas, `main` como linha estável que a recebe por decisão do stakeholder, e o caso de branch empilhada — já com dois precedentes — passa a ter forma escrita). Ver [`v3.16` do changelog do processo](roles/scrum-master/process/process-changelog.md).
+
+### O que entrou
+
+- **Tabela de custo por comando remedida (`workflow.md` §5c).** Os números da v3.4 viraram folclore, como o próprio `workflow.md:251` avisava. Remedição real: SM 15,4 KB (+3%), **PO 16,7 KB (+28%, o maior salto do grupo)**, UX 11,2 KB (+2%), Arquiteto 10,4 KB (+4%), QA 11,1 KB (+11%), dev 7,1 KB (+1%) — total do grupo 66 → 71,9 KB (+9%). `/team brainstorm` (~37 → ~39 KB) e `/team cycle` (~26 → ~27 KB) remedidos junto, por derivarem dos mesmos arquivos; `/review` corrigido de ~15 para ~14 KB de base (a soma real de `commands/review.md` + `agents/scrum-master.md`). A tabela agora anexa o comando de medição e a data, para a próxima remedição ser mecânica.
+- **R18 realinhada à prática de branch (SM, `working-rules.md` + `workflow.md` §5d).** O normativo dizia "a partir de `main`, PR para `main`"; toda entrega desde a `v3.6.0` (evidência: esta própria série de `CHANGELOG.md`) sai de `develop`, com PR para `develop` — e o stakeholder confirmou a prática explicitamente ao abrir esta mesma entrega. R18 passa a descrever `develop` como a linha de integração das entregas e `main` como a linha estável que a recebe por decisão do stakeholder, fora do ciclo por-entrega; cobre também o caso de **branch empilhada** (base numa entrega anterior ainda não mesclada — precedentes `v3.14.0` e esta `v3.16.0`), sem forma escrita até agora. `workflow.md` §5d (roteiro do ciclo de entrega) e o cabeçalho do ritual em `CHANGELOG.md:6-10` corrigidos junto, por coerência de referência cruzada; mesma correção em três outros pontos achados na reavaliação do conjunto — `workflow.md` §8 (linha do gate de entrega), `working-rules.md` ("Como o SM aplica"), `templates/retrospective.md` e o banner de branch do próprio `README.md`.
+
+### Divergência registrada
+
+A proposta de remover a seção "Evolução dos seus documentos — `/review`" dos 5 `agents/*.md` (economia de ~2,4 KB de carga fixa por papel) foi **recusada na condução do `/review`** — não pelo stakeholder, que autorizou a entrega com a recusa já dentro dela. Motivo: aquele bloco é o resultado da compressão já feita na v2.7 (`process-changelog-archive.md:1031`) e carrega duas salvaguardas ausentes de `commands/review.md:57` — "nunca escreva em `${CLAUDE_PLUGIN_ROOT}`" e "sem a RAIZ, pare e peça" — que corrigem um defeito observado em campo (`process-changelog-archive.md:869`: quatro papéis lendo o contrato da cópia instalada). Cortar reabriria esse modo de falha. Não aplicada.
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.16.0`. Arquivamento de `v3.13` para `process-changelog-archive.md` (pré-condição do teto de 3 entradas — `process-changelog.md:10`) verificado por `Compare-Object` do bloco extraído contra o relocado: zero diferenças fora do separador. Detalhe completo de diffs e o bloco de evidência (R19) na entrada `v3.16` do changelog do processo.
+
+**Mudança de comportamento de agente/comando não se aplica** — nenhum `agents/`/`commands/` foi tocado.
+
+---
+
+## v3.15.0 — 2026-09-14
+
+**Branch:** `fix/v3.15.0` · **Base:** `develop` (v3.14.1) · **PR** para `develop`.
+
+**MINOR de processo, sem defeito de produto.** Carrega a entrada nova [`v3.15`](roles/scrum-master/process/process-changelog.md) do changelog do processo — por isso a numeração é `vX.Y.0` (R18), não um PATCH sobre a linha `3.14`. Aplica os achados do `/review audit` desta sessão: `/po accept` mirando Task contra R21 em dois comandos, um vão de roteamento no `review-contract.md` que não cobria por inteiro os índices transversais do SM, e resíduo de find-replace (`item`→`Task`) espalhado em quatro documentos, dos papéis SM e Arquiteto. Uma segunda rodada, a partir de um code review independente sobre o trabalho ainda não commitado, corrigiu 9 achados na própria aplicação (afirmação falsa sobre dono declarado, contagem de arquivos, evidência de arquivamento ausente, evidência de R19 não reproduzível, ponteiro de linha obsoleto, escopo subdeclarado nesta seção, dois índices transversais que não tinham fechado por inteiro, uma metade de frase residual em `commands/team.md`, e a numeração desta própria entrega — inicialmente `v3.14.2`, três partes, quando o par no changelog do processo usa `vX.Y`). Ver [`v3.15` do changelog do processo](roles/scrum-master/process/process-changelog.md).
+
+### O que entrou
+
+- **`/po accept` alinhado a R21 (SM, `commands/qa.md` e `commands/team.md`).** Os dois comandos indicavam `/po accept <ID>` mirando a Task, na ordem errada (antes do fechamento técnico). Corrigido para `/sm close <ID>` no veredito ✅, com o aceite da História explicado como posterior, na Sprint Review — a regra já valia desde a v3.3, só não tinha chegado aos dois comandos. `commands/team.md:70` tinha ainda a metade ⚠️/❌ da mesma frase preservando o modelo antigo ("não siga para o aceite", que sugere o aceite logo após o fechamento) — alinhada para "não siga para o fechamento".
+- **Vão de alcance do `/review` fechado por inteiro (SM, `review-contract.md` + `artifact-ownership.md`).** `deliverables/implementation/02-status.md` já tinha dono (SM) declarado na matriz de propriedade, mas não aparecia na tabela de alcance do `/review`; `deliverables/README.md`, `deliverables/implementation/README.md` e `deliverables/team-project/README.md` não tinham dono declarado **em nenhum dos dois documentos**. Os quatro entraram: os três índices transversais ganharam linha própria na matriz de propriedade (`artifact-ownership.md`), e a linha do Scrum Master na tabela de alcance do `/review` passou a citá-los.
+- **Resíduo de find-replace corrigido (SM + Arquiteto).** "permTask"/"é fechado" sobreviveram à varredura da v-anterior em `agents/developer.md`, `deliverables/README.md`, `deliverables/implementation/02-status.md` (SM) e `standards/implementation-quality.md` (Arquiteto, R16).
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.15.0`. `git --no-pager diff --stat` confirma **14 arquivos** no total: os 13 nossos — os citados acima, a tríade de versão (`plugin.json`, `CHANGELOG.md`, `README.md`), `roles/scrum-master/process/process-changelog.md` (este bloco) e `roles/scrum-master/process/process-changelog-archive.md` (arquivamento da entrada `v3.12`, pré-condição do teto de 3 entradas quentes — `process-changelog.md:10` — para a entrada `v3.15` caber) — mais `note.md`, modificado pelo stakeholder desde antes desta sessão e **não tocado** por nenhuma das duas rodadas desta entrega.
+
+**Mudança de comportamento de agente/comando só entra em vigor após reiniciar a sessão.**
 
 ---
 

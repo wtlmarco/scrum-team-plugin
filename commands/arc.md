@@ -21,4 +21,8 @@ Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta 
 
 Pedido `/arc review …` → responda que o caminho é **`/review …`**: nenhum papel tem modo `review` próprio.
 
+## Registro de consumo — só onde o registro existe
+
+Se `.team-project/scrum-master/consumption-log.md` existir (projeto que instala o time — o clone-fonte do plugin não tem `.team-project/`, então nada é gravado lá), quando o agente retornar você — a sessão que orquestrou — recebe o total de tokens e a duração desta invocação. Acrescente uma linha ao registro: data, papel `arc`, comando, Task/História (se houver, senão `n/a`), tokens, duração. Número indisponível: registre "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, não há o que gravar — nada a fazer aqui.
+
 Ao receber a resposta, repasse ao stakeholder o diagnóstico e o caminho do plano gerado, e destaque em uma linha o que exige decisão dele.

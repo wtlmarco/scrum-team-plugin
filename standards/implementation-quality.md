@@ -191,7 +191,7 @@ dotnet test tests/Unit/ \
 
 Exit code ≠ 0 quando **qualquer módulo** fica abaixo do threshold — bloqueia o pipeline automaticamente.
 
-> `ThresholdStat=minimum` é a configuração normativa. `average` e `total` **não** são aceitos: os dois permTask que um assembly sem teste passe às custas de outro bem coberto, que é precisamente o que o gate existe para impedir (nível 1 §5.4).
+> `ThresholdStat=minimum` é a configuração normativa. `average` e `total` **não** são aceitos: os dois permitem que um assembly sem teste passe às custas de outro bem coberto, que é precisamente o que o gate existe para impedir (nível 1 §5.4).
 
 ---
 

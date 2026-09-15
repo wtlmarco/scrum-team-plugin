@@ -1,6 +1,6 @@
 # Modelo — `02-status.md`
 
-> **Dono:** SM · **Muda quando:** uma Task é fechado ou um ciclo termina · **Revisa:** QA (na auditoria cruzada)
+> **Dono:** SM · **Muda quando:** uma Task é fechada ou um ciclo termina · **Revisa:** QA (na auditoria cruzada)
 
 É a **memória viva de progresso e decisões**. O documento que permite alguém retomar o projeto meses depois e entender não só o que foi feito, mas por quê foi feito assim.
 

@@ -67,7 +67,7 @@ Encadeia os papéis de construção, parando no primeiro problema:
 3. **Desenvolvedor** — Agent `developer`, recebendo o caminho do plano e a regra de parar e reportar 🔺 GAP em vez de improvisar.
 4. **Gap** — se o dev levantou 🔺 GAP: leve-o ao Agent `architect` (sem replanejar por conta própria) e devolva a decisão ao dev por SendMessage, preservando o contexto dele. Repita quantas vezes for preciso.
 5. **QA** — Agent `quality-assurance`, recebendo o plano, a especificação de tela (se houver), o relatório do dev e o critério de aceite do PO: seis frentes (requisito, especificação técnica, segurança, testes/métricas, documentação, desempenho), execução real dos comandos de verificação do projeto, veredito ✅/⚠️/❌ endereçado ao stakeholder. Task com interface é validado também contra os seis estados e os critérios de acessibilidade da especificação.
-6. Se o veredito for ⚠️ ou ❌, devolva os achados ao Arquiteto/dev e **não** siga para o aceite — achado de aderência de execução pode passar por `/arc comply <ID>` (sob demanda) antes do `/dev resume`; achado de processo (seção de standard omitida ou errada no plano) vai à fila do `/review`. O `/arc comply` **não** é etapa fixa do ciclo (`workflow.md` §4a). Se for ✅, informe que a Task está pronto para `/po accept <ID>` e depois `/sm close <ID>`.
+6. Se o veredito for ⚠️ ou ❌, devolva os achados ao Arquiteto/dev e **não** siga para o fechamento — achado de aderência de execução pode passar por `/arc comply <ID>` (sob demanda) antes do `/dev resume`; achado de processo (seção de standard omitida ou errada no plano) vai à fila do `/review`. O `/arc comply` **não** é etapa fixa do ciclo (`workflow.md` §4a). Se for ✅, informe que a Task está pronta para `/sm close <ID>` — o aceite é da História, agregado, e vem depois, na Sprint Review (R21).
 
 Modos parciais do ciclo: `plan <ID>` (só a etapa 1) · `build <ID>` (só a etapa 3, exige plano existente) · `qa <ID>` (só a etapa 5).
 
@@ -79,5 +79,9 @@ Modos parciais do ciclo: `plan <ID>` (só a etapa 1) · `build <ID>` (só a etap
 - **Respeite a capacidade declarada:** com um único dev, os passos do plano são executados em sequência, sem faixas concorrentes.
 - **Nenhuma afirmação de "funciona" sem saída real de comando**; o que não foi exercitado é declarado como não exercitado.
 - **Cada papel escreve só o que lhe pertence:** Arquiteto (espec. técnica, ADRs, planos), QA (documentos de qualidade e evidências), SM (quadro e status), PO (requisitos e backlog), dev (só código, dentro do plano).
+
+## Registro de consumo — só onde o registro existe
+
+Se `.team-project/scrum-master/consumption-log.md` existir (projeto que instala o time — nunca o clone-fonte do plugin, que não tem `.team-project/`), a cada subagente disparado nesta invocação (`brainstorm`, `cycle` e suas fatias) retornar, você — a sessão que orquestrou — recebe o total de tokens e a duração daquela invocação. Acrescente **uma linha por subagente disparado nesta invocação**: data, papel, comando, Task/História (se houver, senão `n/a`), tokens, duração. Número indisponível: registre "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, não há o que gravar — nada a fazer aqui. **Os modos `init`, `update` e `version` não disparam agente nenhum** (seções acima) — não há subagente para registrar, e nenhum dos três grava linha.
 
 Ao final, repasse ao stakeholder a consolidação, o que exige decisão dele e a próxima ação recomendada.
