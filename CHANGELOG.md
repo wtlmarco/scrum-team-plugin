@@ -13,6 +13,28 @@
 
 ---
 
+## v3.17.0 — 2026-09-15
+
+**Branch:** `fix/v3.17.0` · **Base:** `fix/v3.16.0` (empilhada) · **PR** para `develop`.
+
+**MINOR de processo, sem defeito de produto.** Carrega a entrada nova [`v3.17`](roles/scrum-master/process/process-changelog.md) do changelog do processo — `vX.Y.0` (R18). Fecha os três itens de `note.md` sobre "não há contabilidade de custo do time": propriedade e modelo de um **registro de consumo** (`.team-project/scrum-master/consumption-log.md`, SM) e o gancho desse número real no ciclo de eficiência (`workflow.md` §5c, `templates/retrospective.md`) foram **aplicados**; a gravação da linha (`commands/*`) e a consulta agregada (`team-version.md`) ficam como **propostas com texto pronto**, pendentes de aprovação — os dois são do stakeholder. Duas decisões de desenho (retenção e granularidade do registro) foram **escaladas**, não decididas em silêncio. Ver [`v3.17` do changelog do processo](roles/scrum-master/process/process-changelog.md).
+
+### O que entrou
+
+- **Registro de consumo do time (SM).** Novo artefato de projeto — `artifact-ownership.md`, modelo em `roles/scrum-master/templates/consumption-log.md`, linha no manifesto de `/team init` (`deliverables/team-project/README.md` + `team-init.md`). Uma linha por invocação de papel, escrita por **quem orquestra** (a sessão que disparou o subagente) — nunca pelo papel, que não vê o próprio consumo.
+- **Gancho no ciclo de eficiência (`workflow.md` §5c, `templates/retrospective.md`).** A pegada estática de `/review metrics` (proxy de custo do processo) e o consumo real do registro novo passam a conviver lado a lado nas fases Check/Act, **sem se somar nem se substituir** — evitando duas verdades sobre "custo".
+- **Duas propostas de texto pronto, não aplicadas:** gravação da linha em `commands/*` (após cada subagente retornar) e um item novo "O que o time gastou de fato" em `team-version.md`. O item 3 de `note.md` (consulta agregada) permanece na fila — sua resolução inteira é esta segunda proposta.
+- **Duas decisões escaladas ao stakeholder, não fechadas:** retenção/arquivamento do registro (cresce sem fim, sem política) e granularidade do que entra (toda invocação, ou só as ligadas a Task/História).
+- Arquivamento de `v3.14` para `process-changelog-archive.md` (pré-condição do teto de 3 entradas), verificado por `Compare-Object`: zero diferenças fora do separador.
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.17.0`. Detalhe completo (triagem, o que mudou, decisões escaladas, texto das propostas, bloco de evidência R19) na entrada `v3.17` do changelog do processo.
+
+**Mudança de comportamento de agente/comando não se aplica** — nenhum `agents/`/`commands/` foi tocado; as duas propostas só valem, se aprovadas, após reiniciar a sessão.
+
+---
+
 ## v3.16.0 — 2026-09-14
 
 **Branch:** `fix/v3.16.0` · **Base:** `fix/v3.15.0` (empilhada) · **PR** para `develop`.

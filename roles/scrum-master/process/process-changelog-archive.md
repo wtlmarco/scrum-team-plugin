@@ -8,6 +8,73 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.14 — Nascimento dos documentos de implementação declarado, rastreio de pendências no onboarding, bug do stakeholder no fluxo e em `.team-project/note.md`, e curadoria da rodada (SM) — 12/09/2026
+
+> **Fecho da rodada de `/review note`** que também produziu `v3.12` (QA) e `v3.13` (PO). Cobre os itens 1 (reformulado pela própria triagem), 5 e 6 de `note.md`, a fatia de fluxo do item 4, e a curadoria do conjunto (consolidação, checagem de contradição, arquivamento por R17).
+
+**Instrução:** *(stakeholder, decisões já fechadas na triagem)* **(A)** o manifesto não erra por omitir os 4 documentos de implementação — falta algo lembrar o SM de declará-los quando nascem. **(B)** rastrear no onboarding bugs/pendências existentes, sem duplicar `/qa audit`/`/qa baseline`. **(C)** refletir no fluxo que o bug do stakeholder entra pelo PO (já decidido em `v3.12`/`v3.13`). **(D)** `.team-project/note.md` (criado por `v3.13`) precisa nascer no `/team init`. **(E)** o homônimo `note` (agora três artefatos) entra em `artifact-ownership.md` §1b, com a régua aplicada às listas "Não faz"/"Proibido". **(F)** ordem explícita para atualizar `RAIZ/how-to.md` com o uso de `.team-project/note.md`.
+
+**Classificação:** fluxo (`workflow.md` §5a/§6a/§6b) + propriedade de artefato (`artifact-ownership.md` §1/§1b) + formato de documento (manifesto, `project-context.md`) + guia de raiz por ordem explícita (`how-to.md`) + coerência de referência cruzada, exceção já declarada (`README.md`). Nenhum R novo — é tradução verificável de decisões já tomadas em `v3.12`/`v3.13`.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `workflow.md` | §5a | Documento de implementação nasce sob demanda e entra em `.team-project/README.md` §4 na mesma sessão; três fontes de pendência/bug a rastrear no onboarding (código retomado, doc herdada — já cobertas; defeito já conhecido do stakeholder → `/po bug` — nova); bullets na Condição de saída |
+| | §6a | Canal do PO ganha "defeito que ele reporta"; bug não abre canal novo |
+| | §6 (diagrama) · §6b | Linha nova de escalação do bug; nota — origem stakeholder não muda o degrau da escada de falha |
+| `artifact-ownership.md` | §1 | Linha nova `.team-project/note.md`: dono stakeholder, tratado pelo PO |
+| | §1b | Linha nova do homônimo **note** |
+| `deliverables/team-project/README.md` | Manifesto | Linha nova `.team-project/note.md`, modelo do PO, classe estrutura + conteúdo local |
+| `project-context.md` | árvore, tabela, §4, §8 | `note.md` na árvore/tabela; "Regra de nascimento" em §4; `/po` ganha `bug`/`note` em §8; caminho "Bug" reescrito para entrar por `/po bug` |
+| `how-to.md` | comandos, novo parágrafo, caminho C | Linha `/po` com `bug`/`note`; parágrafo explicando `.team-project/note.md`; caminho C com o passo `/po bug` |
+| `README.md` (raiz) | bloco de comandos | Linha `/po` com `bug`/`note` (referência cruzada) |
+| *(addendum — decisão do "Pendente" abaixo)* | | |
+| `workflow.md` | §6a/§6b | Bifurcação por **origem**: bug do stakeholder pelo PO (já estava) × bug do time direto na QA; parágrafo sobre a visão do PO via Product/Sprint Backlog quando o defeito interno vira Task; linha nova no diagrama §6 |
+| `how-to.md` | caminho C | Duas entradas: a do stakeholder detalhada; a do time, uma frase de contexto |
+| `project-context.md` | §8, linha "Bug" | Reescrita numa linha só, cobrindo as duas entradas |
+
+### Por quê
+**(A)** sem lembrete, cada projeto reinventa quando declarar os quatro documentos em §4. **(B)** pendência/bug pré-existente não capturado no primeiro contato se perde; faltava só a terceira fonte (o que o stakeholder já sabe quebrado), sem lugar formal antes desta rodada. **(C)** `§6a` fechava os canais do stakeholder sem citar bug — depois de `v3.12`/`v3.13`, o normativo geral precisava dizer isso, ou `/review audit` acharia a lacuna depois. **(D)** modelo que o `init` semeia e não entra no manifesto é o defeito que o manifesto existe para evitar (pendência que a própria `v3.13` já apontava a mim). **(E)** homônimo sem entrada em §1b é o mesmo modo de falha da `v3.4`. **(F)** pedido explícito — sem o guia, o arquivo novo da `v3.13` fica sem instrução de uso para quem não lê `roles/`.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| **SM** | Pergunta por defeito conhecido no onboarding; confirma documento novo em §4 na mesma sessão; `.team-project/note.md` nasce por manifesto no `init` |
+| **PO** | `§6a`/diagrama registram formalmente o que já era prática desde `v3.13` |
+| **QA** | Sem mudança de prática — `§6b` só declara em texto o que já valia |
+| **stakeholder** | Lê em `how-to.md` para que serve `.team-project/note.md`; `/po bug`/`/po note` documentados sem divergência em três lugares |
+
+### Conflitos com o processo vigente
+Nenhum novo — os conflitos da rodada (canal direto stakeholder→QA; registro único) já vinham decididos. Curadoria: conferi três pontos de possível atrito entre `v3.12`/`v3.13`, sem divergência — (1) `/po note`/`/po bug` roteiam à QA para escrita, e `gap-record.md` (v3.12) mantém "dono único da escrita é o QA"; (2) `/po bug` (avulso) e `/po note` (fila) não se sobrepõem — o segundo aplica a **mesma** classificação do primeiro sobre fonte diferente; (3) "PO não confirma com evidência" tem a mesma substância nos dois lados.
+
+### Como saberemos que funcionou
+Próximo onboarding cita a pergunta sobre defeito conhecido (mesmo se "nenhum"); documento de implementação novo aparece em §4 na mesma sessão. Próximo `/team init` cria `.team-project/note.md` sem intervenção manual. Próxima leitura de "Não faz"/"Proibido" por qualquer papel: nenhuma recusa por "note" cru — não há ocorrência crua (confirmado nesta entrada). Próxima leitura de `how-to.md`: o stakeholder sabe o que escrever em `.team-project/note.md` e como `/po note` o esvazia, sem abrir `roles/`.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição/extensão de padrão | `Select-String -Path deliverables\team-project\README.md, roles\scrum-master\templates\project-context.md, roles\scrum-master\process\artifact-ownership.md, roles\scrum-master\process\workflow.md, how-to.md, README.md -Pattern 'note\.md\|/po bug\|/po note'` | 16 ocorrências nos 6 arquivos, cada uma lida no contexto (manifesto, árvore/tabela/§4/§8 de `project-context.md`, três parágrafos de `workflow.md`, explicação+tabela+caminho C de `how-to.md`, homônimo de `artifact-ownership.md`) — nenhuma órfã ou contraditória | ✅ |
+| Substituição de padrão — coerência da linha `/po` | `Select-String -Path README.md, how-to.md, roles\scrum-master\templates\project-context.md -Pattern 'bug <relato>.*note'` | 5 ocorrências nos 3 arquivos (2 em `how-to.md` e em `project-context.md` — a linha de modos **e** o parágrafo/caminho que também cita os dois na mesma frase — 1 em `README.md`) — lidas no contexto, todas coerentes: `bug <relato>` sempre antes de `note`, nunca um sem o outro | ✅ |
+| Verificação de homônimo (leitura, não `grep` — R19) | leitura de "Não faz" nos 6 `roles/*/README.md` e "Proibido" nos 6 `agents/*.md`; `Select-String -Path agents\*.md -Pattern 'note' -i` | zero ocorrências de "note" em `agents/*.md`; as 3 ocorrências fora das listas de proibição (`product-owner`, `architect`, `scrum-master`) já vêm qualificadas — nenhuma correção necessária | ✅ |
+| Arquivamento de entrada | diff do bloco extraído (v3.11+v3.10+v3.9, 148 linhas) contra o texto realocado, comparado via `PowerShell -Raw` antes de gravar os dois arquivos | zero linhas de diferença fora do separador `---` inserido | ✅ |
+| Fronteira não ultrapassada | `git status --porcelain` | arquivos deste agente: `README.md`, `deliverables/team-project/README.md`, `how-to.md`, `artifact-ownership.md`, `process-changelog.md`, `process-changelog-archive.md`, `workflow.md`, `project-context.md`; os demais são das entradas irmãs (`v3.12`/`v3.13`), não tocados por mim | ✅ |
+| Substituição de padrão — addendum bifurcação | `Select-String -Path roles\scrum-master\process\workflow.md, how-to.md, roles\scrum-master\templates\project-context.md -Pattern 'passar pelo PO\|passar por você'` | 3 ocorrências, uma por arquivo, mesma origem-como-critério nas três, lidas no contexto — sem divergência | ✅ |
+| Checagem semântica — visão do PO preservada | `workflow.md` §6a (parágrafo novo) vs. `roles/product-owner/README.md` passo 1 de `/po status` | parágrafo cita exatamente o que o PO já lê (Product + Sprint Backlog); nenhum canal novo criado, nenhum documento do PO mudou | ✅ |
+
+### Pendente do stakeholder — resolvido nesta mesma entrada
+Tinha ficado um ponto para sua decisão (R22): caminho C de `how-to.md` só com `/po bug` na frente, ou bifurcado por origem do achado. **Decisão: bifurcar**, pela **origem** — nunca por gravidade ou tipo:
+
+- **Bug relatado pelo stakeholder** → PO (`/po bug`/`/po note`) classifica e só aciona a QA se for defeito. Já era assim, não mudou.
+- **Bug achado pelo time** (QA numa validação, dev implementando, Arquiteto/UX numa revisão) → direto ao registro da QA, pelos canais que já existem (🔺 GAP, achado próprio, §6b) — **não passa pelo PO**.
+
+**Por quê:** achado interno já chega com `arquivo:linha` e classificação óbvia — repassar pelo PO seria repasse sem agregar nada. O que o PO agrega é julgar se o relato **de fora** do time é de fato defeito; achado interno não tem essa pergunta.
+
+Aplicado em `workflow.md` §6a/§6b (bifurcação + visão do PO preservada via Product/Sprint Backlog), `how-to.md` caminho C e `project-context.md` §8, ver "O que mudou" acima. Propostas de `agents/`/`commands/` de `v3.12`/`v3.13` seguem como propostas, sem mudança.
+
+**Mudança de comportamento de agente/comando** não se aplica — nenhum `agents/`/`commands/` foi tocado.
+
+---
+
 ## v3.13 — O bug entra pelo PO: classificação do relato do stakeholder, e a fila `.team-project/note.md` tratada em lote (PO) — 12/09/2026
 
 > **Entrada irmã da mesma rodada de `/review note`.** A triagem do Agent `scrum-master` apontou que `workflow.md` §6a fecha de forma exaustiva os canais diretos do stakeholder (PO, Arquiteto, UX) e que a QA não é canal de entrada — o stakeholder decidiu, antes desta aplicação, que **o bug entra pelo PO**: ele reporta o defeito ao PO, que classifica e aciona a QA, sem abrir canal direto stakeholder→QA. Esta é a parte do **PO**; o Agent `quality-assurance` aplica `roles/quality-assurance/*` e `deliverables/implementation/pending.md` em paralelo (`v3.12`, já registrada acima) e o Agent `scrum-master` fecha a curadoria (`v3.14`). No meio da aplicação, o stakeholder acrescentou um pedido complementar — replicar, no nível do projeto, o mesmo padrão de fila que o próprio plugin usa (`RAIZ/note.md` + `/review note`) — e pediu para manter tudo nesta mesma entrada.

@@ -29,6 +29,7 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 | Defeito em `${CLAUDE_PLUGIN_ROOT}/standards/` sem chegar ao `/review` seguinte | <n> | qualquer | R16 |
 | **Carga fixa** por invocação (KB) — `agents/` + `commands/` — fase Check do PDCA (workflow §5c) | <atual> / <retro anterior> / <Δ> · causa se cresceu · ação: nenhuma \| corte candidato para `/review metrics` | crescimento sem regra ou cerimônia nova | §5c |
 | **Conjunto sob demanda** (KB) — `roles/<papel>/` **sem os changelogs** | <atual> / <retro anterior> / <Δ> | idem | §5c |
+| **Consumo real do sprint** (tokens), por papel — *só quando o projeto mantém `.team-project/scrum-master/consumption-log.md`; sem o registro, `n/a`* | <soma por papel> \| n/a | divergência grande contra a carga fixa do papel | §5c |
 | Entrada de changelog acima do teto | maior bloco `## vX.Y` de `process-changelog.md` | > 10 KB | R17 |
 | Entrega sem bump: merge em `develop` sem `version` + entrada no `CHANGELOG.md`, ou `plugin.json` ≠ topo do `CHANGELOG.md`, ou entrada de `process-changelog.md` sem par — *só quando a retro roda sobre o repositório-fonte do plugin; num projeto consumidor, `n/a`* | <n> \| n/a | qualquer | R18 |
 | Entrada de `process-changelog.md` sem bloco de evidência, ou com comando cuja reexecução dá saída diferente da registrada — *idem: só no repositório-fonte* | <n> \| n/a | qualquer | R19 |
@@ -58,6 +59,7 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 - Métrica sem fonte não entra. As fontes são: relatórios do dev, `.team-project/quality-assurance/evidence.md`, o Sprint Backlog e o registro de aceites da Review.
 - **O sprint não encerra com pendência sem destino.** Task inacabada volta ao Product Backlog com a História (R5); ressalva da Review vira entrada com dono (R12 · R21).
 - A linha de footprint (KB) é a fase **Check** do ciclo de eficiência ([`../process/workflow.md` §5c](../process/workflow.md)): mede `agents/` + `commands/` + `roles/<papel>/` do processo, compara com a retrospectiva anterior e alimenta o giro de `/review metrics`, que roda a cada 3 sprints. Crescimento sem regra ou cerimônia nova é candidato a corte, não a nota.
+- **Consumo real ≠ footprint.** A linha de consumo real soma o que a sessão que orquestra registrou por invocação de papel — mede **o trabalho dos papéis**, nunca o custo da própria sessão principal, que não se autoobserva. Não some as duas linhas de footprint com a de consumo real: são medidas diferentes, lado a lado, nunca um total único.
 
 ## Exemplo de leitura
 

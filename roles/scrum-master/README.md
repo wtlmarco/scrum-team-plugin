@@ -116,6 +116,7 @@ Três tipos: **processo** (normativo, muda só a pedido do stakeholder) · **viv
 | **Changelog do processo** | **vivo** | [`process/process-changelog.md`](process/process-changelog.md) | [`templates/process-change.md`](templates/process-change.md) *(uma entrada por instrução)* |
 | **Sprint Backlog** (quadro de trabalho) | **vivo** | `.team-project/scrum-master/sprint-backlog.md` | [`templates/sprint-backlog.md`](templates/sprint-backlog.md) |
 | Contexto do projeto | **vivo** | `.team-project/README.md` | [`templates/project-context.md`](templates/project-context.md) |
+| **Registro de consumo do time** | **vivo** | `.team-project/scrum-master/consumption-log.md` | [`templates/consumption-log.md`](templates/consumption-log.md) *(uma linha por invocação, escrita por quem orquestra)* |
 | **Status de implementação** | **entregável** | indicado no contexto do projeto | [`deliverables/implementation/02-status.md`](../../deliverables/implementation/02-status.md) · entrada individual: [`templates/status-entry.md`](templates/status-entry.md) |
 | Recomendação de acordo | saída | resposta de `/sm agreement` | — *(formato livre: posições, recomendação única, divergência registrada)* |
 | Insumo de quadro para a análise de impacto | saída | pedido do PO em `/po impact` | modelo em [`../product-owner/templates/impact-analysis.md`](../product-owner/templates/impact-analysis.md) *(dono: PO)* |

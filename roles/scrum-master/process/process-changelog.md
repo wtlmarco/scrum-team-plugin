@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.14`](process-changelog-archive.md) | Nascimento dos documentos de implementação declarado, rastreio de pendências no onboarding, bug do stakeholder no fluxo e em `.team-project/note.md`, e curadoria da rodada (SM) — 12/09/2026 |
 | [`v3.13`](process-changelog-archive.md) | O bug entra pelo PO: classificação do relato do stakeholder, e a fila `.team-project/note.md` tratada em lote (PO) — 12/09/2026 |
 | [`v3.12`](process-changelog-archive.md) | Pendências e bugs num só registro: campo `origem`, leitura filtrada do stakeholder e estado de escalação em `pending.md` (QA) — 12/09/2026 |
 | [`v3.11`](process-changelog-archive.md) | Delegar tarefa simples de PO/SM/UX/QA ao dev (Haiku): proposta avaliada e descartada — 12/09/2026 |
@@ -49,6 +50,86 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.17 — Registro de consumo do time: propriedade, modelo e gancho no ciclo de eficiência; gravação e exibição propostas ao stakeholder (SM) — 15/09/2026
+
+> **Fecho do `/review note` — três itens, um assunto.** Os três de `RAIZ/note.md` são "não há contabilidade de custo do time", escritos como sintomas separados. Insumo apurado nesta sessão: a coleta não exige mecanismo novo — quando um subagente termina, a sessão que o disparou já recebe tokens e duração (evidência real: 205k/136k/21k/224k/83k nesta sessão); faltava alguém gravar, e onde.
+
+**Instrução:** *(stakeholder, via `/review note`)* (1) "Não sei quanto o time custou neste projeto. Desde o `/team init` não há registro de consumo por papel nem por período..."; (2) "A retrospectiva e o `/review metrics` discutem eficiência sem número real de consumo — só a pegada estática..."; (3) "Não há onde consultar o consumo acumulado do time no projeto sem abrir changelog e somar na mão."
+
+**Triagem:**
+
+| Item | Classificação | Documento-alvo | Papel dono |
+|---|---|---|---|
+| 1 — sem registro de consumo | propriedade de artefato (novo) | `artifact-ownership.md` + `templates/consumption-log.md` + manifesto `deliverables/team-project/README.md` | SM (aplicado) |
+| 2 — eficiência sem número real | etapa de fluxo (`workflow.md` §5c) + formato de documento (`templates/retrospective.md`) | os dois | SM (aplicado) |
+| 3 — sem consulta agregada | comportamento de agente (exibição em `/team version`) | `team-version.md` | stakeholder (**proposta**, não aplicada) |
+
+A gravação da linha após cada subagente retornar também é comportamento de agente, em `commands/*` — **proposta**, não aplicada.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `artifact-ownership.md` | §1, linha nova | Registro de consumo do time — dono SM, `.team-project/scrum-master/consumption-log.md`, modelo `templates/consumption-log.md` |
+| `roles/scrum-master/templates/consumption-log.md` | arquivo novo (34 linhas) | Uma linha por invocação (data · papel · comando · Task/História · tokens · duração · nota), totais derivados por papel, nota do que o número não mede, relação com `/review metrics` |
+| `roles/scrum-master/README.md` | "Documentos que administro" | Linha nova apontando ao modelo |
+| `deliverables/team-project/README.md` | Manifesto | Linha nova, classe "estrutura + conteúdo local" |
+| `team-init.md` | árvore do passo 2 + prosa | `consumption-log.md` somado a `scrum-master/` (coerência de referência cruzada — SM aplica) |
+| `roles/scrum-master/process/workflow.md` | §5c | Parágrafo novo: pegada estática × consumo real convivem, nunca se somam; Check cita os dois quando o registro existe, Act usa a divergência como achado |
+| `roles/scrum-master/templates/retrospective.md` | Métricas do sprint + Regras | Linha nova de consumo real por sprint (`n/a` sem registro) + nota de que mede trabalho dos papéis, não a sessão |
+
+### Por quê
+A pegada estática de `/review metrics` — hoje a única leitura — mede o custo fixo do *processo*, igual em todo projeto; não mede o que o time gastou *construindo o produto*, que varia por projeto e sprint. Sem o segundo número, "esse papel está caro" era palpite, e a fase Check comparava a única métrica que tinha, proxy desde a v3.2. A sessão principal não enxerga o próprio consumo — por isso os três documentos tocados declaram que o número mede o **trabalho dos papéis**, não o custo total: sem a ressalva, o total seria lido como se fosse a sessão inteira.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| SM | Dono do modelo e da propriedade; soma o consumo real na retrospectiva quando o registro existe |
+| Demais papéis | Nenhum grava a própria linha — quem grava é sempre a sessão que orquestrou aquela invocação (fato apurado nesta sessão), nunca o papel |
+| stakeholder | Duas propostas de texto pronto e duas decisões escaladas, ambas abaixo |
+
+### Conflitos com o processo vigente
+Nenhum. O registro novo não substitui `/review metrics` — o parágrafo de `workflow.md` §5c existe justamente para as duas medidas não virarem duas verdades sobre "custo".
+
+### Decisões escaladas — não decidi sozinho
+1. **Retenção.** Sem política, o registro cresce sem fim e repete o modo de falha que R17 já corrigiu no changelog (v1.0→v1.8, 12× em nove versões). Opções: **(a)** manter tudo; **(b)** arquivar por sprint fechado, padrão R17 (só o total do sprint fica no vivo); **(c)** o SM decide caso a caso. **Recomendação:** (b). Até a decisão, o modelo não remove nem arquiva nenhuma linha — conservador por padrão, não a política final.
+2. **Granularidade do que entra.** Toda invocação vira linha, mesmo a trivial (ex.: "Arquiteto trocando uma palavra", 21k tokens), ou só as que tocam Task/História? Opções: **(a)** toda invocação; **(b)** só as ligadas a Task/História — mais enxuto, perde o custo de coordenação avulsa. **Recomendação:** (a), até haver volume real para julgar — filtrar depois é mais barato que reconstruir o que não foi gravado.
+
+Terceira dúvida do mesmo tipo, **não escalada**: número indisponível. Resolvida por extensão direta de R7 — "não disponível — <motivo>", nunca estimar. É regra vigente, não decisão nova.
+
+### Como saberemos que funcionou
+Próxima retrospectiva (repositório-fonte ou projeto instalado) cita a linha de consumo real ao lado da carga fixa sem confundir as duas. Próximo `/review metrics` compara as duas medidas sem somá-las. Se o stakeholder aprovar as propostas abaixo, a próxima entrega registra a primeira linha real do registro e a primeira consulta agregada por `/team version`.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | `Compare-Object` do bloco `## v3.14` pré-sessão (`git show HEAD:...`, 64 linhas) × relocado em `process-changelog-archive.md` (64 linhas) | 0 diferenças | ✅ |
+| Extração/criação de arquivo | `(Get-Content roles\scrum-master\templates\consumption-log.md).Count` | arquivo não existia antes (0); 34 linhas depois — referenciado por `artifact-ownership.md`, `roles/scrum-master/README.md`, `deliverables/team-project/README.md`, `workflow.md`, `retrospective.md` | ✅ |
+| Substituição/extensão de padrão | `Select-String -Path * -Pattern "consumption-log" -Recurse` (RAIZ) | 9 ocorrências em 7 arquivos (`deliverables/team-project/README.md`, `team-init.md` ×2, `artifact-ownership.md`, `workflow.md`, `roles/scrum-master/README.md`, `retrospective.md`, o próprio `consumption-log.md`) — cada uma lida no contexto: manifesto, árvore + prosa de `team-init.md`, linha de matriz, parágrafo §5c, linha da tabela de documentos, linha de métrica; nenhuma órfã ou contraditória | ✅ |
+| Fronteira não ultrapassada | `git status --porcelain` | só arquivos do alcance do SM tocados (listados em "O que mudou" + tríade de versão + este bloco); `commands/*`, `agents/*`, `team-version.md` intocados — as duas propostas ficam pendentes | ✅ |
+| Tríade do R18 | `plugin.json`, topo `CHANGELOG.md`, banner `README.md` | os três `3.17.0` | ✅ |
+
+### Pendente do stakeholder
+**Duas decisões escaladas** (retenção e granularidade — ver acima), mais **duas propostas de texto pronto**, não aplicadas (`commands/*` e `team-version.md` são do stakeholder):
+
+**1. Gravação — mesmo texto em `commands/sm.md`, `commands/po.md`, `commands/arc.md`, `commands/ux.md`, `commands/qa.md`, `commands/dev.md`** (trocar `<papel>`):
+```
+## Registro de consumo (se `.team-project/scrum-master/consumption-log.md` existir)
+Ao subagente retornar, você — a sessão que orquestrou — recebe o total de tokens e a duração desta invocação. Acrescente uma linha ao registro: data, papel `<papel>`, comando, Task/História (se houver), tokens, duração. Número indisponível: registre "não disponível — <motivo>", nunca estime (R7).
+```
+Em `commands/team.md`, mesmo texto, no plural — "uma linha por subagente disparado nesta invocação".
+
+**2. Exibição — `team-version.md`, item novo "e) O que o time gastou de fato", após o item d) existente:**
+```
+## e) O que o time gastou de fato (se houver registro)
+Se `.team-project/scrum-master/consumption-log.md` existir, leia os totais e responda a soma por papel do período pedido (ou o acumulado, se não especificado) — tokens e nº de invocações. Deixe explícito que este número mede o trabalho dos papéis — a sessão principal não se autoobserva, e o total de uma sessão inteira não está aqui. Se o registro não existir, diga isso.
+```
+
+**Item 3 de `note.md` permanece na fila** — a resolução inteira dele é esta segunda proposta, não aplicada; itens 1 e 2 saem, por terem aplicação real neste ciclo.
+
+**Mudança de comportamento de agente/comando não se aplica** — nenhum `agents/`/`commands/` foi tocado; as duas propostas só valem, se aprovadas, após reiniciar a sessão.
 
 ---
 
@@ -160,71 +241,4 @@ Nenhum de conteúdo. O único conflito é de forma (numeração), resolvido dent
 
 ### Pendente do stakeholder
 Nada novo. Renumeração (achado 6): reconciliação de referência cruzada, não escalada — ver "Conflito" acima. Índices do achado 4 (`implementation/README.md`, `team-project/README.md`): fechados nesta entrada, não deixados pendentes — propriedade dedutível dos normativos (índices transversais sem outro papel reivindicando; o segundo já tinha precedente textual na `v3.13`).
-
----
-
-## v3.14 — Nascimento dos documentos de implementação declarado, rastreio de pendências no onboarding, bug do stakeholder no fluxo e em `.team-project/note.md`, e curadoria da rodada (SM) — 12/09/2026
-
-> **Fecho da rodada de `/review note`** que também produziu `v3.12` (QA) e `v3.13` (PO). Cobre os itens 1 (reformulado pela própria triagem), 5 e 6 de `note.md`, a fatia de fluxo do item 4, e a curadoria do conjunto (consolidação, checagem de contradição, arquivamento por R17).
-
-**Instrução:** *(stakeholder, decisões já fechadas na triagem)* **(A)** o manifesto não erra por omitir os 4 documentos de implementação — falta algo lembrar o SM de declará-los quando nascem. **(B)** rastrear no onboarding bugs/pendências existentes, sem duplicar `/qa audit`/`/qa baseline`. **(C)** refletir no fluxo que o bug do stakeholder entra pelo PO (já decidido em `v3.12`/`v3.13`). **(D)** `.team-project/note.md` (criado por `v3.13`) precisa nascer no `/team init`. **(E)** o homônimo `note` (agora três artefatos) entra em `artifact-ownership.md` §1b, com a régua aplicada às listas "Não faz"/"Proibido". **(F)** ordem explícita para atualizar `RAIZ/how-to.md` com o uso de `.team-project/note.md`.
-
-**Classificação:** fluxo (`workflow.md` §5a/§6a/§6b) + propriedade de artefato (`artifact-ownership.md` §1/§1b) + formato de documento (manifesto, `project-context.md`) + guia de raiz por ordem explícita (`how-to.md`) + coerência de referência cruzada, exceção já declarada (`README.md`). Nenhum R novo — é tradução verificável de decisões já tomadas em `v3.12`/`v3.13`.
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `workflow.md` | §5a | Documento de implementação nasce sob demanda e entra em `.team-project/README.md` §4 na mesma sessão; três fontes de pendência/bug a rastrear no onboarding (código retomado, doc herdada — já cobertas; defeito já conhecido do stakeholder → `/po bug` — nova); bullets na Condição de saída |
-| | §6a | Canal do PO ganha "defeito que ele reporta"; bug não abre canal novo |
-| | §6 (diagrama) · §6b | Linha nova de escalação do bug; nota — origem stakeholder não muda o degrau da escada de falha |
-| `artifact-ownership.md` | §1 | Linha nova `.team-project/note.md`: dono stakeholder, tratado pelo PO |
-| | §1b | Linha nova do homônimo **note** |
-| `deliverables/team-project/README.md` | Manifesto | Linha nova `.team-project/note.md`, modelo do PO, classe estrutura + conteúdo local |
-| `project-context.md` | árvore, tabela, §4, §8 | `note.md` na árvore/tabela; "Regra de nascimento" em §4; `/po` ganha `bug`/`note` em §8; caminho "Bug" reescrito para entrar por `/po bug` |
-| `how-to.md` | comandos, novo parágrafo, caminho C | Linha `/po` com `bug`/`note`; parágrafo explicando `.team-project/note.md`; caminho C com o passo `/po bug` |
-| `README.md` (raiz) | bloco de comandos | Linha `/po` com `bug`/`note` (referência cruzada) |
-| *(addendum — decisão do "Pendente" abaixo)* | | |
-| `workflow.md` | §6a/§6b | Bifurcação por **origem**: bug do stakeholder pelo PO (já estava) × bug do time direto na QA; parágrafo sobre a visão do PO via Product/Sprint Backlog quando o defeito interno vira Task; linha nova no diagrama §6 |
-| `how-to.md` | caminho C | Duas entradas: a do stakeholder detalhada; a do time, uma frase de contexto |
-| `project-context.md` | §8, linha "Bug" | Reescrita numa linha só, cobrindo as duas entradas |
-
-### Por quê
-**(A)** sem lembrete, cada projeto reinventa quando declarar os quatro documentos em §4. **(B)** pendência/bug pré-existente não capturado no primeiro contato se perde; faltava só a terceira fonte (o que o stakeholder já sabe quebrado), sem lugar formal antes desta rodada. **(C)** `§6a` fechava os canais do stakeholder sem citar bug — depois de `v3.12`/`v3.13`, o normativo geral precisava dizer isso, ou `/review audit` acharia a lacuna depois. **(D)** modelo que o `init` semeia e não entra no manifesto é o defeito que o manifesto existe para evitar (pendência que a própria `v3.13` já apontava a mim). **(E)** homônimo sem entrada em §1b é o mesmo modo de falha da `v3.4`. **(F)** pedido explícito — sem o guia, o arquivo novo da `v3.13` fica sem instrução de uso para quem não lê `roles/`.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda |
-|---|---|
-| **SM** | Pergunta por defeito conhecido no onboarding; confirma documento novo em §4 na mesma sessão; `.team-project/note.md` nasce por manifesto no `init` |
-| **PO** | `§6a`/diagrama registram formalmente o que já era prática desde `v3.13` |
-| **QA** | Sem mudança de prática — `§6b` só declara em texto o que já valia |
-| **stakeholder** | Lê em `how-to.md` para que serve `.team-project/note.md`; `/po bug`/`/po note` documentados sem divergência em três lugares |
-
-### Conflitos com o processo vigente
-Nenhum novo — os conflitos da rodada (canal direto stakeholder→QA; registro único) já vinham decididos. Curadoria: conferi três pontos de possível atrito entre `v3.12`/`v3.13`, sem divergência — (1) `/po note`/`/po bug` roteiam à QA para escrita, e `gap-record.md` (v3.12) mantém "dono único da escrita é o QA"; (2) `/po bug` (avulso) e `/po note` (fila) não se sobrepõem — o segundo aplica a **mesma** classificação do primeiro sobre fonte diferente; (3) "PO não confirma com evidência" tem a mesma substância nos dois lados.
-
-### Como saberemos que funcionou
-Próximo onboarding cita a pergunta sobre defeito conhecido (mesmo se "nenhum"); documento de implementação novo aparece em §4 na mesma sessão. Próximo `/team init` cria `.team-project/note.md` sem intervenção manual. Próxima leitura de "Não faz"/"Proibido" por qualquer papel: nenhuma recusa por "note" cru — não há ocorrência crua (confirmado nesta entrada). Próxima leitura de `how-to.md`: o stakeholder sabe o que escrever em `.team-project/note.md` e como `/po note` o esvazia, sem abrir `roles/`.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Substituição/extensão de padrão | `Select-String -Path deliverables\team-project\README.md, roles\scrum-master\templates\project-context.md, roles\scrum-master\process\artifact-ownership.md, roles\scrum-master\process\workflow.md, how-to.md, README.md -Pattern 'note\.md\|/po bug\|/po note'` | 16 ocorrências nos 6 arquivos, cada uma lida no contexto (manifesto, árvore/tabela/§4/§8 de `project-context.md`, três parágrafos de `workflow.md`, explicação+tabela+caminho C de `how-to.md`, homônimo de `artifact-ownership.md`) — nenhuma órfã ou contraditória | ✅ |
-| Substituição de padrão — coerência da linha `/po` | `Select-String -Path README.md, how-to.md, roles\scrum-master\templates\project-context.md -Pattern 'bug <relato>.*note'` | 5 ocorrências nos 3 arquivos (2 em `how-to.md` e em `project-context.md` — a linha de modos **e** o parágrafo/caminho que também cita os dois na mesma frase — 1 em `README.md`) — lidas no contexto, todas coerentes: `bug <relato>` sempre antes de `note`, nunca um sem o outro | ✅ |
-| Verificação de homônimo (leitura, não `grep` — R19) | leitura de "Não faz" nos 6 `roles/*/README.md` e "Proibido" nos 6 `agents/*.md`; `Select-String -Path agents\*.md -Pattern 'note' -i` | zero ocorrências de "note" em `agents/*.md`; as 3 ocorrências fora das listas de proibição (`product-owner`, `architect`, `scrum-master`) já vêm qualificadas — nenhuma correção necessária | ✅ |
-| Arquivamento de entrada | diff do bloco extraído (v3.11+v3.10+v3.9, 148 linhas) contra o texto realocado, comparado via `PowerShell -Raw` antes de gravar os dois arquivos | zero linhas de diferença fora do separador `---` inserido | ✅ |
-| Fronteira não ultrapassada | `git status --porcelain` | arquivos deste agente: `README.md`, `deliverables/team-project/README.md`, `how-to.md`, `artifact-ownership.md`, `process-changelog.md`, `process-changelog-archive.md`, `workflow.md`, `project-context.md`; os demais são das entradas irmãs (`v3.12`/`v3.13`), não tocados por mim | ✅ |
-| Substituição de padrão — addendum bifurcação | `Select-String -Path roles\scrum-master\process\workflow.md, how-to.md, roles\scrum-master\templates\project-context.md -Pattern 'passar pelo PO\|passar por você'` | 3 ocorrências, uma por arquivo, mesma origem-como-critério nas três, lidas no contexto — sem divergência | ✅ |
-| Checagem semântica — visão do PO preservada | `workflow.md` §6a (parágrafo novo) vs. `roles/product-owner/README.md` passo 1 de `/po status` | parágrafo cita exatamente o que o PO já lê (Product + Sprint Backlog); nenhum canal novo criado, nenhum documento do PO mudou | ✅ |
-
-### Pendente do stakeholder — resolvido nesta mesma entrada
-Tinha ficado um ponto para sua decisão (R22): caminho C de `how-to.md` só com `/po bug` na frente, ou bifurcado por origem do achado. **Decisão: bifurcar**, pela **origem** — nunca por gravidade ou tipo:
-
-- **Bug relatado pelo stakeholder** → PO (`/po bug`/`/po note`) classifica e só aciona a QA se for defeito. Já era assim, não mudou.
-- **Bug achado pelo time** (QA numa validação, dev implementando, Arquiteto/UX numa revisão) → direto ao registro da QA, pelos canais que já existem (🔺 GAP, achado próprio, §6b) — **não passa pelo PO**.
-
-**Por quê:** achado interno já chega com `arquivo:linha` e classificação óbvia — repassar pelo PO seria repasse sem agregar nada. O que o PO agrega é julgar se o relato **de fora** do time é de fato defeito; achado interno não tem essa pergunta.
-
-Aplicado em `workflow.md` §6a/§6b (bifurcação + visão do PO preservada via Product/Sprint Backlog), `how-to.md` caminho C e `project-context.md` §8, ver "O que mudou" acima. Propostas de `agents/`/`commands/` de `v3.12`/`v3.13` seguem como propostas, sem mudança.
-
-**Mudança de comportamento de agente/comando** não se aplica — nenhum `agents/`/`commands/` foi tocado.
 
