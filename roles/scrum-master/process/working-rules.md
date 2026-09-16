@@ -159,6 +159,12 @@ A primeira entrega de uma Task paga a verificação exaustiva que a natureza do 
 **Evita:** dois modos de falha opostos — pagar verificação exaustiva em toda correção pontual, inflando o custo médio por chamada sem ganho de rigor onde ele não muda nada; e o modo "leve" virar desculpa para declarar sem evidência real ou para pular um gate do §8, disfarçado de economia.
 **SM verifica:** toda entrega marcada como "leve" declara explicitamente o que foi (e o que não foi) reexecutado, e por quê; nenhum gate do §8 aparece pulado citando "modo leve" como justificativa; primeira entrega de uma Task nunca é reportada com verificação leve — leve só existe sobre uma entrega que já passou por verificação plena antes.
 
+### R24. Transição de estado da Task vira registro, não só marcador
+Toda vez que o SM atualiza o marcador de estado de uma Task no Sprint Backlog (⬜→🟦→🟨→🟪→✅, ou →🔴), ele acrescenta uma linha ao **Registro de transições** da própria Sprint Backlog: Task, De → Para, quando, papel que motivou. É o dado bruto do burndown do sprint ([`workflow.md` §5f](workflow.md) · [`templates/burndown.md`](../templates/burndown.md)) — sem essa série datada, o burndown é reconstituído de memória no fechamento do sprint, ou é a foto do estado atual disfarçada de histórico. **Granularidade declarada, não escondida:** a abertura (⬜, na Planning) e o fechamento (✅, no `/sm close`) são sempre exatos, porque nascem de um comando do próprio SM; os estados intermediários (🟦/🟨/🟪) só têm a data da rodada de `/sm board` que sincronizou o marcador com o que os papéis reportaram — não a data exata em que o papel terminou o passo. Essa imprecisão é declarada no próprio `burndown.md`, nunca omitida.
+
+**Evita:** declarar um burndown "medido" que na verdade foi desenhado de trás para frente no fechamento do sprint, sem nenhum ponto datado ao longo do caminho — o mesmo modo de falha que R7 nomeia para evidência de código, agora em métrica de processo.
+**SM verifica:** todo `/sm close <T-ID>` tem linha correspondente no Registro de transições com data e "Para: ✅"; nenhum dia de `sprints/<n>/burndown.md` mostra estimativa restante menor que o dia anterior sem uma linha de fechamento (✅) que explique a queda; toda rodada de `/sm board` que muda um marcador sem gravar a linha correspondente no Registro de transições é achado de processo contra o próprio SM.
+
 ---
 
 ## Como o SM aplica
@@ -191,6 +197,7 @@ A primeira entrega de uma Task paga a verificação exaustiva que a natureza do 
 | Entrada de `process-changelog.md` sem bloco de evidência, ou com comando cuja reexecução dá saída diferente da registrada | o bloco de evidência da entrada, reexecutado por amostragem | qualquer ocorrência → R19 ignorada; o `/review` está declarando sem verificar |
 | Pergunta ao stakeholder sem alternativas descritas, sem recomendação do time, ou sem a via de "preciso de mais contexto" | perguntas escaladas no sprint (R9, onboarding, brainstorm, §6) | qualquer ocorrência → R22 ignorada |
 | Primeira entrega de uma Task com verificação marcada "leve"; ou entrega "leve" sem declarar o que foi (não) reexecutado; ou gate do §8 pulado citando "modo leve" | relatórios/planos de entrega do sprint (Arquiteto, UX) | qualquer ocorrência → R23 ignorada |
+| Task fechada (`/sm close`) sem linha no Registro de transições do Sprint Backlog, ou dia de `burndown.md` com estimativa restante caindo sem fechamento que explique | Sprint Backlog × `sprints/<n>/burndown.md` | qualquer ocorrência → R24 ignorada |
 
 **Ciclo de eficiência (PDCA).** A verificação do custo dos documentos não espera faxina do stakeholder: cada `/review` sem instrução mede o footprint do próprio papel, a retrospectiva de cada sprint registra o total, e o giro de `/review metrics` (a cada 3 retrospectivas, ou seja a cada 3 sprints) consolida e tira **uma** remoção candidata. Roteiro em [`workflow.md` §5c](workflow.md).
 
@@ -227,3 +234,4 @@ A primeira entrega de uma Task paga a verificação exaustiva que a natureza do 
 | R21 | Aceite funcional é por História, na Sprint Review | Método |
 | R22 | Pergunta ao stakeholder tem forma fixa — opções descritas, recomendação e a via de pedir mais contexto | Método |
 | R23 | Verificação plena na primeira entrega; modo leve em follow-up, nunca abaixo do piso de evidência | Método |
+| R24 | Transição de estado da Task vira registro, não só marcador | Método |

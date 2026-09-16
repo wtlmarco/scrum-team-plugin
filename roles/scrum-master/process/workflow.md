@@ -44,7 +44,7 @@ Os quatro portões numerados são os gates de §8. **O detalhamento da História
 | 5 | Construção | dev | `/dev <Task>` | Código + testes + relatório de entrega |
 | 6 | Gap durante a construção | dev → Arquiteto | `/arc question` → `/dev gap` | Decisão do Arquiteto, dev retoma |
 | 7 | Validação | QA | `/qa <Task>` | Veredito ✅/⚠️/❌ com evidência |
-| 8 | Fechamento da Task | SM | `/sm close <Task>` | Quadro + documento de status atualizados — **fechamento técnico, não aceite** |
+| 8 | Fechamento da Task | SM | `/sm close <Task>` | Quadro + documento de status atualizados — **fechamento técnico, não aceite**. Linha nova no Registro de transições do Sprint Backlog (De: 🟪, Para: ✅) e ponto novo no burndown do sprint (R24) |
 | 9 | Sprint Review | PO demonstra, stakeholder responde | `/sm review` | História aceita / com ressalva / rejeitada · gaps e débitos ao backlog |
 | 10 | Sprint Retrospective | SM conduz | `/sm sprint close` | Retrospectiva + fechamento do sprint (§5c · §5e) |
 
@@ -327,6 +327,7 @@ O sprint é a **unidade de cadência do time**: uma caixa de tempo de duração 
 | 5 | Somar e comparar com a **capacidade do sprint** — observada, não negociada | SM apresenta a conta | Quanto cabe |
 | 6 | **Cortar no limite da capacidade**: o que sai, sai por decisão de valor | **PO decide** o que fica de fora | Sprint Backlog fechado |
 | 7 | Declarar o **objetivo do sprint** em uma frase, derivado das Histórias que entraram | PO | Objetivo do sprint no quadro |
+| 8 | Abrir `.team-project/scrum-master/sprints/<n>/` com a linha de abertura do `burndown.md` (dia 0: soma total planejada) — a pasta recebe `review.md` e `retrospective.md` mais adiante, no `/sm review` e no `/sm sprint close` | SM | `sprints/<n>/burndown.md` criado (R24 · §5f) |
 
 **A capacidade é observada, não negociada.** O SM apresenta a média entregue nos três sprints anteriores; sprint que entra acima dela exige justificativa escrita no quadro — é o gatilho de R2 aplicado ao lote. **O SM não veta escopo por valor e o PO não altera a conta de capacidade**: o primeiro diz *se cabe*, o segundo diz *o que entra*.
 
@@ -336,13 +337,15 @@ O escopo do Sprint Backlog **não cresce**. Trabalho novo que aparece — GAP, p
 
 ### Sprint Review — fecha o trabalho (`/sm review`)
 
-O PO demonstra cada História do sprint ao stakeholder, **contra os critérios de aceite que ele mesmo aprovou no detalhamento**, e o QA fornece a evidência por Task. Saída, por História: **aceita** · **aceita com ressalva** (a ressalva vira Task no Product Backlog, com dono) · **rejeitada** (todas as Tasks da História voltam ao Product Backlog, inclusive as que passaram no QA — R21). Gaps e débitos identificados entram no Product Backlog na mesma sessão (R12).
+O PO demonstra cada História do sprint ao stakeholder, **contra os critérios de aceite que ele mesmo aprovou no detalhamento**, e o QA fornece a evidência por Task. Saída, por História: **aceita** · **aceita com ressalva** (a ressalva vira Task no Product Backlog, com dono) · **rejeitada** (todas as Tasks da História voltam ao Product Backlog, inclusive as que passaram no QA — R21). Gaps e débitos identificados entram no Product Backlog na mesma sessão (R12). O registro escrito da Review é gravado em `.team-project/scrum-master/sprints/<n>/review.md` — a pasta já existe desde a abertura do sprint (passo 8 de §5e acima).
 
 ### Sprint Retrospective — fecha o sprint (`/sm sprint close`)
 
 Roda **depois** da Review, com o resultado dela à vista. Usa o [modelo de retrospectiva](../templates/retrospective.md), mede o footprint do processo (§5c) e produz as ações corretivas do sprint seguinte. Encerra o sprint: nada mais entra nele.
 
-**Arquivamento do registro de consumo (quando `.team-project/scrum-master/consumption-log.md` existir).** Depois de a retrospectiva registrar o consumo real do sprint (§5c), o SM move todas as linhas da tabela `## Registro` daquele arquivo para `.team-project/scrum-master/consumption-log-archive.md`, sob um cabeçalho `## Sprint <n>`, íntegras — e limpa a tabela para o sprint seguinte. A tabela `## Totais por papel` não se move: soma desde o início do projeto. Mesmo padrão de R17 (teto + arquivamento), aplicado ao registro de consumo em vez do changelog do processo — ver [`templates/consumption-log.md`](../templates/consumption-log.md).
+**Fechamento de `sprints/<n>/` (R24 · §5f).** Depois da retrospectiva registrada em `sprints/<n>/retrospective.md`, o SM grava `sprints/<n>/sprint-backlog-snapshot.md` — cópia fechada e não editável do Sprint Backlog no estado final do sprint — e fecha `sprints/<n>/burndown.md` (seção "Fechamento" preenchida, sem mais edição depois). Os quatro arquivos da pasta (`review.md`, `retrospective.md`, `sprint-backlog-snapshot.md`, `burndown.md`) formam o registro completo e imutável do sprint. Esse fechamento acontece **depois** de Tasks inacabadas voltarem ao Product Backlog e de ressalvas virarem entradas com dono — o snapshot retrata o estado final, não um estado intermediário.
+
+**Arquivamento do registro de consumo (quando `.team-project/scrum-master/consumption-log.md` existir).** Depois de a retrospectiva registrar o consumo real do sprint (§5c), o SM move todas as linhas da tabela `## Registro` daquele arquivo para `.team-project/scrum-master/consumption-log-archive.md`, sob um cabeçalho `## Sprint <n>`, íntegras — e limpa a tabela para o sprint seguinte. A tabela `## Totais por papel` não se move: soma desde o início do projeto. Mesmo padrão de R17 (teto + arquivamento), aplicado ao registro de consumo em vez do changelog do processo — ver [`templates/consumption-log.md`](../templates/consumption-log.md). **Este é um padrão diferente do de `sprints/<n>/`** (arquivo único vs. pasta numerada) — o critério de quando usar cada um está em [`artifact-ownership.md` §1c](artifact-ownership.md).
 
 ### Como o SM verifica que o sprint aconteceu como escrito
 
@@ -352,6 +355,22 @@ Roda **depois** da Review, com o resultado dela à vista. Usa o [modelo de retro
 - Toda entrada de escopo fora da Planning tem a linha "o que saiu para caber" no quadro.
 - Review e retrospectiva do sprint anterior estão registradas antes da Planning seguinte.
 - Quando o projeto mantém `consumption-log.md`, todo `/sm sprint close` deixa a tabela `## Registro` vazia (só o cabeçalho) e o sprint fechado íntegro em `consumption-log-archive.md`, sob `## Sprint <n>` — arquivamento sem isso é achado de processo.
+- `.team-project/scrum-master/sprints/<n>/` existe desde a Planning (com `burndown.md` de abertura) e termina o sprint com os quatro arquivos completos (`review.md`, `retrospective.md`, `sprint-backlog-snapshot.md`, `burndown.md` fechado) — pasta incompleta no `/sm sprint close` é achado de processo (R24).
+
+## 5f. Burndown do sprint — de onde vem o dado, e o que ele não mostra (R24)
+
+O burndown mede a **estimativa restante** (unidade do projeto) das Tasks ainda não fechadas do sprint corrente, em série datada — não o estado de cada Task, que já está no Sprint Backlog. Ele existe porque, sem um ponto datado a cada evento, "o sprint está indo bem" é opinião reconstituída no fechamento, o mesmo modo de falha que R7 nomeia para evidência de código.
+
+**De onde sai o dado.** O Sprint Backlog ganha uma seção nova, o **Registro de transições** ([`templates/sprint-backlog.md`](../templates/sprint-backlog.md)): uma linha por mudança de marcador de Task (`Task · De → Para · Quando · Por quem`). `sprints/<n>/burndown.md` ([`templates/burndown.md`](../templates/burndown.md)) é a leitura em série desse registro — nunca uma segunda fonte de verdade.
+
+**Quando é gravado, e por quem.** O SM é quem escreve as duas coisas (o Sprint Backlog é dele — §1 da matriz de propriedade), em três momentos:
+- **Abertura do sprint** (`/sm sprint plan`) — todas as Tasks entram ⬜; linha de base do burndown com a soma total planejada. Data exata.
+- **Cada rodada de `/sm board`** — o SM sincroniza o marcador de cada Task com o que os papéis reportaram desde a última rodada (⬜→🟦 quando o Arquiteto planejou, 🟦→🟨 quando o dev começou, 🟨→🟪 quando o QA deu veredito) e grava uma linha por transição encontrada. **A data é a da rodada**, não a do evento real — granularidade declarada, não escondida.
+- **Cada `/sm close <T-ID>`** — transição para ✅ (ou 🔴, se bloqueada), sempre com data exata. É o único evento que reduz a estimativa restante do burndown.
+
+**Custo, declarado.** Este desenho reaproveita a leitura que o `/sm board` já faz — não pede a nenhum outro papel que grave timestamp no próprio comando. O preço é a granularidade: sprint com `/sm board` raro produz um burndown grosseiro (poucos pontos entre a abertura e os fechamentos); rodar `/sm board` só para alimentar o gráfico inverteria o custo-benefício. Granularidade fina por estado, com o instante exato de cada papel, exigiria tocar `commands/arc.md`/`commands/dev.md`/`commands/qa.md` — fora do alcance do SM nesta versão; fica registrado como possível pedido futuro ao stakeholder, não assumido.
+
+**Onde persiste e quando fecha.** `sprints/<n>/burndown.md`, criado na abertura do sprint (§5e passo 8), atualizado a cada `/sm board` e `/sm close`, e fechado — sem mais edição — no `/sm sprint close`, junto com `retrospective.md` e `sprint-backlog-snapshot.md`.
 
 ## 6. Escalação
 

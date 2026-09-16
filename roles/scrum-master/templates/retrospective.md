@@ -2,6 +2,8 @@
 
 Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o sprint. Curta e acionável: uma retrospectiva que não gera **uma** ação concreta foi tempo perdido.
 
+> **Persistido em** `.team-project/scrum-master/sprints/<n>/retrospective.md`. No mesmo `/sm sprint close`, entram também `sprint-backlog-snapshot.md` (cópia fechada e não editável do Sprint Backlog) e o fechamento de `burndown.md` — os quatro arquivos de `sprints/<n>/` (com `review.md`, já escrito no `/sm review`) formam o registro completo do sprint.
+
 ```markdown
 ## Retrospectiva — Sprint <n> — <data>
 
@@ -33,6 +35,7 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 | Entrada de changelog acima do teto | maior bloco `## vX.Y` de `process-changelog.md` | > 10 KB | R17 |
 | Entrega sem bump: merge em `develop` sem `version` + entrada no `CHANGELOG.md`, ou `plugin.json` ≠ topo do `CHANGELOG.md`, ou entrada de `process-changelog.md` sem par — *só quando a retro roda sobre o repositório-fonte do plugin; num projeto consumidor, `n/a`* | <n> \| n/a | qualquer | R18 |
 | Entrada de `process-changelog.md` sem bloco de evidência, ou com comando cuja reexecução dá saída diferente da registrada — *idem: só no repositório-fonte* | <n> \| n/a | qualquer | R19 |
+| `/sm close` sem linha correspondente no Registro de transições do Sprint Backlog, ou `burndown.md` com estimativa restante caindo sem fechamento que explique | <n> | qualquer | R24 |
 
 ### O que funcionou (3)
 1. <fato observável, não sensação>
@@ -50,6 +53,7 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 - **Tasks não concluídas devolvidas ao Product Backlog, com a História:** <IDs, ou "nenhuma">
 - **Ressalvas e débitos da Review registrados no Product Backlog:** <sim — com dono | nenhum>
 - **Registro de consumo arquivado** *(só quando `.team-project/scrum-master/consumption-log.md` existir)*: <sim — linhas movidas para `consumption-log-archive.md` sob `## Sprint <n>`, tabela limpa | n/a — sem registro no projeto>
+- **`sprints/<n>/` fechado (R24):** `sprint-backlog-snapshot.md` gravado, `burndown.md` fechado (seção "Fechamento" preenchida) — <sim | não, com o motivo>
 ```
 
 ## Regras
@@ -62,6 +66,7 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 - A linha de footprint (KB) é a fase **Check** do ciclo de eficiência ([`../process/workflow.md` §5c](../process/workflow.md)): mede `agents/` + `commands/` + `roles/<papel>/` do processo, compara com a retrospectiva anterior e alimenta o giro de `/review metrics`, que roda a cada 3 sprints. Crescimento sem regra ou cerimônia nova é candidato a corte, não a nota.
 - **Consumo real ≠ footprint.** A linha de consumo real soma o que a sessão que orquestra registrou por invocação de papel — mede **o trabalho dos papéis**, nunca o custo da própria sessão principal, que não se autoobserva. Não some as duas linhas de footprint com a de consumo real: são medidas diferentes, lado a lado, nunca um total único.
 - **O consumo real do sprint é medido antes do arquivamento.** A linha "Consumo real do sprint" acima lê a tabela `## Registro` de `consumption-log.md` **antes** de o passo "Registro de consumo arquivado" da seção Encerramento mover essas linhas para `consumption-log-archive.md` — inverter a ordem mede um sprint que já foi zerado.
+- **`sprints/<n>/` fecha por último, depois de tudo o resto estar decidido** (R24): o snapshot do Sprint Backlog e o fechamento do `burndown.md` retratam o estado final do sprint — gravá-los antes de a Review decidir aceite/ressalva/rejeição, ou antes de Tasks inacabadas voltarem ao Product Backlog, congela uma foto que ainda vai mudar. `review.md` é exceção: entra antes, no `/sm review`, porque é o registro do próprio evento da Review, não uma foto do backlog.
 
 ## Exemplo de leitura
 

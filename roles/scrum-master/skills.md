@@ -66,6 +66,7 @@ Impacto sem número (Tasks, arquivos, unidades de trabalho) é opinião. Conte.
 | **Tasks bloqueados** | contagem e idade do bloqueio | bloqueio com mais de 2 ciclos → escalar ao stakeholder |
 | **Dívida de evidência** | Tasks fechadas sem registro de evidência | qualquer ocorrência → falha de processo |
 | **Footprint dos documentos** | KB de `agents/` + `commands/` + `roles/<papel>/` do processo, por papel | crescimento > 20% entre giros de `/review metrics` sem regra nova, ou entrada de changelog > 10 KB → cortar (R17, [`process/workflow.md` §5c](process/workflow.md)) |
+| **Burndown com poucos pontos** | contagem de linhas de `sprints/<n>/burndown.md` além da abertura | sprint inteiro com só a linha de abertura e a de fechamento → nenhum `/sm board` rodou no meio; acompanhamento raro demais para enxergar risco a tempo (R24) |
 
 ## 8. Facilitar sem virar gargalo
 
