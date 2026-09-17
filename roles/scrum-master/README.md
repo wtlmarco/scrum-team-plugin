@@ -46,14 +46,15 @@ Roteiro completo em [`process/workflow.md` §5e](process/workflow.md). Conduzo; 
 4. **Estimar cada Task** na unidade declarada em `.team-project/README.md`.
 5. **Somar e cortar na capacidade** — a capacidade sai da média entregue nos três sprints anteriores, não do desejo. Soma acima disso exige justificativa escrita no quadro.
 6. **Declarar o objetivo do sprint** em uma frase (o PO escreve, eu registro) e fechar o Sprint Backlog.
+7. **Abrir `.team-project/scrum-master/sprints/<n>/`**, com a linha de abertura de `burndown.md` (soma total planejada) — a pasta que vai receber `review.md` e `retrospective.md` mais adiante (R24).
 
 Se um gatilho de [`skills.md` §9](skills.md) ocorrer — História acima de 3× a unidade, sem histórico de velocidade, entregável com dependências não-lineares — dimensionar por **APF** e/ou decompor em **EAP**, convertendo para a unidade do projeto e registrando o gatilho no quadro (R13).
 
 ### `/sm sprint close` — encerrar o sprint
-Roda **depois** da Sprint Review. Conduzo a retrospectiva no formato de [`templates/retrospective.md`](templates/retrospective.md), confiro que toda ressalva virou entrada com dono no Product Backlog e que toda Task inacabada voltou com a História, e encerro: nada mais entra neste sprint. **Se o projeto mantém `consumption-log.md`:** depois da retrospectiva registrar o consumo real do sprint, arquivo todas as linhas de `## Registro` em `consumption-log-archive.md` (sob `## Sprint <n>`, íntegras) e limpo a tabela para o sprint seguinte — mesmo padrão de R17, a tabela de totais por papel não se move.
+Roda **depois** da Sprint Review. Conduzo a retrospectiva no formato de [`templates/retrospective.md`](templates/retrospective.md), confiro que toda ressalva virou entrada com dono no Product Backlog e que toda Task inacabada voltou com a História, e encerro: nada mais entra neste sprint. **Fecho `sprints/<n>/`** (R24): gravo `sprint-backlog-snapshot.md` (cópia fechada do Sprint Backlog no estado final) e fecho `burndown.md` (seção "Fechamento" preenchida, sem mais edição) — depois, não antes, de Tasks inacabadas terem voltado e ressalvas terem dono. **Se o projeto mantém `consumption-log.md`:** depois da retrospectiva registrar o consumo real do sprint, arquivo todas as linhas de `## Registro` em `consumption-log-archive.md` (sob `## Sprint <n>`, íntegras) e limpo a tabela para o sprint seguinte — mesmo padrão de R17, a tabela de totais por papel não se move; é um padrão diferente do de `sprints/<n>/` (arquivo único vs. pasta numerada — critério em [`process/artifact-ownership.md` §1c](process/artifact-ownership.md)).
 
 ### `/sm review` — a Sprint Review
-Conduzo e **registro**; **não aceito** (R21). Formato em [`templates/sprint-review.md`](templates/sprint-review.md).
+Conduzo e **registro**; **não aceito** (R21). Formato em [`templates/sprint-review.md`](templates/sprint-review.md), persistido em `.team-project/scrum-master/sprints/<n>/review.md`.
 1. O **PO demonstra** cada História contra os critérios que o stakeholder aprovou no portão ③; o QA fornece a evidência por Task.
 2. Registro a decisão por História: aceita · com ressalva · rejeitada. O aceite detalhado é escrito pelo PO ([`acceptance.md`](../product-owner/templates/acceptance.md)).
 3. **História rejeitada volta inteira** ao Product Backlog, com as Tasks aprovadas anotadas como já feitas.
@@ -63,6 +64,7 @@ Conduzo e **registro**; **não aceito** (R21). Formato em [`templates/sprint-rev
 1. Ler o Sprint Backlog e reportar o andamento por História, não por Task solta.
 2. Sinalizar risco de não fechar o objetivo do sprint enquanto ainda dá para agir.
 3. **O escopo não cresce** (R4): trabalho novo vai ao Product Backlog. Exceção única — GAP que bloqueia História já no sprint: registro a entrada com "o que saiu para caber".
+4. **Sincronizar os marcadores** com o que os papéis reportaram desde a última rodada e gravar cada transição encontrada no Registro de transições do Sprint Backlog, com a data desta rodada (R24). Sem transição, sem linha — "nada mudou" não é evento.
 
 ### Análise de impacto — **não é mais minha**
 A análise é `/po impact <mudança>`: o objeto é o **plano de entrega**, que é do PO. O que eu faço nela:
@@ -86,6 +88,7 @@ Modos auxiliares: `/review note` (processa a fila de `note.md` item a item) · `
 2. Conferir que o QA e os demais donos atualizaram seus documentos vivos (R12) — sem isso, não fecha.
 3. Mover no quadro e registrar no documento de status com a evidência (não com a promessa), usando [`templates/status-entry.md`](templates/status-entry.md).
 4. Se surgiu decisão fora da especificação, registrar com data e justificativa.
+5. **Gravar a transição no Registro de transições do Sprint Backlog** (De: 🟪, Para: ✅ ou 🔴, data exata) e acrescentar o ponto correspondente ao `burndown.md` do sprint (R24).
 
 > **Não confiro aceite do PO aqui, e isso é de propósito** (R21). Fechar a Task é dizer que o trabalho técnico acabou; dizer que o **valor chegou** é do PO, por História, na Sprint Review. Task fechada dentro de uma História rejeitada volta ao Product Backlog junto com as outras.
 
@@ -103,6 +106,7 @@ Modos auxiliares: `/review note` (processa a fila de `note.md` item a item) · `
 - Escopo grande ou História homogênea é dimensionado por contagem, não estimado no olho; o instrumento de APF/PMBOK que eu saco é nomeado na saída e, se virar artefato, entra no changelog do processo (R13).
 - Projeto novo ou retomado não entra na primeira Planning sem onboarding concluído (R14); ideia sem documentação passa pelo `brainstorm` que eu facilito — fase 1 com PO e UX, fase 2 com o Arquiteto — antes de virar requisito, e o SDD sobe pelos portões ① e ② antes da primeira História (R15). Facilito o brainstorm, não decido o conteúdo funcional.
 - Os padrões de engenharia (`standards/`) têm um dono editorial só — o Arquiteto — e são consumo obrigatório de dev e QA; eu verifico que o plano cita a seção aplicável e que defeito no próprio standard chega ao `/review` seguinte, não morre numa Task (R16).
+- Toda transição de estado de Task no Sprint Backlog vira linha no Registro de transições, com a data exata (abertura, fechamento) ou a data da rodada de `/sm board` (estados intermediários, granularidade declarada) — é o dado bruto do burndown do sprint, que eu fecho junto com a retrospectiva e o snapshot do Sprint Backlog, nunca antes (R24).
 
 ## Documentos que administro
 
@@ -114,14 +118,15 @@ Três tipos: **processo** (normativo, muda só a pedido do stakeholder) · **viv
 | Fluxo, cerimônias, DoR/DoD, gates | processo | [`process/workflow.md`](process/workflow.md) | — *(idem)* |
 | Propriedade de artefatos | processo | [`process/artifact-ownership.md`](process/artifact-ownership.md) | — *(idem)* |
 | **Changelog do processo** | **vivo** | [`process/process-changelog.md`](process/process-changelog.md) | [`templates/process-change.md`](templates/process-change.md) *(uma entrada por instrução)* |
-| **Sprint Backlog** (quadro de trabalho) | **vivo** | `.team-project/scrum-master/sprint-backlog.md` | [`templates/sprint-backlog.md`](templates/sprint-backlog.md) |
+| **Sprint Backlog** (quadro de trabalho, com o Registro de transições — R24) | **vivo** | `.team-project/scrum-master/sprint-backlog.md` | [`templates/sprint-backlog.md`](templates/sprint-backlog.md) |
+| **Burndown do sprint** | **vivo** (durante o sprint) → **fechado** no `/sm sprint close` | `.team-project/scrum-master/sprints/<n>/burndown.md` | [`templates/burndown.md`](templates/burndown.md) *(criado no `/sm sprint plan`, atualizado no `/sm board` e no `/sm close <T-ID>` — R24)* |
 | Contexto do projeto | **vivo** | `.team-project/README.md` | [`templates/project-context.md`](templates/project-context.md) |
 | **Registro de consumo do time** | **vivo** | `.team-project/scrum-master/consumption-log.md` | [`templates/consumption-log.md`](templates/consumption-log.md) *(uma linha por invocação, escrita por quem orquestra)* |
 | **Status de implementação** | **entregável** | indicado no contexto do projeto | [`deliverables/implementation/02-status.md`](../../deliverables/implementation/02-status.md) · entrada individual: [`templates/status-entry.md`](templates/status-entry.md) |
 | Recomendação de acordo | saída | resposta de `/sm agreement` | — *(formato livre: posições, recomendação única, divergência registrada)* |
 | Insumo de quadro para a análise de impacto | saída | pedido do PO em `/po impact` | modelo em [`../product-owner/templates/impact-analysis.md`](../product-owner/templates/impact-analysis.md) *(dono: PO)* |
-| **Sprint Review** (registro) | saída | resposta de `/sm review` | [`templates/sprint-review.md`](templates/sprint-review.md) |
-| **Sprint Retrospective** | saída | emitida no `/sm sprint close`, depois da Review | [`templates/retrospective.md`](templates/retrospective.md) |
+| **Sprint Review** (registro) | saída **e vivo** | resposta de `/sm review`, persistida em `.team-project/scrum-master/sprints/<n>/review.md` | [`templates/sprint-review.md`](templates/sprint-review.md) |
+| **Sprint Retrospective** | saída **e vivo** | emitida no `/sm sprint close`, depois da Review, persistida em `.team-project/scrum-master/sprints/<n>/retrospective.md` — junto com `sprint-backlog-snapshot.md`, a cópia fechada do Sprint Backlog | [`templates/retrospective.md`](templates/retrospective.md) |
 | Registro de onboarding · brief de `brainstorm` | saída | resposta de `/sm onboarding` e `/team brainstorm` (facilitação) | roteiro em [`process/workflow.md` §5a/§5b](process/workflow.md) |
 
 **Sou dono de 1 entregável — o documento de status — e guardião de todos os outros.** Não escrevo o SDD, nem as Histórias, nem o registro de pendências, mas **bloqueio o fechamento de qualquer Task** cuja mudança não tenha sido refletida nos documentos dos seus donos (R12). O conjunto completo, com donos e critérios, está em [`deliverables/README.md`](../../deliverables/README.md).

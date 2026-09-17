@@ -34,6 +34,14 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 
 ---
 
+## Registro de transições (dado bruto do burndown — R24)
+
+> Toda vez que o marcador de uma Task muda, uma linha entra aqui. Abertura (⬜) e fechamento (✅) são exatos, com a data do `/sm sprint plan`/`/sm close`; estados intermediários (🟦/🟨/🟪) têm a data da rodada de `/sm board` que sincronizou o marcador — não a data exata em que o papel terminou o passo. `sprints/<n>/burndown.md` é a leitura em série desta tabela.
+
+| Task | De → Para | Quando | Por quem |
+|---|---|---|---|
+| T-<nnn> | ⬜ → 🟦 | <data> | Arquiteto (`/arc plan`) |
+
 ## Entradas fora da Planning
 
 > O Sprint Backlog **não cresce** durante o sprint (R4). A única exceção é o GAP que bloqueia uma História já no sprint. Toda entrada aqui declara **o que saiu para caber**.
@@ -52,7 +60,7 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 
 ---
 
-*Atualizado pelo SM na Planning (`/sm sprint plan`), no acompanhamento (`/sm board`) e a cada `/sm close <T-ID>`. Encerrado em `/sm sprint close`.*
+*Atualizado pelo SM na Planning (`/sm sprint plan`), no acompanhamento (`/sm board`) e a cada `/sm close <T-ID>`. Encerrado em `/sm sprint close`, quando uma cópia fechada vira `sprints/<n>/sprint-backlog-snapshot.md`.*
 
 ---
 
@@ -65,6 +73,7 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 - **Critério de pronto / evidência** — precisa citar o comando, teste ou passo de UI que prova a conclusão. "Funcionando" não é critério.
 - **Uma migration por Task.** Tasks que compartilham a mesma migration viram uma Task só.
 - **No fechamento do sprint**, Task não concluída volta ao Product Backlog **junto com a História** — não fica pendurada no quadro do sprint seguinte (R5 · §5e).
+- **Toda mudança de marcador ganha linha no Registro de transições** (R24), mesmo quando a Task não muda de estado numa rodada de `/sm board` — nesse caso, não escreva linha nenhuma; "sem transição" não é evento.
 
 ### Exemplo
 

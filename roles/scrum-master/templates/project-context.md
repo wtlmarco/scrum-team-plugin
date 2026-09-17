@@ -9,7 +9,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 ├── README.md                 ← este modelo
 ├── how-to.md                 cópia de `${CLAUDE_PLUGIN_ROOT}/how-to.md` — guia de uso, não editar aqui
 ├── note.md                   fila de relatos do stakeholder — escrita por ele, tratada pelo PO via `/po note`
-├── scrum-master/             context.md · sprint-backlog.md
+├── scrum-master/             context.md · sprint-backlog.md · consumption-log.md · sprints/<n>/
 ├── product-owner/            context.md · product-backlog.md
 ├── architect/                context.md · plans/
 ├── user-experience/          context.md · prototype/ · journeys/ · screens/
@@ -24,7 +24,9 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | `README.md` | este documento |
 | `how-to.md` | cópia literal de `${CLAUDE_PLUGIN_ROOT}/how-to.md` |
 | `note.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/note.md` *(fila de relatos do stakeholder, tratada por `/po note`/`/po bug`)* |
-| `scrum-master/sprint-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/sprint-backlog.md` *(o Sprint Backlog)* |
+| `scrum-master/sprint-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/sprint-backlog.md` *(o Sprint Backlog, com o Registro de transições — R24)* |
+| `scrum-master/sprints/<n>/` | pasta vazia; nasce no `/sm sprint plan` com `burndown.md` de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/burndown.md`; ganha `review.md` (`templates/sprint-review.md`) no `/sm review` e `retrospective.md` (`templates/retrospective.md`) + `sprint-backlog-snapshot.md` (cópia fechada do Sprint Backlog) no `/sm sprint close` |
+| `scrum-master/consumption-log.md` | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption-log.md` *(registro de consumo do time — retenção em vivo+archive, não em `sprints/<n>/`; critério em [`artifact-ownership.md` §1c](../process/artifact-ownership.md))* |
 | `product-owner/product-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/product-backlog.md` *(o conjunto das Histórias; cada uma segue `templates/user-story.md`)* |
 | `quality-assurance/evidence.md` | `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/evidence.md` |
 | `architect/plans/` | pasta vazia; os planos nascem de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md` |
