@@ -2,6 +2,7 @@
 
 > **Dono do registro:** SM · **Dono do aceite:** PO (R21) · **Decide:** o stakeholder, sobre o que viu.
 > Fecha o trabalho do sprint, **antes** da retrospectiva. É o único momento em que uma História é aceita.
+> **Persistido em** `.team-project/scrum-master/sprints/<n>/review.md` — a pasta já existe desde o `/sm sprint plan` (nasce com `burndown.md`); este arquivo entra nela no `/sm review`.
 
 O SM conduz e registra; o **PO demonstra cada História contra os critérios de aceite que o stakeholder aprovou no portão ③**; o QA fornece a evidência por Task. O SM **não aceita** — registra o aceite do PO.
 

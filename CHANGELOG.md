@@ -13,6 +13,28 @@
 
 ---
 
+## v3.19.0 — 2026-09-16
+
+**Branch:** `fix/v3.19.0` a partir de `develop` (`fix/v3.18.0` já foi mesclado — PR #17 — antes desta entrega abrir; sem empilhamento). **PR** para `develop`.
+
+**MINOR de processo.** Carrega a entrada nova [`v3.19`](roles/scrum-master/process/process-changelog.md) do changelog do processo — `vX.Y.0` (R18). Fecha o item de `RAIZ/note.md` sobre onde vivem os documentos de execução do sprint: **(1)** Review, Retrospectiva e o snapshot fechado do Sprint Backlog ganham lugar persistido em `.team-project/scrum-master/sprints/<n>/`; **(2)** o burndown do sprint é desenhado de ponta a ponta — o que mede, de onde sai o dado (Registro de transições novo no Sprint Backlog), onde persiste, modelo (`templates/burndown.md`) e regra de verificação nova (**R24**); **(3)** duas contagens de regras desatualizadas (`README.md`, `agents/scrum-master.md`) corrigidas de 23 para 24, com varredura completa da RAIZ; **(4)** contradição entre `review-contract.md` e `commands/review.md` sobre o alcance da exceção de coerência de referência cruzada do SM, resolvida a favor da leitura ampla, autorizada explicitamente pelo stakeholder nesta rodada. Ver [`v3.19` do changelog do processo](roles/scrum-master/process/process-changelog.md).
+
+### O que entrou
+
+- **Pasta por sprint (SM).** `.team-project/scrum-master/sprints/<n>/` — `review.md`, `retrospective.md`, `sprint-backlog-snapshot.md`, `burndown.md` — aberta no `/sm sprint plan`, fechada no `/sm sprint close`. Critério de quando usar pasta numerada em vez do padrão vivo+archive do `consumption-log` documentado em `artifact-ownership.md` §1c.
+- **Burndown do sprint (R24).** Sprint Backlog ganha o "Registro de transições" (dado bruto); `sprints/<n>/burndown.md` é a série derivada; granularidade declarada (exata na abertura/fechamento, por rodada de `/sm board` nos estados intermediários).
+- **Duas contagens de regras corrigidas**, com varredura completa da RAIZ por outras ocorrências.
+- **`commands/review.md` alinhado a `review-contract.md`**, sob autorização explícita do stakeholder: a exceção de coerência de referência cruzada do SM vale para os quatro grupos (`agents/`, `commands/`, `.claude-plugin/`, guias de raiz), nunca para mudança de comportamento, roteiro ou regra nova.
+- Arquivamento de `v3.16` para `process-changelog-archive.md` (pré-condição do teto de 3 entradas), verificado por `Compare-Object`: zero diferenças.
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.19.0`. Detalhe completo (triagem, o que mudou, bloco de evidência R19, a autorização do stakeholder sobre `agents/`/`commands/`) na entrada `v3.19` do changelog do processo.
+
+**Mudança de comportamento de agente/comando se aplica** — `agents/scrum-master.md` e `commands/review.md` foram tocados nesta entrega: só valem depois de reiniciar a sessão, e só chegam aos projetos depois de `git push` + `claude plugin marketplace update` + `claude plugin update`.
+
+---
+
 ## v3.18.0 — 2026-09-15
 
 **Branch:** `fix/v3.18.0` · **Base:** `fix/v3.17.0` (empilhada) · **PR** para `develop`.
