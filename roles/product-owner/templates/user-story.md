@@ -1,8 +1,10 @@
 # Template — História (`/po story <ID>`)
 
-> **Dono:** PO · A **unidade de valor** do time (R20). Nasce do SDD funcional aprovado; vive no Product Backlog; é quebrada em Tasks pelo time na Planning Meeting.
+> **Dono:** PO · A **unidade de valor** do time (R20). Nasce do SDD funcional aprovado; vive em **arquivo próprio**, `.team-project/product-owner/stories/<H-ID>-<slug>.md` ([`artifact-ownership.md` §1d e §4](../../scrum-master/process/artifact-ownership.md)), indexada pelo Product Backlog; é quebrada em Tasks pelo time na Planning Meeting.
 
 A História tem **dois estados**, e o modelo cobre os dois. Escrever tudo de uma vez é desperdício: a maioria das Histórias do backlog nunca chega ao sprint na forma em que foi escrita.
+
+**O arquivo nasce no Esboço, não espera o Detalhe.** A partir do momento em que a História existe — ainda que só com valor, enunciado, origem e tamanho grosseiro —, ela já é a unidade que o Product Backlog indexa; um ID sem arquivo por trás é um link morto na tabela de Histórias, e "linkar quando detalhar" reabriria a mesma opcionalidade que a v3.21 fechou (`artifact-ownership.md` §1d). Ao rodar `/po story <ID>` pela primeira vez: escrever o Estado 1 no arquivo novo em `stories/` e, na mesma sessão, escrever/atualizar a linha correspondente no índice do Product Backlog — os dois documentos avançam juntos, sempre.
 
 | Estado | Quando | O que existe | Portão |
 |---|---|---|---|

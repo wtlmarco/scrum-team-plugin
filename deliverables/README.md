@@ -80,7 +80,7 @@ Dentro de cada etapa, a ordem:
 
 **Não escreva os sete documentos de conteúdo (`00`–`06`) de uma vez.** Documento escrito antes da necessidade envelhece antes de ser lido. O que precisa existir desde o dia 1 é o `README` do conjunto — o oitavo arquivo do SDD, e o único índice —, para que cada documento tenha lugar quando nascer.
 
-**Depois do portão ②, o SDD vira Histórias** (R20). O PO escreve cada uma com o valor declarado ([`user-story.md`](../roles/product-owner/templates/user-story.md)); o conjunto delas **é** o Product Backlog. A História é detalhada só quando candidata a um sprint, e passa pelo **portão ③** — aprovação do stakeholder — antes da Planning Meeting.
+**Depois do portão ②, o SDD vira Histórias** (R20). O PO escreve cada uma com o valor declarado, em arquivo próprio ([`user-story.md`](../roles/product-owner/templates/user-story.md)); o **Product Backlog é o índice ordenado** delas, não o conteúdo (v3.21 — [`artifact-ownership.md` §1d](../roles/scrum-master/process/artifact-ownership.md)). A História é detalhada só quando candidata a um sprint, e passa pelo **portão ③** — aprovação do stakeholder — antes da Planning Meeting.
 
 ## Critérios de qualidade — o que o QA verifica
 

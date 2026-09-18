@@ -13,6 +13,126 @@
 
 ---
 
+## v3.23.0 — 2026-09-18
+
+**Branch:** `fix/v3.23.0` — a mesma branch das entradas `v3.22.0`, `v3.21.0` e `v3.20.0` abaixo, renomeada a cada giro absorvido. **PR** para `develop`. A entrega carrega **quatro** entradas de processo; a `version` acompanha a mais recente (R18).
+
+**MINOR de processo.** Carrega a entrada nova [`v3.23`](roles/scrum-master/process/process-changelog.md) — **segundo giro Act** consecutivo, pedido pelo stakeholder depois de ler o saldo do primeiro.
+
+### O que entrou
+
+- **A tabela de indicadores da retrospectiva parava de dizer algo novo em 13 das 23 linhas.** Cada regra de `working-rules.md` já traz a própria linha `**SM verifica:**`; a tabela "Como o SM aplica" repetia essa verificação regra a regra, e em 13 linhas a coluna "Alerta" era tautológica — *"qualquer ocorrência → Rnn ignorada"*, que não é limiar, é a definição de violar a regra. As 13 foram **colapsadas numa linha** que nomeia as regras cobertas e aponta para a verificação onde ela é escrita. As outras 10, que têm limiar de verdade (`> 2`, `> 30%`, `> 2×`, `recorrente`), ficaram intocadas.
+- **Verificado antes de cortar, uma a uma:** cada uma das 13 está integralmente coberta pela linha "SM verifica" da sua regra — inclusive a cláusula que a `v3.21` acabara de acrescentar a R20. Nenhuma verificação perdida; saiu a segunda cópia.
+- **A carga fixa foi varrida primeiro** (é o primeiro lugar da lista de §5c) e sobraram só dois blocos duplicados em 3+ arquivos, ambos legítimos — viraram proposta ao stakeholder, não corte, conforme §5c.
+
+### Saldo do giro
+
+| Medida | Antes | Depois | Δ |
+|---|---:|---:|---:|
+| `working-rules.md` | 40,20 KB | **37,74 KB** | **−2,46 KB (−6,1%)** |
+| Tabela "Como o SM aplica" | 5,90 KB | **3,31 KB** | −2,59 KB (−44%) |
+| `roles/scrum-master/` (sem changelogs) | 198,6 KB | **196,2 KB** | −2,4 KB |
+
+O corte é **4,6× o do giro anterior** (−2,46 contra −0,54 KB), e veio de procurar redundância estrutural em vez de texto obsoleto.
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.23.0`. Integridade estrutural conferida: `^### R\d+\.`, `^\| R\d+ \|` e `^\*\*SM verifica` continuam dando **24, 24, 24**. Arquivamento de `v3.20` para `process-changelog-archive.md` (teto de 3 entradas). Bloco de evidência R19 completo na entrada `v3.23`.
+
+**Desvio corrigido no fecho:** as edições por script deste giro e do anterior usaram `Set-Content -Encoding utf8`, que no PowerShell 5.1 grava BOM — três arquivos de `process/` ficaram com BOM enquanto os outros 16 não tinham. Removido, conteúdo conferido intacto. Registrado na entrada `v3.23` com a lição de método.
+
+**Mudança de comportamento de agente/comando não se aplica** — nenhum `agents/`/`commands/` foi tocado nesta entrada.
+
+**Pendente, registrado e não aplicado:** dois blocos duplicados na carga fixa — o ponteiro do `review-contract.md` (421 chars × 5 `agents/*`) e o gancho do formulário de R22 (403 chars × 4 `commands/*`, criado na `v3.20`). ~1,3 KB somados. §5c manda propor, não aplicar; texto na entrada `v3.23`.
+
+---
+
+## v3.22.0 — 2026-09-18
+
+**Branch:** `fix/v3.23.0` (aberta como `fix/v3.21.0`, renomeada) — a mesma branch das entradas `v3.21.0` e `v3.20.0` abaixo. **PR** para `develop`. **Esta entrega carrega três entradas de processo** — `v3.20`, `v3.21` e `v3.22` —, cada uma com entrada própria aqui; a `version` acompanha a mais recente (R18).
+
+**MINOR de processo.** Carrega a entrada nova [`v3.22`](roles/scrum-master/process/process-changelog.md) — o **giro Act do ciclo de eficiência** (`workflow.md` §5c), disparado por `/review metrics`.
+
+### O que entrou
+
+- **Footprint remedido.** Primeira remedição desde a `v3.16` (14/09/2026). Carga fixa do grupo: **71,9 → 76,7 KB (+6,7%)** em quatro dias e cinco versões de processo, **sem nenhuma remoção registrada** — foi esse o gatilho de Act fora de cadência, não o limiar de 20% por papel (que ninguém cruzou). Por papel: PO 17,7 · SM 16,4 · UX 11,8 · QA 11,7 · Arquiteto 11,4 · dev 7,7. O **conjunto sob demanda** ganhou a primeira medição por papel, que vira linha de base: SM 198,3 · PO 54,2 · UX 47,1 · Arquiteto 44,1 · QA 39,1 · dev 22,0 KB.
+- **A remoção do giro: a arqueologia do `consult` sai de `workflow.md` §5c.** §5c era a maior seção do arquivo (9,2 de 59,4 KB) e carregava três parágrafos sobre um comando que não existe mais em lugar nenhum do repositório — a seção que existe para impedir inchaço era a mais inchada dele. A regra viva que essa história produziu ("chame só quem a questão toca", passo 1 do `/sm agreement`) foi preservada e reescrita como norma; o resto saiu.
+- Arquivamento de `v3.19` para `process-changelog-archive.md` (teto de 3 entradas), verificado: 57 linhas relocadas, zero fora do separador.
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.22.0`. Nenhuma regra nova — a contagem segue em **24**. Nenhum comportamento mudou: a entrada é remoção de texto morto, sem regra, gate ou verificação alterados. Bloco de evidência R19 completo na entrada `v3.22` do changelog do processo.
+
+- **Segunda remoção, autorizada pelo stakeholder: o parágrafo "Registro de consumo" comprimido nos 7 arquivos de `commands/`.** Estava duplicado quase palavra por palavra; a instrução inteira foi preservada e saiu a explicação repetida. Por arquivo: ~516 → ~316 chars (−39%). **Carga fixa do grupo: 76,7 → 75,3 KB (−1,4 KB, −1,8%).**
+
+### Saldo do giro
+
+| Medida | Início | Fecho | Δ |
+|---|---:|---:|---:|
+| Carga fixa do grupo | 76,7 KB | **75,3 KB** | **−1,4 KB** |
+| `workflow.md` §5c | 9,20 KB | **9,00 KB** | −0,20 KB |
+| `roles/scrum-master/` (sem changelogs) | 198,8 KB | **198,6 KB** | −0,2 KB |
+
+### Verificação adicional
+
+A proposta levada ao stakeholder projetava "~1,1 KB por arquivo, −70%, ~5 KB no total". **O número estava inflado em ~2×** — o recorte automático do bloco ia até o fim do arquivo e arrastava o gancho de R22 e a linha de fecho junto. O ganho real é −1,4 KB. O desvio está registrado na entrada `v3.22` conforme R19, com a lição de método; a decisão não muda com o número certo, mas o número que a sustentou estava errado.
+
+**Mudança de comportamento de agente/comando se aplica** — os 7 arquivos de `commands/` foram tocados: só valem depois de reiniciar a sessão, e só chegam aos projetos depois de `git push` + `claude plugin marketplace update` + `claude plugin update`. Nenhuma instrução mudou de sentido; o que saiu foi texto explicativo repetido.
+
+**Contradição de §5c fechada, por decisão do stakeholder.** §5c mandava cortar prioritariamente na carga fixa (`agents/`+`commands/`) e esses são justamente os grupos que o `/review` não edita. Das três saídas escaladas, o stakeholder escolheu **manter como está e tornar explícito**: §5c ganha o parágrafo *"O corte de maior valor é proposta, nunca aplicação direta"* — o Act mede, encontra e propõe com texto pronto; o stakeholder autoriza item a item no fecho; a exceção de curadoria do SM não cobre remoção nesses arquivos. **Nenhum poder foi alargado** — o que já era prática passou a estar escrito.
+
+---
+
+## v3.21.0 — 2026-09-18
+
+**Branch:** `fix/v3.22.0` (aberta como `fix/v3.21.0`) a partir de `develop` (`fix/v3.19.0` já foi mesclado — PR #19 — antes desta entrega abrir; sem empilhamento). **PR** para `develop`. **Esta entrega carrega duas entradas de processo** — `v3.20` e `v3.21` —, aplicadas na mesma rodada de `/review note`; cada uma tem entrada própria aqui, e a `version` acompanha a mais recente (R18).
+
+**MINOR de processo.** Carrega a entrada nova [`v3.21`](roles/scrum-master/process/process-changelog.md) do changelog do processo — `vX.Y.0` (R18). Fecha o segundo item de `RAIZ/note.md`: o **Product Backlog deixa de conter as Histórias e passa a ser o índice ordenado delas**, com o conteúdo de cada uma em arquivo próprio. Sintoma que originou: o backlog crescia sem limite porque acumulava o texto de todas as Histórias, não só a lista.
+
+### O que entrou
+
+- **Product Backlog = índice (SM, normativo).** Matriz de propriedade (`artifact-ownership.md` §1, linhas "Histórias" e "Product Backlog"), **§1d nova** com o critério explícito do que fica × do que sai e a forma de verificação, e §4 com a convenção de nome `<H-ID>-<slug>.md`. **R20** reescrita: "A História vive no Product Backlog" → vive em arquivo próprio, indexada pelo backlog. O dono não muda — índice e arquivos são os dois do PO.
+- **Conteúdo da História em `.team-project/product-owner/stories/<H-ID>-<slug>.md`.** Regras funcionais, protótipos, critérios de aceite e o registro do portão ③ saem do backlog. Nenhuma outra seção foi extraída — só as Histórias foram nomeadas pelo stakeholder.
+- **Modelos e roteiro do PO alinhados.** `templates/product-backlog.md` (cabeçalho, tabela linkando por ID, fim da opcionalidade, "Como manter"), `templates/user-story.md` e `roles/product-owner/README.md` (o modo `/po story`). O PO decidiu, e escreveu, que **o arquivo nasce já no esboço** — ID sem arquivo por trás seria link morto no índice, e "linkar quando detalhar" reabriria a opcionalidade recém-fechada.
+- **Coerência nos índices transversais do SM** — `deliverables/README.md`, `deliverables/team-project/README.md`, `templates/project-context.md`, `workflow.md` (§"Duas unidades", diagrama, saída da etapa 1).
+- **`commands/po.md:13,20`** — "o **conjunto** das Histórias" → "o **índice** das Histórias", aprovado pelo stakeholder no fecho do `/review` (addendum datado na entrada `v3.21`).
+- Arquivamento de `v3.18` para `process-changelog-archive.md` (pré-condição do teto de 3 entradas).
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.21.0`. Padrão antigo (`conjunto das Histórias`, `escolha é do projeto`, `seção própria`) zerado nos arquivos do PO; as ocorrências remanescentes no repositório foram lidas no contexto e são legítimas — `artifact-ownership.md` §1d cita o texto antigo para explicar o que mudou, e as entradas históricas deste changelog não se reescrevem. Bloco de evidência R19 completo na entrada `v3.21` do changelog do processo.
+
+**Mudança de comportamento de agente/comando se aplica** — `commands/po.md` foi tocado: só vale depois de reiniciar a sessão, e só chega aos projetos depois de `git push` + `claude plugin marketplace update` + `claude plugin update`.
+
+**Pendente, registrado e não aplicado:** `commands/po.md:19` ainda diz que o esboço "entra no Product Backlog sem detalhar" — pela decisão do PO, ele passa a criar o arquivo **e** a linha de índice. É mudança de comportamento de comando, não coerência de referência cruzada; texto pronto no addendum da entrada `v3.21`, para o `/review` seguinte.
+
+---
+
+## v3.20.0 — 2026-09-18
+
+**Branch:** `fix/v3.21.0` — entregue junto com a `v3.21.0` (mesma rodada de `/review note`, mesmo PR para `develop`).
+
+**MINOR de processo.** Carrega a entrada nova [`v3.20`](roles/scrum-master/process/process-changelog.md) do changelog do processo — `vX.Y.0` (R18). Fecha o primeiro item de `RAIZ/note.md`: **pendência do stakeholder resolve-se em formulário**, com a via de pedir mais contexto sempre como última opção.
+
+### O que entrou
+
+- **R22 ganha o meio de apresentação.** A regra já exigia forma fixa (pergunta + por que bloqueia, alternativas descritas, recomendação, via de mais contexto); faltava dizer **como** a pergunta chega ao stakeholder. Agora chega como formulário de escolha, nunca em texto corrido.
+- **A responsabilidade é dividida, porque a restrição técnica obriga.** Os seis `agents/*.md` declaram `tools: Read, Grep, Glob, Write, Edit, PowerShell, ToolSearch` — **nenhum tem `AskUserQuestion`**. O **papel** entrega a estrutura fixa; a **sessão que orquestra** a renderiza. Papel que devolve prosa é achado contra ele; orquestração que despeja a estrutura como texto corrido é achado contra ela — nunca contra o papel, que já entregou o que devia.
+- **Fronteira registro × resolução.** Pendência ainda aberta continua registrada em tabela — "Decisões funcionais pendentes" do Product Backlog, `.team-project/README.md` §7, campo `Aguarda decisão do stakeholder` de `pending.md` — e nada nisso muda. O formulário entra quando, e só quando, a pergunta é de fato levada ao stakeholder para decidir.
+- **Pontos de escalação alinhados** — `workflow.md` (§5a passo 5 e "O que o SM escala", §6 diagrama e texto pós-diagrama), `roles/scrum-master/skills.md` e `roles/scrum-master/README.md`.
+- **Gancho nos comandos que orquestram**, aprovado pelo stakeholder no fecho do `/review` (addendum datado na entrada `v3.20`): `commands/sm.md`, `commands/po.md`, `commands/arc.md`, `commands/team.md` ganham a instrução de chamar o formulário; `commands/review.md:54` passa a resolver conflito de regra em formulário, não em texto corrido.
+- Arquivamento de `v3.17` para `process-changelog-archive.md` (teto de 3 entradas).
+
+### Verificação
+
+Nenhuma regra nova nasceu — R22 evoluiu, e a contagem segue em **24** em `working-rules.md`, `README.md` e `agents/scrum-master.md`. Ausência de `AskUserQuestion` no frontmatter dos seis agentes reexecutada na curadoria. Bloco de evidência R19 completo na entrada `v3.20` do changelog do processo.
+
+**Mudança de comportamento de agente/comando se aplica** — cinco arquivos de `commands/` foram tocados: só valem depois de reiniciar a sessão, e só chegam aos projetos depois de `git push` + `claude plugin marketplace update` + `claude plugin update`.
+
+**Roteamento aberto** (fora do alcance do SM, para o `/review` seguinte): `roles/product-owner/README.md:16,115`, `roles/product-owner/templates/functional-analysis.md:38,46`, `roles/architect/README.md:48` e `commands/po.md:25` descrevem a escalação ao stakeholder sem citar R22 nem a via de mais contexto — pendente desde a `v3.6`.
+
+---
+
 ## v3.19.0 — 2026-09-16
 
 **Branch:** `fix/v3.19.0` a partir de `develop` (`fix/v3.18.0` já foi mesclado — PR #17 — antes desta entrega abrir; sem empilhamento). **PR** para `develop`.

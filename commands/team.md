@@ -82,6 +82,8 @@ Modos parciais do ciclo: `plan <ID>` (só a etapa 1) · `build <ID>` (só a etap
 
 ## Registro de consumo — só onde o registro existe
 
-Se `.team-project/scrum-master/consumption-log.md` existir (projeto que instala o time — nunca o clone-fonte do plugin, que não tem `.team-project/`), a cada subagente disparado nesta invocação (`brainstorm`, `cycle` e suas fatias) retornar, você — a sessão que orquestrou — recebe o total de tokens e a duração daquela invocação. Acrescente **uma linha por subagente disparado nesta invocação**: data, papel, comando, Task/História (se houver, senão `n/a`), tokens, duração. Número indisponível: registre "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, não há o que gravar — nada a fazer aqui. **Os modos `init`, `update` e `version` não disparam agente nenhum** (seções acima) — não há subagente para registrar, e nenhum dos três grava linha.
+Se `.team-project/scrum-master/consumption-log.md` existir, acrescente **uma linha por subagente disparado nesta invocação**, com os números que cada um devolve ao retornar: data, papel, comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, nada a fazer. Os modos `init`, `update` e `version` não disparam agente — não gravam linha.
+
+Se a saída do agente traz uma pergunta na forma de R22 (pergunta + por que bloqueia, alternativas descritas, recomendação, via de pedir mais contexto), não a repasse em texto corrido: chame `AskUserQuestion`, uma opção por alternativa descrita, com a via de pedir mais contexto sempre como a última opção. É você — a sessão que orquestrou — quem tem essa ferramenta; o agente não a tem.
 
 Ao final, repasse ao stakeholder a consolidação, o que exige decisão dele e a próxima ação recomendada.

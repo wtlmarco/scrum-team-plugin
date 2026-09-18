@@ -27,7 +27,8 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | `scrum-master/sprint-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/sprint-backlog.md` *(o Sprint Backlog, com o Registro de transições — R24)* |
 | `scrum-master/sprints/<n>/` | pasta vazia; nasce no `/sm sprint plan` com `burndown.md` de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/burndown.md`; ganha `review.md` (`templates/sprint-review.md`) no `/sm review` e `retrospective.md` (`templates/retrospective.md`) + `sprint-backlog-snapshot.md` (cópia fechada do Sprint Backlog) no `/sm sprint close` |
 | `scrum-master/consumption-log.md` | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption-log.md` *(registro de consumo do time — retenção em vivo+archive, não em `sprints/<n>/`; critério em [`artifact-ownership.md` §1c](../process/artifact-ownership.md))* |
-| `product-owner/product-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/product-backlog.md` *(o conjunto das Histórias; cada uma segue `templates/user-story.md`)* |
+| `product-owner/product-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/product-backlog.md` *(o índice ordenado das Histórias, com ponteiro para o arquivo de cada uma — v3.21)* |
+| `product-owner/stories/` | pasta vazia; cada História nasce de `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/user-story.md`, um arquivo por História (`<H-ID>-<slug>.md`) |
 | `quality-assurance/evidence.md` | `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/evidence.md` |
 | `architect/plans/` | pasta vazia; os planos nascem de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md` |
 | `user-experience/prototype/` | pasta vazia; o **protótipo funcional em HTML** nasce de `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/templates/functional-prototype.md` — entregável e pré-condição do portão ① |

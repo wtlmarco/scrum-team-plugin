@@ -1,7 +1,7 @@
 # Product Backlog
 
 > **DOCUMENTO VIVO** · **Dono:** PO · **Atualizado em:** <data>
-> **O Product Backlog é o conjunto das Histórias** (R20). Ordenado por **valor de produto × risco funcional**. A tradução disto em Tasks, com estimativa e dependência técnica, acontece na Planning Meeting e vive no Sprint Backlog do SM.
+> **O Product Backlog é o índice ordenado das Histórias** (R20 · [`artifact-ownership.md` §1d](../../scrum-master/process/artifact-ownership.md)). Cada História vive em arquivo próprio, `.team-project/product-owner/stories/<H-ID>-<slug>.md`; aqui entra só a linha de índice, com o ID linkando para esse arquivo. Ordenado por **valor de produto × risco funcional**. A tradução disto em Tasks, com estimativa e dependência técnica, acontece na Planning Meeting e vive no Sprint Backlog do SM.
 
 ## Régua de priorização
 
@@ -15,11 +15,11 @@
 
 | # | ID | História | Valor para o usuário | Origem | Tamanho | Estado |
 |---:|---|---|---|---|---|---|
-| 1 | H-<nnn> | <título na voz do usuário> | <o que ele passa a conseguir fazer> | RF-<nnn> / GAP <ID> / Review <n> | P/M/G | esboço · detalhada · **aprovada** · em sprint · entregue |
+| 1 | [H-<nnn>](stories/H-<nnn>-<slug>.md) | <título na voz do usuário> | <o que ele passa a conseguir fazer> | RF-<nnn> / GAP <ID> / Review <n> | P/M/G | esboço · detalhada · **aprovada** · em sprint · entregue |
 
 **Estados.** `esboço` — nasceu do SDD, tem valor declarado. `detalhada` — tem regras, protótipos e critérios de aceite. `aprovada` — passou no portão ③ e pode entrar na Planning. `em sprint` — está no Sprint Backlog corrente. `entregue` — aceita na Sprint Review.
 
-O conteúdo de cada História segue [`user-story.md`](user-story.md), no arquivo da História ou em seção própria deste documento — a escolha é do projeto, declarada em `.team-project/product-owner/context.md`.
+O conteúdo de cada História — regras funcionais, protótipos, critérios de aceite, aprovação do portão ③ — segue [`user-story.md`](user-story.md) e vive **sempre** em arquivo próprio, `.team-project/product-owner/stories/<H-ID>-<slug>.md`. Este documento nunca carrega esse conteúdo: só a linha de índice acima, com o ID linkando para o arquivo.
 
 ## Plano de entrega
 
@@ -66,6 +66,6 @@ O conteúdo de cada História segue [`user-story.md`](user-story.md), no arquivo
 
 - Reordenar a cada `/po prioritize`; a ordem daqui alimenta a seleção de candidatas na Planning Meeting.
 - **História só sai do backlog quando aceita na Sprint Review** — não quando construída, e não quando todas as suas Tasks fecharam (R21).
-- **História rejeitada na Review volta para cá inteira**, com as Tasks já feitas anotadas, para não se refazer o que passou no QA.
-- Detalhar **só o que candidata ao próximo sprint**. Backlog detalhado por inteiro envelhece antes de ser construído.
+- **História rejeitada na Review volta ao índice** no estado `detalhada`; o arquivo da História mantém as Tasks já feitas anotadas, para não se refazer o que passou no QA.
+- Detalhar **só o que candidata ao próximo sprint** — o detalhamento é lá no arquivo da História, não aqui. Conjunto de Histórias detalhadas por inteiro envelhece antes de ser construído.
 - "Fora de escopo" existe para poupar a discussão recorrente: registre o motivo e o gatilho de reavaliação.
