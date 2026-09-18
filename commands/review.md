@@ -51,7 +51,7 @@ Este comando é **seu** — a sessão principal orquestra. A triagem e a curador
    | `RAIZ/standards/*` **e** os documentos do papel dev (`RAIZ/roles/developer/*`) | esses arquivos | Agent `architect` |
    | `RAIZ/agents/*`, `RAIZ/commands/*`, `RAIZ/.claude-plugin/*` e os guias de raiz — `RAIZ/{README,how-to,replicate-in-new-project,review-contract,team-init,team-update}.md` | — | **proposta ao stakeholder**, não aplicada. **Exceção do Agent `scrum-master`, válida para os quatro grupos igualmente**: coerência de referência cruzada (contagem, ponteiro, nome de modo, índice de estrutura) é curadoria, não reescrita, e ele aplica direto. A exceção **nunca** cobre mudança de comportamento de agente, texto de roteiro ou regra nova — isso continua proposta, nos quatro grupos, sem exceção |
 
-   Conflito com regra vigente **não se resolve sozinho**: apresente as duas posições e **pare** para decisão do stakeholder.
+   Conflito com regra vigente **não se resolve sozinho**: apresente as duas posições em `AskUserQuestion`, com a via de pedir mais contexto como última opção — não em texto corrido — e **pare** para decisão do stakeholder.
 
 2. **Aplicação (agente do papel dono).** Dispare o agente dono com: a instrução literal; o caminho absoluto de **RAIZ**; a ordem de **ler `RAIZ/review-contract.md` e seguir os cinco passos** (classificar · analisar conflito · aplicar no documento certo · registrar no changelog · **verificar com evidência**, R19); e a reavaliação obrigatória do conjunto do alcance daquele papel. O alcance de cada papel está em `RAIZ/review-contract.md`.
 

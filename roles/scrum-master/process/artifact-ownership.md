@@ -9,7 +9,7 @@ Os caminhos concretos dos documentos do projeto estão em `.team-project/README.
 | Artefato | Dono | Regra |
 |---|---|---|
 | Código-fonte | dev | Só os arquivos listados no Plano de Implementação vigente |
-| **Histórias** (`.team-project/product-owner/`) | **PO** | Unidade de valor. Conteúdo **só funcional** — regra, protótipo, critério de aceite; decisão técnica ali é achado de processo (R20). Modelo em [`../../product-owner/templates/user-story.md`](../../product-owner/templates/user-story.md) |
+| **Histórias** (`.team-project/product-owner/stories/`) | **PO** | Unidade de valor. **Um arquivo por História**, nome `<H-ID>-<slug>.md` (§4) — deixou de ser opcional (v3.21, §1d). Conteúdo **só funcional** — regras, protótipos, critérios de aceite, registro do portão ③; decisão técnica ali é achado de processo (R20). Modelo em [`../../product-owner/templates/user-story.md`](../../product-owner/templates/user-story.md) |
 | **Tasks** (linhas do Sprint Backlog) | **SM** (a linha) · **Arquiteto** (o plano dentro dela) | Unidade de trabalho. Toda Task pertence a exatamente uma História (R20); a Task carrega estimativa, dependências, evidência esperada e o Plano de Implementação |
 | Planos de Implementação (`.team-project/architect/plans/`) | Arquiteto | Um plano por Task, nome `<Task-ID>-<slug>.md`. É o conteúdo técnico da Task, não um artefato irmão dela |
 | Arquitetura, modelo de dados, modelo de API (SDD) | Arquiteto | Grafia de entidades e endpoints é contrato — modelos em [`../../../deliverables/sdd/README.md`](../../../deliverables/sdd/README.md) |
@@ -21,7 +21,7 @@ Os caminhos concretos dos documentos do projeto estão em `.team-project/README.
 | Protótipos de tela e explorações | UX | Exploração da tela de uma História, no detalhamento (portão ③). Não é código de produção, e **não substitui** o protótipo funcional do ① |
 | Objetivos, requisitos, fluxos, changelog funcional (SDD) | PO | Modelos e critérios em [`../../../deliverables/README.md`](../../../deliverables/README.md) |
 | Escopo e critérios de sucesso | PO | Marcação exige evidência do QA — modelo em [`../../../deliverables/implementation/01-scope-and-criteria.md`](../../../deliverables/implementation/01-scope-and-criteria.md) |
-| Product Backlog (`.team-project/product-owner/`) | PO | **O conjunto das Histórias.** Priorizado por valor e risco funcional; recebe também os gaps, débitos e ressalvas levantados na Sprint Review |
+| Product Backlog (`.team-project/product-owner/`) | PO | **O índice ordenado das Histórias**, não o conteúdo delas — cada linha aponta para o arquivo próprio da História (v3.21, §1d). Priorizado por valor e risco funcional; recebe também os gaps, débitos e ressalvas levantados na Sprint Review |
 | **Plano de entrega** — que Histórias saem em que sprint | **PO** | Ele recebe do time as estimativas e do SM a capacidade, e **decide o que entra e quando sai**. Seção do Product Backlog, não documento novo |
 | **Status executivo ao stakeholder** | **PO** | "Onde estamos, o que está bloqueado, o que vem" — em nível de **História**, não de Task. Lê o Sprint Backlog do SM e o registro de evidências do QA; não os edita. Saída de `/po status` |
 | **Análise de impacto** | **PO** | O objeto é o **plano de entrega**. Consolida três insumos com dono declarado: quadro e capacidade do **SM**, retrabalho e contrato do **Arquiteto**, risco e recomendação seus. **Não é arbitragem** — não há disputa, é análise de mudança a um plano que é dele. Saída de `/po impact` |
@@ -104,6 +104,25 @@ A forma certa já existe e é a do **SM**: ele é dono do documento de status e 
 
 **Tensão residual, não resolvida aqui — devolvida ao stakeholder.** As duas formas convivendo na mesma pasta-mãe (`.team-project/scrum-master/`) significa que parte do histórico do time está em arquivos únicos com cabeçalho por sprint, e parte está em subpastas por número — quem não conhece o critério acima pode achar a mistura inconsistente à primeira vista. Avaliei mover `consumption-log-archive.md` para dentro de `sprints/<n>/consumption.md` para uniformizar, e **decidi não mover por conta própria**: o `consumption-log` tem uma razão de ser vivo+archive que o Review/Retro/burndown não têm (a tabela de totais acumulados, que uma pasta por sprint não serve bem), então unificar à força custaria a funcionalidade que já existe. Fica registrado como ponto em aberto para o stakeholder decidir se a convivência dos dois padrões é aceitável ou se prefere pagar o custo de uniformizar.
 
+### 1d. Product Backlog deixa de conter a História — índice com ponteiro, não texto (v3.21)
+
+Até a v3.20, `user-story.md` deixava a `seção própria deste documento` (dentro do Product Backlog) como alternativa válida ao arquivo por História — "a escolha é do projeto". A partir da v3.21 a opção fecha: **o conteúdo de toda História vive em arquivo próprio**, `.team-project/product-owner/stories/<H-ID>-<slug>.md` (convenção de nome em §4). O Product Backlog guarda só a linha de índice, com um link para o arquivo. Gatilho: o Product Backlog estava crescendo sem limite porque acumulava o texto de todas as Histórias, não só a lista delas — o mesmo modo de falha que R17 já corrigiu no changelog do processo, agora no artefato do PO.
+
+**O dono não muda** — índice e arquivos de História são os dois do PO (matriz acima); só o *onde* o conteúdo mora se move. Isto não inverte R20 ([`working-rules.md`](working-rules.md)): R20 fixa que a História é a unidade de valor e é do PO, em contraste com a Task, que é do SM — é regra de **propriedade e locus lógico**, não de layout físico de arquivo.
+
+**O que fica no Product Backlog** (índice e o que pertence ao backlog como um todo, não a uma História isolada):
+- a tabela de Histórias — `#, ID, História, Valor, Origem, Tamanho, Estado` — com o ID linkando para o arquivo da História
+- a régua de priorização
+- o Plano de entrega
+- Requisitos em elaboração
+- Ressalvas e débitos vindos da Sprint Review
+- Decisões funcionais pendentes do stakeholder
+- Fora de escopo
+
+**O que sai** — só isto, é o que o stakeholder nomeou (nenhuma outra seção do Product Backlog é tocada por conta própria): o **conteúdo por História** — regras funcionais, protótipos, critérios de aceite, registro do portão ③ — hoje descrito em `user-story.md` (Estado 2, "detalhada").
+
+**Como o SM verifica:** toda linha da tabela de Histórias do Product Backlog tem um link que abre um arquivo em `.team-project/product-owner/stories/`; nenhuma seção "Regras funcionais" / "Protótipos" / "Critérios de aceite" / "Aprovação — portão ③" aparece dentro do Product Backlog — só no arquivo da História. Ver também a linha "SM verifica" de R20 (`working-rules.md`).
+
 ## 2. Fluxo de um artefato entre papéis
 
 ```
@@ -157,6 +176,7 @@ Os quatro portões numerados são os gates de [`workflow.md` §8](workflow.md). 
 
 - **Idioma:** documentação e comunicação no idioma do time; código, identificadores e mensagens de commit seguem o padrão já existente no repositório.
 - **IDs:** padrão definido no contexto do projeto; nunca reaproveitados. Convenção padrão: `H-nnn` para História, `T-nnn` para Task, sufixo para quebra (`T-012a`, `T-012b`); Task nascida de um GAP reusa o ID do GAP.
+- **Nome de arquivo de História:** `<H-ID>-<slug>.md`, em `.team-project/product-owner/stories/` — mesmo padrão de `<Task-ID>-<slug>.md` dos Planos de Implementação, linha acima na matriz (v3.21, §1d).
 - **Commits:** uma Task por commit sempre que possível, referenciando o ID da Task.
 - **Resolver GAP:** o QA remove a entrada do registro de GAPs e o SM registra a correção no documento de status — nunca os dois no mesmo arquivo.
 - **Documento vivo** traz no topo a marcação **DOCUMENTO VIVO**, o dono e a data da última atualização.

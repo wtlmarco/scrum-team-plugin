@@ -20,7 +20,8 @@ Cada modelo pertence ao **papel que o usa** (`roles/<papel>/templates/`), por [`
 | `.team-project/scrum-master/consumption-log.md` | [`roles/scrum-master/templates/consumption-log.md`](../../roles/scrum-master/templates/consumption-log.md) | SM | **Sim — estrutura**; as linhas são do projeto |
 | `.team-project/scrum-master/sprints/<n>/` | vazia; nasce em `/sm sprint plan` com só `burndown.md` (linha de abertura); ganha `review.md` no `/sm review` e `retrospective.md` + `sprint-backlog-snapshot.md` no `/sm sprint close` — modelos: [`sprint-review.md`](../../roles/scrum-master/templates/sprint-review.md), [`retrospective.md`](../../roles/scrum-master/templates/retrospective.md), [`burndown.md`](../../roles/scrum-master/templates/burndown.md) | SM | **Sim — os três modelos**, nunca o conteúdo escrito nem o snapshot fechado. Retenção em **pasta numerada**, não em arquivo único — critério em [`artifact-ownership.md` §1c](../../roles/scrum-master/process/artifact-ownership.md) |
 | `.team-project/product-owner/context.md` | idem | PO | Não |
-| `.team-project/product-owner/product-backlog.md` | [`roles/product-owner/templates/product-backlog.md`](../../roles/product-owner/templates/product-backlog.md) | PO | **Sim — estrutura**; as Histórias são do projeto |
+| `.team-project/product-owner/product-backlog.md` | [`roles/product-owner/templates/product-backlog.md`](../../roles/product-owner/templates/product-backlog.md) | PO | **Sim — estrutura**; as linhas do índice são do projeto |
+| `.team-project/product-owner/stories/` | vazia; cada História nasce de [`user-story.md`](../../roles/product-owner/templates/user-story.md), um arquivo por História (v3.21) | PO | **Sim — o modelo**, não as Histórias escritas |
 | `.team-project/architect/context.md` | idem | Arquiteto | Não |
 | `.team-project/architect/plans/` | vazia; os planos nascem de [`implementation-plan.md`](../../roles/architect/templates/implementation-plan.md) | Arquiteto | **Sim — o modelo**, não os planos escritos |
 | `.team-project/user-experience/context.md` | idem | UX | Não |
@@ -30,7 +31,7 @@ Cada modelo pertence ao **papel que o usa** (`roles/<papel>/templates/`), por [`
 | `.team-project/quality-assurance/context.md` | idem | QA | Não |
 | `.team-project/quality-assurance/evidence.md` | [`roles/quality-assurance/templates/evidence.md`](../../roles/quality-assurance/templates/evidence.md) | QA | **Sim — estrutura**; as evidências são do projeto |
 
-**Histórias:** vivem em `.team-project/product-owner/`, no formato de [`user-story.md`](../../roles/product-owner/templates/user-story.md) — em arquivo por História ou em seção do backlog, à escolha do projeto, declarada no `context.md` do PO.
+**Histórias:** vivem em `.team-project/product-owner/stories/`, um arquivo por História, no formato de [`user-story.md`](../../roles/product-owner/templates/user-story.md) — deixou de ser opção do projeto na v3.21 ([`artifact-ownership.md` §1d](../../roles/scrum-master/process/artifact-ownership.md)).
 
 ## As três classes de reconciliação
 

@@ -54,16 +54,17 @@ Respondo por **o quê** e **por quê** — nunca por **como**.
 Dois modos, pelo estado da História (modelo em [`templates/user-story.md`](templates/user-story.md)):
 
 **Esboço** — a História nasce de um requisito do SDD funcional **já aprovado** (portão ①/②):
-1. Escrever o **valor** em uma frase: o que o usuário passa a conseguir fazer que hoje não consegue.
+1. Criar o arquivo da História em `.team-project/product-owner/stories/<H-ID>-<slug>.md` e escrever o **valor** em uma frase: o que o usuário passa a conseguir fazer que hoje não consegue.
 2. Rastrear a origem (RF, GAP ou ressalva de Review) e dar um tamanho grosseiro (P/M/G) só para ordenar.
-3. Entrar no Product Backlog. **Não detalhar ainda** — a maioria das Histórias nunca chega ao sprint como foi escrita.
+3. **Na mesma sessão**, escrever a linha correspondente no índice do Product Backlog, com o ID linkando para o arquivo recém-criado. **Não detalhar ainda** — a maioria das Histórias nunca chega ao sprint como foi escrita.
 
-**Detalhe** — quando a História candidata ao próximo sprint:
+**Detalhe** — quando a História candidata ao próximo sprint, editando o **arquivo da História** (nunca o Product Backlog):
 1. Escrever as **regras funcionais**, uma por linha, com os casos de borda que o stakeholder precisa reconhecer.
 2. **História com interface:** acionar o UX (`/ux screen`) — sem protótipo com os seis estados e os critérios de acessibilidade, o detalhamento não fecha (R8).
 3. Escrever os **critérios de aceite**, cada um com "como verificar" — são eles que serão conferidos na Review.
 4. Escrever o **fora desta História**: o que alguém suporia incluído e não está.
 5. **Apresentar ao stakeholder e registrar a aprovação — portão ③.** Sem isso a História não entra na Planning Meeting.
+6. Atualizar o **Estado** na linha do índice do Product Backlog (`esboço` → `detalhada` → `aprovada`) — o índice segue o arquivo, nunca o contrário.
 
 **Nada de técnico entra aqui** (R20). Arquivo, classe, endpoint ou estrutura de dados no detalhamento é achado de processo e volta para o PO.
 
@@ -106,7 +107,7 @@ O bug entra por você: o stakeholder reporta o defeito ao PO, você **classifica
 4. **Fechar a fila:** todo item tratado sai de `.team-project/note.md` — passa a viver só no destino (registro da QA, Product Backlog, ou a resposta já dada). A fila não vira um segundo registro paralelo que diverge dos outros.
 5. Item que só a QA consegue classificar depois de investigar **permanece na fila**, com a nota "aguardando investigação da QA" — não é removido antes da hora.
 
-> **Não confundir com `/review note`.** Aquele processa o `note.md` da **raiz do repositório-fonte do plugin** — a fila que evolui o processo do time, tratada pelo Agent `scrum-master`. Este processa `.team-project/note.md`, **deste projeto** — relatos de uso, tratados por você. Mesmo nome, dois arquivos, dois donos (`artifact-ownership.md` §1b).
+> **Não confundir com `/review note`.** Aquele processa o `note.md` da **raiz do repositório-fonte do plugin** — a fila que evolui o processo do time, tratada pelo Agent `scrum-master`. Este processa `.team-project/note.md`, **deste projeto** — relatos de uso, tratados por você. Mesmo nome, dois arquivos, dois donos ([`artifact-ownership.md` §1b](../scrum-master/process/artifact-ownership.md)).
 
 ## Como sei que estou funcionando
 
@@ -126,10 +127,10 @@ Três tipos: **processo** (normativo) · **vivo** (arquivo atualizado a cada cic
 
 | Documento | Tipo | Onde | Modelo |
 |---|---|---|---|
-| Product Backlog — **o conjunto das Histórias**, com o **plano de entrega** | **vivo** | `.team-project/product-owner/product-backlog.md` | [`templates/product-backlog.md`](templates/product-backlog.md) |
+| Product Backlog — **o índice ordenado das Histórias**, com o **plano de entrega** | **vivo** | `.team-project/product-owner/product-backlog.md` | [`templates/product-backlog.md`](templates/product-backlog.md) |
 | Status executivo | saída | resposta de `/po status` | [`templates/status.md`](templates/status.md) |
 | Análise de impacto | saída | resposta de `/po impact` | [`templates/impact-analysis.md`](templates/impact-analysis.md) |
-| **História** | **vivo** | `.team-project/product-owner/` (arquivo ou seção do backlog) | [`templates/user-story.md`](templates/user-story.md) |
+| **História** | **vivo** | `.team-project/product-owner/stories/<H-ID>-<slug>.md` (arquivo próprio, obrigatório) | [`templates/user-story.md`](templates/user-story.md) |
 | **Relatos do stakeholder (fila)** | **vivo** | `.team-project/note.md` — escrito pelo stakeholder, tratado por você via `/po note` | [`templates/note.md`](templates/note.md) |
 | **SDD — visão geral e objetivos** | **entregável** | SDD do projeto | [`deliverables/sdd/00-overview-objectives.md`](../../deliverables/sdd/00-overview-objectives.md) |
 | **SDD — requisitos** | **entregável** | SDD do projeto | [`deliverables/sdd/01-requirements.md`](../../deliverables/sdd/01-requirements.md) · entrada individual: [`templates/requirement.md`](templates/requirement.md) |

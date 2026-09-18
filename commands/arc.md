@@ -23,6 +23,8 @@ Pedido `/arc review …` → responda que o caminho é **`/review …`**: nenhum
 
 ## Registro de consumo — só onde o registro existe
 
-Se `.team-project/scrum-master/consumption-log.md` existir (projeto que instala o time — o clone-fonte do plugin não tem `.team-project/`, então nada é gravado lá), quando o agente retornar você — a sessão que orquestrou — recebe o total de tokens e a duração desta invocação. Acrescente uma linha ao registro: data, papel `arc`, comando, Task/História (se houver, senão `n/a`), tokens, duração. Número indisponível: registre "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, não há o que gravar — nada a fazer aqui.
+Se `.team-project/scrum-master/consumption-log.md` existir, acrescente uma linha quando o agente retornar, com os números que ele devolve: data, papel `arc`, comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, nada a fazer.
+
+Se a saída do agente traz uma pergunta na forma de R22 (pergunta + por que bloqueia, alternativas descritas, recomendação, via de pedir mais contexto), não a repasse em texto corrido: chame `AskUserQuestion`, uma opção por alternativa descrita, com a via de pedir mais contexto sempre como a última opção. É você — a sessão que orquestrou — quem tem essa ferramenta; o agente não a tem.
 
 Ao receber a resposta, repasse ao stakeholder o diagnóstico e o caminho do plano gerado, e destaque em uma linha o que exige decisão dele.
