@@ -6,10 +6,10 @@
 
 | Unidade | Responde | Dono | Enfoque | Vive em |
 |---|---|---|---|---|
-| **História** | *que valor o stakeholder recebe* | PO | **só funcional** — regra, protótipo, critério de aceite | Product Backlog (`.team-project/product-owner/`) |
+| **História** | *que valor o stakeholder recebe* | PO | **só funcional** — regra, protótipo, critério de aceite | arquivo próprio (`.team-project/product-owner/stories/`), indexada pelo Product Backlog |
 | **Task** | *que trabalho o time faz para entregar aquele valor* | SM (quadro) · Arquiteto (o plano dentro dela) | técnico — passos, arquivos, verificação | Sprint Backlog (`.team-project/scrum-master/`) |
 
-**O conjunto das Histórias é o Product Backlog.** Uma História nasce do SDD, é detalhada quando vai entrar num sprint, e é quebrada em Tasks pelo time na Planning Meeting. **Toda Task pertence a exatamente uma História** (R20); Task sem História é trabalho que ninguém pediu.
+**O Product Backlog é o índice ordenado das Histórias** (v3.21 — [`artifact-ownership.md` §1d](artifact-ownership.md)); cada uma vive em arquivo próprio. Uma História nasce do SDD, é detalhada quando vai entrar num sprint, e é quebrada em Tasks pelo time na Planning Meeting. **Toda Task pertence a exatamente uma História** (R20); Task sem História é trabalho que ninguém pediu.
 
 A Task carrega ID, título, História de origem, dono, dependências, estimativa, critério de pronto, **evidência esperada** e o **Plano de Implementação** escrito pelo Arquiteto. A convenção de IDs de cada projeto está em `.team-project/scrum-master/context.md` — tipicamente `H-nnn` para História, `T-nnn` para Task, sufixo para quebra (`T-012a`, `T-012b`), e o ID do GAP reusado quando a Task nasce de um GAP.
 
@@ -18,7 +18,7 @@ A Task carrega ID, título, História de origem, dono, dependências, estimativa
 ```
 SDD funcional (PO: 00, 01, 02) + protótipo funcional em HTML (UX)
   └─ ① stakeholder NAVEGA o protótipo e aprova ──▶ SDD técnica (Arquiteto: 03, 04, 05)
-       └─ ② aprovada ──▶ Histórias (PO)  ═══ conjunto = Product Backlog
+       └─ ② aprovada ──▶ Histórias (PO), uma por arquivo ──▶ índice = Product Backlog
             └─ detalhamento da História: regras · protótipos (UX) · critérios de aceite
                  └─ ③ stakeholder aprova, apresentado pelo PO
                       └─ Planning Meeting ──▶ Sprint Backlog
@@ -37,7 +37,7 @@ Os quatro portões numerados são os gates de §8. **O detalhamento da História
 |---|---|---|---|---|
 | 0 | Onboarding do projeto *(uma vez, projeto novo ou retomado)* | SM coordena, os seis papéis participam | `/sm onboarding` | Entendimento alinhado, contexto preenchido, quadro aberto (R14 · §5a) |
 | 0b | Brainstorm *(só ideia sem documentação)* | SM facilita · fase 1: stakeholder + PO + UX · fase 2: + Arquiteto | `/team brainstorm <ideia>` | Brief funcional fechado, pronto para o SDD (R15 · §5b) |
-| 1 | História criada a partir do SDD | PO | `/po story <ID>` | História no Product Backlog, com o valor declarado |
+| 1 | História criada a partir do SDD | PO | `/po story <ID>` | Arquivo da História criado, com o valor declarado, e linha nova no índice do Product Backlog |
 | 2 | Detalhamento da História *(quando ela candidata a um sprint)* | PO, com o UX nos protótipos | `/po story <ID>` (modo detalhe) · `/ux journey` · `/ux screen <ID>` | Regras, protótipos e critérios de aceite — só funcional |
 | 3 | Planning Meeting | SM conduz, o time inteiro participa | `/sm sprint plan` | Sprint Backlog: Histórias aprovadas quebradas em Tasks, estimadas, dentro da capacidade (§5e) |
 | 4 | Plano de Implementação | Arquiteto | `/arc plan <Task>` | Plano dentro da Task, citando a especificação de tela e as seções de standard |
@@ -147,7 +147,7 @@ Acontece **uma vez**, quando o time recebe um projeto novo ou retoma um abandona
 | 2 | **Lista de lacunas contra a documentação** — para cada coisa que o time precisa saber para planejar (objetivo do produto, fase, stack, ambiente, fontes da verdade, capacidade, duração do sprint, unidade de estimativa, restrições, riscos abertos), marcar: respondido pelo doc X / parcial / ausente | SM, sozinho | Lista de lacunas com origem |
 | 3 | **Bifurcação** — (a) documentação funcional essencial **ausente** (sem visão geral, sem requisitos, sem fluxos) → abrir `brainstorm` (§5b) e **pausar** o onboarding até ele fechar; (b) documentação **desatualizada ou contraditória** (ex.: status diz "concluído", GAPs dizem o contrário) → registrar a divergência como risco no quadro e acionar `/qa audit`; o onboarding segue com a divergência declarada, não arredondada | SM | Decisão de rota registrada |
 | 4 | **Leitura de entrada do time** — cada um dos outros cinco papéis lê `.team-project/README.md` + o seu `context.md` e reporta, em ≤10 linhas: o que entendeu como seu mandato neste projeto, o que precisa e não está documentado, um risco que enxerga do seu ângulo | PO · Arquiteto · UX · dev · QA | Cinco leituras de entrada |
-| 5 | **Consolidação + perguntas ao stakeholder** — o SM funde as leituras num quadro único e produz **uma** lista de perguntas que só o stakeholder responde: estratégicas (provedor, alvo da retomada, ordem de prioridade), a **duração do sprint** e a **unidade de estimativa** se ainda não estiverem no contexto, e lacunas funcionais pequenas que a documentação não cobriu e que não justificam um brainstorm. Cada pergunta segue a forma fixa de R22: por que bloqueia · alternativas descritas · recomendação do time (R9 — o time tentou responder antes) · a via de pedir mais contexto | SM | Lista de decisões pendentes do stakeholder |
+| 5 | **Consolidação + perguntas ao stakeholder** — o SM funde as leituras num quadro único e produz **uma** lista de perguntas que só o stakeholder responde: estratégicas (provedor, alvo da retomada, ordem de prioridade), a **duração do sprint** e a **unidade de estimativa** se ainda não estiverem no contexto, e lacunas funcionais pequenas que a documentação não cobriu e que não justificam um brainstorm. Cada pergunta segue a forma fixa de R22: por que bloqueia · alternativas descritas · recomendação do time (R9 — o time tentou responder antes) · a via de pedir mais contexto **sempre como última opção**, resolvida em formulário pela sessão que orquestra o onboarding, não em texto corrido | SM | Lista de decisões pendentes do stakeholder |
 | 6 | **Registro do alinhamento** — o SM escreve o entendimento comum no contexto do projeto (`.team-project/README.md` e os `context.md` recebem aporte de cada papel) e abre o quadro de trabalho | SM | Contexto do projeto preenchido e datado, quadro aberto |
 
 **O que o SM pergunta primeiro à documentação:** propósito e fase do produto (`00-overview`), requisitos e seus critérios de aceite (`01-requirements`), atores e fluxos (`02-flows`), princípios de arquitetura e vinculação de stack (`03-architecture`), contratos de dados e API (`04`/`05`), o que está construído e com que evidência (`02-status`, `03-code-map`, `pending`), ambiente e comandos de verificação, capacidade declarada, limitações conhecidas, riscos e bloqueios abertos.
@@ -159,7 +159,7 @@ Acontece **uma vez**, quando o time recebe um projeto novo ou retoma um abandona
 - **Documentação herdada divergente:** também é a bifurcação (b) do passo 3 — vira risco no quadro e aciona `/qa audit`.
 - **O que o stakeholder já sabe estar quebrado, e ainda não está escrito em lugar nenhum:** é o que faltava. No passo 5, o SM pergunta explicitamente por isso, e cada item vira relato roteado ao **PO** (`/po bug <relato>`, §6a) — nunca uma entrada direta em `pending.md`, que continua sendo escrita só pela QA depois de confirmar.
 
-**O que o SM escala ao stakeholder** (só depois de esgotar a documentação e o time): decisões estratégicas (stack, provedor, custo, alvo da retomada, prioridade acima da ordem de dependência do SM), os dois parâmetros de cadência (duração do sprint, unidade de estimativa) e lacunas funcionais pequenas não respondíveis pela documentação — sempre na forma fixa de R22: opções descritas, recomendação e a via de pedir mais contexto.
+**O que o SM escala ao stakeholder** (só depois de esgotar a documentação e o time): decisões estratégicas (stack, provedor, custo, alvo da retomada, prioridade acima da ordem de dependência do SM), os dois parâmetros de cadência (duração do sprint, unidade de estimativa) e lacunas funcionais pequenas não respondíveis pela documentação — sempre na forma fixa de R22: opções descritas, recomendação e a via de pedir mais contexto, resolvida em formulário, não em texto corrido.
 
 **Condição de saída — o onboarding está pronto quando:**
 - [ ] Toda linha do inventário de fontes está preenchida (existe / desatualizada / ausente), e toda "ausência de doc funcional essencial" foi produzida via brainstorm ou aceita como risco pelo stakeholder.
@@ -236,6 +236,8 @@ O custo dos documentos de `${CLAUDE_PLUGIN_ROOT}/` não pode depender de uma fax
 
 **Onde o corte rende mais, em ordem:** (1) a **carga fixa** dos 12 arquivos de `agents/` + `commands/`, porque é multiplicada por toda invocação; (2) o **bloco fixo §8 do `.team-project/README.md`**, lido por todo papel em toda invocação; (3) o conjunto sob demanda, que já é protegido por R3.
 
+**Os dois primeiros são proposta, nunca aplicação direta** — `agents/` e `commands/` são do stakeholder (§1), e `.team-project/` é do projeto. O Act mede, encontra e propõe com o texto pronto; ele autoriza item a item no fecho. A exceção de curadoria do SM não cobre remoção aí. Só o item (3) o `/review` aplica sozinho (v3.22).
+
 **Onde cada arquivo é carregado — e por que isso muda a conta.** `commands/<x>.md` entra no **contexto principal** quando o stakeholder digita `/x`; `agents/<papel>.md` entra no contexto do **subagente** que aquele comando dispara. Os dois nunca se somam no mesmo contexto para o mesmo papel: um comando de papel só custa `commands/<x>.md` + `agents/<papel>.md`, mas um broadcast custa **`commands/team.md` uma vez, mais um `agents/<papel>.md` por subagente disparado** — nunca os seis arquivos de comando.
 
 **Custo por comando, em carga fixa** (antes de qualquer leitura de `.team-project/`):
@@ -254,16 +256,14 @@ O custo dos documentos de `${CLAUDE_PLUGIN_ROOT}/` não pode depender de uma fax
 > ```
 > — soma manualmente `agents/<papel>.md` + `commands/<papel>.md` por papel; `/team brainstorm` e `/team cycle` somam `commands/team.md` + um `agents/<papel>.md` por papel disparado; `/review` soma `commands/review.md` + `agents/scrum-master.md` (triagem), mais `review-contract.md` (~10 KB, também remedido, sem variação relevante) por papel roteado. Remedir é parte da fase **Check**; tabela de custo que não se remede vira folclore — a v3.4 avisou isso e a própria tabela virou o exemplo.
 
-**Não existe mais broadcast dos seis.** O modo `consult` de `/team` foi removido: o canal do stakeholder é o PO (§6a), e questão que atravessa papéis vai por `/sm agreement`, que chama **só quem a questão toca**. Os dois comandos mais caros do time deixaram de existir.
+**Chame só quem a questão toca — não existe broadcast dos seis.** O canal do stakeholder é o PO (§6a), e questão que atravessa papéis vai por `/sm agreement`, cujo passo 1 identifica **quais papéis a questão toca** — dois ou três, nunca os seis por precaução. É onde a lição de R3 vive hoje, e o ganho é nos dois eixos: menos um `agents/<papel>.md` por papel não chamado e — o que pesa mais — menos uma rodada de leitura de contexto de projeto por subagente não disparado.
 
 **Três coisas que a carga fixa não mostra, e que costumam dominar o custo real:**
 1. **O modelo importa mais que os KB.** `/arc` e `/ux` rodam em **Opus**; `/dev` em **Haiku**. `/arc` carrega menos que `/sm` e custa mais.
 2. **A leitura em tempo de execução costuma superar a carga fixa.** Todo agente lê `.team-project/README.md` e o seu `context.md`; o QA lê ainda o plano, o relatório do dev, as seções de `standards/` citadas e o código. Num broadcast isso é multiplicado pelo número de subagentes.
-3. **As respostas voltam.** No broadcast, as seis saídas retornam ao contexto principal para consolidação.
+3. **As respostas voltam.** Cada saída de subagente retorna ao contexto principal para consolidação — num `/team brainstorm` ou `/team cycle`, uma por papel disparado.
 
-**A lição de R3 sobreviveu ao comando que a originou.** Ela nasceu no passo 1 do `consult`, que mandava avaliar se a mensagem pertencia a um papel só; hoje mora no **passo 1 do `/sm agreement`**, que manda identificar **quais papéis a questão toca** — dois ou três, nunca os seis por precaução. O ganho é nos dois eixos: menos um `agents/<papel>.md` de carga fixa por papel não chamado, e — o que costuma pesar mais — menos uma rodada de **leitura de contexto de projeto** por subagente que deixa de ser disparado.
-
-**Sem número fechado, de propósito.** Dúvida que é só de evidência, levada direto ao `/qa`, custa 10 KB e uma leitura de contexto; a mesma dúvida no `/sm agreement` custa ~15 KB mais um `agents/` e um par de leituras **por papel chamado**. O delta exato **não é derivável da tabela acima**: a coluna por papel soma `commands/` + `agents/`, e o que o `agreement` acrescenta é só `agents/`. O que a tabela sustenta é a **ordem de grandeza**, e a ordem basta para a decisão — estimar o resto seria repetir o erro que a v3.2 corrigiu.
+**A tabela sustenta ordem de grandeza, não delta exato.** A coluna por papel soma `commands/` + `agents/`, e o que o `/sm agreement` acrescenta é só `agents/` por papel chamado. Ordem de grandeza basta para decidir; estimar o resto repete o erro que a v3.2 corrigiu.
 
 **Gatilhos:**
 - *Medição* — em todo `/review` sem instrução (o papel já faz a reavaliação do conjunto ali; passa a anexar os dois números) e na retrospectiva de cada sprint (o SM mede o total do processo).
@@ -382,7 +382,7 @@ prioridade, prazo, plano ──▶ PO               (detém o plano de entrega �
 bug relatado pelo stakeholder ──▶ PO classifica (defeito · escopo · dúvida de uso) ──▶ defeito aciona a QA (§6a · v3.13)
 bug achado pelo próprio time ──▶ direto ao registro da QA (dev: 🔺 GAP · QA: achado próprio · Arquiteto/UX: §6b) — não passa pelo PO (§6a · v3.14)
 capacidade, fila, bloqueio ─▶ SM              (quanto cabe, em que ordem)
-lacuna de especificação  ──▶ PO ──▶ stakeholder (opções descritas + recomendação + pedir mais contexto — R22)
+lacuna de especificação  ──▶ PO ──▶ stakeholder (opções descritas + recomendação + pedir mais contexto, em formulário — R22)
 decisão estratégica      ──▶ stakeholder       (stack, provedor, custo, risco aceito)
 exceção a um padrão      ──▶ stakeholder ──▶ ADR escrita pelo Arquiteto
 defeito em ${CLAUDE_PLUGIN_ROOT}/standards/ ──▶ Arquiteto (dev: 🔺 GAP · QA: achado de processo) ──▶ /review   (R16)
@@ -418,7 +418,7 @@ Não há orquestrador. O QA classifica o achado pelo **objeto da dúvida** e o e
 
 **Por que não há um orquestrador único:** o achado de degrau 2 é, com frequência, *"o requisito está errado ou a implementação está?"* — e o PO é **parte** nessa pergunta. Pedir a ele que conduza o julgamento do próprio artefato contraria o mesmo princípio que sustenta a frente 2 do QA (§4a: *um autor não audita a própria omissão*) e a regra de que o dev não revisa os próprios normativos. Quando é preciso reunir posições, quem facilita é o **SM**, que não é dono de requisito, desenho nem evidência.
 
-Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no papel correto (R9). **Exceções declaradas:** no `brainstorm` (§5b), no passo 5 do `onboarding` (§5a), na **aprovação do detalhamento da História** (portão ③) e na **Sprint Review** (portão ④) o stakeholder é participante — o diálogo direto ali é co-criação ou aceite, não escalação; o que sobe a ele mesmo assim vem na forma fixa de R22 — opções descritas, recomendação e a via de pedir mais contexto.
+Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no papel correto (R9). **Exceções declaradas:** no `brainstorm` (§5b), no passo 5 do `onboarding` (§5a), na **aprovação do detalhamento da História** (portão ③) e na **Sprint Review** (portão ④) o stakeholder é participante — o diálogo direto ali é co-criação ou aceite, não escalação; o que sobe a ele mesmo assim vem na forma fixa de R22 — opções descritas, recomendação e a via de pedir mais contexto, resolvida em formulário pela sessão que orquestra, não em texto corrido.
 
 **Quando a dúvida atravessa papéis**, use `/sm agreement <questão>`: o SM identifica **quais papéis a questão toca**, chama só esses, consolida **uma** recomendação e registra a divergência que sobrou. Não é broadcast — reunir os seis para uma questão de dois é desperdício (R3). **Acordo não transfere a decisão**: o dono do assunto continua decidindo no seu domínio, e o que sobra de divergência sobe ao stakeholder.
 

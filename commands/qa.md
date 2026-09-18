@@ -23,6 +23,6 @@ Pedido `/qa review …` → responda que o caminho é **`/review …`**: nenhum 
 
 ## Registro de consumo — só onde o registro existe
 
-Se `.team-project/scrum-master/consumption-log.md` existir (projeto que instala o time — o clone-fonte do plugin não tem `.team-project/`, então nada é gravado lá), quando o agente retornar você — a sessão que orquestrou — recebe o total de tokens e a duração desta invocação. Acrescente uma linha ao registro: data, papel `qa`, comando, Task/História (se houver, senão `n/a`), tokens, duração. Número indisponível: registre "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, não há o que gravar — nada a fazer aqui.
+Se `.team-project/scrum-master/consumption-log.md` existir, acrescente uma linha quando o agente retornar, com os números que ele devolve: data, papel `qa`, comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, nada a fazer.
 
 Ao receber o veredito, repasse-o na íntegra ao stakeholder. Se for ✅, indique `/sm close <ID>` — o fechamento da Task é técnico; o aceite é da História, agregado, e vem depois, na Sprint Review (R21). Se for ⚠️ ou ❌, indique para quem cada achado volta conforme a **escada de falha**: achado de aderência de execução → `/arc comply <ID>` (revisão sob demanda) ou `/dev resume <ID>`; achado de processo (seção de standard omitida ou errada no plano, defeito no próprio standard) → fila do **`/review`** (roteado ao Arquiteto). Nada disso antes do fechamento.
