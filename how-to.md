@@ -64,21 +64,46 @@ claude plugin update team@team           # aplica (exige reiniciar a sessão)
 | `/sm` | `onboarding` · `sprint plan` · `sprint close` · `review` · `board` · `agreement <questão>` · `close <T-ID>` | Scrum Master — rituais, Sprint Backlog, capacidade, riscos, processo |
 | `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` · `bug <relato>` · `note` | Product Owner — **o seu canal**: status, prazo, requisitos, Histórias, backlog, aceite, e o defeito que você reporta |
 | `/arc` | `plan <ID>` · `comply <ID>` · `adr <tema>` · `question <dúvida>` | Arquiteto — desenho, Plano de Implementação, ADR, standards |
-| `/ux` | `prototype` · `journey <fluxo>` · `screen <nome>` · `prototype <tela>` · `review-ui <tela>` | UX — **protótipo funcional (portão ①)**, jornada, tela, usabilidade, acessibilidade |
+| `/ux` | `prototype` · `prototype sprint <n>` · `prototype screen <tela>` · `journey <fluxo>` · `screen <nome>` · `review-ui <tela>` | UX — **protótipo funcional (portão ①)**, **protótipo do sprint (portão ③)**, jornada, tela, usabilidade, acessibilidade |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` | Desenvolvedor — executa o plano, não improvisa |
-| `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` | QA — o veredito de qualidade que responde ao stakeholder |
-| `/team` | `init` · `update` · `version` · `brainstorm <ideia>` · `cycle <T-ID>` · `plan <T-ID>` · `build <T-ID>` · `qa <T-ID>` | Orquestra o time trabalhando — **não é broadcast** |
+| `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` · `bug <descrição>` *(acionado pelo PO)* | QA — o veredito de qualidade que responde ao stakeholder |
+| `/team` | `init` · `update` · `version` · `brainstorm <ideia>` · `cycle <T-ID>` · **`cycle sprint`** · `plan <T-ID>` · `build <T-ID>` · `qa <T-ID>` | Orquestra o time trabalhando — **não é broadcast** |
 | `/review` | `<instrução>` · `note` · `metrics` · `audit` · `history` | Evolução do processo do time — **só no repositório-fonte do plugin** |
 
 **Os três últimos modos do `/team` são fatias do `cycle`**, para quando você não quer o ciclo inteiro: `plan <T-ID>` só planeja, `build <T-ID>` só constrói (exige plano existente) e `qa <T-ID>` só valida.
 
-**Duas unidades, dois donos, dois momentos.** A **História** é a unidade de valor: escrita pelo PO, detalhada e aprovada por você antes de entrar no sprint. A **Task** é a unidade de trabalho: nasce da quebra da História na Planning Meeting e carrega o Plano de Implementação do Arquiteto. Comando que recebe `<H-ID>` opera sobre valor; comando que recebe `<T-ID>` opera sobre trabalho.
+**Os três `prototype` são artefatos diferentes**, e o segundo termo diz qual: sem argumento é o **protótipo funcional do produto** (portão ①); `sprint <n>` é o **protótipo costurado do sprint** (portão ③); `screen <tela>` é uma **tela isolada**, exploração no detalhamento, sem portão próprio.
+
+**Duas unidades, dois donos, dois momentos.** A **História** é a unidade de valor: escrita e detalhada pelo PO, e aprovada por você **no pacote de abertura do sprint**, junto com as demais (portão ③, em lote). A **Task** é a unidade de trabalho: nasce da quebra da História na Planning Meeting e carrega o Plano de Implementação do Arquiteto. Comando que recebe `<H-ID>` opera sobre valor; comando que recebe `<T-ID>` opera sobre trabalho.
 
 **`/sm review` não é `/review`.** O primeiro é a Sprint Review, roda no projeto e é onde você aceita as Histórias. O segundo evolui o processo do time e roda só no repositório-fonte do plugin.
 
 **O `/review` é diferente de todos os outros:** ele não trabalha no projeto — evolui os **documentos do plugin** (o processo do time). Roda só num clone do repositório do plugin; contra a cópia instalada num projeto, a mudança é sobrescrita no próximo `claude plugin update`. Melhoria de operação percebida trabalhando num projeto é anotada como sintoma e levada ao `note.md` do repositório do plugin, que é a fila do `/review`. Todo o resto opera no produto e registra em `.team-project/` ou nos documentos do projeto.
 
 **`.team-project/note.md` é a fila equivalente, mas do produto, não do processo.** Ao longo do uso, anote ali cada problema que encontrar — um item por linha, na seção **Abertas**. Escreva **sintoma, não solução**: "depois de salvar duas vezes seguidas em X, a tela trava", nunca "corrigir o timeout de X" (isso já é diagnóstico, que é do time) nem "bug: endpoint Y retorna 500" (isso já é solução técnica). Quando quiser, rode **`/po note`**: o PO lê a fila inteira, classifica cada item (defeito · mudança de escopo disfarçada de bug · dúvida de uso) contra o que foi aprovado e aceito, aciona quem resolve, e devolve a você, item a item, o que fez com cada um. **Item tratado sai da fila** — passa a viver só no destino (registro da QA, Product Backlog, ou a resposta já dada), nunca duplicado nos dois lugares. Para um relato avulso, sem esperar o lote, use `/po bug <relato>` na conversa. Não confunda com `RAIZ/note.md`: aquele é a fila do `/review`, que evolui como o **time** trabalha; este é a fila do `/po note`, que evolui o **produto** que o time constrói para você.
+
+## O ciclo do sprint — você é chamado duas vezes, e sabe quando
+
+O time não para a cada História para pedir aprovação, e também não some até o fim. O **sprint** é a unidade de aprovação e de entrega, e você tem **dois compromissos por sprint**.
+
+**1 · A abertura — você navega e aprova o pacote.** Depois de o time planejar (`/sm sprint plan`), você recebe quatro coisas juntas:
+
+- o **Sprint Backlog fechado** — que Histórias entraram, quebradas em Tasks, com estimativa e objetivo;
+- os **critérios de aceite** dessas Histórias — é contra eles que a Review vai medir;
+- o **protótipo navegável do sprint** — as telas dessas Histórias costuradas num caminho que você atravessa;
+- o **`planning.md`** — inclusive **o que veio da Review anterior e não entrou, com o motivo**.
+
+Você navega e aprova. **Essa aprovação é o portão ③ de todas as Histórias do sprint, de uma vez**, e é o que faz o sprint arrancar — nenhuma Task entra em construção antes dela. Pode devolver: o PO reordena, o corte é refeito, o pacote volta.
+
+**Por que o protótipo, e não só a lista.** Aprovar critérios lendo é aprovar uma descrição — o mesmo motivo que sustenta o portão ①. E ele prova que o sprint entrega **valor real**: se você não consegue atravessar um fluxo ponta a ponta, o sprint entrega meio caminho, e o time refaz o corte antes de começar.
+
+**2 · A Review — você decide, por História.** O PO demonstra cada História contra os critérios que você aprovou e escreve o dossiê critério a critério; o QA fornece a evidência por Task; **você decide**: aceita · aceita com ressalva · rejeitada. Ressalva, gap e erro viram entrada no Product Backlog na mesma sessão, com dono — e a priorização deles volta a você no pacote do sprint seguinte, sem gate novo.
+
+**Entre os dois, o time roda sozinho** (`/team cycle sprint`). Não é silêncio: `/po status` responde a qualquer momento onde o time está. O que some é a fila de aprovações, não a informação.
+
+**Quando o time te chama fora disso.** Bloqueio não sobe direto: **PO e Arquiteto conversam primeiro** — a pergunta quase sempre é "o requisito está errado ou o desenho está?", e eles são donos das duas respostas. Só o que eles não fecham chega a você, com opções descritas e recomendação. **Exceção:** decisão estratégica — stack, provedor, custo, risco aceito — vem direto, porque é sua por definição e ninguém mais pode tomá-la.
+
+**Onde fica o registro.** Tudo o que um sprint produz vive em `.team-project/sprints/<n>/`: o planejamento, o quadro, as Histórias como foram aprovadas, os planos, as evidências, o consumo, o burndown, a Review e a retrospectiva. Qual é o sprint corrente está em `.team-project/README.md` §2.
 
 ## Quatro caminhos de entrada
 
@@ -96,13 +121,12 @@ Ideia sua, sem documentação nenhuma.
                                 ① você NAVEGA o protótipo e aprova o SDD funcional
                                 ② o Arquiteto escreve o SDD técnico e você aprova
 /po story <H-ID>                o requisito vira História; depois, detalhada
-/ux screen <H-ID>               protótipo, se a História tem interface
-                                ③ você aprova o detalhamento
-/sm sprint plan                 Planning: o time quebra em Tasks e estima
-/arc plan <T-ID>                Plano de Implementação da Task
-/team cycle <T-ID>              Arquiteto → dev → QA
-/sm close <T-ID>                fecha a Task (técnico)
-/sm review                      Sprint Review: ④ você aceita a História
+/ux screen <H-ID>               especificação de tela, se a História tem interface
+/sm sprint plan                 Planning: o time quebra em Tasks, estima e varre bloqueios
+/ux prototype sprint <n>        as telas do sprint costuradas num caminho navegável
+                                ③ você navega e aprova o PACOTE do sprint
+/team cycle sprint              o time roda a fila inteira, sem te acionar
+/sm review                      Sprint Review: ④ você decide, por História
 /sm sprint close                retrospectiva e fim do sprint
 ```
 
@@ -162,7 +186,7 @@ O time também abre defeito direto quando **acha durante o próprio trabalho** �
 ## Regras que valem em qualquer caminho
 
 - **Você não aprova o SDD funcional lendo — você navega o protótipo** (portão ①). Ler texto é aprovar uma descrição; a divergência entre o que você imaginou e o que o time entendeu só aparece quando você atravessa o fluxo. Ali o que se joga fora é HTML; depois, é arquitetura e código.
-- **Toda Task pertence a uma História, e nenhuma História entra no sprint sem a sua aprovação** (portão ③). Trabalho técnico sem valor declarado não entra.
+- **Toda Task pertence a uma História, e nenhuma Task entra em construção antes de o pacote do sprint ser aprovado** (portão ③, agora em lote). Trabalho técnico sem valor declarado não entra.
 - **Sem plano, sem código.** O dev executa o Plano de Implementação do Arquiteto; lacuna vira 🔺 GAP, não improviso.
 - **Nada é "pronto" sem saída real de comando.** O que não foi exercitado é declarado como não exercitado, nunca omitido.
 - **O QA reprova, não corrige.** O veredito responde ao stakeholder sobre qualidade, segurança, desempenho, consistência e funcionalidade; o **aceite de valor** é do PO, por História, na Sprint Review.
@@ -179,3 +203,45 @@ O time também abre defeito direto quando **acha durante o próprio trabalho** �
 | Contexto e controles do projeto | `.team-project/` | o trabalho normal do time |
 | Entregáveis do produto | `docs/` do projeto (SDD, ADR, implementação) | os donos declarados em `deliverables/README.md` |
 | Código | o diretório de código do projeto | só o dev, e só os arquivos do plano vigente |
+
+## O que o `/team init` cria no seu projeto
+
+Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — o time não mexe na estrutura do seu código.
+
+```
+.team-project/
+├── README.md              contexto do projeto · declara o SPRINT CORRENTE (§2)
+├── how-to.md              cópia deste guia, atualizada a cada /team update
+├── note.md                sua fila de relatos — escreva o sintoma, o PO trata em /po note
+│
+├── sprints/               O REGISTRO DE EXECUÇÃO, um subdiretório por sprint
+│   └── 1/ 2/ 3/ …
+│       ├── planning.md              o que foi decidido na Planning, e o que NÃO entrou
+│       ├── sprint-backlog.md        o quadro vivo do sprint — fecha no encerramento
+│       ├── stories/                 as Histórias como você as aprovou (congeladas)
+│       ├── plan/                    um Plano de Implementação por Task
+│       ├── evidence/                a evidência de cada Task: comando e saída real
+│       ├── consumption.md           tokens e duração por invocação
+│       ├── burndown.md              estimativa restante, em série datada
+│       ├── review.md                a Sprint Review e o seu veredito por História
+│       └── retrospective.md         o que o time corrige no sprint seguinte
+│
+├── product-owner/         context.md · product-backlog.md (índice) · stories/ (fonte viva)
+├── scrum-master/          context.md
+├── architect/             context.md · spikes/ (investigações técnicas)
+├── user-experience/       context.md · prototype/ (+ prototype/sprint-<n>/) · journeys/ · screens/
+├── developer/             context.md
+└── quality-assurance/     context.md · baseline.md (a régua de regressão do projeto)
+```
+
+**Por que o registro de execução é por sprint, e não por papel.** Um sprint produz artefatos de quatro donos — Histórias (PO), planos (Arquiteto), evidências (QA) e os documentos do SM. Guardados por papel, responder *"o que aconteceu no sprint 3?"* exigiria abrir quatro pastas e cruzar datas. Em `sprints/3/` está tudo: o que foi planejado, o que você aprovou, como foi construído, com que evidência, o que você aceitou e o que o time decidiu corrigir. **O dono continua declarado por subpasta** — o SM não escreve em `plan/`, o Arquiteto não escreve em `stories/`.
+
+**Sprint fechado não se edita.** Depois da retrospectiva, a pasta vira registro histórico. O `/team update` nunca reconcilia estrutura nova dentro dela: o `review.md` de um sprint antigo retrata aquele sprint, não o processo de hoje.
+
+**O que fica fora da pasta do sprint, e por quê:** o Product Backlog e as Histórias vivas, o SDD, as ADRs, o registro de GAPs, o mapa de código, a baseline e o protótipo funcional do ① — todos **somam ou evoluem através** dos sprints, e fatiá-los quebraria a leitura contínua que o time faz deles.
+
+**As pastas de papel guardam só o `context.md`** — o que aquele papel precisa saber sobre *este* projeto (stack, convenções, comandos de verificação, limitações) — mais os artefatos vivos que não pertencem a um sprint específico.
+
+**Onde está o quadro de hoje:** `.team-project/README.md` §2 declara o **sprint corrente**. Como o Sprint Backlog vive dentro da pasta numerada, essa linha é o índice — é por ela que todo papel acha o quadro vivo.
+
+**Na atualização do plugin**, o `/team update` reconcilia esta estrutura com a versão nova: substitui o que é cópia literal (este guia), **propõe** o delta do que tem conteúdo seu, e nunca apaga nada sem sua aprovação.

@@ -66,6 +66,9 @@ Impacto sem número (Tasks, arquivos, unidades de trabalho) é opinião. Conte.
 | **Tasks bloqueados** | contagem e idade do bloqueio | bloqueio com mais de 2 ciclos → escalar ao stakeholder |
 | **Dívida de evidência** | Tasks fechadas sem registro de evidência | qualquer ocorrência → falha de processo |
 | **Footprint dos documentos** | KB de `agents/` + `commands/` + `roles/<papel>/` do processo, por papel | crescimento > 20% entre giros de `/review metrics` sem regra nova, ou entrada de changelog > 10 KB → cortar (R17, [`process/workflow.md` §5c](process/workflow.md)) |
+| **Latência do pacote de abertura** | dias entre o fechamento da Planning e a data de aprovação do pacote (R25 · §5e) | crescendo sprint a sprint → a costura do protótipo ou a agenda do stakeholder está comendo a caixa de tempo; é custo real do ③ em lote, e se declara, não se esconde |
+| **Devoluções de pacote** | quantos pacotes o stakeholder devolveu ou aprovou com ajuste, por sprint | recorrente → o detalhamento funcional não está chegando pronto à Planning (R20), e o time paga quebra + estimativa jogadas fora |
+| **Bloqueios por degrau** | contagem por sprint: resolvidos no degrau 1 (PO+Arquiteto) × escalados ao stakeholder (R25) | tudo escalando → o degrau 1 virou repasse; nada escalando **e** Histórias perdendo o sprint → o par está segurando decisão que não é dele |
 | **Burndown com poucos pontos** | contagem de linhas de `sprints/<n>/burndown.md` além da abertura | sprint inteiro com só a linha de abertura e a de fechamento → nenhum `/sm board` rodou no meio; acompanhamento raro demais para enxergar risco a tempo (R24) |
 
 ## 8. Facilitar sem virar gargalo

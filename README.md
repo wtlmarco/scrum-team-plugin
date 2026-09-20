@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.23.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.24.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -49,13 +49,13 @@ este repositório   processo   → genérico, um só, serve todos os projetos
     ├── scrum-master/       processo, Sprint Backlog, rituais, regras que governam todos
     │   ├── README.md · skills.md
     │   ├── process/     working-rules · workflow · artifact-ownership · process-changelog
-    │   └── templates/   sprint-backlog · sprint-review · status-entry · impact-analysis · retrospective · project-context · process-change
+    │   └── templates/   planning · sprint-backlog · burndown · consumption · sprint-review · retrospective · status-entry · project-context · process-change
     ├── product-owner/      requisitos, Histórias, backlog, aceite
     │   └── templates/   user-story · product-backlog · status · requirement · functional-analysis · acceptance
     ├── architect/          especificação técnica, Planos de Implementação, ADRs
     │   └── templates/   implementation-plan · adr · compliance-review · technical-decision
     ├── user-experience/   jornadas, telas, protótipos, usabilidade e acessibilidade
-    │   └── templates/   functional-prototype · journey-map · screen-spec · usability-review
+    │   └── templates/   functional-prototype · sprint-prototype · journey-map · screen-spec · usability-review
     ├── developer/          execução do plano, entrega, gaps
     │   └── templates/   delivery-report · gap
     └── quality-assurance/  validação, evidências, registro de GAPs
@@ -103,7 +103,7 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 /sm     onboarding | sprint plan | sprint close | review | board | agreement <questão> | close <T-ID>
 /po     status | impact <mudança> | analyze <ideia> | requirement <ID> | story <H-ID> | prioritize | accept <H-ID> | bug <relato> | note
 /arc    plan <T-ID> | comply <T-ID> | adr <tema> | question <dúvida>
-/ux     prototype | journey <fluxo> | screen <H-ID> | prototype <tela> | review-ui <tela>
+/ux     prototype | journey <fluxo> | screen <H-ID> | prototype screen <tela> | review-ui <tela>
 /dev    <T-ID> | resume <T-ID> | gap <resposta do arquiteto>
 /qa     <T-ID> | baseline | audit | security <T-ID>
 /team   init | update | version | brainstorm <ideia> | cycle <T-ID> | plan <T-ID> | build <T-ID> | qa <T-ID>
@@ -178,7 +178,7 @@ Nenhum atalho: o portão ① não abre sem o stakeholder **navegar** o protótip
 
 Geridas pelo SM, válidas para todos os papéis e para o stakeholder:
 
-- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 24 regras (eficiência R1-R6, qualidade R7-R12, método R13-R24), o que cada uma evita e como o SM verifica
+- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 25 regras (eficiência R1-R6, qualidade R7-R12, método R13-R25), o que cada uma evita e como o SM verifica
 - [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) — ciclo, cerimônias, DoR/DoD, gates, escalação
 - [`roles/scrum-master/process/artifact-ownership.md`](roles/scrum-master/process/artifact-ownership.md) — quem escreve o quê
 - [`roles/scrum-master/process/process-changelog.md`](roles/scrum-master/process/process-changelog.md) — como o processo chegou até aqui

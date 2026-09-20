@@ -19,7 +19,7 @@ Formato de resposta do PO ao stakeholder. **Seis linhas.** Ele lê isso em pé.
 
 ## Regras
 
-- Ler, **antes de responder**: o Product Backlog (o plano de entrega), o Sprint Backlog do SM (`.team-project/scrum-master/sprint-backlog.md`) e o registro de evidências do QA. **Nunca recompor o estado de memória.**
+- Ler, **antes de responder**: o Product Backlog (o plano de entrega), o Sprint Backlog do SM (`.team-project/sprints/<n>/sprint-backlog.md` — o sprint corrente está em `.team-project/README.md` §2) e o registro de evidências do QA (`.team-project/sprints/<n>/evidence/`). **Nunca recompor o estado de memória.**
 - **"Entregue" é História aceita na Sprint Review** (R21) — não é Task fechada, nem soma de Tasks fechadas. Task fechada é trabalho técnico concluído; valor entregue é o que o PO aceitou.
 - Sem adjetivo. Com ID e evidência.
 - **Não propor trabalho novo neste modo** — isso é a Planning Meeting (`/sm sprint plan`).

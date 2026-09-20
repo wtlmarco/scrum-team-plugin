@@ -12,7 +12,7 @@ Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta 
 1. O pedido acima, literal.
 2. A instrução de ler antes de responder: `.team-project/README.md`, `.team-project/architect/context.md`, os normativos em `${CLAUDE_PLUGIN_ROOT}/standards/`, os documentos de arquitetura/dados/API indicados no contexto, e **o código real** envolvido (com `arquivo:linha` como evidência).
 3. O modo de operação, conforme o primeiro termo do pedido:
-   - **plan `<ID>`** → diagnóstico com evidência, desenho da solução, alternativas descartadas em uma linha cada, impacto (arquivos, migration, contrato de API, risco de regressão) e o **Plano de Implementação** no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md`, salvo em `.team-project/architect/plans/<ID>-<slug>.md`, respeitando a capacidade declarada no contexto do projeto.
+   - **plan `<ID>`** → diagnóstico com evidência, desenho da solução, alternativas descartadas em uma linha cada, impacto (arquivos, migration, contrato de API, risco de regressão) e o **Plano de Implementação** no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md`, salvo em `.team-project/sprints/<n>/plan/<ID>-<slug>.md`, respeitando a capacidade declarada no contexto do projeto.
    - **comply `<ID>`** → revisão de aderência do que voltou do dev, no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/compliance-review.md`. Aponte desvio com `arquivo:linha`; não corrija o código. É revisão **sob demanda**, não etapa do ciclo (`workflow.md` §4a): roda por iniciativa do Arquiteto antes do QA, ou como rota de volta de achado de aderência ⚠️/❌. Confere a **aplicação** do que o plano citou — não se o plano citou o conjunto certo de seções, o que é a frente 2 do QA.
    - **adr `<tema>`** → escrever/atualizar a ADR no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/adr.md`, no diretório de ADRs do projeto, com checklist de aceitação verificável.
    - **question `<dúvida>`** → responder e **decidir** no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/technical-decision.md`, não devolver a pergunta. Se for dúvida funcional, dizer que o caminho é `/po`; se for estratégica (stack, provedor, custo), escalar ao stakeholder com recomendação.
@@ -23,7 +23,7 @@ Pedido `/arc review …` → responda que o caminho é **`/review …`**: nenhum
 
 ## Registro de consumo — só onde o registro existe
 
-Se `.team-project/scrum-master/consumption-log.md` existir, acrescente uma linha quando o agente retornar, com os números que ele devolve: data, papel `arc`, comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, nada a fazer.
+Se `.team-project/sprints/<n>/consumption.md` existir — `<n>` é o **sprint corrente**, em `.team-project/README.md` §2 —, acrescente uma linha quando o agente retornar, com os números que ele devolve: data, papel `arc`, comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, nada a fazer.
 
 Se a saída do agente traz uma pergunta na forma de R22 (pergunta + por que bloqueia, alternativas descritas, recomendação, via de pedir mais contexto), não a repasse em texto corrido: chame `AskUserQuestion`, uma opção por alternativa descrita, com a via de pedir mais contexto sempre como a última opção. É você — a sessão que orquestrou — quem tem essa ferramenta; o agente não a tem.
 

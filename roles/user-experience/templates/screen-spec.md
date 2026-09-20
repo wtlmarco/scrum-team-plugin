@@ -7,8 +7,9 @@
 ```markdown
 # Tela — <nome>
 
-**Rota:** <caminho> · **Requisitos atendidos:** <IDs> · **Task:** <ID no quadro>
+**Rota:** <caminho> · **Requisitos atendidos:** <IDs> · **História:** <H-nnn>
 **Reaproveita:** <telas/componentes existentes que servem de base>
+**Navegação:** de onde se chega <tela/gatilho> · para onde leva <tela/resultado> — *é o que permite costurar esta tela no protótipo do sprint*
 **Fidelidade do entregável:** só especificação | baixa (estrutura) | alta (navegável) — <gatilho que justifica o nível>
 
 ## 1. Objetivo
@@ -28,7 +29,7 @@ Use um esboço em texto quando ajudar.>
 
 | Controle | Repouso | Foco | Pressionado | Desabilitado — e por quê |
 |---|---|---|---|---|
-| <botão/campo/Task> | <como aparece parado — obrigatório> | <como se distingue quando focado> | <retorno imediato ao acionar> | <quando fica assim e o que explica ao usuário> |
+| <botão/campo/link> | <como aparece parado — obrigatório> | <como se distingue quando focado> | <retorno imediato ao acionar> | <quando fica assim e o que explica ao usuário> |
 
 ## 4. Conteúdo
 <Rótulos, títulos, mensagens e microcópia — texto real, não placeholder.
@@ -82,6 +83,8 @@ Mensagem de erro e texto de estado vazio são parte do desenho.>
 - **Fidelidade declarada.** O nível do entregável é escolhido pelo gatilho (`../skills.md` §9), não por gosto — alta fidelidade antes de a estrutura estar acordada é retrabalho.
 - **Dado que não existe vira levantamento ao Arquiteto**, não suposição na tela.
 - **"Fora do escopo" é obrigatório** — é o que impede o dev de antecipar escopo (R4).
+- **Esta especificação vem antes da Planning** — é pré-condição da DoR da História (R20), e **não** é refeita quando a História entra num sprint. Se ela entrar, é daqui que sai a tela **costurada no protótipo do sprint** (`sprint-prototype.md`): sem o campo **Navegação** preenchido, não há caminho a costurar.
+- **Durante o sprint, esta é a fonte viva da tela.** Correção que apareça depois da aprovação do pacote entra aqui — nunca no protótipo do sprint já aprovado, que é registro fechado do que o stakeholder viu (R4 · R25).
 
 ## Falhas comuns
 

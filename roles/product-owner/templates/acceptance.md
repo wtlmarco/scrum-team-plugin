@@ -1,6 +1,7 @@
 # Template — Aceite de História (`/po accept <H-ID>`, na Sprint Review)
 
 > O aceite é **funcional, agregado e por História** (R21). Acontece **na Sprint Review**, ante o stakeholder, nunca isolado e nunca mirando uma Task. **Exige os vereditos do QA das Tasks da História anexados.**
+> **Quem escreve e quem decide, sem ambiguidade:** o PO conduz o aceite e escreve este dossiê, critério a critério; o **stakeholder decide, sobre o que viu** — a linha **Decisão** abaixo registra o veredito dele, não o do PO.
 
 ```markdown
 ## Aceite — H-<nnn> <título> — Sprint <n> — <data>
@@ -11,12 +12,12 @@
 ### Critérios de aceite conferidos
 | # | Critério da História | Situação | Task que cumpre | Evidência |
 |---|---|---|---|---|
-| 1 | <critério aprovado no portão ③> | ✅ / ❌ | T-<nnn> | <linha do registro do QA que li, ou passo que executei> |
+| 1 | <critério aprovado no pacote de abertura — ③ em lote> | ✅ / ❌ | T-<nnn> | <linha do registro do QA que li, ou passo que executei> |
 
 ### Fluxo do usuário
 <O caminho real ficou utilizável ponta a ponta? Uma frase sobre a experiência, não sobre o código.>
 
-### Decisão
+### Decisão do stakeholder
 **<Aceita | Aceita com ressalva | Rejeitada>**
 
 **Motivo:** <uma frase>
@@ -29,11 +30,12 @@
 
 - **Sem veredito do QA, não há aceite** (R7). Nem "aceito condicional à validação".
 - **O alvo é a História, nunca a Task** (R21). Task não se aceita: ela fecha tecnicamente com o veredito do QA e o `/sm close`.
+- **O PO nunca decide sozinho.** Escreve o dossiê, aponta evidência, recomenda — quem marca Aceita/Aceita com ressalva/Rejeitada é o stakeholder, sobre o que viu.
 - **Fora da Sprint Review não há aceite.** História aceita em conversa avulsa é violação registrada pelo SM.
-- Critério é conferido **um a um**, apontando a Task que o cumpre e a evidência. Critério não conferível é critério mal escrito — corrigir a História e reaprová-la no portão ③.
+- Critério é conferido **um a um**, apontando a Task que o cumpre e a evidência. Critério não conferível é critério mal escrito — corrigir a História no Product Backlog; ela volta a ser candidata a um pacote de abertura seguinte.
 - **Ressalva vira entrada no Product Backlog** com dono, imediatamente, na mesma sessão (R12). Ressalva verbal desaparece.
 - **Rejeição devolve a História inteira**, com todas as Tasks, inclusive as aprovadas pelo QA — anotadas como já feitas, para que a Planning seguinte não as replaneje do zero.
-- Marcar critério de sucesso como atendido exige apontar a linha de evidência em `.team-project/quality-assurance/evidence.md`.
+- Marcar critério de sucesso como atendido exige apontar a linha de evidência em `.team-project/sprints/<n>/evidence/` (o sprint corrente está em `.team-project/README.md` §2).
 - Rejeição diz **o que falta**, não "não está bom".
 - **História que toca operação sob orçamento de desempenho** (Ficha V18): o aceite confere o **estado registrado pelo QA** — dentro do orçamento · fora · não exercitado — e a **saída real** do comando de carga (V19). "Fora" é rejeição; "não exercitado" sem motivo declarado é rejeição.
 
@@ -54,8 +56,8 @@
 
 **Fluxo do usuário:** o analista sai da tela com o arquivo pronto para a reunião — o caminho que hoje é print de tela deixou de ser necessário.
 
-**Decisão: Aceita.**
-**Motivo:** os três critérios aprovados no portão ③ têm evidência executável e o fluxo ficou utilizável ponta a ponta.
+**Decisão do stakeholder: Aceita.**
+**Motivo:** os três critérios aprovados no pacote de abertura têm evidência executável e o fluxo ficou utilizável ponta a ponta.
 **Ressalvas:** nenhuma.
 **Critério de sucesso afetado:** "exportar o resultado final" passa a atendido — evidência no registro do QA, blocos T-041 a T-043.
 ```

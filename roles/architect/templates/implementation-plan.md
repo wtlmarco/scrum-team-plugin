@@ -1,6 +1,8 @@
 # Template — Plano de Implementação
 
-Salvo em `.team-project/architect/plans/<T-ID>-<slug>.md`. **É o conteúdo técnico da Task**, não um artefato irmão dela: a Task é a unidade de trabalho no Sprint Backlog, e o plano é o que diz como ela se faz. É o contrato entre o Arquiteto e o dev: **o que não estiver aqui vira 🔺 GAP, nunca improviso.**
+Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` — dentro da pasta do sprint a que a Task pertence, na subpasta do Arquiteto ([`../../scrum-master/process/artifact-ownership.md` §1e](../../scrum-master/process/artifact-ownership.md)). **É o conteúdo técnico da Task**, não um artefato irmão dela: a Task é a unidade de trabalho no Sprint Backlog, e o plano é o que diz como ela se faz. É o contrato entre o Arquiteto e o dev: **o que não estiver aqui vira 🔺 GAP, nunca improviso.**
+
+> **O caminho não é fixo:** `.team-project/README.md` §2 declara **qual é o sprint corrente**, e é por lá que o dev e o QA acham este plano. A coluna Plano do `sprint-backlog.md` aponta para ele; ponteiro que não resolve é achado de processo.
 
 > **A fronteira funcional × técnica passa aqui** (R20). O "o quê" e o "para quê" já foram decididos na História, pelo PO, e aprovados pelo stakeholder no portão ③. Este plano é o primeiro lugar onde aparece decisão técnica — e o único.
 
@@ -9,6 +11,8 @@ Salvo em `.team-project/architect/plans/<T-ID>-<slug>.md`. **É o conteúdo téc
 
 **História:** H-<nnn> <título> · **Dono:** dev · **Origem:** GAP <ID> / critério de aceite <n> da História
 **Estimativa:** <n> unidade(s) — a que o time deu na Planning
+**Retomada de:** `sprints/<n-1>/plan/<T-ID>-<slug>.md` — parou no passo <n> de <m>, repositório <estado>
+*(linha obrigatória só quando a Task volta de um sprint anterior; omitir quando a Task é nova)*
 **Arquivos tocados:** <lista completa, caminho completo>
 
 ## 1. Objetivo e fora de escopo
@@ -84,6 +88,7 @@ configuração e entra na seção 8, não vira Task sem verificação.>
 8. **Todo passo declara o anel** do arquivo que toca. Passo que faz o domínio depender de fora, ou que põe regra de negócio na borda, é erro de plano — não de execução (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §2).
 9. **Nenhum passo de refatoração "de passagem".** Melhoria fora do objetivo da Task vira Task própria — e, se nenhuma História a cobre, o PO escreve a História que declara o valor (§4.5 do mesmo normativo · R20).
 10. **Todo passo com regra de engenharia cita a seção de `${CLAUDE_PLUGIN_ROOT}/standards/` aplicável, com número** (R16). O dev lê só o que o plano citou — seção não citada é seção não lida. "Seguir os standards" não é citação. Se a regra de que o passo precisa **não existe** no normativo, ou existe contraditória, isso é defeito do standard e é do Arquiteto: resolver por `/review` antes de liberar o plano.
+11. **Task retomada de outro sprint ganha plano novo, aqui, com a linha `Retomada de:`** — o plano antigo vive em `sprints/<n-1>/plan/` e é **registro fechado: não se edita, não se copia, não se reaproveita por referência**. O plano novo declara o que já foi feito (a partir do "Parei no passo" do relatório do dev) e **reconfere no código real** as assinaturas dos passos restantes: o repositório mudou no intervalo, e passo executado sobre premissa velha é a causa nº 1 de 🔺 GAP ([`../skills.md`](../skills.md) §1 · R3 · R5).
 
 ## Exemplo abreviado
 

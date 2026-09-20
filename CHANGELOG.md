@@ -13,6 +13,33 @@
 
 ---
 
+## v3.24.0 — 2026-09-20
+
+**Branch:** `feat/v3.24.0` a partir de `develop` (v3.23.0 já mesclada — PR #21). **PR** para `develop`.
+
+**MINOR de processo.** Carrega a entrada nova [`v3.24`](roles/scrum-master/process/process-changelog.md) — `vX.Y.0` (R18). Fecha os **cinco** itens de `RAIZ/note.md` sobre modos de trabalho, num desenho diferente do pedido literal e decidido assim pelo stakeholder: em vez de o time sumir do portão ① até o MVP, os gates são **agregados na fronteira do sprint**. O termo "automode" não existe — há um jeito só de trabalhar.
+
+### O que entrou
+
+- **R25 (nova):** o sprint é a unidade de aprovação e de entrega. O stakeholder tem **dois compromissos por sprint** e nenhum acionamento entre eles.
+- **Portão ③ em lote, depois da Planning**, sobre um **pacote navegável**: Sprint Backlog + critérios de aceite + **protótipo costurado do sprint** + `planning.md` (que declara o que veio da Review anterior e **não** entrou, com o motivo). **R20 reescrita**; o guarda-corpo passa a ser "nenhuma Task em construção antes do pacote aprovado".
+- **R21 restaurada.** O portão ④ sempre foi do stakeholder: o PO **conduz** o aceite e escreve o dossiê, ele **decide**, por História.
+- **Bloqueio em dois degraus:** varredura na Planning; no sprint, **PO e Arquiteto conversam**; só o que eles não fecham sobe ao stakeholder (R22). Decisão estratégica escala direto.
+- **Valor real por sprint:** critério de seleção do PO, verificado pelo protótipo — se nenhum fluxo se atravessa, o corte é refeito antes de o sprint arrancar.
+- **Registro de execução por sprint:** `.team-project/sprints/<n>/` com **dono declarado por subpasta** (§1e) — `stories/` PO, `plan/` Arquiteto, `evidence/` QA, o resto SM. `sprint-backlog-snapshot.md` e o par vivo+archive do consumo deixam de existir.
+- **Retrospectiva** ganha o consumo por papel em seção própria e os **sintomas de processo** para o `note.md` do plugin.
+- **Comandos:** `/team cycle sprint` e `/ux prototype sprint <n>` novos; `team-init.md` deixa de semear a estrutura antiga; `team-update.md` ganha o **passo 7a** de migração estrutural; `how-to.md` ganha a seção do ciclo do sprint; 31 ponteiros de caminho corrigidos.
+
+### Verificação
+
+`README.md`, `.claude-plugin/plugin.json` e o topo deste changelog nomeiam `v3.24.0`. Contagem de regras **24 → 25** nos três lugares (`working-rules.md`, resumo, `agents/scrum-master.md`); gates do §8 **19 → 21**. Arquivamento de `v3.21` (teto de 3 entradas, R17). Bloco de evidência R19 completo na entrada `v3.24`, incluindo o **desvio declarado**: o trabalho foi aplicado sobre `develop` em v3.19 sem conferir as branches remotas, e o rebase sobre `origin/develop` preservou integralmente os dois giros Act das `v3.22`/`v3.23`.
+
+**Mudança de comportamento de agente/comando se aplica** — `agents/` e `commands/` foram tocados: só valem depois de reiniciar a sessão, e só chegam aos projetos depois de `git push` + `claude plugin marketplace update` + `claude plugin update`.
+
+**Migração obrigatória nos projetos que já usam o time:** o passo **7a** de `team-update.md` move o registro de execução para `.team-project/sprints/<n>/`. Sprint fechado migra o caminho sem alterar conteúdo; sprint em andamento termina no formato antigo.
+
+---
+
 ## v3.23.0 — 2026-09-18
 
 **Branch:** `fix/v3.23.0` — a mesma branch das entradas `v3.22.0`, `v3.21.0` e `v3.20.0` abaixo, renomeada a cada giro absorvido. **PR** para `develop`. A entrega carrega **quatro** entradas de processo; a `version` acompanha a mais recente (R18).
