@@ -22,7 +22,7 @@ Os quatro pontos que uma jornada precisa marcar:
 Dois deles são os mais esquecidos e os mais caros:
 
 - **Vazio** — é a primeira tela que todo usuário novo vê. Se ela não ensina o próximo passo, o produto perde a pessoa no primeiro minuto.
-- **Volume extremo** — nome de 80 caracteres, lista de 500 Tasks, texto sem quebra. O layout que só foi pensado com dado de exemplo quebra com dado real.
+- **Volume extremo** — nome de 80 caracteres, lista de 500 itens, texto sem quebra. O layout que só foi pensado com dado de exemplo quebra com dado real.
 
 Os seis estados são da **tela**. Cada controle dentro dela tem o seu próprio eixo de estados — ver §8.
 
@@ -162,13 +162,13 @@ Subir de fidelidade antes de a estrutura estar acordada é o retrabalho mais com
 
 ## 10. Verificar o protótipo sem pagar a verificação duas vezes
 
-O protótipo funcional não se declara pronto: ele é **exercitado**. A verificação executável — o *harness*: um script sem interface que abre cada tela, percorre cada caminho e confere cada critério, no runtime declarado no contexto do projeto — é a evidência de R7 no meu território. Ela é também a coisa mais cara que eu rodo. As duas disciplinas abaixo cortam o custo **do que é executado**, nunca o rigor do que é verificado.
+Protótipo entregável — o funcional do ① e o do sprint — não se declara pronto: ele é **exercitado**. A verificação executável — o *harness*: um script sem interface que abre cada tela, percorre cada caminho e confere cada critério, no runtime declarado no contexto do projeto — é a evidência de R7 no meu território. Ela é também a coisa mais cara que eu rodo. As duas disciplinas abaixo cortam o custo **do que é executado**, nunca o rigor do que é verificado.
 
 ### Checkpoint: verificação interrompida não volta ao zero
 
 Harness completo de um protótipo inteiro é trabalho longo, e trabalho longo é interrompido — limite de sessão, corte de chamada, fim do dia. Sem registro, a retomada recomeça da primeira tela e joga fora tudo o que já tinha passado. É a R5 ("interrupção é estado, não perda") aplicada à verificação.
 
-**A disciplina:** a cada **tela ou fluxo concluído**, gravar o resultado parcial em disco — não ao final, não em memória. O registro vive em `.team-project/user-experience/prototype/verification-log.md` e é **append-only**: uma linha por tela/fluxo verificado, com a versão do protótipo, os critérios exercitados, o veredito e o que falhou.
+**A disciplina:** a cada **tela ou fluxo concluído**, gravar o resultado parcial em disco — não ao final, não em memória. O registro é **append-only** — uma linha por tela/fluxo verificado, com a versão do protótipo, os critérios exercitados, o veredito e o que falhou — e vive **ao lado do protótipo que ele exercitou**: `prototype/verification-log.md` para o funcional, `prototype/sprint-<n>/verification-log.md` para o do sprint. Um registro por artefato; somar os dois num arquivo só confundiria qual protótipo passou.
 
 Na retomada: ler o registro, rodar **só o que ainda não tem linha** e continuar a mesma execução. Duas invalidações — quando o checkpoint deixa de valer e a verificação volta a ser completa:
 
@@ -181,6 +181,8 @@ Na retomada: ler o registro, rodar **só o que ainda não tem linha** e continua
 
 **É a R23 no meu território** — a regra geral manda cada papel definir, no próprio `skills.md`, o que conta como "leve" para o seu tipo de verificação. Para o UX é isto: a primeira entrega de um protótipo paga o harness completo; um ajuste pontual sobre um protótipo **já verificado por um harness completo** não paga de novo o protótipo inteiro — paga o que a mudança alcança.
 
+#### No protótipo funcional (①)
+
 | Situação | Escopo do harness |
 |---|---|
 | Primeira entrega do protótipo, ou fatia nova entrando nele | **Completo** — todas as telas, todos os fluxos, todos os critérios |
@@ -188,11 +190,27 @@ Na retomada: ler o registro, rodar **só o que ainda não tem linha** e continua
 | Mudança transversal (paleta, tipografia, grade, componente compartilhado, navegação persistente, estrutura de arquivos) | **Completo** — o alcance é todo o protótipo, ainda que o diff seja de uma linha |
 | Não dá para **nomear** as telas afetadas | **Completo** — alcance que não se consegue delimitar não é pontual |
 
-O que o modo leve **não** afrouxa:
+#### No protótipo do sprint (peça do pacote de abertura, R25)
+
+Aqui o modo leve é o **caso comum**, não a exceção — e é o que torna o custo do protótipo do sprint compatível com a janela entre a Planning e o arranque. O motivo é a natureza do artefato: **ele costura telas que já foram especificadas e, quando vieram do protótipo funcional, já exercitadas**. Pagar o harness completo de cada tela outra vez verificaria o que não mudou.
+
+**O que é leve aqui:** exercitar **o caminho costurado**, não as telas uma a uma — cada salto de navegação do fluxo ponta a ponta (a tela abre, o controle leva à próxima, o retorno volta), mais os estados de exceção que o caminho atravessa, mais as telas que **nasceram nesta costura**. O que já tem linha de verificação completa em `prototype/verification-log.md`, na mesma versão, não roda de novo.
+
+| Situação, na costura do sprint | Escopo do harness |
+|---|---|
+| Tela reaproveitada de protótipo já verificado por completo, **sem alteração** | **Leve** — só os saltos de navegação que entram e saem dela |
+| Tela nova, ou alterada para caber no caminho | **Completo nela** — as seis telas de estado e os critérios de acessibilidade que a especificação declarou |
+| Componente de navegação ou estilo criado **para a costura** (índice do sprint, cabeçalho de fluxo) | **Completo** — é transversal ao protótipo do sprint, mesmo que o diff seja pequeno |
+| **Primeiro** protótipo de sprint do projeto | **Completo** — não há verificação anterior sobre a qual o leve se apoie |
+| Recostura depois de o pacote ser **devolvido** pelo stakeholder | **Leve**, sobre o que a devolução alcançou — e **completo** se ela mudou o fluxo ponta a ponta |
+
+**A condição de guarda-corpo, que não muda:** leve reduz **o que é reexecutado**, nunca a evidência real nem um gate do §8 (R23). O fluxo ponta a ponta é **sempre** atravessado de verdade, em execução, em toda rodada — é ele que sustenta a verificação de valor do sprint (R25b), e afirmá-lo sem execução é exatamente o que R7 proíbe. E a ficha declara **o que foi e o que não foi reexecutado**, apontando a verificação completa que cobre o restante (data e versão).
+
+O que o modo leve **não** afrouxa, nos dois protótipos:
 
 1. **Roda de verdade.** Leve reduz *quantas* telas o harness percorre; não troca execução por leitura do código nem por inspeção. Tela do escopo sem saída real é **não exercitada** (R7), não aprovada.
 2. **O que não rodou é declarado.** A ficha nomeia as telas executadas e aponta a verificação completa que cobre o restante (data e versão). Silêncio sobre o resto lê-se como "tudo verificado", e isso seria invenção.
-3. **Portão nenhum muda.** Nenhum gate do fluxo é pulado citando modo leve (R23): o ① continua exigindo o stakeholder **navegando** o protótipo, e o ③ continua exigindo os seis estados e os critérios de acessibilidade. Leve é sobre a minha verificação, não sobre a aprovação de ninguém.
-4. **Não se acumula.** Depois de **três** ajustes seguidos verificados em modo leve sobre a mesma versão base, o próximo passa a completo — deriva que entrou por soma de mudanças pequenas não aparece em nenhuma delas isolada.
+3. **Portão nenhum muda.** Nenhum gate do fluxo é pulado citando modo leve (R23): o **①** continua exigindo o stakeholder **navegando** o protótipo funcional; o **③ em lote** continua exigindo o stakeholder **navegando** o protótipo do sprint, e a especificação de cada tela continua exigindo os seis estados e os critérios de acessibilidade. Leve é sobre a minha verificação, não sobre a aprovação de ninguém.
+4. **Não se acumula.** Depois de **três** ajustes seguidos verificados em modo leve sobre a mesma versão base, o próximo passa a completo — deriva que entrou por soma de mudanças pequenas não aparece em nenhuma delas isolada. No protótipo do sprint a contagem é **por pasta de sprint**: cada `prototype/sprint-<n>/` começa a sua, e recostura de pacote devolvido conta como rodada.
 
-**Como se verifica:** o `verification-log.md` mostra, para cada rodada, o modo declarado, a justificativa de alcance e as telas executadas — e a contagem de rodadas leves consecutivas desde a última completa. Modo leve declarado com mudança transversal no diff, ou quarta rodada leve seguida, é reprovação de método.
+**Como se verifica:** o registro de verificação mostra, para cada rodada, o modo declarado, a justificativa de alcance e as telas executadas — e a contagem de rodadas leves consecutivas desde a última completa. Modo leve declarado com mudança transversal no diff, quarta rodada leve seguida, ou **protótipo de sprint sem linha de execução do fluxo ponta a ponta**, é reprovação de método.

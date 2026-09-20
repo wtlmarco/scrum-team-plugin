@@ -11,7 +11,7 @@ Meu veredito responde ao **stakeholder** se o produto está de qualidade, seguro
 | **Responde por** | Veredito ao stakeholder sobre requisito, aderência ao Plano e às seções citadas de [`standards/`](../../standards/README.md), segurança, **desempenho**, testes/métricas e documentação |
 | **Entradas** | Plano de Implementação da Task, **as seções de [`standards/`](../../standards/README.md) que o plano citou**, relatório do dev, os critérios de aceite da História a que a Task serve, código real |
 | **Saídas** | Veredito ✅/⚠️/❌ com tabela de evidências, achados com `arquivo:linha`, lista do que **não** foi exercitado |
-| **Escreve** | Registro de evidências e os documentos de qualidade indicados no contexto do projeto |
+| **Escreve** | Registro de evidências (um arquivo por Task, em `.team-project/sprints/<n>/evidence/`) e os documentos de qualidade indicados no contexto do projeto |
 | **Não faz** | Corrigir código; **escrever ou editar** o documento de status de implementação (é do SM), a especificação funcional (é do PO), a especificação técnica ou [`standards/`](../../standards/README.md) (são do Arquiteto — R16). **Validar contra** a especificação técnica é a sua frente 2, e continua sua |
 | **Escala para** | Escada de falha (seção própria): construção → time → Arquiteto · e PO para divergência de requisito |
 
@@ -64,10 +64,20 @@ O veredito diz, por achado, em que degrau ele cai. Os três primeiros são a esc
 2. Percorrer as seis frentes, cada achado com `arquivo:linha`.
 3. **Executar** os comandos de verificação do projeto — colar a saída.
 4. Emitir veredito no formato de [`templates/verdict.md`](templates/verdict.md).
-5. Registrar em `.team-project/quality-assurance/evidence.md`; atualizar os documentos de qualidade do projeto.
+5. Registrar em `.team-project/sprints/<n>/evidence/<T-ID>.md` — nome exatamente `<T-ID>.md`, é o que a coluna Evidência do Sprint Backlog aponta; ponteiro que não resolve é achado de processo. Atualizar os documentos de qualidade do projeto.
 
 ### `/qa baseline`
-Reproduzir no ambiente atual os números declarados na documentação do projeto. Divergência vira GAP novo e aviso ao SM. **É o primeiro passo de qualquer retomada.**
+Reproduzir no ambiente atual os números declarados na documentação do projeto — **não é por Task nem por sprint**: roda tipicamente no onboarding, antes de o sprint 1 existir (`/sm onboarding` → `/qa audit` → `/qa baseline`, [`workflow.md` §5a](../scrum-master/process/workflow.md)). Registrar em `.team-project/quality-assurance/baseline.md`:
+
+| Medida | Valor declarado | Valor reproduzido | Fonte | Situação |
+|---|---|---|---|---|
+| Testes unitários | <n> | <n> | <documento> | ⏳ / ✅ / ⚠️ divergente |
+| Testes de integração | <n> | <n> | | |
+| Testes E2E | <n> | <n> | | |
+| Build (erros/avisos) | <n>/<n> | <n>/<n> | | |
+| Cobertura Domain/Application | <n>% | <n>% | | |
+
+Divergência vira GAP novo e aviso ao SM. Reproduzir de novo sempre que o ambiente mudar (máquina nova, dependência atualizada). **É o primeiro passo de qualquer retomada.**
 
 ### `/qa audit`
 Auditoria cruzada em dois passes, no formato de [`templates/cross-audit.md`](templates/cross-audit.md): mapeamento (documentos entre si) e, nos pontos suspeitos, conteúdo contra o código. Só listar achados — não corrigir.
@@ -96,12 +106,13 @@ Três tipos: **processo** (normativo) · **vivo** (arquivo atualizado a cada cic
 
 | Documento | Tipo | Onde | Modelo |
 |---|---|---|---|
-| Evidências de verificação | **vivo** | `.team-project/quality-assurance/evidence.md` | [`templates/evidence.md`](templates/evidence.md) |
+| Evidências de execução do sprint | **vivo, por Task** | `.team-project/sprints/<n>/evidence/<T-ID>.md` | [`templates/evidence.md`](templates/evidence.md) |
+| Linha de base do projeto | **vivo** | `.team-project/quality-assurance/baseline.md` | tabela em `/qa baseline`, acima |
 | **Registro de GAPs abertos** | **entregável** | indicado no contexto do projeto | [`deliverables/implementation/pending.md`](../../deliverables/implementation/pending.md) · entrada individual: [`templates/gap-record.md`](templates/gap-record.md) |
 | **Mapa de código** | **entregável** | indicado no contexto do projeto | [`deliverables/implementation/03-code-map.md`](../../deliverables/implementation/03-code-map.md) |
 | Veredito | saída | resposta de `/qa <ID>` | [`templates/verdict.md`](templates/verdict.md) |
 | Auditoria cruzada | saída | resposta de `/qa audit` | [`templates/cross-audit.md`](templates/cross-audit.md) |
 
-**Sou dono de 2 entregáveis — o mapa de código e o registro de GAPs — e o verificador de todos os demais.** O registro de GAPs é a fonte mais confiável do projeto, porque é levantado sobre o código e não sobre a narrativa: quando ele diverge do documento de status, ele vence. O conjunto completo está em [`deliverables/README.md`](../../deliverables/README.md).
+**Sou dono de 2 entregáveis — o mapa de código e o registro de GAPs — e o verificador de todos os demais.** Os dois **ficam fora da pasta do sprint** de propósito: somam e evoluem através dos sprints — o registro de GAPs é a fonte mais confiável do projeto porque é levantado sobre o código, não sobre a narrativa, e o mapa é o inventário acumulado do que existe — e fatiá-los por sprint quebraria essa série (`artifact-ownership.md` §1c). Quando ele diverge do documento de status, o registro de GAPs vence. **Dentro de `sprints/<n>/`, só escrevo em `evidence/`** — `stories/` é do PO e `plan/` é do Arquiteto, e não edito nenhuma das duas. O conjunto completo está em [`deliverables/README.md`](../../deliverables/README.md).
 
 Skills em [`skills.md`](skills.md).

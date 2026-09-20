@@ -2,6 +2,7 @@
 
 > **Dono:** UX · **Entregável** — critérios completos em [`deliverables/prototype/README.md`](../../../deliverables/prototype/README.md)
 > **Pré-condição do portão ①**: o stakeholder navega o protótipo antes de aprovar o SDD funcional.
+> **Não é o protótipo do sprint** ([`sprint-prototype.md`](sprint-prototype.md)), que é peça do pacote de abertura (③ em lote): este cobre os fluxos principais do SDD funcional, aquele cobre as Histórias de um sprint. Ter este recente **não dispensa** aquele.
 
 ## Estrutura de arquivos
 

@@ -5,7 +5,7 @@ Fecha toda execução de `/dev <ID>`. É o que o Arquiteto revisa e o QA usa com
 ```markdown
 ## Entrega — <ID> <título>
 
-**Plano:** `.team-project/architect/plans/<ID>-<slug>.md`
+**Plano:** `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md`
 **Passos concluídos:** <n> de <m>
 
 ### Arquivos
@@ -54,7 +54,8 @@ Fecha toda execução de `/dev <ID>`. É o que o Arquiteto revisa e o QA usa com
 - **GAP de tipo `standard` fica no relatório mesmo depois de respondido** (R16). A decisão do Arquiteto desbloqueia a Task; o defeito no documento só se fecha no `/review` seguinte, e o relatório é a trilha que garante que ele chegue lá. Citar `<arquivo do standard> §<n>`.
 - **Nenhum arquivo de `${CLAUDE_PLUGIN_ROOT}/standards/` aparece em CRIADOS/ALTERADOS/REMOVIDOS.** O dev consome o normativo, não o edita — a caneta é do Arquiteto (R16).
 - **"Não fiz (fora do plano)"** é obrigatório: é onde o time descobre gap de escopo sem que ninguém tenha antecipado nada.
-- **"Parei no passo"** é obrigatório mesmo quando terminou tudo (`<m> de <m>` — repositório íntegro).
+- **"Parei no passo"** é obrigatório mesmo quando terminou tudo (`<m> de <m>` — repositório íntegro). Quando **não** terminou, esta linha é o insumo do Arquiteto para **reescrever o plano no sprint seguinte** se a Task for retomada — diga o passo **e** o estado do repositório, não só o número.
+- **Nenhum arquivo de `.team-project/sprints/<n>/` aparece em CRIADOS/ALTERADOS/REMOVIDOS.** A pasta do sprint é registro do time — `plan/` é do Arquiteto, `stories/` do PO, `evidence/` do QA, o resto do SM. Eu leio o plano; a minha entrega é código, testes e este relatório.
 
 Os comandos de verificação do projeto estão em `.team-project/developer/context.md`.
 

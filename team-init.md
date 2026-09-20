@@ -16,15 +16,20 @@ A partir de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/project-context.
 .team-project/
 ├── README.md                 produto · situação · stack · fontes da verdade · ambiente · limitações
 ├── how-to.md                 cópia de `${CLAUDE_PLUGIN_ROOT}/how-to.md`
-├── scrum-master/             context.md · sprint-backlog.md · consumption-log.md
+├── sprints/                  registro de execução — um subdiretório por sprint; nasce vazio
+│   └── <n>/                  planning.md · sprint-backlog.md · stories/ · plan/ · evidence/
+│                             consumption.md · burndown.md · review.md · retrospective.md
+├── scrum-master/             context.md
 ├── product-owner/            context.md · product-backlog.md
-├── architect/                context.md · plans/
+├── architect/                context.md · spikes/
 ├── user-experience/          context.md · prototype/ · journeys/ · screens/
 ├── developer/                context.md
-└── quality-assurance/        context.md · evidence.md
+└── quality-assurance/        context.md · baseline.md
 ```
 
-**O manifesto do que criar, com a origem de cada arquivo e a classe de reconciliação, está em `${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/README.md`** — é a lista única, e é ela que o `/team update` relê depois para reconciliar o que aqui foi instanciado. Em resumo: `sprint-backlog.md`, `product-backlog.md`, `evidence.md` e `consumption-log.md` saem dos `templates/` dos respectivos papéis; os seis `context.md`, da seção "O que vai em cada `context.md`" do modelo de contexto. `plans/`, `journeys/` e `screens/` nascem vazios — são preenchidos por `/arc plan` e `/ux`. O `how-to.md` é **cópia literal** de `${CLAUDE_PLUGIN_ROOT}/how-to.md`, com um comentário no topo dizendo que não deve ser editado ali — é o guia de uso à mão de quem trabalha no projeto.
+**O manifesto do que criar, com a origem de cada arquivo e a classe de reconciliação, está em `${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/README.md`** — é a lista única, e é ela que o `/team update` relê depois para reconciliar o que aqui foi instanciado. Em resumo: `product-backlog.md` sai do `templates/` do PO; os seis `context.md`, da seção "O que vai em cada `context.md`" do modelo de contexto. `sprints/`, `spikes/`, `prototype/`, `journeys/` e `screens/` nascem **vazios**. O `how-to.md` é **cópia literal** de `${CLAUDE_PLUGIN_ROOT}/how-to.md`, com um comentário no topo dizendo que não deve ser editado ali — é o guia de uso à mão de quem trabalha no projeto.
+
+**O que o `init` NÃO cria, e por quê.** `sprints/<n>/` e tudo dentro dela nascem na **Planning Meeting** (`/sm sprint plan`, `workflow.md` §5e passo 9) — o registro de execução pertence a um sprint, e sprint nenhum existe ainda. `baseline.md` nasce no `/qa baseline`, durante o onboarding. Semear esses arquivos vazios aqui produziria exatamente o defeito que R14 combate: estrutura que afirma um estado que o projeto não tem.
 
 ## 3. Pergunte ao stakeholder, numa lista só
 

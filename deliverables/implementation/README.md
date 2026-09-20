@@ -39,7 +39,8 @@ Quando `02-status` diz que algo está concluído e `pending` mostra o contrário
 ```
 PO marca escopo/critério ──▶ dev implementa
                               └──▶ QA atualiza 03-code-map e pending, registra evidência
-                                    └──▶ PO aceita ──▶ SM registra em 02-status e fecha
+                                    └──▶ PO conduz o aceite, stakeholder decide (④)
+                                          └──▶ SM registra em 02-status e fecha
 ```
 
 Nenhum dos quatro é escrito por dois papéis. `02-status` é do SM mesmo quando o fato veio do QA; `pending` é do QA mesmo quando o GAP foi notado pelo dev.

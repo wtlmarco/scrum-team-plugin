@@ -9,6 +9,7 @@ Este diretório guarda **a estrutura desses documentos**, para que qualquer proj
 | Conjunto | Responde | Onde está o modelo |
 |---|---|---|
 | **Protótipo funcional** | **O que o stakeholder aprova antes de aprovar o texto**: HTML navegável dos fluxos principais — pré-condição do portão ① | [`prototype/`](prototype/README.md) |
+| **Protótipo do sprint** | **O que o stakeholder navega antes de o sprint arrancar**: as telas das Histórias que entraram, costuradas num fluxo ponta a ponta — peça do pacote de abertura, pré-condição do portão ③ (R25) | [`prototype/`](prototype/README.md) · modelo em [`../roles/user-experience/templates/sprint-prototype.md`](../roles/user-experience/templates/sprint-prototype.md) |
 | **SDD** — Software Design Document | **O que o sistema é**: objetivos, requisitos, fluxos, arquitetura, dados, API e histórico | [`sdd/`](sdd/README.md) |
 | **Implementação** | **Como a construção está indo**: escopo combinado, progresso, mapa de código, pendências | [`implementation/`](implementation/README.md) |
 | **`.team-project/`** | **Como o time opera neste projeto**: o contexto que o `/team init` cria e o `/team update` reconcilia | [`team-project/`](team-project/README.md) |
@@ -32,6 +33,7 @@ Um documento tem **um dono**, que responde pelo conteúdo e pela atualização. 
 | `06-changelog` | **PO** | Toda mudança funcional aceita | SM (fechamento) |
 | `README` (índice) | **PO** | Documento novo entra no conjunto | — |
 | Protótipo funcional (HTML) | **UX** | Fluxo principal muda, antes do ① | Stakeholder (navega e aprova) |
+| Protótipo do sprint (HTML) | **UX** | A cada sprint, depois do corte de capacidade, antes do ③ | Stakeholder (navega e aprova o pacote) |
 | `01-scope-and-criteria` | **PO** | Escopo de um ciclo é definido, concluído ou revisto | SM, QA |
 | `02-status` | **SM** | Uma Task é fechada ou um ciclo termina | QA (auditoria) |
 | `03-code-map` | **QA** | Arquivo de código criado, alterado ou removido | Arquiteto |

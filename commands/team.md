@@ -1,6 +1,6 @@
 ---
 description: Orquestra o time trabalhando — instala, atualiza ou informa a versão do time no projeto, conduz o brainstorm de descoberta, ou executa um ciclo de construção de uma Task. Não é broadcast: mensagem solta é roteada ao papel dono.
-argument-hint: "init | update | version | brainstorm <ideia> | cycle <T-ID> | plan <T-ID> | build <T-ID> | qa <T-ID>"
+argument-hint: "init | update | version | brainstorm <ideia> | cycle <T-ID> | cycle sprint | plan <T-ID> | build <T-ID> | qa <T-ID>"
 ---
 
 Orquestra **o time trabalhando**: Scrum Master (`scrum-master`), Product Owner (`product-owner`), Arquiteto (`architect`), UX (`user-experience`), Desenvolvedor (`developer`) e QA (`quality-assurance`).
@@ -57,12 +57,24 @@ O que este comando faz na prática:
 
 **Não escreve em disco durante as fases** — o brief é conversa até o fechamento e não vira arquivo permanente sem lugar declarado em `.team-project/`.
 
-## Modo `cycle <ID>` — o time construindo uma Task
+## Modo `cycle <ID | sprint>` — o time construindo
+
+Duas formas:
+- **`cycle <T-ID>`** — uma Task, do plano ao veredito.
+- **`cycle sprint`** — a **fila inteira do sprint corrente**, Task a Task, **em série** (R1). É o que o ciclo do sprint pressupõe: entre a aprovação do pacote e a Sprint Review, o time opera sem acionar o stakeholder (R25 · [`workflow.md` §5g](../roles/scrum-master/process/workflow.md)).
+
+**Pré-condição de `cycle sprint`, conferida antes de disparar o primeiro agente:** leia `.team-project/README.md` §2 para achar o **sprint corrente**, abra `.team-project/sprints/<n>/sprint-backlog.md` e confirme que a seção **"Pacote de abertura"** tem **data de aprovação, quem aprovou e o ponteiro do protótipo navegado**. Sem essa data, **pare e reporte**: nenhuma Task entra em construção antes do pacote aprovado (R20 · R25). Não peça o pacote ao stakeholder aqui — isso é `/sm sprint plan`.
+
+**Ordem da fila:** por dependência declarada no Sprint Backlog, não por criticidade. Task cujas dependências não estão satisfeitas é pulada e retomada quando destravarem.
+
+**Quando a fila para:** no primeiro problema **daquela Task**, como já acontece hoje — e então a fila **segue nas Tasks cujas dependências estão satisfeitas**, sem parar o sprint. Bloqueio que aparecer vai ao **degrau 1** (PO e Arquiteto conversam, `workflow.md` §5g); só o que eles não fecharem sobe ao stakeholder, na forma de R22 — exceto **decisão estratégica**, que escala direto. Não acione o stakeholder por nada que o degrau 1 possa fechar.
+
+**Ao fim da fila:** reporte o que fechou, o que ficou bloqueado e em que degrau, e diga que o próximo passo é `/sm review`.
 
 Encadeia os papéis de construção, parando no primeiro problema:
 
 0. **UX** — Agent `user-experience`, **só se a Task tiver interface**: jornada e/ou especificação de tela com os seis estados e os critérios de acessibilidade, salva em `.team-project/user-experience/screens/<slug>.md`. Task sem interface pula esta etapa, e isso é dito explicitamente.
-1. **Arquiteto** — Agent `architect`: diagnóstico com evidência, desenho, impacto e Plano de Implementação salvo em `.team-project/architect/plans/<ID>-<slug>.md`, respeitando a capacidade declarada em `.team-project/`. Havendo especificação de tela, o plano **cita a especificação** e não a reinterpreta.
+1. **Arquiteto** — Agent `architect`: diagnóstico com evidência, desenho, impacto e Plano de Implementação salvo em `.team-project/sprints/<n>/plan/<ID>-<slug>.md`, respeitando a capacidade declarada em `.team-project/`. Havendo especificação de tela, o plano **cita a especificação** e não a reinterpreta.
 2. Resumo de 3 linhas ao stakeholder. Se o Arquiteto escalou algo (decisão estratégica, lacuna funcional), **pare aqui**.
 3. **Desenvolvedor** — Agent `developer`, recebendo o caminho do plano e a regra de parar e reportar 🔺 GAP em vez de improvisar.
 4. **Gap** — se o dev levantou 🔺 GAP: leve-o ao Agent `architect` (sem replanejar por conta própria) e devolva a decisão ao dev por SendMessage, preservando o contexto dele. Repita quantas vezes for preciso.
@@ -82,7 +94,7 @@ Modos parciais do ciclo: `plan <ID>` (só a etapa 1) · `build <ID>` (só a etap
 
 ## Registro de consumo — só onde o registro existe
 
-Se `.team-project/scrum-master/consumption-log.md` existir, acrescente **uma linha por subagente disparado nesta invocação**, com os números que cada um devolve ao retornar: data, papel, comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, nada a fazer. Os modos `init`, `update` e `version` não disparam agente — não gravam linha.
+Se `.team-project/sprints/<n>/consumption.md` existir, acrescente **uma linha por subagente disparado nesta invocação**, com os números que cada um devolve ao retornar: data, papel, comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, nada a fazer. Os modos `init`, `update` e `version` não disparam agente — não gravam linha.
 
 Se a saída do agente traz uma pergunta na forma de R22 (pergunta + por que bloqueia, alternativas descritas, recomendação, via de pedir mais contexto), não a repasse em texto corrido: chame `AskUserQuestion`, uma opção por alternativa descrita, com a via de pedir mais contexto sempre como a última opção. É você — a sessão que orquestrou — quem tem essa ferramenta; o agente não a tem.
 

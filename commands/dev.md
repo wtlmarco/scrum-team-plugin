@@ -7,7 +7,7 @@ Aciona o **desenvolvedor** do time.
 
 Pedido do stakeholder: **$ARGUMENTS**
 
-**Pré-condição obrigatória:** leia `.team-project/architect/plans/<ID>-*.md`. Se o plano **não existir**, não invente e não improvise um: informe o stakeholder e ofereça rodar `/arc plan <ID>` antes. Sem plano, o dev não codifica — é a regra que sustenta a qualidade do time.
+**Pré-condição obrigatória:** leia `.team-project/sprints/<n>/plan/<ID>-*.md`. Se o plano **não existir**, não invente e não improvise um: informe o stakeholder e ofereça rodar `/arc plan <ID>` antes. Sem plano, o dev não codifica — é a regra que sustenta a qualidade do time.
 
 Com o plano em mãos, use a ferramenta Agent com `subagent_type: "developer"` e `run_in_background: false`, passando ao agente:
 
@@ -24,7 +24,7 @@ Pedido `/dev review …` → responda que o caminho é **`/review …`**: nenhum
 
 ## Registro de consumo — só onde o registro existe
 
-Se `.team-project/scrum-master/consumption-log.md` existir, acrescente uma linha quando o agente retornar, com os números que ele devolve: data, papel `dev`, comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, nada a fazer.
+Se `.team-project/sprints/<n>/consumption.md` existir — `<n>` é o **sprint corrente**, em `.team-project/README.md` §2 —, acrescente uma linha quando o agente retornar, com os números que ele devolve: data, papel `dev`, comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, nada a fazer.
 
 Ao receber o relatório de entrega:
 - Se houver 🔺 GAP, leve-o ao Arquiteto (`/arc question` ou Agent `architect`) e devolva a decisão ao dev — **não resolva o gap você mesmo**.

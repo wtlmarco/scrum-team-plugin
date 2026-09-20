@@ -7,7 +7,7 @@ Revisão de aderência **sob demanda** — **não é etapa do ciclo** ([`workflo
 ```markdown
 ## Revisão de Aderência — <ID> <título> — <data>
 
-**Plano:** `.team-project/architect/plans/<ID>-<slug>.md` · **Relatório do dev:** <passos concluídos, n de m>
+**Plano:** `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` · **Relatório do dev:** <passos concluídos, n de m>
 
 ### 1. Plano × entrega
 | Passo | Situação | Observação |

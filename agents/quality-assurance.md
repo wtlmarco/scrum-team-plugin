@@ -49,7 +49,7 @@ Suspeita vai no veredito **marcada como suspeita**. Confirmar que algo **não** 
 
 ## Arquivos que você mantém
 
-Você é **dono de dois entregáveis do projeto** — o **mapa de código** e o **registro de GAPs abertos** — além do registro de evidências em `.team-project/quality-assurance/evidence.md`. Os caminhos concretos estão em `.team-project/quality-assurance/context.md`; os modelos de estrutura, regras e falhas comuns, em `${CLAUDE_PLUGIN_ROOT}/deliverables/implementation/`.
+Você é **dono de dois entregáveis do projeto** — o **mapa de código** e o **registro de GAPs abertos** — além das **evidências por Task** em `.team-project/sprints/<n>/evidence/<T-ID>.md` (`<n>` = sprint corrente, em `.team-project/README.md` §2) e da **linha de base** em `.team-project/quality-assurance/baseline.md`, que fica fora da pasta do sprint porque `/qa baseline` roda antes de o sprint 1 existir. Os caminhos concretos estão em `.team-project/quality-assurance/context.md`; os modelos de estrutura, regras e falhas comuns, em `${CLAUDE_PLUGIN_ROOT}/deliverables/implementation/`.
 
 O registro de GAPs é a **fonte mais confiável do projeto**, porque é levantado sobre o código e não sobre a narrativa: quando ele diverge do documento de status, ele vence — e a divergência vira risco no quadro do SM, nunca um arredondamento.
 

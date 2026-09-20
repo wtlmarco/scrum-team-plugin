@@ -1,27 +1,13 @@
-# Evidências — Registro de Verificação
+# Evidência da Task — Modelo
 
-> **DOCUMENTO VIVO** · **Dono:** QA · **Atualizado em:** <data>
-> Um bloco por Task validado. **Sem bloco aqui, o SM não fecha a Task.**
+> **Vive em** `.team-project/sprints/<n>/evidence/<T-ID>.md` — **um arquivo por Task** do sprint corrente, nome exatamente `<T-ID>.md`: é o que a coluna Evidência do Sprint Backlog aponta, e ponteiro que não resolve é achado de processo (`artifact-ownership.md` §1e).
+> **Dono:** QA · **Sem este arquivo, o SM não fecha a Task.**
 > Regra: **saída real de comando, ou não aconteceu** (R7). O que não pôde ser executado é declarado como não exercitado, com o motivo.
 
-## Linha de base
-
-Registrar aqui os números do projeto **antes** de qualquer construção, reproduzidos no ambiente atual por `/qa baseline` — não copiados de documento.
-
-| Medida | Valor declarado | Valor reproduzido | Fonte | Situação |
-|---|---|---|---|---|
-| Testes unitários | <n> | <n> | <documento> | ⏳ / ✅ / ⚠️ divergente |
-| Testes de integração | <n> | <n> | | |
-| Testes E2E | <n> | <n> | | |
-| Build (erros/avisos) | <n>/<n> | <n>/<n> | | |
-| Cobertura Domain/Application | <n>% | <n>% | | |
-
----
-
-## Blocos por Task
+## Estrutura
 
 ```markdown
-## <ID> — <título> — <data>
+## <T-ID> — <título> — <data>
 
 **Veredito:** ✅ | ⚠️ | ❌
 
@@ -32,6 +18,7 @@ Registrar aqui os números do projeto **antes** de qualquer construção, reprod
 | Segurança | ok/falha/n/a | |
 | Testes / métricas | ok/falha | |
 | Documentação | ok/falha | |
+| Desempenho | dentro do orçamento/fora/não exercitado | |
 
 **Comandos executados**
 ```
@@ -51,6 +38,7 @@ Registrar aqui os números do projeto **antes** de qualquer construção, reprod
 
 ## Como manter
 
-- Um bloco por Task, em ordem cronológica inversa (mais recente no topo dos blocos).
-- Nunca editar bloco antigo: correção vira bloco novo com a data de hoje.
-- A linha de base é reproduzida de novo sempre que o ambiente mudar (máquina nova, dependência atualizada).
+- **Um arquivo por Task**, nomeado exatamente `<T-ID>.md`. Nomeação previsível não é estilo: é o que faz o ponteiro da coluna Evidência do Sprint Backlog resolver sem ambiguidade.
+- **Um bloco por execução** do `/qa <ID>` sobre esta Task, em ordem cronológica inversa (mais recente no topo). Reprovação seguida de nova tentativa soma bloco novo — **nunca editar bloco antigo**.
+- **Task retomada num sprint seguinte** ganha arquivo novo em `sprints/<n_novo>/evidence/<T-ID>.md`; o de `sprints/<n_antigo>/evidence/` fica como está, registro fechado — mesmo padrão do plano do Arquiteto em `plan/` (`artifact-ownership.md` §1e).
+- **A linha de base do projeto não é por Task nem por sprint** — fica fora desta pasta, em `.team-project/quality-assurance/baseline.md`; formato e roteiro em [`../README.md`](../README.md), seção `/qa baseline`.
