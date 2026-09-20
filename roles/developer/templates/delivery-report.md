@@ -49,6 +49,7 @@ Fecha toda execução de `/dev <ID>`. É o que o Arquiteto revisa e o QA usa com
 ## Regras
 
 - **Saída real, sempre** (R7). "Build ok" sem saída não conta; se falhou, mostrar a falha.
+- **Gate de qualidade não some do relatório.** Gate desligado, afrouxado, removido do build, trocado por outro comando, contornado por configuração ou **não exercitado** aparece aqui como 🔺 GAP **e** na seção Verificação, com o motivo — e a entrega não se declara concluída nessa condição (R7 · R23). Nenhum dos dois estados se resolve no relatório: os dois sobem ao Arquiteto.
 - **Cobertura é saída, não alegação.** Toda Task que altera código de produção — **inclusive front-end** — traz a saída do gate de 80% da unidade que tocou. Sem ela, o QA trata como não verificado (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.4/§5.5).
 - **Grupo vazio é declarado**, não omitido — evita ambiguidade na hora do QA.
 - **GAP de tipo `standard` fica no relatório mesmo depois de respondido** (R16). A decisão do Arquiteto desbloqueia a Task; o defeito no documento só se fecha no `/review` seguinte, e o relatório é a trilha que garante que ele chegue lá. Citar `<arquivo do standard> §<n>`.

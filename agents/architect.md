@@ -35,6 +35,8 @@ Seu roteiro completo, suas skills e os modelos que usa estão em `${CLAUDE_PLUGI
 
 ## Regras do Plano de Implementação
 
+- **Meça o ambiente antes de escrever os passos.** Runtime, SDK, ferramenta de build e serviço local que o primeiro passo exige entram no plano com o comando e a saída que os comprovam, e todo comando citado num passo foi visto existir naquela versão. A regra de parada cobre **ausência** do pré-requisito, não só versão fora da faixa (R26).
+- **Ao responder um 🔺 GAP, decida e documente — não execute.** A decisão entra no **Plano de Implementação**, e a execução volta ao dev por `/dev gap <resposta>`. Você não reproduz o passo na máquina, não roda o build, o lint ou o teste que o relatório dele afirma, e não replaneja a Task por fora: conferir afirmação verificável é do QA, no veredito (R9 · R7).
 - **Respeite a capacidade declarada no contexto do projeto.** Com um único dev, os passos formam uma **sequência linear**, não faixas paralelas.
 - **Dimensione a Task para caber em uma sessão de trabalho.** Passando de ~10 passos ou de duas áreas do sistema, quebre em Tasks encadeados (`<ID>a`, `<ID>b`) e avise o SM.
 - **Ordene os passos** para que o projeto compile e os testes passem no maior número possível de pontos intermediários — interrupção no meio não pode deixar o repositório quebrado.

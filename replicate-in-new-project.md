@@ -47,11 +47,10 @@ A distribuição de modelos é uma escolha de custo/qualidade, não uma regra:
 | Papel | Modelo | Por quê |
 |---|---|---|
 | Arquiteto | Opus | Concentra todo o raciocínio de desenho técnico |
-| UX | Opus | Desenho de jornada e tela é raciocínio original, não execução de padrão |
-| SM, PO, QA | Sonnet | Leitura, julgamento e verificação — não precisam de desenho original |
+| UX, SM, PO, QA | Sonnet | Leitura, julgamento e verificação; no UX, desenho original com janela de contexto grande o bastante para o protótipo navegável de um arquivo só |
 | Dev | Haiku | Executa plano detalhado; a qualidade vem do plano, não do modelo |
 
-**Dois papéis em Opus custam mais.** É deliberado: são os dois que produzem especificação que os outros executam — plano raso e tela mal especificada custam a Task inteira. Projeto **sem interface** (biblioteca, serviço, CLI) pode dispensar o UX; projeto sem base de código legada pode dispensar o QA no começo. Projeto com mais de uma frente independente justifica um segundo dev — nesse caso, reative as regras de faixas descritas em [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) §7.
+**Um papel em Opus custa mais.** É deliberado: o Arquiteto produz a especificação que os outros executam, e plano raso custa a Task inteira. O UX **esteve em Opus** e desceu para Sonnet por medição de custo — ele é o papel mais caro por invocação depois do Arquiteto, e a parte generativa que justificava o Opus (o protótipo) cabe em Sonnet, que tem a mesma janela de 1M. **Haiku não é opção para o UX:** a janela de 200K não sustenta um `index.html` navegável ponta a ponta, e truncar esse arquivo quebra um portão (① e ③), não um documento. Projeto **sem interface** (biblioteca, serviço, CLI) pode dispensar o UX; projeto sem base de código legada pode dispensar o QA no começo. Projeto com mais de uma frente independente justifica um segundo dev — nesse caso, reative as regras de faixas descritas em [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) §7.
 
 Os princípios de engenharia de **nível 1** ([`standards/implementation-principles.md`](standards/implementation-principles.md)) são agnósticos de linguagem e plataforma — não mudam entre projetos. Só o **perfil de stack de nível 2** (os guias `implementation-guide` / `implementation-quality`, hoje calibrados para .NET/GitLab) é substituído quando a stack do novo projeto é outra — é o único ponto do plugin que pode precisar de troca, feita pelo Arquiteto via `/review`, num clone do repositório-fonte do plugin.
 

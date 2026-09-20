@@ -312,7 +312,7 @@ A baseline é o resultado **real** da última execução aceita: valor da métri
 | Piora acima da margem, ainda dentro do limiar | **Bloqueia** — a única saída é **atualizar a baseline no mesmo merge**, com justificativa no registro da mudança |
 | Variação dentro da margem | Passa, sem discussão |
 
-Atualizar a baseline é a válvula de escape, e ela é **visível**: aparece no diff, é revisada, e não some no meio do log do pipeline. Perda de desempenho aceita em definitivo (mudança de limiar de V18 para pior) exige **ADR** — mesma direção do gate de cobertura (§5.4): o limiar **só aperta**.
+Atualizar a baseline é a válvula de escape, e ela é **visível**: aparece no diff, é revisada, e não some no meio do log do pipeline. **A válvula não é de quem executa o passo:** atualizar a baseline só acontece quando o plano da Task a autoriza explicitamente — quem encontra a regressão no meio da execução levanta o desvio e para, em vez de mover o número de referência para o gate passar. Perda de desempenho aceita em definitivo (mudança de limiar de V18 para pior) exige **ADR** — mesma direção do gate de cobertura (§5.4): o limiar **só aperta**.
 
 #### P6 — Evidência e quando se exercita
 
