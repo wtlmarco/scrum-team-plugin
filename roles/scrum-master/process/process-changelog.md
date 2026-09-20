@@ -13,6 +13,9 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.24`](process-changelog-archive.md) | O ciclo do sprint: ③ em lote sobre pacote navegável, bloqueio em dois degraus, registro por sprint (5 papéis) — 20/09/2026 · *com addendum de 20/09/2026 sobre o teto da R17* |
+| [`v3.23`](process-changelog-archive.md) | Segundo giro Act: a tabela de indicadores parava de dizer algo novo em 13 das 23 linhas (SM) — 18/09/2026 |
+| [`v3.22`](process-changelog-archive.md) | Giro Act do ciclo de eficiência: footprint remedido e a arqueologia do `consult` sai de §5c (SM) — 18/09/2026 |
 | [`v3.21`](process-changelog-archive.md) | Product Backlog deixa de conter a História: índice com ponteiro, conteúdo em arquivo próprio do PO (§1d) |
 | [`v3.20`](process-changelog-archive.md) | Pendência do stakeholder resolvida em formulário: R22 ganha o meio de apresentação, restrito a quem orquestra (SM) — 18/09/2026 |
 | [`v3.19`](process-changelog-archive.md) | Pasta `sprints/<n>/` para Review/Retrospectiva/snapshot, burndown desenhado (R24), tríade R18, duas contagens e uma contradição entre normativos (SM) — 16/09/2026 |
@@ -60,249 +63,175 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
-## v3.24 — O sprint vira a unidade de aprovação e de entrega (R25): ③ em lote sobre pacote navegável, bloqueio em dois degraus, registro por sprint (5 papéis) — 20/09/2026
+## v3.27 — Os três pontos abertos de `note.md`, resolvidos em formulário (R22): teto da R17 escala, R27 nova, R5 ganha o lado de quem orquestra (SM) — 20/09/2026
 
-**Instrução do stakeholder** (fila `Abertas` de `note.md`, cinco itens fechados em oito rodadas de análise): *"um automode onde após o stakeholder aprovar o protótipo o time pode seguir o desenvolvimento até a sua conclusão sem necessitar dos gates de aprovação"*, com a exceção de escalar o problema em que *"a construção poderia falhar"*; mais os dois modos de trabalho no `how-to`, e o automode de manutenção pela fila `note.md` do produto.
+**Instrução** (stakeholder, resolução em formulário `AskUserQuestion` conforme R22, três perguntas, recomendação do time aceita nas três): fechar os pontos que sobraram em `note.md` depois da rodada v3.25/v3.26 — o teto da R17 que não escala, as chamadas de agente canceladas com atribuição falsa ao stakeholder, e o relatório de retomada que não chega a quem orquestra.
 
-**O desenho entregue não é o pedido literal, e o stakeholder decidiu assim.** Sumir do ① até o MVP reintroduzia os dois modos de falha mais caros do processo — R15 (aprovar por escrito o que só se vê construído) e R21 (somar aprovações técnicas e descobrir no fim que o valor não chegou) — com o dano multiplicado pelo número de sprints. A saída foi **agregar os gates na fronteira do sprint**, não removê-los: o ciclo de detecção de deriva volta a ser de **um** sprint. O termo "automode" não existe.
-
-**Classificação:** regra de trabalho (**R25** nova, **R20** reescrita, **R21** restaurada) + etapa de fluxo (§2, §5e, §5g, §8) + propriedade de artefato (§1e nova, §1c) + formato de documento (9 modelos) + comportamento de comando (`commands/`, `agents/`, guias de raiz — aplicados com autorização nominal do stakeholder no fecho).
+**Classificação:** regra de trabalho (**R17** alterada, **R5** ampliada, **R27** nova) + comportamento de agente (`commands/team.md`). Rodada de **um papel** (SM) — barreira aplicável: 10 KB.
 
 ### O que mudou
 
 | Documento | Mudança |
 |---|---|
-| `working-rules.md` | **R25 nova** — o sprint é a unidade de aprovação e de entrega: pacote navegável na abertura, execução contínua, bloqueio em dois degraus, registro por sprint. **R20 reescrita** — o ③ passa a ser aprovado **em lote, depois da Planning**; guarda-corpo deslocado para "nenhuma Task em construção antes do pacote". **R21 restaurada** ao original, com nota que separa *conduzir* (PO) de *decidir* (stakeholder). R25 entra na linha colapsada de verificação binária (v3.23), sem linha própria |
-| `workflow.md` | **§5g nova** — o ciclo do sprint: pacote de 4 peças · execução contínua · bloqueio em 2 degraus · manutenção pela fila `note.md`. **§5e** — Planning de 6 → **11 passos** (valor real no 2, varredura de bloqueios no 3, pasta e `planning.md` no 9, pacote no 10, congelamento e índice no 11). §2, §2a, §3a/§3b, §4a-ii, §5, §5f, §6a, §6b e **§8 com 21 gates** (2 novos) |
-| `artifact-ownership.md` | **§1e nova** — `sprints/<n>/` com **dono por subpasta** (SM o contêiner · `stories/` PO · `plan/` Arquiteto · `evidence/` QA). **§1c** — um padrão de retenção só: o par vivo+archive do consumo deixa de existir, e a pendência que a v3.19 devolveu ao stakeholder fica **resolvida**. Linhas novas: protótipo do sprint, `architect/spikes/` (existia desde a v3.9 **sem linha de matriz**), `quality-assurance/baseline.md` |
-| Modelos do SM | `sprint-backlog.md` (vive e **fecha** na pasta — `sprint-backlog-snapshot.md` deixa de existir; relaciona História ↔ Task ↔ plano ↔ evidência), `sprint-review.md` (veredito do stakeholder por História), `retrospective.md` (consumo em seção própria + **sintomas para o `note.md` do plugin**), `project-context.md`, `burndown.md`. **Novos:** `planning.md`, `consumption.md`. **Removido:** `consumption-log.md` |
-| Os quatro papéis roteados | **PO** — detalha sem ③ prévio, **congela** a cópia em `stories/`, alimenta o `planning.md`. **Arquiteto** — planos em `plan/`; **Task retomada tem plano reescrito** (`Retomada de:`); spike fora da pasta. **QA** — evidência por Task; **baseline separada**, porque roda antes do sprint 1. **UX** — entregável novo, o **protótipo costurado do sprint**, com régua própria de verificação leve. Caminho, dono e regra de cada um: matriz §1e |
-| `commands/`, `agents/`, guias de raiz | `cycle sprint` e `prototype sprint <n>` novos; `team-init.md` deixa de semear a estrutura antiga e declara **o que não cria**; `team-update.md` ganha o **passo 7a** de migração estrutural com a classe "histórico imutável"; `how-to.md` ganha a seção do ciclo do sprint **e a estrutura de `.team-project/`** (é a cópia que o cliente recebe); 31 ponteiros corrigidos. **`prototype <tela>` → `prototype screen <tela>`** — os três sentidos passam a se distinguir por palavra reservada, não por nome livre |
+| `working-rules.md` (**R17**) | A barreira deixa de ser número fixo: **10 KB até dois papéis, +2,5 KB por papel adicional, teto absoluto de 20 KB**. O que a regra combate é deliberação repetida, que não cresce com o número de papéis; registro de decisão cresce. Número fixo obrigava a escolher entre estourar e apagar decisão. A entrada passa a declarar quantos papéis a rodada moveu |
+| `working-rules.md` (R17, "SM verifica") | A medição passa a exigir **decodificação UTF‑8 explícita**: `Get-Content` sem `-Encoding utf8` infla ~7,5% e acusa estouro inexistente — a conferência é o total bater com o tamanho em disco. Erro medido nesta mesma rodada, que levou a uma condensação desnecessária e a uma acusação injusta a um papel |
+| `working-rules.md` (R17, nota de racional) | Ajustada à barreira escalada, e o precedente da v3.25 corrigido para o valor real (9,14 KB) |
+| `working-rules.md` (**R5**) | Ganha **o lado de quem orquestra**: relatório final que não chega — notificação sem texto, "resultado provisório", ou nada — obriga a **ler o estado em disco antes** de reinvocar o papel ou declarar perda. O parcial existe porque R5 já o exige; não consultá-lo paga duas vezes pelo mesmo trabalho |
+| `working-rules.md` (**R27 nova**) | Chamada a agente que volta interrompida/cancelada/recusada **sem ação observada do stakeholder** é retentada uma vez; persistindo, reporta-se **falha de ambiente** com o texto literal do harness — nunca "o usuário interrompeu". Entra na linha de verificação binária e no "Resumo em uma tela" |
+| `commands/team.md` | Seção "Quando uma invocação falha": a retentativa de R27 e a leitura de disco de R5, escritas onde quem orquestra as lê |
 
-### O modo de falha que isto evita
+### Por quê
 
-Dois opostos: o time parar a cada História para pedir aprovação, pagando latência em trabalho que deriva de um SDD já aprovado; e o stakeholder sumir até o fim, descobrindo a deriva quando o retrabalho já é código de N sprints. O pacote navegável resolve os dois — e prova, de quebra, que o sprint entrega fatia usável: protótipo que não atravessa um fluxo ponta a ponta denuncia o corte errado **antes** de o sprint arrancar.
-
-### Conflitos
-
-| O que conflitou | Com | Resolução |
-|---|---|---|
-| ③ em lote × R20 ("aprovado antes da Planning") e §8 ("gates não negociáveis") | R20 · §8 | Stakeholder decidiu: agregar, não remover. R20 reescrita; §8 mantém os 21 gates, o ③ muda de **momento e granularidade**, não de dono |
-| ④ sem o stakeholder (desenho inicial) × R21 | R21 | Descartado. O ④ sempre foi dele — `sprint-review.md` já dizia "Decide: o stakeholder". R21 **restaurada**, não emendada |
-| `§1d` do ciclo do sprint × `§1d` da v3.21 (Product Backlog índice) | v3.21 | A da v3.21 já estava publicada e mantém `§1d`; a do sprint vira **`§1e`**, e 21 ponteiros foram reclassificados um a um |
-| `stories/` do sprint × `stories/` do PO (v3.21) | v3.21 | Convivem com papéis distintos: `product-owner/stories/` é a **fonte viva**; `sprints/<n>/stories/` é a **cópia congelada** do que foi aprovado. Mesmo ID, objetos diferentes |
-| Bloco "Registro de consumo" e tabela "Como o SM aplica" | v3.22 · v3.23 | A base desta entrega era `develop` em v3.19 — quatro entregas atrás. Resolvido tomando a versão **enxugada** dos dois giros Act e reaplicando só a mudança semântica: **nenhum corte das v3.22/v3.23 foi revertido** |
+Os três pontos tinham a mesma raiz: **o processo descrevia o caminho feliz e deixava a falha ao improviso**. A barreira fixa presumia que todo excedente fosse deliberação; a v3.24 provou que não — 10.453 B só de campo obrigatório, cinco papéis movidos, nada para cortar. A atribuição falsa de interrupção fez o time afirmar ao stakeholder, com autoridade de relatório, algo falso sobre ele próprio. E o relatório de 4h que se perdeu só foi recuperado porque alguém lembrou de ler o disco — funcionou por iniciativa, não porque estivesse escrito.
 
 ### Quem passa a ser cobrado de forma diferente
 
 | Papel | O que muda |
 |---|---|
-| **stakeholder** | Deixa de aprovar História por História antes da Planning. Passa a **navegar e aprovar o pacote** na abertura e **decidir por História** na Review, e recebe no pacote o que **não** entrou, com o motivo. Fora disso só é acionado pelo degrau 2 — e por decisão estratégica, que vem direto |
-| **SM** | Planning de 11 passos; varre bloqueios, confere fatia vertical, cria a pasta com as subpastas, escreve `planning.md`, **segura a construção** até a aprovação, congela, abre o burndown no dia 0 e mantém o índice do sprint corrente. Registra o **degrau** de cada bloqueio. Fecha o Sprint Backlog **sem snapshot** |
-| **PO** e **Arquiteto** | São o **degrau 1**: conversam antes de qualquer bloqueio subir ao stakeholder |
-| **UX** | Entra na Planning com um entregável que **bloqueia o arranque do sprint** |
-| **QA** · **dev** | Caminhos novos; nenhum critério de veredito nem prática de construção muda |
+| **SM** | Mede a entrada em bytes UTF‑8 com decodificação explícita e contra a barreira **da rodada**, não contra 10 KB fixos; a entrada declara quantos papéis moveu |
+| **Quem orquestra** | Retenta uma vez antes de reportar falha de invocação, e nunca atribui interrupção ao stakeholder sem ação dele registrada (R27); lê o disco antes de reinvocar papel cujo relatório não chegou (R5) |
+
+### Conflitos
+
+Nenhum. R27 é aditiva — nenhuma regra tratava de falha de invocação. A ampliação de R5 é o lado do orquestrador da mesma obrigação que o papel já tinha, sem contradizê-la. A R17 alterada **não reabilita** a v3.24: entrada antiga não se reescreve, e o addendum datado permanece como registro do que aconteceu; a barreira nova vale das próximas rodadas em diante.
 
 ### Como saberemos que funcionou
 
-Primeira Planning sob R25 fecha com `planning.md` completo e data de aprovação no Sprint Backlog, e nenhuma Task em 🟨 antes dela. Primeiro sprint sem acionar o stakeholder fora dos dois pontos, com todo bloqueio trazendo o degrau nomeado. Primeira Review com a coluna Decisão preenchida por ele. **Fracasso:** pacote aprovado sem protótipo navegado, ou bloqueio escalado sem o degrau 1 registrado.
+Próxima rodada multi-papel fecha dentro da barreira escalada sem addendum e declarando quantos papéis moveu. Nenhum relatório ao stakeholder volta a atribuir a ele interrupção que não fez. Próximo relatório que não chegar tem, no relato de quem orquestrou, a leitura do disco antes da reinvocação.
 
 ### Evidência (R19)
 
 | Classe | Comando | Saída | Ok? |
 |---|---|---|---|
-| Substituição de padrão | vocabulário extinto (`automode`, `aceite único do MVP`, `fronteira do MVP`) **e** caminhos antigos (`scrum-master/sprints`, `architect/plans`, `scrum-master/sprint-backlog`, `quality-assurance/evidence.md`, `consumption-log`), em todos os `.md`/`.json` da RAIZ | **0** no processo vigente; sobrevivem só a tabela "de → para" do passo 7a de `team-update.md` e as declarações de que cada padrão foi extinto — todas lidas no contexto | ✅ |
-| Auditoria de fecho | varredura de coerência do conjunto (órfão · modo morto · regra sem verificação · etapa sem comando · nome ambíguo) | **0** em todas; **4 gaps corrigidos** — ponteiro `/ux prototype` da etapa 3b resolvia para o artefato do ①; `/qa bug` fora do `how-to`; o comando com que o PO aciona a QA não era nomeado; `/qa audit` × `/review audit` sem desambiguação | ✅ |
-| Substituição de padrão | `§1d` × `§1e` em todo o repositório, lidas **uma a uma** no contexto | 21 reclassificadas para `§1e` (pasta do sprint); 7 mantidas em `§1d` (Product Backlog, v3.21) | ✅ |
-| Contagem | `^### R\d+\.` · `^\| R\d+ \|` · card do SM | **25 · 25 · 25** | ✅ |
-| Contagem | linhas de gate da tabela do §8 | **21** (eram 19; 2 novos: `planning.md` e degrau 1) | ✅ |
-| Extração/remoção | `wc -l` antes/depois | `planning.md` 0→54 · `consumption.md` 0→31 · `sprint-prototype.md` 0→97 · `consumption-log.md` 26→0 · `sprint-backlog-snapshot.md` deixa de existir | ✅ |
-| Arquivamento | `v3.21` relocada para `process-changelog-archive.md` (teto de 3 entradas, R17) | 83 linhas movidas íntegras; vivo 326→240 linhas | ✅ |
-| Links | validador de links `.md` relativos em toda a RAIZ | **0 quebrados** (1 falso positivo conhecido: `project-context.md → how-to.md`, que resolve no `.team-project/` gerado) | ✅ |
-| Encoding | `U+FFFD` em todos os `.md`/`.json` | **0** (148 reparados em `usability-review.md` pelo UX) | ✅ |
-| Tríade R18 | `plugin.json` × banner do `README.md` × topo do `CHANGELOG.md` | `3.24.0` nos três | ✅ |
+| Contagem | `^### R\d+\.` / `^\| R\d+ \|` / `**SM verifica:**` em `working-rules.md` | **27·27·27** (era 26·26·26) | ✅ |
+| Leitura de coerência | R27 e R5 lidas lado a lado com `commands/team.md` | mesma obrigação nos dois lugares, sem divergência de texto | ✅ |
+| Substituição de padrão | `barreira de 10 KB` em toda a RAIZ, cada ocorrência lida no contexto | **2**, ambas históricas e corretas como estão: a entrada `v3.26.0` do `CHANGELOG.md`, que narra o estado de então, e esta própria linha. **Zero** em texto normativo — `working-rules.md` só traz a forma escalada | ✅ |
+| Arquivamento (teto 3) | bloco `v3.24` (74 linhas) relocado, `Compare-Object` UTF‑8 | 0 diferenças; índice de arquivadas com a linha nova | ✅ |
+| Teto de entrada (R17) | bloco `## v3.27`, `[IO.File]::ReadAllLines` com UTF‑8 explícito; rodada de **um papel** → barreira 10 KB | **5.510 B (5,38 KB)**, sob a barreira | ✅ |
 
-**Desvio declarado (R19).** Aplicado sobre `develop` em **v3.19** sem conferir `git branch -a` — havia quatro entregas não mescladas. Detectado pelo stakeholder antes do PR e corrigido por rebase sobre `origin/develop`, com 31 blocos de conflito resolvidos um a um; os dois giros Act (v3.22, v3.23) foram preservados integralmente. **Lição de método:** `/review` que abre branch confere as branches remotas antes, não só `develop` local.
-
-**Pendente do stakeholder:** nenhum. As quatro propostas (`commands/team.md`, `commands/sm.md`, `how-to.md`, `team-update.md`) e os 31 ponteiros foram autorizados nominalmente e aplicados no fecho.
+**Pendente do stakeholder:** nenhum. As três decisões foram tomadas em formulário e aplicadas no fecho. Entrega **v3.27.0** (R18).
 
 ---
-## v3.23 — Segundo giro Act: a tabela de indicadores parava de dizer algo novo em 13 das 23 linhas (SM) — 18/09/2026
 
-**Instrução:** *(stakeholder)* "Vale um olho nisso no próximo giro, refaça o giro encontrando como melhorar novamente" — segundo `/review metrics` consecutivo, pedido depois de ler o saldo do primeiro.
+## v3.26 — UX desce de Opus para Sonnet, por medição de custo (stakeholder) — 20/09/2026
 
-**Classificação:** formato de documento — remoção por redundância no normativo do SM. Nenhuma regra nova, nenhuma regra alterada; a contagem segue em **24**.
+**Instrução** (stakeholder, decisão direta após levantamento de custo por papel): *"Vamos descer o UX para Sonnet"*. Origem: o UX era o papel **mais caro por invocação do time** — carga fixa 13,4 KB × US$ 5/MTok = 67 ponderado, contra 56 do Arquiteto e 37,6 do PO. O stakeholder havia escolhido Opus pelo trabalho criativo de desenho de tela, e perguntou se Haiku daria conta.
 
-### Onde procurei, e por que não foi na carga fixa
-
-O primeiro lugar da lista de §5c é a carga fixa. Varri `agents/` + `commands/` procurando linha idêntica em 3 ou mais arquivos e sobraram **duas**, ambas legítimas de duplicar (cada arquivo é lido isolado, sem o outro):
-
-| Bloco | Arquivos | Peso |
-|---|---:|---:|
-| Ponteiro do `review-contract.md` | 5 `agents/*` | 2,06 KB |
-| Gancho do formulário de R22 (v3.20) | 4 `commands/*` | 1,57 KB |
-
-A duplicação barata já tinha saído na v3.22. Como corte na carga fixa é **proposta, não aplicação** (§5c), as duas ficam como pendência abaixo, e o giro foi procurar no conjunto sob demanda — onde está o maior volume do time: `roles/scrum-master/` com 198,6 KB, 3,7× o segundo colocado.
-
-### O achado
-
-`working-rules.md` (40,2 KB, o segundo maior arquivo do SM) dizia a **mesma verificação duas vezes**. Cada regra já traz a própria linha `**SM verifica:**`, nomeando o artefato a conferir. A tabela "Como o SM aplica", da retrospectiva, repetia essa verificação regra a regra — e em **13 das 23 linhas** a coluna "Alerta" era tautológica: *"qualquer ocorrência → Rnn ignorada"*, que não é limiar, é a definição de violar a regra.
-
-As outras 10 linhas **ganham** o lugar: têm limiar de verdade (`> 2 → plano raso`, `> 30%`, `> 2×`, `recorrente`, `> 25% dois sprints seguidos`), que é o que transforma uma medida contínua em sinal — exatamente o que uma tabela de retrospectiva deve fazer.
+**Classificação:** comportamento de agente (declaração de modelo em `agents/`). Decisão e aplicação do **stakeholder**, que é o dono de `agents/` — não aplicada por papel.
 
 ### O que mudou
 
-| Arquivo | Onde | O quê |
-|---|---|---|
-| `working-rules.md` | "Como o SM aplica", 13 linhas | **Colapsadas numa só**, que nomeia as regras cobertas (R13·R14·R15·R16·R18·R19·R20·R21·R22·R23·R24) e aponta para a linha "SM verifica" de cada uma como fonte |
-| | as outras 10 linhas | **Intocadas** — têm limiar próprio |
-
-**Verificado antes de cortar, uma a uma:** cada uma das 13 linhas está integralmente coberta pela linha "SM verifica" da sua regra — inclusive a cláusula que a v3.21 acabara de acrescentar a R20 (índice do Product Backlog que volta a carregar conteúdo de História). Nenhuma verificação foi perdida; o que saiu foi a segunda cópia dela.
-
-### Quem passa a ser cobrado de forma diferente
-
-Ninguém. A varredura da retrospectiva continua cobrindo as 24 regras — agora numa linha que manda ler a verificação onde ela é escrita, em vez de repeti-la.
-
-### Como saberemos que funcionou
-
-| Medida | Antes | Depois | Δ |
-|---|---:|---:|---:|
-| `working-rules.md` | 40,20 KB | **37,74 KB** | **−2,46 KB (−6,1%)** |
-| Tabela "Como o SM aplica" | 5,90 KB | **3,31 KB** | −2,59 KB (−44%) |
-| Linhas de indicador | 23 | **12** | −11 |
-| `roles/scrum-master/` (sem changelogs) | 198,6 KB | **196,1 KB** | −2,5 KB |
-
-Indicador de que não quebrou: o `grep` de `^### R\d+\.`, de `^\| R\d+ \|` e de `^\*\*SM verifica` continua dando **24, 24, 24**. O corte deste giro é **4,6× o do anterior** (−2,46 contra −0,54 KB), e veio de procurar redundância estrutural em vez de texto obsoleto.
-
-### Conflitos com o processo vigente
-
-Nenhum. §5c manda que todo giro considere remover, e nomeia "seção que repete outra" como candidata de primeira linha.
-
-### Evidência (R19)
-
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Busca de duplicação | linhas >80 chars de `agents/`+`commands/` agrupadas por conteúdo idêntico, filtradas por ocorrência em 3+ arquivos | 2 blocos (2,06 e 1,57 KB), ambos legítimos — viraram proposta, não corte | ✅ |
-| Cobertura antes de cortar | linha `**SM verifica:**` de R13·R14·R15·R16·R18·R19·R20·R21·R22·R23·R24, lida integralmente | as 11 presentes e completas; R20 inclui a cláusula da v3.21 | ✅ |
-| Extração/remoção | `(Get-Item working-rules.md).Length` e recorte da seção, antes/depois | 40,20 → 37,74 KB; seção 5,90 → 3,31 KB; 241 → 229 linhas | ✅ |
-| Integridade estrutural | `^### R\d+\.` · `^\| R\d+ \|` · `^\*\*SM verifica` | **24 · 24 · 24** — nenhuma regra, linha de resumo ou verificação perdida | ✅ |
-| Encoding | primeiros 3 bytes de todo `.md` de `process/`, `commands/`, `agents/` | zero BOM — ver desvio abaixo | ✅ |
-
-**Desvio corrigido no fecho (R19).** As edições por script deste giro e do anterior usaram `Set-Content -Encoding utf8`, que no Windows PowerShell 5.1 **grava BOM**. Três arquivos (`working-rules.md`, `process-changelog.md`, `process-changelog-archive.md`) ficaram com BOM enquanto os outros 16 de `process/`+`commands/`+`agents/` não tinham nenhum. Removido no fecho, conteúdo conferido intacto depois. **Lição para o próximo giro:** cirurgia de linha em arquivo do repositório usa `UTF8Encoding($false)`, nunca `Set-Content -Encoding utf8`.
-
-### Pendente do stakeholder
-
-Os dois blocos de duplicação da carga fixa, que §5c manda propor e não aplicar. **Nenhum é corte óbvio** — em ambos os casos cada arquivo é lido isolado, então "duplicação" aqui não é desperdício no mesmo contexto, e sim texto repetido que cresce junto quando muda:
-
-1. **Ponteiro do `review-contract.md`** — 421 chars × 5 `agents/*.md`. Só é lido quando o `/review` aciona aquele papel; nas outras invocações é carga morta. Comprimível para ~150 chars sem perder a instrução.
-2. **Gancho do formulário de R22** — 403 chars × 4 `commands/*.md`, acrescentado na v3.20 desta mesma rodada. Comprimível para ~180 chars.
-
-Juntos, ~1,3 KB de carga fixa. Decisão tua, item a item, como na v3.22.
-
----
-
-## v3.22 — Giro Act do ciclo de eficiência: footprint remedido e a arqueologia do `consult` sai de §5c (SM) — 18/09/2026
-
-**Instrução:** *(stakeholder)* `/review metrics` — giro completo do ciclo de eficiência (`workflow.md` §5c), com **uma** mudança.
-
-**Classificação:** regra de trabalho / formato de documento — remoção por excesso e obsolescência no normativo do SM. Nenhuma regra nova; a contagem segue em **24**.
-
-### Footprint remedido — 18/09/2026
-
-**Carga fixa** (`agents/<papel>.md` + `commands/<papel>.md`, paga em toda invocação), contra a remedição anterior da v3.16 (14/09/2026):
-
-| Papel | v3.4 | v3.16 | v3.22 | Δ desde v3.16 |
-|---|---:|---:|---:|---:|
-| Product Owner | 13,0 | 16,7 | **17,7** | +6,0% |
-| Scrum Master | — | 15,4 | **16,4** | +6,5% |
-| UX | — | 11,2 | **11,8** | +5,4% |
-| QA | — | 11,1 | **11,7** | +5,4% |
-| Arquiteto | — | 10,4 | **11,4** | +9,6% |
-| dev | — | 7,1 | **7,7** | +8,5% |
-| **Total do grupo** | **66,0** | **71,9** | **76,7** | **+6,7%** |
-
-**Conjunto sob demanda** (`roles/<papel>/`, sem os changelogs) — primeira medição por papel; vira a linha de base:
-
-| Papel | KB |
-|---|---:|
-| Scrum Master | 198,3 |
-| Product Owner | 54,2 |
-| UX | 47,1 |
-| Arquiteto | 44,1 |
-| QA | 39,1 |
-| dev | 22,0 |
+| Documento | Mudança |
+|---|---|
+| `agents/user-experience.md` | `model: opus` → `model: sonnet` |
+| `roles/user-experience/README.md` | Linha do agente: **Opus** → **Sonnet** |
+| `README.md` (raiz) | Tabela de papéis: UX passa a Sonnet |
+| `replicate-in-new-project.md` | Tabela de distribuição de modelos: UX sai da linha do Opus e entra na de Sonnet; "Dois papéis em Opus" → "Um papel em Opus", com o porquê da descida e o registro de que **Haiku não é opção** para o UX |
+| `workflow.md` §5c | O item "O modelo importa mais que os KB" passa a listar a distribuição correta e a dizer que ranquear a tabela por KB inverte a ordem real |
 
 ### Por quê
 
-O gatilho de Act fora de cadência de §5c disparou: **o footprint total cresceu dois giros seguidos sem nenhuma remoção registrada**. Em quatro dias e cinco versões de processo (v3.17→v3.21), a carga fixa subiu **+6,7%** e nenhum papel registrou corte. Nenhum papel isolado cruzou o limiar de 20%, então o gatilho que valeu foi o do crescimento sem remoção — o menos visível dos três, e o que mede exatamente o modo de falha que §5c existe para conter.
-
-A remoção escolhida é a mais defensável por evidência: **§5c era a maior seção de `workflow.md`** (9,2 KB de 59,4 — 15,5% do arquivo), e carregava **três parágrafos de arqueologia do modo `consult`**, um comando que não existe mais em lugar nenhum do repositório (`grep` de `\bconsult\b` em `roles/`, `commands/`, `agents/`: zero). A seção que existe para impedir inchaço era a mais inchada do documento, e parte do peso era história de um comando extinto.
-
-### O que mudou
-
-| Arquivo | Onde | O quê |
-|---|---|---|
-| `workflow.md` | §5c, parágrafo "Não existe mais broadcast dos seis" | Reescrito como **regra viva** ("Chame só quem a questão toca"), absorvendo o ganho nos dois eixos que o parágrafo separado de "A lição de R3" explicava |
-| `workflow.md` | §5c, parágrafo "A lição de R3 sobreviveu ao comando que a originou" | **Removido** — narrava a migração do passo 1 do `consult` extinto para o `/sm agreement`; o que governa hoje ficou no parágrafo acima |
-| `workflow.md` | §5c, parágrafo "Sem número fechado, de propósito" | **Comprimido** de 5 linhas para 2, preservando a única norma que ele carregava: a tabela sustenta ordem de grandeza, não delta exato |
-| `workflow.md` | §5c, item 3 de "Três coisas que a carga fixa não mostra" | "No broadcast, **as seis saídas** retornam" → cada saída de subagente retorna, uma por papel disparado — o broadcast dos seis não existe mais |
-
-**O que foi preservado de propósito:** a definição dos dois números, a tabela de custo por comando, o comando de remedição, os gatilhos e o bloco de pegada estática × consumo real. Nada normativo saiu.
+Sonnet tem a **mesma janela de 1M** do Opus e captura a maior parte da economia: −60% na carga fixa ponderada (67 → 26,8) e **2,5× menos por invocação**. Haiku foi considerado e **descartado com motivo**: janela de 200K não sustenta o `index.html` navegável ponta a ponta do protótipo, e o modo de falha é truncar no meio de um entregável que é um arquivo só — quebrando o portão ① e o ③ (R25), não um documento. Soma-se a isso que o UX tem **mais autonomia que o dev** (é o autor, não executa plano fechado), e o incidente T‑001 já mediu o que Haiku faz com latitude neste harness mesmo tendo plano fechado.
 
 ### Quem passa a ser cobrado de forma diferente
 
-Ninguém. É remoção de texto morto: nenhuma regra, gate ou verificação mudou. O SM ganha um §5c 6% menor para ler a cada giro.
+| Papel | O que muda |
+|---|---|
+| **UX** | Mesmo roteiro, mesmas obrigações, modelo mais barato. Nada no que ele entrega foi afrouxado |
+| **Stakeholder** | Passa a ler o **registro de verificação (harness)** do protótipo de sprint comparando com o do sprint anterior em Opus — é o instrumento que decide se a troca se sustenta |
 
 ### Como saberemos que funcionou
 
-**Saldo final do giro inteiro** (as três mudanças somadas, medido no fecho):
-
-| Medida | Início do giro | Fecho | Δ |
-|---|---:|---:|---:|
-| Carga fixa do grupo | 76,7 KB | **75,3 KB** | **−1,4 KB** |
-| `workflow.md` §5c | 9,20 KB | **9,00 KB** | −0,20 KB |
-| `workflow.md` | 59,4 KB | **59,25 KB** | −0,15 KB |
-| `roles/scrum-master/` (sem changelogs) | 198,8 KB | **198,6 KB** | −0,2 KB |
-
-**O corte em §5c foi quase anulado pela própria mudança que o giro produziu.** A remoção da arqueologia do `consult` tirou 0,54 KB; o parágrafo novo que fechou a contradição de propriedade devolveu 0,86 KB, e §5c chegou a ficar **maior** que no início (9,52 KB) — a seção que existe para impedir inchaço, inchada pelo giro que a governa. Corrigido no fecho: o parágrafo foi comprimido de 0,86 para 0,34 KB, movendo o racional para esta entrada (R17 — a análise vive no changelog, a norma no normativo), e §5c fechou em 9,00. Fica registrado porque é o modo de falha que §5c nomeia, acontecendo dentro dela.
-
-O indicador do próximo giro é que a linha "Total do grupo" pare de subir sem remoção — hoje ela subiu 6,7% com zero cortes registrados, e este giro devolveu 1,4 KB.
-
-### Conflitos com o processo vigente
-
-Nenhum. §5c manda que todo giro considere remover; esta entrada é o giro cumprindo a própria regra.
+O registro de verificação do próximo protótipo de sprint segura contra o do sprint anterior: cobertura das Histórias, fluxo ponta a ponta atravessado, seis estados presentes, critérios de acessibilidade verificáveis. Se segurar, a economia é de 2,5× por invocação do papel com evidência. Se não segurar, volta a Opus e o registro diz por quê.
 
 ### Evidência (R19)
 
 | Classe | Comando | Saída | Ok? |
 |---|---|---|---|
-| Arquivamento (teto de 3) | bloco `## v3.19` capturado antes da remoção (57 linhas) × relocado em `process-changelog-archive.md:11-70` | 60 linhas = 57 do bloco + linha em branco + `---` + linha em branco; zero linhas de conteúdo fora do separador. `## v3.19` no vivo: 0 ocorrências | ✅ |
-| Extração/remoção | `(Get-Item workflow.md).Length` e recorte de §5c, antes/depois | §5c 9,20 → 8,66 KB após a remoção isolada; **9,00 KB no fecho**, depois do parágrafo novo da terceira mudança e da compressão dele. Arquivo: 59,4 → 59,25 KB | ✅ |
-| Substituição de padrão | `Select-String "\bconsult\b"` em `roles/**/*.md`, `commands/*.md`, `agents/*.md` | **0** ocorrências antes e depois — o termo já estava extinto no código; o que saiu foi a narrativa sobre ele | ✅ |
-| Medição de footprint | `Get-ChildItem agents,commands -File | Select Name,Length`, somado por papel; `roles/<papel>/` recursivo excluindo `process-changelog*` | tabelas acima | ✅ |
+| Substituição de padrão | `Opus\|opus` em toda a RAIZ fora dos changelogs | 4 ocorrências, todas do **Arquiteto** — zero do UX | ✅ |
+| Leitura no contexto | cada ocorrência nova de Sonnet lida ao lado do que a cerca | `README.md` tabela, `replicate` tabela + parágrafo, `workflow.md` §5c, roteiro do UX — todas coerentes | ✅ |
+| Contagem | `model:` em `agents/*.md` | opus 1 (architect) · sonnet 4 · haiku 1 = 6 | ✅ |
+| Teto de entrada (R17) | bloco `## v3.26`, `[IO.File]::ReadAllLines` com UTF‑8 explícito | **5.038 B (4,92 KB)**, sob a barreira | ✅ |
+| Índice (teto de 3) | `^## v3\.` no vivo | `v3.26`, `v3.25`, `v3.24` — 3; `v3.23` relocada ao arquivo, 72 linhas, `Compare-Object` 0 diferenças | ✅ |
 
-### Segunda remoção — autorizada pelo stakeholder, em `commands/` (addendum do mesmo giro, 18/09/2026)
+### Fecho da rodada — propostas autorizadas e aplicadas
 
-O stakeholder autorizou, no formulário de fecho, comprimir o parágrafo **"Registro de consumo"**, duplicado quase palavra por palavra nos **7 arquivos** de `commands/`. Aplicado nos sete: a instrução inteira foi preservada (quando gravar, quais campos, R7 para número indisponível, o no-op quando o arquivo não existe, e em `team.md` a linha por subagente mais os três modos que não disparam agente); saiu a explicação repetida.
+O stakeholder autorizou no fecho o que estava pendente em `agents/`, `commands/` e guias de raiz, e foi aplicado: `agents/architect.md` (medir o ambiente — R26; decidir e documentar sem executar — R9), `agents/developer.md` (item 6 "nunca mexa no gate", três gaps novos, a execução volta ao dev), `commands/dev.md` e `commands/team.md` (o Arquiteto não reproduz; afirmação a conferir é do QA), `how-to.md` (nota do prefixo `/team:<comando>` em colisão de nome). Entrega **v3.26.0** por R18: `plugin.json` 3.24.0 → 3.26.0, banner do `README.md` e entrada no `CHANGELOG.md`.
 
-| Medida | Antes | Depois | Δ |
-|---|---:|---:|---:|
-| Parágrafo, por arquivo | ~516 chars | ~316 chars | −39% |
-| Carga fixa por papel | PO 17,7 · SM 16,4 · UX 11,8 · QA 11,7 · Arq 11,4 · dev 7,7 | 17,4 · 16,1 · 11,6 · 11,5 · 11,2 · 7,5 | −0,2 a −0,3 KB |
-| **Total do grupo** | **76,7 KB** | **75,3 KB** | **−1,4 KB (−1,8%)** |
+**Addendum na `v3.24`** (R17): a entrada foi registrada com 10.453 B, acima da barreira de 10.240 B, e o estouro passou sem medição no fecho daquela rodada. Registrado como **addendum datado, sem reescrita** — o invariante do changelog vale inclusive contra a própria R17. Medida seção a seção, a entrada não tem deliberação para mover: é registro obrigatório de uma rodada que moveu cinco papéis. O que isso expõe na R17 — barreira fixa contra volume que cresce com o número de papéis da rodada — ficou **em aberto para o stakeholder**, em `note.md`.
 
-**Desvio de medição registrado (R19).** A proposta levada ao stakeholder dizia "~1,1 KB por arquivo, 6–10% da carga fixa, −70%". **Estava errada, e por um erro de método:** o recorte automático do bloco ia do título `## Registro de consumo` até o **fim do arquivo** — como é a última seção de cada comando, arrastava junto o gancho de R22 (v3.20) e a linha de fecho. O parágrafo de consumo sozinho era ~0,5 KB, não ~1,1 KB. O ganho real é **−1,4 KB no grupo (−1,8%)**, não os ~5 KB projetados. A decisão do stakeholder não muda com o número certo — é remoção de duplicação literal, sem perda normativa —, mas o número que a sustentou estava inflado em ~2×, e fica registrado. **Lição para o próximo giro:** recorte de seção por "até o próximo `##`" mede errado na última seção do arquivo; medir o parágrafo, não o resto do arquivo.
+**Pendente do stakeholder:** a mudança de modelo do UX **só entra em vigor após reiniciar a sessão**; nos demais projetos, após `git push` + `claude plugin marketplace update team` + `claude plugin update team@team`.
 
-### Terceira mudança — a contradição de §5c fechada por decisão do stakeholder (18/09/2026)
+---
 
-**A tensão:** §5c mandava cortar prioritariamente na carga fixa (`agents/` + `commands/`), e esses são justamente os dois grupos que o `/review` não edita. O normativo apontava para um lugar que o comando não alcança.
+## v3.25 — R26 (plano mede o ambiente); gate desligado/não exercitado é 🔺 GAP; consumo cobre notificação parcial; R9 decide-e-documenta (item 2a) (SM + Arquiteto) — 20/09/2026
 
-**Escalado ao stakeholder com três saídas** — estender a exceção de curadoria do SM para cobrir remoção de duplicação literal; manter como está, com autorização caso a caso; ou tirar a carga fixa do ciclo. **Decisão: manter como está**, tornando-o explícito no texto.
+**Instrução** (`/review note`, mesmo incidente T‑001): **2‑A** — plano saiu "fechado" sem medir o ambiente nem validar os comandos citados, com regra de parada que não cobria pré-requisito ausente (custo: 3 reativações do Arquiteto). **2‑B** (Arquiteto) — a R26 não tinha onde ser cumprida no modelo de plano. **3‑B** (idem) — o dev declarou PASS/ENTREGUE sobre gate que falhava, não rodava ou fora alterado sem autorização; exigido 🔺 GAP, nunca entrega. **4‑B** — notificação de `SendMessage` chegou parcial e final na mesma invocação, sem instrução de não acumular. **Item 2a** (rota do 🔺 GAP do dev, parado desde a triagem) — **decidido pelo stakeholder nesta rodada**: quem recebe o gap decide e complementa o Plano de Implementação — não executa nem reproduz na máquina; a conferência do que o dev afirma continua no QA (R7), sem degrau novo. Objetivo: economia — no T‑001 o Arquiteto gastou 3 invocações e 499.008 tokens reproduzindo o que o relatório do dev já afirmava.
 
-| Arquivo | Onde | O quê |
-|---|---|---|
-| `workflow.md` | §5c, após "Onde o corte rende mais" | Parágrafo novo: **"O corte de maior valor é proposta, nunca aplicação direta."** Os dois primeiros lugares da lista são do stakeholder; o Act mede, encontra e propõe com texto pronto, e ele autoriza item a item no fecho. A exceção de curadoria do SM **não** cobre remoção nesses arquivos — só coerência de referência cruzada. Só o item (3), o conjunto sob demanda, o `/review` aplica sozinho |
+**Classificação:** regra de trabalho (**R26** nova; **R9** ampliada) + formato de documento (modelo de plano, relatório de entrega, `consumption.md`) + escopo de papel (contrato do dev). Nenhuma regra nova além de R26 — 2‑B/3‑B endurecem R4/R7/R8; R9 estende aos três roteamentos o que `workflow.md` §2a‑6 já descrevia para o dev.
 
-**Nenhum poder foi alargado.** A mudança é de redação: o que já era prática (e foi o que aconteceu neste giro) passa a estar escrito, e a contradição entre "corte aqui" e "não edite aqui" desaparece. O racional ficou no próprio §5c, com o caso da v3.22 como evidência: a projeção de −5 KB que virou −1,4 KB real só não virou edição às cegas porque passou pelo stakeholder.
+### O que mudou
 
-**Como saberemos que funcionou:** nenhum giro futuro aplica corte em `agents/`/`commands/` sem autorização registrada no fecho, e nenhum giro volta a escalar esta mesma pergunta como se estivesse aberta.
+| Documento | Mudança |
+|---|---|
+| `working-rules.md` | **R26 nova** (Bloco C, após R25): plano registra, antes dos passos, ambiente medido (comando+saída), comandos validados na versão medida, e parada incondicional para pré-requisito ausente. Entra na linha combinada de verificação binária e no "Resumo em uma tela" |
+| `working-rules.md` (**R9**) | **Ampliada:** quem recebe um gap **decide e registra a decisão no documento que já governa aquela execução** (o Plano de Implementação, no caso do dev) e devolve a execução a quem a tinha — não reproduz, não roda a verificação de quem escalou, não replaneja. Conferir afirmação verificável continua sendo do QA, no veredito (R7) |
+| `workflow.md` | §8: linha nova de R26 — ambiente medido, comandos validados e parada para pré-requisito ausente, aferidos na entrada da construção |
+| `working-rules.md` (R17) | **Nota de racional**: rodada de `/review` que move dois papéis continua sendo **uma** entrada — a unidade é a decisão, não o autor; o teto se cumpre cortando o que a R17 já exclui, não fatiando por papel |
+| `templates/consumption.md` | Regra nova: notificação parcial de `SendMessage` na mesma invocação não abre linha — grava-se só a final |
+| `architect/templates/implementation-plan.md` | **§3 nova** "Ambiente medido e comandos validados" (§4–§10 renumeradas); Regra 11 nova; §7 e exemplo ajustados |
+| `architect/README.md` / `skills.md` | `/arc plan` passo 1: medir o ambiente e validar comandos antes dos passos |
+| `architect/README.md` + `developer/README.md` (**item 2a**) | O ciclo do gap escrito ponta a ponta: `/arc question` decide, **complementa o Plano de Implementação** e devolve por `/dev gap` — sem reproduzir na máquina, sem rodar a verificação do dev, sem se confundir com `/arc comply`; a linha "Escala para" do dev diz que **ele retoma**, do passo em que parou. A execução nunca muda de dono. `technical-decision.md` fecha a coerência (a decisão entra no plano, ler e parar aí). `architect/skills.md` §5 já era compatível — **sem mudança** |
+| `architect/templates/compliance-review.md` | Linha nova: configuração de verificação intacta — nenhum gate desligado/afrouxado/contornado sem GAP |
+| `developer/README.md` | Item 6 → "Verificar de verdade — e nunca mexer no gate" (8 itens); 3 gaps novos (de 8→11) |
+| `developer/templates/delivery-report.md` | Gate desligado/afrouxado/contornado/não exercitado vira 🔺 GAP e linha de Verificação com motivo |
+| `standards/implementation-principles.md` | §5.6 P5: baseline de desempenho não é válvula de quem executa o passo |
+
+### Por quê
+
+Plano que presume o ambiente só revela o erro na execução, com o custo no papel mais caro do time. Gate contornado é pior que gate que reprova, porque some da vista. `consumption.md` não previa retomada longa com mais de uma notificação por invocação. Item 2a: reproduzir o que o relatório do dev já afirma é o mesmo desperdício, no papel mais caro — e não compra evidência nenhuma, porque quem confere a afirmação continua sendo o QA.
+
+### Quem passa a ser cobrado de forma diferente
+
+| Papel | O que muda |
+|---|---|
+| **Arquiteto** | Plano sem a §3 (ambiente medido) não entra em construção (régua de R8); ao responder gap (R9), decide e **documenta no plano** — não reproduz nem roda a verificação do dev. Escrito no roteiro `/arc question` (passos 2 e 3) e cobrado no indicador do papel |
+| **Dev** | Gate não se desliga/afrouxa/contorna — é 🔺 GAP; não exercitado vai ao relatório como tal. Recebida a decisão, **retoma a execução** (R9) por `/dev gap <resposta>` — escrito na linha "Escala para" do roteiro dele |
+| **QA** | Ganha "não exercitado" e "gate ausente sem GAP" no relatório; continua único a conferir a afirmação verificável do dev, no veredito (R7 · R9) |
+| **SM** | Verifica R26 na linha binária; em R9, que a resposta a gap reflete a decisão no documento que governa a execução, não só na conversa |
+| **Quem orquestra** | Grava só a notificação final de invocação com múltiplas notificações |
+
+### Conflitos
+
+Nenhum de conteúdo. R26 é aditiva a R8/R11; 2‑B/3‑B endurecem R4/R7/R8 sem reescrevê-las. **R9 ampliada × R7 · R26 · `/arc comply` (§4a)** — nenhum: objetos e momentos distintos. **R17 (teto 10 KB) × entrada de dois papéis + item decidido depois** — resolvida condensando; critério geral na **nota de racional em R17**.
+
+### Como saberemos que funcionou
+
+Próximo plano traz a §3 com comando+saída, sem 🔺 GAP de pré-requisito ausente que ela já cobriria. Zero gates removidos/afrouxados sem GAP. Notificação parcial+final grava uma linha só. Resposta a gap traz a decisão no Plano de Implementação, e nenhum relato de quem respondeu descreve ter reproduzido a verificação do escalador.
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Contagem | `^### R\d+\.` / `^\| R\d+ \|` / `**SM verifica:**` em `working-rules.md` | 26·26·26 (R9 ampliada, não nova) | ✅ |
+| Leitura de coerência | `'R26'`; R9 ampliada × R7/R26/`workflow.md` §4a+§2a-6 | R26: 3 ocorrências coerentes; R9 sem contradição | ✅ |
+| Extração/remoção | tamanho antes/depois | `working-rules.md` 47.019→**51.281** B (R26 +2.356 · R9 +1.906) · `consumption.md` 4.478→4.962 B | ✅ |
+| Arquivamento (teto 3) | bloco `v3.22` (105 linhas) × relocado, `Compare-Object` UTF‑8 | 0 diferenças | ✅ |
+| Índice | `^## v3\.(2[0-5])` no vivo | `v3.25`,`v3.24`,`v3.23` — 3, teto respeitado | ✅ |
+| Renumeração | `^#{2}\s+\d+\.` em `implementation-plan.md` | 1…10 em sequência, `3.` = Ambiente medido | ✅ |
+| Ponteiro externo | `seção \d+ do plano` / `plano[^.]{0,40}§\d` na RAIZ | 8: 6 de outro objeto, 2 novas à §3 — nenhuma para numeração antiga | ✅ |
+| Vazamento de contexto | termos de stack nos arquivos tocados | 0 novas; 1 pré-existente em `implementation-principles.md` §6, fora do escopo tocado | ✅ |
+| Extração/remoção | linhas antes/depois (`HEAD`×atual) | `implementation-plan.md` 123→162 · `compliance-review.md` 65→66 · `architect/README.md` 132→136 · `skills.md` 162→163 · `developer/README.md` 88→92 (8 itens; gaps 8→11) · `technical-decision.md` 58→59 · `delivery-report.md` 101→102 · `implementation-principles.md` 415→415 | ✅ |
+| Leitura no contexto + fronteira (item 2a) | `/arc question`, `/arc comply` e a linha "Escala para" lidos lado a lado; `/arc comply` contado nos `.md` fora dos changelogs | ciclo fecha sem o dono da execução mudar; `comply` **21 vivas — 20 intactas + 1 nova que nega a confusão**, não restringido | ✅ |
+| Teto de entrada (R17) | bloco `## v3.25`, `[IO.File]::ReadAllLines` com UTF‑8 explícito (`Get-Content` sem `-Encoding utf8` decodifica errado e infla ~7,5%) | **9.364 B (9,14 KB)**, sob a barreira de 10.240 B | ✅ |
+| Gate de fluxo | R26 em `workflow.md` §8; §2a etapa 6 × R9 ampliada | R26 após R8; §2a-6 coerente com R9 (decisão do Arquiteto, dev retoma) | ✅ |
+
+**Desvios corrigidos antes do fecho, nenhum outro:** R26 citava ferramentas específicas na primeira redação — reescrita agnóstica, 0 ocorrências; e a entrada estourou o teto de R17 duas vezes durante a rodada, condensada nas duas. `git status --porcelain` mostra só os arquivos do alcance do SM e do Arquiteto listados nesta entrada.
+
+### Pendente do stakeholder
+
+**Item 2a — decidido nesta rodada, aplicado em R9 e refletido nos roteiros do Arquiteto e do dev** (o segundo é do Arquiteto por contrato). Segue pendente só o que é do stakeholder: `agents/developer.md`, `commands/dev.md:30` e `commands/team.md:80` continuam **propostos**, não aplicados.
+
+---
+
+

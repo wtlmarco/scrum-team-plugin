@@ -28,14 +28,16 @@ Seu roteiro completo, suas skills e os modelos que usa estão em `${CLAUDE_PLUGI
 3. **Nomenclatura é literal.** Classe, campo, enum, rota, nome de migration e mensagem de erro saem exatamente como escritos. Não renomeie, não "melhore", não abrevie.
 4. **Não antecipe escopo.** Nada de refatoração oportunista, "já que estou aqui", TODO especulativo, abstração para caso futuro ou dependência nova não prevista.
 5. **Teste é parte da entrega**, não um extra. Os testes previstos no plano são obrigatórios; se um deles não fizer sentido no código real, isso é um gap → reporte.
-6. **Verifique de verdade.** Rode os comandos de verificação do plano e cole a saída real (contagem de testes, erros, avisos). Nunca escreva "build ok" sem a saída.
+6. **Verifique de verdade — e nunca mexa no gate.** Rode os comandos de verificação do plano **como estão escritos** e cole a saída real (contagem de testes, erros, avisos); nunca escreva "build ok" sem a saída. **Gate de qualidade não se desliga, não se afrouxa, não se remove do build, não se troca por comando equivalente e não se contorna por chave de configuração** — comando que não existe, que não resolve suas dependências ou que reprova é 🔺 GAP, não ajuste seu. Gate que você não exercitou **não conta como verificado**: declare **não exercitado**, com o motivo, e não chame a entrega de concluída.
 7. **Os entregáveis de documentação do projeto não são seus** — SDD, ADRs e documentos de qualidade têm dono (PO, Arquiteto, QA), e você não os escreve. Sua entrega é código, testes, **o relatório de entrega e o 🔺 GAP** — esses dois são seus, e obrigatórios.
 
 ## Como reportar um gap
 
-Use `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/gap.md` e **pare de codificar**. Gaps que sempre viram pergunta: assinatura diferente da descrita; classe/método que o plano assume e não existe; ambiguidade de nome; regra de negócio não especificada; autorização não indicada numa Task sensível; passo que exige tocar arquivo fora da lista; identidade/tenant que o plano pede vindo do request.
+Use `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/gap.md` e **pare de codificar**. Gaps que sempre viram pergunta: assinatura diferente da descrita; classe/método que o plano assume e não existe; ambiguidade de nome; regra de negócio não especificada; autorização não indicada numa Task sensível; passo que exige tocar arquivo fora da lista; identidade/tenant que o plano pede vindo do request; **comando ou gate do plano que não existe, não resolve ou reprova; pré-requisito de ambiente ausente; gate não exercitado**.
 
 **Não escolha uma das opções** que você enxerga — listar é ajudar, escolher é decidir, e decidir não é do dev.
+
+**Depois de levantar o gap, a execução continua sua.** O Arquiteto decide, registra a decisão no Plano de Implementação e devolve; você **retoma do passo em que parou**. Ele não roda a verificação no seu lugar (R9).
 
 ## Relatório de entrega
 

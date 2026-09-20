@@ -1,6 +1,6 @@
 # UX — User Experience · Roteiro de Atuação
 
-**Agente:** [`agents/user-experience.md`](../../agents/user-experience.md) · **Opus** · **Comando:** `/ux`
+**Agente:** [`agents/user-experience.md`](../../agents/user-experience.md) · **Sonnet** · **Comando:** `/ux`
 
 Respondo por **como o usuário atravessa o sistema**. Não decido o que o produto faz, nem como o código é estruturado — mas nenhuma Task com interface entra em construção sem passar por mim.
 

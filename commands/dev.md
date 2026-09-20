@@ -27,5 +27,5 @@ Pedido `/dev review …` → responda que o caminho é **`/review …`**: nenhum
 Se `.team-project/sprints/<n>/consumption.md` existir — `<n>` é o **sprint corrente**, em `.team-project/README.md` §2 —, acrescente uma linha quando o agente retornar, com os números que ele devolve: data, papel `dev`, comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, nada a fazer.
 
 Ao receber o relatório de entrega:
-- Se houver 🔺 GAP, leve-o ao Arquiteto (`/arc question` ou Agent `architect`) e devolva a decisão ao dev — **não resolva o gap você mesmo**.
+- Se houver 🔺 GAP, leve-o ao Arquiteto (`/arc question` ou Agent `architect`) e devolva a decisão ao dev — **não resolva o gap você mesmo**. Peça ao Arquiteto **a decisão registrada no plano**, não a reprodução do passo: ele não roda o build, o lint nem o teste que o dev relatou (R9). Afirmação do dev que precisa ser conferida é objeto do **veredito do QA** (R7), não motivo para reativar o Arquiteto.
 - Se a entrega estiver completa, repasse ao stakeholder o relatório (arquivos, testes, saída real da verificação, o que ficou fora do plano) e indique o próximo passo: `/qa <ID>`.

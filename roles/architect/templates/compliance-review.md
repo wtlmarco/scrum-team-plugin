@@ -31,6 +31,7 @@ que o passo citou** — não se a citação estava completa ou correta para a Ta
 | Limites de código limpo: §4.4, sem código comentado, sem `TODO` sem ID, sem captura vazia | ok / falha | <arquivo:linha> |
 | Testes do plano presentes e significativos | ok / falha | <arquivo:teste> |
 | Gate de cobertura ≥ 80% com **saída real** no relatório | ok / falha | <trecho da saída> |
+| **Configuração de verificação intacta** — nenhum gate desligado, removido do build, com limiar afrouxado, trocado por outro comando ou contornado por chave de configuração; gate não exercitado declarado como tal no relatório | ok / falha | <diff dos arquivos de build/configuração × seção Verificação do relatório> |
 | **Seção de standard citada pelo passo aplicada de fato** no código entregue (R16) — *só a aplicação do que o plano citou* | ok / falha | <§ citada no passo × `arquivo:linha`> |
 
 > Nomes de arquivo concretos (onde fica a composição de dependências, onde erros são mapeados) são do

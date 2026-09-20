@@ -264,7 +264,7 @@ O custo dos documentos de `${CLAUDE_PLUGIN_ROOT}/` não pode depender de uma fax
 **Chame só quem a questão toca — não existe broadcast dos seis.** O canal do stakeholder é o PO (§6a), e questão que atravessa papéis vai por `/sm agreement`, cujo passo 1 identifica **quais papéis a questão toca** — dois ou três, nunca os seis por precaução. É onde a lição de R3 vive hoje, e o ganho é nos dois eixos: menos um `agents/<papel>.md` por papel não chamado e — o que pesa mais — menos uma rodada de leitura de contexto de projeto por subagente não disparado.
 
 **Três coisas que a carga fixa não mostra, e que costumam dominar o custo real:**
-1. **O modelo importa mais que os KB.** `/arc` e `/ux` rodam em **Opus**; `/dev` em **Haiku**. `/arc` carrega menos que `/sm` e custa mais.
+1. **O modelo importa mais que os KB.** `/arc` roda em **Opus**; `/sm`, `/po`, `/qa` e `/ux` em **Sonnet**; `/dev` em **Haiku**. `/arc` carrega menos que `/sm` e custa mais. Ranquear a tabela por KB inverte a ordem real — pondere por preço do modelo antes de escolher onde cortar.
 2. **A leitura em tempo de execução costuma superar a carga fixa.** Todo agente lê `.team-project/README.md` e o seu `context.md`; o QA lê ainda o plano, o relatório do dev, as seções de `standards/` citadas e o código. Num broadcast isso é multiplicado pelo número de subagentes.
 3. **As respostas voltam.** Cada saída de subagente retorna ao contexto principal para consolidação — num `/team brainstorm` ou `/team cycle`, uma por papel disparado.
 
@@ -543,6 +543,7 @@ Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no pa
 | Task pertence a uma História que passou na DoR da História | quebra na Planning | SM | R20 |
 | Estimativa registrada na unidade do projeto | construção | SM | R2 · §5e |
 | Plano de Implementação existe | construção | Arquiteto | R8 |
+| Plano traz o **ambiente medido** (comando + saída), os comandos citados validados naquela versão, e parada incondicional para pré-requisito **ausente** | construção | Arquiteto | R26 |
 | Plano cita a seção de `${CLAUDE_PLUGIN_ROOT}/standards/` que a mudança de engenharia toca | construção | Arquiteto | R16 |
 | Seção de standard **exigida pela Task** presente no plano e aplicada no código | veredito | QA | R16 · §4a |
 | Build sem avisos + testes passando | veredito | QA | R7 |

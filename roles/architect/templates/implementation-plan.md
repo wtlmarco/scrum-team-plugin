@@ -25,7 +25,31 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` — dentro da pasta d
 |---|---|
 | <caminho:linha> | <o que observar — assinatura, padrão a espelhar, invariante> |
 
-## 3. Passos, em ordem de execução
+## 3. Ambiente medido e comandos validados (antes da lista de passos — R26)
+> Medido por mim, com comando e **saída real**; nunca presumido nem lembrado de outro projeto.
+> Plano sem esta seção **não entra em construção** (mesma régua de R8).
+
+**Pré-requisitos que o plano assume** — runtime, SDK, ferramenta de build, gerenciador de pacotes,
+serviço local que algum passo exige:
+
+| Pré-requisito | Comando de medição | Saída real (recortada) | Atende ao plano? |
+|---|---|---|---|
+| <o que o passo exige> | `<comando que imprime a versão>` | `<o que o comando devolveu, literal>` | sim / **não — <o que falta>** |
+
+**Comandos citados nos passos e na seção 7, validados na versão medida** — um por comando; memória de
+outro projeto ou de outra stack não é validação:
+
+| Comando citado | Onde aparece | Como confirmei que existe nesta versão | Saída |
+|---|---|---|---|
+| `<comando literal>` | Passo <n> / seção 7 | `<--version, --help ou equivalente>` | `<literal>` |
+
+**Parada incondicional.** Se, ao iniciar o passo 1, **qualquer pré-requisito da primeira tabela estiver
+ausente** — não instalado, não encontrado no caminho de execução, ou o comando de medição falhando —
+o dev **para e abre 🔺 GAP**: não instala por conta própria, não troca por ferramenta equivalente e não
+segue para o passo seguinte. Vale igualmente para versão fora da faixa aceita. **Faixa de versão não é
+regra de parada:** ela diz o que aceitar, não o que fazer quando a ferramenta não existe.
+
+## 4. Passos, em ordem de execução
 ### Passo 1 — <título>
 - **Arquivo:** <caminho completo>
 - **Anel:** domínio | aplicação | adaptador/infraestrutura | borda
@@ -40,13 +64,13 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` — dentro da pasta d
 
 ### Passo 2 — …
 
-## 4. Registros de infraestrutura (explícito — nunca "se necessário")
+## 5. Registros de infraestrutura (explícito — nunca "se necessário")
 - **Injeção de dependência / registro de componente:** <o registro literal e onde>
 - **Migration de banco:** <nome exato> — <tabelas/colunas>
 - **Configuração:** <chave, onde declarar, se é obrigatória no start>
 - **Mapeamento de erro:** <exceção nova → status HTTP>
 
-## 5. Testes obrigatórios
+## 6. Testes obrigatórios
 | Arquivo | Nome do teste | Caso coberto | Deve falhar se… |
 |---|---|---|---|
 
@@ -54,19 +78,21 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` — dentro da pasta d
 back-end, worker **ou front-end**. O dev cola a saída real do comando de cobertura no relatório
 (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.4 e §5.5).
 
-## 6. Comandos de verificação
-<Os comandos do projeto — ver `.team-project/developer/context.md`. Incluir **sempre** o comando do gate
-de cobertura da unidade tocada; se aquela unidade ainda não tem comando de cobertura, isso é gap de
-configuração e entra na seção 8, não vira Task sem verificação.>
+## 7. Comandos de verificação
+<Os comandos do projeto — ver `.team-project/developer/context.md`. Cada um já validado na seção 3.
+Incluir **sempre** o comando do gate de cobertura da unidade tocada; se aquela unidade ainda não tem
+comando de cobertura, isso é gap de configuração e entra na seção 9, não vira Task sem verificação.>
 
-## 7. Critérios de aceite técnicos
+## 8. Critérios de aceite técnicos
 - [ ] <checklist binário, verificável>
 
-## 8. Onde parar e perguntar 🔺
+## 9. Onde parar e perguntar 🔺
 - <ponto em que o dev deve levantar GAP em vez de decidir>
 - *(fixo)* Se uma seção de standard citada aqui **se contradisser, tiver lacuna ou não disser como se verifica**: 🔺 GAP ao Arquiteto — o standard não se corrige de passagem (R16)
+- *(fixo)* **Pré-requisito ausente** — qualquer item da seção 3 que não exista no ambiente, além do caso "versão incompatível": 🔺 GAP, sem instalar por conta própria e sem substituir por ferramenta equivalente (R26)
+- *(fixo)* **Gate de qualidade que não roda, não resolve ou reprova**: 🔺 GAP. Desligar, afrouxar limiar, remover do build, trocar por comando equivalente ou acrescentar configuração que contorne a checagem **nunca** é decisão do dev (R4 · R7)
 
-## 9. Segurança (obrigatório se a Task toca autenticação, autorização, escopo, dado pessoal ou conteúdo de terceiro)
+## 10. Segurança (obrigatório se a Task toca autenticação, autorização, escopo, dado pessoal ou conteúdo de terceiro)
 - [ ] Identidade/escopo do contexto autenticado, nunca do request
 - [ ] Autorização declarada com permissão <nome> (existe no catálogo? senão, cadastro nesta migration)
 - [ ] Teste de isolamento entre escopos
@@ -88,7 +114,8 @@ configuração e entra na seção 8, não vira Task sem verificação.>
 8. **Todo passo declara o anel** do arquivo que toca. Passo que faz o domínio depender de fora, ou que põe regra de negócio na borda, é erro de plano — não de execução (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §2).
 9. **Nenhum passo de refatoração "de passagem".** Melhoria fora do objetivo da Task vira Task própria — e, se nenhuma História a cobre, o PO escreve a História que declara o valor (§4.5 do mesmo normativo · R20).
 10. **Todo passo com regra de engenharia cita a seção de `${CLAUDE_PLUGIN_ROOT}/standards/` aplicável, com número** (R16). O dev lê só o que o plano citou — seção não citada é seção não lida. "Seguir os standards" não é citação. Se a regra de que o passo precisa **não existe** no normativo, ou existe contraditória, isso é defeito do standard e é do Arquiteto: resolver por `/review` antes de liberar o plano.
-11. **Task retomada de outro sprint ganha plano novo, aqui, com a linha `Retomada de:`** — o plano antigo vive em `sprints/<n-1>/plan/` e é **registro fechado: não se edita, não se copia, não se reaproveita por referência**. O plano novo declara o que já foi feito (a partir do "Parei no passo" do relatório do dev) e **reconfere no código real** as assinaturas dos passos restantes: o repositório mudou no intervalo, e passo executado sobre premissa velha é a causa nº 1 de 🔺 GAP ([`../skills.md`](../skills.md) §1 · R3 · R5).
+11. **Ambiente medido antes dos passos** (R26). A seção 3 sai preenchida com comando e saída real: nenhum passo cita comando que eu não vi existir na versão medida, e a parada incondicional cobre **ausência** do pré-requisito, não só versão fora da faixa. Faixa de versão sozinha não é regra de parada. Plano sem a seção 3 não entra em construção.
+12. **Task retomada de outro sprint ganha plano novo, aqui, com a linha `Retomada de:`** — o plano antigo vive em `sprints/<n-1>/plan/` e é **registro fechado: não se edita, não se copia, não se reaproveita por referência**. O plano novo declara o que já foi feito (a partir do "Parei no passo" do relatório do dev) e **reconfere no código real** as assinaturas dos passos restantes: o repositório mudou no intervalo, e passo executado sobre premissa velha é a causa nº 1 de 🔺 GAP ([`../skills.md`](../skills.md) §1 · R3 · R5).
 
 ## Exemplo abreviado
 
@@ -106,18 +133,30 @@ configuração e entra na seção 8, não vira Task sem verificação.>
 | `Program.cs` (registro das opções de autenticação) | padrão de validação no start a espelhar |
 | `UrlSigner.cs` | como a mensagem assinada é composta hoje |
 
-## 3. Passo 1 — tornar a chave obrigatória
+## 3. Ambiente medido e comandos validados
+| Pré-requisito | Comando de medição | Saída real | Atende? |
+|---|---|---|---|
+| <runtime da unidade tocada> | `<comando de versão>` | `<versão devolvida>` | sim |
+| <ferramenta de build> | `<comando de versão>` | `<versão devolvida>` | sim |
+
+| Comando citado | Onde | Como confirmei | Saída |
+|---|---|---|---|
+| `<comando de teste>` | Passo 4 / seção 7 | `<comando --help>` | `<literal>` |
+
+**Parada incondicional:** pré-requisito acima ausente no ambiente → 🔺 GAP no passo 1, sem instalar nem substituir.
+
+## 4. Passo 1 — tornar a chave obrigatória
 - **Arquivo:** `Infrastructure/Storage/StorageOptions.cs` · **Ação:** ALTERAR
 - **Assinatura exata:** `[Required, MinLength(32)] public string SigningKey { get; set; } = string.Empty;`
 - **Modelo a espelhar:** as opções de autenticação, que já validam no start
 - **Standard aplicável:** `${CLAUDE_PLUGIN_ROOT}/standards/implementation-security-lgpd-copyright.md` §<n> — segredo por configuração validada no start, nunca com default vazio
 - **NÃO fazer:** não gerar chave automática em runtime — falhar no start é o comportamento desejado
 
-## 5. Testes
+## 6. Testes
 | Arquivo | Teste | Deve falhar se… |
 |---|---|---|
 | `UrlSignerTests.cs` | `Assinatura_ComCaminhoAlterado_DeveSerInvalida` | a mensagem assinada deixar de cobrir o caminho |
 
-## 8. Onde parar e perguntar 🔺
+## 9. Onde parar e perguntar 🔺
 - Se `UrlSigner` já compuser a mensagem de forma diferente da descrita no passo 2.
 ```
