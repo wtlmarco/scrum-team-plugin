@@ -77,7 +77,7 @@ Um relato do stakeholder ("isto está quebrado") pode ser três coisas diferente
 
 | O que é | Régua | Destino |
 |---|---|---|
-| **Defeito** | O sistema não faz o que o critério de aceite aprovado (portão ③) e aceito na Sprint Review (R21) diz que faz | Aciona a **QA** para investigar, confirmar com evidência e registrar (`pending.md`, `origem: stakeholder`) |
+| **Defeito** | O sistema não faz o que o critério de aceite aprovado (pacote de abertura, ③ em lote) e aceito na Sprint Review (R21) diz que faz | Aciona a **QA** para investigar, confirmar com evidência e registrar (`pending.md`, `origem: stakeholder`) |
 | **Mudança de escopo disfarçada de bug** | O sistema faz exatamente o que foi acordado — o acordado é que o stakeholder quer mudar agora | `/po analyze` / `/po impact` → Product Backlog; não é bug |
 | **Dúvida de uso** | O comportamento é o acordado e está correto; só não foi entendido | Responder; o achado pode virar melhoria de UX ou de documentação |
 

@@ -46,7 +46,7 @@
 ### Documentação atualizada
 - [ ] Inventário de código
 - [ ] Registro de GAPs (fechado / aberto)
-- [ ] `.team-project/quality-assurance/evidence.md`
+- [ ] Evidência da Task (`.team-project/sprints/<n>/evidence/<T-ID>.md`)
 ```
 
 ## Regras

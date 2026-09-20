@@ -59,6 +59,43 @@ claude plugin marketplace update team
 claude plugin update team@team
 ```
 
+## 7a. Migração estrutural da v3.20 — o registro de execução passa a ser por sprint
+
+> Passo **único desta versão**. Roda depois de aplicar (passo 7) e **antes** da reconciliação de modelos (passo 8), e só quando a versão instalada for anterior à `v3.20.0`.
+
+A v3.20 **move artefatos que o projeto já tem em disco**. Projeto que atualiza sem migrar fica com o time procurando arquivos onde eles não estão mais.
+
+**O que move, de onde para onde:**
+
+| De | Para | Dono |
+|---|---|---|
+| `.team-project/scrum-master/sprints/<n>/` | `.team-project/sprints/<n>/` | SM |
+| `.team-project/scrum-master/sprint-backlog.md` | `.team-project/sprints/<corrente>/sprint-backlog.md` | SM |
+| `.team-project/scrum-master/consumption-log.md` | `.team-project/sprints/<corrente>/consumption.md` | SM |
+| `consumption-log-archive.md`, seções `## Sprint <n>` | `.team-project/sprints/<n>/consumption.md`, uma por sprint | SM |
+| `.team-project/architect/plans/<T-ID>-*.md` | `.team-project/sprints/<n>/plan/` — o sprint em que a Task foi executada | Arquiteto |
+| Histórias detalhadas, por sprint | `.team-project/sprints/<n>/stories/H-nnn.md` (cópia congelada; o Product Backlog **continua** a fonte viva) | PO |
+| `.team-project/quality-assurance/evidence.md` | fatiado em `.team-project/sprints/<n>/evidence/<T-ID>.md` | QA |
+| a parte de linha de base de `evidence.md` | `.team-project/quality-assurance/baseline.md` — **fora** da pasta do sprint | QA |
+
+**O que NÃO move, e por quê:** `pending.md` (registro de GAPs), `03-code-map.md`, o Product Backlog, o SDD, as ADRs e o protótipo funcional do ① — todos somam ou evoluem através dos sprints, e fatiá-los quebraria a leitura que o time faz deles.
+
+**Sprints já fechados — migra o caminho, preserva o conteúdo.** São registros imutáveis: mova o diretório **sem uma vírgula alterada** dentro dos arquivos, e **não** reconcilie a estrutura deles contra os modelos novos — o `review.md` de um sprint antigo não ganha a seção de bloqueios por degrau, porque aquele sprint não os teve. Reescrever destruiria o histórico que eles existem para provar. Sprint fechado que tem `sprint-backlog-snapshot.md`: renomeie para `sprint-backlog.md` — o snapshot **era** o backlog fechado.
+
+**Sprint em andamento — conclui no formato antigo.** Mover o chão sob um sprint vivo quebra os ponteiros que o time está usando naquele instante: o dev tem o caminho do plano, o QA tem o caminho da evidência. **Regra:** o sprint corrente termina onde começou; a migração dele acontece no `/sm sprint close`, junto com o fechamento da pasta. O primeiro sprint a nascer no formato novo é o seguinte.
+
+**O que o `update` PROPÕE em vez de aplicar** — contém conteúdo local, e a regra de nunca apagar sem aprovação vale igual:
+
+- o **fatiamento de `evidence.md`** por Task, e a separação da linha de base — a divisão depende de como o projeto escreveu o arquivo;
+- a **atribuição de cada plano** de `architect/plans/` ao sprint certo — exige cruzar Task × sprint;
+- a **criação de `sprints/<n>/stories/`** a partir do Product Backlog — o congelamento retroativo é uma decisão, não uma cópia mecânica.
+
+Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere aprovação.
+
+**Depois de migrar, obrigatoriamente:** declare a linha **"Sprint corrente"** em `.team-project/README.md` §2, com o número e o caminho do `sprint-backlog.md`. Com o quadro dentro da pasta numerada, essa linha é o **único índice** — sem ela, nenhum papel acha o quadro vivo.
+
+**Verificação do passo:** nenhuma ocorrência de `scrum-master/sprints`, `architect/plans`, `quality-assurance/evidence.md` ou `consumption-log` sobra em `.team-project/` fora de sprints fechados; e `.team-project/README.md` §2 aponta um `sprint-backlog.md` que existe.
+
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
 Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.
@@ -68,7 +105,8 @@ O manifesto do que foi instanciado, com a classe de reconciliação de cada arqu
 1. **Compare** o arquivo no projeto com o modelo da versão nova.
 2. **Classifique** a diferença conforme o manifesto:
    - **cópia literal** (`how-to.md`) → substitua, avisando em uma linha o que mudou;
-   - **estrutura + conteúdo local** (`sprint-backlog.md`, `product-backlog.md`, `evidence.md`, §8 do `README.md`) → **mostre o delta da estrutura** — seção nova, coluna nova, cabeçalho renomeado — e **peça aprovação por arquivo**. Nunca sobrescreva conteúdo escrito pelo time;
+   - **estrutura + conteúdo local** (`sprints/<corrente>/sprint-backlog.md`, `product-backlog.md`, `baseline.md`, §8 do `README.md`) → **mostre o delta da estrutura** — seção nova, coluna nova, cabeçalho renomeado — e **peça aprovação por arquivo**. Nunca sobrescreva conteúdo escrito pelo time;
+   - **histórico imutável** (tudo em `sprints/<n>/` de sprint já fechado) → **não reconcilie**. O registro retrata o sprint como ele foi; estrutura nova não se aplica retroativamente (passo 7a);
    - **só conteúdo local** (os seis `context.md`) → não toque; liste como "conferir manualmente" se o modelo mudou de forma relevante.
 3. **Apresente um resumo antes de aplicar qualquer coisa:** arquivo · classe · o que muda · o que se perde se aplicar. Sem confirmação, não aplique.
 4. **Conflito** — o time editou a mesma seção que o modelo mudou — não se resolve sozinho: mostre os dois lados e deixe o stakeholder escolher, ou registre como pendência no quadro.

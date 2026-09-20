@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.21`](process-changelog-archive.md) | Product Backlog deixa de conter a História: índice com ponteiro, conteúdo em arquivo próprio do PO (§1d) |
 | [`v3.20`](process-changelog-archive.md) | Pendência do stakeholder resolvida em formulário: R22 ganha o meio de apresentação, restrito a quem orquestra (SM) — 18/09/2026 |
 | [`v3.19`](process-changelog-archive.md) | Pasta `sprints/<n>/` para Review/Retrospectiva/snapshot, burndown desenhado (R24), tríade R18, duas contagens e uma contradição entre normativos (SM) — 16/09/2026 |
 | [`v3.18`](process-changelog-archive.md) | As três decisões escaladas em v3.17 fechadas: arquivamento por sprint, granularidade definitiva, e as duas propostas aplicadas sob a restrição de escopo `.team-project/` (SM) — 15/09/2026 |
@@ -59,6 +60,73 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.24 — O sprint vira a unidade de aprovação e de entrega (R25): ③ em lote sobre pacote navegável, bloqueio em dois degraus, registro por sprint (5 papéis) — 20/09/2026
+
+**Instrução do stakeholder** (fila `Abertas` de `note.md`, cinco itens fechados em oito rodadas de análise): *"um automode onde após o stakeholder aprovar o protótipo o time pode seguir o desenvolvimento até a sua conclusão sem necessitar dos gates de aprovação"*, com a exceção de escalar o problema em que *"a construção poderia falhar"*; mais os dois modos de trabalho no `how-to`, e o automode de manutenção pela fila `note.md` do produto.
+
+**O desenho entregue não é o pedido literal, e o stakeholder decidiu assim.** Sumir do ① até o MVP reintroduzia os dois modos de falha mais caros do processo — R15 (aprovar por escrito o que só se vê construído) e R21 (somar aprovações técnicas e descobrir no fim que o valor não chegou) — com o dano multiplicado pelo número de sprints. A saída foi **agregar os gates na fronteira do sprint**, não removê-los: o ciclo de detecção de deriva volta a ser de **um** sprint. O termo "automode" não existe.
+
+**Classificação:** regra de trabalho (**R25** nova, **R20** reescrita, **R21** restaurada) + etapa de fluxo (§2, §5e, §5g, §8) + propriedade de artefato (§1e nova, §1c) + formato de documento (9 modelos) + comportamento de comando (`commands/`, `agents/`, guias de raiz — aplicados com autorização nominal do stakeholder no fecho).
+
+### O que mudou
+
+| Documento | Mudança |
+|---|---|
+| `working-rules.md` | **R25 nova** — o sprint é a unidade de aprovação e de entrega: pacote navegável na abertura, execução contínua, bloqueio em dois degraus, registro por sprint. **R20 reescrita** — o ③ passa a ser aprovado **em lote, depois da Planning**; guarda-corpo deslocado para "nenhuma Task em construção antes do pacote". **R21 restaurada** ao original, com nota que separa *conduzir* (PO) de *decidir* (stakeholder). R25 entra na linha colapsada de verificação binária (v3.23), sem linha própria |
+| `workflow.md` | **§5g nova** — o ciclo do sprint: pacote de 4 peças · execução contínua · bloqueio em 2 degraus · manutenção pela fila `note.md`. **§5e** — Planning de 6 → **11 passos** (valor real no 2, varredura de bloqueios no 3, pasta e `planning.md` no 9, pacote no 10, congelamento e índice no 11). §2, §2a, §3a/§3b, §4a-ii, §5, §5f, §6a, §6b e **§8 com 21 gates** (2 novos) |
+| `artifact-ownership.md` | **§1e nova** — `sprints/<n>/` com **dono por subpasta** (SM o contêiner · `stories/` PO · `plan/` Arquiteto · `evidence/` QA). **§1c** — um padrão de retenção só: o par vivo+archive do consumo deixa de existir, e a pendência que a v3.19 devolveu ao stakeholder fica **resolvida**. Linhas novas: protótipo do sprint, `architect/spikes/` (existia desde a v3.9 **sem linha de matriz**), `quality-assurance/baseline.md` |
+| Modelos do SM | `sprint-backlog.md` (vive e **fecha** na pasta — `sprint-backlog-snapshot.md` deixa de existir; relaciona História ↔ Task ↔ plano ↔ evidência), `sprint-review.md` (veredito do stakeholder por História), `retrospective.md` (consumo em seção própria + **sintomas para o `note.md` do plugin**), `project-context.md`, `burndown.md`. **Novos:** `planning.md`, `consumption.md`. **Removido:** `consumption-log.md` |
+| Os quatro papéis roteados | **PO** — detalha sem ③ prévio, **congela** a cópia em `stories/`, alimenta o `planning.md`. **Arquiteto** — planos em `plan/`; **Task retomada tem plano reescrito** (`Retomada de:`); spike fora da pasta. **QA** — evidência por Task; **baseline separada**, porque roda antes do sprint 1. **UX** — entregável novo, o **protótipo costurado do sprint**, com régua própria de verificação leve. Caminho, dono e regra de cada um: matriz §1e |
+| `commands/`, `agents/`, guias de raiz | `cycle sprint` e `prototype sprint <n>` novos; `team-init.md` deixa de semear a estrutura antiga e declara **o que não cria**; `team-update.md` ganha o **passo 7a** de migração estrutural com a classe "histórico imutável"; `how-to.md` ganha a seção do ciclo do sprint **e a estrutura de `.team-project/`** (é a cópia que o cliente recebe); 31 ponteiros corrigidos. **`prototype <tela>` → `prototype screen <tela>`** — os três sentidos passam a se distinguir por palavra reservada, não por nome livre |
+
+### O modo de falha que isto evita
+
+Dois opostos: o time parar a cada História para pedir aprovação, pagando latência em trabalho que deriva de um SDD já aprovado; e o stakeholder sumir até o fim, descobrindo a deriva quando o retrabalho já é código de N sprints. O pacote navegável resolve os dois — e prova, de quebra, que o sprint entrega fatia usável: protótipo que não atravessa um fluxo ponta a ponta denuncia o corte errado **antes** de o sprint arrancar.
+
+### Conflitos
+
+| O que conflitou | Com | Resolução |
+|---|---|---|
+| ③ em lote × R20 ("aprovado antes da Planning") e §8 ("gates não negociáveis") | R20 · §8 | Stakeholder decidiu: agregar, não remover. R20 reescrita; §8 mantém os 21 gates, o ③ muda de **momento e granularidade**, não de dono |
+| ④ sem o stakeholder (desenho inicial) × R21 | R21 | Descartado. O ④ sempre foi dele — `sprint-review.md` já dizia "Decide: o stakeholder". R21 **restaurada**, não emendada |
+| `§1d` do ciclo do sprint × `§1d` da v3.21 (Product Backlog índice) | v3.21 | A da v3.21 já estava publicada e mantém `§1d`; a do sprint vira **`§1e`**, e 21 ponteiros foram reclassificados um a um |
+| `stories/` do sprint × `stories/` do PO (v3.21) | v3.21 | Convivem com papéis distintos: `product-owner/stories/` é a **fonte viva**; `sprints/<n>/stories/` é a **cópia congelada** do que foi aprovado. Mesmo ID, objetos diferentes |
+| Bloco "Registro de consumo" e tabela "Como o SM aplica" | v3.22 · v3.23 | A base desta entrega era `develop` em v3.19 — quatro entregas atrás. Resolvido tomando a versão **enxugada** dos dois giros Act e reaplicando só a mudança semântica: **nenhum corte das v3.22/v3.23 foi revertido** |
+
+### Quem passa a ser cobrado de forma diferente
+
+| Papel | O que muda |
+|---|---|
+| **stakeholder** | Deixa de aprovar História por História antes da Planning. Passa a **navegar e aprovar o pacote** na abertura e **decidir por História** na Review, e recebe no pacote o que **não** entrou, com o motivo. Fora disso só é acionado pelo degrau 2 — e por decisão estratégica, que vem direto |
+| **SM** | Planning de 11 passos; varre bloqueios, confere fatia vertical, cria a pasta com as subpastas, escreve `planning.md`, **segura a construção** até a aprovação, congela, abre o burndown no dia 0 e mantém o índice do sprint corrente. Registra o **degrau** de cada bloqueio. Fecha o Sprint Backlog **sem snapshot** |
+| **PO** e **Arquiteto** | São o **degrau 1**: conversam antes de qualquer bloqueio subir ao stakeholder |
+| **UX** | Entra na Planning com um entregável que **bloqueia o arranque do sprint** |
+| **QA** · **dev** | Caminhos novos; nenhum critério de veredito nem prática de construção muda |
+
+### Como saberemos que funcionou
+
+Primeira Planning sob R25 fecha com `planning.md` completo e data de aprovação no Sprint Backlog, e nenhuma Task em 🟨 antes dela. Primeiro sprint sem acionar o stakeholder fora dos dois pontos, com todo bloqueio trazendo o degrau nomeado. Primeira Review com a coluna Decisão preenchida por ele. **Fracasso:** pacote aprovado sem protótipo navegado, ou bloqueio escalado sem o degrau 1 registrado.
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | vocabulário extinto (`automode`, `aceite único do MVP`, `fronteira do MVP`) **e** caminhos antigos (`scrum-master/sprints`, `architect/plans`, `scrum-master/sprint-backlog`, `quality-assurance/evidence.md`, `consumption-log`), em todos os `.md`/`.json` da RAIZ | **0** no processo vigente; sobrevivem só a tabela "de → para" do passo 7a de `team-update.md` e as declarações de que cada padrão foi extinto — todas lidas no contexto | ✅ |
+| Auditoria de fecho | varredura de coerência do conjunto (órfão · modo morto · regra sem verificação · etapa sem comando · nome ambíguo) | **0** em todas; **4 gaps corrigidos** — ponteiro `/ux prototype` da etapa 3b resolvia para o artefato do ①; `/qa bug` fora do `how-to`; o comando com que o PO aciona a QA não era nomeado; `/qa audit` × `/review audit` sem desambiguação | ✅ |
+| Substituição de padrão | `§1d` × `§1e` em todo o repositório, lidas **uma a uma** no contexto | 21 reclassificadas para `§1e` (pasta do sprint); 7 mantidas em `§1d` (Product Backlog, v3.21) | ✅ |
+| Contagem | `^### R\d+\.` · `^\| R\d+ \|` · card do SM | **25 · 25 · 25** | ✅ |
+| Contagem | linhas de gate da tabela do §8 | **21** (eram 19; 2 novos: `planning.md` e degrau 1) | ✅ |
+| Extração/remoção | `wc -l` antes/depois | `planning.md` 0→54 · `consumption.md` 0→31 · `sprint-prototype.md` 0→97 · `consumption-log.md` 26→0 · `sprint-backlog-snapshot.md` deixa de existir | ✅ |
+| Arquivamento | `v3.21` relocada para `process-changelog-archive.md` (teto de 3 entradas, R17) | 83 linhas movidas íntegras; vivo 326→240 linhas | ✅ |
+| Links | validador de links `.md` relativos em toda a RAIZ | **0 quebrados** (1 falso positivo conhecido: `project-context.md → how-to.md`, que resolve no `.team-project/` gerado) | ✅ |
+| Encoding | `U+FFFD` em todos os `.md`/`.json` | **0** (148 reparados em `usability-review.md` pelo UX) | ✅ |
+| Tríade R18 | `plugin.json` × banner do `README.md` × topo do `CHANGELOG.md` | `3.24.0` nos três | ✅ |
+
+**Desvio declarado (R19).** Aplicado sobre `develop` em **v3.19** sem conferir `git branch -a` — havia quatro entregas não mescladas. Detectado pelo stakeholder antes do PR e corrigido por rebase sobre `origin/develop`, com 31 blocos de conflito resolvidos um a um; os dois giros Act (v3.22, v3.23) foram preservados integralmente. **Lição de método:** `/review` que abre branch confere as branches remotas antes, não só `develop` local.
+
+**Pendente do stakeholder:** nenhum. As quatro propostas (`commands/team.md`, `commands/sm.md`, `how-to.md`, `team-update.md`) e os 31 ponteiros foram autorizados nominalmente e aplicados no fecho.
+
+---
 ## v3.23 — Segundo giro Act: a tabela de indicadores parava de dizer algo novo em 13 das 23 linhas (SM) — 18/09/2026
 
 **Instrução:** *(stakeholder)* "Vale um olho nisso no próximo giro, refaça o giro encontrando como melhorar novamente" — segundo `/review metrics` consecutivo, pedido depois de ler o saldo do primeiro.
@@ -238,89 +306,3 @@ O stakeholder autorizou, no formulário de fecho, comprimir o parágrafo **"Regi
 **Nenhum poder foi alargado.** A mudança é de redação: o que já era prática (e foi o que aconteceu neste giro) passa a estar escrito, e a contradição entre "corte aqui" e "não edite aqui" desaparece. O racional ficou no próprio §5c, com o caso da v3.22 como evidência: a projeção de −5 KB que virou −1,4 KB real só não virou edição às cegas porque passou pelo stakeholder.
 
 **Como saberemos que funcionou:** nenhum giro futuro aplica corte em `agents/`/`commands/` sem autorização registrada no fecho, e nenhum giro volta a escalar esta mesma pergunta como se estivesse aberta.
-
----
-
-## v3.21 — Product Backlog deixa de conter a História: índice com ponteiro, conteúdo em arquivo próprio do PO (SM, parte normativa) — 18/09/2026
-
-**Instrução:** *(stakeholder, via `/review note`, item 2)* "As histórias que o po desenvolve devem ficar em outro arquivo que não o ProductBacklog pois está ficando um arquivo muito grande."
-
-**Classificação:** propriedade de artefato + formato de documento. O item se divide em duas Tasks: esta (normativa — matriz de propriedade e R20, SM) e uma seguinte, do PO, sobre os próprios modelos (`product-backlog.md`, `user-story.md`, `README.md`, `skills.md`).
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `artifact-ownership.md` | matriz §1, linhas "Histórias" e "Product Backlog" | Histórias passam a `.team-project/product-owner/stories/`, um arquivo por História (`<H-ID>-<slug>.md`); o Product Backlog é redefinido como **índice ordenado**, não o conteúdo |
-| `artifact-ownership.md` | **§1d nova** | Critério explícito: o que fica no Product Backlog (índice, régua, plano de entrega, requisitos em elaboração, ressalvas, decisões pendentes, fora de escopo) × o que sai (só o conteúdo por História — regras, protótipos, critérios de aceite, portão ③); e a forma de verificação |
-| `artifact-ownership.md` | §4 Convenções | Linha nova: nome de arquivo de História, `<H-ID>-<slug>.md`, mesmo padrão dos Planos de Implementação |
-| `working-rules.md` | R20 — corpo | "A História vive no Product Backlog" → vive em arquivo próprio, indexada pelo Product Backlog |
-| `working-rules.md` | R20 — "SM verifica" | Ganha a forma de verificar que o índice não voltou a inchar com conteúdo de História |
-| `working-rules.md` | tabela de indicadores da retrospectiva, duas linhas de R20 | Coluna "Fonte" corrigida para "arquivo da História" onde antes dizia "Product Backlog"; a segunda linha passa a cobrir também a recaída (conteúdo de volta ao índice) |
-| `workflow.md` | §1 (tabela "Duas unidades" + frase), §2 (diagrama), §2a (etapa 1) | Coerência: "Vive em" da História, a frase "conjunto das Histórias = Product Backlog", o diagrama e a saída da etapa 1 — todos ajustados à nova estrutura (achado na reavaliação do conjunto, não pedido pelo item) |
-| `deliverables/README.md` | linha sobre "Depois do portão ②..." | Mesma coerência — a História vive em arquivo, o Backlog é índice |
-| `deliverables/team-project/README.md` | manifesto (linha `product-backlog.md`, linha nova `stories/`) + nota "Histórias:" | Manifesto ganha linha para a pasta nova; nota final perde a opcionalidade ("à escolha do projeto") |
-| `roles/scrum-master/templates/project-context.md` | linha `product-owner/product-backlog.md` + linha nova `product-owner/stories/` | Mesma coerência no modelo que gera o `.team-project/README.md` §4 |
-
-### Por quê
-O Product Backlog crescia sem limite porque acumulava o **texto de cada História**, não só a lista delas — o mesmo modo de falha que R17 já corrigiu no changelog do processo (v1.0→v1.8, 12× em nove versões), agora no artefato do PO. `user-story.md` já previa a extração como opção ("no arquivo da História ou em seção própria deste documento — a escolha é do projeto"); esta entrada fecha a opção, não inventa a estrutura.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda |
-|---|---|
-| PO | escreve cada História em arquivo próprio, sempre — deixa de valer a opção "seção do backlog"; mantém os dois documentos (índice e arquivo), ambos seus |
-| SM | ao verificar R20, confere também que a tabela de Histórias do Product Backlog não carrega conteúdo — só índice com ponteiro |
-| Demais papéis | nenhuma — leem a História onde sempre leram (o PO aponta o caminho) |
-| stakeholder | recebe a Task seguinte (PO) para aplicar nos próprios modelos, e duas propostas de texto pronto para `commands/po.md` (abaixo) |
-
-### Conflitos com o processo vigente
-Um, já analisado antes de aplicar (não é conflito de intenção): parecia contradizer R20 ("A História vive no Product Backlog") e a linha da matriz ("Product Backlog = o conjunto das Histórias"), mas R20 fixa **propriedade e locus lógico** (a História é do PO, em contraste com a Task, do SM) — não layout físico de arquivo; e `user-story.md:22` já previa a extração como opção do projeto, então a instrução remove a opcionalidade, não inverte a regra. Resolvido sem escalar ao stakeholder, registrado em uma linha na §1d nova.
-
-### Como saberemos que funcionou
-A próxima História escrita (`/po story <ID>`) nasce em `.team-project/product-owner/stories/<H-ID>-<slug>.md`, e o Product Backlog ganha só a linha de índice com o link. Nenhuma seção "Regras funcionais"/"Protótipos"/"Critérios de aceite"/"Aprovação — portão ③" aparece dentro do Product Backlog a partir de agora.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Arquivamento (teto de 3, `process-changelog.md:10`) | `git show HEAD` não serve de baseline aqui — o HEAD do repositório está muitas versões atrás do estado da sessão (drift pré-existente, não desta Task); verificação feita por leitura direta: bloco `## v3.18` capturado por `Read` antes da remoção (52 linhas de conteúdo) × bloco relocado em `process-changelog-archive.md:11-62` (52 linhas), conferido título a título e linha de tabela a linha de tabela | 0 diferenças de conteúdo — só o separador `---` que a archive acrescenta depois, fora das 52 linhas contadas | ✅ |
-| Substituição de padrão | `Select-String -Path artifact-ownership.md,working-rules.md,workflow.md,deliverables\README.md,deliverables\team-project\README.md,templates\project-context.md -Pattern "A História vive no Product Backlog","conjunto das Históri","à escolha do projeto"` | 0 ocorrências nos seis arquivos do meu alcance | ✅ |
-| Substituição de padrão | mesmos seis arquivos, `-Pattern "stories/","§1d"` | 14 ocorrências — `artifact-ownership.md:12,24,109,124,179`; `working-rules.md:139,142,194`; `workflow.md:9,12`; `deliverables/README.md:83`; `deliverables/team-project/README.md:24,34`; `project-context.md:31` — cada uma lida no contexto: todas coerentes com a estrutura nova (matriz, §1d, R20, indicadores, workflow, os dois READMEs de entregável, o modelo de contexto) | ✅ |
-| Extração/remoção | linhas de `artifact-ownership.md` antes/depois (`(Get-Content ...).Count`) | 164 → 183 linhas (nova §1d + linha de §4) | ✅ — o crescimento é a regra nova, não inchaço; §1d é a mesma forma de §1c |
-| Fronteira não ultrapassada | `git status --porcelain` + `git diff HEAD` por arquivo | 11 arquivos modificados no total; 8 são desta entrada (os de "O que mudou" + `process-changelog*.md`); os outros 3 (`note.md`, `roles/scrum-master/README.md`, `roles/scrum-master/skills.md`) são resíduo não commitado da v3.20 anterior, confirmado por `git diff` (conteúdo de R22, não desta instrução). Nenhum `roles/product-owner/`, `commands/`, `agents/` tocado por mim | ✅ |
-
-### Pendente do stakeholder
-**Roteamento à Task seguinte (PO), fora do meu alcance — não aplicado:**
-- `roles/product-owner/templates/product-backlog.md:4` — "O Product Backlog é o conjunto das Histórias" → "é o índice ordenado das Histórias"; `:22` — remover a opcionalidade ("no arquivo da História ou em seção própria... a escolha é do projeto") e fixar `.team-project/product-owner/stories/<H-ID>-<slug>.md`; a tabela de Histórias ganha o link por linha.
-- `roles/product-owner/templates/user-story.md:3` — "vive no Product Backlog" → "vive em arquivo próprio (`.team-project/product-owner/stories/`), indexada pelo Product Backlog".
-- `roles/product-owner/README.md:129,132` — mesma coerência: "o conjunto das Histórias" → "o índice das Histórias"; "`.team-project/product-owner/` (arquivo ou seção do backlog)" → "`.team-project/product-owner/stories/` (arquivo próprio, obrigatório)".
-- `roles/product-owner/skills.md` — sem menção direta encontrada; conferir na Task do PO se algo depende da estrutura antiga.
-
-**Duas propostas de texto pronto para `commands/po.md`** (`commands/*` é do stakeholder — não aplicado):
-```
-Linha 13, trecho "(o conjunto das Histórias **e o plano de entrega**)" →
-"(o **índice** das Histórias, com o plano de entrega — cada História vive em arquivo próprio sob `.team-project/product-owner/stories/`)"
-
-Linha 20, trecho "ordenar o Product Backlog — que é o **conjunto das Histórias** —" →
-"ordenar o Product Backlog — que é o **índice das Histórias** —"
-```
-**Mudança de comportamento de agente/comando não se aplica ainda** — `commands/po.md` não foi tocado; as duas propostas só valem, se aprovadas, após reiniciar a sessão e depois de `git push` + `claude plugin marketplace update` + `claude plugin update`.
-
-### PO — parte funcional aplicada
-
-Itens roteados acima: **aplicados**.
-
-| Documento | Mudança |
-|---|---|
-| `product-backlog.md:4,16-22,69-70` | Cabeçalho vira índice; tabela linka ID→`stories/<H-ID>-<slug>.md`; opcionalidade sai |
-| `user-story.md:3` | vive em arquivo próprio, indexada pelo Backlog; **decisão** — arquivo nasce no **Esboço** (senão o índice linkaria vazio) |
-| `README.md:52-67,129-133` | `/po story`: Esboço cria arquivo+linha; Detalhe só edita o arquivo; índice atualiza o Estado |
-| `skills.md` | conferido — sem ocorrência |
-
-**Evidência (R19)** — `Select-String` nos 3 arquivos: "seção própria\|escolha é do projeto\|conjunto das Histórias" → 0; "stories/" → 7 (`product-backlog.md:4,18,22`; `user-story.md:3,7`; `README.md:57,133`), lidas no contexto — coerentes. ✅
-
-— PO, 18/09/2026
-
-### Addendum — 18/09/2026: as duas propostas de `commands/po.md` foram aprovadas e aplicadas
-
-O stakeholder aprovou no formulário de fecho do `/review`. `commands/po.md:13` e `:20` passaram de "o **conjunto** das Histórias" para "o **índice** das Histórias" — a contradição entre o comando e o normativo desta entrada está fechada.
-
-**Achado novo, não aplicado** (surgiu ao abrir o arquivo, fora do que foi aprovado): `commands/po.md:19`, no modo `story`, ainda diz que o esboço *"entra no Product Backlog sem detalhar"*. Pela decisão do PO nesta entrada, o esboço passa a criar **o arquivo da História e a linha de índice**, na mesma sessão. É mudança de comportamento de comando, não coerência de referência cruzada — proposta ao stakeholder, na fila do `/review` seguinte. Texto pronto: *"valor em uma frase, origem rastreada, tamanho grosseiro; nasce em `.team-project/product-owner/stories/<H-ID>-<slug>.md` e ganha a linha correspondente no índice do Product Backlog, na mesma sessão, sem detalhar"*.

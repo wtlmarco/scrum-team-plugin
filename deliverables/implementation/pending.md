@@ -1,6 +1,7 @@
 # Modelo — `pending.md`
 
 > **Dono:** QA · **Muda quando:** um GAP é aberto, fechado ou confirmado como não-gap · **Revisa:** SM (entra na fila), Arquiteto (viabilidade da correção)
+> **Vive fora de `.team-project/sprints/<n>/`:** soma através dos sprints — nasce antes do primeiro sprint (projeto retomado) e segue aberto por vários deles — e fatiá-lo por sprint quebraria a série que ele existe para sustentar (`artifact-ownership.md` §1c). A evidência **por Task** que confirma cada entrada, essa sim, vive em `sprints/<n>/evidence/<T-ID>.md`.
 
 É o **registro do que está quebrado**, levantado sobre o código e não sobre a narrativa. É a fonte mais confiável do conjunto de implementação — e a que dá origem ao backlog de retomada de um projeto parado.
 

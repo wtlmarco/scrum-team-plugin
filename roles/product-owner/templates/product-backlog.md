@@ -17,7 +17,9 @@
 |---:|---|---|---|---|---|---|
 | 1 | [H-<nnn>](stories/H-<nnn>-<slug>.md) | <título na voz do usuário> | <o que ele passa a conseguir fazer> | RF-<nnn> / GAP <ID> / Review <n> | P/M/G | esboço · detalhada · **aprovada** · em sprint · entregue |
 
-**Estados.** `esboço` — nasceu do SDD, tem valor declarado. `detalhada` — tem regras, protótipos e critérios de aceite. `aprovada` — passou no portão ③ e pode entrar na Planning. `em sprint` — está no Sprint Backlog corrente. `entregue` — aceita na Sprint Review.
+**Estados.** `esboço` — nasceu do SDD, tem valor declarado. `detalhada` — tem regras, protótipos e critérios de aceite, pronta para o pacote de abertura de um sprint; **o ③ ainda não aconteceu** — ele é em lote, depois da Planning (R20 · R25). `em sprint` — entrou na Planning e foi **congelada** em `sprints/<n>/stories/H-nnn.md` na aprovação do pacote — é ali que o ③ desta História aconteceu. `entregue` — aceita na Sprint Review.
+
+**Este documento é a fonte viva.** `sprints/<n>/stories/H-nnn.md` é uma **cópia congelada**, gravada na aprovação do pacote de abertura — mesmo ID, objeto diferente (R4 · R25). Editar a História aqui durante o sprint **não** altera o congelado; o ajuste concorre no Product Backlog e entra no sprint seguinte.
 
 O conteúdo de cada História — regras funcionais, protótipos, critérios de aceite, aprovação do portão ③ — segue [`user-story.md`](user-story.md) e vive **sempre** em arquivo próprio, `.team-project/product-owner/stories/<H-ID>-<slug>.md`. Este documento nunca carrega esse conteúdo: só a linha de índice acima, com o ID linkando para o arquivo.
 
@@ -49,6 +51,14 @@ O conteúdo de cada História — regras funcionais, protótipos, critérios de 
 |---|---|---|---|---|
 | H-<nnn> | <n> | <o que o stakeholder ressalvou> | H-<nnn> nova / Task na próxima Planning | <papel> |
 
+## O que não entrou na priorização mais recente
+
+> **Peça obrigatória do pacote de abertura do sprint seguinte** (R25 · [`workflow.md` §5e](../../scrum-master/process/workflow.md) passo 9). No pacote o stakeholder vê o que **entrou** — sem esta lista, uma pendência crítica que despriorizei passa despercebida. Eu forneço esta lista ao SM, que a grava em `planning.md`; eu **proponho** a priorização, o stakeholder **aprova o pacote** e pode devolver.
+
+| Item (Review de origem, sprint) | Motivo de não entrar agora | Reavaliar quando |
+|---|---|---|
+| <ID — título> | <valor × risco, capacidade, dependência…> | <próxima Planning / condição específica> |
+
 ## Decisões funcionais pendentes do stakeholder
 
 | # | Questão | Opções | Recomendação do PO |
@@ -69,3 +79,5 @@ O conteúdo de cada História — regras funcionais, protótipos, critérios de 
 - **História rejeitada na Review volta ao índice** no estado `detalhada`; o arquivo da História mantém as Tasks já feitas anotadas, para não se refazer o que passou no QA.
 - Detalhar **só o que candidata ao próximo sprint** — o detalhamento é lá no arquivo da História, não aqui. Conjunto de Histórias detalhadas por inteiro envelhece antes de ser construído.
 - "Fora de escopo" existe para poupar a discussão recorrente: registre o motivo e o gatilho de reavaliação.
+- **A cada Planning, atualizar "O que não entrou na priorização mais recente"** antes de o SM montar o pacote de abertura — é a peça que garante que despriorização não vira pendência invisível (R25).
+- **`sprints/<n>/stories/` não é editado por aqui.** Uma vez congelado na aprovação do pacote, é registro fechado do sprint; a fonte viva continua sendo este backlog (R4 · R25).

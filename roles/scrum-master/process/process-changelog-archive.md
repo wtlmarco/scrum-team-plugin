@@ -8,6 +8,92 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.21 — Product Backlog deixa de conter a História: índice com ponteiro, conteúdo em arquivo próprio do PO (SM, parte normativa) — 18/09/2026
+
+**Instrução:** *(stakeholder, via `/review note`, item 2)* "As histórias que o po desenvolve devem ficar em outro arquivo que não o ProductBacklog pois está ficando um arquivo muito grande."
+
+**Classificação:** propriedade de artefato + formato de documento. O item se divide em duas Tasks: esta (normativa — matriz de propriedade e R20, SM) e uma seguinte, do PO, sobre os próprios modelos (`product-backlog.md`, `user-story.md`, `README.md`, `skills.md`).
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `artifact-ownership.md` | matriz §1, linhas "Histórias" e "Product Backlog" | Histórias passam a `.team-project/product-owner/stories/`, um arquivo por História (`<H-ID>-<slug>.md`); o Product Backlog é redefinido como **índice ordenado**, não o conteúdo |
+| `artifact-ownership.md` | **§1d nova** | Critério explícito: o que fica no Product Backlog (índice, régua, plano de entrega, requisitos em elaboração, ressalvas, decisões pendentes, fora de escopo) × o que sai (só o conteúdo por História — regras, protótipos, critérios de aceite, portão ③); e a forma de verificação |
+| `artifact-ownership.md` | §4 Convenções | Linha nova: nome de arquivo de História, `<H-ID>-<slug>.md`, mesmo padrão dos Planos de Implementação |
+| `working-rules.md` | R20 — corpo | "A História vive no Product Backlog" → vive em arquivo próprio, indexada pelo Product Backlog |
+| `working-rules.md` | R20 — "SM verifica" | Ganha a forma de verificar que o índice não voltou a inchar com conteúdo de História |
+| `working-rules.md` | tabela de indicadores da retrospectiva, duas linhas de R20 | Coluna "Fonte" corrigida para "arquivo da História" onde antes dizia "Product Backlog"; a segunda linha passa a cobrir também a recaída (conteúdo de volta ao índice) |
+| `workflow.md` | §1 (tabela "Duas unidades" + frase), §2 (diagrama), §2a (etapa 1) | Coerência: "Vive em" da História, a frase "conjunto das Histórias = Product Backlog", o diagrama e a saída da etapa 1 — todos ajustados à nova estrutura (achado na reavaliação do conjunto, não pedido pelo item) |
+| `deliverables/README.md` | linha sobre "Depois do portão ②..." | Mesma coerência — a História vive em arquivo, o Backlog é índice |
+| `deliverables/team-project/README.md` | manifesto (linha `product-backlog.md`, linha nova `stories/`) + nota "Histórias:" | Manifesto ganha linha para a pasta nova; nota final perde a opcionalidade ("à escolha do projeto") |
+| `roles/scrum-master/templates/project-context.md` | linha `product-owner/product-backlog.md` + linha nova `product-owner/stories/` | Mesma coerência no modelo que gera o `.team-project/README.md` §4 |
+
+### Por quê
+O Product Backlog crescia sem limite porque acumulava o **texto de cada História**, não só a lista delas — o mesmo modo de falha que R17 já corrigiu no changelog do processo (v1.0→v1.8, 12× em nove versões), agora no artefato do PO. `user-story.md` já previa a extração como opção ("no arquivo da História ou em seção própria deste documento — a escolha é do projeto"); esta entrada fecha a opção, não inventa a estrutura.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| PO | escreve cada História em arquivo próprio, sempre — deixa de valer a opção "seção do backlog"; mantém os dois documentos (índice e arquivo), ambos seus |
+| SM | ao verificar R20, confere também que a tabela de Histórias do Product Backlog não carrega conteúdo — só índice com ponteiro |
+| Demais papéis | nenhuma — leem a História onde sempre leram (o PO aponta o caminho) |
+| stakeholder | recebe a Task seguinte (PO) para aplicar nos próprios modelos, e duas propostas de texto pronto para `commands/po.md` (abaixo) |
+
+### Conflitos com o processo vigente
+Um, já analisado antes de aplicar (não é conflito de intenção): parecia contradizer R20 ("A História vive no Product Backlog") e a linha da matriz ("Product Backlog = o conjunto das Histórias"), mas R20 fixa **propriedade e locus lógico** (a História é do PO, em contraste com a Task, do SM) — não layout físico de arquivo; e `user-story.md:22` já previa a extração como opção do projeto, então a instrução remove a opcionalidade, não inverte a regra. Resolvido sem escalar ao stakeholder, registrado em uma linha na §1d nova.
+
+### Como saberemos que funcionou
+A próxima História escrita (`/po story <ID>`) nasce em `.team-project/product-owner/stories/<H-ID>-<slug>.md`, e o Product Backlog ganha só a linha de índice com o link. Nenhuma seção "Regras funcionais"/"Protótipos"/"Critérios de aceite"/"Aprovação — portão ③" aparece dentro do Product Backlog a partir de agora.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento (teto de 3, `process-changelog.md:10`) | `git show HEAD` não serve de baseline aqui — o HEAD do repositório está muitas versões atrás do estado da sessão (drift pré-existente, não desta Task); verificação feita por leitura direta: bloco `## v3.18` capturado por `Read` antes da remoção (52 linhas de conteúdo) × bloco relocado em `process-changelog-archive.md:11-62` (52 linhas), conferido título a título e linha de tabela a linha de tabela | 0 diferenças de conteúdo — só o separador `---` que a archive acrescenta depois, fora das 52 linhas contadas | ✅ |
+| Substituição de padrão | `Select-String -Path artifact-ownership.md,working-rules.md,workflow.md,deliverables\README.md,deliverables\team-project\README.md,templates\project-context.md -Pattern "A História vive no Product Backlog","conjunto das Históri","à escolha do projeto"` | 0 ocorrências nos seis arquivos do meu alcance | ✅ |
+| Substituição de padrão | mesmos seis arquivos, `-Pattern "stories/","§1d"` | 14 ocorrências — `artifact-ownership.md:12,24,109,124,179`; `working-rules.md:139,142,194`; `workflow.md:9,12`; `deliverables/README.md:83`; `deliverables/team-project/README.md:24,34`; `project-context.md:31` — cada uma lida no contexto: todas coerentes com a estrutura nova (matriz, §1d, R20, indicadores, workflow, os dois READMEs de entregável, o modelo de contexto) | ✅ |
+| Extração/remoção | linhas de `artifact-ownership.md` antes/depois (`(Get-Content ...).Count`) | 164 → 183 linhas (nova §1d + linha de §4) | ✅ — o crescimento é a regra nova, não inchaço; §1d é a mesma forma de §1c |
+| Fronteira não ultrapassada | `git status --porcelain` + `git diff HEAD` por arquivo | 11 arquivos modificados no total; 8 são desta entrada (os de "O que mudou" + `process-changelog*.md`); os outros 3 (`note.md`, `roles/scrum-master/README.md`, `roles/scrum-master/skills.md`) são resíduo não commitado da v3.20 anterior, confirmado por `git diff` (conteúdo de R22, não desta instrução). Nenhum `roles/product-owner/`, `commands/`, `agents/` tocado por mim | ✅ |
+
+### Pendente do stakeholder
+**Roteamento à Task seguinte (PO), fora do meu alcance — não aplicado:**
+- `roles/product-owner/templates/product-backlog.md:4` — "O Product Backlog é o conjunto das Histórias" → "é o índice ordenado das Histórias"; `:22` — remover a opcionalidade ("no arquivo da História ou em seção própria... a escolha é do projeto") e fixar `.team-project/product-owner/stories/<H-ID>-<slug>.md`; a tabela de Histórias ganha o link por linha.
+- `roles/product-owner/templates/user-story.md:3` — "vive no Product Backlog" → "vive em arquivo próprio (`.team-project/product-owner/stories/`), indexada pelo Product Backlog".
+- `roles/product-owner/README.md:129,132` — mesma coerência: "o conjunto das Histórias" → "o índice das Histórias"; "`.team-project/product-owner/` (arquivo ou seção do backlog)" → "`.team-project/product-owner/stories/` (arquivo próprio, obrigatório)".
+- `roles/product-owner/skills.md` — sem menção direta encontrada; conferir na Task do PO se algo depende da estrutura antiga.
+
+**Duas propostas de texto pronto para `commands/po.md`** (`commands/*` é do stakeholder — não aplicado):
+```
+Linha 13, trecho "(o conjunto das Histórias **e o plano de entrega**)" →
+"(o **índice** das Histórias, com o plano de entrega — cada História vive em arquivo próprio sob `.team-project/product-owner/stories/`)"
+
+Linha 20, trecho "ordenar o Product Backlog — que é o **conjunto das Histórias** —" →
+"ordenar o Product Backlog — que é o **índice das Histórias** —"
+```
+**Mudança de comportamento de agente/comando não se aplica ainda** — `commands/po.md` não foi tocado; as duas propostas só valem, se aprovadas, após reiniciar a sessão e depois de `git push` + `claude plugin marketplace update` + `claude plugin update`.
+
+### PO — parte funcional aplicada
+
+Itens roteados acima: **aplicados**.
+
+| Documento | Mudança |
+|---|---|
+| `product-backlog.md:4,16-22,69-70` | Cabeçalho vira índice; tabela linka ID→`stories/<H-ID>-<slug>.md`; opcionalidade sai |
+| `user-story.md:3` | vive em arquivo próprio, indexada pelo Backlog; **decisão** — arquivo nasce no **Esboço** (senão o índice linkaria vazio) |
+| `README.md:52-67,129-133` | `/po story`: Esboço cria arquivo+linha; Detalhe só edita o arquivo; índice atualiza o Estado |
+| `skills.md` | conferido — sem ocorrência |
+
+**Evidência (R19)** — `Select-String` nos 3 arquivos: "seção própria\|escolha é do projeto\|conjunto das Histórias" → 0; "stories/" → 7 (`product-backlog.md:4,18,22`; `user-story.md:3,7`; `README.md:57,133`), lidas no contexto — coerentes. ✅
+
+— PO, 18/09/2026
+
+### Addendum — 18/09/2026: as duas propostas de `commands/po.md` foram aprovadas e aplicadas
+
+O stakeholder aprovou no formulário de fecho do `/review`. `commands/po.md:13` e `:20` passaram de "o **conjunto** das Histórias" para "o **índice** das Histórias" — a contradição entre o comando e o normativo desta entrada está fechada.
+
+**Achado novo, não aplicado** (surgiu ao abrir o arquivo, fora do que foi aprovado): `commands/po.md:19`, no modo `story`, ainda diz que o esboço *"entra no Product Backlog sem detalhar"*. Pela decisão do PO nesta entrada, o esboço passa a criar **o arquivo da História e a linha de índice**, na mesma sessão. É mudança de comportamento de comando, não coerência de referência cruzada — proposta ao stakeholder, na fila do `/review` seguinte. Texto pronto: *"valor em uma frase, origem rastreada, tamanho grosseiro; nasce em `.team-project/product-owner/stories/<H-ID>-<slug>.md` e ganha a linha correspondente no índice do Product Backlog, na mesma sessão, sem detalhar"*.
+---
+
+
 ## v3.20 — Pendência do stakeholder resolvida em formulário: R22 ganha o meio de apresentação, restrito a quem orquestra (SM) — 18/09/2026
 
 **Instrução:** *(stakeholder, via `/review note`, item 1)* "As pendências do Stackholder devem ser sempre apresentadas modo formulário para resolução com a última opção abrindo para mais esclarecimentos."

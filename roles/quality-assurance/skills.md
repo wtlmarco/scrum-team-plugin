@@ -55,6 +55,8 @@ Não corrigir nada nos dois passes. Só listar. É o mecanismo que impede a docu
 
 Antes de validar qualquer Task nova, reproduza os números que a documentação declara (testes, cobertura, build). Divergência entre o declarado e o reproduzido é o achado mais valioso de uma retomada — e recalibra todo o resto do trabalho.
 
+Registre em `.team-project/quality-assurance/baseline.md` — fora da pasta do sprint, porque a linha de base roda tipicamente **antes** de o sprint 1 existir (`/sm onboarding` → `/qa audit` → `/qa baseline`).
+
 ## 9. Validar contra o normativo de engenharia sem editá-lo
 
 [`${CLAUDE_PLUGIN_ROOT}/standards/`](../../standards/README.md) é a base de qualidade comum do Arquiteto, do dev e minha. O **dono editorial é o Arquiteto**; eu sou **consumidor obrigatório** (R16). A competência é distinguir dois achados que parecem um só.

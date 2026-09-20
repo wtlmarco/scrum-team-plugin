@@ -1,6 +1,7 @@
 # Modelo — `03-code-map.md`
 
 > **Dono:** QA · **Muda quando:** arquivo de código é criado, alterado ou removido · **Revisa:** Arquiteto (na auditoria)
+> **Vive fora de `.team-project/sprints/<n>/`:** soma através dos sprints — o mapa é o inventário acumulado do que existe, não o que um sprint produziu — e fatiá-lo por sprint quebraria essa série (`artifact-ownership.md` §1c).
 
 É o **inventário do código**: onde está cada arquivo, o que ele faz e a que entrega pertence — sem conter o código em si. É o que permite ao Arquiteto pedir *os três arquivos certos* em vez de abrir o repositório inteiro (regra R3), e ao QA detectar código sem tarefa correspondente.
 

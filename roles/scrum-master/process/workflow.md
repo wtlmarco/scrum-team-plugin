@@ -6,8 +6,8 @@
 
 | Unidade | Responde | Dono | Enfoque | Vive em |
 |---|---|---|---|---|
-| **História** | *que valor o stakeholder recebe* | PO | **só funcional** — regra, protótipo, critério de aceite | arquivo próprio (`.team-project/product-owner/stories/`), indexada pelo Product Backlog |
-| **Task** | *que trabalho o time faz para entregar aquele valor* | SM (quadro) · Arquiteto (o plano dentro dela) | técnico — passos, arquivos, verificação | Sprint Backlog (`.team-project/scrum-master/`) |
+| **História** | *que valor o stakeholder recebe* | PO | **só funcional** — regra, protótipo, critério de aceite | arquivo próprio (`.team-project/product-owner/stories/`), indexada pelo Product Backlog; **cópia congelada** em `sprints/<n>/stories/` quando o pacote é aprovado |
+| **Task** | *que trabalho o time faz para entregar aquele valor* | SM (quadro) · Arquiteto (o plano dentro dela) | técnico — passos, arquivos, verificação | Sprint Backlog (`.team-project/sprints/<n>/sprint-backlog.md`) |
 
 **O Product Backlog é o índice ordenado das Histórias** (v3.21 — [`artifact-ownership.md` §1d](artifact-ownership.md)); cada uma vive em arquivo próprio. Uma História nasce do SDD, é detalhada quando vai entrar num sprint, e é quebrada em Tasks pelo time na Planning Meeting. **Toda Task pertence a exatamente uma História** (R20); Task sem História é trabalho que ninguém pediu.
 
@@ -19,17 +19,18 @@ A Task carrega ID, título, História de origem, dono, dependências, estimativa
 SDD funcional (PO: 00, 01, 02) + protótipo funcional em HTML (UX)
   └─ ① stakeholder NAVEGA o protótipo e aprova ──▶ SDD técnica (Arquiteto: 03, 04, 05)
        └─ ② aprovada ──▶ Histórias (PO), uma por arquivo ──▶ índice = Product Backlog
-            └─ detalhamento da História: regras · protótipos (UX) · critérios de aceite
-                 └─ ③ stakeholder aprova, apresentado pelo PO
-                      └─ Planning Meeting ──▶ Sprint Backlog
-                           └─ time quebra em Tasks e estima (§5e)
-                                └─ Arquiteto escreve o Plano de Implementação
-                                     └─ dev constrói ──▶ QA dá veredito ──▶ SM fecha a Task
-                                          └─ Sprint Review: ④ PO aceita a História
-                                               └─ Sprint Retrospective
+            └─ detalhamento da História: regras · especificação de tela (UX) · critérios de aceite
+                 └─ Planning Meeting ──▶ Sprint Backlog fechado
+                      └─ time quebra em Tasks, estima e corta na capacidade (§5e)
+                           └─ pacote de abertura: Sprint Backlog + critérios + protótipo do sprint
+                                └─ ③ stakeholder NAVEGA e aprova o pacote — o sprint arranca
+                                     └─ Arquiteto escreve o Plano de Implementação
+                                          └─ dev constrói ──▶ QA dá veredito ──▶ SM fecha a Task
+                                               └─ Sprint Review: ④ aceite por História
+                                                    └─ Sprint Retrospective
 ```
 
-Os quatro portões numerados são os gates de §8. **O detalhamento da História é sempre e apenas funcional** — nenhuma decisão técnica entra ali; ela nasce na Task, no Plano de Implementação.
+Os quatro portões numerados são os gates de §8. **O detalhamento da História é sempre e apenas funcional** — nenhuma decisão técnica entra ali; ela nasce na Task, no Plano de Implementação. **O ③ é aprovado depois da Planning, em lote, sobre um pacote navegável** (R20 · R25 · §5e): o stakeholder tem **dois pontos de contato por sprint** — a abertura e a Review —, e entre eles o time roda a fila sozinho (§5g).
 
 ### 2a. Ciclo da Task
 
@@ -39,20 +40,21 @@ Os quatro portões numerados são os gates de §8. **O detalhamento da História
 | 0b | Brainstorm *(só ideia sem documentação)* | SM facilita · fase 1: stakeholder + PO + UX · fase 2: + Arquiteto | `/team brainstorm <ideia>` | Brief funcional fechado, pronto para o SDD (R15 · §5b) |
 | 1 | História criada a partir do SDD | PO | `/po story <ID>` | Arquivo da História criado, com o valor declarado, e linha nova no índice do Product Backlog |
 | 2 | Detalhamento da História *(quando ela candidata a um sprint)* | PO, com o UX nos protótipos | `/po story <ID>` (modo detalhe) · `/ux journey` · `/ux screen <ID>` | Regras, protótipos e critérios de aceite — só funcional |
-| 3 | Planning Meeting | SM conduz, o time inteiro participa | `/sm sprint plan` | Sprint Backlog: Histórias aprovadas quebradas em Tasks, estimadas, dentro da capacidade (§5e) |
-| 4 | Plano de Implementação | Arquiteto | `/arc plan <Task>` | Plano dentro da Task, citando a especificação de tela e as seções de standard |
+| 3 | Planning Meeting | SM conduz, o time inteiro participa | `/sm sprint plan` | Sprint Backlog: Histórias candidatas quebradas em Tasks, estimadas, dentro da capacidade; **pacote de abertura montado** (§5e) |
+| 3b | **Pacote de abertura — portão ③ em lote** | UX costura · PO junta · SM submete · **stakeholder navega e aprova** | passos 9–11 de `/sm sprint plan` · `/ux prototype sprint <n>` | Pacote aprovado e datado: é o ③ de **todas** as Histórias do sprint, e o sprint arranca (R25 · §5g) |
+| 4 | Plano de Implementação | Arquiteto | `/arc plan <Task>` | Plano dentro da Task, citando a especificação de tela e as seções de standard. Persistido em `.team-project/sprints/<n>/plan/` |
 | 5 | Construção | dev | `/dev <Task>` | Código + testes + relatório de entrega |
 | 6 | Gap durante a construção | dev → Arquiteto | `/arc question` → `/dev gap` | Decisão do Arquiteto, dev retoma |
 | 7 | Validação | QA | `/qa <Task>` | Veredito ✅/⚠️/❌ com evidência |
 | 8 | Fechamento da Task | SM | `/sm close <Task>` | Quadro + documento de status atualizados — **fechamento técnico, não aceite**. Linha nova no Registro de transições do Sprint Backlog (De: 🟪, Para: ✅) e ponto novo no burndown do sprint (R24) |
-| 9 | Sprint Review | PO demonstra, stakeholder responde | `/sm review` | História aceita / com ressalva / rejeitada · gaps e débitos ao backlog |
+| 9 | Sprint Review | PO demonstra, stakeholder decide | `/sm review` | História aceita / com ressalva / rejeitada · gaps e débitos ao backlog |
 | 10 | Sprint Retrospective | SM conduz | `/sm sprint close` | Retrospectiva + fechamento do sprint (§5c · §5e) |
 
-`/team cycle <Task>` encadeia 4→5→6→7 sem intervenção manual e para no primeiro problema; os modos parciais `/team plan|build|qa <Task>` rodam uma etapa só. Use os comandos individuais para acompanhar etapa por etapa.
+`/team cycle <Task>` encadeia 4→5→6→7 sem intervenção manual e para no primeiro problema; os modos parciais `/team plan|build|qa <Task>` rodam uma etapa só. Use os comandos individuais para acompanhar etapa por etapa. **Escopo de sprint do `cycle`** — rodar a fila inteira do sprint numa invocação, em série (R1) — é **proposta ao stakeholder**, não aplicada: `commands/team.md` é dele. Enquanto não entrar, a fila do sprint roda Task a Task, e é o §5g que garante que o stakeholder não é acionado entre os dois pontos de contato.
 
-As etapas 0 e 0b são **anteriores à cadeia** e não se repetem por Task: o onboarding acontece uma vez por projeto (R14); o brainstorm, uma vez por ideia sem documentação (R15), e alimenta o SDD funcional, não o substitui.
+As etapas 0 e 0b são **anteriores à cadeia** e não se repetem por Task: o onboarding acontece uma vez por projeto (R14); o brainstorm, uma vez por ideia sem documentação (R15), e alimenta o SDD funcional, não o substitui. A etapa 3b acontece **uma vez por sprint**, entre a Planning e a primeira Task em construção.
 
-**O aceite não está no fechamento da Task.** A etapa 8 encerra o trabalho técnico com o veredito do QA; quem diz que o valor chegou é o PO, por História, na Sprint Review (R21 · etapa 9). Task fechada dentro de uma História rejeitada volta ao sprint seguinte junto com as demais da mesma História.
+**O aceite não está no fechamento da Task.** A etapa 8 encerra o trabalho técnico com o veredito do QA; quem diz que o valor chegou é o aceite por História, na Sprint Review (R21 · etapa 9) — o PO conduz, o stakeholder decide. Task fechada dentro de uma História rejeitada volta ao sprint seguinte junto com as demais da mesma História.
 
 ## 3. Definition of Ready
 
@@ -61,13 +63,15 @@ As etapas 0 e 0b são **anteriores à cadeia** e não se repetem por Task: o onb
 - [ ] Rastreia a um requisito do SDD funcional já aprovado (portão ① de §8)
 - [ ] O valor ao stakeholder está escrito em uma frase — o que ele passa a conseguir fazer
 - [ ] Regras funcionais escritas, sem decisão técnica embutida
-- [ ] **História com interface:** protótipo do UX existente, com os seis estados e os critérios de acessibilidade
+- [ ] **História com interface:** **especificação de tela** do UX existente, com os seis estados e os critérios de acessibilidade. É ela que o UX costura no protótipo do sprint depois do corte (§5e passo 10) — costurar não é reespecificar
 - [ ] Critérios de aceite escritos pelo PO e **verificáveis**
-- [ ] Aprovada pelo stakeholder, apresentada pelo PO (portão ③)
+- [ ] **Bloqueios varridos** — dependência, lacuna e risco conhecidos sanados na Planning, ou a História não entra (R25 · §5e passo 3)
+- [ ] Detalhamento funcional **completo**, com os critérios prontos para entrar no **pacote de abertura** que o stakeholder aprova depois do corte de capacidade (portão ③ em lote). A História entra na Planning com o ③ ainda pendente, e **nenhuma Task dela vai à construção antes do pacote aprovado** (R20 · R25 · §5e)
 
 ### 3b. DoR da Task — pode entrar em construção?
 
 - [ ] Pertence a uma História que passou pela DoR da História (R20)
+- [ ] O **pacote de abertura do sprint** está aprovado e datado no Sprint Backlog — é ali que o ③ desta História aconteceu (R25 · §5g)
 - [ ] Origem rastreada (GAP registrado ou critério de aceite da História)
 - [ ] Estimativa registrada na unidade declarada em `.team-project/README.md` (§5e)
 - [ ] Dependências resolvidas ou explicitamente aceitas como risco
@@ -92,7 +96,7 @@ As etapas 0 e 0b são **anteriores à cadeia** e não se repetem por Task: o onb
 - [ ] Todas as Tasks da História fechadas pela DoD da Task
 - [ ] Cada critério de aceite da História tem evidência registrada pelo QA apontando a Task que o cumpre
 - [ ] Demonstrada na Sprint Review
-- [ ] **Aceite do PO registrado** (R21)
+- [ ] **Aceite registrado** (R21) — conduzido pelo PO, com a decisão do stakeholder por História
 - [ ] Gaps e débitos levantados na Review estão no Product Backlog com dono
 
 ## 4a. Aderência: `/arc comply` e a frente 2 do QA verificam objetos diferentes
@@ -127,7 +131,8 @@ Veredito de frente 2 que só reproduz a tabela passo × conforme do comply, sem 
 | Daily | início de cada sessão | `/po status` | 6 linhas |
 | Refinamento técnico | antes de construir uma Task | `/arc plan <Task>` | 1 plano |
 | Validação | ao fim de cada Task | `/qa <Task>` | veredito com evidência |
-| **Sprint Review** | fecha cada sprint, antes da retrospectiva | `/sm review` | aceite por História + gaps e débitos (§5e) |
+| **Pacote de abertura do sprint** | logo depois da Planning, antes de a construção começar | `/sm sprint plan` passos 9–11 + `/ux prototype` (costura do sprint) | Sprint Backlog fechado + critérios de aceite + protótipo navegável, **navegados e aprovados pelo stakeholder** — é o **③ em lote** (§5e · §5g) |
+| **Sprint Review** | fecha cada sprint, antes da retrospectiva | `/sm review` | veredito por História + gaps e débitos, ambos ao Product Backlog na mesma sessão (§5e · §5g) |
 | **Sprint Retrospective** | fecha cada sprint, depois da Review | `/sm sprint close` | [template](../templates/retrospective.md) · mede o footprint do processo (§5c) |
 | Auditoria cruzada | a cada 3 sprints | `/qa audit` | achados, sem correção |
 | Acordo facilitado | questão que atravessa papéis e precisa de **uma** posição | `/sm agreement <questão>` | o SM chama **só os papéis que a questão toca**, consolida uma recomendação e registra a divergência que sobrou |
@@ -272,7 +277,7 @@ O custo dos documentos de `${CLAUDE_PLUGIN_ROOT}/` não pode depender de uma fax
 
 **Onde fica registrado, para ser comparável no tempo:** a tabela de footprint por papel vai na saída de `/review metrics`; quando o giro gera entrada no changelog — o caso normal, um corte por giro —, os números ficam ali, no campo "Como saberemos que funcionou" do modelo [`process-change.md`](../templates/process-change.md). Entre giros, a retrospectiva carrega a linha "carga fixa do processo (KB): atual / retro anterior / Δ" como série contínua.
 
-**Pegada estática × consumo real — os dois convivem, nunca se somam (v3.17).** Tudo acima mede a **pegada estática**: bytes de `agents/`+`commands/`+`roles/`, fixa por versão do plugin e igual em qualquer projeto que instale o time — é proxy de custo do **processo**, não gasto. Quando o projeto mantém [`.team-project/scrum-master/consumption-log.md`](../templates/consumption-log.md) (SM, modelo em `templates/consumption-log.md`), existe também o **consumo real**: tokens e duração por invocação, que a sessão que orquestra recebe quando cada subagente termina e registra numa linha — variável por projeto e por sprint, ao contrário da pegada estática. A fase **Check** passa a citar os dois lado a lado quando o registro existe (a retrospectiva soma o real do sprint — ver [`templates/retrospective.md`](../templates/retrospective.md)); a fase **Act** usa a divergência entre eles como achado: papel com carga fixa pequena e consumo real alto (ou o oposto) é candidato a investigar, não a cortar às cegas. **O consumo real mede o trabalho dos papéis — não o custo da sessão principal, que não enxerga o próprio consumo**; não é o total gasto no projeto, é um piso.
+**Pegada estática × consumo real — os dois convivem, nunca se somam (v3.17).** Tudo acima mede a **pegada estática**: bytes de `agents/`+`commands/`+`roles/`, fixa por versão do plugin e igual em qualquer projeto que instale o time — é proxy de custo do **processo**, não gasto. Quando o projeto mantém [`.team-project/sprints/<n>/consumption.md`](../templates/consumption.md) (SM, modelo em `templates/consumption.md`), existe também o **consumo real**: tokens e duração por invocação, que a sessão que orquestra recebe quando cada subagente termina e registra numa linha — variável por projeto e por sprint, ao contrário da pegada estática. A fase **Check** passa a citar os dois lado a lado quando o registro existe (a retrospectiva soma o real do sprint numa **seção própria**, com total e quebra por papel — ver [`templates/retrospective.md`](../templates/retrospective.md)); a fase **Act** usa a divergência entre eles como achado: papel com carga fixa pequena e consumo real alto (ou o oposto) é candidato a investigar, não a cortar às cegas. **O consumo real mede o trabalho dos papéis — não o custo da sessão principal, que não enxerga o próprio consumo**; não é o total gasto no projeto, é um piso. **O acumulado do projeto é derivado, não mantido:** somar os `sprints/<n>/consumption.md` responde "quanto o time custou até aqui" sem uma tabela viva que precise ser conciliada a cada fechamento.
 
 **O que a fase Check candidata à remoção:** modelo que ninguém referencia, seção que repete outra, regra sem citação em 3 sprints, entrada de changelog acima do teto. Processo que só cresce deixa de ser seguido — revisar é também remover.
 
@@ -321,56 +326,139 @@ O sprint é a **unidade de cadência do time**: uma caixa de tempo de duração 
 | # | Passo | Quem | Saída |
 |---|---|---|---|
 | 1 | Fechar o sprint anterior, se houver: Review feita, retrospectiva registrada, Tasks não concluídas devolvidas ao Product Backlog **com a História a que pertencem** | SM (facilita) | Sprint anterior encerrado |
-| 2 | Selecionar as Histórias candidatas, na ordem do Product Backlog e conforme o **plano de entrega** — **só as que passaram na DoR da História** (§3a) | **PO decide** · SM confere a DoR e devolve o que não passou | Lista de candidatas |
-| 3 | Quebrar cada História em **Tasks** | o time (Arquiteto conduz, dev e QA contribuem) | Tasks com título, dependências e critério de pronto |
-| 4 | **Estimar cada Task** na unidade declarada em `.team-project/README.md` | o time | Estimativa por Task |
-| 5 | Somar e comparar com a **capacidade do sprint** — observada, não negociada | SM apresenta a conta | Quanto cabe |
-| 6 | **Cortar no limite da capacidade**: o que sai, sai por decisão de valor | **PO decide** o que fica de fora | Sprint Backlog fechado |
-| 7 | Declarar o **objetivo do sprint** em uma frase, derivado das Histórias que entraram | PO | Objetivo do sprint no quadro |
-| 8 | Abrir `.team-project/scrum-master/sprints/<n>/` com a linha de abertura do `burndown.md` (dia 0: soma total planejada) — a pasta recebe `review.md` e `retrospective.md` mais adiante, no `/sm review` e no `/sm sprint close` | SM | `sprints/<n>/burndown.md` criado (R24 · §5f) |
+| 2 | Selecionar as Histórias candidatas, na ordem do Product Backlog e conforme o **plano de entrega** — **só as que passaram na DoR da História** (§3a) — e conferir que o conjunto forma uma **fatia vertical demonstrável**, não meio fluxo (R25) | **PO decide** · SM confere a DoR e o critério de valor, e devolve o que não passou | Lista de candidatas |
+| 3 | **Varredura de bloqueios** sobre as candidatas: dependência não resolvida, lacuna de especificação, risco conhecido. Sanado aqui, ou a História **não entra** | SM conduz · PO (funcional) e Arquiteto (técnico) respondem | Candidatas sem bloqueio aberto, ou devolvidas ao Product Backlog |
+| 4 | Quebrar cada História em **Tasks** | o time (Arquiteto conduz, dev e QA contribuem) | Tasks com título, dependências e critério de pronto |
+| 5 | **Estimar cada Task** na unidade declarada em `.team-project/README.md` | o time | Estimativa por Task |
+| 6 | Somar e comparar com a **capacidade do sprint** — observada, não negociada | SM apresenta a conta | Quanto cabe |
+| 7 | **Cortar no limite da capacidade**: o que sai, sai por decisão de valor | **PO decide** o que fica de fora | Sprint Backlog fechado |
+| 8 | Declarar o **objetivo do sprint** em uma frase, derivado das Histórias que entraram | PO | Objetivo do sprint no quadro |
+| 9 | Abrir `.team-project/sprints/<n>/` — o contêiner e as três subpastas com dono (`stories/` PO · `plan/` Arquiteto · `evidence/` QA) — e gravar `planning.md`: decisões da Planning, o corte, e **o que veio da Review anterior e não entrou, com o motivo** (R25) | SM escreve · PO fornece a priorização | `sprints/<n>/planning.md` ([`templates/planning.md`](../templates/planning.md)) |
+| 10 | **Montar e submeter o pacote de abertura**: o UX **costura num protótipo navegável do sprint** as telas das Histórias que sobraram do corte, o PO junta os critérios de aceite delas, o SM anexa o Sprint Backlog fechado, o objetivo e o `planning.md`. O stakeholder **navega e aprova**; o SM registra data + quem aprovou + o ponteiro do protótipo + ajustes pedidos, no Sprint Backlog. Essa aprovação é o **portão ③ de todas as Histórias do sprint** | UX costura · PO junta · SM submete e registra · **stakeholder navega e aprova** | Pacote aprovado e datado — sem ele o sprint não arranca (R20 · R25) |
+| 11 | **Congelar `sprints/<n>/stories/`** (o PO copia cada História como foi aprovada), abrir `burndown.md` com a linha do dia 0 — **a data é a da aprovação do pacote**, não a do fechamento da Planning — e atualizar a linha **"Sprint corrente"** de `.team-project/README.md` §2, que é o único índice para o quadro vivo | PO congela · SM abre o burndown e atualiza o índice | `stories/` congelado · `sprints/<n>/burndown.md` criado (R24 · §5f) · sprint corrente declarado |
+
+**O sprint não arranca no instante em que a Planning fecha.** Entre o passo 8 e o passo 11 existe uma etapa real de calendário: costurar o protótipo do sprint e esperar o stakeholder navegá-lo. É o preço do ③ em lote, e é menor que o do ③ História por História, mas não é zero: o SM o conta na janela do sprint, e o dia 0 do burndown é o da **aprovação do pacote** — Task não entra em construção antes dele. O protótipo do sprint não é trabalho novo de especificação: o UX **já** entregou a especificação de tela de cada História candidata antes da Planning (§3a · §8), e o que se faz aqui é **costurar as telas que entraram** num caminho navegável.
+
+**Pacote reprovado ou aprovado com ajuste volta à Planning:** o PO reordena, o corte é refeito, o protótipo é recosturado, e o pacote é resubmetido. Nada vai à construção antes. **O custo disso é declarado:** História reprovada no pacote perde a quebra e a estimativa já feitas (R20).
 
 **A capacidade é observada, não negociada.** O SM apresenta a média entregue nos três sprints anteriores; sprint que entra acima dela exige justificativa escrita no quadro — é o gatilho de R2 aplicado ao lote. **O SM não veta escopo por valor e o PO não altera a conta de capacidade**: o primeiro diz *se cabe*, o segundo diz *o que entra*.
 
 ### Durante o sprint
 
-O escopo do Sprint Backlog **não cresce**. Trabalho novo que aparece — GAP, pedido do stakeholder, débito — entra no Product Backlog e concorre na Planning seguinte. A exceção é o GAP que **bloqueia uma História já no sprint**: vira Task da mesma História, e o SM registra a entrada fora de Planning no quadro, com o que saiu para caber.
+O escopo do Sprint Backlog **não cresce**. Trabalho novo que aparece — GAP, pedido do stakeholder, débito — entra no Product Backlog e concorre na Planning seguinte. A exceção é o GAP que **bloqueia uma História já no sprint**: vira Task da mesma História, e o SM registra a entrada fora de Planning no quadro, com o que saiu para caber. **O escopo aprovado no pacote é o que o stakeholder viu:** Task nova que altere o que ele aprovou espera a Review, a não ser que caiba inteira dentro de uma História já aprovada e do seu critério de aceite. E **`sprints/<n>/stories/` está congelado** — mudar uma História durante o sprint é violação de escopo (R4 · R25).
 
 ### Sprint Review — fecha o trabalho (`/sm review`)
 
-O PO demonstra cada História do sprint ao stakeholder, **contra os critérios de aceite que ele mesmo aprovou no detalhamento**, e o QA fornece a evidência por Task. Saída, por História: **aceita** · **aceita com ressalva** (a ressalva vira Task no Product Backlog, com dono) · **rejeitada** (todas as Tasks da História voltam ao Product Backlog, inclusive as que passaram no QA — R21). Gaps e débitos identificados entram no Product Backlog na mesma sessão (R12). O registro escrito da Review é gravado em `.team-project/scrum-master/sprints/<n>/review.md` — a pasta já existe desde a abertura do sprint (passo 8 de §5e acima).
+É o **segundo ponto de contato** do sprint (R25 · §5g). O PO demonstra cada História do sprint ao stakeholder, **contra os critérios de aceite que ele aprovou no pacote de abertura**, e o QA fornece a evidência por Task. **O PO conduz o aceite e escreve o dossiê critério a critério; o stakeholder decide, por História** (R21). Saída, por História: **aceita** · **aceita com ressalva** (a ressalva vira Task no Product Backlog, com dono) · **rejeitada** (todas as Tasks da História voltam ao Product Backlog, inclusive as que passaram no QA — R21). Gaps, débitos, ressalvas e erros identificados entram no Product Backlog **na mesma sessão** (R12), com dono — o PO os prioriza para o sprint seguinte, e essa priorização volta ao stakeholder embutida no próximo pacote (§5e passo 9 · R25). Bloqueio ainda aberto sobe aqui, na forma fixa de R22. O registro escrito da Review é gravado em `.team-project/sprints/<n>/review.md`.
 
 ### Sprint Retrospective — fecha o sprint (`/sm sprint close`)
 
 Roda **depois** da Review, com o resultado dela à vista. Usa o [modelo de retrospectiva](../templates/retrospective.md), mede o footprint do processo (§5c) e produz as ações corretivas do sprint seguinte. Encerra o sprint: nada mais entra nele.
 
-**Fechamento de `sprints/<n>/` (R24 · §5f).** Depois da retrospectiva registrada em `sprints/<n>/retrospective.md`, o SM grava `sprints/<n>/sprint-backlog-snapshot.md` — cópia fechada e não editável do Sprint Backlog no estado final do sprint — e fecha `sprints/<n>/burndown.md` (seção "Fechamento" preenchida, sem mais edição depois). Os quatro arquivos da pasta (`review.md`, `retrospective.md`, `sprint-backlog-snapshot.md`, `burndown.md`) formam o registro completo e imutável do sprint. Esse fechamento acontece **depois** de Tasks inacabadas voltarem ao Product Backlog e de ressalvas virarem entradas com dono — o snapshot retrata o estado final, não um estado intermediário.
+**Fechamento de `sprints/<n>/` (R24 · §5f).** Depois da retrospectiva registrada em `sprints/<n>/retrospective.md`, o SM **fecha** `sprints/<n>/sprint-backlog.md` — o quadro vivo do sprint para de ser editável no estado final, sem cópia nenhuma — e fecha `sprints/<n>/burndown.md` (seção "Fechamento" preenchida, sem mais edição depois). Os arquivos da pasta (`planning.md`, `sprint-backlog.md`, `stories/`, `plan/`, `evidence/`, `consumption.md`, `burndown.md`, `review.md`, `retrospective.md`) formam o registro completo e imutável do sprint. Esse fechamento acontece **depois** de Tasks inacabadas voltarem ao Product Backlog e de ressalvas virarem entradas com dono — o quadro fechado retrata o estado final, não um estado intermediário.
 
-**Arquivamento do registro de consumo (quando `.team-project/scrum-master/consumption-log.md` existir).** Depois de a retrospectiva registrar o consumo real do sprint (§5c), o SM move todas as linhas da tabela `## Registro` daquele arquivo para `.team-project/scrum-master/consumption-log-archive.md`, sob um cabeçalho `## Sprint <n>`, íntegras — e limpa a tabela para o sprint seguinte. A tabela `## Totais por papel` não se move: soma desde o início do projeto. Mesmo padrão de R17 (teto + arquivamento), aplicado ao registro de consumo em vez do changelog do processo — ver [`templates/consumption-log.md`](../templates/consumption-log.md). **Este é um padrão diferente do de `sprints/<n>/`** (arquivo único vs. pasta numerada) — o critério de quando usar cada um está em [`artifact-ownership.md` §1c](artifact-ownership.md).
+> **Não existe `sprint-backlog-snapshot.md`.** O Sprint Backlog vivo já mora dentro da pasta do sprint e simplesmente **fecha** no `/sm sprint close`, em vez de ser copiado: um arquivo e uma operação a menos, e nenhuma chance de o snapshot divergir do original.
+
+**Registro de consumo do sprint.** `sprints/<n>/consumption.md` ([`templates/consumption.md`](../templates/consumption.md)) é escrito ao longo do sprint pela sessão que orquestra cada invocação e **fecha junto com a pasta** — não há arquivamento a fazer, porque o registro já nasce dentro do sprint a que pertence. A retrospectiva o lê **antes** do fechamento, na seção própria de consumo (§5c · [`templates/retrospective.md`](../templates/retrospective.md)). O acumulado do projeto é **derivado** — soma-se `sprints/*/consumption.md` quando alguém pergunta —, não mantido vivo.
 
 ### Como o SM verifica que o sprint aconteceu como escrito
 
 - Toda Task do Sprint Backlog rastreia a uma História que passou pela DoR da História; Task órfã é violação de R20.
 - Toda Task tem estimativa registrada antes da construção; Task sem estimativa não entra em construção.
 - Nenhuma História foi aceita fora da Sprint Review (R21); nenhum `/po accept` mira uma Task.
+- O **pacote de abertura** está aprovado e datado no Sprint Backlog — com quem aprovou e o ponteiro do protótipo navegado — **antes da primeira Task em construção** (R20 · R25); `planning.md` traz a lista do que veio da Review anterior e **não** entrou, com o motivo; a coluna Decisão de `review.md` está preenchida por História (R21).
+- Todo bloqueio do quadro nomeia **o degrau em que está** — par PO+Arquiteto, escalado ao stakeholder, ou estratégico direto (R25).
+- Nenhum arquivo de `sprints/<n>/stories/` foi alterado depois da data de aprovação do pacote (R4 · R25).
 - Toda entrada de escopo fora da Planning tem a linha "o que saiu para caber" no quadro.
 - Review e retrospectiva do sprint anterior estão registradas antes da Planning seguinte.
-- Quando o projeto mantém `consumption-log.md`, todo `/sm sprint close` deixa a tabela `## Registro` vazia (só o cabeçalho) e o sprint fechado íntegro em `consumption-log-archive.md`, sob `## Sprint <n>` — arquivamento sem isso é achado de processo.
-- `.team-project/scrum-master/sprints/<n>/` existe desde a Planning (com `burndown.md` de abertura) e termina o sprint com os quatro arquivos completos (`review.md`, `retrospective.md`, `sprint-backlog-snapshot.md`, `burndown.md` fechado) — pasta incompleta no `/sm sprint close` é achado de processo (R24).
+- Quando o projeto registra consumo, `sprints/<n>/consumption.md` existe e a retrospectiva o leu antes do fechamento da pasta (§5c).
+- `.team-project/sprints/<n>/` existe desde a Planning (com `planning.md` e, após a aprovação do pacote, `burndown.md` de abertura) e termina o sprint completa — `sprint-backlog.md` fechado, `burndown.md` fechado, `review.md`, `retrospective.md`, e as três subpastas com o que seus donos produziram. Pasta incompleta no `/sm sprint close` é achado de processo (R24 · R25).
 
 ## 5f. Burndown do sprint — de onde vem o dado, e o que ele não mostra (R24)
 
 O burndown mede a **estimativa restante** (unidade do projeto) das Tasks ainda não fechadas do sprint corrente, em série datada — não o estado de cada Task, que já está no Sprint Backlog. Ele existe porque, sem um ponto datado a cada evento, "o sprint está indo bem" é opinião reconstituída no fechamento, o mesmo modo de falha que R7 nomeia para evidência de código.
 
-**De onde sai o dado.** O Sprint Backlog ganha uma seção nova, o **Registro de transições** ([`templates/sprint-backlog.md`](../templates/sprint-backlog.md)): uma linha por mudança de marcador de Task (`Task · De → Para · Quando · Por quem`). `sprints/<n>/burndown.md` ([`templates/burndown.md`](../templates/burndown.md)) é a leitura em série desse registro — nunca uma segunda fonte de verdade.
+**De onde sai o dado.** O Sprint Backlog tem uma seção própria, o **Registro de transições** ([`templates/sprint-backlog.md`](../templates/sprint-backlog.md)): uma linha por mudança de marcador de Task (`Task · De → Para · Quando · Por quem`). `sprints/<n>/burndown.md` ([`templates/burndown.md`](../templates/burndown.md)) é a leitura em série desse registro — nunca uma segunda fonte de verdade. Os dois vivem na mesma pasta do sprint.
 
 **Quando é gravado, e por quem.** O SM é quem escreve as duas coisas (o Sprint Backlog é dele — §1 da matriz de propriedade), em três momentos:
-- **Abertura do sprint** (`/sm sprint plan`) — todas as Tasks entram ⬜; linha de base do burndown com a soma total planejada. Data exata.
+- **Abertura do sprint** (`/sm sprint plan`, passo 11) — todas as Tasks entram ⬜; linha de base do burndown com a soma total planejada. Data exata: a da **aprovação do pacote de abertura**, não a do fechamento da Planning (§5e passo 10), porque é dali que a construção pode começar.
 - **Cada rodada de `/sm board`** — o SM sincroniza o marcador de cada Task com o que os papéis reportaram desde a última rodada (⬜→🟦 quando o Arquiteto planejou, 🟦→🟨 quando o dev começou, 🟨→🟪 quando o QA deu veredito) e grava uma linha por transição encontrada. **A data é a da rodada**, não a do evento real — granularidade declarada, não escondida.
 - **Cada `/sm close <T-ID>`** — transição para ✅ (ou 🔴, se bloqueada), sempre com data exata. É o único evento que reduz a estimativa restante do burndown.
 
 **Custo, declarado.** Este desenho reaproveita a leitura que o `/sm board` já faz — não pede a nenhum outro papel que grave timestamp no próprio comando. O preço é a granularidade: sprint com `/sm board` raro produz um burndown grosseiro (poucos pontos entre a abertura e os fechamentos); rodar `/sm board` só para alimentar o gráfico inverteria o custo-benefício. Granularidade fina por estado, com o instante exato de cada papel, exigiria tocar `commands/arc.md`/`commands/dev.md`/`commands/qa.md` — fora do alcance do SM nesta versão; fica registrado como possível pedido futuro ao stakeholder, não assumido.
 
-**Onde persiste e quando fecha.** `sprints/<n>/burndown.md`, criado na abertura do sprint (§5e passo 8), atualizado a cada `/sm board` e `/sm close`, e fechado — sem mais edição — no `/sm sprint close`, junto com `retrospective.md` e `sprint-backlog-snapshot.md`.
+**Onde persiste e quando fecha.** `.team-project/sprints/<n>/burndown.md`, criado na abertura do sprint (§5e passo 11), atualizado a cada `/sm board` e `/sm close`, e fechado — sem mais edição — no `/sm sprint close`, junto com `retrospective.md` e o próprio `sprint-backlog.md`.
+
+## 5g. O ciclo do sprint — pacote aprovado, execução contínua, bloqueio em dois degraus (R25)
+
+O sprint é a **unidade de aprovação e de entrega**. O stakeholder tem **dois compromissos por sprint, e só dois** — a **abertura**, onde navega e aprova o pacote (③ em lote), e a **Review**, onde decide por História (④). Entre os dois, o time roda a fila do sprint sem acioná-lo. Não há modo a declarar nem a armar: é assim que o time trabalha.
+
+### Ponto de contato 1 — o pacote de abertura, que é o ③ em lote
+
+Montado nos **passos 9 e 10 da Planning** (§5e), depois do corte de capacidade, porque só depois do corte se sabe **quais** Histórias entraram. Quatro peças, e as quatro são obrigatórias:
+
+| Peça | Quem monta | Por que está no pacote |
+|---|---|---|
+| **Sprint Backlog fechado** — Histórias que entraram, Tasks, estimativas, dependências, objetivo do sprint | SM | é o compromisso que o stakeholder está aprovando: este trabalho, neste tempo |
+| **Critérios de aceite** das Histórias que entraram | PO | é contra eles que a Review vai medir; aprovar o sprint sem ler os critérios é aprovar um título |
+| **Protótipo navegável do sprint** — as telas dessas Histórias costuradas num caminho que se atravessa | UX | **navegar é o que torna a aprovação real** — mesmo princípio do portão ① (R15), agora em escala de sprint. E é a verificação do valor real: protótipo que não atravessa um fluxo ponta a ponta denuncia um sprint que não entrega fatia usável |
+| **`planning.md`** — as decisões da Planning e **o que veio da Review anterior e não entrou, com o motivo** | SM escreve · PO fornece a priorização | no pacote o stakeholder vê o que **entrou**; sem esta lista, pendência crítica despriorizada passa despercebida. O PO **propõe** (valor × risco é dele, §6a); o stakeholder **aprova e pode devolver** |
+
+**Sequenciamento — o que é novo e o que não é.** O UX **já** produz a especificação de tela de cada História candidata **antes** da Planning: é pré-condição da DoR da História e do gate do §8, e isso não muda. O trabalho novo é **costurar num protótipo navegável do sprint as telas das Histórias que sobraram do corte**. Consequência declarada: **o sprint não arranca no mesmo instante em que a Planning fecha** — há a montagem do pacote e a navegação do stakeholder entre as duas coisas, e o **dia 0 do burndown é a data da aprovação do pacote** (§5f).
+
+O SM registra no Sprint Backlog: **data da aprovação · quem aprovou · o ponteiro do protótipo navegado · os ajustes pedidos** ([`templates/sprint-backlog.md`](../templates/sprint-backlog.md)). Essa linha **é o portão ③ de todas as Histórias do sprint**. Pacote reprovado ou aprovado com ajuste volta à Planning — nada vai à construção antes (§5e).
+
+**O custo, declarado.** História reprovada no pacote perde a quebra e a estimativa já feitas (R20). O risco é baixo: o que se avalia ali é detalhamento funcional derivado do SDD aprovado no ①, e a Planning é barata perto do sprint.
+
+### Como roda, entre os dois pontos
+
+| # | O que acontece | Quem |
+|---|---|---|
+| 1 | História nasce do SDD aprovado no ① | PO |
+| 2 | Detalhamento funcional: regras, especificação de tela, critérios de aceite verificáveis | PO, com o UX |
+| 3 | Planning: varredura de bloqueios, quebra em Tasks, estimativa, corte na capacidade, objetivo | o time (SM conduz) |
+| 4 | **Pacote de abertura — portão ③ em lote** | UX costura · PO junta · SM submete · **stakeholder navega e aprova** |
+| 5 | `stories/` congelado; plano · construção · veredito · `/sm close`, Task a Task, **até o fim da fila do sprint** (`/team cycle sprint`, ou os comandos individuais) — todos os gates técnicos do §8 valem iguais | PO congela · Arquiteto · dev · QA · SM |
+| 6 | Bloqueio que aparece: **PO e Arquiteto conversam**; não fecharam, escala na forma de R22 | PO + Arquiteto → SM registra o degrau |
+| 7 | **Sprint Review — aceite por História**, gaps e débitos ao Product Backlog na mesma sessão | SM aciona e registra · PO demonstra e conduz o aceite · QA dá evidência · **stakeholder decide** |
+| 8 | Retrospectiva e fechamento de `sprints/<n>/` | SM |
+| 9 | Sprint seguinte | o time — repete de 1 a 8 |
+
+**Execução contínua não é silêncio.** O canal do stakeholder continua sendo o PO (§6a): `/po status` responde a qualquer momento onde o time está, e ele pode olhar quando quiser. O que se agrega na fronteira do sprint é o **gate**, não a informação.
+
+### Bloqueio — dois degraus antes do stakeholder (R25)
+
+| Degrau | Onde | Quem resolve | O que acontece se não resolver |
+|---|---|---|---|
+| **0 — varredura** | na **Planning**, passo 3 (§5e) | SM conduz; PO responde o funcional, Arquiteto o técnico | a História **não entra** no sprint; volta ao Product Backlog. O pacote aprovado já vem sem bloqueio aberto |
+| **1 — o par** | durante o sprint | **PO e Arquiteto conversam** — é o par certo, porque a pergunta quase sempre é *"o requisito está errado ou o desenho está?"* (R9 · §6b) | sobe ao degrau 2. O SM registra no quadro o resultado da conversa, resolvida ou não |
+| **2 — o stakeholder** | quando o par não fecha | stakeholder, na **forma fixa de R22**: opções descritas · recomendação · a via de pedir mais contexto | fica aberto no quadro, com data e dono — e o SM o leva à Review |
+
+**Exceção que pula o degrau 1: decisão estratégica** — stack, provedor, custo, risco aceito — escala **direto** ao stakeholder. É dele por definição (§6), e o par não pode resolvê-la; fazê-la passar pelo degrau 1 seria só atraso.
+
+**`/sm agreement` não é degrau obrigatório.** Fica disponível se PO e Arquiteto quiserem facilitação do SM sobre a mesma questão — é a via do §6b quando o achado toca dois donos e ninguém consegue classificar.
+
+**Veredito ⚠️/❌ do QA numa Task não é bloqueio.** É local: volta ao dev/Arquiteto pelo caminho que já existe (§4a · §6b). Só vira bloqueio se a resolução exigir decisão que o par não tem — e aí entra no degrau 1 como qualquer outra.
+
+**O que o SM registra.** Toda linha de "Bloqueios e riscos abertos" do Sprint Backlog nomeia **o degrau em que está** (`par PO+Arquiteto desde <data>` · `escalado ao stakeholder em <data>` · `estratégico — direto`), quem destrava e desde quando. Bloqueio sem degrau nomeado é achado de processo; bloqueio parado no degrau 1 por mais de uma caixa de tempo escala.
+
+### Manutenção — a fila `.team-project/note.md`
+
+Sobre um produto já aceito, o ciclo é o mesmo, com uma bifurcação de forma de atendimento:
+
+1. O stakeholder registra os relatos em `.team-project/note.md`, como sintoma (§6a).
+2. O **PO** trata a fila em lote por `/po note`: classifica cada item (defeito · mudança de escopo disfarçada · dúvida de uso) e aciona a QA no que for defeito.
+3. O PO decide a **forma de atendimento**, contra a **capacidade observada** (§5e — a média entregue nos três sprints anteriores, na unidade do projeto):
+
+| Volume do lote classificado | Caminho |
+|---|---|
+| Cabe na **folga do sprint corrente** e não bloqueia História em voo | **correção pontual**: caminho C do fluxo (`/arc question` quando a causa não é óbvia → `/arc plan` → `/dev` → `/qa` → `/sm close`), com a entrada fora da Planning registrada e "o que saiu para caber" (§5e) |
+| **Excede a folga**, ou toca mais de uma História/área, ou soma acima da capacidade observada | **sprint de manutenção**: as Histórias entram no Product Backlog e o lote vai a `/sm sprint plan` |
+| O projeto **ainda não tem três sprints** de histórico | **sprint planejado**, sempre — sem capacidade observada não há folga verificável, e é o sprint que produz a medição |
+
+**Quem decide é o PO; contra o quê, a capacidade observada.** O SM fornece a conta (folga, Tasks em voo, dependências) e recusa a correção pontual que não couber; o PO decide o que entra e em que forma (§6a). Não há limiar mágico de "n itens": o divisor é a capacidade que **este** projeto já demonstrou.
+
+**Onde entram os dois pontos de contato aqui.** O **sprint de manutenção** é um sprint como os outros: tem pacote de abertura e Review com aceite por História. A **correção pontual** não é sprint e não tem pacote — segue o caminho C, com a entrada fora de Planning e o "o que saiu para caber" registrados (§5e), e o seu resultado aparece na Review do sprint corrente. Exigir aprovação de sprint para uma correção pontual sobre um produto já aceito seria burocracia sem ganho: ali o baseline é conhecido e a regressão é detectável pelo QA.
 
 ## 6. Escalação
 
@@ -395,6 +483,8 @@ O stakeholder **não consulta os seis papéis**. Ele se relaciona com o **PO**, 
 
 **A bifurcação do bug é pela origem do achado, não pela gravidade nem pelo tipo (v3.14).** Bug que o **stakeholder relata** entra pelo PO, como acima. Bug que o **próprio time acha durante o trabalho** — QA numa validação, dev implementando (🔺 GAP), Arquiteto ou UX num achado roteado pelo objeto da dúvida (§6b) — vai **direto ao registro da QA**, pelos canais que já existem, e **não passa pelo PO**: ele não é gargalo de achado técnico interno. A diferença está no que o PO agrega — julgar se o que o stakeholder chama de "bug" é de fato defeito, contra o critério de aceite aprovado — e esse julgamento só existe no relato que vem de **fora** do time; achado interno já chega com a evidência `arquivo:linha` e a classificação óbvia, então mandá-lo dar a volta pelo PO seria repasse sem agregar nada.
 
+**O canal não muda de dono — o que muda é a frequência do gate (R25 · §5g).** O PO continua sendo o canal. O stakeholder é acionado em **dois momentos por sprint**: a aprovação do **pacote de abertura** (o ③ em lote) e a **Review** (o ④, por História). Fora deles, sobe a ele o que o **degrau 2** manda subir — bloqueio que PO e Arquiteto não fecharam, e decisão estratégica, que vai direto —, sempre na forma fixa de R22. Tudo o mais é igual: `/po status` responde a qualquer momento, `/po bug` e `/po note` continuam abertos, e a fila `.team-project/note.md` alimenta a manutenção (§5g). **Execução contínua é ausência de interrupção, não ausência de informação nem de aprovação**: time que para de reportar "porque o sprint está rodando" está violando §6a, não cumprindo R25; e time que leva ao stakeholder uma dúvida que o par PO+Arquiteto resolveria devolveu pela janela o gate que R25 agregou na fronteira do sprint.
+
 **Isso não tira do PO a visão de capacidade.** Defeito interno que vira Task segue o roteiro comum de GAP (§5e "Durante o sprint"): entra no Product Backlog e concorre na Planning seguinte, ou — se bloqueia História já no sprint — vira Task da mesma História, com "o que saiu para caber" registrado no quadro. Nos dois casos o PO enxerga o efeito no plano de entrega porque lê o Product Backlog e o Sprint Backlog em `/po status` (`roles/product-owner/README.md`) — não precisa de um segundo canal de aviso para saber que capacidade foi consumida.
 
 O **SM não é canal de demanda** — é **processo, organização e eficiência**, e **facilitador de todos os envolvidos**. O stakeholder o encontra em três lugares: nos **rituais do Scrum**, que o SM gere; no **`/sm agreement`**, quando uma questão atravessa papéis e precisa de uma posição única; e na **cobrança dos portões** que dependem dele. O `/review` — aperfeiçoamento do processo — é do SM e roda só no repositório-fonte do plugin.
@@ -418,7 +508,7 @@ Não há orquestrador. O QA classifica o achado pelo **objeto da dúvida** e o e
 
 **Por que não há um orquestrador único:** o achado de degrau 2 é, com frequência, *"o requisito está errado ou a implementação está?"* — e o PO é **parte** nessa pergunta. Pedir a ele que conduza o julgamento do próprio artefato contraria o mesmo princípio que sustenta a frente 2 do QA (§4a: *um autor não audita a própria omissão*) e a regra de que o dev não revisa os próprios normativos. Quando é preciso reunir posições, quem facilita é o **SM**, que não é dono de requisito, desenho nem evidência.
 
-Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no papel correto (R9). **Exceções declaradas:** no `brainstorm` (§5b), no passo 5 do `onboarding` (§5a), na **aprovação do detalhamento da História** (portão ③) e na **Sprint Review** (portão ④) o stakeholder é participante — o diálogo direto ali é co-criação ou aceite, não escalação; o que sobe a ele mesmo assim vem na forma fixa de R22 — opções descritas, recomendação e a via de pedir mais contexto, resolvida em formulário pela sessão que orquestra, não em texto corrido.
+Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no papel correto (R9) — e, dentro do sprint, sem antes passar pelo **degrau 1** de R25 (PO e Arquiteto), salvo decisão estratégica, que vai direto (§5g). **Exceções declaradas:** no `brainstorm` (§5b), no passo 5 do `onboarding` (§5a), na **aprovação do pacote de abertura** (portão ③, §5e) e na **Sprint Review** (portão ④) o stakeholder é participante — o diálogo direto ali é co-criação ou aceite, não escalação. O que sobe a ele fora desses momentos vem na forma fixa de R22 — opções descritas, recomendação e a via de pedir mais contexto, **resolvida em formulário pela sessão que orquestra**, não em texto corrido.
 
 **Quando a dúvida atravessa papéis**, use `/sm agreement <questão>`: o SM identifica **quais papéis a questão toca**, chama só esses, consolida **uma** recomendação e registra a divergência que sobrou. Não é broadcast — reunir os seis para uma questão de dois é desperdício (R3). **Acordo não transfere a decisão**: o dono do assunto continua decidindo no seu domínio, e o que sobra de divergência sobe ao stakeholder.
 
@@ -436,6 +526,8 @@ Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no pa
 
 ## 8. Gates de qualidade (não negociáveis)
 
+**Nenhum gate abaixo é dispensável.** Dois — o **③** e o **④** — mudam de **forma e de momento**, nunca de dono: o ③ é aprovado pelo stakeholder **em lote, depois da Planning**, sobre o **pacote de abertura do sprint** (Sprint Backlog fechado + critérios de aceite + protótipo navegável + `planning.md`), em vez de História por História antes dela; e o ④ é o **aceite por História na Review**, que o PO conduz e o **stakeholder decide** (R21 · R25 · §5e · §5g). As duas linhas estão marcadas na tabela. **Todo o resto é incondicional** — o ①, o ②, e cada gate de qualidade técnica (plano, standard, build e testes, segurança, documentação, evidência): nada dispensa evidência real (R7) nem gate técnico, pela mesma condição de guarda-corpo que R23 impõe ao modo leve. Gate marcado como dispensado citando o ciclo do sprint é achado de processo — **o ciclo do sprint agrega gates funcionais na fronteira do sprint; não remove nenhum**.
+
 | Gate | Bloqueia | Responsável | Regra |
 |---|---|---|---|
 | Onboarding concluído | primeira Planning Meeting do projeto | SM | R14 |
@@ -443,8 +535,11 @@ Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no pa
 | **Protótipo funcional em HTML existe e cobre os fluxos principais** | o portão ① | UX | R8 · R15 |
 | **① SDD funcional (`00`,`01`,`02`) aprovado pelo stakeholder, com o protótipo NAVEGADO** | primeira escrita do SDD técnico (`03`,`04`,`05`) | PO e UX apresentam · SM verifica | R15 · §5b |
 | **② SDD técnico aprovado** | escrita da primeira História daquela área | Arquiteto apresenta · SM verifica | §5b |
-| **③ Detalhamento da História aprovado pelo stakeholder** | entrada da História na Planning Meeting | PO apresenta · SM verifica | R20 · §3a |
-| Protótipo de tela existe *(História com interface)* | aprovação do detalhamento | UX | R8 |
+| **③ Detalhamento da História aprovado pelo stakeholder — em lote, no pacote de abertura do sprint**, depois da Planning | **entrada de qualquer Task do sprint em construção** | PO apresenta · UX costura o protótipo do sprint · SM submete e registra | R20 · R25 · §3a · §5e passos 9–10 |
+| **Especificação de tela existe** *(História com interface)* — com os seis estados e os critérios de acessibilidade | entrada da História na Planning (DoR — §3a) | UX | R8 |
+| **Protótipo navegável do sprint existe, cobre as Histórias que entraram e atravessa um fluxo ponta a ponta** | a aprovação do pacote de abertura, e portanto o arranque do sprint | UX | R25 · §5e passo 10 |
+| **`planning.md` declara o que veio da Review anterior e não entrou, com o motivo** | a submissão do pacote ao stakeholder | SM escreve · PO fornece a priorização | R25 · §5e passo 9 |
+| **Bloqueio passou pelo degrau 1 (PO + Arquiteto)** antes de subir ao stakeholder — exceto decisão estratégica, que vai direto | a escalação ao stakeholder dentro do sprint | SM registra o degrau | R9 · R25 · §5g |
 | Task pertence a uma História que passou na DoR da História | quebra na Planning | SM | R20 |
 | Estimativa registrada na unidade do projeto | construção | SM | R2 · §5e |
 | Plano de Implementação existe | construção | Arquiteto | R8 |
@@ -454,7 +549,7 @@ Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no pa
 | Segurança: identidade, permissão, auditoria, segredo | veredito | QA | R11 |
 | Documentação atualizada | fechamento da Task | QA | R12 |
 | Evidência registrada | fechamento da Task | QA/SM | R7 |
-| **④ Aceite funcional da História, na Sprint Review** | encerramento do sprint | PO | R21 · §5e |
+| **④ Aceite funcional da História, na Sprint Review** — o PO conduz o aceite e escreve o dossiê; o **stakeholder decide**, por História | encerramento do sprint | PO demonstra · QA dá evidência · SM aciona e registra | R21 · R25 · §5e · §5g |
 | Bump de `version` + banner "Versão atual" do `README.md` + entrada no `CHANGELOG.md` nomeando a branch | merge do PR em `develop` | stakeholder (SM verifica) | R18 · §5d |
 
 ## 9. Ambiente de verificação

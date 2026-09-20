@@ -86,5 +86,5 @@ Se o primeiro plano do Arquiteto precisar de mais de dois 🔺 GAPs para ser exe
 - [ ] Índice do SDD e documento de escopo criados a partir de `deliverables/`; demais conforme a necessidade
 - [ ] Em projeto retomado: `pending.md` produzido por `/qa audit` antes de qualquer planejamento
 - [ ] Backlog inicial semeado com IDs
-- [ ] `/qa baseline` executado e registrado em `.team-project/quality-assurance/evidence.md`
+- [ ] `/qa baseline` executado e registrado em `.team-project/quality-assurance/baseline.md`
 - [ ] Primeiro `/team cycle` fechado com veredito ✅
