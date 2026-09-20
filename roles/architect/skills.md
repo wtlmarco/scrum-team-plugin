@@ -9,9 +9,10 @@ Plano em cima de premissa falsa é a causa nº 1 de 🔺 GAP. Antes de escrever 
 - a **assinatura real** de cada método/classe que o plano vai citar;
 - se o registro de infraestrutura que a stack exige (injeção de dependência, mapeamento de erro, migration) já existe para casos análogos;
 - se a permissão/autorização que você vai referenciar **existe de fato** no catálogo;
-- qual arquivo concreto serve de modelo para o que será criado.
+- qual arquivo concreto serve de modelo para o que será criado;
+- **a versão real do ambiente** que os passos exigem (runtime, SDK, ferramenta de build, serviço local) e se **cada comando que o plano vai citar existe nela** — medido com o comando, nunca lembrado de outro projeto ou de outra stack (R26).
 
-Todo achado entra no diagnóstico como `arquivo:linha`. Sem isso, é suspeita — e suspeita não vira plano.
+Todo achado entra no diagnóstico como `arquivo:linha`. Sem isso, é suspeita — e suspeita não vira plano. **Ambiente se prova do mesmo jeito**, com a saída do comando de versão: o que a medição não comprovar entra no plano como pré-requisito sujeito à **parada incondicional** — inclusive quando a ferramenta simplesmente não existe, que é o caso que uma faixa de versão aceitável nunca cobre.
 
 ## 2. Escrever plano que um júnior executa sem decidir
 

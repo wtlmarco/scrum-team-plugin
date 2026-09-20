@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.24.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.27.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -91,7 +91,7 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 | Scrum Master | [`roles/scrum-master/`](roles/scrum-master/README.md) | `scrum-master` | Sonnet | `/sm` |
 | Product Owner | [`roles/product-owner/`](roles/product-owner/README.md) | `product-owner` | Sonnet | `/po` |
 | Arquiteto de Software Sênior | [`roles/architect/`](roles/architect/README.md) | `architect` | Opus | `/arc` |
-| UX Designer | [`roles/user-experience/`](roles/user-experience/README.md) | `user-experience` | Opus | `/ux` |
+| UX Designer | [`roles/user-experience/`](roles/user-experience/README.md) | `user-experience` | Sonnet | `/ux` |
 | Desenvolvedor(a) júnior | [`roles/developer/`](roles/developer/README.md) | `developer` | Haiku | `/dev` |
 | QA | [`roles/quality-assurance/`](roles/quality-assurance/README.md) | `quality-assurance` | Sonnet | `/qa` |
 | **O time inteiro** | — | os seis, em paralelo ou encadeados | — | `/team` |

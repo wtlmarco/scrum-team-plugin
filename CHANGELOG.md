@@ -13,6 +13,37 @@
 
 ---
 
+## v3.27.0 — 2026-09-20
+
+**Branch:** `feat/v3.27.0`, empilhada sobre `feat/v3.26.0` · **Processo:** [`v3.27`](roles/scrum-master/process/process-changelog.md)
+
+Os três pontos que sobraram em `note.md` foram levados ao stakeholder em formulário (R22) e fechados. A fila fica vazia.
+
+- **R17 — o teto por entrada passa a escalar com a rodada**: 10 KB para até dois papéis, **+2,5 KB por papel adicional**, teto absoluto de 20 KB. O que a regra combate é deliberação repetida, que não cresce com o número de papéis; registro de decisão cresce. A entrada passa a declarar quantos papéis moveu.
+- **R17 — a medição ganha método**: bytes UTF‑8 com **decodificação explícita**. `Get-Content` sem `-Encoding utf8` infla ~7,5% e acusa estouro inexistente; a conferência é o total bater com o tamanho em disco.
+- **R27 nova — falha de invocação não vira culpa do stakeholder**: chamada que volta interrompida/cancelada/recusada sem ação dele é retentada uma vez; persistindo, reporta-se **falha de ambiente** com o texto literal do harness, nunca "o usuário interrompeu".
+- **R5 ganha o lado de quem orquestra**: relatório final que não chega obriga a **ler o estado em disco antes** de reinvocar o papel ou declarar perda.
+- **`commands/team.md`** — seção "Quando uma invocação falha", com as duas obrigações onde quem orquestra as lê.
+- **`v3.24` do changelog do processo arquivada**, íntegra, com o addendum datado que registra seu estouro da barreira antiga.
+
+**Como verificar:** `Select-String '^### R\d+\.' roles/scrum-master/process/working-rules.md` devolve **27**. `/review history` mostra `v3.27`, `v3.26` e `v3.25`. `note.md` tem a seção **Abertas vazia** e nenhuma pendência parada.
+
+## v3.26.0 — 2026-09-20
+
+**Branch:** `feat/v3.26.0` a partir de `develop` · **Processo:** [`v3.25`](roles/scrum-master/process/process-changelog.md) e [`v3.26`](roles/scrum-master/process/process-changelog.md)
+
+Rodada de `/review note` sobre o incidente T‑001, mais a descida do UX para Sonnet.
+
+- **R26 nova** — o Plano de Implementação **mede o ambiente** antes de sair: comando e saída dos pré-requisitos, cada comando citado validado na versão medida, e parada incondicional para **pré-requisito ausente**, não só versão errada. Gate correspondente em `workflow.md` §8; seção **§3** nova no modelo de plano (§4–§10 renumeradas).
+- **R9 ampliada** — quem recebe um 🔺 GAP **decide e registra a decisão no documento que governa a execução**, e devolve a execução a quem a tinha. Não reproduz na máquina, não roda a verificação do outro, não replaneja. Conferir afirmação verificável segue do QA, no veredito (R7). Reflexos em `/arc question`, na linha "Escala para" do dev, em `technical-decision.md`, nos dois `agents/` e nos dois `commands/`.
+- **Gate não se mexe** — desligar, afrouxar, remover do build, trocar ou contornar um gate de qualidade é 🔺 GAP, nunca entrega; gate não exercitado **não conta como verificado**. No contrato do dev (item 6 endurecido, segue com 8 itens), no relatório de entrega e no `/arc comply`.
+- **UX passa de Opus para Sonnet** — o papel mais caro por invocação do time (carga fixa ponderada 67 → 26,8; **2,5× mais barato por invocação**), mantendo a janela de 1M que o protótipo navegável exige. Haiku foi avaliado e descartado: 200K não sustenta o `index.html` ponta a ponta, e truncar quebra um portão. Indicador: o registro de verificação do próximo protótipo de sprint.
+- **`consumption.md`** — notificação parcial de `SendMessage` na mesma invocação não abre linha nova.
+- **`how-to.md`** — nota de troubleshooting do prefixo `/team:<comando>` quando há colisão de nome entre plugins instalados.
+- **Addendum na `v3.24` do changelog do processo** — a entrada foi registrada acima da barreira de 10 KB da R17; registrada como addendum datado, sem reescrita, com o que isso expõe na regra em aberto para decisão.
+
+**Como verificar:** `/review history` mostra as entradas `v3.26` e `v3.25`. `Select-String '^### R\d+\.' roles/scrum-master/process/working-rules.md` devolve **26**. `Select-String '^model:' agents/*.md` devolve opus 1 (architect), sonnet 4, haiku 1. A mudança de modelo do UX **só vale depois de reiniciar a sessão**.
+
 ## v3.24.0 — 2026-09-20
 
 **Branch:** `feat/v3.24.0` a partir de `develop` (v3.23.0 já mesclada — PR #21). **PR** para `develop`.

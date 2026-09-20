@@ -33,7 +33,8 @@ Resposta do Arquiteto quando o dev para e pergunta. Precisa ser **executável**:
 ## Regras
 
 - **Decidir, não devolver a pergunta** (R9). "Depende" não é resposta a um júnior parado.
-- Ler o código citado antes de responder — o relato do dev pode estar certo pelo motivo errado.
+- **A decisão entra no Plano de Implementação**, não só nesta resposta (R9): corrigir o passo, ou acrescentar ali a linha que faltava. Resposta só em prosa é achado de processo — e a execução volta ao dev por `/dev gap <resposta>`, do passo em que ele parou.
+- Ler o código citado antes de responder — o relato do dev pode estar certo pelo motivo errado. **Ler, e parar aí:** reproduzir o passo, rodar build/lint/teste ou replanejar a Task é assumir a execução dele; conferir afirmação verificável é do QA, no veredito (R7 · R9).
 - Classificar sempre: gap sem classificação vira decisão perdida (R6).
 - Gap do mesmo tipo pela segunda vez = ajustar o **formato** do plano, não só responder de novo.
 - **Gap que aponta defeito num standard destrava a Task primeiro e corrige o normativo depois**, por `/review` — nunca editar `${CLAUDE_PLUGIN_ROOT}/standards/` no meio de uma Task, e nunca mandar o dev "ignorar a regra por enquanto" sem registro (R16).
