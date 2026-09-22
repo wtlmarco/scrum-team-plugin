@@ -8,6 +8,56 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.27 — Os três pontos abertos de `note.md`, resolvidos em formulário (R22): teto da R17 escala, R27 nova, R5 ganha o lado de quem orquestra (SM) — 20/09/2026
+
+**Instrução** (stakeholder, resolução em formulário `AskUserQuestion` conforme R22, três perguntas, recomendação do time aceita nas três): fechar os pontos que sobraram em `note.md` depois da rodada v3.25/v3.26 — o teto da R17 que não escala, as chamadas de agente canceladas com atribuição falsa ao stakeholder, e o relatório de retomada que não chega a quem orquestra.
+
+**Classificação:** regra de trabalho (**R17** alterada, **R5** ampliada, **R27** nova) + comportamento de agente (`commands/team.md`). Rodada de **um papel** (SM) — barreira aplicável: 10 KB.
+
+### O que mudou
+
+| Documento | Mudança |
+|---|---|
+| `working-rules.md` (**R17**) | A barreira deixa de ser número fixo: **10 KB até dois papéis, +2,5 KB por papel adicional, teto absoluto de 20 KB**. O que a regra combate é deliberação repetida, que não cresce com o número de papéis; registro de decisão cresce. Número fixo obrigava a escolher entre estourar e apagar decisão. A entrada passa a declarar quantos papéis a rodada moveu |
+| `working-rules.md` (R17, "SM verifica") | A medição passa a exigir **decodificação UTF‑8 explícita**: `Get-Content` sem `-Encoding utf8` infla ~7,5% e acusa estouro inexistente — a conferência é o total bater com o tamanho em disco. Erro medido nesta mesma rodada, que levou a uma condensação desnecessária e a uma acusação injusta a um papel |
+| `working-rules.md` (R17, nota de racional) | Ajustada à barreira escalada, e o precedente da v3.25 corrigido para o valor real (9,14 KB) |
+| `working-rules.md` (**R5**) | Ganha **o lado de quem orquestra**: relatório final que não chega — notificação sem texto, "resultado provisório", ou nada — obriga a **ler o estado em disco antes** de reinvocar o papel ou declarar perda. O parcial existe porque R5 já o exige; não consultá-lo paga duas vezes pelo mesmo trabalho |
+| `working-rules.md` (**R27 nova**) | Chamada a agente que volta interrompida/cancelada/recusada **sem ação observada do stakeholder** é retentada uma vez; persistindo, reporta-se **falha de ambiente** com o texto literal do harness — nunca "o usuário interrompeu". Entra na linha de verificação binária e no "Resumo em uma tela" |
+| `commands/team.md` | Seção "Quando uma invocação falha": a retentativa de R27 e a leitura de disco de R5, escritas onde quem orquestra as lê |
+
+### Por quê
+
+Os três pontos tinham a mesma raiz: **o processo descrevia o caminho feliz e deixava a falha ao improviso**. A barreira fixa presumia que todo excedente fosse deliberação; a v3.24 provou que não — 10.453 B só de campo obrigatório, cinco papéis movidos, nada para cortar. A atribuição falsa de interrupção fez o time afirmar ao stakeholder, com autoridade de relatório, algo falso sobre ele próprio. E o relatório de 4h que se perdeu só foi recuperado porque alguém lembrou de ler o disco — funcionou por iniciativa, não porque estivesse escrito.
+
+### Quem passa a ser cobrado de forma diferente
+
+| Papel | O que muda |
+|---|---|
+| **SM** | Mede a entrada em bytes UTF‑8 com decodificação explícita e contra a barreira **da rodada**, não contra 10 KB fixos; a entrada declara quantos papéis moveu |
+| **Quem orquestra** | Retenta uma vez antes de reportar falha de invocação, e nunca atribui interrupção ao stakeholder sem ação dele registrada (R27); lê o disco antes de reinvocar papel cujo relatório não chegou (R5) |
+
+### Conflitos
+
+Nenhum. R27 é aditiva — nenhuma regra tratava de falha de invocação. A ampliação de R5 é o lado do orquestrador da mesma obrigação que o papel já tinha, sem contradizê-la. A R17 alterada **não reabilita** a v3.24: entrada antiga não se reescreve, e o addendum datado permanece como registro do que aconteceu; a barreira nova vale das próximas rodadas em diante.
+
+### Como saberemos que funcionou
+
+Próxima rodada multi-papel fecha dentro da barreira escalada sem addendum e declarando quantos papéis moveu. Nenhum relatório ao stakeholder volta a atribuir a ele interrupção que não fez. Próximo relatório que não chegar tem, no relato de quem orquestrou, a leitura do disco antes da reinvocação.
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Contagem | `^### R\d+\.` / `^\| R\d+ \|` / `**SM verifica:**` em `working-rules.md` | **27·27·27** (era 26·26·26) | ✅ |
+| Leitura de coerência | R27 e R5 lidas lado a lado com `commands/team.md` | mesma obrigação nos dois lugares, sem divergência de texto | ✅ |
+| Substituição de padrão | `barreira de 10 KB` em toda a RAIZ, cada ocorrência lida no contexto | **2**, ambas históricas e corretas como estão: a entrada `v3.26.0` do `CHANGELOG.md`, que narra o estado de então, e esta própria linha. **Zero** em texto normativo — `working-rules.md` só traz a forma escalada | ✅ |
+| Arquivamento (teto 3) | bloco `v3.24` (74 linhas) relocado, `Compare-Object` UTF‑8 | 0 diferenças; índice de arquivadas com a linha nova | ✅ |
+| Teto de entrada (R17) | bloco `## v3.27`, `[IO.File]::ReadAllLines` com UTF‑8 explícito; rodada de **um papel** → barreira 10 KB | **5.510 B (5,38 KB)**, sob a barreira | ✅ |
+
+**Pendente do stakeholder:** nenhum. As três decisões foram tomadas em formulário e aplicadas no fecho. Entrega **v3.27.0** (R18).
+
+---
+
 ## v3.26 — UX desce de Opus para Sonnet, por medição de custo (stakeholder) — 20/09/2026
 
 **Instrução** (stakeholder, decisão direta após levantamento de custo por papel): *"Vamos descer o UX para Sonnet"*. Origem: o UX era o papel **mais caro por invocação do time** — carga fixa 13,4 KB × US$ 5/MTok = 67 ponderado, contra 56 do Arquiteto e 37,6 do PO. O stakeholder havia escolhido Opus pelo trabalho criativo de desenho de tela, e perguntou se Haiku daria conta.

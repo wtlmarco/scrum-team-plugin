@@ -54,6 +54,8 @@ Os quatro portões numerados são os gates de §8. **O detalhamento da História
 
 As etapas 0 e 0b são **anteriores à cadeia** e não se repetem por Task: o onboarding acontece uma vez por projeto (R14); o brainstorm, uma vez por ideia sem documentação (R15), e alimenta o SDD funcional, não o substitui. A etapa 3b acontece **uma vez por sprint**, entre a Planning e a primeira Task em construção.
 
+**Checkpoint entre fases heterogêneas (R29).** Quando a fila de correções (`.team-project/note.md`, §5g) ou o ciclo de Tasks chega a um estado verde (lint/build/teste passando) e a próxima etapa muda de natureza — por exemplo, entrar no **Ciclo de uma entrega** de §5d, que envolve build nativo e release —, a sessão que orquestra fecha ou `/clear` antes de abrir a etapa seguinte: ela não precisa herdar o histórico de diagnóstico de uma fase que já fechou.
+
 **O aceite não está no fechamento da Task.** A etapa 8 encerra o trabalho técnico com o veredito do QA; quem diz que o valor chegou é o aceite por História, na Sprint Review (R21 · etapa 9) — o PO conduz, o stakeholder decide. Task fechada dentro de uma História rejeitada volta ao sprint seguinte junto com as demais da mesma História.
 
 ## 3. Definition of Ready
@@ -291,6 +293,9 @@ O **processo do time** (os documentos de `${CLAUDE_PLUGIN_ROOT}/`) evolui por `/
 | Entrega do plugin às instalações | `CHANGELOG.md` (raiz) | `vMAJOR.MINOR.PATCH` | fechamento de entrega | stakeholder |
 
 ### Ciclo de uma entrega
+
+**Antes do passo 1: checkpoint de sessão (R29).** Se as correções/melhorias que entram nesta entrega vieram de uma fase de triagem+implementação que acabou de fechar verde, a sessão que orquestra fecha ou `/clear` antes de iniciar o ciclo abaixo — build nativo, release e resolução de conflito de merge não herdam o histórico de diagnóstico da fase anterior, que já não tem utilidade para eles.
+
 1. **Branch** `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` — ou, se a entrega depende de uma entrega anterior ainda não mesclada, **empilhada** a partir da branch dessa entrega (dois precedentes: `v3.14.0` sobre `fix/v3.10.0`, `v3.16.0` sobre `fix/v3.15.0`); a entrada de `CHANGELOG.md` (passo 6) declara a base nos dois casos.
 2. As correções e melhorias da entrega — inclusive as aplicadas por `/review` — vão nessa branch, que acumula até o stakeholder sinalizar o fechamento da versão.
 3. **PR para `develop`**, para aprovação do stakeholder. `develop` é a linha de integração contínua; `main` recebe `develop` quando o stakeholder decide consolidar a linha estável — esse merge não é parte do ciclo por-entrega.
