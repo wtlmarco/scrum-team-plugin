@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.27`](process-changelog-archive.md) | Os três pontos abertos de `note.md` resolvidos em formulário: teto da R17 escala, R27 nova, R5 ganha o lado de quem orquestra (SM) — 20/09/2026 |
 | [`v3.26`](process-changelog-archive.md) | UX desce de Opus para Sonnet, por medição de custo (stakeholder) — 20/09/2026 |
 | [`v3.25`](process-changelog-archive.md) | R26 (plano mede o ambiente); gate desligado/não exercitado é 🔺 GAP; consumo cobre notificação parcial; R9 decide-e-documenta (item 2a) (SM + Arquiteto) — 20/09/2026 |
 | [`v3.24`](process-changelog-archive.md) | O ciclo do sprint: ③ em lote sobre pacote navegável, bloqueio em dois degraus, registro por sprint (5 papéis) — 20/09/2026 · *com addendum de 20/09/2026 sobre o teto da R17* |
@@ -62,6 +63,61 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.30 — Checkpoint de sessão entre fases heterogêneas (R29 nova); item de `note.md` sobre build em background fechado por já estar coberto (R28); sequenciamento de branch do projeto-cliente fechado por estar fora do alcance (SM) — 22/09/2026
+
+**Instrução** (`/review note`, item único de `note.md` — relatório da sessão garden-management, 21/09, três sugestões de melhoria de processo): (1) fechar a sessão/`/clear` entre fases heterogêneas de uma mesma sessão (triagem+correção verde → build nativo/release), para a fase seguinte não pagar pelo histórico de debug morto; (2) build do Docker em background via `run_in_background`, não polling em primeiro plano; (3) merge/rebase da branch de trabalho antes de abrir a branch de correção, para não conflitar com outra branch nos arquivos de rastreamento de dono único.
+
+**Classificação:** regra de trabalho (**R29** nova) + achado de processo fechado sem alteração normativa (item 2, já coberto por R28/v3.29) + item fora do alcance do `/review` (item 3, convenção de git do projeto-cliente) + curadoria de coerência de referência cruzada (contagem de regras desatualizada em `agents/scrum-master.md` e `README.md`, achada nesta rodada). Rodada de **um papel** (SM) — barreira aplicável: 10 KB.
+
+### O que mudou
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `working-rules.md` | R29 nova (Bloco A — Eficiência, após R28) | Sessão que atravessa fases de natureza diferente fecha ou `/clear` no fim da fase que chegou a um estado verde, antes de abrir a fase seguinte — a fase seguinte parte do estado do repositório, não do histórico de turnos |
+| `working-rules.md` | "Como o SM aplica" (lista de regras binárias) | R29 entra na lista, ao lado de R28 |
+| `working-rules.md` | "Resumo em uma tela" | Linha nova: `R29 · Fase heterogênea começa em sessão nova · Eficiência` |
+| `workflow.md` | §2a (fecho da cadeia) | Cross-reference: fila de correções que chega a verde antes de uma fase de natureza diferente (ex.: §5d) aciona R29 |
+| `workflow.md` | §5d, abertura do "Ciclo de uma entrega" | Cross-reference: checkpoint de sessão (R29) antes do passo 1, quando a entrega vem de uma fase de triagem+implementação que acabou de fechar verde |
+| `agents/scrum-master.md` | linha 45 (contagem de regras) | "As 25 regras… método R13-R25" → "As 29 regras… eficiência R1-R6 e R28-R29… método R13-R27" — achado de coerência de referência cruzada, defasado desde antes da v3.27; corrigido sob a exceção de curadoria do SM (`review-contract.md` §Limites) |
+| `README.md` (raiz) | linha 181 | Mesma contagem, mesmo achado, mesma correção |
+| `note.md` | Abertas | Os três itens saem da fila — item tratado sai de `note.md` e passa a viver só aqui (mesma convenção do homônimo `.team-project/note.md`, `artifact-ownership.md` §1b) |
+
+### Por quê
+
+O relatório de origem (sessão garden-management, 21/09, `ad367987`) mediu uma sessão contínua de 911 linhas / 360 turnos / 86M tokens, sem nenhum `/clear` entre quatro fases de natureza diferente — triagem, implementação, build nativo travado e resolução de conflito de merge —, com `cache_read` crescendo de 25K tokens no turno 1 a 363K no turno 360 só pelo reenvio do histórico acumulado a cada turno: a fase de release pagou pelo histórico inteiro das três fases anteriores. Nenhuma regra vigente cobria proativamente esse corte — R5 trata de interrupção não planejada, R3 trata de releitura incremental **dentro** do mesmo tópico, nenhuma das duas prescreve fechar a sessão numa fronteira de fase planejada. R29 fecha essa lacuna. Os outros dois achados do mesmo relatório não geraram regra: o padrão de build travado com polling manual em primeiro plano já é resolvido, de forma mais forte que a proposta (delegação inteira ao `operator`, sem polling algum), pela R28 aplicada na v3.29 — a sessão relatada rodou antes dessa correção existir; e o sequenciamento de branch git do projeto-cliente não é um objeto que este plugin governa (`review-contract.md` §Limites: `/review` não altera `.team-project/`, o código, o quadro nem o backlog — só o processo do plugin).
+
+### Quem passa a ser cobrado de forma diferente
+
+| Papel | O que muda |
+|---|---|
+| **Quem orquestra** (qualquer sessão que conduz Task/correção seguida de build/release) | Fecha ou `/clear` a sessão na fronteira entre uma fase que fechou verde e uma fase de natureza diferente, em vez de manter tudo numa janela de contexto só |
+| **SM** | Verifica R29 pela ausência de diagnóstico/GAP de fase já fechada no relatório da fase seguinte, e pelo bloco de invocação novo em `consumption.md` quando o projeto o registra |
+
+### Conflitos
+
+Nenhum real. Avaliei tensão com R3 (releitura incremental depende de sessão persistente para retomada de subagente via `ListAgents`/`SendMessage`) — não é conflito: R3 otimiza releitura **dentro do mesmo tópico**; R29 corta exatamente na fronteira em que o tópico muda de natureza, onde o benefício de retomada já é baixo. As duas se complementam.
+
+### Como saberemos que funcionou
+
+Próximo relatório de uma fase de natureza diferente da anterior (ex.: entrada de `CHANGELOG.md`/branch de uma entrega) não cita diagnóstico específico de uma fase já fechada verde. Indicador auxiliar, quando o projeto registra consumo: a transição de fase aparece como bloco de invocação novo em `sprints/<n>/consumption.md`, não como continuação do mesmo turno acumulado.
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Contagem | `^### R\d+\.` / `^\| R\d+ \|` em `working-rules.md` | 29·29 (era 28·28) — R29 é a única regra nova; sem colisão de número (R1…R28 já ocupados, confirmado por leitura antes de numerar) | ✅ |
+| Substituição de padrão | `R29` em `workflow.md` | 2 ocorrências, ambas nas notas de cross-reference (§2a e §5d), lidas no contexto — coerentes com o corpo da regra em `working-rules.md` | ✅ |
+| Substituição de padrão (curadoria) | `25 regras\|R13-R25` em toda a RAIZ | 2 ocorrências achadas (`agents/scrum-master.md`, `README.md` raiz), as duas corrigidas; 0 depois. As duas ocorrências novas (`29 regras`) lidas no contexto, coerentes com a contagem real (8 Eficiência + 6 Qualidade + 15 Método = 29) | ✅ |
+| Extração/remoção | `note.md`, linhas antes/depois | 30 → 7 linhas; os três itens saem por inteiro, sem arquivo-espelho em `note.md` (mesma convenção do homônimo do PO) — o registro sobrevive só aqui, no changelog | ✅ |
+| Arquivamento (teto 3) | bloco `v3.27` relocado, `Compare-Object` UTF‑8 | 0 diferenças; índice de arquivadas com a linha nova | ✅ |
+| Teto de entrada (R17) | bloco `## v3.30`, `[IO.File]::ReadAllText` UTF‑8 explícito; rodada de **um papel** → barreira 10 KB | **7.454 B (7,28 KB)**, sob a barreira | ✅ |
+
+### Pendente do stakeholder
+
+Nenhuma decisão pendente. `agents/scrum-master.md` foi tocado só na contagem de regras — cabe na exceção de coerência de referência cruzada do SM (`review-contract.md` §Limites), não é mudança de comportamento de agente; ainda assim, **qualquer edição em `agents/*.md` só entra em vigor depois de reiniciar a sessão**, e a mudança só chega a outros projetos depois de `git push` + `claude plugin marketplace update team` + `claude plugin update team@team`.
 
 ---
 
@@ -226,56 +282,6 @@ Próximo Plano de Implementação não gera GAP sequencial de pré-requisito de 
 ### Pendente do stakeholder
 
 Nenhum item de `agents/`/`commands/` tocado nesta rodada. Seguem em aberto, no mesmo item de `note.md`: **(a)** persistir prova de ambiente em `context.md` do Arquiteto, e **(c)** separar spike de prova de decide-e-documenta — ambos fora do alcance desta chamada (Arquiteto e proposta ao stakeholder, respectivamente). `note.md` só sai de **Abertas** quando as 4 tasks do item estiverem processadas.
-
----
-
-## v3.27 — Os três pontos abertos de `note.md`, resolvidos em formulário (R22): teto da R17 escala, R27 nova, R5 ganha o lado de quem orquestra (SM) — 20/09/2026
-
-**Instrução** (stakeholder, resolução em formulário `AskUserQuestion` conforme R22, três perguntas, recomendação do time aceita nas três): fechar os pontos que sobraram em `note.md` depois da rodada v3.25/v3.26 — o teto da R17 que não escala, as chamadas de agente canceladas com atribuição falsa ao stakeholder, e o relatório de retomada que não chega a quem orquestra.
-
-**Classificação:** regra de trabalho (**R17** alterada, **R5** ampliada, **R27** nova) + comportamento de agente (`commands/team.md`). Rodada de **um papel** (SM) — barreira aplicável: 10 KB.
-
-### O que mudou
-
-| Documento | Mudança |
-|---|---|
-| `working-rules.md` (**R17**) | A barreira deixa de ser número fixo: **10 KB até dois papéis, +2,5 KB por papel adicional, teto absoluto de 20 KB**. O que a regra combate é deliberação repetida, que não cresce com o número de papéis; registro de decisão cresce. Número fixo obrigava a escolher entre estourar e apagar decisão. A entrada passa a declarar quantos papéis a rodada moveu |
-| `working-rules.md` (R17, "SM verifica") | A medição passa a exigir **decodificação UTF‑8 explícita**: `Get-Content` sem `-Encoding utf8` infla ~7,5% e acusa estouro inexistente — a conferência é o total bater com o tamanho em disco. Erro medido nesta mesma rodada, que levou a uma condensação desnecessária e a uma acusação injusta a um papel |
-| `working-rules.md` (R17, nota de racional) | Ajustada à barreira escalada, e o precedente da v3.25 corrigido para o valor real (9,14 KB) |
-| `working-rules.md` (**R5**) | Ganha **o lado de quem orquestra**: relatório final que não chega — notificação sem texto, "resultado provisório", ou nada — obriga a **ler o estado em disco antes** de reinvocar o papel ou declarar perda. O parcial existe porque R5 já o exige; não consultá-lo paga duas vezes pelo mesmo trabalho |
-| `working-rules.md` (**R27 nova**) | Chamada a agente que volta interrompida/cancelada/recusada **sem ação observada do stakeholder** é retentada uma vez; persistindo, reporta-se **falha de ambiente** com o texto literal do harness — nunca "o usuário interrompeu". Entra na linha de verificação binária e no "Resumo em uma tela" |
-| `commands/team.md` | Seção "Quando uma invocação falha": a retentativa de R27 e a leitura de disco de R5, escritas onde quem orquestra as lê |
-
-### Por quê
-
-Os três pontos tinham a mesma raiz: **o processo descrevia o caminho feliz e deixava a falha ao improviso**. A barreira fixa presumia que todo excedente fosse deliberação; a v3.24 provou que não — 10.453 B só de campo obrigatório, cinco papéis movidos, nada para cortar. A atribuição falsa de interrupção fez o time afirmar ao stakeholder, com autoridade de relatório, algo falso sobre ele próprio. E o relatório de 4h que se perdeu só foi recuperado porque alguém lembrou de ler o disco — funcionou por iniciativa, não porque estivesse escrito.
-
-### Quem passa a ser cobrado de forma diferente
-
-| Papel | O que muda |
-|---|---|
-| **SM** | Mede a entrada em bytes UTF‑8 com decodificação explícita e contra a barreira **da rodada**, não contra 10 KB fixos; a entrada declara quantos papéis moveu |
-| **Quem orquestra** | Retenta uma vez antes de reportar falha de invocação, e nunca atribui interrupção ao stakeholder sem ação dele registrada (R27); lê o disco antes de reinvocar papel cujo relatório não chegou (R5) |
-
-### Conflitos
-
-Nenhum. R27 é aditiva — nenhuma regra tratava de falha de invocação. A ampliação de R5 é o lado do orquestrador da mesma obrigação que o papel já tinha, sem contradizê-la. A R17 alterada **não reabilita** a v3.24: entrada antiga não se reescreve, e o addendum datado permanece como registro do que aconteceu; a barreira nova vale das próximas rodadas em diante.
-
-### Como saberemos que funcionou
-
-Próxima rodada multi-papel fecha dentro da barreira escalada sem addendum e declarando quantos papéis moveu. Nenhum relatório ao stakeholder volta a atribuir a ele interrupção que não fez. Próximo relatório que não chegar tem, no relato de quem orquestrou, a leitura do disco antes da reinvocação.
-
-### Evidência (R19)
-
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Contagem | `^### R\d+\.` / `^\| R\d+ \|` / `**SM verifica:**` em `working-rules.md` | **27·27·27** (era 26·26·26) | ✅ |
-| Leitura de coerência | R27 e R5 lidas lado a lado com `commands/team.md` | mesma obrigação nos dois lugares, sem divergência de texto | ✅ |
-| Substituição de padrão | `barreira de 10 KB` em toda a RAIZ, cada ocorrência lida no contexto | **2**, ambas históricas e corretas como estão: a entrada `v3.26.0` do `CHANGELOG.md`, que narra o estado de então, e esta própria linha. **Zero** em texto normativo — `working-rules.md` só traz a forma escalada | ✅ |
-| Arquivamento (teto 3) | bloco `v3.24` (74 linhas) relocado, `Compare-Object` UTF‑8 | 0 diferenças; índice de arquivadas com a linha nova | ✅ |
-| Teto de entrada (R17) | bloco `## v3.27`, `[IO.File]::ReadAllLines` com UTF‑8 explícito; rodada de **um papel** → barreira 10 KB | **5.510 B (5,38 KB)**, sob a barreira | ✅ |
-
-**Pendente do stakeholder:** nenhum. As três decisões foram tomadas em formulário e aplicadas no fecho. Entrega **v3.27.0** (R18).
 
 ---
 
