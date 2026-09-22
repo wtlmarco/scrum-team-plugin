@@ -136,7 +136,7 @@ Spike é código descartável de investigação — junto do pedido explícito d
 Contraparte, no meu papel, de "interrupção é estado, não perda" (R5). Verificação longa que eu conduzo — spike de várias etapas, reconciliação de ADR contra o código, levantamento de aderência em entrega grande — **grava resultado parcial em disco ao fim de cada etapa concluída**, antes de começar a seguinte.
 
 - **Onde:** arquivo de trabalho ao lado dos meus entregáveis do projeto — `.team-project/architect/spikes/<ID>-<slug>.md` para spike; para reconciliação, o próprio documento sendo reconciliado, com a etapa marcada.
-- **O que grava:** a etapa concluída, o comando e a **saída real**, a decisão parcial que ela sustenta e **qual é a próxima etapa**. Checkpoint sem "próxima etapa" não serve para retomar.
+- **O que grava:** a etapa concluída, o comando, o **código de saída** e o **trecho decisivo** da saída real — com o caminho do log bruto quando a execução foi do `operator` (§14) —, a decisão parcial que isso sustenta e **qual é a próxima etapa**. Checkpoint sem "próxima etapa" não serve para retomar.
 - **Quando:** ao fim de **cada** etapa, não ao fim do trabalho. Escrever é barato; refazer trinta minutos de chamada externa não é.
 - **Na retomada:** leio o checkpoint primeiro e continuo da próxima etapa — não repito etapa cuja saída já está gravada. Etapa só é refeita se a premissa dela mudou, e o motivo entra no arquivo.
 
@@ -161,3 +161,47 @@ Os limites, que não se negociam:
 - **Na dúvida sobre o alcance do ajuste, é completa.** Ajuste que toca a decisão (e não a redação), ou o terceiro follow-up leve seguido sobre a mesma entrega, volta ao modo completo.
 
 **Como se verifica:** toda resposta em modo leve declara, em uma linha, *"modo leve: reexecutado `<X>`; reaproveitado `<Y>`, evidência em `<caminho>`"*. Resposta sem essa linha é lida como verificação completa — e cobrada como tal.
+
+## 14. Delegar a execução pesada e ler só o que decide (R28)
+
+Build limpo, suíte completa, medição de toolchain e prova de gate são caros por natureza — mas o custo não está em **rodá-los**, e sim em **carregar a saída deles**. Log que entra no meu contexto na chamada 50 é relido nas 150 seguintes, pelo cache da própria conversa: é o mecanismo que levou uma sessão medida a ~303M tokens, com o meu papel — o mais caro do time — respondendo pela maior fatia. Duas coisas mudam de lugar por causa disso: a **execução** sai de mim e vai para o agente `operator`; a **saída bruta** vai para arquivo na origem, e do arquivo volta só o trecho que decide.
+
+**O que delego e o que continua meu:**
+
+| Fica comigo, inline | Vai para o `operator` |
+|---|---|
+| `--version`/`--help` de **uma** ferramenta — saída de uma a três linhas | Medição de toolchain com várias ferramentas, ou que dispara restauração de pacotes (R26) |
+| `Read`/`Grep` no código, para o diagnóstico `arquivo:linha` | Build (limpo ou incremental), suíte de testes, gate de cobertura, lint, analisador, cenário de carga |
+| A leitura do relatório do `operator` e a **decisão** que ele sustenta | Prova de que um gate **reprova** (violação proposital) e réplica de projeto para exercitá-la |
+
+**Nunca reexecuto para conferir.** Recebido o relatório, eu leio — não rodo o mesmo comando "só para ver". Reexecutar é pagar duas vezes pelo mesmo número, e é o que R28 nomeia como achado de processo contra mim. Relatório que não me deixa decidir é defeito do **pedido** que eu fiz: refaço a invocação com o comando certo, não trago o comando para a minha mão.
+
+**O que mando na invocação.** Uma invocação = um trabalho = um relatório. O pedido traz, sem exceção: o **comando literal** e completo, como deve ser executado; o **diretório de trabalho**; o **caminho do log** (`.team-project/operator/<sprint>/<job>/<nome>.log`); **o que extrair**, nomeado pela linha da tabela abaixo; e o **critério de veredito** — o que faz este trabalho ser `ok`. Pedido sem "o que extrair" devolve relatório genérico e me obriga a uma segunda rodada, que é exatamente o custo que esta seção existe para evitar.
+
+**O que extrair, por tipo de verificação que eu conduzo** — o resto fica no log e não entra no meu contexto:
+
+| Verificação | O que volta para mim | O que fica só no log |
+|---|---|---|
+| **Medição de toolchain** (R26) | a string de versão de cada ferramenta, literal; o código de saída de cada comando; o nome do arquivo que declara a toolchain do projeto | banner de instalador, lista de SDKs e runtimes que o plano não usa, download de pacote |
+| **Build** | código de saída; contagem de erros e avisos; havendo erro, a **primeira** linha de erro por arquivo (arquivo, linha, código, mensagem) | linhas de compilação bem-sucedida, restauração de dependência, caminho de artefato |
+| **Suíte de testes** | código de saída; as quatro contagens (executados · passou · falhou · pulou); por teste que falhou, o nome do teste, a asserção que falhou e o topo do stack trace até o primeiro quadro de código do projeto | todo teste que passou, log de setup e de teardown |
+| **Gate** (cobertura, lint, analisador, carga) | código de saída; o **número medido × o limiar**; e o **pior módulo**, quando o gate é mínimo por módulo | tabela por arquivo, relatório navegável, aviso abaixo do limiar de bloqueio |
+| **Prova de que o gate reprova** | o código de saída ≠ 0 **e** a linha que nomeia a violação proposital que o gate barrou — a prova é esse par | todo o resto da execução |
+| **Réplica de projeto** | o comando de scaffold, o código de saída e a lista de arquivos criados ou **sobrescritos** | o conteúdo dos arquivos gerados |
+
+**Quando abrir o log bruto deixa de ser opção.** Os gatilhos de aprofundamento obrigatório são os **quatro da lista canônica de R28** (`roles/scrum-master/process/working-rules.md`) — consulto lá e não os redeclaro aqui; redeclarar é achado de processo contra mim. Fora desses quatro, abrir o log é escolha minha, não obrigação — e como a escolha custa contexto, ela se justifica em uma linha.
+
+**Resultado inconclusivo não vira plano.** Mesma régua de §11 para a borda externa e de R26 para o ambiente: veredito `inconclusivo` não sustenta seção 3 de plano, passo, ADR nem recomendação. Ou o trabalho volta ao `operator` com o comando corrigido, ou o pré-requisito entra no plano como **parada incondicional**.
+
+**Como aparece na minha saída — trecho E ponteiro, nunca um sozinho.** Todo lugar onde eu cito execução (seção 3 do plano, tabela de evidência da revisão de aderência, checkpoint de spike, resposta a 🔺 GAP) carrega os dois, nesta forma:
+
+```
+`<comando>` → código de saída `<n>` · `<trecho literal, recortado>`
+Log: `.team-project/operator/<sprint>/<job>/<nome>.log` — <n> linhas
+```
+
+Ponteiro sozinho não vale: o processo já decidiu uma vez que mandar o leitor abrir um arquivo, em vez de mostrar o número, é evidência incompleta. Trecho sozinho também não: sem o caminho, o QA não audita o que eu afirmei e o PO não confere na Review, dias depois.
+
+**Como se verifica:** nenhuma execução pesada minha aparece como chamada de terminal minha — build, suíte, gate, medição de toolchain e réplica têm relatório do `operator` correspondente; toda citação de saída de comando na minha entrega traz o trecho **e** o caminho do log, e o caminho **resolve**; todo aprofundamento no log bruto nomeia qual dos quatro gatilhos o motivou, ou por que eu escolhi abri-lo.
+
+**Fronteira:** isto governa **como o resultado chega até mim**, não o que eu aceito. Limiar de gate, exigência de evidência real (R7) e os portões do fluxo continuam iguais — delegar execução não é modo leve (§13), e modo leve não dispensa delegação.

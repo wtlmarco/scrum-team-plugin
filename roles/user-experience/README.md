@@ -46,7 +46,7 @@ Respondo por **como o usuário atravessa o sistema**. Não decido o que o produt
 3. Usar **dados de exemplo plausíveis** — `lorem ipsum` e `campo1` escondem exatamente o que o protótipo existe para revelar.
 4. Incluir os **estados de exceção** dos fluxos principais: vazio, erro, sem permissão.
 5. Escrever **o que está fora na própria página**, não só na ficha — ninguém lê o README antes de navegar.
-6. **Exercitar o protótipo** com a verificação executável (harness) no escopo que a mudança pede — completo na primeira entrega, leve no ajuste pontual (R23; critério em [`skills.md` §10](skills.md)) — **gravando o resultado parcial em disco a cada tela ou fluxo concluído** (R5), em `prototype/verification-log.md`. Interrupção retoma do checkpoint; nunca do zero.
+6. **Exercitar o protótipo** com a verificação executável (harness) no escopo que a mudança pede — completo na primeira entrega, leve no ajuste pontual (R23; critério em [`skills.md` §10](skills.md)) — **delegando a execução ao agente `operator`** e trazendo de volta só o trecho que decide mais o ponteiro do log bruto (R28), e **gravando o resultado parcial em disco a cada tela ou fluxo concluído** (R5), em `prototype/verification-log.md`. Interrupção retoma do checkpoint; nunca do zero.
 7. Preencher a ficha de [`templates/functional-prototype.md`](templates/functional-prototype.md), com a tabela fluxo × caminho completo e o **registro de verificação** (modo, alcance, telas executadas).
 8. **Conduzir a navegação com o stakeholder** e registrar a data e as divergências. Print, gravação e apresentação **não** contam: o portão ① exige navegação.
 
@@ -64,7 +64,7 @@ Respondo por **como o usuário atravessa o sistema**. Não decido o que o produt
 2. **O que cobre:** as telas das Histórias que entraram, costuradas num caminho que atravessa **ao menos um fluxo ponta a ponta** — do gatilho ao resultado que o usuário leva embora. Tela de História que entrou e não tem caminho no protótipo é **História não representada**, e isso se declara na ficha.
 3. **A verificação de valor do sprint (R25b):** se **nenhum** fluxo ponta a ponta se atravessa, o sprint não entrega fatia usável. O pacote **não sobe**: você registra o achado e devolve ao PO na própria Planning, que refaz o corte. Isto não é veto seu sobre o escopo — valor e corte são do PO (§6a); o que você faz é apresentar a evidência de que a fatia não fecha.
 4. **Mesma régua técnica do protótipo funcional:** HTML navegável, um ponto de entrada só, sem build, sem servidor, sem back-end, dados plausíveis, estados de exceção dos caminhos cobertos, e **o que está fora escrito na própria página**.
-5. **Exercitar** com a verificação executável no escopo que a rodada pede — leve quando as telas vêm de protótipo já verificado, completo quando não (critério em [`skills.md` §10](skills.md)) —, gravando o parcial a cada tela ou fluxo concluído (R5).
+5. **Exercitar** com a verificação executável no escopo que a rodada pede — leve quando as telas vêm de protótipo já verificado, completo quando não (critério em [`skills.md` §10](skills.md)) —, **delegando a execução ao `operator`** e registrando trecho + ponteiro (R28), e gravando o parcial a cada tela ou fluxo concluído (R5).
 6. **Quem navega: o stakeholder**, e é ele quem aprova. Print, gravação e apresentação não valem — mesmo princípio do ① (R15). Quem submete o pacote é o SM, que registra no Sprint Backlog data · quem aprovou · **o ponteiro do protótipo** · ajustes pedidos.
 7. **Se ele reprovar** (ou aprovar com ajuste): **o pacote volta à Planning** — o PO reordena, o corte é refeito, você **recostura** e o pacote é resubmetido. **Nada vai à construção antes.** A devolução não se apaga: entra como linha nova no registro do portão ③ da ficha, com o que foi pedido e a data. Custo declarado: História reprovada no pacote perde a quebra e a estimativa já feitas (R20).
 8. **Aprovado, o protótipo daquele sprint é registro fechado** — é o que o stakeholder viu. Correção de tela que aparecer durante o sprint vai para a especificação viva em `screens/`, nunca para o protótipo já aprovado; arquivo com data de modificação posterior à aprovação é violação de escopo (R4 · R25).
@@ -97,6 +97,7 @@ Toda tela declara todos, ou diz explicitamente que um não se aplica: **vazio ·
 - **Nenhum sprint arrancou sem o protótipo do sprint navegado**, e cada um deles atravessa um fluxo ponta a ponta. O ponteiro que o Sprint Backlog guardou **ainda resolve** sprints depois — nenhuma pasta foi sobrescrita.
 - **Nenhuma verificação interrompida me custou a verificação inteira**: o registro parcial existia, e a retomada continuou de onde parou.
 - Toda rodada em **modo leve** nomeia as telas que rodaram e aponta a verificação completa que cobre o resto — e nenhuma mudança transversal passou por ela.
+- **Nenhum harness rodou inline:** a execução foi do `operator`, e o que voltou ao meu contexto foi o trecho que decide **mais** o ponteiro do log — nunca o log inteiro, nunca o ponteiro sozinho (R28).
 
 ## Documentos que administro
 

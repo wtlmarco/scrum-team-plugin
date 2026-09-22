@@ -26,15 +26,21 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` — dentro da pasta d
 | <caminho:linha> | <o que observar — assinatura, padrão a espelhar, invariante> |
 
 ## 3. Ambiente medido e comandos validados (antes da lista de passos — R26)
-> Medido por mim, com comando e **saída real**; nunca presumido nem lembrado de outro projeto.
+> Medido com comando e **saída real** — por mim ou pelo agente `operator` —, nunca presumido nem
+> lembrado de outro projeto. O que **o plano inteiro** exige, do primeiro ao último passo.
 > Plano sem esta seção **não entra em construção** (mesma régua de R8).
+
+**Medição do `operator` (quando foi ela):** `.team-project/operator/<sprint>/<job>/` — trabalho
+`<nome>`, código de saída `<n>`, veredito `<ok | falhou>`. Veredito `inconclusivo` **não** preenche
+esta seção; medição citada depois de o arquivo que declara a toolchain mudar, ou cujo log sumiu do
+caminho, caduca e é refeita (R26 · R28 · [`../skills.md`](../skills.md) §14).
 
 **Pré-requisitos que o plano assume** — runtime, SDK, ferramenta de build, gerenciador de pacotes,
 serviço local que algum passo exige:
 
-| Pré-requisito | Comando de medição | Saída real (recortada) | Atende ao plano? |
-|---|---|---|---|
-| <o que o passo exige> | `<comando que imprime a versão>` | `<o que o comando devolveu, literal>` | sim / **não — <o que falta>** |
+| Pré-requisito | Comando de medição | Saída real (recortada) | Log bruto | Atende ao plano? |
+|---|---|---|---|---|
+| <o que o passo exige> | `<comando que imprime a versão>` | `<o que o comando devolveu, literal>` | `<caminho>.log` — <n> linhas | sim / **não — <o que falta>** |
 
 **Comandos citados nos passos e na seção 7, validados na versão medida** — um por comando; memória de
 outro projeto ou de outra stack não é validação:
@@ -75,7 +81,8 @@ regra de parada:** ela diz o que aceitar, não o que fazer quando a ferramenta n
 |---|---|---|---|
 
 **Cobertura:** a Task mantém o gate de **80% mínimo por módulo** na unidade implantável que ela toca —
-back-end, worker **ou front-end**. O dev cola a saída real do comando de cobertura no relatório
+back-end, worker **ou front-end**. O dev leva ao relatório o trecho decisivo da saída do comando de
+cobertura — código de saída, pior módulo × limiar — **e** o caminho do log bruto (R28)
 (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.4 e §5.5).
 
 ## 7. Comandos de verificação
@@ -114,7 +121,7 @@ comando de cobertura, isso é gap de configuração e entra na seção 9, não v
 8. **Todo passo declara o anel** do arquivo que toca. Passo que faz o domínio depender de fora, ou que põe regra de negócio na borda, é erro de plano — não de execução (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §2).
 9. **Nenhum passo de refatoração "de passagem".** Melhoria fora do objetivo da Task vira Task própria — e, se nenhuma História a cobre, o PO escreve a História que declara o valor (§4.5 do mesmo normativo · R20).
 10. **Todo passo com regra de engenharia cita a seção de `${CLAUDE_PLUGIN_ROOT}/standards/` aplicável, com número** (R16). O dev lê só o que o plano citou — seção não citada é seção não lida. "Seguir os standards" não é citação. Se a regra de que o passo precisa **não existe** no normativo, ou existe contraditória, isso é defeito do standard e é do Arquiteto: resolver por `/review` antes de liberar o plano.
-11. **Ambiente medido antes dos passos** (R26). A seção 3 sai preenchida com comando e saída real: nenhum passo cita comando que eu não vi existir na versão medida, e a parada incondicional cobre **ausência** do pré-requisito, não só versão fora da faixa. Faixa de versão sozinha não é regra de parada. Plano sem a seção 3 não entra em construção.
+11. **Ambiente medido antes dos passos** (R26). A seção 3 sai preenchida com comando e saída real — **minha ou do `operator`, com código de saída, versões e caminho do log bruto**, nunca veredito `inconclusivo`: nenhum passo cita comando que eu não vi existir na versão medida, e a parada incondicional cobre **ausência** do pré-requisito, não só versão fora da faixa. Faixa de versão sozinha não é regra de parada. Plano sem a seção 3 não entra em construção.
 12. **Task retomada de outro sprint ganha plano novo, aqui, com a linha `Retomada de:`** — o plano antigo vive em `sprints/<n-1>/plan/` e é **registro fechado: não se edita, não se copia, não se reaproveita por referência**. O plano novo declara o que já foi feito (a partir do "Parei no passo" do relatório do dev) e **reconfere no código real** as assinaturas dos passos restantes: o repositório mudou no intervalo, e passo executado sobre premissa velha é a causa nº 1 de 🔺 GAP ([`../skills.md`](../skills.md) §1 · R3 · R5).
 
 ## Exemplo abreviado
@@ -134,10 +141,12 @@ comando de cobertura, isso é gap de configuração e entra na seção 9, não v
 | `UrlSigner.cs` | como a mensagem assinada é composta hoje |
 
 ## 3. Ambiente medido e comandos validados
-| Pré-requisito | Comando de medição | Saída real | Atende? |
-|---|---|---|---|
-| <runtime da unidade tocada> | `<comando de versão>` | `<versão devolvida>` | sim |
-| <ferramenta de build> | `<comando de versão>` | `<versão devolvida>` | sim |
+*(Medição do `operator`: `.team-project/operator/<sprint>/<job>/` — código de saída 0, veredito `ok`.)*
+
+| Pré-requisito | Comando de medição | Saída real | Log bruto | Atende? |
+|---|---|---|---|---|
+| <runtime da unidade tocada> | `<comando de versão>` | `<versão devolvida>` | `<caminho>.log` — <n> linhas | sim |
+| <ferramenta de build> | `<comando de versão>` | `<versão devolvida>` | `<caminho>.log` — <n> linhas | sim |
 
 | Comando citado | Onde | Como confirmei | Saída |
 |---|---|---|---|

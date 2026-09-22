@@ -62,7 +62,7 @@ O veredito diz, por achado, em que degrau ele cai. Os três primeiros são a esc
 ### `/qa <ID>` — validação de Task
 1. Ler o plano e o relatório do dev; conferir o diff contra a lista de arquivos do plano (detecta escopo antecipado).
 2. Percorrer as seis frentes, cada achado com `arquivo:linha`.
-3. **Executar** os comandos de verificação do projeto — colar a saída.
+3. **Executar** os comandos de verificação do projeto — pesado (build, suíte, cobertura, lint do projeto inteiro, carga V19) delegado ao `operator` (R28); trecho decisivo e ponteiro do log no veredito, nunca um sozinho ([`skills.md`](skills.md) §2).
 4. Emitir veredito no formato de [`templates/verdict.md`](templates/verdict.md).
 5. Registrar em `.team-project/sprints/<n>/evidence/<T-ID>.md` — nome exatamente `<T-ID>.md`, é o que a coluna Evidência do Sprint Backlog aponta; ponteiro que não resolve é achado de processo. Atualizar os documentos de qualidade do projeto.
 
