@@ -13,6 +13,20 @@
 
 ---
 
+## v3.30.0 — 2026-09-22
+
+**Branch:** `feat/v3.30.0` a partir de `develop` · **Processo:** [`v3.30`](roles/scrum-master/process/process-changelog.md)
+
+Rodada de `/review note` sobre o relatório da sessão garden-management (21/09): 911 linhas / 360 turnos / 86M tokens numa única sessão sem `/clear` entre fases de natureza diferente — triagem, implementação, build nativo travado e resolução de conflito de merge —, com `cache_read` crescendo de 25K a 363K tokens turno a turno só pelo reenvio do histórico acumulado.
+
+- **R29 nova — fase heterogênea começa em sessão nova.** Quando uma fase de trabalho chega a um estado verde (lint/build/teste passando) e a próxima etapa muda de natureza — por exemplo, entrar no build nativo/release —, a sessão que orquestra fecha ou `/clear` antes de abrir a etapa seguinte: ela não precisa herdar o histórico de diagnóstico de uma fase que já fechou. Cross-reference em `workflow.md` §2a (fecho da cadeia de Task) e na abertura do "Ciclo de uma entrega" (§5d).
+- **Item sobre build em background fechado sem mudança normativa** — já coberto, de forma mais forte que a sugestão, pela R28/`agents/operator.md` (v3.29): a execução pesada já é delegada inteiramente ao `operator`, sem polling em primeiro plano.
+- **Item sobre sequenciamento de branch do projeto-cliente fechado fora do alcance** — `/review` não prescreve convenção de git para o código do projeto-cliente, só para a entrega do próprio plugin (`review-contract.md` §Limites).
+- **Curadoria de coerência de referência cruzada:** contagem de regras desatualizada ("25 regras… R13-R25") corrigida em `agents/scrum-master.md` e neste `README.md` para "29 regras… R13-R27".
+- **`note.md` volta à fila vazia** — os três itens saem, tratados.
+
+**Como verificar:** `Select-String '^### R\d+\.' roles/scrum-master/process/working-rules.md` devolve **29**. `Select-String '25 regras|R13-R25' -Path README.md,agents/scrum-master.md` devolve **zero**. `note.md` tem a seção **Abertas** vazia.
+
 ## v3.29.0 — 2026-09-22
 
 **Branch:** `fix/v3.29.0` a partir de `develop` · **Processo:** [`v3.28`](roles/scrum-master/process/process-changelog.md) e [`v3.29`](roles/scrum-master/process/process-changelog.md)
