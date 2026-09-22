@@ -238,7 +238,7 @@ Consequências práticas:
 - `claude plugin validate .team --strict` checa os manifestos; `claude plugin details team@team` lista os componentes e o custo em tokens.
 - `.claude/` guarda só a configuração — nenhuma definição do time.
 
-> ⚠️ **`agents/` e `commands/` têm de ficar na raiz do plugin — nunca dentro de `.claude-plugin/`.** Só os manifestos vivem lá. Testado na versão 2.1.257: movendo as duas pastas para dentro de `.claude-plugin/`, o inventário cai para **Skills (0), Agents (0)** — e apontar os arquivos explicitamente pelos campos `agents`/`commands` do manifesto **também não resgata**. Pior: `claude plugin validate --strict` **continua passando**, então a falha é silenciosa. Depois de mexer na estrutura, o teste que vale é `claude plugin details team@team` — ele tem de listar os **8 comandos** (`sm` `po` `arc` `ux` `dev` `qa` `team` `review`) e os **6 agents**.
+> ⚠️ **`agents/` e `commands/` têm de ficar na raiz do plugin — nunca dentro de `.claude-plugin/`.** Só os manifestos vivem lá. Testado na versão 2.1.257: movendo as duas pastas para dentro de `.claude-plugin/`, o inventário cai para **Skills (0), Agents (0)** — e apontar os arquivos explicitamente pelos campos `agents`/`commands` do manifesto **também não resgata**. Pior: `claude plugin validate --strict` **continua passando**, então a falha é silenciosa. Depois de mexer na estrutura, o teste que vale é `claude plugin details team@team` — ele tem de listar os **8 comandos** (`sm` `po` `arc` `ux` `dev` `qa` `team` `review`) e os **7 agents**.
 
 ## Convenções
 

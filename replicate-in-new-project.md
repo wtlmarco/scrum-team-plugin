@@ -78,8 +78,8 @@ Se o primeiro plano do Arquiteto precisar de mais de dois 🔺 GAPs para ser exe
 
 - [ ] `claude plugin marketplace list` mostra o `team` declarado nas **settings do projeto**, não nas do usuário
 - [ ] Plugin instalado (`claude plugin list` mostra `team@team` habilitado — exibição duplicada é ruído, não instalação dupla)
-- [ ] `claude plugin details team@team` lista os 8 comandos (`sm` `po` `arc` `ux` `dev` `qa` `team` `review`) e os 6 agents
-- [ ] Sessão reiniciada; `/plugin` mostra `team@team` **enabled** e `/help` lista os 8 comandos e os 6 agentes
+- [ ] `claude plugin details team@team` lista os 8 comandos (`sm` `po` `arc` `ux` `dev` `qa` `team` `review`) e os 7 agents
+- [ ] Sessão reiniciada; `/plugin` mostra `team@team` **enabled** e `/help` lista os 8 comandos e os 7 agentes
 - [ ] `/team init` executado; `.team-project/README.md` escrito, com stack, fontes da verdade, comandos e limitações
 - [ ] Os seis `context.md` escritos, com as armadilhas do projeto
 - [ ] Índice do SDD e documento de escopo criados a partir de `deliverables/`; demais conforme a necessidade

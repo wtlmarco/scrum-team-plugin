@@ -37,7 +37,7 @@
 - **Rejeição devolve a História inteira**, com todas as Tasks, inclusive as aprovadas pelo QA — anotadas como já feitas, para que a Planning seguinte não as replaneje do zero.
 - Marcar critério de sucesso como atendido exige apontar a linha de evidência em `.team-project/sprints/<n>/evidence/` (o sprint corrente está em `.team-project/README.md` §2).
 - Rejeição diz **o que falta**, não "não está bom".
-- **História que toca operação sob orçamento de desempenho** (Ficha V18): o aceite confere o **estado registrado pelo QA** — dentro do orçamento · fora · não exercitado — e a **saída real** do comando de carga (V19). "Fora" é rejeição; "não exercitado" sem motivo declarado é rejeição.
+- **História que toca operação sob orçamento de desempenho** (Ficha V18): o aceite confere o **estado registrado pelo QA** — dentro do orçamento · fora · não exercitado — e a evidência do comando de carga (V19): o **trecho decisivo** (a linha que prova o percentil) **e o ponteiro** para o log bruto em `.team-project/operator/<sprint>/<job>/` — nunca a saída colada por inteiro (R28). "Fora" é rejeição; "não exercitado" sem motivo declarado é rejeição. **Ponteiro que não resolve** (log podado antes da hora, caminho inexistente) não vira aceite por confiança: trata-se como "não exercitado" — rejeição — e o achado (retenção rompida antes do meu aceite, que é quando R28 prevê a poda) é registrado e escalado, nunca resolvido reexecutando o comando por conta própria.
 
 ## Exemplo
 

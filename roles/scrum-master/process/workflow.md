@@ -543,7 +543,7 @@ Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no pa
 | Task pertence a uma História que passou na DoR da História | quebra na Planning | SM | R20 |
 | Estimativa registrada na unidade do projeto | construção | SM | R2 · §5e |
 | Plano de Implementação existe | construção | Arquiteto | R8 |
-| Plano traz o **ambiente medido** (comando + saída), os comandos citados validados naquela versão, e parada incondicional para pré-requisito **ausente** | construção | Arquiteto | R26 |
+| Plano traz o **ambiente medido** (comando + saída — próprias ou do `operator`, com o caminho do log bruto), os comandos citados validados naquela versão, e parada incondicional para pré-requisito **ausente** | construção | Arquiteto | R26 |
 | Plano cita a seção de `${CLAUDE_PLUGIN_ROOT}/standards/` que a mudança de engenharia toca | construção | Arquiteto | R16 |
 | Seção de standard **exigida pela Task** presente no plano e aplicada no código | veredito | QA | R16 · §4a |
 | Build sem avisos + testes passando | veredito | QA | R7 |

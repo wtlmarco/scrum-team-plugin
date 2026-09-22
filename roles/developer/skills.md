@@ -38,9 +38,28 @@ Os quatro desvios mais comuns, todos proibidos:
 
 O que você percebeu e não fez vai para a seção **"Não fiz (fora do plano)"** do relatório — é assim que o time descobre gap de escopo sem ninguém antecipar nada.
 
-## 6. Verificar de verdade
+## 6. Verificar de verdade — saída real no relatório, log inteiro no arquivo
 
-Saída real de comando, colada no relatório. Se falhou, mostrar a falha. Honestidade acima de aparência: uma entrega reprovada com evidência custa uma revisão; uma entrega aprovada por alegação custa um defeito em produção.
+Saída real de comando no relatório, sempre. Se falhou, mostrar a falha. Honestidade acima de aparência: uma entrega reprovada com evidência custa uma revisão; uma entrega aprovada por alegação custa um defeito em produção (R7).
+
+**O que muda é onde a saída completa mora, não a obrigação de mostrá-la** (R28). Build, suíte e gate devolvem centenas de linhas; despejar isso no relatório e no meu próprio contexto é o mesmo desperdício que ler o repositório inteiro (R3). Então: a **execução pesada** (build limpo, suíte completa, gate) é trabalho do agente `operator` — **eu delego como qualquer outro papel do time**, e leio o relatório dele. Não há via alternativa: rodar execução pesada inline é achado de processo contra mim, sem exceção. O **build de fim de passo** (§2) continua meu — e é o único — rodado com a saída **redirecionada para arquivo na origem**: `<comando> *> <caminho>.log`, ou o equivalente do ambiente, que está em `.team-project/developer/context.md`. Nos dois casos o log fica em `.team-project/operator/<sprint>/<job>/` — numa Task, o `<job>` é o `<T-ID>` — e o relatório leva **o trecho decisivo e o caminho do log**.
+
+**Recebido o relatório do `operator`, leio o resumo por padrão, sem abrir o log bruto.** E não reexecuto o comando para conferir o que ele devolveu.
+
+**Os gatilhos de aprofundamento obrigatório são os quatro da lista canônica de R28** (`roles/scrum-master/process/working-rules.md`) — leio lá e não os repito aqui; repetir é achado de processo contra mim. Fora deles, abrir o log bruto é opção minha, não obrigação.
+
+**Gatilho disparado e log que não explica → 🔺 GAP ao Arquiteto, não conserto meu.** Aberto o log bruto, ele ou me dá a linha que localiza a causa dentro do passo do plano — e aí sigo o plano —, ou não dá: então o caso é o mesmo de qualquer gate que reprova sem o plano cobrir o motivo — **roteio, não conserto** (§9). Codifico para e levanto 🔺 GAP no formato de §10, com o comando, o trecho, o ponteiro e o gatilho que disparou; e **não** tento a segunda rodada de investigação por conta própria, nem ajusto código, teste ou configuração para fazer o número fechar. "Sem plano, sem código" (R8) vale igual quando o que falta é a explicação de uma saída.
+
+**O trecho decisivo, por comando** — é isto que eu recorto e colo; o resto fica no arquivo:
+
+| Comando | O que vai para o relatório |
+|---|---|
+| **Build** | o código de saída e a linha de resumo (erros e avisos); falhou → a **primeira** linha de erro por arquivo, com arquivo, linha e mensagem |
+| **Testes** | o código de saída e a linha de contagens (executados · passou · falhou · pulado); falhou → o nome de cada teste que falhou e a asserção que falhou |
+| **Gate de cobertura** | o código de saída, o percentual medido × o limiar e o **pior módulo** |
+| **Lint / analisador** | o código de saída e uma linha por regra violada (arquivo, linha, código da regra) |
+
+**Trecho sem ponteiro não vale; ponteiro sem trecho também não.** Quem lê o relatório — o Arquiteto na revisão, o QA no veredito, o PO na Review dias depois — precisa ver o número **sem abrir arquivo** e conseguir chegar ao log bruto quando o número não bastar. O caminho declarado tem de existir: ponteiro que não resolve é achado de processo. E "build ok", "testes passando" e "log em `<caminho>`" sozinhos valem todos a mesma coisa: nada.
 
 ## 7. Deixar o repositório íntegro
 

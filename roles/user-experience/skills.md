@@ -162,7 +162,7 @@ Subir de fidelidade antes de a estrutura estar acordada é o retrabalho mais com
 
 ## 10. Verificar o protótipo sem pagar a verificação duas vezes
 
-Protótipo entregável — o funcional do ① e o do sprint — não se declara pronto: ele é **exercitado**. A verificação executável — o *harness*: um script sem interface que abre cada tela, percorre cada caminho e confere cada critério, no runtime declarado no contexto do projeto — é a evidência de R7 no meu território. Ela é também a coisa mais cara que eu rodo. As duas disciplinas abaixo cortam o custo **do que é executado**, nunca o rigor do que é verificado.
+Protótipo entregável — o funcional do ① e o do sprint — não se declara pronto: ele é **exercitado**. A verificação executável — o *harness*: um script sem interface que abre cada tela, percorre cada caminho e confere cada critério, no runtime declarado no contexto do projeto — é a evidência de R7 no meu território. Ela é também a coisa mais cara que eu rodo. As três disciplinas abaixo cortam o custo sem tocar no rigor: as duas primeiras, **o que é executado**; a terceira, **o que volta ao meu contexto** depois de executado.
 
 ### Checkpoint: verificação interrompida não volta ao zero
 
@@ -214,3 +214,29 @@ O que o modo leve **não** afrouxa, nos dois protótipos:
 4. **Não se acumula.** Depois de **três** ajustes seguidos verificados em modo leve sobre a mesma versão base, o próximo passa a completo — deriva que entrou por soma de mudanças pequenas não aparece em nenhuma delas isolada. No protótipo do sprint a contagem é **por pasta de sprint**: cada `prototype/sprint-<n>/` começa a sua, e recostura de pacote devolvido conta como rodada.
 
 **Como se verifica:** o registro de verificação mostra, para cada rodada, o modo declarado, a justificativa de alcance e as telas executadas — e a contagem de rodadas leves consecutivas desde a última completa. Modo leve declarado com mudança transversal no diff, quarta rodada leve seguida, ou **protótipo de sprint sem linha de execução do fluxo ponta a ponta**, é reprovação de método.
+
+### Delegar a execução e trazer de volta só o que decide
+
+**É a R28 no meu território** — a regra geral manda cada papel que roda esse tipo de comando detalhar, no próprio `skills.md`, o que extrair da saída antes de descartar o resto. **Alcance honesto: vale para o harness, e só para ele.** Dos modos do papel, apenas `/ux prototype` e `/ux prototype sprint` executam alguma coisa; jornada, especificação de tela, protótipo de tela sem ambiente e revisão de usabilidade não rodam comando nenhum, e nada desta seção se aplica a eles.
+
+**Quem roda.** Harness **completo** é execução pesada — R5 já o equipara ao spike do Arquiteto — e vai para o agente `operator`: uma invocação, um trabalho, um relatório. Harness **leve** vai pelo mesmo caminho, porque é ele que dá endereço ao log bruto e porque delegar duas telas custa menos que engolir a saída delas. **Não reexecuto o harness para conferir o que o `operator` devolveu** — leio o trecho e o ponteiro. O que não muda de dono é o **veredito**: o `operator` executa, quem declara uma tela exercitada sou eu.
+
+**O que trago de volta — o que conta como "falha relevante" aqui.** Cinco coisas, e nada mais:
+
+| O que extraio | Por que sem isso o achado não fecha |
+|---|---|
+| **Tela · estado · critério nomeado** de cada asserção que falhou | é o que a linha do `verification-log.md` exige; sem o critério nomeado o registro não é checkpoint, é lembrança |
+| **Medido × exigido**, quando o critério é numérico (contraste 3,8:1 × ≥ 4,5:1; alvo 32×32 × ≥ 44×44) | o número é o que torna o achado corrigível sem rodar de novo |
+| **O elemento e o arquivo** onde a asserção parou | localiza a correção; sem ele, a próxima rodada procura |
+| **O salto que não resolveu**, como par origem → destino | é a falha típica da costura do sprint, e a que derruba o fluxo ponta a ponta |
+| **Os totalizadores:** telas percorridas, asserções passadas × falhadas | é o que preenche a ficha e prova que o escopo executado foi o escopo declarado |
+
+Fica no log e **não** volta: a linha de "ok" de cada asserção que passou — que é a esmagadora maioria e quase todo o volume —, dump de DOM, ruído do navegador sem interface e eco de instalação do runtime.
+
+**Trecho e ponteiro, sempre os dois.** A ficha do protótipo traz, ao lado do checkpoint, o caminho do log bruto que o `operator` devolveu; a linha do `verification-log.md` carrega o mesmo ponteiro. Ponteiro sem trecho não deixa ninguém decidir; trecho sem ponteiro não deixa ninguém conferir.
+
+**Quando abro o log bruto assim mesmo.** Os gatilhos de aprofundamento obrigatório são os de **R28** — lista canônica lá, não repetida aqui. Fora deles, abrir o log é opção minha, não obrigação.
+
+**Veredito `inconclusivo` não aprova nada.** Tela cujo relatório voltou inconclusivo é **não exercitada** (R7), com o motivo escrito — nunca ✅ no `verification-log.md`, nunca coberta por um "o restante está coberto pela verificação completa de". Mesma régua que R26 aplica à medição de ambiente.
+
+**Como se verifica:** ficha com rodada declarada e sem o caminho do log bruto, ou com caminho que não resolve, é achado de processo; linha ❌ no `verification-log.md` sem trecho extraído, ou com trecho e sem ponteiro, idem; harness completo rodado inline em vez de delegado ao `operator` é achado contra mim (R28); e tela com veredito `inconclusivo` contada como exercitada é reprovação de método, não ressalva.
