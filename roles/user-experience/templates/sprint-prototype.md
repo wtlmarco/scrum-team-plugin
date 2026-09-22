@@ -60,6 +60,7 @@ telas reaproveitadas já verificadas | tela nova: <nomes> | recostura de devolu�
 **O que NÃO foi reexecutado, e o que o cobre:** <telas> — verificação completa de <data>, protótipo v<n>
 **Rodadas leves consecutivas nesta pasta:** <n de 3>
 **Checkpoint:** `verification-log.md` — <n> linhas · última em <data/hora>
+**Log bruto (R28):** <caminho devolvido pelo `operator`> — <n> linhas
 
 ## Registro do portão ③ (append — devolução não se apaga)
 | Data | Evento | Quem | O que foi pedido |
@@ -69,7 +70,7 @@ telas reaproveitadas já verificadas | tela nova: <nomes> | recostura de devolu�
 **Ponteiro registrado pelo SM no Sprint Backlog:** `user-experience/prototype/sprint-<n>/index.html`
 ```
 
-O `verification-log.md` usa a mesma tabela append-only de [`functional-prototype.md`](functional-prototype.md) §checkpoint.
+O `verification-log.md` usa a mesma tabela append-only de [`functional-prototype.md`](functional-prototype.md) §checkpoint — **inclusive as colunas de trecho e de log bruto** (R28).
 
 ## Regras
 
@@ -83,6 +84,7 @@ O `verification-log.md` usa a mesma tabela append-only de [`functional-prototype
 - **Mesma régua técnica do funcional:** um ponto de entrada, sem build, sem servidor, sem back-end, dados plausíveis, estados de exceção dos caminhos cobertos, "o que está fora" na própria página.
 - **Nada de decisão técnica** (R20), e **nada daqui vira produção** sem Plano de Implementação.
 - **Escopo da verificação declarado, não presumido (R23).** Leve é o caso comum aqui — critério em [`../skills.md` §10](../skills.md) —, mas o fluxo ponta a ponta roda de verdade em toda rodada, e o que não rodou é nomeado.
+- **Execução delegada, veredito meu (R28).** O harness vai ao agente `operator`; a ficha traz o **trecho** da falha e o **ponteiro** do log bruto, nunca um sozinho. Salto que não resolveu volta como par origem → destino, que é a falha típica desta costura. Relatório `inconclusivo` deixa a tela **não exercitada** (R7) — e sem o fluxo ponta a ponta exercitado, o pacote não sobe.
 
 ## Falhas comuns
 

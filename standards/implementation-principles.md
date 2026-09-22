@@ -257,7 +257,9 @@ Cada teste declara, em comentário de uma linha ou no próprio nome, **o que dev
 | **Bloqueio** | O comando do gate retorna código de saída ≠ 0 e reprova o estágio. Gate que só imprime aviso não é gate |
 | **Código novo/alterado** | Cobertura do diff ≥ 80%, **inclusive em repositório legado abaixo do limiar** |
 | **Direção** | O limiar **só sobe**, nunca desce. Redução exige ADR com justificativa e prazo |
-| **Evidência** | O relatório de entrega traz a **saída real** do comando de cobertura, não a alegação |
+| **Evidência** | O relatório de entrega traz a **saída real** do comando de cobertura, não a alegação — na forma de **trecho e ponteiro** definida logo abaixo |
+
+> **Forma da evidência — trecho e ponteiro, os dois.** "Saída real" **não** quer dizer log inteiro colado no relatório. Satisfaz esta exigência, e só ela satisfaz, o par: **(a)** o **trecho decisivo, literal** — o código de saída do comando, o número medido contra o limiar e, havendo falha, a linha que a localiza; **(b)** o **caminho do arquivo de log bruto** daquela execução, que precisa existir e resolver para quem audita depois. Um sem o outro não vale: trecho sozinho não é auditável, ponteiro sozinho não é evidência — manda o leitor abrir um arquivo em vez de mostrar o número. **O piso não muda:** o gate reprova por **código de saída ≠ 0**, e recortar é escolher *o que* mostrar, nunca deixar de mostrar. Vale para toda evidência de comando deste normativo — cobertura (§5.4), carga (§5.6 P6) e os itens do quadro de §7.
 
 ### 5.5 Adoção do gate por unidade implantável
 
@@ -316,9 +318,9 @@ Atualizar a baseline é a válvula de escape, e ela é **visível**: aparece no 
 
 #### P6 — Evidência e quando se exercita
 
-- O relatório de entrega traz a **saída real** do comando de V19, não a alegação — mesma regra de §5.4.
+- O relatório de entrega traz a **saída real** do comando de V19, não a alegação — mesma regra de §5.4, inclusive na forma: **trecho decisivo e caminho do log bruto**, os dois.
 - Carga **não roda a todo push** (custo e ruído). Roda no merge para a linha principal e, obrigatoriamente, **na Task que toca uma operação de V18**.
-- Task que toca operação de V18 **sem a saída do comando** não é dado como verificado — é achado bloqueante de aderência, como a unidade sem gate de cobertura (§5.5).
+- Task que toca operação de V18 **sem a saída do comando** — trecho decisivo **e** caminho do log, §5.4 — não é dado como verificado: é achado bloqueante de aderência, como a unidade sem gate de cobertura (§5.5).
 - Unidade de front-end com orçamento declarado usa a ferramenta do próprio ecossistema, com o mesmo formato: comando único, limiar dentro do cenário, artefato de saída (V19).
 
 **O que esta seção não cobre:** otimização especulativa, *profiling*, dimensionamento de infraestrutura e custo de execução. Nada disso vira obrigação por aqui — o que vira obrigação é o número medido e comparável.
@@ -395,7 +397,7 @@ Toda regra deste normativo tem uma forma de verificação. Regra sem verificaç�
 | 18 | RNF de performance sem os **cinco campos** (§5.6 P1) | Leitura do documento de requisitos | antes do plano | RNF volta ao PO; a Task não entra em construção |
 | 19 | Limiar do orçamento violado (§5.6 P3) | Comando de carga (V19), código de saída ≠ 0 | carga | **Bloqueia** a promoção à linha principal |
 | 20 | Regressão acima da margem medida (§5.6 P5) | Comparação com a baseline versionada (V21), margem de V20 | carga | **Bloqueia** — só passa com baseline atualizada e justificada no mesmo merge |
-| 21 | Operação de V18 sem cenário executável, ou Task que a toca sem a saída do comando (§5.6 P6) | Uma linha de V18 ↔ um cenário ↔ um job; saída real no relatório de entrega | auditoria | Achado bloqueante de aderência |
+| 21 | Operação de V18 sem cenário executável, ou Task que a toca sem a saída do comando (§5.6 P6) | Uma linha de V18 ↔ um cenário ↔ um job; saída real no relatório de entrega — trecho **e** ponteiro do log (§5.4) | auditoria | Achado bloqueante de aderência |
 | 22 | Ficha com V18–V21 ausentes (§5.6 P2) | Seção existe no documento de arquitetura do produto | antes do plano | Ficha incompleta — sem Plano de Implementação |
 
 ---

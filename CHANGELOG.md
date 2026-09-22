@@ -13,6 +13,25 @@
 
 ---
 
+## v3.29.0 — 2026-09-22
+
+**Branch:** `fix/v3.29.0` a partir de `develop` · **Processo:** [`v3.28`](roles/scrum-master/process/process-changelog.md) e [`v3.29`](roles/scrum-master/process/process-changelog.md)
+
+Rodada de `/review note` sobre um incidente de custo: uma sessão consumiu **~303M tokens** em 20 subagentes, com o Arquiteto respondendo pela maior fatia. O mecanismo não era "muitas chamadas" — era a integral do contexto ao longo dos turnos: um log de build que entra na chamada 50 de 200 é relido nas 150 seguintes.
+
+- **R28 troca um mecanismo impossível pelo implementável.** A regra mandava "descartar o log **do próprio contexto**" depois de extrair a falha — nenhum agente consegue, porque o histórico da conversa já recebeu os tokens. Agora a saída é **redirecionada para arquivo na origem** e só o trecho decisivo volta ao contexto. Era por isso que o incidente aconteceu **apesar** da regra: a metade verificável vinha sendo cumprida, e o custo queimava igual.
+- **`agents/operator.md` novo — instrumento, não papel.** Agente descartável em `haiku` que roda a execução cara (build limpo, suíte completa, medição de toolchain, prova de gate), grava o log em disco e devolve só o relatório: comando · código de saída · veredito · contagens · versões · linhas decisivas verbatim · caminho e total de linhas do log. Uma invocação, um trabalho, um relatório. Não entra em cerimônia, não possui artefato, não aparece no quadro — as enumerações de "os seis papéis" seguem corretas.
+- **Arquiteto, Dev, QA e UX ganham a ferramenta `Agent`**, restrita por contrato a **um único destino: o `operator`**. Sem a restrição, um papel poderia disparar outro e atropelar o fluxo plano→dev→QA e a propriedade de artefatos.
+- **R26 aceita medição do `operator`** como a medição que exige — com comando, código de saída, versões e caminho do log —, caducando quando a toolchain muda ou o log some. Veredito `inconclusivo` nunca vale. Sem essa emenda, delegar seria ilegal pelo próprio processo.
+- **A delegação que R28 fazia desde a v3.28 e ninguém cumpriu** foi escrita nos quatro papéis: tabela do que extrair por tipo de verificação, específica de cada um. O plugin estava em violação da própria regra.
+- **Os quatro gatilhos de aprofundamento viram lista canônica dentro de R28**, e os `skills.md` passam a apontar em vez de redeclarar — redeclarar virou achado de processo. A duplicação já tinha divergido na prática: a redação do UX trazia uma glosa que nenhum outro papel tinha, e o Dev ficou sem a lista até uma segunda passada.
+- **Trecho *e* ponteiro, nunca um sozinho**, em todo registro de evidência — definido uma vez em `standards/implementation-principles.md` §5.4 e referenciado pelos demais. Os modelos de entrega, veredito, evidência e aceite ganharam campo para o caminho do log, que antes não existia em nenhum.
+- **O log vive em `.team-project/operator/<sprint>/<job>/`**, ou em `pre-sprint/<job>/` para o que roda antes do sprint 1 (onboarding, brainstorm, portão ①, linha de base). Retenção até o aceite do PO — ele é o último a precisar que o ponteiro resolva.
+- **R26(i) alinhada nos ecos**: `agents/architect.md` e `roles/architect/README.md` ainda diziam "o primeiro passo exige"; a regra cobre o plano inteiro desde a v3.28.
+- **R17 ganha a régua de contagem**: papel "movido" conta pelo **documento que mudou**, não por quem segurou a caneta — esta rodada moveu 6.
+
+**Como verificar:** `Select-String '^### R\d+\.' roles/scrum-master/process/working-rules.md` devolve **28** (nenhuma regra nova — R28 foi reescrita, não duplicada). `Select-String -Pattern 'contagens não fecham' -Path roles/**/skills.md` devolve **zero** — a lista só existe em R28. `agents/` tem **7** arquivos. `note.md` tem a seção **Abertas vazia**.
+
 ## v3.27.0 — 2026-09-20
 
 **Branch:** `feat/v3.27.0`, empilhada sobre `feat/v3.26.0` · **Processo:** [`v3.27`](roles/scrum-master/process/process-changelog.md)

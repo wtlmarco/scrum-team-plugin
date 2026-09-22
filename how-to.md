@@ -37,7 +37,7 @@ O `team` tem de aparecer como declarado nas **settings do projeto**. Se caiu em 
 claude plugin install team@team --scope project -y
 ```
 
-**4. Reinicie a sessão.** Não é detalhe: plugin só carrega na inicialização do Claude Code. Depois de reiniciar, verifique — `/plugin` mostra `team@team` como **enabled**, e `/help` lista os **8 comandos** (`/sm /po /arc /ux /dev /qa /team /review`) e os **6 agentes**. Se não listar, a instalação não pegou; volte ao passo 2.
+**4. Reinicie a sessão.** Não é detalhe: plugin só carrega na inicialização do Claude Code. Depois de reiniciar, verifique — `/plugin` mostra `team@team` como **enabled**, e `/help` lista os **8 comandos** (`/sm /po /arc /ux /dev /qa /team /review`) e os **7 agentes**. Se não listar, a instalação não pegou; volte ao passo 2.
 
 **5. `/team init`** — cria o `.team-project/` padrão e conduz o preenchimento. **Sem `.team-project/`, todo papel para e pede que ele seja criado** — é a fonte de contexto de projeto do time.
 

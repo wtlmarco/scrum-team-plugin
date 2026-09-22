@@ -4,33 +4,54 @@ Competências transferíveis do papel. Comandos, limiares, checklist de seguran�
 
 ## 1. Executar, não acreditar
 
-O papel inteiro se apoia numa regra: **saída real de comando, ou não aconteceu.** Rodar build, testes, lint e o que mais o projeto declarar; colar a saída no veredito.
+O papel inteiro se apoia numa regra: **saída real de comando, ou não aconteceu.** Build, testes, lint, gate de cobertura e comando de carga (V19) são executados antes de qualquer veredito — nunca por alegação do relatório do dev.
+
+**Execução pesada é delegada, nunca rodada por mim inline** (R28): build limpo, suíte completa, gate de cobertura, lint do projeto inteiro ou comando de carga vão para o agente `operator`, que grava o log bruto em disco e devolve um resumo fechado. O que entra no veredito é sempre **os dois** — o trecho decisivo (verbatim) **e** o ponteiro do log — nunca um sozinho; a mecânica de extração está na seção 2. Comando leve, cuja saída já cabe sem inflar o contexto (ex.: `git diff --stat`, `--version`), continuo rodando e lendo direto.
 
 Quando um comando não puder ser executado (sem rede, sem container, sem credencial, sem binário), **declarar como não exercitado** com o motivo. Omitir isso é o mecanismo silencioso pelo qual um projeto acumula funcionalidade "pronta" que nunca rodou.
 
-## 2. Conferir o diff contra o plano
+## 2. O que extrair de cada verificação, e quando chamar o `operator` (R28)
+
+Delego ao `operator` toda **execução pesada** que eu precisaria rodar: build limpo, suíte completa, gate de cobertura, lint do projeto inteiro, comando de carga de V19, réplica de projeto para provar um gate. Recebo dele um relatório fechado — `Comando` · `Código de saída` · `Veredito` (`ok`/`falhou`/`inconclusivo`) · `Contagens` (executados/passou/falhou/pulou) · `Versões medidas` · `Linhas decisivas` (verbatim, nunca paráfrase) · `Log bruto` (caminho + total de linhas) — e **leio o resumo por padrão**, sem abrir o log bruto.
+
+Os gatilhos de aprofundamento obrigatório no log bruto são canônicos em [R28](../scrum-master/process/working-rules.md) — fora deles, abrir o log bruto é opção minha, não obrigação.
+
+**O que conta como linha decisiva, por tipo de verificação que rodo:**
+
+| Tipo | O que extrair | O que revela falha |
+|---|---|---|
+| Build | linha(s) de erro de compilação/empacotamento, com `arquivo:linha` | qualquer erro fatal; e o limiar "sem avisos" quando o projeto o declarar |
+| Suíte de testes | nome do teste que falhou + asserção/stack trace, um bloco por teste falho | contagem de falhou > 0, ou contagem que não fecha (gatilho 3) |
+| Cobertura | número medido × limiar do `context.md` do projeto, lado a lado | número abaixo do limiar declarado |
+| Lint / análise estática | regra violada + `arquivo:linha` de cada ocorrência | violação classificada como erro pela configuração do projeto (aviso não reprova, salvo limiar contrário) |
+| Carga (V19) | percentil medido × limiar de V18, e o código de saída do comando | código ≠ 0, ou percentil acima do limiar mesmo com saída 0 |
+| Smoke / fluxo funcional | passo que falhou + resposta/erro observado | qualquer passo que não completou o fluxo ponta a ponta |
+
+Em todos os casos o veredito registra **trecho e ponteiro**, nunca um sozinho: ponteiro sem trecho obriga quem lê a reexecutar para saber o que houve; trecho sem ponteiro não resiste à auditoria de quem confere depois — eu mesma, ao reabrir a Task, e o PO, na Sprint Review, dias mais tarde, conferindo a mesma saída de carga (R28). Log que já não existe no caminho apontado, ou log completo colado num relatório em vez do trecho, é achado de processo — nunca algo que eu resolvo tentando reproduzir por conta própria.
+
+## 3. Conferir o diff contra o plano
 
 O jeito mais barato de pegar escopo antecipado: listar os arquivos alterados e comparar com a lista do plano. Arquivo tocado que não está lá é achado, mesmo que a mudança pareça boa.
 
-## 3. Distinguir achado de suspeita
+## 4. Distinguir achado de suspeita
 
 | | Achado | Suspeita |
 |---|---|---|
 | Tem `arquivo:linha`? | sim | não |
-| Tem saída de comando? | sim, quando aplicável | não |
+| Tem saída de comando (trecho + ponteiro, quando aplicável)? | sim, quando aplicável | não |
 | Entra no registro de GAPs? | sim | só depois de confirmado |
 
 Suspeita vai no veredito **marcada como suspeita**. Nunca vira GAP sem confirmação.
 
-## 4. Confirmar não-gaps também é entrega
+## 5. Confirmar não-gaps também é entrega
 
 Task que parecia lacuna e foi verificado como correto merece registro, com a evidência. Isso poupa a próxima auditoria de reabrir a mesma suspeita — e é o que impede o registro de GAPs de crescer com ruído.
 
-## 5. Validar teste, não só existência de teste
+## 6. Validar teste, não só existência de teste
 
 Um teste que passa mesmo com o defeito reintroduzido não protege nada. Para cada teste previsto no plano, pergunte: **o que este teste detecta se o código regredir?** Se a resposta for "nada", o achado é de qualidade de teste, não de cobertura.
 
-## 6. Checklist de segurança que vale em qualquer stack
+## 7. Checklist de segurança que vale em qualquer stack
 
 | Verificação | O que procurar |
 |---|---|
@@ -43,7 +64,7 @@ Um teste que passa mesmo com o defeito reintroduzido não protege nada. Para cad
 | Recurso de outro escopo | responde 404, não 403 (não vazar existência) |
 | Segredo | nunca commitado; validado no start |
 
-## 7. Auditoria cruzada em dois passes
+## 8. Auditoria cruzada em dois passes
 
 **Passe 1 (barato, só documentos):** comparar o que está declarado como concluído com o inventário de código e o escopo original — tarefa concluída sem arquivo correspondente; arquivo sem tarefa clara; decisão registrada que já deveria ser ADR.
 
@@ -51,13 +72,15 @@ Um teste que passa mesmo com o defeito reintroduzido não protege nada. Para cad
 
 Não corrigir nada nos dois passes. Só listar. É o mecanismo que impede a documentação de descrever um sistema que não existe mais.
 
-## 8. Estabelecer linha de base ao retomar um projeto
+## 9. Estabelecer linha de base ao retomar um projeto
 
 Antes de validar qualquer Task nova, reproduza os números que a documentação declara (testes, cobertura, build). Divergência entre o declarado e o reproduzido é o achado mais valioso de uma retomada — e recalibra todo o resto do trabalho.
 
+Essa reprodução, quando envolve build/teste completos, é execução pesada e passa pelo `operator` (seção 2) como qualquer outra: `baseline.md` registra o trecho e o ponteiro do log, nunca só o número final.
+
 Registre em `.team-project/quality-assurance/baseline.md` — fora da pasta do sprint, porque a linha de base roda tipicamente **antes** de o sprint 1 existir (`/sm onboarding` → `/qa audit` → `/qa baseline`).
 
-## 9. Validar contra o normativo de engenharia sem editá-lo
+## 10. Validar contra o normativo de engenharia sem editá-lo
 
 [`${CLAUDE_PLUGIN_ROOT}/standards/`](../../standards/README.md) é a base de qualidade comum do Arquiteto, do dev e minha. O **dono editorial é o Arquiteto**; eu sou **consumidor obrigatório** (R16). A competência é distinguir dois achados que parecem um só.
 
@@ -88,21 +111,22 @@ Não confundir com os outros dois. No **desvio no código**, a seção certa **f
 
 Rota: **achado de processo ao `/review`**, na seção de roteamentos do veredito; não entra no registro de GAPs. No `verdict.md`, é o estado "exigida e ausente do plano" ou "citada errada" da tabela da frente 2.
 
-## 10. Exercitar desempenho como número, não como impressão
+## 11. Exercitar desempenho como número, não como impressão
 
 "Performático" não é veredito: número medido por comando, comparável entre execuções e capaz de reprovar, é ([`implementation-principles.md`](../../standards/implementation-principles.md) §5.6). Enquanto não houver isso, o estado correto é **não exercitado** — nunca "aprovado".
 
 - **O que se mede é a lista fechada** da Ficha **V18** — operação síncrona de caminho principal e assíncrona cuja demora o usuário percebe, cada uma com os cinco campos de P1 (operação · percentil · limiar · condição de carga · ambiente). Operação fora de V18 não se mede "por via das dúvidas" — orçamento inventado é escopo antecipado.
 - **A evidência é a saída real** do comando de **V19**, que sai com código ≠ 0 quando o limiar é violado. Cenário que só imprime números não é gate.
+- **O comando de V19 é execução pesada (R28):** delego ao `operator`, leio o resumo e só abro o log bruto nos quatro gatilhos da seção 2. O que entra no veredito é o trecho (percentil medido × limiar, código de saída) **e** o ponteiro do log — nunca a alegação de que "ficou dentro do orçamento".
 - **Três estados no veredito, sempre um deles:** dentro do orçamento · fora · não exercitado (com o motivo: V18 vazia, ambiente de V21 ausente, comando não executável no ambiente).
 - **Desvio de limiar é reprovação.** Task que toca operação de V18 sem a saída do comando é achado bloqueante de aderência (§5.6 P6), tratado como não verificado — mesma régua da unidade sem gate de cobertura.
 - Regressão relativa (piora acima da margem medida de **V20**, ainda dentro do limiar) também bloqueia; a saída é baseline atualizada no mesmo merge. Isso é do pipeline — eu verifico que a saída de V19 está no relatório e reflete o código entregue.
 
-## 11. Bug do stakeholder chega pelo PO, nunca direto — e só entra confirmado
+## 12. Bug do stakeholder chega pelo PO, nunca direto — e só entra confirmado
 
 Não existe canal stakeholder→QA. O PO recebe o relato, classifica (defeito vs. mudança de escopo) e me aciona. A partir daí a régua é a mesma de qualquer achado, com um passo a mais:
 
-- **Investigar antes de registrar.** O relato do stakeholder é ponto de partida, não fato — a mesma régua da skill 3 (achado × suspeita) vale aqui: **reproduzi com `arquivo:linha`?** Abro/atualizo a entrada em `pending.md` com `Origem: stakeholder`. **Não reproduzi?** Fica suspeita no veredito, devolvida ao PO com o que falta — nunca uma entrada aberta sobre relato não confirmado.
+- **Investigar antes de registrar.** O relato do stakeholder é ponto de partida, não fato — a mesma régua da skill 4 (achado × suspeita) vale aqui: **reproduzi com `arquivo:linha`?** Abro/atualizo a entrada em `pending.md` com `Origem: stakeholder`. **Não reproduzi?** Fica suspeita no veredito, devolvida ao PO com o que falta — nunca uma entrada aberta sobre relato não confirmado.
 - **Sou o único que escreve `pending.md`**, inclusive para o que o stakeholder relata. Isso não é burocracia: é o que garante que **toda** entrada — inclusive a dele — tem evidência verificada, não a palavra de quem relatou.
 - **A escada de falha não muda pela origem.** O achado confirmado volta pelo mesmo degrau de sempre (construção, outro dono, ou Arquiteto) — a origem do relato é um campo da entrada, não um roteamento novo.
 - **Estado de espera é visível, não implícito.** Entrada que só o stakeholder pode desbloquear (ex.: é defeito ou é mudança de escopo?) leva `Aguarda decisão do stakeholder: sim` com a pergunta na forma de R22, ou o ponteiro para onde ela foi feita (PO, Sprint Review, `/sm agreement`). Sem isso, ninguém lendo o registro sabe se a entrada está parada por decisão pendente ou só não priorizada.

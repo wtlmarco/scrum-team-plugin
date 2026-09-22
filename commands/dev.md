@@ -17,7 +17,7 @@ Com o plano em mãos, use a ferramenta Agent com `subagent_type: "developer"` e 
    - **`<ID>`** → executar o plano do início ao fim, na ordem dos passos.
    - **resume `<ID>`** → continuar de onde parou; conferir no código o que já existe antes de escrever qualquer coisa.
    - **gap `<resposta>`** → retomar aplicando a decisão que o Arquiteto acabou de dar; se o agente anterior ainda estiver ativo, prefira continuar por SendMessage para preservar o contexto dele.
-4. As regras do contrato de trabalho: só os arquivos listados no plano; nomenclatura literal; sem refatoração oportunista, dependência nova ou escopo antecipado; os testes previstos são obrigatórios; os comandos de verificação executados de verdade, com a saída colada; documentação não é dele.
+4. As regras do contrato de trabalho: só os arquivos listados no plano; nomenclatura literal; sem refatoração oportunista, dependência nova ou escopo antecipado; os testes previstos são obrigatórios; os comandos de verificação executados de verdade, com o trecho decisivo e o ponteiro do log (R28); documentação não é dele.
 5. A instrução de **parar e reportar 🔺 GAP** — no formato de `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/gap.md` — em vez de decidir sozinho.
 
 Pedido `/dev review …` → responda que o caminho é **`/review …`**: nenhum papel tem modo `review` próprio, e os documentos do dev são aplicados pelo **Arquiteto** (`artifact-ownership.md` §1).

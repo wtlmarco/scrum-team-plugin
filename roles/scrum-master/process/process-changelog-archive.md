@@ -8,6 +8,127 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.26 — UX desce de Opus para Sonnet, por medição de custo (stakeholder) — 20/09/2026
+
+**Instrução** (stakeholder, decisão direta após levantamento de custo por papel): *"Vamos descer o UX para Sonnet"*. Origem: o UX era o papel **mais caro por invocação do time** — carga fixa 13,4 KB × US$ 5/MTok = 67 ponderado, contra 56 do Arquiteto e 37,6 do PO. O stakeholder havia escolhido Opus pelo trabalho criativo de desenho de tela, e perguntou se Haiku daria conta.
+
+**Classificação:** comportamento de agente (declaração de modelo em `agents/`). Decisão e aplicação do **stakeholder**, que é o dono de `agents/` — não aplicada por papel.
+
+### O que mudou
+
+| Documento | Mudança |
+|---|---|
+| `agents/user-experience.md` | `model: opus` → `model: sonnet` |
+| `roles/user-experience/README.md` | Linha do agente: **Opus** → **Sonnet** |
+| `README.md` (raiz) | Tabela de papéis: UX passa a Sonnet |
+| `replicate-in-new-project.md` | Tabela de distribuição de modelos: UX sai da linha do Opus e entra na de Sonnet; "Dois papéis em Opus" → "Um papel em Opus", com o porquê da descida e o registro de que **Haiku não é opção** para o UX |
+| `workflow.md` §5c | O item "O modelo importa mais que os KB" passa a listar a distribuição correta e a dizer que ranquear a tabela por KB inverte a ordem real |
+
+### Por quê
+
+Sonnet tem a **mesma janela de 1M** do Opus e captura a maior parte da economia: −60% na carga fixa ponderada (67 → 26,8) e **2,5× menos por invocação**. Haiku foi considerado e **descartado com motivo**: janela de 200K não sustenta o `index.html` navegável ponta a ponta do protótipo, e o modo de falha é truncar no meio de um entregável que é um arquivo só — quebrando o portão ① e o ③ (R25), não um documento. Soma-se a isso que o UX tem **mais autonomia que o dev** (é o autor, não executa plano fechado), e o incidente T‑001 já mediu o que Haiku faz com latitude neste harness mesmo tendo plano fechado.
+
+### Quem passa a ser cobrado de forma diferente
+
+| Papel | O que muda |
+|---|---|
+| **UX** | Mesmo roteiro, mesmas obrigações, modelo mais barato. Nada no que ele entrega foi afrouxado |
+| **Stakeholder** | Passa a ler o **registro de verificação (harness)** do protótipo de sprint comparando com o do sprint anterior em Opus — é o instrumento que decide se a troca se sustenta |
+
+### Como saberemos que funcionou
+
+O registro de verificação do próximo protótipo de sprint segura contra o do sprint anterior: cobertura das Histórias, fluxo ponta a ponta atravessado, seis estados presentes, critérios de acessibilidade verificáveis. Se segurar, a economia é de 2,5× por invocação do papel com evidência. Se não segurar, volta a Opus e o registro diz por quê.
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | `Opus\|opus` em toda a RAIZ fora dos changelogs | 4 ocorrências, todas do **Arquiteto** — zero do UX | ✅ |
+| Leitura no contexto | cada ocorrência nova de Sonnet lida ao lado do que a cerca | `README.md` tabela, `replicate` tabela + parágrafo, `workflow.md` §5c, roteiro do UX — todas coerentes | ✅ |
+| Contagem | `model:` em `agents/*.md` | opus 1 (architect) · sonnet 4 · haiku 1 = 6 | ✅ |
+| Teto de entrada (R17) | bloco `## v3.26`, `[IO.File]::ReadAllLines` com UTF‑8 explícito | **5.038 B (4,92 KB)**, sob a barreira | ✅ |
+| Índice (teto de 3) | `^## v3\.` no vivo | `v3.26`, `v3.25`, `v3.24` — 3; `v3.23` relocada ao arquivo, 72 linhas, `Compare-Object` 0 diferenças | ✅ |
+
+### Fecho da rodada — propostas autorizadas e aplicadas
+
+O stakeholder autorizou no fecho o que estava pendente em `agents/`, `commands/` e guias de raiz, e foi aplicado: `agents/architect.md` (medir o ambiente — R26; decidir e documentar sem executar — R9), `agents/developer.md` (item 6 "nunca mexa no gate", três gaps novos, a execução volta ao dev), `commands/dev.md` e `commands/team.md` (o Arquiteto não reproduz; afirmação a conferir é do QA), `how-to.md` (nota do prefixo `/team:<comando>` em colisão de nome). Entrega **v3.26.0** por R18: `plugin.json` 3.24.0 → 3.26.0, banner do `README.md` e entrada no `CHANGELOG.md`.
+
+**Addendum na `v3.24`** (R17): a entrada foi registrada com 10.453 B, acima da barreira de 10.240 B, e o estouro passou sem medição no fecho daquela rodada. Registrado como **addendum datado, sem reescrita** — o invariante do changelog vale inclusive contra a própria R17. Medida seção a seção, a entrada não tem deliberação para mover: é registro obrigatório de uma rodada que moveu cinco papéis. O que isso expõe na R17 — barreira fixa contra volume que cresce com o número de papéis da rodada — ficou **em aberto para o stakeholder**, em `note.md`.
+
+**Pendente do stakeholder:** a mudança de modelo do UX **só entra em vigor após reiniciar a sessão**; nos demais projetos, após `git push` + `claude plugin marketplace update team` + `claude plugin update team@team`.
+
+---
+
+## v3.25 — R26 (plano mede o ambiente); gate desligado/não exercitado é 🔺 GAP; consumo cobre notificação parcial; R9 decide-e-documenta (item 2a) (SM + Arquiteto) — 20/09/2026
+
+**Instrução** (`/review note`, mesmo incidente T‑001): **2‑A** — plano saiu "fechado" sem medir o ambiente nem validar os comandos citados, com regra de parada que não cobria pré-requisito ausente (custo: 3 reativações do Arquiteto). **2‑B** (Arquiteto) — a R26 não tinha onde ser cumprida no modelo de plano. **3‑B** (idem) — o dev declarou PASS/ENTREGUE sobre gate que falhava, não rodava ou fora alterado sem autorização; exigido 🔺 GAP, nunca entrega. **4‑B** — notificação de `SendMessage` chegou parcial e final na mesma invocação, sem instrução de não acumular. **Item 2a** (rota do 🔺 GAP do dev, parado desde a triagem) — **decidido pelo stakeholder nesta rodada**: quem recebe o gap decide e complementa o Plano de Implementação — não executa nem reproduz na máquina; a conferência do que o dev afirma continua no QA (R7), sem degrau novo. Objetivo: economia — no T‑001 o Arquiteto gastou 3 invocações e 499.008 tokens reproduzindo o que o relatório do dev já afirmava.
+
+**Classificação:** regra de trabalho (**R26** nova; **R9** ampliada) + formato de documento (modelo de plano, relatório de entrega, `consumption.md`) + escopo de papel (contrato do dev). Nenhuma regra nova além de R26 — 2‑B/3‑B endurecem R4/R7/R8; R9 estende aos três roteamentos o que `workflow.md` §2a‑6 já descrevia para o dev.
+
+### O que mudou
+
+| Documento | Mudança |
+|---|---|
+| `working-rules.md` | **R26 nova** (Bloco C, após R25): plano registra, antes dos passos, ambiente medido (comando+saída), comandos validados na versão medida, e parada incondicional para pré-requisito ausente. Entra na linha combinada de verificação binária e no "Resumo em uma tela" |
+| `working-rules.md` (**R9**) | **Ampliada:** quem recebe um gap **decide e registra a decisão no documento que já governa aquela execução** (o Plano de Implementação, no caso do dev) e devolve a execução a quem a tinha — não reproduz, não roda a verificação de quem escalou, não replaneja. Conferir afirmação verificável continua sendo do QA, no veredito (R7) |
+| `workflow.md` | §8: linha nova de R26 — ambiente medido, comandos validados e parada para pré-requisito ausente, aferidos na entrada da construção |
+| `working-rules.md` (R17) | **Nota de racional**: rodada de `/review` que move dois papéis continua sendo **uma** entrada — a unidade é a decisão, não o autor; o teto se cumpre cortando o que a R17 já exclui, não fatiando por papel |
+| `templates/consumption.md` | Regra nova: notificação parcial de `SendMessage` na mesma invocação não abre linha — grava-se só a final |
+| `architect/templates/implementation-plan.md` | **§3 nova** "Ambiente medido e comandos validados" (§4–§10 renumeradas); Regra 11 nova; §7 e exemplo ajustados |
+| `architect/README.md` / `skills.md` | `/arc plan` passo 1: medir o ambiente e validar comandos antes dos passos |
+| `architect/README.md` + `developer/README.md` (**item 2a**) | O ciclo do gap escrito ponta a ponta: `/arc question` decide, **complementa o Plano de Implementação** e devolve por `/dev gap` — sem reproduzir na máquina, sem rodar a verificação do dev, sem se confundir com `/arc comply`; a linha "Escala para" do dev diz que **ele retoma**, do passo em que parou. A execução nunca muda de dono. `technical-decision.md` fecha a coerência (a decisão entra no plano, ler e parar aí). `architect/skills.md` §5 já era compatível — **sem mudança** |
+| `architect/templates/compliance-review.md` | Linha nova: configuração de verificação intacta — nenhum gate desligado/afrouxado/contornado sem GAP |
+| `developer/README.md` | Item 6 → "Verificar de verdade — e nunca mexer no gate" (8 itens); 3 gaps novos (de 8→11) |
+| `developer/templates/delivery-report.md` | Gate desligado/afrouxado/contornado/não exercitado vira 🔺 GAP e linha de Verificação com motivo |
+| `standards/implementation-principles.md` | §5.6 P5: baseline de desempenho não é válvula de quem executa o passo |
+
+### Por quê
+
+Plano que presume o ambiente só revela o erro na execução, com o custo no papel mais caro do time. Gate contornado é pior que gate que reprova, porque some da vista. `consumption.md` não previa retomada longa com mais de uma notificação por invocação. Item 2a: reproduzir o que o relatório do dev já afirma é o mesmo desperdício, no papel mais caro — e não compra evidência nenhuma, porque quem confere a afirmação continua sendo o QA.
+
+### Quem passa a ser cobrado de forma diferente
+
+| Papel | O que muda |
+|---|---|
+| **Arquiteto** | Plano sem a §3 (ambiente medido) não entra em construção (régua de R8); ao responder gap (R9), decide e **documenta no plano** — não reproduz nem roda a verificação do dev. Escrito no roteiro `/arc question` (passos 2 e 3) e cobrado no indicador do papel |
+| **Dev** | Gate não se desliga/afrouxa/contorna — é 🔺 GAP; não exercitado vai ao relatório como tal. Recebida a decisão, **retoma a execução** (R9) por `/dev gap <resposta>` — escrito na linha "Escala para" do roteiro dele |
+| **QA** | Ganha "não exercitado" e "gate ausente sem GAP" no relatório; continua único a conferir a afirmação verificável do dev, no veredito (R7 · R9) |
+| **SM** | Verifica R26 na linha binária; em R9, que a resposta a gap reflete a decisão no documento que governa a execução, não só na conversa |
+| **Quem orquestra** | Grava só a notificação final de invocação com múltiplas notificações |
+
+### Conflitos
+
+Nenhum de conteúdo. R26 é aditiva a R8/R11; 2‑B/3‑B endurecem R4/R7/R8 sem reescrevê-las. **R9 ampliada × R7 · R26 · `/arc comply` (§4a)** — nenhum: objetos e momentos distintos. **R17 (teto 10 KB) × entrada de dois papéis + item decidido depois** — resolvida condensando; critério geral na **nota de racional em R17**.
+
+### Como saberemos que funcionou
+
+Próximo plano traz a §3 com comando+saída, sem 🔺 GAP de pré-requisito ausente que ela já cobriria. Zero gates removidos/afrouxados sem GAP. Notificação parcial+final grava uma linha só. Resposta a gap traz a decisão no Plano de Implementação, e nenhum relato de quem respondeu descreve ter reproduzido a verificação do escalador.
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Contagem | `^### R\d+\.` / `^\| R\d+ \|` / `**SM verifica:**` em `working-rules.md` | 26·26·26 (R9 ampliada, não nova) | ✅ |
+| Leitura de coerência | `'R26'`; R9 ampliada × R7/R26/`workflow.md` §4a+§2a-6 | R26: 3 ocorrências coerentes; R9 sem contradição | ✅ |
+| Extração/remoção | tamanho antes/depois | `working-rules.md` 47.019→**51.281** B (R26 +2.356 · R9 +1.906) · `consumption.md` 4.478→4.962 B | ✅ |
+| Arquivamento (teto 3) | bloco `v3.22` (105 linhas) × relocado, `Compare-Object` UTF‑8 | 0 diferenças | ✅ |
+| Índice | `^## v3\.(2[0-5])` no vivo | `v3.25`,`v3.24`,`v3.23` — 3, teto respeitado | ✅ |
+| Renumeração | `^#{2}\s+\d+\.` em `implementation-plan.md` | 1…10 em sequência, `3.` = Ambiente medido | ✅ |
+| Ponteiro externo | `seção \d+ do plano` / `plano[^.]{0,40}§\d` na RAIZ | 8: 6 de outro objeto, 2 novas à §3 — nenhuma para numeração antiga | ✅ |
+| Vazamento de contexto | termos de stack nos arquivos tocados | 0 novas; 1 pré-existente em `implementation-principles.md` §6, fora do escopo tocado | ✅ |
+| Extração/remoção | linhas antes/depois (`HEAD`×atual) | `implementation-plan.md` 123→162 · `compliance-review.md` 65→66 · `architect/README.md` 132→136 · `skills.md` 162→163 · `developer/README.md` 88→92 (8 itens; gaps 8→11) · `technical-decision.md` 58→59 · `delivery-report.md` 101→102 · `implementation-principles.md` 415→415 | ✅ |
+| Leitura no contexto + fronteira (item 2a) | `/arc question`, `/arc comply` e a linha "Escala para" lidos lado a lado; `/arc comply` contado nos `.md` fora dos changelogs | ciclo fecha sem o dono da execução mudar; `comply` **21 vivas — 20 intactas + 1 nova que nega a confusão**, não restringido | ✅ |
+| Teto de entrada (R17) | bloco `## v3.25`, `[IO.File]::ReadAllLines` com UTF‑8 explícito (`Get-Content` sem `-Encoding utf8` decodifica errado e infla ~7,5%) | **9.364 B (9,14 KB)**, sob a barreira de 10.240 B | ✅ |
+| Gate de fluxo | R26 em `workflow.md` §8; §2a etapa 6 × R9 ampliada | R26 após R8; §2a-6 coerente com R9 (decisão do Arquiteto, dev retoma) | ✅ |
+
+**Desvios corrigidos antes do fecho, nenhum outro:** R26 citava ferramentas específicas na primeira redação — reescrita agnóstica, 0 ocorrências; e a entrada estourou o teto de R17 duas vezes durante a rodada, condensada nas duas. `git status --porcelain` mostra só os arquivos do alcance do SM e do Arquiteto listados nesta entrada.
+
+### Pendente do stakeholder
+
+**Item 2a — decidido nesta rodada, aplicado em R9 e refletido nos roteiros do Arquiteto e do dev** (o segundo é do Arquiteto por contrato). Segue pendente só o que é do stakeholder: `agents/developer.md`, `commands/dev.md:30` e `commands/team.md:80` continuam **propostos**, não aplicados.
+
+---
+
 ## v3.24 — O sprint vira a unidade de aprovação e de entrega (R25): ③ em lote sobre pacote navegável, bloqueio em dois degraus, registro por sprint (5 papéis) — 20/09/2026
 
 **Instrução do stakeholder** (fila `Abertas` de `note.md`, cinco itens fechados em oito rodadas de análise): *"um automode onde após o stakeholder aprovar o protótipo o time pode seguir o desenvolvimento até a sua conclusão sem necessitar dos gates de aprovação"*, com a exceção de escalar o problema em que *"a construção poderia falhar"*; mais os dois modos de trabalho no `how-to`, e o automode de manutenção pela fila `note.md` do produto.

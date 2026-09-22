@@ -57,6 +57,7 @@ O protótipo antecipa esse momento para o ponto mais barato do processo: antes d
 - [ ] Os estados de exceção dos fluxos principais existem
 - [ ] Os dados de exemplo são plausíveis
 - [ ] A lista do que está fora está escrita na própria página
+- [ ] **Exercitado**, com o registro de verificação preenchido: modo, alcance, o que **não** foi reexecutado, e o **trecho + ponteiro** do log bruto (R7 · R23 · R28 — [`skills.md` §10](../../roles/user-experience/skills.md))
 - [ ] O stakeholder **navegou** — não leu o código, não viu print
 
 **Sem estes itens, o portão ① não abre.** Protótipo ausente ou não navegado bloqueia a escrita do SDD técnico do mesmo jeito que plano ausente bloqueia código (R8).
@@ -76,7 +77,7 @@ O protótipo antecipa esse momento para o ponto mais barato do processo: antes d
 | 3 | **Costurado, não indexado** — as telas se ligam por navegação real, não por uma lista de links soltos | Índice de telas não é caminho; ninguém atravessa fluxo clicando em itens de menu |
 | 4 | **Produzido depois do corte de capacidade**, com as Histórias que sobraram | Antes do corte não se sabe quais entraram — costurar antes é retrabalho garantido |
 | 5 | **Mesma régua técnica do funcional:** um ponto de entrada, sem build/servidor/back-end, dados plausíveis, estados de exceção dos caminhos cobertos, "o que está fora" na própria página | O stakeholder que precisa de ajuda para abrir não navega — e o que ele não navegou, ele não aprovou |
-| 6 | **Exercitado**, com o registro de verificação preenchido: modo, alcance, o que **não** foi reexecutado e o que o cobre | R7 · R23 — leve reduz o escopo executado, nunca a evidência ([`skills.md` §10](../../roles/user-experience/skills.md)) |
+| 6 | **Exercitado**, com o registro de verificação preenchido: modo, alcance, o que **não** foi reexecutado e o que o cobre, mais o **trecho + ponteiro** do log bruto | R7 · R23 · R28 — leve reduz o escopo executado, nunca a evidência; execução delegada ao `operator`, veredito do UX ([`skills.md` §10](../../roles/user-experience/skills.md)) |
 | 7 | **Pasta numerada, nunca sobrescrita**, e o ponteiro registrado no Sprint Backlog resolve | O ponteiro é o registro do que foi aprovado naquele sprint; sobrescrever apodrece o histórico do ③ |
 | 8 | **O stakeholder navegou** — e a ficha traz data, quem, e o que foi pedido em cada devolução | Print, gravação e apresentação não abrem o ③, pelo mesmo motivo que não abrem o ① |
 

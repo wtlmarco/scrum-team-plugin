@@ -850,7 +850,7 @@ k6 run tests/perf/{operacao}.perf.js \
 echo $?   # 0 = dentro do orçamento · != 0 = orçamento violado
 ```
 
-A saída real deste comando — não a alegação — é o que vai no relatório de entrega da Task que toca uma operação de V18 (§5.6 P6).
+A saída real deste comando — não a alegação — é o que vai no relatório de entrega da Task que toca uma operação de V18 (§5.6 P6), na forma de **trecho decisivo e caminho do log bruto**, os dois juntos ([`implementation-principles.md`](implementation-principles.md) §5.4).
 
 ---
 

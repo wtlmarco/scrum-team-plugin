@@ -25,15 +25,17 @@ Fecha toda execução de `/dev <ID>`. É o que o Arquiteto revisa e o QA usa com
 |---|---|---|
 
 ### Verificação
+*(Trecho **e** ponteiro, sempre os dois — R28. O log bruto inteiro fica no arquivo, não aqui.)*
+
+| Comando | Código de saída | Trecho decisivo (literal, recortado) | Log bruto |
+|---|---|---|---|
+| `<comando de build>` | <n> | `<linha de resumo: erros e avisos>` | `.team-project/operator/<sprint>/<T-ID>/build.log` — <n> linhas |
+| `<comando de teste>` | <n> | `<X passed, Y failed, Z skipped>` | `<caminho>.log` — <n> linhas |
+| `<comando do gate de cobertura da unidade tocada — back-end, worker ou front-end>` | <n> | `<percentual do pior módulo × limiar e resultado do gate>` | `<caminho>.log` — <n> linhas |
+
+**Falhou algum comando** — o trecho do log que localiza a causa, literal:
 ```
-> <comando de build>
-<saída real>
-
-> <comando de teste>
-<saída real: X passed, Y failed, Z skipped, N warnings>
-
-> <comando do gate de cobertura da unidade tocada — back-end, worker ou front-end>
-<saída real: percentual por módulo e resultado do gate>
+<primeira linha de erro por arquivo; ou nome do teste que falhou + a asserção que falhou>
 ```
 
 ### Gaps levantados
@@ -48,9 +50,9 @@ Fecha toda execução de `/dev <ID>`. É o que o Arquiteto revisa e o QA usa com
 
 ## Regras
 
-- **Saída real, sempre** (R7). "Build ok" sem saída não conta; se falhou, mostrar a falha.
+- **Saída real, sempre — em trecho e ponteiro** (R7 · R28). "Build ok" sem saída não conta; log inteiro colado também não, e só o caminho do arquivo muito menos. Cada comando entra com **código de saída**, **trecho decisivo literal** e **caminho do log bruto** — que precisa existir: ponteiro que não resolve é achado de processo, e trecho sem ponteiro impede o QA de auditar e o PO de conferir na Review. Se falhou, mostrar a falha. O que recortar de cada tipo de comando está em [`../skills.md`](../skills.md) §6. O log em `.team-project/operator/<sprint>/<T-ID>/` é **registro de execução, não entrega**: não entra em CRIADOS/ALTERADOS/REMOVIDOS.
 - **Gate de qualidade não some do relatório.** Gate desligado, afrouxado, removido do build, trocado por outro comando, contornado por configuração ou **não exercitado** aparece aqui como 🔺 GAP **e** na seção Verificação, com o motivo — e a entrega não se declara concluída nessa condição (R7 · R23). Nenhum dos dois estados se resolve no relatório: os dois sobem ao Arquiteto.
-- **Cobertura é saída, não alegação.** Toda Task que altera código de produção — **inclusive front-end** — traz a saída do gate de 80% da unidade que tocou. Sem ela, o QA trata como não verificado (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.4/§5.5).
+- **Cobertura é saída, não alegação.** Toda Task que altera código de produção — **inclusive front-end** — traz a saída do gate de 80% da unidade que tocou, na mesma forma das demais: trecho (pior módulo × limiar) **e** ponteiro. Sem ela, o QA trata como não verificado (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.4/§5.5).
 - **Grupo vazio é declarado**, não omitido — evita ambiguidade na hora do QA.
 - **GAP de tipo `standard` fica no relatório mesmo depois de respondido** (R16). A decisão do Arquiteto desbloqueia a Task; o defeito no documento só se fecha no `/review` seguinte, e o relatório é a trilha que garante que ele chegue lá. Citar `<arquivo do standard> §<n>`.
 - **Nenhum arquivo de `${CLAUDE_PLUGIN_ROOT}/standards/` aparece em CRIADOS/ALTERADOS/REMOVIDOS.** O dev consome o normativo, não o edita — a caneta é do Arquiteto (R16).
@@ -83,13 +85,11 @@ Os comandos de verificação do projeto estão em `.team-project/developer/conte
 | `UrlSignerTests.cs` | `Assinatura_ComCaminhoAlterado_DeveSerInvalida` | adulteração do caminho assinado |
 
 ### Verificação
-```
-> <build>
-Build succeeded. 0 Warning(s) 0 Error(s)
-
-> <teste>
-Passed! - Failed: 0, Passed: 311, Skipped: 0
-```
+| Comando | Código de saída | Trecho decisivo | Log bruto |
+|---|---|---|---|
+| `<build>` | 0 | `Build succeeded. 0 Warning(s) 0 Error(s)` | `.team-project/operator/3/ABC-02/build.log` — 412 linhas |
+| `<teste>` | 0 | `Passed! - Failed: 0, Passed: 311, Skipped: 0` | `.team-project/operator/3/ABC-02/test.log` — 1.184 linhas |
+| `<gate de cobertura>` | 0 | `pior módulo 84,2% ≥ 80% — gate ok` | `.team-project/operator/3/ABC-02/coverage.log` — 96 linhas |
 
 ### Gaps levantados
 nenhum
