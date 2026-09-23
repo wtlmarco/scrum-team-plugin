@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.30.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.31.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -112,7 +112,7 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 
 **`<H-ID>` opera sobre valor, `<T-ID>` sobre trabalho.** A História é a unidade de valor (dona: PO, conteúdo só funcional); a Task é a unidade de trabalho (no Sprint Backlog do SM, com o Plano de Implementação do Arquiteto dentro). Toda Task pertence a exatamente uma História (R20).
 
-Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. Três pares se parecem e não são a mesma coisa: **`/ux review-ui`** (usabilidade de uma tela) e **`/arc comply`** (aderência do código ao plano) são trabalho no produto; **`/sm review`** é a **Sprint Review**, também no produto; e **`/review`** evolui o processo do time e roda só no repositório-fonte do plugin.
+Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. Três pares se parecem e não são a mesma coisa: **`/ux review-ui`** (usabilidade de uma tela) e **`/arc comply`** (aderência do código ao plano, **só como exceção pedida pelo stakeholder** — a frente 2 do `/qa` cobre isso em toda Task) são trabalho no produto; **`/sm review`** é a **Sprint Review**, também no produto; e **`/review`** evolui o processo do time e roda só no repositório-fonte do plugin.
 
 ### Com quem o stakeholder fala
 

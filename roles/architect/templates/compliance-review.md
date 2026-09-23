@@ -1,13 +1,13 @@
-# Template — Revisão de Aderência (`/arc comply <ID>`)
+# Template — Revisão de Aderência (`/arc comply <ID>`) — **só exceção**
 
-Revisão de aderência **sob demanda** — **não é etapa do ciclo** ([`workflow.md`](../../scrum-master/process/workflow.md) §4a). Roda em um de dois momentos: **(a)** por iniciativa do Arquiteto, antes de entregar ao QA, quando a entrega é grande ou tocou muitos passos; **(b)** como rota de volta de achado de aderência de execução ⚠️/❌ do veredito, antes do `/dev resume`. Aponta desvio; **não corrige o código**.
+**Fora do ciclo e da rota de volta** ([`workflow.md`](../../scrum-master/process/workflow.md) §4a): a aderência de execução ao plano é da frente 2 do `/qa <ID>`, ao fim de toda Task, e achado de execução volta direto ao dev por `/dev resume`. Este modelo só se usa quando o **stakeholder pede, nomeadamente**, uma auditoria de aderência pelo Arquiteto — nunca por iniciativa própria nem como etapa. Aponta desvio; **não corrige o código**.
 
-**Objeto: o Plano de Implementação vigente** — cada passo foi executado como escrito, e a seção de standard **que o passo citou** está aplicada no código. O comply **não julga se o plano citou o conjunto certo e completo de seções**: isso é a frente 2 do `/qa <ID>` (§4a) — o autor não audita a própria omissão.
+**Objeto: o Plano de Implementação vigente** — cada passo foi executado como escrito, e a seção de standard **que o passo citou** está aplicada no código. Não julga se o plano citou o conjunto certo de seções — o autor não audita a própria omissão (frente 2 do QA).
 
 ```markdown
 ## Revisão de Aderência — <ID> <título> — <data>
 
-**Plano:** `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` · **Relatório do dev:** <passos concluídos, n de m>
+**Pedido do stakeholder:** <data · escopo pedido> · **Plano:** `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` · **Relatório do dev:** <passos concluídos, n de m>
 
 ### 1. Plano × entrega
 | Passo | Situação | Observação |
@@ -43,8 +43,7 @@ que o passo citou** — não se a citação estava completa ou correta para a Ta
 **Não feito do plano:** <passos pendentes e por quê>
 
 ### 4. Veredito arquitetural
-**<Liberado para o QA | Ajustar antes do QA>** — *na rota de volta (b), o veredito é
-`<Desvio do veredito resolvido, seguir para /dev resume | Ajustes abaixo antes do /dev resume>`.*
+**<Conforme ao plano | Ajustes abaixo — voltam ao dev por /dev resume>**
 
 | # | Ajuste necessário | Onde | Por quê |
 |---|---|---|---|
@@ -59,7 +58,8 @@ que o passo citou** — não se a citação estava completa ou correta para a Ta
 ## Regras
 
 - **Aplicação, não completude da citação.** Este modelo afere se a seção que o passo **citou** está no código. Plano que **omitiu** uma seção exigida pela Task, ou que **citou a errada**, é defeito que o autor do plano estruturalmente não vê — quem pega é a frente 2 do `/qa <ID>` ([`workflow.md`](../../scrum-master/process/workflow.md) §4a). Se eu mesmo perceber a omissão aqui, ela vai para a seção 5 como 🔺 GAP do próximo `/review`, nunca como linha da tabela da §2.
-- **Modo declarado no cabeçalho.** A rota (b) — reabertura por achado ⚠️/❌ sobre entrega já revisada — roda em **modo leve** ([`../skills.md`](../skills.md) §13): só os passos que o achado reabriu, com a linha *"modo leve: reexecutado `<X>`; reaproveitado `<Y>`, evidência em `<caminho>`"*. Os demais passos carregam o resultado da revisão anterior **com ponteiro para ela** — nunca ✅ de memória, e o gate de cobertura continua exigindo saída real.
+- **Pedido do stakeholder citado no cabeçalho** (data e escopo). Sem ele, esta revisão não roda — a conferência é do QA.
+- **Evidência de execução é reaproveitada, não refeita:** a saída do gate de cobertura vem do relatório do dev ou do veredito, com trecho **e** ponteiro (R28) — o Arquiteto não reexecuta build nem suíte.
 - Cada achado precisa de `arquivo:linha`. Sem isso é suspeita — e deve ser marcada como tal.
 - **Não corrigir o código.** Ajuste volta ao dev com instrução concreta.
 - Desvio de nomenclatura conta como falha, não como detalhe (R10).

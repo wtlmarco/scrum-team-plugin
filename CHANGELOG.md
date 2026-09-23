@@ -13,6 +13,22 @@
 
 ---
 
+## v3.31.0 — 2026-09-23
+
+**Branch:** `feat/v3.31.0` a partir de `develop` · **Processo:** [`v3.31`](roles/scrum-master/process/process-changelog.md)
+
+Rodada de `/review` sobre a reavaliação do conjunto: decisão do stakeholder de que **o QA confere a aderência do código ao Plano de Implementação**, e não o Arquiteto — a conferência é mecânica contra um plano escrito, e o Arquiteto é o papel mais caro.
+
+- **Frente 2 do QA cobre os dois objetos, sempre, em todo `/qa <Task>` ao fim de cada Task do dev:** aderência de execução (tabela passo do plano × conforme, pelo novo campo **Conferência** de cada passo do plano) e completude/correção do standard citado (tabela seção exigida × citada). Task não fecha sem as duas (`workflow.md` §2a, §4a, §4a-i, §8).
+- **Rota de volta:** código ≠ plano volta direto ao dev (`/dev resume`); defeito do plano vai ao Arquiteto (🔺 GAP/`/arc question`) e à fila do `/review`; defeito do standard, só ao `/review`.
+- **`/arc comply` sai do ciclo e da rota de volta** — só roda como exceção pedida nomeadamente pelo stakeholder (`commands/arc.md`, `commands/team.md`, `commands/qa.md`, `roles/architect/*`).
+- **Template do plano** ganha o campo **Conferência** por passo (regra 13) — critério objetivo para o QA; passo inconferível sem decidir é 🔺 GAP.
+- `workflow.md:53` corrigido: `cycle sprint` já está implementado em `commands/team.md`.
+
+**Verificar:** `/qa <Task>` produz as duas tabelas da frente 2; `/team cycle` devolve achado de execução direto ao dev, sem acionar o Arquiteto. Mudança em `agents/`/`commands/` só vale após reiniciar a sessão.
+
+---
+
 ## v3.30.0 — 2026-09-22
 
 **Branch:** `feat/v3.30.0` a partir de `develop` · **Processo:** [`v3.30`](roles/scrum-master/process/process-changelog.md)

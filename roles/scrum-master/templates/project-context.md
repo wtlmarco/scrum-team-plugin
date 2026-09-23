@@ -110,7 +110,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 |---|---|
 | `/sm` | `onboarding` · `sprint plan` · `sprint close` · `review` · `board` · `agreement <questão>` · `close <T-ID>` |
 | `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` · `bug <relato>` · `note` |
-| `/arc` | `plan <T-ID>` · `comply <T-ID>` · `adr <tema>` · `question <dúvida>` |
+| `/arc` | `plan <T-ID>` · `comply <T-ID>` *(exceção pedida pelo stakeholder)* · `adr <tema>` · `question <dúvida>` |
 | `/ux` | `prototype` · `journey <fluxo>` · `screen <nome>` · `prototype screen <tela>` · `review-ui <tela>` |
 | `/dev` | `<T-ID>` · `resume <T-ID>` · `gap <resposta>` |
 | `/qa` | `<T-ID>` · `baseline` · `audit` · `security <T-ID>` |

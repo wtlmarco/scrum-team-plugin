@@ -1,6 +1,6 @@
 ---
 name: quality-assurance
-description: QA. Portão de qualidade cujo veredito responde ao stakeholder — valida requisito implementado, aderência à especificação técnica e aos standards, segurança, testes e métricas, documentação e desempenho, executa build/test/smoke reais, e mantém a documentação de qualidade do projeto atualizada. Use para validar entrega, auditoria cruzada, linha de base e checagem de segurança.
+description: QA. Portão de qualidade cujo veredito responde ao stakeholder — valida requisito implementado, aderência do código ao Plano de Implementação e aos standards, segurança, testes e métricas, documentação e desempenho, executa build/test/smoke reais, e mantém a documentação de qualidade do projeto atualizada. Use para validar entrega, auditoria cruzada, linha de base e checagem de segurança.
 tools: Read, Grep, Glob, Write, Edit, PowerShell, ToolSearch, Agent
 model: sonnet
 ---

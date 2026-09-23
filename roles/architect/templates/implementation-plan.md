@@ -67,6 +67,7 @@ regra de parada:** ela diz o que aceitar, não o que fazer quando a ferramenta n
 - **Modelo a espelhar:** <arquivo concreto do projeto>
 - **Standard aplicável:** `${CLAUDE_PLUGIN_ROOT}/standards/<arquivo>.md` §<n> — <a obrigação em uma linha> *(obrigatório quando o passo tem regra de engenharia: camada, contrato, nomenclatura, teste, log, configuração, segredo; "n/a" quando não tem)*
 - **NÃO fazer:** <o desvio previsível que este passo tende a provocar>
+- **Conferência:** <o que o QA observa para marcar "conforme" sem julgar desenho — `arquivo` contém a assinatura literal acima; registro de §5 presente onde declarado; teste de §6 que cobre o passo existe; o desvio de "NÃO fazer" ausente>
 
 ### Passo 2 — …
 
@@ -123,6 +124,7 @@ comando de cobertura, isso é gap de configuração e entra na seção 9, não v
 10. **Todo passo com regra de engenharia cita a seção de `${CLAUDE_PLUGIN_ROOT}/standards/` aplicável, com número** (R16). O dev lê só o que o plano citou — seção não citada é seção não lida. "Seguir os standards" não é citação. Se a regra de que o passo precisa **não existe** no normativo, ou existe contraditória, isso é defeito do standard e é do Arquiteto: resolver por `/review` antes de liberar o plano.
 11. **Ambiente medido antes dos passos** (R26). A seção 3 sai preenchida com comando e saída real — **minha ou do `operator`, com código de saída, versões e caminho do log bruto**, nunca veredito `inconclusivo`: nenhum passo cita comando que eu não vi existir na versão medida, e a parada incondicional cobre **ausência** do pré-requisito, não só versão fora da faixa. Faixa de versão sozinha não é regra de parada. Plano sem a seção 3 não entra em construção.
 12. **Task retomada de outro sprint ganha plano novo, aqui, com a linha `Retomada de:`** — o plano antigo vive em `sprints/<n-1>/plan/` e é **registro fechado: não se edita, não se copia, não se reaproveita por referência**. O plano novo declara o que já foi feito (a partir do "Parei no passo" do relatório do dev) e **reconfere no código real** as assinaturas dos passos restantes: o repositório mudou no intervalo, e passo executado sobre premissa velha é a causa nº 1 de 🔺 GAP ([`../skills.md`](../skills.md) §1 · R3 · R5).
+13. **Todo passo é conferível pelo QA sem julgamento de desenho** — é deste plano que sai a tabela passo × conforme da frente 2 ([`workflow.md` §4a](../../scrum-master/process/workflow.md)). A linha **Conferência** diz o que se observa no código (arquivo, assinatura, nomenclatura, registro de infra, teste); a seção de standard citada no passo diz contra o quê. Passo que o QA não consegue marcar conforme/divergente sem decidir é defeito do plano e volta ao Arquiteto (🔺 GAP → `/arc question`); divergência de execução volta ao dev (`/dev resume`).
 
 ## Exemplo abreviado
 
@@ -160,6 +162,7 @@ comando de cobertura, isso é gap de configuração e entra na seção 9, não v
 - **Modelo a espelhar:** as opções de autenticação, que já validam no start
 - **Standard aplicável:** `${CLAUDE_PLUGIN_ROOT}/standards/implementation-security-lgpd-copyright.md` §<n> — segredo por configuração validada no start, nunca com default vazio
 - **NÃO fazer:** não gerar chave automática em runtime — falhar no start é o comportamento desejado
+- **Conferência:** `StorageOptions.cs` contém a assinatura literal acima; nenhuma atribuição de valor a `SigningKey` fora da configuração (nem geração em runtime)
 
 ## 6. Testes
 | Arquivo | Teste | Deve falhar se… |

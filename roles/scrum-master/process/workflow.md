@@ -45,12 +45,12 @@ Os quatro portões numerados são os gates de §8. **O detalhamento da História
 | 4 | Plano de Implementação | Arquiteto | `/arc plan <Task>` | Plano dentro da Task, citando a especificação de tela e as seções de standard. Persistido em `.team-project/sprints/<n>/plan/` |
 | 5 | Construção | dev | `/dev <Task>` | Código + testes + relatório de entrega |
 | 6 | Gap durante a construção | dev → Arquiteto | `/arc question` → `/dev gap` | Decisão do Arquiteto, dev retoma |
-| 7 | Validação | QA | `/qa <Task>` | Veredito ✅/⚠️/❌ com evidência |
+| 7 | Validação | QA | `/qa <Task>` | Veredito ✅/⚠️/❌ com evidência — **inclui sempre, na mesma invocação, a checagem de aderência de execução ao plano e de completude/correção do standard citado** (§4a); a Task não fecha sem as duas |
 | 8 | Fechamento da Task | SM | `/sm close <Task>` | Quadro + documento de status atualizados — **fechamento técnico, não aceite**. Linha nova no Registro de transições do Sprint Backlog (De: 🟪, Para: ✅) e ponto novo no burndown do sprint (R24) |
 | 9 | Sprint Review | PO demonstra, stakeholder decide | `/sm review` | História aceita / com ressalva / rejeitada · gaps e débitos ao backlog |
 | 10 | Sprint Retrospective | SM conduz | `/sm sprint close` | Retrospectiva + fechamento do sprint (§5c · §5e) |
 
-`/team cycle <Task>` encadeia 4→5→6→7 sem intervenção manual e para no primeiro problema; os modos parciais `/team plan|build|qa <Task>` rodam uma etapa só. Use os comandos individuais para acompanhar etapa por etapa. **Escopo de sprint do `cycle`** — rodar a fila inteira do sprint numa invocação, em série (R1) — é **proposta ao stakeholder**, não aplicada: `commands/team.md` é dele. Enquanto não entrar, a fila do sprint roda Task a Task, e é o §5g que garante que o stakeholder não é acionado entre os dois pontos de contato.
+`/team cycle <Task>` encadeia 4→5→6→7 sem intervenção manual e para no primeiro problema; os modos parciais `/team plan|build|qa <Task>` rodam uma etapa só. Use os comandos individuais para acompanhar etapa por etapa. **`cycle sprint`** — rodar a fila inteira do sprint numa invocação, em série (R1) — já está **implementado** em `commands/team.md` (modo `cycle <ID | sprint>`, dele — a pré-condição do pacote aprovado, a ordem por dependência e o comportamento no primeiro bloqueio estão descritos lá, não duplicados aqui). É o que o ciclo do sprint pressupõe: entre a aprovação do pacote e a Sprint Review, o time opera sem acionar o stakeholder (R25 · §5g).
 
 As etapas 0 e 0b são **anteriores à cadeia** e não se repetem por Task: o onboarding acontece uma vez por projeto (R14); o brainstorm, uma vez por ideia sem documentação (R15), e alimenta o SDD funcional, não o substitui. A etapa 3b acontece **uma vez por sprint**, entre a Planning e a primeira Task em construção.
 
@@ -91,6 +91,7 @@ As etapas 0 e 0b são **anteriores à cadeia** e não se repetem por Task: o onb
 - [ ] Registros de infraestrutura feitos (injeção de dependência, migration, mapeamento de erro), conforme a stack
 - [ ] Isolamento entre escopos preservado e coberto por teste quando aplicável
 - [ ] Veredito ✅ do QA com saída real de comando (R7)
+- [ ] **Frente 2 do veredito cobre os dois objetos** — aderência de execução ao plano e completude/correção do standard citado (§4a); Task sem essa dupla cobertura não fecha
 - [ ] Documentos de qualidade e evidências atualizados pelo QA; documento de status pelo SM (R12)
 
 ### 4a-ii. DoD da História — o valor chegou?
@@ -101,24 +102,32 @@ As etapas 0 e 0b são **anteriores à cadeia** e não se repetem por Task: o onb
 - [ ] **Aceite registrado** (R21) — conduzido pelo PO, com a decisão do stakeholder por História
 - [ ] Gaps e débitos levantados na Review estão no Product Backlog com dono
 
-## 4a. Aderência: `/arc comply` e a frente 2 do QA verificam objetos diferentes
+## 4a. Aderência de execução e de standard — as duas, na frente 2 do QA
 
-`/arc comply` **não é etapa do ciclo** (as etapas de construção são 4→5→6→7 na numeração da §2a; `commands/team.md` modo `cycle` usa um índice local próprio, 0–6, só das etapas de construção). É uma revisão de aderência **sob demanda**, em um de dois momentos: (a) o Arquiteto a roda antes de entregar ao QA quando a entrega é grande ou tocou muitos passos; (b) é a rota de volta dos achados de aderência de execução do veredito (⚠️/❌), antes do `/dev resume`. Não roda no `/team cycle` nem nos modos parciais.
+A verificação de aderência não é sob demanda nem do Arquiteto: acontece **dentro de `/qa <Task>`, na frente 2, ao fim de toda Task construída pelo dev** — a Task não fecha sem ela (DoD §4a-i). Dois objetos, sempre os dois no mesmo veredito:
 
-| Verificação | Objeto | Pergunta |
+| Objeto | Pergunta | Contra o quê |
 |---|---|---|
-| `/arc comply` | o **Plano de Implementação vigente** | cada passo foi executado como escrito (assinatura, anel, arquivo, nomenclatura, registro de infra), e **a seção de standard que o passo citou está aplicada** no código? — o autor conferindo a execução da própria instrução |
-| `/qa <Task>` frente 2 | o **normativo `${CLAUDE_PLUGIN_ROOT}/standards/`** e a **completude do plano ante a Task** | (1) o plano **omitiu** uma seção de standard que a Task exigia? (2) o plano **citou a seção errada** para o que a Task faz? (3) — interseção — a seção citada está cumprida no código? |
+| **Aderência de execução ao plano** | cada passo do Plano de Implementação foi executado como escrito — assinatura, anel/camada, arquivo, nomenclatura, registro de infra? | o **Plano de Implementação vigente** |
+| **Completude e correção do plano** | o plano **omitiu** uma seção de standard que a Task exigia? **citou a seção errada** para o que a Task faz? a seção citada está **de fato aplicada** no código? | o normativo `${CLAUDE_PLUGIN_ROOT}/standards/` e a Task |
 
-O comply **não julga se o plano citou o conjunto certo ou completo de seções** — um autor não audita a própria omissão. Esse é o valor próprio da frente 2: pegar o defeito que o Arquiteto estruturalmente não vê. A interseção (seção citada × código) o QA **reverifica de forma independente**, como já faz a frente 3 apesar do checklist de segurança no plano — não confia no comply, que pode nem ter rodado.
+**Por que o QA, e não o Arquiteto — motivo registrado, custo.** O Arquiteto é o papel mais caro do time (§5c). Conferir se o código seguiu um plano já escrito é mecânico — passo a passo, contra um documento fechado — e não exige o julgamento de desenho que só o Arquiteto tem; fazer o modelo mais caro do time reexecutar essa comparação em toda Task multiplicava o custo sem ganho de rigor. A independência não se perde: o QA continua não sendo o autor do plano, e é essa distância — a mesma que já sustentava o objeto 2 desde a v2.4 — que garante que a checagem de execução não vira autoconferência do próprio Arquiteto.
 
-**Como o SM verifica que o QA fez a checagem dele e não a do Arquiteto:** o veredito da frente 2 traz, para cada área de engenharia que a Task toca, **a seção de standard que a Task exigia × a seção citada no plano**, com um de quatro estados por linha:
-- citada e aplicada — ok;
-- citada e divergente do código — **reprovação** (R16);
-- **exigida pela Task e ausente do plano** — achado de processo ao `/review`;
-- citada errada para o que a Task faz — achado de processo ao `/review`.
+**Rota de volta, pelo tipo de defeito — nunca a mesma para os dois:**
 
-Veredito de frente 2 que só reproduz a tabela passo × conforme do comply, sem a coluna "seção exigida pela Task × seção citada", indica que o QA fez a checagem do Arquiteto, não a dele — o SM registra como achado de processo contra o veredito.
+| Defeito | Volta para | Comando |
+|---|---|---|
+| **Aderência de execução** — código diverge do que o plano escreveu (passo pulado, arquivo errado, nomenclatura trocada, registro de infra faltando) | **dev**, direto — o plano estava certo, a execução não seguiu | `/dev resume` |
+| **Defeito do plano** — omissão de seção de standard, seção citada errada, passo inexequível ou ambíguo | **Dois destinos, nunca um só**: **Arquiteto** desbloqueia a Task (🔺 GAP — só ele decide desenho) **e**, em paralelo, **achado de processo ao `/review`** — o GAP resolve esta Task, o achado evita a próxima repetir a mesma lacuna | `/arc question` → plano revisado → dev retoma · **+** achado de processo → `/review` |
+| **Defeito do próprio `standards/`** | **Arquiteto**, por `/review` (R16) | — |
+
+**`/arc comply` sai do caminho do ciclo e da rota de volta.** Cobria exatamente o objeto 1 (aderência de execução) por autoconferência do próprio autor do plano — o que a frente 2 do QA agora cobre sempre, de forma independente, ao fim de toda Task. Perdeu função: não roda mais no `/team cycle`, não é mais a rota de um achado ⚠️/❌ antes do `/dev resume`, e não é etapa de nenhum papel por padrão. Fica só como **exceção explícita e justificada** — o stakeholder pedindo, nomeadamente, uma auditoria de aderência fora do ciclo normal — nunca como comportamento implícito ou default de qualquer papel.
+
+**Como o SM verifica que a frente 2 cobriu os dois objetos.** O veredito traz **duas tabelas, sempre as duas**:
+- **passo do plano × conforme** — uma linha por passo do Plano de Implementação, com o estado (conforme / divergente, e o que diverge) — objeto 1;
+- **seção exigida pela Task × seção citada no plano** — quatro estados por linha: citada e aplicada (ok); citada e divergente do código (**reprovação**, R16); exigida pela Task e ausente do plano (**rota dupla**: 🔺 GAP → `/arc question` desbloqueia a Task **e** achado de processo → `/review` corrige o hábito); citada errada para o que a Task faz (mesma rota dupla) — objeto 2.
+
+Veredito que traz só uma das duas tabelas não cobriu os dois objetos — o SM registra como achado de processo contra o veredito, do mesmo jeito que já registrava quando só a tabela do objeto 2 aparecia sozinha.
 
 ## 5. Cerimônias
 
@@ -531,7 +540,7 @@ Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no pa
 
 ## 8. Gates de qualidade (não negociáveis)
 
-**Nenhum gate abaixo é dispensável.** Dois — o **③** e o **④** — mudam de **forma e de momento**, nunca de dono: o ③ é aprovado pelo stakeholder **em lote, depois da Planning**, sobre o **pacote de abertura do sprint** (Sprint Backlog fechado + critérios de aceite + protótipo navegável + `planning.md`), em vez de História por História antes dela; e o ④ é o **aceite por História na Review**, que o PO conduz e o **stakeholder decide** (R21 · R25 · §5e · §5g). As duas linhas estão marcadas na tabela. **Todo o resto é incondicional** — o ①, o ②, e cada gate de qualidade técnica (plano, standard, build e testes, segurança, documentação, evidência): nada dispensa evidência real (R7) nem gate técnico, pela mesma condição de guarda-corpo que R23 impõe ao modo leve. Gate marcado como dispensado citando o ciclo do sprint é achado de processo — **o ciclo do sprint agrega gates funcionais na fronteira do sprint; não remove nenhum**.
+**Nenhum gate abaixo é dispensável.** Dois — o **③** e o **④** — mudam de **forma e de momento**, nunca de dono: o ③ é aprovado pelo stakeholder **em lote, depois da Planning**, sobre o **pacote de abertura do sprint** (Sprint Backlog fechado + critérios de aceite + protótipo navegável + `planning.md`), em vez de História por História antes dela; e o ④ é o **aceite por História na Review**, que o PO conduz e o **stakeholder decide** (R21 · R25 · §5e · §5g). As duas linhas estão marcadas na tabela. **Todo o resto é incondicional** — o ①, o ②, e cada gate de qualidade técnica (plano, aderência de execução e standard, build e testes, segurança, documentação, evidência): nada dispensa evidência real (R7) nem gate técnico, pela mesma condição de guarda-corpo que R23 impõe ao modo leve. Gate marcado como dispensado citando o ciclo do sprint é achado de processo — **o ciclo do sprint agrega gates funcionais na fronteira do sprint; não remove nenhum**.
 
 | Gate | Bloqueia | Responsável | Regra |
 |---|---|---|---|
@@ -550,7 +559,7 @@ Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no pa
 | Plano de Implementação existe | construção | Arquiteto | R8 |
 | Plano traz o **ambiente medido** (comando + saída — próprias ou do `operator`, com o caminho do log bruto), os comandos citados validados naquela versão, e parada incondicional para pré-requisito **ausente** | construção | Arquiteto | R26 |
 | Plano cita a seção de `${CLAUDE_PLUGIN_ROOT}/standards/` que a mudança de engenharia toca | construção | Arquiteto | R16 |
-| Seção de standard **exigida pela Task** presente no plano e aplicada no código | veredito | QA | R16 · §4a |
+| **Aderência de execução ao plano**, e seção de standard **exigida pela Task** presente no plano e aplicada no código — as duas, na mesma frente 2 | veredito | QA | R16 · §4a |
 | Build sem avisos + testes passando | veredito | QA | R7 |
 | Segurança: identidade, permissão, auditoria, segredo | veredito | QA | R11 |
 | Documentação atualizada | fechamento da Task | QA | R12 |

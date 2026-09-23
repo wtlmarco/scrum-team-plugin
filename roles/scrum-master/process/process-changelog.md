@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.28`](process-changelog-archive.md) | R26(i) passa a cobrir o plano inteiro, não só o primeiro passo; R28 nova poda o log de build do contexto do subagente (SM) — 21/09/2026 |
 | [`v3.27`](process-changelog-archive.md) | Os três pontos abertos de `note.md` resolvidos em formulário: teto da R17 escala, R27 nova, R5 ganha o lado de quem orquestra (SM) — 20/09/2026 |
 | [`v3.26`](process-changelog-archive.md) | UX desce de Opus para Sonnet, por medição de custo (stakeholder) — 20/09/2026 |
 | [`v3.25`](process-changelog-archive.md) | R26 (plano mede o ambiente); gate desligado/não exercitado é 🔺 GAP; consumo cobre notificação parcial; R9 decide-e-documenta (item 2a) (SM + Arquiteto) — 20/09/2026 |
@@ -63,6 +64,108 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.31 — QA passa a cobrir aderência de execução, não só o standard; `/arc comply` sai do ciclo; `cycle sprint` deixa de ser "proposta" (SM) — 23/09/2026
+
+**Instrução** (stakeholder, `/review`, três decisões): **(1)** `workflow.md`:53 dizia que `cycle sprint` "é proposta ao stakeholder, não aplicada", mas `commands/team.md`:60–84 já o implementa — corrigir sem duplicar o comando. **(2)** "o QA é quem executa essa tarefa usando o plano definido pelo Arquiteto, e isso é importante para evitar o consumo pelo Arquiteto, que custa muito mais" — a verificação de aderência de execução ao plano passa à frente 2 do QA, ao lado da completude/correção do standard que ela já cobria; `/arc comply` sai do ciclo e da rota de volta, só sobrevive como exceção pedida pelo stakeholder. **(3)** "Adicionar como uma tarefa do sprint a ser executada pelo QA ao fim de cada tarefa executada pelo DEV" — Task não fecha sem essa dupla checagem.
+
+**Classificação:** obsolescência de fluxo (item 1) + fluxo, com reatribuição de responsabilidade entre papéis (item 2) + reforço de gate existente, sem regra nova (item 3). **Rodada de três papéis aplicando na própria mão** (SM em `workflow.md`/`artifact-ownership.md`; Arquiteto em `roles/architect/`, `standards/` e `roles/developer/` — R16/v1.3; QA em `roles/quality-assurance/`) — as três aplicações datam do mesmo `/review` de 23/09/2026 e compõem uma entrada só (R17, precedente v3.25: a unidade é a decisão, não o papel). Barreira aplicável: **12,5 KB** (10 KB + 2,5 KB pelo terceiro papel).
+
+### O que mudou
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `workflow.md` | §2a, fecho da cadeia (linha do `cycle`) | "Escopo de sprint do `cycle`… é **proposta ao stakeholder**, não aplicada" → `cycle sprint` está **implementado** em `commands/team.md`, sem duplicar o conteúdo do comando |
+| `workflow.md` | §2a, etapa 7 (Validação) | Saída passa a citar, sempre, a checagem de aderência de execução **e** de standard, na mesma invocação |
+| `workflow.md` | **§4a reescrita** — título e corpo | De "`/arc comply` × frente 2, objetos diferentes" para "Aderência de execução e de standard — as duas, na frente 2 do QA": dois objetos no mesmo veredito, motivo de custo, rota de volta por tipo de defeito (execução → dev direto; defeito do plano → GAP ao Arquiteto **e** achado de processo, rota dupla), `/arc comply` fora do ciclo, verificação do SM com as **duas tabelas** obrigatórias |
+| `workflow.md` | §4a-i (DoD da Task) | Bullet novo: frente 2 cobre os dois objetos; Task não fecha sem os dois |
+| `workflow.md` | §8 (gates) | Linha do gate de standard vira "aderência de execução **e** standard, as duas, na mesma frente 2"; frase de abertura do §8 ganha "aderência de execução" ao lado de "standard" |
+| `artifact-ownership.md` | §3, "Conflitos comuns" | Linha do `/arc comply` reescrita: a tabela passo × conforme não é redundante — é o objeto 1, obrigatório, desde que o `/arc comply` saiu do ciclo |
+
+### Por quê
+
+`/arc comply` cobria a aderência de execução por **autoconferência do próprio autor do plano**, sob demanda, nunca garantida em toda Task. Motivo do stakeholder: **custo** — o Arquiteto é o papel mais caro do time (§5c), e reexecutar Task a Task uma comparação mecânica contra um documento já escrito não exige o julgamento de desenho que só ele tem. O QA já fazia o objeto 2 (completude do standard) de forma independente desde a v2.4; a mesma independência passa a cobrir o objeto 1, sem papel novo — mesma leitura do plano e do código, uma pergunta a mais na mesma frente. Item 1 fecha obsolescência simples: `workflow.md` descrevia `cycle sprint` como não implementado quando `commands/team.md` já o executa.
+
+### Quem passa a ser cobrado de forma diferente
+
+| Papel | O que muda |
+|---|---|
+| **QA** | Frente 2 de `/qa <Task>` traz **duas tabelas sempre** — passo × conforme e seção exigida × citada — em vez de só a segunda; roda **ao fim de toda Task**, não sob demanda |
+| **Arquiteto** | Deixa de rodar `/arc comply` no ciclo ou como rota de volta padrão; só a pedido nomeado do stakeholder |
+| **Dev** | Achado de aderência de execução volta **direto** por `/dev resume`, sem Arquiteto |
+| **SM** | Verifica as duas tabelas da frente 2; trata `cycle sprint` como implementado |
+
+### Conflitos
+
+- R16 (dono editorial do Arquiteto sobre `standards/`) — sem conflito: muda quem confere a execução do plano, não o dono do standard.
+- Independência da frente 2 desde a v2.4 ("autor não audita a própria omissão") — sem conflito, reforça: o QA, não-autor do plano, herda o objeto 1.
+
+### Como saberemos que funcionou
+
+Próximo veredito de frente 2 traz as duas tabelas, sempre; próximo achado de aderência de execução é resolvido por `/dev resume` sem uma chamada de `/arc comply` no meio; nenhum relatório de `/team cycle sprint` trata o modo como "ainda não implementado".
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | `proposta ao stakeholder.{0,20}não aplicada` em `workflow.md` | 0 — única ocorrência reescrita para "implementado", coerente com `commands/team.md`:60-84 | ✅ |
+| Substituição de padrão | `comply` em `workflow.md` e `artifact-ownership.md` | 2, ambas novas e coerentes: nenhuma sobra dizendo que ele ainda roda no ciclo | ✅ |
+| Coerência (leitura) | §2a etapa 7, §4a-i, §8, §4a lidos lado a lado | os quatro concordam: frente 2 cobre os dois objetos, sempre, Task não fecha sem eles | ✅ |
+| Contagem | `^### R\d+\.` em `working-rules.md` | 29·29, sem mudança — nenhuma regra nova | ✅ |
+| Arquivamento (teto 3) | bloco `v3.28` relocado, `Compare-Object` UTF-8 | 0 diferenças; índice com a linha nova | ✅ |
+| Teto de entrada (R17), consolidado | bloco `## v3.31` inteiro (SM + Arquiteto + QA), `[IO.File]::ReadAllText` UTF-8; rodada de **3 papéis** → barreira 12,5 KB | **≈12,3 KB**, sob a barreira, medido depois de consolidar as 3 aplicações numa entrada só (nota: esta própria linha altera o total em poucas dezenas de bytes; valor final confirmado no relatório do `/review`) | ✅ |
+
+*(Pendente do stakeholder desta entrada: consolidado ao final, depois das aplicações do Arquiteto e do QA — uma lista só, sem repetir `arquivo:linha`.)*
+
+### Aplicação do Arquiteto (`/review`, 23/09/2026) — `roles/architect/` · `standards/` · `roles/developer/`
+
+| Documento | Mudança |
+|---|---|
+| `roles/architect/README.md` | "Responde por" sem "aderência arquitetural"; `/arc question` item 3 e §Bloqueio apontam §4a; seção `/arc comply` vira "Aderência do código ao plano — não é minha" (exceção a pedido do stakeholder); bullet novo em "Como sei": plano conferível sem julgamento de desenho |
+| `roles/architect/skills.md` | §2: linha "Conferência" no raso × bom; §12: "auditoria de aderência pedida pelo stakeholder"; §13: linha `/arc comply` removida |
+| `templates/implementation-plan.md` | Campo **Conferência** por passo (+ exemplo) e regra 13 — dele sai a tabela passo × conforme do QA |
+| `templates/compliance-review.md` | Mantido, **só exceção**: rotas (a)/(b) e modo leve da rota de volta saem; cabeçalho exige o pedido do stakeholder |
+| `standards/implementation-principles.md` §7 | Linhas 5 e 13: verificação passa à frente 2 do QA, consequência "Task volta ao dev" |
+| `roles/developer/` | README passo 7 (achado de execução volta direto por `/dev resume`); `skills.md` §6 e `delivery-report.md` sem citar o Arquiteto como revisor |
+
+**Evidência (R19):** `comply` em `roles/architect/`, `standards/`, `roles/developer/` → 3, todas a exceção; zero em `standards/` e `roles/developer/`.
+
+### Aplicação do QA (`/review`, 23/09/2026) — `roles/quality-assurance/`
+
+| Documento | Mudança |
+|---|---|
+| `README.md` | Frente 2 reescrita: **objeto 1** (execução — critério é o campo **Conferência** do plano, R13) ao lado do **objeto 2** (standard); degrau 1 da escada sem `/arc comply` |
+| `skills.md` §2 | Tabela "passo × conforme" usa a **Conferência** como critério; leitura eficiente (plano + diff, uma vez cada); comparação pesada delegável ao `operator` (R28); passo inconferível vira 🔺 GAP |
+| `skills.md` §10 | Rota da omissão/citação errada de standard corrigida para a **dupla** (🔺 GAP → `/arc question` **e** achado de processo → `/review`) |
+| `templates/verdict.md` | Sub-tabela **"passo × conforme"** (objeto 1) ao lado de **"seção exigida × citada"** (objeto 2); regra nova: frente 2 sem as duas tabelas é achado de processo |
+
+**Achado corrigido pelo QA:** `README.md`/`skills.md` roteavam omissão/citação errada **só** para `/review`, sem GAP. Corrigido para a rota dupla.
+
+**Evidência (R19):** `comply` em `roles/quality-assurance/` → 2, ambas explicativas, zero como mecanismo vigente. Tabelas e rotas dos 4 documentos concordam entre si.
+
+### Curadoria do SM — §4a não reunia a rota dupla num lugar só
+
+Achado: "Rota de volta" nomeava **um** destino para "Defeito do plano" (Arquiteto, GAP); o resumo de estados do objeto 2 nomeava os mesmos dois estados só como "achado de processo" — nenhuma das duas, sozinha, registrava os **dois** destinos que o QA já implementava. **Corrigido no normativo:** as duas linhas de `workflow.md` §4a agora nomeiam os dois destinos juntos; o texto do QA já estava certo e não mudou.
+
+**Evidência (R19):** as duas linhas de `workflow.md` §4a citam GAP **e** achado de processo juntos; nenhuma tabela resta com destino único.
+
+### Pendente do stakeholder (consolidado — SM + Arquiteto + QA, uma lista só)
+
+**Aplicado pelo stakeholder em 23/09/2026** (autorizou na mesma sessão), com o texto abaixo — inclusive o bump para `3.31.0` e a entrada no `CHANGELOG.md`. A verificação final achou mais uma sobra, fora da lista e também aplicada: `agents/architect.md` (item 4 de Responsabilidades e `description`) ainda mandava o Arquiteto revisar aderência "sob demanda, por sua iniciativa"; e a `description` de `agents/quality-assurance.md` passou a nomear a aderência ao Plano de Implementação:
+
+| Arquivo:linha | Hoje (resumo) | Proposta (texto pronto) |
+|---|---|---|
+| `commands/team.md`:82 | comply "sob demanda" antes do `/dev resume` | "devolva os achados conforme a rota do próprio veredito — aderência de execução vai **direto** a `/dev resume <ID>`; defeito do plano vai a `/arc question` **e** entra como achado de processo na fila do `/review`; defeito do standard só à fila do `/review`. `/arc comply` **não** roda neste ciclo: só como exceção pedida nomeadamente pelo stakeholder (`workflow.md` §4a)" |
+| `commands/qa.md`:30 | mesma rota antiga | "achado de aderência de execução (objeto 1) → `/dev resume <ID>`, direto; achado de defeito do plano (objeto 2) → `/arc question` **e** achado de processo à fila do `/review`; defeito do standard → só fila do `/review`. `/arc comply` não entra nesta escada — só roda como exceção pedida nomeadamente pelo stakeholder" |
+| `commands/arc.md`:16 | comply "sob demanda", rota de volta de achado ⚠️/❌ | "**Só roda como exceção explícita, pedida nomeadamente pelo stakeholder** — não é etapa do ciclo nem rota de volta de achado de aderência (isso é da frente 2 do `/qa`, `workflow.md` §4a)" |
+| `agents/scrum-master.md`:41 | "a frente 2 existe apesar do `/arc comply`" | "a frente 2 do QA cobre sozinha a aderência de execução e a de standard, sem o Arquiteto" |
+| `README.md`:115 | sem marcar a restrição | acrescentar, no parêntese: "(aderência do código ao plano, **só como exceção pedida pelo stakeholder** — a frente 2 do `/qa` cobre isso em toda Task)" |
+| `README.md`:105 · `how-to.md`:66 | listam `comply` como modo | **sem correção** — o modo continua existindo, só como exceção; nome de modo é cross-reference já coberta pela curadoria do SM |
+| `.claude-plugin/plugin.json` · banner do `README.md` · topo do `CHANGELOG.md` | `3.30.0` | bump para `3.31.0` (par com este `vX.Y`, R18); `CHANGELOG.md`: "## v3.31.0 — QA cobre aderência de execução e de standard na mesma frente 2; `/arc comply` vira exceção pedida pelo stakeholder. Branch: `feat/v3.31.0` a partir de `develop`. Verificar: `/qa <Task>` produz as duas tabelas sempre; ver `process-changelog.md` v3.31." |
+
+**Resolvido nesta rodada, fora da lista acima** (dentro do alcance do SM, sem esperar o stakeholder): `roles/scrum-master/templates/project-context.md`:113 ganhou o mesmo qualificador *(exceção pedida pelo stakeholder)* ao lado de `comply <T-ID>`. `CHANGELOG.md`:72 é entrada histórica de uma versão anterior — R17 não reescreve entrada antiga, e o texto ali já se referia ao comportamento da época; não é sobra desta rodada.
 
 ---
 
@@ -230,58 +333,3 @@ Nenhuma decisão pendente do stakeholder. Registro do que foi resolvido nesta ja
 - `agents/architect.md:69`, `agents/developer.md`, `agents/quality-assurance.md:40`, `agents/user-experience.md:66`, `commands/dev.md:20` — os quatro cards ganharam a ferramenta `Agent`, restrita ao `operator` (escrita em cada um); a delegação que R28 cobra passou a ser executável para o dev também.
 - **Decidido nesta consolidação** (antes, ficava para o próximo `/review`): a exceção do dev caducou pela própria condição que R28 previa, e **saiu** do corpo de R28 e da "SM verifica" — não ficou com redação ajustada.
 - **Achado aberto, roteado ao Arquiteto:** `roles/developer/skills.md:45` ainda cita essa exceção, agora sem referente — fora do alcance do SM.
-
----
-
-## v3.28 — R26(i) passa a cobrir o plano inteiro, não só o primeiro passo; R28 nova poda o log de build do contexto do subagente (SM) — 21/09/2026
-
-**Instrução** (`/review note`, item único de `note.md` sobre o custo do incidente do Arquiteto em T‑001/T‑002 — 2 das 4 tasks do item, roteadas ao SM nesta rodada): **(b)** "Preflight único de toolchain no início da task, em vez de descobrir detekt → node_modules → plugin Kotlin em 3 GAPs sequenciais" — R26(i) media só "o que o primeiro passo exige", mais estreito que R26(ii) (já exigia validar "cada comando citado **no plano**") e que o próprio gate de `workflow.md` §8 (fala em "os comandos citados", no plural, sem restringir ao primeiro passo); fecha-se a inconsistência ampliando (i) para o plano inteiro, do primeiro ao último passo. **(d)** "Podar log de build do contexto do subagente após extrair a falha relevante" — busca na RAIZ inteira não achou essa prática documentada em nenhum normativo; vira regra nova.
-
-**Classificação:** regra de trabalho (**R26** ajustada; **R28** nova, Bloco A). Rodada de **um papel** (SM) — barreira aplicável: 10 KB.
-
-### O que mudou
-
-| Documento | Mudança |
-|---|---|
-| `working-rules.md` (**R26**, item i) | "versão de runtime, SDK e ferramenta de build que **o primeiro passo exige**" → "...que **o plano inteiro exige, do primeiro ao último passo**". (ii) e (iii), e a linha "SM verifica", não mudam — já cobriam o plano inteiro |
-| `working-rules.md` (**R28 nova**, Bloco A, após R6) | Log de build/teste/lint longo não fica inteiro no contexto de quem o rodou: extrai-se o trecho que localiza a causa (erro, stack trace, linha de causa) e descarta-se o resto antes de seguir ou de reportar. A mecânica de "o que extrair" fica para o `skills.md` de cada papel que roda esse tipo de comando (Arquiteto, QA, Dev) — aqui só a regra geral e a obrigação |
-| `working-rules.md` ("Resumo em uma tela") | Linha nova: `R28 · Log de build podado do contexto do subagente depois de extrair a falha relevante · Eficiência` |
-
-### Por quê
-
-R26(i) media só o pré-requisito do **primeiro** passo, mas (ii) já exigia validar "cada comando citado no plano" — todos os passos — e o gate de `workflow.md` §8 já falava em "os comandos citados" no plural. Essa redação estreita de (i) é consistente com os 3 GAPs sequenciais de ambiente/toolchain do incidente T‑001b (detekt, exclusão de node_modules, versão do plugin Kotlin): cada pré-condição descoberta uma de cada vez, cada uma disparando um ciclo completo novo (Arquiteto decide → dev revisa → QA reconfirma) no papel mais caro do time. Um preflight único, medindo o que o plano inteiro depende antes do primeiro ciclo dev→QA, teria evitado os ciclos extras de retrabalho. R28 fecha uma lacuna diferente do mesmo incidente: log de build/teste ficava inteiro no contexto do subagente e era reenviado via cache a cada turno da mesma conversa (150–275 chamadas em subagentes longos), inflando o custo sem ganho de rigor — prática que já acontecia em parte ("Extract failure message from log", "Show failure block from log") mas não em todo lugar, e que não estava escrita em nenhum normativo.
-
-### Quem passa a ser cobrado de forma diferente
-
-| Papel | O que muda |
-|---|---|
-| **Arquiteto** | A seção 3 do Plano de Implementação (ambiente medido) passa a cobrir o que o **plano inteiro** exige antes do primeiro passo — não só o que o primeiro passo pede; menos ciclos de GAP de ambiente descoberto incrementalmente |
-| **Arquiteto, QA, Dev** | Ao citar saída de build/teste/lint num relatório ou verificação, extraem o trecho relevante e descartam o resto do log do próprio contexto (R28); cada um declara no próprio `skills.md` o que conta como "falha relevante" para o tipo de verificação que faz |
-| **SM** | Verifica R26 conferindo que a seção 3 cobre o plano inteiro, não só o primeiro passo; verifica R28 conferindo que relatório citando build/teste traz o trecho extraído, não o log colado inteiro |
-
-### Conflitos
-
-Nenhum. R26(i) não contradizia (ii)/(iii) nem o gate de `workflow.md` §8 — estava mais estreita que os dois, e a ampliação fecha a inconsistência sem afrouxar nada do que já valia. R28 é aditiva: nenhuma regra tratava de poda de log do contexto do subagente; R3 (contexto mínimo) trata de leitura de documentação, não de saída de comando — sem sobreposição.
-
-### Como saberemos que funcionou
-
-Próximo Plano de Implementação não gera GAP sequencial de pré-requisito de ambiente depois do primeiro ciclo dev→QA — a seção 3 já cobre o que os passos 2..n exigem, medido de uma vez. Próximo relatório de Task ou de verificação que cita saída de build/teste traz o trecho extraído, não o log completo colado; e o `skills.md` do Arquiteto, do QA e do Dev nomeia o que extrair antes de descartar o resto, na próxima vez que `/review` tocar esses documentos.
-
-### Evidência (R19)
-
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Substituição de padrão | `que o primeiro passo exige` em toda a RAIZ | **2**, ambas fora do alcance do SM: `agents/architect.md:38` (do stakeholder) e `roles/architect/README.md:36` (do Arquiteto) — **zero** em `working-rules.md`, onde a inconsistência vivia. Cada ocorrência lida no contexto: as duas ainda descrevem a redação estreita e ficam desalinhadas com o R26(i) ampliado — achado fora do alcance do SM, reportado para roteamento (não corrigido aqui) | ✅ (zero na normativa; achado externo relatado, não corrigido) |
-| Contagem | `^### R\d+\.` / `^\| R\d+ \|` em `working-rules.md` | 28·28 (era 27·27) — R28 é a única regra nova; nenhuma colisão de número (`R1`…`R27` já ocupados, confirmado por leitura da lista antes de numerar) | ✅ |
-| Leitura de coerência | R26 (i)/(ii)/(iii) e "SM verifica" lidos lado a lado | (ii) e (iii) já cobriam o plano inteiro; (i) ampliada fica coerente com as duas e com a linha "SM verifica", que já falava em "todo comando citado num passo" | ✅ |
-| Arquivamento (teto 3) | bloco `v3.25` (69 linhas) relocado, `Compare-Object` UTF‑8 | 0 diferenças; índice de arquivadas com a linha nova | ✅ |
-| Teto de entrada (R17) | bloco `## v3.28`, `[IO.File]::ReadAllText` com UTF‑8 explícito; rodada de **um papel** → barreira 10 KB | **7.517 B (7,34 KB)**, sob a barreira | ✅ |
-
-**Achado fora do alcance do SM, para roteamento:** `agents/architect.md:38` e `roles/architect/README.md:36` ainda trazem a redação estreita de R26(i) ("que o primeiro passo exige"). O primeiro é do stakeholder (`agents/` — proposta, não aplicação direta, `review-contract.md` §Limites); o segundo é do Arquiteto (`roles/architect/*`). Nenhum dos dois foi tocado nesta rodada — cabe ao Arquiteto realinhar o próprio roteiro, e ao stakeholder aprovar a proposta em `agents/architect.md`, para que os três lugares (normativo, roteiro do papel, carga fixa do agente) voltem a dizer a mesma coisa.
-
-### Pendente do stakeholder
-
-Nenhum item de `agents/`/`commands/` tocado nesta rodada. Seguem em aberto, no mesmo item de `note.md`: **(a)** persistir prova de ambiente em `context.md` do Arquiteto, e **(c)** separar spike de prova de decide-e-documenta — ambos fora do alcance desta chamada (Arquiteto e proposta ao stakeholder, respectivamente). `note.md` só sai de **Abertas** quando as 4 tasks do item estiverem processadas.
-
----
-

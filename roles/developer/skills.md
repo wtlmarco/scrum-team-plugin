@@ -59,7 +59,7 @@ Saída real de comando no relatório, sempre. Se falhou, mostrar a falha. Honest
 | **Gate de cobertura** | o código de saída, o percentual medido × o limiar e o **pior módulo** |
 | **Lint / analisador** | o código de saída e uma linha por regra violada (arquivo, linha, código da regra) |
 
-**Trecho sem ponteiro não vale; ponteiro sem trecho também não.** Quem lê o relatório — o Arquiteto na revisão, o QA no veredito, o PO na Review dias depois — precisa ver o número **sem abrir arquivo** e conseguir chegar ao log bruto quando o número não bastar. O caminho declarado tem de existir: ponteiro que não resolve é achado de processo. E "build ok", "testes passando" e "log em `<caminho>`" sozinhos valem todos a mesma coisa: nada.
+**Trecho sem ponteiro não vale; ponteiro sem trecho também não.** Quem lê o relatório — o QA no veredito, o Arquiteto ao responder um 🔺 GAP, o PO na Review dias depois — precisa ver o número **sem abrir arquivo** e conseguir chegar ao log bruto quando o número não bastar. O caminho declarado tem de existir: ponteiro que não resolve é achado de processo. E "build ok", "testes passando" e "log em `<caminho>`" sozinhos valem todos a mesma coisa: nada.
 
 ## 7. Deixar o repositório íntegro
 
