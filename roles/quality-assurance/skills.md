@@ -29,6 +29,8 @@ Os gatilhos de aprofundamento obrigatório no log bruto são canônicos em [R28]
 
 Em todos os casos o veredito registra **trecho e ponteiro**, nunca um sozinho: ponteiro sem trecho obriga quem lê a reexecutar para saber o que houve; trecho sem ponteiro não resiste à auditoria de quem confere depois — eu mesma, ao reabrir a Task, e o PO, na Sprint Review, dias mais tarde, conferindo a mesma saída de carga (R28). Log que já não existe no caminho apontado, ou log completo colado num relatório em vez do trecho, é achado de processo — nunca algo que eu resolvo tentando reproduzir por conta própria.
 
+**Tabela obrigatória do objeto 1 — passo do plano × conforme** (frente 2, [`workflow.md`](../scrum-master/process/workflow.md) §4a). Todo veredito produz essa tabela, ao lado da do objeto 2 — nenhuma Task fecha só com a de standard. **O critério não sou eu que invento por passo: é o campo Conferência** que o próprio passo do plano já traz ([`implementation-plan.md`](../architect/templates/implementation-plan.md) R13) — o que observar no código para marcar conforme/divergente sem julgar desenho. Para produzir sem inflar o contexto: ler o **Plano de Implementação uma vez**, extraindo só o campo Conferência de cada passo, e o **diff contra a lista de arquivos do plano** (skill 3) uma vez; então percorrer passo a passo confrontando cada Conferência com o trecho correspondente do diff — não reabrir o plano nem o código inteiro a cada passo, e não extrair mais do arquivo do que a linha que confirma ou contradiz. Plano com muitos passos, ou que exige reler várias vezes o mesmo arquivo grande para fechar a comparação, é execução que pode ser delegada ao `operator` (R28) — mesmo raciocínio da tabela de execução pesada, aplicado à comparação plano × código em vez de a um comando; o que entra no veredito é a tabela fechada, com `arquivo:linha` nas divergências, não o processo de comparação. **Passo cuja Conferência não basta para decidir sem julgamento de desenho** não é achado de execução: é defeito do plano, marcado "inconferível" na tabela e roteado 🔺 GAP → `/arc question` (R13) — nunca "aprovado por falta de critério".
+
 ## 3. Conferir o diff contra o plano
 
 O jeito mais barato de pegar escopo antecipado: listar os arquivos alterados e comparar com a lista do plano. Arquivo tocado que não está lá é achado, mesmo que a mudança pareça boa.
@@ -98,7 +100,7 @@ Registre em `.team-project/quality-assurance/baseline.md` — fora da pasta do s
 
 Defeito de standard é **achado de processo roteado ao `/review`** — nunca achado de código, nunca correção de passagem, nunca reprovação do dev (ele não tinha como cumprir). Não entra no registro de GAPs do projeto: vai na seção de roteamentos do veredito e segue ao Arquiteto. Como o GAP de standard do dev, **não fecha com a resposta** — a decisão técnica desbloqueia a Task, a correção do texto é do `/review` seguinte.
 
-**Plano que omitiu ou citou errada a seção que a Task exigia.** O terceiro caso, e o mais difícil dos três: exige saber o que a Task **exigia**, não só ler o que o plano **disse**. O `/arc comply` não pega este — o Arquiteto que escreveu o plano não enxerga a própria omissão. É o valor próprio da frente 2 ([`workflow.md`](../scrum-master/process/workflow.md) §4a).
+**Plano que omitiu ou citou errada a seção que a Task exigia.** O terceiro caso, e o mais difícil dos três: exige saber o que a Task **exigia**, não só ler o que o plano **disse**. Nenhuma autoconferência do próprio autor do plano pega este — o Arquiteto que escreveu o plano não enxerga a própria omissão. É o valor próprio, e independente, da frente 2 ([`workflow.md`](../scrum-master/process/workflow.md) §4a) — objeto 2, ao lado do objeto 1 (aderência de execução), que a mesma frente passou a cobrir a partir da v3.31.
 
 Como se reconhece — a régua vem da Task, não do plano:
 
@@ -109,7 +111,7 @@ Como se reconhece — a régua vem da Task, não do plano:
 
 Não confundir com os outros dois. No **desvio no código**, a seção certa **foi** citada e o código não a cumpre — o dev tinha a régua e falhou; volta à construção. Aqui a régua nunca chegou ao dev: **não se reprova o dev**, e mesmo que o código cumpra a seção não-citada por acaso, o plano segue incompleto para o próxima Task. No **defeito no standard**, o texto da seção é que é inválido; aqui o texto está íntegro — faltou o plano apontá-lo.
 
-Rota: **achado de processo ao `/review`**, na seção de roteamentos do veredito; não entra no registro de GAPs. No `verdict.md`, é o estado "exigida e ausente do plano" ou "citada errada" da tabela da frente 2.
+Rota — dois destinos, não um: é **🔺 GAP para o Arquiteto** (`/arc question` → plano revisado → dev retoma) para **desbloquear a Task**, porque só ele decide desenho ([`workflow.md`](../scrum-master/process/workflow.md) §4a); e **achado de processo ao `/review`**, na seção de roteamentos do veredito, para corrigir o hábito que gerou a omissão — esse segundo não fecha a Task, é o que evita a próxima Task repetir a mesma lacuna. No `verdict.md`, é o estado "exigida e ausente do plano" ou "citada errada" da tabela do objeto 2.
 
 ## 11. Exercitar desempenho como número, não como impressão
 

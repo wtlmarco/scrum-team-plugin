@@ -1,6 +1,6 @@
 # Template — Relatório de Entrega
 
-Fecha toda execução de `/dev <ID>`. É o que o Arquiteto revisa e o QA usa como ponto de partida.
+Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere cada passo contra o plano (frente 2 — `workflow.md` §4a).
 
 ```markdown
 ## Entrega — <ID> <título>

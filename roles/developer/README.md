@@ -50,6 +50,7 @@ Eu **nunca** edito arquivo em `standards/`. Ele não está na lista de arquivos 
 4. Escrever os testes previstos junto com o código, não no fim.
 5. Rodar os comandos de verificação — **execução pesada delegada ao `operator`**, o resto com a saída **redirecionada para arquivo** — e guardar o **trecho decisivo** junto do **caminho do log** ([`skills.md`](skills.md) §6 · R28).
 6. Preencher o relatório de [`templates/delivery-report.md`](templates/delivery-report.md), inclusive "Não fiz (fora do plano)" e "Parei no passo".
+7. **Achado de execução do QA** (código ≠ plano) volta **direto a mim** por `/dev resume`: corrijo só o que o achado aponta, contra o plano vigente. Se corrigir exigir mudar o plano, é 🔺 GAP ([`workflow.md` §4a](../scrum-master/process/workflow.md)).
 
 ## Como levanto um gap
 

@@ -8,6 +8,58 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.28 — R26(i) passa a cobrir o plano inteiro, não só o primeiro passo; R28 nova poda o log de build do contexto do subagente (SM) — 21/09/2026
+
+**Instrução** (`/review note`, item único de `note.md` sobre o custo do incidente do Arquiteto em T‑001/T‑002 — 2 das 4 tasks do item, roteadas ao SM nesta rodada): **(b)** "Preflight único de toolchain no início da task, em vez de descobrir detekt → node_modules → plugin Kotlin em 3 GAPs sequenciais" — R26(i) media só "o que o primeiro passo exige", mais estreito que R26(ii) (já exigia validar "cada comando citado **no plano**") e que o próprio gate de `workflow.md` §8 (fala em "os comandos citados", no plural, sem restringir ao primeiro passo); fecha-se a inconsistência ampliando (i) para o plano inteiro, do primeiro ao último passo. **(d)** "Podar log de build do contexto do subagente após extrair a falha relevante" — busca na RAIZ inteira não achou essa prática documentada em nenhum normativo; vira regra nova.
+
+**Classificação:** regra de trabalho (**R26** ajustada; **R28** nova, Bloco A). Rodada de **um papel** (SM) — barreira aplicável: 10 KB.
+
+### O que mudou
+
+| Documento | Mudança |
+|---|---|
+| `working-rules.md` (**R26**, item i) | "versão de runtime, SDK e ferramenta de build que **o primeiro passo exige**" → "...que **o plano inteiro exige, do primeiro ao último passo**". (ii) e (iii), e a linha "SM verifica", não mudam — já cobriam o plano inteiro |
+| `working-rules.md` (**R28 nova**, Bloco A, após R6) | Log de build/teste/lint longo não fica inteiro no contexto de quem o rodou: extrai-se o trecho que localiza a causa (erro, stack trace, linha de causa) e descarta-se o resto antes de seguir ou de reportar. A mecânica de "o que extrair" fica para o `skills.md` de cada papel que roda esse tipo de comando (Arquiteto, QA, Dev) — aqui só a regra geral e a obrigação |
+| `working-rules.md` ("Resumo em uma tela") | Linha nova: `R28 · Log de build podado do contexto do subagente depois de extrair a falha relevante · Eficiência` |
+
+### Por quê
+
+R26(i) media só o pré-requisito do **primeiro** passo, mas (ii) já exigia validar "cada comando citado no plano" — todos os passos — e o gate de `workflow.md` §8 já falava em "os comandos citados" no plural. Essa redação estreita de (i) é consistente com os 3 GAPs sequenciais de ambiente/toolchain do incidente T‑001b (detekt, exclusão de node_modules, versão do plugin Kotlin): cada pré-condição descoberta uma de cada vez, cada uma disparando um ciclo completo novo (Arquiteto decide → dev revisa → QA reconfirma) no papel mais caro do time. Um preflight único, medindo o que o plano inteiro depende antes do primeiro ciclo dev→QA, teria evitado os ciclos extras de retrabalho. R28 fecha uma lacuna diferente do mesmo incidente: log de build/teste ficava inteiro no contexto do subagente e era reenviado via cache a cada turno da mesma conversa (150–275 chamadas em subagentes longos), inflando o custo sem ganho de rigor — prática que já acontecia em parte ("Extract failure message from log", "Show failure block from log") mas não em todo lugar, e que não estava escrita em nenhum normativo.
+
+### Quem passa a ser cobrado de forma diferente
+
+| Papel | O que muda |
+|---|---|
+| **Arquiteto** | A seção 3 do Plano de Implementação (ambiente medido) passa a cobrir o que o **plano inteiro** exige antes do primeiro passo — não só o que o primeiro passo pede; menos ciclos de GAP de ambiente descoberto incrementalmente |
+| **Arquiteto, QA, Dev** | Ao citar saída de build/teste/lint num relatório ou verificação, extraem o trecho relevante e descartam o resto do log do próprio contexto (R28); cada um declara no próprio `skills.md` o que conta como "falha relevante" para o tipo de verificação que faz |
+| **SM** | Verifica R26 conferindo que a seção 3 cobre o plano inteiro, não só o primeiro passo; verifica R28 conferindo que relatório citando build/teste traz o trecho extraído, não o log colado inteiro |
+
+### Conflitos
+
+Nenhum. R26(i) não contradizia (ii)/(iii) nem o gate de `workflow.md` §8 — estava mais estreita que os dois, e a ampliação fecha a inconsistência sem afrouxar nada do que já valia. R28 é aditiva: nenhuma regra tratava de poda de log do contexto do subagente; R3 (contexto mínimo) trata de leitura de documentação, não de saída de comando — sem sobreposição.
+
+### Como saberemos que funcionou
+
+Próximo Plano de Implementação não gera GAP sequencial de pré-requisito de ambiente depois do primeiro ciclo dev→QA — a seção 3 já cobre o que os passos 2..n exigem, medido de uma vez. Próximo relatório de Task ou de verificação que cita saída de build/teste traz o trecho extraído, não o log completo colado; e o `skills.md` do Arquiteto, do QA e do Dev nomeia o que extrair antes de descartar o resto, na próxima vez que `/review` tocar esses documentos.
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | `que o primeiro passo exige` em toda a RAIZ | **2**, ambas fora do alcance do SM: `agents/architect.md:38` (do stakeholder) e `roles/architect/README.md:36` (do Arquiteto) — **zero** em `working-rules.md`, onde a inconsistência vivia. Cada ocorrência lida no contexto: as duas ainda descrevem a redação estreita e ficam desalinhadas com o R26(i) ampliado — achado fora do alcance do SM, reportado para roteamento (não corrigido aqui) | ✅ (zero na normativa; achado externo relatado, não corrigido) |
+| Contagem | `^### R\d+\.` / `^\| R\d+ \|` em `working-rules.md` | 28·28 (era 27·27) — R28 é a única regra nova; nenhuma colisão de número (`R1`…`R27` já ocupados, confirmado por leitura da lista antes de numerar) | ✅ |
+| Leitura de coerência | R26 (i)/(ii)/(iii) e "SM verifica" lidos lado a lado | (ii) e (iii) já cobriam o plano inteiro; (i) ampliada fica coerente com as duas e com a linha "SM verifica", que já falava em "todo comando citado num passo" | ✅ |
+| Arquivamento (teto 3) | bloco `v3.25` (69 linhas) relocado, `Compare-Object` UTF‑8 | 0 diferenças; índice de arquivadas com a linha nova | ✅ |
+| Teto de entrada (R17) | bloco `## v3.28`, `[IO.File]::ReadAllText` com UTF‑8 explícito; rodada de **um papel** → barreira 10 KB | **7.517 B (7,34 KB)**, sob a barreira | ✅ |
+
+**Achado fora do alcance do SM, para roteamento:** `agents/architect.md:38` e `roles/architect/README.md:36` ainda trazem a redação estreita de R26(i) ("que o primeiro passo exige"). O primeiro é do stakeholder (`agents/` — proposta, não aplicação direta, `review-contract.md` §Limites); o segundo é do Arquiteto (`roles/architect/*`). Nenhum dos dois foi tocado nesta rodada — cabe ao Arquiteto realinhar o próprio roteiro, e ao stakeholder aprovar a proposta em `agents/architect.md`, para que os três lugares (normativo, roteiro do papel, carga fixa do agente) voltem a dizer a mesma coisa.
+
+### Pendente do stakeholder
+
+Nenhum item de `agents/`/`commands/` tocado nesta rodada. Seguem em aberto, no mesmo item de `note.md`: **(a)** persistir prova de ambiente em `context.md` do Arquiteto, e **(c)** separar spike de prova de decide-e-documenta — ambos fora do alcance desta chamada (Arquiteto e proposta ao stakeholder, respectivamente). `note.md` só sai de **Abertas** quando as 4 tasks do item estiverem processadas.
+
+---
+
 ## v3.27 — Os três pontos abertos de `note.md`, resolvidos em formulário (R22): teto da R17 escala, R27 nova, R5 ganha o lado de quem orquestra (SM) — 20/09/2026
 
 **Instrução** (stakeholder, resolução em formulário `AskUserQuestion` conforme R22, três perguntas, recomendação do time aceita nas três): fechar os pontos que sobraram em `note.md` depois da rodada v3.25/v3.26 — o teto da R17 que não escala, as chamadas de agente canceladas com atribuição falsa ao stakeholder, e o relatório de retomada que não chega a quem orquestra.
