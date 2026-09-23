@@ -381,7 +381,7 @@ Toda regra deste normativo tem uma forma de verificação. Regra sem verificaç�
 | 2 | Domínio sem dependência externa (§2.1) | Teste de arquitetura + revisão de aderência | testes | **Bloqueia o merge** |
 | 3 | SDK de fornecedor fora do adaptador (§2.3) | Teste de arquitetura ou regra de lint | análise | **Bloqueia o merge** |
 | 4 | Consulta não escreve (§3.1) | Teste de arquitetura + revisão de aderência | testes | **Bloqueia o merge** |
-| 5 | Handler não chama handler (§3.1) | Revisão de aderência (`/arc comply`) | revisão | Ajuste antes do QA |
+| 5 | Handler não chama handler (§3.1) | Revisão de aderência ao plano — frente 2 do QA | QA | Task volta ao dev |
 | 6 | Limites numéricos de §4.4 | Ferramenta de métricas (V13) | análise | **Bloqueia o merge** |
 | 7 | Lint e formatação (§4.3) | Linter + formatter em modo verificação (V7/V8) | análise | **Bloqueia o merge** |
 | 8 | Duplicação acima do limite (§4.3) | Detector de duplicação (V9) | análise | **Bloqueia o merge** |
@@ -389,7 +389,7 @@ Toda regra deste normativo tem uma forma de verificação. Regra sem verificaç�
 | 10 | Captura de exceção vazia (§4.3) | Regra de lint/analisador | análise | **Bloqueia o merge** |
 | 11 | **Cobertura ≥ 80% em cada módulo — mínimo, nunca média (§5.4)** | Comando do gate da unidade (V12), código de saída ≠ 0 | testes | **Bloqueia o merge** |
 | 12 | Cobertura do diff ≥ 80% (§5.4) | Relatório de cobertura do diff | testes | **Bloqueia o merge** |
-| 13 | Exclusão de cobertura fora da lista fechada (§5.3) | Revisão da configuração + ADR | revisão | Ajuste antes do QA |
+| 13 | Exclusão de cobertura fora da lista fechada (§5.3) | Revisão da configuração + ADR — frente 2 do QA | QA | Task volta ao dev |
 | 14 | **Toda unidade implantável tem gate próprio — front-end incluído (§5.5)** | Um estágio de cobertura por unidade no pipeline, com o comando de V12 | auditoria | Achado bloqueante de aderência |
 | 15 | Teste que não protege nada (§5.2) | Revisão do QA: "o que falha se a regra sumir?" | QA | Task volta |
 | 16 | Ficha de Vinculação preenchida (§6) | Seção existe no documento de arquitetura do produto | antes do plano | Sem ficha, sem Plano de Implementação |

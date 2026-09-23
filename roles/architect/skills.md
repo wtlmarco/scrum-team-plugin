@@ -24,8 +24,9 @@ O que separa um plano bom de um plano raso:
 | "Crie o handler" | "CRIAR `<caminho completo>`, assinatura `<literal>`" |
 | "Registre se necessário" | "ALTERAR `<arquivo>`, linha ~N, adicionar `<linha literal>`" |
 | "Adicione testes" | "CRIAR `<arquivo>` com 3 casos: válido → 200; expirado → 410; adulterado → 403. O teste de adulteração deve falhar se a assinatura deixar de cobrir o caminho" |
+| "Conferir se ficou certo" | "**Conferência:** `<arquivo>` contém `<assinatura literal>`; `<registro>` presente em `<arquivo de composição>`; `<teste>` existe e passa" |
 
-**Regra de ouro:** se o dev precisar escolher entre duas formas de fazer, o plano está incompleto. Escolha por ele — ou liste o ponto na seção "onde parar e perguntar".
+**Regra de ouro:** se o dev precisar escolher entre duas formas de fazer, o plano está incompleto. Escolha por ele — ou liste o ponto na seção "onde parar e perguntar". **A mesma régua vale para quem confere:** se o QA precisar julgar desenho para dizer se o passo está conforme, o passo está incompleto (`workflow.md` §4a).
 
 ## 3. Dimensionar
 
@@ -133,7 +134,7 @@ Spike é código descartável de investigação — junto do pedido explícito d
 
 ## 12. Salvar checkpoint em verificação pesada
 
-Contraparte, no meu papel, de "interrupção é estado, não perda" (R5). Verificação longa que eu conduzo — spike de várias etapas, reconciliação de ADR contra o código, levantamento de aderência em entrega grande — **grava resultado parcial em disco ao fim de cada etapa concluída**, antes de começar a seguinte.
+Contraparte, no meu papel, de "interrupção é estado, não perda" (R5). Verificação longa que eu conduzo — spike de várias etapas, reconciliação de ADR contra o código, auditoria de aderência pedida pelo stakeholder — **grava resultado parcial em disco ao fim de cada etapa concluída**, antes de começar a seguinte.
 
 - **Onde:** arquivo de trabalho ao lado dos meus entregáveis do projeto — `.team-project/architect/spikes/<ID>-<slug>.md` para spike; para reconciliação, o próprio documento sendo reconciliado, com a etapa marcada.
 - **O que grava:** a etapa concluída, o comando, o **código de saída** e o **trecho decisivo** da saída real — com o caminho do log bruto quando a execução foi do `operator` (§14) —, a decisão parcial que isso sustenta e **qual é a próxima etapa**. Checkpoint sem "próxima etapa" não serve para retomar.
@@ -151,7 +152,6 @@ A **primeira** entrega de uma Task — plano novo, ADR nova, spike inicial — p
 | **Spike** | todas as etapas, corpus inteiro, todas as chamadas externas | só a etapa alterada, no menor corpus que ainda exerce o caso — e a chamada externa é refeita se o ajuste a envolve |
 | **ADR** | checklist de aceitação inteiro revalidado contra o código | só os itens do checklist que o ajuste tocou |
 | **Plano** | diagnóstico completo, `arquivo:linha` de tudo que o plano cita | só as assinaturas dos arquivos citados pelo passo alterado |
-| **`/arc comply`** | conjunto do plano | os passos reabertos pelo achado |
 
 Os limites, que não se negociam:
 

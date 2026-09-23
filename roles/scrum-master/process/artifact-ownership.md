@@ -213,7 +213,7 @@ O **③ acontece depois da Planning, em lote**, sobre o pacote de abertura do sp
 | Surge trabalho técnico que nenhuma História cobre | Criar Task solta no sprint | PO escreve a História que declara o valor, ainda que o beneficiário seja o time (R20) |
 | Task pronta dentro de uma História rejeitada na Review | Fechar a Task e seguir | Toda a História volta ao Product Backlog, com as Tasks boas junto (R21) |
 | Stakeholder pede escopo novo no meio do sprint | Encaixar no Sprint Backlog | Vai ao Product Backlog e concorre na Planning seguinte; exceção só para GAP que bloqueia História já no sprint, com "o que saiu para caber" registrado |
-| Frente 2 do QA parece repetir o `/arc comply` | Reexecutar a tabela passo × conforme do comply | Checar o que o comply não vê: plano omitiu ou errou a seção que a Task exigia — [`workflow.md` §4a](workflow.md) |
+| Frente 2 do QA parece duplicar o antigo `/arc comply` | Achar que a tabela passo × conforme é redundante e descartá-la | Não é: aderência de execução (passo × conforme) e completude do standard (seção exigida × citada) são os **dois objetos obrigatórios da mesma frente 2**, desde que `/arc comply` saiu do ciclo — [`workflow.md` §4a](workflow.md) |
 | SM vê status divergente do código | Ajustar o status pela intuição | Acionar `/qa audit`; corrigir com o achado |
 | Um papel recusa o **próprio modo** citando a lista de "Não faz" | Aceitar a recusa — "está escrito lá" | O substantivo está cru (§1b). A linha que **concede** o modo vence; a proibição é corrigida no mesmo ciclo, com qualificador e dono |
 | Mudança de `/review` aplicada mas não lançada | Assumir que as instalações já a têm | Entra numa entrega: branch, bump de `version`, entrada no `CHANGELOG.md` (R18 · [`workflow.md` §5d](workflow.md)) |

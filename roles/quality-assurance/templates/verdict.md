@@ -8,20 +8,30 @@
 | Frente | Resultado | Evidência |
 |---|---|---|
 | Requisito | ok / falha | <critério + como verifiquei> |
-| Especificação técnica | ok / falha | Plano seguido + tabela **"seção exigida pela Task × seção citada"** abaixo (4 estados) |
+| Especificação técnica | ok / falha | **Duas tabelas** abaixo, sempre as duas: **"passo do plano × conforme"** (objeto 1, aderência de execução) e **"seção exigida pela Task × seção citada"** (objeto 2, 4 estados) |
 | Segurança | ok / falha / n/a | <arquivo:linha ou teste> |
 | Testes / métricas | ok / falha | <trecho decisivo do comando de teste **e** do gate de cobertura — ponteiro do log em "Comandos executados"> |
 | Documentação | ok / falha | <arquivo atualizado> |
 | Desempenho | dentro do orçamento / fora / não exercitado | <trecho decisivo do comando V19 — ponteiro do log em "Comandos executados" · ou o motivo do "não exercitado"> |
 
-### Frente 2 — seção exigida pela Task × seção citada no plano
-*(uma linha por área de engenharia que a Task toca; objeto = normativo `${CLAUDE_PLUGIN_ROOT}/standards/` + completude do plano, **não** a reexecução do `/arc comply` — `workflow.md` §4a)*
+### Frente 2 — os dois objetos, sempre os dois (`workflow.md` §4a)
+*(Task não fecha sem as duas tabelas abaixo preenchidas — DoD §4a-i)*
+
+**Objeto 1 — passo do plano × conforme** *(aderência de execução; critério = o campo **Conferência** de cada passo do plano — [`implementation-plan.md`](../../architect/templates/implementation-plan.md) R13 — não julgamento próprio do QA)*
+
+| # do passo do plano | Campo Conferência do plano | Conforme? | Evidência |
+|---|---|---|---|
+| <n> | <literal do campo **Conferência** do passo> | conforme / divergente / **inconferível sem decidir** | `arquivo:linha` quando divergente |
+
+Divergência volta **direto** a `/dev resume`, sem Arquiteto. **Passo sem Conferência decidível** (o critério não basta para marcar conforme/divergente sem julgamento de desenho) é defeito do **plano**, não achado de execução: 🔺 **GAP** → `/arc question` (R13).
+
+**Objeto 2 — seção exigida pela Task × seção citada no plano** *(completude/correção do standard citado; objeto = normativo `${CLAUDE_PLUGIN_ROOT}/standards/` + completude do plano ante a Task)*
 
 | Área de engenharia | Seção que a Task exigia | Seção citada no plano | Estado | Volta para |
 |---|---|---|---|---|
-| <ex.: atomicidade de transação> | `<arquivo> §<n>` | `<arquivo> §<n>` ou "nenhuma" | citada e aplicada (ok) / citada e divergente (❌ R16) / exigida e ausente do plano / citada errada | — / dev / `/review` / `/review` |
+| <ex.: atomicidade de transação> | `<arquivo> §<n>` | `<arquivo> §<n>` ou "nenhuma" | citada e aplicada (ok) / citada e divergente (❌ R16) / exigida e ausente do plano / citada errada | — / dev (`/dev resume`) / `/arc question` (`/review`) / `/arc question` (`/review`) |
 
-**Reverificação independente da interseção:** cada linha "citada e aplicada" teve a aplicação conferida neste veredito (`arquivo:linha` nos Achados quando divergente) — não se assume o resultado do `/arc comply`, que pode nem ter rodado.
+**Reverificação independente da interseção:** cada linha "citada e aplicada" teve a aplicação conferida neste veredito (`arquivo:linha` nos Achados quando divergente) — verificação própria, não a alegação do relatório do dev nem de qualquer auditoria anterior.
 
 ### Comandos executados
 *(um bloco por comando; comando pesado — build, suíte, cobertura, lint do projeto inteiro, carga V19 — é delegado ao `operator`, R28. Comando leve, cuja saída já cabe sem inflar o contexto, roda direto e traz só o comando/saída, sem log próprio.)*
@@ -59,7 +69,8 @@
 - **Os gatilhos de aprofundamento no log bruto são os de R28** — fora deles, o resumo do `operator` basta e abrir o log é opção minha, não obrigação.
 - **Achado precisa de `arquivo:linha`**; sem isso vai para "Suspeitas".
 - **Desvio de nomenclatura é falha**, não detalhe (R10).
-- **Desvio de seção de standard citada no plano é reprovação, não ressalva** (R16). Dois achados de **Tipo `processo`** vão para `/review` e **não** viram GAP de projeto: defeito no próprio standard (contradição, lacuna, regra inverificável) **e** plano que **omitiu** a seção que a Task exigia ou **citou a errada** (tabela da frente 2, estados 3 e 4).
+- **Desvio de seção de standard citada no plano é reprovação, não ressalva** (R16). Defeito no próprio standard (contradição, lacuna, regra inverificável) é achado de **Tipo `processo`** só para `/review` — **não** vira GAP de projeto. Plano que **omitiu** a seção que a Task exigia ou **citou a errada** (tabela do objeto 2, estados 3 e 4) é **duplo**: 🔺 **GAP** para o Arquiteto via `/arc question` (desbloqueia a Task, `workflow.md` §4a) **e** achado de `processo` para `/review` (corrige o hábito) — os dois, não um no lugar do outro.
+- **Frente 2 sem as duas tabelas não cobriu os dois objetos** (`workflow.md` §4a). Veredito com só a tabela do objeto 2 (como antes de v3.31) é achado de processo contra o próprio veredito. Divergência do objeto 1 volta **direto** a `/dev resume`, sem passar pelo Arquiteto — o antigo `/arc comply` saiu do ciclo e só roda como exceção explícita pedida pelo stakeholder. **Passo "inconferível sem decidir"** (Conferência do plano insuficiente, R13 de `implementation-plan.md`) não é "conforme" nem achado de execução: é 🔺 GAP do plano, para `/arc question`.
 - **Desempenho registra sempre um dos três estados.** "Fora" (comando de V19 sai ≠ 0) é reprovação; "não exercitado" exige o motivo. Task que toca operação de V18 sem o trecho e o ponteiro do comando é achado bloqueante, não "ok" (`implementation-principles.md` §5.6 P6).
 - **Cobertura ou desempenho sem trecho decisivo e ponteiro do log no relatório de entrega** não vai a "ok": cobertura ausente é falha, desempenho ausente em Task de V18 é achado bloqueante (espelha `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/delivery-report.md`).
 - **"Não exercitado" é obrigatório**, mesmo que seja "nada — todo o fluxo foi exercitado".
