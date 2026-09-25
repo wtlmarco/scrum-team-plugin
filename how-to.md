@@ -66,7 +66,7 @@ claude plugin update team@team           # aplica (exige reiniciar a sessão)
 | `/arc` | `plan <ID>` · `comply <ID>` · `adr <tema>` · `question <dúvida>` | Arquiteto — desenho, Plano de Implementação, ADR, standards |
 | `/ux` | `prototype` · `prototype sprint <n>` · `prototype screen <tela>` · `journey <fluxo>` · `screen <nome>` · `review-ui <tela>` | UX — **protótipo funcional (portão ①)**, **protótipo do sprint (portão ③)**, jornada, tela, usabilidade, acessibilidade |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` | Desenvolvedor — executa o plano, não improvisa |
-| `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` · `bug <descrição>` *(acionado pelo PO)* | QA — o veredito de qualidade que responde ao stakeholder |
+| `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` · `bug <descrição>` *(acionado pelo PO)* · `scenarios create` · `scenarios run <SC-nnn\|grupo\|all>` | QA — o veredito de qualidade que responde ao stakeholder |
 | `/team` | `init` · `update` · `version` · `brainstorm <ideia>` · `cycle <T-ID>` · **`cycle sprint`** · `plan <T-ID>` · `build <T-ID>` · `qa <T-ID>` | Orquestra o time trabalhando — **não é broadcast** |
 | `/review` | `<instrução>` · `note` · `metrics` · `audit` · `history` | Evolução do processo do time — **só no repositório-fonte do plugin** |
 

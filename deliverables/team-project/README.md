@@ -29,6 +29,7 @@ Cada modelo pertence ao **papel que o usa** (`roles/<papel>/templates/`), por [`
 | `.team-project/developer/context.md` | idem | dev | Não |
 | `.team-project/quality-assurance/context.md` | idem | QA | Não |
 | `.team-project/quality-assurance/baseline.md` | saída de `/qa baseline`, no onboarding de projeto retomado (§5a) | QA | **Sim — estrutura**. **Fora da pasta do sprint por impossibilidade:** nasce **antes de o sprint 1 existir**, e é a régua de toda regressão futura |
+| `.team-project/quality-assurance/scenarios/` | vazia; um arquivo por cenário nasce de [`scenario.md`](../../roles/quality-assurance/templates/scenario.md), indexado por [`scenarios-index.md`](../../roles/quality-assurance/templates/scenarios-index.md) (`scenarios/README.md` no projeto) — mapeado por Task na Planning, novo e regressivo (R30) | QA | **Sim — os modelos**, nunca o conteúdo escrito. **Fora da pasta do sprint de propósito:** acumula através dos sprints, é a base de todo regressivo futuro (`artifact-ownership.md` §1c) |
 
 ## A pasta do sprint — `.team-project/sprints/<n>/`
 
@@ -50,7 +51,7 @@ O registro de execução é organizado **por sprint**, não por papel (R25): a p
 
 **Sprint fechado é imutável.** O `update` **não** reconcilia estrutura dentro de `sprints/<n>/` de sprint já encerrado: são registros históricos, e reescrevê-los destruiria o que eles existem para provar. Modelo novo vale do próximo sprint em diante.
 
-**O que fica FORA da pasta, e por quê:** registro de GAPs (`pending.md`), mapa de código (`03-code-map.md`), **baseline de verificação** (nasce antes do sprint 1), Product Backlog, SDD, ADRs, protótipo funcional do ①, **protótipo do sprint** e **checkpoints de spike** — todos somam, evoluem ou nascem fora do recorte de um sprint, e fatiá-los quebraria a leitura que o time faz deles. O Sprint Backlog carrega apenas o **ponteiro** do protótipo do sprint; o artefato é do UX.
+**O que fica FORA da pasta, e por quê:** registro de GAPs (`pending.md`), mapa de código (`03-code-map.md`), **baseline de verificação** (nasce antes do sprint 1), **suíte de cenários de teste** (`scenarios/`, R30), Product Backlog, SDD, ADRs, protótipo funcional do ①, **protótipo do sprint** e **checkpoints de spike** — todos somam, evoluem ou nascem fora do recorte de um sprint, e fatiá-los quebraria a leitura que o time faz deles. O Sprint Backlog carrega apenas o **ponteiro** do protótipo do sprint e a **referência** (lista de IDs) da suíte de cenários; os artefatos são do UX e do QA, respectivamente.
 
 **Histórias:** a fonte **viva** é `.team-project/product-owner/`, no formato de [`user-story.md`](../../roles/product-owner/templates/user-story.md). `sprints/<n>/stories/H-nnn.md` é a mesma História **como foi aprovada para aquele sprint** — mesmo ID, objetos diferentes (R25). O `update` nunca funde os dois.
 

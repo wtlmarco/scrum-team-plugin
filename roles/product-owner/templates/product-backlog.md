@@ -51,6 +51,16 @@ O conteúdo de cada História — regras funcionais, protótipos, critérios de 
 |---|---|---|---|---|
 | H-<nnn> | <n> | <o que o stakeholder ressalvou> | H-<nnn> nova / Task na próxima Planning | <papel> |
 
+## GAPs não-bloqueantes (origem: `pending.md`, QA — R30)
+
+> Todo GAP que a QA confirma em `pending.md` fora da Sprint Review, e que **não bloqueia** uma História em voo, ganha esta linha **no mesmo ciclo da confirmação** (R12 · R30). A QA aponta o ID na seção de roteamentos do veredito, endereçada a mim; eu abro a linha citando esse ID — sem ela, o GAP fica represado em `pending.md` e nunca concorre na Planning seguinte.
+
+| ID (`pending.md`) | Sprint / data da confirmação | O que ficou devendo | Vira | Dono |
+|---|---|---|---|---|
+| GAP-<nnn> | <n> / <data> | <descrição curta> | H-<nnn> nova / Task na próxima Planning | PO |
+
+> GAP que **bloqueia** uma História em voo não passa por aqui — vira Task da mesma História, no sprint corrente, registrada pelo SM no quadro (R25 · [`workflow.md` §5e](../../scrum-master/process/workflow.md) "Durante o sprint"). Esta tabela é só para o não-bloqueante.
+
 ## O que não entrou na priorização mais recente
 
 > **Peça obrigatória do pacote de abertura do sprint seguinte** (R25 · [`workflow.md` §5e](../../scrum-master/process/workflow.md) passo 9). No pacote o stakeholder vê o que **entrou** — sem esta lista, uma pendência crítica que despriorizei passa despercebida. Eu forneço esta lista ao SM, que a grava em `planning.md`; eu **proponho** a priorização, o stakeholder **aprova o pacote** e pode devolver.
@@ -80,4 +90,5 @@ O conteúdo de cada História — regras funcionais, protótipos, critérios de 
 - Detalhar **só o que candidata ao próximo sprint** — o detalhamento é lá no arquivo da História, não aqui. Conjunto de Histórias detalhadas por inteiro envelhece antes de ser construído.
 - "Fora de escopo" existe para poupar a discussão recorrente: registre o motivo e o gatilho de reavaliação.
 - **A cada Planning, atualizar "O que não entrou na priorização mais recente"** antes de o SM montar o pacote de abertura — é a peça que garante que despriorização não vira pendência invisível (R25).
+- **GAP não-bloqueante que a QA confirma em `pending.md` ganha linha em "GAPs não-bloqueantes" citando o ID, no mesmo ciclo da confirmação** (R12 · R30) — não espere a Sprint Review.
 - **`sprints/<n>/stories/` não é editado por aqui.** Uma vez congelado na aprovação do pacote, é registro fechado do sprint; a fonte viva continua sendo este backlog (R4 · R25).
