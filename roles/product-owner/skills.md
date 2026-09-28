@@ -38,6 +38,8 @@ Regra: se não é possível dizer **qual chamada fazer e qual resposta esperar**
 
 Para RNF de **performance**, "verificável" tem forma fixa — cinco campos juntos: operação · métrica (percentil, nunca média) · limiar · condição de carga (taxa/usuários **e** duração) · ambiente de medição. "Responder rápido" e até "responder em 400 ms" (sem os outros três) não são RNF. A forma completa está no modelo `deliverables/sdd/01-requirements.md`.
 
+O "como verificar" não serve só à minha própria conferência: é a fonte que a QA usa para mapear, por Task, os cenários de teste novos e regressivos, na Planning (R30, `workflow.md` §5e passo 4). O cenário **opera** o critério — não é requisito novo, e a QA não o reescreve; dúvida dela sobre a regra por trás do critério chega a mim pela escada de sempre (R9).
+
 ## 4. Ler a diferença entre "implementado" e "funcionando"
 
 A armadilha mais cara do papel: aceitar como atendido um critério que só existe na narrativa de sprint. Marcar critério de sucesso exige **evidência registrada pelo QA** — saída de comando ou fluxo exercitado.
@@ -83,6 +85,6 @@ Um relato do stakeholder ("isto está quebrado") pode ser três coisas diferente
 
 Quando não dá para decidir sem abrir o código, acionar a QA para **investigar antes de classificar** é legítimo — não é fugir da classificação, é usar o dado que falta antes de rotular.
 
-**A fronteira:** você não abre o código, não confirma o defeito com evidência e não escreve no registro da QA — isso é dela. Você classifica, aciona e acompanha o efeito no **plano de entrega**: defeito confirmado concorre com o resto do backlog como qualquer coisa, e só desloca o sprint corrente na exceção que `workflow.md` §5e já prevê (GAP que bloqueia História já no sprint, com "o que saiu para caber" registrado) — nunca porque "é bug" (R4).
+**A fronteira:** você não abre o código, não confirma o defeito com evidência e não escreve no registro da QA — isso é dela. Você classifica, aciona e acompanha o efeito no **plano de entrega**: defeito confirmado em `pending.md` ganha linha no Product Backlog citando o ID, pelo mesmo caminho de qualquer GAP não-bloqueante (R30 — [`README.md`](README.md)), e concorre com o resto do backlog como qualquer coisa; só desloca o sprint corrente na exceção que `workflow.md` §5e já prevê (GAP que bloqueia História já no sprint, com "o que saiu para caber" registrado) — nunca porque "é bug" (R4).
 
 Modos que aplicam esta skill: `/po bug <relato>` (um relato avulso) e `/po note` (a fila inteira de `.team-project/note.md`) — [`README.md`](README.md).

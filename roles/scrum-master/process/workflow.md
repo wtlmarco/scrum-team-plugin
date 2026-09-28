@@ -11,7 +11,7 @@
 
 **O Product Backlog é o índice ordenado das Histórias** (v3.21 — [`artifact-ownership.md` §1d](artifact-ownership.md)); cada uma vive em arquivo próprio. Uma História nasce do SDD, é detalhada quando vai entrar num sprint, e é quebrada em Tasks pelo time na Planning Meeting. **Toda Task pertence a exatamente uma História** (R20); Task sem História é trabalho que ninguém pediu.
 
-A Task carrega ID, título, História de origem, dono, dependências, estimativa, critério de pronto, **evidência esperada** e o **Plano de Implementação** escrito pelo Arquiteto. A convenção de IDs de cada projeto está em `.team-project/scrum-master/context.md` — tipicamente `H-nnn` para História, `T-nnn` para Task, sufixo para quebra (`T-012a`, `T-012b`), e o ID do GAP reusado quando a Task nasce de um GAP.
+A Task carrega ID, título, História de origem, dono, dependências, estimativa, critério de pronto, **evidência esperada**, o **Plano de Implementação** escrito pelo Arquiteto e a **referência aos cenários de teste mapeados pela QA** (lista de IDs de `.team-project/quality-assurance/scenarios/`, novos e regressivos — R30). A convenção de IDs de cada projeto está em `.team-project/scrum-master/context.md` — tipicamente `H-nnn` para História, `T-nnn` para Task, sufixo para quebra (`T-012a`, `T-012b`), e o ID do GAP reusado quando a Task nasce de um GAP.
 
 ## 2. Do SDD à entrega — a cadeia
 
@@ -45,7 +45,7 @@ Os quatro portões numerados são os gates de §8. **O detalhamento da História
 | 4 | Plano de Implementação | Arquiteto | `/arc plan <Task>` | Plano dentro da Task, citando a especificação de tela e as seções de standard. Persistido em `.team-project/sprints/<n>/plan/` |
 | 5 | Construção | dev | `/dev <Task>` | Código + testes + relatório de entrega |
 | 6 | Gap durante a construção | dev → Arquiteto | `/arc question` → `/dev gap` | Decisão do Arquiteto, dev retoma |
-| 7 | Validação | QA | `/qa <Task>` | Veredito ✅/⚠️/❌ com evidência — **inclui sempre, na mesma invocação, a checagem de aderência de execução ao plano e de completude/correção do standard citado** (§4a); a Task não fecha sem as duas |
+| 7 | Validação | QA | `/qa <Task>` | Veredito ✅/⚠️/❌ com evidência — **inclui sempre, na mesma invocação, a checagem de aderência de execução ao plano e de completude/correção do standard citado** (§4a) **e o resultado dos cenários de teste mapeados na Planning, incluindo os regressivos aplicáveis** (R30); a Task não fecha sem essa cobertura |
 | 8 | Fechamento da Task | SM | `/sm close <Task>` | Quadro + documento de status atualizados — **fechamento técnico, não aceite**. Linha nova no Registro de transições do Sprint Backlog (De: 🟪, Para: ✅) e ponto novo no burndown do sprint (R24) |
 | 9 | Sprint Review | PO demonstra, stakeholder decide | `/sm review` | História aceita / com ressalva / rejeitada · gaps e débitos ao backlog |
 | 10 | Sprint Retrospective | SM conduz | `/sm sprint close` | Retrospectiva + fechamento do sprint (§5c · §5e) |
@@ -79,6 +79,7 @@ As etapas 0 e 0b são **anteriores à cadeia** e não se repetem por Task: o onb
 - [ ] Dependências resolvidas ou explicitamente aceitas como risco
 - [ ] Plano de Implementação existente, dimensionado para uma unidade de trabalho (R2)
 - [ ] Segurança endereçada **no plano** quando a Task é sensível (R11)
+- [ ] **Cenários de teste mapeados pela QA** — novos (do critério de aceite da Task) e regressivos aplicáveis (ou "nenhum aplicável", com o motivo) — referenciados no Sprint Backlog (R30)
 - [ ] Comandos de verificação executáveis neste ambiente, ou a limitação declarada (R7)
 
 ## 4. Definition of Done
@@ -92,6 +93,7 @@ As etapas 0 e 0b são **anteriores à cadeia** e não se repetem por Task: o onb
 - [ ] Isolamento entre escopos preservado e coberto por teste quando aplicável
 - [ ] Veredito ✅ do QA com saída real de comando (R7)
 - [ ] **Frente 2 do veredito cobre os dois objetos** — aderência de execução ao plano e completude/correção do standard citado (§4a); Task sem essa dupla cobertura não fecha
+- [ ] **Cenários mapeados da Task executados**, incluindo os regressivos aplicáveis, com resultado registrado no veredito (R30)
 - [ ] Documentos de qualidade e evidências atualizados pelo QA; documento de status pelo SM (R12)
 
 ### 4a-ii. DoD da História — o valor chegou?
@@ -342,7 +344,7 @@ O sprint é a **unidade de cadência do time**: uma caixa de tempo de duração 
 | 1 | Fechar o sprint anterior, se houver: Review feita, retrospectiva registrada, Tasks não concluídas devolvidas ao Product Backlog **com a História a que pertencem** | SM (facilita) | Sprint anterior encerrado |
 | 2 | Selecionar as Histórias candidatas, na ordem do Product Backlog e conforme o **plano de entrega** — **só as que passaram na DoR da História** (§3a) — e conferir que o conjunto forma uma **fatia vertical demonstrável**, não meio fluxo (R25) | **PO decide** · SM confere a DoR e o critério de valor, e devolve o que não passou | Lista de candidatas |
 | 3 | **Varredura de bloqueios** sobre as candidatas: dependência não resolvida, lacuna de especificação, risco conhecido. Sanado aqui, ou a História **não entra** | SM conduz · PO (funcional) e Arquiteto (técnico) respondem | Candidatas sem bloqueio aberto, ou devolvidas ao Product Backlog |
-| 4 | Quebrar cada História em **Tasks** | o time (Arquiteto conduz, dev e QA contribuem) | Tasks com título, dependências e critério de pronto |
+| 4 | Quebrar cada História em **Tasks** | o time (Arquiteto conduz, dev e QA contribuem) | Tasks com título, dependências, critério de pronto e **cenários de teste mapeados pela QA** — novos e regressivos, a partir do critério de aceite do PO (R30) |
 | 5 | **Estimar cada Task** na unidade declarada em `.team-project/README.md` | o time | Estimativa por Task |
 | 6 | Somar e comparar com a **capacidade do sprint** — observada, não negociada | SM apresenta a conta | Quanto cabe |
 | 7 | **Cortar no limite da capacidade**: o que sai, sai por decisão de valor | **PO decide** o que fica de fora | Sprint Backlog fechado |
@@ -359,7 +361,7 @@ O sprint é a **unidade de cadência do time**: uma caixa de tempo de duração 
 
 ### Durante o sprint
 
-O escopo do Sprint Backlog **não cresce**. Trabalho novo que aparece — GAP, pedido do stakeholder, débito — entra no Product Backlog e concorre na Planning seguinte. A exceção é o GAP que **bloqueia uma História já no sprint**: vira Task da mesma História, e o SM registra a entrada fora de Planning no quadro, com o que saiu para caber. **O escopo aprovado no pacote é o que o stakeholder viu:** Task nova que altere o que ele aprovou espera a Review, a não ser que caiba inteira dentro de uma História já aprovada e do seu critério de aceite. E **`sprints/<n>/stories/` está congelado** — mudar uma História durante o sprint é violação de escopo (R4 · R25).
+O escopo do Sprint Backlog **não cresce**. Trabalho novo que aparece — GAP, pedido do stakeholder, débito — entra no Product Backlog e concorre na Planning seguinte. A exceção é o GAP que **bloqueia uma História já no sprint**: vira Task da mesma História, e o SM registra a entrada fora de Planning no quadro, com o que saiu para caber. **Quem escreve a linha do Product Backlog, para o GAP não-bloqueante (R30):** o GAP vive primeiro em `pending.md`, dono **QA**; a QA aponta o ID na seção de roteamentos do veredito, endereçada ao **PO**, e é o PO — dono do Product Backlog — quem abre a linha, citando esse ID, no mesmo ciclo em que a QA confirmou o GAP (R12). Sem essa linha, o GAP fica preso em `pending.md` e nunca concorre na Planning seguinte, apesar de esta regra dizer que deveria. **O escopo aprovado no pacote é o que o stakeholder viu:** Task nova que altere o que ele aprovou espera a Review, a não ser que caiba inteira dentro de uma História já aprovada e do seu critério de aceite. E **`sprints/<n>/stories/` está congelado** — mudar uma História durante o sprint é violação de escopo (R4 · R25).
 
 ### Sprint Review — fecha o trabalho (`/sm review`)
 
@@ -386,6 +388,7 @@ Roda **depois** da Review, com o resultado dela à vista. Usa o [modelo de retro
 - Toda entrada de escopo fora da Planning tem a linha "o que saiu para caber" no quadro.
 - Review e retrospectiva do sprint anterior estão registradas antes da Planning seguinte.
 - Quando o projeto registra consumo, `sprints/<n>/consumption.md` existe e a retrospectiva o leu antes do fechamento da pasta (§5c).
+- Toda Task tem cenários de teste mapeados (novos e regressivos aplicáveis) antes da construção, e o veredito da QA registra o resultado de cada um (R30).
 - `.team-project/sprints/<n>/` existe desde a Planning (com `planning.md` e, após a aprovação do pacote, `burndown.md` de abertura) e termina o sprint completa — `sprint-backlog.md` fechado, `burndown.md` fechado, `review.md`, `retrospective.md`, e as três subpastas com o que seus donos produziram. Pasta incompleta no `/sm sprint close` é achado de processo (R24 · R25).
 
 ## 5f. Burndown do sprint — de onde vem o dado, e o que ele não mostra (R24)
@@ -559,7 +562,9 @@ Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no pa
 | Plano de Implementação existe | construção | Arquiteto | R8 |
 | Plano traz o **ambiente medido** (comando + saída — próprias ou do `operator`, com o caminho do log bruto), os comandos citados validados naquela versão, e parada incondicional para pré-requisito **ausente** | construção | Arquiteto | R26 |
 | Plano cita a seção de `${CLAUDE_PLUGIN_ROOT}/standards/` que a mudança de engenharia toca | construção | Arquiteto | R16 |
+| **Cenários de teste (novos e regressivos) mapeados por Task, referenciados no Sprint Backlog** | construção | QA | R30 |
 | **Aderência de execução ao plano**, e seção de standard **exigida pela Task** presente no plano e aplicada no código — as duas, na mesma frente 2 | veredito | QA | R16 · §4a |
+| **Cenários mapeados executados, com resultado registrado no veredito** — inclui os regressivos aplicáveis | veredito | QA | R30 |
 | Build sem avisos + testes passando | veredito | QA | R7 |
 | Segurança: identidade, permissão, auditoria, segredo | veredito | QA | R11 |
 | Documentação atualizada | fechamento da Task | QA | R12 |

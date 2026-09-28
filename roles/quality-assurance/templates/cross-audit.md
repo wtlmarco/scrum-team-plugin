@@ -25,6 +25,10 @@ Compara o documento de status, o escopo/critérios, o inventário de código e o
 | Critério / requisito | O status diz | O registro de GAPs diz | Quem tem razão |
 |---|---|---|---|
 
+### 5. Suíte de cenários — referência sem arquivo, ou índice divergente (R30)
+| Task/Sprint Backlog | ID(s) de cenário referenciado(s) | Arquivo `SC-nnn` existe? | Índice (`scenarios/README.md`) bate com o Histórico do cenário? |
+|---|---|---|---|
+
 **Pontos suspeitos para o Passe 2:** <lista curta — só o que justifica ler código>
 ```
 
