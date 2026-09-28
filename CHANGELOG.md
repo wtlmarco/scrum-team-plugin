@@ -13,6 +13,23 @@
 
 ---
 
+## v3.32.0 — 2026-09-25
+
+**Branch:** `fix/v3.32.0` a partir de `develop` · **Processo:** [`v3.32`](roles/scrum-master/process/process-changelog.md)
+
+Rodada de `/review note` sobre teste funcional do QA (SM + QA + PO), com as propostas de `agents/`/`commands/` aprovadas pelo stakeholder.
+
+- **R30 — cenário de teste funcional e regressivo:** na Planning, o QA mapeia por Task os cenários novos e os regressivos afetados, a partir do critério de aceite do PO e do protótipo funcional; Task não constrói sem cenários mapeados (DoR) e o veredito não fecha sem executá-los (DoD).
+- **Suíte de cenários** em `.team-project/quality-assurance/scenarios/` (`SC-nnn`), dono QA, acumulada fora da pasta do sprint; a Task do Sprint Backlog só referencia os IDs (coluna nova **Cenários**). Modelos novos: `scenario.md` e `scenarios-index.md`.
+- **GAP de cenário:** bloqueante vira Task no sprint corrente (R25); não bloqueante vai de `pending.md` ao PO, que abre a linha no Product Backlog citando o ID. Isso fecha a lacuna geral de GAP fora da Sprint Review.
+- **Navegador:** `agents/quality-assurance.md` e `agents/operator.md` ganham `mcp__claude-in-chrome`. Cenário isolado roda no QA; grupo e suíte, no `operator` (R28). Sem a extensão conectada, o cenário fica ⚠️ não executado — sem ferramenta.
+- **`/qa scenarios create`** e **`/qa scenarios run <SC-nnn|grupo|all>`** em `commands/qa.md`.
+- `v3.29` arquivada no `process-changelog-archive.md` (R17).
+
+**Verificar:** a Planning produz a coluna Cenários preenchida; `/qa <Task>` traz a tabela de resultado por cenário; `/qa scenarios run all` delega ao `operator`. Mudança em `agents/`/`commands/` só vale após reiniciar a sessão, e o navegador exige a extensão Claude in Chrome conectada.
+
+---
+
 ## v3.31.0 — 2026-09-23
 
 **Branch:** `feat/v3.31.0` a partir de `develop` · **Processo:** [`v3.31`](roles/scrum-master/process/process-changelog.md)

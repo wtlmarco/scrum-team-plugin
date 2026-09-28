@@ -113,7 +113,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | `/arc` | `plan <T-ID>` · `comply <T-ID>` *(exceção pedida pelo stakeholder)* · `adr <tema>` · `question <dúvida>` |
 | `/ux` | `prototype` · `journey <fluxo>` · `screen <nome>` · `prototype screen <tela>` · `review-ui <tela>` |
 | `/dev` | `<T-ID>` · `resume <T-ID>` · `gap <resposta>` |
-| `/qa` | `<T-ID>` · `baseline` · `audit` · `security <T-ID>` |
+| `/qa` | `<T-ID>` · `baseline` · `audit` · `security <T-ID>` · `bug <descrição>` *(acionado pelo PO)* · `scenarios create` · `scenarios run <SC-nnn\|grupo\|all>` |
 | `/team` | `init` · `update` · `brainstorm <ideia>` · `cycle <T-ID>` · `plan <T-ID>` · `build <T-ID>` · `qa <T-ID>` |
 
 **O canal do stakeholder é o PO** — demanda, valor, escopo, prioridade, **prazo, plano de entrega e status**. Questão técnica vai ao **Arquiteto**, de tela ao **UX**, diretamente. O **SM não é canal de demanda**: é processo, organização e eficiência, gere os rituais e facilita acordo. **Não há broadcast** — `/team` orquestra o time trabalhando, não fala com os seis.

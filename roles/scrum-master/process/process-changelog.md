@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.29`](process-changelog-archive.md) | R28 troca o mecanismo impossível pelo implementável (arquivo na origem + agente `operator`); R26 aceita medição do `operator`; agente conta sobe a 7 (SM + PO + Arquiteto + QA + UX) — 21/09/2026 |
 | [`v3.28`](process-changelog-archive.md) | R26(i) passa a cobrir o plano inteiro, não só o primeiro passo; R28 nova poda o log de build do contexto do subagente (SM) — 21/09/2026 |
 | [`v3.27`](process-changelog-archive.md) | Os três pontos abertos de `note.md` resolvidos em formulário: teto da R17 escala, R27 nova, R5 ganha o lado de quem orquestra (SM) — 20/09/2026 |
 | [`v3.26`](process-changelog-archive.md) | UX desce de Opus para Sonnet, por medição de custo (stakeholder) — 20/09/2026 |
@@ -64,6 +65,112 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.32 — R30: QA mapeia cenário de teste funcional/regressivo na Planning e o executa no veredito; GAP não-bloqueante ganha caminho explícito ao Product Backlog (SM) — 23/09/2026
+
+**Instrução** (`note.md`, triagem `/review note`, três itens fechados numa decisão do stakeholder via `AskUserQuestion`): **(1)** QA lê Histórias aprovadas + protótipo funcional e monta cenários de teste funcionais do sprint, também regressivos pelo impacto da Task; **(2)** isso ocorre a cada sprint — mapeado na Planning por Task, executado na entrega do dev, mesmo conceito de "Histórias aprovadas para o sprint" aplicado aos cenários; **(3)** erros/gaps de cenário entram no Backlog para o próximo sprint. Decisão do stakeholder sobre o conflito de R25 §5e: **GAP que bloqueia História em voo continua virando Task no sprint corrente** (R25 intacto); só o que **não bloqueia** vai ao Product Backlog — e o stakeholder pediu para fechar a lacuna preexistente de **quem** escreve essa linha. Decisão sobre onde a suíte vive: **avaliar aderência** de "ficar na área da QA e ser referenciada como Task no Sprint Backlog" contra `artifact-ownership.md` §1/§1c/§1e — aderente, aplicado como tal.
+
+**Classificação:** etapa de fluxo + propriedade de artefato nova (regra de trabalho, R30) + formato de documento (roteiro/skills/templates do QA e do PO, aplicando a própria contraparte da regra). **Rodada de três papéis aplicando na própria mão** (SM em `working-rules.md`/`workflow.md`/`artifact-ownership.md`; QA em `roles/quality-assurance/`; PO em `roles/product-owner/`) — as três aplicações datam do mesmo `/review` de 23/09/2026 e compõem uma entrada só (R17, precedente v3.25/v3.31: a unidade é a decisão, não o papel). Barreira aplicável: **12,5 KB** (10 KB + 2,5 KB pelo terceiro papel).
+
+### O que mudou
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `working-rules.md` | Bloco C, após R27 | **R30 nova**: QA mapeia cenários (novos + regressivos) por Task na Planning, a partir do critério de aceite do PO e do protótipo funcional; opera o critério, não o reescreve (dúvida escala ao PO por R9/§6b, sem redeclarar); execução pesada segue R28; GAP de cenário bloqueante vira Task no sprint corrente (R25 intacto), não-bloqueante ganha par no Product Backlog escrito pelo PO — mecânica que fecha a lacuna geral de todo GAP não-bloqueante de `pending.md`, não só o de cenário |
+| `workflow.md` | §1 (Task); §2a etapas 3/7; §3b DoR; §4a-i DoD; §5e passo 4 e "Durante o sprint"; §8 gates | Task ganha campo "cenários mapeados (IDs)"; etapa 7 e o veredito cobrem o resultado; DoR/DoD exigem cenário mapeado/executado; "Durante o sprint" ganha `pending.md` (QA) → PO → Product Backlog; +2 linhas de gate |
+| `artifact-ownership.md` | matriz §1; §1c; §1e; §4 | Nova linha **Suíte de cenários** (`.team-project/quality-assurance/scenarios/`, dono QA, fora da pasta, acumulada); Tasks/Product Backlog/GAPs atualizadas; §1c/§1e (quatro artefatos fora da pasta) e §4 (`SC-nnn`) incluem a suíte |
+
+### Por quê
+
+Sem cenário mapeado antes da construção, a verificação funcional era reinventada a cada Task, sem memória do que já tinha sido coberto — uma Task quebrava um fluxo que já funcionava e isso só aparecia na Review ou em produção. E, sem o passo mecânico `pending.md` → PO → Product Backlog, um GAP confirmado pela QA fora da Sprint Review ficava preso no registro da QA sem nunca concorrer no próximo sprint, apesar de `workflow.md` §5e já dizer que deveria — lacuna preexistente, exposta por este item, não criada por ele.
+
+**Avaliação de aderência do local da suíte** (pedido do stakeholder): **aderente** manter a suíte na área da QA, fora de `sprints/<n>/`, com o Sprint Backlog carregando só a referência (lista de IDs) por Task — critério e racional completos ficam em `artifact-ownership.md` §1c/§1e (norma que governa o assunto), esta entrada só referencia. Nenhuma parte do pedido foi considerada não aderente.
+
+### Quem passa a ser cobrado de forma diferente
+
+| Papel | O que muda para ele |
+|---|---|
+| **QA** | Mapeia cenários (novos + regressivos) por Task na Planning, além de já contribuir na quebra (§5e passo 4); executa e registra o resultado no veredito; aponta GAP não-bloqueante para o PO com o ID de `pending.md`. Contraparte de roteiro/skills/templates aplicada nesta mesma entrada — ver "Aplicação do QA", abaixo |
+| **PO** | Ganha a obrigação explícita de abrir a linha do Product Backlog para todo GAP não-bloqueante que a QA registrar em `pending.md`, citando o ID, no mesmo ciclo da confirmação (R12) — antes implícito em `workflow.md` §5e, agora mecânico. Contraparte de roteiro/skills/templates aplicada nesta mesma entrada — ver "Aplicação do PO", abaixo |
+| **SM** | Verifica o campo de cenários no Sprint Backlog (DoR/DoD), a dupla cobertura do veredito e o par GAP↔Product Backlog nas duas pontas |
+
+### Conflitos com o processo vigente
+
+Um só, já resolvido pelo stakeholder (registrado em B(i) da triagem): item 5 do `note.md`, lido ao pé da letra, mandaria **todo** erro/GAP de cenário para o próximo sprint — contradizendo a exceção de R25 §5e ("GAP que bloqueia uma História já no sprint vira Task da mesma História", imediato, não represado). **Resolução:** a exceção de R25 fica intacta; R30 só formaliza o caminho do que **não** bloqueia. Registrado como parte da própria regra nova (R30, working-rules.md), não como pendência aberta.
+
+### Como saberemos que funcionou
+
+No próximo sprint que rodar `/sm sprint plan`, toda Task do Sprint Backlog cita cenários mapeados (ou "nenhum aplicável" com motivo) antes de entrar em construção, e nenhum veredito de `/qa <Task>` fecha sem o resultado deles. Em `pending.md`, todo GAP não-bloqueante registrado a partir desta versão tem par datado no Product Backlog dentro do mesmo sprint em que foi confirmado — GAP sem par depois de uma Planning inteira é o sinal de que a mecânica não pegou.
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Extração/adição de regra nova | `Select-String -Path working-rules.md -Pattern "^### R30"` | 1 ocorrência, "### R30. Cenário de teste funcional e regressivo é mapeado na Planning e executado no veredito do QA" | ✅ |
+| Substituição de padrão | `Select-String -Path artifact-ownership.md -Pattern "Três artefatos ficam fora"` | 0 ocorrências (era 1) — substituído por "Quatro artefatos ficam fora..." com a suíte de cenários incluída e lida no contexto | ✅ |
+| Substituição de padrão | `Select-String -Path workflow.md,working-rules.md,artifact-ownership.md -Pattern "R30"` | `workflow.md`: 9 · `working-rules.md`: 1 · `artifact-ownership.md`: 6 — total 16, cada ocorrência lida no contexto de inserção | ✅ |
+| Extração/remoção | Contagem de linhas do bloco "Como o SM verifica" (§5e) e da tabela de gates (§8) antes/depois | "Como o SM verifica": 9 → 10 linhas (+1, a de R30); gates: 20 → 22 linhas (+2, construção e veredito) | ✅ |
+| Substituição de padrão (aplicação 25/09/2026) | `grep mcp__claude-in-chrome agents/{operator,quality-assurance}.md` · `grep "scenarios (create\|run)" commands/qa.md` · `git diff --stat -- agents/ commands/` | ferramenta nos 2 cards; hint + 2 modos em `commands/qa.md`; `git diff --stat`: 3 arquivos, 8 inserções / 3 remoções — cada trecho lido, coerente com o roteiro do QA (R30) | ✅ |
+
+*(Tamanho da entrada consolidada e pendente do stakeholder: no fecho, depois das aplicações do QA e do PO — uma lista e uma medição só.)*
+
+### Aplicação do QA (`/review`, 23/09/2026) — `roles/quality-assurance/`
+
+| Documento | Mudança |
+|---|---|
+| `README.md` | Suíte nas Entradas/Saídas/Escreve; seção de mapeamento/execução; "Planning Meeting" no roteiro; `/qa <ID>` passo 4/6 |
+| `skills.md` | Skill 13 nova — critério de aceite → cenário, sem reescrevê-lo |
+| `templates/verdict.md` | Seção de cenários, roteamento por bloqueio |
+| `templates/evidence.md` | Mesma tabela de cenários do veredito |
+| `templates/cross-audit.md` | Passe 1 ganha checagem de cenário |
+| `templates/scenario.md` (novo) | Modelo `SC-nnn` |
+| `templates/scenarios-index.md` (novo) | Modelo do índice |
+
+**Evidência (R19):** `R30` em 7 arquivos do QA, 15 ocorrências (README:3 · skills:3 · verdict:3 · evidence:1 · cross-audit:1 · scenario:2 · scenarios-index:2) — conferido por `grep`, cada ocorrência lida no contexto. `git diff --stat -- roles/quality-assurance/`: 5 arquivos, 82 inserções / 7 remoções, + 2 arquivos novos — conferido.
+
+**Dois achados devolvidos ao SM** (fora do alcance do QA) — tratados em "Curadoria do SM", abaixo.
+
+### Aplicação do PO (`/review`, 23/09/2026) — `roles/product-owner/`
+
+| Documento | Mudança |
+|---|---|
+| `README.md` | Seção nova — GAP não-bloqueante da QA vira linha no Product Backlog; `/po bug` passo 5 unificado ao mesmo caminho |
+| `skills.md` | Skill 3/8 apontam a mesma fonte, sem duplicar |
+| `templates/product-backlog.md` | Seção "GAPs não-bloqueantes (origem `pending.md`, QA)" |
+| `templates/user-story.md` | Nota: Critérios de aceite é a fonte que a QA opera, sem reescrevê-la |
+
+**Por quê:** `/po bug` (passo 5) e a skill 8 descreviam o mesmo destino em prosa divergente — unificados nesta entrada.
+
+**Evidência (R19):** `R30` em 4 arquivos do PO, 11 ocorrências (README:5 · skills:2 · product-backlog:3 · user-story:1) — conferido por `grep`, cada ocorrência lida no contexto. `git diff --stat -- roles/product-owner/`: 4 arquivos, 22 inserções / 4 remoções — conferido.
+
+### Curadoria do SM — dois achados do QA aplicados, e referência cruzada da rodada
+
+O QA devolveu dois achados fora do alcance dele — nenhum é comportamento, os dois são coerência de referência cruzada já coberta pela exceção de `review-contract.md` §Limites, aplicados direto:
+
+- **`sprint-backlog.md`** (SM): ganha a coluna **Cenários** (ponteiro, nunca cópia) — faltava para a referência que R30 já exige (DoR/DoD).
+- **`deliverables/README.md`** (SM): linha nova para a Suíte de Cenários em "Conjuntos".
+- **`deliverables/team-project/README.md`** (achado da própria curadoria): manifesto e "O que fica FORA da pasta" passam a citar `scenarios/`, já nomeada em `artifact-ownership.md` §1e.
+
+**Contradição entre os dois papéis (QA × PO):** nenhuma — caminho da suíte, par modelo×arquivo e "quem escreve o quê" conferidos lado a lado, mesma fronteira, sem sobreposição nem lacuna.
+
+**Evidência (R19):** as três edições acima (`sprint-backlog.md`, `deliverables/README.md`, `deliverables/team-project/README.md`) lidas depois de aplicadas — coluna nova resolve no exemplo; linha nova resolve nos dois links; a frase "O que fica FORA" cita os quatro artefatos, mesma contagem de `artifact-ownership.md` §1e.
+
+### Pendente do stakeholder (consolidado — SM + QA + PO, uma lista só)
+
+**Aprovado e aplicado pelo stakeholder em 25/09/2026** (sessão principal, em nome dele), com o texto abaixo — os dois itens saem de `note.md` (Abertas), que volta a ficar vazia:
+
+| Arquivo | Mudança |
+|---|---|
+| `agents/operator.md` | `tools:` ganha `mcp__claude-in-chrome`; item **8** do contrato — cenário de navegador em lote (R30) roda por Claude in Chrome, uma linha por cenário no relatório; sem extensão, `inconclusivo — sem ferramenta` |
+| `agents/quality-assurance.md` | `tools:` ganha `mcp__claude-in-chrome`; parágrafo novo — cenário isolado roda no próprio QA, grupo/suíte inteira vai ao `operator` (R28); sem extensão conectada na sessão, ⚠️ **não executado — sem ferramenta** |
+| `commands/qa.md` | `argument-hint` e corpo ganham `scenarios create` (povoa a suíte a partir do SDD + protótipo) e `scenarios run <SC-nnn\|grupo\|all>` (isolado no QA; grupo/`all` no `operator`), roteando GAP por R30 |
+| `roles/quality-assurance/{README.md,templates/scenario.md,templates/scenarios-index.md}` (QA) | "sem ferramenta no card" → "extensão não conectada na sessão"; Roteiro por modo aponta os dois modos novos. Evidência: `Select-String "ferramenta.{0,40}(não existe\|não tem\|não carrego\|fora do meu alcance)"` → 0 (era 4) |
+
+**Condição inalterada, causa diferente:** o card tem a ferramenta; sem a extensão conectada, o resultado segue ⚠️ não executado — sem ferramenta.
+
+**Teto (R17):** bloco `## v3.32`, `[IO.File]::ReadAllText` UTF-8, medido em 25/09/2026 — **12.718 B**, sob 12,5 KB (3 papéis).
 
 ---
 
@@ -221,115 +328,3 @@ Próximo relatório de uma fase de natureza diferente da anterior (ex.: entrada 
 ### Pendente do stakeholder
 
 Nenhuma decisão pendente. `agents/scrum-master.md` foi tocado só na contagem de regras — cabe na exceção de coerência de referência cruzada do SM (`review-contract.md` §Limites), não é mudança de comportamento de agente; ainda assim, **qualquer edição em `agents/*.md` só entra em vigor depois de reiniciar a sessão**, e a mudança só chega a outros projetos depois de `git push` + `claude plugin marketplace update team` + `claude plugin update team@team`.
-
----
-
-## v3.29 — R28 troca o mecanismo impossível pelo implementável (arquivo na origem + agente `operator`); R26 aceita medição do `operator`; agente conta sobe a 7 (SM + PO + Arquiteto + QA + UX) — 21/09/2026
-
-**Instrução** (stakeholder, sobre a v3.28 recém-aplicada): R28 mandava "descartar do próprio contexto" um log que já tinha sido recebido por inteiro — mecanismo que nenhum papel consegue executar, porque o histórico da conversa já reteve os tokens antes de qualquer decisão de descarte. A correção troca o mecanismo por **redirecionamento de saída para arquivo na origem** e **delegação da execução pesada ao novo agente `operator`** (aplicado pelo stakeholder nesta mesma versão, fora deste alcance); R26(i) recebe emenda para aceitar a medição do `operator` como a medição que a regra exige; `workflow.md` e os guias de raiz são realinhados.
-
-**Classificação:** regra de trabalho (**R28** reescrita; **R26** emendada) + curadoria de coerência de referência cruzada (`workflow.md`, `how-to.md`, `replicate-in-new-project.md`, `README.md`, `agents/architect.md`) + achado de processo roteado (a delegação de R28 aos `skills.md` de Arquiteto/QA/Dev, prevista desde a v3.28) + modelo do PO alinhado (`acceptance.md`). **Rodada de 6 papéis** — SM, PO, Arquiteto, QA, UX aplicaram com a própria mão; o **Dev entra como papel movido à parte**, porque o Arquiteto aplicou em `roles/developer/*` no lugar dele (R16 · v1.3), e é cobrado como os cinco — barreira: **20 KB (teto absoluto)**, ver nota de racional em R17 (v3.29).
-
-### O que mudou
-
-| Documento | Seção | Mudança |
-|---|---|---|
-| `working-rules.md` | R28 (corpo) | Mecanismo trocado: saída longa vai para arquivo na origem (`comando *> arquivo.log`), só o trecho decisivo volta ao contexto; execução pesada delegada ao agente `operator`; log em `.team-project/operator/<sprint>/<job>/`, retido durante o sprint e podado após o aceite do PO; relatório exige **trecho e ponteiro**, nunca um sozinho; lista de papéis que detalham a mecânica no próprio `skills.md` ganha **UX** |
-| `working-rules.md` | R28 (Evita / SM verifica / título / "Resumo em uma tela") | Reescritos para o novo mecanismo; título passa a "Saída pesada de build/teste/lint vai para arquivo na origem, e a execução pesada é delegada ao `operator`" |
-| `working-rules.md` | "Como o SM aplica" (lista de regras binárias) | R28 entra na lista — fora dela por lapso da v3.28 |
-| `working-rules.md` | R26 (i) | Emenda: medição do `operator` vale como a medição que a regra exige, se trouxer comando, código de saída, versões e caminho do log bruto; caduca se a toolchain declarada mudar de arquivo, ou o log sumir do caminho; veredito **inconclusivo** nunca vale |
-| `working-rules.md` | R26 (SM verifica) | "comando e saída, não afirmação" → "...próprias ou do `operator`, com o caminho do log bruto — nunca afirmação" |
-| `workflow.md` | §8, linha do gate de R26 | Mesmo texto alinhado |
-| `how-to.md` · `replicate-in-new-project.md` · `README.md` (raiz) | contagem de agentes | "6 agentes"/"6 agents" → "7" nos três lugares — `README.md:241` era achado extra, fora da lista original (evidência R19) |
-| `roles/architect/skills.md` | **§14** (nova) | Delegação de R28: o que extrair por tipo de verificação, o que delegar ao `operator`, os **quatro gatilhos** de aprofundamento, a forma trecho + ponteiro |
-| `roles/architect/README.md` | `/arc plan` p.1 · spike · indicadores | R26(i) alinhada ao "plano inteiro"; spike passa de três a **quatro** obrigações (§11–§14); indicador novo de execução nunca inline |
-| `roles/architect/templates/` | `implementation-plan.md` §3 · `compliance-review.md` §2 | §3 aceita medição do `operator`, ganha coluna **Log bruto**; comply exige trecho **e** caminho |
-| `roles/developer/` | `skills.md` §6 · `README.md` | Execução pesada ao `operator` (inline só como exceção **declarada, com motivo**); build de fim de passo redirecionado; tabela do trecho por comando (aplicado pelo Arquiteto — o dev não edita o próprio normativo) |
-| `roles/developer/skills.md` | §6 (fecho do achado) | Os quatro gatilhos, texto idêntico a Arquiteto §14/QA §2/UX §10; gatilho sem explicação = 🔺 GAP ao Arquiteto; exceção de execução inline passa a apontar R28 em vez de redeclará-la |
-| `roles/developer/templates/delivery-report.md` | Verificação | Bloco `comando → saída real` vira tabela **Comando · Código de saída · Trecho decisivo · Log bruto** |
-| `standards/implementation-principles.md` · `implementation-guide.md` | §5.4 (nota nova), §5.6 P6, §7 #21 · §9 | Explícito que **trecho + ponteiro** satisfaz "saída real"; piso inalterado (código de saída ≠ 0, Arquiteto dono editorial — R16) |
-| `roles/product-owner/templates/acceptance.md` | regra de História sob orçamento de desempenho | "saída real do comando de carga" → "trecho decisivo **e** ponteiro do log em `.team-project/operator/<sprint>/<job>/`"; regra nova: ponteiro que não resolve = "não exercitado" (rejeição), nunca reexecutado por conta própria |
-| `roles/user-experience/skills.md` | §10, subseção "Delegar a execução..." | O que extrair do harness; harness delegado ao `operator`, veredito continua do UX; trecho **e** ponteiro; os quatro gatilhos; `inconclusivo` = não exercitada. Alcance: só o harness (4 dos 6 modos do `/ux` não executam nada) |
-| `roles/user-experience/templates/` · `deliverables/prototype/README.md` | fichas · `verification-log.md` · checklist do ① | Colunas **O que falhou (trecho)** e **Log bruto** na tabela append-only; ① passa a exigir "exercitado, com trecho + ponteiro" (incoerência com o ③, que já exigia) |
-| `working-rules.md` | R17 (corpo + nota de racional nova) | **Curadoria (SM):** ganha a frase que resolve "papel movido" pelo documento que mudou, não por quem editou — e uma nota de racional (v3.29) que fixa a contagem desta própria rodada em 6 papéis |
-| `working-rules.md` | R28 (corpo + SM verifica) | **Curadoria (SM):** log ganha o segmento `.../operator/pre-sprint/<job>/` para verificação anterior ao sprint 1 (onboarding, `brainstorm`, harness do ①, baseline do QA); retenção ancorada no fechamento da cerimônia; a exceção do dev sobe do `skills.md` para o próprio R28 — depois removida, ver "Conflitos" |
-| `agents/architect.md` | linha 67 | "skills §11–§13" → "§11–§14": só a contagem cabe na exceção de coerência de referência cruzada do SM; a cláusula de delegação ao `operator` na mesma linha é obrigação nova de comportamento de agente, que entrou por autorização do stakeholder, não pela exceção — ver "Conflitos" |
-| `working-rules.md` | R28 (corpo + SM verifica) | **Curadoria (SM), aprovada pelo stakeholder:** os quatro gatilhos viram **lista canônica em R28**; cada `skills.md` passa a **apontar** para ela em vez de redeclará-la — corte feito nesta mesma rodada, pelos papéis donos, linhas abaixo |
-| `roles/architect/skills.md` | §14 | Corte do texto que redeclarava os quatro gatilhos (**−7 linhas**), substituído por ponteiro a R28 |
-| `roles/developer/skills.md` | §6 | Mesmo corte (**−4 linhas**), aplicado pelo Arquiteto (R16 · v1.3) |
-| `roles/quality-assurance/skills.md` | §2 | Mesmo corte (**−4 linhas**); achado do QA: **quinta** redeclaração em `verdict.md:59` — corrigida junto |
-| `roles/user-experience/skills.md` | §10 | Mesmo corte; achado do UX: redação já divergente antes do corte — ver "Conflitos" |
-| `agents/operator.md` | corpo | Corrigido pela sessão principal, por autorização do stakeholder — redeclarava a mesma lista |
-
-### Por quê
-
-R28 (v3.28) descrevia um mecanismo que nenhum agente consegue executar: uma vez que uma chamada de ferramenta devolve texto, ele já está no histórico da conversa — "descartar do próprio contexto" não é ação disponível a quem opera dentro dele. A metade cumprível (o *relatório* citar só o trecho) já vinha sendo cumprida, e por isso o custo da sessão medida (~303M tokens, 20 subagentes, 59–70 chamadas PowerShell por subagente, Arquiteto respondendo pela maior fatia) continuou alto: podar o relatório não evita que o log inteiro entre e permaneça no contexto de quem o rodou. A correção ataca a causa: o que nunca entra no contexto não precisa ser descartado dele, e a execução mais cara passa a ser trabalho do `operator`, lido por quem decide em vez de reexecutado por ele. A emenda de R26 é consequência direta — sem ela, o `operator` seria ilegal pelo próprio processo. A curadoria fechou dois furos que só apareceram depois de os cinco papéis aplicarem: verificação que roda **antes de existir sprint 1** não tinha `<sprint>` para preencher (achado do UX, endossado pelo Arquiteto), e o dev **não tinha ferramenta** para acionar o `operator` — a mesma classe de mecanismo impossível que motivou esta rodada inteira, achada num canto que R28 ainda não cobria. Essa segunda lacuna fechou de dois lados na mesma janela: o stakeholder deu ao dev a ferramenta `Agent`, e a exceção que a hospedava saiu de R28 nesta consolidação (ver "Conflitos").
-
-### Quem passa a ser cobrado de forma diferente
-
-| Papel | O que muda |
-|---|---|
-| Arquiteto | Não roda mais build/teste/lint pesado inline: delega ao `operator`, lê trecho + ponteiro; medição de ambiente de R26 pode vir do `operator` |
-| QA | Mesma delegação; audita o relatório do dev pelo ponteiro do log do `operator` |
-| Dev | Mesma delegação, mesma régua de trecho + ponteiro. **A exceção estrutural que existia para ele caducou nesta versão** — ganhou a ferramenta `Agent` e sai de R28 |
-| UX | Passa a detalhar, no próprio `skills.md`, o que extrair do harness antes de descartar o log; só o harness muda — os modos que não executam nada seguem iguais |
-| PO | Confere a saída de carga do `operator` na Sprint Review, pelo mesmo ponteiro que o QA auditou |
-| SM | Verifica trecho + ponteiro sempre juntos, delegação efetiva, os quatro campos da medição do `operator`, e o caminho `pre-sprint/`; a exceção do dev **saiu do escopo de verificação** |
-
-### Conflitos
-
-- Delegação de R28 aos `skills.md` de Arquiteto/QA/Dev, pendente desde a v3.28 — **resolvida** (Arquiteto §14, QA §2, UX §10, Dev via Arquiteto).
-- Exceção do dev (sem ferramenta para o `operator`) subiu a R28 nesta curadoria, por ser estrutural — depois, na mesma janela, o stakeholder deu a `agents/developer.md` a ferramenta `Agent`. A condição de caducidade que o próprio R28 previa ("some no dia em que o agente ganhar a ferramenta") se cumpriu. **Decisão: a exceção sai de R28** — corpo da regra e "SM verifica" reescritos, dev tratado como qualquer outro papel.
-- R28 fixava `.team-project/operator/<sprint>/<job>/` sem cobrir verificação anterior ao sprint 1 (① protótipo funcional, onboarding, baseline do QA) — achado do UX, endossado pelo Arquiteto — **resolvido**: R28 ganha o segmento `pre-sprint/`.
-- `roles/developer/skills.md` §6 não lista os quatro gatilhos de aprofundamento que Arquiteto §14 / QA §2 / UX §10 trazem — inconsistência entre papéis, achada na curadoria. **Roteada ao Arquiteto** (dono da aplicação no normativo do dev, R16 · v1.3) e **fechada** por ele nesta mesma versão.
-- `agents/architect.md:67`: a contagem (§11–§13 → §11–§14) cabe na exceção de coerência de referência cruzada do SM, legítima. **A cláusula de delegação ao `operator` na mesma linha é obrigação nova de comportamento de agente — a exceção nunca cobre isso.** Entrou por autorização do stakeholder (parte C), não pela caneta do SM; o estado final é legítimo, mas o registro original desta entrada atribuía as duas coisas à mesma exceção, o que era falso. Corrigido aqui, não apagado.
-- `roles/developer/skills.md:45` citava, com redação própria, "a exceção estrutural que o próprio R28 declara para o dev" — sem referente, depois de R28 removê-la. **Roteado ao Arquiteto** (dono da aplicação em `roles/developer/*`, R16 · v1.3) e **fechado** por ele nesta mesma versão: o dev delega como qualquer outro papel, sem via alternativa.
-- A redação do UX em §10, antes do corte, já trazia glosa própria no item "Os totalizadores" ("telas percorridas ≠ telas do escopo declarado") que nenhum outro `skills.md` tinha — divergência de redação **já em curso**, não risco hipotético; é a evidência de por que R28 precisava da lista canônica. Achado permanente, não deliberação.
-
-### Como saberemos que funcionou
-
-Próxima verificação pesada mostra o comando delegado ao `operator` no relatório, com trecho extraído e ponteiro — não dezenas de chamadas PowerShell inline no mesmo subagente. Indicador: contagem de chamadas PowerShell por subagente de Arquiteto/QA/Dev no relatório de consumo do sprint cai da faixa observada no incidente (59–70). Indicador auxiliar: próxima verificação anterior ao sprint 1 grava o log em `.../operator/pre-sprint/<job>/` sem inventar caminho ad hoc; próxima entrega do dev delega ao `operator` sem invocar exceção — a via já não existe.
-
-### Evidência (R19)
-
-| Papel | Classe | Comando | Saída | Ok? |
-|---|---|---|---|---|
-| SM | Substituição | `descarta o restante\|do próprio contexto` na RAIZ | 2, ambas históricas: R28 cita o mecanismo abandonado entre aspas (explicação, não resíduo); `v3.28` é entrada antiga, não reescrita (R17) | ✅ |
-| SM | Substituição | `comando e saída, não afirmação` na RAIZ | 0 — só a frase de R26 mudou, nenhum outro documento a repetia | ✅ |
-| SM | Substituição | `6 agentes\|6 agents` fora de changelogs | achado extra em `README.md:241` fora da lista original, corrigido nesta rodada; 0 depois nos três guias | ✅ |
-| SM | Contagem | `^### R\d+\.` em `working-rules.md`, antes/depois da curadoria | 28→28 (corpo de R28 reescrito na v3.29; R17 ganhou frase + nota de racional, sem regra nova) | ✅ |
-| SM | Arquivamento | bloco `v3.26` relocado, `Compare-Object` UTF-8 | 0 diferenças | ✅ |
-| SM | Substituição (curadoria) | `operator/<sprint>/<job>` em `working-rules.md` (R28) | 3 ocorrências, todas coerentes: 1 mantém o caso de sprint, 2 novas citam `pre-sprint/<job>/` ao lado, sem contradição | ✅ |
-| SM | Coerência (curadoria) | `agents/architect.md:67` × `architect/README.md:89` × `architect/skills.md` §14 | os três concordam: quatro obrigações, §11–§14 | ✅ |
-| PO | Substituição | `saída real.{0,5}do comando de carga` na RAIZ | 0 — única ocorrência (`acceptance.md:40`) virou trecho+ponteiro; ganhou a regra do ponteiro que não resolve | ✅ |
-| PO | Coerência | `product-owner/README.md:84` e `requirement.md:34`/`122` ao lado de `acceptance.md:40` | nenhum precisou de edição — sem conflito | ✅ |
-| QA | Substituição | `colar a saída` em `roles/quality-assurance/` | 0 — única ocorrência (`README.md:65`) reescrita para citar a delegação | ✅ |
-| QA | Substituição | `<saída real>` isolado em `verdict.md`/`evidence.md` | 0 — os dois campos passam a exigir trecho + ponteiro, régua de R7 mantida | ✅ |
-| QA | Extração | `skills.md`: contagem de seções antes/depois | 11→12 (nova §2; 2–11 renumeradas p/ 3–12, sem lacuna) | ✅ |
-| QA | Extração | `verdict.md`/`evidence.md`: linhas antes/depois | 67→70 · 47→49 (campo de log bruto novo em ambos) | ✅ |
-| UX | Substituição | `As duas disciplinas` na RAIZ | 1, histórica (`process-changelog-archive.md:1210`, v3.8, R17 não reescreve); `skills.md` §10 já fala em três disciplinas | ✅ |
-| UX | Substituição | `**Checkpoint:**\|**Log bruto` nos dois modelos de protótipo | 4 ocorrências, pareadas e idênticas em forma | ✅ |
-| UX | Contagem | colunas da tabela append-only de `verification-log.md` | 8·8·8 — as duas colunas novas entram sem desalinhar | ✅ |
-| UX | Extração | `git diff --numstat` no alcance UX (5 arquivos) | +43/−8, nenhuma remoção de conteúdo vigente | ✅ |
-| Arquiteto | Substituição | `primeiro passo` no alcance (architect + developer + standards) | 0 no alcance; 1 fora — `agents/architect.md:38`, relatado, não corrigido (é regra de comportamento de agente, não coerência de referência) | ✅ |
-| Arquiteto | Contagem | `^## \d+\.` em `architect/skills.md`; contagem citada em `README.md:89` | 13→14; README passa de "três...§11–§13" a "quatro...§11–§14" | ✅ |
-| Arquiteto | Substituição | `colad\|cola a saída\|...` em `roles/developer/` + `roles/architect/` | 0 como obrigação (2 reescritas); 2 restantes são a proibição nova, lidas no contexto | ✅ |
-| Arquiteto | Extração | `git diff --numstat` no alcance + `delivery-report.md` | +118/−41 em 9 arquivos, sem remoção de obrigação vigente | ✅ |
-| Arquiteto | Coerência | nota de §5.4 × §5.6 P3/P6 × §7 #11/#19/#21 × `implementation-guide.md:853` | piso intacto: código de saída ≠ 0; a nota define só a forma | ✅ |
-| Arquiteto (fecho) | Coerência | os quatro gatilhos nos 4 `skills.md` (arq · dev · QA · UX) + bloco `v3.29` remedido | 4/4 trazem os quatro; dev verbatim igual a QA §2 (arq §14 e UX §10 mantêm a forma adaptada já vigente); bloco medido em **17.418 B ≈ 17,0 KB**, sob os 20 KB | ✅ |
-| SM | Contagem | `^### R\d+\.` em `working-rules.md`, antes/depois da consolidação de R28 | 28→28 (corpo de R28 reescrito para hospedar a lista canônica; nenhuma regra nova) | ✅ |
-| SM (segundo fecho) | Substituição | `exceção.*dev\|não carrega hoje ferramenta` em `working-rules.md` | 0 — as três ocorrências (corpo, "SM verifica", "Como o SM aplica") reescritas; `R25(c)` tem "Exceção" homônima e sem relação, não tocada | ✅ |
-| SM (segundo fecho) | Coerência | `grep -i "exceção\|inline"` em `roles/developer/` depois de R28 remover a exceção | 3 ocorrências, **nenhuma órfã** — duas são exceção de linguagem, uma é o texto novo em sentido proibitivo. Roteado ao Arquiteto e fechado por ele nesta versão; as duas linhas de status foram atualizadas pela sessão que orquestra, não pelo SM | ✅ (fechado) |
-| Sessão principal (teto, R17) | Medição final | bloco `## v3.29`, `[IO.File]::ReadAllText` UTF-8 explícito, `IndexOf`/`Substring` até `## v3.28`, depois de todos os fechos | **≈20,1 KB** — sob os **20,48 KB** (20 KB) de teto absoluto, margem estreita. Chegou a 20.880 B (estouro) e voltou cortando três linhas de evidência **superadas**: duas afirmavam texto idêntico dos gatilhos entre documentos, o que a consolidação tornou falso, e uma era medição intermediária substituída por esta | ✅ |
-
-**Achado de processo fechado (fecho da rodada):** delegação de R28 aos quatro `skills.md`, cumprida. **Segundo fecho, corrigindo o que esta entrada afirmava antes:** o corte dos quatro `skills.md` para apontar à lista canônica — que ficaria para a rodada seguinte — **foi feito agora** (linhas 99–103 acima: Arquiteto −7, Dev −4, QA −4 + achado extra em `verdict.md:59`, UX + achado de redação já divergente, `operator.md` corrigido).
-
-### Pendente do stakeholder
-
-Nenhuma decisão pendente do stakeholder. Registro do que foi resolvido nesta janela, e um achado técnico roteado ao Arquiteto (não é decisão do stakeholder):
-
-- `agents/operator.md` — aplicado.
-- `agents/architect.md:38` — corrigido; já traz "o plano inteiro exige" (R26(i) ampliada desde a v3.28).
-- `agents/architect.md:69`, `agents/developer.md`, `agents/quality-assurance.md:40`, `agents/user-experience.md:66`, `commands/dev.md:20` — os quatro cards ganharam a ferramenta `Agent`, restrita ao `operator` (escrita em cada um); a delegação que R28 cobra passou a ser executável para o dev também.
-- **Decidido nesta consolidação** (antes, ficava para o próximo `/review`): a exceção do dev caducou pela própria condição que R28 previa, e **saiu** do corpo de R28 e da "SM verifica" — não ficou com redação ajustada.
-- **Achado aberto, roteado ao Arquiteto:** `roles/developer/skills.md:45` ainda cita essa exceção, agora sem referente — fora do alcance do SM.

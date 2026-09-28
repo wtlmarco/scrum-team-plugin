@@ -33,6 +33,22 @@ Divergência volta **direto** a `/dev resume`, sem Arquiteto. **Passo sem Confer
 
 **Reverificação independente da interseção:** cada linha "citada e aplicada" teve a aplicação conferida neste veredito (`arquivo:linha` nos Achados quando divergente) — verificação própria, não a alegação do relatório do dev nem de qualquer auditoria anterior.
 
+### Cenários de teste — resultado por cenário mapeado (R30)
+*(Task não fecha sem esta tabela preenchida para todo cenário referenciado na Task do Sprint Backlog — DoD §4a-i. "Nenhum mapeado" só é válido quando a própria referência da Task já dizia isso, com o motivo.)*
+
+| SC-nnn | Tipo | Resultado | Forma | Evidência |
+|---|---|---|---|---|
+| SC-<nnn> — `.team-project/quality-assurance/scenarios/SC-<nnn>-<slug>.md` | novo / regressivo | ✅ passou / ❌ falhou / ⚠️ não executado — <motivo> | manual / navegador / script | <trecho decisivo + ponteiro do log (execução pesada/lote via `operator`, R28), ou o que faltou> |
+
+Cada linha desta tabela é também gravada no **Histórico de execuções** do próprio arquivo `SC-<nnn>` ([`templates/scenario.md`](../../quality-assurance/templates/scenario.md)) e reflete o "Último resultado" do índice ([`templates/scenarios-index.md`](../../quality-assurance/templates/scenarios-index.md)) — os três nunca divergem sobre a mesma execução.
+
+**Cenário falhou (❌) — roteamento pelo bloqueio, não pela criticidade (R30):**
+
+| GAP compromete a História em voo? | Caminho | Onde registro |
+|---|---|---|
+| **Sim, bloqueia** | Vira Task da mesma História, no sprint corrente (R25 · `workflow.md` §5e "Durante o sprint") | Entrada nos Achados abaixo, `Volta para: /team` (SM registra a entrada fora da Planning) |
+| **Não bloqueia** | Ganha entrada no Product Backlog, escrita pelo **PO**, no mesmo ciclo (R12) | GAP em `pending.md` com **ID: <MÓDULO-NN>** → **roteado ao PO** nesta linha; o PO abre a linha do Product Backlog citando este ID |
+
 ### Comandos executados
 *(um bloco por comando; comando pesado — build, suíte, cobertura, lint do projeto inteiro, carga V19 — é delegado ao `operator`, R28. Comando leve, cuja saída já cabe sem inflar o contexto, roda direto e traz só o comando/saída, sem log próprio.)*
 ```
@@ -60,6 +76,7 @@ Divergência volta **direto** a `/dev resume`, sem Arquiteto. **Passo sem Confer
 - [ ] Inventário de código
 - [ ] Registro de GAPs (fechado / aberto)
 - [ ] Evidência da Task (`.team-project/sprints/<n>/evidence/<T-ID>.md`)
+- [ ] Suíte de cenários — Histórico de execuções de cada `SC-nnn` mapeado, e o índice (`scenarios/README.md`) com "Última execução"/"Último resultado" sincronizados
 ```
 
 ## Regras
@@ -73,6 +90,7 @@ Divergência volta **direto** a `/dev resume`, sem Arquiteto. **Passo sem Confer
 - **Frente 2 sem as duas tabelas não cobriu os dois objetos** (`workflow.md` §4a). Veredito com só a tabela do objeto 2 (como antes de v3.31) é achado de processo contra o próprio veredito. Divergência do objeto 1 volta **direto** a `/dev resume`, sem passar pelo Arquiteto — o antigo `/arc comply` saiu do ciclo e só roda como exceção explícita pedida pelo stakeholder. **Passo "inconferível sem decidir"** (Conferência do plano insuficiente, R13 de `implementation-plan.md`) não é "conforme" nem achado de execução: é 🔺 GAP do plano, para `/arc question`.
 - **Desempenho registra sempre um dos três estados.** "Fora" (comando de V19 sai ≠ 0) é reprovação; "não exercitado" exige o motivo. Task que toca operação de V18 sem o trecho e o ponteiro do comando é achado bloqueante, não "ok" (`implementation-principles.md` §5.6 P6).
 - **Cobertura ou desempenho sem trecho decisivo e ponteiro do log no relatório de entrega** não vai a "ok": cobertura ausente é falha, desempenho ausente em Task de V18 é achado bloqueante (espelha `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/delivery-report.md`).
+- **Cenário mapeado sem linha na tabela de resultado não fecha a Task** (R30, DoD §4a-i) — regressivo aplicável incluído. Cenário ❌ segue o roteamento pelo bloqueio: bloqueia a História em voo → Task no sprint corrente (R25); não bloqueia → **ID de `pending.md` explícito nesta seção, endereçado ao PO** — sem esse ID, o GAP fica preso em `pending.md` e nunca chega ao Product Backlog (R30 · R12).
 - **"Não exercitado" é obrigatório**, mesmo que seja "nada — todo o fluxo foi exercitado".
 - Reprovar com precisão vale mais do que aprovar rápido: cada achado diz **para quem volta**.
 - ⚠️ (ressalva) só quando a Task é utilizável e a pendência tem ID próprio no backlog.

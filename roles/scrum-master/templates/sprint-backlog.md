@@ -43,9 +43,9 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 **Congelada em:** [`stories/H-<nnn>.md`](stories/) — a História como foi aprovada no pacote de abertura (dono: PO). A fonte **viva** continua sendo o Product Backlog.
 **Portão ③:** aprovado no **pacote de abertura deste sprint**, na data acima. Sem ele, nenhuma Task desta História entra em construção.
 
-| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Critério de pronto |
-|---|---|---|---|---|---|---|---|
-| ⬜ T-<nnn> | <o que é feito, em uma linha> | <n> | dev | <IDs ou —> | [`plan/T-<nnn>-<slug>.md`](plan/) | [`evidence/T-<nnn>.md`](evidence/) | <como se prova que ficou pronto> |
+| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários | Critério de pronto |
+|---|---|---|---|---|---|---|---|---|
+| ⬜ T-<nnn> | <o que é feito, em uma linha> | <n> | dev | <IDs ou —> | [`plan/T-<nnn>-<slug>.md`](plan/) | [`evidence/T-<nnn>.md`](evidence/) | <SC-nnn (novo), SC-nnn (regressivo) \| nenhum aplicável — motivo> | <como se prova que ficou pronto> |
 
 > Nota do SM: <serialização forçada, migration compartilhada, risco específico — só quando houver>
 
@@ -92,7 +92,8 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 
 - **ID** — segue a convenção do projeto (`.team-project/scrum-master/context.md`): `T-nnn` para Task, `H-nnn` para História; Task nascida de GAP reusa o ID do GAP; quebra usa sufixo (`T-012a`).
 - **Toda Task fica sob a História a que pertence.** Task sem História é violação de R20 e não entra no quadro.
-- **As colunas Plano e Evidência são ponteiros, não conteúdo.** O plano é do Arquiteto (`plan/`), a evidência é do QA (`evidence/`), e este quadro é o que **relaciona** História ↔ Task ↔ plano ↔ evidência ([`../process/artifact-ownership.md` §1e](../process/artifact-ownership.md)). Ponteiro que não resolve é achado de processo.
+- **As colunas Plano, Evidência e Cenários são ponteiros, não conteúdo.** O plano é do Arquiteto (`plan/`), a evidência é do QA (`evidence/`), e este quadro é o que **relaciona** História ↔ Task ↔ plano ↔ evidência ([`../process/artifact-ownership.md` §1e](../process/artifact-ownership.md)). Ponteiro que não resolve é achado de processo.
+- **Cenários** — lista de IDs (`SC-nnn`) mapeados pela QA na Planning, novos e regressivos aplicáveis, ou "nenhum aplicável" com o motivo (R30, DoR da Task). O conteúdo do cenário fica em `.team-project/quality-assurance/scenarios/`, dono da QA — esta coluna nunca copia o cenário, só referencia o ID.
 - **O ponteiro do protótipo do sprint fica no pacote de abertura, não numa cópia.** O artefato é do UX e vive onde ele declara; duplicá-lo aqui criaria duas verdades.
 - **Est.** — na unidade declarada no projeto, atribuída pelo time na Planning. Task acima de uma unidade é candidata a quebra (R2), sempre dentro da mesma História.
 - **Depende de** — dependência real de execução, não de preferência. É o que define a ordem, mais do que a criticidade.
@@ -110,7 +111,7 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 Destrava a saída do dado da plataforma: hoje o analista refaz o quadro no slide.
 Congelada em: stories/H-014.md · Portão ③: pacote de abertura aprovado em 03/09/2026
 
-| ⬜ T-041 | Endpoint de exportação respeitando o filtro aplicado | 1 | dev | — | plan/T-041-export-endpoint.md | evidence/T-041.md | Teste de integração: 214 linhas na tela = 214 no arquivo |
-| ⬜ T-042 | Assinatura e expiração de 24h no link de download | 1 | dev | T-041 | plan/T-042-signed-url.md | evidence/T-042.md | Teste: assinatura válida (200), expirada (410), adulterada (403) |
-| ⬜ T-043 | Filtro de colunas por permissão do perfil | 1 | dev | T-041 | plan/T-043-column-acl.md | evidence/T-043.md | Teste de isolamento: perfil júnior não recebe a coluna de custo |
+| ⬜ T-041 | Endpoint de exportação respeitando o filtro aplicado | 1 | dev | — | plan/T-041-export-endpoint.md | evidence/T-041.md | SC-014 (novo) | Teste de integração: 214 linhas na tela = 214 no arquivo |
+| ⬜ T-042 | Assinatura e expiração de 24h no link de download | 1 | dev | T-041 | plan/T-042-signed-url.md | evidence/T-042.md | SC-015 (novo), SC-014 (regressivo) | Teste: assinatura válida (200), expirada (410), adulterada (403) |
+| ⬜ T-043 | Filtro de colunas por permissão do perfil | 1 | dev | T-041 | plan/T-043-column-acl.md | evidence/T-043.md | SC-016 (novo), SC-014 (regressivo) | Teste de isolamento: perfil júnior não recebe a coluna de custo |
 ```

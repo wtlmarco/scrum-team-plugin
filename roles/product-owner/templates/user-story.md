@@ -58,7 +58,7 @@ Casos de borda que o stakeholder precisa reconhecer. Nada de "como".>
 *(História sem interface: escrever "não se aplica — sem interface" e seguir.)*
 
 ### Critérios de aceite
-<Verificáveis. Cada um vira, na Review, uma linha com a evidência da Task que o cumpre.>
+<Verificáveis. Cada um vira, na Review, uma linha com a evidência da Task que o cumpre. É também a fonte que a QA usa para mapear os cenários de teste, novos e regressivos, na Planning — o cenário opera o critério, não o reescreve (R30, `workflow.md` §5e passo 4).>
 
 | # | Critério | Como verificar |
 |---|---|---|
