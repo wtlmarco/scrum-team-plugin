@@ -58,6 +58,13 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 **Log bruto:** `.team-project/operator/<sprint>/<job>/<arquivo>.log` — <n> linhas *(ou "n/a — comando leve, sem `operator`")*
 *(repetir o par comando/trecho + log bruto para cada comando executado)*
 
+### Execução delegada
+*(uma linha por chamada ao `operator`, com os números que a chamada devolveu ao terminar. Sem número: "não disponível — <motivo>", nunca estimado (R7). Sem chamada: "nenhuma". Não grava em `consumption.md` — a sessão que disparou o QA transcreve.)*
+
+| Operator job | Task/História | Modelo | Tokens | Duração |
+|---|---|---|---|---|
+| `.team-project/operator/<sprint\|pre-sprint>/<job>/` | <T-ID / H-ID> | <`model:` de `agents/operator.md`> | <n ou "não disponível — motivo"> | <tempo ou "não disponível — motivo"> |
+
 ### Achados
 | # | Gravidade | Tipo | O quê | Onde | Impacto | Volta para |
 |---|---|---|---|---|---|---|

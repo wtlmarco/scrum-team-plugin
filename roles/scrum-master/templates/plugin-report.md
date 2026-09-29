@@ -15,14 +15,16 @@ O projeto **não edita o plugin**. Este relatório é o canal de volta: tira da 
 **Registro de consumo:** <existe | n/a — o projeto não registra consumo; seções 1 e 2 ficam "n/a">
 
 ## 1. Consumo por papel e por modelo
-> Fonte: `consumption.md` do sprint. O **modelo** é o configurado no cartão do agente (ou override declarado), não o servido; tokens são um total por invocação, sem divisão entrada/saída. **Piso** — a sessão principal não se autoobserva.
+> Fonte: `consumption.md` do sprint. O **modelo** é o configurado no cartão do agente (ou override declarado), não o servido; tokens são um total por invocação, sem divisão entrada/saída. **Piso** — a sessão principal não se autoobserva. O `operator` entra no total, em linha própria por papel chamador; premissa: o número do papel não inclui o do `operator` aninhado.
 
 | Papel | Modelo | Σ tokens | Invocações | Duração total | % do total |
 |---|---|---|---|---|---|
 | <papel> | <modelo \| "não disponível — <motivo>"> | <n> | <n> | <mm:ss> | <n%> |
-| **Total** | — | **<n>** | **<n>** | **<mm:ss>** | 100% |
+| operator ← <papel chamador> *(uma linha por chamador)* | <modelo do `operator`> | <n> | <n chamadas> | <mm:ss> | <n%> |
+| **Total** (papéis + `operator`) | — | **<n>** | **<n>** | **<mm:ss>** | 100% |
 
 - **Contra o sprint anterior:** <Δ% e a causa | primeiro sprint com registro>
+- **Delegação ao `operator` (candidato a investigar):** por Task (A, B…) que delegou, consumo do papel chamador × consumo do `operator` que ele chamou, cada um com o modelo — <Task · papel · Σ · modelo × Σ · modelo | nenhuma delegação>. Não afirma economia absoluta: o registro não traz o custo da mesma tarefa sem delegar.
 
 ## 2. Ineficiências observadas
 > As cinco verificações da retrospectiva (repetição, Task cara, papel desproporcional, modelo × trabalho, consumo × falha). Só o que tem linha de registro que o sustente.

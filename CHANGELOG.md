@@ -13,6 +13,25 @@
 
 ---
 
+## v3.33.1 — 2026-09-29
+
+**Branch:** `feat/v3.33.1` a partir de `develop` · **Processo:** [`v3.33.1`](roles/scrum-master/process/process-changelog.md)
+
+Rodada de `/review` sobre o consumo do `operator` (SM + Arquiteto/Dev + QA + UX), com as mudanças de `agents/`/`commands/` autorizadas pelo stakeholder.
+
+- **O chamador retrata o `operator`:** Arquiteto, Dev, QA e UX fecham o relatório com a seção **"Execução delegada"**, com uma linha por chamada ao `operator` (job · Task/História · Modelo · Tokens · Duração). Sem número: "não disponível — motivo", nunca estimado. O `operator` não relata o próprio consumo.
+- **A sessão grava:** `/arc` `/qa` `/ux` `/dev` `/team` transcrevem cada linha da seção para `consumption.md` como papel `operator`, com a Nota `chamado por <papel>; job <caminho>`. Continua um escritor só por registro.
+- **Totais com o `operator`:** o total do sprint soma os papéis e o `operator`, exposto em linhas `operator ← <chamador>` com o modelo dele. A premissa é que o número do papel não inclui o do `operator` aninhado; se uma medição mostrar o contrário, a regra volta ao `/review`.
+- **Retro e `plugin-report.md`:** por Task/História, consumo do chamador × consumo do `operator` que ele chamou, como candidato a investigar, sem afirmar economia não medida.
+- **R28:** o SM passa a verificar as chamadas ao `operator` × linhas `operator` no registro. Chamada sem linha é achado contra o chamador.
+- **Jobs pré-sprint:** jobs em `.team-project/operator/pre-sprint/` (onboarding, brainstorm, portão ①) entram no primeiro `consumption.md` do projeto, lançados pelo SM no `/sm sprint plan`, com a Nota `pre-sprint;`, e são contados uma vez.
+- **Arquiteto com modelo verificável:** a seção "Execução delegada" do Arquiteto vai para a seção 11 do Plano de Implementação ou para o novo modelo `roles/architect/templates/spike-checkpoint.md`, e é repetida na resposta.
+- **Evidência do QA:** as seções de `evidence.md` viram títulos `###`, iguais aos do veredito.
+
+**Verificar:** no primeiro sprint após a atualização, todo relatório de papel que delegou traz "Execução delegada", e o número de linhas `operator` em `consumption.md` bate com o de jobs do sprint. Mudança em `agents/`/`commands/` só vale após reiniciar a sessão.
+
+---
+
 ## v3.33.0 — 2026-09-29
 
 **Branch:** `feat/v3.33.0` a partir de `develop` · **Processo:** [`v3.33`](roles/scrum-master/process/process-changelog.md)

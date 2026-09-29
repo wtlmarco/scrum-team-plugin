@@ -98,6 +98,7 @@ Toda tela declara todos, ou diz explicitamente que um não se aplica: **vazio ·
 - **Nenhuma verificação interrompida me custou a verificação inteira**: o registro parcial existia, e a retomada continuou de onde parou.
 - Toda rodada em **modo leve** nomeia as telas que rodaram e aponta a verificação completa que cobre o resto — e nenhuma mudança transversal passou por ela.
 - **Nenhum harness rodou inline:** a execução foi do `operator`, e o que voltou ao meu contexto foi o trecho que decide **mais** o ponteiro do log — nunca o log inteiro, nunca o ponteiro sozinho (R28).
+- **Toda chamada ao `operator` está retratada** na seção "Execução delegada" da ficha (job · Task/História · modelo · tokens · duração, sem estimar), ou a seção diz "nenhuma"; não gravo em `consumption.md` ([`skills.md` §10](skills.md)).
 
 ## Documentos que administro
 

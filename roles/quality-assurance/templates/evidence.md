@@ -21,14 +21,14 @@
 | Documentação | ok/falha | |
 | Desempenho | dentro do orçamento/fora/não exercitado | |
 
-**Cenários de teste — resultado por cenário mapeado (R30)**
+### Cenários de teste — resultado por cenário mapeado (R30)
 *(todo `SC-nnn` referenciado nesta Task no Sprint Backlog, novo e regressivo aplicável; "nenhum mapeado" só quando a referência já dizia isso)*
 
 | SC-nnn | Tipo | Resultado | Forma | Evidência |
 |---|---|---|---|---|
 | | novo/regressivo | ✅/❌/⚠️ não executado — <motivo> | manual/navegador/script | |
 
-**Comandos executados**
+### Comandos executados
 *(um bloco por comando; pesado — build, suíte, cobertura, lint do projeto inteiro, carga V19 — delegado ao `operator`, R28)*
 ```
 > <comando>
@@ -36,11 +36,19 @@
 ```
 **Log bruto:** `.team-project/operator/<sprint>/<job>/<arquivo>.log` — <n> linhas *(ou "n/a — comando leve, sem `operator`")*
 
-**Achados**
+### Execução delegada
+*(espelha a do veredito; "nenhuma" quando não houve chamada ao `operator`; sem número: "não disponível — <motivo>", nunca estimado)*
+
+| Operator job | Task/História | Modelo | Tokens | Duração |
+|---|---|---|---|---|
+| `.team-project/operator/<sprint\|pre-sprint>/<job>/` | | | | |
+
+### Achados
+
 | # | Gravidade | O quê | Onde | Volta para |
 |---|---|---|---|---|
 
-**Não exercitado**
+### Não exercitado
 - <o que e por quê>
 ```
 

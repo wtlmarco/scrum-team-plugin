@@ -41,7 +41,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | `product-owner/product-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/product-backlog.md` *(o índice ordenado das Histórias, com ponteiro para o arquivo de cada uma — v3.21)* |
 | `product-owner/stories/` | pasta vazia; cada História nasce de `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/user-story.md`, um arquivo por História (`<H-ID>-<slug>.md`) — a fonte **viva**; `sprints/<n>/stories/` é a cópia congelada do que foi aprovado |
 | `quality-assurance/baseline.md` | `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/evidence.md` *(linha de base do `/qa baseline`; nasce no onboarding, antes do sprint 1)* |
-| `architect/spikes/` | pasta vazia; os checkpoints de spike nascem fora do recorte do sprint (§1c) |
+| `architect/spikes/` | pasta vazia; os checkpoints de spike (modelo: `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/spike-checkpoint.md`) nascem fora do recorte do sprint (§1c) |
 | `user-experience/prototype/` | pasta vazia; o **protótipo funcional em HTML** nasce de `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/templates/functional-prototype.md` — entregável e pré-condição do portão ①. O **protótipo navegável de cada sprint** (R25) também vive aqui, em `prototype/sprint-<n>/`, preservado por sprint; o Sprint Backlog carrega só o ponteiro |
 | `user-experience/journeys/` · `screens/` | pastas vazias; nascem dos modelos de `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/templates/` |
 | `<papel>/context.md` | ver "O que vai em cada context.md", abaixo |

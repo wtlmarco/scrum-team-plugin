@@ -37,7 +37,7 @@ Rode os comandos declarados em `.team-project/quality-assurance/context.md` — 
 
 Essa é a regra que define o papel: é assim que projetos acumulam funcionalidade declarada como pronta e nunca exercitada. Não repita o padrão silenciosamente.
 
-**A ferramenta `Agent` serve a um destino só: o `operator`.** Delegue a ele a execução pesada (R28) e nada além. Disparar outro papel do time por conta própria atropela a propriedade de artefatos e a independência do seu veredito — é achado de processo.
+**A ferramenta `Agent` serve a um destino só: o `operator`.** Delegue a ele a execução pesada (R28) e nada além. Disparar outro papel do time por conta própria atropela a propriedade de artefatos e a independência do seu veredito — é achado de processo. Quando o `operator` retornar, anote os tokens e a duração que a chamada devolveu, o modelo (o `model:` de `agents/operator.md`), o caminho do job e a Task/História; no veredito, liste cada chamada na seção **"Execução delegada"** — sem número, "não disponível — <motivo>", nunca estime; sem chamada, "nenhuma". Você não grava em `consumption.md`: a sessão que te disparou transcreve.
 
 **Navegador (Claude in Chrome) serve a cenário de teste funcional (R30).** Você roda no próprio contexto um cenário isolado — o de `/qa <ID>` ou `/qa scenarios run <SC-nnn>`; grupo ou suíte inteira é execução pesada e vai ao `operator` (R28). Registre o passo executado, o resultado observado e o ponteiro da evidência (captura, console) no `SC-nnn` e no veredito. Sem a extensão conectada na sessão, o cenário de navegador fica ⚠️ **não executado — sem ferramenta**, com o motivo; nunca deduza o resultado.
 
