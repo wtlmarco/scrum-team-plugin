@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.30`](process-changelog-archive.md) | R29 nova: checkpoint de sessão entre fases heterogêneas; item de build em background fechado por já coberto (R28); sequenciamento de branch do projeto-cliente fora do alcance (SM) — 22/09/2026 |
 | [`v3.29`](process-changelog-archive.md) | R28 troca o mecanismo impossível pelo implementável (arquivo na origem + agente `operator`); R26 aceita medição do `operator`; agente conta sobe a 7 (SM + PO + Arquiteto + QA + UX) — 21/09/2026 |
 | [`v3.28`](process-changelog-archive.md) | R26(i) passa a cobrir o plano inteiro, não só o primeiro passo; R28 nova poda o log de build do contexto do subagente (SM) — 21/09/2026 |
 | [`v3.27`](process-changelog-archive.md) | Os três pontos abertos de `note.md` resolvidos em formulário: teto da R17 escala, R27 nova, R5 ganha o lado de quem orquestra (SM) — 20/09/2026 |
@@ -68,6 +69,74 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.33 — Retrospectiva analisa consumo por papel e por modelo, procura ineficiência e gera o relatório ao dono do plugin (SM) — 29/09/2026
+
+**Instrução** (`note.md`, `/review note`, item único): usar a retrospectiva para melhorar o processo analisando o uso de tokens de cada papel durante o sprint e os modelos usados em cada um, em busca de ineficiência por processo repetitivo, gap, bloqueio, falha e uso excessivo de tokens, **por meio de um relatório enviado ao dono do plugin**, para que o modelo possa ser melhorado.
+
+**Classificação:** cerimônia (retrospectiva) + formato de documento (`consumption.md`, `retrospective.md`) + propriedade de artefato nova (`plugin-report.md`, SM). Sem regra nova: nenhuma obrigação de papel muda, só o conteúdo de uma cerimônia do SM e um artefato dele. Rodada de **um papel** (SM) — barreira aplicável: 10 KB.
+
+**Levantamento das lacunas (confirmado contra os arquivos, não presumido):**
+
+| Lacuna | Veredito | Evidência |
+|---|---|---|
+| (a) modelo por papel/invocação não é registrado | **real** | `consumption.md` só tinha Tokens e Duração; `retrospective.md` idem |
+| (b) a retro não analisa ineficiência | **real** | a seção de consumo só somava por papel e comparava com o sprint anterior; "Divergência contra a carga fixa" era a única leitura |
+| (c) sem relatório formal ao dono do plugin | **real, em parte** | havia a tabela "Sintomas para o `note.md`", que o stakeholder "decide se leva" — sem consumo, sem modelo, sem ineficiência e **sem regra contra vazamento de contexto do projeto** |
+| tokens de cada papel por sprint; retro lê o registro; PDCA (§5c) | **já existia** | não duplicado |
+
+**Observabilidade do modelo (o que se pode afirmar):** a notificação de fim de subagente devolve tokens (um total) e duração — **não o modelo**. O que a sessão que orquestra vê é o agente que disparou e o `model:` do cartão `agents/<papel>.md` (hoje: Opus no Arquiteto, Sonnet em SM/PO/QA/UX, Haiku em dev/`operator`) ou um override que ela passou. O registro grava **o modelo configurado, não o servido**; sem leitura do cartão nem override, "não disponível — motivo". Divisão entrada/saída/cache não é observável e a análise não a presume.
+
+### O que mudou
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `templates/consumption.md` | tabela de registro, totais, regras | Coluna **Modelo** por invocação e nos totais; regra "modelo é o configurado, não o servido" (com a régua "não disponível — motivo" e a nota de que tokens são um total) |
+| `templates/retrospective.md` | "Consumo real do sprint" | Coluna Modelo; nova tabela de **ineficiência** com cinco verificações mensuráveis sobre o registro — papel repetido na mesma Task/História (alerta a partir de 3), Task/História cara (> 2× a média), papel desproporcional (contra a carga fixa), modelo × trabalho, consumo × falha (cruza com reprovação, reabertura, GAP, bloqueio); regra "aponta onde olhar, não o que cortar" |
+| `templates/retrospective.md` | "Sintomas para o `note.md`" → "Relatório ao dono do plugin" | A tabela de sintomas **sai daqui** e vai para o novo arquivo; a retro guarda o ponteiro e duas linhas de encerramento (gerado? relido contra vazamento? encaminhado?) |
+| `templates/plugin-report.md` | **novo** | Relatório em 5 seções — consumo por papel × modelo, ineficiências, bloqueios/falhas de processo (com o degrau de R25), sintomas, encaminhamento —, com **lista do que não entra** (nome, cliente, domínio, código, caminho, ID de Task/História — "Task A") e o fluxo: SM escreve, **stakeholder lê e encaminha**, `/review` no clone-fonte transforma em mudança |
+| `workflow.md` | §5c (parágrafo novo); "Como o SM verifica"; fechamento de `sprints/<n>/` | A retro como análise de consumo e origem do relatório; +1 linha de verificação (modelo por linha, leitura de ineficiência, relatório sem contexto); `plugin-report.md` entra na lista da pasta completa |
+| `artifact-ownership.md` | linha de consumo (§1); árvore e tabela §1e | `plugin-report.md`: dono SM, sai do projeto pela mão do stakeholder; consumo cita o modelo |
+| `README.md` do SM; `templates/project-context.md`; `how-to.md`; `team-init.md`; `README.md` (raiz); `deliverables/team-project/README.md` | árvores e índices de `sprints/<n>/` | Coerência de referência cruzada: `plugin-report.md` listado onde a pasta é descrita (exceção de curadoria, sem mudança de comportamento) |
+
+### Por quê
+
+O consumo era **medido e ninguém o interpretava**: a retro somava tokens por papel e parava, sem dizer se um papel foi chamado três vezes para a mesma Task, se uma Task custou o triplo das outras ou se o trabalho mecânico caiu no modelo caro — e sem o modelo registrado, "Arquiteto custa mais que o SM" não distinguia preço de modelo de volume de trabalho (§5c já avisa que o modelo pesa mais que os KB). E o caminho de volta ao dono do plugin era uma tabela solta que o stakeholder teria de recortar à mão da retrospectiva — que carrega contexto do projeto —, sem barreira de vazamento. Um arquivo próprio, sem contexto, com fluxo declarado, dá ao `/review` evidência numérica em vez de impressão.
+
+### Quem passa a ser cobrado de forma diferente
+
+| Papel | O que muda |
+|---|---|
+| **SM** | Na retro, lê o registro por ineficiência e escreve `plugin-report.md` sem contexto de projeto; verifica que cada linha de consumo traz o modelo |
+| **Quem orquestra** | Grava o modelo em cada linha (instrução nos sete comandos de papel, aplicada em 29/09/2026) |
+| **Stakeholder** | Lê o relatório antes de encaminhar — é a barreira final contra vazamento — e decide o que vai ao `note.md` |
+
+### Conflitos com o processo vigente
+
+Nenhum. Confrontado com: R7 (número sem fonte → regra "n/a"/"não disponível", sem estimativa); R25/§5f (pasta fecha por último — o relatório é escrito antes do fechamento, entra na lista); "o projeto não edita o plugin" (mantido: só relata, o stakeholder encaminha, o `/review` decide); `/review` nunca grava consumo (inalterado); ação única da retro (mantida, o relatório não a substitui). Efeito colateral: projeto com `consumption.md` de versão anterior tem linhas sem a coluna Modelo — `/team update` mostra o delta de estrutura e pede aprovação; linhas antigas ficam sem o valor.
+
+### Como saberemos que funcionou
+
+No primeiro sprint fechado após a atualização do projeto para `v3.33.0`: (1) toda linha de `consumption.md` traz modelo ou "não disponível — motivo"; (2) `retrospective.md` tem a tabela de ineficiência preenchida (ou "nenhuma", cada uma sustentada por linha do registro); (3) `plugin-report.md` existe na pasta fechada e uma leitura por `Select-String` dos nomes de projeto/cliente devolve zero. Sinal de falha: relatório com ID real de Task ou nome de domínio.
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | `Select-String -Pattern "Sintomas para o .note.md. do plugin"` em toda a RAIZ, exceto changelogs | 1 ocorrência, o título da seção 4 do **novo** `plugin-report.md` (intencional: é o mesmo formato de sintoma). Era 1 no `retrospective.md` e 1 no `README.md` do SM — ambos reescritos, cada trecho novo lido ao lado do ponteiro para `plugin-report.md` | ✅ |
+| Substituição de padrão | `Select-String -Pattern "plugin-report" -Path` em todos os arquivos que listam a pasta `sprints/<n>/` (workflow, artifact-ownership, README do SM, project-context, how-to, team-init, README raiz, deliverables/team-project) | ocorrência em cada um; a lista de `workflow.md` (2 pontos) e a árvore de `artifact-ownership.md` conferem entre si | ✅ |
+| Extração/adição | `Select-String -Path templates/plugin-report.md -Pattern "^## "` e `Test-Path` | 5 seções numeradas + Regras; arquivo existe | ✅ |
+| Arquivamento | `Compare-Object` do bloco `## v3.30` (texto salvo antes de mover) contra o mesmo trecho no arquivo | 0 diferenças; índice de arquivadas com a linha `v3.30` | ✅ |
+| Coerência de índice | `## v3.` em `process-changelog.md` | 3 entradas (v3.33, v3.32, v3.31) | ✅ |
+| Teto de entrada (R17) | bloco `## v3.33`, `[IO.File]::ReadAllText` UTF-8 explícito; um papel → barreira 10 KB | ver "Teto" abaixo | ✅ |
+| Substituição de padrão (aplicação 29/09/2026) | `grep "modelo (o \`model:\`" commands/` · `grep plugin-report commands/sm.md` | 7 ocorrências (`sm`, `po`, `arc`, `ux`, `qa`, `dev`, `team`), cada uma apontando o cartão existente em `agents/`; 1 em `sprint close` | ✅ |
+
+### Aplicado a pedido do stakeholder (29/09/2026)
+
+As propostas de `commands/` foram aprovadas e aplicadas: as sete instruções de gravação de consumo passam a gravar o **modelo** (o `model:` do cartão em `agents/`, ou o override; sem leitura, "não disponível — motivo"), e `/sm sprint close` passa a gerar `plugin-report.md`. Bump R18: `plugin.json` `3.33.0`, banner do `README.md` e entrada `v3.33.0` no `CHANGELOG.md`. Mudança em `commands/` só vale após reiniciar a sessão.
+
+**Teto (R17):** bloco `## v3.33`, `[IO.File]::ReadAllText` UTF-8, medido em 29/09/2026 — **9.137 B**, sob a barreira de 10 KB (1 papel).
+
+---
 ## v3.32 — R30: QA mapeia cenário de teste funcional/regressivo na Planning e o executa no veredito; GAP não-bloqueante ganha caminho explícito ao Product Backlog (SM) — 23/09/2026
 
 **Instrução** (`note.md`, triagem `/review note`, três itens fechados numa decisão do stakeholder via `AskUserQuestion`): **(1)** QA lê Histórias aprovadas + protótipo funcional e monta cenários de teste funcionais do sprint, também regressivos pelo impacto da Task; **(2)** isso ocorre a cada sprint — mapeado na Planning por Task, executado na entrega do dev, mesmo conceito de "Histórias aprovadas para o sprint" aplicado aos cenários; **(3)** erros/gaps de cenário entram no Backlog para o próximo sprint. Decisão do stakeholder sobre o conflito de R25 §5e: **GAP que bloqueia História em voo continua virando Task no sprint corrente** (R25 intacto); só o que **não bloqueia** vai ao Product Backlog — e o stakeholder pediu para fechar a lacuna preexistente de **quem** escreve essa linha. Decisão sobre onde a suíte vive: **avaliar aderência** de "ficar na área da QA e ser referenciada como Task no Sprint Backlog" contra `artifact-ownership.md` §1/§1c/§1e — aderente, aplicado como tal.
@@ -275,56 +344,3 @@ Achado: "Rota de volta" nomeava **um** destino para "Defeito do plano" (Arquitet
 **Resolvido nesta rodada, fora da lista acima** (dentro do alcance do SM, sem esperar o stakeholder): `roles/scrum-master/templates/project-context.md`:113 ganhou o mesmo qualificador *(exceção pedida pelo stakeholder)* ao lado de `comply <T-ID>`. `CHANGELOG.md`:72 é entrada histórica de uma versão anterior — R17 não reescreve entrada antiga, e o texto ali já se referia ao comportamento da época; não é sobra desta rodada.
 
 ---
-
-## v3.30 — Checkpoint de sessão entre fases heterogêneas (R29 nova); item de `note.md` sobre build em background fechado por já estar coberto (R28); sequenciamento de branch do projeto-cliente fechado por estar fora do alcance (SM) — 22/09/2026
-
-**Instrução** (`/review note`, item único de `note.md` — relatório da sessão garden-management, 21/09, três sugestões de melhoria de processo): (1) fechar a sessão/`/clear` entre fases heterogêneas de uma mesma sessão (triagem+correção verde → build nativo/release), para a fase seguinte não pagar pelo histórico de debug morto; (2) build do Docker em background via `run_in_background`, não polling em primeiro plano; (3) merge/rebase da branch de trabalho antes de abrir a branch de correção, para não conflitar com outra branch nos arquivos de rastreamento de dono único.
-
-**Classificação:** regra de trabalho (**R29** nova) + achado de processo fechado sem alteração normativa (item 2, já coberto por R28/v3.29) + item fora do alcance do `/review` (item 3, convenção de git do projeto-cliente) + curadoria de coerência de referência cruzada (contagem de regras desatualizada em `agents/scrum-master.md` e `README.md`, achada nesta rodada). Rodada de **um papel** (SM) — barreira aplicável: 10 KB.
-
-### O que mudou
-
-| Documento | Seção | Mudança |
-|---|---|---|
-| `working-rules.md` | R29 nova (Bloco A — Eficiência, após R28) | Sessão que atravessa fases de natureza diferente fecha ou `/clear` no fim da fase que chegou a um estado verde, antes de abrir a fase seguinte — a fase seguinte parte do estado do repositório, não do histórico de turnos |
-| `working-rules.md` | "Como o SM aplica" (lista de regras binárias) | R29 entra na lista, ao lado de R28 |
-| `working-rules.md` | "Resumo em uma tela" | Linha nova: `R29 · Fase heterogênea começa em sessão nova · Eficiência` |
-| `workflow.md` | §2a (fecho da cadeia) | Cross-reference: fila de correções que chega a verde antes de uma fase de natureza diferente (ex.: §5d) aciona R29 |
-| `workflow.md` | §5d, abertura do "Ciclo de uma entrega" | Cross-reference: checkpoint de sessão (R29) antes do passo 1, quando a entrega vem de uma fase de triagem+implementação que acabou de fechar verde |
-| `agents/scrum-master.md` | linha 45 (contagem de regras) | "As 25 regras… método R13-R25" → "As 29 regras… eficiência R1-R6 e R28-R29… método R13-R27" — achado de coerência de referência cruzada, defasado desde antes da v3.27; corrigido sob a exceção de curadoria do SM (`review-contract.md` §Limites) |
-| `README.md` (raiz) | linha 181 | Mesma contagem, mesmo achado, mesma correção |
-| `note.md` | Abertas | Os três itens saem da fila — item tratado sai de `note.md` e passa a viver só aqui (mesma convenção do homônimo `.team-project/note.md`, `artifact-ownership.md` §1b) |
-
-### Por quê
-
-O relatório de origem (sessão garden-management, 21/09, `ad367987`) mediu uma sessão contínua de 911 linhas / 360 turnos / 86M tokens, sem nenhum `/clear` entre quatro fases de natureza diferente — triagem, implementação, build nativo travado e resolução de conflito de merge —, com `cache_read` crescendo de 25K tokens no turno 1 a 363K no turno 360 só pelo reenvio do histórico acumulado a cada turno: a fase de release pagou pelo histórico inteiro das três fases anteriores. Nenhuma regra vigente cobria proativamente esse corte — R5 trata de interrupção não planejada, R3 trata de releitura incremental **dentro** do mesmo tópico, nenhuma das duas prescreve fechar a sessão numa fronteira de fase planejada. R29 fecha essa lacuna. Os outros dois achados do mesmo relatório não geraram regra: o padrão de build travado com polling manual em primeiro plano já é resolvido, de forma mais forte que a proposta (delegação inteira ao `operator`, sem polling algum), pela R28 aplicada na v3.29 — a sessão relatada rodou antes dessa correção existir; e o sequenciamento de branch git do projeto-cliente não é um objeto que este plugin governa (`review-contract.md` §Limites: `/review` não altera `.team-project/`, o código, o quadro nem o backlog — só o processo do plugin).
-
-### Quem passa a ser cobrado de forma diferente
-
-| Papel | O que muda |
-|---|---|
-| **Quem orquestra** (qualquer sessão que conduz Task/correção seguida de build/release) | Fecha ou `/clear` a sessão na fronteira entre uma fase que fechou verde e uma fase de natureza diferente, em vez de manter tudo numa janela de contexto só |
-| **SM** | Verifica R29 pela ausência de diagnóstico/GAP de fase já fechada no relatório da fase seguinte, e pelo bloco de invocação novo em `consumption.md` quando o projeto o registra |
-
-### Conflitos
-
-Nenhum real. Avaliei tensão com R3 (releitura incremental depende de sessão persistente para retomada de subagente via `ListAgents`/`SendMessage`) — não é conflito: R3 otimiza releitura **dentro do mesmo tópico**; R29 corta exatamente na fronteira em que o tópico muda de natureza, onde o benefício de retomada já é baixo. As duas se complementam.
-
-### Como saberemos que funcionou
-
-Próximo relatório de uma fase de natureza diferente da anterior (ex.: entrada de `CHANGELOG.md`/branch de uma entrega) não cita diagnóstico específico de uma fase já fechada verde. Indicador auxiliar, quando o projeto registra consumo: a transição de fase aparece como bloco de invocação novo em `sprints/<n>/consumption.md`, não como continuação do mesmo turno acumulado.
-
-### Evidência (R19)
-
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Contagem | `^### R\d+\.` / `^\| R\d+ \|` em `working-rules.md` | 29·29 (era 28·28) — R29 é a única regra nova; sem colisão de número (R1…R28 já ocupados, confirmado por leitura antes de numerar) | ✅ |
-| Substituição de padrão | `R29` em `workflow.md` | 2 ocorrências, ambas nas notas de cross-reference (§2a e §5d), lidas no contexto — coerentes com o corpo da regra em `working-rules.md` | ✅ |
-| Substituição de padrão (curadoria) | `25 regras\|R13-R25` em toda a RAIZ | 2 ocorrências achadas (`agents/scrum-master.md`, `README.md` raiz), as duas corrigidas; 0 depois. As duas ocorrências novas (`29 regras`) lidas no contexto, coerentes com a contagem real (8 Eficiência + 6 Qualidade + 15 Método = 29) | ✅ |
-| Extração/remoção | `note.md`, linhas antes/depois | 30 → 7 linhas; os três itens saem por inteiro, sem arquivo-espelho em `note.md` (mesma convenção do homônimo do PO) — o registro sobrevive só aqui, no changelog | ✅ |
-| Arquivamento (teto 3) | bloco `v3.27` relocado, `Compare-Object` UTF‑8 | 0 diferenças; índice de arquivadas com a linha nova | ✅ |
-| Teto de entrada (R17) | bloco `## v3.30`, `[IO.File]::ReadAllText` UTF‑8 explícito; rodada de **um papel** → barreira 10 KB | **7.454 B (7,28 KB)**, sob a barreira | ✅ |
-
-### Pendente do stakeholder
-
-Nenhuma decisão pendente. `agents/scrum-master.md` foi tocado só na contagem de regras — cabe na exceção de coerência de referência cruzada do SM (`review-contract.md` §Limites), não é mudança de comportamento de agente; ainda assim, **qualquer edição em `agents/*.md` só entra em vigor depois de reiniciar a sessão**, e a mudança só chega a outros projetos depois de `git push` + `claude plugin marketplace update team` + `claude plugin update team@team`.

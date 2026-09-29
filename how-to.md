@@ -226,7 +226,8 @@ Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — o tim
 │       ├── consumption.md           tokens e duração por invocação
 │       ├── burndown.md              estimativa restante, em série datada
 │       ├── review.md                a Sprint Review e o seu veredito por História
-│       └── retrospective.md         o que o time corrige no sprint seguinte
+│       ├── retrospective.md         o que o time corrige no sprint seguinte
+│       └── plugin-report.md         relatório de processo, sem contexto do projeto, que você encaminha ao dono do plugin
 │
 ├── product-owner/         context.md · product-backlog.md (índice) · stories/ (fonte viva)
 ├── scrum-master/          context.md

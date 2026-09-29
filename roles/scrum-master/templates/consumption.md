@@ -18,17 +18,17 @@ Registra o que a sessão que dispara cada subagente de papel recebe quando ele t
 Toda vez que um subagente (`/sm`, `/po`, `/arc`, `/ux`, `/qa`, `/dev`, ou um dos disparados por `/team`) termina, a sessão que o disparou recebe o total de **tokens** e a **duração** daquela invocação — é isso que vira uma linha aqui. **A sessão principal não enxerga o próprio consumo**: leitura, triagem e consolidação feitas fora de uma invocação de papel não entram nesta tabela. Este registro mede **o trabalho dos papéis**, não **o custo total da sessão** — leia o total como um piso, nunca como o gasto completo.
 
 ## Registro
-| Data | Papel | Comando | Task/História | Tokens | Duração | Nota |
-|---|---|---|---|---|---|---|
-| <aaaa-mm-dd> | <sm\|po\|arc\|ux\|qa\|dev> | `/<comando>` | <ID ou "n/a"> | <n> | <mm:ss> | <observação, ou "não disponível — <motivo>"> |
+| Data | Papel | Modelo | Comando | Task/História | Tokens | Duração | Nota |
+|---|---|---|---|---|---|---|---|
+| <aaaa-mm-dd> | <sm\|po\|arc\|ux\|qa\|dev> | <opus\|sonnet\|haiku\|"não disponível — <motivo>"> | `/<comando>` | <ID ou "n/a"> | <n> | <mm:ss> | <observação, ou "não disponível — <motivo>"> |
 
 ## Totais do sprint (derivado)
 > Lido pela retrospectiva **antes** do fechamento da pasta, na seção "Consumo real do sprint" de `sprints/<n>/retrospective.md`.
 
-| Papel | Σ tokens | Nº de invocações | Duração total |
-|---|---|---|---|
-| sm · po · arc · ux · qa · dev | <n> | <n> | <mm:ss> |
-| **Total do sprint** | **<n>** | **<n>** | **<mm:ss>** |
+| Papel | Modelo | Σ tokens | Nº de invocações | Duração total |
+|---|---|---|---|---|
+| sm · po · arc · ux · qa · dev | <modelo> | <n> | <n> | <mm:ss> |
+| **Total do sprint** | — | **<n>** | **<n>** | **<mm:ss>** |
 
 ## Relação com `/review metrics`
 `/review metrics` mede a **pegada estática** do processo — bytes de `agents/`+`commands/`+`roles/`, fixa por versão do plugin, igual em qualquer projeto que instale o time. Este registro mede o **gasto real**, variável por projeto e por sprint. **Os dois não se somam nem se substituem**: a pegada estática diz quanto cada invocação paga de carga fixa antes de qualquer trabalho; este registro diz quanto se gastou de fato fazendo o trabalho. Ver `workflow.md` §5c do processo do time.
@@ -38,6 +38,7 @@ Toda vez que um subagente (`/sm`, `/po`, `/arc`, `/ux`, `/qa`, `/dev`, ou um dos
 
 - **Uma linha por invocação.** É a única unidade que a sessão orquestradora observa diretamente — ela recebe tokens e duração quando o subagente termina, nunca o próprio consumo.
 - **Notificação parcial não é linha nova.** Numa retomada por `SendMessage`, a mesma invocação pode gerar mais de uma notificação de uso antes do relatório final — cada notificação reporta o total **daquela invocação até aquele instante**, nunca um acumulado à parte que se soma às demais. Registre uma única linha por invocação, com o número da notificação **final**; descarte os números de notificações parciais ao chegar a próxima, não os some a ela.
+- **Modelo é o configurado, não o servido.** A notificação de fim de subagente devolve tokens e duração, **não o modelo**. O que a sessão que orquestra observa é o agente que disparou e o `model:` do cartão `agents/<papel>.md` do plugin instalado (ou um override que ela mesma passou ao disparar) — grave esse valor. Se não conseguiu ler o cartão nem há override declarado, escreva "não disponível — <motivo>", nunca deduza. Tokens vêm como **um total** por invocação: a divisão entrada/saída/cache **não é observável** aqui, e a análise do consumo não a presume.
 - **Número indisponível vira nota, nunca estimativa** — mesma régua de R7 ("sem evidência, não aconteceu"): escreva "não disponível — <motivo>".
 - **Toda invocação vira linha.** Qualquer subagente de papel que termina é uma linha — com Task/História quando houver, `"n/a"` quando não. Não filtra por relevância nem por tamanho: filtrar depois é mais barato que reconstruir o que não foi gravado.
 - **Quem escreve** é sempre a sessão que orquestrou aquela invocação — o próprio papel não vê o número, então nunca é ele quem grava a própria linha.

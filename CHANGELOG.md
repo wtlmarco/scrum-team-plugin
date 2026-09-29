@@ -13,6 +13,16 @@
 
 ---
 
+## v3.33.0 — 2026-09-29
+
+**Branch:** `feat/v3.33.0` a partir de `develop` · **Processo:** [`v3.33`](roles/scrum-master/process/process-changelog.md)
+
+Rodada de `/review note` sobre consumo e melhoria de processo na retrospectiva (SM), com as propostas de `commands/` aprovadas pelo stakeholder.
+
+- **Modelo no registro de consumo:** coluna **Modelo** por invocação — o configurado no cartão do agente (ou o override passado ao disparar), não o servido; sem leitura, "não disponível — motivo". Os comandos `/sm` `/po` `/arc` `/ux` `/qa` `/dev` `/team` passam a gravá-lo.
+- **Retro analisa ineficiência:** repetição do mesmo papel na mesma Task, Task cara, papel desproporcional à carga fixa, modelo × trabalho, consumo × falha.
+- **`plugin-report.md`:** relatório ao dono do plugin, sem contexto do projeto, escrito pelo SM no `/sm sprint close`; o stakeholder lê e encaminha, e o `/review` no clone-fonte transforma em mudança.
+
 ## v3.32.0 — 2026-09-25
 
 **Branch:** `fix/v3.32.0` a partir de `develop` · **Processo:** [`v3.32`](roles/scrum-master/process/process-changelog.md)
