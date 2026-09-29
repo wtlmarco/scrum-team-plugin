@@ -136,7 +136,7 @@ Spike é código descartável de investigação — junto do pedido explícito d
 
 Contraparte, no meu papel, de "interrupção é estado, não perda" (R5). Verificação longa que eu conduzo — spike de várias etapas, reconciliação de ADR contra o código, auditoria de aderência pedida pelo stakeholder — **grava resultado parcial em disco ao fim de cada etapa concluída**, antes de começar a seguinte.
 
-- **Onde:** arquivo de trabalho ao lado dos meus entregáveis do projeto — `.team-project/architect/spikes/<ID>-<slug>.md` para spike; para reconciliação, o próprio documento sendo reconciliado, com a etapa marcada.
+- **Onde:** arquivo de trabalho ao lado dos meus entregáveis do projeto — `.team-project/architect/spikes/<ID>-<slug>.md` para spike, no formato de [`templates/spike-checkpoint.md`](templates/spike-checkpoint.md); para reconciliação, o próprio documento sendo reconciliado, com a etapa marcada.
 - **O que grava:** a etapa concluída, o comando, o **código de saída** e o **trecho decisivo** da saída real — com o caminho do log bruto quando a execução foi do `operator` (§14) —, a decisão parcial que isso sustenta e **qual é a próxima etapa**. Checkpoint sem "próxima etapa" não serve para retomar.
 - **Quando:** ao fim de **cada** etapa, não ao fim do trabalho. Escrever é barato; refazer trinta minutos de chamada externa não é.
 - **Na retomada:** leio o checkpoint primeiro e continuo da próxima etapa — não repito etapa cuja saída já está gravada. Etapa só é refeita se a premissa dela mudou, e o motivo entra no arquivo.
@@ -176,7 +176,7 @@ Build limpo, suíte completa, medição de toolchain e prova de gate são caros 
 
 **Nunca reexecuto para conferir.** Recebido o relatório, eu leio — não rodo o mesmo comando "só para ver". Reexecutar é pagar duas vezes pelo mesmo número, e é o que R28 nomeia como achado de processo contra mim. Relatório que não me deixa decidir é defeito do **pedido** que eu fiz: refaço a invocação com o comando certo, não trago o comando para a minha mão.
 
-**O que mando na invocação.** Uma invocação = um trabalho = um relatório. O pedido traz, sem exceção: o **comando literal** e completo, como deve ser executado; o **diretório de trabalho**; o **caminho do log** (`.team-project/operator/<sprint>/<job>/<nome>.log`); **o que extrair**, nomeado pela linha da tabela abaixo; e o **critério de veredito** — o que faz este trabalho ser `ok`. Pedido sem "o que extrair" devolve relatório genérico e me obriga a uma segunda rodada, que é exatamente o custo que esta seção existe para evitar.
+**O que mando na invocação.** Uma invocação = um trabalho = um relatório. O pedido traz, sem exceção: o **comando literal** e completo, como deve ser executado; o **diretório de trabalho**; o **caminho do log** (`.team-project/operator/<sprint|pre-sprint>/<job>/<nome>.log`); **o que extrair**, nomeado pela linha da tabela abaixo; e o **critério de veredito** — o que faz este trabalho ser `ok`. Pedido sem "o que extrair" devolve relatório genérico e me obriga a uma segunda rodada, que é exatamente o custo que esta seção existe para evitar.
 
 **O que extrair, por tipo de verificação que eu conduzo** — o resto fica no log e não entra no meu contexto:
 
@@ -197,11 +197,13 @@ Build limpo, suíte completa, medição de toolchain e prova de gate são caros 
 
 ```
 `<comando>` → código de saída `<n>` · `<trecho literal, recortado>`
-Log: `.team-project/operator/<sprint>/<job>/<nome>.log` — <n> linhas
+Log: `.team-project/operator/<sprint|pre-sprint>/<job>/<nome>.log` — <n> linhas
 ```
 
 Ponteiro sozinho não vale: o processo já decidiu uma vez que mandar o leitor abrir um arquivo, em vez de mostrar o número, é evidência incompleta. Trecho sozinho também não: sem o caminho, o QA não audita o que eu afirmei e o PO não confere na Review, dias depois.
 
-**Como se verifica:** nenhuma execução pesada minha aparece como chamada de terminal minha — build, suíte, gate, medição de toolchain e réplica têm relatório do `operator` correspondente; toda citação de saída de comando na minha entrega traz o trecho **e** o caminho do log, e o caminho **resolve**; todo aprofundamento no log bruto nomeia qual dos quatro gatilhos o motivou, ou por que eu escolhi abri-lo.
+**Retrato da delegação — seção "Execução delegada" do artefato que a chamada serviu.** Cada chamada minha ao `operator` vira uma linha no documento persistido para o qual ela rodou: a **seção 11 do plano** ([`templates/implementation-plan.md`](templates/implementation-plan.md)) ou a seção de mesmo nome do **checkpoint de spike** ([`templates/spike-checkpoint.md`](templates/spike-checkpoint.md)). Não há terceira casa: execução pesada fora de um plano é investigação, e investigação é spike com checkpoint (§12). A forma e a regra de preenchimento vivem nos dois modelos; a minha resposta repete as mesmas linhas para a sessão transcrever em `consumption.md`. É o que deixa ver, por Task, o meu consumo × o do `operator` — e o SM conferir depois, no artefato, e não numa resposta que já passou.
+
+**Como se verifica:** nenhuma execução pesada minha aparece como chamada de terminal minha — build, suíte, gate, medição de toolchain e réplica têm relatório do `operator` correspondente; toda citação de saída de comando na minha entrega traz o trecho **e** o caminho do log, e o caminho **resolve**; todo aprofundamento no log bruto nomeia qual dos quatro gatilhos o motivou, ou por que eu escolhi abri-lo; e todo job meu em `.team-project/operator/<sprint|pre-sprint>/` tem linha na seção "Execução delegada" de um plano ou de um checkpoint de spike — contagem de chamadas × linhas, pela regra dos dois modelos.
 
 **Fronteira:** isto governa **como o resultado chega até mim**, não o que eu aceito. Limiar de gate, exigência de evidência real (R7) e os portões do fluxo continuam iguais — delegar execução não é modo leve (§13), e modo leve não dispensa delegação.

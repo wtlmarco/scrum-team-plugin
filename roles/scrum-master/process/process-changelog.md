@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.31`](process-changelog-archive.md) | QA cobre aderência de execução e de standard na mesma frente 2; `/arc comply` sai do ciclo; `cycle sprint` deixa de ser "proposta" (SM) — 23/09/2026 |
 | [`v3.30`](process-changelog-archive.md) | R29 nova: checkpoint de sessão entre fases heterogêneas; item de build em background fechado por já coberto (R28); sequenciamento de branch do projeto-cliente fora do alcance (SM) — 22/09/2026 |
 | [`v3.29`](process-changelog-archive.md) | R28 troca o mecanismo impossível pelo implementável (arquivo na origem + agente `operator`); R26 aceita medição do `operator`; agente conta sobe a 7 (SM + PO + Arquiteto + QA + UX) — 21/09/2026 |
 | [`v3.28`](process-changelog-archive.md) | R26(i) passa a cobrir o plano inteiro, não só o primeiro passo; R28 nova poda o log de build do contexto do subagente (SM) — 21/09/2026 |
@@ -69,6 +70,107 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.33.1 — O papel chamador retrata o consumo do `operator`; o registro o soma em linhas por chamador (SM) — 29/09/2026
+
+**Instrução** (stakeholder, `/review`, item de `note.md` "Consumo do `operator` não aparece no registro de consumo do sprint"): "que o uso do operator possa ser retratado pelo seu chamador, assim teríamos a economia nessa transferência de atividade".
+
+**Classificação:** formato de documento (`consumption.md`, `retrospective.md`, `plugin-report.md`) + extensão de verificação de regra existente (R28) + comportamento de agente/relatório dos papéis chamadores (fora do alcance do SM, aplicado pelos donos). Sem regra nova. Rodada de **um papel aplicando na mão do SM** (os demais papéis aplicam a própria contraparte, ver abaixo) — barreira aplicável: 10 KB.
+
+**Lacuna (confirmada):** o `operator` roda aninhado dentro do papel chamador; a sessão só recebe o total do papel e nunca vê o `operator`. O registro só tinha linha por invocação de papel, então o consumo delegado ou ficava invisível ou (se fosse dentro do número do papel) impossível de separar — e sem separar não há como saber se delegar economiza.
+
+**Conflito levantado na triagem e decidido pelo stakeholder:** "Quem escreve" dizia que o papel nunca grava a própria linha; a instrução pede que o chamador retrate. **Posição B adotada:** o papel retrata, em seção própria do relatório; **a sessão** grava as linhas — um escritor só, o registro continua do SM. Totais: o `operator` **entra** no Total do sprint, em linhas próprias por chamador (`operator ← arc`, `operator ← qa`…), cada uma com o modelo do `operator` (o `model:` de `agents/operator.md`, "configurado, não servido"). Sem piso nem teto.
+
+### O que mudou
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `templates/consumption.md` | cabeçalho, "o que mede", registro, totais, regras | Papel aceita `operator`; linha-modelo com Nota `chamado por <papel>; job <caminho>`; Totais com `operator ← <chamador>` e Total do sprint (papéis + `operator`); "Quem escreve" cobre o `operator` (papel retrata em "Execução delegada", sessão grava na mesma passada); premissa de não-duplicidade como ressalva (R7) |
+| `templates/retrospective.md` | "Consumo real do sprint" | Linhas `operator ← <chamador>` e Total; bullet "Delegação ao `operator`" (chamador × `operator` por Task/História, com modelos, candidato a investigar); bullet de contagem R28; premissa |
+| `templates/plugin-report.md` | seção 1 | Mesmas linhas por chamador e bullet de delegação (Tasks anônimas, sem afirmar economia absoluta) |
+| `workflow.md` | §5c; registro de consumo; retro como análise; "Como o SM verifica" | O consumo real inclui o `operator` retratado; quem escreve; contagem jobs × linhas |
+| `working-rules.md` | R28 ("SM verifica") | Estendida com a verificação por contagem — `.team-project/operator/<sprint>/` × linhas `operator`; relatório de papel que delegou sem "Execução delegada" é achado contra o chamador. Sem regra nova |
+| `artifact-ownership.md` | §1, linha de consumo | Toda chamada ao `operator` vira linha |
+| `roles/scrum-master/README.md`, `how-to.md`, `deliverables/team-project/README.md` | ponteiros | Coerência de referência cruzada (exceção de curadoria) |
+
+### Por quê
+
+Sem o consumo do `operator` no registro, o total do sprint subestimava o time e a pergunta que motivou R28 — delegar a execução pesada ao modelo barato **economiza**? — ficava sem número. Com a linha por chamador, a retro compara, por Task, o custo do papel e o do `operator` que ele chamou, com o modelo de cada um. **Ressalva honesta:** isso compara custos, não mede a economia absoluta (falta o cenário sem delegação); por isso é "candidato a investigar".
+
+### Quem passa a ser cobrado de forma diferente
+
+| Papel | O que muda |
+|---|---|
+| **Arquiteto · QA · Dev · UX** (chamadores) | Retratam cada chamada ao `operator` na seção **"Execução delegada"** do relatório final: Operator job · Task/História · Modelo · Tokens · Duração (ou "não disponível — motivo"). Aplicação em `roles/<papel>/`, feita pelos donos |
+| **Quem orquestra** | Grava as linhas `operator` na mesma passada da linha do papel (instrução em `commands/`, proposta ao stakeholder) |
+| **SM** | Confere a contagem de jobs × linhas `operator`; lê a delegação na retro e no relatório |
+
+### Conflitos com o processo vigente
+
+Um, resolvido (acima): "quem escreve". R7 mantida (sem número → "não disponível — motivo"). R28 intacta — só ganha a verificação. **Premissa a validar:** o número que o papel devolve não inclui o do `operator` aninhado. Se uma medição mostrar soma dupla, volta ao `/review`.
+
+### Como saberemos que funcionou
+
+No primeiro sprint fechado após a atualização: nº de linhas `operator` no `consumption.md` = nº de chamadas em `.team-project/operator/<sprint>/` (pasta de job, mais um por log adicional na mesma pasta); a retro traz a tabela de delegação preenchida ou "nenhuma delegação". Sinal de falha: jobs sem linha, ou relatório de papel que delegou sem "Execução delegada".
+
+### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento | `.Contains()` do bloco `## v3.31` (salvo antes de mover) no `process-changelog-archive.md` | `True` — íntegro; índice ganhou a linha `v3.31` | ✅ |
+| Coerência de índice | regex `^## v3\.[0-9.]+ ` em `process-changelog.md` | 3 entradas (v3.33.1, v3.33, v3.32) | ✅ |
+| Substituição de padrão | `Select-String "Execução delegada"` em `process/`, `templates/`, README do SM (fora changelogs) | `artifact-ownership.md:33` · `workflow.md:378` · `working-rules.md:58` · `consumption.md` ×3 · `retrospective.md:51` · `README.md:134` — cada uma lida no contexto; nome idêntico ao dos relatórios dos papéis | ✅ |
+| Substituição de padrão | `Select-String "operator ←"` em `templates/` | `consumption.md`, `retrospective.md`, `plugin-report.md`, uma linha de totais cada; Total do sprint dos três diz "papéis + `operator`" | ✅ |
+| Coerência (leitura) | "Quem escreve" × "nunca é ele quem grava" em `consumption.md` | a frase antiga permanece verdadeira (o papel não grava a própria linha) e a exceção "vale também para o `operator`" vem logo após: papel retrata, sessão grava | ✅ |
+| Contagem | `^### R\d+\.` em `working-rules.md` | 30 — sem regra nova | ✅ |
+| Teto de entrada (R17) | bloco `## v3.33.1`, UTF-8 | 9.098 B após a curadoria (rodada de SM + Arquiteto + QA + UX; barreira 17,5 KB), sob a barreira | ✅ |
+| Coerência (leitura) | regra única da célula "Operator job" lida em `consumption.md:48`, `working-rules.md:58`, `workflow.md:392`, `retrospective.md:52` × células de `delivery-report.md`, `verdict.md`, `evidence.md`, `functional-prototype.md`, `sprint-prototype.md`, `architect/skills.md` | contagem de R28 agora em chamadas nos 4 normativos/modelos do SM; formatos dos papéis compatíveis | ✅ |
+
+### Pendente do stakeholder
+
+Nenhum. Bump R18 aplicado pela sessão principal com autorização do stakeholder em 29/09/2026: `plugin.json` `3.33.1`, banner do `README.md` e entrada `v3.33.1` no `CHANGELOG.md`; `commands/` e `agents/` também aplicados (ver "Aplicação dos papéis"). Mudança em `agents/`/`commands/` só vale após reiniciar a sessão.
+
+### Aplicação dos papéis e curadoria (29/09/2026)
+
+| Papel | Documentos | Retrato |
+|---|---|---|
+| **QA** | `skills.md` §2 ("Retrato da chamada"), `README.md` passo 3, `templates/verdict.md`, `templates/evidence.md` | seção "Execução delegada" (5 colunas) no veredito e na evidência |
+| **UX** | `skills.md` §10 (retrato + "Como se verifica"), `templates/functional-prototype.md`, `templates/sprint-prototype.md`, `README.md` | seção na ficha do protótipo |
+| **Arquiteto** (e Dev, aplicado por ele) | `roles/architect/skills.md` §14 ("Retrato da delegação", na resposta, não no plano/ADR), `README.md` item 4; `roles/developer/templates/delivery-report.md`, `skills.md` §6, `README.md` passo 6 | seção no relatório do dev; build de fim de passo rodado pelo próprio dev **não** entra |
+| **Sessão / stakeholder** | `commands/{arc,qa,ux,dev,team}.md`, `agents/{architect,quality-assurance,developer,user-experience,operator}.md`, `plugin.json` 3.33.1 | grava as linhas `operator`; papel só retrata; `operator` não relata o próprio consumo |
+
+**Divergência resolvida (curadoria):** o Dev traz na célula "Operator job" caminho + log (`.team-project/operator/3/ABC-02/ — test.log`), porque no dev `<job>` = `<T-ID>` e duas chamadas da mesma Task caem na mesma pasta; QA e UX trazem só o caminho. **Regra única**, agora em `consumption.md` ("Identificação da chamada"): célula = caminho do job, acrescido de `— <log>` quando houver mais de uma chamada na mesma pasta. Os três formatos são compatíveis com ela; nenhum roteiro de papel precisou ser reescrito. Consequência: a contagem de R28 passa a ser de **chamadas**, não de pastas (ajustada em `working-rules.md`, `workflow.md`, `retrospective.md`, `consumption.md` e neste "Como saberemos").
+
+**Ponto devolvido ao UX (roteiro do outro papel):** `templates/sprint-prototype.md`:94 já usava "Execução delegada" como **rótulo de regra** ("Execução delegada, veredito meu (R28)"), agora também nome da seção de retrato — ambiguidade de leitura na mesma ficha. O nome da seção fica fixo porque o SM e os demais papéis o citam. **Resolvido pelo UX:** rótulo da regra renomeado para "Delegação da verificação, veredito meu (R28)"; o rótulo antigo só existia ali, e `grep "Execução delegada"` em `roles/user-experience/` devolve só a seção de retrato (5 ocorrências em 4 arquivos).
+
+### Reavaliação e ajustes finais (29/09/2026)
+
+Uma reavaliação (`/review` vazio) achou três pontos; o stakeholder mandou resolver os três, ainda dentro da v3.33.1.
+
+| # | Achado | Resolução | Dono |
+|---|---|---|---|
+| 1 | Jobs de `operator/pre-sprint/` (Arquiteto e UX antes do sprint 1) nunca entravam no registro: `consumption.md` só nasce no `/sm sprint plan` e a contagem de R28 só olhava `operator/<sprint>/` | Ao criar o **primeiro** `consumption.md`, o SM lança uma linha `operator` por job de `pre-sprint/`, **transcrita** da "Execução delegada" do chamador (Nota `pre-sprint;`); contagem de R28 = `<sprint>/` + `pre-sprint/` ainda não contado; cada job é contado uma vez; invocações de papel anteriores não são reconstruídas (R7). Em `working-rules.md` R28, `workflow.md:392`, `consumption.md`, `retrospective.md:52`; `commands/sm.md` (sprint plan) aplicado pela sessão principal | SM |
+| 2 | `evidence.md`: seções do bloco-modelo sem cabeçalho, desalinhadas a `verdict.md` | Cinco seções viraram `###`. Só apresentação | QA |
+| 3 | "Execução delegada" do Arquiteto vivia só no texto da resposta, sem modelo verificável; o checkpoint de spike não tinha modelo | Seção 11 nova + regra 14 em `implementation-plan.md`; modelo **novo** `roles/architect/templates/spike-checkpoint.md`; `skills.md` §12/§14 e `README.md` apontam para eles; **não há terceira casa** (execução fora de plano é spike). A resposta repete as linhas para a sessão transcrever. `agents/architect.md` aplicado pela sessão principal | Arquiteto |
+
+**Ajustes de coerência (SM):** `working-rules.md` R28 — o registro conferido é a seção do relatório (QA, UX, Dev) **ou** a seção 11 do plano/do checkpoint de spike (Arquiteto); `artifact-ownership.md` §1, linha de checkpoints, cita o modelo novo; `consumption.md` e R28 dizem de onde o SM transcreve o job do Arquiteto; ponteiros do modelo novo em `README.md` (estrutura de templates), `deliverables/team-project/README.md` e `project-context.md` (exceção de curadoria).
+
+**Verificado sem contradição:** seção 11 do plano × frente 2 do QA (a regra 14 declara que a frente 2 não a confere — não é passo; a tabela passo × conforme e a regra 13 seguem intactas); `consumption.md` × `commands/sm.md` × R28 (mesma sequência: primeiro registro, uma linha por job, transcrita, `pre-sprint;`).
+
+| Quem | Passa a ser cobrado |
+|---|---|
+| **SM** | Ingere os jobs `pre-sprint/` na Planning que cria o primeiro registro; sem a seção do chamador, "não disponível — motivo" e achado contra o chamador |
+| **Arquiteto** | Registra cada chamada ao `operator` **no artefato** (seção 11 do plano ou checkpoint de spike) e repete na resposta; job sem linha é achado |
+| **QA** | Nada novo (só apresentação de `evidence.md`) |
+
+**Resolvido pelo Arquiteto:** `roles/architect/skills.md` §14 (linhas 179, 200, 207) e `templates/implementation-plan.md:33` passam a `<sprint|pre-sprint>`, como QA e UX; ficam com `<sprint>` só o exemplo preenchido do plano (156, 188) e os do Dev, cujo job é sempre de Task dentro do sprint. Aplicado também em `commands/sm.md` (sprint plan): a origem da transcrição do Arquiteto é a seção 11 do plano ou o checkpoint de spike.
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | `Select-String "operator/pre-sprint"` em `process/`, `templates/`, `commands/sm.md`, lido em contexto | `working-rules.md` R28, `workflow.md:392`, `consumption.md` ×2, `retrospective.md:52`, `sm.md:17` — mesma regra (soma `<sprint>/` + `pre-sprint/` ainda não contado; uma vez) | ✅ |
+| Substituição de padrão | `Select-String "spike-checkpoint"` em `*.md` fora de changelogs | `artifact-ownership.md:18`, `architect/README.md`, `architect/skills.md`, `README.md`, `deliverables/team-project/README.md`, `project-context.md`; alvos resolvem | ✅ |
+| Cobertura de modelos | `Test-Path roles\architect\templates\spike-checkpoint.md` · leitura de `implementation-plan.md` seção 11 e regra 14 | `True`; seção 11 presente, regra 14 exclui a frente 2 do QA | ✅ |
+
+---
 ## v3.33 — Retrospectiva analisa consumo por papel e por modelo, procura ineficiência e gera o relatório ao dono do plugin (SM) — 29/09/2026
 
 **Instrução** (`note.md`, `/review note`, item único): usar a retrospectiva para melhorar o processo analisando o uso de tokens de cada papel durante o sprint e os modelos usados em cada um, em busca de ineficiência por processo repetitivo, gap, bloqueio, falha e uso excessivo de tokens, **por meio de um relatório enviado ao dono do plugin**, para que o modelo possa ser melhorado.
@@ -240,107 +342,5 @@ O QA devolveu dois achados fora do alcance dele — nenhum é comportamento, os 
 **Condição inalterada, causa diferente:** o card tem a ferramenta; sem a extensão conectada, o resultado segue ⚠️ não executado — sem ferramenta.
 
 **Teto (R17):** bloco `## v3.32`, `[IO.File]::ReadAllText` UTF-8, medido em 25/09/2026 — **12.718 B**, sob 12,5 KB (3 papéis).
-
----
-
-## v3.31 — QA passa a cobrir aderência de execução, não só o standard; `/arc comply` sai do ciclo; `cycle sprint` deixa de ser "proposta" (SM) — 23/09/2026
-
-**Instrução** (stakeholder, `/review`, três decisões): **(1)** `workflow.md`:53 dizia que `cycle sprint` "é proposta ao stakeholder, não aplicada", mas `commands/team.md`:60–84 já o implementa — corrigir sem duplicar o comando. **(2)** "o QA é quem executa essa tarefa usando o plano definido pelo Arquiteto, e isso é importante para evitar o consumo pelo Arquiteto, que custa muito mais" — a verificação de aderência de execução ao plano passa à frente 2 do QA, ao lado da completude/correção do standard que ela já cobria; `/arc comply` sai do ciclo e da rota de volta, só sobrevive como exceção pedida pelo stakeholder. **(3)** "Adicionar como uma tarefa do sprint a ser executada pelo QA ao fim de cada tarefa executada pelo DEV" — Task não fecha sem essa dupla checagem.
-
-**Classificação:** obsolescência de fluxo (item 1) + fluxo, com reatribuição de responsabilidade entre papéis (item 2) + reforço de gate existente, sem regra nova (item 3). **Rodada de três papéis aplicando na própria mão** (SM em `workflow.md`/`artifact-ownership.md`; Arquiteto em `roles/architect/`, `standards/` e `roles/developer/` — R16/v1.3; QA em `roles/quality-assurance/`) — as três aplicações datam do mesmo `/review` de 23/09/2026 e compõem uma entrada só (R17, precedente v3.25: a unidade é a decisão, não o papel). Barreira aplicável: **12,5 KB** (10 KB + 2,5 KB pelo terceiro papel).
-
-### O que mudou
-
-| Documento | Seção | Mudança |
-|---|---|---|
-| `workflow.md` | §2a, fecho da cadeia (linha do `cycle`) | "Escopo de sprint do `cycle`… é **proposta ao stakeholder**, não aplicada" → `cycle sprint` está **implementado** em `commands/team.md`, sem duplicar o conteúdo do comando |
-| `workflow.md` | §2a, etapa 7 (Validação) | Saída passa a citar, sempre, a checagem de aderência de execução **e** de standard, na mesma invocação |
-| `workflow.md` | **§4a reescrita** — título e corpo | De "`/arc comply` × frente 2, objetos diferentes" para "Aderência de execução e de standard — as duas, na frente 2 do QA": dois objetos no mesmo veredito, motivo de custo, rota de volta por tipo de defeito (execução → dev direto; defeito do plano → GAP ao Arquiteto **e** achado de processo, rota dupla), `/arc comply` fora do ciclo, verificação do SM com as **duas tabelas** obrigatórias |
-| `workflow.md` | §4a-i (DoD da Task) | Bullet novo: frente 2 cobre os dois objetos; Task não fecha sem os dois |
-| `workflow.md` | §8 (gates) | Linha do gate de standard vira "aderência de execução **e** standard, as duas, na mesma frente 2"; frase de abertura do §8 ganha "aderência de execução" ao lado de "standard" |
-| `artifact-ownership.md` | §3, "Conflitos comuns" | Linha do `/arc comply` reescrita: a tabela passo × conforme não é redundante — é o objeto 1, obrigatório, desde que o `/arc comply` saiu do ciclo |
-
-### Por quê
-
-`/arc comply` cobria a aderência de execução por **autoconferência do próprio autor do plano**, sob demanda, nunca garantida em toda Task. Motivo do stakeholder: **custo** — o Arquiteto é o papel mais caro do time (§5c), e reexecutar Task a Task uma comparação mecânica contra um documento já escrito não exige o julgamento de desenho que só ele tem. O QA já fazia o objeto 2 (completude do standard) de forma independente desde a v2.4; a mesma independência passa a cobrir o objeto 1, sem papel novo — mesma leitura do plano e do código, uma pergunta a mais na mesma frente. Item 1 fecha obsolescência simples: `workflow.md` descrevia `cycle sprint` como não implementado quando `commands/team.md` já o executa.
-
-### Quem passa a ser cobrado de forma diferente
-
-| Papel | O que muda |
-|---|---|
-| **QA** | Frente 2 de `/qa <Task>` traz **duas tabelas sempre** — passo × conforme e seção exigida × citada — em vez de só a segunda; roda **ao fim de toda Task**, não sob demanda |
-| **Arquiteto** | Deixa de rodar `/arc comply` no ciclo ou como rota de volta padrão; só a pedido nomeado do stakeholder |
-| **Dev** | Achado de aderência de execução volta **direto** por `/dev resume`, sem Arquiteto |
-| **SM** | Verifica as duas tabelas da frente 2; trata `cycle sprint` como implementado |
-
-### Conflitos
-
-- R16 (dono editorial do Arquiteto sobre `standards/`) — sem conflito: muda quem confere a execução do plano, não o dono do standard.
-- Independência da frente 2 desde a v2.4 ("autor não audita a própria omissão") — sem conflito, reforça: o QA, não-autor do plano, herda o objeto 1.
-
-### Como saberemos que funcionou
-
-Próximo veredito de frente 2 traz as duas tabelas, sempre; próximo achado de aderência de execução é resolvido por `/dev resume` sem uma chamada de `/arc comply` no meio; nenhum relatório de `/team cycle sprint` trata o modo como "ainda não implementado".
-
-### Evidência (R19)
-
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Substituição de padrão | `proposta ao stakeholder.{0,20}não aplicada` em `workflow.md` | 0 — única ocorrência reescrita para "implementado", coerente com `commands/team.md`:60-84 | ✅ |
-| Substituição de padrão | `comply` em `workflow.md` e `artifact-ownership.md` | 2, ambas novas e coerentes: nenhuma sobra dizendo que ele ainda roda no ciclo | ✅ |
-| Coerência (leitura) | §2a etapa 7, §4a-i, §8, §4a lidos lado a lado | os quatro concordam: frente 2 cobre os dois objetos, sempre, Task não fecha sem eles | ✅ |
-| Contagem | `^### R\d+\.` em `working-rules.md` | 29·29, sem mudança — nenhuma regra nova | ✅ |
-| Arquivamento (teto 3) | bloco `v3.28` relocado, `Compare-Object` UTF-8 | 0 diferenças; índice com a linha nova | ✅ |
-| Teto de entrada (R17), consolidado | bloco `## v3.31` inteiro (SM + Arquiteto + QA), `[IO.File]::ReadAllText` UTF-8; rodada de **3 papéis** → barreira 12,5 KB | **≈12,3 KB**, sob a barreira, medido depois de consolidar as 3 aplicações numa entrada só (nota: esta própria linha altera o total em poucas dezenas de bytes; valor final confirmado no relatório do `/review`) | ✅ |
-
-*(Pendente do stakeholder desta entrada: consolidado ao final, depois das aplicações do Arquiteto e do QA — uma lista só, sem repetir `arquivo:linha`.)*
-
-### Aplicação do Arquiteto (`/review`, 23/09/2026) — `roles/architect/` · `standards/` · `roles/developer/`
-
-| Documento | Mudança |
-|---|---|
-| `roles/architect/README.md` | "Responde por" sem "aderência arquitetural"; `/arc question` item 3 e §Bloqueio apontam §4a; seção `/arc comply` vira "Aderência do código ao plano — não é minha" (exceção a pedido do stakeholder); bullet novo em "Como sei": plano conferível sem julgamento de desenho |
-| `roles/architect/skills.md` | §2: linha "Conferência" no raso × bom; §12: "auditoria de aderência pedida pelo stakeholder"; §13: linha `/arc comply` removida |
-| `templates/implementation-plan.md` | Campo **Conferência** por passo (+ exemplo) e regra 13 — dele sai a tabela passo × conforme do QA |
-| `templates/compliance-review.md` | Mantido, **só exceção**: rotas (a)/(b) e modo leve da rota de volta saem; cabeçalho exige o pedido do stakeholder |
-| `standards/implementation-principles.md` §7 | Linhas 5 e 13: verificação passa à frente 2 do QA, consequência "Task volta ao dev" |
-| `roles/developer/` | README passo 7 (achado de execução volta direto por `/dev resume`); `skills.md` §6 e `delivery-report.md` sem citar o Arquiteto como revisor |
-
-**Evidência (R19):** `comply` em `roles/architect/`, `standards/`, `roles/developer/` → 3, todas a exceção; zero em `standards/` e `roles/developer/`.
-
-### Aplicação do QA (`/review`, 23/09/2026) — `roles/quality-assurance/`
-
-| Documento | Mudança |
-|---|---|
-| `README.md` | Frente 2 reescrita: **objeto 1** (execução — critério é o campo **Conferência** do plano, R13) ao lado do **objeto 2** (standard); degrau 1 da escada sem `/arc comply` |
-| `skills.md` §2 | Tabela "passo × conforme" usa a **Conferência** como critério; leitura eficiente (plano + diff, uma vez cada); comparação pesada delegável ao `operator` (R28); passo inconferível vira 🔺 GAP |
-| `skills.md` §10 | Rota da omissão/citação errada de standard corrigida para a **dupla** (🔺 GAP → `/arc question` **e** achado de processo → `/review`) |
-| `templates/verdict.md` | Sub-tabela **"passo × conforme"** (objeto 1) ao lado de **"seção exigida × citada"** (objeto 2); regra nova: frente 2 sem as duas tabelas é achado de processo |
-
-**Achado corrigido pelo QA:** `README.md`/`skills.md` roteavam omissão/citação errada **só** para `/review`, sem GAP. Corrigido para a rota dupla.
-
-**Evidência (R19):** `comply` em `roles/quality-assurance/` → 2, ambas explicativas, zero como mecanismo vigente. Tabelas e rotas dos 4 documentos concordam entre si.
-
-### Curadoria do SM — §4a não reunia a rota dupla num lugar só
-
-Achado: "Rota de volta" nomeava **um** destino para "Defeito do plano" (Arquiteto, GAP); o resumo de estados do objeto 2 nomeava os mesmos dois estados só como "achado de processo" — nenhuma das duas, sozinha, registrava os **dois** destinos que o QA já implementava. **Corrigido no normativo:** as duas linhas de `workflow.md` §4a agora nomeiam os dois destinos juntos; o texto do QA já estava certo e não mudou.
-
-**Evidência (R19):** as duas linhas de `workflow.md` §4a citam GAP **e** achado de processo juntos; nenhuma tabela resta com destino único.
-
-### Pendente do stakeholder (consolidado — SM + Arquiteto + QA, uma lista só)
-
-**Aplicado pelo stakeholder em 23/09/2026** (autorizou na mesma sessão), com o texto abaixo — inclusive o bump para `3.31.0` e a entrada no `CHANGELOG.md`. A verificação final achou mais uma sobra, fora da lista e também aplicada: `agents/architect.md` (item 4 de Responsabilidades e `description`) ainda mandava o Arquiteto revisar aderência "sob demanda, por sua iniciativa"; e a `description` de `agents/quality-assurance.md` passou a nomear a aderência ao Plano de Implementação:
-
-| Arquivo:linha | Hoje (resumo) | Proposta (texto pronto) |
-|---|---|---|
-| `commands/team.md`:82 | comply "sob demanda" antes do `/dev resume` | "devolva os achados conforme a rota do próprio veredito — aderência de execução vai **direto** a `/dev resume <ID>`; defeito do plano vai a `/arc question` **e** entra como achado de processo na fila do `/review`; defeito do standard só à fila do `/review`. `/arc comply` **não** roda neste ciclo: só como exceção pedida nomeadamente pelo stakeholder (`workflow.md` §4a)" |
-| `commands/qa.md`:30 | mesma rota antiga | "achado de aderência de execução (objeto 1) → `/dev resume <ID>`, direto; achado de defeito do plano (objeto 2) → `/arc question` **e** achado de processo à fila do `/review`; defeito do standard → só fila do `/review`. `/arc comply` não entra nesta escada — só roda como exceção pedida nomeadamente pelo stakeholder" |
-| `commands/arc.md`:16 | comply "sob demanda", rota de volta de achado ⚠️/❌ | "**Só roda como exceção explícita, pedida nomeadamente pelo stakeholder** — não é etapa do ciclo nem rota de volta de achado de aderência (isso é da frente 2 do `/qa`, `workflow.md` §4a)" |
-| `agents/scrum-master.md`:41 | "a frente 2 existe apesar do `/arc comply`" | "a frente 2 do QA cobre sozinha a aderência de execução e a de standard, sem o Arquiteto" |
-| `README.md`:115 | sem marcar a restrição | acrescentar, no parêntese: "(aderência do código ao plano, **só como exceção pedida pelo stakeholder** — a frente 2 do `/qa` cobre isso em toda Task)" |
-| `README.md`:105 · `how-to.md`:66 | listam `comply` como modo | **sem correção** — o modo continua existindo, só como exceção; nome de modo é cross-reference já coberta pela curadoria do SM |
-| `.claude-plugin/plugin.json` · banner do `README.md` · topo do `CHANGELOG.md` | `3.30.0` | bump para `3.31.0` (par com este `vX.Y`, R18); `CHANGELOG.md`: "## v3.31.0 — QA cobre aderência de execução e de standard na mesma frente 2; `/arc comply` vira exceção pedida pelo stakeholder. Branch: `feat/v3.31.0` a partir de `develop`. Verificar: `/qa <Task>` produz as duas tabelas sempre; ver `process-changelog.md` v3.31." |
-
-**Resolvido nesta rodada, fora da lista acima** (dentro do alcance do SM, sem esperar o stakeholder): `roles/scrum-master/templates/project-context.md`:113 ganhou o mesmo qualificador *(exceção pedida pelo stakeholder)* ao lado de `comply <T-ID>`. `CHANGELOG.md`:72 é entrada histórica de uma versão anterior — R17 não reescreve entrada antiga, e o texto ali já se referia ao comportamento da época; não é sobra desta rodada.
 
 ---

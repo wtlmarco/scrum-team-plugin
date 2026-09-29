@@ -62,6 +62,13 @@ telas reaproveitadas já verificadas | tela nova: <nomes> | recostura de devolu�
 **Checkpoint:** `verification-log.md` — <n> linhas · última em <data/hora>
 **Log bruto (R28):** <caminho devolvido pelo `operator`> — <n> linhas
 
+## Execução delegada
+| Operator job | Task/História | Modelo | Tokens | Duração |
+|---|---|---|---|---|
+| `.team-project/operator/<sprint\|pre-sprint>/<job>/` | <Task/História> | <`model:` de `agents/operator.md`> | <n, ou "não disponível — <motivo>"> | <t, ou "não disponível — <motivo>"> |
+
+Uma linha por chamada, com o que ela devolveu ao terminar; nunca estimado (R7). Sem chamada: "nenhuma". Não grava em `consumption.md` — a sessão que disparou transcreve ([`../skills.md` §10](../skills.md)).
+
 ## Registro do portão ③ (append — devolução não se apaga)
 | Data | Evento | Quem | O que foi pedido |
 |---|---|---|---|
@@ -84,7 +91,7 @@ O `verification-log.md` usa a mesma tabela append-only de [`functional-prototype
 - **Mesma régua técnica do funcional:** um ponto de entrada, sem build, sem servidor, sem back-end, dados plausíveis, estados de exceção dos caminhos cobertos, "o que está fora" na própria página.
 - **Nada de decisão técnica** (R20), e **nada daqui vira produção** sem Plano de Implementação.
 - **Escopo da verificação declarado, não presumido (R23).** Leve é o caso comum aqui — critério em [`../skills.md` §10](../skills.md) —, mas o fluxo ponta a ponta roda de verdade em toda rodada, e o que não rodou é nomeado.
-- **Execução delegada, veredito meu (R28).** O harness vai ao agente `operator`; a ficha traz o **trecho** da falha e o **ponteiro** do log bruto, nunca um sozinho. Salto que não resolveu volta como par origem → destino, que é a falha típica desta costura. Relatório `inconclusivo` deixa a tela **não exercitada** (R7) — e sem o fluxo ponta a ponta exercitado, o pacote não sobe.
+- **Delegação da verificação, veredito meu (R28).** O harness vai ao agente `operator`; a ficha traz o **trecho** da falha e o **ponteiro** do log bruto, nunca um sozinho. Salto que não resolveu volta como par origem → destino, que é a falha típica desta costura. Relatório `inconclusivo` deixa a tela **não exercitada** (R7) — e sem o fluxo ponta a ponta exercitado, o pacote não sobe.
 
 ## Falhas comuns
 

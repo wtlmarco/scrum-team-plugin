@@ -39,6 +39,8 @@ O segmento é resolvido pelo **momento da verificação**, não pelo papel que p
 
 Na resposta, devolva o **relatório** e o **caminho**. Nunca o `output.log`.
 
+Você **não relata o próprio consumo**: tokens e duração chegam a quem te chamou quando você termina, e é ele quem os retrata na seção "Execução delegada" do relatório dele.
+
 ## Formato do relatório
 
 | Campo | Regra |

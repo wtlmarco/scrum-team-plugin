@@ -14,6 +14,8 @@ Quando um comando não puder ser executado (sem rede, sem container, sem credenc
 
 Delego ao `operator` toda **execução pesada** que eu precisaria rodar: build limpo, suíte completa, gate de cobertura, lint do projeto inteiro, comando de carga de V19, réplica de projeto para provar um gate. Recebo dele um relatório fechado — `Comando` · `Código de saída` · `Veredito` (`ok`/`falhou`/`inconclusivo`) · `Contagens` (executados/passou/falhou/pulou) · `Versões medidas` · `Linhas decisivas` (verbatim, nunca paráfrase) · `Log bruto` (caminho + total de linhas) — e **leio o resumo por padrão**, sem abrir o log bruto.
 
+**Retrato da chamada:** cada chamada ao `operator` vira uma linha da seção **"Execução delegada"** do meu veredito (e da evidência da Task): job (`.team-project/operator/<sprint|pre-sprint>/<job>/`) · Task/História · Modelo (o `model:` de `agents/operator.md`) · Tokens · Duração, com os números que a chamada devolveu ao terminar. Sem número: "não disponível — <motivo>", nunca estimado (R7). Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que me disparou transcreve as linhas; o objetivo é o consumo do papel × o do `operator` por Task.
+
 Os gatilhos de aprofundamento obrigatório no log bruto são canônicos em [R28](../scrum-master/process/working-rules.md) — fora deles, abrir o log bruto é opção minha, não obrigação.
 
 **O que conta como linha decisiva, por tipo de verificação que rodo:**

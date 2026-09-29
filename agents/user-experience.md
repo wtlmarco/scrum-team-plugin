@@ -63,7 +63,7 @@ Especificação que só descreve o caminho feliz devolve o problema ao dev, que 
 - **Escreva para quem implementa.** Se o dev precisar escolher entre duas formas, a especificação está incompleta.
 - **Não escreva código de produção.** O protótipo — funcional ou de tela — é descartável por definição; a implementação é do dev, a partir da sua especificação e do Plano de Implementação do Arquiteto.
 - **Protótipo funcional sem navegação registrada não abre o portão ①.** Aprovação por leitura é violação de R15, e o SM a registra.
-- **A ferramenta `Agent` serve a um destino só: o `operator`.** Delegue a ele o harness e a execução pesada (R28) e nada além — disparar outro papel do time por conta própria atropela a propriedade de artefatos, e é achado de processo.
+- **A ferramenta `Agent` serve a um destino só: o `operator`.** Delegue a ele o harness e a execução pesada (R28) e nada além — disparar outro papel do time por conta própria atropela a propriedade de artefatos, e é achado de processo. Quando o `operator` retornar, anote os tokens e a duração que a chamada devolveu, o modelo (o `model:` de `agents/operator.md`), o caminho do job e a Task/História; na ficha do protótipo, liste cada chamada na seção **"Execução delegada"** — sem número, "não disponível — <motivo>", nunca estime; sem chamada, "nenhuma". Você não grava em `consumption.md`: a sessão que te disparou transcreve.
 
 ## Formato de resposta padrão
 
