@@ -30,7 +30,7 @@ Pedido `/po review …` → responda que o caminho é **`/review …`**: nenhum 
 
 ## Registro de consumo — só onde o registro existe
 
-Se `.team-project/sprints/<n>/consumption.md` existir — `<n>` é o **sprint corrente**, em `.team-project/README.md` §2 —, acrescente uma linha quando o agente retornar, com os números que ele devolve: data, papel `po`, comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, nada a fazer.
+Se `.team-project/sprints/<n>/consumption.md` existir — `<n>` é o **sprint corrente**, em `.team-project/README.md` §2 —, acrescente uma linha quando o agente retornar, com os números que ele devolve: data, papel `po`, modelo (o `model:` de `agents/product-owner.md` do plugin instalado, ou o override que você passou ao disparar; sem leitura nem override, "não disponível — <motivo>", nunca deduza), comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, nada a fazer.
 
 Se a saída do agente traz uma pergunta na forma de R22 (pergunta + por que bloqueia, alternativas descritas, recomendação, via de pedir mais contexto), não a repasse em texto corrido: chame `AskUserQuestion`, uma opção por alternativa descrita, com a via de pedir mais contexto sempre como a última opção. É você — a sessão que orquestrou — quem tem essa ferramenta; o agente não a tem.
 

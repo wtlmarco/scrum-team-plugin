@@ -18,7 +18,7 @@ A partir de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/project-context.
 ├── how-to.md                 cópia de `${CLAUDE_PLUGIN_ROOT}/how-to.md`
 ├── sprints/                  registro de execução — um subdiretório por sprint; nasce vazio
 │   └── <n>/                  planning.md · sprint-backlog.md · stories/ · plan/ · evidence/
-│                             consumption.md · burndown.md · review.md · retrospective.md
+│                             consumption.md · burndown.md · review.md · retrospective.md · plugin-report.md
 ├── scrum-master/             context.md
 ├── product-owner/            context.md · product-backlog.md
 ├── architect/                context.md · spikes/

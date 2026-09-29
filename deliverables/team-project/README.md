@@ -46,6 +46,7 @@ O registro de execução é organizado **por sprint**, não por papel (R25): a p
 | `burndown.md` | [`burndown.md`](../../roles/scrum-master/templates/burndown.md) | **SM** | dia 0 = aprovação do pacote · fecha no `/sm sprint close` | **Sim — o modelo** |
 | `review.md` | [`sprint-review.md`](../../roles/scrum-master/templates/sprint-review.md) | **SM** registra | `/sm review` | **Sim — o modelo** |
 | `retrospective.md` | [`retrospective.md`](../../roles/scrum-master/templates/retrospective.md) | **SM** | `/sm sprint close` | **Sim — o modelo** |
+| `plugin-report.md` | [`plugin-report.md`](../../roles/scrum-master/templates/plugin-report.md) | **SM** | `/sm sprint close` · fecha com a pasta · o stakeholder encaminha | **Sim — o modelo** |
 
 **Retenção — uma forma só.** Pasta numerada, e nada de vivo+archive: o registro de consumo passou a viver em `sprints/<n>/consumption.md`, e o acumulado do projeto é **derivado** somando as pastas (critério e racional em [`artifact-ownership.md` §1c](../../roles/scrum-master/process/artifact-ownership.md)).
 

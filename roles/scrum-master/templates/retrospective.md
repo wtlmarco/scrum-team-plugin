@@ -2,7 +2,7 @@
 
 Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o sprint. Curta e acionável: uma retrospectiva que não gera **uma** ação concreta foi tempo perdido.
 
-> **Persistido em** `.team-project/sprints/<n>/retrospective.md`. No mesmo `/sm sprint close`, o SM **fecha** `sprint-backlog.md` e `burndown.md` — sem cópia nem snapshot. Com `planning.md`, `stories/`, `plan/`, `evidence/`, `consumption.md` e `review.md`, a pasta forma o registro completo e imutável do sprint ([`../process/artifact-ownership.md` §1e](../process/artifact-ownership.md)).
+> **Persistido em** `.team-project/sprints/<n>/retrospective.md`. No mesmo `/sm sprint close`, o SM **fecha** `sprint-backlog.md` e `burndown.md` — sem cópia nem snapshot. Com `planning.md`, `stories/`, `plan/`, `evidence/`, `consumption.md`, `plugin-report.md` e `review.md`, a pasta forma o registro completo e imutável do sprint ([`../process/artifact-ownership.md` §1e](../process/artifact-ownership.md)).
 
 ```markdown
 ## Retrospectiva — Sprint <n> — <data>
@@ -42,13 +42,23 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 
 > Lê [`consumption.md`](consumption.md) da **mesma pasta do sprint**, e só existe quando o projeto registra consumo — sem o arquivo, escreva `n/a` e siga. **Não é footprint** e **não se soma** às duas linhas de KB acima: aquelas medem a pegada estática do processo, esta mede o gasto real do trabalho dos papéis ([`../process/workflow.md` §5c](../process/workflow.md)).
 
-| Papel | Σ tokens | Nº de invocações | Duração total | Leitura em uma linha |
-|---|---|---|---|---|
-| SM · PO · Arquiteto · UX · dev · QA | <n> | <n> | <mm:ss> | <o que explica o número — sprint de spike, retrabalho, harness completo> |
-| **Total do sprint** | **<n>** | **<n>** | **<mm:ss>** | — |
+| Papel | Modelo | Σ tokens | Nº de invocações | Duração total | Leitura em uma linha |
+|---|---|---|---|---|---|
+| SM · PO · Arquiteto · UX · dev · QA | <modelo do registro> | <n> | <n> | <mm:ss> | <o que explica o número — sprint de spike, retrabalho, harness completo> |
+| **Total do sprint** | — | **<n>** | **<n>** | **<mm:ss>** | — |
 
 - **Contra o sprint anterior:** <Δ% e a causa, ou "primeiro sprint com registro">
 - **Divergência contra a carga fixa** (§5c fase Act): <papel com carga fixa pequena e consumo alto, ou o oposto — candidato a investigar, nunca a cortar às cegas | nenhuma>
+- **Ineficiência de consumo** (lida em `consumption.md`; as colunas de fonte são **Task/História** e **Nota**). Cada verificação é contagem sobre o registro, não impressão — sem linha que a sustente, escreva "nenhuma":
+
+| Verificação | Como se mede | Achado | Regra ligada |
+|---|---|---|---|
+| **Papel repetido na mesma Task/História** | linhas com o mesmo papel **e** o mesmo ID; alerta a partir de **3** | <ID · papel · n · tokens · causa: plano raso, GAP, reprovação, bloqueio, comando refeito à mão> \| nenhuma | R2 · R7 · R8 |
+| **Task ou História cara** | Σ tokens por ID contra a média das Tasks do sprint; alerta > **2×** | <ID · Σ · × a média · estimativa × entregue> \| nenhuma | R2 |
+| **Papel desproporcional** | fatia do papel no total contra a **carga fixa** dele (§5c) e contra o trabalho que o quadro mostra | <papel · % do total · leitura> \| nenhum | §5c Act |
+| **Modelo × trabalho** | Σ tokens por **modelo** do registro; o modelo mais caro concentra trabalho mecânico (leitura, repetição, formatação) ou o mais barato concentra retrabalho | <modelo · Σ · achado> \| nenhum — **candidato a investigar, nunca a trocar às cegas** | R3 |
+| **Consumo × falha** | Tasks que também aparecem em "Reprovações no QA", "Tasks reabertas", "Gaps por plano" ou como bloqueio | <ID · indicador · Σ tokens> \| nenhuma | R7 · R8 · R25 |
+
 - **O que este número não mede:** o custo da sessão principal, que não enxerga o próprio consumo. O total é um **piso**, não o gasto completo do projeto.
 
 ### O que funcionou (3)
@@ -63,21 +73,17 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 ### Regras revisadas
 - <nenhuma | R<n> ajustada porque ...>
 
-### Sintomas para o `note.md` do plugin
-> O que este sprint mostrou sobre **o processo do time**, não sobre o produto. Escreva como **sintoma**, não como solução — é o formato que a fila do `/review` exige. O SM consolida; **o stakeholder decide** se leva ao `RAIZ/note.md` do repositório-fonte do plugin.
->
-> **Isto não dá ao projeto poder de editar o plugin.** É relatório. O `/review` continua sendo o único caminho de mudança do processo, e só no clone-fonte — nunca daqui.
+### Relatório ao dono do plugin
+Os sintomas do processo, os números de consumo por papel e por modelo e as ineficiências acima saem em um **arquivo próprio**, [`plugin-report.md`](plugin-report.md), **sem contexto do projeto** — é ele que o stakeholder encaminha ao dono do plugin. Aqui só o ponteiro:
 
-| # | Sintoma observado neste sprint | Onde doeu (regra, cerimônia, modelo, comando) | Quantas vezes |
-|---|---|---|---|
-| 1 | <o que aconteceu, sem propor a correção> | <R<n> · §<x> · `templates/<y>.md` · `/<comando>`> | <n> |
-
-- **Levado ao `RAIZ/note.md`?** <sim, em <data>, pelo stakeholder | não — fica registrado aqui para reincidência>
+- **`sprints/<n>/plugin-report.md` gerado?** <sim — <n> sintomas · <n> ineficiências | não — o motivo>
+- **Encaminhado ao dono do plugin?** <sim, em <data>, pelo stakeholder | não — fica no arquivo para reincidência>
 
 ### Encerramento
 - **Tasks não concluídas devolvidas ao Product Backlog, com a História:** <IDs, ou "nenhuma">
 - **Ressalvas e débitos da Review registrados no Product Backlog:** <sim — com dono | nenhum>
-- **Consumo do sprint lido antes do fechamento:** <sim — seção acima preenchida | n/a — o projeto não registra consumo>
+- **Consumo do sprint lido antes do fechamento:** <sim — seção acima preenchida, com modelo e ineficiências | n/a — o projeto não registra consumo>
+- **`plugin-report.md` escrito e relido contra vazamento de contexto do projeto:** <sim | não, com o motivo>
 - **`sprints/<n>/` fechado (R24 · R25):** `sprint-backlog.md` fechado, `burndown.md` fechado (seção "Fechamento" preenchida), `stories/`/`plan/`/`evidence/` com o que seus donos produziram — <sim | não, com o motivo>
 ```
 
@@ -91,7 +97,8 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 - A linha de footprint (KB) é a fase **Check** do ciclo de eficiência ([`../process/workflow.md` §5c](../process/workflow.md)): mede `agents/` + `commands/` + `roles/<papel>/` do processo, compara com a retrospectiva anterior e alimenta o giro de `/review metrics`, que roda a cada 3 sprints. Crescimento sem regra ou cerimônia nova é candidato a corte, não a nota.
 - **Consumo real ≠ footprint.** A seção de consumo soma o que a sessão que orquestra registrou por invocação de papel — mede **o trabalho dos papéis**, nunca o custo da própria sessão principal, que não se autoobserva. Não some as duas linhas de footprint com o total de consumo: são medidas diferentes, lado a lado, nunca um total único.
 - **O consumo é lido antes do fechamento da pasta.** A seção acima lê `sprints/<n>/consumption.md` enquanto o sprint ainda está aberto; depois do `/sm sprint close` a pasta é registro imutável. Não há arquivamento a fazer — o registro já nasceu dentro do sprint a que pertence.
-- **Sintoma de processo é sintoma, não proposta.** A seção do `note.md` descreve **o que doeu**, com quantas vezes; quem transforma sintoma em mudança é o `/review`, no repositório-fonte. Retrospectiva que já traz a regra reescrita pulou o único lugar onde conflito com regra vigente é analisado.
+- **Sintoma de processo é sintoma, não proposta.** O `plugin-report.md` descreve **o que doeu**, com quantas vezes; quem transforma sintoma em mudança é o `/review`, no repositório-fonte. Retrospectiva que já traz a regra reescrita pulou o único lugar onde conflito com regra vigente é analisado.
+- **A análise de consumo aponta onde olhar, não o que cortar.** Repetição, Task cara e modelo desproporcional são **candidatos a investigar** — a causa vem do registro (Nota, Task/História) e do quadro, e a decisão de mudar é do `/review`. Achado sem linha de `consumption.md` que o sustente não entra (R7). A divisão entrada/saída de tokens **não é observável** ([`consumption.md`](consumption.md)); não se calcula.
 - **`sprints/<n>/` fecha por último, depois de tudo o resto estar decidido** (R24 · R25): fechar `sprint-backlog.md` e `burndown.md` antes de a Review decidir aceite/ressalva/rejeição, ou antes de Tasks inacabadas voltarem ao Product Backlog, congela um estado que ainda vai mudar. `review.md` é exceção: entra antes, no `/sm review`, porque é o registro do próprio evento da Review.
 
 ## Exemplo de leitura

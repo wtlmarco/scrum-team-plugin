@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.31.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.33.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -49,7 +49,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
     ├── scrum-master/       processo, Sprint Backlog, rituais, regras que governam todos
     │   ├── README.md · skills.md
     │   ├── process/     working-rules · workflow · artifact-ownership · process-changelog
-    │   └── templates/   planning · sprint-backlog · burndown · consumption · sprint-review · retrospective · status-entry · project-context · process-change
+    │   └── templates/   planning · sprint-backlog · burndown · consumption · sprint-review · retrospective · plugin-report · status-entry · project-context · process-change
     ├── product-owner/      requisitos, Histórias, backlog, aceite
     │   └── templates/   user-story · product-backlog · status · requirement · functional-analysis · acceptance
     ├── architect/          especificação técnica, Planos de Implementação, ADRs

@@ -94,7 +94,7 @@ Modos parciais do ciclo: `plan <ID>` (só a etapa 1) · `build <ID>` (só a etap
 
 ## Registro de consumo — só onde o registro existe
 
-Se `.team-project/sprints/<n>/consumption.md` existir, acrescente **uma linha por subagente disparado nesta invocação**, com os números que cada um devolve ao retornar: data, papel, comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, nada a fazer. Os modos `init`, `update` e `version` não disparam agente — não gravam linha.
+Se `.team-project/sprints/<n>/consumption.md` existir, acrescente **uma linha por subagente disparado nesta invocação**, com os números que cada um devolve ao retornar: data, papel, modelo (o `model:` de `agents/<papel>.md` do plugin instalado, ou o override que você passou ao disparar; sem leitura nem override, "não disponível — <motivo>", nunca deduza), comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Sem o arquivo, nada a fazer. Os modos `init`, `update` e `version` não disparam agente — não gravam linha.
 
 Se a saída do agente traz uma pergunta na forma de R22 (pergunta + por que bloqueia, alternativas descritas, recomendação, via de pedir mais contexto), não a repasse em texto corrido: chame `AskUserQuestion`, uma opção por alternativa descrita, com a via de pedir mais contexto sempre como a última opção. É você — a sessão que orquestrou — quem tem essa ferramenta; o agente não a tem.
 
