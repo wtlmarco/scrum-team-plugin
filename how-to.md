@@ -223,7 +223,7 @@ Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — o tim
 │       ├── stories/                 as Histórias como você as aprovou (congeladas)
 │       ├── plan/                    um Plano de Implementação por Task
 │       ├── evidence/                a evidência de cada Task: comando e saída real
-│       ├── consumption.md           tokens e duração por invocação
+│       ├── consumption.md           tokens e duração por invocação (inclui o operator)
 │       ├── burndown.md              estimativa restante, em série datada
 │       ├── review.md                a Sprint Review e o seu veredito por História
 │       ├── retrospective.md         o que o time corrige no sprint seguinte

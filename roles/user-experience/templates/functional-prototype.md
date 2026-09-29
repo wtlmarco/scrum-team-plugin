@@ -63,6 +63,13 @@ para o stakeholder não confundir escolha com decisão.>
 **Checkpoint:** `verification-log.md` — <n> linhas · última em <data/hora>
 **Log bruto (R28):** <caminho devolvido pelo `operator`> — <n> linhas
 
+## Execução delegada
+| Operator job | Task/História | Modelo | Tokens | Duração |
+|---|---|---|---|---|
+| `.team-project/operator/<sprint\|pre-sprint>/<job>/` | <Task/História> | <`model:` de `agents/operator.md`> | <n, ou "não disponível — <motivo>"> | <t, ou "não disponível — <motivo>"> |
+
+Uma linha por chamada, com o que ela devolveu ao terminar; nunca estimado (R7). Sem chamada: "nenhuma". Não grava em `consumption.md` — a sessão que disparou transcreve ([`../skills.md` §10](../skills.md)).
+
 ## Registro do portão ①
 **Navegado pelo stakeholder em:** <data>
 **Divergências encontradas na navegação:** <lista, ou "nenhuma">

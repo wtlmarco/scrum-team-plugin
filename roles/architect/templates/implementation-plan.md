@@ -30,7 +30,7 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` — dentro da pasta d
 > lembrado de outro projeto. O que **o plano inteiro** exige, do primeiro ao último passo.
 > Plano sem esta seção **não entra em construção** (mesma régua de R8).
 
-**Medição do `operator` (quando foi ela):** `.team-project/operator/<sprint>/<job>/` — trabalho
+**Medição do `operator` (quando foi ela):** `.team-project/operator/<sprint|pre-sprint>/<job>/` — trabalho
 `<nome>`, código de saída `<n>`, veredito `<ok | falhou>`. Veredito `inconclusivo` **não** preenche
 esta seção; medição citada depois de o arquivo que declara a toolchain mudar, ou cujo log sumiu do
 caminho, caduca e é refeita (R26 · R28 · [`../skills.md`](../skills.md) §14).
@@ -108,6 +108,15 @@ comando de cobertura, isso é gap de configuração e entra na seção 9, não v
 - [ ] Segredo validado no start, sem default vazio
 - [ ] Recurso de outro escopo → 404, não 403
 - **Regra aplicável:** `${CLAUDE_PLUGIN_ROOT}/standards/implementation-security-lgpd-copyright.md` §<n>
+
+## 11. Execução delegada (registro do Arquiteto — não é passo; o dev não executa nada daqui)
+*(uma linha por chamada minha ao `operator` para este plano — tipicamente a medição da seção 3 —, com os
+números que a chamada devolveu ao terminar. Sem número: "não disponível — <motivo>", nunca estimado (R7).
+Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que disparou o `/arc` transcreve.)*
+
+| Operator job | Task/História | Modelo | Tokens | Duração |
+|---|---|---|---|---|
+| `.team-project/operator/<sprint\|pre-sprint>/<job>/` *(+ ` — <log>` se houver mais de uma chamada na mesma pasta)* | <T-ID / H-ID> | <`model:` de `agents/operator.md`> | <n ou "não disponível — motivo"> | <tempo ou "não disponível — motivo"> |
 ```
 
 ## Regras do formato
@@ -125,6 +134,7 @@ comando de cobertura, isso é gap de configuração e entra na seção 9, não v
 11. **Ambiente medido antes dos passos** (R26). A seção 3 sai preenchida com comando e saída real — **minha ou do `operator`, com código de saída, versões e caminho do log bruto**, nunca veredito `inconclusivo`: nenhum passo cita comando que eu não vi existir na versão medida, e a parada incondicional cobre **ausência** do pré-requisito, não só versão fora da faixa. Faixa de versão sozinha não é regra de parada. Plano sem a seção 3 não entra em construção.
 12. **Task retomada de outro sprint ganha plano novo, aqui, com a linha `Retomada de:`** — o plano antigo vive em `sprints/<n-1>/plan/` e é **registro fechado: não se edita, não se copia, não se reaproveita por referência**. O plano novo declara o que já foi feito (a partir do "Parei no passo" do relatório do dev) e **reconfere no código real** as assinaturas dos passos restantes: o repositório mudou no intervalo, e passo executado sobre premissa velha é a causa nº 1 de 🔺 GAP ([`../skills.md`](../skills.md) §1 · R3 · R5).
 13. **Todo passo é conferível pelo QA sem julgamento de desenho** — é deste plano que sai a tabela passo × conforme da frente 2 ([`workflow.md` §4a](../../scrum-master/process/workflow.md)). A linha **Conferência** diz o que se observa no código (arquivo, assinatura, nomenclatura, registro de infra, teste); a seção de standard citada no passo diz contra o quê. Passo que o QA não consegue marcar conforme/divergente sem decidir é defeito do plano e volta ao Arquiteto (🔺 GAP → `/arc question`); divergência de execução volta ao dev (`/dev resume`).
+14. **Seção 11 sempre presente — é o controle da delegação** (R28). Todo job citado na seção 3 tem linha na seção 11, e toda chamada que fiz ao `operator` para este plano também — inclusive uma remedição posterior, que **acrescenta** linha. O número de linhas é o número de chamadas ("nenhuma" quando zero), sem célula de número em branco. A minha resposta ao `/arc` repete as mesmas linhas, para a sessão transcrever em `consumption.md`; o plano é o registro que o SM confere depois. Plano retomado (regra 12) lista só as chamadas feitas para o plano novo. A frente 2 do QA não confere a seção 11: ela não é passo.
 
 ## Exemplo abreviado
 
@@ -171,4 +181,9 @@ comando de cobertura, isso é gap de configuração e entra na seção 9, não v
 
 ## 9. Onde parar e perguntar 🔺
 - Se `UrlSigner` já compuser a mensagem de forma diferente da descrita no passo 2.
+
+## 11. Execução delegada
+| Operator job | Task/História | Modelo | Tokens | Duração |
+|---|---|---|---|---|
+| `.team-project/operator/<sprint>/<job>/` | T-042 | haiku | 8.310 | não disponível — a chamada terminou sem devolver a duração |
 ```

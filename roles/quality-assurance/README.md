@@ -100,7 +100,7 @@ Não é um modo de `/qa`: é a minha contribuição ao passo 4 de `/sm sprint pl
 ### `/qa <ID>` — validação de Task
 1. Ler o plano e o relatório do dev; conferir o diff contra a lista de arquivos do plano (detecta escopo antecipado).
 2. Percorrer as seis frentes, cada achado com `arquivo:linha`.
-3. **Executar** os comandos de verificação do projeto — pesado (build, suíte, cobertura, lint do projeto inteiro, carga V19, suíte grande de cenários) delegado ao `operator` (R28); trecho decisivo e ponteiro do log no veredito, nunca um sozinho ([`skills.md`](skills.md) §2).
+3. **Executar** os comandos de verificação do projeto — pesado (build, suíte, cobertura, lint do projeto inteiro, carga V19, suíte grande de cenários) delegado ao `operator` (R28); trecho decisivo e ponteiro do log no veredito, nunca um sozinho; cada chamada ao `operator` é retratada na seção "Execução delegada" do veredito ([`skills.md`](skills.md) §2).
 4. **Executar cada cenário mapeado da Task** (novo e regressivo aplicável), registrando o resultado no Histórico do próprio `SC-nnn` e no veredito — forma manual/navegador (condicional, ver acima)/script conforme o cenário declara.
 5. Emitir veredito no formato de [`templates/verdict.md`](templates/verdict.md).
 6. Registrar em `.team-project/sprints/<n>/evidence/<T-ID>.md` — nome exatamente `<T-ID>.md`, é o que a coluna Evidência do Sprint Backlog aponta; ponteiro que não resolve é achado de processo. Atualizar os documentos de qualidade do projeto, inclusive a suíte de cenários.
