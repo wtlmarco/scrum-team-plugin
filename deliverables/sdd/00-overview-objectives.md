@@ -38,9 +38,6 @@
 
 ## 4.1 <iniciativa futura>
 <O que é, o que destrava, e o que precisa existir antes.>
-
-# 5. Conclusão
-<Uma síntese curta: o que o conjunto do SDD cobre e o que deliberadamente não cobre.>
 ```
 
 ## Regras

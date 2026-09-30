@@ -31,8 +31,6 @@
 
 - **Sem veredito do QA, não há aceite** (R7). Nem "aceito condicional à validação".
 - **O ④ é formulário, uma pergunta por História** (R22): aceita · aceita com ressalva · rejeitada · pedir mais contexto. **O dossiê é escrito antes da pergunta** e a pergunta o aponta (ponteiro no topo) e traz a recomendação do PO em uma frase — sem dossiê apontável, a pergunta não sai. "Aceita com ressalva" exige a ressalva escrita na resposta (vira entrada no Product Backlog); "Rejeitada", o que falta.
-- **O alvo é a História, nunca a Task** (R21). Task não se aceita: ela fecha tecnicamente com o veredito do QA, no ✅ do `sprint run` (`/sm close <T-ID>`).
-- **O PO nunca decide sozinho.** Escreve o dossiê, aponta evidência, recomenda — quem marca Aceita/Aceita com ressalva/Rejeitada é o stakeholder, sobre o que viu.
 - **Fora da Sprint Review não há aceite.** História aceita em conversa avulsa é violação registrada pelo SM.
 - Critério é conferido **um a um**, apontando a Task que o cumpre e a evidência. Critério não conferível é critério mal escrito — corrigir a História no Product Backlog; ela volta a ser candidata a um pacote de abertura seguinte.
 - **Ressalva vira entrada no Product Backlog** com dono, imediatamente, na mesma sessão (R12). Ressalva verbal desaparece.

@@ -1,4 +1,4 @@
-﻿# Template — Análise Funcional (`/po analyze <ideia>`)
+# Template — Análise Funcional (`/po analyze <ideia>`)
 
 Resposta do PO a uma ideia do stakeholder, antes de virar requisito.
 
@@ -49,9 +49,9 @@ Resposta do PO a uma ideia do stakeholder, antes de virar requisito.
 
 ## Exemplo
 
-> **Pedido:** "quero que a plataforma gere também um formato de saída novo."
-> **Problema por trás:** o usuário quer uma forma mais barata e rápida de testar o resultado antes de investir na produção completa.
-> **Já existe:** a cadeia já produz os elementos visuais e o texto estruturado — a maior parte do insumo está pronta.
-> **Menor forma útil:** montar os elementos já aprovados em um documento sequencial, sem geração de mídia nova. Um tipo de entrega novo, sem provedor novo.
-> **Decisão:** Aprovado com ajuste — o formato simples agora; a versão animada fica fora, depende de uma frente de mídia nova.
+> **Pedido:** "quero que a plataforma exporte também em um formato novo."
+> **Problema por trás:** o usuário quer uma forma mais barata e rápida de conferir o resultado antes de investir na versão completa.
+> **Já existe:** a cadeia já produz os dados e o texto estruturado — a maior parte do insumo está pronta.
+> **Menor forma útil:** montar os itens já aprovados em um documento simples, sem geração nova. Um tipo de entrega novo, sem dependência nova.
+> **Decisão:** Aprovado com ajuste — o formato simples agora; a versão rica fica fora, depende de uma frente nova.
 > **Escalação:** nenhuma.

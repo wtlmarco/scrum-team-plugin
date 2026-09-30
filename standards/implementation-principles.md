@@ -2,7 +2,7 @@
 
 **Versão:** 1.1
 **Data:** 06/09/2026
-**Status:** Draft normativo
+**Status:** Vigente
 **Escopo:** agnóstico de produto **e** de linguagem/plataforma
 
 > **Este é o normativo de nível 1 da organização.** Vale para **todo** projeto, em qualquer linguagem, framework ou plataforma: serviço, aplicação web, app, biblioteca, CLI ou worker. Todas as regras aqui são obrigatórias salvo decisão explícita em ADR do projeto.
@@ -67,7 +67,7 @@ Três passos, nesta ordem, antes do primeiro Plano de Implementação:
 
 1. **Declarar as unidades implantáveis.** Cada processo que sobe sozinho (API, worker, app, front, CLI) é uma unidade. Cada unidade tem os quatro anéis de §2 — mesmo que um anel seja pequeno.
 2. **Preencher a Ficha de Vinculação de Stack (§6)** no documento de arquitetura do produto: o nome real de cada anel e a ferramenta concreta que verifica cada regra.
-3. **Ligar os gates no pipeline** (§7) antes do primeira Task de negócio. Gate que entra depois nunca entra.
+3. **Ligar os gates no pipeline** (§7) antes da primeira Task de negócio. Gate que entra depois nunca entra.
 
 **Regra:** projeto sem Ficha de Vinculação preenchida **não recebe Plano de Implementação** — sem ela o plano não consegue apontar o anel de cada arquivo nem o comando que verifica a entrega, e o dev decide por conta.
 
@@ -265,7 +265,7 @@ Cada teste declara, em comentário de uma linha ou no próprio nome, **o que dev
 
 Toda unidade implantável com código próprio tem **gate próprio, com comando próprio** — **incluindo front-end e app**, onde o que se cobre é a lógica de estado, os serviços, as regras de apresentação e os componentes.
 
-- Unidade **sem suíte de testes** é medida em 0%, o gate é ligado nessa baseline e a regra de diff ≥ 80% (§5.4) passa a valer **imediatamente**, no primeira Task que tocar aquela unidade.
+- Unidade **sem suíte de testes** é medida em 0%, o gate é ligado nessa baseline e a regra de diff ≥ 80% (§5.4) passa a valer **imediatamente**, na primeira Task que tocar aquela unidade.
 - Unidade **sem gate configurado** é achado **bloqueante** de aderência, não pendência de organização.
 - "Essa unidade não tem como ser testada" não é resposta: se não há como medir, a Ficha (§6, V10–V12) registra a ferramenta escolhida e a Task de configuração entra no backlog **antes** do próxima Task de negócio daquela unidade.
 
@@ -397,7 +397,7 @@ Toda regra deste normativo tem uma forma de verificação. Regra sem verificaç�
 | 18 | RNF de performance sem os **cinco campos** (§5.6 P1) | Leitura do documento de requisitos | antes do plano | RNF volta ao PO; a Task não entra em construção |
 | 19 | Limiar do orçamento violado (§5.6 P3) | Comando de carga (V19), código de saída ≠ 0 | carga | **Bloqueia** a promoção à linha principal |
 | 20 | Regressão acima da margem medida (§5.6 P5) | Comparação com a baseline versionada (V21), margem de V20 | carga | **Bloqueia** — só passa com baseline atualizada e justificada no mesmo merge |
-| 21 | Operação de V18 sem cenário executável, ou Task que a toca sem a saída do comando (§5.6 P6) | Uma linha de V18 ↔ um cenário ↔ um job; saída real no relatório de entrega — trecho **e** ponteiro do log (§5.4) | auditoria | Achado bloqueante de aderência |
+| 21 | Operação de V18 sem cenário executável, ou Task que a toca sem a saída do comando (§5.6 P6) | Uma linha de V18 ↔ um cenário ↔ um job; saída real no relatório de entrega — trecho **e** ponteiro do relatório da execução (§5.4) | auditoria | Achado bloqueante de aderência |
 | 22 | Ficha com V18–V21 ausentes (§5.6 P2) | Seção existe no documento de arquitetura do produto | antes do plano | Ficha incompleta — sem Plano de Implementação |
 
 ---

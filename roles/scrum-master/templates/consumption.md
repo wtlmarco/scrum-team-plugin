@@ -6,8 +6,22 @@ Registra o que a sessão que dispara cada subagente de papel recebe quando ele t
 
 **Retenção — uma forma só (R25 · [`../process/artifact-ownership.md` §1c](../process/artifact-ownership.md)).** O registro **nasce dentro do sprint a que pertence** e **fecha com a pasta**, no `/sm sprint close`. Não há vivo+archive, não há relocação de linhas, não há tabela de totais a conciliar: o acumulado do projeto é **derivado sob demanda**, somando `sprints/*/consumption.md` **e** `.team-project/consumption.md` — ver "Fora de sprint".
 
-**Fora de sprint — `.team-project/consumption.md`.** O que acontece sem sprint aberto (onboarding, brainstorm, `prepare`, `sdd`, portão ①, jobs `operator/pre-sprint/`, invocações entre sprints) não tem pasta a que pertencer. Vai para **um arquivo só na raiz de `.team-project/`**, **no mesmo modelo abaixo** (cabeçalho trocado para "Consumo — fora de sprint"; sem "Totais do sprint" — o total é derivado), com a Nota iniciando em `pre-sprint;` (antes do sprint 1) ou `entre-sprints;` (com o sprint anterior fechado). **Substitui** a subseção "Consumo pré-sprint (prepare · sdd)" de `scrum-master/context.md` e a transcrição no passo 9 da Planning: a linha é gravada **na hora, num registro só**, e nunca repetida no do sprint (contaria em dobro). **Retenção: sem rotação** — as linhas nunca se movem nem se arquivam; não há sprint a que ancorar, e o volume é pequeno (só o que roda fora de sprint). A retrospectiva expõe à parte as linhas dele nascidas desde o fechamento anterior.
+**Fora de sprint — `.team-project/consumption.md`.** O que acontece sem sprint aberto (onboarding, brainstorm, `prepare`, `sdd`, portão ①, jobs `operator/pre-sprint/`, invocações entre sprints) não tem pasta a que pertencer. Vai para **um arquivo só na raiz de `.team-project/`**, **no mesmo modelo abaixo**, na variante "fora de sprint" (bloco logo a seguir: sem "Totais do sprint" — o total é derivado), com a Nota iniciando em `pre-sprint;` (antes do sprint 1) ou `entre-sprints;` (com o sprint anterior fechado). **Substitui** a subseção "Consumo pré-sprint (prepare · sdd)" de `scrum-master/context.md` e a transcrição no passo 9 da Planning: a linha é gravada **na hora, num registro só**, e nunca repetida no do sprint (contaria em dobro). **Retenção: sem rotação** — as linhas nunca se movem nem se arquivam; não há sprint a que ancorar, e o volume é pequeno (só o que roda fora de sprint). A retrospectiva expõe à parte as linhas dele nascidas desde o fechamento anterior.
 
+**Variante "fora de sprint"** — o que `/team init` e o passo 7b do `/team update` criam em `.team-project/consumption.md`:
+
+```markdown
+# Consumo — fora de sprint
+
+> **DOCUMENTO VIVO, sem rotação** · **Dono:** SM
+> Uma linha por invocação de papel sem sprint aberto — mais uma por chamada ao `operator` —, escrita por quem orquestrou. Nota iniciando em `pre-sprint;` ou `entre-sprints;`.
+
+## Registro
+| Data | Papel | Modelo | Comando | Task/História | Tokens | Duração | Nota |
+|---|---|---|---|---|---|---|---|
+```
+
+**Fonte única.** Onde e como gravar o consumo fora de sprint (destino, Nota, linha do `operator`, piso) está **só aqui** — §Como gravar e as regras abaixo. `working-rules.md` R28, `workflow-sprint.md` e `workflow-sdd.md` apontam para cá e não o repetem.
 **Escopo — onde este registro existe, e onde não existe.** Só em projeto que **instala** o time — onde `.team-project/` existe. O **clone-fonte do plugin** (o repositório onde o `/review` roda) não tem `.team-project/` e não grava consumo: não há projeto ali, só o processo que o time segue em qualquer projeto. Comando de papel (`/sm`, `/po`, `/arc`, `/ux`, `/qa`, `/dev`) só grava quando o registro de destino existe; `/review` nunca grava.
 
 ```markdown

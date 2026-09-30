@@ -2,7 +2,7 @@
 
 **Versão:** 3.3
 **Data:** 06/09/2026
-**Status:** Draft normativo
+**Status:** Vigente
 **Nível:** 2 — perfil de stack
 **Stack alvo:** .NET 10 · Clean Architecture · CQRS
 

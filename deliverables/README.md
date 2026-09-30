@@ -35,8 +35,8 @@ Um documento tem **um dono**, que responde pelo conteúdo e pela atualização. 
 | `README` (índice) | **PO** | Documento novo entra no conjunto | — |
 | Protótipo funcional (HTML) | **UX** | Fluxo principal muda, antes do ① | Stakeholder (navega e aprova) |
 | Protótipo do sprint (HTML) | **UX** | A cada sprint, depois do corte de capacidade, antes do ③ | Stakeholder (navega e aprova o pacote) |
-| `01-scope-and-criteria` | **PO** | Escopo de um ciclo é definido, concluído ou revisto | SM, QA |
-| `02-status` | **SM** | Uma Task é fechada ou um ciclo termina | QA (auditoria) |
+| `01-scope-and-criteria` | **PO** | Escopo de um sprint (suas Histórias) é definido, concluído ou revisto | SM, QA |
+| `02-status` | **SM** | Uma Task é fechada ou um sprint termina | QA (auditoria) |
 | `03-code-map` | **QA** | Arquivo de código criado, alterado ou removido | Arquiteto |
 | `pending` | **QA** | GAP aberto, fechado ou confirmado como não-gap | SM, Arquiteto |
 
@@ -96,10 +96,10 @@ Dentro de cada etapa, a ordem:
 | Nenhuma seção descreve funcionalidade removida ou nunca construída | todos |
 | Mudança funcional aceita tem entrada no changelog | `06` |
 | Nenhum documento contradiz outro do conjunto | todos |
-| Task concluída tem arquivo correspondente no mapa de código | `01-scope` × `03-code-map` |
+| História aceita tem os arquivos correspondentes no mapa de código | `01-scope` × `03-code-map` |
 | Task concluída tem evidência (comando + saída), não só narrativa | `02-status` |
 | Todo GAP tem `arquivo:linha`, impacto e criticidade | `pending` |
-| Nenhum critério marcado como atendido sem evidência | `01-scope` × `02-status` |
+| Nenhuma História marcada `[x]` sem aceite na Review e evidência | `01-scope` × `02-status` |
 
 A auditoria cruzada (`/qa audit`) existe justamente para verificar periodicamente os critérios que atravessam documentos, não só os de uma Task.
 

@@ -3,7 +3,7 @@
 Levantado pelo dev quando o plano — ou a seção de standard que ele citou — não cobre o que apareceu no código. **Ao escrever um GAP, a codificação para** (R9).
 
 ```markdown
-🔺 GAP — <ID da tarefa> — passo <n> do plano
+🔺 GAP — <ID da Task> — passo <n> do plano
 
 **Tipo:** plano | standard
 **O que o plano diz:** <trecho literal>
@@ -35,6 +35,9 @@ Levantado pelo dev quando o plano — ou a seção de standard que ele citou —
 - Constante/valor que o passo exige e o plano não define
 - **Defeito na seção de standard que o plano citou** — ver abaixo
 - **Regra de engenharia que o passo exige e nenhuma seção citada cobre** — seção não citada é seção não lida (R3); pedir a citação é do Arquiteto
+- **Comando de verificação ou gate de qualidade do plano que não existe, não resolve ou reprova** — desligar, afrouxar o limiar, tirar do build, trocar por outro comando ou contornar por configuração nunca é decisão do dev (R4 · R7)
+- **Pré-requisito do ambiente ausente** — ferramenta, runtime ou SDK da seção 3 do plano que não existe aqui: parar no passo 1, sem instalar nem substituir por equivalente (R26)
+- **Gate que não foi exercitado**, inclusive a reprovação dele quando o plano a pede: declarar **não exercitado**, com o motivo — nunca "pronto", nunca "% funcional"
 
 ## Defeito em `${CLAUDE_PLUGIN_ROOT}/standards/` — o GAP de tipo `standard`
 
@@ -78,7 +81,7 @@ O que caracteriza:
 e nenhuma da família `documento.*`.
 **Por que não consigo seguir:** a permissão referenciada não existe; sem cadastro, a verificação
 vai negar toda requisição, inclusive a do perfil administrador.
-**Opções que enxergo:** A) criar a migration de cadastro neste mesma Task, incluindo o vínculo
+**Opções que enxergo:** A) criar a migration de cadastro nesta mesma Task, incluindo o vínculo
 aos perfis padrão; B) usar uma permissão já existente e deixar a dedicada para outra Task.
 (não escolhi nenhuma)
 **O que já entreguei até aqui:** passos 1 e 2 — os 5 comandos marcados, sem a permissão.

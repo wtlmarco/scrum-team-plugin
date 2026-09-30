@@ -36,7 +36,7 @@ Arquivos `workflow-*.md` em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/`;
 
 ## Registro de consumo · formulário
 
-- Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar — a seção diz o destino: `.team-project/sprints/<n>/consumption.md` com sprint aberto, `.team-project/consumption.md` sem sprint aberto (`onboarding`, `brainstorm`, `sdd`, `prepare`, `agreement` com o anterior fechado). Nenhum dos dois existe: nada a fazer.
+- Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar (a seção diz o destino).
 - Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, "pedir mais contexto" por último (`working-rules.md` R22). Vale para os portões ① e ② (`sdd`) e o ③ (`sprint plan`: um formulário só, sobre o pacote inteiro, depois de o stakeholder **navegar** o protótipo; registre decisão, data, quem aprovou, ponteiro do protótipo e ajuste na linha **"Decisão do stakeholder"** do pacote de abertura de `sprint-backlog.md` — registro único; o UX só aponta para ela) e o ④ (`sprint review`: uma pergunta por História, citando `review.md#aceite--h-<nnn>` e a recomendação do PO; **sem dossiê apontável a pergunta não sai**). O agente não tem a ferramenta.
 - Repasse a saída na íntegra (é a entrega) e destaque em uma linha o que exige decisão do stakeholder.
 

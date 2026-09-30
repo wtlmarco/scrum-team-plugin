@@ -61,7 +61,7 @@ para o stakeholder não confundir escolha com decisão.>
 **Telas/fluxos executados nesta rodada:** <lista>
 **O restante está coberto pela verificação completa de:** <data> · protótipo v<n>
 **Checkpoint:** `verification-log.md` — <n> linhas · última em <data/hora>
-**Relatório do job (R28):** <caminho do `report` devolvido pelo `operator`> · **Log bruto (disco local, pode ter sido podado):** <caminho, ou "podado"> — <n> linhas
+**Relatório do job (R28):** <caminho do `report` devolvido pelo `operator`>
 
 ## Execução delegada
 | Operator job | Task/História | Modelo | Tokens | Duração |
@@ -96,14 +96,7 @@ Gravado **a cada tela ou fluxo concluído**, durante a execução — não ao fi
 
 ## Regras
 
-- **É pré-condição do portão ①, não decoração.** SDD funcional não é aprovado sem protótipo navegado. Sem protótipo, o Arquiteto não começa o SDD técnico.
-- **O stakeholder navega — não lê.** Print de tela, gravação e descrição não substituem a navegação. "Aprovado sem navegar" é violação, e o SM registra. **A decisão sai em formulário** (`AskUserQuestion`, disparado só dentro do `/sm sdd`; avulso, a decisão fica pendente; o agente não o tem) **depois** da navegação, nunca no lugar dela; a ficha registra a decisão e o ajuste pedido.
-- **Dados plausíveis, sempre.** `lorem ipsum` e `campo1` escondem exatamente o que o protótipo existe para revelar: nome que estoura o campo, lista vazia, valor negativo, data no passado.
-- **Estados de exceção dos fluxos principais são obrigatórios** — vazio, erro, sem permissão. É onde o entendimento funcional diverge, e é barato descobrir aqui.
-- **Nenhuma decisão técnica.** Sem framework, sem contrato de API, sem modelo de dados. O protótipo mostra *o quê*; o *como* nasce no Plano de Implementação (R20).
-- **Nada daqui vira produção.** Reaproveitar HTML de protótipo sem passar por plano é dívida técnica com origem nobre.
-- **É documento vivo enquanto a fatia não fecha** (R12): mudança funcional aprovada que altere fluxo principal atualiza o protótipo no mesmo ciclo. Entregue e aceita a fatia, ele é marcado **vencido** — a verdade passa a ser o produto.
-- **Fidelidade visual é secundária.** O ① aprova entendimento funcional. Discussão de identidade visual não bloqueia o portão; vira registro para o backlog.
-- **Verificação se grava enquanto acontece.** Uma linha no `verification-log.md` por tela/fluxo concluído, durante a execução. Interrupção retoma do checkpoint; o que tem linha da versão corrente não roda de novo.
-- **Quem executa é o `operator`; quem dá o veredito sou eu (R28).** O harness é delegado, não rodado inline, e a saída bruta fica em log no disco local. Volta ao contexto só o que decide — tela · estado · critério que falhou, medido × exigido, elemento e arquivo, salto que não resolveu, totalizadores (critério em [`../skills.md` §10](../skills.md)). Ficha e registro trazem **trecho e ponteiro**, nunca um sozinho.
-- **O escopo da verificação é declarado, não presumido (R23).** Primeira entrega e mudança transversal (paleta, tipografia, grade, componente compartilhado, navegação) exigem harness **completo**; ajuste pontual sobre protótipo já verificado roda **leve** — telas alteradas mais a vizinhança de um salto. Modo leve reduz o que é executado, nunca a execução real: tela do escopo sem saída é **não exercitada** (R7). Três rodadas leves seguidas esgotam o modo — a quarta é completa.
+Os critérios do entregável (pré-condição do ①, navegar ≠ ler, dados plausíveis, estados de exceção, sem decisão técnica, vida do documento) vivem em [`deliverables/prototype/README.md`](../../../deliverables/prototype/README.md) — fonte única, não repetidos aqui; a verificação, em [`../skills.md` §10](../skills.md). Específico desta ficha:
+
+- **Trecho e ponteiro, nunca um sozinho (R28).** Ficha e registro trazem os dois; o harness é delegado ao `operator` e o veredito é do UX.
+- **Verificação se grava enquanto acontece.** Uma linha no `verification-log.md` por tela/fluxo concluído; o que tem linha da versão corrente não roda de novo.

@@ -1,7 +1,7 @@
 # Modelo — `pending.md`
 
 > **Dono:** QA · **Muda quando:** um GAP é aberto, fechado ou confirmado como não-gap · **Revisa:** SM (entra na fila), Arquiteto (viabilidade da correção)
-> **Soma através dos sprints; não se fatia por sprint:** nasce antes do primeiro sprint (projeto retomado) e segue aberto por vários deles — e fatiá-lo por sprint quebraria a série que ele existe para sustentar (`artifact-ownership.md` §1c). A evidência **por Task** que confirma cada entrada vive no processo, por Task, não aqui.
+> **Soma através dos sprints; não se fatia por sprint:** nasce antes do primeiro sprint (projeto retomado) e segue aberto por vários deles — e fatiá-lo por sprint quebraria a série que ele existe para sustentar. A evidência **por Task** que confirma cada entrada vive no processo, por Task, não aqui.
 
 É o **registro do que está quebrado**, levantado sobre o código e não sobre a narrativa. É a fonte mais confiável do conjunto de implementação — e a que dá origem ao backlog de retomada de um projeto parado.
 
@@ -68,7 +68,7 @@
 <Como abrir, fechar e confirmar não-gap.>
 ```
 
-O formato de uma entrada individual está em [`../../roles/quality-assurance/templates/gap-record.md`](../../roles/quality-assurance/templates/gap-record.md).
+O formato de uma entrada individual é o do modelo `gap-record.md` do QA (campos, criticidade, `Origem`, `Aguarda decisão do stakeholder`).
 
 ## Regras
 

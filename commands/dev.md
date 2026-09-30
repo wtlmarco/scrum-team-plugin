@@ -11,12 +11,12 @@ Pedido do stakeholder: **$ARGUMENTS**
 
 Com o plano em mãos, use a ferramenta Agent com `subagent_type: "developer"` e `run_in_background: false`, passando o caminho do plano, o ID da Task e o modo:
 - **`<ID>`** → executar o plano do início ao fim, na ordem dos passos.
-- **resume `<ID>`** → continuar de onde parou; conferir no código o que já existe antes de escrever.
+- **resume `<ID>`** → continuar de onde parou, **ou** corrigir o achado de execução do QA — **só o que ele aponta**; em ambos, conferir no código o que já existe antes de escrever.
 - **gap `<resposta>`** → retomar aplicando a decisão do Arquiteto; se o agente anterior ainda estiver ativo, continue por SendMessage.
 
 O contrato de trabalho e o formato do 🔺 GAP estão no próprio agente (`agents/developer.md`) e não se repetem aqui. Pedido `/dev review …` → o caminho é **`/review …`**.
 
-Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar (sprint aberto → `.team-project/sprints/<n>/consumption.md`; senão `.team-project/consumption.md`; nenhum existe → nada a fazer).
+Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar.
 
 Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, 'pedir mais contexto' por último (`working-rules.md` R22).
 

@@ -81,6 +81,7 @@ Se o primeiro plano do Arquiteto precisar de mais de dois 🔺 GAPs para ser exe
 - [ ] `claude plugin details team@team` lista os 8 comandos (`sm` `po` `arc` `ux` `dev` `qa` `team` `review`) e os 7 agents
 - [ ] Sessão reiniciada; `/plugin` mostra `team@team` **enabled** e `/help` lista os 8 comandos e os 7 agentes
 - [ ] `/team init` executado; `.team-project/README.md` escrito, com stack, fontes da verdade, comandos e limitações
+- [ ] Em repositório git: `.gitignore` com `.team-project/` e `git ls-files .team-project` vazio (R31); o `.team-project/consumption.md` existe
 - [ ] Os seis `context.md` escritos, com as armadilhas do projeto
 - [ ] Índice do SDD e documento de escopo criados a partir de `deliverables/`; demais conforme a necessidade
 - [ ] Em projeto retomado: `pending.md` produzido por `/qa audit` antes de qualquer planejamento

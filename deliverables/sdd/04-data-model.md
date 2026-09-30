@@ -40,7 +40,7 @@ Entidades transversais (não pertencem a uma única ramificação): <lista>.
 
 ## Regras
 
-- **A grafia é literal.** `ProductionArtifact` no documento é `ProductionArtifact` no código — não `ProductionArtefact`, não `production_artifact` na camada de domínio.
+- **A grafia é literal.** `OrderItem` no documento é `OrderItem` no código — não `OrderLine`, não `order_item` na camada de domínio.
 - **Enum documentado é enum fechado.** Valor novo é mudança de contrato: passa pelo Arquiteto e gera migration.
 - **Toda entidade declara suas invariantes.** É o que o dev transforma em guarda no construtor e o QA transforma em teste.
 - **Campo opcional precisa dizer por quê.** Nulo sem justificativa vira interpretação livre na implementação.

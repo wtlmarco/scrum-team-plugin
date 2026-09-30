@@ -51,15 +51,15 @@ este repositório   processo   → genérico, um só, serve todos os projetos
     │   ├── process/     working-rules · working-rules-index · workflow · workflow-ritos · workflow-sdd · workflow-sprint · workflow-processo · sprint-run · artifact-ownership · process-changelog
     │   └── templates/   planning · sprint-backlog · burndown · consumption · sprint-review · retrospective · plugin-report · status-entry · project-context · process-change
     ├── product-owner/      requisitos, Histórias, backlog, aceite
-    │   └── templates/   user-story · product-backlog · status · requirement · functional-analysis · acceptance
+    │   └── templates/   user-story · product-backlog · status · requirement · functional-analysis · acceptance · impact-analysis · note
     ├── architect/          especificação técnica, Planos de Implementação, ADRs
-    │   └── templates/   implementation-plan · adr · compliance-review · technical-decision · spike-checkpoint
+    │   └── templates/   implementation-plan · adr · technical-decision · spike-checkpoint
     ├── user-experience/   jornadas, telas, protótipos, usabilidade e acessibilidade
     │   └── templates/   functional-prototype · sprint-prototype · journey-map · screen-spec · usability-review
     ├── developer/          execução do plano, entrega, gaps
     │   └── templates/   delivery-report · gap
     └── quality-assurance/  validação, evidências, registro de GAPs
-        └── templates/   evidence · verdict · gap-record · cross-audit
+        └── templates/   evidence · verdict · gap-record · cross-audit · scenario · scenarios-index
 ```
 
 Cada pasta em `roles/`:
@@ -102,7 +102,7 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 ```
 /sm     onboarding | brainstorm <ideia> | sdd [<tema>] | sprint prepare | sprint plan | sprint run [<T-ID>] | sprint review | sprint close | board | agreement <questão> | close <T-ID>    (review = alias de sprint review)
 /po     status | impact <mudança> | analyze <ideia> | requirement <ID> | story <H-ID> | prioritize | accept <H-ID> | bug <relato> | note
-/arc    plan <T-ID> | comply <T-ID> | adr <tema> | question <dúvida>
+/arc    plan <T-ID> | adr <tema> | question <dúvida>
 /ux     prototype | prototype sprint <n> | prototype screen <tela> | journey <fluxo> | screen <nome> | review-ui <tela>
 /dev    <T-ID> | resume <T-ID> | gap <resposta do arquiteto>
 /qa     <T-ID> | baseline | audit | security <T-ID> | bug <relato> | scenarios create | scenarios run <SC-nnn|grupo|all>
@@ -112,7 +112,7 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 
 **`<H-ID>` opera sobre valor, `<T-ID>` sobre trabalho.** A História é a unidade de valor (dona: PO, conteúdo só funcional); a Task é a unidade de trabalho (no Sprint Backlog do SM, com o Plano de Implementação do Arquiteto dentro). Toda Task pertence a exatamente uma História (R20).
 
-Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. Três pares se parecem e não são a mesma coisa: **`/ux review-ui`** (usabilidade de uma tela) e **`/arc comply`** (aderência do código ao plano, **só como exceção pedida pelo stakeholder** — a frente 2 do `/qa` cobre isso em toda Task) são trabalho no produto; **`/sm sprint review`** (antes `/sm review`, ainda alias) é a **Sprint Review**, também no produto; e **`/review`** evolui o processo do time e roda só no repositório-fonte do plugin.
+Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. Três nomes se parecem e não são a mesma coisa: **`/ux review-ui`** (usabilidade de uma tela) é trabalho no produto — e a aderência do código ao plano é da frente 2 do `/qa`, em toda Task, sem modo próprio; **`/sm sprint review`** (antes `/sm review`, ainda alias) é a **Sprint Review**, também no produto; e **`/review`** evolui o processo do time e roda só no repositório-fonte do plugin.
 
 ### Com quem o stakeholder fala
 

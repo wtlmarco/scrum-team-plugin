@@ -29,10 +29,10 @@ Formato de resposta do PO ao stakeholder. **Seis linhas.** Ele lê isso em pé.
 ## Exemplo
 
 ```markdown
-## Status — 01/09/2026 · Sprint 7
+## Status — 05/09/2026 · Sprint 7
 
-**Onde estamos:** o sprint fecha a saída de dado da plataforma — com H-014 aceita, o analista deixa de refazer o quadro no slide.
-**Entregue:** H-014 (exportar o resultado da análise) — aceita na Review de 08/09.
+**Onde estamos:** o sprint fecha a saída de dado da plataforma — quando H-014 for aceita na Review de 08/09, o analista deixa de refazer o quadro no slide.
+**Entregue:** H-011 (filtrar a análise por região) — aceita na Review do Sprint 6, em 25/08.
 **Em andamento:** H-017 (agendar exportação recorrente) — 2 de 4 Tasks fechadas — falta o disparo agendado e a demonstração.
 **Bloqueado:** T-052 — sem credenciais do provedor de e-mail — stakeholder, desde 01/09.
 **Próximo:** H-021 → H-019, nesta ordem porque H-019 depende do formato que H-021 define.

@@ -12,7 +12,7 @@ Quando um comando não puder ser executado (sem rede, sem container, sem credenc
 
 ## 2. O que extrair de cada verificação, e quando chamar o `operator` (R28)
 
-Delego ao `operator` toda **execução pesada** que eu precisaria rodar: build limpo, suíte completa, gate de cobertura, lint do projeto inteiro, comando de carga de V19, réplica de projeto para provar um gate. Recebo dele um relatório fechado — `Comando` · `Código de saída` · `Veredito` (`ok`/`falhou`/`inconclusivo`) · `Contagens` (executados/passou/falhou/pulou) · `Versões medidas` · `Linhas decisivas` (verbatim, nunca paráfrase) · `Log bruto` (caminho + total de linhas) — e **leio o resumo por padrão**, sem abrir o log bruto.
+Delego ao `operator` toda **execução pesada** que eu precisaria rodar: build limpo, suíte completa, gate de cobertura, lint do projeto inteiro, comando de carga de V19, réplica de projeto para provar um gate. Recebo dele um relatório fechado — `Comando` · `Código de saída` · `Veredito` (`ok`/`falhou`/`inconclusivo`) · `Contagens` (executados/passou/falhou/pulou) · `Versões medidas` · `Linhas decisivas` (verbatim, nunca paráfrase) · `Log bruto` (caminho + total de linhas) — tudo no `report` do job (`report.md`, ≤ 200 linhas · 20 KB, R28) — e **leio o resumo por padrão**, sem abrir o log bruto.
 
 **Retrato da chamada:** cada chamada ao `operator` vira uma linha da seção **"Execução delegada"** do meu veredito (e da evidência da Task): job (`.team-project/operator/<sprint|pre-sprint>/<job>/`) · Task/História · Modelo (o `model:` de `agents/operator.md`) · Tokens · Duração, com os números que a chamada devolveu ao terminar. Sem número: "não disponível — <motivo>", nunca estimado (R7). Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que me disparou transcreve as linhas; o objetivo é o consumo do papel × o do `operator` por Task.
 
@@ -28,7 +28,7 @@ Os gatilhos de aprofundamento obrigatório no log bruto são canônicos em [R28]
 | Lint / análise estática | regra violada + `arquivo:linha` de cada ocorrência | violação classificada como erro pela configuração do projeto (aviso não reprova, salvo limiar contrário) |
 | Carga (V19) | percentil medido × limiar de V18, e o código de saída do comando | código ≠ 0, ou percentil acima do limiar mesmo com saída 0 |
 | Smoke / fluxo funcional | passo que falhou + resposta/erro observado | qualquer passo que não completou o fluxo ponta a ponta |
-| **Cenário funcional/regressivo (R30)** | nome do `SC-nnn` + passo que falhou + resultado observado × esperado | qualquer cenário mapeado (novo ou regressivo) cujo Resultado esperado não se confirma. Suíte grande ou muitos regressivos de uma Task só é **execução pesada**: delega ao `operator` como qualquer outra desta tabela — sem mecanismo novo — e o que entra no veredito é o resultado por cenário **e** o ponteiro do log, nunca um sozinho |
+| **Cenário funcional/regressivo (R30)** | nome do `SC-nnn` + passo que falhou + resultado observado × esperado | qualquer cenário mapeado (novo ou regressivo) cujo Resultado esperado não se confirma. Suíte grande ou muitos regressivos de uma Task só é **execução pesada**: delega ao `operator` como qualquer outra desta tabela — sem mecanismo novo — e o que entra no veredito é o resultado por cenário **e** o ponteiro do `report`, nunca um sozinho |
 
 Em todos os casos o veredito registra **trecho e ponteiro**, nunca um sozinho: ponteiro sem trecho obriga quem lê a reexecutar para saber o que houve; trecho sem ponteiro não resiste à auditoria de quem confere depois — eu mesma, ao reabrir a Task, e o PO, na Sprint Review, dias mais tarde, conferindo a mesma saída de carga (R28). `report` ausente no caminho apontado é ausência de evidência (R7), e `report` acima de 200 linhas ou 20 KB, ou log completo colado num relatório em vez do trecho, é achado de processo — nunca algo que eu resolvo tentando reproduzir por conta própria. Log bruto podado **não** é achado (R28): só importa se um gatilho disparou — aí re-rodo pelo `operator`, não reproduzo inline.
 
@@ -81,7 +81,7 @@ Não corrigir nada nos dois passes. Só listar. É o mecanismo que impede a docu
 
 Antes de validar qualquer Task nova, reproduza os números que a documentação declara (testes, cobertura, build). Divergência entre o declarado e o reproduzido é o achado mais valioso de uma retomada — e recalibra todo o resto do trabalho.
 
-Essa reprodução, quando envolve build/teste completos, é execução pesada e passa pelo `operator` (seção 2) como qualquer outra: `baseline.md` registra o trecho e o ponteiro do log, nunca só o número final.
+Essa reprodução, quando envolve build/teste completos, é execução pesada e passa pelo `operator` (seção 2) como qualquer outra: `baseline.md` registra o trecho e o ponteiro do `report`, nunca só o número final.
 
 Registre em `.team-project/quality-assurance/baseline.md` — fora da pasta do sprint, porque a linha de base roda tipicamente **antes** de o sprint 1 existir (`/sm onboarding` → `/qa audit` → `/qa baseline`).
 

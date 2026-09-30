@@ -41,7 +41,7 @@ Resposta do Arquiteto quando o dev para e pergunta. Precisa ser **executável**:
 
 ## Variante — varredura técnica do `prepare`
 
-Resposta de `/arc question` quando o `/sm sprint prepare` a chama (passo 5 de [`workflow-sprint.md` §5e](../../scrum-master/process/workflow-sprint.md)). A entrada é **História candidata**, não 🔺 GAP: ainda não há Task, plano nem ③.
+Resposta de `/arc question` quando o `/sm sprint prepare` a chama (**prepare, passo 5** — [`workflow-sprint.md`](../../scrum-master/process/workflow-sprint.md) §"Preparação"). A entrada é **História candidata**, não 🔺 GAP: ainda não há Task, plano nem ③.
 
 ```markdown
 ## Varredura técnica — sprint <n> · candidatas
@@ -52,21 +52,18 @@ Resposta de `/arc question` quando o `/sm sprint prepare` a chama (passo 5 de [`
 ```
 
 - **Sem passo, Task, estimativa nem desenho** — isso nasce na Planning e no `/arc plan`, depois do ③ (R20).
-- **Sem chamada ao `operator`** — ambiente não medido sai como "a medir na seção 3 do plano" (R28).
+- **Sem chamada ao `operator`** — a varredura não mede: ambiente não medido sai como "a medir na seção 3 do plano", que só nasce depois do ③ (R20 · R26).
 - Todo "sim" traz o destino; lacuna funcional vai ao PO, não é decidida aqui.
 
 ## Exemplo
 
 > **Gap:** o plano manda espelhar um componente que não declara autorização — devo adicionar?
-> **Verifiquei em:** `GetOrderQuery.cs:12` — ele **declara** sim; o que não declara é `ListTasksQuery`, citado por engano no passo 4.
+> **Verifiquei em:** `<consulta-modelo>:12` — ela **declara** sim; o que não declara é `<outra consulta>`, citada por engano no passo 4.
 >
-> **Decisão:** espelhar `GetOrderQuery` (que está correto). `ListTasksQuery` é um defeito já catalogado e **não** entra nesta Task.
+> **Decisão:** espelhar `<consulta-modelo>` (que está correta). `<outra consulta>` é um defeito já catalogado e **não** entra nesta Task.
 >
 > ```
-> public sealed record GetXQuery(Guid Id) : IQuery<XDto>, IAuthorizableRequest
-> {
->     public string PermissionKey => "recurso.ler";
-> }
+> consulta ObterX(id) — exige permissão "recurso.ler"   # mesma declaração da consulta-modelo
 > ```
 >
 > **Por quê:** `recurso.ler` já existe no catálogo e já é usada pelo componente-modelo — não precisa de migration nova.
