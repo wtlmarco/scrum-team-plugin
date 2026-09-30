@@ -37,7 +37,7 @@ Abrir `index.html` no navegador. Nada mais.
 
 ## O fluxo ponta a ponta deste sprint
 <Uma frase: do gatilho ao resultado que o usuário leva embora. É a verificação
-de valor real do sprint (R25b) — sem ela, o pacote não sobe.>
+de valor real do sprint (R25 (b)) — sem ela, o pacote não sobe.>
 
 | Passo | Tela | História | Vem de |
 |---|---|---|---|
@@ -60,7 +60,7 @@ telas reaproveitadas já verificadas | tela nova: <nomes> | recostura de devolu�
 **O que NÃO foi reexecutado, e o que o cobre:** <telas> — verificação completa de <data>, protótipo v<n>
 **Rodadas leves consecutivas nesta pasta:** <n de 3>
 **Checkpoint:** `verification-log.md` — <n> linhas · última em <data/hora>
-**Log bruto (R28):** <caminho devolvido pelo `operator`> — <n> linhas
+**Relatório do job (R28):** <caminho do `report` devolvido pelo `operator`>
 
 ## Execução delegada
 | Operator job | Task/História | Modelo | Tokens | Duração |
@@ -79,18 +79,11 @@ Uma linha por chamada, com o que ela devolveu ao terminar; nunca estimado (R7). 
 **Ponteiro registrado pelo SM no Sprint Backlog:** `user-experience/prototype/sprint-<n>/index.html`
 ```
 
-O `verification-log.md` usa a mesma tabela append-only de [`functional-prototype.md`](functional-prototype.md) §checkpoint — **inclusive as colunas de trecho e de log bruto** (R28).
+O `verification-log.md` usa a mesma tabela append-only de [`functional-prototype.md`](functional-prototype.md) §checkpoint — **inclusive as colunas de trecho e de ponteiro (`report`)** (R28).
 
 ## Regras
 
-- **É peça do pacote, não decoração.** Pacote sem protótipo navegado não vai ao stakeholder, e sem pacote aprovado nenhuma Task entra em construção (R20 · R25).
-- **O stakeholder navega — não lê.** Print, gravação e apresentação não abrem o ③, pelo mesmo motivo que não abrem o ① (R15). A decisão vem **depois** da navegação, em formulário (R22).
-- **Costura, não especificação nova.** As telas já foram especificadas antes da Planning (DoR da História). O que nasce aqui é o caminho entre elas — e a ficha diz quais telas vieram prontas e quais nasceram na costura.
-- **Depois do corte, nunca antes.** Antes do corte de capacidade não se sabe quais Histórias entraram; costurar antes é retrabalho garantido ([`workflow-sprint.md` §5e](../../scrum-master/process/workflow-sprint.md) passos 7 → 10).
-- **Um fluxo ponta a ponta, no mínimo.** Se não há nenhum, o sprint não entrega fatia usável: o achado volta ao PO **na própria Planning** e o corte é refeito, antes de o pacote subir (R25b). O UX apresenta a evidência; **quem corta por valor é o PO** (§6a).
-- **Devolvido volta à Planning.** O PO reordena, o corte é refeito, o protótipo é recosturado, o pacote é resubmetido — nada vai à construção antes. Custo declarado: a História reprovada perde a quebra e a estimativa já feitas (R20).
-- **Aprovado, fecha.** Correção de tela durante o sprint vai para `screens/`, que é a fonte viva — nunca para o protótipo já aprovado. Arquivo modificado depois da data de aprovação é violação de escopo (R4).
-- **Mesma régua técnica do funcional:** um ponto de entrada, sem build, sem servidor, sem back-end, dados plausíveis, estados de exceção dos caminhos cobertos, "o que está fora" na própria página.
-- **Nada de decisão técnica** (R20), e **nada daqui vira produção** sem Plano de Implementação.
-- **Escopo da verificação declarado, não presumido (R23).** Leve é o caso comum aqui — critério em [`../skills.md` §10](../skills.md) —, mas o fluxo ponta a ponta roda de verdade em toda rodada, e o que não rodou é nomeado.
-- **Delegação da verificação, veredito meu (R28).** O harness vai ao agente `operator`; a ficha traz o **trecho** da falha e o **ponteiro** do log bruto, nunca um sozinho. Salto que não resolveu volta como par origem → destino, que é a falha típica desta costura. Relatório `inconclusivo` deixa a tela **não exercitada** (R7) — e sem o fluxo ponta a ponta exercitado, o pacote não sobe.
+Critérios, ciclo de vida e verificação de valor (R25 (b)) vivem em [`deliverables/prototype/README.md`](../../../deliverables/prototype/README.md) §protótipo do sprint — fonte única, não repetidos aqui; a verificação, em [`../skills.md` §10](../skills.md). Específico desta ficha:
+
+- **Costura, não especificação nova.** A ficha diz quais telas vieram prontas e quais nasceram na costura.
+- **Trecho e ponteiro, nunca um sozinho (R28).** Salto que não resolveu volta como par origem → destino; relatório `inconclusivo` deixa a tela **não exercitada** (R7).

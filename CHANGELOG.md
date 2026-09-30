@@ -13,6 +13,30 @@
 
 ---
 
+## v3.35.0 — 2026-09-30
+
+**Branch:** `feat/v3.35.0` a partir de `develop` · **Processo:** [`v3.35`](roles/scrum-master/process/process-changelog.md)
+
+Rodada de `/review note` sobre o log do `operator` no git e o consumo fora de sprint (SM + PO + Arquiteto/Dev + QA + UX), com as mudanças de `agents/`, `commands/` e dos guias de raiz autorizadas pelo stakeholder. **Quebras de compatibilidade:** o `.team-project/` deixa de ser versionado e o modo `/arc comply` deixa de existir.
+
+- **`.team-project/` inteiro fora do git (R31, nova):** `.gitignore` com `.team-project/` na raiz. O repositório do projeto recebe só o produto — código e `docs/` —, e o estado da gestão (backlog, sprints, evidências, consumo, logs do `operator`, protótipos) fica local. **Documento de produto nunca referencia `.team-project/`**: os modelos de SDD, ADR e implementação foram ajustados pelos donos.
+- **R28 enxuta:** cada chamada ao `operator` deixa um `report.md` (trecho decisivo, contagens, ponteiro) com **teto de 200 linhas e 20 KB**; várias chamadas na mesma pasta de job → um `report-<log>.md` por chamada; o build de fim de passo do dev continua dele, isento de `report`. No aceite, `report` ausente é rejeição e acima do teto é achado de processo. A poda do log bruto é gestão de disco local; log podado não é achado. Em documento de produto, só o trecho — o ponteiro fica no artefato de processo que o cita.
+- **Consumo fora de sprint:** `.team-project/consumption.md` na raiz, no mesmo modelo do do sprint, Nota `pre-sprint;`/`entre-sprints;`, sem rotação e sem transcrição. Substitui a subseção "Consumo pré-sprint" de `context.md` e o passo 9 da Planning. Os comandos de papel gravam no do sprint quando há sprint aberto, senão no da raiz.
+- **`operator`:** `report` com teto conferido antes de devolver; `report-<log>.md` por chamada na mesma pasta; `pre-sprint/` vale para "sem sprint aberto". O dono de `.team-project/operator/**` é declarado: o SM verifica e poda, o papel chamador cita.
+- **`/team init`:** acrescenta `.team-project/` ao `.gitignore` (só acrescenta) e cria o `consumption.md` vazio.
+- **`/team update` — passo 7b (migração, com passos destrutivos):** (a) `.gitignore`; (b) `git rm -r --cached .team-project` + commit; (c) limpeza do histórico com backup obrigatório (cópia local e `git clone --mirror`), `git filter-repo --path .team-project --invert-paths` e `git push --force` de branches e tags; (d) verificação por `git log --all -- .team-project` vazio e `git count-objects -vH`. **Cada passo destrutivo exige a confirmação explícita do stakeholder no momento da execução.** Projeto que não é repositório git pula o bloco.
+- **Reavaliação do conjunto (rodada 4):**
+  - **`/arc comply` removido** (**quebra**): o modo e o modelo `compliance-review.md` deixam de existir. A aderência de execução ao plano e a de standard ficam só na frente 2 do `/qa`, em toda Task. Pedido `/arc comply` agora cai no roteamento normal.
+  - **`standards/` passam a "Vigente".**
+  - **`01-scope-and-criteria.md` migra para Sprint/História:** Histórias (H-nnn) por sprint, `[x]` só com o aceite na Review (R21) e congelamento por R4/R25.
+  - **Carga fixa restaurada a 61,8 KB** (agente + comando dos seis papéis; `/sm` em 13,4 KB, dentro da meta de 13,5 KB). R28 enxuta (8,9 → 6,1 KB); o consumo fora de sprint tem fonte única em `templates/consumption.md`.
+  - **Fontes únicas e limpeza nos documentos dos papéis** (PO, QA, UX, Arquiteto/Dev): critérios do protótipo, gatilhos de GAP, R16, checklist de segurança e ADR; citações de passo nomeadas ("prepare, passo N" · "Planning, passo N"); "ponteiro do `report`" em todo o alcance.
+- **R31 no índice das regras:** 31 regras (R1–R31).
+
+**Verificar:** depois de atualizar, reinicie a sessão, porque as mudanças de `agents/` e `commands/` só valem depois disso. Em cada projeto: rode o passo 7b do `/team update` e confira `git ls-files .team-project` vazio e `git log --all -- .team-project` vazio. Colaboradores precisam re-clonar ou rebasear depois do `push --force`; o GitHub pode manter objetos em cache e em PRs antigas. No primeiro sprint após a atualização: nenhum `report` acima de 20 KB, nenhum `report` sobrescrito por segunda chamada na mesma pasta, e `.team-project/consumption.md` com uma linha por invocação fora de sprint.
+
+---
+
 ## v3.34.0 — 2026-09-29
 
 **Branch:** `feat/v3.34.0` a partir de `develop` · **Processo:** [`v3.34` e `v3.34 (parte 2)`](roles/scrum-master/process/process-changelog.md)

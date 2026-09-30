@@ -5,23 +5,19 @@
 
 ## Régua de priorização
 
-1. Impede o produto de funcionar ponta a ponta
-2. Expõe risco jurídico ou de segurança
-3. Impede saber se funciona (validação)
-4. Degrada a experiência sem impedir o fluxo
-5. Dívida técnica e documentação
+A declarada no contexto do projeto; na falta dela, a do padrão do papel ([`skills.md` §5](../skills.md)). Ordenar por **valor de produto × risco funcional**.
 
 ## Histórias
 
 | # | ID | História | Valor para o usuário | Origem | Tamanho | Estado |
 |---:|---|---|---|---|---|---|
-| 1 | [H-<nnn>](stories/H-<nnn>-<slug>.md) | <título na voz do usuário> | <o que ele passa a conseguir fazer> | RF-<nnn> / GAP <ID> / Review <n> | P/M/G | esboço · detalhada · **aprovada** · em sprint · entregue |
+| 1 | [H-<nnn>](stories/H-<nnn>-<slug>.md) | <título na voz do usuário> | <o que ele passa a conseguir fazer> | RF-<nnn> / GAP <ID> / Review <n> | P/M/G | esboço · detalhada · em sprint · entregue |
 
 **Estados.** `esboço` — nasceu do SDD, tem valor declarado. `detalhada` — tem regras, protótipos e critérios de aceite, pronta para o pacote de abertura de um sprint; **o ③ ainda não aconteceu** — ele é em lote, depois da Planning (R20 · R25). `em sprint` — entrou na Planning e foi **congelada** em `sprints/<n>/stories/H-nnn.md` na aprovação do pacote — é ali que o ③ desta História aconteceu. `entregue` — aceita na Sprint Review.
 
 **Este documento é a fonte viva.** `sprints/<n>/stories/H-nnn.md` é uma **cópia congelada**, gravada na aprovação do pacote de abertura — mesmo ID, objeto diferente (R4 · R25). Editar a História aqui durante o sprint **não** altera o congelado; o ajuste concorre no Product Backlog e entra no sprint seguinte.
 
-O conteúdo de cada História — regras funcionais, protótipos, critérios de aceite, aprovação do portão ③ — segue [`user-story.md`](user-story.md) e vive **sempre** em arquivo próprio, `.team-project/product-owner/stories/<H-ID>-<slug>.md`. Este documento nunca carrega esse conteúdo: só a linha de índice acima, com o ID linkando para o arquivo.
+O conteúdo de cada História — regras funcionais, protótipos, critérios de aceite, fora desta História — segue [`user-story.md`](user-story.md) e vive **sempre** em arquivo próprio, `.team-project/product-owner/stories/<H-ID>-<slug>.md`. Este documento nunca carrega esse conteúdo: só a linha de índice acima, com o ID linkando para o arquivo.
 
 ## Plano de entrega
 

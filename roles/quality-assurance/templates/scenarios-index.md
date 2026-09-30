@@ -53,7 +53,7 @@
 - **O índice nunca copia o conteúdo do cenário** — pré-condição, passos, resultado esperado ficam só no arquivo `SC-nnn`. Duplicar aqui é o mesmo erro que a v3.21 corrigiu no Product Backlog (`artifact-ownership.md` §1d).
 - **A tabela §2 (por fluxo) é a peça funcional do índice** — sem ela, escolher regressivo na Planning exigiria abrir todo cenário um a um. Índice sem §2 preenchida é achado de processo.
 - **§3 e §4 existem para não esconder dívida** — cenário com falha aberta ou nunca executado por falta de ferramenta não desaparece silenciosamente entre os que passaram.
-- **Toda linha da tabela §1 tem link que resolve** para o arquivo do cenário — ponteiro quebrado é achado de processo, mesma régua de qualquer outro ponteiro do QA (`verdict.md`, "Log bruto referenciado precisa resolver").
+- **Toda linha da tabela §1 tem link que resolve** para o arquivo do cenário — ponteiro quebrado é achado de processo, mesma régua de qualquer outro ponteiro do QA (`verdict.md`, "O `report` referenciado precisa existir").
 
 ## Quando este documento nasce
 

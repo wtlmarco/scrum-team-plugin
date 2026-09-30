@@ -2,7 +2,7 @@
 
 Além de código, o time produz e mantém um **conjunto de documentos de projeto**. Eles não são burocracia: são a memória que permite retomar um projeto meses depois, e a referência contra a qual o QA valida cada entrega.
 
-Este diretório guarda **a estrutura desses documentos**, para que qualquer projeto novo comece com o mesmo esqueleto. O conteúdo preenchido vive no projeto; o caminho concreto está em `.team-project/README.md` §4.
+Este diretório guarda **a estrutura desses documentos**, para que qualquer projeto novo comece com o mesmo esqueleto. O conteúdo preenchido vive no projeto; o caminho concreto está em `.team-project/README.md` §4. **Produto × processo (R31):** SDD, ADR e implementação são **produto** — vivem em `docs/` e vão ao git, então os modelos deles **não citam `.team-project/`**; o protótipo, a suíte de cenários e o `.team-project/` são **processo** — locais, fora do git.
 
 ## Conjuntos
 
@@ -13,7 +13,7 @@ Este diretório guarda **a estrutura desses documentos**, para que qualquer proj
 | **SDD** — Software Design Document | **O que o sistema é**: objetivos, requisitos, fluxos, arquitetura, dados, API e histórico | [`sdd/`](sdd/README.md) |
 | **Implementação** | **Como a construção está indo**: escopo combinado, progresso, mapa de código, pendências | [`implementation/`](implementation/README.md) |
 | **Suíte de Cenários** — teste funcional e regressivo | **O que prova que um fluxo continua funcionando**: cenário mapeado por Task na Planning (novo e regressivo pelo impacto), executado no veredito do QA (R30) | [`../roles/quality-assurance/templates/scenario.md`](../roles/quality-assurance/templates/scenario.md) · índice: [`scenarios-index.md`](../roles/quality-assurance/templates/scenarios-index.md) |
-| **`.team-project/`** | **Como o time opera neste projeto**: o contexto que o `/team init` cria e o `/team update` reconcilia | [`team-project/`](team-project/README.md) |
+| **`.team-project/`** | **Como o time opera neste projeto** (processo, local, fora do git — R31): o contexto que o `/team init` cria e o `/team update` reconcilia | [`team-project/`](team-project/README.md) |
 | **ADR** — Architecture Decision Record | **Por que se decidiu assim**: uma decisão estrutural por documento | [`../roles/architect/templates/adr.md`](../roles/architect/templates/adr.md) |
 | **Padrões de engenharia** *(relacionado — não é entregável)* | **Como se constrói aqui**: normativos agnósticos de produto | [`../standards/`](../standards/README.md) |
 
@@ -35,8 +35,8 @@ Um documento tem **um dono**, que responde pelo conteúdo e pela atualização. 
 | `README` (índice) | **PO** | Documento novo entra no conjunto | — |
 | Protótipo funcional (HTML) | **UX** | Fluxo principal muda, antes do ① | Stakeholder (navega e aprova) |
 | Protótipo do sprint (HTML) | **UX** | A cada sprint, depois do corte de capacidade, antes do ③ | Stakeholder (navega e aprova o pacote) |
-| `01-scope-and-criteria` | **PO** | Escopo de um ciclo é definido, concluído ou revisto | SM, QA |
-| `02-status` | **SM** | Uma Task é fechada ou um ciclo termina | QA (auditoria) |
+| `01-scope-and-criteria` | **PO** | Escopo de um sprint (suas Histórias) é definido, concluído ou revisto | SM, QA |
+| `02-status` | **SM** | Uma Task é fechada ou um sprint termina | QA (auditoria) |
 | `03-code-map` | **QA** | Arquivo de código criado, alterado ou removido | Arquiteto |
 | `pending` | **QA** | GAP aberto, fechado ou confirmado como não-gap | SM, Arquiteto |
 
@@ -96,10 +96,10 @@ Dentro de cada etapa, a ordem:
 | Nenhuma seção descreve funcionalidade removida ou nunca construída | todos |
 | Mudança funcional aceita tem entrada no changelog | `06` |
 | Nenhum documento contradiz outro do conjunto | todos |
-| Task concluída tem arquivo correspondente no mapa de código | `01-scope` × `03-code-map` |
+| História aceita tem os arquivos correspondentes no mapa de código | `01-scope` × `03-code-map` |
 | Task concluída tem evidência (comando + saída), não só narrativa | `02-status` |
 | Todo GAP tem `arquivo:linha`, impacto e criticidade | `pending` |
-| Nenhum critério marcado como atendido sem evidência | `01-scope` × `02-status` |
+| Nenhuma História marcada `[x]` sem aceite na Review e evidência | `01-scope` × `02-status` |
 
 A auditoria cruzada (`/qa audit`) existe justamente para verificar periodicamente os critérios que atravessam documentos, não só os de uma Task.
 

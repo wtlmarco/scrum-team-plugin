@@ -55,8 +55,8 @@ Entra no documento de requisitos do projeto (caminho em `.team-project/README.md
 - Critério de aceite sem "como verificar" não é critério.
 - "Fora do escopo" é obrigatório — é o que impede o dev de antecipar escopo (R4).
 - O contrato de erro do projeto (formato, tipos, status) está no contexto do PO.
-- **Requisito de performance só entra com os cinco campos do orçamento** (operação · métrica/percentil · limiar · condição de carga com duração · ambiente). Menos que isso, o Arquiteto devolve e a Task não entra em construção (§7 #18). A forma completa, com exemplo e contraexemplo, está em [`../../../deliverables/sdd/01-requirements.md`](../../../deliverables/sdd/01-requirements.md).
-- **Se o requisito toca uma operação sob orçamento** (Ficha V18), o critério de aceite **menciona o desempenho** — operação, percentil, limiar — com "como verificar" apontando o comando de carga (V19). RNF no documento de requisitos **não** substitui o critério verificável na Task.
+- **Requisito de performance só entra com os cinco campos do orçamento** (operação · métrica/percentil · limiar · condição de carga com duração · ambiente). Menos que isso, o Arquiteto devolve e a Task não entra em construção (`implementation-principles.md` §7, item 18). A forma completa, com exemplo e contraexemplo, está em [`../../../deliverables/sdd/01-requirements.md`](../../../deliverables/sdd/01-requirements.md).
+- **Se o requisito toca uma operação sob orçamento** (Ficha V18), o critério de aceite **menciona o desempenho** — operação, percentil, limiar — com "como verificar" apontando o comando de carga (V19). RNF no documento de requisitos **não** substitui o critério verificável na História.
 
 ## Exemplo
 
@@ -103,32 +103,3 @@ GET <url expirada>          → 410
 **Impacto:** complementa RF-017; depende da Task que torna a chave de assinatura obrigatória.
 ```
 
-## Exemplo — requisito de performance
-
-Números **ilustrativos**; o valor real é do projeto, não deste modelo.
-
-```markdown
-### RNF-014 — Tempo de resposta da listagem de catálogo
-
-**Objetivo relacionado:** OBJ-002 · **Atores:** usuário autenticado
-
-**Enunciado**
-O sistema deve responder à listagem de catálogo dentro de um tempo previsível sob carga nominal.
-
-**Orçamento de desempenho**
-| Operação | Métrica | Limiar | Condição de carga | Ambiente |
-|---|---|---|---|---|
-| GET /catalog (1ª página) | latência p95 | ≤ 400 ms | 50 req/s por 5 min | ambiente dedicado de carga (Ficha V21) |
-
-**Critério de aceite**
-- [ ] Dado 50 req/s por 5 min no ambiente de V21, quando chamo GET /catalog, então o p95 fica ≤ 400 ms
-- [ ] O comando de carga (V19) sai com código ≠ 0 se o p95 passar de 400 ms
-
-**Como verificar**
-    <comando único do cenário de carga da Ficha, V19>  → p95 ≤ 400 ms, exit 0
-
-**Fora do escopo**
-- Percentis além do p95; outras rotas; dimensionamento de infraestrutura.
-
-**Impacto:** nenhum requisito alterado; adiciona a operação à lista fechada V18 via Arquiteto.
-```

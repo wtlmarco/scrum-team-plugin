@@ -39,7 +39,7 @@
 <As convenções reais deste projeto: sufixos, prefixos, plural/singular, idioma.>
 
 # 2b. Ficha de Vinculação de Stack  ← obrigatória
-<A tabela V1–V21 de `${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §6 preenchida: o nome real de cada anel,
+<A tabela V1–V21 dos princípios de implementação (§6) preenchida: o nome real de cada anel,
 as unidades implantáveis, e a ferramenta + comando que verifica cada regra (dependência, formatação,
 lint, duplicação, testes, cobertura de 80%, métricas, estágios de CI, ponto de composição, pipeline
 transversal) e, em V18–V21, o desempenho: operações sob orçamento (lista fechada, cinco campos por
@@ -73,7 +73,7 @@ observabilidade, configuração, segurança de infraestrutura.>
 - **Princípio sem consequência observável é slogan.** Cada `P-nnn` precisa dizer o que se vê no código quando é respeitado — senão o QA não consegue verificar e ninguém percebe quando é violado.
 - **Aplicação, não repetição.** Se o padrão genérico já explica *como fazer*, aqui só entra o *o que foi escolhido* e o *por quê deste produto*.
 - **Índice obrigatório.** Este documento cresce mais que os outros; sem índice, vira arquivo morto.
-- **Marque a origem.** Seção que aplica um padrão genérico cita a seção do guia; seção que decorre de uma decisão cita a ADR.
+- **Marque a origem.** Seção que aplica um padrão genérico cita a seção do guia — **pelo nome do documento e o §, nunca pelo caminho do plugin**, que não existe no repositório do produto (R31); seção que decorre de uma decisão cita a ADR.
 - **Estrutura de diretórios documentada é estrutura verificada.** Quando o repositório mudar, esta seção muda no mesmo ciclo (R12).
 
 ## Falhas comuns
@@ -85,4 +85,4 @@ observabilidade, configuração, segurança de infraestrutura.>
 | Linha de V18 sem RNF de origem em `01-requirements.md` | Orçamento inventado aqui: o limiar não foi decidido pelo PO e ninguém o aceita ou rejeita |
 | Documento que repete o padrão genérico | Duas verdades para manter; uma delas envelhece |
 | Decisão estrutural registrada só aqui, sem ADR | A decisão é encontrada por acaso, sem contexto nem alternativas |
-| Árvore de diretórios desatualizada | Confere contra o repositório numa auditoria — é a Task mais barato de checar |
+| Árvore de diretórios desatualizada | Confere contra o repositório numa auditoria — é a verificação mais barata |

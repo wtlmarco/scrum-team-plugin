@@ -57,7 +57,7 @@ O protótipo antecipa esse momento para o ponto mais barato do processo: antes d
 - [ ] Os estados de exceção dos fluxos principais existem
 - [ ] Os dados de exemplo são plausíveis
 - [ ] A lista do que está fora está escrita na própria página
-- [ ] **Exercitado**, com o registro de verificação preenchido: modo, alcance, o que **não** foi reexecutado, e o **trecho + ponteiro** do log bruto (R7 · R23 · R28 — [`skills.md` §10](../../roles/user-experience/skills.md))
+- [ ] **Exercitado**, com o registro de verificação preenchido: modo, alcance, o que **não** foi reexecutado, e o **trecho + ponteiro** (`report` do job) (R7 · R23 · R28 — [`skills.md` §10](../../roles/user-experience/skills.md))
 - [ ] O stakeholder **navegou** — não leu o código, não viu print
 - [ ] A **decisão** (aprovar · aprovar com ajuste · reprovar · pedir mais contexto) está na ficha, com data e o ajuste pedido — tomada em formulário (R22) **depois** da navegação
 
@@ -67,18 +67,18 @@ O protótipo antecipa esse momento para o ponto mais barato do processo: antes d
 
 > **Vive em:** `.team-project/user-experience/prototype/sprint-<n>/` — **uma pasta por sprint, nunca sobrescrita**; a raiz de `prototype/` continua sendo do protótipo funcional do ① · **Modelo:** [`sprint-prototype.md`](../../roles/user-experience/templates/sprint-prototype.md) · **Portão:** peça do pacote de abertura (R25 · [`workflow-sprint.md` §5e passo 10 e §5g](../../roles/scrum-master/process/workflow-sprint.md))
 
-**Por que ele existe.** O pacote de abertura entrega ao stakeholder o Sprint Backlog, os critérios de aceite, o `planning.md` — e um protótipo. Sem ele o ③ seria aprovar **uma descrição do sprint**, que é exatamente o modo de falha que o ① já resolveu para o produto (R15). E ele é a **verificação de valor real do sprint** (R25b): protótipo que não atravessa um fluxo ponta a ponta denuncia um corte que não entrega fatia usável, e o corte é refeito **antes** de o sprint arrancar — não descoberto na Review.
+**Por que ele existe.** O pacote de abertura entrega ao stakeholder o Sprint Backlog, os critérios de aceite, o `planning.md` — e um protótipo. Sem ele o ③ seria aprovar **uma descrição do sprint**, que é exatamente o modo de falha que o ① já resolveu para o produto (R15). E ele é a **verificação de valor real do sprint** (R25 (b)): protótipo que não atravessa um fluxo ponta a ponta denuncia um corte que não entrega fatia usável, e o corte é refeito **antes** de o sprint arrancar — não descoberto na Review.
 
 **O que é trabalho novo, e o que não é.** A especificação de tela de cada História candidata continua sendo produzida **antes** da Planning — é pré-condição da DoR da História, e não muda. O novo é a **costura** das telas já especificadas num caminho navegável, depois do corte de capacidade. Quem lê "protótipo por sprint" como "especificar tudo de novo" dobra o custo estimado do item.
 
 | # | Exigência | Por quê |
 |---|---|---|
 | 1 | **Toda História que entrou no sprint tem tela representada**, ou a ficha declara por que não tem (História sem interface) | É o recorte que o stakeholder está aprovando; História invisível no protótipo é História aprovada no escuro |
-| 2 | **Ao menos um fluxo ponta a ponta atravessável**, do gatilho ao resultado | É a verificação de valor real (R25b). Sem ele o pacote **não sobe** — o achado volta ao PO na Planning |
+| 2 | **Ao menos um fluxo ponta a ponta atravessável**, do gatilho ao resultado | É a verificação de valor real (R25 (b)). Sem ele o pacote **não sobe** — o achado volta ao PO na Planning |
 | 3 | **Costurado, não indexado** — as telas se ligam por navegação real, não por uma lista de links soltos | Índice de telas não é caminho; ninguém atravessa fluxo clicando em itens de menu |
 | 4 | **Produzido depois do corte de capacidade**, com as Histórias que sobraram | Antes do corte não se sabe quais entraram — costurar antes é retrabalho garantido |
 | 5 | **Mesma régua técnica do funcional:** um ponto de entrada, sem build/servidor/back-end, dados plausíveis, estados de exceção dos caminhos cobertos, "o que está fora" na própria página | O stakeholder que precisa de ajuda para abrir não navega — e o que ele não navegou, ele não aprovou |
-| 6 | **Exercitado**, com o registro de verificação preenchido: modo, alcance, o que **não** foi reexecutado e o que o cobre, mais o **trecho + ponteiro** do log bruto | R7 · R23 · R28 — leve reduz o escopo executado, nunca a evidência; execução delegada ao `operator`, veredito do UX ([`skills.md` §10](../../roles/user-experience/skills.md)) |
+| 6 | **Exercitado**, com o registro de verificação preenchido: modo, alcance, o que **não** foi reexecutado e o que o cobre, mais o **trecho + ponteiro** (`report` do job) | R7 · R23 · R28 — leve reduz o escopo executado, nunca a evidência; execução delegada ao `operator`, veredito do UX ([`skills.md` §10](../../roles/user-experience/skills.md)) |
 | 7 | **Pasta numerada, nunca sobrescrita**, e o ponteiro registrado no Sprint Backlog resolve | O ponteiro é o registro do que foi aprovado naquele sprint; sobrescrever apodrece o histórico do ③ |
 | 8 | **O stakeholder navegou** — e a ficha traz data, quem, e o que foi pedido em cada devolução; a decisão (aprovar · aprovar com ajuste · reprovar · pedir mais contexto) vem em formulário (R22), depois da navegação | Print, gravação e apresentação não abrem o ③, pelo mesmo motivo que não abrem o ① |
 

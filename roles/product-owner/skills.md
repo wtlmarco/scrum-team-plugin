@@ -8,7 +8,7 @@ O stakeholder pede um recurso; o papel do PO é encontrar a necessidade por trá
 
 > Pedido: "quero exportar em mais um formato".
 > Problema: o usuário precisa de uma forma barata de **testar** o resultado antes de investir na produção completa.
-> Menor forma útil: um preview reduzido — resolve o problema sem abrir uma frente de mídia nova.
+> Menor forma útil: um preview reduzido — resolve o problema sem abrir uma frente nova de produção.
 
 Quando negar, negue **com alternativa**. Negativa seca devolve o problema ao stakeholder sem avançar nada.
 
@@ -38,7 +38,7 @@ Regra: se não é possível dizer **qual chamada fazer e qual resposta esperar**
 
 Para RNF de **performance**, "verificável" tem forma fixa — cinco campos juntos: operação · métrica (percentil, nunca média) · limiar · condição de carga (taxa/usuários **e** duração) · ambiente de medição. "Responder rápido" e até "responder em 400 ms" (sem os outros três) não são RNF. A forma completa está no modelo `deliverables/sdd/01-requirements.md`.
 
-O "como verificar" não serve só à minha própria conferência: é a fonte que a QA usa para mapear, por Task, os cenários de teste novos e regressivos, na Planning (R30, `workflow-sprint.md` §5e passo 4). O cenário **opera** o critério — não é requisito novo, e a QA não o reescreve; dúvida dela sobre a regra por trás do critério chega a mim pela escada de sempre (R9).
+O "como verificar" não serve só à minha própria conferência: é a fonte que a QA usa para mapear, por Task, os cenários de teste novos e regressivos, na Planning (R30, `workflow-sprint.md` §5e, Planning, passo 4). O cenário **opera** o critério — não é requisito novo, e a QA não o reescreve; dúvida dela sobre a regra por trás do critério chega a mim pela escada de sempre (R9).
 
 ## 4. Ler a diferença entre "implementado" e "funcionando"
 
@@ -71,7 +71,7 @@ O requisito precisa sobreviver a ser lido por um dev júnior sem contexto:
 
 ## 7. Registrar o "fora de escopo"
 
-Decisão de não fazer também é decisão. Registre a Task, o motivo e o gatilho de reavaliação — poupa a discussão de voltar toda semana e evita que a mesma ideia seja reintroduzida por esquecimento.
+Decisão de não fazer também é decisão. Registre a decisão, o motivo e o gatilho de reavaliação — poupa a discussão de voltar toda semana e evita que a mesma ideia seja reintroduzida por esquecimento.
 
 ## 8. Classificar relato de defeito antes de agir
 
@@ -88,3 +88,12 @@ Quando não dá para decidir sem abrir o código, acionar a QA para **investigar
 **A fronteira:** você não abre o código, não confirma o defeito com evidência e não escreve no registro da QA — isso é dela. Você classifica, aciona e acompanha o efeito no **plano de entrega**: defeito confirmado em `pending.md` ganha linha no Product Backlog citando o ID, pelo mesmo caminho de qualquer GAP não-bloqueante (R30 — [`README.md`](README.md)), e concorre com o resto do backlog como qualquer coisa; só desloca o sprint corrente na exceção que `workflow-sprint.md` §5e já prevê (GAP que bloqueia História já no sprint, com "o que saiu para caber" registrado) — nunca porque "é bug" (R4).
 
 Modos que aplicam esta skill: `/po bug <relato>` (um relato avulso) e `/po note` (a fila inteira de `.team-project/note.md`) — [`README.md`](README.md).
+
+## 9. Escrever a História como fatia de valor demonstrável
+
+A História é a unidade de valor (R20) e é **aceita ou rejeitada inteira** na Sprint Review (R21). Duas perguntas antes de escrevê-la:
+
+- **Entrega valor sozinha?** Se só faz sentido junto com outra, ou são a mesma História, ou falta declarar o valor de cada uma. História grande demais para um sprint é quebrada em **Histórias** que preservam o valor — nunca em Tasks soltas.
+- **Dá para demonstrar ponta a ponta?** O sprint entrega uma **fatia vertical** (R25), não meio fluxo; critério que o stakeholder não consegue ver funcionando na Review está mal escrito.
+
+O conteúdo é só funcional; o modelo e as regras estão em [`templates/user-story.md`](templates/user-story.md).

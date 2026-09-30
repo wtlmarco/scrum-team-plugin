@@ -49,7 +49,7 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 | **Total do sprint** (papéis + `operator`) | — | **<n>** | **<n>** | **<mm:ss>** | — |
 
 - **Delegação ao `operator` — economia a investigar** (R28; lida das linhas `operator` e da seção "Execução delegada" dos relatórios). Por Task/História que delegou: consumo do **papel chamador** × consumo do **`operator`** que ele chamou, cada um com o seu modelo — <ID · papel · Σ · modelo × operator · Σ · modelo> \| nenhuma delegação. **Candidato a investigar, nunca economia afirmada:** sem a linha do papel *sem* delegar para comparar, o registro não mede a economia absoluta.
-- **Contagem (R28):** chamadas em `.team-project/operator/<sprint>/` (pasta de job + logs adicionais na mesma pasta) = <n> **+** `operator/pre-sprint/` ainda não contadas = <n \| 0> · linhas `operator` no registro = <n> · divergência: <nenhuma \| jobs sem linha — o papel chamador não retratou>.
+- **Contagem (R28):** chamadas em `.team-project/operator/<sprint>/` (um `report.md` ou `report-<log>.md` por chamada) = <n> × linhas `operator` do registro do sprint = <n> **·** `operator/pre-sprint/` nascidas desde o fechamento anterior = <n \| 0> × linhas `operator` de `.team-project/consumption.md` na mesma janela = <n \| 0> (exponha à parte as linhas `pre-sprint;`/`entre-sprints;` da janela) · divergência: <nenhuma \| jobs sem linha — o papel chamador não retratou>.
 
 - **Contra o sprint anterior:** <Δ% e a causa, ou "primeiro sprint com registro">
 - **Divergência contra a carga fixa** (§5c fase Act): <papel com carga fixa pequena e consumo alto, ou o oposto — candidato a investigar, nunca a cortar às cegas | nenhuma>

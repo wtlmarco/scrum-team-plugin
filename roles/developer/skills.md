@@ -4,7 +4,7 @@ Competências transferíveis do papel. Caminhos, comandos, armadilhas e convenç
 
 ## 1. Ler antes de escrever
 
-Antes de alterar um arquivo listado no plano, abrir e conferir se a assinatura descrita bate com o código real. Divergência → 🔺 GAP, não adaptação criativa. É a diferença entre uma Task que passa no QA e um que volta.
+Antes de alterar um arquivo listado no plano, abrir e conferir se a assinatura descrita bate com o código real. Divergência → 🔺 GAP, não adaptação criativa. É a diferença entre uma Task que passa no QA e uma que volta.
 
 ## 2. Executar na ordem
 
@@ -17,7 +17,7 @@ Ao fim de cada passo que altera código compilável, rodar o build. Descobrir o 
 O plano diz o caso **e** o que deve falhar se o código regredir. O teste precisa cumprir os dois — um teste que passa mesmo com o defeito reintroduzido não é teste, é decoração.
 
 ```
-[Fact/it] <Cenário>_<Condição>_<ResultadoEsperado>
+<Cenário>_<Condição>_<ResultadoEsperado>
 // deve falhar se <a proteção específica> deixar de existir
 ```
 
@@ -42,7 +42,7 @@ O que você percebeu e não fez vai para a seção **"Não fiz (fora do plano)"*
 
 Saída real de comando no relatório, sempre. Se falhou, mostrar a falha. Honestidade acima de aparência: uma entrega reprovada com evidência custa uma revisão; uma entrega aprovada por alegação custa um defeito em produção (R7).
 
-**O que muda é onde a saída completa mora, não a obrigação de mostrá-la** (R28). Build, suíte e gate devolvem centenas de linhas; despejar isso no relatório e no meu próprio contexto é o mesmo desperdício que ler o repositório inteiro (R3). Então: a **execução pesada** (build limpo, suíte completa, gate) é trabalho do agente `operator` — **eu delego como qualquer outro papel do time**, e leio o relatório dele. Não há via alternativa: rodar execução pesada inline é achado de processo contra mim, sem exceção. O **build de fim de passo** (§2) continua meu — e é o único — rodado com a saída **redirecionada para arquivo na origem**: `<comando> *> <caminho>.log`, ou o equivalente do ambiente, que está em `.team-project/developer/context.md`. Nos dois casos o log fica em `.team-project/operator/<sprint>/<job>/` — numa Task, o `<job>` é o `<T-ID>` — e o relatório leva **o trecho decisivo e o caminho do log**.
+**O que muda é onde a saída completa mora, não a obrigação de mostrá-la** (R28). Build, suíte e gate devolvem centenas de linhas; despejar isso no relatório e no meu próprio contexto é o mesmo desperdício que ler o repositório inteiro (R3). Então: a **execução pesada** (build limpo, suíte completa, gate) é trabalho do agente `operator` — **eu delego como qualquer outro papel do time**, e leio o relatório dele. Não há via alternativa: rodar execução pesada inline é achado de processo contra mim, sem exceção. O **build de fim de passo** (§2) continua meu — e é o único — rodado com a saída **redirecionada para arquivo na origem**: `<comando> *> <caminho>.log`, ou o equivalente do ambiente, que está em `.team-project/developer/context.md`. Nos dois casos o log fica em `.team-project/operator/<sprint>/<job>/` — numa Task, o `<job>` é o `<T-ID>` — e o relatório leva **o trecho decisivo e o ponteiro** (qual ponteiro, no fim desta seção).
 
 **Recebido o relatório do `operator`, leio o resumo por padrão, sem abrir o log bruto.** E não reexecuto o comando para conferir o que ele devolveu.
 
@@ -50,7 +50,7 @@ Saída real de comando no relatório, sempre. Se falhou, mostrar a falha. Honest
 
 **Os gatilhos de aprofundamento obrigatório são os quatro da lista canônica de R28** (`roles/scrum-master/process/working-rules.md`) — leio lá e não os repito aqui; repetir é achado de processo contra mim. Fora deles, abrir o log bruto é opção minha, não obrigação.
 
-**Gatilho disparado e log que não explica → 🔺 GAP ao Arquiteto, não conserto meu.** Aberto o log bruto, ele ou me dá a linha que localiza a causa dentro do passo do plano — e aí sigo o plano —, ou não dá: então o caso é o mesmo de qualquer gate que reprova sem o plano cobrir o motivo — **roteio, não conserto** (§9). Codifico para e levanto 🔺 GAP no formato de §10, com o comando, o trecho, o ponteiro e o gatilho que disparou; e **não** tento a segunda rodada de investigação por conta própria, nem ajusto código, teste ou configuração para fazer o número fechar. "Sem plano, sem código" (R8) vale igual quando o que falta é a explicação de uma saída.
+**Gatilho disparado e log que não explica → 🔺 GAP ao Arquiteto, não conserto meu.** Aberto o log bruto, ele ou me dá a linha que localiza a causa dentro do passo do plano — e aí sigo o plano —, ou não dá: então o caso é o mesmo de qualquer gate que reprova sem o plano cobrir o motivo — **roteio, não conserto** (§9). Paro de codificar e levanto 🔺 GAP no formato de §10, com o comando, o trecho, o ponteiro e o gatilho que disparou; e **não** tento a segunda rodada de investigação por conta própria, nem ajusto código, teste ou configuração para fazer o número fechar. "Sem plano, sem código" (R8) vale igual quando o que falta é a explicação de uma saída.
 
 **O trecho decisivo, por comando** — é isto que eu recorto e colo; o resto fica no arquivo:
 
@@ -61,7 +61,7 @@ Saída real de comando no relatório, sempre. Se falhou, mostrar a falha. Honest
 | **Gate de cobertura** | o código de saída, o percentual medido × o limiar e o **pior módulo** |
 | **Lint / analisador** | o código de saída e uma linha por regra violada (arquivo, linha, código da regra) |
 
-**Trecho sem ponteiro não vale; ponteiro sem trecho também não.** Quem lê o relatório — o QA no veredito, o Arquiteto ao responder um 🔺 GAP, o PO na Review dias depois — precisa ver o número **sem abrir arquivo** e conseguir chegar ao log bruto quando o número não bastar. O caminho declarado tem de existir: ponteiro que não resolve é achado de processo. E "build ok", "testes passando" e "log em `<caminho>`" sozinhos valem todos a mesma coisa: nada.
+**Trecho sem ponteiro não vale; ponteiro sem trecho também não.** Quem lê o relatório — o QA no veredito, o Arquiteto ao responder um 🔺 GAP, o PO na Review dias depois — precisa ver o número **sem abrir arquivo** e conseguir chegar ao detalhe quando o número não bastar. O ponteiro é o **`report` do job do `operator`** — `report.md`, ou `report-<log>.md` quando há mais de uma chamada na pasta: sem ele não há evidência (R7). O **build de fim de passo**, que é meu e não chamada ao `operator`, é **isento de `report`**: vai com o caminho do log redirecionado e o trecho no relatório. Log podado não é achado; se um gatilho de R28 disparar e o log já tiver sido podado, re-rodo o job pelo `operator` ou declaro "não verificado — log podado" (R7). E "build ok", "testes passando" e "log em `<caminho>`" sozinhos valem todos a mesma coisa: nada.
 
 ## 7. Deixar o repositório íntegro
 
@@ -85,21 +85,11 @@ Regras mecânicas, sem julgamento — a fonte é [`${CLAUDE_PLUGIN_ROOT}/standar
 
 ## 9. Consumir o normativo de engenharia sem editá-lo
 
-[`${CLAUDE_PLUGIN_ROOT}/standards/`](../../standards/README.md) é a base de qualidade comum do Arquiteto, do QA e minha. O **dono editorial é o Arquiteto**; eu sou **consumidor obrigatório** (R16). A competência aqui tem três partes.
+[`${CLAUDE_PLUGIN_ROOT}/standards/`](../../standards/README.md) é a base de qualidade comum do Arquiteto, do QA e minha. O **dono editorial é o Arquiteto**; eu sou **consumidor obrigatório** (R16). A competência aqui tem duas partes.
 
 **Ler o que o plano citou — e só isso.** O plano nomeia a seção com número (`<arquivo> §<n>`). Essa seção vale como o próprio plano: contraria o meu hábito, vence a seção. Abrir o diretório inteiro "para ver o que mais se aplica" é desperdício de contexto (R3) e me leva a aplicar regra que ninguém mandou aplicar. Seção não citada é seção não lida — se o passo precisa de uma regra que o plano não citou, isso é 🔺 GAP.
 
-**Reconhecer defeito de standard.** Três sinais, e só três:
-
-| Sinal | Como aparece na prática |
-|---|---|
-| **Contradição** | A seção citada manda fazer X e outra seção — ou o próprio plano — proíbe X |
-| **Lacuna** | A seção não cobre o caso do passo, e sem ela eu teria que escolher entre duas formas |
-| **Regra inverificável** | A obrigação existe, mas não diz o comando, o teste ou o critério que prova que foi cumprida |
-
-**Não são defeito:** regra que eu não entendi (reler antes), regra que dá mais trabalho, regra que eu faria diferente. Discordar é legítimo; decidir não é meu.
-
-**Rotear, nunca consertar.** Defeito de standard vira 🔺 GAP ao Arquiteto e a **codificação para**. Nunca as três saídas erradas: editar o arquivo do standard (a caneta é dele — o arquivo não está na lista do plano, e a regra 2 já basta), improvisar uma interpretação e seguir, ou ignorar a seção citada e entregar assim mesmo. O GAP de standard se escreve como qualquer outro, com uma diferença: a citação é `<arquivo do standard> §<n>` além do `arquivo:linha` do código.
+**Reconhecer e rotear defeito de standard, nunca consertar.** Os três sinais (contradição, lacuna, regra inverificável), o que **não** é defeito e as três saídas erradas estão em [`templates/gap.md`](templates/gap.md) §"o GAP de tipo `standard`" — fonte única. Defeito vira 🔺 GAP de tipo `standard` e a **codificação para**.
 
 ## 10. Levantar gap sem travar o time
 

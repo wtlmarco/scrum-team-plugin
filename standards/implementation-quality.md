@@ -2,7 +2,7 @@
 
 **Versão:** 1.4
 **Data:** 06/09/2026
-**Status:** Draft normativo
+**Status:** Vigente
 **Nível:** 2 — perfil de stack
 **Stack alvo:** .NET 10 · xUnit · GitLab CI
 
@@ -21,7 +21,7 @@
 | Documento | Conteúdo |
 |---|---|
 | [`implementation-principles.md`](implementation-principles.md) | **Nível 1** — limites de Clean Code (§4.4), gate de cobertura de 80% (§5.4), **desempenho: RNF verificável, orçamento e regressão (§5.6)** e quadro de verificação (§7) |
-| [`implementation-guide.md`](implementation-guide.md) | Estrutura de código, CQRS, isolamento multi-tenant/projeto, adaptadores de IA, logging, configuração, testes |
+| [`implementation-guide.md`](implementation-guide.md) | Estrutura de código, CQRS, isolamento por escopo (tenant e sub-recurso), adaptadores multi-provedor, logging, configuração, testes |
 
 ---
 

@@ -34,7 +34,7 @@
 > <comando>
 <trecho decisivo, verbatim>
 ```
-**Log bruto:** `.team-project/operator/<sprint>/<job>/<arquivo>.log` — <n> linhas *(ou "n/a — comando leve, sem `operator`")*
+**Relatório do `operator`:** `.team-project/operator/<sprint>/<job>/report.md` (ou `report-<log>.md`) · log bruto, disco local, pode ter sido podado: `<arquivo>.log` — <n> linhas *(ou "n/a — comando leve, sem `operator`")*
 
 ### Execução delegada
 *(espelha a do veredito; "nenhuma" quando não houve chamada ao `operator`; sem número: "não disponível — <motivo>", nunca estimado)*
@@ -57,8 +57,8 @@
 ## Como manter
 
 - **Um arquivo por Task**, nomeado exatamente `<T-ID>.md`. Nomeação previsível não é estilo: é o que faz o ponteiro da coluna Evidência do Sprint Backlog resolver sem ambiguidade.
-- **Um bloco por execução** do `/qa <ID>` sobre esta Task, em ordem cronológica inversa (mais recente no topo). Reprovação seguida de nova tentativa soma bloco novo — **nunca editar bloco antigo**. É por isso que o ponteiro do log importa mais aqui do que em qualquer outro documento: cada tentativa reprovada acrescenta comandos pesados novos, e sem `operator` cada um inflaria o contexto de uma verificação inteira por Task.
-- **O ponteiro precisa resolver por todo o sprint.** O log do `operator` fica em `.team-project/operator/<sprint>/<job>/`, retido durante o sprint corrente e podado só depois do aceite do PO (R28) — enquanto este arquivo é lido (auditoria do QA, conferência do PO na Sprint Review), o caminho apontado existe. Log ausente antes do aceite é achado de processo contra quem gerou o relatório, não uma lacuna minha de preencher com nova execução.
+- **Um bloco por execução** do `/qa <ID>` sobre esta Task, em ordem cronológica inversa (mais recente no topo). Reprovação seguida de nova tentativa soma bloco novo — **nunca editar bloco antigo**. É por isso que o ponteiro do `report` importa mais aqui do que em qualquer outro documento: cada tentativa reprovada acrescenta comandos pesados novos, e sem `operator` cada um inflaria o contexto de uma verificação inteira por Task.
+- **O ponteiro é o `report` do job** (`report.md`, ou `report-<log>.md`) em `.team-project/operator/<sprint>/<job>/`; sobrevive à poda (R28). `report` ausente é ausência de evidência (rejeição no aceite, R7); acima de 200 linhas ou 20 KB é achado de processo. O log bruto (`*.log`) é disco local e pode ter sido podado: não é achado. Com gatilho de R28 disparado e o log podado, re-rodo o job pelo `operator` ou registro "não verificado — log podado" (R7) — nunca "ok" por inferência do trecho.
 - **Task retomada num sprint seguinte** ganha arquivo novo em `sprints/<n_novo>/evidence/<T-ID>.md`; o de `sprints/<n_antigo>/evidence/` fica como está, registro fechado — mesmo padrão do plano do Arquiteto em `plan/` (`artifact-ownership.md` §1e).
 - **A linha de base do projeto não é por Task nem por sprint** — fica fora desta pasta, em `.team-project/quality-assurance/baseline.md`; formato e roteiro em [`../README.md`](../README.md), seção `/qa baseline`.
 - **A tabela de cenários espelha a do veredito (`verdict.md`), nunca diverge dela.** Cada execução some no Histórico do próprio `SC-nnn` ([`scenario.md`](scenario.md)) e no índice ([`scenarios-index.md`](scenarios-index.md)) — os três (evidência, cenário, índice) sempre com o mesmo resultado para a mesma data.

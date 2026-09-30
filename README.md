@@ -1,17 +1,17 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.34.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.35.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
 
 É **genérico e reutilizável**: define **quem faz o quê**, **como cada papel trabalha**, **quais regras governam o time** e **quais modelos de documento cada papel usa** — sem uma linha sobre um produto específico.
 
-O que é de um projeto concreto — produto, stack, comandos, quadro, backlog, planos, evidências — vive em **`.team-project/`**, **dentro do projeto onde o plugin foi instalado**, e é lido pelos agentes em tempo de execução.
+O que é de um projeto concreto — produto, stack, comandos, quadro, backlog, planos, evidências — vive em **`.team-project/`**, **dentro do projeto onde o plugin foi instalado** — **local, fora do git** (o repositório do projeto recebe só o produto: código e `docs/`, R31) —, e é lido pelos agentes em tempo de execução.
 
 ```
 este repositório   processo   → genérico, um só, serve todos os projetos
-.team-project/     contexto   → um por projeto, no repositório daquele projeto
+.team-project/     contexto   → um por projeto, LOCAL — fora do git do projeto (R31)
 ```
 
 **Começando:** [`how-to.md`](how-to.md) — o que você quer fazer → qual comando, os cenários de uso (projeto novo · retomada · evolução · correção · pedido no meio do sprint · trabalho interrompido), os quatro portões, instalar e atualizar. Para levar o time a um projeto: `claude plugin marketplace add` + `claude plugin install`, e depois **`/team init`**.
@@ -51,15 +51,15 @@ este repositório   processo   → genérico, um só, serve todos os projetos
     │   ├── process/     working-rules · working-rules-index · workflow · workflow-ritos · workflow-sdd · workflow-sprint · workflow-processo · sprint-run · artifact-ownership · process-changelog
     │   └── templates/   planning · sprint-backlog · burndown · consumption · sprint-review · retrospective · plugin-report · status-entry · project-context · process-change
     ├── product-owner/      requisitos, Histórias, backlog, aceite
-    │   └── templates/   user-story · product-backlog · status · requirement · functional-analysis · acceptance
+    │   └── templates/   user-story · product-backlog · status · requirement · functional-analysis · acceptance · impact-analysis · note
     ├── architect/          especificação técnica, Planos de Implementação, ADRs
-    │   └── templates/   implementation-plan · adr · compliance-review · technical-decision · spike-checkpoint
+    │   └── templates/   implementation-plan · adr · technical-decision · spike-checkpoint
     ├── user-experience/   jornadas, telas, protótipos, usabilidade e acessibilidade
     │   └── templates/   functional-prototype · sprint-prototype · journey-map · screen-spec · usability-review
     ├── developer/          execução do plano, entrega, gaps
     │   └── templates/   delivery-report · gap
     └── quality-assurance/  validação, evidências, registro de GAPs
-        └── templates/   evidence · verdict · gap-record · cross-audit
+        └── templates/   evidence · verdict · gap-record · cross-audit · scenario · scenarios-index
 ```
 
 Cada pasta em `roles/`:
@@ -102,7 +102,7 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 ```
 /sm     onboarding | brainstorm <ideia> | sdd [<tema>] | sprint prepare | sprint plan | sprint run [<T-ID>] | sprint review | sprint close | board | agreement <questão> | close <T-ID>    (review = alias de sprint review)
 /po     status | impact <mudança> | analyze <ideia> | requirement <ID> | story <H-ID> | prioritize | accept <H-ID> | bug <relato> | note
-/arc    plan <T-ID> | comply <T-ID> | adr <tema> | question <dúvida>
+/arc    plan <T-ID> | adr <tema> | question <dúvida>
 /ux     prototype | prototype sprint <n> | prototype screen <tela> | journey <fluxo> | screen <nome> | review-ui <tela>
 /dev    <T-ID> | resume <T-ID> | gap <resposta do arquiteto>
 /qa     <T-ID> | baseline | audit | security <T-ID> | bug <relato> | scenarios create | scenarios run <SC-nnn|grupo|all>
@@ -112,7 +112,7 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 
 **`<H-ID>` opera sobre valor, `<T-ID>` sobre trabalho.** A História é a unidade de valor (dona: PO, conteúdo só funcional); a Task é a unidade de trabalho (no Sprint Backlog do SM, com o Plano de Implementação do Arquiteto dentro). Toda Task pertence a exatamente uma História (R20).
 
-Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. Três pares se parecem e não são a mesma coisa: **`/ux review-ui`** (usabilidade de uma tela) e **`/arc comply`** (aderência do código ao plano, **só como exceção pedida pelo stakeholder** — a frente 2 do `/qa` cobre isso em toda Task) são trabalho no produto; **`/sm sprint review`** (antes `/sm review`, ainda alias) é a **Sprint Review**, também no produto; e **`/review`** evolui o processo do time e roda só no repositório-fonte do plugin.
+Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. Três nomes se parecem e não são a mesma coisa: **`/ux review-ui`** (usabilidade de uma tela) é trabalho no produto — e a aderência do código ao plano é da frente 2 do `/qa`, em toda Task, sem modo próprio; **`/sm sprint review`** (antes `/sm review`, ainda alias) é a **Sprint Review**, também no produto; e **`/review`** evolui o processo do time e roda só no repositório-fonte do plugin.
 
 ### Com quem o stakeholder fala
 
@@ -181,7 +181,7 @@ Nenhum atalho: o portão ① não abre sem o stakeholder **navegar** o protótip
 
 Geridas pelo SM, válidas para todos os papéis e para o stakeholder:
 
-- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 30 regras (eficiência R1-R6 e R28-R29, qualidade R7-R12, método R13-R27 e R30), o que cada uma evita e como o SM verifica; o [`working-rules-index.md`](roles/scrum-master/process/working-rules-index.md) é o índice de uma linha por regra que o `/sm close` lê
+- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 31 regras (eficiência R1-R6 e R28-R29, qualidade R7-R12, método R13-R27 e R30-R31), o que cada uma evita e como o SM verifica; o [`working-rules-index.md`](roles/scrum-master/process/working-rules-index.md) é o índice de uma linha por regra que o `/sm close` lê
 - [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) — ciclo, DoR/DoD, gates, escalação (núcleo); os rituais estão em `workflow-ritos.md` (§5a–5b), `workflow-sdd.md` (§5h), `workflow-sprint.md` (§5e–5g) e `workflow-processo.md` (§5c–5d), e o `/sm sprint run` em `sprint-run.md`
 - [`roles/scrum-master/process/artifact-ownership.md`](roles/scrum-master/process/artifact-ownership.md) — quem escreve o quê
 - [`roles/scrum-master/process/process-changelog.md`](roles/scrum-master/process/process-changelog.md) — como o processo chegou até aqui

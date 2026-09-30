@@ -48,7 +48,7 @@ Não **detalha** História para sprint (regras, critérios, especificação de t
 
 ### Consumo e operator
 
-Roda **antes** de existir sprint (ou com o anterior fechado): as linhas de consumo dos subagentes vão para `context.md`, subseção **"Consumo pré-sprint (prepare · sdd)"** (a mesma do `prepare`, dentro de §"Candidatas do próximo sprint"), e são transcritas no passo 9 da Planning com Nota `pre-sprint;` ([`templates/consumption.md`](../templates/consumption.md) §Como gravar). Job do `operator` no `sdd` (harness do protótipo do ①, spike do ②) vai para `.team-project/operator/pre-sprint/` (R28).
+Roda **antes** de existir sprint (ou com o anterior fechado): as linhas de consumo dos subagentes vão direto para **`.team-project/consumption.md`** (registro fora de sprint, o mesmo do `prepare`), Nota `pre-sprint;` ou `entre-sprints;`, sem transcrição depois ([`templates/consumption.md`](../templates/consumption.md) §Como gravar). Job do `operator` no `sdd` (harness do protótipo do ①, spike do ②) vai para `.team-project/operator/pre-sprint/` (R28).
 
 ### Como o SM verifica
 
