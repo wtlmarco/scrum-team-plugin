@@ -9,8 +9,8 @@ A História tem **dois estados no Product Backlog** (fonte viva), mais uma **có
 | Estado | Onde | Quando | O que existe | Portão |
 |---|---|---|---|---|
 | **Esboço** | `product-owner/stories/<H-ID>-<slug>.md` | nasce do SDD | valor, enunciado, origem, tamanho grosseiro | — |
-| **Detalhada** | o mesmo arquivo, na fonte viva | candidata a um sprint | \+ regras, especificação de tela, critérios de aceite | **pronta para o pacote** — o ③ não é mais por História: acontece **depois** da Planning, **em lote**, sobre o pacote de abertura do sprint (R20 · R25) |
-| **Congelada** | `sprints/<n>/stories/H-nnn.md` | aprovação do pacote de abertura | cópia da Detalhada, como foi aprovada para aquele sprint | ③ já ocorrido, em lote — ver [`workflow.md` §5e](../../scrum-master/process/workflow.md) passo 10 |
+| **Detalhada** | o mesmo arquivo, na fonte viva | candidata a um sprint — o detalhe roda no `/sm sprint prepare`, antes da Planning | \+ regras, especificação de tela, critérios de aceite | **pronta para o pacote** — o ③ não é mais por História: acontece **depois** da Planning, **em lote**, sobre o pacote de abertura do sprint (R20 · R25) |
+| **Congelada** | `sprints/<n>/stories/H-nnn.md` | aprovação do pacote de abertura | cópia da Detalhada, como foi aprovada para aquele sprint | ③ já ocorrido, em lote — ver [`workflow-sprint.md` §5e](../../scrum-master/process/workflow-sprint.md) passo 10 |
 
 **A Detalhada entra na Planning com o ③ ainda pendente** (R20). Nenhuma Task dela entra em construção antes de o pacote de abertura ser aprovado. **Custo aceito, declarado:** se o pacote voltar reprovado ou com ajuste, a História perde a quebra em Tasks e a estimativa já feitas — risco baixo, porque o que se detalha aqui deriva do SDD funcional já aprovado no ①.
 
@@ -58,7 +58,7 @@ Casos de borda que o stakeholder precisa reconhecer. Nada de "como".>
 *(História sem interface: escrever "não se aplica — sem interface" e seguir.)*
 
 ### Critérios de aceite
-<Verificáveis. Cada um vira, na Review, uma linha com a evidência da Task que o cumpre. É também a fonte que a QA usa para mapear os cenários de teste, novos e regressivos, na Planning — o cenário opera o critério, não o reescreve (R30, `workflow.md` §5e passo 4).>
+<Verificáveis. Cada um vira, na Review, uma linha com a evidência da Task que o cumpre. É também a fonte que a QA usa para mapear os cenários de teste, novos e regressivos, na Planning — o cenário opera o critério, não o reescreve (R30, `workflow-sprint.md` §5e passo 4).>
 
 | # | Critério | Como verificar |
 |---|---|---|
@@ -90,11 +90,9 @@ Cópia integral do conteúdo da Detalhada, com o cabeçalho trocado para declara
 - **Uma História entrega valor sozinha.** Se ela só faz sentido junto com outra, ou são a mesma História, ou falta declarar o valor de cada uma.
 - **Todo critério de aceite tem "como verificar"** — mesma exigência do requisito (R7). Critério sem verificação não entra no pacote de abertura.
 - **História com interface não é detalhada sem o protótipo do UX**, com os seis estados e os critérios de acessibilidade (R8 · gate de `workflow.md` §8).
-- **A Detalhada entra na Planning com o ③ ainda pendente** — a aprovação vem depois, em lote, sobre o pacote de abertura (R20 · R25). Nenhuma Task desta História entra em construção antes do pacote aprovado.
 - **Trabalho técnico também precisa de História.** Refatoração, débito e infraestrutura entram como História cujo beneficiário é o time — com o valor escrito ("deixa de quebrar quando X", "reduz de N para M o tempo de Y"). O que não consegue declarar valor não entra no sprint (R20).
 - **História grande demais para um sprint é quebrada em Histórias**, não em Tasks soltas. A quebra preserva o valor: cada metade precisa entregar algo sozinha.
 - **A História é aceita ou rejeitada inteira**, na Sprint Review (R21). Escrever História grande é aceitar que uma reprovação devolve muito trabalho.
-- **`sprints/<n>/stories/` é congelado, não editado.** Mudar o arquivo durante o sprint é violação de escopo — a mudança vai ao Product Backlog (R4 · R25).
 
 ## Exemplo
 

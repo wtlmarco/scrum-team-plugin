@@ -1,7 +1,7 @@
 # Sprint Backlog
 
 > **DOCUMENTO VIVO** · **Dono:** SM · **Atualizado em:** <data> · **Estado:** <proposta | vigente | **fechado** em <data>>
-> Vive em `.team-project/sprints/<n>/sprint-backlog.md` — dentro da pasta do sprint a que pertence ([`../process/artifact-ownership.md` §1e](../process/artifact-ownership.md)). As Tasks saem da quebra das Histórias candidatas, na Planning Meeting ([`../process/workflow.md` §5e](../process/workflow.md)).
+> Vive em `.team-project/sprints/<n>/sprint-backlog.md` — dentro da pasta do sprint a que pertence ([`../process/artifact-ownership.md` §1e](../process/artifact-ownership.md)). As Tasks saem da quebra das Histórias candidatas, na Planning Meeting ([`../process/workflow-sprint.md` §5e](../process/workflow-sprint.md)).
 > **Vive e fecha no mesmo lugar:** no `/sm sprint close` este arquivo é **fechado**, não copiado — não existe `sprint-backlog-snapshot.md`.
 > O caminho não é fixo: `.team-project/README.md` §2 declara **qual é o sprint corrente**, e é por lá que qualquer papel acha este quadro.
 
@@ -15,11 +15,11 @@
 | **Somatório planejado** | <n> — <dentro da capacidade \| acima, com a justificativa em nota> |
 | **Decisões da Planning** | [`planning.md`](planning.md) — o corte, a varredura de bloqueios e **o que veio da Review anterior e não entrou** |
 
-### Pacote de abertura — o portão ③ deste sprint (R25 · [`../process/workflow.md` §5g](../process/workflow.md))
+### Pacote de abertura — o portão ③ deste sprint (R25 · [`../process/workflow-sprint.md` §5g](../process/workflow-sprint.md))
 
 | | |
 |---|---|
-| **Aprovado em** | <data — **é o dia 0 do burndown**; nenhuma Task entra em construção antes dela> |
+| **Decisão do stakeholder (formulário — R22)** | <aprovar · aprovar com ajuste · reprovar — **registro único do ③**; a ficha do protótipo do sprint (UX) só aponta para esta linha> |
 | **Aprovado por** | <stakeholder — nome> |
 | **Protótipo navegável do sprint** | <caminho/URL do protótipo costurado com as telas das Histórias que entraram> · **navegado em** <data> · **fluxo ponta a ponta coberto:** <qual> |
 | **O que foi submetido** | Sprint Backlog fechado (abaixo) + critérios de aceite das Histórias que entraram + o protótipo acima + `planning.md` |
@@ -68,7 +68,7 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 
 ## Bloqueios e riscos abertos
 
-> **Todo bloqueio nomeia o degrau em que está** (R25 · [`../process/workflow.md` §5g](../process/workflow.md)). Linha sem degrau é achado de processo; bloqueio parado no degrau 1 por mais de uma caixa de tempo **escala**.
+> **Todo bloqueio nomeia o degrau em que está** (R25 · [`../process/workflow-sprint.md` §5g](../process/workflow-sprint.md)). Linha sem degrau é achado de processo; bloqueio parado no degrau 1 por mais de uma caixa de tempo **escala**.
 
 | # | Task / História | Natureza | Degrau | Quem destrava | Desde |
 |---|---|---|---|---|---|

@@ -13,6 +13,35 @@
 
 ---
 
+## v3.34.0 — 2026-09-29
+
+**Branch:** `feat/v3.34.0` a partir de `develop` · **Processo:** [`v3.34` e `v3.34 (parte 2)`](roles/scrum-master/process/process-changelog.md)
+
+Rodada de `/review note` sobre a cadência do sprint e os comandos de execução (SM + PO + Arquiteto/Dev + QA + UX), seguida de verificação de gaps, inconsistências, redundâncias e tokens. As mudanças de `agents/` e `commands/` foram autorizadas pelo stakeholder.
+
+- **Cadência do sprint no `/sm`:** `sprint prepare → sprint plan → sprint run → sprint review → sprint close`. O `prepare` (novo) leva as candidatas até a DoR antes da Planning, sem aprovação do stakeholder. O `/sm review` continua como alias de `sprint review`.
+- **`/sm sprint run`** substitui o `/team cycle`. O roteiro fica em `roles/scrum-master/process/sprint-run.md`. O run retoma pelo marcador da Task, sem replanejar, e fecha a Task quando o veredito é ✅ e marca "Documentos vivos (R12): atualizados". Não aciona o stakeholder por Task.
+- **`/sm brainstorm`** substitui o `/team brainstorm`. PO, UX e Arquiteto ganham roteiro próprio para as fases 1 e 2.
+- **`/team`** fica só com `init · update · version`. Saem `cycle`, `plan`, `build`, `qa` e `brainstorm`, sem alias.
+- **Formulário nos portões ①②③④ (R22):** aprovar · aprovar com ajuste · reprovar · pedir mais contexto. O ③ é um formulário único, registrado na linha "Decisão do stakeholder" do Sprint Backlog. O ④ é uma pergunta por História, com ponteiro para o dossiê `review.md#aceite--h-<nnn>`. O SDD técnico é escrito pelo `/arc`, e a sessão que o chamou abre o formulário do ②.
+- **DoR dividida:** a DoR-a é verificada no `prepare`, e a DoR-b é a varredura de bloqueios na Planning. As candidatas ficam gravadas em `context.md`.
+- **Plano fora de sprint** (calibração antes da 1ª Planning): `.team-project/architect/plans/`.
+- **Normativos divididos:** `workflow.md` (94 KB) vira um núcleo de 39 KB mais `workflow-ritos.md`, `workflow-sprint.md` e `workflow-processo.md`, com a numeração de seção mantida. `working-rules-index.md` indexa R1–R30 para o `/sm close`.
+- **Carga fixa (agente + comando):** cai de 95,0 KB para 61,8 KB nos seis papéis (−35%) e de 12,4 KB para 2,9 KB no `/team`. Consumo e formulário R22 passam a ter fonte única (`templates/consumption.md` §Como gravar e `working-rules.md` R22).
+- **`/sm sdd`** (novo): depois do `brainstorm` (ideia nova) ou do `/po analyze` com decisão (evolução de área documentada), orquestra SDD funcional + jornadas + protótipo → ① → SDD técnico da fatia → ② → Histórias no backlog. Os formulários de ① e ② são do próprio `sdd` (avulso não decide portão); no caso B, só as seções afetadas, com dispensa de portão por delta nulo declarado com motivo. Retoma na etapa em que parou. O `prepare` só aceita Histórias de SDD aprovado. Roteiro em `roles/scrum-master/process/workflow-sdd.md`.
+- **Plano de calibração** (antes da 1ª Planning) em `.team-project/architect/calibration/` — não colide com o caminho legado `architect/plans/` que o `/team update` migra.
+- **`how-to.md` reescrito por uso:** mapa "o que você quer → comando", seis cenários (projeto novo · retomada · evolução · correção · pedido no meio do sprint · trabalho interrompido), os quatro portões numa tabela e a solução de problemas de instalação no fim. O caminho de correção pontual passa a ser `/sm board` → `/sm sprint run <T-ID>`.
+
+**Verificar:** depois de atualizar, reinicie a sessão, porque as mudanças de `agents/` e `commands/` só valem depois disso. Na primeira elaboração de SDD, ① e ② saem em formulário do `/sm sdd` e ficam registrados em `.team-project/scrum-master/context.md`. No primeiro sprint:
+- o `prepare` grava as candidatas;
+- nenhum plano tem data anterior ao ③;
+- todo portão sai em formulário;
+- nenhuma Task fecha sem "Documentos vivos: atualizados".
+
+Remedir a tabela de custo em `workflow-processo.md` §5c (meta: `/sm` ≤ 13,5 KB).
+
+---
+
 ## v3.33.1 — 2026-09-29
 
 **Branch:** `feat/v3.33.1` a partir de `develop` · **Processo:** [`v3.33.1`](roles/scrum-master/process/process-changelog.md)

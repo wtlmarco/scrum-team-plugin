@@ -179,41 +179,27 @@ Na retomada: ler o registro, rodar **só o que ainda não tem linha** e continua
 
 ### Modo leve: reduzir o escopo executado, nunca a evidência
 
-**É a R23 no meu território** — a regra geral manda cada papel definir, no próprio `skills.md`, o que conta como "leve" para o seu tipo de verificação. Para o UX é isto: a primeira entrega de um protótipo paga o harness completo; um ajuste pontual sobre um protótipo **já verificado por um harness completo** não paga de novo o protótipo inteiro — paga o que a mudança alcança.
-
-#### No protótipo funcional (①)
+**É a R23 no meu território.** A primeira entrega paga o harness completo; ajuste sobre protótipo **já verificado por um harness completo** paga só o que a mudança alcança.
 
 | Situação | Escopo do harness |
 |---|---|
-| Primeira entrega do protótipo, ou fatia nova entrando nele | **Completo** — todas as telas, todos os fluxos, todos os critérios |
-| Ajuste pontual (tela isolada nova, rótulo, conteúdo, um passo de um fluxo) | **Leve** — as telas alteradas **mais a vizinhança de navegação de um salto**: de onde se chega nelas e para onde elas levam |
-| Mudança transversal (paleta, tipografia, grade, componente compartilhado, navegação persistente, estrutura de arquivos) | **Completo** — o alcance é todo o protótipo, ainda que o diff seja de uma linha |
-| Não dá para **nomear** as telas afetadas | **Completo** — alcance que não se consegue delimitar não é pontual |
+| Primeira entrega do protótipo funcional, fatia nova, ou **primeiro** protótipo de sprint do projeto | **Completo** |
+| Ajuste pontual no funcional (tela nomeável, rótulo, conteúdo, um passo) | **Leve** — telas alteradas mais a vizinhança de navegação de um salto |
+| Mudança transversal (paleta, tipografia, grade, componente compartilhado, navegação persistente, estrutura de arquivos), ou telas afetadas que não se consegue **nomear** | **Completo**, ainda que o diff seja de uma linha |
+| Sprint: tela reaproveitada de protótipo verificado por completo, sem alteração | **Leve** — só os saltos que entram e saem dela |
+| Sprint: tela nova ou alterada para caber no caminho; componente de navegação criado para a costura | **Completo** nela / no componente |
+| Sprint: recostura depois de pacote devolvido | **Leve** sobre o que a devolução alcançou; **completo** se ela mudou o fluxo ponta a ponta |
 
-#### No protótipo do sprint (peça do pacote de abertura, R25)
+No sprint o leve é o caso comum: exercita-se **o caminho costurado** (cada salto do fluxo ponta a ponta, os estados de exceção que ele atravessa e as telas nascidas na costura), não as telas uma a uma.
 
-Aqui o modo leve é o **caso comum**, não a exceção — e é o que torna o custo do protótipo do sprint compatível com a janela entre a Planning e o arranque. O motivo é a natureza do artefato: **ele costura telas que já foram especificadas e, quando vieram do protótipo funcional, já exercitadas**. Pagar o harness completo de cada tela outra vez verificaria o que não mudou.
+**Guarda-corpo, nos dois protótipos:**
 
-**O que é leve aqui:** exercitar **o caminho costurado**, não as telas uma a uma — cada salto de navegação do fluxo ponta a ponta (a tela abre, o controle leva à próxima, o retorno volta), mais os estados de exceção que o caminho atravessa, mais as telas que **nasceram nesta costura**. O que já tem linha de verificação completa em `prototype/verification-log.md`, na mesma versão, não roda de novo.
+1. **Roda de verdade.** Leve reduz *quantas* telas; não troca execução por leitura de código. Tela sem saída real é **não exercitada** (R7). O **fluxo ponta a ponta do sprint roda em toda rodada** — ele sustenta a verificação de valor (R25b).
+2. **O que não rodou é declarado:** a ficha nomeia as telas executadas e aponta a verificação completa que cobre o restante (data e versão).
+3. **Portão nenhum muda** (R23): ① e ③ continuam exigindo o stakeholder navegando; os seis estados e os critérios de acessibilidade continuam exigidos por tela.
+4. **Não se acumula:** depois de **três** rodadas leves seguidas sobre a mesma versão base, a próxima é completa. No sprint a contagem é **por pasta** `sprint-<n>/`, e recostura conta como rodada.
 
-| Situação, na costura do sprint | Escopo do harness |
-|---|---|
-| Tela reaproveitada de protótipo já verificado por completo, **sem alteração** | **Leve** — só os saltos de navegação que entram e saem dela |
-| Tela nova, ou alterada para caber no caminho | **Completo nela** — as seis telas de estado e os critérios de acessibilidade que a especificação declarou |
-| Componente de navegação ou estilo criado **para a costura** (índice do sprint, cabeçalho de fluxo) | **Completo** — é transversal ao protótipo do sprint, mesmo que o diff seja pequeno |
-| **Primeiro** protótipo de sprint do projeto | **Completo** — não há verificação anterior sobre a qual o leve se apoie |
-| Recostura depois de o pacote ser **devolvido** pelo stakeholder | **Leve**, sobre o que a devolução alcançou — e **completo** se ela mudou o fluxo ponta a ponta |
-
-**A condição de guarda-corpo, que não muda:** leve reduz **o que é reexecutado**, nunca a evidência real nem um gate do §8 (R23). O fluxo ponta a ponta é **sempre** atravessado de verdade, em execução, em toda rodada — é ele que sustenta a verificação de valor do sprint (R25b), e afirmá-lo sem execução é exatamente o que R7 proíbe. E a ficha declara **o que foi e o que não foi reexecutado**, apontando a verificação completa que cobre o restante (data e versão).
-
-O que o modo leve **não** afrouxa, nos dois protótipos:
-
-1. **Roda de verdade.** Leve reduz *quantas* telas o harness percorre; não troca execução por leitura do código nem por inspeção. Tela do escopo sem saída real é **não exercitada** (R7), não aprovada.
-2. **O que não rodou é declarado.** A ficha nomeia as telas executadas e aponta a verificação completa que cobre o restante (data e versão). Silêncio sobre o resto lê-se como "tudo verificado", e isso seria invenção.
-3. **Portão nenhum muda.** Nenhum gate do fluxo é pulado citando modo leve (R23): o **①** continua exigindo o stakeholder **navegando** o protótipo funcional; o **③ em lote** continua exigindo o stakeholder **navegando** o protótipo do sprint, e a especificação de cada tela continua exigindo os seis estados e os critérios de acessibilidade. Leve é sobre a minha verificação, não sobre a aprovação de ninguém.
-4. **Não se acumula.** Depois de **três** ajustes seguidos verificados em modo leve sobre a mesma versão base, o próximo passa a completo — deriva que entrou por soma de mudanças pequenas não aparece em nenhuma delas isolada. No protótipo do sprint a contagem é **por pasta de sprint**: cada `prototype/sprint-<n>/` começa a sua, e recostura de pacote devolvido conta como rodada.
-
-**Como se verifica:** o registro de verificação mostra, para cada rodada, o modo declarado, a justificativa de alcance e as telas executadas — e a contagem de rodadas leves consecutivas desde a última completa. Modo leve declarado com mudança transversal no diff, quarta rodada leve seguida, ou **protótipo de sprint sem linha de execução do fluxo ponta a ponta**, é reprovação de método.
+**Como se verifica:** o registro mostra, por rodada, modo, justificativa de alcance, telas executadas e a contagem de leves desde a última completa. Leve declarado com mudança transversal, quarta leve seguida, ou **protótipo de sprint sem linha de execução do fluxo ponta a ponta**, é reprovação de método.
 
 ### Delegar a execução e trazer de volta só o que decide
 

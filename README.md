@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.33.1** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.34.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -14,7 +14,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 .team-project/     contexto   → um por projeto, no repositório daquele projeto
 ```
 
-**Começando:** [`how-to.md`](how-to.md) — instalar, atualizar, e os quatro caminhos de entrada (projeto novo · retomada · bug · melhoria). Para levar o time a um projeto: `claude plugin marketplace add` + `claude plugin install`, e depois **`/team init`**.
+**Começando:** [`how-to.md`](how-to.md) — o que você quer fazer → qual comando, os cenários de uso (projeto novo · retomada · evolução · correção · pedido no meio do sprint · trabalho interrompido), os quatro portões, instalar e atualizar. Para levar o time a um projeto: `claude plugin marketplace add` + `claude plugin install`, e depois **`/team init`**.
 
 ## Estrutura
 
@@ -39,7 +39,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 │   └── implementation-security-lgpd-copyright.md   transversal
 ├── README.md                        ← este índice
 ├── CHANGELOG.md                     changelog de entregas (vX.Y.Z) — o que saiu em cada versão e a branch
-├── how-to.md                        guia do stakeholder — instalar, atualizar, os 4 caminhos de entrada
+├── how-to.md                        guia do stakeholder — o que fazer → qual comando, cenários de uso A–F, os quatro portões, instalar e atualizar
 ├── replicate-in-new-project.md      como levar este time para outro projeto
 ├── review-contract.md               contrato do `/review` — lido só quando o `/review` aciona o agente de um papel
 ├── team-init.md                     ritual do `/team init` — lido só nesse modo, uma vez por projeto
@@ -48,7 +48,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 └── roles/                           documentação dos papéis
     ├── scrum-master/       processo, Sprint Backlog, rituais, regras que governam todos
     │   ├── README.md · skills.md
-    │   ├── process/     working-rules · workflow · artifact-ownership · process-changelog
+    │   ├── process/     working-rules · working-rules-index · workflow · workflow-ritos · workflow-sdd · workflow-sprint · workflow-processo · sprint-run · artifact-ownership · process-changelog
     │   └── templates/   planning · sprint-backlog · burndown · consumption · sprint-review · retrospective · plugin-report · status-entry · project-context · process-change
     ├── product-owner/      requisitos, Histórias, backlog, aceite
     │   └── templates/   user-story · product-backlog · status · requirement · functional-analysis · acceptance
@@ -94,25 +94,25 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 | UX Designer | [`roles/user-experience/`](roles/user-experience/README.md) | `user-experience` | Sonnet | `/ux` |
 | Desenvolvedor(a) júnior | [`roles/developer/`](roles/developer/README.md) | `developer` | Haiku | `/dev` |
 | QA | [`roles/quality-assurance/`](roles/quality-assurance/README.md) | `quality-assurance` | Sonnet | `/qa` |
-| **O time inteiro** | — | os seis, em paralelo ou encadeados | — | `/team` |
+| **O time inteiro** | — | os seis, orquestrados pela sessão nos modos do `/sm` que reúnem papéis (`onboarding`, `brainstorm`, `sdd`, `sprint prepare`, `plan`, `run`, `review`) | — | `/team` só instala e atualiza (`init` · `update` · `version`) |
 | Stakeholder | você | — | — | conversa direta com qualquer papel |
 
 ## Comandos
 
 ```
-/sm     onboarding | sprint plan | sprint close | review | board | agreement <questão> | close <T-ID>
+/sm     onboarding | brainstorm <ideia> | sdd [<tema>] | sprint prepare | sprint plan | sprint run [<T-ID>] | sprint review | sprint close | board | agreement <questão> | close <T-ID>    (review = alias de sprint review)
 /po     status | impact <mudança> | analyze <ideia> | requirement <ID> | story <H-ID> | prioritize | accept <H-ID> | bug <relato> | note
 /arc    plan <T-ID> | comply <T-ID> | adr <tema> | question <dúvida>
-/ux     prototype | journey <fluxo> | screen <H-ID> | prototype screen <tela> | review-ui <tela>
+/ux     prototype | prototype sprint <n> | prototype screen <tela> | journey <fluxo> | screen <nome> | review-ui <tela>
 /dev    <T-ID> | resume <T-ID> | gap <resposta do arquiteto>
 /qa     <T-ID> | baseline | audit | security <T-ID> | bug <relato> | scenarios create | scenarios run <SC-nnn|grupo|all>
-/team   init | update | version | brainstorm <ideia> | cycle <T-ID> | plan <T-ID> | build <T-ID> | qa <T-ID>
+/team   init | update | version
 /review <instrução> | note | metrics | audit | history            (só no repositório-fonte do plugin)
 ```
 
 **`<H-ID>` opera sobre valor, `<T-ID>` sobre trabalho.** A História é a unidade de valor (dona: PO, conteúdo só funcional); a Task é a unidade de trabalho (no Sprint Backlog do SM, com o Plano de Implementação do Arquiteto dentro). Toda Task pertence a exatamente uma História (R20).
 
-Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. Três pares se parecem e não são a mesma coisa: **`/ux review-ui`** (usabilidade de uma tela) e **`/arc comply`** (aderência do código ao plano, **só como exceção pedida pelo stakeholder** — a frente 2 do `/qa` cobre isso em toda Task) são trabalho no produto; **`/sm review`** é a **Sprint Review**, também no produto; e **`/review`** evolui o processo do time e roda só no repositório-fonte do plugin.
+Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. Três pares se parecem e não são a mesma coisa: **`/ux review-ui`** (usabilidade de uma tela) e **`/arc comply`** (aderência do código ao plano, **só como exceção pedida pelo stakeholder** — a frente 2 do `/qa` cobre isso em toda Task) são trabalho no produto; **`/sm sprint review`** (antes `/sm review`, ainda alias) é a **Sprint Review**, também no produto; e **`/review`** evolui o processo do time e roda só no repositório-fonte do plugin.
 
 ### Com quem o stakeholder fala
 
@@ -120,14 +120,14 @@ Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos s�
 
 O **SM não é canal de demanda** — é **processo, organização e eficiência**, e facilitador de todos os envolvidos. Você o encontra nos **rituais do Scrum**, que ele gere; no **`/sm agreement`**, quando uma questão atravessa papéis; e na cobrança dos portões que dependem de você.
 
-**Não existe broadcast.** `/team` não fala com os seis: ele **orquestra o time trabalhando**.
+**Não existe broadcast.** `/team` não fala com os seis: ele só instala, atualiza e informa a versão; **a descoberta é o `/sm brainstorm`, a elaboração do SDD é o `/sm sdd` e o time construindo é o `/sm sprint run`**.
 
 | Modo | O que faz | Quando usar |
 |---|---|---|
 | `/po status` | Onde estamos, em **Histórias** — entregue, em andamento, bloqueado, próximo, risco ao plano | O seu "como está o projeto?" |
 | `/sm agreement <questão>` | O SM chama **só os papéis que a questão toca**, consolida **uma** recomendação e registra a divergência que sobrou | Questão que atravessa papéis e precisa de uma posição |
-| `/team brainstorm <ideia>` | Descoberta funcional de ideia sem documentação, facilitada pelo SM: fase 1 stakeholder + PO + UX; fase 2 entra o Arquiteto, em rodadas até fechar para o SDD (R15, [`workflow.md` §5b](roles/scrum-master/process/workflow.md)) | Ideia greenfield que ainda não tem visão, requisitos nem fluxos |
-| `/team cycle <T-ID>` | Encadeia Arquiteto → dev → QA numa Task, parando no primeiro problema | Levar uma Task do plano ao veredito |
+| `/sm brainstorm <ideia>` | Descoberta funcional de ideia sem documentação, facilitada pelo SM: fase 1 stakeholder + PO + UX; fase 2 entra o Arquiteto, em rodadas até fechar para o SDD (R15, [`workflow-ritos.md` §5b](roles/scrum-master/process/workflow-ritos.md)) | Ideia greenfield que ainda não tem visão, requisitos nem fluxos |
+| `/sm sdd [<tema>]` | Transição inteira para o SDD, depois do brainstorm (ideia nova) ou do `/po analyze` (área documentada): SDD funcional + protótipo → **① formulário** → SDD técnico da fatia → **② formulário** → Histórias no Product Backlog (R15, [`workflow-sdd.md` §5h](roles/scrum-master/process/workflow-sdd.md)) | Levar o brief até Histórias prontas para o `prepare`, com dois portões seus | UX (se há interface) → Arquiteto → dev → QA e fecha a Task no ✅, a fila inteira do sprint ou uma Task, parando no primeiro problema | Levar a fila (ou uma Task) do plano ao veredito, sem te acionar |
 
 **Acordo não é votação.** A propriedade dos papéis sobrevive à facilitação: requisito, valor, escopo e **prazo** são do PO; desenho é do Arquiteto; tela é do UX; evidência é do QA — os outros aconselham. Maioria não sobrepõe dono; divergência que sobra vira decisão sua. O SM facilita **porque não é dono de nenhum desses assuntos**.
 
@@ -137,26 +137,29 @@ Acordo e status **não escrevem em disco** — são conversa e leitura. O que vi
 
 ```
 [projeto novo/retomado] ──▶ /sm onboarding ──▶ entendimento alinhado + contexto do projeto  (uma vez, R14)
-[ideia sem documentação] ──▶ /team brainstorm ──▶ fase 1 (PO+UX) ─▶ fase 2 (+Arquiteto) ─▶ brief para o SDD  (R15)
+[ideia sem documentação] ──▶ /sm brainstorm ──▶ fase 1 (PO+UX) ─▶ fase 2 (+Arquiteto) ─▶ brief  (R15)  ──▶ /sm sdd
                                    │
-stakeholder ──▶ /po analyze ──▶ requisito + critério de aceite
+stakeholder ──▶ /po analyze ──▶ decisão + requisito  ──▶ /sm sdd  (área já documentada: só o delta)
                      │
                      ▼
-              SDD funcional (PO: 00,01,02)
+              /sm sdd ──▶ SDD funcional (PO: 00,01,02)
                      │  + protótipo funcional em HTML (UX)
                      │  ──① stakeholder NAVEGA o protótipo e aprova
                      ▼
               SDD técnico (Arquiteto: 03,04,05)   ──② aprovado
                      │
                      ▼
-              /po story <H-ID> ──▶ História no Product Backlog (valor declarado)
+              (dentro do /sm sdd) /po story ──▶ História no Product Backlog (valor declarado)
                      │            └─ /ux screen ──▶ protótipo, se tem interface
-                     │            └─ detalhamento: regras + critérios de aceite   ──③ stakeholder aprova
+                     │            └─ detalhamento: regras + critérios de aceite
                      ▼
-              /sm sprint plan ──▶ Planning: o time quebra em Tasks e estima; Sprint Backlog fechado
+              /sm sprint prepare ──▶ candidatas até a DoR (História · tela · cenários); não aciona o stakeholder
                      │
                      ▼
-              /team cycle <T-ID>   (ou /arc plan → /dev → /qa, passo a passo)
+              /sm sprint plan ──▶ Planning: o time quebra em Tasks e estima; Sprint Backlog fechado
+                     │            └─ pacote de abertura (+ protótipo do sprint)  ──③ stakeholder aprova, em lote
+                     ▼
+              /sm sprint run   (ou /arc plan → /dev → /qa → /sm close, passo a passo)
                      ├─ architect ──▶ Plano de Implementação (dentro da Task, citando o protótipo)
                      ├─ developer ──▶ código + testes, na ordem dos passos
                      │     └─ 🔺 GAP ──▶ architect decide ──▶ /dev gap ──▶ developer retoma
@@ -166,20 +169,20 @@ stakeholder ──▶ /po analyze ──▶ requisito + critério de aceite
               /sm close <T-ID> ──▶ Task fechada (técnico) + status atualizado
                      │
                      ▼
-              /sm review ──▶ Sprint Review: ④ /po accept <H-ID> ──▶ História aceita
+              /sm sprint review ──▶ Sprint Review: ④ decisão por História, em formulário (dossiê do PO) ──▶ História aceita
                      │
                      ▼
               /sm sprint close ──▶ retrospectiva ──▶ fim do sprint
 ```
 
-Nenhum atalho: o portão ① não abre sem o stakeholder **navegar** o protótipo funcional — aprovar por leitura não vale —, SDD técnico não é escrito antes do ①, História não nasce antes do ②, História com interface não é detalhada sem protótipo, História sem aprovação do stakeholder não entra na Planning (③), Task sem História não existe (R20), dev sem plano não codifica, QA sem saída de comando não aprova, e **fechar Tasks não aceita a História** — o aceite é do PO, na Review (④ · R21).
+Nenhum atalho: o portão ① não abre sem o stakeholder **navegar** o protótipo funcional — aprovar por leitura não vale —, SDD técnico não é escrito antes do ①, História não nasce antes do ②, História com interface não é detalhada sem protótipo, nenhuma Task entra em construção antes de o pacote de abertura do sprint ser aprovado (③, em lote, depois da Planning), Task sem História não existe (R20), dev sem plano não codifica, QA sem saída de comando não aprova, e **fechar Tasks não aceita a História** — o aceite é do PO, na Review (④ · R21).
 
 ## Regras que governam todos
 
 Geridas pelo SM, válidas para todos os papéis e para o stakeholder:
 
-- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 29 regras (eficiência R1-R6 e R28-R29, qualidade R7-R12, método R13-R27), o que cada uma evita e como o SM verifica
-- [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) — ciclo, cerimônias, DoR/DoD, gates, escalação
+- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 30 regras (eficiência R1-R6 e R28-R29, qualidade R7-R12, método R13-R27 e R30), o que cada uma evita e como o SM verifica; o [`working-rules-index.md`](roles/scrum-master/process/working-rules-index.md) é o índice de uma linha por regra que o `/sm close` lê
+- [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) — ciclo, DoR/DoD, gates, escalação (núcleo); os rituais estão em `workflow-ritos.md` (§5a–5b), `workflow-sdd.md` (§5h), `workflow-sprint.md` (§5e–5g) e `workflow-processo.md` (§5c–5d), e o `/sm sprint run` em `sprint-run.md`
 - [`roles/scrum-master/process/artifact-ownership.md`](roles/scrum-master/process/artifact-ownership.md) — quem escreve o quê
 - [`roles/scrum-master/process/process-changelog.md`](roles/scrum-master/process/process-changelog.md) — como o processo chegou até aqui
 

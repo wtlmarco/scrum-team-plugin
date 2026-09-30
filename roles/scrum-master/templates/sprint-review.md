@@ -1,8 +1,8 @@
-# Template — Sprint Review (`/sm review`)
+# Template — Sprint Review (`/sm sprint review`)
 
 > **Dono do registro:** SM · **Conduz o aceite:** PO (R21) · **Decide:** o stakeholder, sobre o que viu.
-> Fecha o trabalho do sprint, **antes** da retrospectiva. É o único momento em que uma História é aceita, e o **segundo ponto de contato** do sprint (R25 · [`../process/workflow.md` §5g](../process/workflow.md)).
-> **Persistido em** `.team-project/sprints/<n>/review.md` — a pasta já existe desde o `/sm sprint plan`; este arquivo entra nela no `/sm review`.
+> Fecha o trabalho do sprint, **antes** da retrospectiva. É o único momento em que uma História é aceita, e o **segundo ponto de contato** do sprint (R25 · [`../process/workflow-sprint.md` §5g](../process/workflow-sprint.md)).
+> **Persistido em** `.team-project/sprints/<n>/review.md` — a pasta já existe desde o `/sm sprint plan`; este arquivo entra nela no `/sm sprint review`.
 
 O SM conduz o ritual e registra; o **PO demonstra cada História contra os critérios de aceite que o stakeholder aprovou no pacote de abertura** (portão ③) e escreve o dossiê de aceite critério a critério; o QA fornece a evidência por Task; **o stakeholder decide, por História**. O SM **não aceita** — registra.
 
@@ -22,6 +22,17 @@ O SM conduz o ritual e registra; o **PO demonstra cada História contra os crit�
 | H-<nnn> <título> | T-<nnn>, T-<nnn> | sim / não: <quais faltam> | ✅ aceita · ⚠️ com ressalva · ❌ rejeitada | <por quê> |
 
 O aceite detalhado de cada História — critério a critério, com a Task e a evidência — segue [`../../product-owner/templates/acceptance.md`](../../product-owner/templates/acceptance.md) e é escrito pelo PO.
+
+> **A decisão é tomada em formulário, uma pergunta por História (R22).** Cada pergunta cita o **ponteiro do dossiê** (`review.md#aceite--h-<nnn>`, a seção abaixo) e traz a recomendação do PO em uma frase; as opções são **aceita · aceita com ressalva · rejeitada · pedir mais contexto**. O dossiê é escrito **antes** da pergunta — sem seção apontável, a pergunta não sai.
+
+### Aceite — H-<nnn>
+> Uma seção por História do sprint; **âncora `#aceite--h-<nnn>`** (o heading acima é literal, sem texto extra, para a âncora resolver). Escrita pelo **PO** no formato de `acceptance.md`; o SM só garante que a seção existe antes da pergunta e registra a decisão na tabela acima.
+
+| Critério (do pacote aprovado) | Task que o cumpre | Evidência (`evidence/<T-ID>.md`) | Conferido |
+|---|---|---|---|
+| <critério> | T-<nnn> | <ponteiro> | ✅ · ❌ |
+
+**Recomendação do PO:** <aceita · com ressalva · rejeitada — uma frase> · **Ressalvas propostas:** <quais, ou "nenhuma">
 
 ### História não terminada no sprint
 | História | O que ficou pronto | O que falta | Destino |
@@ -58,6 +69,7 @@ O aceite detalhado de cada História — critério a critério, com a Task e a e
 - **Sem os vereditos do QA das Tasks, não há demonstração** (R7). História cujas Tasks não fecharam não é aceita: é reportada como não terminada e volta ao backlog.
 - **Rejeição devolve a História inteira**, com as Tasks aprovadas anotadas como já feitas — para que a Planning seguinte não replaneje do zero o que passou no QA.
 - **Ressalva e débito saem daqui com dono e destino**, escritos no Product Backlog na mesma sessão. Ressalva verbal desaparece. **Não há gate novo para a priorização deles:** ela aparece no pacote de abertura seguinte — o que entrou, no Sprint Backlog; o que não entrou, em `planning.md`, com o motivo (R25).
+- **Sem seção `Aceite — H-<nnn>` escrita, não há pergunta.** O formulário do ④ aponta para ela; pergunta sem dossiê apontável é achado de processo contra a condução (R22 · R21).
 - **Quem conduz e quem decide são papéis diferentes, e os dois estão presentes.** O PO demonstra e escreve o dossiê de aceite; o **stakeholder preenche a Decisão, por História**. Review registrada sem o stakeholder é Review sem o portão ④ — o SM não a encerra.
 - **A demonstração é contra os critérios do portão ③** aprovados no pacote de abertura, não contra o que o time construiu. Critério que ninguém consegue conferir é defeito de detalhamento — volta ao PO, e a História volta ao sprint seguinte por um pacote novo.
 - **Roda antes da retrospectiva.** A retrospectiva precisa do resultado do aceite para discutir processo com fato à vista.

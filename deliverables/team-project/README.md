@@ -22,6 +22,7 @@ Cada modelo pertence ao **papel que o usa** (`roles/<papel>/templates/`), por [`
 | `.team-project/product-owner/stories/` | vazia; cada História nasce de [`user-story.md`](../../roles/product-owner/templates/user-story.md), um arquivo por História (v3.21) | PO | **Sim — o modelo**, não as Histórias escritas |
 | `.team-project/architect/context.md` | idem | Arquiteto | Não |
 | `.team-project/architect/spikes/` | vazia; um checkpoint por spike, `<ID>-<slug>.md`, salvo a cada etapa concluída (R5), no formato de [`spike-checkpoint.md`](../../roles/architect/templates/spike-checkpoint.md) | Arquiteto | Não — conteúdo do projeto. **Fora da pasta do sprint de propósito:** o spike é consultado depois que o sprint fechou |
+| `.team-project/architect/calibration/` | **não semeada** — nasce sob demanda; um plano por Task `<Task-ID>-<slug>.md`, no formato de [`implementation-plan.md`](../../roles/architect/templates/implementation-plan.md), **só para plano feito fora de sprint** (antes da 1ª Planning); com sprint corrente o plano vai para `sprints/<n>/plan/` | Arquiteto | Não — conteúdo do projeto |
 | `.team-project/user-experience/context.md` | idem | UX | Não |
 | `.team-project/user-experience/prototype/` | vazia; o **protótipo funcional em HTML** nasce de [`functional-prototype.md`](../../roles/user-experience/templates/functional-prototype.md) — entregável e pré-condição do portão ① | UX | **Sim — a ficha e os critérios**, nunca o HTML escrito |
 | `.team-project/user-experience/prototype/sprint-<n>/` | uma pasta por sprint; o **protótipo do sprint** nasce de [`sprint-prototype.md`](../../roles/user-experience/templates/sprint-prototype.md) — entregável e pré-condição do portão ③ (R25). O Sprint Backlog guarda só o **ponteiro** | UX | **Sim — a ficha e os critérios**; sprint fechado é **histórico imutável** |
@@ -44,7 +45,7 @@ O registro de execução é organizado **por sprint**, não por papel (R25): a p
 | `evidence/` | [`evidence.md`](../../roles/quality-assurance/templates/evidence.md) | **QA** | um por Task, no veredito | **Sim — estrutura**; as evidências são do projeto |
 | `consumption.md` | [`consumption.md`](../../roles/scrum-master/templates/consumption.md) | **SM** | uma linha por invocação (e por chamada ao `operator`) · fecha com a pasta | **Sim — estrutura**; as linhas são do projeto |
 | `burndown.md` | [`burndown.md`](../../roles/scrum-master/templates/burndown.md) | **SM** | dia 0 = aprovação do pacote · fecha no `/sm sprint close` | **Sim — o modelo** |
-| `review.md` | [`sprint-review.md`](../../roles/scrum-master/templates/sprint-review.md) | **SM** registra | `/sm review` | **Sim — o modelo** |
+| `review.md` | [`sprint-review.md`](../../roles/scrum-master/templates/sprint-review.md) | **SM** registra | `/sm sprint review` | **Sim — o modelo** |
 | `retrospective.md` | [`retrospective.md`](../../roles/scrum-master/templates/retrospective.md) | **SM** | `/sm sprint close` | **Sim — o modelo** |
 | `plugin-report.md` | [`plugin-report.md`](../../roles/scrum-master/templates/plugin-report.md) | **SM** | `/sm sprint close` · fecha com a pasta · o stakeholder encaminha | **Sim — o modelo** |
 

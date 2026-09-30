@@ -35,7 +35,7 @@ Identifique pelo primeiro termo. Sem termo, o modo é **reavaliação**.
 | `/review <instrução>` | Trata a instrução como uma Task de melhoria: classifica, roteia ao dono, aplica, registra no changelog | sim |
 | `/review note` | Processa a fila **Abertas** de `RAIZ/note.md`, uma Task por vez, roteando cada um como acima | sim |
 | `/review audit` | Coerência interna de `RAIZ/`: regra contraditória, regra sem verificação, papel com fronteira ambígua, documento sem dono, modelo órfão, vazamento de contexto de projeto, link quebrado | não |
-| `/review metrics` | Revisão por evidência a partir dos indicadores do período, com **uma** proposta de mudança; inclui o giro **Act** do ciclo de eficiência (`workflow.md` §5c) | sim (uma mudança) |
+| `/review metrics` | Revisão por evidência a partir dos indicadores do período, com **uma** proposta de mudança; inclui o giro **Act** do ciclo de eficiência (`workflow-processo.md` §5c) | sim (uma mudança) |
 | `/review history` | Apresenta o changelog do processo | não |
 
 ## Como conduzir (`/review <instrução>` e `/review note`)
@@ -49,7 +49,7 @@ Este comando é **seu** — a sessão principal orquestra. A triagem e a curador
    | regra / fluxo / propriedade de artefato / cerimônia | `RAIZ/roles/scrum-master/process/*` | Agent `scrum-master` |
    | roteiro, skills, templates de um papel, e os entregáveis que ele possui | `RAIZ/roles/<papel>/*`, `RAIZ/deliverables/*` do papel | agente daquele papel |
    | `RAIZ/standards/*` **e** os documentos do papel dev (`RAIZ/roles/developer/*`) | esses arquivos | Agent `architect` |
-   | `RAIZ/agents/*`, `RAIZ/commands/*`, `RAIZ/.claude-plugin/*` e os guias de raiz — `RAIZ/{README,how-to,replicate-in-new-project,review-contract,team-init,team-update}.md` | — | **proposta ao stakeholder**, não aplicada. **Exceção do Agent `scrum-master`, válida para os quatro grupos igualmente**: coerência de referência cruzada (contagem, ponteiro, nome de modo, índice de estrutura) é curadoria, não reescrita, e ele aplica direto. A exceção **nunca** cobre mudança de comportamento de agente, texto de roteiro ou regra nova — isso continua proposta, nos quatro grupos, sem exceção |
+   | `RAIZ/agents/*`, `RAIZ/commands/*`, `RAIZ/.claude-plugin/*` e os guias de raiz — `RAIZ/{README,how-to,replicate-in-new-project,review-contract,team-init,team-update,team-version}.md` | — | **proposta ao stakeholder**, não aplicada. **Exceção do Agent `scrum-master`, válida para os quatro grupos igualmente**: coerência de referência cruzada (contagem, ponteiro, nome de modo, índice de estrutura) é curadoria, não reescrita, e ele aplica direto. A exceção **nunca** cobre mudança de comportamento de agente, texto de roteiro ou regra nova — isso continua proposta, nos quatro grupos, sem exceção |
 
    Conflito com regra vigente **não se resolve sozinho**: apresente as duas posições em `AskUserQuestion`, com a via de pedir mais contexto como última opção — não em texto corrido — e **pare** para decisão do stakeholder.
 

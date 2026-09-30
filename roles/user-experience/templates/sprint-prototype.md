@@ -74,6 +74,8 @@ Uma linha por chamada, com o que ela devolveu ao terminar; nunca estimado (R7). 
 |---|---|---|---|
 | <data> | submetido / devolvido / aprovado | <stakeholder> | <ajustes, ou "—"> |
 
+**A decisão (aprovar · aprovar com ajuste · reprovar) tem registro único** na linha "Decisão do stakeholder" do Sprint Backlog ([`sprint-backlog.md`](../../scrum-master/templates/sprint-backlog.md)); esta tabela só **aponta** para ela e guarda o que foi pedido. A navegação vem antes do formulário; o formulário é do pacote inteiro (③ em lote).
+
 **Ponteiro registrado pelo SM no Sprint Backlog:** `user-experience/prototype/sprint-<n>/index.html`
 ```
 
@@ -82,9 +84,9 @@ O `verification-log.md` usa a mesma tabela append-only de [`functional-prototype
 ## Regras
 
 - **É peça do pacote, não decoração.** Pacote sem protótipo navegado não vai ao stakeholder, e sem pacote aprovado nenhuma Task entra em construção (R20 · R25).
-- **O stakeholder navega — não lê.** Print, gravação e apresentação não abrem o ③, pelo mesmo motivo que não abrem o ① (R15).
+- **O stakeholder navega — não lê.** Print, gravação e apresentação não abrem o ③, pelo mesmo motivo que não abrem o ① (R15). A decisão vem **depois** da navegação, em formulário (R22).
 - **Costura, não especificação nova.** As telas já foram especificadas antes da Planning (DoR da História). O que nasce aqui é o caminho entre elas — e a ficha diz quais telas vieram prontas e quais nasceram na costura.
-- **Depois do corte, nunca antes.** Antes do corte de capacidade não se sabe quais Histórias entraram; costurar antes é retrabalho garantido ([`workflow.md` §5e](../../scrum-master/process/workflow.md) passos 7 → 10).
+- **Depois do corte, nunca antes.** Antes do corte de capacidade não se sabe quais Histórias entraram; costurar antes é retrabalho garantido ([`workflow-sprint.md` §5e](../../scrum-master/process/workflow-sprint.md) passos 7 → 10).
 - **Um fluxo ponta a ponta, no mínimo.** Se não há nenhum, o sprint não entrega fatia usável: o achado volta ao PO **na própria Planning** e o corte é refeito, antes de o pacote subir (R25b). O UX apresenta a evidência; **quem corta por valor é o PO** (§6a).
 - **Devolvido volta à Planning.** O PO reordena, o corte é refeito, o protótipo é recosturado, o pacote é resubmetido — nada vai à construção antes. Custo declarado: a História reprovada perde a quebra e a estimativa já feitas (R20).
 - **Aprovado, fecha.** Correção de tela durante o sprint vai para `screens/`, que é a fonte viva — nunca para o protótipo já aprovado. Arquivo modificado depois da data de aprovação é violação de escopo (R4).
@@ -92,15 +94,3 @@ O `verification-log.md` usa a mesma tabela append-only de [`functional-prototype
 - **Nada de decisão técnica** (R20), e **nada daqui vira produção** sem Plano de Implementação.
 - **Escopo da verificação declarado, não presumido (R23).** Leve é o caso comum aqui — critério em [`../skills.md` §10](../skills.md) —, mas o fluxo ponta a ponta roda de verdade em toda rodada, e o que não rodou é nomeado.
 - **Delegação da verificação, veredito meu (R28).** O harness vai ao agente `operator`; a ficha traz o **trecho** da falha e o **ponteiro** do log bruto, nunca um sozinho. Salto que não resolveu volta como par origem → destino, que é a falha típica desta costura. Relatório `inconclusivo` deixa a tela **não exercitada** (R7) — e sem o fluxo ponta a ponta exercitado, o pacote não sobe.
-
-## Falhas comuns
-
-| Falha | Consequência |
-|---|---|
-| Sobrescrever a pasta do sprint anterior | O ponteiro do Sprint Backlog antigo aponta para o protótipo errado; perde-se o registro do que foi aprovado |
-| Copiar o protótipo para dentro de `sprints/<n>/` | Duas verdades para um artefato navegável (§1e) — e a cópia envelhece calada |
-| Telas ligadas em índice, sem caminho entre elas | O stakeholder clica em telas soltas; ninguém atravessa o fluxo, e a verificação de valor não acontece |
-| Reespecificar as telas na costura | Paga-se duas vezes o que a DoR da História já entregou — e a especificação viva passa a divergir |
-| Costurar antes do corte de capacidade | Metade do trabalho sai do sprint junto com as Histórias cortadas |
-| Nenhum fluxo ponta a ponta, e o pacote sobe assim mesmo | Aprova-se um sprint que soma Tasks corretas sem entregar fatia usável — o modo de falha que R25b existe para pegar |
-| Devolução apagada da ficha ao resubmeter | Some o histórico do que o stakeholder recusou, e o mesmo desenho volta no sprint seguinte |

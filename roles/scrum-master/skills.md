@@ -65,7 +65,7 @@ Impacto sem número (Tasks, arquivos, unidades de trabalho) é opinião. Conte.
 | **Lead time por Task** | unidades de trabalho entre construção e fechamento | > 2× a estimativa → Task mal dimensionado |
 | **Tasks bloqueados** | contagem e idade do bloqueio | bloqueio com mais de 2 ciclos → escalar ao stakeholder |
 | **Dívida de evidência** | Tasks fechadas sem registro de evidência | qualquer ocorrência → falha de processo |
-| **Footprint dos documentos** | KB de `agents/` + `commands/` + `roles/<papel>/` do processo, por papel | crescimento > 20% entre giros de `/review metrics` sem regra nova, ou entrada de changelog > 10 KB → cortar (R17, [`process/workflow.md` §5c](process/workflow.md)) |
+| **Footprint dos documentos** | KB de `agents/` + `commands/` + `roles/<papel>/` do processo, por papel | crescimento > 20% entre giros de `/review metrics` sem regra nova, ou entrada de changelog > 10 KB → cortar (R17, [`process/workflow-processo.md` §5c](process/workflow-processo.md)) |
 | **Latência do pacote de abertura** | dias entre o fechamento da Planning e a data de aprovação do pacote (R25 · §5e) | crescendo sprint a sprint → a costura do protótipo ou a agenda do stakeholder está comendo a caixa de tempo; é custo real do ③ em lote, e se declara, não se esconde |
 | **Devoluções de pacote** | quantos pacotes o stakeholder devolveu ou aprovou com ajuste, por sprint | recorrente → o detalhamento funcional não está chegando pronto à Planning (R20), e o time paga quebra + estimativa jogadas fora |
 | **Bloqueios por degrau** | contagem por sprint: resolvidos no degrau 1 (PO+Arquiteto) × escalados ao stakeholder (R25) | tudo escalando → o degrau 1 virou repasse; nada escalando **e** Histórias perdendo o sprint → o par está segurando decisão que não é dele |
@@ -133,7 +133,7 @@ Scrum é o padrão; sair dele exige **nomear o gatilho** na saída. Nenhum instr
 
 ## 10. Conduzir onboarding e facilitar brainstorm
 
-Antes de haver fila, é preciso haver entendimento comum do projeto. Duas atividades cobrem isso, com roteiro em [`process/workflow.md` §5a/§5b](process/workflow.md) e regras em R14/R15.
+Antes de haver fila, é preciso haver entendimento comum do projeto. Duas atividades cobrem isso, com roteiro em [`process/workflow-ritos.md` §5a/§5b](process/workflow-ritos.md) e regras em R14/R15.
 
 ### Onboarding — alinhar o time num projeto novo ou retomado
 
@@ -141,7 +141,7 @@ Antes de haver fila, é preciso haver entendimento comum do projeto. Duas ativid
 - **O stakeholder responde só o buraco.** A lista que sobe a ele é única, com perguntas estratégicas e lacunas pequenas — cada uma na forma fixa de R22: alternativas descritas, recomendação do time (R9: o time tentou responder antes) e a via de pedir mais contexto sempre como última opção, resolvida em formulário pela sessão que orquestra o onboarding — nunca em texto corrido.
 - **Divergência não se arredonda.** Status que diz "concluído" sobre código que os GAPs mostram parcial vira risco no quadro + `/qa audit`, não uma nota otimista. É o modo de falha que define este ofício.
 - **Doc funcional essencial ausente para o onboarding é gatilho de brainstorm** — o onboarding pausa até ele fechar.
-- **Saída:** contexto do projeto preenchido e datado, cinco leituras de entrada registradas, quadro aberto. Sem isso, `/sm sprint plan` não roda.
+- **Saída:** contexto do projeto preenchido e datado, cinco leituras de entrada registradas, quadro aberto. Sem isso, `/sm sprint prepare` e `/sm sprint plan` não rodam.
 
 ### Brainstorm — moldar uma ideia sem documentação
 

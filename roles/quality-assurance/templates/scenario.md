@@ -1,6 +1,6 @@
 # Template — Cenário de Teste Funcional e Regressivo (`SC-nnn`)
 
-> **Dono:** QA · **Nasce:** na Planning Meeting, ao quebrar a História em Tasks (`workflow.md` §5e passo 4 · R30) · **Vive em:** `.team-project/quality-assurance/scenarios/SC-nnn-<slug>.md`, indexado por [`scenarios-index.md`](scenarios-index.md) (`scenarios/README.md` no projeto)
+> **Dono:** QA · **Nasce:** no `/sm sprint prepare` (`/qa scenarios create`, para as candidatas) ou, para o que faltar, na Planning Meeting ao quebrar a História em Tasks (`workflow-sprint.md` §5e passo 4 · R30) · **Vive em:** `.team-project/quality-assurance/scenarios/SC-nnn-<slug>.md`, indexado por [`scenarios-index.md`](scenarios-index.md) (`scenarios/README.md` no projeto)
 >
 > O cenário **opera** o critério de aceite como caso executável — **não é requisito novo**. O QA não decide nem reescreve regra funcional; dúvida sobre a regra escala ao PO pela escada já existente (R9 · `workflow.md` §6b), sem redeclará-la aqui. Um arquivo por cenário; o Sprint Backlog e a Task carregam só a **referência** (lista de IDs), nunca uma cópia do conteúdo (`artifact-ownership.md` §1e).
 
