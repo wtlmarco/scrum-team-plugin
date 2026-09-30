@@ -30,9 +30,9 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (plano de calibraçã
 > lembrado de outro projeto. O que **o plano inteiro** exige, do primeiro ao último passo.
 > Plano sem esta seção **não entra em construção** (mesma régua de R8).
 
-**Medição do `operator` (quando foi ela):** `.team-project/operator/<sprint|pre-sprint>/<job>/` — trabalho
+**Medição do `operator` (quando foi ela):** `.team-project/operator/<sprint|pre-sprint>/<job>/report.md` (ou `report-<log>.md`) — trabalho
 `<nome>`, código de saída `<n>`, veredito `<ok | falhou>`. Veredito `inconclusivo` **não** preenche
-esta seção; medição citada depois de o arquivo que declara a toolchain mudar, ou cujo log sumiu do
+esta seção; medição citada depois de o arquivo que declara a toolchain mudar, ou cujo `report` sumiu do
 caminho, caduca e é refeita (R26 · R28 · [`../skills.md`](../skills.md) §14).
 
 **Pré-requisitos que o plano assume** — runtime, SDK, ferramenta de build, gerenciador de pacotes,
@@ -83,7 +83,7 @@ regra de parada:** ela diz o que aceitar, não o que fazer quando a ferramenta n
 
 **Cobertura:** a Task mantém o gate de **80% mínimo por módulo** na unidade implantável que ela toca —
 back-end, worker **ou front-end**. O dev leva ao relatório o trecho decisivo da saída do comando de
-cobertura — código de saída, pior módulo × limiar — **e** o caminho do log bruto (R28)
+cobertura — código de saída, pior módulo × limiar — **e** o ponteiro do `report` do job (R28)
 (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.4 e §5.5).
 
 ## 7. Comandos de verificação
@@ -131,7 +131,7 @@ Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que disparo
 8. **Todo passo declara o anel** do arquivo que toca. Passo que faz o domínio depender de fora, ou que põe regra de negócio na borda, é erro de plano — não de execução (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §2).
 9. **Nenhum passo de refatoração "de passagem".** Melhoria fora do objetivo da Task vira Task própria — e, se nenhuma História a cobre, o PO escreve a História que declara o valor (§4.5 do mesmo normativo · R20).
 10. **Todo passo com regra de engenharia cita a seção de `${CLAUDE_PLUGIN_ROOT}/standards/` aplicável, com número** (R16). O dev lê só o que o plano citou — seção não citada é seção não lida. "Seguir os standards" não é citação. Se a regra de que o passo precisa **não existe** no normativo, ou existe contraditória, isso é defeito do standard e é do Arquiteto: resolver por `/review` antes de liberar o plano.
-11. **Ambiente medido antes dos passos** (R26). A seção 3 sai preenchida com comando e saída real — **minha ou do `operator`, com código de saída, versões e caminho do log bruto**, nunca veredito `inconclusivo`: nenhum passo cita comando que eu não vi existir na versão medida, e a parada incondicional cobre **ausência** do pré-requisito, não só versão fora da faixa. Faixa de versão sozinha não é regra de parada. Plano sem a seção 3 não entra em construção.
+11. **Ambiente medido antes dos passos** (R26). A seção 3 sai preenchida com comando e saída real — **minha ou do `operator`, com código de saída, versões e o ponteiro do `report` do job (R28)**, nunca veredito `inconclusivo`: nenhum passo cita comando que eu não vi existir na versão medida, e a parada incondicional cobre **ausência** do pré-requisito, não só versão fora da faixa. Faixa de versão sozinha não é regra de parada. Plano sem a seção 3 não entra em construção.
 12. **Task retomada de outro sprint ganha plano novo, aqui, com a linha `Retomada de:`** — o plano antigo vive em `sprints/<n-1>/plan/` e é **registro fechado: não se edita, não se copia, não se reaproveita por referência**. O plano novo declara o que já foi feito (a partir do "Parei no passo" do relatório do dev) e **reconfere no código real** as assinaturas dos passos restantes: o repositório mudou no intervalo, e passo executado sobre premissa velha é a causa nº 1 de 🔺 GAP ([`../skills.md`](../skills.md) §1 · R3 · R5).
 13. **Todo passo é conferível pelo QA sem julgamento de desenho** — é deste plano que sai a tabela passo × conforme da frente 2 ([`workflow.md` §4a](../../scrum-master/process/workflow.md)). A linha **Conferência** diz o que se observa no código (arquivo, assinatura, nomenclatura, registro de infra, teste); a seção de standard citada no passo diz contra o quê. Passo que o QA não consegue marcar conforme/divergente sem decidir é defeito do plano e volta ao Arquiteto (🔺 GAP → `/arc question`); divergência de execução volta ao dev (`/dev resume`).
 14. **Seção 11 sempre presente — é o controle da delegação** (R28). Todo job citado na seção 3 tem linha na seção 11, e toda chamada que fiz ao `operator` para este plano também — inclusive uma remedição posterior, que **acrescenta** linha. O número de linhas é o número de chamadas ("nenhuma" quando zero), sem célula de número em branco. A minha resposta ao `/arc` repete as mesmas linhas, para a sessão transcrever em `consumption.md`; o plano é o registro que o SM confere depois. Plano retomado (regra 12) lista só as chamadas feitas para o plano novo. A frente 2 do QA não confere a seção 11: ela não é passo.
@@ -153,7 +153,7 @@ Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que disparo
 | `UrlSigner.cs` | como a mensagem assinada é composta hoje |
 
 ## 3. Ambiente medido e comandos validados
-*(Medição do `operator`: `.team-project/operator/<sprint>/<job>/` — código de saída 0, veredito `ok`.)*
+*(Medição do `operator`: `.team-project/operator/<sprint>/<job>/report.md` — código de saída 0, veredito `ok`.)*
 
 | Pré-requisito | Comando de medição | Saída real | Log bruto | Atende? |
 |---|---|---|---|---|

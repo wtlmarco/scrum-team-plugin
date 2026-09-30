@@ -55,8 +55,8 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 > <comando>
 <trecho decisivo, verbatim>
 ```
-**Log bruto:** `.team-project/operator/<sprint>/<job>/<arquivo>.log` — <n> linhas *(ou "n/a — comando leve, sem `operator`")*
-*(repetir o par comando/trecho + log bruto para cada comando executado)*
+**Relatório do `operator`:** `.team-project/operator/<sprint>/<job>/report.md` (ou `report-<log>.md`) · log bruto, disco local, pode ter sido podado: `<arquivo>.log` — <n> linhas *(ou "n/a — comando leve, sem `operator`")*
+*(repetir o par comando/trecho + relatório do `operator` para cada comando executado)*
 
 ### Execução delegada
 *(uma linha por chamada ao `operator`, com os números que a chamada devolveu ao terminar. Sem número: "não disponível — <motivo>", nunca estimado (R7). Sem chamada: "nenhuma". Não grava em `consumption.md` — a sessão que disparou o QA transcreve.)*
@@ -96,7 +96,7 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 ## Regras
 
 - **Executar antes de opinar** (R7). Veredito sem trecho decisivo **e** ponteiro do log (quando a verificação foi delegada ao `operator`, R28) não é veredito — comando leve, sem `operator`, traz o comando e a saída direto. Alegação sem nenhum dos dois não conta, do mesmo jeito que a saída completa colada por inteiro não é o formato certo.
-- **Log bruto referenciado precisa resolver** — ponteiro para `.team-project/operator/<sprint>/<job>/` que não existe é achado de processo (R28). Achado sem `arquivo:linha` vai a "Suspeitas".
+- **O `report` referenciado precisa existir** — `report.md` (ou `report-<log>.md`) ausente no caminho é ausência de evidência (rejeição no aceite, R7); acima de 200 linhas ou 20 KB é achado de processo (R28). **Log bruto podado não é achado:** achado é gatilho de aprofundamento disparado com o log podado sem re-rodar o job pelo `operator` nem registrar "não verificado — log podado" (R7). Achado sem `arquivo:linha` vai a "Suspeitas".
 - **Desvio de seção de standard citada no plano é reprovação, não ressalva** (R16). Defeito no próprio standard (contradição, lacuna, regra inverificável) é achado de **Tipo `processo`** só para `/review` — **não** vira GAP de projeto. Plano que **omitiu** a seção que a Task exigia ou **citou a errada** (tabela do objeto 2, estados 3 e 4) é **duplo**: 🔺 **GAP** para o Arquiteto via `/arc question` (desbloqueia a Task, `workflow.md` §4a) **e** achado de `processo` para `/review` (corrige o hábito) — os dois, não um no lugar do outro.
 - **Frente 2 sem as duas tabelas não cobriu os dois objetos** (`workflow.md` §4a). Veredito com só a tabela do objeto 2 (como antes de v3.31) é achado de processo contra o próprio veredito. Divergência do objeto 1 volta **direto** a `/dev resume`, sem passar pelo Arquiteto — o antigo `/arc comply` saiu do ciclo e só roda como exceção explícita pedida pelo stakeholder. **Passo "inconferível sem decidir"** (Conferência do plano insuficiente, R13 de `implementation-plan.md`) não é "conforme" nem achado de execução: é 🔺 GAP do plano, para `/arc question`.
 - **Desempenho registra sempre um dos três estados.** "Fora" (comando de V19 sai ≠ 0) é reprovação; "não exercitado" exige o motivo. Task que toca operação de V18 sem o trecho e o ponteiro do comando é achado bloqueante, não "ok" (`implementation-principles.md` §5.6 P6).

@@ -96,6 +96,25 @@ Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere ap
 
 **Verificação do passo:** nenhuma ocorrência de `scrum-master/sprints`, `architect/plans`, `quality-assurance/evidence.md` ou `consumption-log` sobra em `.team-project/` fora de sprints fechados; e `.team-project/README.md` §2 aponta um `sprint-backlog.md` que existe.
 
+## 7b. Migração da v3.35 — o processo sai do git e o consumo fora de sprint ganha registro próprio
+
+> Roda depois de aplicar (passo 7), antes da reconciliação (passo 8), e só quando a versão instalada for anterior à `v3.35.0`. A v3.35 (R31) tira o **`.team-project/` inteiro** do git do projeto: o repositório passa a receber só o produto (código e `docs/`), e o estado da gestão fica **local**.
+>
+> **Os passos 1 a 4 só valem em repositório git — projeto que não é repositório git: pule-os e vá ao 5.** **Cada passo destrutivo (2, 3 e o push do 3) exige confirmação explícita do stakeholder NO MOMENTO da execução, neste projeto.** Aprovação antecipada, genérica ou "de quando rodar o update" não vale: pare, mostre o comando e o efeito, espere o "sim", execute, e só então passe ao próximo. Sem o "sim", registre o passo como pendente e siga.
+
+1. **`.gitignore` (a).** Se o `.gitignore` da raiz não tem a linha `.team-project/`, **acrescente-a** — só acrescente, nunca reescreva o arquivo.
+2. **Desrastrear (b).** Se `git ls-files .team-project` não está vazio: **confirme**, rode `git rm -r --cached .team-project` (tira do índice e **mantém os arquivos locais**) e faça o commit (por exemplo, `chore: tira .team-project do git (R31)`). Conferida a saída, siga.
+3. **Limpar o histórico (c).** Só se `git log --all -- .team-project` não está vazio. **Confirme o passo inteiro antes de começar** e, de novo, **antes do push**.
+   1. **Backup obrigatório, antes de qualquer coisa:** (i) copie a pasta `.team-project/` local para fora do repositório; (ii) faça o clone espelho `git clone --mirror <origem> <destino>.git`. Confira que os dois existem; sem eles, **não prossiga**.
+   2. **Meça:** `git count-objects -vH` (antes).
+   3. **Ferramenta:** `git filter-repo --path .team-project --invert-paths`, num clone novo do repositório (o `filter-repo` recusa clone com trabalho em andamento; só use `--force` depois do backup). Se `git filter-repo --version` falhar, **diga como instalar** — `python -m pip install git-filter-repo` (ou `pipx install git-filter-repo`) — ou ofereça a alternativa: BFG Repo-Cleaner (`bfg --delete-folders .team-project`, exige Java). `git filter-branch` não é recomendado (lento, frágil). O `filter-repo` remove o remote `origin`: reponha-o.
+   4. **Push (confirmação própria):** `git push --force --all` e `git push --force --tags`. Avise antes: **quem colaborou precisa re-clonar ou rebasear**; o **GitHub pode manter objetos em cache e em PRs antigas** (`refs/pull/*`) e forks, e a remoção completa pode exigir o suporte do GitHub.
+4. **Verificação (d).** `git log --all -- .team-project` vazio; `git ls-files .team-project` vazio; `git check-ignore -v .team-project/README.md` devolve a regra; `git count-objects -vH` (depois) comparado com o (antes) do passo 3.2. Registre os números no resumo do passo 9.
+5. **`.team-project/consumption.md`** (qualquer projeto): se não existir, crie a partir de `roles/scrum-master/templates/consumption.md` (cabeçalho "Consumo — fora de sprint", tabela vazia, sem "Totais do sprint").
+6. **Subseção antiga** (qualquer projeto): se `.team-project/scrum-master/context.md` tem "Consumo pré-sprint (prepare · sdd)" com linhas, **proponha** movê-las (conteúdo e Nota `pre-sprint;` preservados) para o arquivo novo e remover a subseção; espere aprovação — é conteúdo local.
+
+**Verificação do passo:** os itens do passo 4 (repositório git), mais `.team-project/consumption.md` existente e `context.md` sem a subseção antiga.
+
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
 Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.

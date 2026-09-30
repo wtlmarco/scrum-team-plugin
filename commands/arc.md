@@ -17,7 +17,7 @@ Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta 
 
 Leitura, limites e formato de resposta estão no próprio agente (`agents/architect.md`) e não se repetem aqui. Pedido `/arc review …` → o caminho é **`/review …`**.
 
-Registro de consumo: se `.team-project/sprints/<n>/consumption.md` existir, grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar.
+Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar (sprint aberto → `.team-project/sprints/<n>/consumption.md`; senão `.team-project/consumption.md`; nenhum existe → nada a fazer).
 
 Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, 'pedir mais contexto' por último (`working-rules.md` R22). O formulário do **portão ②** é disparado pelo **`/sm sdd`** (`workflow-sdd.md` §5h), não por este comando.
 

@@ -183,19 +183,21 @@ Item tratado **sai da fila** e passa a viver só no destino (registro do QA, Pro
 | Camada | Diretório | Muda por |
 |---|---|---|
 | Processo do time | o plugin (`${CLAUDE_PLUGIN_ROOT}`) | só o `/review`, no repositório-fonte do plugin |
-| Contexto e controles do projeto | `.team-project/` | o trabalho normal do time |
-| Entregáveis do produto | `docs/` do projeto (SDD, ADR, implementação) | os donos declarados em `deliverables/README.md` |
+| Contexto e controles do projeto | `.team-project/` — **local, fora do git** | o trabalho normal do time |
+| Entregáveis do produto | `docs/` do projeto (SDD, ADR, implementação) — **no git, sem referência a `.team-project/`** | os donos declarados em `deliverables/README.md` |
 | Código | o diretório de código do projeto | só o dev, e só os arquivos do plano vigente |
 
 ### O que o `/team init` cria no seu projeto
 
-Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado.**
+Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — a não ser uma linha `.team-project/` acrescentada ao `.gitignore`, se o projeto é repositório git: o processo é **local**, e o git recebe só o produto (código e `docs/`).
 
 ```
 .team-project/
 ├── README.md              contexto do projeto · declara o SPRINT CORRENTE (§2)
 ├── how-to.md              cópia deste guia, atualizada a cada /team update
 ├── note.md                sua fila de relatos — escreva o sintoma, o PO trata em /po note
+│
+├── consumption.md         consumo fora de sprint (onboarding, brainstorm, prepare, sdd, entre sprints) — mesmo modelo do de dentro do sprint
 │
 ├── sprints/               O REGISTRO DE EXECUÇÃO, um subdiretório por sprint
 │   └── 1/ 2/ 3/ …

@@ -2,7 +2,7 @@
 
 Além de código, o time produz e mantém um **conjunto de documentos de projeto**. Eles não são burocracia: são a memória que permite retomar um projeto meses depois, e a referência contra a qual o QA valida cada entrega.
 
-Este diretório guarda **a estrutura desses documentos**, para que qualquer projeto novo comece com o mesmo esqueleto. O conteúdo preenchido vive no projeto; o caminho concreto está em `.team-project/README.md` §4.
+Este diretório guarda **a estrutura desses documentos**, para que qualquer projeto novo comece com o mesmo esqueleto. O conteúdo preenchido vive no projeto; o caminho concreto está em `.team-project/README.md` §4. **Produto × processo (R31):** SDD, ADR e implementação são **produto** — vivem em `docs/` e vão ao git, então os modelos deles **não citam `.team-project/`**; o protótipo, a suíte de cenários e o `.team-project/` são **processo** — locais, fora do git.
 
 ## Conjuntos
 
@@ -13,7 +13,7 @@ Este diretório guarda **a estrutura desses documentos**, para que qualquer proj
 | **SDD** — Software Design Document | **O que o sistema é**: objetivos, requisitos, fluxos, arquitetura, dados, API e histórico | [`sdd/`](sdd/README.md) |
 | **Implementação** | **Como a construção está indo**: escopo combinado, progresso, mapa de código, pendências | [`implementation/`](implementation/README.md) |
 | **Suíte de Cenários** — teste funcional e regressivo | **O que prova que um fluxo continua funcionando**: cenário mapeado por Task na Planning (novo e regressivo pelo impacto), executado no veredito do QA (R30) | [`../roles/quality-assurance/templates/scenario.md`](../roles/quality-assurance/templates/scenario.md) · índice: [`scenarios-index.md`](../roles/quality-assurance/templates/scenarios-index.md) |
-| **`.team-project/`** | **Como o time opera neste projeto**: o contexto que o `/team init` cria e o `/team update` reconcilia | [`team-project/`](team-project/README.md) |
+| **`.team-project/`** | **Como o time opera neste projeto** (processo, local, fora do git — R31): o contexto que o `/team init` cria e o `/team update` reconcilia | [`team-project/`](team-project/README.md) |
 | **ADR** — Architecture Decision Record | **Por que se decidiu assim**: uma decisão estrutural por documento | [`../roles/architect/templates/adr.md`](../roles/architect/templates/adr.md) |
 | **Padrões de engenharia** *(relacionado — não é entregável)* | **Como se constrói aqui**: normativos agnósticos de produto | [`../standards/`](../standards/README.md) |
 

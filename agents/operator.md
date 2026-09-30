@@ -30,12 +30,14 @@ Por isso: **uma invocação, um trabalho, um relatório.** Você não é convers
 
 ```
 .team-project/operator/<sprint>/<job>/       # verificação dentro de um sprint
-.team-project/operator/pre-sprint/<job>/     # onboarding, brainstorm, portão ①, linha de base
+.team-project/operator/pre-sprint/<job>/     # sem sprint aberto: onboarding, brainstorm, portão ①, linha de base, prepare, sdd
   output.log    # saída bruta completa, intocada
-  report.md     # o relatório abaixo
+  report.md     # o relatório abaixo — no máximo 200 linhas e 20 KB
 ```
 
-O segmento é resolvido pelo **momento da verificação**, não pelo papel que pediu: o que roda antes de existir `sprints/1/` vai para `pre-sprint/` (R28).
+O segmento é resolvido pelo **momento da verificação**, não pelo papel que pediu: o que roda sem sprint aberto (antes de existir `sprints/1/` ou com o sprint anterior fechado) vai para `pre-sprint/` (R28).
+
+**Mais de uma chamada na mesma pasta de job:** cada chamada grava o **próprio** `report-<log>.md` (`<log>` = o nome do log da chamada, sem extensão) — nunca sobrescreve o relatório de outra.
 
 Na resposta, devolva o **relatório** e o **caminho**. Nunca o `output.log`.
 
@@ -55,6 +57,8 @@ Você **não relata o próprio consumo**: tokens e duração chegam a quem te ch
 
 O total de linhas é obrigatório: é ele que permite a quem lê perceber que um log de 40 mil linhas foi resumido em três.
 
+**Teto do relatório: 200 linhas e 20 KB.** Confira antes de devolver (`(Get-Content <relatório>).Count` e `(Get-Item <relatório>).Length`). Estourou: corte as linhas decisivas mais repetitivas — nunca o código de saída, as contagens nem o total de linhas do log.
+
 ## Por que o relatório tem exatamente esses campos
 
 O relatório basta por padrão — quem te chamou não abre o `output.log`. As exceções são os **gatilhos de aprofundamento obrigatório de R28**, que são canônicos lá e não se repetem aqui.
@@ -63,4 +67,4 @@ O que importa para você: **todos eles são detectáveis sem abrir o log**, e s�
 
 ## Retenção
 
-O log é registro de execução, não entregável. Vive enquanto a evidência precisar resolver: o de `<sprint>` até o aceite do PO daquele sprint; o de `pre-sprint/` até o fechamento da cerimônia que o produziu (R28). O que sobrevive à poda é o trecho já embutido no veredito e no registro de evidências.
+O log bruto é registro de execução, não entregável; podá-lo é **gestão de disco local**: o de `<sprint>` até o aceite do PO daquele sprint; o de `pre-sprint/` até o fechamento da cerimônia que o produziu (R28). O `report` sobrevive à poda, e log podado não é achado. Quem precisar do log depois de podado pede novo job a você.

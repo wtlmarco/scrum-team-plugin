@@ -17,7 +17,7 @@ Este repositório **é** um plugin do Claude Code autocontido. Os comandos `clau
 
 ## Passo 2 — Criar o contexto do projeto: `/team init`
 
-Depois de reiniciar a sessão, rode **`/team init`**. Ele cria a estrutura de `.team-project/` a partir dos modelos, lê o repositório para preencher o que já dá para inferir, pergunta só o que falta e aponta o próximo passo conforme o projeto seja novo ou retomado.
+Depois de reiniciar a sessão, rode **`/team init`**. Ele cria a estrutura de `.team-project/` a partir dos modelos — e, se o projeto é repositório git, acrescenta `.team-project/` ao `.gitignore`: o processo fica local e o git recebe só o produto (R31) —, lê o repositório para preencher o que já dá para inferir, pergunta só o que falta e aponta o próximo passo conforme o projeto seja novo ou retomado.
 
 O guia de uso — o mapa "o que você quer fazer → qual comando", os cenários de uso (projeto novo · retomada · evolução · correção · pedido no meio do sprint · trabalho interrompido), os quatro portões, as regras que valem sempre, instalação e atualização — está em [`how-to.md`](how-to.md).
 

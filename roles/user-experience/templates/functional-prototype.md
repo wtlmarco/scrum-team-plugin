@@ -61,7 +61,7 @@ para o stakeholder não confundir escolha com decisão.>
 **Telas/fluxos executados nesta rodada:** <lista>
 **O restante está coberto pela verificação completa de:** <data> · protótipo v<n>
 **Checkpoint:** `verification-log.md` — <n> linhas · última em <data/hora>
-**Log bruto (R28):** <caminho devolvido pelo `operator`> — <n> linhas
+**Relatório do job (R28):** <caminho do `report` devolvido pelo `operator`> · **Log bruto (disco local, pode ter sido podado):** <caminho, ou "podado"> — <n> linhas
 
 ## Execução delegada
 | Operator job | Task/História | Modelo | Tokens | Duração |
@@ -85,14 +85,14 @@ Gravado **a cada tela ou fluxo concluído**, durante a execução — não ao fi
 
 ```markdown
 # Verificação do protótipo — registro append-only
-| Data/hora | Protótipo | Rodada (modo) | Tela/fluxo | Critérios exercitados | Veredito | O que falhou (trecho) | Log bruto |
+| Data/hora | Protótipo | Rodada (modo) | Tela/fluxo | Critérios exercitados | Veredito | O que falhou (trecho) | Ponteiro (`report`) |
 |---|---|---|---|---|---|---|---|
-| <aaaa-mm-dd hh:mm> | v<n> | <nº> (completo\|leve) | <tela/fluxo> | <critérios, nomeados> | ✅ \| ❌ \| não exercitada | <medido × exigido, elemento, arquivo — ou "—"> | <caminho do log da rodada> |
+| <aaaa-mm-dd hh:mm> | v<n> | <nº> (completo\|leve) | <tela/fluxo> | <critérios, nomeados> | ✅ \| ❌ \| não exercitada | <medido × exigido, elemento, arquivo — ou "—"> | <caminho do `report.md` ou `report-<log>.md` da rodada> |
 ```
 
 **Nunca reescrever linha antiga.** Reexecução é linha nova. Na retomada, roda-se só o que **não tem linha** da versão corrente.
 
-**As duas últimas colunas andam juntas** (R28): a saída bruta fica no arquivo que o `operator` devolveu e o registro guarda o **trecho** que localiza a falha **mais** o ponteiro — nunca o log colado inteiro, nunca o ponteiro sozinho. Veredito do `operator` `inconclusivo` entra como **não exercitada**, com o motivo, jamais como ✅ ([`../skills.md` §10](../skills.md)).
+**As duas últimas colunas andam juntas** (R28): a saída bruta fica em log no disco local e o registro guarda o **trecho** que localiza a falha **mais** o ponteiro do `report` do job — nunca o log colado inteiro, nunca o ponteiro sozinho. Log podado não é achado; gatilho de R28 disparado com o log podado manda re-rodar pelo `operator` ou registrar "não verificado — log podado" (R7). Veredito do `operator` `inconclusivo` entra como **não exercitada**, com o motivo, jamais como ✅ ([`../skills.md` §10](../skills.md)).
 
 ## Regras
 
@@ -105,5 +105,5 @@ Gravado **a cada tela ou fluxo concluído**, durante a execução — não ao fi
 - **É documento vivo enquanto a fatia não fecha** (R12): mudança funcional aprovada que altere fluxo principal atualiza o protótipo no mesmo ciclo. Entregue e aceita a fatia, ele é marcado **vencido** — a verdade passa a ser o produto.
 - **Fidelidade visual é secundária.** O ① aprova entendimento funcional. Discussão de identidade visual não bloqueia o portão; vira registro para o backlog.
 - **Verificação se grava enquanto acontece.** Uma linha no `verification-log.md` por tela/fluxo concluído, durante a execução. Interrupção retoma do checkpoint; o que tem linha da versão corrente não roda de novo.
-- **Quem executa é o `operator`; quem dá o veredito sou eu (R28).** O harness é delegado, não rodado inline, e a saída bruta fica no arquivo que o `operator` devolve. Volta ao contexto só o que decide — tela · estado · critério que falhou, medido × exigido, elemento e arquivo, salto que não resolveu, totalizadores (critério em [`../skills.md` §10](../skills.md)). Ficha e registro trazem **trecho e ponteiro**, nunca um sozinho.
+- **Quem executa é o `operator`; quem dá o veredito sou eu (R28).** O harness é delegado, não rodado inline, e a saída bruta fica em log no disco local. Volta ao contexto só o que decide — tela · estado · critério que falhou, medido × exigido, elemento e arquivo, salto que não resolveu, totalizadores (critério em [`../skills.md` §10](../skills.md)). Ficha e registro trazem **trecho e ponteiro**, nunca um sozinho.
 - **O escopo da verificação é declarado, não presumido (R23).** Primeira entrega e mudança transversal (paleta, tipografia, grade, componente compartilhado, navegação) exigem harness **completo**; ajuste pontual sobre protótipo já verificado roda **leve** — telas alteradas mais a vizinhança de um salto. Modo leve reduz o que é executado, nunca a execução real: tela do escopo sem saída é **não exercitada** (R7). Três rodadas leves seguidas esgotam o modo — a quarta é completa.

@@ -16,7 +16,7 @@ Com o plano em mãos, use a ferramenta Agent com `subagent_type: "developer"` e 
 
 O contrato de trabalho e o formato do 🔺 GAP estão no próprio agente (`agents/developer.md`) e não se repetem aqui. Pedido `/dev review …` → o caminho é **`/review …`**.
 
-Registro de consumo: se `.team-project/sprints/<n>/consumption.md` existir, grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar.
+Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar (sprint aberto → `.team-project/sprints/<n>/consumption.md`; senão `.team-project/consumption.md`; nenhum existe → nada a fazer).
 
 Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, 'pedir mais contexto' por último (`working-rules.md` R22).
 

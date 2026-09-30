@@ -27,11 +27,11 @@ Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere c
 ### Verificação
 *(Trecho **e** ponteiro, sempre os dois — R28. O log bruto inteiro fica no arquivo, não aqui.)*
 
-| Comando | Código de saída | Trecho decisivo (literal, recortado) | Log bruto |
+| Comando | Código de saída | Trecho decisivo (literal, recortado) | Ponteiro |
 |---|---|---|---|
-| `<comando de build>` | <n> | `<linha de resumo: erros e avisos>` | `.team-project/operator/<sprint>/<T-ID>/build.log` — <n> linhas |
-| `<comando de teste>` | <n> | `<X passed, Y failed, Z skipped>` | `<caminho>.log` — <n> linhas |
-| `<comando do gate de cobertura da unidade tocada — back-end, worker ou front-end>` | <n> | `<percentual do pior módulo × limiar e resultado do gate>` | `<caminho>.log` — <n> linhas |
+| `<comando de build>` | <n> | `<linha de resumo: erros e avisos>` | `.team-project/operator/<sprint>/<T-ID>/build.log` — <n> linhas *(build de fim de passo: isento de `report`)* |
+| `<comando de teste>` | <n> | `<X passed, Y failed, Z skipped>` | `.team-project/operator/<sprint>/<T-ID>/report.md` *(ou `report-<log>.md`)* |
+| `<comando do gate de cobertura da unidade tocada — back-end, worker ou front-end>` | <n> | `<percentual do pior módulo × limiar e resultado do gate>` | `.team-project/operator/<sprint>/<T-ID>/report.md` *(ou `report-<log>.md`)* |
 
 **Falhou algum comando** — o trecho do log que localiza a causa, literal:
 ```
@@ -57,7 +57,7 @@ Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere c
 
 ## Regras
 
-- **Saída real, sempre — em trecho e ponteiro** (R7 · R28). "Build ok" sem saída não conta; log inteiro colado também não, e só o caminho do arquivo muito menos. Cada comando entra com **código de saída**, **trecho decisivo literal** e **caminho do log bruto** — que precisa existir: ponteiro que não resolve é achado de processo, e trecho sem ponteiro impede o QA de auditar e o PO de conferir na Review. Se falhou, mostrar a falha. O que recortar de cada tipo de comando está em [`../skills.md`](../skills.md) §6. O log em `.team-project/operator/<sprint>/<T-ID>/` é **registro de execução, não entrega**: não entra em CRIADOS/ALTERADOS/REMOVIDOS.
+- **Saída real, sempre — em trecho e ponteiro** (R7 · R28). "Build ok" sem saída não conta; log inteiro colado também não, e só o caminho do arquivo muito menos. Cada comando entra com **código de saída**, **trecho decisivo literal** e **ponteiro do `report` do job** — `report.md`, ou `report-<log>.md` quando há mais de uma chamada na pasta (R28). `report` ausente é entrega sem evidência (R7); o **build de fim de passo**, meu, é **isento de `report`** e entra com o caminho do log. Log podado não é achado. Trecho sem ponteiro impede o QA de auditar e o PO de conferir na Review. Se falhou, mostrar a falha. O que recortar de cada tipo de comando está em [`../skills.md`](../skills.md) §6. O log em `.team-project/operator/<sprint>/<T-ID>/` é **registro de execução, não entrega**: não entra em CRIADOS/ALTERADOS/REMOVIDOS.
 - **Gate de qualidade não some do relatório.** Gate desligado, afrouxado, removido do build, trocado por outro comando, contornado por configuração ou **não exercitado** aparece aqui como 🔺 GAP **e** na seção Verificação, com o motivo — e a entrega não se declara concluída nessa condição (R7 · R23). Nenhum dos dois estados se resolve no relatório: os dois sobem ao Arquiteto.
 - **Cobertura é saída, não alegação.** Toda Task que altera código de produção — **inclusive front-end** — traz a saída do gate de 80% da unidade que tocou, na mesma forma das demais: trecho (pior módulo × limiar) **e** ponteiro. Sem ela, o QA trata como não verificado (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.4/§5.5).
 - **Execução delegada é retratada, não gravada.** Cada chamada ao `operator` vira uma linha, com os números que a própria chamada devolveu — o que permite ver, por Task, o meu consumo × o do `operator`. Número que não voltou é "não disponível — <motivo>", nunca estimado (R7); o build de fim de passo que rodei eu mesmo (skills §6) não entra, porque não foi chamada ao `operator`. Quem grava em `consumption.md` é a sessão que me disparou, não eu.
@@ -93,11 +93,11 @@ Os comandos de verificação do projeto estão em `.team-project/developer/conte
 | `UrlSignerTests.cs` | `Assinatura_ComCaminhoAlterado_DeveSerInvalida` | adulteração do caminho assinado |
 
 ### Verificação
-| Comando | Código de saída | Trecho decisivo | Log bruto |
+| Comando | Código de saída | Trecho decisivo | Ponteiro |
 |---|---|---|---|
 | `<build>` | 0 | `Build succeeded. 0 Warning(s) 0 Error(s)` | `.team-project/operator/3/ABC-02/build.log` — 412 linhas |
-| `<teste>` | 0 | `Passed! - Failed: 0, Passed: 311, Skipped: 0` | `.team-project/operator/3/ABC-02/test.log` — 1.184 linhas |
-| `<gate de cobertura>` | 0 | `pior módulo 84,2% ≥ 80% — gate ok` | `.team-project/operator/3/ABC-02/coverage.log` — 96 linhas |
+| `<teste>` | 0 | `Passed! - Failed: 0, Passed: 311, Skipped: 0` | `.team-project/operator/3/ABC-02/report-test.md` |
+| `<gate de cobertura>` | 0 | `pior módulo 84,2% ≥ 80% — gate ok` | `.team-project/operator/3/ABC-02/report-coverage.md` |
 
 ### Execução delegada
 | Operator job | Task/História | Modelo | Tokens | Duração |
@@ -105,7 +105,7 @@ Os comandos de verificação do projeto estão em `.team-project/developer/conte
 | `.team-project/operator/3/ABC-02/` — `test.log` | ABC-02 | haiku | 21.480 | 3 min 12 s |
 | `.team-project/operator/3/ABC-02/` — `coverage.log` | ABC-02 | haiku | 9.905 | não disponível — a chamada terminou sem devolver a duração |
 
-*(o `build.log` não aparece aqui: foi o build de fim de passo, rodado por mim com a saída redirecionada — não foi chamada ao `operator`.)*
+*(o `build.log` não aparece aqui: foi o build de fim de passo, rodado por mim com a saída redirecionada — não foi chamada ao `operator`, e por isso o build é isento de `report`.)*
 
 ### Gaps levantados
 nenhum

@@ -22,7 +22,7 @@ Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta 
 
 Pedido `/qa review …` → responda que o caminho é **`/review …`**. `/qa audit` roda **no projeto** (documentos do produto × código); `/review audit` roda no repositório do plugin (documentos de processo).
 
-Registro de consumo: se `.team-project/sprints/<n>/consumption.md` existir, grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar (papel `qa`; a seção "Execução delegada" do retorno vira uma linha `operator` por chamada).
+Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar (sprint aberto → `.team-project/sprints/<n>/consumption.md`; senão `.team-project/consumption.md`; nenhum existe → nada a fazer; papel `qa`; a seção "Execução delegada" do retorno vira uma linha `operator` por chamada).
 
 Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, "pedir mais contexto" por último (`working-rules.md` R22). O agente não tem a ferramenta: é a sessão que orquestrou quem a chama (por exemplo, item de `pending.md` com `Aguarda decisão do stakeholder`).
 

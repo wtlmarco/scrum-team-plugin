@@ -1,4 +1,4 @@
-# Índice das regras de trabalho — o que conferir (R1–R30)
+# Índice das regras de trabalho — o que conferir (R1–R31)
 
 > **Dono:** SM · **Derivado de [`working-rules.md`](working-rules.md)** — que continua sendo o normativo. Este índice existe para o **`/sm close`** e para a conferência a cada Task: uma linha por regra, com **o que conferir**, sem o texto da regra nem o "Evita". **Divergência entre este índice e a linha "SM verifica" da regra: vale a regra**, e o índice é corrigido no mesmo ciclo (R12). Abra `working-rules.md` na regra só quando a linha apontar violação ou dúvida.
 
@@ -17,7 +17,7 @@
 | R4 · não antecipar escopo **[close]** | relatório do dev com "Não fiz (fora do plano)" preenchido; diff × lista de arquivos do plano; entrada fora da Planning com "o que saiu para caber" |
 | R5 · interrupção é estado | relatório com "Parei no passo"; Task inacabada volta ao Product Backlog com a História; verificação pesada deixa artefato em disco por etapa; relatório que não chegou tem o estado em disco lido antes de reinvocar |
 | R6 · decisão registrada **[close]** | toda Task fechada com desvio tem a entrada correspondente |
-| R28 · saída pesada em arquivo, execução pesada no `operator` **[close]** | trecho extraído **e** ponteiro do log (`operator/<sprint>/<job>/` ou `operator/pre-sprint/<job>/`), sempre juntos; execução pesada nunca inline por Arquiteto, QA ou dev; contagem de jobs × linhas `operator` do consumo fecha |
+| R28 · saída pesada em arquivo, execução pesada no `operator` **[close]** | trecho extraído **e** ponteiro do job (`operator/<sprint>/<job>/` ou `operator/pre-sprint/<job>/`), sempre juntos; `report` do job ≤ 200 linhas · 20 KB, um `report-<log>.md` por chamada na mesma pasta; log bruto podado não é achado (gatilho disparado → re-rodar pelo `operator`); build de fim de passo do dev isento de `report`; execução pesada nunca inline por Arquiteto, QA ou dev; contagem de chamadas × linhas `operator` (do sprint e de `.team-project/consumption.md`) fecha |
 | R29 · fase heterogênea em sessão nova | o relatório que abre fase diferente não cita diagnóstico de fase já fechada verde; no consumo, a transição é bloco de invocação novo |
 
 ## Qualidade
@@ -51,3 +51,4 @@
 | R26 · plano mede o ambiente | seção de ambiente medido (comando e saída, próprios ou do `operator` com caminho do log) antes dos passos; comando citado validado; "onde parar" cobre pré-requisito **ausente** |
 | R27 · falha de invocação | retentativa e texto literal do harness; nenhum relatório atribui ao stakeholder interrupção sem ação dele registrada |
 | R30 · cenários mapeados **[close]** | Task com cenários novos + regressivos aplicáveis (ou "nenhum aplicável", com motivo) antes da construção; veredito traz o resultado de cada um; GAP que bloqueia História em voo vira Task no sprint; GAP não-bloqueante tem par no Product Backlog (escrito pelo PO) |
+| R31 · git só com o produto | `git ls-files .team-project` vazio e `.gitignore` com `.team-project/`; `docs/` (e os modelos que o geram) sem caminho `.team-project/` |

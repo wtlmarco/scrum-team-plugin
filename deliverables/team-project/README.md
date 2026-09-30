@@ -2,6 +2,8 @@
 
 > **Dono:** SM · **É o índice único do que o `/team init` cria e do que o `/team update` reconcilia.**
 
+> **Tudo o que este manifesto lista sob `.team-project/` é processo: fica local, fora do git (R31).** O repositório do projeto recebe só o produto — código e `docs/` —, e documento de produto não referencia `.team-project/`.
+
 Os outros conjuntos de `deliverables/` descrevem **o produto** — o [protótipo funcional](../prototype/README.md), o [SDD](../sdd/README.md) e a [implementação](../implementation/README.md). Este descreve o **contexto de operação do time** — o `.team-project/` que nasce no `/team init` e sem o qual nenhum papel opera.
 
 ## Por que aqui é um índice, e não uma cópia dos modelos
@@ -15,6 +17,8 @@ Cada modelo pertence ao **papel que o usa** (`roles/<papel>/templates/`), por [`
 | `.team-project/README.md` | [`roles/scrum-master/templates/project-context.md`](../../roles/scrum-master/templates/project-context.md) | SM | **Sim — §8 é bloco fixo**, o resto é do projeto |
 | `.team-project/how-to.md` | [`how-to.md`](../../how-to.md) da raiz | stakeholder | **Sim — cópia literal**, sempre substituível |
 | `.team-project/note.md` | [`roles/product-owner/templates/note.md`](../../roles/product-owner/templates/note.md) | PO | **Sim — estrutura**; os itens de "Abertas" são do stakeholder |
+| `.team-project/consumption.md` | [`consumption.md`](../../roles/scrum-master/templates/consumption.md) — **o mesmo modelo** do registro do sprint | **SM** | criado no `init`, vazio; uma linha por invocação **sem sprint aberto** (onboarding, brainstorm, `prepare`, `sdd`, jobs `operator/pre-sprint/`, entre sprints), Nota `pre-sprint;`/`entre-sprints;` · **sem rotação** · `update` o cria onde falta e migra a subseção antiga de `context.md` | **Sim — estrutura**; as linhas são do projeto. Fora da pasta do sprint por natureza: não há sprint a que pertença (§1c) |
+| `.gitignore` (raiz do projeto) | linha `.team-project/` — o processo inteiro fica **local, fora do git**; o git recebe só o produto (código e `docs/`, R31) | SM (regra) · stakeholder (instalação, `team-init`/`team-update`) | **Sim — a linha**; o resto do `.gitignore` é do projeto |
 | `.team-project/sprints/` | vazia no `init`; um subdiretório por sprint, criado em `/sm sprint plan` — ver "A pasta do sprint", abaixo | **SM** (contêiner) · dono por subpasta | **Sim — os modelos**, nunca o conteúdo escrito nem sprint já fechado |
 | `.team-project/scrum-master/context.md` | seção "O que vai em cada `context.md`" do modelo de contexto | SM | Não — conteúdo do projeto |
 | `.team-project/product-owner/context.md` | idem | PO | Não |
@@ -49,7 +53,7 @@ O registro de execução é organizado **por sprint**, não por papel (R25): a p
 | `retrospective.md` | [`retrospective.md`](../../roles/scrum-master/templates/retrospective.md) | **SM** | `/sm sprint close` | **Sim — o modelo** |
 | `plugin-report.md` | [`plugin-report.md`](../../roles/scrum-master/templates/plugin-report.md) | **SM** | `/sm sprint close` · fecha com a pasta · o stakeholder encaminha | **Sim — o modelo** |
 
-**Retenção — uma forma só.** Pasta numerada, e nada de vivo+archive: o registro de consumo passou a viver em `sprints/<n>/consumption.md`, e o acumulado do projeto é **derivado** somando as pastas (critério e racional em [`artifact-ownership.md` §1c](../../roles/scrum-master/process/artifact-ownership.md)).
+**Retenção — uma forma só.** Pasta numerada, e nada de vivo+archive: o registro de consumo passou a viver em `sprints/<n>/consumption.md`, e o acumulado do projeto é **derivado** somando as pastas **e** `.team-project/consumption.md` (consumo fora de sprint, sem rotação; critério e racional em [`artifact-ownership.md` §1c](../../roles/scrum-master/process/artifact-ownership.md)).
 
 **Sprint fechado é imutável.** O `update` **não** reconcilia estrutura dentro de `sprints/<n>/` de sprint já encerrado: são registros históricos, e reescrevê-los destruiria o que eles existem para provar. Modelo novo vale do próximo sprint em diante.
 

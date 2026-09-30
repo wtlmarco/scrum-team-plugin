@@ -23,7 +23,7 @@ Pedido `/ux review …` → responda que o caminho é **`/review …`**: nenhum 
 
 ## Registro de consumo
 
-Se `.team-project/sprints/<n>/consumption.md` existir, grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar.
+Grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar (sprint aberto → `.team-project/sprints/<n>/consumption.md`; senão `.team-project/consumption.md`; nenhum existe → nada a fazer).
 
 Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, "pedir mais contexto" por último (`working-rules.md` R22). O agente não tem a ferramenta.
 
