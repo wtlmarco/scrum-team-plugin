@@ -59,11 +59,11 @@ O conteúdo de cada História — regras funcionais, protótipos, critérios de 
 |---|---|---|---|---|
 | GAP-<nnn> | <n> / <data> | <descrição curta> | H-<nnn> nova / Task na próxima Planning | PO |
 
-> GAP que **bloqueia** uma História em voo não passa por aqui — vira Task da mesma História, no sprint corrente, registrada pelo SM no quadro (R25 · [`workflow.md` §5e](../../scrum-master/process/workflow.md) "Durante o sprint"). Esta tabela é só para o não-bloqueante.
+> GAP que **bloqueia** uma História em voo não passa por aqui — vira Task da mesma História, no sprint corrente, registrada pelo SM no quadro (R25 · [`workflow-sprint.md` §5e](../../scrum-master/process/workflow-sprint.md) "Durante o sprint"). Esta tabela é só para o não-bloqueante.
 
 ## O que não entrou na priorização mais recente
 
-> **Peça obrigatória do pacote de abertura do sprint seguinte** (R25 · [`workflow.md` §5e](../../scrum-master/process/workflow.md) passo 9). No pacote o stakeholder vê o que **entrou** — sem esta lista, uma pendência crítica que despriorizei passa despercebida. Eu forneço esta lista ao SM, que a grava em `planning.md`; eu **proponho** a priorização, o stakeholder **aprova o pacote** e pode devolver.
+> **Peça obrigatória do pacote de abertura do sprint seguinte** (R25 · [`workflow-sprint.md` §5e](../../scrum-master/process/workflow-sprint.md) passo 9). No pacote o stakeholder vê o que **entrou** — sem esta lista, uma pendência crítica que despriorizei passa despercebida. Eu forneço esta lista ao SM, que a grava em `planning.md`; eu **proponho** a priorização, o stakeholder **aprova o pacote** e pode devolver.
 
 | Item (Review de origem, sprint) | Motivo de não entrar agora | Reavaliar quando |
 |---|---|---|

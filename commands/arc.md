@@ -1,5 +1,5 @@
 ---
-description: Aciona o Arquiteto — diagnóstico técnico, desenho de solução, Plano de Implementação, ADR e decisão sobre gap de implementação.
+description: Aciona o Arquiteto — diagnóstico técnico, desenho de solução, Plano de Implementação, SDD técnico, ADR e decisão sobre gap de implementação.
 argument-hint: "[plan <ID> | comply <ID> | adr <tema> | question <dúvida>] ou descrição livre"
 ---
 
@@ -7,24 +7,18 @@ Aciona o **Arquiteto de Software Sênior** do time.
 
 Pedido do stakeholder: **$ARGUMENTS**
 
-Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta sessão, um agente `architect` invocado há pouco sobre a mesma Task/tema; se existir, retome-o com SendMessage em vez de acionar o Agent de novo — evita reler documentos-fonte já lidos (R3). Só na ausência de um agente para retomar, use a ferramenta Agent com `subagent_type: "architect"` e `run_in_background: false`, passando ao agente:
+Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta sessão, um agente `architect` sobre a mesma Task/tema; se existir, retome-o com SendMessage (R3). Senão, use a ferramenta Agent com `subagent_type: "architect"` e `run_in_background: false`, passando o pedido acima, literal, e o modo, conforme o primeiro termo:
 
-1. O pedido acima, literal.
-2. A instrução de ler antes de responder: `.team-project/README.md`, `.team-project/architect/context.md`, os normativos em `${CLAUDE_PLUGIN_ROOT}/standards/`, os documentos de arquitetura/dados/API indicados no contexto, e **o código real** envolvido (com `arquivo:linha` como evidência).
-3. O modo de operação, conforme o primeiro termo do pedido:
-   - **plan `<ID>`** → diagnóstico com evidência, desenho da solução, alternativas descartadas em uma linha cada, impacto (arquivos, migration, contrato de API, risco de regressão) e o **Plano de Implementação** no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md`, salvo em `.team-project/sprints/<n>/plan/<ID>-<slug>.md`, respeitando a capacidade declarada no contexto do projeto.
-   - **comply `<ID>`** → revisão de aderência do que voltou do dev, no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/compliance-review.md`. Aponte desvio com `arquivo:linha`; não corrija o código. **Só roda como exceção explícita, pedida nomeadamente pelo stakeholder** — não é etapa do ciclo nem rota de volta de achado de aderência: conferir se o código seguiu o plano é da frente 2 do `/qa`, em toda Task (`workflow.md` §4a). Não rode por iniciativa própria.
-   - **adr `<tema>`** → escrever/atualizar a ADR no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/adr.md`, no diretório de ADRs do projeto, com checklist de aceitação verificável.
-   - **question `<dúvida>`** → responder e **decidir** no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/technical-decision.md`, não devolver a pergunta. Se for dúvida funcional, dizer que o caminho é `/po`; se for estratégica (stack, provedor, custo), escalar ao stakeholder com recomendação.
-   - **descrição livre** → tratar como `question`, e propor `plan` se a resposta exigir construção.
-4. Lembrete de limites: a entrega é o plano, não o commit — só toque no código se o stakeholder pedir ou num spike declarado. Não decide requisito (isso é do PO). Spike com chamada externa: timeout e tentativas explícitos, checkpoint por etapa, e etapa que estourar as tentativas é relatada como inconclusiva por causa externa, nunca deixada travando.
+- **plan `<ID>`** → Plano de Implementação de **uma Task do Sprint Backlog aprovado, só depois do ③** — no fluxo normal, disparado pelo `/sm sprint run` (`roles/scrum-master/process/sprint-run.md`); avulso, só para retomada manual. **Sem sprint corrente** (calibração da instalação — `replicate-in-new-project.md` passo 6 — ou antes da 1ª Planning) o plano é só de calibração e vai para `.team-project/architect/calibration/<ID>-<slug>.md`. Com sprint corrente, Task fora do Sprint Backlog aprovado: o agente não escreve o plano e responde o que falta.
+- **comply `<ID>`** → revisão de aderência no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/compliance-review.md`. **Só a pedido nomeado do stakeholder** — não é etapa do `sprint run` nem rota de volta (`workflow.md` §4a).
+- **adr `<tema>`** → ADR no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/adr.md`.
+- **question `<dúvida>`** → decidir no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/technical-decision.md`; chamado pelo `/sm sprint prepare`, responde por História na variante "Varredura técnica" do mesmo modelo. Dúvida funcional → `/po`; estratégica → stakeholder, com recomendação.
+- **descrição livre** → tratar como `question`, e propor `plan` se exigir construção. É também o modo da **rodada de Fase 2 do brainstorm** e do **SDD técnico** (`03`/`04`/`05`), que o `/sm sdd` despacha na etapa 3; avulso, só conversa — roteiros em `${CLAUDE_PLUGIN_ROOT}/roles/architect/README.md`.
 
-Pedido `/arc review …` → responda que o caminho é **`/review …`**: nenhum papel tem modo `review` próprio.
+Leitura, limites e formato de resposta estão no próprio agente (`agents/architect.md`) e não se repetem aqui. Pedido `/arc review …` → o caminho é **`/review …`**.
 
-## Registro de consumo — só onde o registro existe
+Registro de consumo: se `.team-project/sprints/<n>/consumption.md` existir, grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar.
 
-Se `.team-project/sprints/<n>/consumption.md` existir — `<n>` é o **sprint corrente**, em `.team-project/README.md` §2 —, acrescente uma linha quando o agente retornar, com os números que ele devolve: data, papel `arc`, modelo (o `model:` de `agents/architect.md` do plugin instalado, ou o override que você passou ao disparar; sem leitura nem override, "não disponível — <motivo>", nunca deduza), comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Se o retorno trouxer a seção **"Execução delegada"**, acrescente também **uma linha por chamada ao `operator`** listada ali: papel `operator`, o modelo da seção (sem ele, o `model:` de `agents/operator.md`), o mesmo comando, a Task/História, os tokens e a duração da seção, e na Nota `chamado por arc; job <caminho em .team-project/operator/>`. Essas linhas entram no total do sprint, expostas à parte por chamador. Sem o arquivo, nada a fazer.
+Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, 'pedir mais contexto' por último (`working-rules.md` R22). O formulário do **portão ②** é disparado pelo **`/sm sdd`** (`workflow-sdd.md` §5h), não por este comando.
 
-Se a saída do agente traz uma pergunta na forma de R22 (pergunta + por que bloqueia, alternativas descritas, recomendação, via de pedir mais contexto), não a repasse em texto corrido: chame `AskUserQuestion`, uma opção por alternativa descrita, com a via de pedir mais contexto sempre como a última opção. É você — a sessão que orquestrou — quem tem essa ferramenta; o agente não a tem.
-
-Ao receber a resposta, repasse ao stakeholder o diagnóstico e o caminho do plano gerado, e destaque em uma linha o que exige decisão dele.
+Ao receber a resposta, repasse ao stakeholder o diagnóstico e o caminho do artefato gerado, e destaque em uma linha o que exige decisão dele.

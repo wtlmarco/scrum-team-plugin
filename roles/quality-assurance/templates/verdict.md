@@ -11,7 +11,7 @@
 | Especificação técnica | ok / falha | **Duas tabelas** abaixo, sempre as duas: **"passo do plano × conforme"** (objeto 1, aderência de execução) e **"seção exigida pela Task × seção citada"** (objeto 2, 4 estados) |
 | Segurança | ok / falha / n/a | <arquivo:linha ou teste> |
 | Testes / métricas | ok / falha | <trecho decisivo do comando de teste **e** do gate de cobertura — ponteiro do log em "Comandos executados"> |
-| Documentação | ok / falha | <arquivo atualizado> |
+| Documentação | ok / falha | <arquivo atualizado — detalhe em "Documentos vivos (R12)" abaixo> |
 | Desempenho | dentro do orçamento / fora / não exercitado | <trecho decisivo do comando V19 — ponteiro do log em "Comandos executados" · ou o motivo do "não exercitado"> |
 
 ### Frente 2 — os dois objetos, sempre os dois (`workflow.md` §4a)
@@ -46,7 +46,7 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 
 | GAP compromete a História em voo? | Caminho | Onde registro |
 |---|---|---|
-| **Sim, bloqueia** | Vira Task da mesma História, no sprint corrente (R25 · `workflow.md` §5e "Durante o sprint") | Entrada nos Achados abaixo, `Volta para: /team` (SM registra a entrada fora da Planning) |
+| **Sim, bloqueia** | Vira Task da mesma História, no sprint corrente (R25 · `workflow-sprint.md` §5e "Durante o sprint") | Entrada nos Achados abaixo, `Volta para: /sm` (SM registra a entrada fora da Planning) |
 | **Não bloqueia** | Ganha entrada no Product Backlog, escrita pelo **PO**, no mesmo ciclo (R12) | GAP em `pending.md` com **ID: <MÓDULO-NN>** → **roteado ao PO** nesta linha; o PO abre a linha do Product Backlog citando este ID |
 
 ### Comandos executados
@@ -68,7 +68,7 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 ### Achados
 | # | Gravidade | Tipo | O quê | Onde | Impacto | Volta para |
 |---|---|---|---|---|---|---|
-| 1 | 🔴/🟠/🟡/🟢 | código / processo | <defeito> | <arquivo:linha> (+ `<standard> §n` se `processo`) | <consequência> | dev / `/team` / arquiteto / po / `/review` |
+| 1 | 🔴/🟠/🟡/🟢 | código / processo | <defeito> | <arquivo:linha> (+ `<standard> §n` se `processo`) | <consequência> | dev / `/sm` / arquiteto / po / `/review` |
 
 ### Suspeitas (sem evidência conclusiva)
 - <o que parece errado e o que falta para confirmar>
@@ -79,27 +79,29 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 ### Não exercitado
 - <o que ficou sem validação e por quê>
 
-### Documentação atualizada
-- [ ] Inventário de código
-- [ ] Registro de GAPs (fechado / aberto)
-- [ ] Evidência da Task (`.team-project/sprints/<n>/evidence/<T-ID>.md`)
-- [ ] Suíte de cenários — Histórico de execuções de cada `SC-nnn` mapeado, e o índice (`scenarios/README.md`) com "Última execução"/"Último resultado" sincronizados
+### Documentos vivos (R12)
+**Estado:** atualizados | pendentes  *(o `/sm sprint run` só fecha a Task com "atualizados" — `sprint-run.md` passo 7; ausente, vazio ou "pendentes" não fecha)*
+
+| Documento | Dono | Atualizado? | Ponteiro |
+|---|---|---|---|
+| Inventário de código (`03-code-map`) | QA | sim / não | `arquivo:linha` |
+| Registro de GAPs (`pending.md`) | QA | sim / não (fechado / aberto) | ID |
+| Evidência da Task | QA | sim / não | `.team-project/sprints/<n>/evidence/<T-ID>.md` |
+| Suíte de cenários — Histórico de cada `SC-nnn` mapeado e índice (`scenarios/README.md`) | QA | sim / não | `SC-nnn` |
+| SDD funcional / técnico / ADR que a Task tocou | PO / Arquiteto | sim / não / n/a | arquivo (dono nomeado se "não") |
+
+*(Qualquer "não" ⇒ Estado "pendentes", com o dono do documento na linha — devolve a ele, não ao dev.)*
 ```
 
 ## Regras
 
 - **Executar antes de opinar** (R7). Veredito sem trecho decisivo **e** ponteiro do log (quando a verificação foi delegada ao `operator`, R28) não é veredito — comando leve, sem `operator`, traz o comando e a saída direto. Alegação sem nenhum dos dois não conta, do mesmo jeito que a saída completa colada por inteiro não é o formato certo.
-- **Log bruto referenciado precisa resolver.** Ponteiro para `.team-project/operator/<sprint>/<job>/` que não existe mais no caminho declarado é achado de processo — o mesmo defeito que um ponteiro de documentação quebrado, só que aqui quem audita depois é o PO, na Sprint Review, dias mais tarde (R28).
-- **Os gatilhos de aprofundamento no log bruto são os de R28** — fora deles, o resumo do `operator` basta e abrir o log é opção minha, não obrigação.
-- **Achado precisa de `arquivo:linha`**; sem isso vai para "Suspeitas".
-- **Desvio de nomenclatura é falha**, não detalhe (R10).
+- **Log bruto referenciado precisa resolver** — ponteiro para `.team-project/operator/<sprint>/<job>/` que não existe é achado de processo (R28). Achado sem `arquivo:linha` vai a "Suspeitas".
 - **Desvio de seção de standard citada no plano é reprovação, não ressalva** (R16). Defeito no próprio standard (contradição, lacuna, regra inverificável) é achado de **Tipo `processo`** só para `/review` — **não** vira GAP de projeto. Plano que **omitiu** a seção que a Task exigia ou **citou a errada** (tabela do objeto 2, estados 3 e 4) é **duplo**: 🔺 **GAP** para o Arquiteto via `/arc question` (desbloqueia a Task, `workflow.md` §4a) **e** achado de `processo` para `/review` (corrige o hábito) — os dois, não um no lugar do outro.
 - **Frente 2 sem as duas tabelas não cobriu os dois objetos** (`workflow.md` §4a). Veredito com só a tabela do objeto 2 (como antes de v3.31) é achado de processo contra o próprio veredito. Divergência do objeto 1 volta **direto** a `/dev resume`, sem passar pelo Arquiteto — o antigo `/arc comply` saiu do ciclo e só roda como exceção explícita pedida pelo stakeholder. **Passo "inconferível sem decidir"** (Conferência do plano insuficiente, R13 de `implementation-plan.md`) não é "conforme" nem achado de execução: é 🔺 GAP do plano, para `/arc question`.
 - **Desempenho registra sempre um dos três estados.** "Fora" (comando de V19 sai ≠ 0) é reprovação; "não exercitado" exige o motivo. Task que toca operação de V18 sem o trecho e o ponteiro do comando é achado bloqueante, não "ok" (`implementation-principles.md` §5.6 P6).
-- **Cobertura ou desempenho sem trecho decisivo e ponteiro do log no relatório de entrega** não vai a "ok": cobertura ausente é falha, desempenho ausente em Task de V18 é achado bloqueante (espelha `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/delivery-report.md`).
 - **Cenário mapeado sem linha na tabela de resultado não fecha a Task** (R30, DoD §4a-i) — regressivo aplicável incluído. Cenário ❌ segue o roteamento pelo bloqueio: bloqueia a História em voo → Task no sprint corrente (R25); não bloqueia → **ID de `pending.md` explícito nesta seção, endereçado ao PO** — sem esse ID, o GAP fica preso em `pending.md` e nunca chega ao Product Backlog (R30 · R12).
 - **"Não exercitado" é obrigatório**, mesmo que seja "nada — todo o fluxo foi exercitado".
-- Reprovar com precisão vale mais do que aprovar rápido: cada achado diz **para quem volta**.
 - ⚠️ (ressalva) só quando a Task é utilizável e a pendência tem ID próprio no backlog.
 
 Os comandos, limiares e limitações do ambiente estão em `.team-project/quality-assurance/context.md`.

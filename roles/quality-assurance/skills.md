@@ -129,22 +129,13 @@ Rota — dois destinos, não um: é **🔺 GAP para o Arquiteto** (`/arc questio
 
 ## 12. Bug do stakeholder chega pelo PO, nunca direto — e só entra confirmado
 
-Não existe canal stakeholder→QA. O PO recebe o relato, classifica (defeito vs. mudança de escopo) e me aciona. A partir daí a régua é a mesma de qualquer achado, com um passo a mais:
-
-- **Investigar antes de registrar.** O relato do stakeholder é ponto de partida, não fato — a mesma régua da skill 4 (achado × suspeita) vale aqui: **reproduzi com `arquivo:linha`?** Abro/atualizo a entrada em `pending.md` com `Origem: stakeholder`. **Não reproduzi?** Fica suspeita no veredito, devolvida ao PO com o que falta — nunca uma entrada aberta sobre relato não confirmado.
-- **Sou o único que escreve `pending.md`**, inclusive para o que o stakeholder relata. Isso não é burocracia: é o que garante que **toda** entrada — inclusive a dele — tem evidência verificada, não a palavra de quem relatou.
-- **A escada de falha não muda pela origem.** O achado confirmado volta pelo mesmo degrau de sempre (construção, outro dono, ou Arquiteto) — a origem do relato é um campo da entrada, não um roteamento novo.
-- **Estado de espera é visível, não implícito.** Entrada que só o stakeholder pode desbloquear (ex.: é defeito ou é mudança de escopo?) leva `Aguarda decisão do stakeholder: sim` com a pergunta na forma de R22, ou o ponteiro para onde ela foi feita (PO, Sprint Review, `/sm agreement`). Sem isso, ninguém lendo o registro sabe se a entrada está parada por decisão pendente ou só não priorizada.
-- **Continuo sem corrigir.** Recebido pelo PO ou levantado por mim mesmo, o achado se reprova e se registra — a correção é sempre de outro degrau.
+Roteiro e passos em [`README.md`](README.md) "Defeito reportado pelo stakeholder". O que o define como competência: o relato é ponto de partida, não fato — **reproduzi com `arquivo:linha`?** entra em `pending.md` com `Origem: stakeholder`; **não reproduzi?** fica suspeita devolvida ao PO. Sou o único que escreve `pending.md`, para que toda entrada tenha evidência verificada. Estado de espera é explícito (`Aguarda decisão do stakeholder: sim` + pergunta na forma de R22 ou ponteiro). A escada de falha não muda pela origem, e continuo sem corrigir.
 
 ## 13. Mapear cenário pelo critério de aceite, escolher regressivo pelo fluxo, nunca fingir execução (R30)
 
-Competência nova a partir da v3.32, exercida na Planning (mapeamento) e no veredito (execução) — modelo completo em [`templates/scenario.md`](templates/scenario.md).
+Exercida no `prepare` (criação em lote), na Planning (mapeamento por Task) e no veredito (execução); roteiro em [`README.md`](README.md) "Cenários de teste", modelo em [`templates/scenario.md`](templates/scenario.md).
 
-**Mapear é operar o critério, não escrevê-lo de novo.** Um cenário novo traduz um critério de aceite verificável em pré-condição + passos + resultado esperado, citando o critério de origem **literalmente** (nomenclatura é contrato, R10) — nunca parafraseado. Se o critério não dá para operar sem decidir uma regra que ele não cobre, isso não é um cenário mal escrito por mim: é um critério incompleto, e volta ao PO (R9) antes de eu inventar o que ele deveria dizer.
-
-**Escolher regressivo é uma busca por fluxo, não por lembrança.** A pergunta nunca é "que cenário eu me lembro que parece relacionado" — é: que fluxo(s) funcional(is) esta Task toca, e que cenários da suíte declaram esse(s) mesmo(s) fluxo(s) no campo "Fluxos que toca"? A tabela por fluxo do índice ([`templates/scenarios-index.md`](templates/scenarios-index.md) §2) existe exatamente para essa busca não depender de eu ter lido a suíte inteira de memória. Task que toca camada compartilhada e não puxa nenhum regressivo é sinal de alerta — reconferir o índice antes de aceitar "nenhum aplicável".
-
-**Executar sem a ferramenta certa não é aprovar por analogia.** Um cenário de interface sem MCP de navegador não vira "ok" porque o teste automatizado de outra camada passou perto do mesmo fluxo — ou ele roda de fato por script/CLI cobrindo o mesmo caminho, ou fica ⚠️ "não executado — sem ferramenta", nas duas pontas (veredito da Task **e** Histórico de execuções do `SC-nnn`, `templates/scenario.md`). A mesma régua da skill 1 (executar, não acreditar) vale aqui: cenário "provavelmente passaria" é alegação, não evidência.
-
-**GAP de cenário segue a escada por bloqueio, não por criticidade.** Achado que compromete a História que está em construção agora vira Task da mesma História no sprint corrente (R25); achado que não compromete vai ao Product Backlog — eu aponto o ID de `pending.md` no veredito, endereçado ao PO, e é ele quem abre a linha (R12, R30). Não sou eu quem decide se algo "pode esperar" fora dessa régua: é a régua.
+- **Mapear é operar o critério, não reescrevê-lo.** Cite o critério de origem **literalmente** (R10). Critério que não dá para operar sem decidir regra é incompleto: volta ao PO (R9).
+- **Regressivo é busca por fluxo, não por lembrança.** Use "Fluxos que toca" e a tabela por fluxo de [`templates/scenarios-index.md`](templates/scenarios-index.md) §2. Camada compartilhada sem nenhum regressivo é sinal de alerta: reconfira o índice antes de aceitar "nenhum aplicável".
+- **Sem ferramenta não é aprovação por analogia.** Cenário de interface sem navegador roda por script/CLI no mesmo caminho ou fica ⚠️ "não executado — sem ferramenta", no veredito **e** no Histórico do `SC-nnn`. "Provavelmente passaria" é alegação, não evidência.
+- **GAP de cenário segue a escada por bloqueio, não por criticidade** (R25 · R12 · R30), como na tabela do README.

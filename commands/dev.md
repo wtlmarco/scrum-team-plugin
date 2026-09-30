@@ -7,25 +7,19 @@ Aciona o **desenvolvedor** do time.
 
 Pedido do stakeholder: **$ARGUMENTS**
 
-**Pré-condição obrigatória:** leia `.team-project/sprints/<n>/plan/<ID>-*.md`. Se o plano **não existir**, não invente e não improvise um: informe o stakeholder e ofereça rodar `/arc plan <ID>` antes. Sem plano, o dev não codifica — é a regra que sustenta a qualidade do time.
+**Avulso é a etapa 3 do `/sm sprint run`** (`roles/scrum-master/process/sprint-run.md`), para retomada manual. **Pré-condição:** leia `.team-project/sprints/<n>/plan/<ID>-*.md` (sprint corrente em `.team-project/README.md` §2) — ou, **sem sprint corrente** (calibração), `.team-project/architect/calibration/<ID>-*.md`. Sem plano, não improvise: ofereça `/arc plan <ID>` — com sprint corrente, o plano só existe depois do ③.
 
-Com o plano em mãos, use a ferramenta Agent com `subagent_type: "developer"` e `run_in_background: false`, passando ao agente:
+Com o plano em mãos, use a ferramenta Agent com `subagent_type: "developer"` e `run_in_background: false`, passando o caminho do plano, o ID da Task e o modo:
+- **`<ID>`** → executar o plano do início ao fim, na ordem dos passos.
+- **resume `<ID>`** → continuar de onde parou; conferir no código o que já existe antes de escrever.
+- **gap `<resposta>`** → retomar aplicando a decisão do Arquiteto; se o agente anterior ainda estiver ativo, continue por SendMessage.
 
-1. O caminho do Plano de Implementação e o ID da Task.
-2. A instrução de ler `.team-project/developer/context.md` antes de escrever a primeira linha.
-3. O modo de operação, conforme o pedido:
-   - **`<ID>`** → executar o plano do início ao fim, na ordem dos passos.
-   - **resume `<ID>`** → continuar de onde parou; conferir no código o que já existe antes de escrever qualquer coisa.
-   - **gap `<resposta>`** → retomar aplicando a decisão que o Arquiteto acabou de dar; se o agente anterior ainda estiver ativo, prefira continuar por SendMessage para preservar o contexto dele.
-4. As regras do contrato de trabalho: só os arquivos listados no plano; nomenclatura literal; sem refatoração oportunista, dependência nova ou escopo antecipado; os testes previstos são obrigatórios; os comandos de verificação executados de verdade, com o trecho decisivo e o ponteiro do log (R28); documentação não é dele.
-5. A instrução de **parar e reportar 🔺 GAP** — no formato de `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/gap.md` — em vez de decidir sozinho.
+O contrato de trabalho e o formato do 🔺 GAP estão no próprio agente (`agents/developer.md`) e não se repetem aqui. Pedido `/dev review …` → o caminho é **`/review …`**.
 
-Pedido `/dev review …` → responda que o caminho é **`/review …`**: nenhum papel tem modo `review` próprio, e os documentos do dev são aplicados pelo **Arquiteto** (`artifact-ownership.md` §1).
+Registro de consumo: se `.team-project/sprints/<n>/consumption.md` existir, grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar.
 
-## Registro de consumo — só onde o registro existe
-
-Se `.team-project/sprints/<n>/consumption.md` existir — `<n>` é o **sprint corrente**, em `.team-project/README.md` §2 —, acrescente uma linha quando o agente retornar, com os números que ele devolve: data, papel `dev`, modelo (o `model:` de `agents/developer.md` do plugin instalado, ou o override que você passou ao disparar; sem leitura nem override, "não disponível — <motivo>", nunca deduza), comando, Task/História (ou `n/a`), tokens, duração. Número indisponível: "não disponível — <motivo>", nunca estime (R7). Se o retorno trouxer a seção **"Execução delegada"**, acrescente também **uma linha por chamada ao `operator`** listada ali: papel `operator`, o modelo da seção (sem ele, o `model:` de `agents/operator.md`), o mesmo comando, a Task/História, os tokens e a duração da seção, e na Nota `chamado por dev; job <caminho em .team-project/operator/>`. Essas linhas entram no total do sprint, expostas à parte por chamador. Sem o arquivo, nada a fazer.
+Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, 'pedir mais contexto' por último (`working-rules.md` R22).
 
 Ao receber o relatório de entrega:
-- Se houver 🔺 GAP, leve-o ao Arquiteto (`/arc question` ou Agent `architect`) e devolva a decisão ao dev — **não resolva o gap você mesmo**. Peça ao Arquiteto **a decisão registrada no plano**, não a reprodução do passo: ele não roda o build, o lint nem o teste que o dev relatou (R9). Afirmação do dev que precisa ser conferida é objeto do **veredito do QA** (R7), não motivo para reativar o Arquiteto.
-- Se a entrega estiver completa, repasse ao stakeholder o relatório (arquivos, testes, saída real da verificação, o que ficou fora do plano) e indique o próximo passo: `/qa <ID>`.
+- **🔺 GAP** → leve-o ao Arquiteto (`/arc question`) e devolva a decisão ao dev; não resolva você. Peça a decisão **registrada no plano**, não a reprodução do passo (R9); conferir afirmação do dev é do QA (R7).
+- **Entrega completa** → repasse o relatório ao stakeholder; próximo passo `/qa <ID>` e, com ✅, `/sm close <T-ID>`.

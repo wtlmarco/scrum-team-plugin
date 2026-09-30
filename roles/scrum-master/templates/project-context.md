@@ -14,7 +14,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 │                             consumption.md · burndown.md · review.md · retrospective.md · plugin-report.md
 ├── scrum-master/             context.md
 ├── product-owner/            context.md · product-backlog.md
-├── architect/                context.md · spikes/
+├── architect/                context.md · spikes/ · calibration/ *(sob demanda: plano de calibração, sem sprint corrente)*
 ├── user-experience/          context.md · prototype/ (+ prototype/sprint-<n>/) · journeys/ · screens/
 ├── developer/                context.md
 └── quality-assurance/        context.md · baseline.md
@@ -109,33 +109,33 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 
 | Comando | Modos |
 |---|---|
-| `/sm` | `onboarding` · `sprint plan` · `sprint close` · `review` · `board` · `agreement <questão>` · `close <T-ID>` |
+| `/sm` | `onboarding` · `brainstorm <ideia>` · `sdd [<tema>]` · `sprint prepare` · `sprint plan` · `sprint run [<T-ID>]` · `sprint review` *(alias: `review`)* · `sprint close` · `board` · `agreement <questão>` · `close <T-ID>` |
 | `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` · `bug <relato>` · `note` |
 | `/arc` | `plan <T-ID>` · `comply <T-ID>` *(exceção pedida pelo stakeholder)* · `adr <tema>` · `question <dúvida>` |
-| `/ux` | `prototype` · `journey <fluxo>` · `screen <nome>` · `prototype screen <tela>` · `review-ui <tela>` |
+| `/ux` | `prototype` · `prototype sprint <n>` · `prototype screen <tela>` · `journey <fluxo>` · `screen <nome>` · `review-ui <tela>` |
 | `/dev` | `<T-ID>` · `resume <T-ID>` · `gap <resposta>` |
 | `/qa` | `<T-ID>` · `baseline` · `audit` · `security <T-ID>` · `bug <descrição>` *(acionado pelo PO)* · `scenarios create` · `scenarios run <SC-nnn\|grupo\|all>` |
-| `/team` | `init` · `update` · `brainstorm <ideia>` · `cycle <T-ID>` · `plan <T-ID>` · `build <T-ID>` · `qa <T-ID>` |
+| `/team` | `init` · `update` · `version` |
 
-**O canal do stakeholder é o PO** — demanda, valor, escopo, prioridade, **prazo, plano de entrega e status**. Questão técnica vai ao **Arquiteto**, de tela ao **UX**, diretamente. O **SM não é canal de demanda**: é processo, organização e eficiência, gere os rituais e facilita acordo. **Não há broadcast** — `/team` orquestra o time trabalhando, não fala com os seis.
+**O canal do stakeholder é o PO** — demanda, valor, escopo, prioridade, **prazo, plano de entrega e status**. Questão técnica vai ao **Arquiteto**, de tela ao **UX**, diretamente. O **SM não é canal de demanda**: é processo, organização e eficiência, gere os rituais e facilita acordo. **Não há broadcast** — `/team` só instala, atualiza e informa a versão; **a descoberta é o `/sm brainstorm` e o time construindo é o `/sm sprint run`**, e não fala com os seis por precaução.
 
 **`<H-ID>` é História (valor, dona: PO); `<T-ID>` é Task (trabalho, no Sprint Backlog).** Toda Task pertence a uma História (R20). O aceite é da História, na Sprint Review — `/sm close` fecha a Task tecnicamente e não aceita nada (R21).
 
-**`/sm review` é a Sprint Review, neste projeto.** A evolução do processo do time é pelo comando **`/review`**, executado num clone do repositório-fonte do plugin — **não neste projeto**.
+**`/sm sprint review` (antes `/sm review`, ainda alias) é a Sprint Review, neste projeto.** A evolução do processo do time é pelo comando **`/review`**, executado num clone do repositório-fonte do plugin — **não neste projeto**.
 
 **Por onde começar**
 
 | Situação | Sequência |
 |---|---|
-| **Projeto novo** | `/team brainstorm <ideia>` → `/po requirement <ID>` → `/ux prototype` → ① → ② → `/po story <H-ID>` → `/sm sprint plan` → ③ (pacote aprovado) → `/team cycle <T-ID>` → `/sm review` |
-| **Projeto retomado** | `/sm onboarding` → `/qa audit` → `/qa baseline` → `/po story <H-ID>` → `/sm sprint plan` |
-| **Bug** | Relatado pelo stakeholder: `/po bug <relato>` ou `.team-project/note.md` via `/po note` (PO classifica, aciona a QA se for defeito). Achado pelo time: direto no registro da QA (🔺 GAP do dev · achado próprio da QA · §6b para Arquiteto/UX), sem passar pelo PO. Dos dois: `/arc question <dúvida>` (diagnóstico, se a causa não é óbvia) → `/arc plan <T-ID>` → `/dev <T-ID>` → `/qa <T-ID>` → `/sm close <T-ID>` → aceite na `/sm review` |
-| **Melhoria** | `/po analyze` (área já documentada) ou `/team brainstorm` (capacidade nova) → `/po impact` → `/po story` → `/sm sprint plan` → `/team cycle` |
-| **Fim de sprint** | `/sm review` (PO conduz o aceite, o stakeholder decide por História) → `/sm sprint close` (retrospectiva) → `/sm sprint plan` (abre o próximo, e o ③ do próximo pacote) |
+| **Projeto novo** | `/sm brainstorm <ideia>` → `/sm sdd` (SDD funcional + protótipo → ① → SDD técnico → ② → Histórias) → `/sm sprint prepare` → `/sm sprint plan` → ③ (pacote aprovado) → `/sm sprint run` → `/sm sprint review` |
+| **Projeto retomado** | `/sm onboarding` → `/qa audit` → `/qa baseline` → `/po story <H-ID>` → `/sm sprint prepare` → `/sm sprint plan` |
+| **Bug** | Relatado pelo stakeholder: `/po bug <relato>` ou `.team-project/note.md` via `/po note` (PO classifica, aciona a QA se for defeito). Achado pelo time: direto no registro da QA (🔺 GAP do dev · achado próprio da QA · §6b para Arquiteto/UX), sem passar pelo PO. Dos dois: `/arc question <dúvida>` (diagnóstico, se a causa não é óbvia) → `/arc plan <T-ID>` → `/dev <T-ID>` → `/qa <T-ID>` → `/sm close <T-ID>` → aceite na `/sm sprint review` |
+| **Melhoria** | `/po analyze` (área já documentada) ou `/sm brainstorm` (capacidade nova) → `/po impact` → `/sm sdd` → `/sm sprint prepare` → `/sm sprint plan` → `/sm sprint run` |
+| **Fim de sprint** | `/sm sprint review` (PO conduz o aceite, o stakeholder decide por História) → `/sm sprint close` (retrospectiva) → `/sm sprint prepare` → `/sm sprint plan` (abre o próximo, e o ③ do próximo pacote) |
 
 Achado do QA volta pelo **degrau certo**: correção local → `/dev resume <ID>` · atravessa papéis → o QA roteia pelo dono, ou `/sm agreement` · o desenho não sustenta o requisito → `/arc question` · a dúvida é o critério → `/po`.
 
-Guia completo — instalação, atualização, os quatro caminhos em detalhe e as regras que valem sempre: [`how-to.md`](how-to.md), neste mesmo diretório (cópia do guia do plugin, atualizada pelo `/team init`). Para levar o time a outro projeto: `/team init`.
+Guia completo — o que você quer fazer → qual comando, os cenários de uso (novo · retomada · evolução · correção · pedido no meio do sprint · trabalho interrompido), os quatro portões, as regras e a referência dos comandos: [`how-to.md`](how-to.md), neste mesmo diretório (cópia literal do guia do plugin, criada pelo `/team init` e substituída pelo `/team update`). Para levar o time a outro projeto: `/team init`.
 ```
 
 > **A seção 8 é fixa** — copie-a como está, é a mesma em todo projeto. O que muda de projeto para projeto são as seções 1 a 7. O guia completo não entra aqui: este `README.md` é lido pelos agentes em **toda** invocação, e documentação de uso nele é custo permanente.
@@ -144,7 +144,7 @@ Guia completo — instalação, atualização, os quatro caminhos em detalhe e a
 
 | Papel | Conteúdo |
 |---|---|
-| **SM** | Fontes de estado e sua confiabilidade; artefatos que mantém; capacidade do time e unidade de estimativa; convenção de IDs; bloqueios e riscos abertos |
+| **SM** | Fontes de estado e sua confiabilidade; artefatos que mantém; capacidade do time e unidade de estimativa; convenção de IDs; bloqueios e riscos abertos; **§"Candidatas do próximo sprint"** — a lista que o `/sm sprint prepare` grava (História · DoR-a ✅/devolvida e por quê · data · varredura técnica feita? s/n) e que o `plan` lê, mais a subseção "Consumo pré-sprint (prepare · sdd)" (linhas de consumo dos subagentes do `prepare`, que o passo 9 da Planning transcreve para o `consumption.md` e limpa). Nasce no primeiro `prepare`; não é semeada no `init`. **§"SDD em elaboração"** — a seção que o `/sm sdd` abre: tema · caso (A ideia nova / B evolução) · origem · **brief funcional (≤15 linhas — único lugar declarado onde ele vive, R15)** · uma linha por etapa (1–5) com estado e data · decisão do ② (a do ① fica na ficha do protótipo funcional). É o estado que permite retomar o `sdd` em outra sessão |
 | **PO** | Cadeia funcional do produto; tipos de validação e contrato de erro; diferença entre declarado e real nos critérios; régua de priorização; nomenclatura; fora de escopo já decidido |
 | **Arquiteto** | A stack como está montada de fato; as armadilhas do código (o que o compilador não cobra); princípios do produto; padrões aplicáveis e limiares; dívida arquitetural conhecida |
 | **UX** | Situação da interface; inventário de rotas e componentes existentes; ambiente de protótipo; convenções visuais e de conteúdo; jornadas principais do produto; limitações para revisão |

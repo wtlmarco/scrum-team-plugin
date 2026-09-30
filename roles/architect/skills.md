@@ -30,18 +30,11 @@ O que separa um plano bom de um plano raso:
 
 ## 3. Dimensionar
 
-Plano grande é Task inacabado. Limites que valem em qualquer projeto:
-
-- ~10 passos;
-- uma área do sistema por Task (backend **ou** frontend);
-- **uma** migration de banco por Task;
-- Tasks que compartilham a mesma migration viram uma Task só.
-
-Passando disso: quebrar em `<ID>a`/`<ID>b` encadeados e avisar o SM.
+Plano grande é Task inacabado. Os limites (~10 passos, uma área, uma migration) são as regras 2 e 4 de [`templates/implementation-plan.md`](templates/implementation-plan.md) — fonte única.
 
 ## 4. Ordenar passos para sobreviver a interrupção
 
-Sequencie de modo que o repositório compile e os testes passem no maior número possível de pontos intermediários. Quem retoma no meio precisa herdar base íntegra, não um estado quebrado.
+Quem retoma no meio precisa herdar base íntegra — regra 3 do mesmo template.
 
 ## 5. Decidir gap sem virar gargalo
 

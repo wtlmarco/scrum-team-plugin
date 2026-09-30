@@ -83,7 +83,7 @@ Mensagem de erro e texto de estado vazio são parte do desenho.>
 - **Fidelidade declarada.** O nível do entregável é escolhido pelo gatilho (`../skills.md` §9), não por gosto — alta fidelidade antes de a estrutura estar acordada é retrabalho.
 - **Dado que não existe vira levantamento ao Arquiteto**, não suposição na tela.
 - **"Fora do escopo" é obrigatório** — é o que impede o dev de antecipar escopo (R4).
-- **Esta especificação vem antes da Planning** — é pré-condição da DoR da História (R20), e **não** é refeita quando a História entra num sprint. Se ela entrar, é daqui que sai a tela **costurada no protótipo do sprint** (`sprint-prototype.md`): sem o campo **Navegação** preenchido, não há caminho a costurar.
+- **Esta especificação vem antes da Planning** (produzida no `/sm sprint prepare`) — é pré-condição da DoR da História (R20), e **não** é refeita quando a História entra num sprint. Se ela entrar, é daqui que sai a tela **costurada no protótipo do sprint** (`sprint-prototype.md`): sem o campo **Navegação** preenchido, não há caminho a costurar.
 - **Durante o sprint, esta é a fonte viva da tela.** Correção que apareça depois da aprovação do pacote entra aqui — nunca no protótipo do sprint já aprovado, que é registro fechado do que o stakeholder viu (R4 · R25).
 
 ## Falhas comuns

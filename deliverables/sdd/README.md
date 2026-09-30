@@ -57,6 +57,7 @@ O SDD é o desenho do sistema, dividido por responsabilidade para que qualquer p
 ## Regras do conjunto
 
 - **Versão única para o conjunto.** Os sete documentos de conteúdo (`00`–`06`) evoluem juntos; a versão fica no índice e no changelog, não espalhada por arquivo.
+- **A versão aprovada nasce no `06-changelog`, depois do ②.** O PO registra ali a versão e a data da aprovação (① e ②, ou a dispensa por delta nulo, com o motivo) e só então atualiza **Versão atual**, **Data** e **Status** no índice (R12). Versão sem entrada de aprovação no changelog não é "aprovada".
 - **Marque o que mudou.** A convenção `*(novo vX.Y)*` / `*(revisado vX.Y)*` ao lado do título de uma seção permite ler a evolução sem abrir o changelog.
 - **Referência cruzada em vez de repetição.** Um fato vive num documento só; os outros apontam para ele. Duplicar é criar duas verdades para manter.
 - **Nada de código de implementação.** O SDD descreve o desenho; exemplos existem para desambiguar contrato, não para servir de fonte.
