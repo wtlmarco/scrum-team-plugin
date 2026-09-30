@@ -8,6 +8,88 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.34 — Cadência do sprint em cinco modos do `/sm` (prepare · plan · run · review · close); `/team cycle|plan|build|qa` removidos; decisão de portão em formulário (R22) (SM + PO + Arquiteto + QA + UX) — 29/09/2026
+
+**Instrução** (stakeholder, `/review note`, seis itens de `note.md`, literais): (1) "a inicialização do sprint pelo comando /sm sprint plan precisa de diversos processos que antecedem a planning meeting rodando na sequência: /po story, /arc plan, /qa scenarios create, /ux prototype, gostaria de gerar um novo comando para o /sm como sprint prepare"; (2) "Migrar o /team cycle para o /sm sprint run"; (3) "simplificar os comandos de execução do sprint em plan, run, review, close"; (4) "Revisar se ainda será necessário o /team plan, /team build, /team qa"; (5) "as questões necessárias para levar ao stakeholder devem ser apresentada em modo formulário"; (6) "Revisar os pontos de aprovação necessários do Stakholder para seguir no processo"; (7) *(mesma rodada, instrução posterior)* "passar o /team brainstorm para o /sm".
+
+**Classificação:** cerimônia + etapa de fluxo (`prepare`, `run`), nome de modo (`sprint review`), regra (R22 estendida, R25 referenciada) e comportamento de comando (proposta ao stakeholder). Rodada de **cinco papéis** (o SM aplica os normativos e a curadoria; PO, Arquiteto, QA e UX aplicam no próprio alcance) — barreira aplicável: 20 KB (R17); as contrapartes de `commands/`/`agents/` ficam como proposta.
+
+### Decisões do stakeholder (formulário, triagem do SM)
+| # | Decisão | Escolha |
+|---|---|---|
+| D1 | Escopo do `prepare` e lugar do ③ | **A** — `prepare` só leva à DoR (`/po story` detalhe, `/ux journey\|screen`, `/qa scenarios create`, varredura técnica opcional do Arquiteto). `/arc plan` fica por Task no `run`; `/ux prototype sprint` e o ③ ficam no `plan` (razão: dependência de Task, de ③ e de corte — R20) |
+| D2 | `run` fecha a Task? | **A** — fecha no ✅ com documentos vivos atualizados (R12), chamando `/sm close <T-ID>`, que segue existindo manual |
+| D3 | Destino do `/team cycle\|plan\|build\|qa` | **A** — removidos, sem alias. A granularidade por etapa é a dos comandos de papel |
+| D4 | Formulário nos portões | **A** — R22 estendido a ①②③④: aprovar · aprovar com ajuste · reprovar · pedir mais contexto; ④ uma pergunta por História; navegação do protótipo fora do formulário; instrução também em `/qa` e `/ux` (proposta) |
+| D5 | Aprovação própria para GAP/bug entrar no sprint | **A** — mantido: entram no lote do ③ (Sprint Backlog e `planning.md`). **Revisão do item 6 feita, sem mudança normativa.** Pontos vigentes conferidos: onboarding (passo 5), brainstorm, ①, ②, ③, ④, degrau 2, decisão estratégica, lacuna de especificação, exceção a padrão, `plugin-report`, bump de versão (R18) |
+
+**Item 7 — `/team brainstorm` → `/sm brainstorm`; alias? — decisão do SM (dentro do alcance): NÃO fica alias.** Motivo: coerente com D3 (removidos sem alias); manter `/team brainstorm` deixaria o `/team` disparando agente e carregando `consumption`/falha de invocação só por um modo. O custo é o hábito do stakeholder — mitigado porque `/team` sem modo reconhecido **roteia** ("ideia sem cobertura → `/sm brainstorm`"), então digitar o nome antigo devolve a rota certa em uma linha. Reversível por entrada nova. **A medição de ~39 KB de `/team brainstorm` (v3.16) deixa de valer** — o modo carrega agora `commands/sm.md`; marcada "a remedir".
+
+**Alias de `/sm review` — decisão do SM (dentro do alcance):** mantido como alias de `sprint review`, por dois motivos: `/sm review` está em `how-to.md`/`README.md` de projetos já instalados, e remover o alias quebraria muscle memory sem ganho de clareza (o aviso "`/sm sprint review` não é `/review`" já cobre a confusão). O nome canônico nos documentos é `sprint review`. Reversível com uma entrada nova.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `roles/scrum-master/process/workflow.md` | §2 (cadeia) · §2a (tabela e parágrafo) · §5 (tabela de cerimônias) · §5e (nova subseção "Preparação — `/sm sprint prepare`", verificação) · §5g (linhas 2b e 5) · §6b · §8 · footprint (§5c) | `prepare` (etapa 2b) e `run` (substitui `cycle`; fecha Task); `sprint review`; declara removidos `/team cycle\|plan\|build\|qa`; ③/④ em formulário; linha de custo do `run` marcada "a remedir" |
+| `roles/scrum-master/process/working-rules.md` | R22 (novo parágrafo "decisão de portão também é formulário" e verificação) · R25 (cadência de cinco modos) | Extensão de R22 aos portões; R25 cita `prepare` sem contato novo com o stakeholder. **Sem regra nova** — R22 e R25 já existiam |
+| `roles/scrum-master/process/artifact-ownership.md` | §1 (registro de sprint) | `/sm review` → `/sm sprint review` |
+| `roles/scrum-master/README.md` | seções dos modos | Novas `sprint prepare` e `sprint run`; `sprint review` (alias); formulário no ③ e no ④ |
+| `roles/scrum-master/templates/{project-context,sprint-review,retrospective}.md` | tabelas de comandos e sequências | Nomes de modo; `/team` fica só com `init · update · version` (o `brainstorm` migrou para o `/sm` — ver a instrução 7 e a linha "brainstorm" abaixo) |
+| `roles/scrum-master/process/workflow.md` · `working-rules.md` (R15) · `artifact-ownership.md` · `roles/scrum-master/README.md` (nova seção `/sm brainstorm`) · `templates/{project-context,consumption}.md` · `README.md` · `how-to.md` · `team-init.md` | brainstorm (§2a etapa 0b · §5 · §5a passo 3 · §5b · custo §5c) | `/team brainstorm` → **`/sm brainstorm <ideia>`**, fora da cadência do sprint e orquestrado pela sessão (fase 1 PO+UX em paralelo, fase 2 Arquiteto em rodadas, SM facilita); **sem alias**; `/team` deixa de disparar agente, então sai de `consumption.md` como comando que grava |
+| `README.md` · `how-to.md` · `replicate-in-new-project.md` · `team-init.md` · `deliverables/team-project/README.md` | tabelas de comandos, fluxos, checklist | Coerência de referência cruzada (nome de modo/ponteiro), incluindo o ③ passar a "depois da Planning" onde o texto ainda o situava no detalhamento |
+| `roles/scrum-master/templates/sprint-review.md` | seção "Aceite — H-<nnn>" (nova) + regra | Âncora `review.md#aceite--h-<nnn>` que o PO cita na pergunta do ④; sem dossiê apontável, a pergunta não sai (achado do PO) |
+| `roles/scrum-master/process/workflow.md` | §5e Preparação (passo 5 e verificação) | Saída do Arquiteto apontada para `technical-decision.md` §Variante; verificação de "varredura sem Task, estimativa nem job do `operator`" (achado do Arquiteto) |
+| `roles/product-owner/README.md` · `templates/acceptance.md` · `templates/user-story.md` | `/po story` · `prioritize` · `accept` · Ponteiro do dossiê · estados | (PO) `prepare` passo 2 sem aprovação, saída = DoR §3a sem Task; `prioritize` alimenta o `prepare` e o `planning.md`; ④ em formulário, uma pergunta por História com ponteiro do dossiê e recomendação do PO; fechamento da Task = ✅ do `sprint run` |
+| `roles/architect/README.md` · `templates/technical-decision.md` | `/arc plan` · nova subseção da varredura · variante | (Arquiteto) plano por Task, dentro do `sprint run`, só depois do ③ (R20); varredura técnica opcional do `prepare` **sem modo novo** — `/arc question` com a variante do modelo (História · dependência técnica · risco · pré-requisito de ambiente · bloqueia a Planning?), sem plano, Task, estimativa nem `operator`; indicador: nenhum plano antecede o ③ |
+| `roles/quality-assurance/README.md` · `skills.md` §13 · `templates/{scenario,scenarios-index,verdict}.md` | `scenarios create` · competência · origem · "Volta para" | (QA) `create` roda no `prepare`; mapeamento por Task continua na Planning (R30); `/team` → `/sm` no veredito |
+| `roles/user-experience/README.md` · `templates/{functional-prototype,sprint-prototype,screen-spec}.md` · `deliverables/prototype/README.md` | entradas · registro dos portões ① e ③ · checklist | (UX) `journey`/`screen` vêm do `prepare`, e o `run` aciona o UX só com interface; fichas do ① e do ③ ganham decisão (formulário R22), data e ajuste pedido — no ③ a decisão é **uma só, sobre o pacote inteiro**; critério verificável no `deliverables/prototype/` |
+
+### Por quê
+O stakeholder rodava quatro comandos de papel em sequência à mão antes de cada Planning, e o "time construindo" morava em `/team`, que deveria só instalar, atualizar e descobrir. Sem `prepare`, a DoR da História (§3a) era um pré-requisito sem comando dono; sem `run` no `/sm`, a cadência do sprint tinha quatro verbos em dois comandos. E os portões — as decisões mais caras do stakeholder — chegavam em conversa, sem a forma que R22 já dava às escalações. A escolha de **não** pôr `/arc plan` nem o protótipo do sprint no `prepare` evita o modo de falha de R20: plano antes do pacote aprovado é trabalho perdido se o pacote for reprovado.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| PO | `/po story` (detalhe) passa a ser chamado pelo `prepare`; priorização da Review anterior segue no `planning.md` |
+| UX | `journey`/`screen` no `prepare`; `prototype sprint` no `plan`; decisão do ①/③ em formulário depois da navegação |
+| QA | `scenarios create` é insumo do `prepare`; o mapeamento por Task continua na Planning (R30) |
+| Arquiteto | varredura técnica opcional no `prepare`; `/arc plan <T-ID>` dentro do `run` |
+| dev | nenhuma mudança de papel; é disparado pelo `run` |
+| SM | conduz cinco modos; fecha a Task dentro do `run`; verifica que decisão de portão não chegou em texto corrido |
+
+### Conflitos com o processo vigente
+Nenhum com regra escrita. Dois pontos de atenção: (i) a verificação de R22 dizia que aprovação de portão é "diálogo direto" (§6b) — reconciliada ali, sem contradição residual; (ii) `consumption.md` só nasce no `sprint plan`, então as invocações do `prepare` não têm onde ser gravadas — segue a regra de R28 para `pre-sprint` (o total do sprint é um piso), declarado na proposta de `commands/sm.md`.
+
+### Como saberemos que funcionou
+Nos próximos dois sprints: (a) zero Planning aberta com História sem DoR (§5e, verificação); (b) zero decisão de portão em texto corrido (achado contra a orquestração, R22); (c) o número de comandos digitados à mão antes da Planning cai de quatro para um.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | `Select-String 'team cycle\|team plan\|team build\|team qa\|/sm review\|cycle sprint\|`cycle'` em 79 `.md` de RAIZ, excluindo `commands/`, `agents/`, `CHANGELOG.md`, `process-changelog*.md`, `note.md` | 9 ocorrências, todas **intencionais e lidas no contexto**: `workflow.md:55` e `:57` (declaram a remoção e o alias), `:130` (corrigido para `/sm sprint run`), `:272` (nota histórica do custo); `project-context.md:124`, `README.md` (sm):79 e :100, `how-to.md:79`, `README.md`:115 (todas "antes `/sm review`, ainda alias") | ✅ (uma ocorrência antiga em `workflow.md:130` consertada) |
+| Substituição de padrão | leitura das ocorrências novas de `sprint review`/`sprint run`/`sprint prepare` (83 de `sprint review`) | cada uma lida ao lado de contagens e listas: "cinco modos" (workflow:57) enumera prepare·plan·run·review·close = 5; "Onze passos" do `sprint plan` na proposta segue com 11 (a Planning não mudou); a tabela de `/sm` de `README.md`, `how-to.md` e `project-context.md` traz os 9 modos iguais | ✅ |
+| Arquivamento de entrada | comparação `Contains` do bloco v3.32 (12.269 caracteres, 106 linhas) no arquivo de arquivo | `True` — zero linhas diferentes, só o separador `---` acrescentado | ✅ |
+| Extração ou remoção | contagem de linhas | `process-changelog.md` 346 → 239 ao tirar a v3.32, e 298 depois da v3.34 e da linha de índice (três entradas: v3.34, v3.33.1, v3.33 — teto de R17 respeitado); `process-changelog-archive.md` 3.409 (recebeu a v3.32) | ✅ |
+| Extração ou remoção | `git diff --stat` | `process-changelog-archive.md` +108, `process-changelog.md` −107 (a diferença de +1 é o separador) | ✅ |
+| Substituição de padrão (QA) | grep `Volta para: /team\|dev / \`/team\`\|/team (cycle\|qa\|plan\|build)` em `roles/quality-assurance/`; leitura de 2 ocorrências novas de `/sm` em `verdict.md` e 4 menções de `prepare` contra §2a/§5e | 0 do antigo; novas coerentes | ✅ |
+| Substituição de padrão (PO) | grep `/team (cycle\|plan\|build\|qa)\|/sm review` em `roles/product-owner/`, `deliverables/sdd/`, `01-scope-and-criteria`; leitura dos trechos novos contra §3a e a linha 351 | 0; coerentes | ✅ |
+| Extração ou remoção (PO) | Select-String dos 6 marcadores novos; contagem do README do PO | 6 presentes; 162 linhas | ✅ |
+| Substituição de padrão (UX) | Select-String `team cycle\|/team (plan\|build\|qa)` em `roles/user-experience/**` e `deliverables/prototype/README.md`; leitura da tabela do ③ | 0; tabela do ③ com 5 colunas no cabeçalho e na linha-modelo | ✅ |
+| Substituição de padrão (Arquiteto) | Select-String `team cycle\|/team plan\|/team build\|/team qa\|\`cycle\`\|/sm review\b` em 24 `.md` de `roles/architect`, `roles/developer`, `standards`, `deliverables/sdd`; leitura de `README.md:35,:59-60,:145` e `technical-decision.md:3,:42,:44`; âncora `#variante--varredura-técnica-do-prepare` | 0; coerentes; âncora bate | ✅ |
+| Substituição de padrão (item 7) | `Select-String 'team brainstorm'` em `.md` de RAIZ excluindo `commands/`, `agents/`, `CHANGELOG.md`, `process-changelog*.md`, `note.md`, `proximo.md` — **antes**: 14 ocorrências em 7 arquivos (`workflow.md` ×5, `project-context.md` ×2, `how-to.md` ×2, `README.md` ×2, `artifact-ownership.md`, `roles/scrum-master/README.md`, `team-init.md`; mais `commands/sm.md:15` e `commands/team.md:42`, que ficam na proposta) | **depois**: 2, ambas intencionais e lidas no contexto — `workflow.md:202` e `roles/scrum-master/README.md:42` ("antes `/team brainstorm`, sem alias"). Em `commands/sm.md:15` e `commands/team.md:42` restam 2, por serem proposta. `/sm brainstorm`: 24 ocorrências novas, cada uma lida ao lado da tabela ou do fluxo. Nenhuma ocorrência em `roles/product-owner/`, `roles/user-experience/` e `roles/architect/` (nada a trocar nos outros papéis) | ✅ |
+| Referência cruzada (SM) | contagem de modos: `/sm` passa a listar `onboarding · brainstorm · sprint prepare · plan · run · review · close · board · agreement · close <T-ID>` em `README.md`, `how-to.md` e `project-context.md`; `/team` = `init · update · version` nos três | tabelas idênticas nos três; `consumption.md` sem `/team` como comando que grava | ✅ |
+| Referência cruzada (SM) | conferência de "§5e passo 10 e §5g" (`roles/user-experience/README.md:59`, `deliverables/prototype/README.md:68`) e "passo 7 da Planning" (`roles/user-experience/README.md:63`) contra a tabela do §5e | passo 10 = pacote, passo 7 = corte — **corretos**, nada a trocar (a subseção Preparação tem tabela própria e não renumera a Planning) | ✅ |
+| Referência cruzada (SM) | âncora `review.md#aceite--h-<nnn>` (PO) contra `templates/sprint-review.md` | seção "Aceite — H-<nnn>" criada; âncora resolve | ✅ (era ❌: a seção não existia) |
+
+**Teto R17:** entrada de rodada de 5 papéis, barreira de 20 KB; bloco `## v3.34`, `[Text.Encoding]::UTF8.GetByteCount` sobre o trecho até `## v3.33.1`, medido em 29/09/2026: **15.754 bytes (~15,4 KB) < 20 KB** ✅ (remedido depois do item 7). Entradas do arquivo: três (v3.34, v3.33.1, v3.33).
+
+**Contradições entre mudanças de papéis (SM curador):** (i) UX × SM — o bloco do SM previa formulário do `prototype sprint` no UX, o que duplicaria o ③; resolvido a favor do UX (formulário único no passo 10 do `sprint plan`, o UX só transcreve), e a proposta de `commands/sm.md` foi alinhada. (ii) QA × SM — "deixe o run fechá-la" induzia a ler que `/qa` avulso fecha; resolvido a favor do QA ("dentro do `/sm sprint run` o SM fecha sozinho"). (iii) PO × SM — o ④ exigia dossiê apontável que o modelo `sprint-review.md` não tinha; criada a seção. Nenhuma contradição exige decisão do stakeholder.
+
+### Pendente do stakeholder
+As propostas de `commands/` e `agents/` desta entrada (texto pronto em `scratchpad/proposals/`) foram **aplicadas em 29–30/09/2026** na branch `feat/v3.34.0` — ver "Pendente do stakeholder" da "v3.34 (parte 2)", acima. *(Nota de recomposição: o texto original deste parágrafo, que listava cada proposta, foi apagado por engano durante o arquivamento da v3.33.1 e substituído por este ponteiro; a lista das 14 propostas está na entrada "parte 2" e no `CHANGELOG.md` v3.34.0.)*
+
+---
+
 ## v3.33.1 — O papel chamador retrata o consumo do `operator`; o registro o soma em linhas por chamador (SM) — 29/09/2026
 
 **Instrução** (stakeholder, `/review`, item de `note.md` "Consumo do `operator` não aparece no registro de consumo do sprint"): "que o uso do operator possa ser retratado pelo seu chamador, assim teríamos a economia nessa transferência de atividade".

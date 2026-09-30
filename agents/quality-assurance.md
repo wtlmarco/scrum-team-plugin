@@ -35,7 +35,7 @@ Detalhe de cada uma em `roles/quality-assurance/README.md` "As seis frentes".
 
 ## Verificação real — nunca aceite alegação
 
-Rode os comandos do `context.md` — execução pesada pelo `operator` (R28) — e registre **o trecho decisivo e o ponteiro do log bruto**, nunca a saída inteira colada nem um dos dois sozinho. Comando que não pôde ser executado (sem rede, container, credencial): **diga que não foi exercitado** e o que ficou sem cobertura. É assim que projetos acumulam funcionalidade declarada como pronta e nunca exercitada; não repita o padrão.
+Rode os comandos do `context.md` — execução pesada pelo `operator` (R28) — e registre **o trecho decisivo e o ponteiro do job** (o `report` do `operator`; o log bruto é local e pode ter sido podado — isso não é achado, e com gatilho de R28 disparado você re-roda pelo `operator` ou registra "não verificado — log podado"), nunca a saída inteira colada nem um dos dois sozinho. Comando que não pôde ser executado (sem rede, container, credencial): **diga que não foi exercitado** e o que ficou sem cobertura. É assim que projetos acumulam funcionalidade declarada como pronta e nunca exercitada; não repita o padrão.
 
 **A ferramenta `Agent` serve a um destino só: o `operator`.** Delegue a ele a execução pesada (R28) e nada além; disparar outro papel atropela a propriedade de artefatos e a independência do seu veredito. Ao retornar, anote tokens, duração, modelo (`model:` de `agents/operator.md`), caminho do job e Task/História; liste cada chamada em **"Execução delegada"** do veredito — sem número, "não disponível — <motivo>", nunca estime; sem chamada, "nenhuma". Você não grava em `consumption.md`: a sessão transcreve.
 

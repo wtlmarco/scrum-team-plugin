@@ -16,6 +16,7 @@ A partir de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/project-context.
 .team-project/
 ├── README.md                 produto · situação · stack · fontes da verdade · ambiente · limitações
 ├── how-to.md                 cópia de `${CLAUDE_PLUGIN_ROOT}/how-to.md`
+├── consumption.md            consumo fora de sprint (Nota pre-sprint;/entre-sprints;) — nasce com o cabeçalho e a tabela vazia, sem rotação
 ├── sprints/                  registro de execução — um subdiretório por sprint; nasce vazio
 │   └── <n>/                  planning.md · sprint-backlog.md · stories/ · plan/ · evidence/
 │                             consumption.md · burndown.md · review.md · retrospective.md · plugin-report.md
@@ -29,7 +30,9 @@ A partir de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/project-context.
 
 **O manifesto do que criar, com a origem de cada arquivo e a classe de reconciliação, está em `${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/README.md`** — é a lista única, e é ela que o `/team update` relê depois para reconciliar o que aqui foi instanciado. Em resumo: `product-backlog.md` sai do `templates/` do PO; os seis `context.md`, da seção "O que vai em cada `context.md`" do modelo de contexto. `sprints/`, `spikes/`, `prototype/`, `journeys/` e `screens/` nascem **vazios**. O `how-to.md` é **cópia literal** de `${CLAUDE_PLUGIN_ROOT}/how-to.md`, com um comentário no topo dizendo que não deve ser editado ali — é o guia de uso à mão de quem trabalha no projeto.
 
-**O que o `init` NÃO cria, e por quê.** `sprints/<n>/` e tudo dentro dela nascem na **Planning Meeting** (`/sm sprint plan`, `workflow-sprint.md` §5e passo 9) — o registro de execução pertence a um sprint, e sprint nenhum existe ainda. `baseline.md` nasce no `/qa baseline`, durante o onboarding. Semear esses arquivos vazios aqui produziria exatamente o defeito que R14 combate: estrutura que afirma um estado que o projeto não tem.
+**`.gitignore` — o processo fica fora do git (R31).** Se o projeto é repositório git, acrescente (crie o arquivo se não existir) a linha `.team-project/` ao `.gitignore` da raiz. **Só acrescente**: nunca reescreva um `.gitignore` existente. O repositório recebe só o produto (código e `docs/`); o estado da gestão é local e sem histórico. Se `.team-project/` já estiver rastreado (`git ls-files .team-project` não vazio), não o altere aqui: aponte o passo 7b do `/team update`, que desrastreia e limpa o histórico com confirmação explícita do stakeholder em cada passo destrutivo.
+
+**O que o `init` NÃO cria, e por quê.** `sprints/<n>/` e tudo dentro dela nascem na **Planning Meeting** (`/sm sprint plan`, `workflow-sprint.md` §5e Planning, passo 9) — o registro de execução pertence a um sprint, e sprint nenhum existe ainda. `baseline.md` nasce no `/qa baseline`, durante o onboarding. Semear esses arquivos vazios aqui produziria exatamente o defeito que R14 combate: estrutura que afirma um estado que o projeto não tem.
 
 ## 3. Pergunte ao stakeholder, numa lista só
 

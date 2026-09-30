@@ -10,9 +10,9 @@
 | Requisito | ok / falha | <critério + como verifiquei> |
 | Especificação técnica | ok / falha | **Duas tabelas** abaixo, sempre as duas: **"passo do plano × conforme"** (objeto 1, aderência de execução) e **"seção exigida pela Task × seção citada"** (objeto 2, 4 estados) |
 | Segurança | ok / falha / n/a | <arquivo:linha ou teste> |
-| Testes / métricas | ok / falha | <trecho decisivo do comando de teste **e** do gate de cobertura — ponteiro do log em "Comandos executados"> |
+| Testes / métricas | ok / falha | <trecho decisivo do comando de teste **e** do gate de cobertura — ponteiro do `report` em "Comandos executados"> |
 | Documentação | ok / falha | <arquivo atualizado — detalhe em "Documentos vivos (R12)" abaixo> |
-| Desempenho | dentro do orçamento / fora / não exercitado | <trecho decisivo do comando V19 — ponteiro do log em "Comandos executados" · ou o motivo do "não exercitado"> |
+| Desempenho | dentro do orçamento / fora / não exercitado | <trecho decisivo do comando V19 — ponteiro do `report` em "Comandos executados" · ou o motivo do "não exercitado"> |
 
 ### Frente 2 — os dois objetos, sempre os dois (`workflow.md` §4a)
 *(Task não fecha sem as duas tabelas abaixo preenchidas — DoD §4a-i)*
@@ -38,15 +38,15 @@ Divergência volta **direto** a `/dev resume`, sem Arquiteto. **Passo sem Confer
 
 | SC-nnn | Tipo | Resultado | Forma | Evidência |
 |---|---|---|---|---|
-| SC-<nnn> — `.team-project/quality-assurance/scenarios/SC-<nnn>-<slug>.md` | novo / regressivo | ✅ passou / ❌ falhou / ⚠️ não executado — <motivo> | manual / navegador / script | <trecho decisivo + ponteiro do log (execução pesada/lote via `operator`, R28), ou o que faltou> |
+| SC-<nnn> — `.team-project/quality-assurance/scenarios/SC-<nnn>-<slug>.md` | novo / regressivo | ✅ passou / ❌ falhou / ⚠️ não executado — <motivo> | manual / navegador / script | <trecho decisivo + ponteiro do `report` (execução pesada/lote via `operator`, R28), ou o que faltou> |
 
-Cada linha desta tabela é também gravada no **Histórico de execuções** do próprio arquivo `SC-<nnn>` ([`templates/scenario.md`](../../quality-assurance/templates/scenario.md)) e reflete o "Último resultado" do índice ([`templates/scenarios-index.md`](../../quality-assurance/templates/scenarios-index.md)) — os três nunca divergem sobre a mesma execução.
+Cada linha desta tabela é também gravada no **Histórico de execuções** do próprio arquivo `SC-<nnn>` ([`templates/scenario.md`](scenario.md)) e reflete o "Último resultado" do índice ([`templates/scenarios-index.md`](scenarios-index.md)) — os três nunca divergem sobre a mesma execução.
 
 **Cenário falhou (❌) — roteamento pelo bloqueio, não pela criticidade (R30):**
 
 | GAP compromete a História em voo? | Caminho | Onde registro |
 |---|---|---|
-| **Sim, bloqueia** | Vira Task da mesma História, no sprint corrente (R25 · `workflow-sprint.md` §5e "Durante o sprint") | Entrada nos Achados abaixo, `Volta para: /sm` (SM registra a entrada fora da Planning) |
+| **Sim, bloqueia** | Vira Task da mesma História, no sprint corrente (R25 · `workflow-sprint.md`, "Durante o sprint") | Entrada nos Achados abaixo, `Volta para: /sm` (SM registra a entrada fora da Planning) |
 | **Não bloqueia** | Ganha entrada no Product Backlog, escrita pelo **PO**, no mesmo ciclo (R12) | GAP em `pending.md` com **ID: <MÓDULO-NN>** → **roteado ao PO** nesta linha; o PO abre a linha do Product Backlog citando este ID |
 
 ### Comandos executados
@@ -55,8 +55,8 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 > <comando>
 <trecho decisivo, verbatim>
 ```
-**Log bruto:** `.team-project/operator/<sprint>/<job>/<arquivo>.log` — <n> linhas *(ou "n/a — comando leve, sem `operator`")*
-*(repetir o par comando/trecho + log bruto para cada comando executado)*
+**Relatório do `operator`:** `.team-project/operator/<sprint>/<job>/report.md` (ou `report-<log>.md`) · log bruto, disco local, pode ter sido podado: `<arquivo>.log` — <n> linhas *(ou "n/a — comando leve, sem `operator`")*
+*(repetir o par comando/trecho + relatório do `operator` para cada comando executado)*
 
 ### Execução delegada
 *(uma linha por chamada ao `operator`, com os números que a chamada devolveu ao terminar. Sem número: "não disponível — <motivo>", nunca estimado (R7). Sem chamada: "nenhuma". Não grava em `consumption.md` — a sessão que disparou o QA transcreve.)*
@@ -95,10 +95,10 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 
 ## Regras
 
-- **Executar antes de opinar** (R7). Veredito sem trecho decisivo **e** ponteiro do log (quando a verificação foi delegada ao `operator`, R28) não é veredito — comando leve, sem `operator`, traz o comando e a saída direto. Alegação sem nenhum dos dois não conta, do mesmo jeito que a saída completa colada por inteiro não é o formato certo.
-- **Log bruto referenciado precisa resolver** — ponteiro para `.team-project/operator/<sprint>/<job>/` que não existe é achado de processo (R28). Achado sem `arquivo:linha` vai a "Suspeitas".
+- **Executar antes de opinar** (R7). Veredito sem trecho decisivo **e** ponteiro do `report` (quando a verificação foi delegada ao `operator`, R28) não é veredito — comando leve, sem `operator`, traz o comando e a saída direto. Alegação sem nenhum dos dois não conta, do mesmo jeito que a saída completa colada por inteiro não é o formato certo.
+- **O `report` referenciado precisa existir** — `report.md` (ou `report-<log>.md`) ausente no caminho é ausência de evidência (rejeição no aceite, R7); acima de 200 linhas ou 20 KB é achado de processo (R28). **Log bruto podado não é achado:** achado é gatilho de aprofundamento disparado com o log podado sem re-rodar o job pelo `operator` nem registrar "não verificado — log podado" (R7). Achado sem `arquivo:linha` vai a "Suspeitas".
 - **Desvio de seção de standard citada no plano é reprovação, não ressalva** (R16). Defeito no próprio standard (contradição, lacuna, regra inverificável) é achado de **Tipo `processo`** só para `/review` — **não** vira GAP de projeto. Plano que **omitiu** a seção que a Task exigia ou **citou a errada** (tabela do objeto 2, estados 3 e 4) é **duplo**: 🔺 **GAP** para o Arquiteto via `/arc question` (desbloqueia a Task, `workflow.md` §4a) **e** achado de `processo` para `/review` (corrige o hábito) — os dois, não um no lugar do outro.
-- **Frente 2 sem as duas tabelas não cobriu os dois objetos** (`workflow.md` §4a). Veredito com só a tabela do objeto 2 (como antes de v3.31) é achado de processo contra o próprio veredito. Divergência do objeto 1 volta **direto** a `/dev resume`, sem passar pelo Arquiteto — o antigo `/arc comply` saiu do ciclo e só roda como exceção explícita pedida pelo stakeholder. **Passo "inconferível sem decidir"** (Conferência do plano insuficiente, R13 de `implementation-plan.md`) não é "conforme" nem achado de execução: é 🔺 GAP do plano, para `/arc question`.
+- **Frente 2 sem as duas tabelas não cobriu os dois objetos** (`workflow.md` §4a). Veredito com só a tabela do objeto 2 (como antes de v3.31) é achado de processo contra o próprio veredito. Divergência do objeto 1 volta **direto** a `/dev resume`, sem passar pelo Arquiteto. **Passo "inconferível sem decidir"** (Conferência do plano insuficiente, R13 de `implementation-plan.md`) não é "conforme" nem achado de execução: é 🔺 GAP do plano, para `/arc question`.
 - **Desempenho registra sempre um dos três estados.** "Fora" (comando de V19 sai ≠ 0) é reprovação; "não exercitado" exige o motivo. Task que toca operação de V18 sem o trecho e o ponteiro do comando é achado bloqueante, não "ok" (`implementation-principles.md` §5.6 P6).
 - **Cenário mapeado sem linha na tabela de resultado não fecha a Task** (R30, DoD §4a-i) — regressivo aplicável incluído. Cenário ❌ segue o roteamento pelo bloqueio: bloqueia a História em voo → Task no sprint corrente (R25); não bloqueia → **ID de `pending.md` explícito nesta seção, endereçado ao PO** — sem esse ID, o GAP fica preso em `pending.md` e nunca chega ao Product Backlog (R30 · R12).
 - **"Não exercitado" é obrigatório**, mesmo que seja "nada — todo o fluxo foi exercitado".

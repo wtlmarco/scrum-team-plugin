@@ -2,7 +2,7 @@
 
 **Versão:** 1.1
 **Data:** 05/09/2026
-**Status:** Draft normativo
+**Status:** Vigente
 **Nível:** transversal — vale para qualquer stack
 **Escopo:** Agnóstico de produto
 

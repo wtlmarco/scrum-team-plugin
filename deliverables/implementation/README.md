@@ -6,7 +6,7 @@ Enquanto o SDD descreve **o que o sistema é**, este conjunto descreve **como a 
 
 | Arquivo | Responde | Dono | Modelo |
 |---|---|---|---|
-| `01-scope-and-criteria.md` | O que foi combinado construir, e como saber que ficou pronto | PO | [modelo](01-scope-and-criteria.md) |
+| `01-scope-and-criteria.md` | O que foi combinado entregar — Histórias por sprint — e como saber que ficou pronto | PO | [modelo](01-scope-and-criteria.md) |
 | `02-status.md` | O que já foi feito, com que evidência, e que decisões foram tomadas | SM | [modelo](02-status.md) |
 | `03-code-map.md` | Onde está cada arquivo de código e a que entrega pertence | QA | [modelo](03-code-map.md) |
 | `pending.md` | O que está quebrado, com evidência, criticidade e **origem** (`time` \| `stakeholder` — o que ele chama de "bug") | QA | [modelo](pending.md) |

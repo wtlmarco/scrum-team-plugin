@@ -74,7 +74,7 @@ A DoR tem **duas metades**, porque uma delas só é cumprível *dentro* da Plann
 - [ ] Rastreia a um requisito do SDD funcional aprovado (portão ①) **e o SDD técnico da fatia está aprovado (portão ②)** — a História vem de `/sm sdd` (§5h); História de requisito sem ② não entra no `prepare` (portões ① e ② de §8). *Projeto retomado:* o SDD existente, reconhecido no onboarding (R14), vale como aprovado; sem SDD, `/sm sdd`
 - [ ] O valor ao stakeholder está escrito em uma frase — o que ele passa a conseguir fazer
 - [ ] Regras funcionais escritas, sem decisão técnica embutida
-- [ ] **História com interface:** **especificação de tela** do UX existente, com os seis estados e os critérios de acessibilidade. É ela que o UX costura no protótipo do sprint depois do corte (§5e passo 10) — costurar não é reespecificar
+- [ ] **História com interface:** **especificação de tela** do UX existente, com os seis estados e os critérios de acessibilidade. É ela que o UX costura no protótipo do sprint depois do corte (§5e Planning, passo 10) — costurar não é reespecificar
 - [ ] Critérios de aceite escritos pelo PO e **verificáveis**
 - [ ] Detalhamento funcional **completo**, com os critérios prontos para entrar no **pacote de abertura** que o stakeholder aprova depois do corte de capacidade (portão ③ em lote). A História entra na Planning com o ③ ainda pendente, e **nenhuma Task dela vai à construção antes do pacote aprovado** (R20 · R25 · §5e)
 
@@ -122,7 +122,7 @@ O passo 2 da Planning **não reconfere a DoR-a**: confirma que a História const
 
 ## 4a. Aderência de execução e de standard — as duas, na frente 2 do QA
 
-A verificação de aderência não é sob demanda nem do Arquiteto: acontece **dentro de `/qa <Task>`, na frente 2, ao fim de toda Task construída pelo dev** — a Task não fecha sem ela (DoD §4a-i). Dois objetos, sempre os dois no mesmo veredito:
+A verificação de aderência não é sob demanda nem do Arquiteto: acontece **dentro de `/qa <Task>`, na frente 2, ao fim de toda Task construída pelo dev** — a Task não fecha sem ela (DoD §4a-i). **É a única verificação de aderência do processo** — não existe modo do Arquiteto que a faça. Dois objetos, sempre os dois no mesmo veredito:
 
 | Objeto | Pergunta | Contra o quê |
 |---|---|---|
@@ -138,8 +138,6 @@ A verificação de aderência não é sob demanda nem do Arquiteto: acontece **d
 | **Aderência de execução** — código diverge do que o plano escreveu (passo pulado, arquivo errado, nomenclatura trocada, registro de infra faltando) | **dev**, direto — o plano estava certo, a execução não seguiu | `/dev resume` |
 | **Defeito do plano** — omissão de seção de standard, seção citada errada, passo inexequível ou ambíguo | **Dois destinos, nunca um só**: **Arquiteto** desbloqueia a Task (🔺 GAP — só ele decide desenho) **e**, em paralelo, **achado de processo ao `/review`** — o GAP resolve esta Task, o achado evita a próxima repetir a mesma lacuna | `/arc question` → plano revisado → dev retoma · **+** achado de processo → `/review` |
 | **Defeito do próprio `standards/`** | **Arquiteto**, por `/review` (R16) | — |
-
-**`/arc comply` sai do caminho do ciclo e da rota de volta.** Cobria exatamente o objeto 1 (aderência de execução) por autoconferência do próprio autor do plano — o que a frente 2 do QA agora cobre sempre, de forma independente, ao fim de toda Task. Perdeu função: não roda mais no `/sm sprint run`, não é mais a rota de um achado ⚠️/❌ antes do `/dev resume`, e não é etapa de nenhum papel por padrão. Fica só como **exceção explícita e justificada** — o stakeholder pedindo, nomeadamente, uma auditoria de aderência fora do ciclo normal — nunca como comportamento implícito ou default de qualquer papel.
 
 **Como o SM verifica que a frente 2 cobriu os dois objetos.** O veredito traz **duas tabelas, sempre as duas**:
 - **passo do plano × conforme** — uma linha por passo do Plano de Implementação, com o estado (conforme / divergente, e o que diverge) — objeto 1;
@@ -267,10 +265,10 @@ Nenhum agente devolve pergunta ao stakeholder sem antes tentar resolvê-la no pa
 | **Protótipo funcional em HTML existe e cobre os fluxos principais** | o portão ① | UX | R8 · R15 |
 | **① SDD funcional (`00`,`01`,`02`) aprovado pelo stakeholder, com o protótipo NAVEGADO** | primeira escrita do SDD técnico (`03`,`04`,`05`) | PO e UX apresentam · SM verifica · **o formulário é disparado pelo `/sm sdd`** (§5h · R22) | R15 · §5b |
 | **② SDD técnico aprovado** | escrita da primeira História daquela área | Arquiteto apresenta (dentro do `/sm sdd`) · SM verifica · **o formulário é disparado pelo `/sm sdd`** (§5h · R22) | §5b |
-| **③ Detalhamento da História aprovado pelo stakeholder — em lote, no pacote de abertura do sprint**, depois da Planning | **entrada de qualquer Task do sprint em construção** | PO apresenta · UX costura o protótipo do sprint · SM submete e registra | R20 · R25 · §3a · §5e passos 9–10 |
+| **③ Detalhamento da História aprovado pelo stakeholder — em lote, no pacote de abertura do sprint**, depois da Planning | **entrada de qualquer Task do sprint em construção** | PO apresenta · UX costura o protótipo do sprint · SM submete e registra | R20 · R25 · §3a · §5e Planning, passos 9–10 |
 | **Especificação de tela existe** *(História com interface)* — com os seis estados e os critérios de acessibilidade | entrada da História na Planning (DoR — §3a) | UX | R8 |
-| **Protótipo navegável do sprint existe, cobre as Histórias que entraram e atravessa um fluxo ponta a ponta** | a aprovação do pacote de abertura, e portanto o arranque do sprint | UX | R25 · §5e passo 10 |
-| **`planning.md` declara o que veio da Review anterior e não entrou, com o motivo** | a submissão do pacote ao stakeholder | SM escreve · PO fornece a priorização | R25 · §5e passo 9 |
+| **Protótipo navegável do sprint existe, cobre as Histórias que entraram e atravessa um fluxo ponta a ponta** | a aprovação do pacote de abertura, e portanto o arranque do sprint | UX | R25 · §5e Planning, passo 10 |
+| **`planning.md` declara o que veio da Review anterior e não entrou, com o motivo** | a submissão do pacote ao stakeholder | SM escreve · PO fornece a priorização | R25 · §5e Planning, passo 9 |
 | **Bloqueio passou pelo degrau 1 (PO + Arquiteto)** antes de subir ao stakeholder — exceto decisão estratégica, que vai direto | a escalação ao stakeholder dentro do sprint | SM registra o degrau | R9 · R25 · §5g |
 | Task pertence a uma História com **DoR-a** verificada no `prepare` (§3a); a **DoR-b** é o passo 3 da Planning | quebra na Planning | SM | R20 |
 | Estimativa registrada na unidade do projeto | construção | SM | R2 · §5e |

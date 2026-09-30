@@ -54,7 +54,7 @@ Só introduza padrão novo quando o existente falhar — e escreva por que falho
 
 Base mínima que vale em qualquer projeto: **navegação por teclado · foco visível · rótulo acessível · contraste · alvo de toque · hierarquia semântica de títulos · texto alternativo · nada comunicado só por cor · conteúdo íntegro com zoom e em tela estreita · nenhuma função presa a gesto complexo ou a movimento**.
 
-> **Decidido pelo stakeholder em 02/09/2026:** a régua vigente é **44×44**. O alvo mínimo de **48×48** que o repertório de sistemas de design maduros (§8) adota fica registrado como **referência, não como régua** — é um dos casos em que a convenção do time vence o repertório. Decisão no [changelog do processo](../scrum-master/process/process-changelog.md) (v1.6); alterá-la exige nova decisão registrada. A especificação cita **uma** régua, nunca as duas.
+> **Decidido pelo stakeholder em 02/09/2026:** a régua vigente é **44×44**. O alvo mínimo de **48×48** que o repertório de sistemas de design maduros (§8) adota fica registrado como **referência, não como régua** — é um dos casos em que a convenção do time vence o repertório. Decisão no [changelog do processo](../scrum-master/process/process-changelog-archive.md) (v1.6); alterá-la exige nova decisão registrada. A especificação cita **uma** régua, nunca as duas.
 
 ### Design equitativo: quem fica de fora
 
@@ -75,11 +75,7 @@ Se o dev puder escolher entre duas formas, a especificação está incompleta.
 
 ## 6. Separar achado de mudança
 
-Revisar uma tela sempre revela problemas fora da Task. A disciplina é:
-
-- **dentro da Task** → corrige na especificação;
-- **fora da Task** → vira achado registrado, com severidade, para o backlog do PO;
-- **nunca** → mudança silenciosa de passagem em tela alheia à Task.
+Achado fora da Task vira registro com severidade para o backlog do PO; nunca mudança de passagem em tela alheia à Task.
 
 ## 7. Saber onde termina o seu papel
 
@@ -134,14 +130,14 @@ O método que o *Google UX Design Certificate* sistematiza — **empatizar · de
 
 | Etapa | O que produz | Gatilho objetivo | Sem o gatilho |
 |---|---|---|---|
-| **Pesquisa com usuário** | comportamento observado, com participante, data e nº | fluxo novo cujo público o time nunca observou, ou dois papéis discordando sobre o que o usuário faz | requisito do PO + inspeção das telas existentes |
+| **Pesquisa com usuário** | comportamento observado, com participante, data e nº | fluxo novo cujo público o time nunca observou, ou dois papéis discordando sobre o que o usuário faz, com a discordância registrada por escrito (ata, relato ou changelog) | requisito do PO + inspeção das telas existentes |
 | **Perfil de uso** (persona) | familiaridade, contexto e restrição do ator já definido pelo PO | uma mesma tela servindo a dois perfis com objetivos diferentes | o campo **Ator** do mapa de jornada basta |
 | **Referência externa** (auditoria de padrão) | como o problema já é resolvido fora | padrão ausente do produto **e** ausente do repertório (§8) | reaproveitar (§3) |
 | **Definição do problema** | uma frase ligando requisito a comportamento observável | a tela existe e o usuário não completa a tarefa | o objetivo em uma frase da especificação |
 | **Ideação** | mais de uma alternativa antes de fechar | decisão de navegação difícil de reverter, ou tela que concentra o fluxo inteiro | alternativa única, com o motivo escrito |
 | **Baixa fidelidade** | estrutura, hierarquia e ordem de leitura | tela nova ou reorganização de layout | especificação textual |
 | **Alta fidelidade** | fluxo navegável com conteúdo real | mais de três telas encadeadas, espera longa a validar, ou interação que o texto não consegue explicar | especificação é o entregável |
-| **Teste de usabilidade** | tarefa, taxa de conclusão, ponto de travamento | fluxo crítico do produto antes de virar padrão, ou achado 🔴 recorrente | revisão por inspeção, declarada como inspeção |
+| **Teste de usabilidade** | tarefa, taxa de conclusão, ponto de travamento | fluxo crítico do produto antes de virar padrão, ou achado 🔴 que reaparece em ≥ 2 revisões consecutivas da mesma tela | revisão por inspeção, declarada como inspeção |
 | **Iteração** | o que mudou e por causa de qual achado | qualquer etapa acima que produziu achado | — |
 
 Três regras transversais:
@@ -149,6 +145,8 @@ Três regras transversais:
 1. **Nomear a etapa e o gatilho na saída.** Sem isso ninguém distingue desenho apoiado em evidência de desenho apoiado em suposição — e os dois custam o mesmo para implementar.
 2. **Pesquisa declarada é pesquisa feita.** Sem participante real, o que houve foi **inspeção**, e se escreve assim. "Os usuários preferem", "o usuário espera" sem participante, data e número é invenção — e contamina toda decisão que se apoiar nela depois. *(É a R7 — "sem evidência, não aconteceu" — aplicada ao território do desenho.)*
 3. **Artefato de pesquisa só vira permanente com lugar declarado** no contexto do projeto. Perfil de uso que ninguém mantém envelhece e passa a mentir com autoridade.
+
+**Como se verifica:** o `context.md` do projeto lista cada artefato de pesquisa permanente e quem o mantém; artefato fora dessa lista é achado de processo contra quem o criou.
 
 ### Fidelidade: o que cada nível fixa
 
@@ -194,7 +192,7 @@ No sprint o leve é o caso comum: exercita-se **o caminho costurado** (cada salt
 
 **Guarda-corpo, nos dois protótipos:**
 
-1. **Roda de verdade.** Leve reduz *quantas* telas; não troca execução por leitura de código. Tela sem saída real é **não exercitada** (R7). O **fluxo ponta a ponta do sprint roda em toda rodada** — ele sustenta a verificação de valor (R25b).
+1. **Roda de verdade.** Leve reduz *quantas* telas; não troca execução por leitura de código. Tela sem saída real é **não exercitada** (R7). O **fluxo ponta a ponta do sprint roda em toda rodada** — ele sustenta a verificação de valor (R25 (b)).
 2. **O que não rodou é declarado:** a ficha nomeia as telas executadas e aponta a verificação completa que cobre o restante (data e versão).
 3. **Portão nenhum muda** (R23): ① e ③ continuam exigindo o stakeholder navegando; os seis estados e os critérios de acessibilidade continuam exigidos por tela.
 4. **Não se acumula:** depois de **três** rodadas leves seguidas sobre a mesma versão base, a próxima é completa. No sprint a contagem é **por pasta** `sprint-<n>/`, e recostura conta como rodada.
@@ -205,7 +203,7 @@ No sprint o leve é o caso comum: exercita-se **o caminho costurado** (cada salt
 
 **É a R28 no meu território** — a regra geral manda cada papel que roda esse tipo de comando detalhar, no próprio `skills.md`, o que extrair da saída antes de descartar o resto. **Alcance honesto: vale para o harness, e só para ele.** Dos modos do papel, apenas `/ux prototype` e `/ux prototype sprint` executam alguma coisa; jornada, especificação de tela, protótipo de tela sem ambiente e revisão de usabilidade não rodam comando nenhum, e nada desta seção se aplica a eles.
 
-**Quem roda.** Harness **completo** é execução pesada — R5 já o equipara ao spike do Arquiteto — e vai para o agente `operator`: uma invocação, um trabalho, um relatório. Harness **leve** vai pelo mesmo caminho, porque é ele que dá endereço ao log bruto e porque delegar duas telas custa menos que engolir a saída delas. **Não reexecuto o harness para conferir o que o `operator` devolveu** — leio o trecho e o ponteiro. O que não muda de dono é o **veredito**: o `operator` executa, quem declara uma tela exercitada sou eu.
+**Quem roda.** Harness **completo** é execução pesada — R5 já o equipara ao spike do Arquiteto — e vai para o agente `operator`: uma invocação, um trabalho, um relatório. Harness **leve** vai pelo mesmo caminho, porque é ele que dá endereço ao `report` e porque delegar duas telas custa menos que engolir a saída delas. **Não reexecuto o harness para conferir o que o `operator` devolveu** — leio o trecho e o ponteiro. O que não muda de dono é o **veredito**: o `operator` executa, quem declara uma tela exercitada sou eu.
 
 **O que trago de volta — o que conta como "falha relevante" aqui.** Cinco coisas, e nada mais:
 
@@ -219,12 +217,12 @@ No sprint o leve é o caso comum: exercita-se **o caminho costurado** (cada salt
 
 Fica no log e **não** volta: a linha de "ok" de cada asserção que passou — que é a esmagadora maioria e quase todo o volume —, dump de DOM, ruído do navegador sem interface e eco de instalação do runtime.
 
-**Trecho e ponteiro, sempre os dois.** A ficha do protótipo traz, ao lado do checkpoint, o caminho do log bruto que o `operator` devolveu; a linha do `verification-log.md` carrega o mesmo ponteiro. Ponteiro sem trecho não deixa ninguém decidir; trecho sem ponteiro não deixa ninguém conferir.
+**Trecho e ponteiro, sempre os dois.** A ficha do protótipo traz, ao lado do checkpoint, o caminho do `report` do job (`report.md`, ou `report-<log>.md` quando há mais de uma chamada na pasta) — é o ponteiro; a linha do `verification-log.md` carrega o mesmo ponteiro. Ponteiro sem trecho não deixa ninguém decidir; trecho sem ponteiro não deixa ninguém conferir.
 
 **Quando abro o log bruto assim mesmo.** Os gatilhos de aprofundamento obrigatório são os de **R28** — lista canônica lá, não repetida aqui. Fora deles, abrir o log é opção minha, não obrigação.
 
-**Veredito `inconclusivo` não aprova nada.** Tela cujo relatório voltou inconclusivo é **não exercitada** (R7), com o motivo escrito — nunca ✅ no `verification-log.md`, nunca coberta por um "o restante está coberto pela verificação completa de". Mesma régua que R26 aplica à medição de ambiente.
+**Veredito `inconclusivo` não aprova nada.** Tela cujo relatório voltou inconclusivo é **não exercitada** (R7), com o motivo escrito — nunca ✅ no `verification-log.md`, nunca coberta por um "o restante está coberto pela verificação completa de".
 
-**Retrato da chamada — seção "Execução delegada".** No relatório final (a ficha do protótipo), retrato cada chamada ao `operator`, uma linha por chamada: **Operator job** (`.team-project/operator/<sprint|pre-sprint>/<job>/`) · **Task/História** · **Modelo** (o `model:` de `agents/operator.md`) · **Tokens** · **Duração**, com os números que a chamada devolveu ao terminar. Número que não veio: "não disponível — <motivo>", nunca estimado (R7). Sem chamada: "nenhuma". **Não gravo em `consumption.md`** — a sessão que me disparou transcreve as linhas. Serve para mostrar, por Task, o consumo meu × o do `operator` (a economia da delegação, R28).
+**Retrato da chamada — seção "Execução delegada".** No relatório final (a ficha do protótipo), retrato cada chamada ao `operator`, uma linha por chamada, na seção "Execução delegada" — colunas no modelo ([`functional-prototype.md`](templates/functional-prototype.md)) —, com os números que a chamada devolveu ao terminar. Número que não veio: "não disponível — <motivo>", nunca estimado (R7). Sem chamada: "nenhuma". **Não gravo em `consumption.md`** — a sessão que me disparou transcreve as linhas. Serve para mostrar, por Task, o consumo meu × o do `operator` (a economia da delegação, R28).
 
-**Como se verifica:** ficha com rodada declarada e sem o caminho do log bruto, ou com caminho que não resolve, é achado de processo; linha ❌ no `verification-log.md` sem trecho extraído, ou com trecho e sem ponteiro, idem; harness completo rodado inline em vez de delegado ao `operator` é achado contra mim (R28); relatório com chamada ao `operator` e sem a seção "Execução delegada" (ou com número estimado) idem; e tela com veredito `inconclusivo` contada como exercitada é reprovação de método, não ressalva.
+**Como se verifica:** ficha com rodada declarada e sem o caminho do `report` do job, ou com `report` que não existe ou passa de 200 linhas / 20 KB, é achado de processo — **log bruto podado não é**, e, se um gatilho de R28 dispara com o log podado, re-rodo o job pelo `operator` ou registro "não verificado — log podado" (R7); linha ❌ no `verification-log.md` sem trecho extraído, ou com trecho e sem ponteiro, idem; harness completo rodado inline em vez de delegado ao `operator` é achado contra mim (R28); relatório com chamada ao `operator` e sem a seção "Execução delegada" (ou com número estimado) idem; e tela com veredito `inconclusivo` contada como exercitada é reprovação de método, não ressalva.

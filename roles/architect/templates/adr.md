@@ -50,14 +50,7 @@ Verificável em código, para revalidação em auditoria futura:
 - **Contexto com evidência.** ADR nasce de um fato observado no código ou de um requisito, não de uma preferência.
 - **Checklist de aceitação é obrigatório** — é o que permite ao QA revalidar a ADR contra o código meses depois. ADR sem checklist envelhece sem que ninguém perceba.
 - **Consequência negativa explícita.** ADR que só tem vantagem não foi pensada.
-- **Etapa de spike inconclusiva por causa externa não sustenta decisão.** Se a evidência do contexto depende de uma chamada a serviço externo que não fechou (limite de taxa, indisponibilidade), a ADR fica em `Proposed` com a pendência nomeada e o que falta para fechá-la — nunca `Accepted` sobre etapa não exercitada (R7; [`../skills.md`](../skills.md) §11). **Vale igual para execução delegada:** trabalho do `operator` com veredito `inconclusivo` não é evidência de contexto, e a evidência que vier dele entra aqui como **trecho e ponteiro do log**, nunca um sozinho ([`../skills.md`](../skills.md) §14 · R28).
+- **Etapa de spike inconclusiva por causa externa não sustenta decisão.** Se a evidência do contexto depende de uma chamada a serviço externo que não fechou (limite de taxa, indisponibilidade), a ADR fica em `Proposed` com a pendência nomeada e o que falta para fechá-la — nunca `Accepted` sobre etapa não exercitada (R7; [`../skills.md`](../skills.md) §11). **Vale igual para execução delegada:** trabalho do `operator` com veredito `inconclusivo` não é evidência de contexto, e a evidência que vier dele entra aqui como **trecho literal** (comando, código de saída, linha decisiva). O ponteiro do `report` **não** entra: a ADR é documento de produto e não referencia `.team-project/` — o par trecho + ponteiro fica no artefato de processo que a produziu (checkpoint de spike ou seção 3 do plano), que cita esta ADR ([`../skills.md`](../skills.md) §14 · R28 · R31).
 - Ao aceitar, atualizar o índice de ADRs do projeto.
 
-## Sinais de que falta uma ADR
-
-- Funcionalidade central implementada "direto da especificação", sem decisão formalizada.
-- Algoritmo de julgamento (score, ranking, seleção de fornecedor) sem critério documentado.
-- ADR marcada como implementada e nunca revalidada contra o código.
-- Regra estrutural que já foi explicada duas vezes em conversa e não está escrita em lugar nenhum.
-
-A dívida de ADR deste projeto está em `.team-project/architect/context.md`.
+**Sinais de que falta uma ADR:** [`../skills.md`](../skills.md) §8. A dívida de ADR deste projeto está em `.team-project/architect/context.md`.

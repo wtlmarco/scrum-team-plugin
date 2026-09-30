@@ -9,9 +9,9 @@ Salvo em `.team-project/architect/spikes/<ID>-<slug>.md` — **fora** da pasta d
 
 ## Etapa <n> — <título> · **concluída** | **inconclusiva por causa externa**
 - **Comando:** `<literal>` → código de saída `<n>` · `<trecho decisivo, literal>`
-- **Log:** `.team-project/operator/<sprint|pre-sprint>/<job>/<nome>.log` — <n> linhas *(ou "n/a — comando leve, rodado por mim")*
+- **Log:** `.team-project/operator/<sprint|pre-sprint>/<job>/report.md` (ou `report-<nome>.md`) · log: `<nome>.log` — <n> linhas *(ou "n/a — comando leve, rodado por mim")*
 - **Chamada externa:** timeout por tentativa `<s>` · tentativas `<n>` · teto da etapa `<s>` — *(ou "nenhuma")*; inconclusiva: `<erro literal do provedor>`
-- **Decisão parcial que isto sustenta:** <uma frase — ou "nenhuma: etapa inconclusiva não sustenta decisão">
+- **Decisão parcial que isto sustenta:** <uma frase, com a ADR que ela alimenta, se houver — ou "nenhuma: etapa inconclusiva não sustenta decisão">
 
 ## Etapa <n+1> — …
 

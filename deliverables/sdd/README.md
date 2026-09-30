@@ -4,19 +4,19 @@ O SDD é o desenho do sistema, dividido por responsabilidade para que qualquer p
 
 ## Os sete documentos de conteúdo
 
-| Arquivo | Etapa | Conteúdo | Dono | Modelo |
-|---|---|---|---|---|
-| `00-overview-objectives.md` | funcional | Visão geral, objetivos, fases, roadmap | PO | [modelo](00-overview-objectives.md) |
-| `01-requirements.md` | funcional | Requisitos funcionais e não funcionais | PO | [modelo](01-requirements.md) |
-| `02-flows-and-roles.md` | funcional | Modelo conceitual, atores e fluxos | PO | [modelo](02-flows-and-roles.md) |
-| `03-architecture.md` | técnica | Princípios, estrutura, componentes e integrações | Arquiteto | [modelo](03-architecture.md) |
-| `04-data-model.md` | técnica | Entidades, campos, enums, relacionamentos | Arquiteto | [modelo](04-data-model.md) |
-| `05-api-model.md` | técnica | Endpoints, contratos e formato de erro | Arquiteto | [modelo](05-api-model.md) |
-| `06-changelog.md` | contínua | Histórico cumulativo de mudanças | PO | [modelo](06-changelog.md) |
+| Arquivo | Etapa | Conteúdo | Dono |
+|---|---|---|---|
+| `00-overview-objectives.md` | funcional | Visão geral, objetivos, fases, roadmap | PO |
+| `01-requirements.md` | funcional | Requisitos funcionais e não funcionais | PO |
+| `02-flows-and-roles.md` | funcional | Modelo conceitual, atores e fluxos | PO |
+| `03-architecture.md` | técnica | Princípios, estrutura, componentes e integrações | Arquiteto |
+| `04-data-model.md` | técnica | Entidades, campos, enums, relacionamentos | Arquiteto |
+| `05-api-model.md` | técnica | Endpoints, contratos e formato de erro | Arquiteto |
+| `06-changelog.md` | contínua | Histórico cumulativo de mudanças | PO |
 
-**Sete linhas, sete documentos.** A coluna **Etapa** diz de que lado de cada portão o documento está: os três `funcional` sobem primeiro e passam pelo **portão ①**; os três `técnica` só começam depois dele e passam pelo **②**; o `06-changelog` corre em paralelo, a partir da primeira mudança funcional aceita.
+**Sete linhas, sete documentos; cada arquivo é ele próprio o modelo do seu documento.** A coluna **Etapa** diz de que lado de cada portão o documento está: os três `funcional` sobem primeiro e passam pelo **portão ①**; os três `técnica` só começam depois dele e passam pelo **②**; o `06-changelog` corre em paralelo, a partir da primeira mudança funcional aceita.
 
-> **Os sete sobem por dois portões.** `00`, `01` e `02` formam o **SDD funcional** (dono: PO) e passam pelo **portão ①** — aprovação do stakeholder — antes de o Arquiteto escrever `03`, `04` e `05`, o **SDD técnico**, que passa pelo **portão ②** antes de a primeira História nascer (R15 · [`../README.md`](../README.md)). Os portões são de **aprovação**, não de arquivo: o conjunto continua sendo um só, com versão única.
+> **Os seis documentos de especificação (`00`–`05`) sobem por dois portões; o `06` corre em paralelo.** `00`, `01` e `02` formam o **SDD funcional** (dono: PO) e passam pelo **portão ①** — aprovação do stakeholder — antes de o Arquiteto escrever `03`, `04` e `05`, o **SDD técnico**, que passa pelo **portão ②** antes de a primeira História nascer (R15 · [`../README.md`](../README.md)). Os portões são de **aprovação**, não de arquivo: o conjunto continua sendo um só, com versão única.
 
 > **O oitavo arquivo é o índice.** O `README.md` do SDD no projeto (dono: **PO**) não é documento de conteúdo — é o único índice do conjunto, e o que precisa existir desde o dia 1, para que cada documento tenha lugar quando nascer. Seu modelo é a seção seguinte. Por isso o conjunto tem **oito arquivos: sete de conteúdo (`00`–`06`) mais o índice**.
 
@@ -65,10 +65,4 @@ O SDD é o desenho do sistema, dividido por responsabilidade para que qualquer p
 
 ## Como o QA valida
 
-| Frente | O que checa |
-|---|---|
-| Nomenclatura | entidade, campo, enum e rota do código batem com `04`/`05` |
-| Completude | requisito implementado tem entrada em `01` com critério verificável |
-| Aderência | princípio de `03` tem consequência observável no código |
-| Atualidade | nenhuma seção descreve algo removido ou nunca construído |
-| Consistência | nenhum documento contradiz outro |
+As frentes e o que cada uma checa contra este conjunto estão na seção "As seis frentes" do roteiro do QA ([`roles/quality-assurance/README.md`](../../roles/quality-assurance/README.md)) — não se repetem aqui.

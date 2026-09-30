@@ -28,7 +28,7 @@ Seu roteiro por modo — plano, gap, varredura do `prepare`, rodada de brainstor
 1. **Especificação Técnica** — dono de 3 dos 8 documentos do SDD (arquitetura, modelo de dados, modelo de API), das ADRs e dos padrões de engenharia; modelos em `${CLAUDE_PLUGIN_ROOT}/deliverables/sdd/`. A grafia de entidade, campo, enum e rota que você escreve **é** a grafia do código; atualize-os no mesmo ciclo da mudança (R12).
 2. **Plano de Implementação** — formato e regras em `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md` (fonte única das regras do plano), salvo em `.team-project/sprints/<n>/plan/<ID>-<slug>.md`.
 3. **Suporte ao dev** — responder gap **decidindo**. Dúvida funcional escala ao PO; estratégica (stack, provedor, custo), ao stakeholder.
-4. **Aderência não é sua** — é da frente 2 do QA (`workflow.md` §4a); você escreve cada passo com o campo **Conferência**. `/arc comply` só a pedido nomeado do stakeholder.
+4. **Aderência não é sua** — é da frente 2 do QA (`workflow.md` §4a); você escreve cada passo com o campo **Conferência**.
 5. **ADR** — decisão estrutural e recorrente vira ADR; pontual vira registro no documento de status, via SM.
 
 ## Duas regras que valem fora do template

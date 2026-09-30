@@ -22,8 +22,8 @@ Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta 
 
 Pedido `/qa review …` → responda que o caminho é **`/review …`**. `/qa audit` roda **no projeto** (documentos do produto × código); `/review audit` roda no repositório do plugin (documentos de processo).
 
-Registro de consumo: se `.team-project/sprints/<n>/consumption.md` existir, grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar (papel `qa`; a seção "Execução delegada" do retorno vira uma linha `operator` por chamada).
+Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar (papel `qa`; a seção "Execução delegada" do retorno vira uma linha `operator` por chamada).
 
 Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, "pedir mais contexto" por último (`working-rules.md` R22). O agente não tem a ferramenta: é a sessão que orquestrou quem a chama (por exemplo, item de `pending.md` com `Aguarda decisão do stakeholder`).
 
-Ao receber o veredito, repasse-o na íntegra ao stakeholder. Se for ✅, indique `/sm close <ID>` — dentro do `/sm sprint run` o SM fecha sozinho quando "Documentos vivos (R12)" está "atualizados" (`sprint-run.md` passo 7); fechar a Task é técnico, o aceite é da História, na Sprint Review (R21). Se for ⚠️ ou ❌, indique para quem cada achado volta pela coluna "Volta para" do veredito e pela escada de falha do README do QA. `/arc comply` só roda por pedido nomeado do stakeholder (`workflow.md` §4a). Nada disso antes do fechamento.
+Ao receber o veredito, repasse-o na íntegra ao stakeholder. Se for ✅, indique `/sm close <ID>` — dentro do `/sm sprint run` o SM fecha sozinho quando "Documentos vivos (R12)" está "atualizados" (`sprint-run.md` passo 7); fechar a Task é técnico, o aceite é da História, na Sprint Review (R21). Se for ⚠️ ou ❌, indique para quem cada achado volta pela coluna "Volta para" do veredito e pela escada de falha do README do QA. Nada disso antes do fechamento.

@@ -9,6 +9,8 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 ├── README.md                 ← este modelo · declara o SPRINT CORRENTE (§2)
 ├── how-to.md                 cópia de `${CLAUDE_PLUGIN_ROOT}/how-to.md` — guia de uso, não editar aqui
 ├── note.md                   fila de relatos do stakeholder — escrita por ele, tratada pelo PO via `/po note`
+├── consumption.md            consumo fora de sprint (Nota pre-sprint;/entre-sprints;) — nasce vazio, sem rotação
+├── operator/                 jobs do `operator` (report + log) — nasce sob demanda; SM verifica e poda
 ├── sprints/                  registro de execução, um subdiretório por sprint
 │   └── <n>/                  planning.md · sprint-backlog.md · stories/ · plan/ · evidence/
 │                             consumption.md · burndown.md · review.md · retrospective.md · plugin-report.md
@@ -20,6 +22,8 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 └── quality-assurance/        context.md · baseline.md
 ```
 
+> **`.team-project/` inteiro fica fora do git (R31):** `/team init` acrescenta a linha `.team-project/` ao `.gitignore` da raiz (só acrescenta). O git recebe só o produto — código e o **diretório de produto** declarado no §4.
+>
 > As pastas de papel usam o **nome completo do papel**, igual a `${CLAUDE_PLUGIN_ROOT}/roles/`. **`sprints/` não é pasta de papel:** o registro de execução é organizado **por sprint**, porque contém artefatos de quatro donos — Histórias (PO), planos (Arquiteto), evidências (QA) e os documentos do SM. O **dono de cada subpasta** está declarado em [`artifact-ownership.md` §1e](../process/artifact-ownership.md); pasta com dono ambíguo é achado de auditoria.
 
 **O que fica FORA de `sprints/<n>/`, e por quê:** registro de GAPs, mapa de código, **baseline de verificação** (nasce antes do sprint 1), Product Backlog, SDD, ADRs, protótipo funcional do ①, **protótipo do sprint** (é do UX; o quadro guarda o ponteiro) e **checkpoints de spike** — todos **somam, evoluem ou nascem fora** do recorte de um sprint, e fatiá-los quebraria a leitura que o time faz deles (§1c · §1e).
@@ -87,6 +91,8 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 |---|---|---|
 <Um por documento do projeto, com o papel responsável.>
 
+**Diretório de produto:** <caminho; padrão `docs/`> — SDD, ADR e documentos de implementação. Vai ao git, e **não referencia `.team-project/`** (R31). É o diretório que o SM verifica.
+
 **Regra de confiança:** <qual fonte vence quando duas divergem.>
 
 **Regra de nascimento.** `01-scope-and-criteria`, `02-status`, `03-code-map` e `pending` não são semeados pelo `/team init` ([`deliverables/team-project/README.md`](../../../deliverables/team-project/README.md)) — nascem quando o projeto os exige (retomada, primeiro fechamento de Task, primeira auditoria). Documento que nasce entra nesta tabela na mesma sessão (R12), com o dono — nunca fica implícito.
@@ -111,7 +117,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 |---|---|
 | `/sm` | `onboarding` · `brainstorm <ideia>` · `sdd [<tema>]` · `sprint prepare` · `sprint plan` · `sprint run [<T-ID>]` · `sprint review` *(alias: `review`)* · `sprint close` · `board` · `agreement <questão>` · `close <T-ID>` |
 | `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` · `bug <relato>` · `note` |
-| `/arc` | `plan <T-ID>` · `comply <T-ID>` *(exceção pedida pelo stakeholder)* · `adr <tema>` · `question <dúvida>` |
+| `/arc` | `plan <T-ID>` · `adr <tema>` · `question <dúvida>` |
 | `/ux` | `prototype` · `prototype sprint <n>` · `prototype screen <tela>` · `journey <fluxo>` · `screen <nome>` · `review-ui <tela>` |
 | `/dev` | `<T-ID>` · `resume <T-ID>` · `gap <resposta>` |
 | `/qa` | `<T-ID>` · `baseline` · `audit` · `security <T-ID>` · `bug <descrição>` *(acionado pelo PO)* · `scenarios create` · `scenarios run <SC-nnn\|grupo\|all>` |
@@ -144,7 +150,7 @@ Guia completo — o que você quer fazer → qual comando, os cenários de uso (
 
 | Papel | Conteúdo |
 |---|---|
-| **SM** | Fontes de estado e sua confiabilidade; artefatos que mantém; capacidade do time e unidade de estimativa; convenção de IDs; bloqueios e riscos abertos; **§"Candidatas do próximo sprint"** — a lista que o `/sm sprint prepare` grava (História · DoR-a ✅/devolvida e por quê · data · varredura técnica feita? s/n) e que o `plan` lê, mais a subseção "Consumo pré-sprint (prepare · sdd)" (linhas de consumo dos subagentes do `prepare`, que o passo 9 da Planning transcreve para o `consumption.md` e limpa). Nasce no primeiro `prepare`; não é semeada no `init`. **§"SDD em elaboração"** — a seção que o `/sm sdd` abre: tema · caso (A ideia nova / B evolução) · origem · **brief funcional (≤15 linhas — único lugar declarado onde ele vive, R15)** · uma linha por etapa (1–5) com estado e data · decisão do ② (a do ① fica na ficha do protótipo funcional). É o estado que permite retomar o `sdd` em outra sessão |
+| **SM** | Fontes de estado e sua confiabilidade; artefatos que mantém; capacidade do time e unidade de estimativa; convenção de IDs; bloqueios e riscos abertos; **§"Candidatas do próximo sprint"** — a lista que o `/sm sprint prepare` grava (História · DoR-a ✅/devolvida e por quê · data · varredura técnica feita? s/n) e que o `plan` lê. O consumo dos subagentes do `prepare`/`sdd` **não** vive aqui: vai para `.team-project/consumption.md` (projeto que ainda tem a subseção antiga "Consumo pré-sprint (prepare · sdd)" a migra para lá no `/team update`). Nasce no primeiro `prepare`; não é semeada no `init`. **§"SDD em elaboração"** — a seção que o `/sm sdd` abre: tema · caso (A ideia nova / B evolução) · origem · **brief funcional (≤15 linhas — único lugar declarado onde ele vive, R15)** · uma linha por etapa (1–5) com estado e data · decisão do ② (a do ① fica na ficha do protótipo funcional). É o estado que permite retomar o `sdd` em outra sessão |
 | **PO** | Cadeia funcional do produto; tipos de validação e contrato de erro; diferença entre declarado e real nos critérios; régua de priorização; nomenclatura; fora de escopo já decidido |
 | **Arquiteto** | A stack como está montada de fato; as armadilhas do código (o que o compilador não cobra); princípios do produto; padrões aplicáveis e limiares; dívida arquitetural conhecida |
 | **UX** | Situação da interface; inventário de rotas e componentes existentes; ambiente de protótipo; convenções visuais e de conteúdo; jornadas principais do produto; limitações para revisão |
