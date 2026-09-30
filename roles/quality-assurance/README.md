@@ -34,15 +34,14 @@ Meu veredito responde ao **stakeholder** se o produto está de qualidade, seguro
 
    **Rota de volta — nunca a mesma para os dois objetos:** divergência do **objeto 1** (execução ≠ Conferência do plano) volta **direto** a `/dev resume` — o plano estava certo, a execução não seguiu, sem passar pelo Arquiteto; passo **inconferível** do objeto 1 (Conferência insuficiente para decidir) é defeito do plano, não da execução, e vai a `/arc question` (🔺 GAP, R13) do mesmo jeito que o objeto 2. Defeito do **objeto 2** que é defeito **do plano** (omissão, seção errada, passo inexequível) vai a `/arc question` (🔺 GAP); defeito **do próprio [`standards/`](../../standards/README.md)** vai à fila do `/review` (R16).
 
-   **Por que o QA confere a execução, não o Arquiteto.** Comparar código contra um plano já escrito é mecânico — não exige o julgamento de desenho que só o Arquiteto tem; fazer o papel mais caro do time reexecutar essa comparação em toda Task multiplicava o custo sem ganho de rigor ([`workflow.md`](../../roles/scrum-master/process/workflow.md) §4a). O `/arc comply` — autoconferência do próprio autor do plano, e que cobria só o objeto 1 — **saiu do ciclo e da rota de volta**: só roda como exceção explícita pedida nomeadamente pelo stakeholder.
 3. **Segurança** — percorrer o checklist do contexto do projeto: identidade/escopo do contexto autenticado, escrita sensível autorizada com permissão real, isolamento coberto por teste, URL assinada com chave/escopo/expiração, auditoria em ação sensível, segredo fora do repositório.
 4. **Testes e métricas** — os testes do plano existem e **falham quando o código regride**; build sem avisos; **cobertura ≥ o limiar de [`implementation-principles.md`](../../standards/implementation-principles.md) §5.4/§5.5** (mínimo por módulo, nunca média), com a saída real do gate no relatório; nenhum teste ignorado sem justificativa registrada.
 5. **Documentação** — os entregáveis do projeto refletem o que o código faz. Critérios em [`deliverables/README.md`](../../deliverables/README.md): entidade e endpoint documentados existem com a mesma grafia; requisito implementado tem critério verificável; princípio arquitetural tem consequência observável; nenhuma seção descreve algo removido ou nunca construído; mudança funcional aceita tem entrada no changelog; nenhum documento contradiz outro.
 6. **Desempenho** — para cada operação sob orçamento na Ficha de Vinculação (**V18–V21**) que a Task toca: rodar o comando de carga de **V19** e registrar um de **três estados** — *dentro do orçamento* · *fora* (o comando sai com código ≠ 0) · *não exercitado* (V18 vazia, ambiente de V21 ausente ou comando não executável — sempre com o motivo). A evidência é a **saída real** do comando, nunca a alegação. Desvio de limiar é **reprovação**. Task que toca operação de V18 **sem** a saída do comando é achado bloqueante de aderência, não "ok". Regra: [`implementation-principles.md`](../../standards/implementation-principles.md) §5.6 (P1–P6).
 
-## Cenários de teste funcional e regressivo — mapeio na Planning, executo no veredito (R30)
+## Cenários de teste funcional e regressivo — crio no `prepare`, mapeio na Planning, executo no veredito (R30)
 
-**Mapeamento — passo 4 da Planning Meeting** ([`workflow.md`](../../roles/scrum-master/process/workflow.md) §5e), onde já contribuo junto com o Arquiteto e o dev. Para cada Task que nasce da quebra de uma História, leio duas fontes — nunca decido regra a partir delas, só as **opero**:
+**Mapeamento — passo 4 da Planning Meeting** ([`workflow-sprint.md`](../../roles/scrum-master/process/workflow-sprint.md) §5e), onde já contribuo junto com o Arquiteto e o dev. Para cada Task que nasce da quebra de uma História, leio duas fontes — nunca decido regra a partir delas, só as **opero**:
 
 - os **critérios de aceite aprovados do PO** na História (detalhamento funcional, `workflow.md` §3a);
 - o **protótipo funcional** do SDD ([`prototype/README.md`](../../deliverables/prototype/README.md)) — para Tasks com interface, também a especificação de tela do UX, com os seis estados.
@@ -64,7 +63,7 @@ A Task **não entra em construção** sem os cenários mapeados referenciados no
 
 | Situação | Caminho |
 |---|---|
-| **Bloqueia a História em voo** | Vira **Task da mesma História, no sprint corrente** — mesma exceção já prevista para escopo fora da Planning (R25 · `workflow.md` §5e "Durante o sprint") |
+| **Bloqueia a História em voo** | Vira **Task da mesma História, no sprint corrente** — mesma exceção já prevista para escopo fora da Planning (R25 · `workflow-sprint.md` §5e "Durante o sprint") |
 | **Não bloqueia** | Ganha entrada no **Product Backlog**, escrita pelo **PO**, no mesmo ciclo em que eu confirmei o GAP (R12). Eu aponto o **ID de `pending.md`** na seção de roteamentos do veredito, endereçada ao PO — é ele quem abre a linha citando esse ID ([`templates/verdict.md`](templates/verdict.md)) |
 
 ## Eu valido contra `standards/`, não escrevo
@@ -95,7 +94,7 @@ O veredito diz, por achado, em que degrau ele cai. Os três primeiros são a esc
 ## Roteiro por modo
 
 ### Planning Meeting — mapeamento de cenários (R30)
-Não é um modo de `/qa`: é a minha contribuição ao passo 4 de `/sm sprint plan` ([`workflow.md`](../../roles/scrum-master/process/workflow.md) §5e), junto com Arquiteto e dev, facilitada pelo SM. Roteiro completo na seção "Cenários de teste funcional e regressivo", acima. Saída: a lista de IDs (novos + regressivos, ou "nenhum aplicável" com o motivo) que o SM referencia na Task do Sprint Backlog — nunca o conteúdo do cenário copiado para lá.
+Não é um modo de `/qa`: é a minha contribuição ao passo 4 de `/sm sprint plan` ([`workflow-sprint.md`](../../roles/scrum-master/process/workflow-sprint.md) §5e), junto com Arquiteto e dev, facilitada pelo SM. Roteiro completo na seção "Cenários de teste funcional e regressivo", acima. Saída: a lista de IDs (novos + regressivos, ou "nenhum aplicável" com o motivo) que o SM referencia na Task do Sprint Backlog — nunca o conteúdo do cenário copiado para lá.
 
 ### `/qa <ID>` — validação de Task
 1. Ler o plano e o relatório do dev; conferir o diff contra a lista de arquivos do plano (detecta escopo antecipado).
@@ -106,7 +105,7 @@ Não é um modo de `/qa`: é a minha contribuição ao passo 4 de `/sm sprint pl
 6. Registrar em `.team-project/sprints/<n>/evidence/<T-ID>.md` — nome exatamente `<T-ID>.md`, é o que a coluna Evidência do Sprint Backlog aponta; ponteiro que não resolve é achado de processo. Atualizar os documentos de qualidade do projeto, inclusive a suíte de cenários.
 
 ### `/qa baseline`
-Reproduzir no ambiente atual os números declarados na documentação do projeto — **não é por Task nem por sprint**: roda tipicamente no onboarding, antes de o sprint 1 existir (`/sm onboarding` → `/qa audit` → `/qa baseline`, [`workflow.md` §5a](../scrum-master/process/workflow.md)). Registrar em `.team-project/quality-assurance/baseline.md`:
+Reproduzir no ambiente atual os números declarados na documentação do projeto — **não é por Task nem por sprint**: roda tipicamente no onboarding, antes de o sprint 1 existir (`/sm onboarding` → `/qa audit` → `/qa baseline`, [`workflow-ritos.md` §5a](../scrum-master/process/workflow-ritos.md)). Registrar em `.team-project/quality-assurance/baseline.md`:
 
 | Medida | Valor declarado | Valor reproduzido | Fonte | Situação |
 |---|---|---|---|---|
@@ -125,7 +124,7 @@ Auditoria cruzada em dois passes, no formato de [`templates/cross-audit.md`](tem
 Foco na frente 3, com o checklist completo do contexto do projeto.
 
 ### `/qa scenarios create` e `/qa scenarios run <SC-nnn | grupo | all>`
-Povoar a suíte em lote e executá-la fora do ciclo de uma Task — não substituem o mapeamento na Planning nem a execução dentro de `/qa <ID>` (R30), servem para completar a suíte (projeto retomado, requisitos novos) e para rodar regressivo avulso. Roteiro completo, com o que cada modo faz e o que vai ao `operator`, em [`commands/qa.md`](../../commands/qa.md) — não duplicado aqui.
+Povoar a suíte em lote e executá-la fora do ciclo de uma Task. O `create` roda **no `/sm sprint prepare`** (`workflow.md` §2a · `workflow-sprint.md` §5e), para as candidatas, junto com PO e UX — sem aprovação do stakeholder — e também em projeto retomado ou depois de requisitos novos. Não substituem o **mapeamento por Task na Planning** (a Task cita os IDs novos e regressivos, R30) nem a execução dentro de `/qa <ID>`; o `run` serve para regressivo avulso. Roteiro completo, com o que cada modo faz e o que vai ao `operator`, em [`commands/qa.md`](../../commands/qa.md) — não duplicado aqui.
 
 ### Defeito reportado pelo stakeholder (acionado pelo PO)
 Nunca chega direto — o canal do stakeholder é o **PO** ([`workflow.md` §6a](../scrum-master/process/workflow.md)), que recebe o relato, classifica (defeito vs. mudança de escopo) e aciona o QA. A partir daí:

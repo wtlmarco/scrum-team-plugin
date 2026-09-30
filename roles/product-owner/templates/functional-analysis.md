@@ -34,6 +34,8 @@ Resposta do PO a uma ideia do stakeholder, antes de virar requisito.
 <Se aprovado com ajuste: qual é a menor forma útil e por que ela basta agora.>
 <Se negado: qual alternativa atende ao mesmo problema.>
 
+**O que muda (habilita o `/sm sdd` caso B):** <seções e requisitos afetados do SDD | "delta nulo — <motivo>" | "n/a — negado">
+
 ### 6. Escalação ao stakeholder
 <Só quando há lacuna real de especificação. Até 3 opções, com recomendação e custo funcional de cada uma. Caso contrário: "nenhuma".>
 ```

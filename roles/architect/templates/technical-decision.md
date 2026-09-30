@@ -1,6 +1,6 @@
 # Template — Decisão Técnica (resposta a 🔺 GAP)
 
-Resposta do Arquiteto quando o dev para e pergunta. Precisa ser **executável**: o dev retoma sem mais nenhuma escolha a fazer.
+Resposta do Arquiteto quando o dev para e pergunta. Precisa ser **executável**: o dev retoma sem mais nenhuma escolha a fazer. A varredura técnica do `prepare` usa a [variante](#variante--varredura-técnica-do-prepare) no fim deste modelo.
 
 ```markdown
 ## Decisão — <ID> · GAP do passo <n>
@@ -38,6 +38,22 @@ Resposta do Arquiteto quando o dev para e pergunta. Precisa ser **executável**:
 - Classificar sempre: gap sem classificação vira decisão perdida (R6).
 - Gap do mesmo tipo pela segunda vez = ajustar o **formato** do plano, não só responder de novo.
 - **Gap que aponta defeito num standard destrava a Task primeiro e corrige o normativo depois**, por `/review` — nunca editar `${CLAUDE_PLUGIN_ROOT}/standards/` no meio de uma Task, e nunca mandar o dev "ignorar a regra por enquanto" sem registro (R16).
+
+## Variante — varredura técnica do `prepare`
+
+Resposta de `/arc question` quando o `/sm sprint prepare` a chama (passo 5 de [`workflow-sprint.md` §5e](../../scrum-master/process/workflow-sprint.md)). A entrada é **História candidata**, não 🔺 GAP: ainda não há Task, plano nem ③.
+
+```markdown
+## Varredura técnica — sprint <n> · candidatas
+
+| História | Dependência técnica | Risco | Pré-requisito de ambiente | Bloqueia a Planning? |
+|---|---|---|---|---|
+| H-<nnn> | <o que precisa existir antes, com `arquivo:linha` — ou "nenhuma"> | <o que pode dar errado e o custo> | <declarado em `context.md` / medição vigente — ou "a medir na seção 3 do plano"> | não · **sim — <o que falta; destino: PO (funcional) ou Arquiteto (técnico)>** |
+```
+
+- **Sem passo, Task, estimativa nem desenho** — isso nasce na Planning e no `/arc plan`, depois do ③ (R20).
+- **Sem chamada ao `operator`** — ambiente não medido sai como "a medir na seção 3 do plano" (R28).
+- Todo "sim" traz o destino; lacuna funcional vai ao PO, não é decidida aqui.
 
 ## Exemplo
 

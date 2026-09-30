@@ -43,9 +43,12 @@ Entra no documento de requisitos do projeto (caminho em `.team-project/README.md
 - <o que este requisito explicitamente NÃO cobre>
 
 **Impacto em requisitos existentes:** <ID alterado | nenhum>
+**O que muda (caso B do `/sm sdd`):** <seções e requisitos afetados do SDD funcional | "delta nulo — <motivo>">
 ```
 
 ## Regras
+
+- **"O que muda"** só se preenche quando o `/sm sdd` caso B despacha o requisito ([`workflow-sdd.md` §5h](../../scrum-master/process/workflow-sdd.md)). É o delta funcional que delimita o que o UX e o Arquiteto refazem e o que passa pelo ①. **Delta nulo** (evolução só técnica) exige o motivo e dispensa o ①; nunca por conveniência (R15).
 
 - Numeração **nunca reaproveitada**; requisito descontinuado é marcado, não apagado.
 - Grafia de entidade, campo e enum idêntica à especificação (R10).

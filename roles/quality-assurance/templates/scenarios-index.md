@@ -57,4 +57,4 @@
 
 ## Quando este documento nasce
 
-Junto com o primeiro cenário da suíte — tipicamente na primeira Planning Meeting do projeto que mapeia cenários (R30), ou, em projeto retomado, quando `/qa baseline`/`/qa audit` identifica cenários funcionais já cobertos por teste existente e os retroalimenta na suíte.
+Junto com o primeiro cenário da suíte — tipicamente no primeiro `/sm sprint prepare` do projeto (`/qa scenarios create`) ou na primeira Planning Meeting que mapeia cenários (R30), ou, em projeto retomado, quando `/qa baseline`/`/qa audit` identifica cenários funcionais já cobertos por teste existente e os retroalimenta na suíte.

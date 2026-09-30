@@ -1,7 +1,7 @@
 # Template — Decisões da Planning e pacote de abertura (`/sm sprint plan`)
 
 > **Dono:** SM (escreve) · **PO** fornece a priorização · Vive em `.team-project/sprints/<n>/planning.md`
-> Nasce no **passo 9** da Planning ([`../process/workflow.md` §5e](../process/workflow.md)), antes de o pacote subir ao stakeholder, e **é peça obrigatória do pacote de abertura** (R25).
+> Nasce no **passo 9** da Planning ([`../process/workflow-sprint.md` §5e](../process/workflow-sprint.md)), antes de o pacote subir ao stakeholder, e **é peça obrigatória do pacote de abertura** (R25).
 > **Por que existe:** no pacote o stakeholder vê o que **entrou**. Sem a lista do que **não** entrou, uma pendência crítica despriorizada passa despercebida — e a decisão de priorização fica invisível, não só o resultado.
 
 ```markdown

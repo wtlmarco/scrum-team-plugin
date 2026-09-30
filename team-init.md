@@ -29,7 +29,7 @@ A partir de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/project-context.
 
 **O manifesto do que criar, com a origem de cada arquivo e a classe de reconciliação, está em `${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/README.md`** — é a lista única, e é ela que o `/team update` relê depois para reconciliar o que aqui foi instanciado. Em resumo: `product-backlog.md` sai do `templates/` do PO; os seis `context.md`, da seção "O que vai em cada `context.md`" do modelo de contexto. `sprints/`, `spikes/`, `prototype/`, `journeys/` e `screens/` nascem **vazios**. O `how-to.md` é **cópia literal** de `${CLAUDE_PLUGIN_ROOT}/how-to.md`, com um comentário no topo dizendo que não deve ser editado ali — é o guia de uso à mão de quem trabalha no projeto.
 
-**O que o `init` NÃO cria, e por quê.** `sprints/<n>/` e tudo dentro dela nascem na **Planning Meeting** (`/sm sprint plan`, `workflow.md` §5e passo 9) — o registro de execução pertence a um sprint, e sprint nenhum existe ainda. `baseline.md` nasce no `/qa baseline`, durante o onboarding. Semear esses arquivos vazios aqui produziria exatamente o defeito que R14 combate: estrutura que afirma um estado que o projeto não tem.
+**O que o `init` NÃO cria, e por quê.** `sprints/<n>/` e tudo dentro dela nascem na **Planning Meeting** (`/sm sprint plan`, `workflow-sprint.md` §5e passo 9) — o registro de execução pertence a um sprint, e sprint nenhum existe ainda. `baseline.md` nasce no `/qa baseline`, durante o onboarding. Semear esses arquivos vazios aqui produziria exatamente o defeito que R14 combate: estrutura que afirma um estado que o projeto não tem.
 
 ## 3. Pergunte ao stakeholder, numa lista só
 
@@ -46,9 +46,9 @@ Com as respostas, incluindo a seção compacta "Como usar o time neste projeto" 
 Conforme a resposta do passo 3:
 
 - **projeto retomado** → `/sm onboarding`, depois `/qa audit` e `/qa baseline` — o levantamento sobre código vira as primeiras Histórias;
-- **projeto novo com ideia ainda aberta** → `/team brainstorm <ideia>`;
-- **projeto novo com requisitos já claros** → `/po analyze <visão do produto>`.
+- **projeto novo com ideia ainda aberta** → `/sm brainstorm <ideia>` e depois `/sm sdd`;
+- **projeto novo com requisitos já claros** → `/po analyze <visão do produto>` e depois `/sm sdd`.
 
-Em qualquer um dos três, o caminho depois é o mesmo: SDD funcional → **①** → SDD técnico → **②** → `/po story` → detalhamento → **③** → `/sm sprint plan`.
+Em qualquer um dos três, o caminho depois é o mesmo: `/sm sdd` (SDD funcional → **①** → SDD técnico → **②** → Histórias) → `/sm sprint prepare` → `/sm sprint plan` → **③** (pacote de abertura).
 
 Ao final, liste os arquivos criados e as decisões que ficaram pendentes do stakeholder.

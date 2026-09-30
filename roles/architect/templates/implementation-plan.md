@@ -1,6 +1,6 @@
 # Template — Plano de Implementação
 
-Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` — dentro da pasta do sprint a que a Task pertence, na subpasta do Arquiteto ([`../../scrum-master/process/artifact-ownership.md` §1e](../../scrum-master/process/artifact-ownership.md)). **É o conteúdo técnico da Task**, não um artefato irmão dela: a Task é a unidade de trabalho no Sprint Backlog, e o plano é o que diz como ela se faz. É o contrato entre o Arquiteto e o dev: **o que não estiver aqui vira 🔺 GAP, nunca improviso.**
+Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (plano de calibração, sem sprint corrente: `.team-project/architect/calibration/`) — dentro da pasta do sprint a que a Task pertence, na subpasta do Arquiteto ([`../../scrum-master/process/artifact-ownership.md` §1e](../../scrum-master/process/artifact-ownership.md)). **É o conteúdo técnico da Task**, não um artefato irmão dela: a Task é a unidade de trabalho no Sprint Backlog, e o plano é o que diz como ela se faz. É o contrato entre o Arquiteto e o dev: **o que não estiver aqui vira 🔺 GAP, nunca improviso.**
 
 > **O caminho não é fixo:** `.team-project/README.md` §2 declara **qual é o sprint corrente**, e é por lá que o dev e o QA acham este plano. A coluna Plano do `sprint-backlog.md` aponta para ele; ponteiro que não resolve é achado de processo.
 
@@ -124,7 +124,7 @@ Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que disparo
 1. **Sequência linear** quando o time tem um único dev; sem faixas paralelas.
 2. **Cabe em uma unidade de trabalho** — acima de ~10 passos ou duas áreas do sistema, quebrar em `<T-ID>a`/`<T-ID>b`, **sempre dentro da mesma História** (R2 · R20).
 3. **Ordem preserva o repositório íntegro** no maior número de pontos intermediários.
-4. **Uma migration de banco por Task.**
+4. **Uma migration de banco por Task** — Tasks que dependem da mesma migration viram uma Task só.
 5. **Nomes exatamente como na especificação** — grafia é contrato.
 6. **Nada de "siga o padrão"** — aponte o arquivo concreto a espelhar.
 7. **Se o dev puder escolher entre duas formas, o plano está incompleto.**

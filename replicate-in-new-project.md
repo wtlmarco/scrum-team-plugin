@@ -9,7 +9,7 @@ O plugin é **inteiramente genérico**: não contém nada de um produto específ
 
 ## Passo 1 — Instalar o time
 
-Este repositório **é** um plugin do Claude Code autocontido. Os comandos `claude plugin marketplace add` / `install` / `update` e o passo de reiniciar a sessão estão em [`how-to.md` § "Instalar em um projeto"](how-to.md) — a fonte única desse bloco. O que é próprio da replicação:
+Este repositório **é** um plugin do Claude Code autocontido. Os comandos `claude plugin marketplace add` / `install` / `update` e o passo de reiniciar a sessão estão em [`how-to.md` § "Instalar e manter atualizado"](how-to.md) — a fonte única desse bloco. O que é próprio da replicação:
 
 - A origem pode ser um caminho local (`../scrum-team-plugin`) ou o repositório git. O registro vai para `.claude/settings.json` do novo projeto; **caminho relativo é preservado**, então pode ser versionado. **Use a mesma forma de identificador em todos os registros** — URL `.git` completa ou caminho local, nunca `owner/repo` misturado com URL (`how-to.md` passo 1).
 - O novo projeto **não precisa ser repositório git** para receber o time.
@@ -19,7 +19,7 @@ Este repositório **é** um plugin do Claude Code autocontido. Os comandos `clau
 
 Depois de reiniciar a sessão, rode **`/team init`**. Ele cria a estrutura de `.team-project/` a partir dos modelos, lê o repositório para preencher o que já dá para inferir, pergunta só o que falta e aponta o próximo passo conforme o projeto seja novo ou retomado.
 
-O guia de uso — instalação, atualização, os quatro caminhos de entrada (projeto novo · retomada · bug · melhoria) e as regras que valem sempre — está em [`how-to.md`](how-to.md).
+O guia de uso — o mapa "o que você quer fazer → qual comando", os cenários de uso (projeto novo · retomada · evolução · correção · pedido no meio do sprint · trabalho interrompido), os quatro portões, as regras que valem sempre, instalação e atualização — está em [`how-to.md`](how-to.md).
 
 Sem `.team-project/`, os agentes param e pedem que ele seja criado. A **estrutura do diretório, a tabela arquivo → modelo de origem e o que vai em cada `context.md`** estão em [`roles/scrum-master/templates/project-context.md`](roles/scrum-master/templates/project-context.md) — a fonte única. Consulte-a se preferir montar à mão ou conferir o que o `/team init` produziu.
 
@@ -59,7 +59,7 @@ Os princípios de engenharia de **nível 1** ([`standards/implementation-princip
 O time só arranca com uma **lista de Tasks com ID**:
 
 - **Projeto existente** — rode `/qa audit` e `/qa baseline` primeiro. O resultado (pendências com evidência + números reais de build/teste) vira o backlog inicial.
-- **Projeto novo** — `/po analyze <visão do produto>` para os primeiros requisitos, depois `/sm sprint plan`.
+- **Projeto novo** — `/sm brainstorm <ideia>` (ideia sem documentação) ou `/po analyze <visão do produto>` para os primeiros requisitos; depois **`/sm sdd`** (SDD pelos portões ① e ② e as Histórias); então `/sm sprint prepare` → `/sm sprint plan` (o cenário A de [`how-to.md`](how-to.md)).
 
 ## Passo 6 — Primeira rodada de validação
 
@@ -68,8 +68,8 @@ Nesta ordem, para confirmar que o time está calibrado antes de confiar nele:
 ```
 /qa baseline          → os números declarados batem com a realidade?
 /po status            → o status sai em 6 linhas, em Historias, com evidência?
-/arc plan <ID>       → o plano é executável por um júnior sem decidir nada?
-/team cycle <ID>      → o ciclo fecha com veredito e evidência real?
+/arc plan <T-ID>     → o plano é executável por um júnior sem decidir nada?
+/dev <T-ID> · /qa <T-ID> → a Task fecha com veredito e evidência real? (antes da 1ª Planning use os comandos de papel; `/sm sprint run <T-ID>` exige o pacote do sprint aprovado e a Task no quadro)
 ```
 
 Se o primeiro plano do Arquiteto precisar de mais de dois 🔺 GAPs para ser executado, o problema não é o time — é o `context.md` do Arquiteto, que está raso. É a métrica mais barata de saúde da instalação.
@@ -86,4 +86,4 @@ Se o primeiro plano do Arquiteto precisar de mais de dois 🔺 GAPs para ser exe
 - [ ] Em projeto retomado: `pending.md` produzido por `/qa audit` antes de qualquer planejamento
 - [ ] Backlog inicial semeado com IDs
 - [ ] `/qa baseline` executado e registrado em `.team-project/quality-assurance/baseline.md`
-- [ ] Primeiro `/team cycle` fechado com veredito ✅
+- [ ] Primeira Task fechada com veredito ✅ (`/sm sprint run`, depois da 1ª Planning com pacote aprovado)

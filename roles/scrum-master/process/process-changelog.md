@@ -13,6 +13,9 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.33.1`](process-changelog-archive.md) | O papel chamador retrata o consumo do `operator`; o registro o soma em linhas por chamador (SM) — 29/09/2026 |
+| [`v3.33`](process-changelog-archive.md) | Retrospectiva analisa consumo por papel e por modelo, procura ineficiência e gera o relatório ao dono do plugin (SM) — 29/09/2026 |
+| [`v3.32`](process-changelog-archive.md) | R30: QA mapeia cenário de teste funcional/regressivo na Planning e o executa no veredito; GAP não-bloqueante ganha caminho ao Product Backlog (SM) — 23/09/2026 |
 | [`v3.31`](process-changelog-archive.md) | QA cobre aderência de execução e de standard na mesma frente 2; `/arc comply` sai do ciclo; `cycle sprint` deixa de ser "proposta" (SM) — 23/09/2026 |
 | [`v3.30`](process-changelog-archive.md) | R29 nova: checkpoint de sessão entre fases heterogêneas; item de build em background fechado por já coberto (R28); sequenciamento de branch do projeto-cliente fora do alcance (SM) — 22/09/2026 |
 | [`v3.29`](process-changelog-archive.md) | R28 troca o mecanismo impossível pelo implementável (arquivo na origem + agente `operator`); R26 aceita medição do `operator`; agente conta sobe a 7 (SM + PO + Arquiteto + QA + UX) — 21/09/2026 |
@@ -70,277 +73,223 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
-## v3.33.1 — O papel chamador retrata o consumo do `operator`; o registro o soma em linhas por chamador (SM) — 29/09/2026
+## v3.34 (parte 3) — Novo modo `/sm sdd`: a transição do brief ao SDD aprovado e às Histórias, com os portões ① e ② disparados pelo próprio modo (SM + PO + UX + Arquiteto) — 30/09/2026
 
-**Instrução** (stakeholder, `/review`, item de `note.md` "Consumo do `operator` não aparece no registro de consumo do sprint"): "que o uso do operator possa ser retratado pelo seu chamador, assim teríamos a economia nessa transferência de atividade".
+**Instrução** (stakeholder, `/review`, formulário): *"Por qual comando, depois do brainstorm, se elabora o SDD funcional e o técnico que servem de base para o `/sm sprint prepare`?"* — a resposta era uma sequência manual (`/po requirement` → `/po analyze` → `/ux journey` → `/ux prototype` → ① → `/arc` em modo livre → ② → `/po story`), e os formulários dos portões dependiam de "a sessão que orquestrou o comando anterior". **Decisões:** (1) novo modo **`/sm sdd`**, orquestrado pela sessão, com a cadência `brainstorm → sdd → prepare → plan → run → review → close`; (2) alcance nos **dois casos** — ideia nova depois do brainstorm e evolução de área já documentada depois do `/po analyze` (só o delta, portões só no que mudou).
 
-**Classificação:** formato de documento (`consumption.md`, `retrospective.md`, `plugin-report.md`) + extensão de verificação de regra existente (R28) + comportamento de agente/relatório dos papéis chamadores (fora do alcance do SM, aplicado pelos donos). Sem regra nova. Rodada de **um papel aplicando na mão do SM** (os demais papéis aplicam a própria contraparte, ver abaixo) — barreira aplicável: 10 KB.
+**Classificação:** cerimônia + etapa de fluxo + comportamento de comando (proposta). Entrada **separada** (a "parte 2" tem 14 KB); mesma versão, pois a v3.34.0 está na branch aberta.
 
-**Lacuna (confirmada):** o `operator` roda aninhado dentro do papel chamador; a sessão só recebe o total do papel e nunca vê o `operator`. O registro só tinha linha por invocação de papel, então o consumo delegado ou ficava invisível ou (se fosse dentro do número do papel) impossível de separar — e sem separar não há como saber se delegar economiza.
-
-**Conflito levantado na triagem e decidido pelo stakeholder:** "Quem escreve" dizia que o papel nunca grava a própria linha; a instrução pede que o chamador retrate. **Posição B adotada:** o papel retrata, em seção própria do relatório; **a sessão** grava as linhas — um escritor só, o registro continua do SM. Totais: o `operator` **entra** no Total do sprint, em linhas próprias por chamador (`operator ← arc`, `operator ← qa`…), cada uma com o modelo do `operator` (o `model:` de `agents/operator.md`, "configurado, não servido"). Sem piso nem teto.
-
-### O que mudou
-
+### O que mudou (fase do SM)
 | Documento | Seção | Mudança |
 |---|---|---|
-| `templates/consumption.md` | cabeçalho, "o que mede", registro, totais, regras | Papel aceita `operator`; linha-modelo com Nota `chamado por <papel>; job <caminho>`; Totais com `operator ← <chamador>` e Total do sprint (papéis + `operator`); "Quem escreve" cobre o `operator` (papel retrata em "Execução delegada", sessão grava na mesma passada); premissa de não-duplicidade como ressalva (R7) |
-| `templates/retrospective.md` | "Consumo real do sprint" | Linhas `operator ← <chamador>` e Total; bullet "Delegação ao `operator`" (chamador × `operator` por Task/História, com modelos, candidato a investigar); bullet de contagem R28; premissa |
-| `templates/plugin-report.md` | seção 1 | Mesmas linhas por chamador e bullet de delegação (Tasks anônimas, sem afirmar economia absoluta) |
-| `workflow.md` | §5c; registro de consumo; retro como análise; "Como o SM verifica" | O consumo real inclui o `operator` retratado; quem escreve; contagem jobs × linhas |
-| `working-rules.md` | R28 ("SM verifica") | Estendida com a verificação por contagem — `.team-project/operator/<sprint>/` × linhas `operator`; relatório de papel que delegou sem "Execução delegada" é achado contra o chamador. Sem regra nova |
-| `artifact-ownership.md` | §1, linha de consumo | Toda chamada ao `operator` vira linha |
-| `roles/scrum-master/README.md`, `how-to.md`, `deliverables/team-project/README.md` | ponteiros | Coerência de referência cruzada (exceção de curadoria) |
+| `process/workflow-sdd.md` (novo, 7,4 KB) | **§5h** | Roteiro do `/sm sdd`: casos A/B e pré-condições (brief fechado **ou** `/po analyze` com decisão; onboarding); estado e retomada em `context.md` §"SDD em elaboração"; 5 etapas com quem é despachado; ① e ② em formulário **disparados pelo `sdd`**; portão sem delta (só com delta nulo declarado pelo dono); saída; o que não faz; consumo pré-sprint; verificação |
+| `process/workflow-ritos.md` | §5b "Transição para o SDD" | A tabela vira ponteiro para §5h; o brief passa a ter lugar declarado (`context.md` §"SDD em elaboração", ≤15 linhas); verificação dos portões migra para §5h |
+| `process/workflow.md` | §2 · §2a (linha **0c**, linha 1) · §5 (nova linha; "Protótipo funcional") · tabela §5a–5h · §3a DoR-a · §8 (①②) | `/sm sdd` na cadeia e nas cerimônias; ① e ② disparados pelo `sdd` (fim do "quem orquestrou o comando anterior"); DoR-a exige SDD aprovado (① e ②) — projeto retomado: SDD reconhecido no onboarding vale |
+| `process/workflow-sprint.md` | §5e "Preparação" passo 1 | `prepare` só recebe Histórias **de SDD aprovado (① e ②)**; requisito sem ② volta ao `sdd` |
+| `process/working-rules.md` · `working-rules-index.md` | R15 | Elaboração do SDD por `/sm sdd`; formulários dos portões do próprio `sdd`; regra do portão sem delta (evolução) |
+| `process/artifact-ownership.md` | §1 · diagrama | Nova linha: "SDD em elaboração" (seção do `context.md` do SM), com o brief e a decisão do ② |
+| `templates/project-context.md` · `consumption.md` | tabela `/sm` · "Por onde começar" · `context.md` do SM · subseção de consumo | `sdd` na tabela e nas sequências; §"SDD em elaboração"; subseção "Consumo pré-sprint (prepare · sdd)" (era "do prepare") |
+| `roles/scrum-master/README.md` | nova `/sm sdd` · tabela de documentos · brainstorm · prepare | seção do modo; ponteiros |
+| `README.md` · `how-to.md` · `replicate-in-new-project.md` · `team-init.md` | comandos · caminhos A/D · diagrama | `sdd` na lista de modos, no caminho padrão e nas sequências; `/po requirement` → `/ux prototype` → ① → ② manual sai dos caminhos |
+| **Aplicação das propostas** (orquestrador, com autorização do stakeholder) | `commands/{sm,po,arc,ux,dev}.md` · `agents/{scrum-master,product-owner,architect,user-experience}.md` | As 9 propostas de `proposals-v2/` **aplicadas**; frontmatter dos 4 agentes conferido igual ao HEAD; 0 resíduos de `architect/plans` ou "sessão que orquestrou" em `commands/` e `agents/` (a ocorrência em `commands/qa.md:27` é a regra geral de R22, correta) |
+| **Ajustes finais dos donos** | `roles/user-experience/README.md:56` · `templates/functional-prototype.md:100` · `templates/requirement.md` · `templates/functional-analysis.md` | UX: "portões só dentro do `sdd`" (carga fixa UX 10.842 B); PO: campo **"O que muda (caso B do `/sm sdd`)"** (`requirement.md` 5.699 → 6.169 B; `functional-analysis.md` 2.480 → 2.614 B), README do PO aponta para eles |
+| **`how-to.md` reescrito — a pedido direto do stakeholder** (guia de raiz, dele; fora da exceção de curadoria do SM) | `how-to.md` · `team-version.md:21` · `replicate-in-new-project.md:12,:22,:62` · `README.md:17,:42` · `templates/project-context.md:138` | Guia por uso: "Em um minuto" · "o que você quer → comando" · cenários A–F · "Os seus quatro portões" · regras · "Referência dos comandos" · onde cada coisa mora · "Instalar e manter atualizado" (com "Problemas de instalação"). Ponteiros dos demais documentos atualizados para as seções novas; `project-context.md:138` diz que a cópia do guia é criada pelo `/team init` e **substituída** pelo `/team update` (cópia literal — `team-update.md:107`) |
+| `process/workflow-sprint.md` §5g "Manutenção" | correção pontual (2 ocorrências) | O caminho manual "caminho C" (`/arc question` → `/arc plan` → `/dev` → `/qa` → `/sm close`) vira: `/arc question` se a causa não é óbvia → entrada fora da Planning registrada por `/sm board` com "o que saiu para caber" → `/sm sprint run <T-ID>`, alinhado a `sprint-run.md` pré-condição 2 e ao how-to |
+| **Regressão da parte 2 corrigida** (achado do Arquiteto) | `team-update.md:76,:97` × plano de calibração | A parte 2 pôs o plano de calibração em `.team-project/architect/plans/`, que o `team-update` trata como **caminho legado a migrar** (verificação exige zero ocorrências). **Decisão do SM:** o caminho de calibração passa a **`.team-project/architect/calibration/<Task-ID>-<slug>.md`**, sem colisão, e o `team-update` **não é tocado**. Trocado em `artifact-ownership.md` §1/§1e, `sprint-run.md` (pré-condição 2), `deliverables/team-project/README.md`, `project-context.md` (árvore), README do Arquiteto e `implementation-plan.md:3` (só o nome do caminho); nas propostas `commands/arc.md`, `agents/architect.md` e `commands/dev.md`. As menções `architect/plans` nesta e nas entradas anteriores são **históricas** |
+| `process/workflow-sdd.md` §5h | etapa 5 · portões | **Etapa 5 só começa depois do ② registrado (ou dispensado com motivo)**; a versão aprovada no `06-changelog` é do PO e vem **antes** das Histórias (achado do PO). Nova regra: **portões só se decidem dentro do `sdd`** — `/ux prototype` e `/arc` avulsos não abrem nem fecham ①/② (resolve a divergência UX × Arquiteto sobre "avulso → a sessão") |
+| **PO** — `roles/product-owner/README.md` · `deliverables/sdd/README.md` | `/po analyze` · `/po requirement` · `/po story` (Esboço) · regras do SDD | Decisão formal do `analyze` habilita o `sdd` (caso B) e declara o que muda; `requirement` chamado pelo `sdd` (etapa 1a), delta nulo com motivo dispensa ①; `story` (etapa 5) registra a versão aprovada no `06-changelog` e atualiza o índice (R12) |
+| **UX** — `roles/user-experience/README.md:47,:56` · `templates/functional-prototype.md:76,:100` | `/ux prototype` · registro do ① | Despachado pelo `sdd` (etapa 1c, depois de `02`; caso B só os fluxos afetados); ficha = registro único do ①, UX transcreve |
+| **Arquiteto** — `roles/architect/README.md` · `templates/implementation-plan.md:3` | SDD técnico da fatia · indicador · `/arc plan` (calibração) | Caminho oficial é o `sdd` (etapa 3); modo livre só conversa avulsa; delta nulo com motivo dispensa ②; formulário do ② é do `sdd` |
+| `proposals-v2/commands/sm.md` · `agents/scrum-master.md` | linha `sdd`, description, hint, pré-condições | **Proposta** (`commands/`, `agents/` são do stakeholder): `/sm` de carga fixa 13.455 B (`sm.md` 6.807 + agente 6.648), dentro de ≤13,5 KB |
+| `process/process-changelog(-archive).md` | — | v3.33.1 arquivada (R17, três entradas mantidas); "Pendente" da parte 2 atualizado (propostas aplicadas em 29–30/09 na `feat/v3.34.0`, frontmatter dos 6 agentes igual ao HEAD, bump v3.34.0; **pendentes: reinício de sessão e remedição da tabela de custo**) |
 
 ### Por quê
-
-Sem o consumo do `operator` no registro, o total do sprint subestimava o time e a pergunta que motivou R28 — delegar a execução pesada ao modelo barato **economiza**? — ficava sem número. Com a linha por chamador, a retro compara, por Task, o custo do papel e o do `operator` que ele chamou, com o modelo de cada um. **Ressalva honesta:** isso compara custos, não mede a economia absoluta (falta o cenário sem delegação); por isso é "candidato a investigar".
+O caminho do brief às Histórias era o único trecho do processo sem comando dono: cinco comandos de papel em sequência manual e dois portões cujo formulário dependia de lembrar qual sessão orquestrou qual comando (R22). Sem um dono, o `prepare` recebia "Histórias" de origem não verificável. O `/sm sdd` dá dono, estado (retomável) e portões próprios, e fecha a cadeia até o `prepare`.
 
 ### Quem passa a ser cobrado de forma diferente
-
 | Papel | O que muda |
 |---|---|
-| **Arquiteto · QA · Dev · UX** (chamadores) | Retratam cada chamada ao `operator` na seção **"Execução delegada"** do relatório final: Operator job · Task/História · Modelo · Tokens · Duração (ou "não disponível — motivo"). Aplicação em `roles/<papel>/`, feita pelos donos |
-| **Quem orquestra** | Grava as linhas `operator` na mesma passada da linha do papel (instrução em `commands/`, proposta ao stakeholder) |
-| **SM** | Confere a contagem de jobs × linhas `operator`; lê a delegação na retro e no relatório |
+| PO | escreve `00`/`01`/`02`/`06`/índice e depois as Histórias (esboço) **dentro do `sdd`**; declara o delta funcional no caso B (base para dispensar ①) |
+| UX | jornadas e protótipo funcional despachados pelo `sdd`; o formulário do ① é do `sdd` (a decisão continua na ficha do protótipo) |
+| Arquiteto | SDD técnico despachado pelo `sdd`; declara o delta técnico no caso B (base para dispensar ②); o formulário do ② é do `sdd` |
+| SM | abre e mantém §"SDD em elaboração"; verifica ①②→Histórias e que `prepare` só recebe Histórias de SDD aprovado |
 
 ### Conflitos com o processo vigente
-
-Um, resolvido (acima): "quem escreve". R7 mantida (sem número → "não disponível — motivo"). R28 intacta — só ganha a verificação. **Premissa a validar:** o número que o papel devolve não inclui o do `operator` aninhado. Se uma medição mostrar soma dupla, volta ao `/review`.
+Nenhum com regra escrita. Ponto de atenção: **R15 diz que os portões não se negociam** — o "portão sem delta" (caso B) não abre exceção: só se dispensa o que **não mudou**, com o delta nulo declarado pelo dono e o motivo em `context.md`.
 
 ### Como saberemos que funcionou
-
-No primeiro sprint fechado após a atualização: nº de linhas `operator` no `consumption.md` = nº de chamadas em `.team-project/operator/<sprint>/` (pasta de job, mais um por log adicional na mesma pasta); a retro traz a tabela de delegação preenchida ou "nenhuma delegação". Sinal de falha: jobs sem linha, ou relatório de papel que delegou sem "Execução delegada".
+Nos próximos dois ciclos de SDD: (a) zero `03`/`04`/`05` datado antes do registro do ① e zero História antes do ②; (b) todo `prepare` cita Histórias de SDD aprovado; (c) zero portão ①/② em texto corrido; (d) o número de comandos digitados entre o brainstorm e o `prepare` cai de ~8 para 1; (e) toda retomada de `sdd` entra na etapa correta (estado em `context.md`).
 
 ### Evidência (R19)
-
 | Classe | Comando | Saída | Ok? |
 |---|---|---|---|
-| Arquivamento | `.Contains()` do bloco `## v3.31` (salvo antes de mover) no `process-changelog-archive.md` | `True` — íntegro; índice ganhou a linha `v3.31` | ✅ |
-| Coerência de índice | regex `^## v3\.[0-9.]+ ` em `process-changelog.md` | 3 entradas (v3.33.1, v3.33, v3.32) | ✅ |
-| Substituição de padrão | `Select-String "Execução delegada"` em `process/`, `templates/`, README do SM (fora changelogs) | `artifact-ownership.md:33` · `workflow.md:378` · `working-rules.md:58` · `consumption.md` ×3 · `retrospective.md:51` · `README.md:134` — cada uma lida no contexto; nome idêntico ao dos relatórios dos papéis | ✅ |
-| Substituição de padrão | `Select-String "operator ←"` em `templates/` | `consumption.md`, `retrospective.md`, `plugin-report.md`, uma linha de totais cada; Total do sprint dos três diz "papéis + `operator`" | ✅ |
-| Coerência (leitura) | "Quem escreve" × "nunca é ele quem grava" em `consumption.md` | a frase antiga permanece verdadeira (o papel não grava a própria linha) e a exceção "vale também para o `operator`" vem logo após: papel retrata, sessão grava | ✅ |
-| Contagem | `^### R\d+\.` em `working-rules.md` | 30 — sem regra nova | ✅ |
-| Teto de entrada (R17) | bloco `## v3.33.1`, UTF-8 | 9.098 B após a curadoria (rodada de SM + Arquiteto + QA + UX; barreira 17,5 KB), sob a barreira | ✅ |
-| Coerência (leitura) | regra única da célula "Operator job" lida em `consumption.md:48`, `working-rules.md:58`, `workflow.md:392`, `retrospective.md:52` × células de `delivery-report.md`, `verdict.md`, `evidence.md`, `functional-prototype.md`, `sprint-prototype.md`, `architect/skills.md` | contagem de R28 agora em chamadas nos 4 normativos/modelos do SM; formatos dos papéis compatíveis | ✅ |
+| Substituição | grep `/po requirement <ID>\s+o brief` e a sequência `→ /po requirement → /ux prototype` em `.md` de RAIZ (exceto changelogs) | 0 restos da sequência manual fora de `workflow-sdd.md:7` (que a cita para dizer que foi substituída) | ✅ |
+| Referência cruzada | ocorrências de `/sm sdd`\|`workflow-sdd` por arquivo | 14 arquivos, 64 ocorrências, cada uma lida no contexto (contagem/lista adjacente: tabela do `/sm` de `README.md`, `how-to.md`, `project-context.md` traz **11 modos**) | ✅ |
+| Links | resolução de `](x.md)` em todos os `.md` (exceto `CHANGELOG.md` e o arquivo) | 0 quebrados novos (só o `how-to.md` do template e o texto literal `x.md` desta linha) | ✅ |
+| Extração | bytes: `workflow.md` 39.053 → 40.506 · `workflow-ritos.md` 14.592 → 13.391 · `workflow-sdd.md` novo 7.424 · `working-rules.md` 71.630 → 72.145 | o `sdd` só é lido em `/sm sdd` | ✅ |
+| Arquivamento | `Contains` do bloco v3.33.1 (98 linhas) no arquivo; entradas vivas | `True`; entradas: parte 3, parte 2, v3.34 (três) | ✅ |
+| Carga fixa | `Length` de `proposals-v2/commands/sm.md` + `agents/scrum-master.md` | 6.807 + 6.648 = **13.455 B** (era 13.345; teto 13.500) | ✅ |
+| Substituição (regressão) | `Select-String "architect/plans"` em `.md` de RAIZ e `proposals-v2/` (exceto changelogs e `team-update.md`) | 0 depois da troca para `architect/calibration`; sobram só `commands/arc.md:12`, `agents/architect.md:55` e `commands/dev.md:10` de RAIZ, que as propostas substituem; `team-update.md:76,:97` intacto | ✅ |
+| Coerência das propostas | bytes e `diff` linha a linha RAIZ × `proposals-v2/` das 6 propostas dos papéis; ①/② e "avulso" | só linhas editadas, nenhuma removida sem contraparte (`po.md` 8/8, `arc.md` 3/3, `ux.md` 3/3, `agents/po` 8/9, `architect` 2/2, `user-experience` 1/1); ①/② são do `sdd` em `sm.md`, `arc.md:22`, `ux.md:31`; **1 divergência** ("avulso" decidia ① no UX e não decidia ② no Arquiteto) resolvida na §5h | ✅ |
+| Carga fixa | `Length` agente + comando, aplicado → proposto | `/sm` 13.345 → 13.455 · `/po` 11.066 → 11.207 · `/arc` 8.563 → 8.497 · `/ux` 10.710 → 10.897 · `/dev` 6.113 → 6.119 · `/qa` 11.622 → 11.622; total 61.419 → 61.797 (era 95.021 antes da v3.34) | ✅ |
+| Leitura | `consumption.md` §Como gravar (achado do UX) | existe (linha 39) | ✅ |
+| Aplicação | conferência do orquestrador: frontmatter dos 4 agentes × HEAD; grep `architect/plans` e "sessão que orquestrou" em `commands/` e `agents/` | igual ao HEAD; 0 resíduos (1 ocorrência legítima em `qa.md:27`) | ✅ |
+| Referência cruzada (how-to novo) | grep em RAIZ (exceto changelogs, `note.md`, `proximo.md`) de `how-to.md` + `§`, "quatro caminhos", "caminho [A-D]", "Os comandos"; cada ocorrência lida contra os headings do how-to novo | 7 ponteiros resolvem (`§"Referência dos comandos"` → how-to:154; `§"Instalar e manter atualizado"` → :226; "cenário A" → :42; "quatro portões" → :129); **1 resto** — `README.md:42` ("os 4 caminhos de entrada") — corrigido; "caminho C" em `workflow-sprint.md:149,:155` corrigido | ✅ |
+| Desvio | parágrafo "Pendente" da entrada v3.34 apagado por engano no arquivamento da v3.33.1 | recomposto com ponteiro para a "parte 2" e nota; o texto original listava as 14 propostas, hoje na "parte 2" e no `CHANGELOG.md` v3.34.0 | ⚠️ registrado |
 
 ### Pendente do stakeholder
-
-Nenhum. Bump R18 aplicado pela sessão principal com autorização do stakeholder em 29/09/2026: `plugin.json` `3.33.1`, banner do `README.md` e entrada `v3.33.1` no `CHANGELOG.md`; `commands/` e `agents/` também aplicados (ver "Aplicação dos papéis"). Mudança em `agents/`/`commands/` só vale após reiniciar a sessão.
-
-### Aplicação dos papéis e curadoria (29/09/2026)
-
-| Papel | Documentos | Retrato |
-|---|---|---|
-| **QA** | `skills.md` §2 ("Retrato da chamada"), `README.md` passo 3, `templates/verdict.md`, `templates/evidence.md` | seção "Execução delegada" (5 colunas) no veredito e na evidência |
-| **UX** | `skills.md` §10 (retrato + "Como se verifica"), `templates/functional-prototype.md`, `templates/sprint-prototype.md`, `README.md` | seção na ficha do protótipo |
-| **Arquiteto** (e Dev, aplicado por ele) | `roles/architect/skills.md` §14 ("Retrato da delegação", na resposta, não no plano/ADR), `README.md` item 4; `roles/developer/templates/delivery-report.md`, `skills.md` §6, `README.md` passo 6 | seção no relatório do dev; build de fim de passo rodado pelo próprio dev **não** entra |
-| **Sessão / stakeholder** | `commands/{arc,qa,ux,dev,team}.md`, `agents/{architect,quality-assurance,developer,user-experience,operator}.md`, `plugin.json` 3.33.1 | grava as linhas `operator`; papel só retrata; `operator` não relata o próprio consumo |
-
-**Divergência resolvida (curadoria):** o Dev traz na célula "Operator job" caminho + log (`.team-project/operator/3/ABC-02/ — test.log`), porque no dev `<job>` = `<T-ID>` e duas chamadas da mesma Task caem na mesma pasta; QA e UX trazem só o caminho. **Regra única**, agora em `consumption.md` ("Identificação da chamada"): célula = caminho do job, acrescido de `— <log>` quando houver mais de uma chamada na mesma pasta. Os três formatos são compatíveis com ela; nenhum roteiro de papel precisou ser reescrito. Consequência: a contagem de R28 passa a ser de **chamadas**, não de pastas (ajustada em `working-rules.md`, `workflow.md`, `retrospective.md`, `consumption.md` e neste "Como saberemos").
-
-**Ponto devolvido ao UX (roteiro do outro papel):** `templates/sprint-prototype.md`:94 já usava "Execução delegada" como **rótulo de regra** ("Execução delegada, veredito meu (R28)"), agora também nome da seção de retrato — ambiguidade de leitura na mesma ficha. O nome da seção fica fixo porque o SM e os demais papéis o citam. **Resolvido pelo UX:** rótulo da regra renomeado para "Delegação da verificação, veredito meu (R28)"; o rótulo antigo só existia ali, e `grep "Execução delegada"` em `roles/user-experience/` devolve só a seção de retrato (5 ocorrências em 4 arquivos).
-
-### Reavaliação e ajustes finais (29/09/2026)
-
-Uma reavaliação (`/review` vazio) achou três pontos; o stakeholder mandou resolver os três, ainda dentro da v3.33.1.
-
-| # | Achado | Resolução | Dono |
-|---|---|---|---|
-| 1 | Jobs de `operator/pre-sprint/` (Arquiteto e UX antes do sprint 1) nunca entravam no registro: `consumption.md` só nasce no `/sm sprint plan` e a contagem de R28 só olhava `operator/<sprint>/` | Ao criar o **primeiro** `consumption.md`, o SM lança uma linha `operator` por job de `pre-sprint/`, **transcrita** da "Execução delegada" do chamador (Nota `pre-sprint;`); contagem de R28 = `<sprint>/` + `pre-sprint/` ainda não contado; cada job é contado uma vez; invocações de papel anteriores não são reconstruídas (R7). Em `working-rules.md` R28, `workflow.md:392`, `consumption.md`, `retrospective.md:52`; `commands/sm.md` (sprint plan) aplicado pela sessão principal | SM |
-| 2 | `evidence.md`: seções do bloco-modelo sem cabeçalho, desalinhadas a `verdict.md` | Cinco seções viraram `###`. Só apresentação | QA |
-| 3 | "Execução delegada" do Arquiteto vivia só no texto da resposta, sem modelo verificável; o checkpoint de spike não tinha modelo | Seção 11 nova + regra 14 em `implementation-plan.md`; modelo **novo** `roles/architect/templates/spike-checkpoint.md`; `skills.md` §12/§14 e `README.md` apontam para eles; **não há terceira casa** (execução fora de plano é spike). A resposta repete as linhas para a sessão transcrever. `agents/architect.md` aplicado pela sessão principal | Arquiteto |
-
-**Ajustes de coerência (SM):** `working-rules.md` R28 — o registro conferido é a seção do relatório (QA, UX, Dev) **ou** a seção 11 do plano/do checkpoint de spike (Arquiteto); `artifact-ownership.md` §1, linha de checkpoints, cita o modelo novo; `consumption.md` e R28 dizem de onde o SM transcreve o job do Arquiteto; ponteiros do modelo novo em `README.md` (estrutura de templates), `deliverables/team-project/README.md` e `project-context.md` (exceção de curadoria).
-
-**Verificado sem contradição:** seção 11 do plano × frente 2 do QA (a regra 14 declara que a frente 2 não a confere — não é passo; a tabela passo × conforme e a regra 13 seguem intactas); `consumption.md` × `commands/sm.md` × R28 (mesma sequência: primeiro registro, uma linha por job, transcrita, `pre-sprint;`).
-
-| Quem | Passa a ser cobrado |
-|---|---|
-| **SM** | Ingere os jobs `pre-sprint/` na Planning que cria o primeiro registro; sem a seção do chamador, "não disponível — motivo" e achado contra o chamador |
-| **Arquiteto** | Registra cada chamada ao `operator` **no artefato** (seção 11 do plano ou checkpoint de spike) e repete na resposta; job sem linha é achado |
-| **QA** | Nada novo (só apresentação de `evidence.md`) |
-
-**Resolvido pelo Arquiteto:** `roles/architect/skills.md` §14 (linhas 179, 200, 207) e `templates/implementation-plan.md:33` passam a `<sprint|pre-sprint>`, como QA e UX; ficam com `<sprint>` só o exemplo preenchido do plano (156, 188) e os do Dev, cujo job é sempre de Task dentro do sprint. Aplicado também em `commands/sm.md` (sprint plan): a origem da transcrição do Arquiteto é a seção 11 do plano ou o checkpoint de spike.
-
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Substituição de padrão | `Select-String "operator/pre-sprint"` em `process/`, `templates/`, `commands/sm.md`, lido em contexto | `working-rules.md` R28, `workflow.md:392`, `consumption.md` ×2, `retrospective.md:52`, `sm.md:17` — mesma regra (soma `<sprint>/` + `pre-sprint/` ainda não contado; uma vez) | ✅ |
-| Substituição de padrão | `Select-String "spike-checkpoint"` em `*.md` fora de changelogs | `artifact-ownership.md:18`, `architect/README.md`, `architect/skills.md`, `README.md`, `deliverables/team-project/README.md`, `project-context.md`; alvos resolvem | ✅ |
-| Cobertura de modelos | `Test-Path roles\architect\templates\spike-checkpoint.md` · leitura de `implementation-plan.md` seção 11 e regra 14 | `True`; seção 11 presente, regra 14 exclui a frente 2 do QA | ✅ |
+**Aplicado** em 29–30/09/2026 na `feat/v3.34.0`: as 9 propostas de `commands/` e `agents/` e os ajustes finais do PO e do UX (frontmatter dos agentes igual ao HEAD); o `how-to.md` novo foi feito a pedido direto do stakeholder e o `CHANGELOG.md` v3.34.0 já tem as linhas do `/sm sdd`, da calibração e do how-to. **Continuam pendentes:** o **reinício da sessão** (comportamento de agente só vale depois) e a **remedição da tabela de custo** (`workflow-processo.md` §5c; carga fixa atual: `/sm` 13.455 · `/po` 11.207 · `/arc` 8.497 · `/ux` 10.842 · `/dev` 6.119 · `/qa` 11.622 B).
 
 ---
-## v3.33 — Retrospectiva analisa consumo por papel e por modelo, procura ineficiência e gera o relatório ao dono do plugin (SM) — 29/09/2026
 
-**Instrução** (`note.md`, `/review note`, item único): usar a retrospectiva para melhorar o processo analisando o uso de tokens de cada papel durante o sprint e os modelos usados em cada um, em busca de ineficiência por processo repetitivo, gap, bloqueio, falha e uso excessivo de tokens, **por meio de um relatório enviado ao dono do plugin**, para que o modelo possa ser melhorado.
+## v3.34 (parte 2) — Split do `workflow.md`, índice das regras, roteiro do `run` como fonte única e correções da auditoria (SM) — 29/09/2026
 
-**Classificação:** cerimônia (retrospectiva) + formato de documento (`consumption.md`, `retrospective.md`) + propriedade de artefato nova (`plugin-report.md`, SM). Sem regra nova: nenhuma obrigação de papel muda, só o conteúdo de uma cerimônia do SM e um artefato dele. Rodada de **um papel** (SM) — barreira aplicável: 10 KB.
+**Instrução** (stakeholder, formulário sobre o relatório de `/review audit` + giro Act): *"aplicar tudo numa rodada"* e *"sim ao split do `workflow.md` e ao índice de regras"*. Fase **A1**: normativos e referência cruzada; `commands/` e `agents/` ficam como proposta (fase A2).
 
-**Levantamento das lacunas (confirmado contra os arquivos, não presumido):**
-
-| Lacuna | Veredito | Evidência |
-|---|---|---|
-| (a) modelo por papel/invocação não é registrado | **real** | `consumption.md` só tinha Tokens e Duração; `retrospective.md` idem |
-| (b) a retro não analisa ineficiência | **real** | a seção de consumo só somava por papel e comparava com o sprint anterior; "Divergência contra a carga fixa" era a única leitura |
-| (c) sem relatório formal ao dono do plugin | **real, em parte** | havia a tabela "Sintomas para o `note.md`", que o stakeholder "decide se leva" — sem consumo, sem modelo, sem ineficiência e **sem regra contra vazamento de contexto do projeto** |
-| tokens de cada papel por sprint; retro lê o registro; PDCA (§5c) | **já existia** | não duplicado |
-
-**Observabilidade do modelo (o que se pode afirmar):** a notificação de fim de subagente devolve tokens (um total) e duração — **não o modelo**. O que a sessão que orquestra vê é o agente que disparou e o `model:` do cartão `agents/<papel>.md` (hoje: Opus no Arquiteto, Sonnet em SM/PO/QA/UX, Haiku em dev/`operator`) ou um override que ela passou. O registro grava **o modelo configurado, não o servido**; sem leitura do cartão nem override, "não disponível — motivo". Divisão entrada/saída/cache não é observável e a análise não a presume.
+**Classificação:** formato de documento + etapa de fluxo + coerência de referência cruzada. Entrada **separada** da v3.34 (17,4 KB, no teto de cinco papéis — R17); mesma versão, pois a v3.34 ainda não saiu (R18: sem bump novo).
 
 ### O que mudou
-
 | Documento | Seção | Mudança |
 |---|---|---|
-| `templates/consumption.md` | tabela de registro, totais, regras | Coluna **Modelo** por invocação e nos totais; regra "modelo é o configurado, não o servido" (com a régua "não disponível — motivo" e a nota de que tokens são um total) |
-| `templates/retrospective.md` | "Consumo real do sprint" | Coluna Modelo; nova tabela de **ineficiência** com cinco verificações mensuráveis sobre o registro — papel repetido na mesma Task/História (alerta a partir de 3), Task/História cara (> 2× a média), papel desproporcional (contra a carga fixa), modelo × trabalho, consumo × falha (cruza com reprovação, reabertura, GAP, bloqueio); regra "aponta onde olhar, não o que cortar" |
-| `templates/retrospective.md` | "Sintomas para o `note.md`" → "Relatório ao dono do plugin" | A tabela de sintomas **sai daqui** e vai para o novo arquivo; a retro guarda o ponteiro e duas linhas de encerramento (gerado? relido contra vazamento? encaminhado?) |
-| `templates/plugin-report.md` | **novo** | Relatório em 5 seções — consumo por papel × modelo, ineficiências, bloqueios/falhas de processo (com o degrau de R25), sintomas, encaminhamento —, com **lista do que não entra** (nome, cliente, domínio, código, caminho, ID de Task/História — "Task A") e o fluxo: SM escreve, **stakeholder lê e encaminha**, `/review` no clone-fonte transforma em mudança |
-| `workflow.md` | §5c (parágrafo novo); "Como o SM verifica"; fechamento de `sprints/<n>/` | A retro como análise de consumo e origem do relatório; +1 linha de verificação (modelo por linha, leitura de ineficiência, relatório sem contexto); `plugin-report.md` entra na lista da pasta completa |
-| `artifact-ownership.md` | linha de consumo (§1); árvore e tabela §1e | `plugin-report.md`: dono SM, sai do projeto pela mão do stakeholder; consumo cita o modelo |
-| `README.md` do SM; `templates/project-context.md`; `how-to.md`; `team-init.md`; `README.md` (raiz); `deliverables/team-project/README.md` | árvores e índices de `sprints/<n>/` | Coerência de referência cruzada: `plugin-report.md` listado onde a pasta é descrita (exceção de curadoria, sem mudança de comportamento) |
+| `process/workflow.md` (94 → 39 KB) | tudo | **Núcleo**: §1–4a, §5 (tabela), §6–9. §5a–5g viram tabela de ponteiros. **Numeração das seções inalterada.** DoR §3a dividida em **DoR-a** (verificada no `prepare`) e **DoR-b** (passo 3 da Planning); §4a-i: `/sm close` lê o índice, não o `working-rules.md`; §2a: parágrafo do `run` vira ponteiro; §7 2a isenta o `prepare` do limite de papéis pesados; §8: onboarding bloqueia também o `prepare`, formulário de ①/② disparado pela sessão que orquestrou `/ux prototype`/`/arc` |
+| `process/workflow-ritos.md` (novo) | §5a · §5b | Onboarding e brainstorm, verbatim; SDD técnico com Comando `/arc` em modo livre; formulário de ①/② |
+| `process/workflow-sprint.md` (novo) | §5e · §5f · §5g | Preparação grava a lista em `context.md` §"Candidatas do próximo sprint"; passo 2 da Planning confirma o marcador (não reconfere a DoR-a); passo 9 transcreve o "Consumo do prepare" (`pre-sprint;`); passo 10 registra a **decisão**; removidos a tabela "Como roda" (§5g) e as verificações do §5e que repetiam "SM verifica" de R20/R21/R24/R25/R30 |
+| `process/workflow-processo.md` (novo) | §5c · §5d | PDCA e lançamento, verbatim; **tabela de custo remedida** (SM 15,4→19,7 KB · PO 16,7→19,4 · UX 11,2→15,0 · Arq 10,4→14,1 · QA 11,1→16,8 · dev 7,1→10,1); linhas do `run`/`brainstorm` "a remedir após a fase A2" |
+| `process/sprint-run.md` (novo) | — | **Fonte única do `/sm sprint run`**: pré-condições (pacote com decisão; `<T-ID>` no quadro; cenários), retomada pelo marcador, sem resumo por Task ao stakeholder, UX vira conferência de DoR, passo do QA aponta `/qa <ID>`, fechamento condicionado ao campo **"Documentos vivos (R12)"** do veredito, `board` ao fim de cada Task |
+| `process/working-rules-index.md` (novo) | R1–R30 | Uma linha por regra, "o que conferir", marcadas **[close]**; derivado de `working-rules.md` (que vale em divergência) |
+| `process/working-rules.md` | R14 · R25(a) · "Como o SM aplica" · resumo | `prepare` sob R14; "quatro peças"; `/sm close` lê o índice; **R30 entra no resumo**; ponteiros §5x → arquivo novo |
+| `templates/consumption.md` | `## Como gravar` (nova) | **Fonte única da gravação de consumo** — só onde o registro existe; linha por subagente; modelo; `operator`/"Execução delegada"; "não disponível — motivo"; sprint fechado não recebe linha. Todo `commands/*.md` passa a ter uma linha que aponta para cá |
+| `templates/sprint-backlog.md` · `sprint-review.md` · `project-context.md` | pacote · Aceite · `prepare` · §8 e context do SM | Linha **"Decisão do stakeholder"** (registro único do ③); heading `### Aceite — H-<nnn>` limpo (âncora resolve); consumo do `prepare`; seção "Candidatas do próximo sprint"; `/ux` com `prototype sprint <n>` |
+| `process/artifact-ownership.md` | §1 registro de sprint | Exceção declarada: seções `Aceite — H-<nnn>` de `review.md` escritas pelo PO |
+| `roles/scrum-master/README.md` · `skills.md` | run · prepare · plan · close · tabela de documentos | ponteiros para `sprint-run.md`/índice; `prepare` e `plan` sob onboarding |
+| `README.md` · `how-to.md` · `replicate-in-new-project.md` · `review-contract.md` · `team-init.md` · `team-version.md` + 12 documentos de papéis | ponteiros | Referência cruzada §5x → arquivo do split (só o ponteiro); README: "30 regras", ③ depois da Planning, estrutura com `team-version.md` e o split, `/ux prototype sprint`; replicate: passo 6 sem `run` antes da 1ª Planning; how-to: `run <T-ID>` sem `/arc plan` duplicado |
+| **PO** — `roles/product-owner/README.md` · `templates/user-story.md` | `/po story` (Detalhe) · `/po accept` · `/po bug` · "Como sei" · novo "Brainstorm — Fase 1" | Saída do detalhe = **DoR-a**; risco/congelamento reduzido a ponteiro; Task fecha no ✅ do `sprint run`; lista de classes do bug vira ponteiro; 11 → 5 itens verificáveis; Fase 1 do brainstorm como participante (lê só README + `context.md`, sem gravar). 2 bullets duplicados saem do modelo. README do PO ~69,5 → 68,0 KB |
+| **QA** — `templates/verdict.md` · `README.md` · `skills.md` | "Documentos vivos (R12)" · cenários · §12/§13 | Campo `Estado: atualizados \| pendentes` + tabela documento/dono/ponteiro (lido pelo `sprint-run.md` passo 7); cenários "crio no `prepare`, mapeio na Planning, executo no veredito"; skills §12/§13 viram ponteiro. Pasta ~81,4 → 78,3 KB |
+| **UX** — `README.md` · `skills.md` · `templates/{sprint-prototype,functional-prototype}.md` | `journey`/`screen` · Brainstorm fase 1 · `prototype sprint` · ficha do ③ | Destinos explícitos; participante da fase 1 (≤10 linhas, sem gravar); `prototype sprint` 21 → 12 linhas (fonte única em `deliverables/prototype/README.md`); ficha do ③ aponta para a "Decisão do stakeholder" (① mantém a decisão na própria ficha); "Falhas comuns" e "Como sei" cortados. README 16,5 → 12,8 KB · skills 25,9 → 23,3 KB |
+| **Arquiteto (+ dev)** — `README.md` · `skills.md` · `templates/implementation-plan.md` | `/arc plan` · Brainstorm fase 2 · SDD técnico | Exceção do plano fora de sprint; rodada de viabilidade (bloco "Viabilidade — rodada <n>", ponto fixo, sem gravar); SDD técnico da 1ª fatia em modo livre, formulário do ② pela sessão; regras do plano com fonte única no modelo (regra 4 recebe "mesma migration = uma Task"). README 21,3 → 23,1 KB (+2 seções) · skills 21,8 → 21,5 KB |
+| **Propostas dos papéis** (`scratchpad/proposals/`) | `commands/{po,arc,dev,qa,ux}.md` · `agents/{product-owner,architect,developer,quality-assurance,user-experience}.md` | Completos, com as frases-padrão de consumo e R22 (uma linha cada, apontando para `consumption.md` §Como gravar e R22); comando como índice de modos (o agente lê só a seção `/<papel> <modo>` do README). Blocos antigos (`*-block.md`) apagados |
+| `process/process-changelog(-archive).md` | — | v3.33 arquivada (R17); **retificação da v3.34**: a evidência "9 modos iguais" está errada — as tabelas trazem **10** (onboarding · brainstorm · prepare · plan · run · review · close · board · agreement · close `<T-ID>`); o conteúdo estava certo, a contagem citada não |
 
 ### Por quê
-
-O consumo era **medido e ninguém o interpretava**: a retro somava tokens por papel e parava, sem dizer se um papel foi chamado três vezes para a mesma Task, se uma Task custou o triplo das outras ou se o trabalho mecânico caiu no modelo caro — e sem o modelo registrado, "Arquiteto custa mais que o SM" não distinguia preço de modelo de volume de trabalho (§5c já avisa que o modelo pesa mais que os KB). E o caminho de volta ao dono do plugin era uma tabela solta que o stakeholder teria de recortar à mão da retrospectiva — que carrega contexto do projeto —, sem barreira de vazamento. Um arquivo próprio, sem contexto, com fluxo declarado, dá ao `/review` evidência numérica em vez de impressão.
+A auditoria mediu o custo: **`/sm` a 31,9 KB de carga fixa** com a proposta, `workflow.md` de 94 KB lido inteiro por qualquer modo, e 71 KB de regras lidos **a cada `/sm close`**. Dividir por cerimônia e dar ao `close` um índice de 7 KB troca leitura por ponteiro. O resto são contradições que só apareciam ao cruzar documentos: DoR circular (a mesma lista exigia "bloqueios varridos na Planning" *antes* da Planning), `prepare` sem onde gravar, `run <T-ID>` sem definir Task fora do quadro, ③ registrado em dois lugares.
 
 ### Quem passa a ser cobrado de forma diferente
-
 | Papel | O que muda |
 |---|---|
-| **SM** | Na retro, lê o registro por ineficiência e escreve `plugin-report.md` sem contexto de projeto; verifica que cada linha de consumo traz o modelo |
-| **Quem orquestra** | Grava o modelo em cada linha (instrução nos sete comandos de papel, aplicada em 29/09/2026) |
-| **Stakeholder** | Lê o relatório antes de encaminhar — é a barreira final contra vazamento — e decide o que vai ao `note.md` |
+| QA | veredito traz o campo "Documentos vivos (R12)" (pré-condição do `close` automático); passo do QA no `run` é `/qa <ID>` |
+| UX | a ficha do protótipo do sprint aponta para a "Decisão" do Sprint Backlog, não a duplica |
+| PO | escreve as seções `Aceite — H-<nnn>`; `prepare` grava/lê a lista de candidatas via SM |
+| SM | `close` percorre o índice; `prepare` grava candidatas e consumo; `run` chama `board` |
+| Arquiteto/dev | plano avulso só como **calibração**, em `.team-project/architect/plans/`; participam do brainstorm (fase 2) e da Planning por pedido da sessão |
 
 ### Conflitos com o processo vigente
-
-Nenhum. Confrontado com: R7 (número sem fonte → regra "n/a"/"não disponível", sem estimativa); R25/§5f (pasta fecha por último — o relatório é escrito antes do fechamento, entra na lista); "o projeto não edita o plugin" (mantido: só relata, o stakeholder encaminha, o `/review` decide); `/review` nunca grava consumo (inalterado); ação única da retro (mantida, o relatório não a substitui). Efeito colateral: projeto com `consumption.md` de versão anterior tem linhas sem a coluna Modelo — `/team update` mostra o delta de estrutura e pede aprovação; linhas antigas ficam sem o valor.
+Nenhum com regra escrita. Ponto de atenção: o **total dos quatro arquivos do split (98 KB) é maior que o original (93,8 KB)** — cabeçalhos, tabela de ponteiros, DoR dividida. O ganho é por leitura (núcleo 39 KB; um modo de sprint lê ~29 KB), não no somatório.
 
 ### Como saberemos que funcionou
-
-No primeiro sprint fechado após a atualização do projeto para `v3.33.0`: (1) toda linha de `consumption.md` traz modelo ou "não disponível — motivo"; (2) `retrospective.md` tem a tabela de ineficiência preenchida (ou "nenhuma", cada uma sustentada por linha do registro); (3) `plugin-report.md` existe na pasta fechada e uma leitura por `Select-String` dos nomes de projeto/cliente devolve zero. Sinal de falha: relatório com ID real de Task ou nome de domínio.
+Na remedição depois da fase A2: (a) `/sm` de carga fixa ≤ 13,5 KB (proposta A2: 13,3; hoje 19,7; primeira proposta 31,9); (b) leitura por `/sm close` ≤ 15 KB (era ~80 KB: agente + 71 KB de regras); (c) zero `sprint run` sobre Task fora do quadro; (d) todo `prepare` com a lista em `context.md`; (e) carga fixa por papel: PO 19,4 → 11,1 KB · QA 16,8 → 11,6 · UX 15,0 → 10,7 · Arquiteto 14,1 → 8,3 · dev 10,1 → 6,0 · SM 19,7 → 13,3 (propostas, a remedir depois de aplicadas); (f) nenhum 03/04/05 antes do ①, nenhuma História sem o ② em formulário, toda Task fechada pelo `run` com "Documentos vivos (R12)" preenchido.
 
 ### Evidência (R19)
-
 | Classe | Comando | Saída | Ok? |
 |---|---|---|---|
-| Substituição de padrão | `Select-String -Pattern "Sintomas para o .note.md. do plugin"` em toda a RAIZ, exceto changelogs | 1 ocorrência, o título da seção 4 do **novo** `plugin-report.md` (intencional: é o mesmo formato de sintoma). Era 1 no `retrospective.md` e 1 no `README.md` do SM — ambos reescritos, cada trecho novo lido ao lado do ponteiro para `plugin-report.md` | ✅ |
-| Substituição de padrão | `Select-String -Pattern "plugin-report" -Path` em todos os arquivos que listam a pasta `sprints/<n>/` (workflow, artifact-ownership, README do SM, project-context, how-to, team-init, README raiz, deliverables/team-project) | ocorrência em cada um; a lista de `workflow.md` (2 pontos) e a árvore de `artifact-ownership.md` conferem entre si | ✅ |
-| Extração/adição | `Select-String -Path templates/plugin-report.md -Pattern "^## "` e `Test-Path` | 5 seções numeradas + Regras; arquivo existe | ✅ |
-| Arquivamento | `Compare-Object` do bloco `## v3.30` (texto salvo antes de mover) contra o mesmo trecho no arquivo | 0 diferenças; índice de arquivadas com a linha `v3.30` | ✅ |
-| Coerência de índice | `## v3.` em `process-changelog.md` | 3 entradas (v3.33, v3.32, v3.31) | ✅ |
-| Teto de entrada (R17) | bloco `## v3.33`, `[IO.File]::ReadAllText` UTF-8 explícito; um papel → barreira 10 KB | ver "Teto" abaixo | ✅ |
-| Substituição de padrão (aplicação 29/09/2026) | `grep "modelo (o \`model:\`" commands/` · `grep plugin-report commands/sm.md` | 7 ocorrências (`sm`, `po`, `arc`, `ux`, `qa`, `dev`, `team`), cada uma apontando o cartão existente em `agents/`; 1 em `sprint close` | ✅ |
+| Extração | contagem de linhas/bytes antes e depois | `workflow.md` 607 l / 93.800 B → 291 l / 39.053 B + `-ritos` 82 l / 14.592 B + `-sprint` 155 l / 28.549 B + `-processo` 103 l / 15.833 B (98.027 B no total) | ✅ |
+| Extração | headings `##`–`####` do original ausentes nos quatro arquivos novos | 1 — `### Como roda, entre os dois pontos` (removido de propósito, ponteiro para §2/§2a) | ✅ |
+| Extração | `## <n>.` por arquivo | núcleo `1 2 3 4 4a 5 6 7 8 9` · ritos `5a 5b` · sprint `5e 5f 5g` · processo `5c 5d` — numeração inalterada | ✅ |
+| Substituição | regex `workflow\.md`+`§5[a-g]` em 78 `.md` de RAIZ (exceto changelogs, `note.md`, `commands/`, `agents/`), lendo cada ocorrência no contexto | 26 arquivos alterados; **0** ponteiros §5x apontando para `workflow.md`; 1 combinação (`§2a/§5e` no README do QA) separada à mão | ✅ |
+| Substituição | mesmo padrão em `commands/` e `agents/` (fora do alcance) | 7 ocorrências para a fase A2: `review.md:38`, `sm.md:15,17`, `team.md:50,64,70`, `ux.md:18` | ✅ registrado |
+| Links | resolução de `](x.md)` em todos os `.md` (exceto `CHANGELOG.md` e o arquivo) | **0 quebrados** (placeholders `<…>` e o `how-to.md` do template de contexto, cópia destino, são pré-existentes) | ✅ |
+| Fonte única | `Select-String "^## Como gravar"` em `templates/consumption.md` e existência dos alvos citados pelas propostas | linha 39; 12 de 12 alvos existem (`workflow-ritos/-sprint`, `sprint-run`, `working-rules(-index)`, `consumption`, `sprint-review`, `retrospective`, `plugin-report`, `status-entry`, `sprint-backlog`, README do SM) | ✅ 
+| Propostas A2 (SM) | tamanho e regex `workflow.md`+`§5[a-g]` nos 4 arquivos propostos | `sm.md` 10.487 → 6.673 B · `team.md` 12.417 → 2.917 · `review.md` 7.498 → 7.520 · `agents/scrum-master.md` 9.229 → 6.672; `/sm` de carga fixa 19,7 → 13,3 KB; 0 ponteiros §5x; 0 nomes antigos | ✅ |
+| Arquivamento | `Contains` do bloco v3.33 (66 linhas) no arquivo | `True` — verbatim; changelog 320 → 252 l (−9.316 B), arquivo 3.409 → 3.478 l (+9.318 B, os 2 B são o separador) | ✅ |
+| Substituição (papéis) | Grep `/team \|/sm review\|workflow.md §5` em `roles/{product-owner,quality-assurance,user-experience,architect}/**` e nas propostas dos papéis (relato de cada papel) | 0 fora do alias; §5e/§5g → `workflow-sprint.md`, §5b → `workflow-ritos.md`; 1 ponteiro errado do Arquiteto corrigido | ✅ |
+| Extração (papéis) | bytes antes/depois relatados: `commands/po` 9.644 → 4.972 · `agents/po` 9.746 → 6.094 · `qa` 7.979 → 5.115 / 8.785 → 6.507 · `ux` 6.729 → 5.334 / 8.255 → 5.376 · `arc` 4.814 → 2.884 / `architect` 9.246 → 5.388 · `dev` 3.753 → 2.018 / `developer` 6.354 → 4.011 | todos os `*-block.md` apagados (`Test-Path` = False) | ✅ |
+| Coerência entre as 14 propostas | regex `workflow.md`+`§5[a-g]` · `/team (cycle\|plan\|build\|qa\|brainstorm)` · `/sm review` · frases-padrão de consumo e R22 · despacho de `sm.md` × cartões dos papéis | 0 ponteiros §5x · 0 nomes antigos (1 `/sm review` histórico em `review.md:6`, sobre os antigos modos de papel) · frases idênticas (`sm`/`team` alinhados ao padrão literal) · 3 contradições de plano avulso corrigidas (`arc.md`, `dev.md`, `agents/architect.md`) | ✅ |
+| Contagem de regras | `Select-String '^### R\d+'` × linhas do índice | 30 regras × 30 linhas | ✅ |
 
-### Aplicado a pedido do stakeholder (29/09/2026)
+### Decisões do SM na curadoria
+- **Plano feito fora de sprint** (achado do Arquiteto): vive em `.team-project/architect/plans/<Task-ID>-<slug>.md`, pasta sob demanda — não cria "sprint 0", que quebraria o índice de sprint corrente. **E só existe como calibração:** Task de entrega não existe antes da 1ª Planning (R20 · R25), então o plano/veredito de calibração não gera `evidence/` nem `close`. Declarado em `artifact-ownership.md` §1, `sprint-run.md` pré-condição 2, `project-context.md` e `deliverables/team-project/README.md`.
+- `sm.md` (`sprint plan`) agora abre o **formulário único do ③** e registra na linha "Decisão do stakeholder" do Sprint Backlog (achado do UX). O `agents/product-owner.md` proposto nomeia a seção do modo no README (`/po <modo>`), sem offset implícito (achado do PO).
 
-As propostas de `commands/` foram aprovadas e aplicadas: as sete instruções de gravação de consumo passam a gravar o **modelo** (o `model:` do cartão em `agents/`, ou o override; sem leitura, "não disponível — motivo"), e `/sm sprint close` passa a gerar `plugin-report.md`. Bump R18: `plugin.json` `3.33.0`, banner do `README.md` e entrada `v3.33.0` no `CHANGELOG.md`. Mudança em `commands/` só vale após reiniciar a sessão.
-
-**Teto (R17):** bloco `## v3.33`, `[IO.File]::ReadAllText` UTF-8, medido em 29/09/2026 — **9.137 B**, sob a barreira de 10 KB (1 papel).
+### Pendente do stakeholder
+As 14 propostas de `commands/` e `agents/` foram **aplicadas em 29–30/09/2026** na branch `feat/v3.34.0` (frontmatter dos 6 agentes conferido igual ao HEAD), e o **bump v3.34.0** está feito (`plugin.json`, README, `CHANGELOG.md`). **Continuam pendentes:** o **reinício da sessão** (comportamento de agente só vale depois) e a **remedição da tabela de custo** (`workflow-processo.md` §5c, meta `/sm` ≤ 13,5 KB). Resta ao stakeholder, opcionalmente, o caminho completo de R22 nas frases-padrão.
 
 ---
-## v3.32 — R30: QA mapeia cenário de teste funcional/regressivo na Planning e o executa no veredito; GAP não-bloqueante ganha caminho explícito ao Product Backlog (SM) — 23/09/2026
 
-**Instrução** (`note.md`, triagem `/review note`, três itens fechados numa decisão do stakeholder via `AskUserQuestion`): **(1)** QA lê Histórias aprovadas + protótipo funcional e monta cenários de teste funcionais do sprint, também regressivos pelo impacto da Task; **(2)** isso ocorre a cada sprint — mapeado na Planning por Task, executado na entrega do dev, mesmo conceito de "Histórias aprovadas para o sprint" aplicado aos cenários; **(3)** erros/gaps de cenário entram no Backlog para o próximo sprint. Decisão do stakeholder sobre o conflito de R25 §5e: **GAP que bloqueia História em voo continua virando Task no sprint corrente** (R25 intacto); só o que **não bloqueia** vai ao Product Backlog — e o stakeholder pediu para fechar a lacuna preexistente de **quem** escreve essa linha. Decisão sobre onde a suíte vive: **avaliar aderência** de "ficar na área da QA e ser referenciada como Task no Sprint Backlog" contra `artifact-ownership.md` §1/§1c/§1e — aderente, aplicado como tal.
+## v3.34 — Cadência do sprint em cinco modos do `/sm` (prepare · plan · run · review · close); `/team cycle|plan|build|qa` removidos; decisão de portão em formulário (R22) (SM + PO + Arquiteto + QA + UX) — 29/09/2026
 
-**Classificação:** etapa de fluxo + propriedade de artefato nova (regra de trabalho, R30) + formato de documento (roteiro/skills/templates do QA e do PO, aplicando a própria contraparte da regra). **Rodada de três papéis aplicando na própria mão** (SM em `working-rules.md`/`workflow.md`/`artifact-ownership.md`; QA em `roles/quality-assurance/`; PO em `roles/product-owner/`) — as três aplicações datam do mesmo `/review` de 23/09/2026 e compõem uma entrada só (R17, precedente v3.25/v3.31: a unidade é a decisão, não o papel). Barreira aplicável: **12,5 KB** (10 KB + 2,5 KB pelo terceiro papel).
+**Instrução** (stakeholder, `/review note`, seis itens de `note.md`, literais): (1) "a inicialização do sprint pelo comando /sm sprint plan precisa de diversos processos que antecedem a planning meeting rodando na sequência: /po story, /arc plan, /qa scenarios create, /ux prototype, gostaria de gerar um novo comando para o /sm como sprint prepare"; (2) "Migrar o /team cycle para o /sm sprint run"; (3) "simplificar os comandos de execução do sprint em plan, run, review, close"; (4) "Revisar se ainda será necessário o /team plan, /team build, /team qa"; (5) "as questões necessárias para levar ao stakeholder devem ser apresentada em modo formulário"; (6) "Revisar os pontos de aprovação necessários do Stakholder para seguir no processo"; (7) *(mesma rodada, instrução posterior)* "passar o /team brainstorm para o /sm".
+
+**Classificação:** cerimônia + etapa de fluxo (`prepare`, `run`), nome de modo (`sprint review`), regra (R22 estendida, R25 referenciada) e comportamento de comando (proposta ao stakeholder). Rodada de **cinco papéis** (o SM aplica os normativos e a curadoria; PO, Arquiteto, QA e UX aplicam no próprio alcance) — barreira aplicável: 20 KB (R17); as contrapartes de `commands/`/`agents/` ficam como proposta.
+
+### Decisões do stakeholder (formulário, triagem do SM)
+| # | Decisão | Escolha |
+|---|---|---|
+| D1 | Escopo do `prepare` e lugar do ③ | **A** — `prepare` só leva à DoR (`/po story` detalhe, `/ux journey\|screen`, `/qa scenarios create`, varredura técnica opcional do Arquiteto). `/arc plan` fica por Task no `run`; `/ux prototype sprint` e o ③ ficam no `plan` (razão: dependência de Task, de ③ e de corte — R20) |
+| D2 | `run` fecha a Task? | **A** — fecha no ✅ com documentos vivos atualizados (R12), chamando `/sm close <T-ID>`, que segue existindo manual |
+| D3 | Destino do `/team cycle\|plan\|build\|qa` | **A** — removidos, sem alias. A granularidade por etapa é a dos comandos de papel |
+| D4 | Formulário nos portões | **A** — R22 estendido a ①②③④: aprovar · aprovar com ajuste · reprovar · pedir mais contexto; ④ uma pergunta por História; navegação do protótipo fora do formulário; instrução também em `/qa` e `/ux` (proposta) |
+| D5 | Aprovação própria para GAP/bug entrar no sprint | **A** — mantido: entram no lote do ③ (Sprint Backlog e `planning.md`). **Revisão do item 6 feita, sem mudança normativa.** Pontos vigentes conferidos: onboarding (passo 5), brainstorm, ①, ②, ③, ④, degrau 2, decisão estratégica, lacuna de especificação, exceção a padrão, `plugin-report`, bump de versão (R18) |
+
+**Item 7 — `/team brainstorm` → `/sm brainstorm`; alias? — decisão do SM (dentro do alcance): NÃO fica alias.** Motivo: coerente com D3 (removidos sem alias); manter `/team brainstorm` deixaria o `/team` disparando agente e carregando `consumption`/falha de invocação só por um modo. O custo é o hábito do stakeholder — mitigado porque `/team` sem modo reconhecido **roteia** ("ideia sem cobertura → `/sm brainstorm`"), então digitar o nome antigo devolve a rota certa em uma linha. Reversível por entrada nova. **A medição de ~39 KB de `/team brainstorm` (v3.16) deixa de valer** — o modo carrega agora `commands/sm.md`; marcada "a remedir".
+
+**Alias de `/sm review` — decisão do SM (dentro do alcance):** mantido como alias de `sprint review`, por dois motivos: `/sm review` está em `how-to.md`/`README.md` de projetos já instalados, e remover o alias quebraria muscle memory sem ganho de clareza (o aviso "`/sm sprint review` não é `/review`" já cobre a confusão). O nome canônico nos documentos é `sprint review`. Reversível com uma entrada nova.
 
 ### O que mudou
-
 | Documento | Seção | Mudança |
 |---|---|---|
-| `working-rules.md` | Bloco C, após R27 | **R30 nova**: QA mapeia cenários (novos + regressivos) por Task na Planning, a partir do critério de aceite do PO e do protótipo funcional; opera o critério, não o reescreve (dúvida escala ao PO por R9/§6b, sem redeclarar); execução pesada segue R28; GAP de cenário bloqueante vira Task no sprint corrente (R25 intacto), não-bloqueante ganha par no Product Backlog escrito pelo PO — mecânica que fecha a lacuna geral de todo GAP não-bloqueante de `pending.md`, não só o de cenário |
-| `workflow.md` | §1 (Task); §2a etapas 3/7; §3b DoR; §4a-i DoD; §5e passo 4 e "Durante o sprint"; §8 gates | Task ganha campo "cenários mapeados (IDs)"; etapa 7 e o veredito cobrem o resultado; DoR/DoD exigem cenário mapeado/executado; "Durante o sprint" ganha `pending.md` (QA) → PO → Product Backlog; +2 linhas de gate |
-| `artifact-ownership.md` | matriz §1; §1c; §1e; §4 | Nova linha **Suíte de cenários** (`.team-project/quality-assurance/scenarios/`, dono QA, fora da pasta, acumulada); Tasks/Product Backlog/GAPs atualizadas; §1c/§1e (quatro artefatos fora da pasta) e §4 (`SC-nnn`) incluem a suíte |
+| `roles/scrum-master/process/workflow.md` | §2 (cadeia) · §2a (tabela e parágrafo) · §5 (tabela de cerimônias) · §5e (nova subseção "Preparação — `/sm sprint prepare`", verificação) · §5g (linhas 2b e 5) · §6b · §8 · footprint (§5c) | `prepare` (etapa 2b) e `run` (substitui `cycle`; fecha Task); `sprint review`; declara removidos `/team cycle\|plan\|build\|qa`; ③/④ em formulário; linha de custo do `run` marcada "a remedir" |
+| `roles/scrum-master/process/working-rules.md` | R22 (novo parágrafo "decisão de portão também é formulário" e verificação) · R25 (cadência de cinco modos) | Extensão de R22 aos portões; R25 cita `prepare` sem contato novo com o stakeholder. **Sem regra nova** — R22 e R25 já existiam |
+| `roles/scrum-master/process/artifact-ownership.md` | §1 (registro de sprint) | `/sm review` → `/sm sprint review` |
+| `roles/scrum-master/README.md` | seções dos modos | Novas `sprint prepare` e `sprint run`; `sprint review` (alias); formulário no ③ e no ④ |
+| `roles/scrum-master/templates/{project-context,sprint-review,retrospective}.md` | tabelas de comandos e sequências | Nomes de modo; `/team` fica só com `init · update · version` (o `brainstorm` migrou para o `/sm` — ver a instrução 7 e a linha "brainstorm" abaixo) |
+| `roles/scrum-master/process/workflow.md` · `working-rules.md` (R15) · `artifact-ownership.md` · `roles/scrum-master/README.md` (nova seção `/sm brainstorm`) · `templates/{project-context,consumption}.md` · `README.md` · `how-to.md` · `team-init.md` | brainstorm (§2a etapa 0b · §5 · §5a passo 3 · §5b · custo §5c) | `/team brainstorm` → **`/sm brainstorm <ideia>`**, fora da cadência do sprint e orquestrado pela sessão (fase 1 PO+UX em paralelo, fase 2 Arquiteto em rodadas, SM facilita); **sem alias**; `/team` deixa de disparar agente, então sai de `consumption.md` como comando que grava |
+| `README.md` · `how-to.md` · `replicate-in-new-project.md` · `team-init.md` · `deliverables/team-project/README.md` | tabelas de comandos, fluxos, checklist | Coerência de referência cruzada (nome de modo/ponteiro), incluindo o ③ passar a "depois da Planning" onde o texto ainda o situava no detalhamento |
+| `roles/scrum-master/templates/sprint-review.md` | seção "Aceite — H-<nnn>" (nova) + regra | Âncora `review.md#aceite--h-<nnn>` que o PO cita na pergunta do ④; sem dossiê apontável, a pergunta não sai (achado do PO) |
+| `roles/scrum-master/process/workflow.md` | §5e Preparação (passo 5 e verificação) | Saída do Arquiteto apontada para `technical-decision.md` §Variante; verificação de "varredura sem Task, estimativa nem job do `operator`" (achado do Arquiteto) |
+| `roles/product-owner/README.md` · `templates/acceptance.md` · `templates/user-story.md` | `/po story` · `prioritize` · `accept` · Ponteiro do dossiê · estados | (PO) `prepare` passo 2 sem aprovação, saída = DoR §3a sem Task; `prioritize` alimenta o `prepare` e o `planning.md`; ④ em formulário, uma pergunta por História com ponteiro do dossiê e recomendação do PO; fechamento da Task = ✅ do `sprint run` |
+| `roles/architect/README.md` · `templates/technical-decision.md` | `/arc plan` · nova subseção da varredura · variante | (Arquiteto) plano por Task, dentro do `sprint run`, só depois do ③ (R20); varredura técnica opcional do `prepare` **sem modo novo** — `/arc question` com a variante do modelo (História · dependência técnica · risco · pré-requisito de ambiente · bloqueia a Planning?), sem plano, Task, estimativa nem `operator`; indicador: nenhum plano antecede o ③ |
+| `roles/quality-assurance/README.md` · `skills.md` §13 · `templates/{scenario,scenarios-index,verdict}.md` | `scenarios create` · competência · origem · "Volta para" | (QA) `create` roda no `prepare`; mapeamento por Task continua na Planning (R30); `/team` → `/sm` no veredito |
+| `roles/user-experience/README.md` · `templates/{functional-prototype,sprint-prototype,screen-spec}.md` · `deliverables/prototype/README.md` | entradas · registro dos portões ① e ③ · checklist | (UX) `journey`/`screen` vêm do `prepare`, e o `run` aciona o UX só com interface; fichas do ① e do ③ ganham decisão (formulário R22), data e ajuste pedido — no ③ a decisão é **uma só, sobre o pacote inteiro**; critério verificável no `deliverables/prototype/` |
 
 ### Por quê
-
-Sem cenário mapeado antes da construção, a verificação funcional era reinventada a cada Task, sem memória do que já tinha sido coberto — uma Task quebrava um fluxo que já funcionava e isso só aparecia na Review ou em produção. E, sem o passo mecânico `pending.md` → PO → Product Backlog, um GAP confirmado pela QA fora da Sprint Review ficava preso no registro da QA sem nunca concorrer no próximo sprint, apesar de `workflow.md` §5e já dizer que deveria — lacuna preexistente, exposta por este item, não criada por ele.
-
-**Avaliação de aderência do local da suíte** (pedido do stakeholder): **aderente** manter a suíte na área da QA, fora de `sprints/<n>/`, com o Sprint Backlog carregando só a referência (lista de IDs) por Task — critério e racional completos ficam em `artifact-ownership.md` §1c/§1e (norma que governa o assunto), esta entrada só referencia. Nenhuma parte do pedido foi considerada não aderente.
+O stakeholder rodava quatro comandos de papel em sequência à mão antes de cada Planning, e o "time construindo" morava em `/team`, que deveria só instalar, atualizar e descobrir. Sem `prepare`, a DoR da História (§3a) era um pré-requisito sem comando dono; sem `run` no `/sm`, a cadência do sprint tinha quatro verbos em dois comandos. E os portões — as decisões mais caras do stakeholder — chegavam em conversa, sem a forma que R22 já dava às escalações. A escolha de **não** pôr `/arc plan` nem o protótipo do sprint no `prepare` evita o modo de falha de R20: plano antes do pacote aprovado é trabalho perdido se o pacote for reprovado.
 
 ### Quem passa a ser cobrado de forma diferente
-
 | Papel | O que muda para ele |
 |---|---|
-| **QA** | Mapeia cenários (novos + regressivos) por Task na Planning, além de já contribuir na quebra (§5e passo 4); executa e registra o resultado no veredito; aponta GAP não-bloqueante para o PO com o ID de `pending.md`. Contraparte de roteiro/skills/templates aplicada nesta mesma entrada — ver "Aplicação do QA", abaixo |
-| **PO** | Ganha a obrigação explícita de abrir a linha do Product Backlog para todo GAP não-bloqueante que a QA registrar em `pending.md`, citando o ID, no mesmo ciclo da confirmação (R12) — antes implícito em `workflow.md` §5e, agora mecânico. Contraparte de roteiro/skills/templates aplicada nesta mesma entrada — ver "Aplicação do PO", abaixo |
-| **SM** | Verifica o campo de cenários no Sprint Backlog (DoR/DoD), a dupla cobertura do veredito e o par GAP↔Product Backlog nas duas pontas |
+| PO | `/po story` (detalhe) passa a ser chamado pelo `prepare`; priorização da Review anterior segue no `planning.md` |
+| UX | `journey`/`screen` no `prepare`; `prototype sprint` no `plan`; decisão do ①/③ em formulário depois da navegação |
+| QA | `scenarios create` é insumo do `prepare`; o mapeamento por Task continua na Planning (R30) |
+| Arquiteto | varredura técnica opcional no `prepare`; `/arc plan <T-ID>` dentro do `run` |
+| dev | nenhuma mudança de papel; é disparado pelo `run` |
+| SM | conduz cinco modos; fecha a Task dentro do `run`; verifica que decisão de portão não chegou em texto corrido |
 
 ### Conflitos com o processo vigente
-
-Um só, já resolvido pelo stakeholder (registrado em B(i) da triagem): item 5 do `note.md`, lido ao pé da letra, mandaria **todo** erro/GAP de cenário para o próximo sprint — contradizendo a exceção de R25 §5e ("GAP que bloqueia uma História já no sprint vira Task da mesma História", imediato, não represado). **Resolução:** a exceção de R25 fica intacta; R30 só formaliza o caminho do que **não** bloqueia. Registrado como parte da própria regra nova (R30, working-rules.md), não como pendência aberta.
+Nenhum com regra escrita. Dois pontos de atenção: (i) a verificação de R22 dizia que aprovação de portão é "diálogo direto" (§6b) — reconciliada ali, sem contradição residual; (ii) `consumption.md` só nasce no `sprint plan`, então as invocações do `prepare` não têm onde ser gravadas — segue a regra de R28 para `pre-sprint` (o total do sprint é um piso), declarado na proposta de `commands/sm.md`.
 
 ### Como saberemos que funcionou
-
-No próximo sprint que rodar `/sm sprint plan`, toda Task do Sprint Backlog cita cenários mapeados (ou "nenhum aplicável" com motivo) antes de entrar em construção, e nenhum veredito de `/qa <Task>` fecha sem o resultado deles. Em `pending.md`, todo GAP não-bloqueante registrado a partir desta versão tem par datado no Product Backlog dentro do mesmo sprint em que foi confirmado — GAP sem par depois de uma Planning inteira é o sinal de que a mecânica não pegou.
+Nos próximos dois sprints: (a) zero Planning aberta com História sem DoR (§5e, verificação); (b) zero decisão de portão em texto corrido (achado contra a orquestração, R22); (c) o número de comandos digitados à mão antes da Planning cai de quatro para um.
 
 ### Evidência (R19)
-
 | Classe | Comando | Saída | Ok? |
 |---|---|---|---|
-| Extração/adição de regra nova | `Select-String -Path working-rules.md -Pattern "^### R30"` | 1 ocorrência, "### R30. Cenário de teste funcional e regressivo é mapeado na Planning e executado no veredito do QA" | ✅ |
-| Substituição de padrão | `Select-String -Path artifact-ownership.md -Pattern "Três artefatos ficam fora"` | 0 ocorrências (era 1) — substituído por "Quatro artefatos ficam fora..." com a suíte de cenários incluída e lida no contexto | ✅ |
-| Substituição de padrão | `Select-String -Path workflow.md,working-rules.md,artifact-ownership.md -Pattern "R30"` | `workflow.md`: 9 · `working-rules.md`: 1 · `artifact-ownership.md`: 6 — total 16, cada ocorrência lida no contexto de inserção | ✅ |
-| Extração/remoção | Contagem de linhas do bloco "Como o SM verifica" (§5e) e da tabela de gates (§8) antes/depois | "Como o SM verifica": 9 → 10 linhas (+1, a de R30); gates: 20 → 22 linhas (+2, construção e veredito) | ✅ |
-| Substituição de padrão (aplicação 25/09/2026) | `grep mcp__claude-in-chrome agents/{operator,quality-assurance}.md` · `grep "scenarios (create\|run)" commands/qa.md` · `git diff --stat -- agents/ commands/` | ferramenta nos 2 cards; hint + 2 modos em `commands/qa.md`; `git diff --stat`: 3 arquivos, 8 inserções / 3 remoções — cada trecho lido, coerente com o roteiro do QA (R30) | ✅ |
+| Substituição de padrão | `Select-String 'team cycle\|team plan\|team build\|team qa\|/sm review\|cycle sprint\|`cycle'` em 79 `.md` de RAIZ, excluindo `commands/`, `agents/`, `CHANGELOG.md`, `process-changelog*.md`, `note.md` | 9 ocorrências, todas **intencionais e lidas no contexto**: `workflow.md:55` e `:57` (declaram a remoção e o alias), `:130` (corrigido para `/sm sprint run`), `:272` (nota histórica do custo); `project-context.md:124`, `README.md` (sm):79 e :100, `how-to.md:79`, `README.md`:115 (todas "antes `/sm review`, ainda alias") | ✅ (uma ocorrência antiga em `workflow.md:130` consertada) |
+| Substituição de padrão | leitura das ocorrências novas de `sprint review`/`sprint run`/`sprint prepare` (83 de `sprint review`) | cada uma lida ao lado de contagens e listas: "cinco modos" (workflow:57) enumera prepare·plan·run·review·close = 5; "Onze passos" do `sprint plan` na proposta segue com 11 (a Planning não mudou); a tabela de `/sm` de `README.md`, `how-to.md` e `project-context.md` traz os 9 modos iguais | ✅ |
+| Arquivamento de entrada | comparação `Contains` do bloco v3.32 (12.269 caracteres, 106 linhas) no arquivo de arquivo | `True` — zero linhas diferentes, só o separador `---` acrescentado | ✅ |
+| Extração ou remoção | contagem de linhas | `process-changelog.md` 346 → 239 ao tirar a v3.32, e 298 depois da v3.34 e da linha de índice (três entradas: v3.34, v3.33.1, v3.33 — teto de R17 respeitado); `process-changelog-archive.md` 3.409 (recebeu a v3.32) | ✅ |
+| Extração ou remoção | `git diff --stat` | `process-changelog-archive.md` +108, `process-changelog.md` −107 (a diferença de +1 é o separador) | ✅ |
+| Substituição de padrão (QA) | grep `Volta para: /team\|dev / \`/team\`\|/team (cycle\|qa\|plan\|build)` em `roles/quality-assurance/`; leitura de 2 ocorrências novas de `/sm` em `verdict.md` e 4 menções de `prepare` contra §2a/§5e | 0 do antigo; novas coerentes | ✅ |
+| Substituição de padrão (PO) | grep `/team (cycle\|plan\|build\|qa)\|/sm review` em `roles/product-owner/`, `deliverables/sdd/`, `01-scope-and-criteria`; leitura dos trechos novos contra §3a e a linha 351 | 0; coerentes | ✅ |
+| Extração ou remoção (PO) | Select-String dos 6 marcadores novos; contagem do README do PO | 6 presentes; 162 linhas | ✅ |
+| Substituição de padrão (UX) | Select-String `team cycle\|/team (plan\|build\|qa)` em `roles/user-experience/**` e `deliverables/prototype/README.md`; leitura da tabela do ③ | 0; tabela do ③ com 5 colunas no cabeçalho e na linha-modelo | ✅ |
+| Substituição de padrão (Arquiteto) | Select-String `team cycle\|/team plan\|/team build\|/team qa\|\`cycle\`\|/sm review\b` em 24 `.md` de `roles/architect`, `roles/developer`, `standards`, `deliverables/sdd`; leitura de `README.md:35,:59-60,:145` e `technical-decision.md:3,:42,:44`; âncora `#variante--varredura-técnica-do-prepare` | 0; coerentes; âncora bate | ✅ |
+| Substituição de padrão (item 7) | `Select-String 'team brainstorm'` em `.md` de RAIZ excluindo `commands/`, `agents/`, `CHANGELOG.md`, `process-changelog*.md`, `note.md`, `proximo.md` — **antes**: 14 ocorrências em 7 arquivos (`workflow.md` ×5, `project-context.md` ×2, `how-to.md` ×2, `README.md` ×2, `artifact-ownership.md`, `roles/scrum-master/README.md`, `team-init.md`; mais `commands/sm.md:15` e `commands/team.md:42`, que ficam na proposta) | **depois**: 2, ambas intencionais e lidas no contexto — `workflow.md:202` e `roles/scrum-master/README.md:42` ("antes `/team brainstorm`, sem alias"). Em `commands/sm.md:15` e `commands/team.md:42` restam 2, por serem proposta. `/sm brainstorm`: 24 ocorrências novas, cada uma lida ao lado da tabela ou do fluxo. Nenhuma ocorrência em `roles/product-owner/`, `roles/user-experience/` e `roles/architect/` (nada a trocar nos outros papéis) | ✅ |
+| Referência cruzada (SM) | contagem de modos: `/sm` passa a listar `onboarding · brainstorm · sprint prepare · plan · run · review · close · board · agreement · close <T-ID>` em `README.md`, `how-to.md` e `project-context.md`; `/team` = `init · update · version` nos três | tabelas idênticas nos três; `consumption.md` sem `/team` como comando que grava | ✅ |
+| Referência cruzada (SM) | conferência de "§5e passo 10 e §5g" (`roles/user-experience/README.md:59`, `deliverables/prototype/README.md:68`) e "passo 7 da Planning" (`roles/user-experience/README.md:63`) contra a tabela do §5e | passo 10 = pacote, passo 7 = corte — **corretos**, nada a trocar (a subseção Preparação tem tabela própria e não renumera a Planning) | ✅ |
+| Referência cruzada (SM) | âncora `review.md#aceite--h-<nnn>` (PO) contra `templates/sprint-review.md` | seção "Aceite — H-<nnn>" criada; âncora resolve | ✅ (era ❌: a seção não existia) |
 
-*(Tamanho da entrada consolidada e pendente do stakeholder: no fecho, depois das aplicações do QA e do PO — uma lista e uma medição só.)*
+**Teto R17:** entrada de rodada de 5 papéis, barreira de 20 KB; bloco `## v3.34`, `[Text.Encoding]::UTF8.GetByteCount` sobre o trecho até `## v3.33.1`, medido em 29/09/2026: **15.754 bytes (~15,4 KB) < 20 KB** ✅ (remedido depois do item 7). Entradas do arquivo: três (v3.34, v3.33.1, v3.33).
 
-### Aplicação do QA (`/review`, 23/09/2026) — `roles/quality-assurance/`
+**Contradições entre mudanças de papéis (SM curador):** (i) UX × SM — o bloco do SM previa formulário do `prototype sprint` no UX, o que duplicaria o ③; resolvido a favor do UX (formulário único no passo 10 do `sprint plan`, o UX só transcreve), e a proposta de `commands/sm.md` foi alinhada. (ii) QA × SM — "deixe o run fechá-la" induzia a ler que `/qa` avulso fecha; resolvido a favor do QA ("dentro do `/sm sprint run` o SM fecha sozinho"). (iii) PO × SM — o ④ exigia dossiê apontável que o modelo `sprint-review.md` não tinha; criada a seção. Nenhuma contradição exige decisão do stakeholder.
 
-| Documento | Mudança |
-|---|---|
-| `README.md` | Suíte nas Entradas/Saídas/Escreve; seção de mapeamento/execução; "Planning Meeting" no roteiro; `/qa <ID>` passo 4/6 |
-| `skills.md` | Skill 13 nova — critério de aceite → cenário, sem reescrevê-lo |
-| `templates/verdict.md` | Seção de cenários, roteamento por bloqueio |
-| `templates/evidence.md` | Mesma tabela de cenários do veredito |
-| `templates/cross-audit.md` | Passe 1 ganha checagem de cenário |
-| `templates/scenario.md` (novo) | Modelo `SC-nnn` |
-| `templates/scenarios-index.md` (novo) | Modelo do índice |
-
-**Evidência (R19):** `R30` em 7 arquivos do QA, 15 ocorrências (README:3 · skills:3 · verdict:3 · evidence:1 · cross-audit:1 · scenario:2 · scenarios-index:2) — conferido por `grep`, cada ocorrência lida no contexto. `git diff --stat -- roles/quality-assurance/`: 5 arquivos, 82 inserções / 7 remoções, + 2 arquivos novos — conferido.
-
-**Dois achados devolvidos ao SM** (fora do alcance do QA) — tratados em "Curadoria do SM", abaixo.
-
-### Aplicação do PO (`/review`, 23/09/2026) — `roles/product-owner/`
-
-| Documento | Mudança |
-|---|---|
-| `README.md` | Seção nova — GAP não-bloqueante da QA vira linha no Product Backlog; `/po bug` passo 5 unificado ao mesmo caminho |
-| `skills.md` | Skill 3/8 apontam a mesma fonte, sem duplicar |
-| `templates/product-backlog.md` | Seção "GAPs não-bloqueantes (origem `pending.md`, QA)" |
-| `templates/user-story.md` | Nota: Critérios de aceite é a fonte que a QA opera, sem reescrevê-la |
-
-**Por quê:** `/po bug` (passo 5) e a skill 8 descreviam o mesmo destino em prosa divergente — unificados nesta entrada.
-
-**Evidência (R19):** `R30` em 4 arquivos do PO, 11 ocorrências (README:5 · skills:2 · product-backlog:3 · user-story:1) — conferido por `grep`, cada ocorrência lida no contexto. `git diff --stat -- roles/product-owner/`: 4 arquivos, 22 inserções / 4 remoções — conferido.
-
-### Curadoria do SM — dois achados do QA aplicados, e referência cruzada da rodada
-
-O QA devolveu dois achados fora do alcance dele — nenhum é comportamento, os dois são coerência de referência cruzada já coberta pela exceção de `review-contract.md` §Limites, aplicados direto:
-
-- **`sprint-backlog.md`** (SM): ganha a coluna **Cenários** (ponteiro, nunca cópia) — faltava para a referência que R30 já exige (DoR/DoD).
-- **`deliverables/README.md`** (SM): linha nova para a Suíte de Cenários em "Conjuntos".
-- **`deliverables/team-project/README.md`** (achado da própria curadoria): manifesto e "O que fica FORA da pasta" passam a citar `scenarios/`, já nomeada em `artifact-ownership.md` §1e.
-
-**Contradição entre os dois papéis (QA × PO):** nenhuma — caminho da suíte, par modelo×arquivo e "quem escreve o quê" conferidos lado a lado, mesma fronteira, sem sobreposição nem lacuna.
-
-**Evidência (R19):** as três edições acima (`sprint-backlog.md`, `deliverables/README.md`, `deliverables/team-project/README.md`) lidas depois de aplicadas — coluna nova resolve no exemplo; linha nova resolve nos dois links; a frase "O que fica FORA" cita os quatro artefatos, mesma contagem de `artifact-ownership.md` §1e.
-
-### Pendente do stakeholder (consolidado — SM + QA + PO, uma lista só)
-
-**Aprovado e aplicado pelo stakeholder em 25/09/2026** (sessão principal, em nome dele), com o texto abaixo — os dois itens saem de `note.md` (Abertas), que volta a ficar vazia:
-
-| Arquivo | Mudança |
-|---|---|
-| `agents/operator.md` | `tools:` ganha `mcp__claude-in-chrome`; item **8** do contrato — cenário de navegador em lote (R30) roda por Claude in Chrome, uma linha por cenário no relatório; sem extensão, `inconclusivo — sem ferramenta` |
-| `agents/quality-assurance.md` | `tools:` ganha `mcp__claude-in-chrome`; parágrafo novo — cenário isolado roda no próprio QA, grupo/suíte inteira vai ao `operator` (R28); sem extensão conectada na sessão, ⚠️ **não executado — sem ferramenta** |
-| `commands/qa.md` | `argument-hint` e corpo ganham `scenarios create` (povoa a suíte a partir do SDD + protótipo) e `scenarios run <SC-nnn\|grupo\|all>` (isolado no QA; grupo/`all` no `operator`), roteando GAP por R30 |
-| `roles/quality-assurance/{README.md,templates/scenario.md,templates/scenarios-index.md}` (QA) | "sem ferramenta no card" → "extensão não conectada na sessão"; Roteiro por modo aponta os dois modos novos. Evidência: `Select-String "ferramenta.{0,40}(não existe\|não tem\|não carrego\|fora do meu alcance)"` → 0 (era 4) |
-
-**Condição inalterada, causa diferente:** o card tem a ferramenta; sem a extensão conectada, o resultado segue ⚠️ não executado — sem ferramenta.
-
-**Teto (R17):** bloco `## v3.32`, `[IO.File]::ReadAllText` UTF-8, medido em 25/09/2026 — **12.718 B**, sob 12,5 KB (3 papéis).
-
----
+### Pendente do stakeholder
+As propostas de `commands/` e `agents/` desta entrada (texto pronto em `scratchpad/proposals/`) foram **aplicadas em 29–30/09/2026** na branch `feat/v3.34.0` — ver "Pendente do stakeholder" da "v3.34 (parte 2)", acima. *(Nota de recomposição: o texto original deste parágrafo, que listava cada proposta, foi apagado por engano durante o arquivamento da v3.33.1 e substituído por este ponteiro; a lista das 14 propostas está na entrada "parte 2" e no `CHANGELOG.md` v3.34.0.)*
