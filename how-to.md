@@ -210,7 +210,7 @@ Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — a nã
 │       ├── burndown.md              estimativa restante, em série datada
 │       ├── review.md                a Sprint Review e a sua decisão por História
 │       ├── retrospective.md         o que o time corrige no sprint seguinte
-│       └── plugin-report.md         relatório de processo, sem contexto do projeto, que você encaminha ao dono do plugin
+│       └── plugin-report.md         só se você escolher "investigar" uma ocorrência de plugin na Review: relatório de processo, sem contexto do projeto, que você encaminha ao dono do plugin
 │
 ├── product-owner/         context.md · product-backlog.md (índice) · stories/ (fonte viva)
 ├── scrum-master/          context.md (inclui o SDD em elaboração e as candidatas do próximo sprint)
@@ -258,6 +258,43 @@ Depois de reiniciar, `/plugin` mostra `team@team` como **enabled** e `/help` lis
 **3. `/team init`** — cria o `.team-project/` e conduz o preenchimento. Sem ele, todo papel para e pede que seja criado.
 
 **Atualizar:** `/team update` compara a versão instalada com a do `main` da origem, mostra o que mudou e, com a sua confirmação, aplica e reconcilia o `.team-project/` — substitui o que é cópia literal (este guia) e **propõe** o delta do que tem conteúdo seu, nunca apagando nada sem aprovação. À mão: `claude plugin marketplace update team` e `claude plugin update team@team`, e reinicie a sessão.
+
+**Uma origem, vários projetos.** O plugin é genérico: replicar o time é instalar o plugin e escrever o contexto do projeto (`.team-project/`), nunca copiar a pasta do plugin para dentro de cada projeto — as cópias divergem. Melhorias chegam a todos por `claude plugin marketplace update team` + `claude plugin update team@team`. A origem pode ser a URL `.git` ou um caminho local; use a mesma forma de identificador em todos os registros.
+
+### Calibrar a instalação
+
+**Composição do time.** A distribuição de modelos é escolha de custo/qualidade, não regra:
+
+| Papel | Modelo | Por quê |
+|---|---|---|
+| Arquiteto | Opus | Concentra o raciocínio de desenho técnico; plano raso custa a Task inteira |
+| UX, SM, PO, QA | Sonnet | Leitura, julgamento e verificação; no UX, a janela de 1M comporta o protótipo navegável de um arquivo só |
+| Dev | Haiku | Executa plano detalhado; a qualidade vem do plano, não do modelo |
+
+**Haiku não é opção para o UX:** a janela de 200K não sustenta um `index.html` navegável ponta a ponta, e truncá-lo quebra um portão (① e ③). Projeto **sem interface** pode dispensar o UX; projeto sem base de código legada pode dispensar o QA no começo; mais de uma frente independente justifica um segundo dev (faixas em [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) §7). Os princípios de **nível 1** ([`standards/implementation-principles.md`](standards/implementation-principles.md)) são agnósticos de stack; só o **perfil de nível 2** (`implementation-guide` / `implementation-quality`, hoje .NET/GitLab) se substitui quando a stack é outra — pelo Arquiteto, via `/review`, num clone do repositório-fonte.
+
+**Primeira rodada de validação** — antes da 1ª Planning, nesta ordem, para confirmar que o time está calibrado:
+
+```
+/qa baseline          → os números declarados batem com a realidade?
+/po status            → o status sai em 6 linhas, em Histórias, com evidência?
+/arc plan <T-ID>      → o plano é executável por um júnior sem decidir nada?
+/dev <T-ID> · /qa <T-ID> → a Task fecha com veredito e evidência real?
+```
+
+Antes da 1ª Planning use os comandos de papel; `/sm sprint run <T-ID>` exige o pacote do sprint aprovado e a Task no quadro. Se o primeiro plano do Arquiteto precisar de mais de dois 🔺 GAPs para ser executado, o problema não é o time — é o `context.md` do Arquiteto, raso: a métrica mais barata de saúde da instalação. O que mais rende ao escrever os `context.md` são as **armadilhas** do projeto ("handler novo exige registro manual, senão devolve 500"). Projeto retomado: comece pelo `pending.md` — `/qa audit` + `/qa baseline` revelam o tamanho verdadeiro do trabalho.
+
+**Checklist da instalação**
+
+- [ ] `claude plugin marketplace list` mostra o `team` nas **settings do projeto**, não nas do usuário
+- [ ] `claude plugin list` mostra `team@team` habilitado (exibição duplicada é ruído)
+- [ ] Sessão reiniciada; `/plugin` mostra `team@team` **enabled** e `/help` lista os 8 comandos e os 7 agentes
+- [ ] `/team init` executado; `.team-project/README.md` escrito (stack, fontes da verdade, comandos, limitações) e os seis `context.md` com as armadilhas do projeto
+- [ ] Em repositório git: `.gitignore` com `.team-project/` e `git ls-files .team-project` vazio (R31); `.team-project/consumption.md` existe
+- [ ] Projeto retomado: `pending.md` produzido por `/qa audit` antes de qualquer planejamento
+- [ ] Backlog inicial semeado com IDs (projeto novo: cenário A; retomada: cenário B)
+- [ ] `/qa baseline` registrado em `.team-project/quality-assurance/baseline.md`
+- [ ] Primeira Task fechada com veredito ✅ (`/sm sprint run`, depois da 1ª Planning com pacote aprovado)
 
 ### Problemas de instalação
 

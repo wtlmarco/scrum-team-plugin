@@ -18,7 +18,7 @@ Cada modelo pertence ao **papel que o usa** (`roles/<papel>/templates/`), por [`
 | `.team-project/how-to.md` | [`how-to.md`](../../how-to.md) da raiz | stakeholder | **Sim — cópia literal**, sempre substituível |
 | `.team-project/note.md` | [`roles/product-owner/templates/note.md`](../../roles/product-owner/templates/note.md) | PO | **Sim — estrutura**; os itens de "Abertas" são do stakeholder |
 | `.team-project/consumption.md` | [`consumption.md`](../../roles/scrum-master/templates/consumption.md) — **o mesmo modelo** do registro do sprint | **SM** | criado no `init`, vazio; uma linha por invocação **sem sprint aberto** (onboarding, brainstorm, `prepare`, `sdd`, jobs `operator/pre-sprint/`, entre sprints), Nota `pre-sprint;`/`entre-sprints;` · **sem rotação** · `update` o cria onde falta e migra a subseção antiga de `context.md` | **Sim — estrutura**; as linhas são do projeto. Fora da pasta do sprint por natureza: não há sprint a que pertença (§1c) |
-| `.gitignore` (raiz do projeto) | linha `.team-project/` — o processo inteiro fica **local, fora do git**; o git recebe só o produto (código e `docs/`, R31) | SM (regra) · stakeholder (instalação, `team-init`/`team-update`) | **Sim — a linha**; o resto do `.gitignore` é do projeto |
+| `.gitignore` (raiz do projeto) | linha `.team-project/` — o processo inteiro fica **local, fora do git**; o git recebe só o produto (código e `docs/`, R31) | SM (regra) · stakeholder (instalação, `rituals/team-init`/`rituals/team-update`) | **Sim — a linha**; o resto do `.gitignore` é do projeto |
 | `.team-project/operator/` | **não semeada** — nasce sob demanda, ao primeiro job: `<sprint>/<job>/` e `pre-sprint/<job>/`, cada chamada com `report.md` (ou `report-<log>.md`) e log bruto; o `operator` grava por conta de quem o chamou (R28) | **SM** verifica e poda · papel chamador cita (`artifact-ownership.md` §1) | Não — conteúdo do projeto; o log bruto é disco local |
 | `.team-project/sprints/` | vazia no `init`; um subdiretório por sprint, criado em `/sm sprint plan` — ver "A pasta do sprint", abaixo | **SM** (contêiner) · dono por subpasta | **Sim — os modelos**, nunca o conteúdo escrito nem sprint já fechado |
 | `.team-project/scrum-master/context.md` | seção "O que vai em cada `context.md`" do modelo de contexto | SM | Não — conteúdo do projeto |
@@ -52,7 +52,7 @@ O registro de execução é organizado **por sprint**, não por papel (R25): a p
 | `burndown.md` | [`burndown.md`](../../roles/scrum-master/templates/burndown.md) | **SM** | dia 0 = aprovação do pacote · fecha no `/sm sprint close` | **Sim — o modelo** |
 | `review.md` | [`sprint-review.md`](../../roles/scrum-master/templates/sprint-review.md) | **SM** registra | `/sm sprint review` | **Sim — o modelo** |
 | `retrospective.md` | [`retrospective.md`](../../roles/scrum-master/templates/retrospective.md) | **SM** | `/sm sprint close` | **Sim — o modelo** |
-| `plugin-report.md` | [`plugin-report.md`](../../roles/scrum-master/templates/plugin-report.md) | **SM** | `/sm sprint close` · fecha com a pasta · o stakeholder encaminha | **Sim — o modelo** |
+| `plugin-report.md` | [`plugin-report.md`](../../roles/scrum-master/templates/plugin-report.md) | **SM** | `/sm sprint close`, só se "investigar" · fecha com a pasta · o stakeholder encaminha | **Sim — o modelo** |
 
 **Retenção — uma forma só.** Pasta numerada, e nada de vivo+archive: o registro de consumo passou a viver em `sprints/<n>/consumption.md`, e o acumulado do projeto é **derivado** somando as pastas **e** `.team-project/consumption.md` (consumo fora de sprint, sem rotação; critério e racional em [`artifact-ownership.md` §1c](../../roles/scrum-master/process/artifact-ownership.md)).
 
@@ -66,7 +66,7 @@ O registro de execução é organizado **por sprint**, não por papel (R25): a p
 
 ## As três classes de reconciliação
 
-O `/team update` compara a versão instalada com a da origem e, quando há versão nova, **também confere o que foi instanciado a partir destes modelos** ([`team-update.md`](../../team-update.md) §8). Cada linha do manifesto cai numa das três:
+O `/team update` compara a versão instalada com a da origem e, quando há versão nova, **também confere o que foi instanciado a partir destes modelos** ([`rituals/team-update.md`](../../rituals/team-update.md) §8). Cada linha do manifesto cai numa das três:
 
 | Classe | O que é | O que o `update` faz |
 |---|---|---|

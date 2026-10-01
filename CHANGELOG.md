@@ -13,6 +13,25 @@
 
 ---
 
+## v3.36.0 — 2026-10-01
+
+**Branch:** `feat/v3.36.0` a partir de `develop` · **Processo:** [`v3.36`](roles/scrum-master/process/process-changelog.md)
+Rodada de `/review note` sobre falha de ambiente, execução em segundo plano e relatório ao dono do plugin (SM), com a fusão de um guia de raiz e a mudança dos guias de ritual para `rituals/`.
+
+- **R27 confere a energia e retoma o mesmo agente:** antes de retentar uma invocação interrompida sem ação do stakeholder, a orquestração confere os eventos de energia/suspensão do SO na janela da falha e classifica **falha de ambiente com causa e horário** (suspender o PC é decisão do stakeholder, não defeito do plugin). A retentativa é **retomada por `SendMessage`**; instância nova só se o agente não existe mais, depois de ler o disco (R5).
+- **Task pesada em segundo plano:** no `/sm sprint run`, Task com estimativa ≥ 2× a mediana do sprint (ou que já acionou o `operator`) dispara `architect` e `quality-assurance` com `run_in_background: true`; a série (R1) se mantém.
+- **Ocorrência de plugin:** ≥ 2 falhas R27 persistentes ou consumo de um papel > 2× a média dos últimos sprints. O `run` **só registra**; a **Review** abre, uma vez no sprint, o formulário **investigar · ignorar e seguir · pedir mais contexto**. `plugin-report.md` passa a existir **só com "investigar"**.
+- **`replicate-in-new-project.md` removido**, fundido no `how-to.md` (nova seção "Calibrar a instalação", com composição de modelos, validação inicial e checklist). Ponteiros repontados; índice do `README.md` ganha `team-version.md`.
+- **Guias de ritual em `rituals/`:** `review-contract.md`, `team-init.md`, `team-update.md` e `team-version.md` saem da raiz. Ponteiros repontados em `commands/team.md`, `commands/review.md`, nos quatro `agents/` que citam o contrato, `README.md`, `artifact-ownership.md`, `workflow-processo.md`, `working-rules.md` e `deliverables/team-project/README.md`. **Migração:** projeto instalado em versão anterior lê esses guias pela raiz do plugin; o `/team update` traz as duas mudanças juntas e elas só valem **depois do reinício da sessão**.
+- **Descartado:** aviso para impedir a suspensão do PC (decisão do stakeholder: é dele, não do plugin).
+
+- **Propostas de `commands/` aprovadas e aplicadas:** `commands/sm.md` (R27 com energia e retomada por `SendMessage`) e `commands/arc.md`/`commands/qa.md` (`run_in_background: false` salvo no `sprint run` de Task pesada).
+
+**Pendente (stakeholder):**
+- **Verificar:** reinício da sessão (comportamento de agente) e, na primeira falha de invocação, o relato com energia e forma de retomada.
+
+---
+
 ## v3.35.0 — 2026-09-30
 
 **Branch:** `feat/v3.35.0` a partir de `develop` · **Processo:** [`v3.35`](roles/scrum-master/process/process-changelog.md)

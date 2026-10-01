@@ -49,6 +49,6 @@
 | R24 · transições e burndown **[close]** | `/sm close` tem linha no Registro de transições (Para ✅, data); burndown não cai sem linha de fechamento; `/sm board` que muda marcador grava a linha |
 | R25 · unidade de aprovação e entrega **[close]** | pacote aprovado (data, quem, decisão, ponteiro do protótipo); `planning.md` com o que não entrou e por quê; protótipo cobre fluxo ponta a ponta; degrau nomeado em cada bloqueio; `stories/` congelado; nenhum gate do §8 dispensado pelo ciclo |
 | R26 · plano mede o ambiente | seção de ambiente medido (comando e saída, próprios ou do `operator` com caminho do log) antes dos passos; comando citado validado; "onde parar" cobre pré-requisito **ausente** |
-| R27 · falha de invocação | retentativa e texto literal do harness; nenhum relatório atribui ao stakeholder interrupção sem ação dele registrada |
+| R27 · falha de invocação | retentativa, texto literal do harness, conferência de energia (causa e horário) e retomada por `SendMessage` (instância nova só com motivo); nenhum relatório atribui ao stakeholder interrupção sem ação dele registrada |
 | R30 · cenários mapeados **[close]** | Task com cenários novos + regressivos aplicáveis (ou "nenhum aplicável", com motivo) antes da construção; veredito traz o resultado de cada um; GAP que bloqueia História em voo vira Task no sprint; GAP não-bloqueante tem par no Product Backlog (escrito pelo PO) |
 | R31 · git só com o produto | `git ls-files .team-project` vazio e `.gitignore` com `.team-project/`; `docs/` (e os modelos que o geram) sem caminho `.team-project/` |
