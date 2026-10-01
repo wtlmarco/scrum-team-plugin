@@ -1,6 +1,6 @@
 # Template — Relatório ao dono do plugin
 
-> **Dono:** SM · Vive em `.team-project/sprints/<n>/plugin-report.md` · Escrito no `/sm sprint close`, junto com a retrospectiva · **Encaminhado pelo stakeholder**
+> **Dono:** SM · Vive em `.team-project/sprints/<n>/plugin-report.md` · Escrito no `/sm sprint close`, junto com a retrospectiva, **só quando o stakeholder escolheu "investigar"** na Review diante de uma ocorrência de plugin ([`workflow-sprint.md` §5e](../process/workflow-sprint.md) "Ocorrência de plugin") · **Encaminhado pelo stakeholder**
 
 O projeto **não edita o plugin**. Este relatório é o canal de volta: tira da retrospectiva o que diz respeito ao **processo do time** — consumo por papel e por modelo, invocações repetidas, bloqueios e falhas ligados a regra ou cerimônia — e o apresenta **sem nada do projeto**, para que o stakeholder o entregue ao dono do plugin. O `/review`, no repositório-fonte, é quem o transforma em mudança; aqui só há **evidência e sintoma**, nunca a regra reescrita.
 
@@ -13,6 +13,7 @@ O projeto **não edita o plugin**. Este relatório é o canal de volta: tira da 
 
 **Versão do plugin instalada:** <x.y.z, como `/team version` mostra> · **Unidade de estimativa:** <a do projeto> · **Sprint de** <n> Tasks · <n> Histórias
 **Registro de consumo:** <existe | n/a — o projeto não registra consumo; seções 1 e 2 ficam "n/a">
+**Ocorrência que motivou o relatório:** <falha R27 persistente (n) | papel · modelo com consumo > 2× a média dos últimos sprints | ambas> — a investigação e as evidências estão nas seções 2 e 3
 
 ## 1. Consumo por papel e por modelo
 > Fonte: `consumption.md` do sprint. O **modelo** é o configurado no cartão do agente (ou override declarado), não o servido; tokens são um total por invocação, sem divisão entrada/saída. **Piso** — a sessão principal não se autoobserva. O `operator` entra no total, em linha própria por papel chamador; premissa: o número do papel não inclui o do `operator` aninhado.

@@ -32,7 +32,7 @@ Arquivos `workflow-*.md` em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/`;
 - **Antes de abrir instância nova** de um papel, confira com ListAgents se há um invocado há pouco sobre o mesmo tema; se houver, retome com SendMessage (R3).
 - Para o SM: ferramenta Agent, `subagent_type: "scrum-master"`, `run_in_background: false`, passando (1) o pedido literal, (2) a instrução de ler `.team-project/README.md`, `.team-project/scrum-master/context.md` e — **se existir** — `.team-project/sprints/<n>/sprint-backlog.md`, (3) o modo e o roteiro da tabela.
 - Para cada outro papel: o pedido do modo, a instrução de ler `.team-project/README.md` e o `context.md` do papel, e o comando de papel correspondente. Não dispare três ou mais papéis pesados juntos fora do `brainstorm` e do `prepare` (`workflow.md` §7).
-- **Falha de invocação (R27):** interrompida/cancelada/recusada **sem ação do stakeholder** → retente uma vez; persistindo, **falha de ambiente** com o papel e o texto literal, nunca "o usuário interrompeu". Relatório que não chegou: **leia o estado em disco** antes de reinvocar (R5).
+- **Falha de invocação (R27 — `working-rules.md`):** interrompida/cancelada/recusada **sem ação do stakeholder** → confira energia/suspensão do SO na janela da falha, classifique como **falha de ambiente com causa e horário** e **retome o mesmo agente por `SendMessage`** (instância nova só se ele não existir mais, depois de ler o estado em disco — R5); persistindo, reporte com o papel e o texto literal, nunca "o usuário interrompeu".
 
 ## Registro de consumo · formulário
 

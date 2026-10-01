@@ -41,7 +41,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | `sprints/<n>/consumption.md` | `templates/consumption.md` — **SM** *(uma linha por invocação; nasce e fecha no sprint — §1c)* |
 | `sprints/<n>/burndown.md` | `templates/burndown.md` — **SM** *(dia 0 = aprovação do pacote)* |
 | `sprints/<n>/review.md` · `retrospective.md` | `templates/sprint-review.md` · `templates/retrospective.md` — **SM** |
-| `sprints/<n>/plugin-report.md` | `templates/plugin-report.md` — **SM** *(sem contexto do projeto; o stakeholder encaminha ao dono do plugin)* |
+| `sprints/<n>/plugin-report.md` | `templates/plugin-report.md` — **SM** *(só se "investigar"; sem contexto do projeto; o stakeholder encaminha ao dono do plugin)* |
 | `product-owner/product-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/product-backlog.md` *(o índice ordenado das Histórias, com ponteiro para o arquivo de cada uma — v3.21)* |
 | `product-owner/stories/` | pasta vazia; cada História nasce de `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/user-story.md`, um arquivo por História (`<H-ID>-<slug>.md`) — a fonte **viva**; `sprints/<n>/stories/` é a cópia congelada do que foi aprovado |
 | `quality-assurance/baseline.md` | `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/evidence.md` *(linha de base do `/qa baseline`; nasce no onboarding, antes do sprint 1)* |

@@ -7,7 +7,7 @@ Aciona o **QA** do time — o último portão antes do PO.
 
 Pedido do stakeholder: **$ARGUMENTS**
 
-Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta sessão, um agente `quality-assurance` invocado há pouco sobre a mesma Task/tema; se existir, retome-o com SendMessage em vez de acionar o Agent de novo (R3). Só na ausência de um agente para retomar, use a ferramenta Agent com `subagent_type: "quality-assurance"` e `run_in_background: false`, passando ao agente:
+Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta sessão, um agente `quality-assurance` invocado há pouco sobre a mesma Task/tema; se existir, retome-o com SendMessage em vez de acionar o Agent de novo (R3). Só na ausência de um agente para retomar, use a ferramenta Agent com `subagent_type: "quality-assurance"` e `run_in_background: false` (salvo quando o `sprint run` dispara em segundo plano — `sprint-run.md` "Task pesada"), passando ao agente:
 
 1. O pedido acima, literal.
 2. O modo de operação. Roteiro de cada modo em `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/README.md` ("Roteiro por modo") — não repetido aqui:

@@ -44,4 +44,4 @@ Protótipo funcional · Jornada · Especificação de tela · Revisão de usabil
 
 ## Evolução dos seus documentos — `/review`
 
-Quando o `/review` te acionar, ele te passa o caminho da **RAIZ** (o clone do repositório-fonte). Leia `RAIZ/review-contract.md` e siga-o: alcance, cinco passos, reavaliação do conjunto e limites estão lá. **Nunca escreva em `${CLAUDE_PLUGIN_ROOT}`**: é a cópia instalada, que o próximo `claude plugin update` sobrescreve. Sem a RAIZ, pare e peça.
+Quando o `/review` te acionar, ele te passa o caminho da **RAIZ** (o clone do repositório-fonte). Leia `RAIZ/rituals/review-contract.md` e siga-o: alcance, cinco passos, reavaliação do conjunto e limites estão lá. **Nunca escreva em `${CLAUDE_PLUGIN_ROOT}`**: é a cópia instalada, que o próximo `claude plugin update` sobrescreve. Sem a RAIZ, pare e peça.
