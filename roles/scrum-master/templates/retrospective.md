@@ -2,7 +2,7 @@
 
 Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o sprint. Curta e acionável: uma retrospectiva que não gera **uma** ação concreta foi tempo perdido.
 
-> **Persistido em** `.team-project/sprints/<n>/retrospective.md`. No mesmo `/sm sprint close`, o SM **fecha** `sprint-backlog.md` e `burndown.md` — sem cópia nem snapshot. Com `planning.md`, `stories/`, `plan/`, `evidence/`, `consumption.md`, `plugin-report.md` e `review.md`, a pasta forma o registro completo e imutável do sprint ([`../process/artifact-ownership.md` §1e](../process/artifact-ownership.md)).
+> **Persistido em** `.team-project/sprints/<n>/retrospective.md`. No mesmo `/sm sprint close`, o SM **fecha** `sprint-backlog.md` e `burndown.md` — sem cópia nem snapshot. Com `planning.md`, `stories/`, `plan/`, `evidence/`, `consumption.md`, `review.md` e — se houve "investigar" — `plugin-report.md`, a pasta forma o registro completo e imutável do sprint ([`../process/artifact-ownership.md` §1e](../process/artifact-ownership.md)).
 
 ```markdown
 ## Retrospectiva — Sprint <n> — <data>
@@ -78,16 +78,17 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 - <nenhuma | R<n> ajustada porque ...>
 
 ### Relatório ao dono do plugin
-Os sintomas do processo, os números de consumo por papel e por modelo e as ineficiências acima saem em um **arquivo próprio**, [`plugin-report.md`](plugin-report.md), **sem contexto do projeto** — é ele que o stakeholder encaminha ao dono do plugin. Aqui só o ponteiro:
+Condicional a **ocorrência de plugin** (falha R27 persistente ≥ 2 · consumo de um papel > 2× a média dos últimos sprints — [`workflow-sprint.md` §5e](../process/workflow-sprint.md) "Ocorrência de plugin", fonte única). Com "investigar", os sintomas do processo, os números de consumo por papel e por modelo e as ineficiências acima saem em um **arquivo próprio**, [`plugin-report.md`](plugin-report.md), **sem contexto do projeto** — é ele que o stakeholder encaminha ao dono do plugin. Aqui só o ponteiro:
 
-- **`sprints/<n>/plugin-report.md` gerado?** <sim — <n> sintomas · <n> ineficiências | não — o motivo>
+- **Ocorrência de plugin no sprint?** <nenhuma | <n falhas R27 · papel com consumo > 2× a média> — escolha do stakeholder na Review, em <data>: investigar · ignorar e seguir>
+- **`sprints/<n>/plugin-report.md` gerado?** <sim — <n> sintomas · <n> ineficiências | não — sem ocorrência ou "ignorar">
 - **Encaminhado ao dono do plugin?** <sim, em <data>, pelo stakeholder | não — fica no arquivo para reincidência>
 
 ### Encerramento
 - **Tasks não concluídas devolvidas ao Product Backlog, com a História:** <IDs, ou "nenhuma">
 - **Ressalvas e débitos da Review registrados no Product Backlog:** <sim — com dono | nenhum>
 - **Consumo do sprint lido antes do fechamento:** <sim — seção acima preenchida, com modelo e ineficiências | n/a — o projeto não registra consumo>
-- **`plugin-report.md` escrito e relido contra vazamento de contexto do projeto:** <sim | não, com o motivo>
+- **`plugin-report.md` escrito e relido contra vazamento de contexto do projeto:** <sim | n/a — não houve "investigar">
 - **`sprints/<n>/` fechado (R24 · R25):** `sprint-backlog.md` fechado, `burndown.md` fechado (seção "Fechamento" preenchida), `stories/`/`plan/`/`evidence/` com o que seus donos produziram — <sim | não, com o motivo>
 ```
 

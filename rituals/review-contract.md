@@ -1,8 +1,8 @@
 # Contrato do `/review` — evolução do processo
 
-> Lido **quando `/review` roteia uma Task ao agente de um papel**. O comando `/review` está em [`commands/review.md`](commands/review.md); aqui está o que o **agente** faz ao receber a Task. Vive fora dos arquivos de comando de papel para não ser injetado nas invocações que nunca evoluem o processo.
+> Lido **quando `/review` roteia uma Task ao agente de um papel**. O comando `/review` está em [`commands/review.md`](../commands/review.md); aqui está o que o **agente** faz ao receber a Task. Vive fora dos arquivos de comando de papel para não ser injetado nas invocações que nunca evoluem o processo.
 >
-> **Todo caminho deste contrato é relativo à RAIZ** — o clone do repositório do plugin, cujo caminho absoluto o `/review` te passa ao te acionar ([`commands/review.md`](commands/review.md) §pré-condição). **Nunca escreva em `${CLAUDE_PLUGIN_ROOT}`:** essa é a cópia *instalada*, um snapshot descartável que o próximo `claude plugin update` sobrescreve — mudança feita lá se perde. Se não recebeu a RAIZ, **pare e peça**; não deduza do diretório atual.
+> **Todo caminho deste contrato é relativo à RAIZ** — o clone do repositório do plugin, cujo caminho absoluto o `/review` te passa ao te acionar ([`commands/review.md`](../commands/review.md) §pré-condição). **Nunca escreva em `${CLAUDE_PLUGIN_ROOT}`:** essa é a cópia *instalada*, um snapshot descartável que o próximo `claude plugin update` sobrescreve — mudança feita lá se perde. Se não recebeu a RAIZ, **pare e peça**; não deduza do diretório atual.
 
 ## O que o `/review` é
 
@@ -66,7 +66,7 @@ Achado dentro do seu alcance: corrija e registre no changelog. Achado no documen
 - **Só os documentos do seu alcance.** Instrução que toca outro papel volta ao SM: *"isso é do Arquiteto"*.
 - **Normativo que governa todos** (regras de trabalho, fluxo, propriedade de artefatos) é exclusivo do **Agent `scrum-master`**.
 - **Não altera `.team-project/`, o código, o quadro nem o backlog** — só o processo.
-- **`agents/`, `commands/`, `.claude-plugin/` e os guias de raiz são do stakeholder** (`README.md`, `how-to.md`, `replicate-in-new-project.md`, `review-contract.md`, `team-init.md`, `team-update.md`): **proponha** com o texto pronto, não aplique. **Exceção do SM, válida para os quatro grupos igualmente** (não só os guias de raiz): manter **coerência de referência cruzada** nesses arquivos — contagem, ponteiro, nome de modo, índice de estrutura — é curadoria, não reescrita, e ele aplica direto. A exceção **nunca** cobre mudança de comportamento de agente, texto de roteiro ou regra nova — isso continua proposta ao stakeholder, nos quatro grupos, sem exceção.
+- **`agents/`, `commands/`, `.claude-plugin/` e os guias de raiz são do stakeholder** (`README.md`, `how-to.md` e os rituais em `rituals/`: `review-contract.md`, `team-init.md`, `team-update.md`, `team-version.md`): **proponha** com o texto pronto, não aplique. **Exceção do SM, válida para os quatro grupos igualmente** (não só os guias de raiz): manter **coerência de referência cruzada** nesses arquivos — contagem, ponteiro, nome de modo, índice de estrutura — é curadoria, não reescrita, e ele aplica direto. A exceção **nunca** cobre mudança de comportamento de agente, texto de roteiro ou regra nova — isso continua proposta ao stakeholder, nos quatro grupos, sem exceção.
 - **O SM é o curador:** consolida o changelog, remove duplicidade, aponta contradição entre mudanças de papéis diferentes e leva ao stakeholder o que ficou inconsistente.
 - **Mudança de comportamento de agente só entra em vigor após reiniciar a sessão** — diga isso ao stakeholder ao reportar.
 

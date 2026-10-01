@@ -24,6 +24,8 @@ Ambas as formas. Falhou qualquer uma: **pare e reporte** — não peça nada ao 
 - **Ordem:** por dependência declarada no Sprint Backlog, não por criticidade. Task com dependência não satisfeita é **pulada** e retomada quando destravar.
 - **Retomada pelo marcador da Task** — o `run` nunca replaneja Task que já tem plano. Entra no passo que o marcador indica: ⬜ → Arquiteto · 🟦 → dev · 🟨 → `/dev resume <T-ID>` (sessão interrompida, R5) · 🟪 → QA (ou o dev, se o veredito foi ⚠️/❌ — passo 6). Isso vale também depois de veredito ⚠️/❌ corrigido e depois de interrupção.
 - **Quando a fila para:** no primeiro problema **daquela Task**; a fila **segue nas Tasks cujas dependências estão satisfeitas**. Bloqueio vai ao **degrau 1** (PO e Arquiteto conversam — [`workflow-sprint.md` §5g](workflow-sprint.md)); só o que eles não fecham sobe ao stakeholder, na forma de R22 (formulário) — exceto **decisão estratégica**, que escala direto. Não acione o stakeholder por nada que o degrau 1 possa fechar, **nem para informar andamento**: o registro é o quadro e o relatório final.
+- **Invocação interrompida sem ação do stakeholder (R27):** confira a energia/suspensão do SO na janela da falha, classifique como **falha de ambiente com causa e horário** e **retome o mesmo agente por `SendMessage`** — instância nova só se ele não existir mais, depois de ler o estado em disco (R5).
+- **Ocorrência de plugin só se registra:** falha R27 persistente ou consumo de um papel > 2× a média dos últimos sprints vira uma linha em "Bloqueios e riscos abertos" — **sem formulário aqui**; o formulário investigar × ignorar abre uma vez, na Review ([`workflow-sprint.md` §5e](workflow-sprint.md) "Ocorrência de plugin").
 
 ## Por Task — a sessão encadeia, parando no primeiro problema
 
@@ -39,6 +41,10 @@ Ambas as formas. Falhou qualquer uma: **pare e reporte** — não peça nada ao 
 | 7 | **Fechamento técnico** | Se o veredito é ✅ **e** o campo **"Documentos vivos (R12)"** do veredito está "atualizados" (preenchido pelo QA, com o que cada dono atualizou), acione o Agent `scrum-master` em `close <T-ID>`: quadro, status, Registro de transições, burndown. **Campo ausente, vazio ou "pendente" → não fecha:** devolva ao dono do documento (R12). O **aceite continua sendo da História**, na Sprint Review (R21) |
 | 8 | **Transições** | Ao fim de cada Task (fechada, bloqueada ou pulada), acione o `scrum-master` em `board` **uma vez**: sincroniza ⬜→🟦→🟨→🟪 e grava as linhas no Registro de transições (R24). Sem isso o burndown do sprint fica só com abertura e fechamentos |
 
+## Task pesada — Arquiteto e QA em segundo plano
+
+**Task pesada** = estimativa **≥ 2× a mediana** das estimativas do sprint, ou Task que já acionou o `operator` (R28). Nela, a sessão dispara `architect` e `quality-assurance` com **`run_in_background: true`**: a série (R1) se mantém — a sessão **aguarda a notificação** antes da etapa seguinte —, mas a falha chega como notificação, não como bloqueio da sessão. Task não pesada segue em primeiro plano. A retomada continua por `SendMessage` (R3 · R27), e a linha de consumo é gravada com o número da notificação **final** ([`templates/consumption.md`](../templates/consumption.md)).
+
 ## Ao fim da fila
 
 Reporte: o que fechou, o que ficou bloqueado **e em que degrau**, o que foi pulado por dependência. Próximo passo: `/sm sprint review`.
@@ -49,4 +55,5 @@ Reporte: o que fechou, o que ficou bloqueado **e em que degrau**, o que foi pula
 - `sprint run <T-ID>` de Task fora do quadro é achado contra a orquestração.
 - Nenhuma Task fechada sem veredito ✅ **e** "Documentos vivos (R12)" preenchido; cada `close` tem linha no Registro de transições (R24).
 - Nenhuma mensagem ao stakeholder entre a aprovação do pacote e a Review que não seja pergunta de bloqueio em formulário (R22 · R25).
+- Falha de invocação relatada traz a conferência de energia e a forma da retomada (R27); Task pesada despachada em segundo plano, ou o motivo de não ter sido; ocorrência de plugin registrada no quadro e **nenhum** formulário dela durante o `run`.
 - Consumo: uma linha por subagente disparado, incluindo as do `operator` retratadas pelo chamador (R28 — [`templates/consumption.md`](../templates/consumption.md)).

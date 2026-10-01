@@ -53,4 +53,4 @@ Roteiro por modo, skills e modelos: `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/`
 
 ## Evolução dos seus documentos — `/review`
 
-Quando o `/review` te acionar com a **RAIZ**, leia `RAIZ/review-contract.md` e siga-o. **Nunca escreva em `${CLAUDE_PLUGIN_ROOT}`** (cópia instalada). Sem a RAIZ, pare e peça.
+Quando o `/review` te acionar com a **RAIZ**, leia `RAIZ/rituals/review-contract.md` e siga-o. **Nunca escreva em `${CLAUDE_PLUGIN_ROOT}`** (cópia instalada). Sem a RAIZ, pare e peça.

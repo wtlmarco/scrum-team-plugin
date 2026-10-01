@@ -11,9 +11,9 @@ Identifique o modo pelo primeiro termo. **Sem termo reconhecido, não dispare ag
 
 ## Modos — leia só o arquivo do modo
 
-- **`init`** — instalar o time neste projeto: **leia `${CLAUDE_PLUGIN_ROOT}/team-init.md` e siga-o** (cinco passos; conversa com o stakeholder; roda uma vez por projeto).
-- **`update`** — atualizar o plugin neste projeto: **leia `${CLAUDE_PLUGIN_ROOT}/team-update.md` e siga-o** (nove passos, incluindo a reconciliação do `.team-project/` no passo 8; uma vez por bump de versão).
-- **`version`** — que versão está rodando: **leia `${CLAUDE_PLUGIN_ROOT}/team-version.md` e siga-o**. Não usa rede; quem verifica versão nova é o `update`.
+- **`init`** — instalar o time neste projeto: **leia `${CLAUDE_PLUGIN_ROOT}/rituals/team-init.md` e siga-o** (cinco passos; conversa com o stakeholder; roda uma vez por projeto).
+- **`update`** — atualizar o plugin neste projeto: **leia `${CLAUDE_PLUGIN_ROOT}/rituals/team-update.md` e siga-o** (nove passos, incluindo a reconciliação do `.team-project/` no passo 8; uma vez por bump de versão).
+- **`version`** — que versão está rodando: **leia `${CLAUDE_PLUGIN_ROOT}/rituals/team-version.md` e siga-o**. Não usa rede; quem verifica versão nova é o `update`.
 
 ## Sem modo reconhecido — roteie, não dispare
 

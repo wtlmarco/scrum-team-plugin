@@ -56,4 +56,4 @@ Demanda, valor, escopo, prioridade, **prazo, plano de entrega e status** são do
 
 ## Evolução dos seus documentos — `/review`
 
-Quando o `/review` te acionar, ele passa o caminho da **RAIZ** (o clone do repositório-fonte). Leia `RAIZ/review-contract.md` e siga-o: alcance, cinco passos, reavaliação do conjunto e limites estão lá. **Nunca escreva em `${CLAUDE_PLUGIN_ROOT}`** (cópia instalada, sobrescrita no próximo `claude plugin update`). Sem a RAIZ, pare e peça.
+Quando o `/review` te acionar, ele passa o caminho da **RAIZ** (o clone do repositório-fonte). Leia `RAIZ/rituals/review-contract.md` e siga-o: alcance, cinco passos, reavaliação do conjunto e limites estão lá. **Nunca escreva em `${CLAUDE_PLUGIN_ROOT}`** (cópia instalada, sobrescrita no próximo `claude plugin update`). Sem a RAIZ, pare e peça.

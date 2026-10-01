@@ -8,6 +8,78 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.34 (parte 2) — Split do `workflow.md`, índice das regras, roteiro do `run` como fonte única e correções da auditoria (SM) — 29/09/2026
+
+**Instrução** (stakeholder, formulário sobre o relatório de `/review audit` + giro Act): *"aplicar tudo numa rodada"* e *"sim ao split do `workflow.md` e ao índice de regras"*. Fase **A1**: normativos e referência cruzada; `commands/` e `agents/` ficam como proposta (fase A2).
+
+**Classificação:** formato de documento + etapa de fluxo + coerência de referência cruzada. Entrada **separada** da v3.34 (17,4 KB, no teto de cinco papéis — R17); mesma versão, pois a v3.34 ainda não saiu (R18: sem bump novo).
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `process/workflow.md` (94 → 39 KB) | tudo | **Núcleo**: §1–4a, §5 (tabela), §6–9. §5a–5g viram tabela de ponteiros. **Numeração das seções inalterada.** DoR §3a dividida em **DoR-a** (verificada no `prepare`) e **DoR-b** (passo 3 da Planning); §4a-i: `/sm close` lê o índice, não o `working-rules.md`; §2a: parágrafo do `run` vira ponteiro; §7 2a isenta o `prepare` do limite de papéis pesados; §8: onboarding bloqueia também o `prepare`, formulário de ①/② disparado pela sessão que orquestrou `/ux prototype`/`/arc` |
+| `process/workflow-ritos.md` (novo) | §5a · §5b | Onboarding e brainstorm, verbatim; SDD técnico com Comando `/arc` em modo livre; formulário de ①/② |
+| `process/workflow-sprint.md` (novo) | §5e · §5f · §5g | Preparação grava a lista em `context.md` §"Candidatas do próximo sprint"; passo 2 da Planning confirma o marcador (não reconfere a DoR-a); passo 9 transcreve o "Consumo do prepare" (`pre-sprint;`); passo 10 registra a **decisão**; removidos a tabela "Como roda" (§5g) e as verificações do §5e que repetiam "SM verifica" de R20/R21/R24/R25/R30 |
+| `process/workflow-processo.md` (novo) | §5c · §5d | PDCA e lançamento, verbatim; **tabela de custo remedida** (SM 15,4→19,7 KB · PO 16,7→19,4 · UX 11,2→15,0 · Arq 10,4→14,1 · QA 11,1→16,8 · dev 7,1→10,1); linhas do `run`/`brainstorm` "a remedir após a fase A2" |
+| `process/sprint-run.md` (novo) | — | **Fonte única do `/sm sprint run`**: pré-condições (pacote com decisão; `<T-ID>` no quadro; cenários), retomada pelo marcador, sem resumo por Task ao stakeholder, UX vira conferência de DoR, passo do QA aponta `/qa <ID>`, fechamento condicionado ao campo **"Documentos vivos (R12)"** do veredito, `board` ao fim de cada Task |
+| `process/working-rules-index.md` (novo) | R1–R30 | Uma linha por regra, "o que conferir", marcadas **[close]**; derivado de `working-rules.md` (que vale em divergência) |
+| `process/working-rules.md` | R14 · R25(a) · "Como o SM aplica" · resumo | `prepare` sob R14; "quatro peças"; `/sm close` lê o índice; **R30 entra no resumo**; ponteiros §5x → arquivo novo |
+| `templates/consumption.md` | `## Como gravar` (nova) | **Fonte única da gravação de consumo** — só onde o registro existe; linha por subagente; modelo; `operator`/"Execução delegada"; "não disponível — motivo"; sprint fechado não recebe linha. Todo `commands/*.md` passa a ter uma linha que aponta para cá |
+| `templates/sprint-backlog.md` · `sprint-review.md` · `project-context.md` | pacote · Aceite · `prepare` · §8 e context do SM | Linha **"Decisão do stakeholder"** (registro único do ③); heading `### Aceite — H-<nnn>` limpo (âncora resolve); consumo do `prepare`; seção "Candidatas do próximo sprint"; `/ux` com `prototype sprint <n>` |
+| `process/artifact-ownership.md` | §1 registro de sprint | Exceção declarada: seções `Aceite — H-<nnn>` de `review.md` escritas pelo PO |
+| `roles/scrum-master/README.md` · `skills.md` | run · prepare · plan · close · tabela de documentos | ponteiros para `sprint-run.md`/índice; `prepare` e `plan` sob onboarding |
+| `README.md` · `how-to.md` · `replicate-in-new-project.md` · `review-contract.md` · `team-init.md` · `team-version.md` + 12 documentos de papéis | ponteiros | Referência cruzada §5x → arquivo do split (só o ponteiro); README: "30 regras", ③ depois da Planning, estrutura com `team-version.md` e o split, `/ux prototype sprint`; replicate: passo 6 sem `run` antes da 1ª Planning; how-to: `run <T-ID>` sem `/arc plan` duplicado |
+| **PO** — `roles/product-owner/README.md` · `templates/user-story.md` | `/po story` (Detalhe) · `/po accept` · `/po bug` · "Como sei" · novo "Brainstorm — Fase 1" | Saída do detalhe = **DoR-a**; risco/congelamento reduzido a ponteiro; Task fecha no ✅ do `sprint run`; lista de classes do bug vira ponteiro; 11 → 5 itens verificáveis; Fase 1 do brainstorm como participante (lê só README + `context.md`, sem gravar). 2 bullets duplicados saem do modelo. README do PO ~69,5 → 68,0 KB |
+| **QA** — `templates/verdict.md` · `README.md` · `skills.md` | "Documentos vivos (R12)" · cenários · §12/§13 | Campo `Estado: atualizados \| pendentes` + tabela documento/dono/ponteiro (lido pelo `sprint-run.md` passo 7); cenários "crio no `prepare`, mapeio na Planning, executo no veredito"; skills §12/§13 viram ponteiro. Pasta ~81,4 → 78,3 KB |
+| **UX** — `README.md` · `skills.md` · `templates/{sprint-prototype,functional-prototype}.md` | `journey`/`screen` · Brainstorm fase 1 · `prototype sprint` · ficha do ③ | Destinos explícitos; participante da fase 1 (≤10 linhas, sem gravar); `prototype sprint` 21 → 12 linhas (fonte única em `deliverables/prototype/README.md`); ficha do ③ aponta para a "Decisão do stakeholder" (① mantém a decisão na própria ficha); "Falhas comuns" e "Como sei" cortados. README 16,5 → 12,8 KB · skills 25,9 → 23,3 KB |
+| **Arquiteto (+ dev)** — `README.md` · `skills.md` · `templates/implementation-plan.md` | `/arc plan` · Brainstorm fase 2 · SDD técnico | Exceção do plano fora de sprint; rodada de viabilidade (bloco "Viabilidade — rodada <n>", ponto fixo, sem gravar); SDD técnico da 1ª fatia em modo livre, formulário do ② pela sessão; regras do plano com fonte única no modelo (regra 4 recebe "mesma migration = uma Task"). README 21,3 → 23,1 KB (+2 seções) · skills 21,8 → 21,5 KB |
+| **Propostas dos papéis** (`scratchpad/proposals/`) | `commands/{po,arc,dev,qa,ux}.md` · `agents/{product-owner,architect,developer,quality-assurance,user-experience}.md` | Completos, com as frases-padrão de consumo e R22 (uma linha cada, apontando para `consumption.md` §Como gravar e R22); comando como índice de modos (o agente lê só a seção `/<papel> <modo>` do README). Blocos antigos (`*-block.md`) apagados |
+| `process/process-changelog(-archive).md` | — | v3.33 arquivada (R17); **retificação da v3.34**: a evidência "9 modos iguais" está errada — as tabelas trazem **10** (onboarding · brainstorm · prepare · plan · run · review · close · board · agreement · close `<T-ID>`); o conteúdo estava certo, a contagem citada não |
+
+### Por quê
+A auditoria mediu o custo: **`/sm` a 31,9 KB de carga fixa** com a proposta, `workflow.md` de 94 KB lido inteiro por qualquer modo, e 71 KB de regras lidos **a cada `/sm close`**. Dividir por cerimônia e dar ao `close` um índice de 7 KB troca leitura por ponteiro. O resto são contradições que só apareciam ao cruzar documentos: DoR circular (a mesma lista exigia "bloqueios varridos na Planning" *antes* da Planning), `prepare` sem onde gravar, `run <T-ID>` sem definir Task fora do quadro, ③ registrado em dois lugares.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| QA | veredito traz o campo "Documentos vivos (R12)" (pré-condição do `close` automático); passo do QA no `run` é `/qa <ID>` |
+| UX | a ficha do protótipo do sprint aponta para a "Decisão" do Sprint Backlog, não a duplica |
+| PO | escreve as seções `Aceite — H-<nnn>`; `prepare` grava/lê a lista de candidatas via SM |
+| SM | `close` percorre o índice; `prepare` grava candidatas e consumo; `run` chama `board` |
+| Arquiteto/dev | plano avulso só como **calibração**, em `.team-project/architect/plans/`; participam do brainstorm (fase 2) e da Planning por pedido da sessão |
+
+### Conflitos com o processo vigente
+Nenhum com regra escrita. Ponto de atenção: o **total dos quatro arquivos do split (98 KB) é maior que o original (93,8 KB)** — cabeçalhos, tabela de ponteiros, DoR dividida. O ganho é por leitura (núcleo 39 KB; um modo de sprint lê ~29 KB), não no somatório.
+
+### Como saberemos que funcionou
+Na remedição depois da fase A2: (a) `/sm` de carga fixa ≤ 13,5 KB (proposta A2: 13,3; hoje 19,7; primeira proposta 31,9); (b) leitura por `/sm close` ≤ 15 KB (era ~80 KB: agente + 71 KB de regras); (c) zero `sprint run` sobre Task fora do quadro; (d) todo `prepare` com a lista em `context.md`; (e) carga fixa por papel: PO 19,4 → 11,1 KB · QA 16,8 → 11,6 · UX 15,0 → 10,7 · Arquiteto 14,1 → 8,3 · dev 10,1 → 6,0 · SM 19,7 → 13,3 (propostas, a remedir depois de aplicadas); (f) nenhum 03/04/05 antes do ①, nenhuma História sem o ② em formulário, toda Task fechada pelo `run` com "Documentos vivos (R12)" preenchido.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Extração | contagem de linhas/bytes antes e depois | `workflow.md` 607 l / 93.800 B → 291 l / 39.053 B + `-ritos` 82 l / 14.592 B + `-sprint` 155 l / 28.549 B + `-processo` 103 l / 15.833 B (98.027 B no total) | ✅ |
+| Extração | headings `##`–`####` do original ausentes nos quatro arquivos novos | 1 — `### Como roda, entre os dois pontos` (removido de propósito, ponteiro para §2/§2a) | ✅ |
+| Extração | `## <n>.` por arquivo | núcleo `1 2 3 4 4a 5 6 7 8 9` · ritos `5a 5b` · sprint `5e 5f 5g` · processo `5c 5d` — numeração inalterada | ✅ |
+| Substituição | regex `workflow\.md`+`§5[a-g]` em 78 `.md` de RAIZ (exceto changelogs, `note.md`, `commands/`, `agents/`), lendo cada ocorrência no contexto | 26 arquivos alterados; **0** ponteiros §5x apontando para `workflow.md`; 1 combinação (`§2a/§5e` no README do QA) separada à mão | ✅ |
+| Substituição | mesmo padrão em `commands/` e `agents/` (fora do alcance) | 7 ocorrências para a fase A2: `review.md:38`, `sm.md:15,17`, `team.md:50,64,70`, `ux.md:18` | ✅ registrado |
+| Links | resolução de `](x.md)` em todos os `.md` (exceto `CHANGELOG.md` e o arquivo) | **0 quebrados** (placeholders `<…>` e o `how-to.md` do template de contexto, cópia destino, são pré-existentes) | ✅ |
+| Fonte única | `Select-String "^## Como gravar"` em `templates/consumption.md` e existência dos alvos citados pelas propostas | linha 39; 12 de 12 alvos existem (`workflow-ritos/-sprint`, `sprint-run`, `working-rules(-index)`, `consumption`, `sprint-review`, `retrospective`, `plugin-report`, `status-entry`, `sprint-backlog`, README do SM) | ✅ 
+| Propostas A2 (SM) | tamanho e regex `workflow.md`+`§5[a-g]` nos 4 arquivos propostos | `sm.md` 10.487 → 6.673 B · `team.md` 12.417 → 2.917 · `review.md` 7.498 → 7.520 · `agents/scrum-master.md` 9.229 → 6.672; `/sm` de carga fixa 19,7 → 13,3 KB; 0 ponteiros §5x; 0 nomes antigos | ✅ |
+| Arquivamento | `Contains` do bloco v3.33 (66 linhas) no arquivo | `True` — verbatim; changelog 320 → 252 l (−9.316 B), arquivo 3.409 → 3.478 l (+9.318 B, os 2 B são o separador) | ✅ |
+| Substituição (papéis) | Grep `/team \|/sm review\|workflow.md §5` em `roles/{product-owner,quality-assurance,user-experience,architect}/**` e nas propostas dos papéis (relato de cada papel) | 0 fora do alias; §5e/§5g → `workflow-sprint.md`, §5b → `workflow-ritos.md`; 1 ponteiro errado do Arquiteto corrigido | ✅ |
+| Extração (papéis) | bytes antes/depois relatados: `commands/po` 9.644 → 4.972 · `agents/po` 9.746 → 6.094 · `qa` 7.979 → 5.115 / 8.785 → 6.507 · `ux` 6.729 → 5.334 / 8.255 → 5.376 · `arc` 4.814 → 2.884 / `architect` 9.246 → 5.388 · `dev` 3.753 → 2.018 / `developer` 6.354 → 4.011 | todos os `*-block.md` apagados (`Test-Path` = False) | ✅ |
+| Coerência entre as 14 propostas | regex `workflow.md`+`§5[a-g]` · `/team (cycle\|plan\|build\|qa\|brainstorm)` · `/sm review` · frases-padrão de consumo e R22 · despacho de `sm.md` × cartões dos papéis | 0 ponteiros §5x · 0 nomes antigos (1 `/sm review` histórico em `review.md:6`, sobre os antigos modos de papel) · frases idênticas (`sm`/`team` alinhados ao padrão literal) · 3 contradições de plano avulso corrigidas (`arc.md`, `dev.md`, `agents/architect.md`) | ✅ |
+| Contagem de regras | `Select-String '^### R\d+'` × linhas do índice | 30 regras × 30 linhas | ✅ |
+
+### Decisões do SM na curadoria
+- **Plano feito fora de sprint** (achado do Arquiteto): vive em `.team-project/architect/plans/<Task-ID>-<slug>.md`, pasta sob demanda — não cria "sprint 0", que quebraria o índice de sprint corrente. **E só existe como calibração:** Task de entrega não existe antes da 1ª Planning (R20 · R25), então o plano/veredito de calibração não gera `evidence/` nem `close`. Declarado em `artifact-ownership.md` §1, `sprint-run.md` pré-condição 2, `project-context.md` e `deliverables/team-project/README.md`.
+- `sm.md` (`sprint plan`) agora abre o **formulário único do ③** e registra na linha "Decisão do stakeholder" do Sprint Backlog (achado do UX). O `agents/product-owner.md` proposto nomeia a seção do modo no README (`/po <modo>`), sem offset implícito (achado do PO).
+
+### Pendente do stakeholder
+As 14 propostas de `commands/` e `agents/` foram **aplicadas em 29–30/09/2026** na branch `feat/v3.34.0` (frontmatter dos 6 agentes conferido igual ao HEAD), e o **bump v3.34.0** está feito (`plugin.json`, README, `CHANGELOG.md`). **Continuam pendentes:** o **reinício da sessão** (comportamento de agente só vale depois) e a **remedição da tabela de custo** (`workflow-processo.md` §5c, meta `/sm` ≤ 13,5 KB). Resta ao stakeholder, opcionalmente, o caminho completo de R22 nas frases-padrão.
+
+---
+
 ## v3.34 — Cadência do sprint em cinco modos do `/sm` (prepare · plan · run · review · close); `/team cycle|plan|build|qa` removidos; decisão de portão em formulário (R22) (SM + PO + Arquiteto + QA + UX) — 29/09/2026
 
 **Instrução** (stakeholder, `/review note`, seis itens de `note.md`, literais): (1) "a inicialização do sprint pelo comando /sm sprint plan precisa de diversos processos que antecedem a planning meeting rodando na sequência: /po story, /arc plan, /qa scenarios create, /ux prototype, gostaria de gerar um novo comando para o /sm como sprint prepare"; (2) "Migrar o /team cycle para o /sm sprint run"; (3) "simplificar os comandos de execução do sprint em plan, run, review, close"; (4) "Revisar se ainda será necessário o /team plan, /team build, /team qa"; (5) "as questões necessárias para levar ao stakeholder devem ser apresentada em modo formulário"; (6) "Revisar os pontos de aprovação necessários do Stakholder para seguir no processo"; (7) *(mesma rodada, instrução posterior)* "passar o /team brainstorm para o /sm".

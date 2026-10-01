@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.35.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.36.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -39,11 +39,12 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 │   └── implementation-security-lgpd-copyright.md   transversal
 ├── README.md                        ← este índice
 ├── CHANGELOG.md                     changelog de entregas (vX.Y.Z) — o que saiu em cada versão e a branch
-├── how-to.md                        guia do stakeholder — o que fazer → qual comando, cenários de uso A–F, os quatro portões, instalar e atualizar
-├── replicate-in-new-project.md      como levar este time para outro projeto
-├── review-contract.md               contrato do `/review` — lido só quando o `/review` aciona o agente de um papel
-├── team-init.md                     ritual do `/team init` — lido só nesse modo, uma vez por projeto
-├── team-update.md                   ritual do `/team update` — lido só nesse modo, uma vez por bump de versão
+├── how-to.md                        guia do stakeholder — o que fazer → qual comando, cenários de uso A–F, os quatro portões, instalar, atualizar e calibrar a instalação
+├── rituals/                         guias lidos só sob demanda (nunca na carga fixa)
+│   ├── review-contract.md           contrato do `/review` — lido só quando o `/review` aciona o agente de um papel
+│   ├── team-init.md                 ritual do `/team init` — lido só nesse modo, uma vez por projeto
+│   ├── team-update.md               ritual do `/team update` — lido só nesse modo, uma vez por bump de versão
+│   └── team-version.md              ritual do `/team version` — lido só nesse modo
 ├── note.md                          fila de melhorias do próprio plugin, entrada do `/review` (dono: stakeholder)
 └── roles/                           documentação dos papéis
     ├── scrum-master/       processo, Sprint Backlog, rituais, regras que governam todos
@@ -188,7 +189,7 @@ Geridas pelo SM, válidas para todos os papéis e para o stakeholder:
 
 ### Como o processo evolui — `/review`
 
-O processo não muda por conversa: muda pelo comando **`/review`**, e **só no repositório-fonte do plugin** — rodá-lo contra a cópia instalada num projeto edita algo que o próximo `claude plugin update` sobrescreve. A fila de melhorias é [`note.md`](note.md): a Task é escrito como **sintoma**, e o `/review` (Agent `scrum-master`) o **classifica e roteia** ao papel dono, que aplica seguindo [`review-contract.md`](review-contract.md) — cinco passos (classificar · analisar conflito · aplicar · registrar · verificar com evidência) e, no mesmo passe, **reavaliação do conjunto** (coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência, excesso). `/review` sem instrução faz só a reavaliação + a triagem de `note.md`.
+O processo não muda por conversa: muda pelo comando **`/review`**, e **só no repositório-fonte do plugin** — rodá-lo contra a cópia instalada num projeto edita algo que o próximo `claude plugin update` sobrescreve. A fila de melhorias é [`note.md`](note.md): a Task é escrito como **sintoma**, e o `/review` (Agent `scrum-master`) o **classifica e roteia** ao papel dono, que aplica seguindo [`rituals/review-contract.md`](rituals/review-contract.md) — cinco passos (classificar · analisar conflito · aplicar · registrar · verificar com evidência) e, no mesmo passe, **reavaliação do conjunto** (coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência, excesso). `/review` sem instrução faz só a reavaliação + a triagem de `note.md`.
 
 **O invariante de dono único não muda** — `/review` roteia, o dono aplica:
 
