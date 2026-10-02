@@ -166,6 +166,7 @@ Veredito que traz só uma das duas tabelas não cobriu os dois objetos — o SM 
 | **Sprint Retrospective** | fecha cada sprint, depois da Review | `/sm sprint close` | [template](../templates/retrospective.md) · mede o footprint do processo (§5c) |
 | Auditoria cruzada | a cada 3 sprints | `/qa audit` | achados, sem correção |
 | Acordo facilitado | questão que atravessa papéis e precisa de **uma** posição | `/sm agreement <questão>` | o SM chama **só os papéis que a questão toca**, consolida uma recomendação e registra a divergência que sobrou |
+| Consultoria externa | decisão especializada (técnica ou de negócio) que pede segunda opinião, **fora do `sprint run`** | `/sm consulting <domínio> <tema>` | caso em `.team-project/consulting/`; 3 opções validadas pelo time, decididas em formulário (R32) |
 | Melhoria de processo | quando o stakeholder instrui uma mudança de método | `/review <instrução>` | documento do papel atualizado + entrada no changelog do processo |
 | Revisão de processo | a cada 3 retrospectivas, ou quando uma métrica estoura | `/review metrics` | **uma** proposta de mudança, com o indicador que a valida; é também o giro **Act** do ciclo de eficiência (§5c) |
 | Curadoria do processo | quando dois papéis mudam algo que se contradiz | `/review` | consolidação do changelog e escalação do que ficou inconsistente |
@@ -203,6 +204,7 @@ capacidade, fila, bloqueio ─▶ SM              (quanto cabe, em que ordem)
 lacuna de especificação  ──▶ PO ──▶ stakeholder (opções descritas + recomendação + pedir mais contexto, em formulário — R22)
 decisão estratégica      ──▶ stakeholder       (stack, provedor, custo, risco aceito)
 exceção a um padrão      ──▶ stakeholder ──▶ ADR escrita pelo Arquiteto
+decisão especializada    ──▶ /sm consulting (opcional, antes do stakeholder; só fora do sprint run) ──▶ técnica: proposta de ADR · business:<área>: proposta de negócio ──▶ stakeholder (R22 · R32)
 defeito em ${CLAUDE_PLUGIN_ROOT}/standards/ ──▶ Arquiteto (dev: 🔺 GAP · QA: achado de processo) ──▶ /review   (R16)
 achado que atravessa papéis ──▶ o QA roteia pelo objeto da dúvida (§6b)
 ```

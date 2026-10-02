@@ -139,3 +139,18 @@ Exercida no `prepare` (criação em lote), na Planning (mapeamento por Task) e n
 - **Regressivo é busca por fluxo, não por lembrança.** Use "Fluxos que toca" e a tabela por fluxo de [`templates/scenarios-index.md`](templates/scenarios-index.md) §2. Camada compartilhada sem nenhum regressivo é sinal de alerta: reconfira o índice antes de aceitar "nenhum aplicável".
 - **Sem ferramenta não é aprovação por analogia.** Cenário de interface sem navegador roda por script/CLI no mesmo caminho ou fica ⚠️ "não executado — sem ferramenta", no veredito **e** no Histórico do `SC-nnn`. "Provavelmente passaria" é alegação, não evidência.
 - **GAP de cenário segue a escada por bloqueio, não por criticidade** (R25 · R12 · R30), como na tabela do README.
+
+## 14. Conferir a sanitização de toda rodada de consultoria externa (R32)
+
+No `/sm consulting`, carta e cada réplica **saem do projeto** para um consultor externo — humano ou IA. Eu confiro **cada rodada que sai**, não só a carta (a réplica tende a levar mais detalhe), e assino no `case.md`; sem minha assinatura, a rodada não sai. No `business`, o PO coassina — só ele sabe o que é confidencial comercialmente.
+
+| Verificação | O que procurar |
+|---|---|
+| Dado pessoal ou de paciente | nome, documento, contato, registro clínico — mesmo em exemplo |
+| Segredo | chave, token, *connection string*, host ou IP interno |
+| Cliente e contrato | nome de cliente, número ou cláusula de contrato |
+| Código | só o trecho necessário, anonimizado (nomes de entidade do produto trocados quando revelam o negócio) |
+| Processo | nenhum caminho `.team-project/` |
+| (`business`, com o PO) | valor financeiro real (só ordem de grandeza), parceiro/fornecedor/concorrente, preço, margem, condição comercial, documento interno colado |
+
+No domínio `security` também **escrevo** a seção de requisitos de segurança e de verificação da carta e **valido** a resposta com o Arquiteto. Achado na sanitização volta ao SM com a linha a corrigir — não reescrevo a carta.

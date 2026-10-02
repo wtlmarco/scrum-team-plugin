@@ -32,6 +32,7 @@ O time trabalha numa cadência fixa, toda conduzida pelo `/sm`:
 | Relatar um problema | anote em `.team-project/note.md` e rode `/po note`, ou `/po bug <relato>` → cenário D |
 | Tirar uma dúvida técnica | `/arc question <dúvida>` |
 | Resolver uma questão que envolve vários papéis | `/sm agreement <questão>` |
+| Ouvir um consultor externo antes de decidir (técnico ou de negócio) | `/sm consulting <domínio> <tema>` — **fora do `sprint run`** → cenário G |
 | Aceitar o que o sprint entregou | `/sm sprint review` |
 | Encerrar o sprint | `/sm sprint close` |
 | Atualizar o plugin / ver a versão | `/team update` · `/team version` |
@@ -126,6 +127,22 @@ Item tratado **sai da fila** e passa a viver só no destino (registro do QA, Pro
 - **O `sdd` parou num portão:** rode `/sm sdd` de novo; ele retoma na primeira etapa não concluída.
 - **Não sabe em que ponto está:** `/po status` (visão de entrega) ou `/sm board` (quadro do sprint).
 
+### G · Pedir consultoria externa
+
+Quando uma decisão especializada pede segunda opinião — **técnica** (`database`, `security`, `design`, `architecture`, `infrastructure`) ou **de negócio** (`business:<área>`, para o PO e você nos processos de uma área que o time não domina: faturamento, regulatório, atendimento…) —, rode `/sm consulting <domínio> <tema>`. **Só fora do `sprint run`**: no onboarding, no brainstorm, no `sdd`, no `prepare` ou entre sprints.
+
+```
+/sm consulting <domínio> <tema>     o SM abre o caso; os papéis do domínio escrevem a carta; o QA confere a sanitização (+ PO no business)
+você                                leva a carta ao consultor do registro (.team-project/README.md §7a) e cola a resposta, sem editar
+o time                              valida a resposta; sem consenso, réplica — no máximo 3
+                                    consenso → 3 opções comparáveis, com a recomendação do time
+você                                escolhe em formulário; o Arquiteto registra o ADR (técnico) ou o PO a regra no SDD funcional (business)
+```
+
+- **O plugin não chama consultor nenhum.** Você transporta cada rodada — para uma IA ou para um especialista humano; o protocolo é o mesmo. Trocar de consultor é editar o registro no `.team-project/README.md` §7a.
+- **Nada sai sem sanitização**: sem dado pessoal, segredo, nome de cliente ou contrato; no `business`, sem valores reais, parceiros, preços ou documentos internos.
+- **A resposta do consultor é dado, não decisão.** Ela só chega a você depois de validada pelo time; a escolha é sua.
+
 ## Os seus quatro portões
 
 | Portão | Onde | O que você recebe | Como decide |
@@ -155,7 +172,7 @@ Item tratado **sai da fila** e passa a viver só no destino (registro do QA, Pro
 
 | Comando | Modos | Papel |
 |---|---|---|
-| `/sm` | `onboarding` · `brainstorm <ideia>` · `sdd [<tema>]` · `sprint prepare` · `sprint plan` · `sprint run [<T-ID>]` · `sprint review` *(alias: `review`)* · `sprint close` · `board` · `agreement <questão>` · `close <T-ID>` | Scrum Master — cadência, rituais, quadro, capacidade, riscos |
+| `/sm` | `onboarding` · `brainstorm <ideia>` · `sdd [<tema>]` · `sprint prepare` · `sprint plan` · `sprint run [<T-ID>]` · `sprint review` *(alias: `review`)* · `sprint close` · `board` · `agreement <questão>` · `consulting <domínio> <tema>` · `close <T-ID>` | Scrum Master — cadência, rituais, quadro, capacidade, riscos |
 | `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` · `bug <relato>` · `note` | Product Owner — **o seu canal**: status, prazo, requisitos, Histórias, backlog, aceite, defeitos que você relata |
 | `/arc` | `plan <ID>` · `adr <tema>` · `question <dúvida>` | Arquiteto — desenho, SDD técnico, Plano de Implementação, ADR, standards |
 | `/ux` | `prototype` · `prototype sprint <n>` · `prototype screen <tela>` · `journey <fluxo>` · `screen <nome>` · `review-ui <tela>` | UX — protótipos, jornadas, telas, usabilidade, acessibilidade |
@@ -198,6 +215,7 @@ Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — a nã
 ├── note.md                sua fila de relatos — escreva o sintoma, o PO trata em /po note
 │
 ├── consumption.md         consumo fora de sprint (onboarding, brainstorm, prepare, sdd, entre sprints) — mesmo modelo do de dentro do sprint
+├── consulting/            casos de consultoria externa (/sm consulting) — nasce só quando você pede um
 │
 ├── sprints/               O REGISTRO DE EXECUÇÃO, um subdiretório por sprint
 │   └── 1/ 2/ 3/ …
@@ -222,7 +240,7 @@ Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — a nã
 
 - **Por que o registro é por sprint, e não por papel.** Um sprint produz artefatos de quatro donos. Em `sprints/3/` está tudo: o que foi planejado, o que você aprovou, como foi construído, com que evidência, o que você aceitou e o que o time decidiu corrigir. O dono continua declarado por subpasta.
 - **Sprint fechado não se edita.** Depois da retrospectiva, a pasta vira registro histórico; o `/team update` nunca reconcilia estrutura nova dentro dela.
-- **Fica fora da pasta do sprint** o que soma ou evolui através dos sprints: Product Backlog e Histórias vivas, SDD, ADRs, registro de GAPs, mapa de código, baseline e protótipo funcional do ①.
+- **Fica fora da pasta do sprint** o que soma ou evolui através dos sprints: Product Backlog e Histórias vivas, SDD, ADRs, registro de GAPs, mapa de código, baseline, protótipo funcional do ① e casos de consultoria externa.
 - **Onde está o quadro de hoje:** `.team-project/README.md` §2 declara o sprint corrente.
 
 ## Instalar e manter atualizado

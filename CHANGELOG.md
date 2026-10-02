@@ -13,6 +13,23 @@
 
 ---
 
+## v3.37.0 — 2026-10-02
+
+**Branch:** `feat/v3.37.0` a partir de `develop` · **Processo:** [`v3.37`](roles/scrum-master/process/process-changelog.md)
+Consultoria externa especializada (R32), conduzida pelo SM, aplicada a partir da proposta do stakeholder (SM + PO + Arquiteto + QA + UX).
+
+- **Novo modo `/sm consulting <domínio> <tema>`:** segunda opinião **externa** — técnica (`database`, `security`, `design`, `architecture`, `infrastructure`) ou de negócio (`business:<área>`). O plugin não chama consultor: produz e consome Markdown, e o stakeholder transporta cada rodada a um consultor (humano ou IA) do **registro do projeto** (`.team-project/README.md` §7a, lista de áreas livre).
+- **Fluxo:** SM abre o caso em `.team-project/consulting/C-<nnn>-<slug>/` · papéis do domínio escrevem a carta · **QA assina a sanitização de toda rodada que sai** (+ PO no `business`) · validadores conferem o contrato e o critério de consenso · **até 3 réplicas** · Arquiteto escreve `adr-proposal.md` (técnico) ou PO `business-proposal.md` (negócio) · stakeholder escolhe em formulário R22 · ADR em `docs/` ou regra no SDD funcional, **sem citar `consulting/`** (R31) e, no negócio, sem solução técnica (R20).
+- **Só fora do `sprint run`** (R25 intacta): caso aberto quando o sprint arranca fica suspenso até o `sprint close`.
+- **Modelos novos:** `consulting-case`, `service-letter`, `consultant-response`, `reply` (SM) · `adr-proposal` (Arquiteto) · `business-proposal` (PO). `project-context.md` ganha o §7a com uma lista de exemplo comentada, não vinculante.
+- **Aplicado em `commands/sm.md`** (modo na tabela, `argument-hint` e pré-condição), `how-to.md` (cenário G), `README.md` (modo, banner) e contagem de regras (31 → 32).
+
+**Como verificar:** `Select-String '^### R\d+\.' roles/scrum-master/process/working-rules.md` → 32; `/sm consulting security <tema>` num projeto com sprint em `run` → para e reporta; fora dele, abre `consulting/C-001-…/case.md`.
+
+**Pendente (stakeholder):** reiniciar a sessão (comando novo); `/team update` nos projetos para trazer o §7a e os modelos.
+
+---
+
 ## v3.36.0 — 2026-10-01
 
 **Branch:** `feat/v3.36.0` a partir de `develop` · **Processo:** [`v3.36`](roles/scrum-master/process/process-changelog.md)
