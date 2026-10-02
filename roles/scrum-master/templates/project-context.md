@@ -11,6 +11,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 ├── note.md                   fila de relatos do stakeholder — escrita por ele, tratada pelo PO via `/po note`
 ├── consumption.md            consumo fora de sprint (Nota pre-sprint;/entre-sprints;) — nasce vazio, sem rotação
 ├── operator/                 jobs do `operator` (report + log) — nasce sob demanda; SM verifica e poda
+├── consulting/               casos de consultoria externa, C-<nnn>-<slug>/ — nasce sob demanda (R32)
 ├── sprints/                  registro de execução, um subdiretório por sprint
 │   └── <n>/                  planning.md · sprint-backlog.md · stories/ · plan/ · evidence/
 │                             consumption.md · burndown.md · review.md · retrospective.md · plugin-report.md
@@ -26,7 +27,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 >
 > As pastas de papel usam o **nome completo do papel**, igual a `${CLAUDE_PLUGIN_ROOT}/roles/`. **`sprints/` não é pasta de papel:** o registro de execução é organizado **por sprint**, porque contém artefatos de quatro donos — Histórias (PO), planos (Arquiteto), evidências (QA) e os documentos do SM. O **dono de cada subpasta** está declarado em [`artifact-ownership.md` §1e](../process/artifact-ownership.md); pasta com dono ambíguo é achado de auditoria.
 
-**O que fica FORA de `sprints/<n>/`, e por quê:** registro de GAPs, mapa de código, **baseline de verificação** (nasce antes do sprint 1), Product Backlog, SDD, ADRs, protótipo funcional do ①, **protótipo do sprint** (é do UX; o quadro guarda o ponteiro) e **checkpoints de spike** — todos **somam, evoluem ou nascem fora** do recorte de um sprint, e fatiá-los quebraria a leitura que o time faz deles (§1c · §1e).
+**O que fica FORA de `sprints/<n>/`, e por quê:** registro de GAPs, mapa de código, **baseline de verificação** (nasce antes do sprint 1), Product Backlog, SDD, ADRs, protótipo funcional do ①, **protótipo do sprint** (é do UX; o quadro guarda o ponteiro), **checkpoints de spike** e **casos de consultoria externa** — todos **somam, evoluem ou nascem fora** do recorte de um sprint, e fatiá-los quebraria a leitura que o time faz deles (§1c · §1e).
 
 | Arquivo | Modelo de origem |
 |---|---|
@@ -47,6 +48,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | `quality-assurance/baseline.md` | `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/evidence.md` *(linha de base do `/qa baseline`; nasce no onboarding, antes do sprint 1)* |
 | `architect/spikes/` | pasta vazia; os checkpoints de spike (modelo: `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/spike-checkpoint.md`) nascem fora do recorte do sprint (§1c) |
 | `user-experience/prototype/` | pasta vazia; o **protótipo funcional em HTML** nasce de `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/templates/functional-prototype.md` — entregável e pré-condição do portão ①. O **protótipo navegável de cada sprint** (R25) também vive aqui, em `prototype/sprint-<n>/`, preservado por sprint; o Sprint Backlog carrega só o ponteiro |
+| `consulting/C-<nnn>-<slug>/` | **não semeada**; nasce no `/sm consulting` — `case.md` de `templates/consulting-case.md`, carta de `templates/service-letter.md`, réplica de `templates/reply.md` (contrato em `templates/consultant-response.md`), proposta de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/adr-proposal.md` ou `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/business-proposal.md` (R32) |
 | `user-experience/journeys/` · `screens/` | pastas vazias; nascem dos modelos de `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/templates/` |
 | `<papel>/context.md` | ver "O que vai em cada context.md", abaixo |
 
@@ -111,11 +113,39 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 ## 7. Decisões pendentes do stakeholder
 1. <decisão> — destrava <o quê>.
 
+## 7a. Registro de consultores (R32 · `/sm consulting`)
+| Domínio | Titular | Alternativo | Observação |
+|---|---|---|---|
+| database | <a definir> | <a definir> | assistente de fornecedor só após escolhida a plataforma |
+| security | <a definir> | <a definir> | |
+| design | <a definir> | <a definir> | |
+| architecture | <a definir> | <a definir> | preferir família diferente da do Arquiteto |
+| infrastructure | <a definir> | <a definir> | assistente de nuvem só para decisões dentro da nuvem escolhida |
+| business:<área> | <a definir> | <a definir> | **uma linha por área de negócio** em que o projeto atua — lista livre, definida pelo projeto |
+
+Titular e alternativo podem ser **humano** (especialista) ou **IA**, em qualquer domínio: o protocolo é o mesmo — a mesma carta sanitizada, a mesma resposta no mesmo contrato. Trocar de consultor é editar esta tabela.
+
+**Critérios de escolha:** família diferente da do time quando possível · assistente de fornecedor nunca para escolher entre fornecedores · **guarda do dado que sai (obrigatório):** IA → ferramenta com contrato corporativo, sem uso dos dados para treino; humano → termo de confidencialidade · titular e alternativo por domínio — e, no `business`, por área.
+
+<!-- Lista de exemplo — OPCIONAL, só ilustrativa. Não é recomendação vinculante e nenhum papel a lê.
+     Nomes de produto mudam rápido: revisada no /review quando ficar velha, nunca fonte de verdade.
+     A guarda do dado vale também aqui: IA só com contrato corporativo sem treino; humano só com termo de confidencialidade.
+
+| Domínio | Titular (exemplo) | Alternativo (exemplo) | Depois de escolhida a plataforma (exemplo) | Por quê |
+|---|---|---|---|---|
+| database | GPT-5.5 | Gemini 3.1 Pro | assistente da plataforma escolhida — dbForge AI Assistant, Chat2DB, o otimizador nativo do banco (ex.: Snowflake) | IA generalista para escolher banco e modelar; ferramenta de SQL só para ajustar consulta e índice depois da escolha |
+| security | Claude Fable | Gemini 3.1 Pro | — | |
+| design | Claude Design | Figma | — | |
+| architecture | GPT-5.5 | Gemini 3.1 Pro | — | família diferente da do Arquiteto (o time roda em Claude): a segunda opinião não repete o mesmo viés |
+| infrastructure | Gemini 3.1 Pro | GPT-5.5 | Amazon Q Developer (AWS) · Azure Copilot (Azure) · Gemini Cloud Assist (GCP) | IA generalista para escolher nuvem e topologia; assistente da nuvem só para decisões dentro da nuvem escolhida |
+| business:<área> | especialista humano da área | IA generalista com pesquisa na web | — | processo e regulação mudam por país e setor: o humano traz a prática; a IA, a varredura de alternativas |
+-->
+
 ## 8. Como usar o time neste projeto
 
 | Comando | Modos |
 |---|---|
-| `/sm` | `onboarding` · `brainstorm <ideia>` · `sdd [<tema>]` · `sprint prepare` · `sprint plan` · `sprint run [<T-ID>]` · `sprint review` *(alias: `review`)* · `sprint close` · `board` · `agreement <questão>` · `close <T-ID>` |
+| `/sm` | `onboarding` · `brainstorm <ideia>` · `sdd [<tema>]` · `sprint prepare` · `sprint plan` · `sprint run [<T-ID>]` · `sprint review` *(alias: `review`)* · `sprint close` · `board` · `agreement <questão>` · `consulting <domínio> <tema>` · `close <T-ID>` |
 | `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` · `bug <relato>` · `note` |
 | `/arc` | `plan <T-ID>` · `adr <tema>` · `question <dúvida>` |
 | `/ux` | `prototype` · `prototype sprint <n>` · `prototype screen <tela>` · `journey <fluxo>` · `screen <nome>` · `review-ui <tela>` |
@@ -141,10 +171,10 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 
 Achado do QA volta pelo **degrau certo**: correção local → `/dev resume <ID>` · atravessa papéis → o QA roteia pelo dono, ou `/sm agreement` · o desenho não sustenta o requisito → `/arc question` · a dúvida é o critério → `/po`.
 
-Guia completo — o que você quer fazer → qual comando, os cenários de uso (novo · retomada · evolução · correção · pedido no meio do sprint · trabalho interrompido), os quatro portões, as regras e a referência dos comandos: [`how-to.md`](how-to.md), neste mesmo diretório (cópia literal do guia do plugin, criada pelo `/team init` e substituída pelo `/team update`). Para levar o time a outro projeto: `/team init`.
+Guia completo — o que você quer fazer → qual comando, os cenários de uso (novo · retomada · evolução · correção · pedido no meio do sprint · trabalho interrompido · consultoria externa), os quatro portões, as regras e a referência dos comandos: [`how-to.md`](how-to.md), neste mesmo diretório (cópia literal do guia do plugin, criada pelo `/team init` e substituída pelo `/team update`). Para levar o time a outro projeto: `/team init`.
 ```
 
-> **A seção 8 é fixa** — copie-a como está, é a mesma em todo projeto. O que muda de projeto para projeto são as seções 1 a 7. O guia completo não entra aqui: este `README.md` é lido pelos agentes em **toda** invocação, e documentação de uso nele é custo permanente.
+> **A seção 8 é fixa** — copie-a como está, é a mesma em todo projeto. O que muda de projeto para projeto são as seções 1 a 7 (inclusive a 7a: a **estrutura** da tabela vem do plugin, as **linhas** são do projeto). O guia completo não entra aqui: este `README.md` é lido pelos agentes em **toda** invocação, e documentação de uso nele é custo permanente.
 
 ## O que vai em cada `context.md`
 

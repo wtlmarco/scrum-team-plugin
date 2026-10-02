@@ -157,6 +157,7 @@ Tipos: **vivo** (arquivo atualizado a cada ciclo, no projeto) · **congelado** (
 | **Escopo e critérios de sucesso** | **entregável** | indicado no contexto do projeto | [`deliverables/implementation/01-scope-and-criteria.md`](../../deliverables/implementation/01-scope-and-criteria.md) |
 | Análise funcional | saída | resposta de `/po analyze` | [`templates/functional-analysis.md`](templates/functional-analysis.md) |
 | Aceite de História | saída | resposta de `/po accept`, na Sprint Review | [`templates/acceptance.md`](templates/acceptance.md) |
+| Proposta de negócio de consultoria externa (R32) | saída → vira regra funcional | `.team-project/consulting/C-<nnn>-<slug>/business-proposal.md` | [`templates/business-proposal.md`](templates/business-proposal.md) *(3 opções de processo futuro no formato R22; nunca vira ADR — [`skills.md`](skills.md) §10)* |
 
 **Sou dono de 6 entregáveis — 5 documentos do SDD e o de escopo e critérios.** Responder por eles significa: mantê-los atualizados no mesmo ciclo da mudança (R12), garantir que todo requisito tenha critério verificável, que nenhuma seção descreva funcionalidade removida ou nunca construída, e que **nenhum critério seja marcado como atendido sem evidência do QA** — o defeito mais comum destes documentos. O conjunto completo, com critérios de qualidade e ordem de elaboração, está em [`deliverables/README.md`](../../deliverables/README.md).
 

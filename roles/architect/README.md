@@ -138,6 +138,7 @@ Tipos: **guia** (normativo agnóstico, base de todo desenho — mora em [`standa
 | Planos de Implementação | **vivo no sprint** → **fechado** com a pasta | `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` *(sprint corrente em `.team-project/README.md` §2; plano de calibração, sem sprint: `.team-project/architect/calibration/`)* | [`templates/implementation-plan.md`](templates/implementation-plan.md) |
 | Checkpoint de spike | trabalho | `.team-project/architect/spikes/<ID>-<slug>.md` — **fora** da pasta do sprint: investigação não se lê pelo número do sprint ([`artifact-ownership.md` §1c](../scrum-master/process/artifact-ownership.md)) | [`templates/spike-checkpoint.md`](templates/spike-checkpoint.md) *(regras em [`skills.md`](skills.md) §11–§12)* |
 | ADRs | **entregável** | diretório de ADRs do projeto | [`templates/adr.md`](templates/adr.md) *(uma por decisão)* |
+| Proposta de ADR de consultoria externa (R32) | saída → vira ADR | `.team-project/consulting/C-<nnn>-<slug>/adr-proposal.md` | [`templates/adr-proposal.md`](templates/adr-proposal.md) *(3 opções no formato R22 + parecer dos validadores)* |
 | **SDD — arquitetura** | **entregável** | SDD do projeto | [`deliverables/sdd/03-architecture.md`](../../deliverables/sdd/03-architecture.md) |
 | **SDD — modelo de dados** | **entregável** | SDD do projeto | [`deliverables/sdd/04-data-model.md`](../../deliverables/sdd/04-data-model.md) |
 | **SDD — modelo de API** | **entregável** | SDD do projeto | [`deliverables/sdd/05-api-model.md`](../../deliverables/sdd/05-api-model.md) |

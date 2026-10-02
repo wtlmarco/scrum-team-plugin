@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.34 (parte 3)`](process-changelog-archive.md) | Novo modo `/sm sdd`: do brief ao SDD aprovado e às Histórias, com os portões ① e ② disparados pelo próprio modo (SM + PO + UX + Arquiteto) — 30/09/2026 |
 | [`v3.34 (parte 2)`](process-changelog-archive.md) | Split do `workflow.md`, índice das regras, roteiro do `run` como fonte única e correções da auditoria (SM) — 29/09/2026 |
 | [`v3.34`](process-changelog-archive.md) | Cadência do sprint em cinco modos do `/sm` (prepare · plan · run · review · close); `/team cycle\|plan\|build\|qa` removidos; decisão de portão em formulário (R22) (SM + PO + Arquiteto + QA + UX) — 29/09/2026 |
 | [`v3.33.1`](process-changelog-archive.md) | O papel chamador retrata o consumo do `operator`; o registro o soma em linhas por chamador (SM) — 29/09/2026 |
@@ -72,6 +73,62 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.37 — R32: consultoria externa especializada pelo `/sm consulting` — técnica e de negócio, carta sanitizada, até 3 réplicas, validação do time antes do formulário (SM + PO + Arquiteto + QA + UX) — 02/10/2026
+
+**Instrução** (stakeholder, proposta `proposta-consulting.md`, com as decisões D1–D10 já tomadas): "Decisões técnicas especializadas (banco de dados, segurança, design, arquitetura, infraestrutura) hoje saem só do conhecimento do próprio time, sem forma de buscar uma segunda opinião externa com rastreabilidade; e o ADR registra a decisão já tomada, sem apresentar ao stakeholder opções comparáveis para escolher. O mesmo vale para o lado funcional: quando o projeto entra numa área de negócio que o time não domina, o PO escreve requisitos e regras só com o que o stakeholder sabe dizer, sem apoio especializado nos processos daquela área."
+**Classificação:** regra nova (R32) · etapa de fluxo (modo `/sm consulting`) · formato de documento (6 modelos) · propriedade de artefato (`consulting/`; `business-proposal.md` do PO) · comportamento de agente (`commands/sm.md`, aplicado pelo stakeholder).
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `process/working-rules.md` · `working-rules-index.md` | R32 · resumo · verificação binária · índice | Regra nova. Consultor sempre externo (humano ou IA), do registro do projeto; o stakeholder transporta; SM abre e conduz; papéis do domínio escrevem e validam; Arquiteto (técnico) ou PO (`business`) escrevem proposta e registro final; sanitização do QA por rodada (+ PO no `business`); teto de 3 réplicas; decisão em R22; **só fora do `sprint run`** (D8). Contagem 31 → 32 |
+| `process/workflow.md` | §5 · §6 | Cerimônia "Consultoria externa"; linha de escalação "decisão especializada → `/sm consulting` (opcional, antes do stakeholder)" |
+| `process/artifact-ownership.md` | §1 (ADRs · casos · requisitos) · §1c | Linha `consulting/` com dono por arquivo; ADR via `adr-proposal`; regra funcional via `business-proposal`; caso fora da pasta do sprint, como o spike |
+| `roles/scrum-master/README.md` | novo §`/sm consulting` · documentos | Roteiro em 7 passos, tabela domínio × autores × validadores, checklist de sanitização e de consenso |
+| `roles/scrum-master/templates/` | `consulting-case` · `service-letter` · `consultant-response` · `reply` (novos) · `project-context.md` | Modelos do caso; §7a "Registro de consultores" (lista livre de áreas, D10; critério de guarda do dado) com a lista de exemplo **comentada**; `consulting/` na estrutura; modo na §8 |
+| `deliverables/team-project/README.md` | manifesto | `consulting/` não semeada, reconcilia os modelos; §7a do README como estrutura + conteúdo local |
+| `roles/architect/` | `templates/adr-proposal.md` (novo) · `adr.md` (regra "Origem") · `skills.md` §7 · `README.md` | Proposta com 3 opções R22, recomendação do time × do consultor, parecer dos validadores; ADR resultante sem citar `consulting/` |
+| `roles/product-owner/` | `templates/business-proposal.md` (novo) · `skills.md` §10 · `README.md` | Processo futuro em 3 opções, sem solução técnica (R20), destino no formato do §4 de `functional-analysis`; quando pedir, seção da carta, coassinatura, incorporação ao SDD |
+| `roles/quality-assurance/skills.md` | §14 (novo) | Conferência de sanitização por rodada, com tabela |
+| `roles/user-experience/skills.md` | §11 (novo) | Seção da carta (design; jornada atual no `business`) e validação quando a jornada muda |
+| `commands/sm.md` · `how-to.md` · `README.md` · `agents/scrum-master.md` | modo · pré-condição · cenário G · contagem | Aplicados a pedido do stakeholder (texto pronto da proposta); "31 regras" → "32" |
+
+### Por quê
+A opinião externa já acontecia por fora — colada em conversa, sem dono, sem sanitização e sem opções comparáveis. A regra a torna **dado, não decisão**: ninguém do time responde por ela sem validar, nada sensível sai sem assinatura, o ciclo tem teto e o stakeholder escolhe entre 3 opções maduras. No `business`, dá ao PO apoio especializado sem trazer solução técnica para o requisito.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| SM | Abre e conduz casos; recusa `consulting` com sprint em `run`; cobra assinaturas, checklist e teto |
+| Arquiteto | Escreve a carta técnica, valida, escreve `adr-proposal` e o ADR resultante |
+| PO | Necessidade em toda carta; no `business`, *as-is*, coassinatura, `business-proposal` e incorporação ao SDD |
+| QA | Assina a sanitização de toda rodada que sai; no `security`, escreve e valida |
+| UX | Contexto de design; jornada atual no `business`; valida quando a jornada muda |
+| Sessão que orquestra | Dispara só os papéis do domínio; formulário R22 no consenso ou no teto |
+
+### Conflitos com o processo vigente
+- **R25** (dois contatos por sprint): resolvido por **D8** — consulting só fora do `sprint run`; caso aberto fica suspenso até o `close`; decisão estratégica em voo segue R25(c).
+- **R21 / SM não escreve ADR:** o SM só conduz; consenso é dos validadores; proposta e registro, do dono do destino.
+- **R31:** ADR e SDD resultantes não citam `consulting/` — regra nos dois modelos de proposta e em `adr.md`.
+
+### Como saberemos que funcionou
+Nos 3 primeiros casos: consenso em ≤ 3 réplicas em todos · zero proposta sem parecer dos validadores · zero rodada sem assinatura de sanitização (e sem a do PO, no `business`) · decisão em formulário em 100%. No primeiro caso `business`: zero solução técnica no texto incorporado ao SDD. A Retrospective registra qual consultor rendeu mais por domínio (e por área). Carga fixa medida no `/review metrics` seguinte.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Contagem | `Select-String '^### R\d+\.'` em `working-rules.md` · `'^\| R\d+ '` em `working-rules-index.md` · `'^\| R\d+ \|'` no resumo | 32 · 32 · 32 | ✅ |
+| Substituição de padrão | `Grep '31 regras\|R1.R31\|R30-R31'` fora dos changelogs | 0; as 4 ocorrências novas (`README.md:186`, `roles/scrum-master/README.md:154`, `working-rules-index.md:1`, `agents/scrum-master.md:34`) lidas no contexto — a lista de blocos do `README.md` passou a "método R13-R27 e R30-R32" | ✅ |
+| Referência | `Select-String 'consulting'` nos 4 normativos, no manifesto e em `commands/sm.md` | `working-rules` 2 · índice 1 · `workflow` 2 · `artifact-ownership` 3 · manifesto 1 · `sm.md` 3 | ✅ |
+| Órfão | arquivos `.md` que citam cada modelo novo (fora de propostas e changelogs) | `service-letter` 6 · `consultant-response` 5 · `reply` 6 · `consulting-case` 3 · `adr-proposal` 8 · `business-proposal` 7 — nenhum órfão | ✅ |
+| Arquivamento | entrada v3.34 (parte 3) movida para o arquivo; `Contains` do texto de `HEAD` no arquivo | True (13.616 caracteres) | ✅ |
+| Carga fixa | bytes (LF) de `commands/sm.md` · `agents/scrum-master.md`, `HEAD` → agora | 6.843 → 7.472 (+629) · 6.656 → 6.656 | ✅ |
+
+### Pendente do stakeholder
+Nada a aplicar — `commands/sm.md`, `how-to.md`, `README.md` e versão aplicados nesta entrega. Mudança de comando só vale **após reiniciar a sessão**. Primeiro uso real: preencher o §7a do `.team-project/README.md` (o `/team update` traz a estrutura).
 
 ---
 
@@ -220,72 +277,3 @@ No primeiro projeto atualizado: `git ls-files .team-project` vazio e `git check-
 - **Git da entrega (R18):** criar a branch `feat/v3.35.0` a partir de `develop`, commitar e abrir o PR — não feito aqui. Mensagem de commit no padrão das entregas anteriores: `v3.35.0: .team-project fora do git (R31), R28 enxuta e consumo fora de sprint`.
 - **Execução da migração nos projetos:** a limpeza do histórico e o `push --force` só rodam no projeto, com a confirmação do stakeholder no momento (7b).
 - `agents/` e `commands/` só valem após reiniciar a sessão.
-
----
-
-## v3.34 (parte 3) — Novo modo `/sm sdd`: a transição do brief ao SDD aprovado e às Histórias, com os portões ① e ② disparados pelo próprio modo (SM + PO + UX + Arquiteto) — 30/09/2026
-
-**Instrução** (stakeholder, `/review`, formulário): *"Por qual comando, depois do brainstorm, se elabora o SDD funcional e o técnico que servem de base para o `/sm sprint prepare`?"* — a resposta era uma sequência manual (`/po requirement` → `/po analyze` → `/ux journey` → `/ux prototype` → ① → `/arc` em modo livre → ② → `/po story`), e os formulários dos portões dependiam de "a sessão que orquestrou o comando anterior". **Decisões:** (1) novo modo **`/sm sdd`**, orquestrado pela sessão, com a cadência `brainstorm → sdd → prepare → plan → run → review → close`; (2) alcance nos **dois casos** — ideia nova depois do brainstorm e evolução de área já documentada depois do `/po analyze` (só o delta, portões só no que mudou).
-
-**Classificação:** cerimônia + etapa de fluxo + comportamento de comando (proposta). Entrada **separada** (a "parte 2" tem 14 KB); mesma versão, pois a v3.34.0 está na branch aberta.
-
-### O que mudou (fase do SM)
-| Documento | Seção | Mudança |
-|---|---|---|
-| `process/workflow-sdd.md` (novo, 7,4 KB) | **§5h** | Roteiro do `/sm sdd`: casos A/B e pré-condições (brief fechado **ou** `/po analyze` com decisão; onboarding); estado e retomada em `context.md` §"SDD em elaboração"; 5 etapas com quem é despachado; ① e ② em formulário **disparados pelo `sdd`**; portão sem delta (só com delta nulo declarado pelo dono); saída; o que não faz; consumo pré-sprint; verificação |
-| `process/workflow-ritos.md` | §5b "Transição para o SDD" | A tabela vira ponteiro para §5h; o brief passa a ter lugar declarado (`context.md` §"SDD em elaboração", ≤15 linhas); verificação dos portões migra para §5h |
-| `process/workflow.md` | §2 · §2a (linha **0c**, linha 1) · §5 (nova linha; "Protótipo funcional") · tabela §5a–5h · §3a DoR-a · §8 (①②) | `/sm sdd` na cadeia e nas cerimônias; ① e ② disparados pelo `sdd` (fim do "quem orquestrou o comando anterior"); DoR-a exige SDD aprovado (① e ②) — projeto retomado: SDD reconhecido no onboarding vale |
-| `process/workflow-sprint.md` | §5e "Preparação" passo 1 | `prepare` só recebe Histórias **de SDD aprovado (① e ②)**; requisito sem ② volta ao `sdd` |
-| `process/working-rules.md` · `working-rules-index.md` | R15 | Elaboração do SDD por `/sm sdd`; formulários dos portões do próprio `sdd`; regra do portão sem delta (evolução) |
-| `process/artifact-ownership.md` | §1 · diagrama | Nova linha: "SDD em elaboração" (seção do `context.md` do SM), com o brief e a decisão do ② |
-| `templates/project-context.md` · `consumption.md` | tabela `/sm` · "Por onde começar" · `context.md` do SM · subseção de consumo | `sdd` na tabela e nas sequências; §"SDD em elaboração"; subseção "Consumo pré-sprint (prepare · sdd)" (era "do prepare") |
-| `roles/scrum-master/README.md` | nova `/sm sdd` · tabela de documentos · brainstorm · prepare | seção do modo; ponteiros |
-| `README.md` · `how-to.md` · `replicate-in-new-project.md` · `team-init.md` | comandos · caminhos A/D · diagrama | `sdd` na lista de modos, no caminho padrão e nas sequências; `/po requirement` → `/ux prototype` → ① → ② manual sai dos caminhos |
-| **Aplicação das propostas** (orquestrador, com autorização do stakeholder) | `commands/{sm,po,arc,ux,dev}.md` · `agents/{scrum-master,product-owner,architect,user-experience}.md` | As 9 propostas de `proposals-v2/` **aplicadas**; frontmatter dos 4 agentes conferido igual ao HEAD; 0 resíduos de `architect/plans` ou "sessão que orquestrou" em `commands/` e `agents/` (a ocorrência em `commands/qa.md:27` é a regra geral de R22, correta) |
-| **Ajustes finais dos donos** | `roles/user-experience/README.md:56` · `templates/functional-prototype.md:100` · `templates/requirement.md` · `templates/functional-analysis.md` | UX: "portões só dentro do `sdd`" (carga fixa UX 10.842 B); PO: campo **"O que muda (caso B do `/sm sdd`)"** (`requirement.md` 5.699 → 6.169 B; `functional-analysis.md` 2.480 → 2.614 B), README do PO aponta para eles |
-| **`how-to.md` reescrito — a pedido direto do stakeholder** (guia de raiz, dele; fora da exceção de curadoria do SM) | `how-to.md` · `team-version.md:21` · `replicate-in-new-project.md:12,:22,:62` · `README.md:17,:42` · `templates/project-context.md:138` | Guia por uso: "Em um minuto" · "o que você quer → comando" · cenários A–F · "Os seus quatro portões" · regras · "Referência dos comandos" · onde cada coisa mora · "Instalar e manter atualizado" (com "Problemas de instalação"). Ponteiros dos demais documentos atualizados para as seções novas; `project-context.md:138` diz que a cópia do guia é criada pelo `/team init` e **substituída** pelo `/team update` (cópia literal — `team-update.md:107`) |
-| `process/workflow-sprint.md` §5g "Manutenção" | correção pontual (2 ocorrências) | O caminho manual "caminho C" (`/arc question` → `/arc plan` → `/dev` → `/qa` → `/sm close`) vira: `/arc question` se a causa não é óbvia → entrada fora da Planning registrada por `/sm board` com "o que saiu para caber" → `/sm sprint run <T-ID>`, alinhado a `sprint-run.md` pré-condição 2 e ao how-to |
-| **Regressão da parte 2 corrigida** (achado do Arquiteto) | `team-update.md:76,:97` × plano de calibração | A parte 2 pôs o plano de calibração em `.team-project/architect/plans/`, que o `team-update` trata como **caminho legado a migrar** (verificação exige zero ocorrências). **Decisão do SM:** o caminho de calibração passa a **`.team-project/architect/calibration/<Task-ID>-<slug>.md`**, sem colisão, e o `team-update` **não é tocado**. Trocado em `artifact-ownership.md` §1/§1e, `sprint-run.md` (pré-condição 2), `deliverables/team-project/README.md`, `project-context.md` (árvore), README do Arquiteto e `implementation-plan.md:3` (só o nome do caminho); nas propostas `commands/arc.md`, `agents/architect.md` e `commands/dev.md`. As menções `architect/plans` nesta e nas entradas anteriores são **históricas** |
-| `process/workflow-sdd.md` §5h | etapa 5 · portões | **Etapa 5 só começa depois do ② registrado (ou dispensado com motivo)**; a versão aprovada no `06-changelog` é do PO e vem **antes** das Histórias (achado do PO). Nova regra: **portões só se decidem dentro do `sdd`** — `/ux prototype` e `/arc` avulsos não abrem nem fecham ①/② (resolve a divergência UX × Arquiteto sobre "avulso → a sessão") |
-| **PO** — `roles/product-owner/README.md` · `deliverables/sdd/README.md` | `/po analyze` · `/po requirement` · `/po story` (Esboço) · regras do SDD | Decisão formal do `analyze` habilita o `sdd` (caso B) e declara o que muda; `requirement` chamado pelo `sdd` (etapa 1a), delta nulo com motivo dispensa ①; `story` (etapa 5) registra a versão aprovada no `06-changelog` e atualiza o índice (R12) |
-| **UX** — `roles/user-experience/README.md:47,:56` · `templates/functional-prototype.md:76,:100` | `/ux prototype` · registro do ① | Despachado pelo `sdd` (etapa 1c, depois de `02`; caso B só os fluxos afetados); ficha = registro único do ①, UX transcreve |
-| **Arquiteto** — `roles/architect/README.md` · `templates/implementation-plan.md:3` | SDD técnico da fatia · indicador · `/arc plan` (calibração) | Caminho oficial é o `sdd` (etapa 3); modo livre só conversa avulsa; delta nulo com motivo dispensa ②; formulário do ② é do `sdd` |
-| `proposals-v2/commands/sm.md` · `agents/scrum-master.md` | linha `sdd`, description, hint, pré-condições | **Proposta** (`commands/`, `agents/` são do stakeholder): `/sm` de carga fixa 13.455 B (`sm.md` 6.807 + agente 6.648), dentro de ≤13,5 KB |
-| `process/process-changelog(-archive).md` | — | v3.33.1 arquivada (R17, três entradas mantidas); "Pendente" da parte 2 atualizado (propostas aplicadas em 29–30/09 na `feat/v3.34.0`, frontmatter dos 6 agentes igual ao HEAD, bump v3.34.0; **pendentes: reinício de sessão e remedição da tabela de custo**) |
-
-### Por quê
-O caminho do brief às Histórias era o único trecho do processo sem comando dono: cinco comandos de papel em sequência manual e dois portões cujo formulário dependia de lembrar qual sessão orquestrou qual comando (R22). Sem um dono, o `prepare` recebia "Histórias" de origem não verificável. O `/sm sdd` dá dono, estado (retomável) e portões próprios, e fecha a cadeia até o `prepare`.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda |
-|---|---|
-| PO | escreve `00`/`01`/`02`/`06`/índice e depois as Histórias (esboço) **dentro do `sdd`**; declara o delta funcional no caso B (base para dispensar ①) |
-| UX | jornadas e protótipo funcional despachados pelo `sdd`; o formulário do ① é do `sdd` (a decisão continua na ficha do protótipo) |
-| Arquiteto | SDD técnico despachado pelo `sdd`; declara o delta técnico no caso B (base para dispensar ②); o formulário do ② é do `sdd` |
-| SM | abre e mantém §"SDD em elaboração"; verifica ①②→Histórias e que `prepare` só recebe Histórias de SDD aprovado |
-
-### Conflitos com o processo vigente
-Nenhum com regra escrita. Ponto de atenção: **R15 diz que os portões não se negociam** — o "portão sem delta" (caso B) não abre exceção: só se dispensa o que **não mudou**, com o delta nulo declarado pelo dono e o motivo em `context.md`.
-
-### Como saberemos que funcionou
-Nos próximos dois ciclos de SDD: (a) zero `03`/`04`/`05` datado antes do registro do ① e zero História antes do ②; (b) todo `prepare` cita Histórias de SDD aprovado; (c) zero portão ①/② em texto corrido; (d) o número de comandos digitados entre o brainstorm e o `prepare` cai de ~8 para 1; (e) toda retomada de `sdd` entra na etapa correta (estado em `context.md`).
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Substituição | grep `/po requirement <ID>\s+o brief` e a sequência `→ /po requirement → /ux prototype` em `.md` de RAIZ (exceto changelogs) | 0 restos da sequência manual fora de `workflow-sdd.md:7` (que a cita para dizer que foi substituída) | ✅ |
-| Referência cruzada | ocorrências de `/sm sdd`\|`workflow-sdd` por arquivo | 14 arquivos, 64 ocorrências, cada uma lida no contexto (contagem/lista adjacente: tabela do `/sm` de `README.md`, `how-to.md`, `project-context.md` traz **11 modos**) | ✅ |
-| Links | resolução de `](x.md)` em todos os `.md` (exceto `CHANGELOG.md` e o arquivo) | 0 quebrados novos (só o `how-to.md` do template e o texto literal `x.md` desta linha) | ✅ |
-| Extração | bytes: `workflow.md` 39.053 → 40.506 · `workflow-ritos.md` 14.592 → 13.391 · `workflow-sdd.md` novo 7.424 · `working-rules.md` 71.630 → 72.145 | o `sdd` só é lido em `/sm sdd` | ✅ |
-| Arquivamento | `Contains` do bloco v3.33.1 (98 linhas) no arquivo; entradas vivas | `True`; entradas: parte 3, parte 2, v3.34 (três) | ✅ |
-| Carga fixa | `Length` de `proposals-v2/commands/sm.md` + `agents/scrum-master.md` | 6.807 + 6.648 = **13.455 B** (era 13.345; teto 13.500) | ✅ |
-| Substituição (regressão) | `Select-String "architect/plans"` em `.md` de RAIZ e `proposals-v2/` (exceto changelogs e `team-update.md`) | 0 depois da troca para `architect/calibration`; sobram só `commands/arc.md:12`, `agents/architect.md:55` e `commands/dev.md:10` de RAIZ, que as propostas substituem; `team-update.md:76,:97` intacto | ✅ |
-| Coerência das propostas | bytes e `diff` linha a linha RAIZ × `proposals-v2/` das 6 propostas dos papéis; ①/② e "avulso" | só linhas editadas, nenhuma removida sem contraparte (`po.md` 8/8, `arc.md` 3/3, `ux.md` 3/3, `agents/po` 8/9, `architect` 2/2, `user-experience` 1/1); ①/② são do `sdd` em `sm.md`, `arc.md:22`, `ux.md:31`; **1 divergência** ("avulso" decidia ① no UX e não decidia ② no Arquiteto) resolvida na §5h | ✅ |
-| Carga fixa | `Length` agente + comando, aplicado → proposto | `/sm` 13.345 → 13.455 · `/po` 11.066 → 11.207 · `/arc` 8.563 → 8.497 · `/ux` 10.710 → 10.897 · `/dev` 6.113 → 6.119 · `/qa` 11.622 → 11.622; total 61.419 → 61.797 (era 95.021 antes da v3.34) | ✅ |
-| Leitura | `consumption.md` §Como gravar (achado do UX) | existe (linha 39) | ✅ |
-| Aplicação | conferência do orquestrador: frontmatter dos 4 agentes × HEAD; grep `architect/plans` e "sessão que orquestrou" em `commands/` e `agents/` | igual ao HEAD; 0 resíduos (1 ocorrência legítima em `qa.md:27`) | ✅ |
-| Referência cruzada (how-to novo) | grep em RAIZ (exceto changelogs, `note.md`, `proximo.md`) de `how-to.md` + `§`, "quatro caminhos", "caminho [A-D]", "Os comandos"; cada ocorrência lida contra os headings do how-to novo | 7 ponteiros resolvem (`§"Referência dos comandos"` → how-to:154; `§"Instalar e manter atualizado"` → :226; "cenário A" → :42; "quatro portões" → :129); **1 resto** — `README.md:42` ("os 4 caminhos de entrada") — corrigido; "caminho C" em `workflow-sprint.md:149,:155` corrigido | ✅ |
-| Desvio | parágrafo "Pendente" da entrada v3.34 apagado por engano no arquivamento da v3.33.1 | recomposto com ponteiro para a "parte 2" e nota; o texto original listava as 14 propostas, hoje na "parte 2" e no `CHANGELOG.md` v3.34.0 | ⚠️ registrado |
-
-### Pendente do stakeholder
-**Aplicado** em 29–30/09/2026 na `feat/v3.34.0`: as 9 propostas de `commands/` e `agents/` e os ajustes finais do PO e do UX (frontmatter dos agentes igual ao HEAD); o `how-to.md` novo foi feito a pedido direto do stakeholder e o `CHANGELOG.md` v3.34.0 já tem as linhas do `/sm sdd`, da calibração e do how-to. **Continuam pendentes:** o **reinício da sessão** (comportamento de agente só vale depois) e a **remedição da tabela de custo** (`workflow-processo.md` §5c; carga fixa atual: `/sm` 13.455 · `/po` 11.207 · `/arc` 8.497 · `/ux` 10.842 · `/dev` 6.119 · `/qa` 11.622 B).
