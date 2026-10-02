@@ -17,6 +17,7 @@ Entra no registro de GAPs do projeto (caminho em `.team-project/README.md` §4),
 ### <MÓDULO>-<NN> — <título afirmativo do defeito>
 **Módulo:** <área do sistema> · **Criticidade:** <nível> · **Tipo:** código | processo · **Origem:** time | stakeholder
 **Aguarda decisão do stakeholder:** não | sim — <pergunta no formato de R22 (alternativas descritas + recomendação), ou ponteiro para onde ela foi feita (PO, Sprint Review, `/sm agreement`)>
+**História do aceite:** <só se Origem: stakeholder — H-nnn + sprint do aceite | H-nnn · fora da janela | não identificada | não aplicável, como o PO passou>
 **Evidência:** [<arquivo>:<linha>](<caminho>#L<linha>) — <o fato, não a interpretação>
 **Impacto:** <o que deixa de funcionar ou fica exposto, e para quem — cite o requisito ou critério afetado>
 **Ação sugerida:** <caminho de correção em uma ou duas frases; sem escrever o plano — isso é do Arquiteto>
@@ -35,6 +36,12 @@ Depois de abrir: atualizar as tabelas de contagem do documento e, se afetar um c
 Distingue a entrada que o time resolve sozinho da que está parada esperando uma decisão dele (R9, R22, `workflow.md` §6b — não é regra nova, é o registro **mostrando** um estado que já existia). `sim` só é válido quando a pergunta correspondente existe em algum canal (relato ao PO, pauta de Sprint Review, `/sm agreement`), na forma fixa de R22. `não` é o padrão — inclusive para toda entrada `origem: stakeholder` já respondida ou cuja correção não depende de nova decisão dele.
 
 **Verificação:** entrada com `sim` sem a pergunta ou o ponteiro descrito é achado de formato — devolvida para completar antes de contar no resumo executivo ou na ordem de ataque.
+
+### `História do aceite`
+
+Só em entrada `Origem: stakeholder`; em `time` a linha é omitida. Valor **transcrito do que o PO passou** ao acionar `/qa bug` (passo 6 do `/po bug`): `H-nnn` + sprint do aceite · `H-nnn · fora da janela` (relato além de 2 sprints do aceite; o ID fica e não conta como defeito que escapou) · `não identificada` · `não aplicável` (funcionalidade nunca aceita). O QA não reinterpreta; só resolve "não identificada" com evidência `arquivo:linha` registrada na própria linha. Fonte do indicador "defeito que escapou" (`pending.md` + este campo).
+
+**Verificação:** toda entrada `Origem: stakeholder` tem a linha `História do aceite:` preenchida com um dos quatro valores. Comando de checagem: buscar cada bloco `### <ID>` com `Origem: stakeholder` e confirmar a linha. Ausente: formato incompleto, devolvida ao PO para informar o campo antes de contar no indicador.
 
 ## Tipo `código` × tipo `processo`
 
@@ -74,7 +81,7 @@ Task que parecia lacuna e foi verificado como correto vai para a seção de não
 - Sem evidência conclusiva, a Task **não entra**: fica como suspeita no veredito até ser confirmado.
 - **Tipo `processo` não abre Task aqui.** É achado de processo: registra-se na seção de roteamentos do veredito e segue ao `/review` (R16). Este documento só recebe defeitos do projeto.
 - **Dono único do registro é o QA.** Os outros papéis reportam pelos canais que já têm (dev: 🔺 GAP; Arquiteto/PO/UX: achado; stakeholder: relato pelo PO) — o QA investiga e **transcreve com evidência `arquivo:linha` confirmada**. É o que garante que toda entrada aqui tem evidência verificada, não narrativa de terceiro.
-- **`Origem` sempre preenchida** (`time` ou `stakeholder`) e **`Aguarda decisão do stakeholder`** sempre presente (`não` ou `sim` com a pergunta/ponteiro) — ver seções acima.
+- **`Origem` sempre preenchida** (`time` ou `stakeholder`) e **`Aguarda decisão do stakeholder`** sempre presente (`não` ou `sim` com a pergunta/ponteiro) — ver seções acima. Em `Origem: stakeholder`, **`História do aceite`** também sempre presente.
 
 ## Exemplo
 
