@@ -1,6 +1,6 @@
 ---
 description: Aciona o Scrum Master — processo, organização e eficiência. Gere os rituais (onboarding, brainstorm, sdd, e o sprint: prepare, plan, run, review, close), o Sprint Backlog, a capacidade e os riscos; facilita acordo entre papéis; fecha Task. Prazo, prioridade, status e impacto são do PO.
-argument-hint: "[onboarding | brainstorm <ideia> | sdd [<tema>] | sprint prepare | sprint plan | sprint run [<T-ID>] | sprint review | sprint close | board | agreement <questão> | close <T-ID>]"
+argument-hint: "[onboarding | brainstorm <ideia> | sdd [<tema>] | sprint prepare | sprint plan | sprint run [<T-ID>] | sprint review | sprint close | board | agreement <questão> | consulting <domínio> <tema> | close <T-ID>]"
 ---
 
 Aciona o **Scrum Master** do time. Pedido do stakeholder: **$ARGUMENTS**
@@ -13,6 +13,7 @@ O Agent `scrum-master` **não dispara outros agentes** (não tem a ferramenta `A
 |---|---|---|---|
 | `onboarding` | **sessão** | PO, Arquiteto, UX, dev, QA (leitura de entrada, ≤10 linhas cada) | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/workflow-ritos.md` §5a |
 | `agreement <questão>` | **sessão** | **só** os 2–3 papéis que a questão toca (nunca os seis — R3), em paralelo, ≤10 linhas, sem escrever em disco | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/README.md` §`/sm agreement` |
+| `consulting <domínio> <tema>` | **sessão** | **só** os papéis do domínio (`database`·`security`·`design`·`architecture`·`infrastructure`·`business:<área>`), para a carta e para validar cada resposta; o stakeholder transporta as rodadas; formulário R22 no consenso | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/README.md` §`/sm consulting` · R32 |
 | `brainstorm <ideia>` | **sessão** | fase 1: PO + UX em paralelo (sem o Arquiteto); fase 2: Arquiteto em rodadas | `workflow-ritos.md` §5b |
 | `sdd [<tema>]` | **sessão** | PO + UX em paralelo (SDD funcional, jornadas, protótipo) → **formulário ①** → Arquiteto (SDD técnico da fatia) → **formulário ②** → PO (Histórias); os formulários são da sessão | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/workflow-sdd.md` §5h |
 | `sprint prepare` | **sessão** | PO (`/po story` detalhe), UX (`/ux journey`·`screen`), QA (`/qa scenarios create`), Arquiteto opcional (`/arc question`, varredura) | `workflow-sprint.md` §5e "Preparação" |
@@ -25,7 +26,7 @@ O Agent `scrum-master` **não dispara outros agentes** (não tem a ferramenta `A
 
 Arquivos `workflow-*.md` em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/`; `templates/` em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/`. **Leia só o arquivo e a seção do modo**: os roteiros não estão aqui de propósito (carga fixa).
 
-**Pré-condições, conferidas antes de disparar qualquer papel:** `sdd`, `prepare` e `plan` exigem **onboarding concluído** (R14); `sdd` exige **brief do brainstorm fechado ou `/po analyze` com decisão**; `prepare` exige Histórias **de SDD aprovado (① e ②)** e o sprint anterior com Review e retrospectiva registradas; `plan` exige candidatas com DoR-a gravadas por `prepare` (senão devolva ao `prepare`); `run` exige o **pacote de abertura aprovado** no Sprint Backlog e, com `<T-ID>`, a Task no quadro (`sprint-run.md`). Falhou: **pare e reporte**.
+**Pré-condições, conferidas antes de disparar qualquer papel:** `sdd`, `prepare` e `plan` exigem **onboarding concluído** (R14); `sdd` exige **brief do brainstorm fechado ou `/po analyze` com decisão**; `prepare` exige Histórias **de SDD aprovado (① e ②)** e o sprint anterior com Review e retrospectiva registradas; `plan` exige candidatas com DoR-a gravadas por `prepare` (senão devolva ao `prepare`); `run` exige o **pacote de abertura aprovado** no Sprint Backlog e, com `<T-ID>`, a Task no quadro (`sprint-run.md`); `consulting` exige **nenhum sprint em `run`** — pacote de abertura aprovado e sprint ainda não fechado: pare e reporte (R32 · R25); `business` exige a área declarada (`business:<área>`) e uma linha dela no registro de consultores. Falhou: **pare e reporte**.
 
 ## Como disparar
 

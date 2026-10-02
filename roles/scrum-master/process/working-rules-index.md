@@ -1,4 +1,4 @@
-# Índice das regras de trabalho — o que conferir (R1–R31)
+# Índice das regras de trabalho — o que conferir (R1–R32)
 
 > **Dono:** SM · **Derivado de [`working-rules.md`](working-rules.md)** — que continua sendo o normativo. Este índice existe para o **`/sm close`** e para a conferência a cada Task: uma linha por regra, com **o que conferir**, sem o texto da regra nem o "Evita". **Divergência entre este índice e a linha "SM verifica" da regra: vale a regra**, e o índice é corrigido no mesmo ciclo (R12). Abra `working-rules.md` na regra só quando a linha apontar violação ou dúvida.
 
@@ -52,3 +52,4 @@
 | R27 · falha de invocação | retentativa, texto literal do harness, conferência de energia (causa e horário) e retomada por `SendMessage` (instância nova só com motivo); nenhum relatório atribui ao stakeholder interrupção sem ação dele registrada |
 | R30 · cenários mapeados **[close]** | Task com cenários novos + regressivos aplicáveis (ou "nenhum aplicável", com motivo) antes da construção; veredito traz o resultado de cada um; GAP que bloqueia História em voo vira Task no sprint; GAP não-bloqueante tem par no Product Backlog (escrito pelo PO) |
 | R31 · git só com o produto | `git ls-files .team-project` vazio e `.gitignore` com `.team-project/`; `docs/` (e os modelos que o geram) sem caminho `.team-project/` |
+| R32 · consulting externo | `case.md` com domínio (e área no `business`), consultor do registro, rodadas numeradas e sanitização do QA em toda rodada que saiu (+ PO no `business`); nenhuma proposta sem checklist de consenso dos validadores; > 3 réplicas só com decisão do stakeholder registrada; decisão em `AskUserQuestion`; ADR / trecho do SDD sem `.team-project`; nenhuma rodada entre o pacote aprovado e o `sprint close`. **[close]** só se o caso estiver ligado a uma Task |
