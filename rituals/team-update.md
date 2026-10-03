@@ -103,7 +103,7 @@ Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere ap
 > **Os passos 1 a 4 só valem em repositório git — projeto que não é repositório git: pule-os e vá ao 5.** **Cada passo destrutivo (2, 3 e o push do 3) exige confirmação explícita do stakeholder NO MOMENTO da execução, neste projeto.** Aprovação antecipada, genérica ou "de quando rodar o update" não vale: **uma pergunta por passo destrutivo**, em `AskUserQuestion` pela sessão (R22: opções descritas, recomendação, "pedir mais contexto" por último), mostrando o comando e o efeito; execute só depois do "sim" e então passe ao próximo. Sem o "sim", registre o passo como pendente e siga.
 
 1. **`.gitignore` (a).** Se o `.gitignore` da raiz não tem a linha `.team-project/`, **acrescente-a** — só acrescente, nunca reescreva o arquivo.
-2. **Desrastrear (b).** Se `git ls-files .team-project` não está vazio: **confirme**, rode `git rm -r --cached .team-project` (tira do índice e **mantém os arquivos locais**) e faça o commit (por exemplo, `chore: tira .team-project do git (R31)`). Conferida a saída, siga.
+2. **Desrastrear (b).** Se `git ls-files .team-project` não está vazio: **confirme**, rode `git rm -r --cached .team-project` (tira do índice e **mantém os arquivos locais**) e faça o commit (por exemplo, `chore: tira .team-project do git (R31)`). **A guarda G1 bloqueia esse commit** — ela nega todo commit com arquivo de `.team-project/` no stage, inclusive remoção: antes do commit, acrescente `"G1"` a `disabled` em `.team-project/guards.json` (crie-o a partir do modelo se não existir — passo 7c); depois do commit, **tire `"G1"` de `disabled`** e confira. Conferida a saída, siga.
 3. **Limpar o histórico (c).** Só se `git log --all -- .team-project` não está vazio. **Confirme o passo inteiro antes de começar** e, de novo, **antes do push**.
    1. **Backup obrigatório, antes de qualquer coisa:** (i) copie a pasta `.team-project/` local para fora do repositório; (ii) faça o clone espelho `git clone --mirror <origem> <destino>.git`. Confira que os dois existem; sem eles, **não prossiga**.
    2. **Meça:** `git count-objects -vH` (antes).
@@ -114,6 +114,16 @@ Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere ap
 6. **Subseção antiga** (qualquer projeto): se `.team-project/scrum-master/context.md` tem "Consumo pré-sprint (prepare · sdd)" com linhas, **proponha** movê-las (conteúdo e Nota `pre-sprint;` preservados) para o arquivo novo e remover a subseção; espere aprovação — é conteúdo local.
 
 **Verificação do passo:** os itens do passo 4 (repositório git), mais `.team-project/consumption.md` existente e `context.md` sem a subseção antiga.
+
+## 7c. Guardas da v3.39 — `guards.json`
+
+> Roda quando a versão instalada for anterior à `v3.39.0`, em qualquer projeto.
+
+1. **`.team-project/guards.json`:** se não existir, crie a partir de `${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/guards.json`. Se existir, é **estrutura + conteúdo local**: chave nova do modelo entra; `disabled` e os valores do projeto nunca são sobrescritos (passo 8).
+2. **Diga ao stakeholder**, em três linhas: as guardas (G1 commit com `.team-project/`, G2 escrita na cópia instalada, G3 formulário sem "Pedir mais contexto" por último, G4 aviso de saída grande) **só valem depois de reiniciar a sessão**; uma guarda com falso positivo é desligada em `disabled`, na hora; cada disparo custa de 0,6 a 0,8 s (`hooks/COVERAGE.md`).
+3. **Sonda da fase 2 (opcional, uma sessão):** com `"probe": true`, o `guards.log` registra o `agent_type` recebido e o tempo de cada disparo; rode um `/po status` e um `/dev` de calibração e leve o log ao `/review`. Depois, `"probe": false`.
+
+**Verificação do passo:** `.team-project/guards.json` existe e é JSON válido (`Get-Content .team-project/guards.json -Raw | ConvertFrom-Json`); depois de reiniciar, `/hooks` lista `SessionStart`, `PreToolUse` e `PostToolUse` do plugin, e a sessão abre com a linha "Guardas do time: ativas …".
 
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 

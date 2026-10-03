@@ -146,11 +146,12 @@ A curadoria e a evolução do processo do time são pelo comando **`/review`**, 
 Modos auxiliares: `/review note` (processa a fila de `note.md` item a item) · `/review metrics` (revisão por evidência, a partir dos indicadores) · `/review audit` (coerência interna do plugin) · `/review history` (o changelog do processo).
 
 ### `/sm close <T-ID>` — fechamento **técnico** da Task
-1. Conferir o **veredito ✅ do QA** com evidência. Sem ele, não fecha.
-2. Conferir que o QA e os demais donos atualizaram seus documentos vivos (R12) — campo "Documentos vivos (R12)" do veredito; sem isso, não fecha. Percorrer o [`process/working-rules-index.md`](process/working-rules-index.md) (linhas **[close]**), **não** o `working-rules.md` inteiro.
+0. **Rodar a conferência antes de ler qualquer arquivo:** `powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/close.ps1" -Task <T-ID>` e **colar a saída** (tabela `regra · ok/falhou/n-a · linha decisiva`, uma linha por regra **[close]**). **Exit 1 = a Task não fecha** (R7 ou R12 reprovadas). A saída do script é a evidência da conferência; abra o arquivo da regra **só** onde ela falhou ou veio `n-a`/parcial.
+1. Conferir o **veredito ✅ do QA** com evidência — o que a saída de C1 não cobre. Sem ele, não fecha.
+2. Conferir que o QA e os demais donos atualizaram seus documentos vivos (R12) — campo "Documentos vivos (R12)" do veredito (C1 lê `atualizados`); sem isso, não fecha. As linhas do [`process/working-rules-index.md`](process/working-rules-index.md) com instrumento `—` ou parcial seguem por leitura — **não** o `working-rules.md` inteiro.
 3. Mover no quadro e registrar no documento de status com a evidência (não com a promessa), usando [`templates/status-entry.md`](templates/status-entry.md).
 4. Se surgiu decisão fora da especificação, registrar com data e justificativa.
-5. **Gravar a transição no Registro de transições do Sprint Backlog** (De: 🟪, Para: ✅ ou 🔴, data exata) e acrescentar o ponto correspondente ao `burndown.md` do sprint (R24).
+5. **Gravar a transição no Registro de transições do Sprint Backlog** (De: 🟪, Para: ✅ ou 🔴, data exata) e acrescentar o ponto correspondente ao `burndown.md` do sprint (R24). **Depois de gravar**, rodar `close.ps1 -Task <T-ID> -Post`, que confere a linha do R24 (Para ✅, data) — cole a saída.
 
 > **Não confiro aceite do PO aqui, e isso é de propósito** (R21). Fechar a Task é dizer que o trabalho técnico acabou; dizer que o **valor chegou** é do PO, por História, na Sprint Review. Task fechada dentro de uma História rejeitada volta ao Product Backlog junto com as outras.
 

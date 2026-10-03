@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.38.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.39.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -25,6 +25,8 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 │   └── marketplace.json             manifesto do marketplace (permite instalar por caminho)
 ├── agents/      scrum-master · product-owner · architect · user-experience · developer · quality-assurance
 ├── commands/    sm · po · arc · ux · dev · qa · team · review   definições dos 8 comandos
+├── hooks/                           guardas do harness (fase 1: G1 R31 · G2 cópia instalada · G3 R22 · G4 R28 · G13 autoteste) — hooks.json, despachantes PowerShell e COVERAGE.md (o que cada uma NÃO cobre)
+├── scripts/checks/                  conferências: close.ps1 (C1, /sm close) · project.ps1 (C2, retrospectiva e onboarding) · release.ps1 (C3, antes do PR) · tests/
 ├── deliverables/                    estrutura dos documentos que o time entrega
 │   ├── README.md                    os conjuntos: donos, ordem de elaboração, critérios de qualidade
 │   ├── prototype/                   protótipo funcional em HTML — pré-condição do portão ①

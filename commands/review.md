@@ -34,7 +34,7 @@ Identifique pelo primeiro termo. Sem termo, o modo é **reavaliação**.
 | `/review` *(vazio)* | Reavaliação do conjunto de `RAIZ/` (coerência interna, aderência à prática, verificabilidade, cobertura de modelos, fronteiras, vazamento de contexto de projeto, obsolescência, excesso) **+** triagem de `RAIZ/note.md`: tabela `Task → classificação → documento-alvo → papel dono` | não |
 | `/review <instrução>` | Trata a instrução como uma Task de melhoria: classifica, roteia ao dono, aplica, registra no changelog | sim |
 | `/review note` | Processa a fila **Abertas** de `RAIZ/note.md`, uma Task por vez, roteando cada um como acima | sim |
-| `/review audit` | Coerência interna de `RAIZ/`: regra contraditória, regra sem verificação, papel com fronteira ambígua, documento sem dono, modelo órfão, vazamento de contexto de projeto, link quebrado | não |
+| `/review audit` | Coerência interna de `RAIZ/`: regra contraditória, regra sem verificação, papel com fronteira ambígua, documento sem dono, modelo órfão, vazamento de contexto de projeto, link quebrado — começa por `scripts/checks/release.ps1` (C3) e pelas suítes de `scripts/checks/tests/` | não |
 | `/review metrics` | Revisão por evidência a partir dos indicadores do período, com **uma** proposta de mudança; inclui o giro **Act** do ciclo de eficiência (`workflow-processo.md` §5c) | sim (uma mudança) |
 | `/review history` | Apresenta o changelog do processo | não |
 

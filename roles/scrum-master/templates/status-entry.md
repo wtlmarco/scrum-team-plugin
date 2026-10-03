@@ -2,11 +2,14 @@
 
 O SM escreve isto no documento de progresso do projeto (caminho em `.team-project/README.md` §4) ao rodar `/sm close <T-ID>` — **só depois** de veredito ✅ do QA com evidência e dos documentos vivos atualizados pelos donos (R12).
 
+> **O `close` começa pela conferência mecânica:** `powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/close.ps1" -Task <T-ID>`; a saída é **colada** na entrada (linha `Conferência`, abaixo) e é a evidência da conferência das regras **[close]**. **Exit 1 = não fecha** (R7/R12). Depois de gravar a transição, `-Post` confere R24 e a saída também é colada.
+
 > **Isto registra fechamento técnico, não aceite** (R21). "Concluída" aqui significa que o trabalho da Task acabou e passou no QA. Se a História a que ela pertence for rejeitada na Sprint Review, esta Task volta ao Product Backlog junto com as demais — e a entrada de status ganha um addendum dizendo isso, nunca é reescrita.
 
 ```markdown
 - **<data> — <T-ID> (<título>) concluída.** <O que passou a funcionar, em uma frase, na linguagem do produto.>
   - **História:** H-<nnn> <título> — <n de m Tasks da História fechadas>
+  - **Conferência (`close.ps1`):** <tabela colada de `close.ps1 -Task <T-ID>` — regras ok/falhou/n-a> · `-Post` (R24): <ok | falhou>.
   - **Evidência:** <comando> → <saída real resumida>; <teste específico que cobre>; <smoke, se houve>.
   - **Arquivos:** <n> criados, <n> alterados — detalhe no inventário de código.
   - **Decisões fora da especificação:** <cada uma, com justificativa — ou "nenhuma">.
@@ -17,6 +20,7 @@ O SM escreve isto no documento de progresso do projeto (caminho em `.team-projec
 
 ## Regras
 
+- **A saída do `close.ps1` é a evidência da conferência de regras** — o SM não a reconstrói de memória nem relê todo o índice; abre o arquivo da regra só onde o script falhou (R7).
 - **Evidência antes de narrativa.** A frase do produto vem primeiro por legibilidade, mas é a linha de evidência que sustenta o fechamento (R7).
 - **Decisão fora da especificação nunca fica implícita** (R6). Se for estrutural e recorrente, o Arquiteto promove a ADR — e a entrada diz isso.
 - **Pendência adiada não some.** Ela é registrada aqui *e* continua no registro de GAPs até ser resolvida.
