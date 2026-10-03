@@ -1,24 +1,29 @@
 # Template — Protótipo Funcional (`/ux prototype`)
 
 > **Dono:** UX · **Entregável** — critérios completos em [`deliverables/prototype/README.md`](../../../deliverables/prototype/README.md)
-> **Pré-condição do portão ①**: o stakeholder navega o protótipo antes de aprovar o SDD funcional.
+> **Pré-condição do portão ①**: o protótipo está pronto para o stakeholder navegar antes de aprovar o SDD funcional — a navegação é **dele**, e "aprovar" a declara (D2 · R34). O UX garante o HTML **autocontido, pronto para publicar** como artifact.
 > **Não é o protótipo do sprint** ([`sprint-prototype.md`](sprint-prototype.md)), que é peça do pacote de abertura (③ em lote): este cobre os fluxos principais do SDD funcional, aquele cobre as Histórias de um sprint. Ter este recente **não dispensa** aquele.
 
 ## Estrutura de arquivos
 
 ```
 .team-project/user-experience/prototype/
-├── index.html          ← ponto de entrada único: índice dos fluxos + o que está fora
+├── index.html          ← AUTOCONTIDO: índice dos fluxos + todos os fluxos (uma seção/âncora por fluxo) + o que está fora; CSS e JS inline
 ├── README.md           ← esta ficha, preenchida
-├── verification-log.md ← checkpoint da verificação: append-only, uma linha por tela/fluxo
-├── flows/
-│   ├── <fluxo-1>.html
-│   └── <fluxo-2>.html
-└── assets/
-    └── style.css       ← um arquivo só; sem build, sem dependência externa
+└── verification-log.md ← checkpoint da verificação: append-only, uma linha por tela/fluxo
 ```
 
 **Sem build, sem servidor, sem back-end.** Abre com duplo clique. Se precisar de `npm`, `docker` ou terminal, está grande demais para um protótipo.
+
+**Autocontido, pronto para publicar (R34 · D5).** O stakeholder pode navegar o protótipo no celular, como **artifact privado** que a **sessão que orquestra** publica (o UX não publica — entrega o arquivo). Por isso `index.html` é **um arquivo só**, e este é o arquivo publicado. Contrato do arquivo:
+
+- scripts externos **só** de cdnjs, jsdelivr, unpkg, tailwind ou jquery; fontes **só** do Google Fonts; todo o resto **inline** (CSS, JS, imagens `data:`);
+- **≤ 16 MB** (imagens `data:` contam);
+- **só dados fictícios** (R11 — o artifact fica guardado no claude.ai; nada de dado real de cliente);
+- **identidade visual do próprio produto** — nada que imite a marca de empresa real de terceiros (a publicação pode ser recusada);
+- **layout mobile verificado** (o celular só mostra o mobile; produto com site: o desktop segue pela navegação declarada — D2).
+
+Verificação, na ficha: bloco "Publicável como artifact" abaixo.
 
 ## Ficha do protótipo (`prototype/README.md`)
 
@@ -32,9 +37,9 @@
 Abrir `index.html` no navegador. Nada mais.
 
 ## Fluxos cobertos
-| Fluxo (de `02-flows-and-roles`) | Ator | Arquivo | Caminho completo? | Estados de exceção |
+| Fluxo (de `02-flows-and-roles`) | Ator | Onde (âncora em `index.html`) | Caminho completo? | Estados de exceção |
 |---|---|---|---|---|
-| <nome do fluxo> | <ator> | `flows/<arquivo>.html` | ✅ / parcial: <o que falta> | vazio ✅ · erro ✅ · sem permissão ✅ |
+| <nome do fluxo> | <ator> | `index.html#<fluxo>` | ✅ / parcial: <o que falta> | vazio ✅ · erro ✅ · sem permissão ✅ |
 
 ## Requisitos da fatia representados
 | RF | Aparece no protótipo? | Onde |
@@ -70,10 +75,16 @@ para o stakeholder não confundir escolha com decisão.>
 
 Uma linha por chamada, com o que ela devolveu ao terminar; nunca estimado (R7). Sem chamada: "nenhuma". Não grava em `consumption.md` — a sessão que disparou transcreve ([`../skills.md` §10](../skills.md)).
 
+## Publicável como artifact (R34 · D5)
+**Pronto para publicar:** ✅ <data> · ❌ <o que falta>
+**Conferido:** scripts externos só de cdnjs/jsdelivr/unpkg/tailwind/jquery · fontes só Google Fonts · resto inline · tamanho <n> MB (≤ 16) · dados só fictícios · identidade visual do próprio produto · layout mobile exercitado (<largura>)
+**Versão a publicar:** `<rótulo>` (ex.: `① v2`) — o rótulo identifica a versão; republicar substitui o conteúdo da mesma URL, então cada portão registra a que aprovou.
+*(Quem publica é a sessão que orquestra, logada na conta remota do projeto; o UX só entrega o arquivo pronto. Publicação, URL e republicação não são minhas.)*
+
 ## Registro do portão ①
-**Navegado pelo stakeholder em:** <data>
+**Navegado pelo stakeholder em:** <data> · canal: <celular | terminal> · declarada [· artifact: <URL> · <rótulo>]
 **Divergências encontradas na navegação:** <lista, ou "nenhuma">
-*(Registro único do ①: o formulário é coletado pelo `/sm sdd` — etapa 2 — depois da navegação; o UX só transcreve. O SM aponta para esta ficha em `context.md`.)*
+*(Registro único do ①: o formulário é coletado pelo `/sm sdd` — etapa 2; o UX só transcreve. A navegação é **do stakeholder**: "aprovar" a **declara**, e a linha acima anota a declaração e o canal por onde ele decidiu. `· artifact:` só quando o link foi publicado e levado ao formulário, com a URL e o rótulo da versão que ele viu. O rótulo `**Navegado pelo stakeholder em:**` e a data logo após são lidos pela conferência C2 — não reformular. O SM aponta para esta ficha em `context.md`.)*
 **Decisão do stakeholder (formulário R22):** <aprovar | aprovar com ajuste | reprovar | pedir mais contexto> · em <data>
 **Ajuste pedido:** <o que ele pediu, nas palavras dele — ou "—" se aprovou sem ajuste>
 **Situação:** <aprovado | aprovado com ajuste no SDD funcional | devolvido | aguardando contexto>

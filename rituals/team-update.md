@@ -125,6 +125,16 @@ Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere ap
 
 **Verificação do passo:** `.team-project/guards.json` existe e é JSON válido (`Get-Content .team-project/guards.json -Raw | ConvertFrom-Json`); depois de reiniciar, `/hooks` lista `SessionStart`, `PreToolUse` e `PostToolUse` do plugin, e a sessão abre com a linha "Guardas do time: ativas …".
 
+## 7d. Contato remoto da v3.41 — campos da §1 e protótipo num arquivo só
+
+> Roda quando a versão instalada for anterior à `v3.41.0`, em qualquer projeto.
+
+1. **`.team-project/README.md` §1:** se faltarem, acrescente as três linhas **vazias** — `**Identificador remoto:**`, `**Conta remota:**`, `**Verificação remota:**`. **Nunca invente o identificador**: ele é escolhido pelo stakeholder no `/team remote`. Com o campo vazio, nada muda no projeto (a guarda G3 só exige o prefixo `[<ID> · …]` quando há identificador).
+2. **Diga ao stakeholder**, em duas linhas: para responder pelo celular, rode `/team remote` uma vez neste projeto; sem ele, tudo segue como antes, no terminal.
+3. **Protótipo funcional e do sprint num `index.html` único** (para publicar como artifact privado): se `.team-project/user-experience/prototype/` tiver `flows/` ou `assets/`, **não mexa** — avise que o UX consolida num arquivo só no próximo ciclo do protótipo (`/ux prototype`). Não é decisão do stakeholder: não vai para a §7.
+
+**Verificação do passo:** `Select-String -Path .team-project/README.md -Pattern '^\*\*Identificador remoto:\*\*'` devolve uma linha.
+
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
 Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.

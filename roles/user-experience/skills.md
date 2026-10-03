@@ -194,8 +194,9 @@ No sprint o leve é o caso comum: exercita-se **o caminho costurado** (cada salt
 
 1. **Roda de verdade.** Leve reduz *quantas* telas; não troca execução por leitura de código. Tela sem saída real é **não exercitada** (R7). O **fluxo ponta a ponta do sprint roda em toda rodada** — ele sustenta a verificação de valor (R25 (b)).
 2. **O que não rodou é declarado:** a ficha nomeia as telas executadas e aponta a verificação completa que cobre o restante (data e versão).
-3. **Portão nenhum muda** (R23): ① e ③ continuam exigindo o stakeholder navegando; os seis estados e os critérios de acessibilidade continuam exigidos por tela.
+3. **Portão nenhum muda** (R23): ① e ③ continuam exigindo a navegação do stakeholder, que "aprovar" declara (D2 · R34); os seis estados e os critérios de acessibilidade continuam exigidos por tela.
 4. **Não se acumula:** depois de **três** rodadas leves seguidas sobre a mesma versão base, a próxima é completa. No sprint a contagem é **por pasta** `sprint-<n>/`, e recostura conta como rodada.
+5. **A publicabilidade se confere em toda rodada que muda o `index.html`, leve ou completa** (D5): origens externas só nas permitidas, nada além do inline, tamanho ≤ 16 MB, só dados fictícios, layout mobile exercitado — critérios A1–A6 de [`deliverables/prototype/README.md`](../../deliverables/prototype/README.md). É conferência de arquivo (`grep` e tamanho), pode ir ao `operator` com o resto, e o resultado entra no bloco "Publicável como artifact" da ficha.
 
 **Como se verifica:** o registro mostra, por rodada, modo, justificativa de alcance, telas executadas e a contagem de leves desde a última completa. Leve declarado com mudança transversal, quarta leve seguida, ou **protótipo de sprint sem linha de execução do fluxo ponta a ponta**, é reprovação de método.
 

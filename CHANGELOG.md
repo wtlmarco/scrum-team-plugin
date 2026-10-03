@@ -13,6 +13,24 @@
 
 ---
 
+## v3.41.0 — 2026-10-03
+
+**Branch:** `feat/v3.41.0` a partir de `develop` · **Processo:** [`v3.41`](roles/scrum-master/process/process-changelog.md)
+Contato remoto pelo celular — proposta `remote`, com o spike concluído (M1–M21) (SM + UX). Regra nova **R34** (34 regras); emendas em R15, R22, R25 e R27.
+
+- **Novo modo `/team remote`** (`rituals/team-remote.md`): identificador do projeto (3–8 letras) e conta remota (pessoal ou organização, por projeto), pré-requisitos medidos (versão, conta, suspensão da máquina, política da organização), comando de abertura `claude --remote-control "<ID> · <produto>"` e verificação de ponta a ponta pelo celular. A sessão roda na máquina, por **Remote Control**; o app do Claude conecta-se a ela.
+- **Identidade e pendência:** em projeto remoto, toda pergunta começa com `[<ID> · <onde> · <ponto>]` e a pendência é gravada na §7 do `README.md` antes do formulário. "Pular" (`[No preference]`) ou expirar nunca é decisão. A **guarda G3** passa a conferir prefixo e pendência; o **C2** ganha a linha R34.
+- **① e ③ pelo celular:** "aprovar" declara a navegação do protótipo (a responsabilidade é do stakeholder); a pergunta leva o link do protótipo publicado como **artifact privado** pela conta remota, e o registro anota canal, URL e rótulo da versão. O protótipo passa a ser um **`index.html` único** e autocontido.
+- **Fim do `sprint run`** termina em formulário de autorização da Review — iniciar agora · depois · resolver bloqueio antes · pedir mais contexto —, nos dois canais. O fim do `fix run` continua sem formulário (R33).
+- **Limitações medidas:** sem notificação *push* no Android (abrir **App → Code**); Remote Control não roda na extensão do VS Code; a suspensão da máquina derruba a sessão (a pendência fica em disco).
+- **Aplicado em** `commands/team.md` (modo `remote`), `sm.md`, `po.md`, `ux.md`, `agents/user-experience.md`, `how-to.md` (seção "Responder pelo celular"), `rituals/team-update.md` (passo 7d), `hooks/COVERAGE.md`.
+
+**Como verificar:** `Select-String '^### R\d+\.' roles/scrum-master/process/working-rules.md` → 34; `run-guard-tests.ps1` (21 casos) e `run-check-tests.ps1` (19 casos) verdes; `scripts/checks/release.ps1` ok.
+
+**Pendente (stakeholder):** reiniciar a sessão; `/team update` nos projetos (passo 7d: campos remotos vazios); `/team remote` em cada projeto que for responder pelo celular; consolidar protótipos antigos com `flows/`/`assets/` num `index.html` no próximo ciclo do UX.
+
+---
+
 ## v3.40.0 — 2026-10-03
 
 **Branch:** `feat/v3.40.0` empilhada sobre `feat/v3.39.0` · **Processo:** [`v3.40`](roles/scrum-master/process/process-changelog.md)

@@ -31,7 +31,7 @@ Se `.team-project/` não existir, **pare e peça ao stakeholder** para criá-lo 
 
 ## Regras de trabalho — você é o guardião
 
-As **33 regras** (R1–R33) estão em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/working-rules.md`. **Em `/sm close <T-ID>` e na conferência por Task, leia o `working-rules-index.md`** (mesma pasta; linhas **[close]**) — **não** o arquivo inteiro; abra a regra só quando a linha apontar violação ou dúvida. Violação vira achado de processo no quadro; a retrospectiva apresenta as métricas de "Como o SM aplica". Fluxo, DoR/DoD e gates: `workflow.md`; propriedade de artefatos: `artifact-ownership.md`.
+As **34 regras** (R1–R34) estão em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/working-rules.md`. **Em `/sm close <T-ID>` e na conferência por Task, leia o `working-rules-index.md`** (mesma pasta; linhas **[close]**) — **não** o arquivo inteiro; abra a regra só quando a linha apontar violação ou dúvida. Violação vira achado de processo no quadro; a retrospectiva apresenta as métricas de "Como o SM aplica". Fluxo, DoR/DoD e gates: `workflow.md`; propriedade de artefatos: `artifact-ownership.md`.
 
 ## Como trabalhar
 

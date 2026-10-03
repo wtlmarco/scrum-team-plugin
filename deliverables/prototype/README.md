@@ -10,7 +10,7 @@ Aprovar `00-overview`, `01-requirements` e `02-flows-and-roles` **lendo texto** 
 
 O protótipo antecipa esse momento para o ponto mais barato do processo: antes do SDD técnico, antes das Histórias, antes de qualquer Task. O que se joga fora quando o entendimento muda é **HTML descartável**, não arquitetura, contrato de API e código.
 
-**Consequência prática:** o stakeholder não aprova o SDD funcional lendo — ele **navega o protótipo** e aprova o que navegou.
+**Consequência prática:** o stakeholder não aprova o SDD funcional lendo — ele **navega o protótipo** e aprova o que navegou. **A navegação é responsabilidade dele**, no terminal ou no celular: no ① e no ③, "aprovar" **declara** que navegou, e o registro anota a declaração e o canal (D2 · R34). O que o UX garante é que haja **o que navegar**: HTML funcional, exercitado e **autocontido, pronto para a sessão publicar como artifact privado** (D5 — seção abaixo).
 
 ## Os protótipos do processo — três coisas com o mesmo nome
 
@@ -32,13 +32,28 @@ O protótipo antecipa esse momento para o ponto mais barato do processo: antes d
 
 | # | Exigência | Por quê |
 |---|---|---|
-| 1 | **HTML navegável**, aberto no navegador sem build nem servidor | Se o stakeholder precisa de ajuda técnica para abrir, ele não vai abrir |
+| 1 | **HTML navegável**, aberto no navegador sem build nem servidor — e **autocontido**, publicável como artifact (seção abaixo) | Se o stakeholder precisa de ajuda técnica para abrir, ele não vai abrir |
 | 2 | **Todo fluxo principal de `02-flows-and-roles` atravessável ponta a ponta** | É o que o portão ① aprova; fluxo sem caminho no protótipo é fluxo não validado |
 | 3 | **Dados de exemplo plausíveis**, não `lorem ipsum` nem `campo1` | Dado falso esconde o problema que o dado real revelaria (nome longo, valor negativo, lista vazia) |
 | 4 | **Um ponto de entrada só** (`index.html`), com índice dos fluxos | Protótipo que exige instrução de navegação não foi navegado |
 | 5 | **Estados de exceção dos fluxos principais**: vazio, erro, sem permissão | São onde o entendimento funcional costuma divergir |
 | 6 | **O que está fora, declarado na própria página** | Evita a aprovação de algo que o stakeholder achou que estava incluído |
 | 7 | **Sem back-end, sem banco, sem build** | Protótipo é descartável por definição; o que precisa de infraestrutura já é produto |
+
+## Publicável como artifact privado — vale para o funcional e para o do sprint (D5 · R34)
+
+O ① e o ③ levam o link do protótipo publicado como **artifact privado** pela conta remota do projeto; o stakeholder o abre no celular com a mesma conta. **Quem publica é a sessão que orquestra** — o UX **entrega o HTML pronto** e não publica (subagente pode não ter a ferramenta, e artifact publicado por outra conta não abre para o stakeholder).
+
+| # | Exigência do arquivo publicado | Verificável por |
+|---|---|---|
+| A1 | **Um `index.html` autocontido** — CSS e JS inline; sem `flows/` nem `assets/` obrigatórios | listar o diretório: o `index.html` abre sozinho |
+| A2 | Scripts externos **só** de cdnjs, jsdelivr, unpkg, tailwind ou jquery; fontes **só** do Google Fonts; o resto inline | `grep` de `src=`/`href=`/`url(`/`@import` com origem externa: cada ocorrência numa origem permitida |
+| A3 | **≤ 16 MB**, imagens `data:` contando | tamanho do arquivo, em MB, na ficha |
+| A4 | **Só dados fictícios** (R11) | leitura dos dados de exemplo: nenhum nome, documento ou contato real |
+| A5 | **Identidade visual do próprio produto** — sem imitar a marca de empresa real de terceiros | leitura das telas; a publicação pode ser recusada |
+| A6 | **Layout mobile exercitado** — o celular mostra só o mobile; site com desktop segue pela navegação declarada | largura exercitada na ficha |
+
+**Uma URL por protótipo, um rótulo por versão** (ex.: `① v2`, `③ S4 v1`): republicar substitui o conteúdo da mesma URL, então o portão registra o rótulo que o stakeholder viu. URL e rótulo entram na ficha e no registro do portão **pela sessão** que publicou; o UX transcreve.
 
 ## O que o protótipo funcional **não** é
 
@@ -58,10 +73,11 @@ O protótipo antecipa esse momento para o ponto mais barato do processo: antes d
 - [ ] Os dados de exemplo são plausíveis
 - [ ] A lista do que está fora está escrita na própria página
 - [ ] **Exercitado**, com o registro de verificação preenchido: modo, alcance, o que **não** foi reexecutado, e o **trecho + ponteiro** (`report` do job) (R7 · R23 · R28 — [`skills.md` §10](../../roles/user-experience/skills.md))
-- [ ] O stakeholder **navegou** — não leu o código, não viu print
-- [ ] A **decisão** (aprovar · aprovar com ajuste · reprovar · pedir mais contexto) está na ficha, com data e o ajuste pedido — tomada em formulário (R22) **depois** da navegação
+- [ ] **Publicável como artifact** (A1–A6 acima), com o rótulo da versão na ficha
+- [ ] O stakeholder **navegou** — não leu o código, não viu print — e a ficha traz a **declaração** dele (D2), a data, o **canal** (celular | terminal) e, quando houve link, URL e rótulo da versão que ele viu
+- [ ] A **decisão** (aprovar · aprovar com ajuste · reprovar · pedir mais contexto) está na ficha, com data e o ajuste pedido — tomada em formulário (R22), em que "aprovar" declara a navegação
 
-**Sem estes itens, o portão ① não abre.** Protótipo ausente ou não navegado bloqueia a escrita do SDD técnico do mesmo jeito que plano ausente bloqueia código (R8).
+**Sem estes itens, o portão ① não abre.** Protótipo ausente ou sem navegação declarada bloqueia a escrita do SDD técnico do mesmo jeito que plano ausente bloqueia código (R8).
 
 ## Protótipo do sprint — critérios de verificação do ③ em lote
 
@@ -80,7 +96,8 @@ O protótipo antecipa esse momento para o ponto mais barato do processo: antes d
 | 5 | **Mesma régua técnica do funcional:** um ponto de entrada, sem build/servidor/back-end, dados plausíveis, estados de exceção dos caminhos cobertos, "o que está fora" na própria página | O stakeholder que precisa de ajuda para abrir não navega — e o que ele não navegou, ele não aprovou |
 | 6 | **Exercitado**, com o registro de verificação preenchido: modo, alcance, o que **não** foi reexecutado e o que o cobre, mais o **trecho + ponteiro** (`report` do job) | R7 · R23 · R28 — leve reduz o escopo executado, nunca a evidência; execução delegada ao `operator`, veredito do UX ([`skills.md` §10](../../roles/user-experience/skills.md)) |
 | 7 | **Pasta numerada, nunca sobrescrita**, e o ponteiro registrado no Sprint Backlog resolve | O ponteiro é o registro do que foi aprovado naquele sprint; sobrescrever apodrece o histórico do ③ |
-| 8 | **O stakeholder navegou** — e a ficha traz data, quem, e o que foi pedido em cada devolução; a decisão (aprovar · aprovar com ajuste · reprovar · pedir mais contexto) vem em formulário (R22), depois da navegação | Print, gravação e apresentação não abrem o ③, pelo mesmo motivo que não abrem o ① |
+| 8 | **O stakeholder navegou** — a navegação é dele e "aprovar" a **declara** (D2 · R34); a ficha traz data, quem, canal (celular \| terminal), URL e rótulo da versão publicada quando houve link, e o que foi pedido em cada devolução; a decisão (aprovar · aprovar com ajuste · reprovar · pedir mais contexto) vem em formulário (R22) | Print, gravação e apresentação não valem como navegação, pelo mesmo motivo que no ① |
+| 9 | **Publicável como artifact** (A1–A6 da seção acima), com **rótulo novo a cada recostura** | O ③ aprova o que o stakeholder viu; republicar substitui a mesma URL |
 
 **Sem estes itens, o sprint não arranca.** Pacote reprovado ou aprovado com ajuste volta à Planning: o PO reordena, o corte é refeito, o protótipo é recosturado, o pacote é resubmetido — e nenhuma Task entra em construção antes da data de aprovação registrada (R20 · R25).
 
