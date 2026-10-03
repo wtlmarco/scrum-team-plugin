@@ -12,6 +12,8 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 ├── consumption.md            consumo fora de sprint (Nota pre-sprint;/entre-sprints;) — nasce vazio, sem rotação
 ├── operator/                 jobs do `operator` (report + log) — nasce sob demanda; SM verifica e poda
 ├── consulting/               casos de consultoria externa, C-<nnn>-<slug>/ — nasce sob demanda (R32)
+├── fixes.md                  índice das Correções (trilha fix, R33) — nasce na primeira Correção; modelo `templates/fix-log.md`
+├── fixes/                    F-<nnn>.md (ficha, PO) e B-<nnn>/ (bloco: plan.md · consumption.md · verdict.md) — nasce na primeira Correção
 ├── sprints/                  registro de execução, um subdiretório por sprint
 │   └── <n>/                  planning.md · sprint-backlog.md · stories/ · plan/ · evidence/
 │                             consumption.md · burndown.md · review.md · retrospective.md · plugin-report.md
@@ -27,7 +29,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 >
 > As pastas de papel usam o **nome completo do papel**, igual a `${CLAUDE_PLUGIN_ROOT}/roles/`. **`sprints/` não é pasta de papel:** o registro de execução é organizado **por sprint**, porque contém artefatos de quatro donos — Histórias (PO), planos (Arquiteto), evidências (QA) e os documentos do SM. O **dono de cada subpasta** está declarado em [`artifact-ownership.md` §1e](../process/artifact-ownership.md); pasta com dono ambíguo é achado de auditoria.
 
-**O que fica FORA de `sprints/<n>/`, e por quê:** registro de GAPs, mapa de código, **baseline de verificação** (nasce antes do sprint 1), Product Backlog, SDD, ADRs, protótipo funcional do ①, **protótipo do sprint** (é do UX; o quadro guarda o ponteiro), **checkpoints de spike** e **casos de consultoria externa** — todos **somam, evoluem ou nascem fora** do recorte de um sprint, e fatiá-los quebraria a leitura que o time faz deles (§1c · §1e).
+**O que fica FORA de `sprints/<n>/`, e por quê:** registro de GAPs, mapa de código, **baseline de verificação** (nasce antes do sprint 1), Product Backlog, SDD, ADRs, protótipo funcional do ①, **protótipo do sprint** (é do UX; o quadro guarda o ponteiro), **checkpoints de spike**, **casos de consultoria externa** e **as Correções da trilha `fix`** (`fixes.md`, `fixes/`) — todos **somam, evoluem ou nascem fora** do recorte de um sprint, e fatiá-los quebraria a leitura que o time faz deles (§1c · §1e).
 
 | Arquivo | Modelo de origem |
 |---|---|
@@ -49,6 +51,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | `architect/spikes/` | pasta vazia; os checkpoints de spike (modelo: `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/spike-checkpoint.md`) nascem fora do recorte do sprint (§1c) |
 | `user-experience/prototype/` | pasta vazia; o **protótipo funcional em HTML** nasce de `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/templates/functional-prototype.md` — entregável e pré-condição do portão ①. O **protótipo navegável de cada sprint** (R25) também vive aqui, em `prototype/sprint-<n>/`, preservado por sprint; o Sprint Backlog carrega só o ponteiro |
 | `consulting/C-<nnn>-<slug>/` | **não semeada**; nasce no `/sm consulting` — `case.md` de `templates/consulting-case.md`, carta de `templates/service-letter.md`, réplica de `templates/reply.md` (contrato em `templates/consultant-response.md`), proposta de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/adr-proposal.md` ou `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/business-proposal.md` (R32) |
+| `fixes.md` · `fixes/F-<nnn>.md` · `fixes/B-<nnn>/` | **não semeados**; nascem na primeira Correção (R33) — `fixes.md` de `templates/fix-log.md` (**SM**, escritor a sessão), ficha de `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/fix-card.md` (**PO**), `plan.md` de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/fix-plan.md` (**Arquiteto**), `verdict.md` da variante "trilha fix" de `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/verdict.md` (**QA**) e `consumption.md` da variante "bloco" de `templates/consumption.md` |
 | `user-experience/journeys/` · `screens/` | pastas vazias; nascem dos modelos de `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/templates/` |
 | `<papel>/context.md` | ver "O que vai em cada context.md", abaixo |
 
@@ -82,6 +85,10 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | **Unidade de estimativa** | <sessões de trabalho / pontos / dias — usada pelo time na Planning> |
 | **Capacidade do sprint** | <n na unidade acima — média entregue nos 3 sprints anteriores, não o desejo> |
 | **Capacidade de dev** | <quantos desenvolvedores; com um só, o Sprint Backlog é fila (R1)> |
+| **Limite de arquivos por Correção (N)** | 5 |
+| **Teto de Correções por bloco** | 5 |
+
+> As duas últimas linhas (R33 · trilha `fix`) são lidas pelo C4 (`scripts/checks/fix.ps1`) **com esta grafia**; padrão 5 e 5, calibrados pela taxa de promoção e pelo tamanho médio do bloco. O teto de **arquivos do bloco** é 2N. Sem a linha, o C4 usa o padrão.
 
 > **A linha "Sprint corrente" é obrigatória e é o único caminho para o quadro vivo.** Com o Sprint Backlog dentro de `sprints/<n>/`, o caminho deixa de ser fixo; todo agente já lê este README, então o custo é ~zero — mas sem esta linha ninguém acha o backlog. Atualizada pelo SM no `/sm sprint plan` (R25).
 

@@ -13,7 +13,9 @@ Escreva cada item como **relato bruto** — o que você observou usando o produt
 ✅ "Depois de salvar duas vezes seguidas em X, a tela trava."   → sintoma
 ```
 
-Quem decide se é **defeito**, **mudança de escopo** ou **dúvida de uso** é o PO, em `/po note` — não escreva a classificação aqui.
+Quem decide se é **defeito**, **ajuste**, **mudança de escopo** ou **dúvida de uso** é o PO, em `/po note` (ou na triagem do `/sm fix plan`) — não escreva a classificação aqui.
+
+**Voltou um problema já corrigido?** Cite a correção no item (`F-<nnn>`): a triagem a marca **reaberta** — é assim que se reabre uma Correção, que não passa pela Sprint Review.
 
 **História do aceite (opcional):** se você sabe em que funcionalidade/História aceita isso aparece, anote no fim do item — `(História do aceite: H-nnn)` ou o nome da funcionalidade. Não sabe? Deixe em branco: o PO identifica pelos dossiês de aceite. Serve ao indicador "defeito que escapou" (relatos até 2 sprints depois do aceite).
 
@@ -23,11 +25,12 @@ Quem decide se é **defeito**, **mudança de escopo** ou **dúvida de uso** é o
 
 ## Como este arquivo é fechado
 
-`/po note` lê esta seção item a item e aplica a classificação (defeito · mudança de escopo disfarçada de bug · dúvida de uso). **Item tratado sai desta lista** — não fica arquivado aqui — e passa a viver só no destino que a classificação mandou:
+`/po note` (ou a triagem do `/sm fix plan`) lê esta seção item a item e aplica a classificação (defeito · ajuste · mudança de escopo disfarçada de bug · dúvida de uso). **Item tratado sai desta lista** — não fica arquivado aqui — e passa a viver só no destino que a classificação mandou:
 
 | Classificação | Destino |
 |---|---|
-| Defeito | Registro de GAPs da QA (`pending.md`), com o campo `origem: stakeholder` e a **História do aceite** passada pelo PO ao acionar `/qa bug` |
+| Defeito | Registro de GAPs da QA (`pending.md`), com o campo `origem: stakeholder` e a **História do aceite** passada pelo PO ao acionar `/qa bug` (por item, em lista) — se **elegível à trilha `fix`**, também a ficha `fixes/F-<nnn>.md` triada, e o destino informado é `/sm fix plan` |
+| Ajuste pequeno | Elegível: ficha `fixes/F-<nnn>.md` com o delta, confirmado por você em formulário no `/sm fix plan`. Não elegível: Product Backlog |
 | Mudança de escopo disfarçada de bug | Product Backlog (`.team-project/product-owner/product-backlog.md`) |
 | Dúvida de uso | A resposta dada ao stakeholder, e — se for o caso — melhoria de UX ou de documentação |
 

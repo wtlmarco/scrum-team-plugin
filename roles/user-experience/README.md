@@ -74,6 +74,18 @@ Explorar uma tela da História que está sendo detalhada — **antes da Planning
 ### `/ux review-ui <tela ou ID>`
 Revisão do que existe: achados de usabilidade e acessibilidade, com severidade e forma de verificação, no formato de [`templates/usability-review.md`](templates/usability-review.md). **Declarar o método**: inspeção heurística, navegação no protótipo, uso da tela real ou teste com participante — sem participante é inspeção, e se escreve assim. Todo achado cita o critério violado (heurística, critério de acessibilidade ou convenção do produto). Achado fora da Task vira registro para o backlog, não correção de passagem.
 
+### Texto de tela na trilha `fix` (R33 — sem comando próprio)
+
+A sessão me aciona numa invocação curta **por bloco**, no `fix run`, **depois de o PO aplicar o delta dos ajustes** e antes do fechamento ([`fix-run.md` §Run](../scrum-master/process/fix-run.md)). Só entra o ajuste que muda **texto de rótulo, mensagem ou validação de campo existente**.
+
+- **Entrada:** a lista de ajustes do bloco, cada um com o **texto antigo** e o **novo** (e a F-ID).
+- **Gatilho único — citação literal:** busco o texto **antigo** (`grep` literal) em `.team-project/user-experience/screens/` e `journeys/`. Cito **só se** a especificação o reproduz literalmente; paráfrase ou tela sem o texto **não** conta. Sem citação, **nada a fazer**.
+- **Faço:** nas especificações que citam, troco o texto antigo pelo novo, no mesmo lugar e formato (conteúdo, mensagem do estado de erro, regra de validação); releio cada ocorrência no contexto e rebusco o antigo — zero restante. Não reescrevo layout, não acrescento estado, não "melhoro" nada ao lado.
+- **Saída:** (1) especificações atualizadas, com `arquivo:seção` e antes → depois por F-ID; (2) lista **"não citado — nada a fazer"** com as F-IDs sem citação.
+- **Harness:** **não rodo** — exceto se a especificação trouxer verificação ligada àquele texto (critério de acessibilidade ou cenário que o cita); aí **declaro** na saída qual é e a delego ao `operator` (R28), no escopo leve (R23).
+- **Fora de elegibilidade:** se o ajuste exigir **tela, estado ou passo de jornada novo**, ele não é Correção (C2): **devolvo à sessão** como promovido à trilha Sprint, sem desenhar nada. Direção visual ou regra em dúvida: escalo ao PO.
+- **Consumo:** Categoria `especificação`, Unidade `B-<nnn>` — a sessão grava.
+
 ## Os seis estados
 
 Toda tela declara todos, ou diz explicitamente que um não se aplica: **vazio · carregando · sucesso · erro · sem permissão · volume extremo**. São estados **da tela**; cada controle dentro dela tem o eixo próprio — repouso, hover, foco, pressionado, selecionado, desabilitado ([`skills.md` §8](skills.md)).

@@ -105,3 +105,57 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 - ⚠️ (ressalva) só quando a Task é utilizável e a pendência tem ID próprio no backlog.
 
 Os comandos, limiares e limitações do ambiente estão em `.team-project/quality-assurance/context.md`.
+
+## Variante trilha fix (R33) — `fixes/B-<nnn>/verdict.md`
+
+Um arquivo por **bloco**, mas **o veredito é por F-ID**: o bloco não tem veredito, e um ❌ numa F-ID não reprova as outras. Não há Task, evidência por Task nem Sprint Backlog; o consumo (verificação, Unidade `B-<nnn>`) vai ao `consumption.md` do bloco. Os rótulos abaixo são **lidos pelo script C4** — não variar a grafia. Nenhum título usa "Aceite — …" (o C2 o procura). Roteiro: [`fix-run.md`](../../scrum-master/process/fix-run.md) (`${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/fix-run.md`).
+
+```markdown
+# B-<nnn> · veredito
+**Trilha:** fix · **Executado em:** aaaa-mm-dd hh:mm
+
+## QA — F-<nnn> <título> — <data>
+**Veredito:** ✅ | ⚠️ | ❌
+
+| Frente | Resultado | Evidência |
+|---|---|---|
+| Requisito | ok / falha | o mesmo passo de reprodução da triagem, agora passando (defeito) ou o requisito alterado (ajuste), com a borda do caso relatado |
+| Especificação técnica | ok / falha | só "diff da F-ID × arquivos do mini-plano dela"; sem as duas tabelas do modelo Task |
+| Segurança | ok / falha / n/a | checklist do projeto aplicado ao trecho tocado — `arquivo:linha` |
+| Testes / métricas | ok / falha | teste de regressão (seção abaixo) e build sem avisos |
+| Documentação | n/a — trilha fix (R33) | só no ajuste: o delta da ficha bate com o código (senão "n/a — defeito") |
+| Desempenho | n/a — trilha fix (R33) | só se a Correção toca operação de V18–V21: então um dos três estados, com o trecho do comando V19 |
+
+**Commit:** <sha | n/a — sem git>
+
+### Teste de regressão
+**Antes:** exit <n≠0>
+> <comando>
+<saída decisiva — a do dev, antes da correção>
+**Depois:** exit 0
+> <comando>
+<saída decisiva — a do QA, agora>
+
+### Escopo
+**Fora do plano:** nada | <arquivos tocados além dos do mini-plano da F-ID>
+
+### Documentos vivos (R12)
+**Estado:** atualizados | pendentes
+
+## Regressivos e suíte do módulo
+<uma vez por bloco: regressivos R30 dos fluxos tocados (SC-nnn · resultado) e suíte do módulo (comando · trecho decisivo · ponteiro do `report` do `operator` quando pesado)>
+
+## Fechamento
+**Fechado em:** aaaa-mm-dd
+| F-ID | Estado final |
+|---|---|
+| F-<nnn> | fechada | promovida | devolvida |
+```
+
+Regras da variante:
+
+- **Uma seção `## QA — F-<nnn> …` por F-ID** do bloco, na ordem do `plan.md`; `### Teste de regressão`, `### Escopo` e `### Documentos vivos (R12)` dentro de cada uma. Frentes 2 parcial, 5 e 6 são "n/a — trilha fix (R33)" **exceto** nas condições da própria linha (ajuste; operação de V18–V21).
+- **Teste de regressão é piso, não ressalva:** `Antes` com exit ≠ 0 (saída do dev) **e** `Depois` com exit 0 (saída do QA, rodada por mim) — sem os dois, o veredito da F-ID não é ✅ (R7, `workflow.md` §8). Defeito sem teste que falhava antes é ❌.
+- **Regressivos e suíte do módulo: uma vez por bloco**, não por F-ID; suíte inteira só pelo `operator`, quando o contexto do QA a exige para o módulo (R28). Falha atribuível a uma F-ID reprova **aquela** F-ID.
+- **Defeito funcional achado** (regressivo falhou, borda não coberta) vira `SC-nnn` na suíte de cenários (`scenario.md`), com o roteamento pelo bloqueio de sempre.
+- **`## Fechamento` é gravado pela sessão** (passo final do `fix run`, depois do C4), não por mim; eu entrego os vereditos. Fechado, nada mais é gravado na pasta.

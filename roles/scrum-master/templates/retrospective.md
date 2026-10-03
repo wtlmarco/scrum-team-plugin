@@ -37,6 +37,7 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 | Entrada de `process-changelog.md` sem bloco de evidência, ou com comando cuja reexecução dá saída diferente da registrada — *idem: só no repositório-fonte* | <n> \| n/a | qualquer | R19 |
 | `/sm close` sem linha correspondente no Registro de transições do Sprint Backlog, ou `burndown.md` com estimativa restante caindo sem fechamento que explique | <n> | qualquer | R24 |
 | Sprint sem pacote de abertura aprovado antes da primeira Task em construção; ou `planning.md` sem a lista do que não entrou, com o motivo; ou protótipo do sprint sem fluxo ponta a ponta; ou bloqueio sem degrau nomeado; ou arquivo de `stories/` alterado depois da aprovação | <n> | qualquer | R25 |
+| Correção da trilha `fix` fechada sem C1–C8 assinados, sem teste antes/depois, sem ✅ na linha dela ou acima de N arquivos; bloco acima do teto; `fix run` com Task em 🟨 — *saída de C4; `n/a` sem bloco no período* | <n> \| n/a | qualquer | R33 |
 
 ### Guardas e conferências do projeto
 
@@ -85,10 +86,26 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 | GAPs por Task | | | |
 | Defeitos que escaparam (janela de 2 sprints após o aceite) | | | |
 | Toques no stakeholder por História (formulários R22 respondidos) | | | |
-| Correções (fix): tokens por F-ID · promoção · reabertura *(`n/a` enquanto não houver Correção no sprint)* | | | |
+| Correções (fix): tokens por F-ID (linhas `F-<nnn>` + parte do bloco `B-<nnn>`, declarado) · promoção · reabertura *(`n/a` enquanto não houver Correção no sprint; detalhe no bloco "Trilha fix no período")* | | | |
 
 **Leitura em 3 linhas:** onde o custo está · o que melhorou · o que piorou.
 **Ação:** no máximo uma, roteada ao dono (mesma disciplina do §5c).
+
+### Trilha fix no período
+
+> Lê `.team-project/fixes.md` e `fixes/*/consumption.md`; `n/a` enquanto não houver bloco fechado desde a retrospectiva anterior. Fica **ao lado** do "Consumo real do sprint", **nunca somado a ele** — o consumo do bloco vive na pasta dele (R33). A saída de C4 (`fix.ps1`) de cada bloco é a evidência dos itens mecânicos; a leitura dos indicadores é julgamento do SM.
+
+| Indicador | Período | Meta | Fonte |
+|---|---|---|---|
+| Blocos fechados desde a retrospectiva anterior · executados **durante** este sprint (coluna "Durante sprint") | <n · n> | — | `fixes.md` §Blocos |
+| Σ tokens dos blocos (derivado) · custo por Correção fechada (Σ ÷ F-IDs fechadas; promovidas à parte) | <Σ · mediana> | ≤ 40% da mediana por Task de correção pontual (com a ponderação por modelo) | `fixes/*/consumption.md` |
+| Tamanho médio do bloco | <n> | ≥ 2 Correções | `fixes.md` |
+| Taxa de promoção | <%> | 10–40% (abaixo: critério frouxo; acima: triagem ruim) | `fixes.md` |
+| Taxa de reabertura (F-ID citada em item novo do `note.md`, ou defeito no mesmo arquivo em 30 dias) | <%> | ≤ 10% — acima, reabre a decisão de não haver aceite na Review | `fixes.md` · `note.md` |
+| Proporção de F-IDs revalidadas no `run` (D9) | <%> | alta e persistente = blocos planejados cedo demais | `plan.md` §Revalidação |
+| Desvio: Correção fechada com arquivos acima de N · linha de consumo de bloco gravada no sprint | <n · n> | zero | C4 |
+
+Revisão das metas depois das 10 primeiras Correções ou de 2 sprints, o que vier antes.
 
 ### O que funcionou (3)
 1. <fato observável, não sensação>

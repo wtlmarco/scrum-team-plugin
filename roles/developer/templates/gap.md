@@ -3,7 +3,7 @@
 Levantado pelo dev quando o plano — ou a seção de standard que ele citou — não cobre o que apareceu no código. **Ao escrever um GAP, a codificação para** (R9).
 
 ```markdown
-🔺 GAP — <ID da Task> — passo <n> do plano
+🔺 GAP — <ID da Task | F-<nnn> na trilha fix> — passo <n> do plano
 
 **Tipo:** plano | standard
 **O que o plano diz:** <trecho literal>
@@ -38,6 +38,7 @@ Levantado pelo dev quando o plano — ou a seção de standard que ele citou —
 - **Comando de verificação ou gate de qualidade do plano que não existe, não resolve ou reprova** — desligar, afrouxar o limiar, tirar do build, trocar por outro comando ou contornar por configuração nunca é decisão do dev (R4 · R7)
 - **Pré-requisito do ambiente ausente** — ferramenta, runtime ou SDK da seção 3 do plano que não existe aqui: parar no passo 1, sem instalar nem substituir por equivalente (R26)
 - **Gate que não foi exercitado**, inclusive a reprovação dele quando o plano a pede: declarar **não exercitado**, com o motivo — nunca "pronto", nunca "% funcional"
+- **Trilha `fix`:** teste de regressão que **passa** antes da correção, ou falha por outro motivo que não a asserção do mini-plano; arquivo da F-ID com mudança não commitada antes de eu começar; hook que reprova o commit da F-ID — a resposta pode ser a promoção da F-ID (R33)
 
 ## Defeito em `${CLAUDE_PLUGIN_ROOT}/standards/` — o GAP de tipo `standard`
 

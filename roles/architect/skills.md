@@ -30,7 +30,7 @@ O que separa um plano bom de um plano raso:
 
 ## 3. Dimensionar
 
-Plano grande é Task inacabada. Os limites (~10 passos, uma área, uma migration) são as regras 2 e 4 de [`templates/implementation-plan.md`](templates/implementation-plan.md) — fonte única.
+Plano grande é Task inacabada. Os limites (~10 passos, uma área, uma migration) são as regras 2 e 4 de [`templates/implementation-plan.md`](templates/implementation-plan.md) — fonte única. Na trilha `fix` (R33) o limite é mais duro e mecânico — N arquivos de produção, nenhum novo além do teste, 60 linhas por mini-plano ([`templates/fix-plan.md`](templates/fix-plan.md) regras 1 e 5): **não caber é a resposta**, e a resposta é promover, nunca espremer o plano.
 
 ## 4. Ordenar passos para sobreviver a interrupção
 

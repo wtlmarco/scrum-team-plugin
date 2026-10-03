@@ -126,6 +126,13 @@ Foco na frente 3, com o checklist completo do contexto do projeto.
 ### `/qa scenarios create` e `/qa scenarios run <SC-nnn | grupo | all>`
 Povoar a suíte em lote e executá-la fora do ciclo de uma Task. O `create` roda **no `/sm sprint prepare`** (`workflow.md` §2a · `workflow-sprint.md`, prepare, passo 4), para as candidatas, junto com PO e UX — sem aprovação do stakeholder — e também em projeto retomado ou depois de requisitos novos. Não substituem o **mapeamento por Task na Planning** (a Task cita os IDs novos e regressivos, R30) nem a execução dentro de `/qa <ID>`; o `run` serve para regressivo avulso. Roteiro completo, com o que cada modo faz e o que vai ao `operator`, em [`commands/qa.md`](../../commands/qa.md) — não duplicado aqui.
 
+### `/qa bug` em lista e verificação do `fix run` (trilha `fix`, R33)
+Detalhe do fluxo em [`fix-run.md`](../scrum-master/process/fix-run.md) (`${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/fix-run.md`); modelo em [`templates/verdict.md`](templates/verdict.md), "Variante trilha fix".
+
+- **Triagem (`/qa bug <lista>`):** uma invocação para todos os defeitos do lote, a **História do aceite repassada pelo PO por item**. Uma linha de resultado por item: **reproduzido** (com `arquivo:linha`) · **não reproduzido** (suspeita, com o que falta). A regra de reprodução, a entrada no `pending.md` e a transcrição da História do aceite são as do roteiro abaixo, aplicadas a cada item. O consumo da triagem vai aos destinos de hoje (Nota iniciando em `triagem;`), mesmo dentro do `fix plan`.
+- **`fix run`:** **veredito por F-ID** (um ❌ não reprova as outras). Por Correção: frente 1 (o passo de reprodução da triagem, agora passando), frente 2 reduzida (diff da F-ID × arquivos do mini-plano dela), frente 3 no trecho tocado, frente 4 com **teste de regressão que falhou antes (saída do dev) e passa agora (saída minha)**; frentes 5 (só ajuste) e 6 (só operação de V18–V21) como o modelo diz. **Uma vez por bloco:** regressivos R30 dos fluxos tocados e suíte do módulo (suíte inteira só pelo `operator`, R28). Defeito funcional achado vira `SC-nnn`.
+- **Fechamento no `pending.md`:** a entrada de defeito da F-ID fecha **com ponteiro para a F-ID** (`F-<nnn>`, bloco `B-<nnn>`) quando o veredito é ✅. **Reabertura de F-ID não é novo escape:** não gera nova entrada nem conta de novo no indicador "defeito que escapou".
+
 ### Defeito reportado pelo stakeholder (acionado pelo PO)
 Nunca chega direto — o canal do stakeholder é o **PO** ([`workflow.md` §6a](../scrum-master/process/workflow.md)), que recebe o relato, classifica (defeito vs. mudança de escopo) e aciona o QA. A partir daí:
 

@@ -238,6 +238,108 @@ if (Test-Path (Join-Path $checks 'project.ps1')) {
     Check 'C2 dossiê de aceite fora da Review: R21 falhou' $r 0 @('\| R21 \| falhou')
 }
 
+# 10. C4 (fix.ps1): bloco B-001 com um defeito, um ajuste e uma promovida.
+$ck = [char]::ConvertFromUtf32(0x2714)
+function New-FixBlock([string]$Dir) {
+    Put $Dir 'docs/implementation/pending.md' "# GAPs`n`n## GAP-007 — exportação perde a última linha`n"
+    Put $Dir '.team-project/fixes.md' @"
+# Correções — trilha fix (R33)
+
+## Correções
+| F-ID | Data | Tipo | Relato (1 linha) | C1–C4 (PO) | Reproduzido (QA) | C5–C8 (Arq) | Bloco | Estado | Veredito | Promovida para | Reaberta em |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| F-001 | 2026-09-03 | defeito | exportação perde a última linha | ok | GAP-007 | ok | B-001 | em bloco | | | |
+| F-002 | 2026-09-03 | ajuste | mensagem de erro do filtro | ok | n/a | ok | B-001 | em bloco | | | |
+| F-003 | 2026-09-03 | defeito | ordem das colunas | ok | GAP-008 | C5 caiu | B-001 | promovida | | Product Backlog H-020 | |
+| F-004 | 2026-09-03 | defeito | rodapé do relatório | ok | GAP-009 | | B-001 | devolvida | | devolvida — área distante | |
+"@
+    Put $Dir '.team-project/fixes/F-001.md' @"
+# F-001 · exportação perde a última linha
+**Tipo:** defeito · **Triada em:** 2026-09-03
+**História do aceite:** H-014 + sprint 1 — ver pending.md
+## Elegibilidade funcional
+- C1 $ck · nenhum requisito novo
+- C2 $ck · nenhuma tela nova
+- C3 $ck · H-014 não está em voo
+- C4 $ck · sem dado sensível
+## Reprodução
+**Entrada no pending.md:** GAP-007 · **Causa:** src/Export.cs:42
+## Destino
+**Bloco:** B-001 · **Estado:** em bloco
+"@
+    Put $Dir '.team-project/fixes/F-002.md' @"
+# F-002 · mensagem de erro do filtro
+**Tipo:** ajuste · **Triada em:** 2026-09-03
+## Elegibilidade funcional
+- C1 $ck · altera só RF-12
+- C2 $ck · mensagem de campo existente
+- C3 $ck · fora de História em voo
+- C4 $ck · sem dado sensível
+## Destino
+**Bloco:** B-001 · **Estado:** em bloco
+"@
+    Put $Dir '.team-project/fixes/F-003.md' @"
+# F-003 · ordem das colunas
+**Tipo:** defeito · **Triada em:** 2026-09-03
+## Destino
+**Bloco:** B-001 · **Estado:** promovida
+**Critério que caiu:** C5 — muda o contrato da API de exportação
+"@
+    $fsec = { param($id, $prod)
+@"
+## $id · correção
+**Tipo:** defeito · **Ficha:** fixes/$id.md
+### Elegibilidade técnica
+- C5 $ck · sem contrato
+- C6 $ck · 1 arquivo
+- C7 $ck · sem dependência
+- C8 $ck · causa localizada
+### Arquivos
+- produção: $prod
+- teste: tests/${id}Tests.cs
+### Revalidação
+n/a — sem mudança
+"@ }
+    Put $Dir '.team-project/fixes/B-001/plan.md' ("# B-001 · mini-planos`n**Data:** 2026-09-03 10:00 · **Correções:** F-001, F-002, F-003`n`n" + (& $fsec 'F-001' '`src/Export Final.cs`') + "`n" + (& $fsec 'F-002' 'src/Filter.cs') + "`n## F-003 · ordem`n**Critério que caiu:** C5 — muda o contrato`n")
+    $vsec = { param($id)
+@"
+## QA — $id correção — 2026-09-04
+**Veredito:** $($e.ok)
+**Commit:** n/a — sem git
+### Teste de regressão
+**Antes:** exit 1
+> dotnet test --filter $id
+Failed: 1
+**Depois:** exit 0
+> dotnet test --filter $id
+Passed: 1
+### Escopo
+**Fora do plano:** nada
+### Documentos vivos (R12)
+**Estado:** atualizados
+"@ }
+    Put $Dir '.team-project/fixes/B-001/verdict.md' ("# B-001 · veredito`n**Trilha:** fix · **Executado em:** 2026-09-04 10:00`n`n" + (& $vsec 'F-001') + "`n" + (& $vsec 'F-002'))
+}
+
+$p = Join-Path $tmp 'fix'; New-Project $p; New-FixBlock $p
+$r = Invoke-Check 'fix.ps1' @('-Block', 'B-001', '-Root', $p)
+Check 'C4 feliz: exit 0' $r 0 @('R33/4 veredito \| ok', 'R33/1 C1–C8 \| ok', 'R33/2 reprodução \| ok', 'R33/3 antes/depois \| ok', 'R33/5 arquivos \| ok', 'R33/6 teto \| ok', 'R33/7 consumo \| ok', 'R33/8 Task em construção \| ok', 'R33/10 promoção \| ok', 'indicadores')
+$r = Invoke-Check 'fix.ps1' @('-Block', 'B-001', '-Pre', '-Root', $p)
+Check 'C4 -Pre sem Task em construção: exit 0' $r 0 @('R33/pre-R1 \| ok')
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') "| $($e.qa) T-041 |" "| $($e.build) T-041 |"
+$r = Invoke-Check 'fix.ps1' @('-Block', 'B-001', '-Pre', '-Root', $p)
+Check 'C4 -Pre com Task em construção: exit 1' $r 1 @('R33/pre-R1 \| falhou.*T-041', 'não começa')
+
+$p = Join-Path $tmp 'fix2'; New-Project $p; New-FixBlock $p
+$vt = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/fixes/B-001/verdict.md'), $utf8)
+$i = $vt.IndexOf('## QA — F-002'); $vt = $vt.Substring(0, $i) + $vt.Substring($i).Replace('**Antes:** exit 1', '**Antes:** exit 0')
+[System.IO.File]::WriteAllText((Join-Path $p '.team-project/fixes/B-001/verdict.md'), $vt, $utf8)
+Edit-File (Join-Path $p '.team-project/fixes/F-003.md') '**Critério que caiu:** C5 — muda o contrato da API de exportação' ''
+Edit-File (Join-Path $p '.team-project/sprints/1/consumption.md') '| 2026-09-03 | qa | sonnet | `/qa` | T-041 |' '| 2026-09-04 | dev | haiku | `/sm fix run` | B-001 |'
+$r = Invoke-Check 'fix.ps1' @('-Block', 'B-001', '-Root', $p)
+Check 'C4 teste não falhou antes, promoção sem motivo, consumo fora: exit 1' $r 1 @('R33/3 antes/depois \| falhou.*F-002', 'R33/10 promoção \| falhou.*F-003', 'R33/7 consumo \| aviso', 'Não fecham:.*F-002.*F-003')
+if ($r.Out -match 'Não fecham:[^\r\n]*F-001') { $fail++; Write-Output '---- F-001 não deveria estar em Não fecham'; Write-Output $r.Out }
+
 # 9. C3 num repositório-fonte mínimo: versão divergente e bloco acima da barreira.
 $rp = Join-Path $tmp 'fonte'
 Put $rp '.claude-plugin/plugin.json' '{ "name": "team", "version": "9.1.0" }'
@@ -251,8 +353,9 @@ Check 'C3 fonte coerente: exit 0' $r 0 @('\| R18 \| ok', '\| R17 \| ok', '\| ór
 Put $rp 'README.md' "# Plugin`n`n> **Versão atual: v9.0.0** · x`n"
 Put $rp 'roles/scrum-master/process/process-changelog.md' ("# Processo`n`n## v9.1 — Teste (SM) — 02/10/2026`n`n" + ('x' * 11000) + "`n`n---`n")
 Remove-Item -LiteralPath (Join-Path $rp 'roles/scrum-master/README.md')
+Put $rp 'hooks/sem-bom.ps1' "# script sem BOM`n"
 $r = Invoke-Check 'release.ps1' @('-Root', $rp)
-Check 'C3 versão divergente, bloco grande, órfão: exit 1' $r 1 @('\| R18 \| falhou.*v9\.0\.0', '\| R17 \| falhou.*barreira 10240', '\| órfãos \| aviso')
+Check 'C3 versão divergente, bloco grande, órfão, .ps1 sem BOM: exit 1' $r 1 @('\| R18 \| falhou.*v9\.0\.0', '\| R17 \| falhou.*barreira 10240', '\| ps1-5.1 \| falhou.*hooks/sem-bom.ps1', '\| órfãos \| aviso')
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output

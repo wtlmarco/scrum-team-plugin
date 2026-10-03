@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.39.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.40.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -26,7 +26,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 ├── agents/      scrum-master · product-owner · architect · user-experience · developer · quality-assurance
 ├── commands/    sm · po · arc · ux · dev · qa · team · review   definições dos 8 comandos
 ├── hooks/                           guardas do harness (fase 1: G1 R31 · G2 cópia instalada · G3 R22 · G4 R28 · G13 autoteste) — hooks.json, despachantes PowerShell e COVERAGE.md (o que cada uma NÃO cobre)
-├── scripts/checks/                  conferências: close.ps1 (C1, /sm close) · project.ps1 (C2, retrospectiva e onboarding) · release.ps1 (C3, antes do PR) · tests/
+├── scripts/checks/                  conferências: close.ps1 (C1, /sm close) · project.ps1 (C2, retrospectiva e onboarding) · release.ps1 (C3, antes do PR) · fix.ps1 (C4, /sm fix run) · tests/
 ├── deliverables/                    estrutura dos documentos que o time entrega
 │   ├── README.md                    os conjuntos: donos, ordem de elaboração, critérios de qualidade
 │   ├── prototype/                   protótipo funcional em HTML — pré-condição do portão ①
@@ -52,12 +52,12 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 └── roles/                           documentação dos papéis
     ├── scrum-master/       processo, Sprint Backlog, rituais, regras que governam todos
     │   ├── README.md · skills.md
-    │   ├── process/     working-rules · working-rules-index · workflow · workflow-ritos · workflow-sdd · workflow-sprint · workflow-processo · sprint-run · artifact-ownership · process-changelog
-    │   └── templates/   planning · sprint-backlog · burndown · consumption · sprint-review · retrospective · plugin-report · status-entry · project-context · process-change · benchmark
+    │   ├── process/     working-rules · working-rules-index · workflow · workflow-ritos · workflow-sdd · workflow-sprint · workflow-processo · sprint-run · fix-run · artifact-ownership · process-changelog
+    │   └── templates/   planning · sprint-backlog · burndown · consumption · sprint-review · retrospective · plugin-report · status-entry · project-context · process-change · benchmark · fix-log
     ├── product-owner/      requisitos, Histórias, backlog, aceite
-    │   └── templates/   user-story · product-backlog · status · requirement · functional-analysis · acceptance · impact-analysis · note
+    │   └── templates/   user-story · product-backlog · status · requirement · functional-analysis · acceptance · impact-analysis · note · fix-card
     ├── architect/          especificação técnica, Planos de Implementação, ADRs
-    │   └── templates/   implementation-plan · adr · technical-decision · spike-checkpoint
+    │   └── templates/   implementation-plan · adr · technical-decision · spike-checkpoint · fix-plan
     ├── user-experience/   jornadas, telas, protótipos, usabilidade e acessibilidade
     │   └── templates/   functional-prototype · sprint-prototype · journey-map · screen-spec · usability-review
     ├── developer/          execução do plano, entrega, gaps
@@ -186,7 +186,7 @@ Nenhum atalho: o portão ① não abre sem o stakeholder **navegar** o protótip
 
 Geridas pelo SM, válidas para todos os papéis e para o stakeholder:
 
-- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 32 regras (eficiência R1-R6 e R28-R29, qualidade R7-R12, método R13-R27 e R30-R32), o que cada uma evita e como o SM verifica; o [`working-rules-index.md`](roles/scrum-master/process/working-rules-index.md) é o índice de uma linha por regra que o `/sm close` lê
+- [`roles/scrum-master/process/working-rules.md`](roles/scrum-master/process/working-rules.md) — as 33 regras (eficiência R1-R6 e R28-R29, qualidade R7-R12, método R13-R27 e R30-R33), o que cada uma evita e como o SM verifica; o [`working-rules-index.md`](roles/scrum-master/process/working-rules-index.md) é o índice de uma linha por regra que o `/sm close` lê
 - [`roles/scrum-master/process/workflow.md`](roles/scrum-master/process/workflow.md) — ciclo, DoR/DoD, gates, escalação (núcleo); os rituais estão em `workflow-ritos.md` (§5a–5b), `workflow-sdd.md` (§5h), `workflow-sprint.md` (§5e–5g) e `workflow-processo.md` (§5c–5d), e o `/sm sprint run` em `sprint-run.md`
 - [`roles/scrum-master/process/artifact-ownership.md`](roles/scrum-master/process/artifact-ownership.md) — quem escreve o quê
 - [`roles/scrum-master/process/process-changelog.md`](roles/scrum-master/process/process-changelog.md) — como o processo chegou até aqui
