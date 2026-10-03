@@ -8,6 +8,96 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.35 — `.team-project/` sai do git (R31); R28 enxuta: relatório do job com teto, `report-<log>.md` por chamada, dev isento, log podado não é achado; consumo fora de sprint em `.team-project/consumption.md` (SM) — 30/09/2026
+
+**Instrução** (stakeholder, `/review note`, em três momentos no mesmo dia). (1) *"Otimizar a evidência do Operator para guardar o trecho do log … e não o log inteiro para não precisar subir no git … um log que passa de 100MB afetando o Git"*. (2) *"O registro de consumo dentro do sprint está sendo registrado em consumption.md; agora, onde está registrando os gastos das tarefas que estão fora do sprint?"* — e a decisão: *um arquivo `consumption.md` na raiz de `.team-project/`, no mesmo modelo*. (3) Decisão final: **remover `.team-project/` do git** — `.gitignore` com `.team-project/` na raiz; o git recebe só o produto (código e `docs/`); continuidade e retrabalho aceitos; documento de produto não referencia `.team-project/`; comportamento de agentes, comandos e guias de raiz autorizado; sem bump de versão.
+**Classificação:** regra de trabalho (R28 reescrita; **R31 nova**) · propriedade de artefato (`.team-project/consumption.md`; §1f produto × processo) · formato de documento · comportamento de agente e de comando (aplicado por autorização do stakeholder).
+**Papéis movidos (R17):** 6 — SM, PO, Arquiteto, dev (documentos do dev, pelo Arquiteto), QA e UX → barreira 20 KB (10 KB até dois papéis + 2,5 KB × 4 adicionais; teto absoluto 20 KB). Entrada final: 17,6 KB (≤ 20 KB).
+
+### Desenho final
+O desenho intermediário do mesmo dia (relatório versionado como "único arquivo no git", `.gitignore` de `*.log`, "resolve em qualquer máquina", "log ausente") **foi substituído antes de qualquer release** pelo que segue; nada dele sobra em `roles/scrum-master/`, `agents/`, `commands/` nem nos guias.
+- **R31 (nova):** `.team-project/` inteiro fora do git; o repositório recebe só o produto; o estado da gestão é local e sem histórico; **documento de produto (`docs/`) nunca referencia `.team-project/`** (o processo pode citar `docs/`). Verifica-se por `git ls-files .team-project` vazio, `git check-ignore`, e grep de `.team-project` em `docs/` e nos modelos que o geram.
+- **R28 (enxuta):** (a) cada chamada deixa um `report.md` — trecho decisivo + contagens + ponteiro do log — com **teto de 200 linhas e 20 KB**, para economizar o contexto de quem lê; (b) **várias chamadas na mesma pasta de job → um `report-<log>.md` por chamada**, sem sobrescrita; (c) o **build de fim de passo do dev** continua dele, isento de `report` (log redirecionado + trecho no relatório de entrega); (d) **severidade mista no aceite:** `report` ausente = rejeição (R7); acima do teto = achado de processo, e o aceite segue pelo trecho; (e) retenção e poda do log bruto viram **gestão de disco local** — log podado não é achado e o `report` sobrevive; com gatilho disparado e log podado, re-rodar pelo `operator` ou "não verificado — log podado". Some: "versionado", "único no git", "resolve em qualquer máquina", `.gitignore` de `*.log`. **Exceção de coerência com R31:** em documento de produto (`docs/`), só o trecho — o ponteiro fica no artefato de processo que o cita.
+- **Consumo fora de sprint:** `.team-project/consumption.md` (mantido; agora local também), mesmo modelo, Nota `pre-sprint;`/`entre-sprints;`, sem rotação, sem transcrição; substitui a subseção de `context.md` e o passo 9 da Planning.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `process/working-rules.md` | R28 (corpo · Evita · SM verifica) · **R31** · resumo | R28 no desenho final acima; contagem de fechamento em duas janelas (sprint × sprint; `pre-sprint/` desde o fechamento anterior × fora de sprint); R31 nova com "o que evita" e "como o SM verifica" |
+| `process/working-rules-index.md` | linhas R28 e R31 · título | Acompanha (R1–R31) |
+| `process/artifact-ownership.md` | §1 (linha do consumo fora de sprint) · §1c · **§1f (novo)** | `.team-project/consumption.md`, dono SM, sem rotação; §1f "Produto × processo — o que o git recebe" |
+| `process/workflow-sprint.md` · `workflow-sdd.md` · `workflow-processo.md` | §5e passo 9 · registro de consumo · verificação de fechamento · §5h · §5c | O `consumption.md` do sprint nasce vazio; sem transcrição; contagem de R28 por `report` |
+| `templates/consumption.md` · `retrospective.md` · `project-context.md` · `roles/scrum-master/README.md` | Como gravar · Regras · contagem R28 · passos 3 e 9 · tabela de artefatos | Destino por estado do sprint; `report-<log>` na identificação da chamada; subseção antiga de `context.md` migrada no `update` |
+| `deliverables/README.md` · `deliverables/team-project/README.md` | índice · manifesto (linha `.gitignore` `.team-project/`, aviso "tudo aqui é local") | Produto × processo (R31); acumulado de consumo inclui o arquivo da raiz |
+| `agents/operator.md` | "Onde grava" · "Formato do relatório" · "Retenção" | `report.md` ≤ 200 linhas · 20 KB com conferência antes de devolver; `report-<log>.md` por chamada; segmento `pre-sprint/` = "sem sprint aberto"; poda = disco local |
+| `agents/quality-assurance.md` (l. 38) · `agents/scrum-master.md` (l. 34) | regra de registro · contagem | Ponteiro do job (`report`), log podado não é achado; 31 regras |
+| `commands/{sm,po,arc,ux,qa,dev}.md` | "Registro de consumo" | Destino: sprint aberto → `sprints/<n>/consumption.md`; senão `.team-project/consumption.md` |
+| `team-init.md` · `team-update.md` (**passo 7b novo**) · `how-to.md` · `README.md` · `replicate-in-new-project.md` | árvore · `.gitignore` · migração · "onde mora" | `init` acrescenta `.team-project/` ao `.gitignore` (só acrescenta) e cria o `consumption.md` vazio; `update` 7b reescrito: `.gitignore` → desrastrear → **limpar o histórico** (backup, `filter-repo`, push forçado) → verificação, cada passo destrutivo com confirmação no momento da execução; migra a subseção antiga |
+| `process/artifact-ownership.md` | §1 (nova linha) | **Jobs do `operator`** (`.team-project/operator/**`): SM verifica e poda, papel chamador cita |
+| `CHANGELOG.md` · `.claude-plugin/plugin.json` · `README.md` (banner) | entrada `v3.35.0` · `version` · "Versão atual" | Release (R18): `3.35.0` nos três; `marketplace.json` não tem `version` |
+| `process/process-changelog(-archive).md` | — | v3.34 arquivada (R17, três entradas mantidas) |
+
+### Rodadas 2 e 4 — os papéis simplificam os próprios documentos; correções da reavaliação (curadoria do SM)
+Nenhum papel editou este arquivo; uma linha por papel, pelo relato dos donos.
+- **PO** — `acceptance.md` (o aceite confere o `report`); `01-scope-and-criteria.md` migrado para **Sprint/História** (H-nnn, `[x]` só com aceite na Review, congelamento R4/R25; §4 e duplicidades removidas); skill 9 nova; "Como o QA valida" virou ponteiro para as seis frentes. −32 linhas.
+- **QA** — "ponteiro do log" → "ponteiro do `report`" em todo o alcance; citações de passo nomeadas; `pending.md` e `03-code-map.md` sem caminho de processo (R31); `/arc comply` fora de `verdict.md`; README enxuto. 7 arquivos, +24/−24.
+- **UX** — `deliverables/prototype/README.md` como fonte única dos critérios (regras dos modelos e passos do roteiro viraram ponteiros); saem o campo "Log bruto" das fichas e as "Falhas comuns" de `screen-spec` e `journey-map`; limiares e "Como se verifica" em §9. −42 linhas, −6,1 KB.
+- **Arquiteto (+ dev e standards)** — `compliance-review.md` **apagado** (fim do `/arc comply`; aderência só na frente 2 do QA); `standards/` **Vigentes**; lista única de gatilhos de GAP em `gap.md`; fonte única para R16, checklist de segurança e ADR; exemplos neutros de stack. −124 linhas, −9,7 KB (−8,7%).
+- **SM** — R28 em subitens (8,9 → 6,1 KB) com o consumo fora de sprint só em `templates/consumption.md`; R31 verifica o diretório de produto declarado no §4; `project-context.md` (árvore e §4); `/arc comply` fora de `commands/arc.md`, `agents/architect.md` e guias; "prepare, passo N"/"Planning, passo N"; consumo dos 6 `commands/` só em ponteiro (carga fixa 62.971 → 61.770 B, `/sm` 13.436 B); `dev resume` corrige só o achado do QA; `team-update` 7b por `AskUserQuestion`; escopo por sprint em `artifact-ownership`, `deliverables/README.md`, `implementation/README.md` e `02-status.md`; suíte de cenários na linha do QA de `review-contract.md`.
+
+### Por quê
+**R31:** o repositório do produto carregava estado de gestão e logs de centenas de MB; o desenho intermediário tentava salvar o que dava (relatório no git, log fora) e acabou criando três estados por arquivo. Tirar o `.team-project/` inteiro elimina o problema pela raiz, ao custo aceito pelo stakeholder de não ter histórico do processo nem continuidade entre máquinas. A regra de links decorre: produto que aponta para `.team-project/` quebra para quem clona. **R28:** sem versionamento, o valor do `report` é economizar contexto (daí o teto), não ser evidência distribuída; uma pasta com mais de uma chamada sobrescrevia o relatório da primeira (achado do Arquiteto); o build de fim de passo do dev nunca foi chamada ao `operator`; e podar log é higiene de disco.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| `operator` | `report` ≤ 200 linhas e 20 KB, conferido antes de devolver; `report-<log>.md` quando há mais de uma chamada na pasta |
+| QA · Arquiteto · UX · Dev · PO | Ponteiro = `report` do job; "versionado / resolve em qualquer máquina / fora do git" saem; aceite: `report` ausente = rejeição, acima do teto = achado (lista por papel na entrega do `/review`) |
+| Dono de modelo de produto (PO, Arquiteto, QA, UX) | Modelo que gera `docs/` não cita `.team-project/` (R31) |
+| SM | Verifica `git ls-files .team-project`, `.gitignore` e grep em `docs/`; consumo fora de sprint direto no arquivo da raiz |
+| Stakeholder | Migração 7b: aprova o desrastreamento; decide limpar (ou não) o histórico |
+
+### Conflitos com o processo vigente
+Resolvidos pela decisão do stakeholder: R28 ("versionado com o projeto"; "ponteiro que resolve") e §1c (retenção só em pasta) deixaram de conflitar ao reescrever R28 e declarar o registro fora de sprint. Pendências de 30/09 (várias chamadas por pasta; build do dev; severidade no aceite) decididas em (b), (c), (d) acima.
+
+### Como saberemos que funcionou
+No primeiro projeto atualizado: `git ls-files .team-project` vazio e `git check-ignore -v .team-project/README.md` devolvendo a regra; `git status` sem arquivo de `.team-project/`; nenhum `.team-project/` em `docs/`; nenhum `report` sobrescrito (um `report-<log>.md` por chamada na mesma pasta); `.team-project/consumption.md` com uma linha por invocação fora de sprint.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição | `Select-String` em `roles/scrum-master`, `agents`, `commands`, guias de raiz, `deliverables/{README,implementation/README,team-project/*}` por `resolve em qualquer máquina`, `só o report.md`, `git recebe só o report`, `*.log` do `.gitignore`, `versionado com o projeto`, `ainda não contadas`, `transcreve nele`, `log (bruto) ausente` | 0 ocorrências | ✅ |
+| Substituição (contagem) | `Select-String '30 regras\|R1.R30'` fora dos changelogs / `'31 regras\|R1.R31'` | 0 / 4 (`agents/scrum-master.md:34`, `working-rules-index.md:1`, `roles/scrum-master/README.md:154`, `README.md:184`); a lista de blocos de `README.md:184` passou a "método R13-R27 e R30-R31" | ✅ |
+| Substituição (leitura em contexto) | leitura das ocorrências novas de `report-<log>`, `.team-project/consumption.md` e `.gitignore` | destino, nome e o "só acrescenta" idênticos em R28, `consumption.md`, `operator.md`, `team-init.md`, `team-update.md` 7b | ✅ |
+| Substituição (R31 no plugin) | `Select-String '\.team-project' deliverables/sdd, deliverables/implementation` (modelos de produto) | 2 ocorrências (`03-code-map.md:4`, `pending.md:4`), do QA, **roteadas**; `adr.md:3,63` (orientação fora do bloco do ADR) sinalizado ao Arquiteto; `deliverables/prototype/` é processo | ✅ (achados roteados) |
+| Arquivamento | `git diff --numstat` dos changelogs (passo anterior, inalterado) | archive `+82 −0` | ✅ |
+| Grep cruzado final (rodada 2) | `Select-String` em `roles/ deliverables/ standards/ agents/ commands/` e guias de raiz (98 arquivos, sem `*changelog*`, `CHANGELOG.md` e `note.md`) por: `(log\|report)…versionad` · `(log\|report)…fora do git` · `qualquer máquina` · `único…no git\|só o report` · `log (bruto )?ausente` | **0 / 0 / 0 / 0 / 0**. Controles lidos em contexto: `fora do git` tem 10 ocorrências, todas sobre `.team-project/` inteiro (R31: `working-rules.md:57,233`, `deliverables/README.md:5,16`, `deliverables/team-project/README.md:5,21`, `how-to.md:186`, `README.md:10,14`, `team-init.md:33`), nenhuma sobre log ou `report`; `versionad` perto de log/report: só R18 (`artifact-ownership.md:56`, `working-rules-index.md:43`, entrega versionada do plugin) | ✅ |
+| Grep cruzado final (R31) | `Select-String '\.team-project' deliverables/sdd, deliverables/implementation` | 0 ocorrências (o QA reescreveu `03-code-map.md:4` e `pending.md:4`) | ✅ |
+| Coerência | `Select-String 'Exceção \(R31\)'` em `working-rules.md`; `Select-String 'report-<log>' agents/operator.md`; leitura de `adr.md` (bloco ```markdown``` nas linhas 7–46) e de `requirement.md:3` | exceção em `working-rules.md:55`; `operator.md:40`; `adr.md:3,63` e `requirement.md:3` estão fora do bloco do modelo → legítimos | ✅ |
+| Fila | `Get-Content note.md` | "Abertas" vazia; `git diff --stat note.md` vazio (idêntico ao HEAD) | ✅ |
+| Release (R18) | `plugin.json` `version` · 1ª `## v` de `CHANGELOG.md` · 1ª linha "Versão atual" de `README.md` · contagem de `## v3.35 ` em `process-changelog.md` | `3.35.0` · `## v3.35.0 — 2026-09-30` · `**Versão atual: v3.35.0**` · 1 entrada `v3.35` (par `vX.Y` ↔ `vX.Y.0`); `marketplace.json` sem `version` | ✅ |
+| Formato (release e migração) | bytes iniciais e LF solto em `CHANGELOG.md`, `plugin.json`, `README.md`, `team-update.md`, `team-init.md` | 0 BOM e 0 LF solto nos cinco | ✅ |
+| Migração 7b | títulos `## 7b.` e `## 8.` em `team-update.md`; leitura do passo | 7b na linha 99 e passo 8 na 118 (separados por linha em branco); ordem (a) `.gitignore` → (b) desrastrear → (c) backup + `filter-repo` + push → (d) verificação; confirmação "no momento da execução" nos passos 2 e 3; pula em projeto não-git | ✅ |
+| Propriedade | busca de "Jobs do `operator`" em `artifact-ownership.md` | 1 linha na matriz §1 (SM verifica e poda · papel chamador cita) | ✅ |
+| Grep final (rodada 4) | `Select-String` em todos os `.md` fora de changelogs: `comply\|compliance-review` · `R25 ?\(b\)` · `ponteiro do log` · `30 regras\|R1.R30` · `31 regras\|R1.R31` | 0 · 6 (UX, citações válidas: R25 tem o item "(b) Cada sprint entrega valor real") · 1 (a própria R28, `working-rules.md:57`) · 0 · 4 | ✅ |
+| Links (rodada 4) | script sobre os 103 `.md`, fora de blocos de código | 7 apontamentos, todos placeholders (`sprint-backlog.md:43,48`) ou texto de changelog; **0 links reais quebrados**; `compliance-review.md` não existe mais | ✅ |
+| R18 (rodada 4) | `plugin.json` `version` · 1ª `## v` de `CHANGELOG.md` · banner de `README.md` | `3.35.0` == `## v3.35.0 — 2026-09-30` == `v3.35.0` | ✅ |
+| Formato | bytes iniciais e `(?<!\r)\n` dos 47 arquivos modificados | 0 com BOM e 0 com LF solto (corrigidos `how-to.md` e `team-init.md`, que tinham LF) | ✅ (desvio corrigido) |
+
+### Decisões finais do stakeholder (rodada 3, 30/09/2026)
+1. **Protótipo = processo.** Funcional e do sprint ficam em `.team-project/user-experience/prototype/`, fora do git; nada mudou nos documentos (R31 cita o protótipo como processo).
+2. **Dono de `.team-project/operator/**`:** o SM verifica e poda; o papel chamador cita o `report`. Linha nova na matriz de `artifact-ownership.md` (§1).
+3. **Limpeza do histórico aprovada**, e a pasta `.team-project/` já commitada também sai do git. O passo 7b de `team-update.md` foi reescrito: (a) `.gitignore`; (b) desrastrear com `git rm --cached` + commit; (c) limpar o histórico com `git filter-repo --path .team-project --invert-paths`, **backup obrigatório antes** (cópia local e `git clone --mirror`), instalação ou alternativa (BFG) se o `filter-repo` faltar, `git push --force` de branches e tags, com os avisos (re-clonar ou rebasear; GitHub pode manter objetos em cache e PRs antigas); (d) verificação por `git log --all -- .team-project` vazio e `git count-objects -vH` antes e depois. **Cada passo destrutivo exige confirmação explícita do stakeholder no momento da execução no projeto**; projeto que não é repositório git pula. `team-init.md` remete ao 7b.
+4. **Teto das capturas de tela do `operator`:** só se o disco local virar problema. Nenhuma mudança.
+5. **Release aprovada:** `plugin.json` 3.35.0 · entrada `v3.35.0` no topo de `CHANGELOG.md` (par da `v3.35` deste changelog) · banner `v3.35.0` no `README.md` (R18). `marketplace.json` não tem `version`. Branch, commit e push **não** feitos: ficam para o stakeholder autorizar.
+
+### Pendente do stakeholder
+- **Git da entrega (R18):** criar a branch `feat/v3.35.0` a partir de `develop`, commitar e abrir o PR — não feito aqui. Mensagem de commit no padrão das entregas anteriores: `v3.35.0: .team-project fora do git (R31), R28 enxuta e consumo fora de sprint`.
+- **Execução da migração nos projetos:** a limpeza do histórico e o `push --force` só rodam no projeto, com a confirmação do stakeholder no momento (7b).
+- `agents/` e `commands/` só valem após reiniciar a sessão.
+
+---
+
 ## v3.34 (parte 3) — Novo modo `/sm sdd`: a transição do brief ao SDD aprovado e às Histórias, com os portões ① e ② disparados pelo próprio modo (SM + PO + UX + Arquiteto) — 30/09/2026
 
 **Instrução** (stakeholder, `/review`, formulário): *"Por qual comando, depois do brainstorm, se elabora o SDD funcional e o técnico que servem de base para o `/sm sprint prepare`?"* — a resposta era uma sequência manual (`/po requirement` → `/po analyze` → `/ux journey` → `/ux prototype` → ① → `/arc` em modo livre → ② → `/po story`), e os formulários dos portões dependiam de "a sessão que orquestrou o comando anterior". **Decisões:** (1) novo modo **`/sm sdd`**, orquestrado pela sessão, com a cadência `brainstorm → sdd → prepare → plan → run → review → close`; (2) alcance nos **dois casos** — ideia nova depois do brainstorm e evolução de área já documentada depois do `/po analyze` (só o delta, portões só no que mudou).

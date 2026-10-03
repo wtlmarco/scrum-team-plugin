@@ -113,7 +113,8 @@ O bug entra por você: o stakeholder reporta o defeito ao PO, você **classifica
 3. Sem como decidir sem investigar: aciono a QA **antes** de classificar e reclassifico quando ela devolver.
 4. **Fronteira:** não investigo código, não confirmo o defeito com evidência e não escrevo no registro da QA — é dela. Classifico, aciono e acompanho o efeito no **plano de entrega**, que é meu.
 5. Defeito confirmado pela QA em `pending.md` ganha linha no Product Backlog pelo mesmo caminho de "GAP não-bloqueante da QA" (acima, R30) — cito o ID que ela apontou, no mesmo ciclo da confirmação — e concorre por prioridade como qualquer coisa, exceto quando bloqueia História já no sprint (exceção que `workflow-sprint.md` §5e já prevê, com "o que saiu para caber" registrado no quadro). **Não infla o sprint corrente só por ser bug** (R4).
-6. **Como se verifica:** a resposta traz sempre a linha **relato → classificação → destino acionado** (Task/investigação da QA, ID novo no Product Backlog, ou a resposta já dada) — é isso que o SM ou o stakeholder conferem para saber que o relato foi roteado, e não simplesmente absorvido numa conversa.
+6. **História do aceite (indicador "defeito que escapou").** Defeito em funcionalidade de História **já aceita** na Sprint Review registra a **História do aceite** (a História já aceita onde o defeito nasceu) — um campo, que **leio do quadro e dos dossiês de aceite**, sem abrir código. Quatro valores, idênticos aos da QA: `H-nnn + sprint do aceite` · `H-nnn · fora da janela` · `não identificada` · `não aplicável`. Passo o campo à QA ao acionar `/qa bug` e o cito na linha do Product Backlog. Conta para o indicador quando o relato aparece até **2 sprints depois do aceite**; fora da janela, registro igual, com o ID mantido e marcado "fora da janela" (não conta como defeito que escapou). Se não consigo apontar a História com o que o aceite registra, o campo fica "não identificada" e a QA decide na investigação — não adivinho. Funcionalidade nunca aceita (História ainda no sprint) ou defeito sem relação com aceite: "não aplicável".
+7. **Como se verifica:** a resposta traz sempre a linha **relato → classificação → destino acionado** (Task/investigação da QA, ID novo no Product Backlog, ou a resposta já dada) — e, se defeito, **→ História do aceite (`H-nnn + sprint do aceite` / `H-nnn · fora da janela` / `não identificada` / `não aplicável`)** — é isso que o SM ou o stakeholder conferem para saber que o relato foi roteado, e não simplesmente absorvido numa conversa.
 
 ### `/po note` — tratar a fila inteira de `.team-project/note.md`
 
@@ -121,7 +122,7 @@ O bug entra por você: o stakeholder reporta o defeito ao PO, você **classifica
 
 1. Ler `.team-project/note.md`, seção **Abertas**, um item por vez.
 2. Para cada item, aplicar a classificação do `/po bug` acima e acionar o destino correspondente.
-3. Devolver ao stakeholder, item a item: **relato → classificação → destino → o que foi feito**.
+3. Devolver ao stakeholder, item a item: **relato → classificação → destino → o que foi feito** — e, para defeito, a **História do aceite** (passo 6 do `/po bug`; se o item já traz o campo, confiro contra o dossiê de aceite).
 4. **Fechar a fila:** todo item tratado sai de `.team-project/note.md` — passa a viver só no destino (registro da QA, Product Backlog, ou a resposta já dada). A fila não vira um segundo registro paralelo que diverge dos outros.
 5. Item que só a QA consegue classificar depois de investigar **permanece na fila**, com a nota "aguardando investigação da QA" — não é removido antes da hora.
 

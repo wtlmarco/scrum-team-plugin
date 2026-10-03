@@ -49,6 +49,7 @@
 ### <MÓDULO>-<NN> — <título afirmativo do defeito>
 **Módulo:** <área> · **Criticidade:** 🔴 · **Origem:** time | stakeholder
 **Aguarda decisão do stakeholder:** não | sim — <pergunta ou ponteiro>
+**História do aceite:** <só se Origem: stakeholder — H-nnn + sprint do aceite | H-nnn · fora da janela | não identificada | não aplicável>
 **Evidência:** [<arquivo>:<linha>](<caminho>#L<linha>) — <o fato observado>
 **Impacto:** <o que deixa de funcionar, e para quem>
 **Ação sugerida:** <direção de correção, não o plano>
@@ -68,7 +69,7 @@
 <Como abrir, fechar e confirmar não-gap.>
 ```
 
-O formato de uma entrada individual é o do modelo `gap-record.md` do QA (campos, criticidade, `Origem`, `Aguarda decisão do stakeholder`).
+O formato de uma entrada individual é o do modelo `gap-record.md` do QA (campos, criticidade, `Origem`, `Aguarda decisão do stakeholder`, `História do aceite` nas entradas `Origem: stakeholder`).
 
 ## Regras
 
@@ -78,7 +79,7 @@ O formato de uma entrada individual é o do modelo `gap-record.md` do QA (campos
 - **A reavaliação dos critérios é o coração do documento.** É onde a diferença entre "declarado" e "real" fica visível — e onde um projeto retomado descobre o tamanho verdadeiro do trabalho.
 - **Task resolvido sai daqui** e é registrado em `02-status.md`. Nunca os dois no mesmo lugar (R12).
 - **IDs no padrão `MÓDULO-NN`**, nunca reaproveitados.
-- **Toda entrada declara `Origem` e `Aguarda decisão do stakeholder`.** `Origem: stakeholder` é o "bug" — chega sempre pelo PO, nunca direto ao QA, e só entra confirmado com `arquivo:linha` (sem reprodução, fica suspeita no veredito). `Aguarda decisão do stakeholder: sim` só é válido com a pergunta ou o ponteiro para onde ela foi feita (R9, R22). Verificação: cada bloco `### <ID>` tem as duas linhas preenchidas — ausência é formato incompleto, não conta no resumo executivo (§2) nem em §2.1.
+- **Toda entrada declara `Origem` e `Aguarda decisão do stakeholder`.** `Origem: stakeholder` é o "bug" — chega sempre pelo PO, nunca direto ao QA, e só entra confirmado com `arquivo:linha` (sem reprodução, fica suspeita no veredito). `Aguarda decisão do stakeholder: sim` só é válido com a pergunta ou o ponteiro para onde ela foi feita (R9, R22). Em `Origem: stakeholder`, também `História do aceite`, transcrita do que o PO passou ao acionar `/qa bug` (sem reinterpretar) — fonte do indicador "defeito que escapou". Verificação: cada bloco `### <ID>` tem as duas linhas preenchidas, e o `Origem: stakeholder` tem também a terceira — ausência é formato incompleto, não conta no resumo executivo (§2) nem em §2.1.
 - **§2.1 é leitura, não escrita separada.** O stakeholder lê só as entradas com `Origem: stakeholder` sem precisar atravessar a lista técnica — mas continua no mesmo arquivo, mantido só pelo QA.
 
 ## Falhas comuns
