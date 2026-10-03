@@ -1,5 +1,6 @@
 ﻿# Funções comuns às conferências C1 (close.ps1), C2 (project.ps1) e C3 (release.ps1).
-# Compatível com Windows PowerShell 5.1 e PowerShell 7. Lê tudo em UTF-8 explícito.
+# Requisito: Windows PowerShell 5.1 (powershell.exe, o do Windows), sem recurso exclusivo do PowerShell 7.
+# Lê tudo em UTF-8 explícito; os .ps1 são gravados em UTF-8 com BOM, que o 5.1 exige para ler acentos e emojis.
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 

@@ -75,11 +75,12 @@ Decisão de não fazer também é decisão. Registre a decisão, o motivo e o ga
 
 ## 8. Classificar relato de defeito antes de agir
 
-Um relato do stakeholder ("isto está quebrado") pode ser três coisas diferentes, e tratá-las todas como bug custa caro:
+Um relato do stakeholder ("isto está quebrado") pode ser quatro coisas diferentes (o **ajuste** é o pedido de pequena mudança que chega como "bug"), e tratá-las todas como bug custa caro:
 
 | O que é | Régua | Destino |
 |---|---|---|
-| **Defeito** | O sistema não faz o que o critério de aceite aprovado (pacote de abertura, ③ em lote) e aceito na Sprint Review (R21) diz que faz | Aciona a **QA** para investigar, confirmar com evidência e registrar (`pending.md`, `origem: stakeholder`) |
+| **Defeito** | O sistema não faz o que o critério de aceite aprovado (pacote de abertura, ③ em lote) e aceito na Sprint Review (R21) diz que faz | Aciona a **QA** para investigar, confirmar com evidência e registrar (`pending.md`, `origem: stakeholder`); **elegível à trilha `fix`** (abaixo): a QA reproduz em lista e a sessão abre `F-<nnn>` triada → `/sm fix plan` |
+| **Ajuste** | O sistema faz o que o SDD diz, e o stakeholder quer **uma pequena mudança** em requisito existente (delta mínimo, um requisito) | Elegível à trilha `fix`: delta na ficha, confirmação em formulário no `fix plan`. Não elegível: `/po analyze` / `/po impact` → Product Backlog |
 | **Mudança de escopo disfarçada de bug** | O sistema faz exatamente o que foi acordado — o acordado é que o stakeholder quer mudar agora | `/po analyze` / `/po impact` → Product Backlog; não é bug |
 | **Dúvida de uso** | O comportamento é o acordado e está correto; só não foi entendido | Responder; o achado pode virar melhoria de UX ou de documentação |
 
@@ -88,6 +89,8 @@ Quando não dá para decidir sem abrir o código, acionar a QA para **investigar
 **A fronteira:** você não abre o código, não confirma o defeito com evidência e não escreve no registro da QA — isso é dela. Você classifica, aciona e acompanha o efeito no **plano de entrega**: defeito confirmado em `pending.md` ganha linha no Product Backlog citando o ID, pelo mesmo caminho de qualquer GAP não-bloqueante (R30 — [`README.md`](README.md)), e concorre com o resto do backlog como qualquer coisa; só desloca o sprint corrente na exceção que `workflow-sprint.md` §5e já prevê (GAP que bloqueia História já no sprint, com "o que saiu para caber" registrado) — nunca porque "é bug" (R4).
 
 **História do aceite:** quando o defeito é de funcionalidade de História já aceita, registre qual (`H-nnn`) e o sprint do aceite, lendo dos dossiês — é o que alimenta o indicador "defeito que escapou" (janela de 2 sprints). Valores, idênticos aos da QA: `H-nnn + sprint do aceite` · `H-nnn · fora da janela` (o ID fica; não conta como escapou) · `não identificada` · `não aplicável`. Um campo; não é investigação.
+
+**Elegível à trilha `fix` (R33).** Discriminador único (D2): se o **código deve passar a obedecer ao SDD**, é defeito; se o **SDD precisa mudar**, é ajuste — ou não é Correção. **SDD omisso não é Correção:** preencher a lacuna é criar requisito (C1 cai) e segue a rota de lacuna de especificação; depois de preenchida, o desvio do código pode voltar como defeito. Confiro **C1–C4** (sem requisito novo — ajuste: no máximo um existente · sem tela, estado ou passo de jornada novo · sem História em voo · sem dado sensível/LGPD), escrevo o resultado e o delta na ficha ([`templates/fix-card.md`](templates/fix-card.md)) e passo a História do aceite **por item** à `/qa bug` em lista. Roteiro e fonte única: `fix-run.md` §Triagem. Item que cita `F-<nnn>` **fechada** é **reabertura**: não é novo escape.
 
 Modos que aplicam esta skill: `/po bug <relato>` (um relato avulso) e `/po note` (a fila inteira de `.team-project/note.md`) — [`README.md`](README.md).
 

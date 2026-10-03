@@ -182,7 +182,7 @@ Três tipos: **processo** (normativo, muda só a pedido do stakeholder) · **viv
 | Fluxo, DoR/DoD, gates (núcleo) | processo | [`process/workflow.md`](process/workflow.md) | — *(idem)* |
 | Rituais, sprint, eficiência — **§5a–5b** · **§5h** · **§5e–5g** · **§5c–5d** *(numeração igual à de antes do split)* | processo | [`process/workflow-ritos.md`](process/workflow-ritos.md) · [`process/workflow-sdd.md`](process/workflow-sdd.md) · [`process/workflow-sprint.md`](process/workflow-sprint.md) · [`process/workflow-processo.md`](process/workflow-processo.md) | — *(idem)* |
 | Roteiro do `/sm sprint run` | processo | [`process/sprint-run.md`](process/sprint-run.md) | — *(idem)* |
-| Índice das regras (o que conferir, uma linha por R1–R32; lido pelo `/sm close`) | processo | [`process/working-rules-index.md`](process/working-rules-index.md) | — *(derivado de `working-rules.md`)* |
+| Índice das regras (o que conferir, uma linha por R1–R33; lido pelo `/sm close`) | processo | [`process/working-rules-index.md`](process/working-rules-index.md) | — *(derivado de `working-rules.md`)* |
 | Propriedade de artefatos | processo | [`process/artifact-ownership.md`](process/artifact-ownership.md) | — *(idem)* |
 | **Changelog do processo** | **vivo** | [`process/process-changelog.md`](process/process-changelog.md) | [`templates/process-change.md`](templates/process-change.md) *(uma entrada por instrução)* |
 | **Decisões da Planning e pacote aprovado** | **saída e vivo** (até a aprovação) → **fechado** com a pasta | `.team-project/sprints/<n>/planning.md` | [`templates/planning.md`](templates/planning.md) *(peça obrigatória do pacote; traz o que **não** entrou, com o motivo — R25)* |

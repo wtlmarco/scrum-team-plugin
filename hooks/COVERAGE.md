@@ -5,6 +5,7 @@
 
 ## Como funcionam
 
+- **Requisito de ambiente:** **Windows PowerShell 5.1** (`powershell.exe`, que vem com o Windows) — é o do computador que roda os projetos. Os hooks e as conferências chamam `powershell`, nunca `pwsh`, e não usam recurso exclusivo do PowerShell 7. Os `.ps1` ficam em **UTF-8 com BOM**: sem ele, o 5.1 lê o arquivo como ANSI e quebra acentos e emojis — quem editar um `.ps1` mantém o BOM. As suítes de `scripts/checks/tests/` rodam nesse PowerShell.
 - **Distribuição:** `hooks/hooks.json` viaja com o plugin; chega a todo projeto pelo `claude plugin update` e vale depois de **reiniciar a sessão**. Confira com `/hooks`.
 - **Um despachante por evento** (`pre-tool.ps1`, `post-tool.ps1`, `session-start.ps1`): o PowerShell sobe uma vez por chamada de ferramenta, não uma por guarda. Funções comuns em `common.ps1`.
 - **Falha aberta:** erro de script (exceção, JSON inválido) sai com código 1, que o harness lê como **não bloqueante**, e vira linha `erro` em `.team-project/guards.log`. Só o veredito explícito de uma guarda bloqueia (exit 2, motivo no stderr, que volta ao agente como erro de ferramenta — ele pode corrigir o rumo).

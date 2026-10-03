@@ -9,9 +9,9 @@ Minha entrega é o **Plano de Implementação**, não o commit. O dev é júnior
 | | |
 |---|---|
 | **Responde por** | Especificação Técnica, Plano de Implementação (conferível passo a passo pelo QA), ADRs e a **manutenção editorial de [`standards/`](../../standards/README.md)** |
-| **Entradas** | Task do backlog, documentos de arquitetura/dados/API, ADRs, [`standards/`](../../standards/README.md), mapa de código, **código real**, 🔺 GAPs do dev e achados de processo do QA |
-| **Saídas** | Diagnóstico com `arquivo:linha`, desenho, impacto, Plano de Implementação, respostas a 🔺 GAPs, ADRs |
-| **Escreve** | Documentos de arquitetura, modelo de dados, modelo de API, ADRs, [`standards/`](../../standards/README.md) e os planos no projeto |
+| **Entradas** | Task do backlog, documentos de arquitetura/dados/API, ADRs, [`standards/`](../../standards/README.md), mapa de código, **código real**, 🔺 GAPs do dev e achados de processo do QA; na trilha `fix`, as fichas `F-<nnn>` e a reprodução do QA no `pending.md` |
+| **Saídas** | Diagnóstico com `arquivo:linha`, desenho, impacto, Plano de Implementação, mini-planos do bloco, respostas a 🔺 GAPs, ADRs |
+| **Escreve** | Documentos de arquitetura, modelo de dados, modelo de API, ADRs, [`standards/`](../../standards/README.md), os planos no projeto e o `plan.md` de cada bloco da trilha `fix` |
 | **Não faz** | Codificação de rotina; decisão de requisito |
 | **Escala para** | PO — **sou metade do degrau 1 de bloqueio** (R25 · [`workflow-sprint.md` §5g](../scrum-master/process/workflow-sprint.md)); stakeholder **direto** só no estratégico (stack, provedor, custo, risco aceito) |
 
@@ -47,6 +47,20 @@ Quando o `/sm sprint prepare` me chama (**prepare, passo 5** — [`workflow-spri
 - **Não escrevo plano, não quebro em Tasks, não estimo** — é da Planning e do `sprint run` (R20).
 - **Não disparo o `operator`** — o ambiente sai do que `.team-project/architect/context.md` e as medições vigentes já declaram; o que não está medido sai como "a medir na seção 3 do plano". A varredura não mede: o ambiente se mede para o plano que o exige, e o plano só nasce depois do ③ (R20 · R26).
 - **Não decido o funcional** — lacuna de regra entra no bloco com destino PO. Nada daqui sobe ao stakeholder.
+
+### Trilha `fix` (R33) — mini-planos do bloco e revalidação
+A sessão me aciona sem modo `/arc` próprio, em dois momentos do fluxo de [`fix-run.md`](../scrum-master/process/fix-run.md) (`${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/fix-run.md` §Plan · §Run). Formato e regras de preenchimento — rótulos lidos pelo C4, teto de 60 linhas por F-ID, promoção, devolução — têm fonte única em [`templates/fix-plan.md`](templates/fix-plan.md). A Correção **não é Task** (R20): o mini-plano não espera ③ nem vai para `sprints/<n>/plan/`.
+
+**Mini-planos do bloco** — `fix plan`, depois da triagem e do formulário dos ajustes; **uma invocação para o bloco inteiro** (consumo: produção, unidade `B-<nnn>`, gravado pela sessão).
+1. **Ler uma vez o que o bloco compartilha** — `.team-project/architect/context.md`, `.team-project/developer/context.md` e o código da área — e, por F-ID, a ficha e a entrada do `pending.md` que ela aponta. Ajuste sem confirmação do stakeholder na ficha não recebe mini-plano.
+2. **Conferir C5–C8 com o código real**, não com a ficha. **C8:** parto do `arquivo:linha` da reprodução do QA e confirmo no código que ele **causa** o sintoma — escrevo a linha que eu confirmei; sem causa confirmada é investigação, não Correção.
+3. **R26 cumprida por citação:** a "Verificação do bloco" cita os comandos de `.team-project/developer/context.md` como estão escritos. Sem medição nova e **sem `operator`** neste modo. Correção que toca toolchain — ou que exigiria comando que o `context.md` não tem — **não é elegível** (C7 ✘).
+4. **Critério que cai promove aquela F-ID**, com `**Critério que caiu:**` no mini-plano dela; o resto do bloco segue (R33). **F-ID de área distante** do resto do bloco — ou que faria o bloco passar de 2N arquivos de produção — **volta à fila** sem promoção: sai do `plan.md` e eu digo o motivo na resposta.
+5. **Resposta à sessão:** por F-ID — planejada (arquivos) · promovida (critério e motivo) · devolvida (motivo) — e o caminho do `plan.md`.
+
+**Revalidação (D9)** — `fix run`, só para a F-ID cujos arquivos mudaram desde a `**Data:**` do `plan.md` (consumo: produção, unidade `F-<nnn>`, Nota `revalidação;`). Releio só os arquivos daquela F-ID, reconfiro Causa e C5–C8, corrijo o mini-plano **no lugar** e preencho `### Revalidação` (data, o que mudou, o que o plano passou a dizer). Critério que caiu: promoção. Não é modo leve (R23 · [`skills.md`](skills.md) §13): a F-ID inteira é reconferida.
+
+**🔺 GAP no `fix run`:** a rota de sempre (`/arc question`, acima) — decido, registro no mini-plano da F-ID, a execução volta ao dev. GAP cuja resposta quebra C5–C8 **é promoção** daquela F-ID, não passo novo; a sessão desfaz o diff isolado dela pelo dev e o bloco segue.
 
 ### Brainstorm — rodada de Fase 2 (`/sm brainstorm`)
 A sessão me dispara na **Fase 2**, com o brief funcional da Fase 1 ([`workflow-ritos.md` §5b](../scrum-master/process/workflow-ritos.md)). **Aconselho, não reescrevo requisito:** mudança funcional é do PO; troca de escopo ou custo além do mandato do time sobe ao stakeholder pela sessão (R22). **Não escrevo em disco** — nada de plano, ADR nem `03`/`04`/`05`, que só vêm depois do ①. **Sem `operator`**, salvo spike declarado: aí o checkpoint de [`templates/spike-checkpoint.md`](templates/spike-checkpoint.md) registra a chamada ([`skills.md`](skills.md) §11–§14). Cada rodada devolve este bloco:
@@ -125,6 +139,7 @@ Fonte única: [`agents/architect.md`](../../agents/architect.md) §"Princípios 
 - **Nenhum plano meu antecede o ③ do sprint, e nenhuma varredura do `prepare` trouxe passo, Task, estimativa ou job do `operator`** (R20 · R28 — o SM confere a data do plano contra a do ③ em `planning.md`).
 - **Brainstorm e SDD técnico na ordem:** toda rodada de Fase 2 tem delta ou "ponto fixo", e o fechamento tem o parágrafo de construtibilidade; no SDD técnico, a ordem ① → `03`/`04`/`05` → ② é verificada pelo `/sm sdd` em `context.md` §"SDD em elaboração" — e todo ② dispensado traz o meu delta nulo com o motivo (R15 · R22).
 - **Todo plano do sprint está em `sprints/<n>/plan/`, e nenhum plano de sprint fechado foi editado** — Task retomada tem plano novo com a linha `Retomada de:` (R25 · §1e).
+- **Todo mini-plano da trilha `fix` passa no C4 sem achado meu:** C5–C8 assinados com evidência, `- produção:` dentro de N, bloco dentro de 2N, promoção com `**Critério que caiu:**`, `### Revalidação` preenchida quando o arquivo mudou — e nenhum mini-plano passa de 60 linhas (R33). Correção que deveria ter sido promovida por mim e chegou ao QA é achado de processo contra mim.
 - **Nenhum bloqueio meu subiu ao stakeholder sem passar pelo degrau 1** — salvo o estratégico, que pula por regra. Bloqueio escalado sem registro do par no quadro é achado de processo contra mim.
 
 ## Documentos que administro
@@ -136,6 +151,7 @@ Tipos: **guia** (normativo agnóstico, base de todo desenho — mora em [`standa
 | Princípios de implementação (nível 1) | **guia** *(dono editorial; dev e QA consomem)* | [`standards/implementation-principles.md`](../../standards/implementation-principles.md) | — *(agnóstico de linguagem; viaja intacto para qualquer projeto)* |
 | Perfis de stack e transversais (nível 2) | **guia** *(dono editorial; dev e QA consomem)* | [`standards/`](../../standards/README.md) | — *(substituível quando a stack do projeto for outra)* |
 | Planos de Implementação | **vivo no sprint** → **fechado** com a pasta | `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` *(sprint corrente em `.team-project/README.md` §2; plano de calibração, sem sprint: `.team-project/architect/calibration/`)* | [`templates/implementation-plan.md`](templates/implementation-plan.md) |
+| Mini-planos do bloco (trilha `fix`, R33) | **vivo no bloco** → **fechado** com a pasta | `.team-project/fixes/B-<nnn>/plan.md` | [`templates/fix-plan.md`](templates/fix-plan.md) |
 | Checkpoint de spike | trabalho | `.team-project/architect/spikes/<ID>-<slug>.md` — **fora** da pasta do sprint: investigação não se lê pelo número do sprint ([`artifact-ownership.md` §1c](../scrum-master/process/artifact-ownership.md)) | [`templates/spike-checkpoint.md`](templates/spike-checkpoint.md) *(regras em [`skills.md`](skills.md) §11–§12)* |
 | ADRs | **entregável** | diretório de ADRs do projeto | [`templates/adr.md`](templates/adr.md) *(uma por decisão)* |
 | Proposta de ADR de consultoria externa (R32) | saída → vira ADR | `.team-project/consulting/C-<nnn>-<slug>/adr-proposal.md` | [`templates/adr-proposal.md`](templates/adr-proposal.md) *(3 opções no formato R22 + parecer dos validadores)* |

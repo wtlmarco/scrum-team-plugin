@@ -1,6 +1,6 @@
 # Template — Registro de Consumo do Sprint
 
-> **Dono:** SM · Vive em `.team-project/sprints/<n>/consumption.md` **e**, para o que acontece sem sprint aberto, em `.team-project/consumption.md` (mesmo modelo — ver "Fora de sprint") · Alimentado pela **sessão que orquestra**, não pelo papel
+> **Dono:** SM · Vive em `.team-project/sprints/<n>/consumption.md`, **em** `.team-project/consumption.md` para o que acontece sem sprint aberto (mesmo modelo — ver "Fora de sprint") **e em** `.team-project/fixes/B-<nnn>/consumption.md` para o bloco da trilha `fix` (variante "bloco" — ver abaixo) · Alimentado pela **sessão que orquestra**, não pelo papel
 
 Registra o que a sessão que dispara cada subagente de papel recebe quando ele termina: tokens e duração — **e**, por retratação do papel chamador, o consumo do `operator` que ele chamou. Existe porque "quanto o time custou neste sprint" não tinha resposta sem somar na mão.
 
@@ -21,6 +21,47 @@ Registra o que a sessão que dispara cada subagente de papel recebe quando ele t
 |---|---|---|---|---|---|---|---|---|---|
 ```
 
+**Variante "bloco" — `.team-project/fixes/B-<nnn>/consumption.md` (R33).** A pasta nasce quando o `/sm fix plan` monta o bloco; dali até o `## Fechamento` do `verdict.md`, **toda** invocação do bloco grava aqui (inclusive as do `operator`, e inclusive com sprint aberto). **Retenção igual à do sprint:** fecha com a pasta, nada se move, e o acumulado da trilha é **derivado** somando `fixes/*/consumption.md`. Mesmo modelo e mesmas regras; muda o cabeçalho e os totais:
+
+```markdown
+# Consumo — Bloco B-<nnn>
+
+> **DOCUMENTO VIVO até o fechamento do bloco** · **Dono:** SM
+> Uma linha por invocação de papel do bloco (`fix plan` a partir da montagem, `fix run` até o fechamento) — mais uma por chamada ao `operator`. Task/História recebe `B-<nnn>`, ou `F-<nnn>` quando a invocação serve a uma só. A **triagem não entra** aqui (vai aos destinos de sempre, Nota `triagem;`).
+
+## Registro
+| Data | Papel | Modelo | Comando | Task/História | Categoria | Unidade | Tokens | Duração | Nota |
+|---|---|---|---|---|---|---|---|---|---|
+
+## Totais do bloco (derivado)
+| Papel | Modelo | Σ tokens | Nº de invocações | Duração total |
+|---|---|---|---|---|
+| sm · po · arc · ux · qa · dev | <modelo> | <n> | <n> | <mm:ss> |
+| operator ← <arc\|qa\|dev\|ux> | <modelo do `operator`> | <n> | <n chamadas> | <mm:ss> |
+| **Total do bloco** | — | **<n>** | **<n>** | **<mm:ss>** |
+| **Custo por Correção fechada** | — | **Σ ÷ nº de F-IDs fechadas** | — | — |
+| Custo de promoção *(à parte, nunca diluído)* | — | <Σ das linhas das F-IDs promovidas> | — | — |
+
+**Fechado em:** <aaaa-mm-dd>
+```
+
+**Categoria e Unidade das invocações da trilha `fix`** (classificação pela tabela, nunca estimativa):
+
+| Invocação | Categoria | Unidade |
+|---|---|---|
+| Arquiteto — mini-planos (`fix plan`) | `produção` | `B-<nnn>` |
+| dev (`fix run`) | `produção` | `F-<nnn>` — uma linha por F-ID quando houver número por F-ID; senão `B-<nnn>` |
+| QA (`fix run`) | `verificação` | `B-<nnn>` |
+| `operator` | `verificação` | a do chamador |
+| PO — delta do ajuste / aplicação do delta | `especificação` | `F-<nnn>` |
+| UX — texto de tela (P4) | `especificação` | `B-<nnn>` |
+| Arquiteto — revalidação (D9) | `produção`, Nota `revalidação; …` | `F-<nnn>` |
+| Retomada por GAP · nova rodada depois de ⚠️/❌ | `retrabalho` | `F-<nnn>` |
+| `/po note` · `/po bug` (triagem) | `cerimônia`, Nota `triagem;` | `F-<nnn>` ou `n/a` |
+| `/qa bug` (triagem) | `verificação`, Nota `triagem;` | `F-<nnn>` ou `n/a` |
+
+A revalidação **não** é `retrabalho` (a definição de `retrabalho` exige veredito ⚠️/❌ ou GAP anterior); fica visível pela Nota.
+
 **Fonte única.** Onde e como gravar o consumo fora de sprint (destino, Nota, linha do `operator`, piso) está **só aqui** — §Como gravar e as regras abaixo. `working-rules.md` R28, `workflow-sprint.md` e `workflow-sdd.md` apontam para cá e não o repetem.
 **Escopo — onde este registro existe, e onde não existe.** Só em projeto que **instala** o time — onde `.team-project/` existe. O **clone-fonte do plugin** (o repositório onde o `/review` roda) não tem `.team-project/` e não grava consumo: não há projeto ali, só o processo que o time segue em qualquer projeto. Comando de papel (`/sm`, `/po`, `/arc`, `/ux`, `/qa`, `/dev`) só grava quando o registro de destino existe; `/review` nunca grava.
 
@@ -36,7 +77,7 @@ Toda vez que um subagente (`/sm`, `/po`, `/arc`, `/ux`, `/qa`, `/dev`, incluindo
 ## Registro
 | Data | Papel | Modelo | Comando | Task/História | Categoria | Unidade | Tokens | Duração | Nota |
 |---|---|---|---|---|---|---|---|---|---|
-| <aaaa-mm-dd> | <sm\|po\|arc\|ux\|qa\|dev\|operator> | <opus\|sonnet\|haiku\|"não disponível — <motivo>"> | `/<comando>` | <ID ou "n/a"> | <especificação\|produção\|verificação\|retrabalho\|cerimônia> | <H-nnn\|F-nnn\|sprint-<n>> | <n> | <mm:ss> | <observação, ou "não disponível — <motivo>"> |
+| <aaaa-mm-dd> | <sm\|po\|arc\|ux\|qa\|dev\|operator> | <opus\|sonnet\|haiku\|"não disponível — <motivo>"> | `/<comando>` | <ID ou "n/a"> | <especificação\|produção\|verificação\|retrabalho\|cerimônia> | <H-nnn\|F-nnn\|B-nnn\|sprint-<n>> | <n> | <mm:ss> | <observação, ou "não disponível — <motivo>"> |
 | <aaaa-mm-dd> | operator | <o `model:` de `agents/operator.md`> | `/<comando do chamador>` | <ID do chamador> | verificação *(ou `retrabalho`, pela regra de Categoria)* | <a do chamador> | <n> | <mm:ss> | chamado por <papel>; job `.team-project/operator/<sprint>/<job>/` *(job pré-sprint: Nota inicia em `pre-sprint;` e o caminho é `operator/pre-sprint/<job>/`)* |
 | <aaaa-mm-dd> | sessão | vários | `/usage` | n/a | cerimônia *(ou a da sessão)* | sprint-<n> | <entrada · saída · cache, por modelo — do `/usage` colado> | <duração da sessão> | **linha de sessão** — custo **observado** em US$: <valor do `/usage`>; **lida à parte, não soma às linhas por invocação** (Premissa da linha de sessão, abaixo) |
 
@@ -57,7 +98,7 @@ Toda vez que um subagente (`/sm`, `/po`, `/arc`, `/ux`, `/qa`, `/dev`, incluindo
 
 **É esta seção que todo `commands/*.md` cita** ("Registro de consumo: se `.team-project/sprints/<n>/consumption.md` existir, grave conforme `templates/consumption.md` §Como gravar"). Quem grava é **a sessão que orquestrou** a invocação — nunca o papel.
 
-1. **Destino, por estado do sprint.** `<n>` é o sprint corrente (`.team-project/README.md` §2). **Sprint aberto** = `sprints/<n>/consumption.md` existe e `sprints/<n>/retrospective.md` não → grave lá. **Sem sprint aberto** (antes do sprint 1, ou `<n>` já fechado: `prepare`, `sdd`, onboarding, brainstorm, `agreement`) → grave em **`.team-project/consumption.md`**, Nota `pre-sprint;` (antes do sprint 1) ou `entre-sprints;`. Nenhum dos dois existe → **nada a fazer**. Sprint **fechado** nunca recebe linha.
+1. **Destino — três, nesta ordem de prioridade.** **(1) Bloco da trilha `fix` aberto** (planejado ou em execução: `fixes/B-<nnn>/` existe e o `verdict.md` dele não tem `## Fechamento`) → grave em **`fixes/B-<nnn>/consumption.md`**, **inclusive com sprint aberto** (R33; variante "bloco" abaixo). **A triagem não é do bloco:** as invocações dela (`/po note`, `/po bug`, `/qa bug`), mesmo rodando dentro do `fix plan`, seguem os destinos (2) e (3), com Nota iniciando em **`triagem;`**. **(2) e (3), por estado do sprint:** `<n>` é o sprint corrente (`.team-project/README.md` §2). **Sprint aberto** = `sprints/<n>/consumption.md` existe e `sprints/<n>/retrospective.md` não → grave lá. **Sem sprint aberto** (antes do sprint 1, ou `<n>` já fechado: `prepare`, `sdd`, onboarding, brainstorm, `agreement`) → grave em **`.team-project/consumption.md`**, Nota `pre-sprint;` (antes do sprint 1) ou `entre-sprints;`. Nenhum dos três existe → **nada a fazer**. Sprint ou bloco **fechado** nunca recebe linha. Linha com Task/História ou Unidade `B-<nnn>` **fora de** `fixes/` é desvio de R33 (o C4 avisa); `F-<nnn>` fora de `fixes/` só com Nota `triagem;`.
 2. **Uma linha por subagente disparado nesta invocação**, com os números que ele devolve ao terminar: data, papel, **modelo** (o `model:` de `agents/<papel>.md` do plugin instalado, ou o override passado ao disparar; sem leitura nem override, "não disponível — <motivo>", nunca deduzir), comando, Task/História (ou `n/a`), **Categoria e Unidade** (classificação pela tabela de §Regras, nunca estimativa), tokens, duração. Modos com vários papéis geram várias linhas.
 3. **Número indisponível:** "não disponível — <motivo>". Nunca estime (R7).
 4. **`operator`:** se o retorno traz a seção **"Execução delegada"**, acrescente **uma linha por chamada ao `operator`** listada ali — papel `operator`, modelo da seção (sem ele, o `model:` de `agents/operator.md`), mesmo comando e Task/História, tokens e duração da seção, Nota `chamado por <papel>; job <caminho em .team-project/operator/>`. Entram no total do sprint, expostas à parte por chamador (R28).
@@ -78,6 +119,6 @@ Detalhe e justificativa de cada regra: `## Regras`, logo abaixo.
 - **Invocações do `/sm sprint prepare` e do `/sm sdd`.** Rodam com o sprint anterior já **fechado** — seu `consumption.md` é imutável e o do sprint novo ainda não nasceu. A sessão que orquestrou grava **uma linha por subagente disparado** (data, papel, modelo, comando, História ou `n/a`, tokens, duração; indisponível = "não disponível — <motivo>", nunca estimado) **direto em `.team-project/consumption.md`**, Nota iniciando em `entre-sprints;` (ou `pre-sprint;` se ainda não há sprint 1). **Não há transcrição no passo 9 da Planning e não há subseção em `context.md`** — o `consumption.md` do sprint novo nasce vazio.
 - **Premissa (R7) — `operator`.** O número que o papel devolve à sessão **não inclui** o do `operator` aninhado; por isso as duas linhas se somam. Se uma medição mostrar o contrário (soma dupla), a regra volta ao `/review`.
 - **Premissa (R7) — linha de sessão (outra premissa, distinta da do `operator`).** A linha de sessão (Papel `sessão`, Modelo `vários`) vem do `/usage` que o stakeholder cola no fim da sessão de trabalho; a sessão grava **uma** linha: Tokens por modelo (entrada · saída · cache) e, na Nota, o **custo em US$ do `/usage`** — o único custo em US$ **observado**; custo derivado só na retrospectiva, com a fórmula e o preço ao lado, nunca no registro como se medido. **Não se sabe se o `/usage` já inclui os subagentes.** Até a verificação no projeto-piloto, a linha de sessão **não se soma** às linhas por invocação — é lida **à parte**, nunca no Total do sprint. **Verificação pendente:** um `/po status` com `/usage` antes e depois, comparado com a linha do PO; o resultado volta ao `/review`, que fixa a regra (se incluir os subagentes, as linhas por invocação viram detalhamento; se não, as duas se somam).
-- **Categoria é classificação pela tabela, nunca estimativa.** Valores: `especificação` (brainstorm, sdd, story, requirement, prototype, screen) · `produção` (arc plan, dev) · `verificação` (qa, operator) · `retrabalho` · `cerimônia` (board, close, prepare, plan, review, retro, agreement, onboarding). Quem preenche é a sessão que orquestrou. **`retrabalho`** = toda invocação de Arquiteto, dev ou QA sobre uma Task **depois do primeiro veredito ⚠️/❌** ou **depois de um 🔺 GAP** — mecânico: a sessão sabe se já houve veredito ou GAP naquela Task. **Unidade** = `H-<nnn>` · `F-<nnn>` · `sprint-<n>` (custo compartilhado; cerimônia de sprint não é de uma História — a retrospectiva a ratea em partes iguais entre as Histórias aceitas, declarando o rateio). Linha antiga sem Categoria/Unidade fica vazia — não se reconstrói o passado (sprint fechado é imutável). Sem Categoria/Unidade, "Custo × resultado" da retrospectiva diz "não disponível — <motivo>".
+- **Categoria é classificação pela tabela, nunca estimativa.** Valores: `especificação` (brainstorm, sdd, story, requirement, prototype, screen) · `produção` (arc plan, dev) · `verificação` (qa, operator) · `retrabalho` · `cerimônia` (board, close, prepare, plan, review, retro, agreement, onboarding, `po note`/`po bug`). As invocações da trilha `fix` têm tabela própria na "Variante bloco". Quem preenche é a sessão que orquestrou. **`retrabalho`** = toda invocação de Arquiteto, dev ou QA sobre uma Task **depois do primeiro veredito ⚠️/❌** ou **depois de um 🔺 GAP** — mecânico: a sessão sabe se já houve veredito ou GAP naquela Task. **Unidade** = `H-<nnn>` · `F-<nnn>` (uma Correção da trilha `fix`) · `B-<nnn>` (o bloco inteiro — custo compartilhado entre as Correções dele, não rateado: o custo por Correção fechada é Σ ÷ F-IDs fechadas) · `sprint-<n>` (custo compartilhado; cerimônia de sprint não é de uma História — a retrospectiva a ratea em partes iguais entre as Histórias aceitas, declarando o rateio). Linha antiga sem Categoria/Unidade fica vazia — não se reconstrói o passado (sprint fechado é imutável). Sem Categoria/Unidade, "Custo × resultado" da retrospectiva diz "não disponível — <motivo>".
 - **Nasce e morre no sprint.** Arquivo novo a cada `/sm sprint plan`, fechado a cada `/sm sprint close`. Nada é movido, nada é zerado: a pasta do sprint já é a unidade de retenção (§1c).
 - **O acumulado é derivado, não mantido.** "Quanto o time custou até aqui" se responde somando os `sprints/*/consumption.md`, na hora da pergunta — em vez de uma tabela viva que precisa ser conciliada a cada fechamento e que deriva em silêncio quando alguém esquece.

@@ -66,9 +66,51 @@ Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere c
 - **Nenhum arquivo de `${CLAUDE_PLUGIN_ROOT}/standards/` aparece em CRIADOS/ALTERADOS/REMOVIDOS.** O dev consome o normativo, não o edita — a caneta é do Arquiteto (R16).
 - **"Não fiz (fora do plano)"** é obrigatório: é onde o time descobre gap de escopo sem que ninguém tenha antecipado nada.
 - **"Parei no passo"** é obrigatório mesmo quando terminou tudo (`<m> de <m>` — repositório íntegro). Quando **não** terminou, esta linha é o insumo do Arquiteto para **reescrever o plano no sprint seguinte** se a Task for retomada — diga o passo **e** o estado do repositório, não só o número.
-- **Nenhum arquivo de `.team-project/sprints/<n>/` aparece em CRIADOS/ALTERADOS/REMOVIDOS.** A pasta do sprint é registro do time — `plan/` é do Arquiteto, `stories/` do PO, `evidence/` do QA, o resto do SM. Eu leio o plano; a minha entrega é código, testes e este relatório.
+- **Nenhum arquivo de `.team-project/sprints/<n>/` nem de `.team-project/fixes/` aparece em CRIADOS/ALTERADOS/REMOVIDOS.** A pasta do sprint é registro do time — `plan/` é do Arquiteto, `stories/` do PO, `evidence/` do QA, o resto do SM; a do bloco também — `plan.md` do Arquiteto, `verdict.md` do QA, o resto do SM. Eu leio o plano; a minha entrega é código, testes e este relatório.
 
 Os comandos de verificação do projeto estão em `.team-project/developer/context.md`.
+
+## Variante trilha `fix` (R33)
+
+Um relatório **por bloco**, com **uma seção por F-ID**, na ordem do `plan.md` — inclusive a que parou em 🔺 GAP ou foi promovida no meu turno. O QA copia o **Antes** daqui para o veredito da F-ID; por isso a forma é a mesma da variante fix de `verdict.md` (`**Antes:** exit <n>` / `> <comando>` / saída). Roteiro: [`../README.md`](../README.md) §"Trilha `fix`".
+
+```markdown
+## Entrega — B-<nnn> · trilha fix
+
+**Mini-planos:** `.team-project/fixes/B-<nnn>/plan.md` · **Correções entregues:** <n> de <m>
+
+### F-<nnn> · <título>
+**Estado:** entregue | parada no passo <n> (🔺 GAP) | promovida — diff desfeito (<git restore | git revert <sha> | trechos do checkpoint repostos>)
+**Commit:** <sha — `F-<nnn>: <título>`; retrabalho: um sha por linha, o mais recente primeiro> | n/a — sem git · checkpoint: `.team-project/operator/B-<nnn>/F-<nnn>/checkpoint.md`
+**ALTERADOS:** <caminho> — <o que mudou, em uma frase> · **CRIADOS:** <só o arquivo de teste, ou "nenhum">
+
+**Teste de regressão: saída antes / saída depois**
+**Antes:** exit <n≠0>
+> <comando "só este teste", como está no mini-plano>
+<nome do teste + a asserção que falhou, literal> · log: `.team-project/operator/B-<nnn>/F-<nnn>/regressao-antes.log`
+**Depois:** exit 0
+> <o mesmo comando>
+<a linha de contagem, literal> · log: `.team-project/operator/B-<nnn>/F-<nnn>/regressao-depois.log`
+
+**Build de fim de F-ID:** exit <n> · `<linha de resumo>` · log: `<caminho>`
+
+### Verificação do bloco
+*(a tabela "Verificação" do modelo acima, uma vez, com os comandos da seção de mesmo nome do `plan.md` — suíte e gate do módulo pelo `operator`, ponteiro `.team-project/operator/B-<nnn>/bloco/report-<log>.md`)*
+
+### Execução delegada
+*(como no modelo acima; coluna Task/História recebe `B-<nnn>`, ou `F-<nnn>` quando a chamada serviu a uma só)*
+
+### Gaps levantados
+### Não fiz (fora do plano)
+### Parei em
+F-<nnn>, passo <n> — estado do repositório: <compila? testes passam? diff da F-ID commitado, pendente ou desfeito?>
+```
+
+Regras da variante, além das de cima:
+
+- **"Teste de regressão: saída antes / saída depois" é obrigatório por F-ID entregue.** `Antes` com exit ≠ 0 **pela asserção que o mini-plano declarou** — falha de compilação, import ou símbolo ausente não conta — e `Depois` com exit 0, os dois com o comando colado e o trecho literal. Faltou um dos dois, a F-ID não está entregue: é 🔺 GAP, não ressalva (R7 · R33).
+- **Um diff por F-ID:** o commit dela tem **só** os arquivos de `### Arquivos` do mini-plano — o C4 compara os dois. Sem git, o checkpoint existe **antes** da primeira edição e traz os trechos originais literais.
+- **Promoção não some do relatório:** a F-ID promovida no meu turno aparece com o estado, o critério que o Arquiteto declarou e **como** o diff foi desfeito.
 
 ## Exemplo
 

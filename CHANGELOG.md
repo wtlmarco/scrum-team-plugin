@@ -13,6 +13,23 @@
 
 ---
 
+## v3.40.0 — 2026-10-03
+
+**Branch:** `feat/v3.40.0` empilhada sobre `feat/v3.39.0` · **Processo:** [`v3.40`](roles/scrum-master/process/process-changelog.md)
+Trilha **Correção** (`fix`) ao lado da trilha Sprint — proposta `fix`, terceira da rodada evaluation → guards → fix (SM + PO + Arquiteto + QA + UX). Regra nova **R33** (33 regras); emendas em R15, R20 e R25; R23 mantida.
+
+- **Novos modos `/sm fix` · `fix plan [<F-ID> …]` · `fix run`:** o stakeholder anota o sintoma em `note.md`; o `fix plan` faz a triagem (PO classifica; QA reproduz os defeitos em lista), monta o **bloco** `B-<nnn>` (até 5 Correções e 2N arquivos), leva os **ajustes** a um formulário e o Arquiteto escreve um mini-plano por Correção (C5–C8). O `fix run` corrige uma Correção por vez, com teste que **falha antes e passa depois**, e o QA dá veredito **por Correção**. Uma invocação por papel para o bloco inteiro.
+- **Elegibilidade C1–C8:** nada de requisito, tela ou contrato novos, dado sensível, mais de N=5 arquivos, dependência ou causa desconhecida. Critério que cai **promove** aquela Correção à trilha Sprint; o resto do bloco segue. O ✅ do QA encerra a Correção — sem aceite na Review; reabrir é anotar no `note.md` citando a F-ID.
+- **Consumo próprio:** o bloco tem `fixes/B-<nnn>/consumption.md` — terceiro destino do registro, com prioridade, fora do sprint e do burndown; a triagem fica nos destinos de hoje (Nota `triagem;`).
+- **C4 `scripts/checks/fix.ps1`:** `-Pre` no início do `fix run` (bloco planejado, nenhuma Task em construção, teto); no fechamento, critérios assinados, reprodução, teste antes/depois, veredito, arquivos, promoção com motivo — exit 1 impede só as Correções que falharam de fechar.
+- **Modelos novos:** `fix-run.md` e `fix-log.md` (SM), `fix-card.md` (PO), `fix-plan.md` (Arquiteto), variante trilha fix do `verdict.md` (QA); modo "texto de tela" do UX (só com citação literal). Aplicado em `commands/sm.md`, `po.md`, `qa.md`, `how-to.md` (cenário D reescrito) e `README.md`.
+
+**Como verificar:** `Select-String '^### R\d+\.' roles/scrum-master/process/working-rules.md` → 33; `run-check-tests.ps1` com os casos do C4 verdes; `scripts/checks/release.ps1` com R17 e R18 ok.
+
+**Pendente (stakeholder):** reiniciar a sessão (comandos novos); `/team update` nos projetos (rótulos N e teto no `README.md` do projeto); primeiro bloco real para calibrar N, teto e o indicador de custo por Correção.
+
+---
+
 ## v3.39.0 — 2026-10-02
 
 **Branch:** `feat/v3.39.0` empilhada sobre `feat/v3.38.0` · **Processo:** [`v3.39`](roles/scrum-master/process/process-changelog.md)
