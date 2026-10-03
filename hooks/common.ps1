@@ -1,5 +1,6 @@
 ﻿# Funcoes comuns aos despachantes de guarda (hooks/*.ps1).
-# Compativel com Windows PowerShell 5.1 e PowerShell 7. Falha aberta (D5): quem chama
+# Requisito: Windows PowerShell 5.1 (powershell.exe, o do Windows) - os hooks chamam "powershell", nao "pwsh".
+# Sem recurso exclusivo do PowerShell 7. Falha aberta (D5): quem chama
 # trata excecao com exit 1, que o harness le como erro nao bloqueante.
 
 [Console]::InputEncoding  = [System.Text.Encoding]::UTF8

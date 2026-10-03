@@ -353,8 +353,9 @@ Check 'C3 fonte coerente: exit 0' $r 0 @('\| R18 \| ok', '\| R17 \| ok', '\| ór
 Put $rp 'README.md' "# Plugin`n`n> **Versão atual: v9.0.0** · x`n"
 Put $rp 'roles/scrum-master/process/process-changelog.md' ("# Processo`n`n## v9.1 — Teste (SM) — 02/10/2026`n`n" + ('x' * 11000) + "`n`n---`n")
 Remove-Item -LiteralPath (Join-Path $rp 'roles/scrum-master/README.md')
+Put $rp 'hooks/sem-bom.ps1' "# script sem BOM`n"
 $r = Invoke-Check 'release.ps1' @('-Root', $rp)
-Check 'C3 versão divergente, bloco grande, órfão: exit 1' $r 1 @('\| R18 \| falhou.*v9\.0\.0', '\| R17 \| falhou.*barreira 10240', '\| órfãos \| aviso')
+Check 'C3 versão divergente, bloco grande, órfão, .ps1 sem BOM: exit 1' $r 1 @('\| R18 \| falhou.*v9\.0\.0', '\| R17 \| falhou.*barreira 10240', '\| ps1-5.1 \| falhou.*hooks/sem-bom.ps1', '\| órfãos \| aviso')
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output

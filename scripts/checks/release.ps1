@@ -58,6 +58,17 @@ try {
     if ([System.Text.Encoding]::UTF8.GetByteCount($pc) + $bom -ne $disk) { $r17 += "leitura UTF-8 ($([System.Text.Encoding]::UTF8.GetByteCount($pc)) B) ≠ disco ($disk B): arquivo com encoding inesperado" }
     if ($r17.Count) { Add-Result 'R17' 'falhou' ($r17 -join '; ') } else { Add-Result 'R17' 'ok' $r17ok }
 
+    # ---------- .ps1 em UTF-8 com BOM (requisito: Windows PowerShell 5.1 lê .ps1 sem BOM como ANSI) ----------
+    $ps1 = @(Get-ChildItem -LiteralPath $Root -Recurse -File -Filter '*.ps1' | Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' })
+    $noBom = @()
+    foreach ($f in $ps1) {
+        $b = New-Object byte[] 3
+        $fs = [System.IO.File]::OpenRead($f.FullName); try { $n = $fs.Read($b, 0, 3) } finally { $fs.Dispose() }
+        if (-not ($n -eq 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF)) { $noBom += ($f.FullName.Substring($Root.Length + 1) -replace '\\', '/') }
+    }
+    if ($noBom.Count) { Add-Result 'ps1-5.1' 'falhou' ("sem BOM (o Windows PowerShell 5.1 quebra acento e emoji): " + ($noBom -join ', ')) }
+    else { Add-Result 'ps1-5.1' 'ok' "$($ps1.Count) script(s) .ps1 em UTF-8 com BOM" }
+
     # ---------- Modelos órfãos (aviso) ----------
     $templates = @(Get-ChildItem -Path (Join-Path $Root 'roles') -Recurse -File -Filter '*.md' | Where-Object { $_.Directory.Name -eq 'templates' })
     $corpus = @(Get-ChildItem -LiteralPath $Root -Recurse -File -Include '*.md', '*.json' | Where-Object {
@@ -75,7 +86,7 @@ try {
     else { Add-Result 'órfãos' 'ok' "$($templates.Count) modelos, todos referenciados" }
 
     Write-Results "C3 · entrega v$v1"
-    if (@($script:Results | Where-Object { $_.Regra -in 'R17', 'R18' -and $_.Resultado -eq 'falhou' }).Count) { exit 1 }
+    if (@($script:Results | Where-Object { $_.Regra -in 'R17', 'R18', 'ps1-5.1' -and $_.Resultado -eq 'falhou' }).Count) { exit 1 }
     exit 0
 } catch {
     [Console]::Error.WriteLine("C3: erro — $($_.Exception.Message)")
