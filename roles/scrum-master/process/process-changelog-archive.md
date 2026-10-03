@@ -8,6 +8,62 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.37 — R32: consultoria externa especializada pelo `/sm consulting` — técnica e de negócio, carta sanitizada, até 3 réplicas, validação do time antes do formulário (SM + PO + Arquiteto + QA + UX) — 02/10/2026
+
+**Instrução** (stakeholder, proposta `proposta-consulting.md`, com as decisões D1–D10 já tomadas): "Decisões técnicas especializadas (banco de dados, segurança, design, arquitetura, infraestrutura) hoje saem só do conhecimento do próprio time, sem forma de buscar uma segunda opinião externa com rastreabilidade; e o ADR registra a decisão já tomada, sem apresentar ao stakeholder opções comparáveis para escolher. O mesmo vale para o lado funcional: quando o projeto entra numa área de negócio que o time não domina, o PO escreve requisitos e regras só com o que o stakeholder sabe dizer, sem apoio especializado nos processos daquela área."
+**Classificação:** regra nova (R32) · etapa de fluxo (modo `/sm consulting`) · formato de documento (6 modelos) · propriedade de artefato (`consulting/`; `business-proposal.md` do PO) · comportamento de agente (`commands/sm.md`, aplicado pelo stakeholder).
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `process/working-rules.md` · `working-rules-index.md` | R32 · resumo · verificação binária · índice | Regra nova. Consultor sempre externo (humano ou IA), do registro do projeto; o stakeholder transporta; SM abre e conduz; papéis do domínio escrevem e validam; Arquiteto (técnico) ou PO (`business`) escrevem proposta e registro final; sanitização do QA por rodada (+ PO no `business`); teto de 3 réplicas; decisão em R22; **só fora do `sprint run`** (D8). Contagem 31 → 32 |
+| `process/workflow.md` | §5 · §6 | Cerimônia "Consultoria externa"; linha de escalação "decisão especializada → `/sm consulting` (opcional, antes do stakeholder)" |
+| `process/artifact-ownership.md` | §1 (ADRs · casos · requisitos) · §1c | Linha `consulting/` com dono por arquivo; ADR via `adr-proposal`; regra funcional via `business-proposal`; caso fora da pasta do sprint, como o spike |
+| `roles/scrum-master/README.md` | novo §`/sm consulting` · documentos | Roteiro em 7 passos, tabela domínio × autores × validadores, checklist de sanitização e de consenso |
+| `roles/scrum-master/templates/` | `consulting-case` · `service-letter` · `consultant-response` · `reply` (novos) · `project-context.md` | Modelos do caso; §7a "Registro de consultores" (lista livre de áreas, D10; critério de guarda do dado) com a lista de exemplo **comentada**; `consulting/` na estrutura; modo na §8 |
+| `deliverables/team-project/README.md` | manifesto | `consulting/` não semeada, reconcilia os modelos; §7a do README como estrutura + conteúdo local |
+| `roles/architect/` | `templates/adr-proposal.md` (novo) · `adr.md` (regra "Origem") · `skills.md` §7 · `README.md` | Proposta com 3 opções R22, recomendação do time × do consultor, parecer dos validadores; ADR resultante sem citar `consulting/` |
+| `roles/product-owner/` | `templates/business-proposal.md` (novo) · `skills.md` §10 · `README.md` | Processo futuro em 3 opções, sem solução técnica (R20), destino no formato do §4 de `functional-analysis`; quando pedir, seção da carta, coassinatura, incorporação ao SDD |
+| `roles/quality-assurance/skills.md` | §14 (novo) | Conferência de sanitização por rodada, com tabela |
+| `roles/user-experience/skills.md` | §11 (novo) | Seção da carta (design; jornada atual no `business`) e validação quando a jornada muda |
+| `commands/sm.md` · `how-to.md` · `README.md` · `agents/scrum-master.md` | modo · pré-condição · cenário G · contagem | Aplicados a pedido do stakeholder (texto pronto da proposta); "31 regras" → "32" |
+
+### Por quê
+A opinião externa já acontecia por fora — colada em conversa, sem dono, sem sanitização e sem opções comparáveis. A regra a torna **dado, não decisão**: ninguém do time responde por ela sem validar, nada sensível sai sem assinatura, o ciclo tem teto e o stakeholder escolhe entre 3 opções maduras. No `business`, dá ao PO apoio especializado sem trazer solução técnica para o requisito.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| SM | Abre e conduz casos; recusa `consulting` com sprint em `run`; cobra assinaturas, checklist e teto |
+| Arquiteto | Escreve a carta técnica, valida, escreve `adr-proposal` e o ADR resultante |
+| PO | Necessidade em toda carta; no `business`, *as-is*, coassinatura, `business-proposal` e incorporação ao SDD |
+| QA | Assina a sanitização de toda rodada que sai; no `security`, escreve e valida |
+| UX | Contexto de design; jornada atual no `business`; valida quando a jornada muda |
+| Sessão que orquestra | Dispara só os papéis do domínio; formulário R22 no consenso ou no teto |
+
+### Conflitos com o processo vigente
+- **R25** (dois contatos por sprint): resolvido por **D8** — consulting só fora do `sprint run`; caso aberto fica suspenso até o `close`; decisão estratégica em voo segue R25(c).
+- **R21 / SM não escreve ADR:** o SM só conduz; consenso é dos validadores; proposta e registro, do dono do destino.
+- **R31:** ADR e SDD resultantes não citam `consulting/` — regra nos dois modelos de proposta e em `adr.md`.
+
+### Como saberemos que funcionou
+Nos 3 primeiros casos: consenso em ≤ 3 réplicas em todos · zero proposta sem parecer dos validadores · zero rodada sem assinatura de sanitização (e sem a do PO, no `business`) · decisão em formulário em 100%. No primeiro caso `business`: zero solução técnica no texto incorporado ao SDD. A Retrospective registra qual consultor rendeu mais por domínio (e por área). Carga fixa medida no `/review metrics` seguinte.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Contagem | `Select-String '^### R\d+\.'` em `working-rules.md` · `'^\| R\d+ '` em `working-rules-index.md` · `'^\| R\d+ \|'` no resumo | 32 · 32 · 32 | ✅ |
+| Substituição de padrão | `Grep '31 regras\|R1.R31\|R30-R31'` fora dos changelogs | 0; as 4 ocorrências novas (`README.md:186`, `roles/scrum-master/README.md:154`, `working-rules-index.md:1`, `agents/scrum-master.md:34`) lidas no contexto — a lista de blocos do `README.md` passou a "método R13-R27 e R30-R32" | ✅ |
+| Referência | `Select-String 'consulting'` nos 4 normativos, no manifesto e em `commands/sm.md` | `working-rules` 2 · índice 1 · `workflow` 2 · `artifact-ownership` 3 · manifesto 1 · `sm.md` 3 | ✅ |
+| Órfão | arquivos `.md` que citam cada modelo novo (fora de propostas e changelogs) | `service-letter` 6 · `consultant-response` 5 · `reply` 6 · `consulting-case` 3 · `adr-proposal` 8 · `business-proposal` 7 — nenhum órfão | ✅ |
+| Arquivamento | entrada v3.34 (parte 3) movida para o arquivo; `Contains` do texto de `HEAD` no arquivo | True (13.616 caracteres) | ✅ |
+| Carga fixa | bytes (LF) de `commands/sm.md` · `agents/scrum-master.md`, `HEAD` → agora | 6.843 → 7.472 (+629) · 6.656 → 6.656 | ✅ |
+
+### Pendente do stakeholder
+Nada a aplicar — `commands/sm.md`, `how-to.md`, `README.md` e versão aplicados nesta entrega. Mudança de comando só vale **após reiniciar a sessão**. Primeiro uso real: preencher o §7a do `.team-project/README.md` (o `/team update` traz a estrutura).
+
+---
+
 ## v3.36 — R27 confere a energia e retoma o mesmo agente; Task pesada em segundo plano; ocorrência de plugin só se registra no `run` e se pergunta na Review; `replicate-in-new-project.md` fundido no `how-to.md` (SM) — 01/10/2026
 
 **Instrução** (stakeholder, `/review note`, sete itens de `note.md`, resolvidos em formulário R22). Itens literais: (1) "quando uma invocação voltar 'interrompida' sem ação do stakeholder, a orquestração deve conferir os eventos de energia na janela da falha e classificar como falha de ambiente com causa"; (2) "Retomada, não reinício: abri um agente novo na retentativa. O correto era retomar o mesmo por SendMessage"; (3) "o sprint run deve disparar Arquiteto e QA com run_in_background: true quando a Task for pesada"; (4) "o sprint run pode avisar o stakeholder uma vez para impedir a suspensão do PC"; (5) "na retrospective levar falhas na execução do plugin ou um uso abusivo de tokens … abrir uma vez no sprint run o formulario … investigar e gerar relatorio e correcao ao fabricante do plugin … ou ignorar e seguir"; (6) "Os arquivos review-contract, team-init, team-update, team-version precisam ficar na raiz?"; (7) "o arquivo replicate-in-new-project ainda precisa existir se temos o how-to?".

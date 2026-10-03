@@ -1,6 +1,6 @@
 ---
 description: Aciona o Scrum Master — processo, organização e eficiência. Gere os rituais (onboarding, brainstorm, sdd, e o sprint: prepare, plan, run, review, close), o Sprint Backlog, a capacidade e os riscos; facilita acordo entre papéis; fecha Task. Prazo, prioridade, status e impacto são do PO.
-argument-hint: "[onboarding | brainstorm <ideia> | sdd [<tema>] | sprint prepare | sprint plan | sprint run [<T-ID>] | sprint review | sprint close | board | agreement <questão> | consulting <domínio> <tema> | close <T-ID>]"
+argument-hint: "[onboarding | brainstorm <ideia> | sdd [<tema>] | sprint prepare | sprint plan | sprint run [<T-ID>] | sprint review | sprint close | fix | fix plan [<F-ID> …] | fix run | board | agreement <questão> | consulting <domínio> <tema> | close <T-ID>]"
 ---
 
 Aciona o **Scrum Master** do time. Pedido do stakeholder: **$ARGUMENTS**
@@ -21,12 +21,15 @@ O Agent `scrum-master` **não dispara outros agentes** (não tem a ferramenta `A
 | `sprint run [<T-ID>]` | **sessão** | Arquiteto → dev → QA, em série; SM só em `board` e `close` | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/sprint-run.md` |
 | `sprint review` *(alias `review`)* | **sessão** | PO (demonstra e escreve o dossiê `Aceite — H-<nnn>` antes da pergunta); QA (evidência) | `workflow-sprint.md` §5e "Sprint Review" · `templates/sprint-review.md` |
 | `sprint close` | só SM | — | `workflow-sprint.md` §5e "Sprint Retrospective" · `templates/retrospective.md`, `plugin-report.md` |
+| `fix` | só leitura | nenhum agente: lê `.team-project/fixes.md` e mostra a fila triada e o bloco aberto | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/fix-run.md` · R33 |
+| `fix plan [<F-ID> …]` | **sessão** | triagem do `note.md` (PO → QA com `/qa bug` em lista) se há fila → monta o bloco `B-<nnn>` → **formulário** dos ajustes → Arquiteto (mini-planos, C5–C8) | `fix-run.md` §Triagem · §Plan · R33 |
+| `fix run` | **sessão** | `fix.ps1 -Pre` (C4) → [Arquiteto, revalidação] → dev → QA → [PO aplica o delta] → [UX, texto citado] → `fix.ps1` (C4) → estados finais; uma invocação por papel; **sem** `board`/`close`; consumo em `fixes/B-<nnn>/` | `fix-run.md` §Run · §Fechamento · R33 |
 | `board` | só SM | — | `workflow-sprint.md` §5f · `templates/sprint-backlog.md` |
 | `close <T-ID>` | só SM | — | começa por `${CLAUDE_PLUGIN_ROOT}/scripts/checks/close.ps1 -Task <T-ID>` (C1; exit 1 = não fecha) · `working-rules-index.md` (linhas **[close]**) · `templates/status-entry.md` |
 
 Arquivos `workflow-*.md` em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/`; `templates/` em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/`. **Leia só o arquivo e a seção do modo**: os roteiros não estão aqui de propósito (carga fixa).
 
-**Pré-condições, conferidas antes de disparar qualquer papel:** `sdd`, `prepare` e `plan` exigem **onboarding concluído** (R14); `sdd` exige **brief do brainstorm fechado ou `/po analyze` com decisão**; `prepare` exige Histórias **de SDD aprovado (① e ②)** e o sprint anterior com Review e retrospectiva registradas; `plan` exige candidatas com DoR-a gravadas por `prepare` (senão devolva ao `prepare`); `run` exige o **pacote de abertura aprovado** no Sprint Backlog e, com `<T-ID>`, a Task no quadro (`sprint-run.md`); `consulting` exige **nenhum sprint em `run`** — pacote de abertura aprovado e sprint ainda não fechado: pare e reporte (R32 · R25); `business` exige a área declarada (`business:<área>`) e uma linha dela no registro de consultores. Falhou: **pare e reporte**.
+**Pré-condições, conferidas antes de disparar qualquer papel:** `sdd`, `prepare` e `plan` exigem **onboarding concluído** (R14); `sdd` exige **brief do brainstorm fechado ou `/po analyze` com decisão**; `prepare` exige Histórias **de SDD aprovado (① e ②)** e o sprint anterior com Review e retrospectiva registradas; `plan` exige candidatas com DoR-a gravadas por `prepare` (senão devolva ao `prepare`); `run` exige o **pacote de abertura aprovado** no Sprint Backlog e, com `<T-ID>`, a Task no quadro (`sprint-run.md`); `consulting` exige **nenhum sprint em `run`** — pacote de abertura aprovado e sprint ainda não fechado: pare e reporte (R32 · R25); `business` exige a área declarada (`business:<área>`) e uma linha dela no registro de consultores; `fix plan` exige onboarding concluído e **nenhum bloco aberto**; `fix run` exige um bloco planejado e passa pelo `fix.ps1 -Pre` (C4: **nenhuma Task em 🟨** — R33 · R1). Falhou: **pare e reporte**.
 
 ## Como disparar
 

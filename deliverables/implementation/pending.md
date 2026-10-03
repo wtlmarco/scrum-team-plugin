@@ -80,6 +80,7 @@ O formato de uma entrada individual é o do modelo `gap-record.md` do QA (campos
 - **Task resolvido sai daqui** e é registrado em `02-status.md`. Nunca os dois no mesmo lugar (R12).
 - **IDs no padrão `MÓDULO-NN`**, nunca reaproveitados.
 - **Toda entrada declara `Origem` e `Aguarda decisão do stakeholder`.** `Origem: stakeholder` é o "bug" — chega sempre pelo PO, nunca direto ao QA, e só entra confirmado com `arquivo:linha` (sem reprodução, fica suspeita no veredito). `Aguarda decisão do stakeholder: sim` só é válido com a pergunta ou o ponteiro para onde ela foi feita (R9, R22). Em `Origem: stakeholder`, também `História do aceite`, transcrita do que o PO passou ao acionar `/qa bug` (sem reinterpretar) — fonte do indicador "defeito que escapou". Verificação: cada bloco `### <ID>` tem as duas linhas preenchidas, e o `Origem: stakeholder` tem também a terceira — ausência é formato incompleto, não conta no resumo executivo (§2) nem em §2.1.
+- **Entrada de defeito corrigido pela trilha `fix` (R33) fecha com ponteiro para a F-ID** (`F-<nnn>`, `B-<nnn>`) ao ✅ do QA, e sai daqui como qualquer GAP resolvido. A ficha `F-<nnn>` só aponta para esta entrada; **reabertura de F-ID não gera nova entrada nem conta de novo** como defeito que escapou.
 - **§2.1 é leitura, não escrita separada.** O stakeholder lê só as entradas com `Origem: stakeholder` sem precisar atravessar a lista técnica — mas continua no mesmo arquivo, mantido só pelo QA.
 
 ## Falhas comuns

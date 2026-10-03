@@ -1,10 +1,10 @@
-# Índice das regras de trabalho — o que conferir (R1–R32)
+# Índice das regras de trabalho — o que conferir (R1–R33)
 
 > **Dono:** SM · **Derivado de [`working-rules.md`](working-rules.md)** — que continua sendo o normativo. Este índice existe para o **`/sm close`** e para a conferência a cada Task: uma linha por regra, com **o que conferir** e o **instrumento** que já confere parte dela, sem o texto da regra nem o "Evita". **Divergência entre este índice e a linha "SM verifica" da regra: vale a regra**, e o índice é corrigido no mesmo ciclo (R12). Abra `working-rules.md` na regra só quando a linha apontar violação ou dúvida.
 
 ## Instrumento — o que o script já conferiu o SM não relê
 
-> Coluna **Instrumento**: `C1` = `scripts/checks/close.ps1` (a cada `/sm close`; a saída é a evidência da conferência) · `C2` = `project.ps1` (retrospectiva e onboarding) · `C3` = `release.ps1` (repositório-fonte) · `G1`/`G3`/`G4` = guardas de `hooks/` (negam ou avisam no ato). **Parcial** = o script confere o que é mecânico; o resto segue julgamento. `—` = só julgamento do SM. O SM abre o arquivo da regra **só quando o script falhar** nela.
+> Coluna **Instrumento**: `C1` = `scripts/checks/close.ps1` (a cada `/sm close`; a saída é a evidência da conferência) · `C2` = `project.ps1` (retrospectiva e onboarding) · `C3` = `release.ps1` (repositório-fonte) · `C4` = `fix.ps1` (trilha `fix`: `-Pre` no início do `fix run`, completo antes de gravar o estado final do bloco) · `G1`/`G3`/`G4` = guardas de `hooks/` (negam ou avisam no ato). **Parcial** = o script confere o que é mecânico; o resto segue julgamento. `—` = só julgamento do SM. O SM abre o arquivo da regra **só quando o script falhar** nela.
 
 ## Quando percorrer
 
@@ -57,3 +57,4 @@
 | R30 · cenários mapeados **[close]** | Task com cenários novos + regressivos aplicáveis (ou "nenhum aplicável", com motivo) antes da construção; veredito traz o resultado de cada um; GAP que bloqueia História em voo vira Task no sprint; GAP não-bloqueante tem par no Product Backlog (escrito pelo PO) | C1 |
 | R31 · git só com o produto | `git ls-files .team-project` vazio e `.gitignore` com `.team-project/`; `docs/` (e os modelos que o geram) sem caminho `.team-project/` | G1 · C2 |
 | R32 · consulting externo | `case.md` com domínio (e área no `business`), consultor do registro, rodadas numeradas e sanitização do QA em toda rodada que saiu (+ PO no `business`); nenhuma proposta sem checklist de consenso dos validadores; > 3 réplicas só com decisão do stakeholder registrada; decisão em `AskUserQuestion`; ADR / trecho do SDD sem `.team-project`; nenhuma rodada entre o pacote aprovado e o `sprint close`. **[close]** só se o caso estiver ligado a uma Task | — (julgamento) |
+| R33 · trilha fix | por F-ID: C1–C8 assinados; defeito reproduzido pelo QA (`arquivo:linha` no `pending.md`); teste `Antes: exit ≠ 0` / `Depois: exit 0`; veredito ✅ na linha dela; arquivos e `Fora do plano` dentro de N; Documentos vivos (R12) atualizados; promoção com o critério que caiu. Bloco: ≤ 5 Correções e 2N arquivos; consumo em `fixes/B-<nnn>/` (linha `B-`/`F-` fora dele só com Nota `triagem;`); nenhum `fix run` com Task em 🟨; revalidação quando o arquivo mudou. Exit 1 do C4 = só aquelas F-IDs não fecham. **Julgamento:** veracidade das assinaturas; promoção que faltou; taxas da retrospectiva. Não é **[close]** (não há `/sm close` de Correção) | C4 (parcial) |

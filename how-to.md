@@ -11,6 +11,13 @@ O time trabalha numa cadência fixa, toda conduzida pelo `/sm`:
    (ideia)        ① ②        (sem te acionar)         ③                (sem te acionar)        ④
 ```
 
+**Correção pequena não espera sprint.** Defeito e ajuste pequeno sobre o que já existe têm uma trilha própria, mais barata, no mesmo molde (cenário D):
+
+```
+/sm fix plan ─► /sm fix run
+ (triagem, ajustes)   (sem te acionar)
+```
+
 - **Você decide em quatro momentos — os portões ① ② ③ ④ —, sempre por formulário:** aprovar · aprovar com ajuste · reprovar · pedir mais contexto (no ④: aceita · aceita com ressalva · rejeitada · pedir mais contexto).
 - **Fora dos portões, o time não te chama**, salvo bloqueio que PO e Arquiteto não fecharam entre si, ou decisão estratégica (stack, provedor, custo, risco aceito).
 - **A qualquer momento:** `/po status` diz onde o time está e quando entrega. O PO é o **seu canal** — demanda, prioridade, prazo e status passam por ele.
@@ -30,7 +37,9 @@ O time trabalha numa cadência fixa, toda conduzida pelo `/sm`:
 | Ver o quadro do sprint | `/sm board` |
 | Saber o custo de uma mudança antes de pedir | `/po impact <mudança>` |
 | Saber se o time compensa (custo × qualidade) | `/usage` no fim de cada sessão, colado ao time · retrospectiva "Custo × resultado" · experimento em `rituals/benchmark.md` → cenário H |
-| Relatar um problema | anote em `.team-project/note.md` e rode `/po note`, ou `/po bug <relato>` → cenário D |
+| Relatar e corrigir problemas | anote em `.team-project/note.md` → `/sm fix plan` → `/sm fix run` → cenário D |
+| Só relatar, sem corrigir agora | anote em `.team-project/note.md` e rode `/po note`, ou `/po bug <relato>` → cenário D |
+| Ver a fila de correções | `/sm fix` |
 | Tirar uma dúvida técnica | `/arc question <dúvida>` |
 | Resolver uma questão que envolve vários papéis | `/sm agreement <questão>` |
 | Ouvir um consultor externo antes de decidir (técnico ou de negócio) | `/sm consulting <domínio> <tema>` — **fora do `sprint run`** → cenário G |
@@ -93,18 +102,37 @@ Se a mudança mexe em algo já planejado ou em construção, rode antes **`/po i
 
 ### D · Corrigir um problema
 
-**Você relata** — de dois jeitos:
-- **Em lote (recomendado):** anote cada problema em `.team-project/note.md`, seção **Abertas**, um por linha, como **sintoma** ("depois de salvar duas vezes seguidas em X, a tela trava" — não "corrigir o timeout de X"). Quando quiser, `/po note`.
-- **Avulso:** `/po bug <relato>`.
+**Você relata** anotando cada problema em `.team-project/note.md`, seção **Abertas**, um por linha, como **sintoma** ("depois de salvar duas vezes seguidas em X, a tela trava" — não "corrigir o timeout de X"). Depois, dois comandos:
 
-O PO classifica cada item — **defeito** · **mudança de escopo disfarçada** · **dúvida de uso** —, aciona o QA no que é defeito, responde a você item a item e decide a forma de atendimento:
+```
+/sm fix plan        o time faz a triagem da fila e planeja o bloco de correções
+                      PO classifica cada item · QA reproduz os defeitos
+                      ajuste pequeno → você confirma em formulário (uma pergunta por ajuste)
+                      Arquiteto planeja cada correção e confere se ela cabe na trilha
+                      você recebe: o que virou correção, o que foi para outro caminho, o bloco planejado
+/sm fix run         o time corrige e valida o bloco — sem te acionar
+                      uma correção por vez, cada uma com teste que falha antes e passa depois
+                      você recebe o resultado por correção
+```
 
-| Situação | Caminho |
+O que o PO classifica em cada item:
+
+| O item é… | Vai para |
 |---|---|
-| Cabe na folga do sprint corrente, não bloqueia História em voo, e o projeto já tem 3 sprints de histórico | **correção pontual:** `/sm board` registra a entrada fora da Planning (e o que saiu para caber) → `/sm sprint run <T-ID>` |
-| Excede a folga, toca várias áreas, ou o projeto tem menos de 3 sprints | vai ao Product Backlog e entra num sprint: `/sm sprint prepare` → `plan` → … |
+| **Defeito** — o sistema não faz o que a documentação já diz — e é pequeno | **Correção** (`F-<nnn>`), depois que o QA o reproduz |
+| **Ajuste pequeno** — muda no máximo uma regra que já existe, sem tela nova | **Correção**, depois da sua confirmação no formulário |
+| Defeito ou ajuste que **não cabe** (tela nova, regra nova, API, banco, segurança, dado sensível, mais de 5 arquivos) | Product Backlog → sprint: `/sm sprint prepare` → `plan` → … (ou correção pontual no sprint, se couber na folga) |
+| **Mudança de escopo disfarçada** | Product Backlog — se quiser saber o custo, `/po impact` |
+| **Dúvida de uso** | o PO responde |
+| Defeito que o QA **não reproduziu** | volta a você como suspeita, pedindo mais detalhe |
 
-Item tratado **sai da fila** e passa a viver só no destino (registro do QA, Product Backlog ou a resposta dada).
+Item tratado **sai do `note.md`** e passa a viver no destino.
+
+- **Uma correção que deixa de caber no meio do caminho é promovida**: sai do bloco com o motivo, vai ao Product Backlog, e o resto do bloco segue. Isso é a trilha funcionando, não falha.
+- **O bloco tem limite** (5 correções). O que sobrar fica na fila para o próximo `/sm fix plan`; `/sm fix` mostra a fila.
+- **Com sprint aberto:** o `fix plan` roda a qualquer hora; o `fix run` espera a Task em construção terminar, e nenhuma Task começa enquanto ele roda. O custo das correções fica na pasta do bloco, fora do sprint.
+- **Correção fechada pelo QA está encerrada** — não passa pela Sprint Review. Se o problema voltar, anote no `note.md` citando a correção (`F-<nnn>`): ela é reaberta no próximo `/sm fix plan`.
+- **Só relatar, sem corrigir agora:** `/po note` (a fila) ou `/po bug <relato>` (um item). A triagem é a mesma; as correções ficam na fila até o próximo `/sm fix plan`.
 
 **O time também acha defeito sozinho** — QA numa validação, dev implementando, Arquiteto revisando. Isso vai direto ao registro do QA, sem passar por você. Se bloqueia uma História do sprint, vira Task no próprio sprint; se não, o PO o leva ao Product Backlog.
 
@@ -125,6 +153,7 @@ Item tratado **sai da fila** e passa a viver só no destino (registro do QA, Pro
 ### F · O trabalho parou no meio
 
 - **O `run` foi interrompido** (sessão fechada, erro de ambiente): rode `/sm sprint run` de novo. Ele retoma cada Task de onde parou, sem replanejar o que já tem plano.
+- **O `fix run` foi interrompido:** rode `/sm fix run` de novo. Ele retoma da correção em que parou; as já fechadas não são refeitas.
 - **O `sdd` parou num portão:** rode `/sm sdd` de novo; ele retoma na primeira etapa não concluída.
 - **Não sabe em que ponto está:** `/po status` (visão de entrega) ou `/sm board` (quadro do sprint).
 
@@ -198,12 +227,12 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 
 | Comando | Modos | Papel |
 |---|---|---|
-| `/sm` | `onboarding` · `brainstorm <ideia>` · `sdd [<tema>]` · `sprint prepare` · `sprint plan` · `sprint run [<T-ID>]` · `sprint review` *(alias: `review`)* · `sprint close` · `board` · `agreement <questão>` · `consulting <domínio> <tema>` · `close <T-ID>` | Scrum Master — cadência, rituais, quadro, capacidade, riscos |
+| `/sm` | `onboarding` · `brainstorm <ideia>` · `sdd [<tema>]` · `sprint prepare` · `sprint plan` · `sprint run [<T-ID>]` · `sprint review` *(alias: `review`)* · `sprint close` · `fix` · `fix plan [<F-ID> …]` · `fix run` · `board` · `agreement <questão>` · `consulting <domínio> <tema>` · `close <T-ID>` | Scrum Master — cadência, rituais, quadro, capacidade, riscos |
 | `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` · `bug <relato>` · `note` | Product Owner — **o seu canal**: status, prazo, requisitos, Histórias, backlog, aceite, defeitos que você relata |
 | `/arc` | `plan <ID>` · `adr <tema>` · `question <dúvida>` | Arquiteto — desenho, SDD técnico, Plano de Implementação, ADR, standards |
 | `/ux` | `prototype` · `prototype sprint <n>` · `prototype screen <tela>` · `journey <fluxo>` · `screen <nome>` · `review-ui <tela>` | UX — protótipos, jornadas, telas, usabilidade, acessibilidade |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` | Desenvolvedor — executa o plano, não improvisa |
-| `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` · `bug <descrição>` *(acionado pelo PO)* · `scenarios create` · `scenarios run <SC-nnn\|grupo\|all>` | QA — o veredito de qualidade que responde a você |
+| `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` · `bug <descrição\|lista>` *(acionado pelo PO ou pelo `fix plan`)* · `scenarios create` · `scenarios run <SC-nnn\|grupo\|all>` | QA — o veredito de qualidade que responde a você |
 | `/team` | `init` · `update` · `version` | Instala, atualiza e informa a versão — não dispara agente |
 | `/review` | `<instrução>` · `note` · `metrics` · `audit` · `history` | Evolução do processo do time — **só no repositório-fonte do plugin** |
 
@@ -244,6 +273,9 @@ Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — a nã
 ├── consulting/            casos de consultoria externa (/sm consulting) — nasce só quando você pede um
 ├── benchmark/             o experimento "o time compensa?" (rituals/benchmark.md) — nasce só quando você o abre
 ├── guards.json            liga e desliga as guardas deste projeto ("disabled") · guards.log: o que elas barraram
+├── fixes.md               a fila e o histórico das correções (/sm fix) — nasce na primeira correção
+├── fixes/                 uma ficha por correção (F-<nnn>.md) e uma pasta por bloco:
+│   └── B-<nnn>/           plan.md · consumption.md (o custo do bloco, fora do sprint) · verdict.md
 │
 ├── sprints/               O REGISTRO DE EXECUÇÃO, um subdiretório por sprint
 │   └── 1/ 2/ 3/ …
@@ -268,7 +300,7 @@ Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — a nã
 
 - **Por que o registro é por sprint, e não por papel.** Um sprint produz artefatos de quatro donos. Em `sprints/3/` está tudo: o que foi planejado, o que você aprovou, como foi construído, com que evidência, o que você aceitou e o que o time decidiu corrigir. O dono continua declarado por subpasta.
 - **Sprint fechado não se edita.** Depois da retrospectiva, a pasta vira registro histórico; o `/team update` nunca reconcilia estrutura nova dentro dela.
-- **Fica fora da pasta do sprint** o que soma ou evolui através dos sprints: Product Backlog e Histórias vivas, SDD, ADRs, registro de GAPs, mapa de código, baseline, protótipo funcional do ① e casos de consultoria externa.
+- **Fica fora da pasta do sprint** o que soma ou evolui através dos sprints: Product Backlog e Histórias vivas, SDD, ADRs, registro de GAPs, mapa de código, baseline, protótipo funcional do ①, casos de consultoria externa e as correções da trilha `fix`, com o consumo de cada bloco.
 - **Onde está o quadro de hoje:** `.team-project/README.md` §2 declara o sprint corrente.
 
 ## Instalar e manter atualizado
