@@ -13,6 +13,23 @@
 
 ---
 
+## v3.38.0 — 2026-10-02
+
+**Branch:** `feat/v3.38.0` a partir de `develop` · **Processo:** [`v3.38`](roles/scrum-master/process/process-changelog.md)
+Medir custo **e** resultado do time, e comparar com o Claude sem o plugin — proposta `evaluation`, primeira da rodada evaluation → guards → fix (SM + PO + QA). Sem regra nova; carga fixa só nas linhas de `commands/po.md` e `qa.md`.
+
+- **Registro de consumo com Categoria e Unidade:** cada invocação é classificada em `especificação · produção · verificação · retrabalho · cerimônia` (retrabalho = depois do primeiro ⚠️/❌ ou de 🔺 GAP) e ligada a uma unidade (`H-nnn`, `F-nnn`, `sprint-<n>`). **Linha de sessão** a partir do `/usage` colado pelo stakeholder — o único custo em US$ observado —, lida **à parte** até a verificação no projeto-piloto.
+- **Retrospectiva com "Custo × resultado":** tokens e US$ por História aceita, % por Categoria, aprovação na 1ª passada do QA, GAPs por Task, defeitos que escaparam (janela de 2 sprints) e toques no stakeholder.
+- **Defeito que escapou:** `/po bug` e `/po note` registram a **História do aceite** (`H-nnn + sprint do aceite` · `H-nnn · fora da janela` · `não identificada` · `não aplicável`); o QA a grava em `pending.md` sem reinterpretar.
+- **Experimento A/B/C (`rituals/benchmark.md`, sob demanda):** plugin × Claude direto com a especificação × Claude direto só com o pedido (+ B′ com guarda-corpos, quando `guards` existir), avaliação cega, regra de decisão **datada antes da 1ª execução** — padrão 50% · 3× · 25%, mínimo de 3 defeitos de diferença, faixa "inconclusivo → ampliar a amostra". Modelo `benchmark.md` (SM); pasta `.team-project/benchmark/`, não semeada.
+- **Aplicado em `commands/po.md`, `commands/qa.md`, `how-to.md` (cenário H), `README.md` (estrutura, banner).**
+
+**Como verificar:** `Select-String 'Categoria \| Unidade' roles/scrum-master/templates/consumption.md` → 2 linhas (variante fora de sprint e modelo do sprint); `grep "História do aceite"` em `roles/` e `deliverables/` com os mesmos quatro valores; `rituals/benchmark.md` apontado por `how-to.md`, `README.md`, `artifact-ownership.md`, `deliverables/team-project/README.md` e `templates/benchmark.md`.
+
+**Pendente (stakeholder):** reiniciar a sessão (comandos `po` e `qa` mudaram); `/team update` nos projetos — o passo 8 mostra as colunas novas do `consumption.md` e pede aprovação (sprint fechado não muda); verificar no projeto-piloto se o `/usage` inclui os subagentes (um `/po status` com `/usage` antes e depois) e levar o resultado ao `/review`.
+
+---
+
 ## v3.37.0 — 2026-10-02
 
 **Branch:** `feat/v3.37.0` a partir de `develop` · **Processo:** [`v3.37`](roles/scrum-master/process/process-changelog.md)

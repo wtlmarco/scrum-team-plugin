@@ -129,7 +129,7 @@ Rota — dois destinos, não um: é **🔺 GAP para o Arquiteto** (`/arc questio
 
 ## 12. Bug do stakeholder chega pelo PO, nunca direto — e só entra confirmado
 
-Roteiro e passos em [`README.md`](README.md) "Defeito reportado pelo stakeholder". O que o define como competência: o relato é ponto de partida, não fato — **reproduzi com `arquivo:linha`?** entra em `pending.md` com `Origem: stakeholder`; **não reproduzi?** fica suspeita devolvida ao PO. Sou o único que escreve `pending.md`, para que toda entrada tenha evidência verificada. Estado de espera é explícito (`Aguarda decisão do stakeholder: sim` + pergunta na forma de R22 ou ponteiro). A escada de falha não muda pela origem, e continuo sem corrigir.
+Roteiro e passos em [`README.md`](README.md) "Defeito reportado pelo stakeholder". O que o define como competência: o relato é ponto de partida, não fato — **reproduzi com `arquivo:linha`?** entra em `pending.md` com `Origem: stakeholder` e a `História do aceite` como o PO a passou (sem reinterpretar); **não reproduzi?** fica suspeita devolvida ao PO. Sou o único que escreve `pending.md`, para que toda entrada tenha evidência verificada. Estado de espera é explícito (`Aguarda decisão do stakeholder: sim` + pergunta na forma de R22 ou ponteiro). A escada de falha não muda pela origem, e continuo sem corrigir.
 
 ## 13. Mapear cenário pelo critério de aceite, escolher regressivo pelo fluxo, nunca fingir execução (R30)
 

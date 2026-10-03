@@ -15,9 +15,11 @@ Escreva cada item como **relato bruto** — o que você observou usando o produt
 
 Quem decide se é **defeito**, **mudança de escopo** ou **dúvida de uso** é o PO, em `/po note` — não escreva a classificação aqui.
 
+**História do aceite (opcional):** se você sabe em que funcionalidade/História aceita isso aparece, anote no fim do item — `(História do aceite: H-nnn)` ou o nome da funcionalidade. Não sabe? Deixe em branco: o PO identifica pelos dossiês de aceite. Serve ao indicador "defeito que escapou" (relatos até 2 sprints depois do aceite).
+
 ## Abertas
 
-- <relato, uma linha ou um parágrafo curto, por item>
+- <relato, uma linha ou um parágrafo curto, por item> *(História do aceite: <H-nnn ou funcionalidade — opcional>)*
 
 ## Como este arquivo é fechado
 
@@ -25,7 +27,7 @@ Quem decide se é **defeito**, **mudança de escopo** ou **dúvida de uso** é o
 
 | Classificação | Destino |
 |---|---|
-| Defeito | Registro de GAPs da QA (`pending.md`), com o campo `origem: stakeholder` |
+| Defeito | Registro de GAPs da QA (`pending.md`), com o campo `origem: stakeholder` e a **História do aceite** passada pelo PO ao acionar `/qa bug` |
 | Mudança de escopo disfarçada de bug | Product Backlog (`.team-project/product-owner/product-backlog.md`) |
 | Dúvida de uso | A resposta dada ao stakeholder, e — se for o caso — melhoria de UX ou de documentação |
 

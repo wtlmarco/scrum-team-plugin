@@ -87,6 +87,8 @@ Quando não dá para decidir sem abrir o código, acionar a QA para **investigar
 
 **A fronteira:** você não abre o código, não confirma o defeito com evidência e não escreve no registro da QA — isso é dela. Você classifica, aciona e acompanha o efeito no **plano de entrega**: defeito confirmado em `pending.md` ganha linha no Product Backlog citando o ID, pelo mesmo caminho de qualquer GAP não-bloqueante (R30 — [`README.md`](README.md)), e concorre com o resto do backlog como qualquer coisa; só desloca o sprint corrente na exceção que `workflow-sprint.md` §5e já prevê (GAP que bloqueia História já no sprint, com "o que saiu para caber" registrado) — nunca porque "é bug" (R4).
 
+**História do aceite:** quando o defeito é de funcionalidade de História já aceita, registre qual (`H-nnn`) e o sprint do aceite, lendo dos dossiês — é o que alimenta o indicador "defeito que escapou" (janela de 2 sprints). Valores, idênticos aos da QA: `H-nnn + sprint do aceite` · `H-nnn · fora da janela` (o ID fica; não conta como escapou) · `não identificada` · `não aplicável`. Um campo; não é investigação.
+
 Modos que aplicam esta skill: `/po bug <relato>` (um relato avulso) e `/po note` (a fila inteira de `.team-project/note.md`) — [`README.md`](README.md).
 
 ## 9. Escrever a História como fatia de valor demonstrável

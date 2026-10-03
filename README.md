@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.37.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.38.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -14,7 +14,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 .team-project/     contexto   → um por projeto, LOCAL — fora do git do projeto (R31)
 ```
 
-**Começando:** [`how-to.md`](how-to.md) — o que você quer fazer → qual comando, os cenários de uso (projeto novo · retomada · evolução · correção · pedido no meio do sprint · trabalho interrompido · consultoria externa), os quatro portões, instalar e atualizar. Para levar o time a um projeto: `claude plugin marketplace add` + `claude plugin install`, e depois **`/team init`**.
+**Começando:** [`how-to.md`](how-to.md) — o que você quer fazer → qual comando, os cenários de uso (projeto novo · retomada · evolução · correção · pedido no meio do sprint · trabalho interrompido · consultoria externa · avaliar se o time compensa), os quatro portões, instalar e atualizar. Para levar o time a um projeto: `claude plugin marketplace add` + `claude plugin install`, e depois **`/team init`**.
 
 ## Estrutura
 
@@ -39,8 +39,9 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 │   └── implementation-security-lgpd-copyright.md   transversal
 ├── README.md                        ← este índice
 ├── CHANGELOG.md                     changelog de entregas (vX.Y.Z) — o que saiu em cada versão e a branch
-├── how-to.md                        guia do stakeholder — o que fazer → qual comando, cenários de uso A–G, os quatro portões, instalar, atualizar e calibrar a instalação
+├── how-to.md                        guia do stakeholder — o que fazer → qual comando, cenários de uso A–H, os quatro portões, instalar, atualizar e calibrar a instalação
 ├── rituals/                         guias lidos só sob demanda (nunca na carga fixa)
+│   ├── benchmark.md                 experimento "o time compensa?" (A/B/C) — lido só quando o stakeholder o abre
 │   ├── review-contract.md           contrato do `/review` — lido só quando o `/review` aciona o agente de um papel
 │   ├── team-init.md                 ritual do `/team init` — lido só nesse modo, uma vez por projeto
 │   ├── team-update.md               ritual do `/team update` — lido só nesse modo, uma vez por bump de versão
@@ -50,7 +51,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
     ├── scrum-master/       processo, Sprint Backlog, rituais, regras que governam todos
     │   ├── README.md · skills.md
     │   ├── process/     working-rules · working-rules-index · workflow · workflow-ritos · workflow-sdd · workflow-sprint · workflow-processo · sprint-run · artifact-ownership · process-changelog
-    │   └── templates/   planning · sprint-backlog · burndown · consumption · sprint-review · retrospective · plugin-report · status-entry · project-context · process-change
+    │   └── templates/   planning · sprint-backlog · burndown · consumption · sprint-review · retrospective · plugin-report · status-entry · project-context · process-change · benchmark
     ├── product-owner/      requisitos, Histórias, backlog, aceite
     │   └── templates/   user-story · product-backlog · status · requirement · functional-analysis · acceptance · impact-analysis · note
     ├── architect/          especificação técnica, Planos de Implementação, ADRs

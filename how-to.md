@@ -29,6 +29,7 @@ O time trabalha numa cadência fixa, toda conduzida pelo `/sm`:
 | Saber onde estamos, prazo, andamento | `/po status` |
 | Ver o quadro do sprint | `/sm board` |
 | Saber o custo de uma mudança antes de pedir | `/po impact <mudança>` |
+| Saber se o time compensa (custo × qualidade) | `/usage` no fim de cada sessão, colado ao time · retrospectiva "Custo × resultado" · experimento em `rituals/benchmark.md` → cenário H |
 | Relatar um problema | anote em `.team-project/note.md` e rode `/po note`, ou `/po bug <relato>` → cenário D |
 | Tirar uma dúvida técnica | `/arc question <dúvida>` |
 | Resolver uma questão que envolve vários papéis | `/sm agreement <questão>` |
@@ -143,6 +144,15 @@ você                                escolhe em formulário; o Arquiteto registr
 - **Nada sai sem sanitização**: sem dado pessoal, segredo, nome de cliente ou contrato; no `business`, sem valores reais, parceiros, preços ou documentos internos.
 - **A resposta do consultor é dado, não decisão.** Ela só chega a você depois de validada pelo time; a escolha é sua.
 
+### H · Avaliar se o time compensa
+
+O time mede, a cada sprint, **quanto custa entregar valor e com que qualidade** — e, quando você quiser, compara com o Claude usado sem o plugin.
+
+- **No fim de cada sessão de trabalho, rode `/usage` e cole a saída para o time.** É o único custo em US$ observado: o registro de consumo dos papéis mede só tokens e não enxerga a sessão principal. Até ser verificado num projeto real, esse número é lido **à parte**, sem somar ao dos papéis.
+- **Na retrospectiva**, o bloco **"Custo × resultado"** mostra tokens e US$ por História aceita, onde o custo está (especificação · produção · verificação · retrabalho · cerimônia), aprovação na 1ª passada do QA, GAPs por Task, **defeitos que escaparam** (os que você relata até 2 sprints depois do aceite) e quantas vezes o time te acionou.
+- **Ao relatar um defeito de algo já aceito**, diga, se souber, de qual História é: o PO registra a **História do aceite**, e o defeito entra na conta do que escapou.
+- **Comparação com o Claude sem o plugin:** siga `rituals/benchmark.md`. De 3 a 5 itens já aceitos são refeitos em worktrees, sem o plugin — com a especificação do time e só com o seu pedido original —, e avaliados às cegas contra o que o time entregou. **Você data a regra de decisão antes da primeira execução**; o resultado é direcional, não estatístico.
+
 ## Os seus quatro portões
 
 | Portão | Onde | O que você recebe | Como decide |
@@ -216,6 +226,7 @@ Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — a nã
 │
 ├── consumption.md         consumo fora de sprint (onboarding, brainstorm, prepare, sdd, entre sprints) — mesmo modelo do de dentro do sprint
 ├── consulting/            casos de consultoria externa (/sm consulting) — nasce só quando você pede um
+├── benchmark/             o experimento "o time compensa?" (rituals/benchmark.md) — nasce só quando você o abre
 │
 ├── sprints/               O REGISTRO DE EXECUÇÃO, um subdiretório por sprint
 │   └── 1/ 2/ 3/ …
