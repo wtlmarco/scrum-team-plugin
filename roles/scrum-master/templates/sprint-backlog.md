@@ -22,7 +22,9 @@
 | **Decisão do stakeholder (formulário — R22)** | <aprovar · aprovar com ajuste · reprovar — **registro único do ③**; a ficha do protótipo do sprint (UX) só aponta para esta linha> |
 | **Aprovado por** | <stakeholder — nome> |
 | **Aprovado em** | <aaaa-mm-dd — data do formulário; é a data que o `close.ps1` (C1) compara com a entrada da Task em 🟨 — R20 · R25> |
-| **Protótipo navegável do sprint** | <caminho/URL do protótipo costurado com as telas das Histórias que entraram> · **navegado em** <data> · **fluxo ponta a ponta coberto:** <qual> |
+| **Protótipo navegável do sprint** | <caminho/URL do protótipo costurado com as telas das Histórias que entraram> · **navegação declarada pelo stakeholder em** <data> (aprovar a declara — R15 · R34) · **fluxo ponta a ponta coberto:** <qual> |
+| **Canal da decisão** | <celular \| terminal — por onde o stakeholder respondeu o formulário do ③ (R34); lido pelo C2> |
+| **Protótipo (URL · rótulo)** | <https://claude.ai/artifact/<id> · ③ v<n> \| n/a — <motivo> — artifact privado publicado pela conta remota do projeto; o rótulo é o da versão que o stakeholder viu (R15 · R34); lido pelo C2> |
 | **O que foi submetido** | Sprint Backlog fechado (abaixo) + critérios de aceite das Histórias que entraram + o protótipo acima + `planning.md` |
 | **Ajustes pedidos na aprovação** | <o que mudou antes do aceite \| nenhum> |
 | **`stories/` congelado em** | <data — as Histórias como foram aprovadas; alterar depois é violação de escopo (R4)> |

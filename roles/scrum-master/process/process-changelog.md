@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.38`](process-changelog-archive.md) | Medir custo e resultado: Categoria e Unidade no registro de consumo, bloco "Custo × resultado" na retrospectiva, modelo de benchmark A/B/C e "História de origem" no defeito (SM + PO + QA) — 02/10/2026 |
 | [`v3.37`](process-changelog-archive.md) | R32: consultoria externa especializada pelo `/sm consulting` — técnica e de negócio, carta sanitizada, até 3 réplicas, validação do time antes do formulário (SM + PO + Arquiteto + QA + UX) — 02/10/2026 |
 | [`v3.36`](process-changelog-archive.md) | R27 confere a energia e retoma o mesmo agente; Task pesada em segundo plano; ocorrência de plugin só se registra no `run` e se pergunta na Review; `replicate-in-new-project.md` fundido no `how-to.md` (SM) — 01/10/2026 |
 | [`v3.35`](process-changelog-archive.md) | `.team-project/` sai do git (R31); R28 enxuta: relatório do job com teto, `report-<log>.md` por chamada, dev isento, log podado não é achado; consumo fora de sprint em `.team-project/consumption.md` (SM) — 30/09/2026 |
@@ -79,6 +80,57 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.41 — R34: contato remoto por Remote Control — identidade do projeto, pendência em disco, fim do `sprint run` em formulário de autorização da Review e protótipo publicável como artifact (SM + UX) — 03/10/2026
+
+**Instrução** (stakeholder, `/review`): "finalizamos os testes do `proposta-remote.md`, podemos rodar o review e aplicá-lo". Decisões D1–D6 da proposta (Remote Control; ① e ③ respondíveis no celular com a navegação **declarada**; Identificador remoto; fim do `run` em formulário; artifact privado pela conta do celular; conta por projeto) e as do formulário de 03/10/2026: **G3 estendida** (prefixo + pendência em §7) · pendência = **item numerado em §7**, sem rótulo "Aguarda stakeholder" · **fim do `fix run` sem formulário** (R33 intacta) · ficha do ① na opção A · protótipo num `index.html` único (ratificado).
+**Classificação:** regra nova (R34; R15, R22 e R25 emendadas, R27 por remissão; saldo +1) · fluxo (fim do `sprint run`, portões ①–④, `/team remote`) · formato de documento (campos remotos em §1, item numerado em §7, linhas do ③, ficha do ①) · instrumento (G3, C2 linha R34) · comportamento de agente (`commands/`, `hooks/`, `scripts/`, `rituals/`, `how-to.md`: aplicados pela sessão).
+**Papéis movidos (R17):** 2 — SM e UX → barreira de 10 240 B.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `working-rules.md` · `working-rules-index.md` | R34 · R15 · R22 · R25 · R27 · tabelas | **R34 nova** ("SM verifica" = G3 + C2 parcial, julgamento declarado). R15: navegação é do stakeholder e "aprovar" declara; 7 regras do artifact. R22: decisão de portão com navegação declarada, ④ com resumo do dossiê, pendência gravada antes. R25: três formulários admitidos na janela; fim do `run` abre o 2º ponto fixo. Índice R1–R34; contagem 33 → 34 em `README.md`, `agents/scrum-master.md`, `roles/scrum-master/README.md` |
+| `sprint-run.md` · `fix-run.md` | Ao fim da fila · §Plan · §Fechamento | Formulário de autorização da Review (4 opções; "iniciar depois" fica em §7); ajustes do `fix plan` com prefixo e pendência por pergunta; fim do `fix run` declarado **sem** formulário |
+| `workflow-sdd.md` · `workflow-sprint.md` · `workflow.md` | ① ② · passo 10 e Review · §8 | Prefixo, pendência, canal e declaração de navegação; ④ com resumo do dossiê |
+| `templates/` (SM) | `project-context` · `sprint-backlog` · `sprint-review` | §1 com `Identificador remoto`, `Conta remota`, `Verificação remota`; linhas `Canal da decisão` e `Protótipo (URL · rótulo)` no ③; texto de uso do §7 **fora** do bloco copiado (o C2 lê o README por padrões) |
+| `deliverables/team-project/README.md` | manifesto | §1 remoto = estrutura + conteúdo local (o `update` cria vazio) |
+| UX (`roles/user-experience/`, `deliverables/prototype/README.md`) | protótipo | `index.html` único e autocontido, "Publicável como artifact" com rótulo de versão, ficha do ① com `canal: … · declarada [· artifact: …]`, ficha do ③ com Canal e Artifact, A1–A6 |
+| Sessão (stakeholder) | `hooks/pre-tool.ps1` (G3) · `project.ps1` (C2 R34) · `rituals/team-remote.md` (novo) · `team-update.md` · `commands/` · `how-to.md` · `plugin.json` | Aplicados pela sessão |
+
+### Por quê
+O stakeholder conduz vários projetos e só responde na frente do terminal: a sessão para e, quando ele volta, não há sinal de qual projeto espera o quê. Pelo celular o risco é responder no projeto errado, ler formulário expirado como recusa e perder a pergunta quando a sessão cai. R34 põe a identidade na mensagem, a pendência em disco antes da pergunta e a limitação medida (sem *push* no Android) dentro do desenho. A navegação passa a ser responsabilidade declarada porque o protótipo não abre no celular sem artifact.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| SM / sessão | prefixo e pendência em §7 antes de todo formulário; formulário de fim do `run`; registro do ③ com canal e URL · rótulo |
+| UX | entrega o HTML único publicável (a sessão publica); registra canal na ficha |
+| Stakeholder | aprovar ① e ③ declara a navegação; abrir App → Code para ver o que espera |
+
+### Conflitos com o processo vigente
+- **R15 · R22 · R25(a)** exigiam navegar "fora do formulário e antes dele"; D2 move a navegação para responsabilidade declarada. **Resolvido pelo stakeholder (D2, D5)**; as três regras foram reescritas.
+- **R25** "nenhuma mensagem entre pacote e Review": emendada (bloqueio, ajustes do `fix plan`, autorização da Review). **R22 L189**: registro ≠ resolução mantido, com a exceção de ordem de R34. **R33**: intacta. **R21, R27, R31, R3, R5**: sem conflito (carga fixa medida abaixo).
+
+### Como saberemos que funcionou
+Nos 2 sprints seguintes, por projeto remoto: **100%** das decisões de portão e bloqueio com prefixo e pendência anterior · **zero** decisão no projeto errado · ① e ③ com canal registrado em 100% · mediana formulário → decisão **menor** que a dos 2 sprints anteriores; sem queda, a Retrospective decide se mantém.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Contagem | `Select-String '^### R\d+\.'` em `working-rules.md` · `'^\| R\d+ '` no índice · `'^\| R\d+ \|'` no resumo | 34 · 34 · 34 (antes: 33) | ✅ |
+| Substituição de padrão | `Select-String '33 regras\|R1–R33\|R30-R33\|R1-R33'` em `*.md/.ps1/.json` fora dos changelogs e propostas | 0; novas (`README.md:189`, `agents/scrum-master.md:34`, `roles/scrum-master/README.md:185`, índice) lidas: "34 regras", "R30-R34", "R1–R34" (4 linhas) | ✅ |
+| Substituição de padrão | `Select-String 'fora do formulário e antes\|acontece fora do formulário'` em `*.md` | 0; as reescritas (R22, R25(a), `workflow.md`, `workflow-sdd.md`) lidas no contexto | ✅ |
+| Referência | `Select-String 'team-remote'` em `commands/team.md`, `README.md` | `team.md:17` · `README.md:49` — sem órfão | ✅ |
+| Arquivamento | `-ceq` do bloco `## v3.38` no arquivo contra o texto que saiu do vivo | True (`Contains` do texto do bloco no arquivo; 10 268 B; zero linha fora do separador); índice com a linha `v3.38`; 3 entradas vivas (v3.41, v3.40, v3.39) | ✅ |
+| Teste | `run-guard-tests.ps1` · `run-check-tests.ps1` | `21 casos · 0 falharam` · `19 casos · 0 falharam` (4 e 3 casos novos de G3/C2 R34) | ✅ |
+| Carga fixa (caracteres, antes → depois) | `git show HEAD:` × arquivo | `commands/sm.md` 8 215 → 8 769 · `team.md` 2 895 → 3 465 · `po.md` 5 336 → 5 465 · `ux.md` 5 219 → 5 724 | medida |
+| Release (R17 · R18) | `powershell -NoProfile -File scripts/checks/release.ps1` (depois de gravar a v3.41) | R18 ok: plugin.json = CHANGELOG = README L3 = v3.41.0; processo 3.41, 3.40, 3.39 com entrega · R17 ok: bloco v3.41 com 7618 bytes ≤ barreira 10240 (2 papéis); 3 entradas vivas · ps1-5.1 ok: 11 scripts com BOM · órfãos ok: 45 modelos, todos referenciados · exit 0 | ✅ |
+**Não exercitado:** G3 contra um `AskUserQuestion` real do harness (só os testes); C2 R34 contra projeto real com Identificador; `/team remote` de ponta a ponta num projeto (o mecanismo foi medido no spike M10–M21).
+
+### Pendente do stakeholder
+Nada a aplicar. Mudança de hook, comando e agente só vale **após atualizar o plugin e reiniciar a sessão**; `/team update` (passo 7d) e `/team remote` em cada projeto. Remover `proposta-remote.md` depois do aceite desta entrada.
+
+---
 ## v3.40 — R33: trilha `fix` para defeito e ajuste pequeno — critério verificável na entrada, plano e execução em bloco, consumo próprio, piso de evidência por Correção e conferência C4 (SM + PO + Arquiteto + QA + UX) — 03/10/2026
 
 **Instrução** (stakeholder, `/review`): "aplicar a proposta em `proposta-fix.md` (terceira da rodada evaluation → guards → fix)". Decisões do formulário de 02–03/10/2026: **P1** o Arquiteto escreve os mini-planos · **P2** N = 5 · **P3** o ✅ do QA encerra a Correção, sem aceite na Review (reabrir = anotar no `note.md` citando a F-ID) · **P4** o UX só atualiza quando a especificação de tela cita o texto literal · **P5** ordem evaluation → guards → fix · **P6** teto de 5 Correções e 2N arquivos · regra **R33** (a `remote` passa a R34) · **C4 sim** (`fix.ps1`, escrito pela sessão) · **R15 com emenda**.
@@ -196,66 +248,3 @@ G1 × passo 7b de `/team update` (a migração R31 remove arquivos de `.team-pro
 
 ### Pendente do stakeholder
 Nada a aplicar — `hooks/`, `scripts/`, `rituals/`, `commands/`, `README.md`, `how-to.md`, `plugin.json` e `CHANGELOG.md` aplicados nesta entrega. Mudança de comportamento de agente e os hooks só valem **após atualizar o plugin e reiniciar a sessão**.
-
----
-## v3.38 — Medir custo e resultado: Categoria e Unidade no registro de consumo, bloco "Custo × resultado" na retrospectiva, modelo de benchmark A/B/C e "História de origem" no defeito (SM + PO + QA) — 02/10/2026
-
-**Instrução** (stakeholder, `/review`; decisões P1–P4 do formulário de 02/10/2026): "aplicar a proposta em `proposta-evaluation.md`" — saber se o plugin aumenta a qualidade com custo otimizado ou não faz diferença frente ao Claude sem ele, com o registro de consumo já em uso num projeto novo. Primeira da rodada `evaluation` → `guards` → `fix`.
-**Classificação:** formato de documento (colunas, bloco, modelo, campo) · propriedade de artefato (`benchmark/`) · cerimônia (retrospectiva). **Sem regra nova; carga fixa zero** (`commands/` e `agents/` intactos).
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `roles/scrum-master/templates/consumption.md` | tabelas · §Como gravar · §Regras | Colunas **Categoria** e **Unidade** (modelo e variante fora de sprint). Regra de `retrabalho` (invocação depois do primeiro ⚠️/❌ ou de 🔺 GAP). **Linha de sessão** (`/usage` colado, custo US$ observado) com **premissa R7 própria, distinta da do `operator`**: até a verificação no piloto **não se soma** às linhas por invocação, é lida à parte |
-| `roles/scrum-master/templates/retrospective.md` | bloco novo · Regras | "Custo × resultado" (8 indicadores, leitura em 3 linhas, no máximo uma ação). Fonte de "Defeitos que escaparam" = `pending.md` (a janela de 2 sprints atravessa a pasta); conta só `H-nnn` + sprint do aceite dentro da janela |
-| `roles/scrum-master/templates/benchmark.md` *(novo)* | — | Experimento A/B/C (+ B′ opcional, habilitado quando `guards` estiver aplicada). Regra de decisão **datada antes da 1ª execução**: 50% · 3× · 25% como padrão, linha "inconclusivo → ampliar a amostra", **diferença mínima de 3 defeitos** |
-| `process/artifact-ownership.md` §1 · `deliverables/team-project/README.md` · `roles/scrum-master/README.md` | linha `.team-project/benchmark/` · índice de modelos | Dono SM; stakeholder executa os braços; não semeada |
-| `process/workflow-processo.md` | §5c | A pegada estática convive com "Custo × resultado"; não se somam |
-| `roles/product-owner/` (`README.md` · `skills.md` · `templates/note.md`) | `/po bug` passo 6 · `/po note` passo 3 · skill 8 | **História de origem** (`H-nnn` + sprint do aceite, lida do quadro e dos dossiês, sem abrir código; janela de 2 sprints; "fora da janela" · "não identificada"); passada à QA no `/qa bug` e citada no Product Backlog; orientação opcional ao stakeholder em `note.md` |
-| `roles/quality-assurance/` (`README.md` · `skills.md` · `templates/gap-record.md`) · `deliverables/implementation/pending.md` | "Defeito reportado pelo stakeholder" passo 2 · competência 12 · "Abrir um GAP" · formato e regra | Grava a História de origem **como o PO passou, sem reinterpretar** (quatro valores); "não identificada" só se resolve com `arquivo:linha`; entrada `Origem: stakeholder` sem o campo é formato incompleto e não conta no resumo (§2, §2.1) |
-
-### Por quê
-"O plugin compensa?" não tinha resposta com dado: o processo media o tamanho dos próprios documentos e o consumo por invocação, mas não **o que o produto ganhou** nem **onde o custo está**. Sem Categoria e Unidade o corte de custo é chute; sem a História de origem não há "defeito que escapou", o indicador que mede o que o processo existe para impedir; sem regra de decisão datada antes, qualquer resultado confirma o que já se acreditava. A premissa própria da linha de sessão existe porque **não se sabe** se o `/usage` já inclui os subagentes — somar às cegas dobraria o custo (R7: sem evidência, não aconteceu).
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda para ele |
-|---|---|
-| Sessão que orquestra | Preenche Categoria e Unidade por classificação (nunca estimativa); grava a linha de sessão do `/usage` quando o stakeholder a cola |
-| SM | Preenche "Custo × resultado" na retrospectiva; mantém `benchmark/` quando o stakeholder abre o experimento |
-| PO | No `/po bug`, registra a História de origem de defeito em funcionalidade já aceita |
-| QA | Transcreve o campo no `pending.md` sem reinterpretar; entrada `Origem: stakeholder` sem ele é formato incompleto |
-| Stakeholder | Roda `/usage` no fim da sessão e cola; executa os braços do benchmark |
-
-### Conflitos com o processo vigente
-- **R7** (nunca estimar): custo US$ só do `/usage` (observado) ou derivado na retrospectiva, com fórmula e preço ao lado; Categoria é classificação mecânica. **R28** inalterada: o `operator` entra como `verificação`. **§1c:** `benchmark/` fica fora da pasta do sprint de propósito (atravessa sprints, como o spike).
-- **Auto-contradição corrigida (SM):** "Métrica sem fonte não entra… todas na pasta do próprio sprint" excluía o `pending.md`, fonte de "Defeitos que escaparam"; exceção declarada em `retrospective.md`.
-- **Escalado e decidido pelo stakeholder (ver "Decisões" abaixo; o nome "História de origem" nas linhas acima é o da primeira redação, hoje "História do aceite"):** (1) **homonímia** — "História de origem" já é o campo Task→História de R20 (Sprint Backlog, `agents/scrum-master.md`, retrospectiva, `working-rules`); o campo novo é outro objeto (a História aceita onde o defeito nasceu). Candidato: renomear o novo para "História do aceite" no PO, QA e `pending.md`. (2) **"fora da janela"** — o PO o descreve como a mesma `H-nnn` "marcada fora da janela"; QA, `gap-record.md` e `pending.md` o listam como valor **alternativo** a `H-nnn`. Falta dizer se o ID acompanha o marcador. (3) **"não aplicável"** aparece no PO só no passo 7 e em `/po note`, não no passo 6 que define os valores; os três documentos de QA o têm entre os quatro.
-
-### Como saberemos que funcionou
-Na **primeira retrospectiva** depois da aplicação: "Custo × resultado" preenchido, com no máximo **uma** célula "não disponível" por indicador e a fração `cerimônia` conhecida. Nos defeitos do stakeholder do período: 100% das entradas `Origem: stakeholder` com a linha `História de origem`. Quando o stakeholder abrir o benchmark: `protocol.md` com a regra datada antes do 1º resultado e `result.md` lido por ela, sem limiar alterado. A premissa da linha de sessão fecha na verificação do piloto; se não fechar em dois sprints, volta ao `/review`.
-
-### Evidência (R19)
-Reexecutada pelo SM na curadoria, em amostra de cada papel.
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Substituição de padrão (SM) | `Grep` do cabeçalho `\| Data \| Papel \| Modelo \| Comando \| Task/História \|` em todo o repositório (sem `proposta-*.md`) | 2 ocorrências, ambas em `consumption.md` (linhas 20 e 37), as duas com `Categoria \| Unidade \| Tokens`; `Categoria` nas linhas 20, 37, 40, 61, 81 | ✅ |
-| Referência (SM) | `Grep -c benchmark` fora de `proposta-*.md`; `rituals/benchmark` em `roles/scrum-master/` | `team-project/README.md` 1 · `scrum-master/README.md` 1 · `benchmark.md` 3 · `artifact-ownership.md` 1 (todas para `templates/benchmark.md`); `rituals/benchmark`: 0 — nenhum ponteiro órfão | ✅ |
-| Contagem (PO) | `Select-String 'História de origem'` por arquivo, em `roles/product-owner/` (sem changelog) | `README.md` 3 · `skills.md` 1 · `templates/note.md` 3 = 7 linhas em 3 arquivos | ✅ |
-| Contagem (QA) | idem em `roles/quality-assurance/` e `pending.md` | `README.md` 1 · `skills.md` 1 · `gap-record.md` 4; `pending.md` linhas 52, 72, 82 | ✅ |
-| Arquivamento | entrada v3.35 movida; `Contains` do texto de `HEAD` no arquivo | True (17.555 caracteres); `process-changelog.md` fica com v3.38, v3.37, v3.36 | ✅ |
-| Carga fixa | `git status --porcelain commands agents rituals how-to.md README.md CHANGELOG.md .claude-plugin` | vazio — nada alterado ali; 13 arquivos modificados + `benchmark.md` novo, todos de `roles/` e `deliverables/` | ✅ |
-| Migração (T14) | leitura de `rituals/team-update.md` passo 8 e `deliverables/team-project/README.md` linhas 20, 53 e 76 | `consumption.md` (sprint) e `.team-project/consumption.md` (fora de sprint) constam como "Sim — estrutura"; o passo 8 mostra o delta de coluna e pede aprovação por arquivo; sprint fechado é "histórico imutável — não reconcilie" | ✅ — `team-update.md` **não muda** |
-
-**Migração:** a coluna nova entra no meio da tabela; ao aprovar o delta, as linhas existentes ganham duas células vazias — passado não se reconstrói.
-
-### Decisões do stakeholder (formulário de 02/10/2026) sobre "Para escalar"
-1. **Homonímia:** o campo novo do defeito passa a se chamar **"História do aceite"** (PO, QA, `pending.md` e `retrospective.md` renomeados); "História de origem" fica só para o campo Task→História de R20.
-2. **"fora da janela" leva o ID.** Quatro valores: `H-nnn + sprint do aceite` · `H-nnn · fora da janela` · `não identificada` · `não aplicável`. Nota da retrospectiva alinhada (só o primeiro entra na contagem).
-3. **"não aplicável" no passo 6 do `/po bug`:** o PO completa a lista de valores.
-
-### Aplicado pela sessão, por decisão do stakeholder
-`rituals/benchmark.md` (novo, sob demanda) · `commands/po.md` (modo `bug`) · `commands/qa.md` · `how-to.md` (cenário H) · versão **v3.38.0** (`plugin.json`, `README.md`, `CHANGELOG.md`, R18). Pontos de coerência do SM para `rituals/benchmark.md` (`templates/benchmark.md`, `artifact-ownership.md` §1, `deliverables/team-project/README.md`, `review-contract.md`): acrescentados em `templates/benchmark.md`, `artifact-ownership.md` §1 e `deliverables/team-project/README.md`; `review-contract.md` **não enumera rituais** (conferido), nada a apontar. `roles/scrum-master/README.md` já aponta para o modelo e fica como está.
-
-### Pendente
-- **Verificação da premissa da linha de sessão** no projeto-piloto: um `/po status` com `/usage` antes e depois, comparado com a linha do PO; o resultado volta ao `/review`.
-- **Reiniciar a sessão** (mudança de comando só vale depois) e **`/team update`** nos projetos.

@@ -1,11 +1,11 @@
 ---
-description: Ciclo de vida do time no projeto — instala (`init`), atualiza (`update`) ou informa a versão (`version`). Não dispara agente. A descoberta é `/sm brainstorm`, a construção do sprint é `/sm sprint run`; mensagem solta é roteada ao papel dono.
-argument-hint: "init | update | version"
+description: Ciclo de vida do time no projeto — instala (`init`), atualiza (`update`), informa a versão (`version`) ou prepara o contato pelo celular (`remote`). Não dispara agente. A descoberta é `/sm brainstorm`, a construção do sprint é `/sm sprint run`; mensagem solta é roteada ao papel dono.
+argument-hint: "init | update | version | remote"
 ---
 
-Cuida **do time no projeto**: instala, atualiza e informa a versão. **Não dispara agente nenhum.** Mensagem do stakeholder: **$ARGUMENTS**
+Cuida **do time no projeto**: instala, atualiza, informa a versão e prepara o contato pelo celular. **Não dispara agente nenhum.** Mensagem do stakeholder: **$ARGUMENTS**
 
-> **Este comando não é um canal de conversa.** O canal do stakeholder é o **PO** ([`workflow.md` §6a](../roles/scrum-master/process/workflow.md)). Aqui só se **instala** (`init`), **atualiza** (`update`) ou **informa a versão** (`version`). O resto migrou para o `/sm`: descoberta de ideia é `/sm brainstorm <ideia>`; a cadência do sprint é `/sm sprint prepare` → `plan` → `run` → `review` → `close`.
+> **Este comando não é um canal de conversa.** O canal do stakeholder é o **PO** ([`workflow.md` §6a](../roles/scrum-master/process/workflow.md)). Aqui só se **instala** (`init`), **atualiza** (`update`), **informa a versão** (`version`) ou **prepara o contato pelo celular** (`remote`). O resto migrou para o `/sm`: descoberta de ideia é `/sm brainstorm <ideia>`; a cadência do sprint é `/sm sprint prepare` → `plan` → `run` → `review` → `close`.
 
 Identifique o modo pelo primeiro termo. **Sem termo reconhecido, não dispare agente nenhum** — roteie, conforme a tabela ao final.
 
@@ -14,6 +14,7 @@ Identifique o modo pelo primeiro termo. **Sem termo reconhecido, não dispare ag
 - **`init`** — instalar o time neste projeto: **leia `${CLAUDE_PLUGIN_ROOT}/rituals/team-init.md` e siga-o** (cinco passos; conversa com o stakeholder; roda uma vez por projeto).
 - **`update`** — atualizar o plugin neste projeto: **leia `${CLAUDE_PLUGIN_ROOT}/rituals/team-update.md` e siga-o** (nove passos, incluindo a reconciliação do `.team-project/` no passo 8; uma vez por bump de versão).
 - **`version`** — que versão está rodando: **leia `${CLAUDE_PLUGIN_ROOT}/rituals/team-version.md` e siga-o**. Não usa rede; quem verifica versão nova é o `update`.
+- **`remote`** — preparar este projeto para responder pelo celular (Remote Control): **leia `${CLAUDE_PLUGIN_ROOT}/rituals/team-remote.md` e siga-o** (identificador e conta do projeto, pré-requisitos medidos, comando de abertura e verificação de ponta a ponta — R34).
 
 ## Sem modo reconhecido — roteie, não dispare
 
@@ -32,6 +33,6 @@ Identifique o modo pelo primeiro termo. **Sem termo reconhecido, não dispare ag
 
 - **Nenhum modo dispara agente**; por isso não há linha de consumo nem retentativa aqui (R27 e o registro vivem nos modos do `/sm`). Consulta e roteamento **não escrevem em disco**.
 - Nenhuma afirmação de "funciona" sem saída real de comando; o que não foi exercitado é declarado como tal.
-- Pergunta ao stakeholder em `init`/`update` → `AskUserQuestion` pela sessão, "pedir mais contexto" por último (`working-rules.md` R22).
+- Pergunta ao stakeholder em `init`/`update`/`remote` → `AskUserQuestion` pela sessão, "pedir mais contexto" por último (`working-rules.md` R22). Com **Identificador remoto** no `README.md` §1, a pergunta começa com `[<ID> · <onde> · <ponto>]` e a pendência vai antes para a §7 (R34 — a guarda G3 confere).
 
 Ao final, repasse a consolidação, o que exige decisão do stakeholder e a próxima ação recomendada.

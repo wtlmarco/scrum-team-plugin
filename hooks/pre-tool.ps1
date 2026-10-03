@@ -41,7 +41,19 @@ function Test-G2([object]$ToolInput) {
 }
 
 # G3 — R22: toda pergunta ao stakeholder tem alternativas descritas e "Pedir mais contexto" por último.
+# R34 (projeto com "Identificador remoto" no README §1): a pergunta começa com [<ID> · <onde> · <ponto>]
+# e esse prefixo já está gravado como pendência em §7 — a pendência sai de §7 ao ser decidida, então só
+# o instante do formulário mostra que ela veio antes.
 function Test-G3([object]$ToolInput) {
+    $remoteId = $null; $pending = ''
+    $readme = Join-Path $script:projectDir '.team-project/README.md'
+    if (Test-Path -LiteralPath $readme) {
+        $rt = [System.IO.File]::ReadAllText($readme, (New-Object System.Text.UTF8Encoding($false)))
+        $im = [regex]::Match($rt, '(?m)^\*\*Identificador remoto:\*\*\s*([A-Z]{3,8})\b')
+        if ($im.Success) { $remoteId = $im.Groups[1].Value }
+        $sm = [regex]::Match($rt, '(?ms)^##\s+7\.\s.*?(?=^##\s|\z)')
+        if ($sm.Success) { $pending = $sm.Value }
+    }
     foreach ($q in @($ToolInput.questions)) {
         $opts = @($q.options)
         $text = [string]$q.question
@@ -51,6 +63,15 @@ function Test-G3([object]$ToolInput) {
         $last = ([string]$opts[-1].label).Trim()
         if ($last -notmatch '^(?i)pedir mais contexto') {
             Deny 'G3' $text "a última opção de '$text' é '$last' — R22: toda pergunta ao stakeholder, até a simples, termina com 'Pedir mais contexto' (descrita como resposta válida, que reabre o time para aprofundar). Refaça o formulário."
+        }
+        if ($remoteId) {
+            $pm = [regex]::Match($text, '^\s*(\[' + [regex]::Escape($remoteId) + ' · [^\]]+\])')
+            if (-not $pm.Success) {
+                Deny 'G3' $text "R34: neste projeto (Identificador remoto $remoteId) toda pergunta começa com [$remoteId · <onde> · <ponto>] — ex.: [$remoteId · S4 · ③ pacote]. Refaça o formulário."
+            }
+            if (-not $pending.Contains($pm.Groups[1].Value)) {
+                Deny 'G3' $text ("R34: grave antes a pendência em .team-project/README.md §7 — 'N. " + $pm.Groups[1].Value + " <pergunta> — material: <ponteiro> — aaaa-mm-dd hh:mm' — e só então chame o formulário (R5).")
+            }
         }
     }
 }
