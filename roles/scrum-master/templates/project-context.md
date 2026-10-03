@@ -69,6 +69,12 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 ## 1. O produto
 <O que é, para quem, e as propriedades transversais que valem para toda decisão.>
 
+**Identificador remoto:** <3–8 letras maiúsculas, único entre os projetos do stakeholder — vazio até o `/team remote`>
+**Conta remota:** <pessoal | organização>
+**Verificação remota:** <aaaa-mm-dd>
+
+> As três linhas acima (R34) são **preenchidas pelo `/team remote`** e lidas pela guarda G3 e pelo C2 **com esta grafia**. Com o Identificador preenchido, todo formulário ao stakeholder leva o prefixo `[<ID> · <onde> · <ponto>]` e a pendência em §7 antes. A conta é decisão do stakeholder por projeto (LGPD: projeto com dado de cliente só na conta que o contrato permite). `Verificação remota` = data da verificação de ponta a ponta do `/team remote`; vazia, o projeto está configurado, não verificado. Sem Identificador, o projeto não é remoto e nada de R34 se aplica.
+
 ## 2. Situação atual
 | | |
 |---|---|
@@ -120,6 +126,8 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 ## 7. Decisões pendentes do stakeholder
 1. <decisão> — destrava <o quê>.
 
+> Pendência levada ao stakeholder em projeto remoto (R34): item numerado, gravado antes do formulário — formato e regras no modelo, abaixo do bloco.
+
 ## 7a. Registro de consultores (R32 · `/sm consulting`)
 | Domínio | Titular | Alternativo | Observação |
 |---|---|---|---|
@@ -158,9 +166,9 @@ Titular e alternativo podem ser **humano** (especialista) ou **IA**, em qualquer
 | `/ux` | `prototype` · `prototype sprint <n>` · `prototype screen <tela>` · `journey <fluxo>` · `screen <nome>` · `review-ui <tela>` |
 | `/dev` | `<T-ID>` · `resume <T-ID>` · `gap <resposta>` |
 | `/qa` | `<T-ID>` · `baseline` · `audit` · `security <T-ID>` · `bug <descrição>` *(acionado pelo PO)* · `scenarios create` · `scenarios run <SC-nnn\|grupo\|all>` |
-| `/team` | `init` · `update` · `version` |
+| `/team` | `init` · `update` · `version` · `remote` |
 
-**O canal do stakeholder é o PO** — demanda, valor, escopo, prioridade, **prazo, plano de entrega e status**. Questão técnica vai ao **Arquiteto**, de tela ao **UX**, diretamente. O **SM não é canal de demanda**: é processo, organização e eficiência, gere os rituais e facilita acordo. **Não há broadcast** — `/team` só instala, atualiza e informa a versão; **a descoberta é o `/sm brainstorm` e o time construindo é o `/sm sprint run`**, e não fala com os seis por precaução.
+**O canal do stakeholder é o PO** — demanda, valor, escopo, prioridade, **prazo, plano de entrega e status**. Questão técnica vai ao **Arquiteto**, de tela ao **UX**, diretamente. O **SM não é canal de demanda**: é processo, organização e eficiência, gere os rituais e facilita acordo. **Não há broadcast** — `/team` só instala, atualiza, informa a versão e prepara o projeto para responder pelo celular (`remote`); **a descoberta é o `/sm brainstorm` e o time construindo é o `/sm sprint run`**, e não fala com os seis por precaução.
 
 **`<H-ID>` é História (valor, dona: PO); `<T-ID>` é Task (trabalho, no Sprint Backlog).** Toda Task pertence a uma História (R20). O aceite é da História, na Sprint Review — `/sm close` fecha a Task tecnicamente e não aceita nada (R21).
 
@@ -182,6 +190,12 @@ Guia completo — o que você quer fazer → qual comando, os cenários de uso (
 ```
 
 > **A seção 8 é fixa** — copie-a como está, é a mesma em todo projeto. O que muda de projeto para projeto são as seções 1 a 7 (inclusive a 7a: a **estrutura** da tabela vem do plugin, as **linhas** são do projeto). O guia completo não entra aqui: este `README.md` é lido pelos agentes em **toda** invocação, e documentação de uso nele é custo permanente.
+
+> **Pendência em §7 e campos remotos (R34) — a explicação vive aqui, não no modelo:** o texto de uso fica fora do bloco acima de propósito, porque o C2 lê o `README.md` do projeto por padrões (§7 com item numerado ou `nenhuma`; "No preference" ou "expirado" em §7 = decisão inválida) e um comentário copiado para lá os dispararia em falso.
+>
+> **Item de §7 de pergunta levada ao stakeholder** (só em projeto com Identificador remoto): `N. [<ID> · <onde> · <ponto>] <pergunta> — material: <ponteiro> — aaaa-mm-dd hh:mm`, gravado **antes** do formulário; o prefixo é o mesmo que abre a pergunta, e a G3 o confere. Decidida a pergunta, a linha **sai** de §7 para o registro do ponto (Sprint Backlog no ③, `review.md` no ④, ficha do protótipo no ①, `context.md` no ②); com a lista vazia, a seção diz `nenhuma`. Pergunta que nasce de item de `pending.md` com `Aguarda decisão do stakeholder: sim` aponta para o item, sem copiá-lo. Formulário pulado ou que expirou não é decisão: a linha fica.
+>
+> **Linhas de §1:** `Identificador remoto` (3–8 maiúsculas), `Conta remota` (`pessoal` ou `organização`) e `Verificação remota` (data) — preenchidas pelo `/team remote`; com `<…>` ou vazias, o projeto não é remoto.
 
 ## O que vai em cada `context.md`
 

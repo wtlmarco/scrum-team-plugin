@@ -23,7 +23,7 @@ Ambas as formas. Falhou qualquer uma: **pare e reporte** — não peça nada ao 
 
 - **Ordem:** por dependência declarada no Sprint Backlog, não por criticidade. Task com dependência não satisfeita é **pulada** e retomada quando destravar.
 - **Retomada pelo marcador da Task** — o `run` nunca replaneja Task que já tem plano. Entra no passo que o marcador indica: ⬜ → Arquiteto · 🟦 → dev · 🟨 → `/dev resume <T-ID>` (sessão interrompida, R5) · 🟪 → QA (ou o dev, se o veredito foi ⚠️/❌ — passo 6). Isso vale também depois de veredito ⚠️/❌ corrigido e depois de interrupção.
-- **Quando a fila para:** no primeiro problema **daquela Task**; a fila **segue nas Tasks cujas dependências estão satisfeitas**. Bloqueio vai ao **degrau 1** (PO e Arquiteto conversam — [`workflow-sprint.md` §5g](workflow-sprint.md)); só o que eles não fecham sobe ao stakeholder, na forma de R22 (formulário) — exceto **decisão estratégica**, que escala direto. Não acione o stakeholder por nada que o degrau 1 possa fechar, **nem para informar andamento**: o registro é o quadro e o relatório final.
+- **Quando a fila para:** no primeiro problema **daquela Task**; a fila **segue nas Tasks cujas dependências estão satisfeitas**. Bloqueio vai ao **degrau 1** (PO e Arquiteto conversam — [`workflow-sprint.md` §5g](workflow-sprint.md)); só o que eles não fecham sobe ao stakeholder, na forma de R22 (formulário; em projeto remoto, com a pendência em §7 antes e o prefixo `[<ID> · S<n> · bloqueio <T-ID>]` — R34) — exceto **decisão estratégica**, que escala direto. Não acione o stakeholder por nada que o degrau 1 possa fechar, **nem para informar andamento**: o registro é o quadro e o relatório final.
 - **Invocação interrompida sem ação do stakeholder (R27):** confira a energia/suspensão do SO na janela da falha, classifique como **falha de ambiente com causa e horário** e **retome o mesmo agente por `SendMessage`** — instância nova só se ele não existir mais, depois de ler o estado em disco (R5).
 - **Ocorrência de plugin só se registra:** falha R27 persistente ou consumo de um papel > 2× a média dos últimos sprints vira uma linha em "Bloqueios e riscos abertos" — **sem formulário aqui**; o formulário investigar × ignorar abre uma vez, na Review ([`workflow-sprint.md` §5e](workflow-sprint.md) "Ocorrência de plugin").
 
@@ -47,13 +47,22 @@ Ambas as formas. Falhou qualquer uma: **pare e reporte** — não peça nada ao 
 
 ## Ao fim da fila
 
-Reporte: o que fechou, o que ficou bloqueado **e em que degrau**, o que foi pulado por dependência. Próximo passo: `/sm sprint review`.
+Reporte: o que fechou, o que ficou bloqueado **e em que degrau**, o que foi pulado por dependência. **Quando o `run` percorreu a fila** (não vale para `sprint run <T-ID>`), a fila terminada não para em silêncio: a sessão chama `AskUserQuestion` — **formulário de autorização da Review, igual no terminal e no celular**. Em projeto com Identificador remoto, **grava antes a pendência em `README.md` §7** (item numerado, R34) e a pergunta leva o prefixo `[<ID> · S<n> · fim do run]`; nos demais, o mesmo formulário sai sem prefixo nem item em §7. O resumo vai na pergunta (*N fechadas · N bloqueadas, com o degrau · N puladas por dependência*); o relatório completo vem antes, na saída da sessão. Opções, na ordem, a última sempre a via de contexto (R22):
+
+| Opção | O que acontece |
+|---|---|
+| **Iniciar a Review agora** | a sessão entra direto em `/sm sprint review` (o PO demonstra e escreve os dossiês; os formulários ④ seguem, um por História) |
+| **Iniciar depois** | o item fica em §7 como "Review autorizável"; a sessão para. Retomar = `/sm sprint review` |
+| **Resolver bloqueio antes** *(só se houver Task bloqueada)* | a sessão volta ao degrau da Task bloqueada (R25(c)) e reapresenta este formulário ao fim |
+| **Pedir mais contexto** | a sessão detalha, Task a Task, o que fechou, bloqueou e foi pulado, e repete a pergunta |
+
+**Iniciar a Review não é aceite** (R21): autoriza a cerimônia; o aceite continua por História, no ④. Formulário expirado ou pulado (`[No preference]`) = "iniciar depois", **nunca recusa** (R27 · R34). O plugin **não** cria notificação própria: o formulário é o aviso, e no Android ele só aparece ao abrir App → Code (limitação medida). Agente em segundo plano continua e devolve à sessão remota com o terminal sem foco (medido), também sem *push*. Próximo passo, na ausência da resposta: `/sm sprint review`.
 
 ## Como o SM verifica
 
 - Nenhuma Task em 🟨 sem a data do pacote no Sprint Backlog (R20 · R25).
 - `sprint run <T-ID>` de Task fora do quadro é achado contra a orquestração.
 - Nenhuma Task fechada sem veredito ✅ **e** "Documentos vivos (R12)" preenchido; cada `close` tem linha no Registro de transições (R24).
-- Nenhuma mensagem ao stakeholder entre a aprovação do pacote e a Review que não seja pergunta de bloqueio em formulário (R22 · R25).
+- Nenhuma mensagem ao stakeholder entre a aprovação do pacote e a Review que não seja **formulário** — os admitidos são o de **bloqueio** que o degrau 1 não fechou, o dos **ajustes** do `fix plan` (R33) e o de **autorização da Review** ao fim da fila, que abre o segundo ponto fixo (R22 · R25 · R34). Todo `run` que percorreu a fila e a esvaziou termina nesse formulário; a resposta, ou "iniciar depois", está em §7.
 - Falha de invocação relatada traz a conferência de energia e a forma da retomada (R27); Task pesada despachada em segundo plano, ou o motivo de não ter sido; ocorrência de plugin registrada no quadro e **nenhum** formulário dela durante o `run`.
 - Consumo: uma linha por subagente disparado, incluindo as do `operator` retratadas pelo chamador (R28 — [`templates/consumption.md`](../templates/consumption.md)).

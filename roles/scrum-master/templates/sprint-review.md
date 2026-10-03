@@ -23,7 +23,7 @@ O SM conduz o ritual e registra; o **PO demonstra cada História contra os crit�
 
 O aceite detalhado de cada História — critério a critério, com a Task e a evidência — segue [`../../product-owner/templates/acceptance.md`](../../product-owner/templates/acceptance.md) e é escrito pelo PO.
 
-> **A decisão é tomada em formulário, uma pergunta por História (R22).** Cada pergunta cita o **ponteiro do dossiê** (`review.md#aceite--h-<nnn>`, a seção abaixo) e traz a recomendação do PO em uma frase; as opções são **aceita · aceita com ressalva · rejeitada · pedir mais contexto**. O dossiê é escrito **antes** da pergunta — sem seção apontável, a pergunta não sai.
+> **A decisão é tomada em formulário, uma pergunta por História (R22).** Cada pergunta cita o **ponteiro do dossiê** (`review.md#aceite--h-<nnn>`, a seção abaixo), traz o **resumo do dossiê** (critério a critério, em poucas linhas — para decidir sem abrir arquivo local, inclusive no celular) e a recomendação do PO em uma frase; em projeto com Identificador remoto, o prefixo `[<ID> · S<n> · ④ H-<nnn>]` e a pendência em §7 vêm antes (R34), e pergunta pulada ou sem resposta não é decisão — a coluna Decisão fica vazia (R34); as opções são **aceita · aceita com ressalva · rejeitada · pedir mais contexto**. O dossiê é escrito **antes** da pergunta — sem seção apontável, a pergunta não sai.
 
 ### Aceite — H-<nnn>
 > Uma seção por História do sprint; **âncora `#aceite--h-<nnn>`** (o heading acima é literal, sem texto extra, para a âncora resolver). Escrita pelo **PO** no formato de `acceptance.md`; o SM só garante que a seção existe antes da pergunta e registra a decisão na tabela acima.

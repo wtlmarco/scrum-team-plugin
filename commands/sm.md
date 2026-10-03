@@ -42,6 +42,7 @@ Arquivos `workflow-*.md` em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/`;
 
 - Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar (a seção diz o destino).
 - Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, "pedir mais contexto" por último (`working-rules.md` R22). Vale para os portões ① e ② (`sdd`) e o ③ (`sprint plan`: um formulário só, sobre o pacote inteiro, depois de o stakeholder **navegar** o protótipo; registre decisão, data, quem aprovou, ponteiro do protótipo e ajuste na linha **"Decisão do stakeholder"** do pacote de abertura de `sprint-backlog.md` — registro único; o UX só aponta para ela) e o ④ (`sprint review`: uma pergunta por História, citando `review.md#aceite--h-<nnn>` e a recomendação do PO; **sem dossiê apontável a pergunta não sai**). O agente não tem a ferramenta.
+- Contato remoto (R34): com **Identificador remoto** no `README.md` §1, todo formulário começa com `[<ID> · <onde> · <ponto>]` e só sai depois da linha de pendência gravada em `README.md` §7 (a guarda G3 confere); no ① e no ③, "aprovar" declara a navegação do protótipo, e o registro anota o canal (celular | terminal) e, se houve link, URL e rótulo do artifact. Formulário pulado (`[No preference]`) ou expirado não é decisão nem recusa: a pendência fica. O fim da fila do `sprint run` termina no formulário de autorização da Review (`sprint-run.md`).
 - Repasse a saída na íntegra (é a entrega) e destaque em uma linha o que exige decisão do stakeholder.
 
 ## Limites e rotas

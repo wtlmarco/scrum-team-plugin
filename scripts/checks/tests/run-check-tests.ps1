@@ -235,7 +235,22 @@ if (Test-Path (Join-Path $checks 'project.ps1')) {
     Check 'C2 feliz: R14 ok, R21 ok, R31 n-a' $r 0 @('\| R14 \| ok', '\| R21 \| ok', '\| R31 \| n-a')
     Put $p '.team-project/product-owner/notes.md' "## Aceite — H-014`n"
     $r = Invoke-Check 'project.ps1' @('-Root', $p)
-    Check 'C2 dossiê de aceite fora da Review: R21 falhou' $r 0 @('\| R21 \| falhou')
+    Check 'C2 dossiê de aceite fora da Review: R21 falhou' $r 0 @('\| R21 \| falhou', '\| R34 \| n-a')
+
+    # R34: projeto remoto
+    $p = Join-Path $tmp 'remoto'; New-Project $p
+    Edit-File (Join-Path $p '.team-project/README.md') '## 2. Situação atual' "**Identificador remoto:** ACME`n**Conta remota:** pessoal`n**Verificação remota:** 2026-08-30`n`n## 2. Situação atual"
+    Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') '| **Aprovado em** | 2026-09-01 |' "| **Aprovado em** | 2026-09-01 |`n| **Canal da decisão** | celular |`n| **Protótipo (URL · rótulo)** | https://claude.ai/artifact/AbC123 · ③ v2 |"
+    $r = Invoke-Check 'project.ps1' @('-Root', $p)
+    Check 'C2 R34 remoto completo: ok' $r 0 @('\| R34 \| ok.*ACME.*pessoal.*2026-08-30')
+    Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') '| **Canal da decisão** | celular |' '| **Canal da decisão** | <canal> |'
+    Edit-File (Join-Path $p '.team-project/README.md') '1. nenhuma' '1. [ACME · S1 · ③ pacote] Aprova? — decisão: [No preference]'
+    $r = Invoke-Check 'project.ps1' @('-Root', $p)
+    Check 'C2 R34 sem canal e No preference como decisão: falhou' $r 0 @('\| R34 \| falhou.*Canal da decisão.*No preference')
+    Edit-File (Join-Path $p '.team-project/README.md') '**Verificação remota:** 2026-08-30' '**Verificação remota:**'
+    Edit-File (Join-Path $p '.team-project/README.md') '1. [ACME · S1 · ③ pacote] Aprova? — decisão: [No preference]' '1. nenhuma'
+    $r = Invoke-Check 'project.ps1' @('-Root', $p)
+    Check 'C2 R34 configurado sem verificação: aviso' $r 0 @('\| R34 \| aviso.*não verificado')
 }
 
 # 10. C4 (fix.ps1): bloco B-001 com um defeito, um ajuste e uma promovida.

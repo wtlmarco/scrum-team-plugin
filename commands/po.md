@@ -32,6 +32,6 @@ Pedido `/po review …` → o caminho é **`/review …`**. Pedido `/po brainsto
 
 Grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar.
 
-Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, "pedir mais contexto" por último (`working-rules.md` R22).
+Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, "pedir mais contexto" por último (`working-rules.md` R22). Com **Identificador remoto** no `README.md` §1: prefixo `[<ID> · <onde> · <ponto>]` e pendência em §7 antes do formulário (R34).
 
 Ao receber a resposta, repasse a decisão na íntegra e destaque o que o stakeholder precisa definir.

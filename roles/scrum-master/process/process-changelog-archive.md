@@ -8,6 +8,70 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.38 — Medir custo e resultado: Categoria e Unidade no registro de consumo, bloco "Custo × resultado" na retrospectiva, modelo de benchmark A/B/C e "História de origem" no defeito (SM + PO + QA) — 02/10/2026
+
+**Instrução** (stakeholder, `/review`; decisões P1–P4 do formulário de 02/10/2026): "aplicar a proposta em `proposta-evaluation.md`" — saber se o plugin aumenta a qualidade com custo otimizado ou não faz diferença frente ao Claude sem ele, com o registro de consumo já em uso num projeto novo. Primeira da rodada `evaluation` → `guards` → `fix`.
+**Classificação:** formato de documento (colunas, bloco, modelo, campo) · propriedade de artefato (`benchmark/`) · cerimônia (retrospectiva). **Sem regra nova; carga fixa zero** (`commands/` e `agents/` intactos).
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `roles/scrum-master/templates/consumption.md` | tabelas · §Como gravar · §Regras | Colunas **Categoria** e **Unidade** (modelo e variante fora de sprint). Regra de `retrabalho` (invocação depois do primeiro ⚠️/❌ ou de 🔺 GAP). **Linha de sessão** (`/usage` colado, custo US$ observado) com **premissa R7 própria, distinta da do `operator`**: até a verificação no piloto **não se soma** às linhas por invocação, é lida à parte |
+| `roles/scrum-master/templates/retrospective.md` | bloco novo · Regras | "Custo × resultado" (8 indicadores, leitura em 3 linhas, no máximo uma ação). Fonte de "Defeitos que escaparam" = `pending.md` (a janela de 2 sprints atravessa a pasta); conta só `H-nnn` + sprint do aceite dentro da janela |
+| `roles/scrum-master/templates/benchmark.md` *(novo)* | — | Experimento A/B/C (+ B′ opcional, habilitado quando `guards` estiver aplicada). Regra de decisão **datada antes da 1ª execução**: 50% · 3× · 25% como padrão, linha "inconclusivo → ampliar a amostra", **diferença mínima de 3 defeitos** |
+| `process/artifact-ownership.md` §1 · `deliverables/team-project/README.md` · `roles/scrum-master/README.md` | linha `.team-project/benchmark/` · índice de modelos | Dono SM; stakeholder executa os braços; não semeada |
+| `process/workflow-processo.md` | §5c | A pegada estática convive com "Custo × resultado"; não se somam |
+| `roles/product-owner/` (`README.md` · `skills.md` · `templates/note.md`) | `/po bug` passo 6 · `/po note` passo 3 · skill 8 | **História de origem** (`H-nnn` + sprint do aceite, lida do quadro e dos dossiês, sem abrir código; janela de 2 sprints; "fora da janela" · "não identificada"); passada à QA no `/qa bug` e citada no Product Backlog; orientação opcional ao stakeholder em `note.md` |
+| `roles/quality-assurance/` (`README.md` · `skills.md` · `templates/gap-record.md`) · `deliverables/implementation/pending.md` | "Defeito reportado pelo stakeholder" passo 2 · competência 12 · "Abrir um GAP" · formato e regra | Grava a História de origem **como o PO passou, sem reinterpretar** (quatro valores); "não identificada" só se resolve com `arquivo:linha`; entrada `Origem: stakeholder` sem o campo é formato incompleto e não conta no resumo (§2, §2.1) |
+
+### Por quê
+"O plugin compensa?" não tinha resposta com dado: o processo media o tamanho dos próprios documentos e o consumo por invocação, mas não **o que o produto ganhou** nem **onde o custo está**. Sem Categoria e Unidade o corte de custo é chute; sem a História de origem não há "defeito que escapou", o indicador que mede o que o processo existe para impedir; sem regra de decisão datada antes, qualquer resultado confirma o que já se acreditava. A premissa própria da linha de sessão existe porque **não se sabe** se o `/usage` já inclui os subagentes — somar às cegas dobraria o custo (R7: sem evidência, não aconteceu).
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| Sessão que orquestra | Preenche Categoria e Unidade por classificação (nunca estimativa); grava a linha de sessão do `/usage` quando o stakeholder a cola |
+| SM | Preenche "Custo × resultado" na retrospectiva; mantém `benchmark/` quando o stakeholder abre o experimento |
+| PO | No `/po bug`, registra a História de origem de defeito em funcionalidade já aceita |
+| QA | Transcreve o campo no `pending.md` sem reinterpretar; entrada `Origem: stakeholder` sem ele é formato incompleto |
+| Stakeholder | Roda `/usage` no fim da sessão e cola; executa os braços do benchmark |
+
+### Conflitos com o processo vigente
+- **R7** (nunca estimar): custo US$ só do `/usage` (observado) ou derivado na retrospectiva, com fórmula e preço ao lado; Categoria é classificação mecânica. **R28** inalterada: o `operator` entra como `verificação`. **§1c:** `benchmark/` fica fora da pasta do sprint de propósito (atravessa sprints, como o spike).
+- **Auto-contradição corrigida (SM):** "Métrica sem fonte não entra… todas na pasta do próprio sprint" excluía o `pending.md`, fonte de "Defeitos que escaparam"; exceção declarada em `retrospective.md`.
+- **Escalado e decidido pelo stakeholder (ver "Decisões" abaixo; o nome "História de origem" nas linhas acima é o da primeira redação, hoje "História do aceite"):** (1) **homonímia** — "História de origem" já é o campo Task→História de R20 (Sprint Backlog, `agents/scrum-master.md`, retrospectiva, `working-rules`); o campo novo é outro objeto (a História aceita onde o defeito nasceu). Candidato: renomear o novo para "História do aceite" no PO, QA e `pending.md`. (2) **"fora da janela"** — o PO o descreve como a mesma `H-nnn` "marcada fora da janela"; QA, `gap-record.md` e `pending.md` o listam como valor **alternativo** a `H-nnn`. Falta dizer se o ID acompanha o marcador. (3) **"não aplicável"** aparece no PO só no passo 7 e em `/po note`, não no passo 6 que define os valores; os três documentos de QA o têm entre os quatro.
+
+### Como saberemos que funcionou
+Na **primeira retrospectiva** depois da aplicação: "Custo × resultado" preenchido, com no máximo **uma** célula "não disponível" por indicador e a fração `cerimônia` conhecida. Nos defeitos do stakeholder do período: 100% das entradas `Origem: stakeholder` com a linha `História de origem`. Quando o stakeholder abrir o benchmark: `protocol.md` com a regra datada antes do 1º resultado e `result.md` lido por ela, sem limiar alterado. A premissa da linha de sessão fecha na verificação do piloto; se não fechar em dois sprints, volta ao `/review`.
+
+### Evidência (R19)
+Reexecutada pelo SM na curadoria, em amostra de cada papel.
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão (SM) | `Grep` do cabeçalho `\| Data \| Papel \| Modelo \| Comando \| Task/História \|` em todo o repositório (sem `proposta-*.md`) | 2 ocorrências, ambas em `consumption.md` (linhas 20 e 37), as duas com `Categoria \| Unidade \| Tokens`; `Categoria` nas linhas 20, 37, 40, 61, 81 | ✅ |
+| Referência (SM) | `Grep -c benchmark` fora de `proposta-*.md`; `rituals/benchmark` em `roles/scrum-master/` | `team-project/README.md` 1 · `scrum-master/README.md` 1 · `benchmark.md` 3 · `artifact-ownership.md` 1 (todas para `templates/benchmark.md`); `rituals/benchmark`: 0 — nenhum ponteiro órfão | ✅ |
+| Contagem (PO) | `Select-String 'História de origem'` por arquivo, em `roles/product-owner/` (sem changelog) | `README.md` 3 · `skills.md` 1 · `templates/note.md` 3 = 7 linhas em 3 arquivos | ✅ |
+| Contagem (QA) | idem em `roles/quality-assurance/` e `pending.md` | `README.md` 1 · `skills.md` 1 · `gap-record.md` 4; `pending.md` linhas 52, 72, 82 | ✅ |
+| Arquivamento | entrada v3.35 movida; `Contains` do texto de `HEAD` no arquivo | True (17.555 caracteres); `process-changelog.md` fica com v3.38, v3.37, v3.36 | ✅ |
+| Carga fixa | `git status --porcelain commands agents rituals how-to.md README.md CHANGELOG.md .claude-plugin` | vazio — nada alterado ali; 13 arquivos modificados + `benchmark.md` novo, todos de `roles/` e `deliverables/` | ✅ |
+| Migração (T14) | leitura de `rituals/team-update.md` passo 8 e `deliverables/team-project/README.md` linhas 20, 53 e 76 | `consumption.md` (sprint) e `.team-project/consumption.md` (fora de sprint) constam como "Sim — estrutura"; o passo 8 mostra o delta de coluna e pede aprovação por arquivo; sprint fechado é "histórico imutável — não reconcilie" | ✅ — `team-update.md` **não muda** |
+
+**Migração:** a coluna nova entra no meio da tabela; ao aprovar o delta, as linhas existentes ganham duas células vazias — passado não se reconstrói.
+
+### Decisões do stakeholder (formulário de 02/10/2026) sobre "Para escalar"
+1. **Homonímia:** o campo novo do defeito passa a se chamar **"História do aceite"** (PO, QA, `pending.md` e `retrospective.md` renomeados); "História de origem" fica só para o campo Task→História de R20.
+2. **"fora da janela" leva o ID.** Quatro valores: `H-nnn + sprint do aceite` · `H-nnn · fora da janela` · `não identificada` · `não aplicável`. Nota da retrospectiva alinhada (só o primeiro entra na contagem).
+3. **"não aplicável" no passo 6 do `/po bug`:** o PO completa a lista de valores.
+
+### Aplicado pela sessão, por decisão do stakeholder
+`rituals/benchmark.md` (novo, sob demanda) · `commands/po.md` (modo `bug`) · `commands/qa.md` · `how-to.md` (cenário H) · versão **v3.38.0** (`plugin.json`, `README.md`, `CHANGELOG.md`, R18). Pontos de coerência do SM para `rituals/benchmark.md` (`templates/benchmark.md`, `artifact-ownership.md` §1, `deliverables/team-project/README.md`, `review-contract.md`): acrescentados em `templates/benchmark.md`, `artifact-ownership.md` §1 e `deliverables/team-project/README.md`; `review-contract.md` **não enumera rituais** (conferido), nada a apontar. `roles/scrum-master/README.md` já aponta para o modelo e fica como está.
+
+### Pendente
+- **Verificação da premissa da linha de sessão** no projeto-piloto: um `/po status` com `/usage` antes e depois, comparado com a linha do PO; o resultado volta ao `/review`.
+- **Reiniciar a sessão** (mudança de comando só vale depois) e **`/team update`** nos projetos.
+
+---
+
 ## v3.37 — R32: consultoria externa especializada pelo `/sm consulting` — técnica e de negócio, carta sanitizada, até 3 réplicas, validação do time antes do formulário (SM + PO + Arquiteto + QA + UX) — 02/10/2026
 
 **Instrução** (stakeholder, proposta `proposta-consulting.md`, com as decisões D1–D10 já tomadas): "Decisões técnicas especializadas (banco de dados, segurança, design, arquitetura, infraestrutura) hoje saem só do conhecimento do próprio time, sem forma de buscar uma segunda opinião externa com rastreabilidade; e o ADR registra a decisão já tomada, sem apresentar ao stakeholder opções comparáveis para escolher. O mesmo vale para o lado funcional: quando o projeto entra numa área de negócio que o time não domina, o PO escreve requisitos e regras só com o que o stakeholder sabe dizer, sem apoio especializado nos processos daquela área."

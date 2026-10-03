@@ -46,6 +46,7 @@ O time trabalha numa cadência fixa, toda conduzida pelo `/sm`:
 | Aceitar o que o sprint entregou | `/sm sprint review` |
 | Encerrar o sprint | `/sm sprint close` |
 | Atualizar o plugin / ver a versão | `/team update` · `/team version` |
+| Responder e retomar pelo celular | `/team remote` (uma vez por projeto) → seção "Responder pelo celular" |
 | Mudar como o time trabalha (regra, cerimônia, modelo) | `/review` — **só no repositório-fonte do plugin** |
 
 ## Os cenários
@@ -190,7 +191,7 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 |---|---|---|
 | **G1** | commit com arquivo de `.team-project/` (R31) | `git restore --staged .team-project` e commitar só o produto. Na migração do `/team update` (passo 7b), o próprio ritual desliga a G1 durante o passo |
 | **G2** | edição da cópia instalada do plugin | mudança de processo vai pelo `/review`, no clone do repositório do plugin |
-| **G3** | formulário cuja última opção não é "Pedir mais contexto" (R22) | o agente refaz a pergunta; vale para toda pergunta, até a simples |
+| **G3** | formulário cuja última opção não é "Pedir mais contexto" (R22); em projeto com identificador remoto, pergunta sem o prefixo `[<ID> · …]` ou sem a pendência gravada antes (R34) | o agente refaz a pergunta; vale para toda pergunta, até a simples |
 | **G4** | aviso: saída de comando com mais de 300 linhas no contexto (R28) | delegar a execução pesada ao `operator` |
 
 - **O agente recebe o motivo e corrige o rumo** — você normalmente nem vê o bloqueio.
@@ -202,9 +203,9 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 
 | Portão | Onde | O que você recebe | Como decide |
 |---|---|---|---|
-| **① SDD funcional** | `/sm sdd` | o protótipo funcional em HTML, com todos os fluxos principais | **navega** o protótipo, depois responde o formulário |
+| **① SDD funcional** | `/sm sdd` | o protótipo funcional em HTML, com todos os fluxos principais — e, no projeto remoto, o link para abrir no celular | **navega** o protótipo e responde o formulário; "aprovar" **declara** que você navegou |
 | **② SDD técnico** | `/sm sdd` | arquitetura, dados e API da primeira fatia, resumidos pelo Arquiteto | formulário |
-| **③ Pacote do sprint** | `/sm sprint plan` | Sprint Backlog fechado · critérios de aceite · protótipo do sprint · `planning.md` (inclusive o que **não** entrou e por quê) | **navega** o protótipo do sprint, depois um formulário só para o pacote inteiro |
+| **③ Pacote do sprint** | `/sm sprint plan` | Sprint Backlog fechado · critérios de aceite · protótipo do sprint · `planning.md` (inclusive o que **não** entrou e por quê) | **navega** o protótipo do sprint (na máquina ou pelo link no celular) e responde um formulário só para o pacote inteiro; "aprovar" **declara** que você navegou |
 | **④ Aceite** | `/sm sprint review` | o dossiê de cada História, critério a critério, com a evidência do QA | uma pergunta por História |
 
 - **Por que navegar, e não ler.** Aprovar texto é aprovar uma descrição; a divergência entre o que você imaginou e o que o time entendeu só aparece quando você atravessa o fluxo. No ① o que se joga fora é HTML; depois, é arquitetura e código.
@@ -212,6 +213,20 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 - **No ④, ressalva, gap e erro** viram entrada no Product Backlog na mesma sessão, com dono, e a priorização deles volta a você no pacote do sprint seguinte.
 - **Na evolução de área documentada (cenário C)**, um portão sem nada a decidir é dispensado — só com o dono declarando, com motivo, que aquela parte não muda.
 - **Um `/ux prototype` ou `/arc` rodado avulso não abre nem fecha portão**: a decisão fica pendente até o `/sm sdd`.
+
+## Responder pelo celular
+
+O time pode te perguntar — e você pode retomar o trabalho — pelo **Claude Code no celular**, por **Remote Control**: a sessão continua rodando no seu computador, e o app do Claude se conecta a ela.
+
+1. **Uma vez por projeto:** `/team remote`. Ele define o **identificador** do projeto (ex.: `ACME`) e a conta (pessoal ou da organização), confere o que dá para medir e imprime o comando de abertura.
+2. **Abra cada projeto na sua própria janela de terminal** com o comando impresso — `claude --remote-control "ACME · <produto>"`. Um projeto, uma sessão. Remote Control não roda na extensão do VS Code.
+3. **No app do Claude, aba Code:** cada projeto aparece como uma sessão, com o nome do comando.
+4. **Toda pergunta do time começa com o prefixo** — `[ACME · S4 · ③ pacote]`: projeto, sprint e o que se decide. Responda pelos cartões, como no terminal. Os comandos também funcionam digitados no app (`/sm sprint review`, `/po status`).
+5. **Não espere notificação:** no Android a pergunta não avisa (medido). Abra **Code** no app para ver o que está esperando.
+6. **"Pular" não decide nada:** a pergunta fica pendente em `.team-project/README.md` §7 e volta quando o time retomar.
+7. **① e ③ também se respondem pelo celular.** A pergunta traz o link do protótipo publicado como página privada na sua conta: navegue nele e decida. "Aprovar" declara que você navegou — a responsabilidade é sua. Se o produto também tem site, a navegação no desktop continua por sua conta.
+8. **Quando a fila do `sprint run` termina,** chega `[ACME · S4 · fim do run] Iniciar a Sprint Review?` — no terminal e no celular. "Agora" já abre a Review; "depois" deixa anotado. Iniciar a Review não é aceitar nada.
+9. **Se o computador suspender, a sessão cai.** Nada se perde: a pergunta está em §7 e volta quando você reabrir o projeto. Para trabalhar longe da máquina, deixe-a na tomada e sem suspensão.
 
 ## Regras que valem em qualquer cenário
 
@@ -233,7 +248,7 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 | `/ux` | `prototype` · `prototype sprint <n>` · `prototype screen <tela>` · `journey <fluxo>` · `screen <nome>` · `review-ui <tela>` | UX — protótipos, jornadas, telas, usabilidade, acessibilidade |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` | Desenvolvedor — executa o plano, não improvisa |
 | `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` · `bug <descrição\|lista>` *(acionado pelo PO ou pelo `fix plan`)* · `scenarios create` · `scenarios run <SC-nnn\|grupo\|all>` | QA — o veredito de qualidade que responde a você |
-| `/team` | `init` · `update` · `version` | Instala, atualiza e informa a versão — não dispara agente |
+| `/team` | `init` · `update` · `version` · `remote` | Instala, atualiza e informa a versão — não dispara agente |
 | `/review` | `<instrução>` · `note` · `metrics` · `audit` · `history` | Evolução do processo do time — **só no repositório-fonte do plugin** |
 
 **No dia a dia você usa quase só `/sm`, `/po` e, às vezes, `/arc question`.** Os `/sm` de ritual chamam os outros papéis por você.
