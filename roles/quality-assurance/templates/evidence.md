@@ -50,6 +50,13 @@
 
 ### Não exercitado
 - <o que e por quê>
+
+### Documentos vivos (R12)
+**Estado:** atualizados | pendentes
+**Documentos:** <quais foram atualizados — ou, em "pendentes", o que falta e o dono de cada um>
+
+### Escopo
+**Fora do plano:** nada | <lista de arquivos alterados pela Task fora da lista do Plano>
 ```
 
 ---
@@ -60,5 +67,6 @@
 - **Um bloco por execução** do `/qa <ID>` sobre esta Task, em ordem cronológica inversa (mais recente no topo). Reprovação seguida de nova tentativa soma bloco novo — **nunca editar bloco antigo**. É por isso que o ponteiro do `report` importa mais aqui do que em qualquer outro documento: cada tentativa reprovada acrescenta comandos pesados novos, e sem `operator` cada um inflaria o contexto de uma verificação inteira por Task.
 - **O ponteiro é o `report` do job** (`report.md`, ou `report-<log>.md`) em `.team-project/operator/<sprint>/<job>/`; sobrevive à poda (R28). `report` ausente é ausência de evidência (rejeição no aceite, R7); acima de 200 linhas ou 20 KB é achado de processo. O log bruto (`*.log`) é disco local e pode ter sido podado: não é achado. Com gatilho de R28 disparado e o log podado, re-rodo o job pelo `operator` ou registro "não verificado — log podado" (R7) — nunca "ok" por inferência do trecho.
 - **Task retomada num sprint seguinte** ganha arquivo novo em `sprints/<n_novo>/evidence/<T-ID>.md`; o de `sprints/<n_antigo>/evidence/` fica como está, registro fechado — mesmo padrão do plano do Arquiteto em `plan/` (`artifact-ownership.md` §1e).
+- **As duas últimas seções de cada bloco são lidas por script (C1, `scripts/checks/close.ps1`)** — cabeçalhos e rótulos **exatamente** como no modelo (`### Documentos vivos (R12)` + `**Estado:**`; `### Escopo` + `**Fora do plano:**`), sem variar grafia. `**Estado:** atualizados` só quando a R12 está cumprida (todas as linhas da tabela "Documentos vivos" do veredito em "sim"/"n/a"); qualquer pendência é `pendentes`, com o que falta e o dono em `**Documentos:**`. `**Fora do plano:** nada` só depois de conferir o diff da Task contra a lista de arquivos do Plano (frente 2); arquivo fora da lista entra listado. Seção ausente ou `pendentes` bloqueia o close (exit 1); arquivo listado em "Fora do plano" marca falha. Valem os dois campos do bloco **mais recente** — por isso cada bloco novo os traz completos.
 - **A linha de base do projeto não é por Task nem por sprint** — fica fora desta pasta, em `.team-project/quality-assurance/baseline.md`; formato e roteiro em [`../README.md`](../README.md), seção `/qa baseline`.
 - **A tabela de cenários espelha a do veredito (`verdict.md`), nunca diverge dela.** Cada execução some no Histórico do próprio `SC-nnn` ([`scenario.md`](scenario.md)) e no índice ([`scenarios-index.md`](scenarios-index.md)) — os três (evidência, cenário, índice) sempre com o mesmo resultado para a mesma data.

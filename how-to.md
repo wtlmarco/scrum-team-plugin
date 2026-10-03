@@ -153,6 +153,22 @@ O time mede, a cada sprint, **quanto custa entregar valor e com que qualidade** 
 - **Ao relatar um defeito de algo já aceito**, diga, se souber, de qual História é: o PO registra a **História do aceite**, e o defeito entra na conta do que escapou.
 - **Comparação com o Claude sem o plugin:** siga `rituals/benchmark.md`. De 3 a 5 itens já aceitos são refeitos em worktrees, sem o plugin — com a especificação do time e só com o seu pedido original —, e avaliados às cegas contra o que o time entregou. **Você data a regra de decisão antes da primeira execução**; o resultado é direcional, não estatístico.
 
+## Quando uma guarda bloqueia
+
+Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks do plugin), e não só pelo texto que o agente lê. A sessão abre com uma linha "Guardas do time: ativas …".
+
+| Guarda | Bloqueia ou avisa | O que fazer |
+|---|---|---|
+| **G1** | commit com arquivo de `.team-project/` (R31) | `git restore --staged .team-project` e commitar só o produto. Na migração do `/team update` (passo 7b), o próprio ritual desliga a G1 durante o passo |
+| **G2** | edição da cópia instalada do plugin | mudança de processo vai pelo `/review`, no clone do repositório do plugin |
+| **G3** | formulário cuja última opção não é "Pedir mais contexto" (R22) | o agente refaz a pergunta; vale para toda pergunta, até a simples |
+| **G4** | aviso: saída de comando com mais de 300 linhas no contexto (R28) | delegar a execução pesada ao `operator` |
+
+- **O agente recebe o motivo e corrige o rumo** — você normalmente nem vê o bloqueio.
+- **Falso positivo:** acrescente a guarda a `"disabled"` em `.team-project/guards.json`; vale na hora. Leve o caso ao `/review`, para a guarda ser corrigida.
+- **Cada disparo custa de 0,6 a 0,8 s.** O que cada guarda **não** cobre está em `hooks/COVERAGE.md`; as decisões ficam em `.team-project/guards.log`, contadas na retrospectiva.
+- **O `/sm close` começa por uma conferência automática** (`close.ps1`): sem evidência com veredito ✅ (R7) ou com documento vivo pendente (R12), a Task não fecha.
+
 ## Os seus quatro portões
 
 | Portão | Onde | O que você recebe | Como decide |
@@ -227,6 +243,7 @@ Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — a nã
 ├── consumption.md         consumo fora de sprint (onboarding, brainstorm, prepare, sdd, entre sprints) — mesmo modelo do de dentro do sprint
 ├── consulting/            casos de consultoria externa (/sm consulting) — nasce só quando você pede um
 ├── benchmark/             o experimento "o time compensa?" (rituals/benchmark.md) — nasce só quando você o abre
+├── guards.json            liga e desliga as guardas deste projeto ("disabled") · guards.log: o que elas barraram
 │
 ├── sprints/               O REGISTRO DE EXECUÇÃO, um subdiretório por sprint
 │   └── 1/ 2/ 3/ …

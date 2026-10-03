@@ -13,6 +13,24 @@
 
 ---
 
+## v3.39.0 — 2026-10-02
+
+**Branch:** `feat/v3.39.0` empilhada sobre `feat/v3.38.0` · **Processo:** [`v3.39`](roles/scrum-master/process/process-changelog.md)
+Regra mecânica vira guarda ou conferência; o LLM fica com o julgamento — proposta `guards`, **fase 1**, segunda da rodada evaluation → guards → fix (SM + QA). Sem regra nova.
+
+- **Guardas (hooks do plugin, `hooks/`):** **G1** nega commit com arquivo de `.team-project/` no stage, inclusive remoção (R31); **G2** nega escrita na cópia instalada do plugin; **G3** nega formulário cuja última opção não é "Pedir mais contexto" (R22, toda pergunta); **G4** avisa saída de comando acima de 300 linhas, exceto dentro do `operator` (R28); **G13** abre a sessão com as guardas ativas. Falha aberta: erro de script nunca bloqueia. Custo medido: 0,6–0,8 s por disparo. Limites de cada uma em `hooks/COVERAGE.md`.
+- **Conferências (`scripts/checks/`):** **C1** `close.ps1` abre o `/sm close` e confere R1, R4, R7, R8, R12, R16, R20, R24 (`-Post`), R25, R26, R28 e R30 — **exit 1 (não fecha) se R7 ou R12 falharem**; **C2** `project.ps1` (R14, R15, R21, R31) na retrospectiva e no onboarding; **C3** `release.ps1` (R17, R18, modelos órfãos) antes do PR e no `/review audit`.
+- **Formatos que os scripts leem:** a evidência do QA ganha `### Documentos vivos (R12)` e `### Escopo` (`**Fora do plano:**`); o pacote de abertura ganha `**Aprovado em**`. `working-rules-index.md` ganha a coluna "Instrumento"; as linhas "SM verifica" citam G/C.
+- **`.team-project/guards.json`** (liga/desliga por projeto, sonda da fase 2) e **`guards.log`**; criados pelo `/team init` e pelo `/team update` (passo 7c). O passo 7b desliga a G1 durante a migração do R31.
+- **Critério de entrada no `/review`:** regra de verificação mecânica só entra com a guarda ou a conferência junto. `hooks/` e `scripts/` são do stakeholder.
+- **Fora desta versão:** fase 2 (guardas por papel, G5–G11) depende do `agent_type` de agente de plugin, não documentado — a sonda (`"probe": true`) registra o valor real; fase 3 (`close` bloqueado pelo hook) só depois de 2 sprints de C1 sem divergência.
+
+**Como verificar:** `powershell -NoProfile -File scripts/checks/tests/run-guard-tests.ps1` (17 casos) e `run-check-tests.ps1` (12 casos) verdes; `scripts/checks/release.ps1` com R17 e R18 ok; depois de reiniciar, `/hooks` lista os três eventos do plugin.
+
+**Pendente (stakeholder):** reiniciar a sessão (hooks e comandos); `/team update` nos projetos (passo 7c cria o `guards.json`); disparo real de G1–G4 numa sessão de teste; uma sessão com a sonda ligada (`/po status` + `/dev` de calibração) e o `guards.log` levado ao `/review` da fase 2; rodar o C1 contra uma Task já fechada de um projeto real e comparar com o fechamento manual.
+
+---
+
 ## v3.38.0 — 2026-10-02
 
 **Branch:** `feat/v3.38.0` a partir de `develop` · **Processo:** [`v3.38`](roles/scrum-master/process/process-changelog.md)

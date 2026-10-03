@@ -21,12 +21,13 @@
 |---|---|
 | **Decisão do stakeholder (formulário — R22)** | <aprovar · aprovar com ajuste · reprovar — **registro único do ③**; a ficha do protótipo do sprint (UX) só aponta para esta linha> |
 | **Aprovado por** | <stakeholder — nome> |
+| **Aprovado em** | <aaaa-mm-dd — data do formulário; é a data que o `close.ps1` (C1) compara com a entrada da Task em 🟨 — R20 · R25> |
 | **Protótipo navegável do sprint** | <caminho/URL do protótipo costurado com as telas das Histórias que entraram> · **navegado em** <data> · **fluxo ponta a ponta coberto:** <qual> |
 | **O que foi submetido** | Sprint Backlog fechado (abaixo) + critérios de aceite das Histórias que entraram + o protótipo acima + `planning.md` |
 | **Ajustes pedidos na aprovação** | <o que mudou antes do aceite \| nenhum> |
 | **`stories/` congelado em** | <data — as Histórias como foram aprovadas; alterar depois é violação de escopo (R4)> |
 
-> Sem esta seção preenchida, **o sprint não arrancou**: esta aprovação é o portão ③ de **todas** as Histórias abaixo, de uma vez (R20 · R25).
+> Sem esta seção preenchida — **inclusive a data em `Aprovado em`** —, **o sprint não arrancou**: esta aprovação é o portão ③ de **todas** as Histórias abaixo, de uma vez (R20 · R25).
 
 **Capacidade:** <n> desenvolvedor(es). Com um só dev, este quadro é uma **fila** — uma Task em 🟨 por vez (R1). *Est.* é na unidade declarada no contexto do projeto.
 

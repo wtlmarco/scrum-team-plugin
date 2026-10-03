@@ -22,7 +22,7 @@ O Agent `scrum-master` **não dispara outros agentes** (não tem a ferramenta `A
 | `sprint review` *(alias `review`)* | **sessão** | PO (demonstra e escreve o dossiê `Aceite — H-<nnn>` antes da pergunta); QA (evidência) | `workflow-sprint.md` §5e "Sprint Review" · `templates/sprint-review.md` |
 | `sprint close` | só SM | — | `workflow-sprint.md` §5e "Sprint Retrospective" · `templates/retrospective.md`, `plugin-report.md` |
 | `board` | só SM | — | `workflow-sprint.md` §5f · `templates/sprint-backlog.md` |
-| `close <T-ID>` | só SM | — | `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/working-rules-index.md` (linhas **[close]**) · `templates/status-entry.md` |
+| `close <T-ID>` | só SM | — | começa por `${CLAUDE_PLUGIN_ROOT}/scripts/checks/close.ps1 -Task <T-ID>` (C1; exit 1 = não fecha) · `working-rules-index.md` (linhas **[close]**) · `templates/status-entry.md` |
 
 Arquivos `workflow-*.md` em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/`; `templates/` em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/`. **Leia só o arquivo e a seção do modo**: os roteiros não estão aqui de propósito (carga fixa).
 

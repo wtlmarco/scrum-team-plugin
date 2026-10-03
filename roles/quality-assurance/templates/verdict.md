@@ -74,7 +74,7 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 - <o que parece errado e o que falta para confirmar>
 
 ### Escopo
-**Fora do plano:** <arquivo tocado além do previsto — R4> (ou "nada")
+**Fora do plano:** nada | <lista de arquivos tocados além do previsto — R4>  *(diff × lista de arquivos do Plano, frente 2; transcrito ao bloco da evidência — o C1 lê esta linha)*
 
 ### Não exercitado
 - <o que ficou sem validação e por quê>
@@ -90,7 +90,7 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 | Suíte de cenários — Histórico de cada `SC-nnn` mapeado e índice (`scenarios/README.md`) | QA | sim / não | `SC-nnn` |
 | SDD funcional / técnico / ADR que a Task tocou | PO / Arquiteto | sim / não / n/a | arquivo (dono nomeado se "não") |
 
-*(Qualquer "não" ⇒ Estado "pendentes", com o dono do documento na linha — devolve a ele, não ao dev.)*
+*(Qualquer "não" ⇒ Estado "pendentes", com o dono do documento na linha — devolve a ele, não ao dev. O Estado e uma linha com os documentos são transcritos ao bloco da evidência (`evidence.md`) — o C1 lê `### Documentos vivos (R12)` / `**Estado:**` lá.)*
 ```
 
 ## Regras

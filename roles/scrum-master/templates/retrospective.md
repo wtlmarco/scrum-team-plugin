@@ -38,6 +38,13 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 | `/sm close` sem linha correspondente no Registro de transições do Sprint Backlog, ou `burndown.md` com estimativa restante caindo sem fechamento que explique | <n> | qualquer | R24 |
 | Sprint sem pacote de abertura aprovado antes da primeira Task em construção; ou `planning.md` sem a lista do que não entrou, com o motivo; ou protótipo do sprint sem fluxo ponta a ponta; ou bloqueio sem degrau nomeado; ou arquivo de `stories/` alterado depois da aprovação | <n> | qualquer | R25 |
 
+### Guardas e conferências do projeto
+
+> Fonte: `.team-project/guards.log` (uma linha por disparo) e a saída de C2 (`project.ps1`), rodada **na retrospectiva** — sem regra nova. Log ausente: `n/a`.
+
+- **Guardas:** deny legítimo <n> · falso positivo <n> · desligadas (`guards.json` → `disabled`) <IDs | nenhuma> · latência <média s por disparo>. **Falso positivo** = deny que o stakeholder ou o papel contestou com razão — vira ajuste de guarda no `/review`, nunca desligamento silencioso.
+- **`project.ps1` (C2):** <tabela colada — R14, R15, R21, R31> · falhas: <IDs | nenhuma>.
+
 ### Consumo real do sprint (tokens e duração)
 
 > Lê [`consumption.md`](consumption.md) da **mesma pasta do sprint**, e só existe quando o projeto registra consumo — sem o arquivo, escreva `n/a` e siga. **Não é footprint** e **não se soma** às duas linhas de KB acima: aquelas medem a pegada estática do processo, esta mede o gasto real do trabalho dos papéis ([`../process/workflow-processo.md` §5c](../process/workflow-processo.md)).
