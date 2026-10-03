@@ -11,7 +11,7 @@ Responde uma pergunta só: **quanto da qualidade vem do plugin e quanto vem da e
 | **A · Plugin** | o que já foi entregue pelo `sprint run` (custo do `consumption.md`; linhas de sessão lidas à parte) | — |
 | **B · Claude direto, com a especificação** | sessão nova, **plugin desabilitado**, em worktree a partir do commit **anterior** à entrega; entrada = História detalhada, critérios de aceite, protótipo e trecho do SDD | **A × B** = valor do **pipeline** |
 | **C · Claude direto, só com o pedido** | igual ao B, com **o pedido original** do stakeholder como ele o escreveu | **B × C** = valor da **especificação** |
-| **B′ · B + guarda-corpos** *(opcional)* | igual ao B, com `CLAUDE.md` dos standards, hooks de build/teste e revisor independente no fim. **Habilitado quando a proposta `guards` estiver aplicada** — até lá, não roda | se B′ ≈ A, o mesmo resultado sai mais barato sem o pipeline |
+| **B′ · B + guarda-corpos** *(opcional)* | igual ao B, com `CLAUDE.md` dos standards, hooks de build/teste e revisor independente no fim. **Habilitado quando a fase 2 de guards (G5–G11) estiver aplicada** — até lá, não roda | se B′ ≈ A, o mesmo resultado sai mais barato sem o pipeline |
 
 **Avaliação cega, igual para todos os braços:** (1) cenários `SC-nnn` da História, novos e regressivos, executados pelo `operator` em cada worktree; (2) revisão independente do diff por agente que **não sabe** o braço (diffs renomeados X, Y, Z), pelo mesmo prompt; (3) métricas mecânicas — linhas alteradas, testes adicionados, avisos de build, cobertura do módulo. **Defeito** = cenário falho + achado da revisão cega.
 
@@ -25,7 +25,7 @@ Responde uma pergunta só: **quanto da qualidade vem do plugin e quanto vem da e
 <!-- ID · tamanho (Correção · pequena · média · grande) · por que foi escolhido · commit-base -->
 
 ## Braços
-<!-- A · B · C · (B′, só se `guards` aplicada) — entrada exata de cada um -->
+<!-- A · B · C · (B′, só se a fase 2 de guards (G5–G11) estiver aplicada) — entrada exata de cada um -->
 
 ## Regra de decisão — **DATADA <aaaa-mm-dd>, antes da 1ª execução**
 <!-- Os valores abaixo são o padrão do modelo. O stakeholder os confirma ou troca AQUI, e a data fecha o campo: limiar alterado depois de qualquer resultado invalida a leitura. -->

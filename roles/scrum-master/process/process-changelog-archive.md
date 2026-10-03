@@ -8,6 +8,64 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.36 — R27 confere a energia e retoma o mesmo agente; Task pesada em segundo plano; ocorrência de plugin só se registra no `run` e se pergunta na Review; `replicate-in-new-project.md` fundido no `how-to.md` (SM) — 01/10/2026
+
+**Instrução** (stakeholder, `/review note`, sete itens de `note.md`, resolvidos em formulário R22). Itens literais: (1) "quando uma invocação voltar 'interrompida' sem ação do stakeholder, a orquestração deve conferir os eventos de energia na janela da falha e classificar como falha de ambiente com causa"; (2) "Retomada, não reinício: abri um agente novo na retentativa. O correto era retomar o mesmo por SendMessage"; (3) "o sprint run deve disparar Arquiteto e QA com run_in_background: true quando a Task for pesada"; (4) "o sprint run pode avisar o stakeholder uma vez para impedir a suspensão do PC"; (5) "na retrospective levar falhas na execução do plugin ou um uso abusivo de tokens … abrir uma vez no sprint run o formulario … investigar e gerar relatorio e correcao ao fabricante do plugin … ou ignorar e seguir"; (6) "Os arquivos review-contract, team-init, team-update, team-version precisam ficar na raiz?"; (7) "o arquivo replicate-in-new-project ainda precisa existir se temos o how-to?".
+**Classificação:** regra (R27), etapa de fluxo (`sprint run`), cerimônia (Review e retrospectiva), formato de documento (`plugin-report.md` condicional) e propriedade/estrutura de guias de raiz. Papel único: SM.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `process/working-rules.md` · `working-rules-index.md` | R27 (texto, Evita, SM verifica) · linha R27 | **Antes de retentar**, a orquestração confere energia/suspensão do SO na janela da falha e classifica **falha de ambiente com causa e horário** — nunca defeito do plugin nem culpa de alguém (suspender o PC é decisão do stakeholder). **Retentar é retomar:** o mesmo agente por `SendMessage` (R3); instância nova só se ele não existe mais e depois de ler o disco (R5). Contagem de regras inalterada (31) |
+| `process/sprint-run.md` | "Quando a fila para" · nova seção "Task pesada" · "Como o SM verifica" | Remissão a R27 (energia + `SendMessage`); **Task pesada** = estimativa ≥ 2× a mediana do sprint ou já acionou o `operator` → `architect` e `quality-assurance` com `run_in_background: true`, série R1 mantida; ocorrência de plugin **só se registra** no quadro, sem formulário no `run` |
+| `process/workflow-sprint.md` | §5e Review · Sprint Retrospective (novo parágrafo "Ocorrência de plugin", fonte única) · verificação | **Ocorrência de plugin** = ≥ 2 falhas R27 persistentes no sprint **ou** consumo de um papel > 2× a média dos últimos sprints. O formulário R22 **investigar · ignorar e seguir · pedir mais contexto** abre **uma vez por sprint, no contato da Review** (R25 intacta: nenhum contato novo). Falha de ambiente com causa externa não conta. `plugin-report.md` passa a **condicional a "investigar"** |
+| `templates/retrospective.md` · `plugin-report.md` · `process/artifact-ownership.md` · `roles/scrum-master/README.md` · `templates/project-context.md` · `deliverables/team-project/README.md` · `how-to.md` | blocos do relatório ao dono do plugin | Ponteiros alinhados: `plugin-report.md` só existe quando houve "investigar"; retrospectiva registra a ocorrência e a escolha; relatório traz a ocorrência que o motivou |
+| `how-to.md` | nova seção "Calibrar a instalação" (+ parágrafo "Uma origem, vários projetos") | Recebe do `replicate-in-new-project.md` o que era único: composição de modelos (passo 4), primeira rodada de validação (passo 6) e o checklist, uma vez, ao fim da instalação |
+| `replicate-in-new-project.md` | — | **Removido** (`git rm`). Passos 1, 2 e 5 já eram do `how-to.md` (instalar, `/team init`, cenários A/B); passo 3 (entregáveis) vive em `deliverables/README.md` |
+| `rituals/` (**novo**) · `commands/team.md` l.14–16 · `commands/review.md` l.52 e l.56 · `agents/{scrum-master,product-owner,quality-assurance,user-experience}.md` · `README.md` (índice e l.191) · `artifact-ownership.md` l.36 e l.56 · `workflow-processo.md` l.45 e l.100 · `working-rules.md` l.146 e l.162 · `deliverables/team-project/README.md` l.21 e l.69 · `rituals/review-contract.md` (l.3, l.5 e l.69) | item 6 | `review-contract.md`, `team-init.md`, `team-update.md` e `team-version.md` **movidos da raiz para `rituals/`** (pelo stakeholder, à mão: o `git mv` foi negado ao SM). Curadoria de referência cruzada aplicada pelo SM: ponteiros `${CLAUDE_PLUGIN_ROOT}/rituals/…` e `RAIZ/rituals/…`, links relativos (`../`) e a lista de guias de raiz. Os guias usam `${CLAUDE_PLUGIN_ROOT}/…` para o resto, sem link relativo próprio além do `review-contract.md` |
+| `README.md` · `standards/README.md` · `commands/arc.md` l.12 · `commands/review.md` l.52 · `review-contract.md` l.69 · `artifact-ownership.md` l.15 e l.56 | ponteiros e listas de guias de raiz | Cinco ponteiros repontados para `how-to.md` e o arquivo sai das listas (curadoria de referência cruzada). Índice de estrutura do `README.md` ganha a linha de `team-version.md`, que faltava |
+
+### Por quê
+- **R27 (1+2):** a falha medida foi três chamadas "interrompidas" que eram suspensão do PC — sem a conferência, o ambiente vira mistério ou culpa; sem a retomada por `SendMessage`, cada retentativa joga fora o contexto já pago.
+- **Task pesada (3):** um bloqueio de 27 minutos da sessão por falha que só se sabia ao fim; em segundo plano a falha chega como notificação, e a série (R1) não muda.
+- **Ocorrência de plugin (5):** o relatório ao fabricante era sempre gerado, sem decisão do stakeholder e sem gatilho objetivo; agora tem limiar verificável, uma pergunta por sprint no contato que já existe, e o "ignorar" é resposta válida.
+- **Fusão (7):** dois guias com a mesma instalação e o mesmo "nova estrutura" divergem — já havia a contagem "8 comandos e 7 agentes" duplicada.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| Sessão que orquestra | Confere energia antes de retentar; retoma por `SendMessage`; dispara Arquiteto/QA em segundo plano em Task pesada; abre o formulário de ocorrência na Review |
+| SM | Registra a ocorrência no quadro durante o `run`; gera `plugin-report.md` só com "investigar"; verifica a conferência de energia no relato de falha |
+
+### Conflitos com o processo vigente
+- **Item 4 descartado pelo stakeholder:** "se o PC suspender foi determinado pelo stakeholder e não é um problema" — nada aplicado; a conferência de energia do item 1 só **classifica** a falha com a causa.
+- **Item 5, opção B:** a posição A (formulário durante o `run`) contrariava "não peça nada ao stakeholder aqui" (sprint-run) e R25 ("dois pontos de contato por sprint"); ficou a B — o `run` só registra e a Review pergunta.
+- **Item 3:** `commands/arc.md` e `commands/qa.md` trazem `run_in_background: false` literal; só o `sprint-run.md` foi mudado, e o literal vira proposta (abaixo).
+
+### Como saberemos que funcionou
+Primeira falha de invocação do próximo sprint: relato traz energia (causa/horário ou "nada achado") e a forma da retomada; nenhuma instância nova aberta onde o agente ainda existia (`ListAgents`). Task pesada com marca de segundo plano no registro de consumo. Zero formulário de plugin durante o `run`; no máximo um por sprint, na Review. Prazo: dois sprints.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Remoção | `git rm replicate-in-new-project.md` | `rm 'replicate-in-new-project.md'`; 60 linhas removidas; `how-to.md` 203 → 230 linhas não vazias; entrada v3.34 (parte 2) arquivada idêntica (`Contains` do texto original de `HEAD` no arquivo: True) | ✅ |
+| Substituição de padrão | `Select-String 'replicate-in-new-project'` em todos os `*.md` fora de `CHANGELOG*`/`process-changelog*`/`note.md` | 0 ocorrências; as 6 novas referências a `how-to.md` § "Calibrar a instalação"/"Instalar…" lidas no contexto | ✅ |
+| Contagem | `Select-String '^### R\d+\.'` em `working-rules.md` · `'^\| R\d+ '` em `working-rules-index.md` | 31 · 31 (inalterada) | ✅ |
+| Links | varredura de `](caminho)` relativos nos 14 arquivos tocados | 0 quebrados novos; 1 preexistente (`project-context.md` → `how-to.md`, texto de modelo copiado ao projeto, fora desta rodada) | ✅ |
+| Extração (item 6) | `Get-ChildItem -File` na raiz e em `rituals/` | raiz: `.gitignore`, `CHANGELOG.md`, `how-to.md`, `note.md`, `README.md`; `rituals/`: os 4 guias | ✅ |
+| Substituição de padrão (item 6) | `Grep` de `review-contract`, `team-init`, `team-update`, `team-version` fora de changelogs e `note.md`, cada ocorrência lida no contexto | ver bloco "Evidência do item 6" abaixo | ✅ |
+
+**Item 6 (aplicado no mesmo dia):** o `git mv` foi negado ao SM pelo harness; o stakeholder moveu os quatro arquivos à mão e o SM aplicou só a curadoria de referência cruzada. O git os vê como delete + untracked até o stakeholder dar `git add`.
+
+**Nota de migração.** Projeto instalado em versão anterior lê os guias (`team-init.md`, `team-update.md`, `team-version.md`) **pela raiz do plugin** (`${CLAUDE_PLUGIN_ROOT}/…`). O `commands/team.md` novo aponta para `rituals/`; as duas coisas chegam juntas pelo `/team update` e **só valem depois de reiniciar a sessão**. Quem copiou algum desses guias para fora do plugin precisa trocar o caminho.
+
+### Fecho — propostas aplicadas pelo stakeholder (01/10/2026)
+- **Propostas de `commands/` aprovadas e aplicadas:** `commands/sm.md` l.35 (R27 aponta para a fonte única, com conferência de energia e retomada por `SendMessage`) e `commands/arc.md`/`commands/qa.md` l.10 (`run_in_background: false` salvo no `sprint run` de Task pesada).
+- **Release (R18):** `plugin.json` 3.36.0 · entrada `v3.36.0` no topo de `CHANGELOG.md` · banner `v3.36.0` no `README.md`. Branch `feat/v3.36.0` a partir de `develop`, com o `rituals/` adicionado ao git (renomeação), e PR para `develop`.
+- **Pendente:** reinício da sessão (comportamento de agente) e, na primeira falha de invocação, conferir o relato com energia e forma de retomada.
+
+---
+
 ## v3.35 — `.team-project/` sai do git (R31); R28 enxuta: relatório do job com teto, `report-<log>.md` por chamada, dev isento, log podado não é achado; consumo fora de sprint em `.team-project/consumption.md` (SM) — 30/09/2026
 
 **Instrução** (stakeholder, `/review note`, em três momentos no mesmo dia). (1) *"Otimizar a evidência do Operator para guardar o trecho do log … e não o log inteiro para não precisar subir no git … um log que passa de 100MB afetando o Git"*. (2) *"O registro de consumo dentro do sprint está sendo registrado em consumption.md; agora, onde está registrando os gastos das tarefas que estão fora do sprint?"* — e a decisão: *um arquivo `consumption.md` na raiz de `.team-project/`, no mesmo modelo*. (3) Decisão final: **remover `.team-project/` do git** — `.gitignore` com `.team-project/` na raiz; o git recebe só o produto (código e `docs/`); continuidade e retrabalho aceitos; documento de produto não referencia `.team-project/`; comportamento de agentes, comandos e guias de raiz autorizado; sem bump de versão.

@@ -7,7 +7,7 @@
 ## 1. Protocolo — antes de qualquer execução
 
 1. **Itens:** de **3 a 5**, já aceitos (História) ou fechados (Correção), com evidência, cobrindo tamanhos diferentes. Para cada um: ID, tamanho, por que foi escolhido e o **commit-base** — o commit **anterior** à entrega.
-2. **Braços:** A · B · C, e B′ só se a proposta `guards` estiver aplicada — definição e o que cada um isola no modelo `benchmark.md`.
+2. **Braços:** A · B · C, e B′ só com a **fase 2** das guardas aplicada (G5–G11, `hooks/COVERAGE.md`) — definição e o que cada um isola no modelo `benchmark.md`.
 3. **Regra de decisão:** copie a do modelo para o `protocol.md`, confirme ou troque os limiares e **date-a**. Data posterior à primeira execução invalida o experimento — a regra existe para não ser escrita depois de ver os números.
 
 ## 2. Sonda de orientação (uma vez por versão do plugin)

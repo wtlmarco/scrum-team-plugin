@@ -17,6 +17,7 @@ A partir de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/project-context.
 ├── README.md                 produto · situação · stack · fontes da verdade · ambiente · limitações
 ├── how-to.md                 cópia de `${CLAUDE_PLUGIN_ROOT}/how-to.md`
 ├── consumption.md            consumo fora de sprint (Nota pre-sprint;/entre-sprints;) — nasce com o cabeçalho e a tabela vazia, sem rotação
+├── guards.json               configuração das guardas (hooks/COVERAGE.md) — cópia de deliverables/team-project/guards.json
 ├── sprints/                  registro de execução — um subdiretório por sprint; nasce vazio
 │   └── <n>/                  planning.md · sprint-backlog.md · stories/ · plan/ · evidence/
 │                             consumption.md · burndown.md · review.md · retrospective.md · plugin-report.md
