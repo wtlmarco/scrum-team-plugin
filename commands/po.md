@@ -34,4 +34,4 @@ Grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.m
 
 Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, "pedir mais contexto" por último (`working-rules.md` R22). Com **Identificador remoto** no `README.md` §1: prefixo `[<ID> · <onde> · <ponto>]` e pendência em §7 antes do formulário (R34).
 
-Ao receber a resposta, repasse a decisão na íntegra e destaque o que o stakeholder precisa definir.
+Ao receber a resposta, repasse a decisão na íntegra. O que o stakeholder precisa definir **não se destaca em prosa: vai em `AskUserQuestion` (R22)**, até 4 perguntas por chamada, com a recomendação do PO marcada.

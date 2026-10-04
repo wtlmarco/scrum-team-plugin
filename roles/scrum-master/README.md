@@ -52,10 +52,11 @@ Depois do brainstorm (ideia nova, caso **A**) ou do `/po analyze` com decisão (
 **Retomada:** entro na primeira etapa não concluída (parou no ①, retomo no ①). **Portão sem delta** (caso B) só com o delta nulo declarado pelo dono, com motivo. **Não faço:** detalhar História para sprint, especificar tela nem planejar — isso é o `prepare`.
 
 ### `/sm sprint prepare` — levar as candidatas até a DoR
-Roda **antes** da Planning e **não sobe ao stakeholder**. Roteiro completo em [`process/workflow-sprint.md` §5e](process/workflow-sprint.md). Coordeno; cada papel produz o que é seu, em paralelo e sem escrita cruzada.
+Roda **antes** da Planning e **não cria portão nem aprovação do stakeholder**. Roteiro completo em [`process/workflow-sprint.md` §5e](process/workflow-sprint.md). Coordeno; cada papel produz o que é seu, em paralelo e sem escrita cruzada.
 1. **Listar as candidatas** do Product Backlog, na ordem do PO (inclui o que voltou da Review anterior) — **só Histórias vindas de SDD aprovado (① e ②)**, produzidas pelo `/sm sdd`.
 2. **PO** detalha cada História (`/po story <H-ID>`, modo detalhe); **UX** entrega jornada e especificação de tela (`/ux journey` · `/ux screen`); **QA** povoa os cenários (`/qa scenarios create`); o **Arquiteto**, se útil, faz a varredura técnica (`/arc question`).
 3. **Conferir a DoR-a da História** (§3a — a DoR-b, a varredura de bloqueios, é o passo 3 da Planning), devolver ao PO o que não passou e **gravar a lista** em `.team-project/scrum-master/context.md` §"Candidatas do próximo sprint" — é o que o `plan` lê. As linhas de consumo dos subagentes do `prepare` vão direto para `.team-project/consumption.md` (registro fora de sprint; o sprint anterior está fechado).
+4. **Levar as decisões do stakeholder em formulário** — as que os papéis deixaram na saída e só ele toma. A sessão consolida e chama `AskUserQuestion` (R22; até 4 por chamada, várias chamadas se preciso, recomendação marcada, "pedir mais contexto" por último) **antes de encerrar o modo**; nunca resumo em prosa pedindo "responda ou aceite as recomendações".
 
 Não entram aqui, por dependência: o **Plano de Implementação** (precisa de Task e do ③ — fica no `sprint run`) e o **protótipo navegável do sprint** (precisa do corte — fica no `sprint plan`). **O portão ③ é um só, em lote, no passo 10 da Planning.**
 

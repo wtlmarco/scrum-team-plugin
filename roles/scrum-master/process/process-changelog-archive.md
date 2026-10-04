@@ -8,6 +8,61 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.39 — Guardas e conferências mecânicas: hooks de plugin (G1 · G2 · G3 · G4 · G13) e três scripts (C1 `close.ps1` · C2 `project.ps1` · C3 `release.ps1`) tiram do julgamento o que é mecânico (SM + QA) — 02/10/2026
+
+**Instrução** (stakeholder, `/review`; formulário de 02/10/2026 sobre a triagem de `proposta-guards.md`): aplicar a fase 1 mais C1/C2/C3 — verificação mecânica das regras que têm forma objetiva, para que o `/sm close` e a retrospectiva deixem de reler arquivos que um script já conferiu. T11 e T12 aceitas. Decisões: G1 bloqueia **tudo** de `.team-project/` no stage, inclusive remoção, e a migração R31 (passo 7b de `/team update`) o desliga no `guards.json` durante o passo; G3 universal, com o motivo do deny lembrando que até pergunta simples segue a forma de R22; G4 silencia quando `agent_type` termina em `operator`; Windows PowerShell 5.1 (requisito: o do computador que roda os projetos — esclarecido pelo stakeholder em 03/10/2026; o PowerShell 7 não é requisito); C3 manual antes do PR; G9 (bloqueia) fica na fase 2.
+**Classificação:** formato de documento (campos lidos por script; coluna "Instrumento") · propriedade de artefato (`guards.json`, `guards.log`, `hooks/`, `scripts/checks/`) · cerimônia (`/sm close`, retrospectiva) · comportamento de agente (hooks) — o que é de `hooks/`, `scripts/`, `rituals/`, `commands/` e raiz foi **aplicado pela sessão por decisão do stakeholder**. **Sem regra nova** (R1–R32 não mudam de texto).
+**Papéis movidos (R17):** 2 — SM e QA → barreira de 10 KB.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `roles/scrum-master/process/working-rules.md` | linhas "SM verifica" | marcador `**Instrumento:**` em 19 regras + 1 item na R28; texto das regras intacto |
+| `roles/scrum-master/process/working-rules-index.md` | tabelas R1–R32 | coluna **Instrumento** (C1, C2, C3, G1, G3, G4; `— (julgamento)` onde só há leitura) e legenda |
+| `roles/scrum-master/README.md` · `templates/status-entry.md` · `process/sprint-run.md` | `/sm close` · entrada de status · passo 7 | o `close` começa por `close.ps1 -Task <T-ID>`, cola a saída (exit 1 = não fecha, R7/R12) e, depois de gravar a transição, roda `-Post` (R24); o SM só abre o arquivo da regra que falhou |
+| `roles/scrum-master/templates/sprint-backlog.md` | Pacote de abertura | linha `**Aprovado em**` (aaaa-mm-dd), lida por C1 em R20/R25 |
+| `roles/scrum-master/templates/retrospective.md` | nova seção | "Guardas: deny legítimo · falso positivo · desligadas · latência" (fonte `guards.log`) e a tabela de C2 |
+| `roles/scrum-master/templates/benchmark.md` | braço B′ | habilitado só com a fase 2 de guards (G5–G11) |
+| `roles/scrum-master/process/artifact-ownership.md` | §1 | `guards.json`/`guards.log`; `hooks/` e `scripts/checks/` do stakeholder |
+| `deliverables/team-project/README.md` · `guards.json` (novo) | manifesto | `guards.json` estrutura + conteúdo local (preserva `disabled`); `guards.log` conteúdo do projeto, não reconciliado |
+| `roles/quality-assurance/templates/evidence.md` · `verdict.md` · `README.md` (passo 6) | fim do bloco de evidência | `### Documentos vivos (R12)` com `**Estado:** atualizados \| pendentes` e `### Escopo` com `**Fora do plano:** nada \| <lista>`, **cabeçalhos e rótulos exatos**; o QA transcreve do veredito para o bloco |
+| *Aplicado pela sessão* | `hooks/` · `scripts/checks/` · `rituals/` · `commands/` · `README.md` · `how-to.md` · `plugin.json` 3.39.0 · `CHANGELOG.md` | G1 G2 G3 + sonda, G4, G13; C1 C2 C3 e testes; `team-update` 7b desliga G1 e 7c cria `guards.json`; `review audit` começa por C3; seção "Quando uma guarda bloqueia" |
+
+### Por quê
+O `/sm close` relia o índice e vários arquivos para dizer o que um comando prova em milissegundos (existe bloco de evidência? documentos vivos atualizados? linha do R24? duas Tasks em construção?), e a R22/R31 só valiam por disciplina. Conferência mecânica falha por cansaço, não por falta de regra: o script a faz igual toda vez e deixa o SM e o QA no que é julgamento. O desenho fixa **onde** o mecânico acaba: R5 e R16 só em parte, regras de qualidade de conteúdo continuam do SM.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| SM | roda `close.ps1` antes de ler qualquer arquivo e cola a saída; lê `guards.log` e roda C2 na retrospectiva; mantém a coluna "Instrumento" e `guards.json` (modelo) |
+| QA | transcreve para o bloco da evidência `Estado` e `Fora do plano` com os rótulos exatos — grafia diferente reprova C1 |
+| Stakeholder | recebe deny de G1/G2/G3 com o motivo no ato; desliga uma guarda no `guards.json`, nunca em silêncio (vira linha na retrospectiva) |
+| PO · Arquiteto · UX · dev | sem mudança de regra; G3 passa a negar pergunta ao stakeholder fora da forma de R22 |
+
+### Conflitos com o processo vigente
+G1 × passo 7b de `/team update` (a migração R31 remove arquivos de `.team-project/` do git): **bloquear tudo**, e o 7b desliga G1 durante o passo (decisão do stakeholder). G3 × pergunta simples: universal, deny com motivo. G4 × `operator`: silenciado. Nenhuma regra vigente contradita.
+
+### Como saberemos que funcionou
+- **Tokens médios da invocação `close`** (Categoria `cerimônia`) caem **≥ 30%** contra a média dos 2 sprints anteriores. Se não caírem, o script roda **e** o SM relê tudo — achado de processo.
+- Retrospectiva: **falso positivo de guarda = 0** recorrente e nenhuma guarda desligada sem linha na retro.
+- **C1 contra uma Task fechada de projeto real** bate com o fechamento manual (ainda não exercitado).
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | comparação ordinal do bloco `## v3.36` movido contra o texto que saiu do vivo | `-ceq` = True; 10331 B, zero linha fora do separador | ✅ |
+| Substituição de padrão | `Select-String -Pattern '\*\*Instrumento:\*\*' working-rules.md` | 20 ocorrências (19 regras + item da R28), cada uma lida no fim da linha | ✅ |
+| Substituição de padrão | linhas `^\| R\d+ ` com a coluna nova em `working-rules-index.md` | 32 (R1–R32) | ✅ |
+| Teste | `powershell -NoProfile -File scripts/checks/tests/run-guard-tests.ps1` | `17 casos · 0 falharam`, exit 0 (reexecutado) | ✅ |
+| Teste | `powershell -NoProfile -File scripts/checks/tests/run-check-tests.ps1` | `12 casos · 0 falharam`, exit 0 (reexecutado) | ✅ |
+| Release (R17 · R18) | `powershell -NoProfile -File scripts/checks/release.ps1` (depois de gravar a v3.39) | R18 ok: plugin.json = CHANGELOG = README L3 = v3.39.0, processo 3.39/3.38/3.37 com entrega · R17 ok: bloco v3.39 com 7291 B ≤ 10240 (2 papéis), 3 entradas vivas · órfãos ok: 42 modelos · exit 0 | ✅ |
+**Não exercitado:** disparo real dos hooks no harness (exige plugin atualizado e sessão reiniciada); C1 contra Task fechada de projeto real; PowerShell 7 — fora do requisito (o requisito é o Windows PowerShell 5.1 do computador dos projetos, exercitado nas suítes). Latência medida: 0,6–0,8 s por disparo (612, 726, 775, 702, 754 ms).
+
+### Pendente do stakeholder
+Nada a aplicar — `hooks/`, `scripts/`, `rituals/`, `commands/`, `README.md`, `how-to.md`, `plugin.json` e `CHANGELOG.md` aplicados nesta entrega. Mudança de comportamento de agente e os hooks só valem **após atualizar o plugin e reiniciar a sessão**.
+
+---
+
 ## v3.38 — Medir custo e resultado: Categoria e Unidade no registro de consumo, bloco "Custo × resultado" na retrospectiva, modelo de benchmark A/B/C e "História de origem" no defeito (SM + PO + QA) — 02/10/2026
 
 **Instrução** (stakeholder, `/review`; decisões P1–P4 do formulário de 02/10/2026): "aplicar a proposta em `proposta-evaluation.md`" — saber se o plugin aumenta a qualidade com custo otimizado ou não faz diferença frente ao Claude sem ele, com o registro de consumo já em uso num projeto novo. Primeira da rodada `evaluation` → `guards` → `fix`.

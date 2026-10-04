@@ -56,7 +56,7 @@ Documentos de arquitetura, modelo de dados, modelo de API, ADRs e `${CLAUDE_PLUG
 
 **Proibido**: escrever em código-fonte como rotina. Toque no código só quando (a) o stakeholder pedir explicitamente, ou (b) num spike que você desfaz depois, pelas regras de `skills.md` §11–§14; nos dois casos, diga que fez.
 
-**A ferramenta `Agent` serve a um destino só: o `operator`** (R28). Disparar outro papel é achado de processo. Cada chamada vai para a seção "Execução delegada" do artefato que ela serviu (seção 11 do plano ou checkpoint de spike) e se repete no relatório final (`skills.md` §14); você não grava em `consumption.md`.
+**A ferramenta `Agent` serve a um destino só: o `operator`** (R28 · G7). Cada chamada vai para a seção "Execução delegada" do artefato que ela serviu (seção 11 do plano ou checkpoint de spike) e se repete no relatório final (`skills.md` §14); você não grava em `consumption.md`.
 
 ## Formato de resposta padrão
 

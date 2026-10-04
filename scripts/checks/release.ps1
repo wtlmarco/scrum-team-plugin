@@ -1,7 +1,8 @@
 ﻿# C3 — conferência de entrega no REPOSITÓRIO-FONTE do plugin: R18 (versão igual nos três lugares e par com o
-# changelog do processo), R17 (tamanho do bloco da versão que sai e no máximo 3 entradas vivas) e modelos órfãos.
+# changelog do processo), R17 (tamanho do bloco da versão que sai e no máximo 3 entradas vivas), .ps1 com BOM,
+# hooks/ownership.json × artifact-ownership.md §1 (G8) e modelos órfãos.
 # Uso, na raiz do clone, antes do PR e no /review audit: powershell -NoProfile -File scripts/checks/release.ps1
-# Exit 1 se R17 ou R18 falharem · 2 = erro de uso (não é o repositório-fonte) · senão 0 (órfão é aviso).
+# Exit 1 se R17, R18, ps1-5.1 ou ownership falharem · 2 = erro de uso (não é o repositório-fonte) · senão 0 (órfão é aviso).
 
 param([string]$Root = (Get-Location).Path)
 
@@ -69,6 +70,30 @@ try {
     if ($noBom.Count) { Add-Result 'ps1-5.1' 'falhou' ("sem BOM (o Windows PowerShell 5.1 quebra acento e emoji): " + ($noBom -join ', ')) }
     else { Add-Result 'ps1-5.1' 'ok' "$($ps1.Count) script(s) .ps1 em UTF-8 com BOM" }
 
+    # ---------- hooks/ownership.json × artifact-ownership.md §1 (G8: a matriz é a fonte única) ----------
+    $ownPath = Join-Path $Root 'hooks/ownership.json'
+    $aoPath = Join-Path $Root 'roles/scrum-master/process/artifact-ownership.md'
+    if (Test-Path -LiteralPath $ownPath) {
+        $own = Read-Text $ownPath | ConvertFrom-Json
+        $sec = [regex]::Match((Read-Text $aoPath), '(?ms)^## 1\. Matriz.*?(?=^### 1a\.)').Value
+        $rows = @(($sec -split "`r?`n") | Where-Object { $_ -match '^\|' } | ForEach-Object {
+            $cells = @(($_ -split '(?<!\\)\|') | ForEach-Object { $_.Trim() })
+            [pscustomobject]@{ Artefato = $cells[1] + ' ¦ ' + ($cells[1] -replace '\*\*', ''); Dono = $cells[2] + ' ¦ ' + ($cells[2] -replace '\*\*', '') } })   # crua e sem negrito: glob entre crases tem "**"
+        $bad = @(); $n = 0; $noRow = 0
+        foreach ($set in 'project', 'pluginSource') {
+            foreach ($rule in @($own.$set)) {
+                foreach ($w in @($rule.writers)) { if ($null -eq $own.roles.$w) { $bad += "papel '$w' sem nome em roles ($($rule.paths -join ', '))" } }
+                if (-not $rule.matriz) { if (-not $rule.nota) { $bad += "regra sem 'matriz' nem 'nota' ($($rule.paths -join ', '))" }; $noRow++; continue }
+                $n++
+                $hit = @($rows | Where-Object { $_.Artefato.Contains([string]$rule.matriz) })
+                if (-not $hit.Count) { $bad += "linha '$($rule.matriz)' não existe em §1" }
+                elseif (-not @($hit | Where-Object { $_.Dono.Contains([string]$rule.dono) }).Count) { $bad += "linha '$($rule.matriz)': dono '$($rule.dono)' não está na coluna Dono" }
+            }
+        }
+        if ($bad.Count) { Add-Result 'ownership' 'falhou' ($bad -join '; ') }
+        else { Add-Result 'ownership' 'ok' "$n regra(s) batem com a linha e o dono de §1; $noRow com nota (pasta do papel ou sem linha)" }
+    } else { Add-Result 'ownership' 'falhou' 'hooks/ownership.json ausente (G8)' }
+
     # ---------- Modelos órfãos (aviso) ----------
     $templates = @(Get-ChildItem -Path (Join-Path $Root 'roles') -Recurse -File -Filter '*.md' | Where-Object { $_.Directory.Name -eq 'templates' })
     $corpus = @(Get-ChildItem -LiteralPath $Root -Recurse -File -Include '*.md', '*.json' | Where-Object {
@@ -86,7 +111,7 @@ try {
     else { Add-Result 'órfãos' 'ok' "$($templates.Count) modelos, todos referenciados" }
 
     Write-Results "C3 · entrega v$v1"
-    if (@($script:Results | Where-Object { $_.Regra -in 'R17', 'R18', 'ps1-5.1' -and $_.Resultado -eq 'falhou' }).Count) { exit 1 }
+    if (@($script:Results | Where-Object { $_.Regra -in 'R17', 'R18', 'ps1-5.1', 'ownership' -and $_.Resultado -eq 'falhou' }).Count) { exit 1 }
     exit 0
 } catch {
     [Console]::Error.WriteLine("C3: erro — $($_.Exception.Message)")

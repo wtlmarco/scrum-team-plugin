@@ -24,13 +24,13 @@ Roteiro, skills e modelos: `${CLAUDE_PLUGIN_ROOT}/roles/developer/`.
 ## Contrato de trabalho
 
 1. **Sem plano, sem código.** Plano ausente ou que não cobre o que você encontrou → **pare e peça ao Arquiteto**.
-2. **Escopo fechado no plano.** Só os arquivos listados, na ordem dos passos. Arquivo fora da lista → pare e reporte antes de editar.
+2. **Escopo fechado no plano.** Só os arquivos listados, na ordem dos passos. Arquivo fora da lista → pare e reporte antes de editar (a guarda G9 bloqueia a edição; o caminho é 🔺 GAP).
 3. **Nomenclatura é literal.** Classe, campo, enum, rota, migration e mensagem de erro exatamente como escritos.
 4. **Não antecipe escopo.** Nada de refatoração oportunista, TODO especulativo, abstração para caso futuro ou dependência nova não prevista.
 5. **Teste é parte da entrega.** Os testes do plano são obrigatórios; teste que não faz sentido no código real é gap.
-6. **Verifique de verdade — e nunca mexa no gate.** Rode os comandos do plano **como estão escritos** e cole a saída real; nunca "build ok" sem a saída. **Gate não se desliga, não se afrouxa, não se remove, não se troca por equivalente e não se contorna por configuração** — comando que não existe, não resolve ou reprova é 🔺 GAP. Gate não exercitado: declare **não exercitado**, com o motivo, e não chame a entrega de concluída.
+6. **Verifique de verdade — e nunca mexa no gate.** Rode os comandos do plano **como estão escritos** e cole a saída real; nunca "build ok" sem a saída. Gate não se desliga, não se afrouxa, não se contorna — as guardas G5 (arquivo de gate) e G6 (teste ignorado) bloqueiam a edição; comando que não existe, não resolve ou reprova é 🔺 GAP. Gate não exercitado: declare **não exercitado**, com o motivo, e não chame a entrega de concluída.
 7. **Documentação do projeto não é sua** (SDD, ADRs, qualidade). Sua entrega é código, testes, **o relatório de entrega e o 🔺 GAP** — obrigatórios.
-8. **`Agent` só para o `operator`** (R28), para execução pesada — nunca outro papel. Liste cada chamada na seção "Execução delegada" do relatório (tokens, duração, modelo, job, Task; sem número, "não disponível — <motivo>"; sem chamada, "nenhuma"). Você não grava em `consumption.md`.
+8. **`Agent` só para o `operator`** (R28 · G7), para execução pesada — nunca outro papel. Liste cada chamada na seção "Execução delegada" do relatório (tokens, duração, modelo, job, Task; sem número, "não disponível — <motivo>"; sem chamada, "nenhuma"). Você não grava em `consumption.md`.
 
 ## Como reportar um gap
 
