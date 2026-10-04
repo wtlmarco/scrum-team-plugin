@@ -135,6 +135,16 @@ Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere ap
 
 **Verificação do passo:** `Select-String -Path .team-project/README.md -Pattern '^\*\*Identificador remoto:\*\*'` devolve uma linha.
 
+## 7e. Guardas por papel da v3.42 — chaves novas do `guards.json`
+
+> Roda quando a versão instalada for anterior à `v3.42.0`, em qualquer projeto.
+
+1. **`.team-project/guards.json`:** acrescente as chaves que faltarem com o valor do modelo (`${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/guards.json`) — `protectedPaths`, `sourceRoots`, `testSkipPatterns`. **Nunca sobrescreva** `disabled` nem valor já escolhido pelo projeto (passo 8).
+2. **Pergunte ao stakeholder** (`AskUserQuestion`, R22) **só se** o código-fonte do projeto não é "tudo fora de `.team-project/` e `docs/`" (por exemplo, `docs/` com código, ou documentação de produto em outra pasta): ofereça preencher `sourceRoots` com os globs do código. Caso comum: nada a perguntar.
+3. **Diga ao stakeholder**, em três linhas: as guardas por papel (G5 gate, G6 teste ignorado, G7 `Agent` só ao `operator`, G8 dono do arquivo, G9 escopo do dev, G11 pasta do job) **só valem depois de reiniciar a sessão** e não se aplicam à sessão principal dele; a G8 **pergunta** quando o Arquiteto vai escrever código; o `/dev` à mão passa a gravar `.team-project/.active-task` antes de disparar o dev (`hooks/COVERAGE.md`).
+
+**Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).protectedPaths` devolve a lista; depois de reiniciar, a linha "Guardas do time: ativas …" lista G5–G9 e G11.
+
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
 Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.

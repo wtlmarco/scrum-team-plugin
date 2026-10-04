@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.39`](process-changelog-archive.md) | Guardas e conferências mecânicas: hooks de plugin (G1 · G2 · G3 · G4 · G13) e três scripts (C1 · C2 · C3) tiram do julgamento o que é mecânico (SM + QA) — 02/10/2026 |
 | [`v3.38`](process-changelog-archive.md) | Medir custo e resultado: Categoria e Unidade no registro de consumo, bloco "Custo × resultado" na retrospectiva, modelo de benchmark A/B/C e "História de origem" no defeito (SM + PO + QA) — 02/10/2026 |
 | [`v3.37`](process-changelog-archive.md) | R32: consultoria externa especializada pelo `/sm consulting` — técnica e de negócio, carta sanitizada, até 3 réplicas, validação do time antes do formulário (SM + PO + Arquiteto + QA + UX) — 02/10/2026 |
 | [`v3.36`](process-changelog-archive.md) | R27 confere a energia e retoma o mesmo agente; Task pesada em segundo plano; ocorrência de plugin só se registra no `run` e se pergunta na Review; `replicate-in-new-project.md` fundido no `how-to.md` (SM) — 01/10/2026 |
@@ -80,6 +81,56 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.42 — Guardas por papel (fase 2): gate protegido, teste ignorado, `Agent` só ao `operator`, matriz de propriedade, escopo do dev e pasta do job — G5 · G6 · G7 · G8 · G9 · G11 (SM + Arquiteto) — 04/10/2026
+
+**Instrução** (stakeholder): "pode aplicar criando a branch a partir de develop" a `proposta-guards-fase2.md`, depois da sonda de 04/10/2026 num `/sm sprint plan` real. Decisões do formulário de 04/10/2026: **P1 — fase 2 inteira** (a recomendação era G7 + G9 + G6 primeiro) · **P2 — adiada:** a G8 entra com `ask` ao Arquiteto em código-fonte, decisão `ask` × `deny` + pedido registrado depois de 2 sprints de `guards.log` · versão-alvo v3.42.0, levando junto o addendum da v3.41 (previsto como v3.41.1).
+**Classificação:** instrumento (G5–G9, G11; C3 `ownership`) · formato de documento (`**Arquivos tocados:**` legível por script; `.active-task`) · propriedade de artefato (linha `.active-task`; `ownership.json` derivado da matriz) · fluxo (`sprint run` passos 3, 4, 8; `fix run` passo 2 e fechamento; `/dev`) · comportamento de agente (cards, `hooks/`, `scripts/`, `commands/dev.md`, guias: aplicados pela sessão). **Sem regra nova** (34): as guardas reforçam R4, R7, R8, R28 e a matriz — critério de entrada de regra mecânica (`review-contract.md`).
+**Papéis movidos (R17):** 2 — SM e Arquiteto → barreira de 10 240 B.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `artifact-ownership.md` | §1 | Linha nova **Escopo ativo do dev** (`.active-task`: dono SM, escritor a sessão); linha `hooks/` cita G5–G9/G11 e declara `hooks/ownership.json` **derivado** desta matriz (mudou a matriz, muda o JSON no mesmo ciclo — R12) |
+| `sprint-run.md` · `fix-run.md` | passos 3, 4, 8 · passo 2 e §Fechamento · "Como o SM verifica" | A sessão grava `.active-task` antes de disparar o dev e o apaga quando a Task/bloco sai dele; GAP que acrescenta arquivo entra na lista do plano; deny seguido de contorno é achado |
+| `working-rules.md` · `working-rules-index.md` | R4 · R7 · R8 · R28 · legenda | "Instrumento" ganha G9 (R4, R8), G5/G6 (R7), G7/G11 (R28); G8 = a matriz |
+| `deliverables/team-project/` | `README.md` · `guards.json` | Chaves `protectedPaths`, `sourceRoots`, `testSkipPatterns`; linha `.active-task` (não semeada) |
+| `roles/architect/templates/` | `implementation-plan.md` (regra 15, exemplo) · `fix-plan.md` | `**Arquivos tocados:**` = lista fechada, um caminho por linha entre crases; `- produção:`/`- teste:` também lidos pela G9 |
+| Sessão (stakeholder) | `hooks/` (`pre-tool.ps1`, `common.ps1`, `session-start.ps1`, `hooks.json` + `Agent`, `ownership.json`, `COVERAGE.md`) · `release.ps1` (C3 `ownership`) · suítes · `agents/` (dev, arquiteto, QA, UX, operator) · `commands/dev.md` · `team-update.md` (7e) · `how-to.md` · `README.md` · `plugin.json` · `CHANGELOG.md` | Aplicados pela sessão |
+
+### Por quê
+A sonda resolveu a dúvida que travava a fase 2: dentro do subagente o hook recebe `agent_type` = `team:<papel>`; na sessão principal, nada. Com isso o "papel X não faz Y" dos cards passa a valer mesmo quando o modelo esquece — inclusive o dev em Haiku, que é quem mais improvisa escopo. O filtro casa o sufixo (`(^|:)developer$`), como a G4 já fazia com o `operator`.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| Sessão / SM | grava e apaga `.active-task`; lê os deny no `guards.log` na retrospectiva |
+| Arquiteto | lista de arquivos do plano legível e completa (produção e teste); GAP que acrescenta arquivo entra nela; código-fonte só com o "sim" do stakeholder |
+| dev | barrado fora do plano, em gate e em teste ignorado — o caminho é 🔺 GAP |
+| Stakeholder | responde a pergunta da G8 quando o Arquiteto vai escrever código; ajusta `protectedPaths`/`sourceRoots` do projeto |
+
+### Conflitos com o processo vigente
+- **R25** (sem pergunta ao stakeholder durante o `run`): o `ask` da G8 é uma pergunta. Só dispara se o Arquiteto escrever código — fora do papel dele no `run` —, e a P2 o revisa com dados. Registrado, não resolvido.
+- **Matriz × JSON:** duas fontes possíveis. Resolvido: a matriz é a fonte, o JSON cita linha e dono, o C3 reprova a divergência.
+
+### Como saberemos que funcionou
+Em 2 sprints: zero arquivo fora do plano no diff de Task fechada (R4) e de Correção fechada (C4 item 5); zero teste ignorado introduzido pelo dev; `guards.log` sem linha `erro`; falso positivo ≤ 1 por guarda; contagem dos `ask` da G8 para decidir a P2.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Sonda (entrada) | linhas `probe` do `guards.log` de um projeto, `/sm sprint plan` de 04/10/2026 | `agent_type=team:product-owner` · `team:architect` · `team:user-experience` · `team:quality-assurance` · `team:scrum-master`; sessão `agent_type=(ausente)`; `script_ms` 144–393 | ✅ |
+| Teste | `run-guard-tests.ps1` | `51 casos · 0 falharam` (30 novos: G5–G9, G11, G8 no repositório-fonte, projeto sem o time) | ✅ |
+| Teste | `run-check-tests.ps1` | `20 casos · 0 falharam` (1 novo: `ownership.json` com dono divergente → exit 1) | ✅ |
+| Arquivamento | `Contains` ordinal do bloco `## v3.39` no arquivo, depois de sair do vivo | True (7 506 B); índice com a linha `v3.39`; 3 entradas vivas (v3.42, v3.41, v3.40) | ✅ |
+| Carga fixa (caracteres, `git show HEAD:` → arquivo) | cards | `developer` 3 896 → 3 960 · `architect` 5 316 → 5 278 · `quality-assurance` 6 534 → 6 437 · `user-experience` 5 469 → 5 474 · `operator` 5 941 → 5 990 · `commands/dev.md` 2 083 → 2 313 | medida |
+| Release (R17 · R18 · ownership) | `powershell -NoProfile -File scripts/checks/release.ps1` (depois de gravar a v3.42) | R18 ok: plugin.json = CHANGELOG = README L3 = v3.42.0; processo 3.42, 3.41, 3.40 com entrega · R17 ok: bloco v3.42 ≤ barreira 10240 (2 papéis); 3 entradas vivas · ps1-5.1 ok: 11 scripts com BOM · ownership ok: 50 regras batem com linha e dono de §1, 7 com nota · órfãos ok: 45 modelos · exit 0 | ✅ |
+**Não exercitado:** disparo real de cada guarda numa sessão com o plugin atualizado (só os testes, que entregam ao despachante o JSON do harness); `team:developer` e `team:operator` literais (deduzidos); o `ask` da G8 dentro de subagente no harness real.
+
+### Pendente do stakeholder
+Atualizar o plugin e **reiniciar a sessão**; `/team update` (passo 7e) em cada projeto; ligar a sonda no primeiro `sprint run` para confirmar `team:developer`/`team:operator`. Remover `proposta-guards-fase2.md` depois do aceite desta entrada (a fase 3, G12, segue registrada em `hooks/COVERAGE.md`).
+
+---
+
 ## v3.41 — R34: contato remoto por Remote Control — identidade do projeto, pendência em disco, fim do `sprint run` em formulário de autorização da Review e protótipo publicável como artifact (SM + UX) — 03/10/2026
 
 **Instrução** (stakeholder, `/review`): "finalizamos os testes do `proposta-remote.md`, podemos rodar o review e aplicá-lo". Decisões D1–D6 da proposta (Remote Control; ① e ③ respondíveis no celular com a navegação **declarada**; Identificador remoto; fim do `run` em formulário; artifact privado pela conta do celular; conta por projeto) e as do formulário de 03/10/2026: **G3 estendida** (prefixo + pendência em §7) · pendência = **item numerado em §7**, sem rótulo "Aguarda stakeholder" · **fim do `fix run` sem formulário** (R33 intacta) · ficha do ① na opção A · protótipo num `index.html` único (ratificado).
@@ -129,6 +180,9 @@ Nos 2 sprints seguintes, por projeto remoto: **100%** das decisões de portão e
 
 ### Pendente do stakeholder
 Nada a aplicar. Mudança de hook, comando e agente só vale **após atualizar o plugin e reiniciar a sessão**; `/team update` (passo 7d) e `/team remote` em cada projeto. Remover `proposta-remote.md` depois do aceite desta entrada.
+
+### Addendum — 04/10/2026 (previsto como v3.41.1, entregue na v3.42.0): a saída de qualquer modo leva decisão em formulário (R22)
+**Achado (stakeholder, num projeto):** o `/sm sprint prepare` devolveu 9 decisões do stakeholder e 2 do PO em tabela de prosa, "responda ou aceite as recomendações", sem `AskUserQuestion`. **Causa:** `prepare` "não sobe ao stakeholder" (lido como "sem formulário"), nenhum passo previa as decisões que os papéis levantam, e os `commands/` mandavam "destacar em uma linha" a decisão — que a sessão cumpria em prosa. **Emenda:** R22 ganha o parágrafo "A saída de qualquer modo também" (até 4 perguntas por chamada, várias chamadas) e o "SM verifica" cobre fim de modo; `prepare` ganha o passo 7 e passa a "não cria portão nem aprovação"; `sm.md`, `po.md`, `arc.md`, `ux.md` e `team.md` trocam "destaque" por `AskUserQuestion`. **Sem regra nova** (34 regras). **Não coberto por guarda:** a G3 só vê pergunta feita; resumo em prosa segue sendo achado de verificação do SM.
 
 ---
 ## v3.40 — R33: trilha `fix` para defeito e ajuste pequeno — critério verificável na entrada, plano e execução em bloco, consumo próprio, piso de evidência por Correção e conferência C4 (SM + PO + Arquiteto + QA + UX) — 03/10/2026
@@ -193,58 +247,3 @@ Corrigir um defeito de três linhas custava quase o mesmo que entregar uma Task 
 
 ### Pendente do stakeholder
 Nada a aplicar — `commands/`, `how-to.md`, `README.md`, `scripts/`, `plugin.json` e `CHANGELOG.md` aplicados nesta entrega. Mudança de comportamento de agente só vale **após atualizar o plugin e reiniciar a sessão**. Remover `proposta-fix.md` depois do aceite desta entrada. `proposta-remote.md` já foi renumerada para R34.
-
----
-
-## v3.39 — Guardas e conferências mecânicas: hooks de plugin (G1 · G2 · G3 · G4 · G13) e três scripts (C1 `close.ps1` · C2 `project.ps1` · C3 `release.ps1`) tiram do julgamento o que é mecânico (SM + QA) — 02/10/2026
-
-**Instrução** (stakeholder, `/review`; formulário de 02/10/2026 sobre a triagem de `proposta-guards.md`): aplicar a fase 1 mais C1/C2/C3 — verificação mecânica das regras que têm forma objetiva, para que o `/sm close` e a retrospectiva deixem de reler arquivos que um script já conferiu. T11 e T12 aceitas. Decisões: G1 bloqueia **tudo** de `.team-project/` no stage, inclusive remoção, e a migração R31 (passo 7b de `/team update`) o desliga no `guards.json` durante o passo; G3 universal, com o motivo do deny lembrando que até pergunta simples segue a forma de R22; G4 silencia quando `agent_type` termina em `operator`; Windows PowerShell 5.1 (requisito: o do computador que roda os projetos — esclarecido pelo stakeholder em 03/10/2026; o PowerShell 7 não é requisito); C3 manual antes do PR; G9 (bloqueia) fica na fase 2.
-**Classificação:** formato de documento (campos lidos por script; coluna "Instrumento") · propriedade de artefato (`guards.json`, `guards.log`, `hooks/`, `scripts/checks/`) · cerimônia (`/sm close`, retrospectiva) · comportamento de agente (hooks) — o que é de `hooks/`, `scripts/`, `rituals/`, `commands/` e raiz foi **aplicado pela sessão por decisão do stakeholder**. **Sem regra nova** (R1–R32 não mudam de texto).
-**Papéis movidos (R17):** 2 — SM e QA → barreira de 10 KB.
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `roles/scrum-master/process/working-rules.md` | linhas "SM verifica" | marcador `**Instrumento:**` em 19 regras + 1 item na R28; texto das regras intacto |
-| `roles/scrum-master/process/working-rules-index.md` | tabelas R1–R32 | coluna **Instrumento** (C1, C2, C3, G1, G3, G4; `— (julgamento)` onde só há leitura) e legenda |
-| `roles/scrum-master/README.md` · `templates/status-entry.md` · `process/sprint-run.md` | `/sm close` · entrada de status · passo 7 | o `close` começa por `close.ps1 -Task <T-ID>`, cola a saída (exit 1 = não fecha, R7/R12) e, depois de gravar a transição, roda `-Post` (R24); o SM só abre o arquivo da regra que falhou |
-| `roles/scrum-master/templates/sprint-backlog.md` | Pacote de abertura | linha `**Aprovado em**` (aaaa-mm-dd), lida por C1 em R20/R25 |
-| `roles/scrum-master/templates/retrospective.md` | nova seção | "Guardas: deny legítimo · falso positivo · desligadas · latência" (fonte `guards.log`) e a tabela de C2 |
-| `roles/scrum-master/templates/benchmark.md` | braço B′ | habilitado só com a fase 2 de guards (G5–G11) |
-| `roles/scrum-master/process/artifact-ownership.md` | §1 | `guards.json`/`guards.log`; `hooks/` e `scripts/checks/` do stakeholder |
-| `deliverables/team-project/README.md` · `guards.json` (novo) | manifesto | `guards.json` estrutura + conteúdo local (preserva `disabled`); `guards.log` conteúdo do projeto, não reconciliado |
-| `roles/quality-assurance/templates/evidence.md` · `verdict.md` · `README.md` (passo 6) | fim do bloco de evidência | `### Documentos vivos (R12)` com `**Estado:** atualizados \| pendentes` e `### Escopo` com `**Fora do plano:** nada \| <lista>`, **cabeçalhos e rótulos exatos**; o QA transcreve do veredito para o bloco |
-| *Aplicado pela sessão* | `hooks/` · `scripts/checks/` · `rituals/` · `commands/` · `README.md` · `how-to.md` · `plugin.json` 3.39.0 · `CHANGELOG.md` | G1 G2 G3 + sonda, G4, G13; C1 C2 C3 e testes; `team-update` 7b desliga G1 e 7c cria `guards.json`; `review audit` começa por C3; seção "Quando uma guarda bloqueia" |
-
-### Por quê
-O `/sm close` relia o índice e vários arquivos para dizer o que um comando prova em milissegundos (existe bloco de evidência? documentos vivos atualizados? linha do R24? duas Tasks em construção?), e a R22/R31 só valiam por disciplina. Conferência mecânica falha por cansaço, não por falta de regra: o script a faz igual toda vez e deixa o SM e o QA no que é julgamento. O desenho fixa **onde** o mecânico acaba: R5 e R16 só em parte, regras de qualidade de conteúdo continuam do SM.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda para ele |
-|---|---|
-| SM | roda `close.ps1` antes de ler qualquer arquivo e cola a saída; lê `guards.log` e roda C2 na retrospectiva; mantém a coluna "Instrumento" e `guards.json` (modelo) |
-| QA | transcreve para o bloco da evidência `Estado` e `Fora do plano` com os rótulos exatos — grafia diferente reprova C1 |
-| Stakeholder | recebe deny de G1/G2/G3 com o motivo no ato; desliga uma guarda no `guards.json`, nunca em silêncio (vira linha na retrospectiva) |
-| PO · Arquiteto · UX · dev | sem mudança de regra; G3 passa a negar pergunta ao stakeholder fora da forma de R22 |
-
-### Conflitos com o processo vigente
-G1 × passo 7b de `/team update` (a migração R31 remove arquivos de `.team-project/` do git): **bloquear tudo**, e o 7b desliga G1 durante o passo (decisão do stakeholder). G3 × pergunta simples: universal, deny com motivo. G4 × `operator`: silenciado. Nenhuma regra vigente contradita.
-
-### Como saberemos que funcionou
-- **Tokens médios da invocação `close`** (Categoria `cerimônia`) caem **≥ 30%** contra a média dos 2 sprints anteriores. Se não caírem, o script roda **e** o SM relê tudo — achado de processo.
-- Retrospectiva: **falso positivo de guarda = 0** recorrente e nenhuma guarda desligada sem linha na retro.
-- **C1 contra uma Task fechada de projeto real** bate com o fechamento manual (ainda não exercitado).
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Arquivamento de entrada | comparação ordinal do bloco `## v3.36` movido contra o texto que saiu do vivo | `-ceq` = True; 10331 B, zero linha fora do separador | ✅ |
-| Substituição de padrão | `Select-String -Pattern '\*\*Instrumento:\*\*' working-rules.md` | 20 ocorrências (19 regras + item da R28), cada uma lida no fim da linha | ✅ |
-| Substituição de padrão | linhas `^\| R\d+ ` com a coluna nova em `working-rules-index.md` | 32 (R1–R32) | ✅ |
-| Teste | `powershell -NoProfile -File scripts/checks/tests/run-guard-tests.ps1` | `17 casos · 0 falharam`, exit 0 (reexecutado) | ✅ |
-| Teste | `powershell -NoProfile -File scripts/checks/tests/run-check-tests.ps1` | `12 casos · 0 falharam`, exit 0 (reexecutado) | ✅ |
-| Release (R17 · R18) | `powershell -NoProfile -File scripts/checks/release.ps1` (depois de gravar a v3.39) | R18 ok: plugin.json = CHANGELOG = README L3 = v3.39.0, processo 3.39/3.38/3.37 com entrega · R17 ok: bloco v3.39 com 7291 B ≤ 10240 (2 papéis), 3 entradas vivas · órfãos ok: 42 modelos · exit 0 | ✅ |
-**Não exercitado:** disparo real dos hooks no harness (exige plugin atualizado e sessão reiniciada); C1 contra Task fechada de projeto real; PowerShell 7 — fora do requisito (o requisito é o Windows PowerShell 5.1 do computador dos projetos, exercitado nas suítes). Latência medida: 0,6–0,8 s por disparo (612, 726, 775, 702, 754 ms).
-
-### Pendente do stakeholder
-Nada a aplicar — `hooks/`, `scripts/`, `rituals/`, `commands/`, `README.md`, `how-to.md`, `plugin.json` e `CHANGELOG.md` aplicados nesta entrega. Mudança de comportamento de agente e os hooks só valem **após atualizar o plugin e reiniciar a sessão**.

@@ -1,4 +1,4 @@
-﻿# Testes das guardas da fase 1: entrega a cada despachante o JSON que o harness mandaria e confere a decisão.
+﻿# Testes das guardas (fase 1 e fase 2): entrega a cada despachante o JSON que o harness mandaria e confere a decisão.
 # Uso (na raiz do repositório-fonte): powershell -NoProfile -File scripts/checks/tests/run-guard-tests.ps1
 # Saída: tabela caso · esperado · obtido · ok; exit 1 se algum caso falhar.
 
@@ -13,6 +13,10 @@ New-Item -ItemType Directory -Force (Join-Path $proj '.team-project') | Out-Null
 & git -C $proj init -q 2>$null
 Set-Content -LiteralPath (Join-Path $proj 'app.txt') 'produto' -Encoding UTF8
 Set-Content -LiteralPath (Join-Path $proj '.team-project/README.md') 'local' -Encoding UTF8
+
+# Projeto sem .team-project/: as guardas por papel ficam caladas.
+$bare = Join-Path $tmp 'sem-time'
+New-Item -ItemType Directory -Force $bare | Out-Null
 
 # Cópia instalada falsa (sem .git) para o G2.
 $installed = Join-Path $tmp 'cache/team/3.39.0'
@@ -87,6 +91,75 @@ $cases = @(
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = '[ACME · S4 · ④ H-012] Aceita a H-012?'; header = 'P'; multiSelect = $false; options = @((Opt 'Aceita'), (Opt 'Pedir mais contexto')) }) } } },
     @{ Name = 'G3 R34 prefixo com pendência em §7'; Script = 'pre-tool.ps1'; Expect = 0
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = '[ACME · S4 · ③ pacote] Aprova o pacote?'; header = 'P'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
+    # ---------- Fase 2 (v3.42) — agent_type no formato medido pela sonda: team:<papel> ----------
+    @{ Name = 'G7 dev dispara outro papel'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:developer'; tool_input = @{ subagent_type = 'team:architect'; prompt = 'x' } } },
+    @{ Name = 'G7 QA dispara o operator'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:quality-assurance'; tool_input = @{ subagent_type = 'team:operator'; prompt = 'x' } } },
+    @{ Name = 'G7 sessão principal dispara o dev'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; prompt = 'x' } } },
+    @{ Name = 'G9 dev sem .active-task'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); content = 'x' } } },
+    @{ Name = 'G9 dev em arquivo do plano'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = {
+           New-Item -ItemType Directory -Force (Join-Path $proj '.team-project/sprints/1/plan') | Out-Null
+           Set-Content -LiteralPath (Join-Path $proj '.team-project/sprints/1/plan/T-001-x.md') "# Plano — T-001`n**História:** H-001`n**Arquivos tocados:** ``src/a.cs``,`n``tests/ATests.cs```n`n## 1. Objetivo`n" -Encoding UTF8
+           Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-task') '{ "trilha": "sprint", "id": "T-001", "plano": ".team-project/sprints/1/plan/T-001-x.md" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); content = 'x' } } },
+    @{ Name = 'G9 dev fora do plano'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/b.cs'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G9 dev Set-Content fora do plano'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "Set-Content -Path src/b.cs -Value 'x'" } } },
+    @{ Name = 'G9 dev log redirecionado (R28)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'dotnet build *> build.log' } } },
+    @{ Name = 'G9 dev New-Item no plano'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'New-Item -ItemType File -Force tests/ATests.cs' } } },
+    @{ Name = 'G6 dev acrescenta [Skip'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'tests/ATests.cs'); old_string = '[Fact]'; new_string = '[Fact(Skip = "x")]' } } },
+    @{ Name = 'G6 dev edita teste sem pular'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'tests/ATests.cs'); old_string = 'Assert.True(a)'; new_string = 'Assert.False(a)' } } },
+    @{ Name = 'G9 trilha fix: arquivo da F-ID'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = {
+           New-Item -ItemType Directory -Force (Join-Path $proj '.team-project/fixes/B-001') | Out-Null
+           Set-Content -LiteralPath (Join-Path $proj '.team-project/fixes/B-001/plan.md') "# B-001 · mini-planos`n`n## F-001 · x`n### Arquivos`n- produção: ``src/c.ts```n- teste: ``src/c.test.ts```n`n## F-002 · y`n### Arquivos`n- produção: ``src/d.ts```n" -Encoding UTF8
+           Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-task') '{ "trilha": "fix", "id": "F-001", "plano": ".team-project/fixes/B-001/plan.md" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/c.ts'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G9 trilha fix: arquivo de outra F-ID'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/d.ts'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G5 dev escreve .editorconfig'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj '.editorconfig'); content = 'x' } } },
+    @{ Name = 'G5 QA Out-File em workflow de CI'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = "'x' | Out-File .github/workflows/ci.yml" } } },
+    @{ Name = 'G5 sessão principal escreve .editorconfig'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; tool_input = @{ file_path = (Join-Path $proj '.editorconfig'); content = 'x' } } },
+    @{ Name = 'G8 PO escreve plano do Arquiteto'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:product-owner'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/plan/T-001-x.md'); content = 'x' } } },
+    @{ Name = 'G8 Arquiteto escreve o plano'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/plan/T-002-y.md'); content = 'x' } } },
+    @{ Name = 'G8 PO acrescenta Aceite em review.md'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:product-owner'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/review.md'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G8 SM em arquivo sem linha na matriz'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:scrum-master'; tool_input = @{ file_path = (Join-Path $proj '.team-project/rascunho.md'); content = 'x' } } },
+    @{ Name = 'G8 QA escreve código-fonte'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:quality-assurance'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G8 Arquiteto em código-fonte pergunta'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"ask"'
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj 'src/spike.cs'); content = 'x' } } },
+    @{ Name = 'G8 PO escreve em docs/'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:product-owner'; tool_input = @{ file_path = (Join-Path $proj 'docs/sdd/01-requirements.md'); content = 'x' } } },
+    @{ Name = 'G8 UX escreve o protótipo'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:user-experience'; tool_input = @{ file_path = (Join-Path $proj '.team-project/user-experience/prototype/index.html'); content = 'x' } } },
+    @{ Name = 'G11 operator na pasta do job'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:operator'; tool_input = @{ file_path = (Join-Path $proj '.team-project/operator/1/build/report.md'); content = 'x' } } },
+    @{ Name = 'G11 operator no código'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:operator'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); content = 'x' } } },
+    @{ Name = 'G8 /review: SM edita card de agente'; Script = 'pre-tool.ps1'; Expect = 2; Env = @{ CLAUDE_PROJECT_DIR = $root }
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:scrum-master'; tool_input = @{ file_path = (Join-Path $root 'agents/developer.md'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G8 /review: QA edita o próprio roteiro'; Script = 'pre-tool.ps1'; Expect = 0; Env = @{ CLAUDE_PROJECT_DIR = $root }
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:quality-assurance'; tool_input = @{ file_path = (Join-Path $root 'roles/quality-assurance/README.md'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G8 /review: PO escreve no changelog do processo'; Script = 'pre-tool.ps1'; Expect = 0; Env = @{ CLAUDE_PROJECT_DIR = $root }
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:product-owner'; tool_input = @{ file_path = (Join-Path $root 'roles/scrum-master/process/process-changelog.md'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'Fase 2 calada em projeto sem o time'; Script = 'pre-tool.ps1'; Expect = 0; Env = @{ CLAUDE_PROJECT_DIR = $bare }
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $bare 'src/a.cs'); content = 'x' } } },
     @{ Name = 'Falha aberta: JSON inválido'; Script = 'pre-tool.ps1'; Expect = 1; Raw = '{nao-e-json' },
     @{ Name = 'guards.json desliga G3 e liga a sonda'; Script = 'pre-tool.ps1'; Expect = 0
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "disabled": ["G3"], "probe": true }' -Encoding UTF8 }

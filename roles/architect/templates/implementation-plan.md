@@ -13,7 +13,8 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (plano de calibraçã
 **Estimativa:** <n> unidade(s) — a que o time deu na Planning
 **Retomada de:** `sprints/<n-1>/plan/<T-ID>-<slug>.md` — parou no passo <n> de <m>, repositório <estado>
 *(linha obrigatória só quando a Task volta de um sprint anterior; omitir quando a Task é nova)*
-**Arquivos tocados:** <lista completa, caminho completo>
+**Arquivos tocados:** `<caminho relativo à raiz do repositório>`
+`<um por linha, entre crases — produção e teste>`
 
 ## 1. Objetivo e fora de escopo
 <Um parágrafo: o que passa a funcionar depois desta Task, e a que critério de aceite da História ela serve.>
@@ -135,6 +136,7 @@ Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que disparo
 12. **Task retomada de outro sprint ganha plano novo, aqui, com a linha `Retomada de:`** — o plano antigo vive em `sprints/<n-1>/plan/` e é **registro fechado: não se edita, não se copia, não se reaproveita por referência**. O plano novo declara o que já foi feito (a partir do "Parei no passo" do relatório do dev) e **reconfere no código real** as assinaturas dos passos restantes: o repositório mudou no intervalo, e passo executado sobre premissa velha é a causa nº 1 de 🔺 GAP ([`../skills.md`](../skills.md) §1 · R3 · R5).
 13. **Todo passo é conferível pelo QA sem julgamento de desenho** — é deste plano que sai a tabela passo × conforme da frente 2 ([`workflow.md` §4a](../../scrum-master/process/workflow.md)). A linha **Conferência** diz o que se observa no código (arquivo, assinatura, nomenclatura, registro de infra, teste); a seção de standard citada no passo diz contra o quê. Passo que o QA não consegue marcar conforme/divergente sem decidir é defeito do plano e volta ao Arquiteto (🔺 GAP → `/arc question`); divergência de execução volta ao dev (`/dev resume`).
 14. **Seção 11 sempre presente — é o controle da delegação** (R28). Todo job citado na seção 3 tem linha na seção 11, e toda chamada que fiz ao `operator` para este plano também — inclusive uma remedição posterior, que **acrescenta** linha. O número de linhas é o número de chamadas ("nenhuma" quando zero), sem célula de número em branco. A minha resposta ao `/arc` repete as mesmas linhas, para a sessão transcrever em `consumption.md`; o plano é o registro que o SM confere depois. Plano retomado (regra 12) lista só as chamadas feitas para o plano novo. A frente 2 do QA não confere a seção 11: ela não é passo.
+15. **`**Arquivos tocados:**` é lido por script — a guarda G9 nega ao dev todo arquivo de produto fora dela** (R4 · R8). Lista **fechada e completa** — produção **e** teste, inclusive arquivo novo —, um caminho por linha, **entre crases**, relativo à raiz do repositório, com `/`; as linhas seguem o rótulo sem linha em branco no meio (a linha em branco encerra a lista). Nada de diretório, curinga nem "e afins". Arquivo que um 🔺 GAP acrescentar entra **aqui**, além do passo — senão o dev é barrado ao retomar. Rótulo com outra grafia não é lido.
 
 ## Exemplo abreviado
 
@@ -142,8 +144,12 @@ Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que disparo
 # Plano de Implementação — T-042 Chave de assinatura obrigatória
 
 **História:** H-014 Exportar o resultado da análise
-**Arquivos tocados:** `Infrastructure/Storage/StorageOptions.cs`, `Infrastructure/Storage/UrlSigner.cs`,
-`Api/Program.cs`, `Api/appsettings.json`, `infra/.env.Development`, `Tests/Unit/UrlSignerTests.cs`
+**Arquivos tocados:** `Infrastructure/Storage/StorageOptions.cs`
+`Infrastructure/Storage/UrlSigner.cs`
+`Api/Program.cs`
+`Api/appsettings.json`
+`infra/.env.Development`
+`Tests/Unit/UrlSignerTests.cs`
 
 ## 2. Contexto a ler
 | Arquivo | Por que |

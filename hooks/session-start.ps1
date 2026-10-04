@@ -10,7 +10,7 @@ try {
     $cfg = Get-GuardConfig $projectDir
     if (-not (Test-GuardEnabled $cfg 'G13')) { exit 0 }
 
-    $all = 'G1', 'G2', 'G3', 'G4'
+    $all = 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G11'
     $on  = @($all | Where-Object { Test-GuardEnabled $cfg $_ })
     $off = @($all | Where-Object { -not (Test-GuardEnabled $cfg $_) })
     $line = "Guardas do time (hooks/COVERAGE.md): ativas " + ($(if ($on.Count) { $on -join ', ' } else { 'nenhuma' })) +
