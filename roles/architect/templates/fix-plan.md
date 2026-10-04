@@ -4,6 +4,8 @@ Salvo em `.team-project/fixes/B-<nnn>/plan.md` — **um arquivo por bloco, um mi
 
 É o **contrato entre mim e o dev** para cada Correção, como o [Plano de Implementação](implementation-plan.md) é para a Task: o que não estiver aqui vira 🔺 GAP, nunca improviso. **Não substitui o plano completo** — Correção que não cabe neste formato não é Correção.
 
+> **`- produção:` / `- teste:` também são lidos pela guarda G9** (`hooks/pre-tool.ps1`): no `fix run`, o dev só escreve no produto os caminhos entre crases dessas linhas, da F-ID em execução (ou do bloco). Arquivo que um 🔺 GAP acrescentar entra em `### Arquivos` — senão o dev é barrado.
+>
 > **Os rótulos abaixo são lidos pelo script C4** (`scripts/checks/fix.ps1`) — **não varie a grafia**, não traduza, não acrescente rótulo em negrito novo nas linhas que ele lê: `**Data:**` com `aaaa-mm-dd` (a revalidação usa a data); `## F-<nnn>` (conta as Correções do teto); `- C5 ✔ · …` a `- C8` (assinatura técnica); `- produção:` / `- teste:` sob `### Arquivos` (limite N e teto 2N); `**Critério que caiu:** C<n> — <motivo>` (promoção); `### Revalidação`.
 
 ```markdown

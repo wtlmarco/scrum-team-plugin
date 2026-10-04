@@ -13,6 +13,30 @@
 
 ---
 
+## v3.42.0 — 2026-10-04
+
+**Branch:** `feat/v3.42.0` a partir de `develop` · **Processo:** [`v3.42`](roles/scrum-master/process/process-changelog.md) e o addendum da [`v3.41`](roles/scrum-master/process/process-changelog.md) (antes previsto como v3.41.1, entregue aqui)
+Fase 2 das guardas: as regras de papel deixam de depender só do texto que o agente lê. A sonda num `/sm sprint plan` real confirmou que o hook recebe `agent_type` = `team:<papel>` dentro do subagente e nada na sessão principal.
+
+- **Seis guardas por papel** em `hooks/pre-tool.ps1`: **G5** nenhum subagente edita arquivo de gate (`guards.json` → `protectedPaths`) · **G6** o dev não acrescenta teste ignorado (`testSkipPatterns`) · **G7** Arquiteto, QA, dev e UX só disparam o `operator` (R28; `Agent` entra no matcher) · **G8** matriz de propriedade — `hooks/ownership.json`, derivado de `artifact-ownership.md` §1, nega escrita no arquivo de outro dono; **pergunta** ao stakeholder quando o Arquiteto vai escrever código · **G9** o dev só escreve no produto os arquivos do plano ativo (R4 · R8) · **G11** o `operator` só escreve na pasta do job.
+- **`.team-project/.active-task`** (novo, SM, escrito pela sessão): Task ou bloco `fix` em execução e o caminho do plano — gravado antes de todo disparo do dev (`sprint run`, `fix run`, `/dev`) e apagado quando ele sai.
+- **Plano de Implementação:** `**Arquivos tocados:**` vira lista fechada, um caminho por linha entre crases (regra 15 do modelo) — é o que a G9 lê. O `fix-plan.md` já usava `- produção:`/`- teste:`.
+- **`guards.json`** ganha `protectedPaths`, `sourceRoots`, `testSkipPatterns` (o `/team update`, passo 7e, acrescenta sem sobrescrever).
+- **C3** confere `hooks/ownership.json` × matriz (linha e dono de cada regra). Suítes: 51 casos de guarda (30 novos), 20 de conferência.
+- **Cards** (`developer`, `architect`, `quality-assurance`, `user-experience`, `operator`) citam a guarda que garante a frase; `hooks/COVERAGE.md` declara o que cada uma não cobre. Custo medido: ~0,8–1,2 s por disparo.
+
+### Antes previsto como v3.41.1 — decisão em formulário no fim de qualquer modo (R22)
+Decisões do stakeholder no fim de um modo chegavam em prosa, não em formulário (R22) — achado no `/sm sprint prepare`.
+
+- **`prepare` ganha o passo 7:** a sessão consolida as decisões que só o stakeholder toma e chama `AskUserQuestion` (até 4 por chamada, várias chamadas) antes de encerrar. "Não sobe ao stakeholder" passou a "não cria portão nem aprovação".
+- **R22 estendida a qualquer modo** (`plan`, `run`, `fix plan`…): resumo com "responda ou aceite as recomendações" é achado contra a orquestração.
+- **`commands/`** `sm`, `po`, `arc`, `ux`, `team`: "destaque a decisão" virou "leve em `AskUserQuestion`".
+- **Guia rápido do `/team version`:** `fix` agrupado com pipe como o `sprint` (`fix [plan \| run]`) na tabela do `how-to.md` e no `argument-hint` do `sm.md`; `team.md` ganha a rota do `fix`.
+
+**Como verificar:** `Select-String 'destaque' commands/*.md` sem resíduo sobre decisão; `scripts/checks/release.ps1` ok. Vale após atualizar o plugin e reiniciar a sessão.
+
+---
+
 ## v3.41.0 — 2026-10-03
 
 **Branch:** `feat/v3.41.0` a partir de `develop` · **Processo:** [`v3.41`](roles/scrum-master/process/process-changelog.md)

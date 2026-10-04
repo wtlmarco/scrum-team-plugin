@@ -4,7 +4,7 @@
 
 ## Instrumento — o que o script já conferiu o SM não relê
 
-> Coluna **Instrumento**: `C1` = `scripts/checks/close.ps1` (a cada `/sm close`; a saída é a evidência da conferência) · `C2` = `project.ps1` (retrospectiva e onboarding) · `C3` = `release.ps1` (repositório-fonte) · `C4` = `fix.ps1` (trilha `fix`: `-Pre` no início do `fix run`, completo antes de gravar o estado final do bloco) · `G1`/`G3`/`G4` = guardas de `hooks/` (negam ou avisam no ato). **Parcial** = o script confere o que é mecânico; o resto segue julgamento. `—` = só julgamento do SM. O SM abre o arquivo da regra **só quando o script falhar** nela.
+> Coluna **Instrumento**: `C1` = `scripts/checks/close.ps1` (a cada `/sm close`; a saída é a evidência da conferência) · `C2` = `project.ps1` (retrospectiva e onboarding) · `C3` = `release.ps1` (repositório-fonte) · `C4` = `fix.ps1` (trilha `fix`: `-Pre` no início do `fix run`, completo antes de gravar o estado final do bloco) · `G1`/`G3`/`G4` = guardas de `hooks/` (negam ou avisam no ato) · `G5`–`G9`/`G11` = guardas **por papel** (fase 2: gate protegido, teste ignorado, `Agent` só ao `operator`, matriz de propriedade, escopo do dev, pasta do job) — a G8 não tem regra numerada: é a matriz de [`artifact-ownership.md`](artifact-ownership.md) §1. **Parcial** = o script confere o que é mecânico; o resto segue julgamento. `—` = só julgamento do SM. O SM abre o arquivo da regra **só quando o script falhar** nela.
 
 ## Quando percorrer
 
@@ -18,18 +18,18 @@
 | R1 · uma Task por vez **[close]** | no máximo uma Task em construção por dev disponível | C1 |
 | R2 · Task cabe em uma unidade **[close]** | estimativa dentro da unidade; Task que estourou 2× a estimativa vira alerta na retrospectiva | — (julgamento) |
 | R3 · contexto mínimo | plano lista "contexto de código a ler" com caminho e porquê; papel reinvocado sobre o mesmo tópico cita **o que mudou** desde a última leitura | — (julgamento) |
-| R4 · não antecipar escopo **[close]** | relatório do dev com "Não fiz (fora do plano)" preenchido; diff × lista de arquivos do plano; entrada fora da Planning com "o que saiu para caber" | C1 (parcial) |
+| R4 · não antecipar escopo **[close]** | relatório do dev com "Não fiz (fora do plano)" preenchido; diff × lista de arquivos do plano; entrada fora da Planning com "o que saiu para caber" | G9 · C1 (parcial) |
 | R5 · interrupção é estado | relatório com "Parei no passo"; Task inacabada volta ao Product Backlog com a História; verificação pesada deixa artefato em disco por etapa; relatório que não chegou tem o estado em disco lido antes de reinvocar | C1 (n-a) |
 | R6 · decisão registrada **[close]** | toda Task fechada com desvio tem a entrada correspondente | — (julgamento) |
-| R28 · saída pesada em arquivo, execução pesada no `operator` **[close]** | trecho extraído **e** ponteiro do job (`operator/<sprint>/<job>/` ou `operator/pre-sprint/<job>/`), sempre juntos; `report` do job ≤ 200 linhas · 20 KB, um `report-<log>.md` por chamada na mesma pasta; log bruto podado não é achado (gatilho disparado → re-rodar pelo `operator`); build de fim de passo do dev isento de `report`; execução pesada nunca inline por Arquiteto, QA ou dev; contagem de chamadas × linhas `operator` (do sprint e de `.team-project/consumption.md`) fecha | G4 (aviso) · C1 |
+| R28 · saída pesada em arquivo, execução pesada no `operator` **[close]** | trecho extraído **e** ponteiro do job (`operator/<sprint>/<job>/` ou `operator/pre-sprint/<job>/`), sempre juntos; `report` do job ≤ 200 linhas · 20 KB, um `report-<log>.md` por chamada na mesma pasta; log bruto podado não é achado (gatilho disparado → re-rodar pelo `operator`); build de fim de passo do dev isento de `report`; execução pesada nunca inline por Arquiteto, QA ou dev; contagem de chamadas × linhas `operator` (do sprint e de `.team-project/consumption.md`) fecha | G7 · G11 · G4 (aviso) · C1 |
 | R29 · fase heterogênea em sessão nova | o relatório que abre fase diferente não cita diagnóstico de fase já fechada verde; no consumo, a transição é bloco de invocação novo | — (julgamento) |
 
 ## Qualidade
 
 | Regra | Conferir | Instrumento |
 |---|---|---|
-| R7 · sem evidência, não aconteceu **[close]** | bloco no registro de evidências com comando e saída; critério de aceite demonstrado na Review aponta a evidência da Task — **bloqueia o fechamento** | C1 (bloqueante) |
-| R8 · sem plano, sem código **[close]** | existe plano para toda Task em construção | C1 |
+| R7 · sem evidência, não aconteceu **[close]** | bloco no registro de evidências com comando e saída; critério de aceite demonstrado na Review aponta a evidência da Task — **bloqueia o fechamento** | C1 (bloqueante) · G5 · G6 |
+| R8 · sem plano, sem código **[close]** | existe plano para toda Task em construção | C1 · G9 |
 | R9 · gap vira pergunta **[close]** | gap respondido; decisão refletida no plano (não só em prosa); gap sem resposta há mais de um sprint vira bloqueio; quem respondeu não reproduziu a verificação do QA | — (julgamento) |
 | R10 · nomenclatura é contrato | achado de nomenclatura no veredito conta como reprovação, não ressalva | — (julgamento) |
 | R11 · segurança no plano | Task sensível sem seção de segurança no plano não entra em construção | — (julgamento) |

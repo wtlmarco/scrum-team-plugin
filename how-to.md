@@ -193,10 +193,16 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 | **G2** | edição da cópia instalada do plugin | mudança de processo vai pelo `/review`, no clone do repositório do plugin |
 | **G3** | formulário cuja última opção não é "Pedir mais contexto" (R22); em projeto com identificador remoto, pergunta sem o prefixo `[<ID> · …]` ou sem a pendência gravada antes (R34) | o agente refaz a pergunta; vale para toda pergunta, até a simples |
 | **G4** | aviso: saída de comando com mais de 300 linhas no contexto (R28) | delegar a execução pesada ao `operator` |
+| **G5** | subagente editando arquivo de gate (`.editorconfig`, CI, `*.ruleset`… — lista em `guards.json` → `protectedPaths`) | o papel levanta 🔺 GAP; mudança de gate é sua. Projeto com outro arquivo de gate: acrescente-o à lista |
+| **G6** | dev acrescentando teste ignorado (`[Skip`, `.skip(`, `xit(`…) | o dev levanta 🔺 GAP ao Arquiteto |
+| **G7** | Arquiteto, QA, dev ou UX disparando outro papel pela ferramenta `Agent` (R28) | só o `operator` é disparado por eles; o resto volta a quem orquestra |
+| **G8** | papel editando arquivo de outro dono (matriz de `artifact-ownership.md`) ou código-fonte; **pergunta a você** quando o Arquiteto vai escrever código (spike) | o papel pede a mudança ao dono. Na pergunta do Arquiteto: autorize só em spike ou pedido seu |
+| **G9** | dev editando arquivo fora da lista do plano (R4 · R8), ou sem Task ativa | 🔺 GAP ao Arquiteto, que acrescenta o arquivo ao plano. Rodando `/dev` à mão, a sessão grava antes `.team-project/.active-task` |
+| **G11** | `operator` escrevendo fora da pasta do próprio job | — (o `operator` só grava log e relatório) |
 
-- **O agente recebe o motivo e corrige o rumo** — você normalmente nem vê o bloqueio.
+- **O agente recebe o motivo e corrige o rumo** — você normalmente nem vê o bloqueio. As guardas por papel (G5–G11) não valem para a sua sessão principal.
 - **Falso positivo:** acrescente a guarda a `"disabled"` em `.team-project/guards.json`; vale na hora. Leve o caso ao `/review`, para a guarda ser corrigida.
-- **Cada disparo custa de 0,6 a 0,8 s.** O que cada guarda **não** cobre está em `hooks/COVERAGE.md`; as decisões ficam em `.team-project/guards.log`, contadas na retrospectiva.
+- **Cada disparo custa de 0,8 a 1,2 s.** O que cada guarda **não** cobre está em `hooks/COVERAGE.md`; as decisões ficam em `.team-project/guards.log`, contadas na retrospectiva.
 - **O `/sm close` começa por uma conferência automática** (`close.ps1`): sem evidência com veredito ✅ (R7) ou com documento vivo pendente (R12), a Task não fecha.
 
 ## Os seus quatro portões
@@ -242,7 +248,7 @@ O time pode te perguntar — e você pode retomar o trabalho — pelo **Claude C
 
 | Comando | Modos | Papel |
 |---|---|---|
-| `/sm` | `onboarding` · `brainstorm <ideia>` · `sdd [<tema>]` · `sprint prepare` · `sprint plan` · `sprint run [<T-ID>]` · `sprint review` *(alias: `review`)* · `sprint close` · `fix` · `fix plan [<F-ID> …]` · `fix run` · `board` · `agreement <questão>` · `consulting <domínio> <tema>` · `close <T-ID>` | Scrum Master — cadência, rituais, quadro, capacidade, riscos |
+| `/sm` | `onboarding` · `brainstorm <ideia>` · `sdd [<tema>]` · `sprint prepare \| plan \| run [<T-ID>] \| review \| close` *(`review` tem o alias `/sm review`)* · `fix [plan [<F-ID> …] \| run]` · `board` · `agreement <questão>` · `consulting <domínio> <tema>` · `close <T-ID>` | Scrum Master — cadência, rituais, quadro, capacidade, riscos |
 | `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` · `bug <relato>` · `note` | Product Owner — **o seu canal**: status, prazo, requisitos, Histórias, backlog, aceite, defeitos que você relata |
 | `/arc` | `plan <ID>` · `adr <tema>` · `question <dúvida>` | Arquiteto — desenho, SDD técnico, Plano de Implementação, ADR, standards |
 | `/ux` | `prototype` · `prototype sprint <n>` · `prototype screen <tela>` · `journey <fluxo>` · `screen <nome>` · `review-ui <tela>` | UX — protótipos, jornadas, telas, usabilidade, acessibilidade |

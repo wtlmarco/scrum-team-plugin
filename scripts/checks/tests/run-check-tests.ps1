@@ -363,8 +363,14 @@ Put $rp 'CHANGELOG.md' "# Changelog`n`n## v9.1.0 — 2026-10-02`n`nx`n"
 Put $rp 'roles/scrum-master/process/process-changelog.md' "# Processo`n`n## v9.1 — Teste (SM) — 02/10/2026`n`ncurto`n`n---`n"
 Put $rp 'roles/scrum-master/templates/modelo.md' "# modelo`n"
 Put $rp 'roles/scrum-master/README.md' "usa templates/modelo.md`n"
+Put $rp 'roles/scrum-master/process/artifact-ownership.md' "# Propriedade`n`n## 1. Matriz`n`n| Artefato | Dono | Regra |`n|---|---|---|`n| Planos (``.team-project/sprints/<n>/plan/``) | Arquiteto | x |`n| **Jobs** (``a\|b``) | **SM** · papel chamador | y |`n`n### 1a. Outra`n"
+Put $rp 'hooks/ownership.json' '{ "roles": { "architect": "Arquiteto", "operator": "operator" }, "project": [ { "paths": [".team-project/sprints/*/plan/**"], "writers": ["architect"], "matriz": "Planos (`.team-project/sprints/<n>/plan/`)", "dono": "Arquiteto" }, { "paths": [".team-project/operator/**"], "writers": ["operator"], "matriz": "Jobs", "dono": "papel chamador" }, { "paths": [".team-project/**"], "writers": [], "nota": "sem linha" } ], "pluginSource": [] }'
 $r = Invoke-Check 'release.ps1' @('-Root', $rp)
-Check 'C3 fonte coerente: exit 0' $r 0 @('\| R18 \| ok', '\| R17 \| ok', '\| órfãos \| ok')
+Check 'C3 fonte coerente: exit 0' $r 0 @('\| R18 \| ok', '\| R17 \| ok', '\| ownership \| ok.*2 regra', '\| órfãos \| ok')
+Edit-File (Join-Path $rp 'hooks/ownership.json') '"dono": "Arquiteto"' '"dono": "QA"'
+$r = Invoke-Check 'release.ps1' @('-Root', $rp)
+Check 'C3 ownership.json com dono divergente da matriz: exit 1' $r 1 @('\| ownership \| falhou.*dono ''QA''')
+Edit-File (Join-Path $rp 'hooks/ownership.json') '"dono": "QA"' '"dono": "Arquiteto"'
 Put $rp 'README.md' "# Plugin`n`n> **Versão atual: v9.0.0** · x`n"
 Put $rp 'roles/scrum-master/process/process-changelog.md' ("# Processo`n`n## v9.1 — Teste (SM) — 02/10/2026`n`n" + ('x' * 11000) + "`n`n---`n")
 Remove-Item -LiteralPath (Join-Path $rp 'roles/scrum-master/README.md')

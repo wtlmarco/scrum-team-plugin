@@ -32,4 +32,4 @@ Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, "pedir m
 - **`prototype sprint <n>` (parte do ③):** **sem formulário próprio** — a decisão é uma só, sobre o pacote inteiro, feita na submissão pelo `/sm sprint plan` e registrada na linha "Decisão do stakeholder" do Sprint Backlog. O UX só aponta para ela na ficha.
 - **"Pedir mais contexto"** não aprova nem reprova: registre a pergunta na ficha, responda e refaça o formulário.
 
-Ao receber a resposta, repasse ao stakeholder o caminho do artefato gerado, os pontos que exigem decisão dele e o que precisa ir ao PO (regra) ou ao Arquiteto (contrato). Se a Task já estiver no quadro, indique `/arc plan <ID>` como próxima etapa — o Plano de Implementação deve citar a especificação de tela.
+Ao receber a resposta, repasse ao stakeholder o caminho do artefato gerado, os pontos que exigem decisão dele (em `AskUserQuestion`, R22 — não em prosa) e o que precisa ir ao PO (regra) ou ao Arquiteto (contrato). Se a Task já estiver no quadro, indique `/arc plan <ID>` como próxima etapa — o Plano de Implementação deve citar a especificação de tela.
