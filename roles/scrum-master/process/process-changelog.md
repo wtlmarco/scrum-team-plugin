@@ -82,11 +82,11 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
-## v3.43 — `sprint run` sem paradas fora do contrato: lista fechada de paradas, rota do gate protegido, negação ao dev vira 🔺 GAP, interrupção pelo stakeholder e marcador acompanhando a Task (SM + Arquiteto) — 05/10/2026
+## v3.43 — `sprint run` sem paradas fora do contrato: lista fechada de paradas, rota do gate protegido, negação ao dev vira 🔺 GAP, interrupção pelo stakeholder e marcador acompanhando a Task; addendum: veredito pelo primeiro marcador, desvio aceito no R4, código de saída do `operator` (SM + Arquiteto + QA) — 05/10/2026
 
 **Instrução** (stakeholder): "aplique o proposta-run-interrupcoes.md para termos um teste mais correto" — pré-requisito do benchmark de projeto (simulação sem intervenção). Origem: 4 interrupções e 1 queixa de burndown em `note.md` (sprint 1 de um projeto-piloto). Decisões do formulário de 05/10/2026: **P2 — sessão principal aplica o arquivo protegido** (com o pedido de permissão do harness) · **P5 — sem modo novo:** "já existe uma marcação, ela só precisa refletir onde a tarefa está" (a sessão marca no momento da transição; `board --marca` descartado) · versão única v3.43.0.
 **Classificação:** fluxo (`sprint-run.md`, `fix-run.md`) · formato de documento (plano: `**Arquivos protegidos:**`, §12, teste de cada arquivo de produção na lista) · propriedade de artefato (a sessão escreve marcador e transição no `run`) · comportamento de agente (card do dev, `commands/sm.md`, mensagens da G5/G9 — aplicados pela sessão). **Sem regra nova** (34): reforça R22, R24, R25, R27 e R7.
-**Papéis movidos (R17):** 2 — SM e Arquiteto → barreira de 10 240 B.
+**Papéis movidos (R17):** 3 — SM, Arquiteto e QA (este no addendum) → barreira de 12 800 B.
 
 ### O que mudou
 | Documento | Seção | Mudança |
@@ -121,7 +121,19 @@ No sprint 1 do piloto o `run` parou quatro vezes sem motivo de contrato: oferece
 **Não exercitado:** um `sprint run` real com a v3.43 (exige plugin atualizado e sessão reiniciada). **Não mecanizado:** a conferência "teste de cada arquivo de produção na lista" do plano — fica na verificação do SM e na frente 2 do QA até existir conferência de plano por script.
 
 ### Pendente do stakeholder
-Atualizar o plugin e **reiniciar a sessão**. Remover `proposta-run-interrupcoes.md` depois do aceite desta entrada. Os cinco itens de `note.md` que originaram a P1–P5 saíram da fila; ficaram os três achados de processo do mesmo sprint que esta entrada não trata (`operator` e "código 0", R7 do `close.ps1` com histórico na linha, R4 sem registro da decisão do stakeholder).
+Atualizar o plugin e **reiniciar a sessão**. Remover `proposta-run-interrupcoes.md` depois do aceite desta entrada. Os cinco itens de `note.md` que originaram a P1–P5 saíram da fila; ficaram os três achados de processo do mesmo sprint que esta entrada não trata — tratados no addendum abaixo, no mesmo dia.
+
+### Addendum — 05/10/2026 (`/review note`, entregue na mesma v3.43.0): os três achados de processo do sprint 1 do piloto, e um quarto
+**Instrução** (stakeholder): "pode rodar o /review note". Fonte: `scrum-master/context.md` do piloto (achado de processo de 05/10/2026) e o bloqueio 14 do quadro. **Classificação:** instrumento (C1 R7/R4/R28, C4 item 4) · formato de documento (evidência e veredito: `**Desvio aceito:**`; um bloco `##` completo por rodada) · comportamento de agente (card do `operator`) · regra (R4 "SM verifica", R28 nome da pasta). **Sem regra nova** (34).
+
+| # | Sintoma | Causa | Mudança |
+|---|---|---|---|
+| 1 | O `operator` tabulou "código 0" para provas que reprovam e não gravou `report.md` | o código lido era o do *wrapper* da ferramenta `PowerShell`; nada mandava conferir o relatório em disco | card: `$LASTEXITCODE` capturado na mesma chamada e gravado como `EXIT=<n>` no log; prova que deve reprovar compara o real com o esperado; `Test-Path` do `report` antes de responder |
+| 2 | `close.ps1` R7 barrou a T-019 duas vezes: revisão do QA sem `**Veredito:**`, depois "✅ único" com ⚠️/❌ do histórico na linha | o C1 lê só o bloco mais recente e exigia a linha sem nenhum outro marcador | C1 e C4 leem o **primeiro** marcador da linha (`Get-VerdictMark`, `lib.ps1`); `evidence.md`: toda rodada é bloco `##` completo, e o primeiro marcador é o veredito |
+| 3 | R4 barrou "Fora do plano" com desvio que o stakeholder decidiu manter (`ci.yml:6-7`) | não havia rótulo para a decisão; qualquer arquivo listado era falha | `**Desvio aceito:** aaaa-mm-dd — quem decidiu — onde está` em `evidence.md` e `verdict.md` (Arquiteto se técnico e incluído no plano; stakeholder por formulário se muda escopo); C1 R4 aceita com data, falha sem ela; não vale na trilha `fix` (lá é promoção) |
+| 4 | Job do Arquiteto em `operator/sprint-1/` ficou fora da contagem do C1 (0 reports) | `<sprint>` sem valor definido; o C1 conta `operator/<n>/` | R28 e card: `<sprint>` é o número; C1 R28 aponta `operator/sprint-<n>/` como nome fora do padrão |
+
+**Verificação (R19):** `run-check-tests.ps1` → 25 casos · 0 falharam (novos: ✅ com histórico ok; ⚠ antes do ✅ falha; desvio aceito com data ok; sem data falha + `operator/sprint-1` apontado; C4 ✅ com histórico fecha e ⚠ não) · `run-guard-tests.ps1` → 54 · 0 · `release.ps1` → exit 0. **Não exercitado:** o card do `operator` num job real.
 
 ---
 

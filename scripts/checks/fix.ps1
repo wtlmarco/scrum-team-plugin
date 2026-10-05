@@ -167,7 +167,7 @@ try {
         # 4 · veredito
         $vm = if ($vs) { [regex]::Match($vs, '(?m)^\*\*Veredito:\*\*(.*)$') } else { $null }
         $v = if ($vm -and $vm.Success) { $vm.Groups[1].Value } else { '' }
-        if (-not ($v.Contains($E.Done) -and -not $v.Contains($E.Fail) -and -not $v.Contains($E.Warn))) {
+        if ((Get-VerdictMark $v) -ne $E.Done) {
             $it[4] += "$F (" + $(if ($vs) { 'veredito:' + $v.Trim() } else { 'sem seção no verdict.md' }) + ')'
             Block-F $F 'item 4'
             continue

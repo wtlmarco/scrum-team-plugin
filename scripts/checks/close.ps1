@@ -58,15 +58,15 @@ try {
     } else {
         $vm = [regex]::Match($evBlock, '(?m)^\*\*Veredito:\*\*(.*)$')
         $v = if ($vm.Success) { $vm.Groups[1].Value } else { '' }
-        $okV = $v.Contains($E.Done) -and -not $v.Contains($E.Fail) -and -not $v.Contains($E.Warn)
+        $okV = (Get-VerdictMark $v) -eq $E.Done   # o primeiro marcador decide; o histórico depois dele não conta
         $blocks = [regex]::Matches($evBlock, '(?ms)^```[^\n]*\n(.*?)^```')
         $okCmd = $false
         foreach ($b in $blocks) {
             $bl = @($b.Groups[1].Value -split "`r?`n" | Where-Object { $_.Trim() -ne '' })
             if ($bl.Count -ge 2 -and $bl[0].TrimStart().StartsWith('> ') -and $bl[0] -notmatch '<comando>') { $okCmd = $true; break }
         }
-        if (-not $vm.Success)   { Add-Result 'R7' 'falhou' 'bloco mais recente sem linha **Veredito:**' }
-        elseif (-not $okV)      { Add-Result 'R7' 'falhou' ("Veredito:" + $v + " — fecha só com ✅ único") }
+        if (-not $vm.Success)   { Add-Result 'R7' 'falhou' 'bloco mais recente sem linha **Veredito:** — cada rodada do QA é um bloco ## completo, com o próprio veredito' }
+        elseif (-not $okV)      { Add-Result 'R7' 'falhou' ("Veredito:" + $v + " — fecha só com ✅ como primeiro marcador da linha") }
         elseif (-not $okCmd)    { Add-Result 'R7' 'falhou' 'nenhum bloco de comando (> comando + saída) no bloco mais recente' }
         else                    { Add-Result 'R7' 'ok' ("Veredito:" + $v.Trim() + "; " + $blocks.Count + " bloco(s) de comando") }
     }
@@ -115,7 +115,13 @@ try {
         $fv = if ($fm.Success) { $fm.Groups[1].Value.Trim() } else { '' }
         if ($fv -match '^(?i)nada\.?$') { $r4 += 'fora do plano: nada' }
         elseif ([string]::IsNullOrWhiteSpace($fv) -or $fv -match '\|') { $r4 += 'falhou: "Fora do plano" não preenchido' }
-        else { $r4 += "falhou: fora do plano: $fv" }
+        else {
+            # Desvio que alguém com autoridade aceitou: **Desvio aceito:** aaaa-mm-dd — <quem decidiu> — <onde está a decisão>.
+            $am = [regex]::Match($esc, '(?m)^\*\*Desvio aceito:\*\*\s*(.+)$')
+            $ad = if ($am.Success -and -not (Test-Placeholder $am.Groups[1].Value)) { Get-FirstDate $am.Groups[1].Value } else { $null }
+            if ($ad) { $r4 += ("fora do plano: $fv — desvio aceito em " + $ad.ToString('yyyy-MM-dd')) }
+            else { $r4 += "falhou: fora do plano: $fv (sem **Desvio aceito:** com data)" }
+        }
     }
     if ($r4 | Where-Object { $_ -like 'falhou*' }) { Add-Result 'R4' 'falhou' (($r4 | ForEach-Object { $_ -replace '^falhou: ', '' }) -join '; ') }
     else { Add-Result 'R4' 'ok' (($r4 -join '; ') + ' (o diff × plano é conferido pelo QA na frente 2)') }
@@ -286,6 +292,10 @@ try {
         }
     }
     $reports = @(Get-ChildItem -LiteralPath (Join-Path $tp "operator/$n") -Recurse -Filter 'report*.md' -ErrorAction SilentlyContinue).Count
+    # Segmento do sprint é o número, como em sprints/<n>/ — job gravado em outro nome some da contagem sem aviso.
+    foreach ($alt in @(Get-ChildItem -LiteralPath (Join-Path $tp 'operator') -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "^(?i)(sprint|s)[-_ ]?0*$n$" })) {
+        $r28 += "pasta fora do padrão: operator/$($alt.Name)/ (o segmento é o número do sprint: operator/$n/)"
+    }
     $opLines = 0
     $consPath = Join-Path $S 'consumption.md'
     if (Test-Path -LiteralPath $consPath) {

@@ -25,6 +25,12 @@
 - **Marcador acompanha a Task:** no `run`, a sessão marca ⬜→🟦→🟨→🟪 (e →🔴) na hora — quadro, Registro de transições e burndown com data e hora; o `run` não aciona mais `board`.
 - Suíte de guardas: 54 casos (3 novos, `ExpectErr`).
 
+### Addendum (`/review note`, mesmo dia)
+- **C1 e C4 leem o primeiro marcador** da linha `**Veredito:**` (`Get-VerdictMark` em `lib.ps1`): "✅ na 3ª rodada — antes ⚠️ e ❌" fecha; toda rodada do QA é um bloco `##` completo.
+- **`**Desvio aceito:**`** na evidência e no veredito: arquivo fora do plano com decisão datada (Arquiteto ou stakeholder) deixa de reprovar o R4 no C1.
+- **`operator`**: código de saída do próprio comando (`$LASTEXITCODE` → `EXIT=<n>` no log), prova que deve reprovar comparada ao esperado, `report` conferido em disco antes de responder; pasta do job com o número do sprint (`operator/1/`) — o C1 aponta `operator/sprint-<n>/`.
+- Suíte de conferências: 25 casos (5 novos).
+
 ---
 
 ## v3.42.0 — 2026-10-04
