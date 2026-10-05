@@ -121,7 +121,7 @@ No sprint 1 do piloto o `run` parou quatro vezes sem motivo de contrato: oferece
 **Não exercitado:** um `sprint run` real com a v3.43 (exige plugin atualizado e sessão reiniciada). **Não mecanizado:** a conferência "teste de cada arquivo de produção na lista" do plano — fica na verificação do SM e na frente 2 do QA até existir conferência de plano por script.
 
 ### Pendente do stakeholder
-Atualizar o plugin e **reiniciar a sessão**. Remover `proposta-run-interrupcoes.md` depois do aceite desta entrada; os itens correspondentes de `note.md` saem da fila no mesmo aceite.
+Atualizar o plugin e **reiniciar a sessão**. Remover `proposta-run-interrupcoes.md` depois do aceite desta entrada. Os cinco itens de `note.md` que originaram a P1–P5 saíram da fila; ficaram os três achados de processo do mesmo sprint que esta entrada não trata (`operator` e "código 0", R7 do `close.ps1` com histórico na linha, R4 sem registro da decisão do stakeholder).
 
 ---
 
