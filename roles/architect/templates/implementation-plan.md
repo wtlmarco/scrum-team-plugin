@@ -16,6 +16,8 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (plano de calibraçã
 **Arquivos tocados:** `<caminho relativo à raiz do repositório>`
 `<um por linha, entre crases — produção e teste>`
 
+**Arquivos protegidos:** nenhum | ver §12
+
 ## 1. Objetivo e fora de escopo
 <Um parágrafo: o que passa a funcionar depois desta Task, e a que critério de aceite da História ela serve.>
 
@@ -118,6 +120,20 @@ Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que disparo
 | Operator job | Task/História | Modelo | Tokens | Duração |
 |---|---|---|---|---|
 | `.team-project/operator/<sprint\|pre-sprint>/<job>/` *(+ ` — <log>` se houver mais de uma chamada na mesma pasta)* | <T-ID / H-ID> | <`model:` de `agents/operator.md`> | <n ou "não disponível — motivo"> | <tempo ou "não disponível — motivo"> |
+
+## 12. Arquivos protegidos — a sessão aplica antes do dev *(só quando o cabeçalho diz "ver §12")*
+*(Arquivo de `guards.json` → `protectedPaths` que a Task precisa mudar. A G5 o nega a todo subagente —
+inclusive a mim e ao dev —, então o plano entrega o texto pronto e a sessão do `sprint run` o aplica no
+passo 3, com a permissão do stakeholder. Não entra em `**Arquivos tocados:**`.)*
+
+| Arquivo | Por que a Task precisa mudá-lo |
+|---|---|
+| `<caminho>` | <motivo, ligado ao passo que depende dele> |
+
+**Diff exato de `<caminho>`:**
+~~~diff
+<trecho antes/depois, literal — sem "algo como">
+~~~
 ```
 
 ## Regras do formato
@@ -136,7 +152,8 @@ Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que disparo
 12. **Task retomada de outro sprint ganha plano novo, aqui, com a linha `Retomada de:`** — o plano antigo vive em `sprints/<n-1>/plan/` e é **registro fechado: não se edita, não se copia, não se reaproveita por referência**. O plano novo declara o que já foi feito (a partir do "Parei no passo" do relatório do dev) e **reconfere no código real** as assinaturas dos passos restantes: o repositório mudou no intervalo, e passo executado sobre premissa velha é a causa nº 1 de 🔺 GAP ([`../skills.md`](../skills.md) §1 · R3 · R5).
 13. **Todo passo é conferível pelo QA sem julgamento de desenho** — é deste plano que sai a tabela passo × conforme da frente 2 ([`workflow.md` §4a](../../scrum-master/process/workflow.md)). A linha **Conferência** diz o que se observa no código (arquivo, assinatura, nomenclatura, registro de infra, teste); a seção de standard citada no passo diz contra o quê. Passo que o QA não consegue marcar conforme/divergente sem decidir é defeito do plano e volta ao Arquiteto (🔺 GAP → `/arc question`); divergência de execução volta ao dev (`/dev resume`).
 14. **Seção 11 sempre presente — é o controle da delegação** (R28). Todo job citado na seção 3 tem linha na seção 11, e toda chamada que fiz ao `operator` para este plano também — inclusive uma remedição posterior, que **acrescenta** linha. O número de linhas é o número de chamadas ("nenhuma" quando zero), sem célula de número em branco. A minha resposta ao `/arc` repete as mesmas linhas, para a sessão transcrever em `consumption.md`; o plano é o registro que o SM confere depois. Plano retomado (regra 12) lista só as chamadas feitas para o plano novo. A frente 2 do QA não confere a seção 11: ela não é passo.
-15. **`**Arquivos tocados:**` é lido por script — a guarda G9 nega ao dev todo arquivo de produto fora dela** (R4 · R8). Lista **fechada e completa** — produção **e** teste, inclusive arquivo novo —, um caminho por linha, **entre crases**, relativo à raiz do repositório, com `/`; as linhas seguem o rótulo sem linha em branco no meio (a linha em branco encerra a lista). Nada de diretório, curinga nem "e afins". Arquivo que um 🔺 GAP acrescentar entra **aqui**, além do passo — senão o dev é barrado ao retomar. Rótulo com outra grafia não é lido.
+15. **`**Arquivos tocados:**` é lido por script — a guarda G9 nega ao dev todo arquivo de produto fora dela** (R4 · R8). Lista **fechada e completa** — produção **e** teste, inclusive arquivo novo —, um caminho por linha, **entre crases**, relativo à raiz do repositório, com `/`; as linhas seguem o rótulo sem linha em branco no meio (a linha em branco encerra a lista). Nada de diretório, curinga nem "e afins". Arquivo que um 🔺 GAP acrescentar entra **aqui**, além do passo — senão o dev é barrado ao retomar. Rótulo com outra grafia não é lido. **Todo arquivo de produção da lista leva o seu arquivo de teste na lista** — o que a seção 6 prevê, e também o teste existente que o passo altera; arquivo de produção sem teste só com a linha `sem teste: <arquivo> — <motivo>` na seção 6 (teste esquecido na lista vira negação da G9 no meio da Task).
+16. **Arquivo de gate protegido não é do dev nem meu** — `guards.json` → `protectedPaths` (`.editorconfig`, CI, hooks de pre-commit…): a G5 o nega a todo subagente. Se a Task precisa mudá-lo, ele vai em `**Arquivos protegidos:** ver §12`, com o diff exato na seção 12, **separado por linha em branco** de `**Arquivos tocados:**` (senão a G9 o leria como do dev); a sessão aplica antes de disparar o dev ([`sprint-run.md`](../../scrum-master/process/sprint-run.md) passo 3). Sem arquivo protegido: `**Arquivos protegidos:** nenhum`. Descobrir no meio da Task que precisa mudar um é 🔺 GAP: o plano ganha a seção 12 e a sessão aplica antes de retomar o dev.
 
 ## Exemplo abreviado
 
@@ -150,6 +167,9 @@ Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que disparo
 `Api/appsettings.json`
 `infra/.env.Development`
 `Tests/Unit/UrlSignerTests.cs`
+`Tests/Unit/StorageOptionsTests.cs`
+
+**Arquivos protegidos:** nenhum
 
 ## 2. Contexto a ler
 | Arquivo | Por que |
@@ -184,6 +204,9 @@ Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que disparo
 | Arquivo | Teste | Deve falhar se… |
 |---|---|---|
 | `UrlSignerTests.cs` | `Assinatura_ComCaminhoAlterado_DeveSerInvalida` | a mensagem assinada deixar de cobrir o caminho |
+| `StorageOptionsTests.cs` | `Start_SemChaveDeAssinatura_DeveFalhar` | a chave voltar a aceitar valor vazio (cobre também o registro em `Program.cs`) |
+
+sem teste: `Api/appsettings.json`, `infra/.env.Development` — configuração; o comportamento é o de `StorageOptionsTests.cs`
 
 ## 9. Onde parar e perguntar 🔺
 - Se `UrlSigner` já compuser a mensagem de forma diferente da descrita no passo 2.

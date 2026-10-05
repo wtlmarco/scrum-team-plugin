@@ -208,6 +208,26 @@ Edit-File (Join-Path $p '.team-project/sprints/1/evidence/T-041.md') ("**Veredit
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'C1 veredito ⚠: R7 falhou, exit 1' $r 1 @('\| R7 \| falhou')
 
+# 4b. Veredito ✅ com o histórico das rodadas na mesma linha → R7 ok (o primeiro marcador decide); ⚠ antes do ✅ → falha.
+$warn = [char]::ConvertFromUtf32(0x26A0); $x = [char]::ConvertFromUtf32(0x274C)
+$p = Join-Path $tmp 'r7hist'; New-Project $p
+Edit-File (Join-Path $p '.team-project/sprints/1/evidence/T-041.md') ("**Veredito:** " + $e.ok) ("**Veredito:** " + $e.ok + " Aprovado na 3ª rodada (antes $warn e $x)")
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 ✅ com histórico na linha: R7 ok, exit 0' $r 0 @('\| R7 \| ok')
+Edit-File (Join-Path $p '.team-project/sprints/1/evidence/T-041.md') ("**Veredito:** " + $e.ok + " Aprovado") ("**Veredito:** " + $warn + " ressalva; ia para " + $e.ok)
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 ⚠ antes do ✅: R7 falhou, exit 1' $r 1 @('\| R7 \| falhou', 'primeiro marcador')
+
+# 4c. Fora do plano com desvio aceito e data → R4 ok; sem data → falha. Pasta operator/sprint-1 → R28 aponta o nome.
+$p = Join-Path $tmp 'r4aceito'; New-Project $p
+Edit-File (Join-Path $p '.team-project/sprints/1/evidence/T-041.md') '**Fora do plano:** nada' "**Fora do plano:** ci.yml:6-7 (2 linhas de comentário)`n**Desvio aceito:** 2026-09-04 — stakeholder (formulário) — sprint-backlog.md bloqueio 14"
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 desvio aceito com data: R4 ok' $r 0 @('\| R4 \| ok', 'desvio aceito em 2026-09-04')
+Edit-File (Join-Path $p '.team-project/sprints/1/evidence/T-041.md') '**Desvio aceito:** 2026-09-04 — stakeholder' '**Desvio aceito:** pendente — stakeholder'
+Put $p '.team-project/operator/sprint-1/arc-job/report.md' "# report`n"
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 desvio sem data: R4 falhou; operator/sprint-1: R28 aponta' $r 0 @('\| R4 \| falhou', 'sem \*\*Desvio aceito:\*\* com data', 'pasta fora do padrão: operator/sprint-1/')
+
 # 5. Fora do plano com arquivo, cenário sem resultado, operator sem linha de consumo, construção antes do pacote.
 $p = Join-Path $tmp 'varios'; New-Project $p
 Edit-File (Join-Path $p '.team-project/sprints/1/evidence/T-041.md') '**Fora do plano:** nada' '**Fora do plano:** src/Extra.cs'
@@ -354,6 +374,15 @@ Edit-File (Join-Path $p '.team-project/sprints/1/consumption.md') '| 2026-09-03 
 $r = Invoke-Check 'fix.ps1' @('-Block', 'B-001', '-Root', $p)
 Check 'C4 teste não falhou antes, promoção sem motivo, consumo fora: exit 1' $r 1 @('R33/3 antes/depois \| falhou.*F-002', 'R33/10 promoção \| falhou.*F-003', 'R33/7 consumo \| aviso', 'Não fecham:.*F-002.*F-003')
 if ($r.Out -match 'Não fecham:[^\r\n]*F-001') { $fail++; Write-Output '---- F-001 não deveria estar em Não fecham'; Write-Output $r.Out }
+
+$p = Join-Path $tmp 'fix3'; New-Project $p; New-FixBlock $p
+$vt = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/fixes/B-001/verdict.md'), $utf8)
+$i = $vt.IndexOf('## QA — F-002')
+$vt = $vt.Substring(0, $i).Replace("**Veredito:** $($e.ok)", "**Veredito:** $($e.ok) na 2ª rodada (antes $x)") + $vt.Substring($i).Replace("**Veredito:** $($e.ok)", "**Veredito:** $warn ressalva")
+[System.IO.File]::WriteAllText((Join-Path $p '.team-project/fixes/B-001/verdict.md'), $vt, $utf8)
+$r = Invoke-Check 'fix.ps1' @('-Block', 'B-001', '-Root', $p)
+Check 'C4 ✅ com histórico fecha; ⚠ não fecha' $r 1 @('R33/4 veredito \| falhou.*F-002', 'Não fecham:.*F-002')
+if ($r.Out -match 'Não fecham:[^\r\n]*F-001') { $fail++; Write-Output '---- F-001 (✅ com histórico) não deveria estar em Não fecham'; Write-Output $r.Out }
 
 # 9. C3 num repositório-fonte mínimo: versão divergente e bloco acima da barreira.
 $rp = Join-Path $tmp 'fonte'

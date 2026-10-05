@@ -95,6 +95,13 @@ function Test-Placeholder([string]$Cell) {
     return ([string]::IsNullOrWhiteSpace($c) -or $c -match '<[^>]+>')
 }
 
+# Veredito de uma linha **Veredito:** — o PRIMEIRO marcador (✅ ⚠ ❌); o histórico que vem depois não conta. $null se nenhum.
+function Get-VerdictMark([string]$Line) {
+    $first = $null; $at = [int]::MaxValue
+    foreach ($mk in $E.Done, $E.Warn, $E.Fail) { $ix = $Line.IndexOf($mk); if ($ix -ge 0 -and $ix -lt $at) { $at = $ix; $first = $mk } }
+    return $first
+}
+
 # Primeira data do texto: aaaa-mm-dd ou dd/mm/aaaa. $null se nenhuma.
 function Get-FirstDate([string]$Text) {
     $m = [regex]::Match($Text, '(\d{4})-(\d{2})-(\d{2})')

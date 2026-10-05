@@ -75,6 +75,7 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 
 ### Escopo
 **Fora do plano:** nada | <lista de arquivos tocados além do previsto — R4>  *(diff × lista de arquivos do Plano, frente 2; transcrito ao bloco da evidência — o C1 lê esta linha)*
+**Desvio aceito:** <aaaa-mm-dd — quem decidiu — onde está a decisão>  *(só com arquivo em "Fora do plano" e decisão registrada — Arquiteto, se técnico e incluído no plano; stakeholder por formulário, se muda escopo; sem decisão, omitir: o desvio segue achado. Na trilha `fix` não existe — arquivo fora do mini-plano é promoção)*
 
 ### Não exercitado
 - <o que ficou sem validação e por quê>
