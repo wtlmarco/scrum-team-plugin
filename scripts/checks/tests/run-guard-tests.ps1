@@ -130,6 +130,15 @@ $cases = @(
        Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj '.editorconfig'); content = 'x' } } },
     @{ Name = 'G5 QA Out-File em workflow de CI'; Script = 'pre-tool.ps1'; Expect = 2
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = "'x' | Out-File .github/workflows/ci.yml" } } },
+    @{ Name = 'G5 deny cita a rota da sessão (passo 3)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'sprint-run.md passo 3'
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj '.github/workflows/ci.yml'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G9 §12 do plano não entra no escopo do dev'; Script = 'pre-tool.ps1'; Expect = 2
+       Setup = {
+           Set-Content -LiteralPath (Join-Path $proj '.team-project/sprints/1/plan/T-003-z.md') "# Plano — T-003`n**Arquivos tocados:** ``src/e.cs```n``tests/ETests.cs```n`n**Arquivos protegidos:** ver §12`n`n## 12. Arquivos protegidos`n| ``src/z.cs`` | x |`n" -Encoding UTF8
+           Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-task') '{ "trilha": "sprint", "id": "T-003", "plano": ".team-project/sprints/1/plan/T-003-z.md" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/z.cs'); content = 'x' } } },
+    @{ Name = 'G9 plano com Arquivos protegidos: teste listado liberado'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'tests/ETests.cs'); content = 'x' } } },
     @{ Name = 'G5 sessão principal escreve .editorconfig'; Script = 'pre-tool.ps1'; Expect = 0
        Payload = @{ tool_name = 'Write'; tool_input = @{ file_path = (Join-Path $proj '.editorconfig'); content = 'x' } } },
     @{ Name = 'G8 PO escreve plano do Arquiteto'; Script = 'pre-tool.ps1'; Expect = 2
@@ -178,6 +187,7 @@ foreach ($c in $cases) {
     if ($ok -and $c.ContainsKey('ExpectOut')) {
         if ($c.ExpectOut -eq '') { $ok = [string]::IsNullOrWhiteSpace($r.Out) } else { $ok = $r.Out -like "*$($c.ExpectOut)*" }
     }
+    if ($ok -and $c.ContainsKey('ExpectErr')) { $ok = $r.Err -like "*$($c.ExpectErr)*" }
     if ($ok -and $c.Check) { $ok = [bool](& $c.Check) }
     if (-not $ok) { $fail++ }
     $detail = (($r.Err + ' ' + $r.Out) -replace '\s+', ' ').Trim()

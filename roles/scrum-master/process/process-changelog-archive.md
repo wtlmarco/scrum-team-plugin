@@ -8,6 +8,71 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.40 — R33: trilha `fix` para defeito e ajuste pequeno — critério verificável na entrada, plano e execução em bloco, consumo próprio, piso de evidência por Correção e conferência C4 (SM + PO + Arquiteto + QA + UX) — 03/10/2026
+
+**Instrução** (stakeholder, `/review`): "aplicar a proposta em `proposta-fix.md` (terceira da rodada evaluation → guards → fix)". Decisões do formulário de 02–03/10/2026: **P1** o Arquiteto escreve os mini-planos · **P2** N = 5 · **P3** o ✅ do QA encerra a Correção, sem aceite na Review (reabrir = anotar no `note.md` citando a F-ID) · **P4** o UX só atualiza quando a especificação de tela cita o texto literal · **P5** ordem evaluation → guards → fix · **P6** teto de 5 Correções e 2N arquivos · regra **R33** (a `remote` passa a R34) · **C4 sim** (`fix.ps1`, escrito pela sessão) · **R15 com emenda**.
+**Classificação:** regra nova (R33; R25 e R15 emendadas, R20 com uma frase; R23 mantida; saldo +1) · fluxo (`/sm fix`, `fix plan`, `fix run`; §5g reescrito) · formato de documento (ficha, mini-plano, índice, pasta do bloco, variantes do veredito e do consumo) · propriedade de artefato (`fixes.md`, `fixes/`) · instrumento (C4) · comportamento de agente (`commands/`, aplicado pela sessão).
+**Papéis movidos (R17):** 5 — SM, PO, Arquiteto, QA e UX → barreira de 17 920 B.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `roles/scrum-master/process/working-rules.md` · `working-rules-index.md` | R33 · R25 · R20 · R15 · R28 · tabelas | **R33 nova**: critérios C1–C8, bloco com consumo próprio, piso por Correção, promoção obrigatória, "SM verifica" = **C4** (parcial) e o julgamento declarado. R25: "construir produto" + a única exceção (a trilha); `fixes/` fora da pasta do sprint. R15: o delta de ajuste é a única exceção ao ①. R20: Correção não é Task. R28: caminho `operator/B-<nnn>/<F-ID\|bloco>/`. Índice R1–R33, `C4` na legenda, linha R33 sem [close]. Contagem 32 → 33 |
+| `roles/scrum-master/process/fix-run.md` (novo) | §Elegibilidade · §Triagem · §Plan · §Run · §Promoção · §Fechamento | Fonte única da trilha. `run` passo 0 = C4 `-Pre` (exit 1: não começa); passo 5 = C4 antes de gravar o estado final (exit 1: só as F-IDs listadas não fecham, D6); commit `F-<nnn>:` por Correção |
+| `process/workflow-sprint.md` §5g · `workflow.md` §8 · `artifact-ownership.md` §1 · §1c | Manutenção · gates · matriz | Elegível → trilha `fix`, sem folga nem histórico; os três sprints só para a correção pontual não elegível; gates técnicos por Correção; linhas de `fixes.md` (escritor a sessão), ficha (PO), pasta do bloco (SM · Arquiteto · QA); retenção por bloco; poda dos jobs do bloco depois do fechamento |
+| `templates/consumption.md` · `fix-log.md` (novo) · `retrospective.md` · `project-context.md` | destinos · índice · "Trilha fix no período" · §2a | Três destinos por prioridade; a **triagem fica nos destinos de sempre**, com Nota `triagem;`; Unidade `B-<nnn>`; variante "bloco" com custo por Correção fechada; `fixes.md` (devolvida leva o motivo na célula "Promovida para"); indicadores do §8; rótulos "Limite de arquivos por Correção (N)" e "Teto de Correções por bloco" |
+| `deliverables/team-project/README.md` | manifesto | `fixes.md` e `fixes/` não semeados; N e teto no README do projeto; `operator/B-<nnn>/` |
+| `roles/product-owner/` | `templates/fix-card.md` (novo) · `README.md` · `skills.md` · `templates/note.md` | Ficha com C1–C4, reprodução, delta, confirmação do stakeholder, destino; `/po bug` e `/po note` seguem `fix-run.md` §Triagem (ajuste, "elegível à trilha fix", História do aceite **por item** ao `/qa bug` em lista, reaberta **sem novo escape**); aplicação do delta no `fix run` (R12, R15 emendada); sem aceite na Review (P3) |
+| `roles/architect/` · `roles/developer/` | `templates/fix-plan.md` (novo, 14 regras, teto de 60 linhas por F-ID) · `README.md` · `skills.md` §3 · `gap.md` · `delivery-report.md` | Mini-planos do bloco e revalidação (D9); promoção (C5–C8) com o critério que caiu; dev: uma Correção por vez, commit `F-<nnn>:` com `git add -- <arquivo>`, sem git checkpoint com os trechos originais, teste falha antes pela asserção e passa depois; relatório com "Teste de regressão: saída antes / saída depois" |
+| `roles/quality-assurance/` | `templates/verdict.md` ("Variante trilha fix") · `README.md` · `deliverables/implementation/pending.md` | `bug` em lista; veredito por F-ID com os rótulos que o C4 lê (`**Antes:** exit`, `**Depois:** exit 0`, `**Commit:**`, `### Escopo`, `### Documentos vivos (R12)`, `## Fechamento`); defeito funcional vira `SC-nnn`; entrada do `pending.md` fecha com ponteiro `F-<nnn>`/`B-<nnn>` |
+| `roles/user-experience/README.md` | "Texto de tela na trilha fix" | Só com citação literal (grep em `screens/` e `journeys/`); uma invocação por bloco |
+| *Aplicado pela sessão* | `scripts/checks/fix.ps1` (C4, `-Pre` e completo) · `tests/run-check-tests.ps1` · `commands/sm.md` · `po.md` · `qa.md` · `how-to.md` · `README.md` · `plugin.json` 3.40.0 · `CHANGELOG.md` | C4 com promovidas fora do teto e commits `F-<nnn>:` (inclusive retrabalho) nos itens 5 e 9; `fix`, `fix plan`, `fix run`; cenários D e F; banner e estrutura |
+
+### Por quê
+Corrigir um defeito de três linhas custava quase o mesmo que entregar uma Task de História — seis invocações por correção, cada uma pagando de novo a carga fixa do papel — e antes do terceiro sprint não havia caminho pequeno nenhum. O custo empurra o stakeholder a pedir a correção "por fora", e o consumo das correções dentro do sprint distorce a capacidade observada. A trilha corta a cerimônia (de seis para três papéis) e amortiza a carga fixa pelo bloco, **sem** tirar o que dá qualidade: evidência real (R7), gate técnico, teste que falha antes e passa depois e verificador diferente de quem corrigiu, **por Correção**. Para a trilha não virar atalho de feature disfarçada, a entrada é fechada por oito critérios que se conferem lendo o requisito, o plano e o código — e o que é mecânico é conferido pelo **C4**, não por julgamento.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| SM | Orquestra `plan`/`run` pela sessão, roda C4 `-Pre` e C4 completo e cola a saída, mantém `fixes.md`, lê a "Trilha fix no período" na retrospectiva |
+| PO | Triagem com C1–C4 e delta do ajuste na ficha; História do aceite por item; aplica o delta só depois do ✅ |
+| Arquiteto | Mini-plano por F-ID (C5–C8, arquivos, teste, revalidação); promove o que cai |
+| dev | Uma Correção por vez, diff isolado, teste antes e depois colados |
+| QA | Reproduz em lote, veredito por F-ID com os rótulos exatos, suíte do módulo uma vez por bloco |
+| UX | Só quando a especificação cita o texto literal |
+| Stakeholder | Confirma cada ajuste em formulário no `fix plan`; recebe o resultado por F-ID; reabre anotando a F-ID |
+
+### Conflitos com o processo vigente
+- **R25** ("não há dois jeitos"): emendada — vale para **construir produto**; a trilha é a única exceção, fechada por critério verificável, e o ajuste passa por formulário antes de ser construído.
+- **R15** (SDD funcional só por `/sm sdd` com ①): **emendada** (decisão do stakeholder) — o delta de **ajuste** (no máximo um requisito existente, formulário antes, aplicado ao SDD só depois do ✅) é a única exceção.
+- **R20** (Task com História): a Correção não é Task; promovida, nasce Task com História.
+- **R21** (aceite só na Review): sem conflito — Correção não é História; o ✅ do QA encerra (P3). A taxa de reabertura passa a ser o único sinal do stakeholder sobre a trilha.
+- **R23**: mantida; a trilha não é "modo leve", é escopo fechado com verificação plena. **R1**: só o `fix run` disputa a construção (nenhuma Task em 🟨, conferido pelo C4 `-Pre`).
+
+### Como saberemos que funcionou
+- **Custo:** mediana do custo por Correção fechada ≤ **40%** da mediana por Task de correção pontual (ponderada por modelo). **Bloco médio ≥ 2** Correções.
+- **Qualidade:** reabertura ≤ **10%** (acima, reabre a P3). **Promoção entre 10% e 40%** (abaixo: critério frouxo; acima: triagem ruim). Zero Correção fechada acima de N arquivos; zero linha de consumo de bloco no sprint.
+- Revisão depois das 10 primeiras Correções ou de 2 sprints.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Contagem | `Select-String '^### R\d+\.'` em `working-rules.md` · `'^\| R\d+ '` no índice · `'^\| R\d+ \|'` no resumo | 33 · 33 · 33 (antes: 32) | ✅ |
+| Substituição de padrão | `Select-String -CaseSensitive 'Não há dois jeitos de trabalhar'` em `working-rules.md` | 0; a frase nova ("Para **construir produto** não há dois jeitos…", R25) lida no contexto | ✅ |
+| Substituição de padrão | `Select-String 'R1.R32\|32 regras\|R30-R32'` fora dos changelogs | 0; novas ocorrências (`README.md:189`, `roles/scrum-master/README.md:185`, `agents/scrum-master.md:34`, índice) lidas: "33 regras", "R30-R33", "R1–R33" | ✅ |
+| Referência | `Select-String 'fix-card.md\|fix-plan.md\|fix-log.md\|fix-run.md'` fora dos changelogs | arquivos que citam: 9 · 8 · 4 · 16 — nenhum órfão; seções `fix-run.md` §Elegibilidade · §Triagem · §Plan · §Run · §Fechamento existem como os ponteiros dos outros papéis as citam | ✅ |
+| Arquivamento | `-ceq` do bloco `## v3.37` movido contra o texto que saiu do vivo; `Contains` no arquivo | True; 7 472 B; zero linha fora do separador | ✅ |
+| Teste | `powershell -NoProfile -File scripts/checks/tests/run-guard-tests.ps1` | `17 casos · 0 falharam`, exit 0 (reexecutado) | ✅ |
+| Teste | `powershell -NoProfile -File scripts/checks/tests/run-check-tests.ps1` | `16 casos · 0 falharam`, exit 0 (reexecutado). C4: feliz exit 0 com R33/1–10 ok · `-Pre` sem Task em 🟨 exit 0 · `-Pre` com T-041 em 🟨 exit 1 "não começa" · teste que não falhou antes + promoção sem motivo + linha `B-001` no consumo do sprint → exit 1, "Não fecham: F-002, F-003", F-001 fecha, consumo como aviso | ✅ |
+| Teste | `fix.ps1` contra o exemplo do próprio `fix-plan.md` (Arquiteto) | `-Pre` exit 0; completo exit 0 | ✅ |
+| Release (R17 · R18) | `powershell -NoProfile -File scripts/checks/release.ps1` (depois de gravar a v3.40) | R18 ok: plugin.json = CHANGELOG = README L3 = v3.40.0; processo 3.40, 3.39, 3.38 com entrega · R17 ok: bloco v3.40 com 11371 bytes ≤ barreira 17920 (5 papéis); 3 entradas vivas · órfãos ok: 45 modelos, todos referenciados · exit 0 | ✅ |
+**Não exercitado:** C4 contra um bloco de projeto real; disparo do `fix run` pela sessão (exige plugin atualizado e sessão reiniciada); PowerShell 7 — fora do requisito (o requisito é o Windows PowerShell 5.1 do computador dos projetos, exercitado nas suítes).
+
+### Pendente do stakeholder
+Nada a aplicar — `commands/`, `how-to.md`, `README.md`, `scripts/`, `plugin.json` e `CHANGELOG.md` aplicados nesta entrega. Mudança de comportamento de agente só vale **após atualizar o plugin e reiniciar a sessão**. Remover `proposta-fix.md` depois do aceite desta entrada. `proposta-remote.md` já foi renumerada para R34.
+
+---
+
 ## v3.39 — Guardas e conferências mecânicas: hooks de plugin (G1 · G2 · G3 · G4 · G13) e três scripts (C1 `close.ps1` · C2 `project.ps1` · C3 `release.ps1`) tiram do julgamento o que é mecânico (SM + QA) — 02/10/2026
 
 **Instrução** (stakeholder, `/review`; formulário de 02/10/2026 sobre a triagem de `proposta-guards.md`): aplicar a fase 1 mais C1/C2/C3 — verificação mecânica das regras que têm forma objetiva, para que o `/sm close` e a retrospectiva deixem de reler arquivos que um script já conferiu. T11 e T12 aceitas. Decisões: G1 bloqueia **tudo** de `.team-project/` no stage, inclusive remoção, e a migração R31 (passo 7b de `/team update`) o desliga no `guards.json` durante o passo; G3 universal, com o motivo do deny lembrando que até pergunta simples segue a forma de R22; G4 silencia quando `agent_type` termina em `operator`; Windows PowerShell 5.1 (requisito: o do computador que roda os projetos — esclarecido pelo stakeholder em 03/10/2026; o PowerShell 7 não é requisito); C3 manual antes do PR; G9 (bloqueia) fica na fase 2.
