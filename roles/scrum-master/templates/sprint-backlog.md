@@ -56,7 +56,7 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 
 ## Registro de transições (dado bruto do burndown — R24)
 
-> Toda vez que o marcador de uma Task muda, uma linha entra aqui. Abertura (⬜) e fechamento (✅) são exatos, com a data do `/sm sprint plan`/`/sm close`; estados intermediários (🟦/🟨/🟪) têm a data da rodada de `/sm board` que sincronizou o marcador — não a data exata em que o papel terminou o passo. [`burndown.md`](burndown.md), na mesma pasta, é a leitura em série desta tabela.
+> Toda vez que o marcador de uma Task muda, uma linha entra aqui. Abertura (⬜) e fechamento (✅) são exatos, com a data do `/sm sprint plan`/`/sm close`; estados intermediários (🟦/🟨/🟪/🔴) são gravados pela sessão **no momento da transição** quando a Task anda pelo `sprint run` (data e hora — [`sprint-run.md`](../process/sprint-run.md) §Marcador); fora do `run`, têm a data da rodada de `/sm board` que sincronizou o marcador. [`burndown.md`](burndown.md), na mesma pasta, é a leitura em série desta tabela.
 
 | Task | De → Para | Quando | Por quem |
 |---|---|---|---|

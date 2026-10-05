@@ -13,6 +13,20 @@
 
 ---
 
+## v3.43.0 — 2026-10-05
+
+**Branch:** `feat/v3.43.0` a partir de `develop` · **Processo:** [`v3.43`](roles/scrum-master/process/process-changelog.md)
+`sprint run` e `fix run` rodam a fila inteira sem parar fora do contrato — pré-requisito do benchmark de projeto sem intervenção. Aplica `proposta-run-interrupcoes.md` (P1–P5).
+
+- **Paradas legítimas em lista fechada** (`sprint-run.md`): fim da fila, bloqueio de R22 sem Task elegível, pré-condição, interrupção do stakeholder. Fim de Task não é parada; "sigo?" e "parar na fronteira de História" são achado. Task 🔴 não para o `run`. O `fix run` segue as mesmas regras.
+- **Gate protegido com rota:** o plano ganha `**Arquivos protegidos:**` e a §12 com o diff exato; a sessão principal aplica antes do dev (pedido de permissão do harness). A mensagem da G5 cita a rota.
+- **Negação de guarda ao dev é 🔺 GAP**, nunca pergunta ao stakeholder; o plano lista o teste de cada arquivo de produção (regra 15). Timeout não é "limpo" (card do dev).
+- **Interrupção pelo stakeholder:** sem reexecução, disco consistente, uma linha dizendo onde parou.
+- **Marcador acompanha a Task:** no `run`, a sessão marca ⬜→🟦→🟨→🟪 (e →🔴) na hora — quadro, Registro de transições e burndown com data e hora; o `run` não aciona mais `board`.
+- Suíte de guardas: 54 casos (3 novos, `ExpectErr`).
+
+---
+
 ## v3.42.0 — 2026-10-04
 
 **Branch:** `feat/v3.42.0` a partir de `develop` · **Processo:** [`v3.42`](roles/scrum-master/process/process-changelog.md) e o addendum da [`v3.41`](roles/scrum-master/process/process-changelog.md) (antes previsto como v3.41.1, entregue aqui)

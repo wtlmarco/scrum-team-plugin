@@ -120,7 +120,7 @@ function Get-WriteTargets([string]$Cmd) {
 function Test-G5([string]$Rel, [string]$Shown) {
     if (-not $script:role -or -not $Rel) { return }
     if (Test-GlobMatch $Rel $cfg.protectedPaths) {
-        Deny 'G5' $Shown "$Rel é arquivo de gate protegido (guards.json → protectedPaths): subagente não altera configuração de gate — gate não se desliga, não se afrouxa, não se contorna (R7; plano §9). Pare e levante 🔺 GAP; a mudança é do stakeholder."
+        Deny 'G5' $Shown "$Rel é arquivo de gate protegido (guards.json → protectedPaths): subagente não altera configuração de gate — gate não se desliga, não se afrouxa, não se contorna (R7; plano §9). Pare e levante 🔺 GAP: o Arquiteto põe o diff em **Arquivos protegidos:** (plano §12) e a sessão principal o aplica, com a permissão do stakeholder (sprint-run.md passo 3)."
     }
 }
 
@@ -212,7 +212,7 @@ function Test-G9([string]$Rel, [string]$Shown) {
         Deny 'G9' $Shown "o plano de $($scope.Id) ($($scope.Plano)) não tem lista de arquivos legível (caminhos entre crases em **Arquivos tocados:** ou em - produção:/- teste:). Pare e levante 🔺 GAP ao Arquiteto (R8)."
     }
     if ($scope.Files -contains $Rel) { return }
-    Deny 'G9' $Shown "arquivo fora do plano: $Rel não está na lista de $($scope.Id) ($($scope.Plano)). Pare e levante 🔺 GAP ao Arquiteto antes de editar (R4 · R8)."
+    Deny 'G9' $Shown "arquivo fora do plano: $Rel não está na lista de $($scope.Id) ($($scope.Plano)). Pare e levante 🔺 GAP ao Arquiteto antes de editar (R4 · R8) — quem orquestra resolve com o Arquiteto, não com o stakeholder (R25)."
 }
 
 # G11 — contrato do operator, item 6: escreve só na pasta do próprio job.
