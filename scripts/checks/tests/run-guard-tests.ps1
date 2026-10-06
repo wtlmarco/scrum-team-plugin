@@ -114,6 +114,15 @@ $cases = @(
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'dotnet build *> build.log' } } },
     @{ Name = 'G9 dev New-Item no plano'; Script = 'pre-tool.ps1'; Expect = 0
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'New-Item -ItemType File -Force tests/ATests.cs' } } },
+    # v3.44.2 — achados do guards.log do primeiro sprint run (falso positivo Env: e "erro" IsPathRooted)
+    @{ Name = 'G9 dev em Env: não é arquivo'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "Set-Content Env:MIG02_PROVA '1'; npm test; Remove-Item Env:MIG02_PROVA" } } },
+    @{ Name = 'G9 dev Remove-Item -Path Env:\ não é arquivo'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'Remove-Item -Path Env:\MIG02_PROVA -ErrorAction SilentlyContinue' } } },
+    @{ Name = 'Alvo com caractere inválido não derruba o hook'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = 'Write-Output "List<T>" >"x<y>"' } } },
+    @{ Name = 'Caractere inválido não esconde a escrita seguinte'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G9'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "Write-Output 'a' >`"<td>`"; Set-Content -Path src/b.cs -Value 'x'" } } },
     @{ Name = 'G6 dev acrescenta [Skip'; Script = 'pre-tool.ps1'; Expect = 2
        Payload = @{ tool_name = 'Edit'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'tests/ATests.cs'); old_string = '[Fact]'; new_string = '[Fact(Skip = "x")]' } } },
     @{ Name = 'G6 dev edita teste sem pular'; Script = 'pre-tool.ps1'; Expect = 0
@@ -196,6 +205,10 @@ $cases = @(
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'npm test -- relogio *> test.log' } } },
     @{ Name = 'G14 comando fora da lista: nega com a rota'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'runCommands'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'npm install lodash' } } },
+    @{ Name = 'G14 Env: da sessão liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "Set-Content Env:MIG02_PROVA '1'; npm test; Remove-Item Env:MIG02_PROVA" } } },
+    @{ Name = 'G14 escrita no registro negada'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "New-Item -Path HKCU:\Software\Prova" } } },
     @{ Name = 'G14 --no-verify negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'git commit --no-verify -m "x"' } } },
     @{ Name = 'G14 escrita em destino variável negada'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
