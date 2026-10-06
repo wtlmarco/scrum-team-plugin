@@ -47,7 +47,7 @@ Com as respostas, incluindo a seção compacta "Como usar o time neste projeto" 
 
 ## 4a. Comandos do run (v3.44)
 
-Com os comandos reais de build/teste/lint do passo 3, siga o **passo 7f de `${CLAUDE_PLUGIN_ROOT}/rituals/team-update.md`**: `runCommands` no `.team-project/guards.json`, um formulário só. Sem isso, o `sprint run` volta a depender de pedido de permissão do harness no meio da fila.
+Com os comandos reais de build/teste/lint do passo 3, siga os **passos 7f e 7h de `${CLAUDE_PLUGIN_ROOT}/rituals/team-update.md`**: `runCommands` e `verify` no `.team-project/guards.json`, num formulário só. Sem isso, o `sprint run` volta a depender de pedido de permissão do harness no meio da fila.
 
 ## 5. Aponte o próximo passo
 

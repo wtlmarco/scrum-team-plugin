@@ -207,6 +207,7 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 - **Falso positivo:** acrescente a guarda a `"disabled"` em `.team-project/guards.json`; vale na hora. Leve o caso ao `/review`, para a guarda ser corrigida.
 - **Cada disparo custa de 0,8 a 1,2 s.** O que cada guarda **não** cobre está em `hooks/COVERAGE.md`; as decisões ficam em `.team-project/guards.log`, contadas na retrospectiva.
 - **O `/sm close` começa por uma conferência automática** (`close.ps1`): sem evidência com veredito ✅ (R7) ou com documento vivo pendente (R12), a Task não fecha.
+- **Verificação uma vez só** (v3.45.1, com `verify` no `guards.json`): o dev roda `scripts/checks/verify.ps1` — o teste focado durante o bloco, build/lint/suíte/cobertura uma vez no fim — e o resultado fica amarrado à impressão digital do código no disco. O QA confere com `-Mode check` e só roda a suíte de novo se o código mudou; o `close` não fecha com o `verify` vermelho ou de um código que mudou depois dele.
 
 ## Os seus quatro portões
 
