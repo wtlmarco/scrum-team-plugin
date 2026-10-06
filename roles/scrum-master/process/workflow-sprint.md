@@ -85,18 +85,19 @@ Verificação **própria do sprint** — o que já é "SM verifica" de uma regra
 
 ## 5f. Burndown do sprint — de onde vem o dado, e o que ele não mostra (R24)
 
-O burndown mede a **estimativa restante** (unidade do projeto) das Tasks ainda não fechadas do sprint corrente, em série datada — não o estado de cada Task, que já está no Sprint Backlog. Ele existe porque, sem um ponto datado a cada evento, "o sprint está indo bem" é opinião reconstituída no fechamento, o mesmo modo de falha que R7 nomeia para evidência de código.
+O burndown mede a **estimativa restante** (unidade do projeto) das Tasks ainda não fechadas do sprint corrente, em série datada, e mostra **onde cada Task está** a cada passagem. Ele existe porque, sem um ponto datado a cada evento, "o sprint está indo bem" é opinião reconstituída no fechamento, o mesmo modo de falha que R7 nomeia para evidência de código.
 
-**De onde sai o dado.** O Sprint Backlog tem uma seção própria, o **Registro de transições** ([`templates/sprint-backlog.md`](../templates/sprint-backlog.md)): uma linha por mudança de marcador de Task (`Task · De → Para · Quando · Por quem`). `sprints/<n>/burndown.md` ([`templates/burndown.md`](../templates/burndown.md)) é a leitura em série desse registro — nunca uma segunda fonte de verdade. Os dois vivem na mesma pasta do sprint.
+**De onde sai o dado.** `sprints/<n>/burndown.md` ([`templates/burndown.md`](../templates/burndown.md)) tem duas tabelas: o **Registro de transições** — uma linha por mudança de marcador de Task (`Task · De → Para · Quando · Por quem`), o dado bruto — e a **Série**, uma linha por evento, com o restante e a composição por estado. As duas vivem no mesmo arquivo (v3.44.1): quem acompanha o sprint vê o andamento sem cruzar arquivos, e quem grava a transição escreve as duas linhas no mesmo lugar. O marcador vigente de cada Task continua no Sprint Backlog.
 
-**Quando é gravado, e por quem.** O SM é quem escreve as duas coisas (o Sprint Backlog é dele — §1 da matriz de propriedade), em três momentos:
+**Quando é gravado, e por quem.** O SM é o dono dos dois arquivos (§1 da matriz de propriedade); no `sprint run`, a sessão escreve por ele:
 - **Abertura do sprint** (`/sm sprint plan`, passo 11) — todas as Tasks entram ⬜; linha de base do burndown com a soma total planejada. Data exata: a da **aprovação do pacote de abertura**, não a do fechamento da Planning (§5e passo 10), porque é dali que a construção pode começar.
-- **Cada rodada de `/sm board`** — o SM sincroniza o marcador de cada Task com o que os papéis reportaram desde a última rodada (⬜→🟦 quando o Arquiteto planejou, 🟦→🟨 quando o dev começou, 🟨→🟪 quando o QA deu veredito) e grava uma linha por transição encontrada. **A data é a da rodada**, não a do evento real — granularidade declarada, não escondida.
-- **Cada `/sm close <T-ID>`** — transição para ✅ (ou 🔴, se bloqueada), sempre com data exata. É o único evento que reduz a estimativa restante do burndown.
+- **Cada passagem no `sprint run`** — a sessão troca o marcador no Sprint Backlog e grava a linha do Registro e a da Série no instante da passagem, com data e hora ([`sprint-run.md`](sprint-run.md) §Marcador).
+- **Cada rodada de `/sm board`** — fora do `run`, o SM sincroniza o marcador com o que os papéis reportaram desde a última rodada e grava uma linha por transição encontrada. **A data é a da rodada**, não a do evento real — granularidade declarada, não escondida.
+- **Cada `/sm close <T-ID>`** — transição para ✅ (ou 🔴, se bloqueada), sempre com data exata. É o único evento que reduz a estimativa restante; o `close.ps1 -Post` (C1) confere que cada transição da Task tem a sua linha na Série.
 
-**Custo, declarado.** Este desenho reaproveita a leitura que o `/sm board` já faz — não pede a nenhum outro papel que grave timestamp no próprio comando. O preço é a granularidade: sprint com `/sm board` raro produz um burndown grosseiro (poucos pontos entre a abertura e os fechamentos); rodar `/sm board` só para alimentar o gráfico inverteria o custo-benefício. Granularidade fina por estado, com o instante exato de cada papel, exigiria tocar `commands/arc.md`/`commands/dev.md`/`commands/qa.md` — fora do alcance do SM nesta versão; fica registrado como possível pedido futuro ao stakeholder, não assumido.
+**Custo, declarado.** Nenhum papel grava timestamp no próprio comando: no `run` a sessão já sabe a cada passo para quem passou a Task; fora dele, o desenho reaproveita a leitura que o `/sm board` já faz. Sprint tocado fora do `run` com `/sm board` raro produz um burndown grosseiro; rodar `/sm board` só para alimentar o gráfico inverteria o custo-benefício.
 
-**Onde persiste e quando fecha.** `.team-project/sprints/<n>/burndown.md`, criado na abertura do sprint (§5e Planning, passo 11), atualizado a cada `/sm board` e `/sm close`, e fechado — sem mais edição — no `/sm sprint close`, junto com `retrospective.md` e o próprio `sprint-backlog.md`.
+**Onde persiste e quando fecha.** `.team-project/sprints/<n>/burndown.md`, criado na abertura do sprint (§5e Planning, passo 11), atualizado a cada transição, e fechado — sem mais edição — no `/sm sprint close`, junto com `retrospective.md` e o próprio `sprint-backlog.md`.
 
 ## 5g. O ciclo do sprint — pacote aprovado, execução contínua, bloqueio em dois degraus (R25)
 

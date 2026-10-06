@@ -139,6 +139,17 @@ Atualizar o plugin, rodar `/team update` (passo 7f) em cada projeto e **reinicia
 
 **Verificação (R19):** `run-guard-tests.ps1` → 75 casos · 0 falharam (G14 nega comando em segundo plano ao QA, libera ao `operator`) · `release.ps1` → exit 0 (R17: bloco v3.44 ≤ 12800). **Não exercitado:** um run real todo em segundo plano.
 
+### Addendum — 06/10/2026 (v3.44.1): burndown parado até o fim da Task
+**Instrução** (stakeholder): item do `note.md` ("o Registro de transições… deveria ficar dentro do `burndown.md`… o burndown parece congelado até o final da tarefa"), aplicado como v3.44.1. **Causa:** a terceira edição do §Marcador (linha na Série) não era conferida — o C1 só lia → ✅ —, a sessão podia gravar o Registro e pular a Série; o `burndown.md` ainda descrevia a granularidade de antes do `run`. **Classificação:** formato de documento · instrumento (C1 R24). **Sem regra nova.**
+
+| Documento | Mudança |
+|---|---|
+| `templates/burndown.md` · `sprint-backlog.md` | Registro de transições sai do quadro e vive no burndown, ao lado da Série; Evento cita a passagem; texto anterior ao `run` removido |
+| R24 · `workflow-sprint.md` §5f · `sprint-run.md` §Marcador · `artifact-ownership.md` §1 · índice | transição = linha no Registro + linha na Série, no mesmo arquivo |
+| `close.ps1` · `fix.ps1` · `lib.ps1` | R24 `-Post` exige → 🟦/🟨/🟪 e uma linha da Série por transição; Registro lido do burndown, com recuo ao Sprint Backlog (sprint aberto antes) |
+
+**Verificação (R19):** `run-check-tests.ps1` → 28 casos · 0 falharam (Registro legado lido; Série parada e → 🟨 ausente reprovam o R24). **Não exercitado:** um `sprint run` real gravando no burndown.
+
 ---
 
 ## v3.43 — `sprint run` sem paradas fora do contrato: lista fechada de paradas, rota do gate protegido, negação ao dev vira 🔺 GAP, interrupção pelo stakeholder e marcador acompanhando a Task; addendum: veredito pelo primeiro marcador, desvio aceito no R4, código de saída do `operator` (SM + Arquiteto + QA) — 05/10/2026

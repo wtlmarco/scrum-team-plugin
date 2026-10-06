@@ -37,12 +37,12 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | `how-to.md` | cópia literal de `${CLAUDE_PLUGIN_ROOT}/how-to.md` |
 | `note.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/note.md` *(fila de relatos do stakeholder, tratada por `/po note`/`/po bug`)* |
 | `sprints/<n>/planning.md` | `templates/planning.md` — **SM** *(decisões da Planning + o que não entrou, com o motivo — R25)* |
-| `sprints/<n>/sprint-backlog.md` | `templates/sprint-backlog.md` — **SM** *(vivo no sprint, com o pacote de abertura e o Registro de transições — R24; fecha no `/sm sprint close`, sem cópia)* |
+| `sprints/<n>/sprint-backlog.md` | `templates/sprint-backlog.md` — **SM** *(vivo no sprint, com o pacote de abertura e o marcador de cada Task; fecha no `/sm sprint close`, sem cópia)* |
 | `sprints/<n>/stories/` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/user-story.md` — **PO** *(uma História por arquivo, congelada na aprovação do pacote)* |
 | `sprints/<n>/plan/` | `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md` — **Arquiteto** *(um plano por Task)* |
 | `sprints/<n>/evidence/` | `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/evidence.md` — **QA** *(evidência por Task do sprint)* |
 | `sprints/<n>/consumption.md` | `templates/consumption.md` — **SM** *(uma linha por invocação; nasce e fecha no sprint — §1c)* |
-| `sprints/<n>/burndown.md` | `templates/burndown.md` — **SM** *(dia 0 = aprovação do pacote)* |
+| `sprints/<n>/burndown.md` | `templates/burndown.md` — **SM** *(Registro de transições e Série — R24; dia 0 = aprovação do pacote)* |
 | `sprints/<n>/review.md` · `retrospective.md` | `templates/sprint-review.md` · `templates/retrospective.md` — **SM** |
 | `sprints/<n>/plugin-report.md` | `templates/plugin-report.md` — **SM** *(só se "investigar"; sem contexto do projeto; o stakeholder encaminha ao dono do plugin)* |
 | `product-owner/product-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/product-backlog.md` *(o índice ordenado das Histórias, com ponteiro para o arquivo de cada uma — v3.21)* |

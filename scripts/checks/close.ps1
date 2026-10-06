@@ -165,7 +165,7 @@ try {
         $src = 'Aprovado em'
         if (-not $approved -and $frozenCell) { $approved = Get-FirstDate $frozenCell; $src = 'stories/ congelado em' }
         $toBuild = @()
-        $trans = Get-Section $board '^##\s+Registro de transi'
+        $trans = Get-TransitionLog $S $board
         if ($trans) {
             foreach ($t in (Get-Tables $trans)) {
                 foreach ($row in $t.Rows) {
@@ -185,13 +185,26 @@ try {
         }
     }
 
-    # ---------- R24 · transição de fechamento e burndown ----------
+    # ---------- R24 · transições e burndown (Registro e Série no burndown.md) ----------
     if (-not $Post) { Add-Result 'R24' 'n-a' 'a linha → ✅ nasce no close; rode de novo com -Post depois de gravá-la' }
     else {
-        $closed = $null
-        $trans = Get-Section $board '^##\s+Registro de transi'
-        if ($trans) { foreach ($t in (Get-Tables $trans)) { foreach ($row in $t.Rows) { if ($row[0] -match $idPat -and (Get-Cell $row 1).Contains($E.Done)) { $closed = Get-FirstDate (Get-Cell $row 2) } } } }
+        $closed = $null; $taskTrans = 0; $reached = @{}
+        $trans = Get-TransitionLog $S $board
+        if ($trans) {
+            foreach ($t in (Get-Tables $trans)) {
+                foreach ($row in $t.Rows) {
+                    if ($row[0] -notmatch $idPat) { continue }
+                    $taskTrans++
+                    $dest = ((Get-Cell $row 1) -split '→')[-1]
+                    foreach ($mk in $E.Plan, $E.Build, $E.QA) { if ($dest.Contains($mk)) { $reached[$mk] = $true } }
+                    if ($dest.Contains($E.Done)) { $closed = Get-FirstDate (Get-Cell $row 2) }
+                }
+            }
+        }
         $bdIssues = @()
+        # Marcador acompanhado (sprint-run.md §Marcador): a Task fechada passou por 🟦, 🟨 e 🟪 no Registro.
+        $skipped = @($E.Plan, $E.Build, $E.QA | Where-Object { -not $reached.ContainsKey($_) })
+        if ($closed -and $skipped.Count) { $bdIssues += "Registro sem a linha → " + ($skipped -join ', → ') + " de $Task (marcador não acompanhado)" }
         $bdPath = Join-Path $S 'burndown.md'
         if (Test-Path -LiteralPath $bdPath) {
             $serie = Get-Section (Read-Text $bdPath) '^##\s+S[ée]rie'
@@ -199,6 +212,9 @@ try {
                 foreach ($t in (Get-Tables $serie)) {
                     $ie = Find-Col $t 'Est. restante'; $iv = Find-Col $t 'Evento'
                     if ($ie -lt 0 -or $iv -lt 0) { continue }
+                    # Cada transição da Task no Registro tem a sua linha na Série, que a cita no Evento — senão o gráfico fica parado até o close.
+                    $serieRows = @($t.Rows | Where-Object { (Get-Cell $_ $iv) -match $idPat }).Count
+                    if ($serieRows -lt $taskTrans) { $bdIssues += "Série com $serieRows linha(s) de $Task para $taskTrans transição(ões) no Registro (burndown parado entre as transições)" }
                     $prev = $null
                     foreach ($row in $t.Rows) {
                         $nm = [regex]::Match((Get-Cell $row $ie), '\d+([.,]\d+)?')
@@ -213,9 +229,9 @@ try {
                 }
             }
         }
-        if (-not $closed) { Add-Result 'R24' 'falhou' "Registro de transições sem linha $Task → ✅ com data" }
+        if (-not $closed) { Add-Result 'R24' 'falhou' "Registro de transições (burndown.md) sem linha $Task → ✅ com data" }
         elseif ($bdIssues.Count) { Add-Result 'R24' 'falhou' ("burndown: " + ($bdIssues -join '; ')) }
-        else { Add-Result 'R24' 'ok' ("→ ✅ em " + $closed.ToString('yyyy-MM-dd') + "; burndown sem queda inexplicada") }
+        else { Add-Result 'R24' 'ok' ("→ ✅ em " + $closed.ToString('yyyy-MM-dd') + "; $taskTrans transição(ões), cada uma com linha na Série; burndown sem queda inexplicada") }
     }
 
     # ---------- R25 · pacote de abertura e planning ----------

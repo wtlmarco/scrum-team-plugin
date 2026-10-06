@@ -9,6 +9,8 @@ $script:E = @{
     Fail    = [char]::ConvertFromUtf32(0x274C)    # ❌
     Warn    = [char]::ConvertFromUtf32(0x26A0)    # ⚠
     Build   = [char]::ConvertFromUtf32(0x1F7E8)   # 🟨
+    Plan    = [char]::ConvertFromUtf32(0x1F7E6)   # 🟦
+    QA      = [char]::ConvertFromUtf32(0x1F7EA)   # 🟪
 }
 
 $script:Results = New-Object System.Collections.ArrayList
@@ -122,3 +124,11 @@ function Get-LabelValue([string]$Text, [string]$Label) {
 }
 
 function Get-IdPattern([string]$Id) { return '(?<![\w-])' + [regex]::Escape($Id) + '(?![\w])' }
+
+# Registro de transições (R24): vive no burndown.md do sprint (v3.44.1); sprint aberto antes disso o tem no sprint-backlog.md. $null se nenhum.
+function Get-TransitionLog([string]$SprintDir, [string]$Board) {
+    $bd = Join-Path $SprintDir 'burndown.md'
+    if (Test-Path -LiteralPath $bd) { $s = Get-Section (Read-Text $bd) '^##\s+Registro de transi'; if ($s) { return $s } }
+    if ($Board) { return Get-Section $Board '^##\s+Registro de transi' }
+    return $null
+}
