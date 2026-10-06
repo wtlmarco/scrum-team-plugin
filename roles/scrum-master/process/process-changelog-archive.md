@@ -8,6 +8,61 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.41 — R34: contato remoto por Remote Control — identidade do projeto, pendência em disco, fim do `sprint run` em formulário de autorização da Review e protótipo publicável como artifact (SM + UX) — 03/10/2026
+
+**Instrução** (stakeholder, `/review`): "finalizamos os testes do `proposta-remote.md`, podemos rodar o review e aplicá-lo". Decisões D1–D6 da proposta (Remote Control; ① e ③ respondíveis no celular com a navegação **declarada**; Identificador remoto; fim do `run` em formulário; artifact privado pela conta do celular; conta por projeto) e as do formulário de 03/10/2026: **G3 estendida** (prefixo + pendência em §7) · pendência = **item numerado em §7**, sem rótulo "Aguarda stakeholder" · **fim do `fix run` sem formulário** (R33 intacta) · ficha do ① na opção A · protótipo num `index.html` único (ratificado).
+**Classificação:** regra nova (R34; R15, R22 e R25 emendadas, R27 por remissão; saldo +1) · fluxo (fim do `sprint run`, portões ①–④, `/team remote`) · formato de documento (campos remotos em §1, item numerado em §7, linhas do ③, ficha do ①) · instrumento (G3, C2 linha R34) · comportamento de agente (`commands/`, `hooks/`, `scripts/`, `rituals/`, `how-to.md`: aplicados pela sessão).
+**Papéis movidos (R17):** 2 — SM e UX → barreira de 10 240 B.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `working-rules.md` · `working-rules-index.md` | R34 · R15 · R22 · R25 · R27 · tabelas | **R34 nova** ("SM verifica" = G3 + C2 parcial, julgamento declarado). R15: navegação é do stakeholder e "aprovar" declara; 7 regras do artifact. R22: decisão de portão com navegação declarada, ④ com resumo do dossiê, pendência gravada antes. R25: três formulários admitidos na janela; fim do `run` abre o 2º ponto fixo. Índice R1–R34; contagem 33 → 34 em `README.md`, `agents/scrum-master.md`, `roles/scrum-master/README.md` |
+| `sprint-run.md` · `fix-run.md` | Ao fim da fila · §Plan · §Fechamento | Formulário de autorização da Review (4 opções; "iniciar depois" fica em §7); ajustes do `fix plan` com prefixo e pendência por pergunta; fim do `fix run` declarado **sem** formulário |
+| `workflow-sdd.md` · `workflow-sprint.md` · `workflow.md` | ① ② · passo 10 e Review · §8 | Prefixo, pendência, canal e declaração de navegação; ④ com resumo do dossiê |
+| `templates/` (SM) | `project-context` · `sprint-backlog` · `sprint-review` | §1 com `Identificador remoto`, `Conta remota`, `Verificação remota`; linhas `Canal da decisão` e `Protótipo (URL · rótulo)` no ③; texto de uso do §7 **fora** do bloco copiado (o C2 lê o README por padrões) |
+| `deliverables/team-project/README.md` | manifesto | §1 remoto = estrutura + conteúdo local (o `update` cria vazio) |
+| UX (`roles/user-experience/`, `deliverables/prototype/README.md`) | protótipo | `index.html` único e autocontido, "Publicável como artifact" com rótulo de versão, ficha do ① com `canal: … · declarada [· artifact: …]`, ficha do ③ com Canal e Artifact, A1–A6 |
+| Sessão (stakeholder) | `hooks/pre-tool.ps1` (G3) · `project.ps1` (C2 R34) · `rituals/team-remote.md` (novo) · `team-update.md` · `commands/` · `how-to.md` · `plugin.json` | Aplicados pela sessão |
+
+### Por quê
+O stakeholder conduz vários projetos e só responde na frente do terminal: a sessão para e, quando ele volta, não há sinal de qual projeto espera o quê. Pelo celular o risco é responder no projeto errado, ler formulário expirado como recusa e perder a pergunta quando a sessão cai. R34 põe a identidade na mensagem, a pendência em disco antes da pergunta e a limitação medida (sem *push* no Android) dentro do desenho. A navegação passa a ser responsabilidade declarada porque o protótipo não abre no celular sem artifact.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| SM / sessão | prefixo e pendência em §7 antes de todo formulário; formulário de fim do `run`; registro do ③ com canal e URL · rótulo |
+| UX | entrega o HTML único publicável (a sessão publica); registra canal na ficha |
+| Stakeholder | aprovar ① e ③ declara a navegação; abrir App → Code para ver o que espera |
+
+### Conflitos com o processo vigente
+- **R15 · R22 · R25(a)** exigiam navegar "fora do formulário e antes dele"; D2 move a navegação para responsabilidade declarada. **Resolvido pelo stakeholder (D2, D5)**; as três regras foram reescritas.
+- **R25** "nenhuma mensagem entre pacote e Review": emendada (bloqueio, ajustes do `fix plan`, autorização da Review). **R22 L189**: registro ≠ resolução mantido, com a exceção de ordem de R34. **R33**: intacta. **R21, R27, R31, R3, R5**: sem conflito (carga fixa medida abaixo).
+
+### Como saberemos que funcionou
+Nos 2 sprints seguintes, por projeto remoto: **100%** das decisões de portão e bloqueio com prefixo e pendência anterior · **zero** decisão no projeto errado · ① e ③ com canal registrado em 100% · mediana formulário → decisão **menor** que a dos 2 sprints anteriores; sem queda, a Retrospective decide se mantém.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Contagem | `Select-String '^### R\d+\.'` em `working-rules.md` · `'^\| R\d+ '` no índice · `'^\| R\d+ \|'` no resumo | 34 · 34 · 34 (antes: 33) | ✅ |
+| Substituição de padrão | `Select-String '33 regras\|R1–R33\|R30-R33\|R1-R33'` em `*.md/.ps1/.json` fora dos changelogs e propostas | 0; novas (`README.md:189`, `agents/scrum-master.md:34`, `roles/scrum-master/README.md:185`, índice) lidas: "34 regras", "R30-R34", "R1–R34" (4 linhas) | ✅ |
+| Substituição de padrão | `Select-String 'fora do formulário e antes\|acontece fora do formulário'` em `*.md` | 0; as reescritas (R22, R25(a), `workflow.md`, `workflow-sdd.md`) lidas no contexto | ✅ |
+| Referência | `Select-String 'team-remote'` em `commands/team.md`, `README.md` | `team.md:17` · `README.md:49` — sem órfão | ✅ |
+| Arquivamento | `-ceq` do bloco `## v3.38` no arquivo contra o texto que saiu do vivo | True (`Contains` do texto do bloco no arquivo; 10 268 B; zero linha fora do separador); índice com a linha `v3.38`; 3 entradas vivas (v3.41, v3.40, v3.39) | ✅ |
+| Teste | `run-guard-tests.ps1` · `run-check-tests.ps1` | `21 casos · 0 falharam` · `19 casos · 0 falharam` (4 e 3 casos novos de G3/C2 R34) | ✅ |
+| Carga fixa (caracteres, antes → depois) | `git show HEAD:` × arquivo | `commands/sm.md` 8 215 → 8 769 · `team.md` 2 895 → 3 465 · `po.md` 5 336 → 5 465 · `ux.md` 5 219 → 5 724 | medida |
+| Release (R17 · R18) | `powershell -NoProfile -File scripts/checks/release.ps1` (depois de gravar a v3.41) | R18 ok: plugin.json = CHANGELOG = README L3 = v3.41.0; processo 3.41, 3.40, 3.39 com entrega · R17 ok: bloco v3.41 com 7618 bytes ≤ barreira 10240 (2 papéis); 3 entradas vivas · ps1-5.1 ok: 11 scripts com BOM · órfãos ok: 45 modelos, todos referenciados · exit 0 | ✅ |
+**Não exercitado:** G3 contra um `AskUserQuestion` real do harness (só os testes); C2 R34 contra projeto real com Identificador; `/team remote` de ponta a ponta num projeto (o mecanismo foi medido no spike M10–M21).
+
+### Pendente do stakeholder
+Nada a aplicar. Mudança de hook, comando e agente só vale **após atualizar o plugin e reiniciar a sessão**; `/team update` (passo 7d) e `/team remote` em cada projeto. Remover `proposta-remote.md` depois do aceite desta entrada.
+
+### Addendum — 04/10/2026 (previsto como v3.41.1, entregue na v3.42.0): a saída de qualquer modo leva decisão em formulário (R22)
+**Achado (stakeholder, num projeto):** o `/sm sprint prepare` devolveu 9 decisões do stakeholder e 2 do PO em tabela de prosa, "responda ou aceite as recomendações", sem `AskUserQuestion`. **Causa:** `prepare` "não sobe ao stakeholder" (lido como "sem formulário"), nenhum passo previa as decisões que os papéis levantam, e os `commands/` mandavam "destacar em uma linha" a decisão — que a sessão cumpria em prosa. **Emenda:** R22 ganha o parágrafo "A saída de qualquer modo também" (até 4 perguntas por chamada, várias chamadas) e o "SM verifica" cobre fim de modo; `prepare` ganha o passo 7 e passa a "não cria portão nem aprovação"; `sm.md`, `po.md`, `arc.md`, `ux.md` e `team.md` trocam "destaque" por `AskUserQuestion`. **Sem regra nova** (34 regras). **Não coberto por guarda:** a G3 só vê pergunta feita; resumo em prosa segue sendo achado de verificação do SM.
+
+---
+
 ## v3.40 — R33: trilha `fix` para defeito e ajuste pequeno — critério verificável na entrada, plano e execução em bloco, consumo próprio, piso de evidência por Correção e conferência C4 (SM + PO + Arquiteto + QA + UX) — 03/10/2026
 
 **Instrução** (stakeholder, `/review`): "aplicar a proposta em `proposta-fix.md` (terceira da rodada evaluation → guards → fix)". Decisões do formulário de 02–03/10/2026: **P1** o Arquiteto escreve os mini-planos · **P2** N = 5 · **P3** o ✅ do QA encerra a Correção, sem aceite na Review (reabrir = anotar no `note.md` citando a F-ID) · **P4** o UX só atualiza quando a especificação de tela cita o texto literal · **P5** ordem evaluation → guards → fix · **P6** teto de 5 Correções e 2N arquivos · regra **R33** (a `remote` passa a R34) · **C4 sim** (`fix.ps1`, escrito pela sessão) · **R15 com emenda**.

@@ -13,6 +13,20 @@
 
 ---
 
+## v3.44.0 — 2026-10-06
+
+**Branch:** `feat/v3.44.0` a partir de `develop` · **Processo:** [`v3.44`](roles/scrum-master/process/process-changelog.md)
+`sprint run` e `fix run` sem trava: nenhuma guarda pergunta, e o pedido de permissão do harness deixa de parar um papel no meio da fila. Aplica `proposta-run-sem-travas.md`, com as decisões D1–D3 do stakeholder.
+
+- **G8 nega código-fonte ao Arquiteto** fora de spike declarado em `.team-project/.active-spike`, com a rota na mensagem (scratchpad · `operator` no sprint · prova do teste com o dev); passa a valer também para escrita pelo shell. O Arquiteto decide a questão técnica e devolve a resposta; ao stakeholder sobem só mudança funcional, impacto significativo ou arquitetura fora do SDD (Arquiteto e PO).
+- **G14 — run sem trava:** com `.team-project/.active-run` (gravado pela sessão no `sprint run` e no `fix run`), o operacional dos papéis já conferido pelas guardas sai liberado (`allow`) e o que está fora da lista é negado com a rota. Nova chave `runCommands` no `guards.json`.
+- **G15:** todo pedido de permissão do harness vai ao `guards.log` (hook `Notification`, novo `hooks/notification.ps1`). A R27 ganha a segunda conferência: o transcript do subagente.
+- **`/team init` e `/team update` (7f):** `runCommands` no `.team-project/guards.json` a partir do `developer/context.md`, só acrescentando. O plugin não escreve permissão nas configurações do Claude Code: a lista vive no `.team-project` e a G14 a aplica.
+- G13 avisa marcador sobrando. Suíte de guardas: 75 casos (21 novos).
+- **Addendum (segundo relato, mesmo dia):** todo agente do `sprint run` e do `fix run` em segundo plano, com a sessão aguardando a notificação (antes, só a Task pesada); os seis `commands/` deixam de fixar `run_in_background: false` no run; a G14 nega comando em segundo plano aos papéis (fora o `operator`); a R27 lê o transcript pelas três assinaturas do "interrupted" (permissão fechada, vigia de ~600 s, notificação coincidente).
+
+---
+
 ## v3.43.0 — 2026-10-05
 
 **Branch:** `feat/v3.43.0` a partir de `develop` · **Processo:** [`v3.43`](roles/scrum-master/process/process-changelog.md)

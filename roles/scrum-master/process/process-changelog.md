@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.41`](process-changelog-archive.md) | R34: contato remoto por Remote Control — identidade do projeto, pendência em disco, fim do `sprint run` em formulário de autorização da Review e protótipo publicável como artifact (SM + UX) — 03/10/2026 |
 | [`v3.40`](process-changelog-archive.md) | R33: trilha `fix` para defeito e ajuste pequeno — critério verificável na entrada, plano e execução em bloco, consumo próprio, piso de evidência por Correção e conferência C4 (SM + PO + Arquiteto + QA + UX) — 03/10/2026 |
 | [`v3.39`](process-changelog-archive.md) | Guardas e conferências mecânicas: hooks de plugin (G1 · G2 · G3 · G4 · G13) e três scripts (C1 · C2 · C3) tiram do julgamento o que é mecânico (SM + QA) — 02/10/2026 |
 | [`v3.38`](process-changelog-archive.md) | Medir custo e resultado: Categoria e Unidade no registro de consumo, bloco "Custo × resultado" na retrospectiva, modelo de benchmark A/B/C e "História de origem" no defeito (SM + PO + QA) — 02/10/2026 |
@@ -79,6 +80,64 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.44 — Run sem trava: o Arquiteto decide e não escreve no código (G8 nega), a G14 libera o operacional do run, a G15 registra pedido de permissão, a R27 lê o transcript; o que sobe ao stakeholder (SM + Arquiteto + PO) — 06/10/2026
+
+**Instrução** (stakeholder): "Gere um plano de alteração para corrigir esses problemas", sobre o relato de um projeto-piloto (v3.42, 05–06/10/2026): quatro chamadas a agentes voltaram "interrupted" — uma por pergunta da G8 (Arquiteto escrevendo `relogio.service.spec.ts`, recusada), três paradas de 24 min a 5 h 33 min sem nada no `guards.log`. Mais duas perguntas da G8 aceitas. As quatro escritas do Arquiteto vieram do prompt de GAP da sessão ("valide contra o compilador"). Plano em `proposta-run-sem-travas.md`. **Decisões do stakeholder (06/10/2026):** **D1** — "o Arquiteto pode resolver questões técnicas operacionais mais complexas sem precisar subir para eu decidir… ele orienta e passa para o demandante a resposta" (fecha o P2 da v3.42: G8 nega, sem pergunta); **D2** — registrar o pedido de permissão **e** "no operacional do sprint run e fix os guards… podem permitir o acesso"; **D3** — lista liberada no `init`/`update`: ok; **revista no mesmo dia** ("ela não deveria estar no `.team-project` para o usuário do plugin?"): a lista é só `runCommands` no `guards.json`, aplicada pela G14 — o plugin não escreve em `.claude/settings*.json` (o harness só lê permissão de lá, e fora do run o stakeholder está presente). **Detalhe (mesmo dia):** Arquiteto e PO sobem ao stakeholder só mudança funcional, impacto significativo ou arquitetura fora do SDD que altera significativamente o esperado do sistema.
+**Classificação:** instrumento (G8, G14, G15, G13; `notification.ps1` novo) · fluxo (`sprint-run.md`, `fix-run.md`) · propriedade de artefato (`.active-run`, `.active-spike`) · regra (R27: segunda conferência) · comportamento de agente (card do Arquiteto) · roteamento (`workflow.md` §6). **Sem regra nova** (34): reforça R25, R27, R9, R28.
+**Papéis movidos (R17):** 3 — SM, Arquiteto e PO → barreira de 12 800 B.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `hooks/pre-tool.ps1` · `common.ps1` | G8 · G14 (nova) | **G8** nega código-fonte ao Arquiteto salvo com `.active-spike`, com a rota na mensagem (scratchpad · `operator` no sprint · prova do teste com o dev); vale também para escrita pelo `PowerShell`/`Bash` (heurística, `*.log` liberado). Nenhuma guarda pergunta mais (`Ask` removida). **G14** — com `.active-run`, papel do time: `allow` em `Edit`/`Write` no projeto ou no temporário e em comando cujos segmentos estão todos na lista (git sem push, leitura, `Get-WinEvent`, `runCommands`, conferências `scripts/checks`); nega `--no-verify`, `Invoke-Expression`, `Start-Process`, escrita por `[IO.File]`, escrita fora do projeto e — com `runCommands` preenchido — o que está fora da lista |
+| `hooks/notification.ps1` (novo) · `hooks.json` | `Notification · permission_prompt` | **G15** grava o pedido de permissão no `guards.log`, com o texto e o run ativo |
+| `hooks/session-start.ps1` | G13 | lista G14/G15; avisa `.active-run`/`.active-spike` sobrando |
+| `ownership.json` · `artifact-ownership.md` §1 | linha nova | `.active-run` e `.active-spike`: dono SM, escritor a sessão |
+| `deliverables/team-project/guards.json` | `runCommands` | chave nova, vazia no modelo |
+| `sprint-run.md` | pré-condições · paradas · R27 · passos 2 e 4 · Como o SM verifica | `.active-run` gravado antes do 1º agente e apagado em toda parada; R27 com as duas conferências e "permissão pendente"; escalação só pelo critério novo; prompt de GAP nunca pede escrita/compilação no projeto; deny G8 por prompt é achado contra a orquestração; linha G15 no run vai à retro |
+| `fix-run.md` | §Run, paradas | o mesmo contrato; no fix, validação do Arquiteto só no scratchpad |
+| `working-rules.md` | R27 | segunda conferência: transcript do subagente (último `tool_use` sem `tool_result`) e linhas G15; classificação "permissão pendente" |
+| `roles/architect/README.md` · `skills.md` §11 · `templates/fix-plan.md` regra 6 | `/arc question` 3–4 · §Validar sem escrever no produto (nova) · spike | questão técnica operacional decide e devolve; sobe só o critério novo; validar por scratchpad, `operator` (sprint) ou "não validado"; spike só com `.active-spike`; prova do teste de regressão é do dev |
+| `roles/product-owner/README.md` · `workflow.md` §6 | degrau 1 · roteamento | o que sobe ao stakeholder, e só isso; questão técnica operacional → Arquiteto |
+| `rituals/team-update.md` 7e · 7f (novo) · `team-init.md` 4a (novo) | — | `runCommands` no `.team-project/guards.json` a partir do `developer/context.md`, só acrescentando, um formulário; o plugin não escreve em `.claude/settings*.json` |
+| Sessão (stakeholder) | `agents/architect.md` · `hooks/COVERAGE.md` · `run-guard-tests.ps1` (+19 casos) · `plugin.json` · `README.md` · `CHANGELOG.md` | Aplicados pela sessão, a pedido |
+
+### Por quê
+A lista fechada de paradas da v3.43 não cobria duas saídas do contrato que o piloto mediu: a **pergunta da própria guarda** (G8 `ask`) e o **pedido de permissão do harness**, que trava o subagente — em primeiro ou segundo plano — até alguém responder, sem rastro no `guards.log`. A primeira nascia de prompt da orquestração; a segunda virava "interrompido" sem causa, e a sessão chegou a atribuí-la ao stakeholder (R27 já proibia). A documentação do Claude Code (consultada em 06/10/2026) confirma que `permissionDecision: "allow"` num `PreToolUse` pula o pedido também em subagente — por isso a liberação vive na guarda, restrita ao run e ao que as outras guardas já conferiram.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| Sessão que orquestra | grava e apaga `.active-run` (e `.active-spike`); prompt de GAP sem escrita no projeto; R27 com as duas conferências; acrescenta prefixo de build/teste/lint a `runCommands` quando falta |
+| Arquiteto | decide a questão técnica e devolve; não escreve no código fora de spike declarado; registra como validou |
+| PO | sobe ao stakeholder só o critério novo |
+| SM | verifica marcadores sobrando, deny G8 por prompt e linhas G15 no run |
+
+### Verificação (R19)
+| Item | Comando | Resultado | |
+|---|---|---|---|
+| Guardas | `powershell -NoProfile -File scripts/checks/tests/run-guard-tests.ps1` | 73 casos · 0 falharam (G8 nega com a rota, libera com `.active-spike` e no scratchpad, nega `Set-Content` em código; G14 libera git/leitura composta/`runCommands`/C1/escrita no escopo e no temporário, deixa ao harness sem run e sem `runCommands`, nega fora da lista, `--no-verify`, destino variável e fora do projeto; G15 grava; G13 avisa marcador) | ✅ |
+| Release (R17 · R18) | `powershell -NoProfile -File scripts/checks/release.ps1` | R18 ok: plugin.json = CHANGELOG = README L3 = v3.44.0, processo 3.44/3.43/3.42 com entrega · R17 ok: bloco v3.44 ≤ 12800 (3 papéis), 3 entradas vivas (v3.41 arquivada) · ps1-5.1 ok: 12 scripts · ownership ok: 51 regras · órfãos ok: 45 modelos · exit 0; `run-check-tests.ps1` → 25 · 0 | ✅ |
+
+**Não exercitado:** um `sprint run` e um `fix run` reais com a v3.44. **A confirmar no disparo real:** se o evento `Notification · permission_prompt` dispara para pedido feito dentro de subagente (a documentação não diz); se `allow` da G14 prevalece sobre regra `ask`/`deny` do `settings` (não documentado). Sem a G15, a R27 segue pelo transcript.
+
+### Pendente do stakeholder
+Atualizar o plugin, rodar `/team update` (passo 7f) em cada projeto e **reiniciar a sessão**; no primeiro run, `"probe": true` para ver as linhas `G14 allow` e `G15`. Remover `proposta-run-sem-travas.md` depois do aceite desta entrada.
+
+### Addendum — 06/10/2026 (mesma v3.44.0): segundo relato, cinco interrupções
+**Instrução** (stakeholder): "Faça uma averiguação profunda sobre essas reclamações e tendo essa certeza pode aplicar". **Relato** (outro usuário): cinco chamadas `Agent` em primeiro plano "interrupted", sem ação dele; não é limite de tempo (uma de 82 min terminou bem); duas coincidem, em até 70 ms, com a entrega de notificação de agente em fila; quase todos os subagentes estavam parados esperando (comando em segundo plano, pergunta de autorização ou nada registrado). **Averiguação:** (1) transcripts desta máquina — em todo "interrupted" de pedido de permissão, logo antes vem o `tool_result` "The user doesn't want to proceed" (pedido fechado sem aprovação); os demais são Esc durante a ferramenta; (2) issue anthropics/claude-code#84346 (fechada sem correção) — vigia de ~600 s sobre requisição de modelo parada sai como "interrupted by user"; (3) documentação — pedido de permissão em subagente **não expira**; notificação **não interrompe** ferramenta em curso (confirmado aqui com comando em primeiro plano); sessão interativa dispara subagente em segundo plano por padrão; (4) **não medido:** se notificação fecha pedido pendente (o modo desta sessão não abre pedido). **Conclusão:** a coincidência com notificação não está provada; o que está provado é que o papel parado esperando — permissão, comando em segundo plano ou modelo — derruba a chamada em primeiro plano e prende a sessão, e os seis `commands/` forçavam esse primeiro plano.
+
+| Documento | Mudança |
+|---|---|
+| `sprint-run.md` §Disparo (era §Task pesada) · Como o SM verifica · `fix-run.md` | **todo** agente do `run` com `run_in_background: true`; série R1 mantida aguardando a notificação; encerrar o turno à espera não é parada |
+| `commands/{arc,dev,qa,po,ux,sm}.md` | `run_in_background: false`, salvo no `sprint run`/`fix run` (`true`) |
+| `hooks/pre-tool.ps1` G14 · `COVERAGE.md` · `how-to.md` | nega comando com `run_in_background: true` aos papéis no run, salvo `operator` (R28) |
+| `working-rules.md` R27 · `sprint-run.md` | transcript lido pelas três assinaturas: permissão fechada (com a `G15`) · ~600 s de silêncio (vigia) · notificação no mesmo segundo (só registro); sem nenhuma, "causa não identificada" |
+
+**Verificação (R19):** `run-guard-tests.ps1` → 75 casos · 0 falharam (G14 nega comando em segundo plano ao QA, libera ao `operator`) · `release.ps1` → exit 0 (R17: bloco v3.44 ≤ 12800). **Não exercitado:** um run real todo em segundo plano.
 
 ---
 
@@ -186,56 +245,3 @@ Em 2 sprints: zero arquivo fora do plano no diff de Task fechada (R4) e de Corre
 Atualizar o plugin e **reiniciar a sessão**; `/team update` (passo 7e) em cada projeto; ligar a sonda no primeiro `sprint run` para confirmar `team:developer`/`team:operator`. Remover `proposta-guards-fase2.md` depois do aceite desta entrada (a fase 3, G12, segue registrada em `hooks/COVERAGE.md`).
 
 ---
-
-## v3.41 — R34: contato remoto por Remote Control — identidade do projeto, pendência em disco, fim do `sprint run` em formulário de autorização da Review e protótipo publicável como artifact (SM + UX) — 03/10/2026
-
-**Instrução** (stakeholder, `/review`): "finalizamos os testes do `proposta-remote.md`, podemos rodar o review e aplicá-lo". Decisões D1–D6 da proposta (Remote Control; ① e ③ respondíveis no celular com a navegação **declarada**; Identificador remoto; fim do `run` em formulário; artifact privado pela conta do celular; conta por projeto) e as do formulário de 03/10/2026: **G3 estendida** (prefixo + pendência em §7) · pendência = **item numerado em §7**, sem rótulo "Aguarda stakeholder" · **fim do `fix run` sem formulário** (R33 intacta) · ficha do ① na opção A · protótipo num `index.html` único (ratificado).
-**Classificação:** regra nova (R34; R15, R22 e R25 emendadas, R27 por remissão; saldo +1) · fluxo (fim do `sprint run`, portões ①–④, `/team remote`) · formato de documento (campos remotos em §1, item numerado em §7, linhas do ③, ficha do ①) · instrumento (G3, C2 linha R34) · comportamento de agente (`commands/`, `hooks/`, `scripts/`, `rituals/`, `how-to.md`: aplicados pela sessão).
-**Papéis movidos (R17):** 2 — SM e UX → barreira de 10 240 B.
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `working-rules.md` · `working-rules-index.md` | R34 · R15 · R22 · R25 · R27 · tabelas | **R34 nova** ("SM verifica" = G3 + C2 parcial, julgamento declarado). R15: navegação é do stakeholder e "aprovar" declara; 7 regras do artifact. R22: decisão de portão com navegação declarada, ④ com resumo do dossiê, pendência gravada antes. R25: três formulários admitidos na janela; fim do `run` abre o 2º ponto fixo. Índice R1–R34; contagem 33 → 34 em `README.md`, `agents/scrum-master.md`, `roles/scrum-master/README.md` |
-| `sprint-run.md` · `fix-run.md` | Ao fim da fila · §Plan · §Fechamento | Formulário de autorização da Review (4 opções; "iniciar depois" fica em §7); ajustes do `fix plan` com prefixo e pendência por pergunta; fim do `fix run` declarado **sem** formulário |
-| `workflow-sdd.md` · `workflow-sprint.md` · `workflow.md` | ① ② · passo 10 e Review · §8 | Prefixo, pendência, canal e declaração de navegação; ④ com resumo do dossiê |
-| `templates/` (SM) | `project-context` · `sprint-backlog` · `sprint-review` | §1 com `Identificador remoto`, `Conta remota`, `Verificação remota`; linhas `Canal da decisão` e `Protótipo (URL · rótulo)` no ③; texto de uso do §7 **fora** do bloco copiado (o C2 lê o README por padrões) |
-| `deliverables/team-project/README.md` | manifesto | §1 remoto = estrutura + conteúdo local (o `update` cria vazio) |
-| UX (`roles/user-experience/`, `deliverables/prototype/README.md`) | protótipo | `index.html` único e autocontido, "Publicável como artifact" com rótulo de versão, ficha do ① com `canal: … · declarada [· artifact: …]`, ficha do ③ com Canal e Artifact, A1–A6 |
-| Sessão (stakeholder) | `hooks/pre-tool.ps1` (G3) · `project.ps1` (C2 R34) · `rituals/team-remote.md` (novo) · `team-update.md` · `commands/` · `how-to.md` · `plugin.json` | Aplicados pela sessão |
-
-### Por quê
-O stakeholder conduz vários projetos e só responde na frente do terminal: a sessão para e, quando ele volta, não há sinal de qual projeto espera o quê. Pelo celular o risco é responder no projeto errado, ler formulário expirado como recusa e perder a pergunta quando a sessão cai. R34 põe a identidade na mensagem, a pendência em disco antes da pergunta e a limitação medida (sem *push* no Android) dentro do desenho. A navegação passa a ser responsabilidade declarada porque o protótipo não abre no celular sem artifact.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda para ele |
-|---|---|
-| SM / sessão | prefixo e pendência em §7 antes de todo formulário; formulário de fim do `run`; registro do ③ com canal e URL · rótulo |
-| UX | entrega o HTML único publicável (a sessão publica); registra canal na ficha |
-| Stakeholder | aprovar ① e ③ declara a navegação; abrir App → Code para ver o que espera |
-
-### Conflitos com o processo vigente
-- **R15 · R22 · R25(a)** exigiam navegar "fora do formulário e antes dele"; D2 move a navegação para responsabilidade declarada. **Resolvido pelo stakeholder (D2, D5)**; as três regras foram reescritas.
-- **R25** "nenhuma mensagem entre pacote e Review": emendada (bloqueio, ajustes do `fix plan`, autorização da Review). **R22 L189**: registro ≠ resolução mantido, com a exceção de ordem de R34. **R33**: intacta. **R21, R27, R31, R3, R5**: sem conflito (carga fixa medida abaixo).
-
-### Como saberemos que funcionou
-Nos 2 sprints seguintes, por projeto remoto: **100%** das decisões de portão e bloqueio com prefixo e pendência anterior · **zero** decisão no projeto errado · ① e ③ com canal registrado em 100% · mediana formulário → decisão **menor** que a dos 2 sprints anteriores; sem queda, a Retrospective decide se mantém.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Contagem | `Select-String '^### R\d+\.'` em `working-rules.md` · `'^\| R\d+ '` no índice · `'^\| R\d+ \|'` no resumo | 34 · 34 · 34 (antes: 33) | ✅ |
-| Substituição de padrão | `Select-String '33 regras\|R1–R33\|R30-R33\|R1-R33'` em `*.md/.ps1/.json` fora dos changelogs e propostas | 0; novas (`README.md:189`, `agents/scrum-master.md:34`, `roles/scrum-master/README.md:185`, índice) lidas: "34 regras", "R30-R34", "R1–R34" (4 linhas) | ✅ |
-| Substituição de padrão | `Select-String 'fora do formulário e antes\|acontece fora do formulário'` em `*.md` | 0; as reescritas (R22, R25(a), `workflow.md`, `workflow-sdd.md`) lidas no contexto | ✅ |
-| Referência | `Select-String 'team-remote'` em `commands/team.md`, `README.md` | `team.md:17` · `README.md:49` — sem órfão | ✅ |
-| Arquivamento | `-ceq` do bloco `## v3.38` no arquivo contra o texto que saiu do vivo | True (`Contains` do texto do bloco no arquivo; 10 268 B; zero linha fora do separador); índice com a linha `v3.38`; 3 entradas vivas (v3.41, v3.40, v3.39) | ✅ |
-| Teste | `run-guard-tests.ps1` · `run-check-tests.ps1` | `21 casos · 0 falharam` · `19 casos · 0 falharam` (4 e 3 casos novos de G3/C2 R34) | ✅ |
-| Carga fixa (caracteres, antes → depois) | `git show HEAD:` × arquivo | `commands/sm.md` 8 215 → 8 769 · `team.md` 2 895 → 3 465 · `po.md` 5 336 → 5 465 · `ux.md` 5 219 → 5 724 | medida |
-| Release (R17 · R18) | `powershell -NoProfile -File scripts/checks/release.ps1` (depois de gravar a v3.41) | R18 ok: plugin.json = CHANGELOG = README L3 = v3.41.0; processo 3.41, 3.40, 3.39 com entrega · R17 ok: bloco v3.41 com 7618 bytes ≤ barreira 10240 (2 papéis); 3 entradas vivas · ps1-5.1 ok: 11 scripts com BOM · órfãos ok: 45 modelos, todos referenciados · exit 0 | ✅ |
-**Não exercitado:** G3 contra um `AskUserQuestion` real do harness (só os testes); C2 R34 contra projeto real com Identificador; `/team remote` de ponta a ponta num projeto (o mecanismo foi medido no spike M10–M21).
-
-### Pendente do stakeholder
-Nada a aplicar. Mudança de hook, comando e agente só vale **após atualizar o plugin e reiniciar a sessão**; `/team update` (passo 7d) e `/team remote` em cada projeto. Remover `proposta-remote.md` depois do aceite desta entrada.
-
-### Addendum — 04/10/2026 (previsto como v3.41.1, entregue na v3.42.0): a saída de qualquer modo leva decisão em formulário (R22)
-**Achado (stakeholder, num projeto):** o `/sm sprint prepare` devolveu 9 decisões do stakeholder e 2 do PO em tabela de prosa, "responda ou aceite as recomendações", sem `AskUserQuestion`. **Causa:** `prepare` "não sobe ao stakeholder" (lido como "sem formulário"), nenhum passo previa as decisões que os papéis levantam, e os `commands/` mandavam "destacar em uma linha" a decisão — que a sessão cumpria em prosa. **Emenda:** R22 ganha o parágrafo "A saída de qualquer modo também" (até 4 perguntas por chamada, várias chamadas) e o "SM verifica" cobre fim de modo; `prepare` ganha o passo 7 e passa a "não cria portão nem aprovação"; `sm.md`, `po.md`, `arc.md`, `ux.md` e `team.md` trocam "destaque" por `AskUserQuestion`. **Sem regra nova** (34 regras). **Não coberto por guarda:** a G3 só vê pergunta feita; resumo em prosa segue sendo achado de verificação do SM.

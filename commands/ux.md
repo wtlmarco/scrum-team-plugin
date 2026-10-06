@@ -7,7 +7,7 @@ Aciona o **UX Designer** do time.
 
 Pedido do stakeholder: **$ARGUMENTS**
 
-Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta sessão, um agente `user-experience` invocado há pouco sobre a mesma Task/tema; se existir, retome-o com SendMessage em vez de acionar o Agent de novo — evita reler documentos-fonte já lidos (R3). Só na ausência de um agente para retomar, use a ferramenta Agent com `subagent_type: "user-experience"` e `run_in_background: false`, passando ao agente:
+Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta sessão, um agente `user-experience` invocado há pouco sobre a mesma Task/tema; se existir, retome-o com SendMessage em vez de acionar o Agent de novo — evita reler documentos-fonte já lidos (R3). Só na ausência de um agente para retomar, use a ferramenta Agent com `subagent_type: "user-experience"` e `run_in_background: false` (no `sprint run` e no `fix run`, `true` — `sprint-run.md` §Disparo em segundo plano), passando ao agente:
 
 1. O pedido acima, literal.
 2. O modo de operação, conforme o primeiro termo do pedido (o roteiro de cada um está em `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/README.md` §Roteiro por modo; o agente já sabe o que ler antes de desenhar):

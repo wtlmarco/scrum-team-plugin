@@ -29,6 +29,8 @@ function Get-GuardConfig([string]$ProjectDir) {
                              '.gitlab-ci.yml', '.github/workflows/**', '.pre-commit-config.yaml', '.husky/**', '.git/hooks/**')
         sourceRoots      = @()
         testSkipPatterns = @('[Skip', '[Ignore', 'Skip =', 'Skip=', '.skip(', 'xit(', 'xdescribe(', 'xtest(', '@Disabled', '@Ignore', 'pytest.mark.skip', 't.Skip(')
+        # v3.44 (G14): prefixos dos comandos de build/teste/lint do projeto, liberados aos papeis durante o run
+        runCommands      = @()
         state            = 'ausente'
     }
     $path = Join-Path $ProjectDir '.team-project/guards.json'
@@ -41,6 +43,7 @@ function Get-GuardConfig([string]$ProjectDir) {
         if ($null -ne $json.protectedPaths)   { $cfg.protectedPaths   = @($json.protectedPaths) }
         if ($null -ne $json.sourceRoots)      { $cfg.sourceRoots      = @($json.sourceRoots) }
         if ($null -ne $json.testSkipPatterns) { $cfg.testSkipPatterns = @($json.testSkipPatterns) }
+        if ($null -ne $json.runCommands)      { $cfg.runCommands      = @($json.runCommands) }
         $cfg.state = 'ok'
     } catch {
         $cfg.state = 'invalido'
@@ -113,6 +116,14 @@ function Convert-GlobToRegex([string]$Glob) {
 function Test-GlobMatch([string]$RelPath, [object[]]$Globs) {
     foreach ($g in @($Globs)) { if ($RelPath -match (Convert-GlobToRegex ([string]$g))) { return $true } }
     return $false
+}
+
+# Marcadores gravados pela sessao (dono SM): .active-run (sprint run / fix run em andamento, G14)
+# e .active-spike (spike ou pedido do stakeholder declarado, G8). Ausente ou invalido -> $null.
+function Get-Marker([string]$ProjectDir, [string]$Name) {
+    $p = Join-Path $ProjectDir ".team-project/$Name"
+    if (-not (Test-Path -LiteralPath $p)) { return $null }
+    try { return (Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return $null }
 }
 
 # Repositorio-fonte do plugin (onde o /review roda): a matriz vale sobre roles/, agents/, hooks/...

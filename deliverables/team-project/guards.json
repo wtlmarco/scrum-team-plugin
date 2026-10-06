@@ -4,5 +4,6 @@
   "probe": false,
   "protectedPaths": ["**/.editorconfig", "**/Directory.Build.props", "**/Directory.Build.targets", "**/*.ruleset", "**/.globalconfig", ".gitlab-ci.yml", ".github/workflows/**", ".pre-commit-config.yaml", ".husky/**", ".git/hooks/**"],
   "sourceRoots": [],
-  "testSkipPatterns": ["[Skip", "[Ignore", "Skip =", "Skip=", ".skip(", "xit(", "xdescribe(", "xtest(", "@Disabled", "@Ignore", "pytest.mark.skip", "t.Skip("]
+  "testSkipPatterns": ["[Skip", "[Ignore", "Skip =", "Skip=", ".skip(", "xit(", "xdescribe(", "xtest(", "@Disabled", "@Ignore", "pytest.mark.skip", "t.Skip("],
+  "runCommands": []
 }

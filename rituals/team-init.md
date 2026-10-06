@@ -45,6 +45,10 @@ Antes de perguntar, **leia o repositório** — README, arquivos de projeto, CI,
 
 Com as respostas, incluindo a seção compacta "Como usar o time neste projeto" prevista no modelo. O guia completo **não** entra no `README.md`: ele é lido pelos agentes em toda invocação, e documentação de uso ali é custo permanente. O guia fica ao lado, em `.team-project/how-to.md`, copiado no passo 2.
 
+## 4a. Comandos do run (v3.44)
+
+Com os comandos reais de build/teste/lint do passo 3, siga o **passo 7f de `${CLAUDE_PLUGIN_ROOT}/rituals/team-update.md`**: `runCommands` no `.team-project/guards.json`, um formulário só. Sem isso, o `sprint run` volta a depender de pedido de permissão do harness no meio da fila.
+
 ## 5. Aponte o próximo passo
 
 Conforme a resposta do passo 3:

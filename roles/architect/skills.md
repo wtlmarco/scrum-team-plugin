@@ -101,7 +101,7 @@ Dois erros a evitar: **corrigir o standard no meio da Task**, sem registro nem c
 
 ## 11. Conduzir spike técnico com chamada a serviço externo
 
-Spike é código descartável de investigação — junto do pedido explícito do stakeholder, a única situação em que toco no código, e nos dois casos digo que toquei. O que separa um spike útil de um que queima a janela inteira sem entregar nada é o tratamento da borda externa.
+Spike é código descartável de investigação — junto do pedido explícito do stakeholder, a única situação em que toco no código, e nos dois casos digo que toquei. **Os dois só valem declarados** (v3.44): a sessão grava `.team-project/.active-spike` antes de me disparar e o apaga quando o spike fecha; o checkpoint cita o marcador. Sem ele, a G8 nega a escrita (README §Validar sem escrever no produto). O que separa um spike útil de um que queima a janela inteira sem entregar nada é o tratamento da borda externa.
 
 **Toda chamada a serviço externo nasce com timeout curto e backoff limitado.** Requisição HTTP a provedor de IA, a API de terceiro ou a qualquer serviço fora do repositório declara, no próprio código do spike:
 
