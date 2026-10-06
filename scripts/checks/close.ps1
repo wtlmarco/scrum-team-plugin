@@ -4,9 +4,13 @@
 # Saída: tabela regra · resultado (ok / falhou / n-a) · linha decisiva — é a evidência da conferência (R7).
 # Exit 1 só se R7, R7-verify (com guards.json → verify) ou R12 falharem (o close não acontece) · exit 2 = erro de uso ou de leitura · senão 0.
 
+#   -Apply (v3.46, D6): sem falha bloqueante, a sessão fecha a Task sem o Agent scrum-master — marcador → ✅ no quadro,
+#   linha no Registro e ponto na Série do burndown (estimativa baixada), roda o -Post e imprime a entrada de status
+#   pré-preenchida para a sessão completar a frase do produto e colar no documento de status.
 param(
     [Parameter(Mandatory = $true)][string]$Task,
     [switch]$Post,
+    [switch]$Apply,
     [string]$Root = (Get-Location).Path
 )
 
@@ -164,6 +168,23 @@ try {
         $plan = Read-Text $planPath
         Add-Result 'R8' 'ok' ("plano: plan/" + (Split-Path $planPath -Leaf))
     } else { Add-Result 'R8' 'falhou' "nenhum plano para $Task em sprints/$n/plan/ (nem pela coluna Plano)" }
+
+    # ---------- R7 · prova de falha (v3.46): toda mutação do plano pega pelo teste, na árvore do verify full ----------
+    $planMuts = if ($plan) { @([regex]::Matches($plan, '(?m)^\s*-\s*(M\d+)\s*·') | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique) } else { @() }
+    if (-not $hasVerify) { Add-Result 'R7-mutação' 'n-a' 'guards.json sem "verify" — a prova de falha segue no relatório do dev e no veredito' }
+    elseif ($planMuts.Count -eq 0) { Add-Result 'R7-mutação' 'n-a' 'plano sem **Mutações:** (plano anterior à v3.46, ou "sem prova: <motivo>" na §6)' }
+    else {
+        $vm2 = $null; if (Test-Path -LiteralPath $vr) { try { $vm2 = (Read-Text $vr | ConvertFrom-Json).mutation } catch { } }
+        if ($null -eq $vm2) { Add-Result 'R7-mutação' 'falhou' ("plano com " + ($planMuts -join ', ') + " e nenhuma execução de verify.ps1 -Mode mutation") }
+        elseif ($vfull -and [string]$vm2.tree -ne [string]$vfull.tree) { Add-Result 'R7-mutação' 'falhou' "mutação rodada sobre outra árvore que a do verify full — rode -Mode mutation de novo" }
+        else {
+            $got = @{}; foreach ($it in @($vm2.items)) { $got[[string]$it.id] = [string]$it.result }
+            $miss = @($planMuts | Where-Object { -not $got.ContainsKey($_) })
+            $notOk = @($planMuts | Where-Object { $got.ContainsKey($_) -and -not $got[$_].StartsWith('ok') } | ForEach-Object { "$_ " + ($got[$_] -split ' — ')[0] })
+            if ($miss.Count -or $notOk.Count) { Add-Result 'R7-mutação' 'falhou' ((@($(if ($miss.Count) { 'sem execução: ' + ($miss -join ', ') }), $(if ($notOk.Count) { 'não pegas: ' + ($notOk -join ', ') })) | Where-Object { $_ }) -join '; ') }
+            else { Add-Result 'R7-mutação' 'ok' ("$($planMuts.Count) mutação(ões) pegas pelo teste (" + ($planMuts -join ', ') + ") em $($vm2.at)") }
+        }
+    }
 
     # ---------- R16 · standards citados com seção (informativo) ----------
     if ($null -eq $plan) { Add-Result 'R16' 'n-a' 'sem plano' }
@@ -391,8 +412,97 @@ try {
     foreach ($r in 'R2', 'R6', 'R9', 'R21', 'R32') { Add-Result $r 'n-a' $(if ($r -eq 'R21') { 'aceite é da Review — conferido por C2' } else { 'julgamento' }) }
 
     Write-Results "C1 · close $Task · sprint $n$(if ($Post) { ' · -Post' })"
-    $blocking = @($script:Results | Where-Object { $_.Regra -in 'R7', 'R7-verify', 'R12' -and $_.Resultado -eq 'falhou' })
+    $blocking = @($script:Results | Where-Object { $_.Regra -in 'R7', 'R7-verify', 'R7-mutação', 'R12' -and $_.Resultado -eq 'falhou' })
     if ($blocking.Count) { [Console]::Out.WriteLine(''); [Console]::Out.WriteLine('**Não fecha:** ' + (($blocking | ForEach-Object { $_.Regra }) -join ' e ') + ' falhou.'); exit 1 }
+    if ($Apply) {
+        $utf8 = New-Object System.Text.UTF8Encoding($false)
+        $marks = @([char]::ConvertFromUtf32(0x2B1C), $E.Plan, $E.Build, $E.QA, [char]::ConvertFromUtf32(0x1F534))   # ⬜ 🟦 🟨 🟪 🔴
+        if (-not ($taskRow -and $taskTable)) { [Console]::Error.WriteLine("C1 -Apply: $Task não está numa tabela de Tasks do quadro."); exit 2 }
+        $from = $null; foreach ($mk in $marks) { if ($taskRow[0].Contains($mk)) { $from = $mk; break } }
+        if ($taskRow[0].Contains($E.Done)) { [Console]::Error.WriteLine("C1 -Apply: $Task já está ✅ no quadro."); exit 2 }
+        if (-not $from) { [Console]::Error.WriteLine("C1 -Apply: $Task sem marcador no quadro."); exit 2 }
+        $est = 0.0; $em = [regex]::Match((Get-Cell $taskRow (Find-Col $taskTable 'Est')), '\d+([.,]\d+)?'); if ($em.Success) { $est = [double]($em.Value -replace ',', '.') }
+        $now = Get-Date -Format 'yyyy-MM-dd HH:mm'
+
+        # 1 · marcador no quadro (só a 1ª célula da linha da Task)
+        $bl = $board -split "`r?`n"; $nl = if ($board.Contains("`r`n")) { "`r`n" } else { "`n" }
+        for ($i = 0; $i -lt $bl.Count; $i++) {
+            if (-not $bl[$i].TrimStart().StartsWith('|')) { continue }
+            $c0 = (Split-Row $bl[$i])[0]
+            if ($c0 -match $idPat -and $c0.Contains($from)) { $ix = $bl[$i].IndexOf($from); $bl[$i] = $bl[$i].Substring(0, $ix) + $E.Done + $bl[$i].Substring($ix + $from.Length); break }
+        }
+        [System.IO.File]::WriteAllText($boardPath, ($bl -join $nl), $utf8)
+
+        # 2 · Registro e Série no burndown (R24): uma transição = uma linha em cada
+        $bdPath = Join-Path $S 'burndown.md'
+        if (-not (Test-Path -LiteralPath $bdPath)) { [Console]::Error.WriteLine("C1 -Apply: $bdPath não existe."); exit 2 }
+        $bdText = Read-Text $bdPath; $bnl = if ($bdText.Contains("`r`n")) { "`r`n" } else { "`n" }
+        $lines = New-Object System.Collections.ArrayList; foreach ($l in ($bdText -split "`r?`n")) { [void]$lines.Add($l) }
+        function Get-TableEnd($Lines, [string]$Heading) {
+            $h = -1; for ($i = 0; $i -lt $Lines.Count; $i++) { if ($Lines[$i] -match $Heading) { $h = $i; break } }
+            if ($h -lt 0) { return -1 }
+            $s = -1; for ($i = $h + 1; $i -lt $Lines.Count; $i++) { if ($Lines[$i].TrimStart().StartsWith('|')) { $s = $i; break }; if ($Lines[$i] -match '^#') { break } }
+            if ($s -lt 0) { return -1 }
+            $e = $s; while ($e + 1 -lt $Lines.Count -and $Lines[$e + 1].TrimStart().StartsWith('|')) { $e++ }
+            return $e
+        }
+        $se = Get-TableEnd $lines '^##\s+S[ée]rie'
+        if ($se -lt 0) { [Console]::Error.WriteLine('C1 -Apply: burndown sem tabela na "## Série".'); exit 2 }
+        $sTable = (Get-Tables (Get-Section $bdText '^##\s+S[ée]rie'))[0]
+        $last = Split-Row $lines[$se]; $first = if ($sTable.Rows.Count) { $sTable.Rows[0] } else { $last }
+        $d0 = Get-FirstDate (Get-Cell $first (Find-Col $sTable 'Data'))
+        $day = if ($d0) { [int]((Get-Date).Date - $d0).TotalDays } else { Clean-Cell (Get-Cell $last 0) }
+        $num = { param($v) $m = [regex]::Match([string]$v, '\d+([.,]\d+)?'); if ($m.Success) { [double]($m.Value -replace ',', '.') } else { 0 } }
+        $restante = [Math]::Max(0, (& $num (Get-Cell $last (Find-Col $sTable 'Est. restante'))) - $est)
+        $tasksLeft = [Math]::Max(0, (& $num (Get-Cell $last (Find-Col $sTable 'Tasks restantes'))) - 1)
+        $cells = @("$day", $now, "$Task $from → $($E.Done)", ('{0:0.##}' -f $restante), "$tasksLeft")
+        foreach ($mk in @($marks[0], $marks[1], $marks[2], $marks[3], $E.Done, $marks[4])) {
+            $ci = Find-Col $sTable $mk
+            $v = [int](& $num (Get-Cell $last $ci))
+            if ($mk -eq $from) { $v = [Math]::Max(0, $v - 1) } elseif ($mk -eq $E.Done) { $v++ }
+            if ($ci -ge 0) { $cells += "$v" }
+        }
+        $lines.Insert($se + 1, '| ' + ($cells -join ' | ') + ' |')
+        $re = Get-TableEnd $lines '^##\s+Registro de transi'
+        if ($re -lt 0) { [Console]::Error.WriteLine('C1 -Apply: burndown sem tabela no "## Registro de transições".'); exit 2 }
+        $lines.Insert($re + 1, "| $Task | $from → $($E.Done) | $now | sessão (``close.ps1 -Apply``) |")
+        [System.IO.File]::WriteAllText($bdPath, ($lines -join $bnl), $utf8)
+
+        # 3 · o -Post confere o que acabou de ser gravado
+        [Console]::Out.WriteLine('')
+        $ErrorActionPreference = 'Continue'
+        $postOut = & powershell -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath -Task $Task -Post -Root $Root 2>&1 | Out-String
+        $postCode = $LASTEXITCODE
+        $r24 = ([regex]::Match($postOut, '(?m)^\| R24 \|[^\n]*')).Value
+        [Console]::Out.WriteLine("**-Apply:** quadro $from → $($E.Done) · Registro e Série gravados (estimativa $('{0:0.##}' -f $est) baixada; restante $('{0:0.##}' -f $restante)) · -Post: $r24")
+
+        # 4 · entrada de status pré-preenchida (templates/status-entry.md) — a frase do produto é da sessão
+        $title = Clean-Cell (Get-Cell $taskRow (Find-Col $taskTable 'Task'))
+        $sib = @(); $cur = $null
+        foreach ($l in ((Read-Text $boardPath) -split "`r?`n")) {
+            $hm = [regex]::Match($l, '^##\s+Hist[oó]ria\s+(H-[\w]+)'); if ($hm.Success) { $cur = $hm.Groups[1].Value; continue }
+            if ($cur -eq $story -and $l.TrimStart().StartsWith('|')) { $c0 = (Split-Row $l)[0]; if ($c0 -match 'T-\d+') { $sib += $c0 } }
+        }
+        $done = @($sib | Where-Object { $_.Contains($E.Done) }).Count
+        $okN = @($script:Results | Where-Object { $_.Resultado -eq 'ok' }).Count; $naN = @($script:Results | Where-Object { $_.Resultado -eq 'n-a' }).Count
+        $failR = @($script:Results | Where-Object { $_.Resultado -eq 'falhou' } | ForEach-Object { $_.Regra })
+        $evid = 'ver `sprints/' + $n + '/evidence/' + $Task + '.md`'
+        if ($hasVerify -and $vfull) { $evid = 'verify full ' + $vfull.at + ' — ' + ((@($vfull.commands) | ForEach-Object { "$($_.key) exit $($_.exit) (" + (@($_.decisive) | Select-Object -Last 1) + ')' }) -join '; ') }
+        $nex = if ($evBlock) { $s = Get-Section $evBlock '^###\s+N[ãa]o exercitado'; if ($s) { (($s -split "`r?`n") | Where-Object { $_.Trim() } | Select-Object -First 1) } else { $null } } else { $null }
+        $nfiles = if ($plan) { $pl = [regex]::Match($plan, '(?s)\*\*Arquivos tocados:\*\*(.*?)(?:\r?\n[ \t]*\r?\n|\r?\n#|\z)'); if ($pl.Success) { [regex]::Matches($pl.Groups[1].Value, '`[^`]+`').Count } else { '?' } } else { '?' }
+        [Console]::Out.WriteLine('')
+        [Console]::Out.WriteLine('**Entrada de status** (cole no documento de status, `.team-project/README.md` §4; troque a frase entre <> pela do produto):')
+        [Console]::Out.WriteLine('```markdown')
+        [Console]::Out.WriteLine("- **$((Get-Date).ToString('dd/MM/yyyy')) — $Task ($title) concluída.** <o que passou a funcionar, em uma frase, na linguagem do produto>")
+        [Console]::Out.WriteLine("  - **História:** $story — $done de $($sib.Count) Tasks da História fechadas")
+        [Console]::Out.WriteLine("  - **Conferência (``close.ps1 -Apply``):** $okN ok, $naN n-a" + $(if ($failR.Count) { ', falhou (não bloqueante): ' + ($failR -join ', ') } else { ', nenhuma falhou' }) + " · ``-Post`` (R24): " + $(if ($r24 -match '\| ok \|') { 'ok' } else { 'falhou' }))
+        [Console]::Out.WriteLine("  - **Evidência:** $evid")
+        [Console]::Out.WriteLine("  - **Arquivos:** $nfiles no plano — detalhe no inventário de código.")
+        [Console]::Out.WriteLine('  - **Decisões fora da especificação:** <do veredito e das respostas de GAP — ou "nenhuma">')
+        [Console]::Out.WriteLine("  - **Não exercitado:** " + $(if ($nex) { $nex.Trim() } else { '<do veredito — ou "nada">' }))
+        [Console]::Out.WriteLine('```')
+        if ($postCode -ne 0 -or $r24 -notmatch '\| ok \|') { exit 1 }
+    }
     exit 0
 } catch {
     [Console]::Error.WriteLine("C1: erro — $($_.Exception.Message)")

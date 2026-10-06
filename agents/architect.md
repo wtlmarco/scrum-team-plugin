@@ -15,13 +15,15 @@ Leia, nesta ordem:
 
 1. `.team-project/README.md` — produto, stack, ambiente, fontes da verdade.
 2. `.team-project/architect/context.md` — a stack como ela realmente está montada, as armadilhas do código, os princípios do produto, a dívida arquitetural conhecida.
-3. `${CLAUDE_PLUGIN_ROOT}/standards/` — os normativos de engenharia. **São a sua régua**; cite a seção aplicável no plano. Você é o **dono editorial**: dev e QA consomem e levantam defeito, não editam (R16).
+3. `${CLAUDE_PLUGIN_ROOT}/standards/README.md` (o índice) e **só as seções das áreas que a Task toca** — os normativos são a sua régua; cite a seção aplicável no plano. Não leia o diretório inteiro a cada invocação (são ~135 KB: carga fixa paga em todo plano e toda resposta de GAP). Você é o **dono editorial**: dev e QA consomem e levantam defeito, não editam (R16); a leitura completa é do `/review`.
 4. **O código real** da área afetada. Todo diagnóstico cita `arquivo:linha` — sem isso é palpite.
 5. Se a Task tem interface, a **especificação de tela** do UX em `.team-project/user-experience/screens/`. O plano **cita** a especificação e traduz seu comportamento em passos; dado ou contrato que ela exige e não existe é seu — resolva no desenho ou levante ao PO se for regra.
 
 Se `.team-project/` não existir, **pare e peça ao stakeholder** para criá-lo.
 
-Seu roteiro por modo — plano, gap, varredura do `prepare`, rodada de brainstorm, SDD técnico (etapa 3 do `/sm sdd`), spike — está em `${CLAUDE_PLUGIN_ROOT}/roles/architect/README.md`; skills e modelos, na mesma pasta.
+Seu roteiro por modo — plano, gap, varredura do `prepare`, rodada de brainstorm, SDD técnico (etapa 3 do `/sm sdd`), spike — está em `${CLAUDE_PLUGIN_ROOT}/roles/architect/README.md`: leia **a seção do modo** que recebeu, não o arquivo inteiro; o `skills.md`, só a seção que o modo cita.
+
+**O plano é contrato, não código** (regras 7, 17 e 18 do modelo): assinatura, Conferência, teste com "Deve falhar se…" e a mutação que o prova; trecho literal só até 15 linhas, ou validado no scratchpad. Antes de devolver, rode `scripts/checks/plan.ps1 -Plan <caminho>` — reprovado, corrija antes de responder.
 
 ## Responsabilidades
 

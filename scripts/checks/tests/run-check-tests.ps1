@@ -328,6 +328,57 @@ Check 'verify full com suíte reprovada: exit 1 e o código real' $r 1 @('suite:
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'C1 R7-verify falhou com verify vermelho' $r 1 @('\| R7-verify \| falhou.*suite exit 4')
 
+# 5d2. verify.ps1 -Mode mutation e C1 R7-mutação (v3.46): a prova de falha declarada no plano, executada e restaurada.
+$p = Join-Path $tmp 'mutacao'; New-Project $p
+$ErrorActionPreference = 'Continue'
+& git -C $p init -q 2>$null; Put $p '.gitignore' ".team-project/`n"
+Put $p 'src/calc.ts' "export function soma(a, b) {`n  return a + b; // fim`n}`n"
+Put $p 'tests/check.ps1' 'param($t) if ((Get-Content src/calc.ts -Raw) -match "a \+ b") { "Tests: 1 passed" } else { "Tests: 1 failed"; exit 1 }'
+& git -C $p add -A 2>$null; & git -C $p -c user.email=t@t -c user.name=t commit -qm init 2>$null
+$ErrorActionPreference = 'Stop'
+Put $p '.team-project/guards.json' '{ "verify": { "focused": "powershell -NoProfile -File tests/check.ps1 {tests}", "suite": "powershell -NoProfile -File tests/check.ps1 all" } }'
+Edit-File (Join-Path $p '.team-project/sprints/1/plan/T-041-export.md') '## 3. Ambiente' ("**Arquivos tocados:** ``src/calc.ts```n``tests/check.ps1```n`n**Mutações:**`n- M1 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``a + b`` → ``a - b```n`n## 3. Ambiente")
+$pl = '.team-project/sprints/1/plan/T-041-export.md'
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 R7-mutação sem execução: não fecha' $r 1 @('\| R7-verify \| falhou', '\| R7-mutação \| falhou.*M1 e nenhuma execução')
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+Check 'verify mutation: M1 pega, árvore restaurada igual' $r 0 @('restaurada igual', 'M1 src/calc.ts: ok')
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 R7-mutação ok' $r 0 @('\| R7-verify \| ok', '\| R7-mutação \| ok.*1 mutação')
+Edit-File (Join-Path $p $pl) '- M1 · teste' "- M2 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``// fim`` → ``// x```n- M1 · teste"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Only', 'M2', '-Root', $p)
+Check 'verify mutation decorativa (-Only M2): exit 1' $r 1 @('M2 src/calc.ts: falhou')
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 R7-mutação com M2 não pega (M1 da amostra anterior mantida)' $r 1 @('\| R7-mutação \| falhou.*não pegas: M2')
+
+# 5e. close.ps1 -Apply (v3.46): a sessão fecha sem o Agent scrum-master — quadro, Registro, Série, -Post e entrada de status.
+$p = Join-Path $tmp 'apply'; New-Project $p
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Apply', '-Root', $p)
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/sprints/1/sprint-backlog.md')) + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/sprints/1/burndown.md'))
+Check 'C1 -Apply: quadro ✅, Registro e Série gravados, -Post R24 ok, entrada de status' $r 0 @('\*\*-Apply:\*\*.*R24 \| ok', "\| $($e.ok) T-041 \|", "\| T-041 \| $($e.qa) → $($e.ok) \| \d{4}-\d\d-\d\d \d\d:\d\d \| sessão", "T-041 $($e.qa) → $($e.ok) \| 1 \| 1 \|", 'Entrada de status', 'H-014 — 1 de 2 Tasks')
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Apply', '-Root', $p)
+Check 'C1 -Apply de novo: Task já ✅, exit 2' $r 2 @()
+$p = Join-Path $tmp 'applyr12'; New-Project $p
+Edit-File (Join-Path $p '.team-project/sprints/1/evidence/T-041.md') '**Estado:** atualizados' '**Estado:** pendentes'
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Apply', '-Root', $p)
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/sprints/1/sprint-backlog.md'))
+Check 'C1 -Apply com R12 pendente: não fecha, quadro intacto' $r 1 @('Não fecha', "\| $($e.qa) T-041 \|")
+
+# 5f. plan.ps1 (v3.46): o plano é conferido antes do dev.
+$p = Join-Path $tmp 'plano'; New-Project $p
+$pl = '.team-project/sprints/1/plan/T-050-x.md'; $fence = '```'
+Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 4. Passos`n`n### Passo 1 — x`n- **Assinatura exata:**`n  $fence`n  export function a(): number`n  $fence`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · ``return 1`` → ``return 0```n")
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano em contrato: exit 0' $r 0 @('\| lista \| ok', '\| protegidos \| ok', '\| blocos \| n-a', '\| trecho \| ok', '\| mutação \| ok.*1 muta')
+$long = (1..20 | ForEach-Object { "  linha $_" }) -join "`n"
+Put $p $pl ("# Plano`n`n**Arquivos tocados:** " + ((1..9 | ForEach-Object { "``src/f$_.ts``" }) -join "`n") + "`n`n## 4. Passos`n`n### Passo 1 — x`n$fence`n$long`n$fence`n`n## 6. Testes`n")
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano com código longo, 9 arquivos sem bloco, sem teste, sem mutação, sem protegidos: exit 1' $r 1 @('\| lista \| falhou', '\| protegidos \| falhou', '\| blocos \| falhou.*9 arquivos', '\| trecho \| falhou.*Passo 1 \(20 linhas\)', '\| mutação \| falhou', 'não vai ao dev')
+Put $p $pl ("# Plano`n**Trilha:** leve`n`n**Arquivos tocados:** " + ((1..5 | ForEach-Object { "``src/f$_.ts``" }) -join "`n") + "`n``tests/f.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: só configuração`n")
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano leve com 6 arquivos: volta à plena' $r 1 @('\| leve \| falhou.*6 arquivos', '\| mutação \| ok.*sem prova')
+
 # 6. Duas Tasks em construção com 1 dev → R1 falhou; T-041 não confunde com T-041a.
 $p = Join-Path $tmp 'r1'; New-Project $p
 Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') "| $($e.qa) T-041 |" "| $($e.build) T-041 |"
