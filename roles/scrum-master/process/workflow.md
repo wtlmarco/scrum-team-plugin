@@ -49,7 +49,7 @@ Os quatro portões numerados são os gates de §8. **O detalhamento da História
 | 5 | Construção | dev | `/dev <Task>` | Código + testes + relatório de entrega |
 | 6 | Gap durante a construção | dev → Arquiteto | `/arc question` → `/dev gap` | Decisão do Arquiteto, dev retoma |
 | 7 | Validação | QA | `/qa <Task>` | Veredito ✅/⚠️/❌ com evidência — **inclui sempre, na mesma invocação, a checagem de aderência de execução ao plano e de completude/correção do standard citado** (§4a) **e o resultado dos cenários de teste mapeados na Planning, incluindo os regressivos aplicáveis** (R30); a Task não fecha sem essa cobertura |
-| 8 | Fechamento da Task | SM | `/sm close <Task>` (feito pelo `/sm sprint run` quando o veredito é ✅ **e** o campo "Documentos vivos (R12)" do veredito está "atualizados" — [`sprint-run.md`](sprint-run.md) passo 7 —; ou manual) | Quadro + documento de status atualizados — **fechamento técnico, não aceite**. Linha nova no Registro de transições do Sprint Backlog (De: 🟪, Para: ✅) e ponto novo no burndown do sprint (R24) |
+| 8 | Fechamento da Task | SM | `/sm close <Task>` (feito pelo `/sm sprint run` quando o veredito é ✅ **e** o campo "Documentos vivos (R12)" do veredito está "atualizados" — [`sprint-run.md`](sprint-run.md) passo 7 —; ou manual) | Quadro + documento de status atualizados — **fechamento técnico, não aceite**. Linha nova no Registro de transições (De: 🟪, Para: ✅) e ponto novo na Série, ambos no burndown do sprint (R24) |
 | 9 | Sprint Review | PO demonstra, stakeholder decide | `/sm sprint review` | História aceita / com ressalva / rejeitada · gaps e débitos ao backlog |
 | 10 | Sprint Retrospective | SM conduz | `/sm sprint close` | Retrospectiva + fechamento do sprint (§5c · §5e) |
 

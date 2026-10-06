@@ -51,12 +51,12 @@ O registro de execução é organizado **por sprint**, não por papel (R25): a p
 | Caminho | Nasce de | Dono | Quando nasce · quando fecha | Reconciliar no `update`? |
 |---|---|---|---|---|
 | `planning.md` | [`planning.md`](../../roles/scrum-master/templates/planning.md) | **SM** | passo 9 da Planning · fecha com a pasta | **Sim — o modelo** |
-| `sprint-backlog.md` | [`sprint-backlog.md`](../../roles/scrum-master/templates/sprint-backlog.md) | **SM** | Planning · **fechado** no `/sm sprint close`, sem cópia | **Sim — estrutura**; as linhas e o Registro de transições (R24) são do projeto |
+| `sprint-backlog.md` | [`sprint-backlog.md`](../../roles/scrum-master/templates/sprint-backlog.md) | **SM** | Planning · **fechado** no `/sm sprint close`, sem cópia | **Sim — estrutura**; as linhas são do projeto |
 | `stories/` | [`user-story.md`](../../roles/product-owner/templates/user-story.md) | **PO** | **congelado** na aprovação do pacote | **Sim — o modelo**, nunca o conteúdo congelado |
 | `plan/` | [`implementation-plan.md`](../../roles/architect/templates/implementation-plan.md) | **Arquiteto** | um por Task, antes da construção | **Sim — o modelo**, não os planos escritos |
 | `evidence/` | [`evidence.md`](../../roles/quality-assurance/templates/evidence.md) | **QA** | um por Task, no veredito | **Sim — estrutura**; as evidências são do projeto |
 | `consumption.md` | [`consumption.md`](../../roles/scrum-master/templates/consumption.md) | **SM** | uma linha por invocação (e por chamada ao `operator`) · fecha com a pasta | **Sim — estrutura**; as linhas são do projeto |
-| `burndown.md` | [`burndown.md`](../../roles/scrum-master/templates/burndown.md) | **SM** | dia 0 = aprovação do pacote · fecha no `/sm sprint close` | **Sim — o modelo** |
+| `burndown.md` | [`burndown.md`](../../roles/scrum-master/templates/burndown.md) | **SM** | dia 0 = aprovação do pacote · linha no Registro de transições e na Série a cada transição (R24) · fecha no `/sm sprint close` | **Sim — estrutura**; o Registro e a Série são do projeto |
 | `review.md` | [`sprint-review.md`](../../roles/scrum-master/templates/sprint-review.md) | **SM** registra | `/sm sprint review` | **Sim — o modelo** |
 | `retrospective.md` | [`retrospective.md`](../../roles/scrum-master/templates/retrospective.md) | **SM** | `/sm sprint close` | **Sim — o modelo** |
 | `plugin-report.md` | [`plugin-report.md`](../../roles/scrum-master/templates/plugin-report.md) | **SM** | `/sm sprint close`, só se "investigar" · fecha com a pasta · o stakeholder encaminha | **Sim — o modelo** |

@@ -13,6 +13,17 @@
 
 ---
 
+## v3.44.1 — 2026-10-06
+
+**Branch:** `feat/v3.44.1` a partir de `develop` (v3.44.0 mesclada) · **Processo:** [`v3.44` — addendum v3.44.1](roles/scrum-master/process/process-changelog.md)
+Burndown parado até o fim da Task (item do `note.md`): o Registro de transições sai do Sprint Backlog e passa a viver no `burndown.md`, ao lado da Série.
+
+- **`templates/burndown.md`** ganha o **Registro de transições**; cada transição = uma linha no Registro + uma na Série, com o Evento citando a passagem (`T-041 🟦 → 🟨`). Saem os trechos anteriores ao `run` (granularidade só do `/sm board`, "fino fora do escopo", exemplo sem as passagens). **`templates/sprint-backlog.md`** fica só com o marcador vigente.
+- **C1 (`close.ps1 -Post`) — R24** passa a exigir, além da linha → ✅, as passagens → 🟦/🟨/🟪 da Task no Registro e uma linha da Série por transição dela: Série com menos linhas é o burndown parado. O Registro é lido do `burndown.md`, e do `sprint-backlog.md` em sprint aberto antes desta versão (`Get-TransitionLog`, `lib.ps1`); o R20 do C1 e o R33/8 do C4 leem pelo mesmo caminho.
+- R24, `workflow-sprint.md` §5f (reescrito com o `run`), `sprint-run.md` §Marcador, `artifact-ownership.md` §1, `workflow.md`, índice das regras, README do SM, `retrospective.md`, `project-context.md`, `deliverables/team-project/README.md`. Suíte de conferências: 28 casos (3 novos).
+
+---
+
 ## v3.44.0 — 2026-10-06
 
 **Branch:** `feat/v3.44.0` a partir de `develop` · **Processo:** [`v3.44`](roles/scrum-master/process/process-changelog.md)

@@ -54,14 +54,6 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 
 ---
 
-## Registro de transições (dado bruto do burndown — R24)
-
-> Toda vez que o marcador de uma Task muda, uma linha entra aqui. Abertura (⬜) e fechamento (✅) são exatos, com a data do `/sm sprint plan`/`/sm close`; estados intermediários (🟦/🟨/🟪/🔴) são gravados pela sessão **no momento da transição** quando a Task anda pelo `sprint run` (data e hora — [`sprint-run.md`](../process/sprint-run.md) §Marcador); fora do `run`, têm a data da rodada de `/sm board` que sincronizou o marcador. [`burndown.md`](burndown.md), na mesma pasta, é a leitura em série desta tabela.
-
-| Task | De → Para | Quando | Por quem |
-|---|---|---|---|
-| T-<nnn> | ⬜ → 🟦 | <data> | Arquiteto (`/arc plan`) |
-
 ## Entradas fora da Planning
 
 > O Sprint Backlog **não cresce** durante o sprint (R4). A única exceção é o GAP que bloqueia uma História já no sprint. Toda entrada aqui declara **o que saiu para caber**.
@@ -103,8 +95,8 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 - **Critério de pronto / evidência** — precisa citar o comando, teste ou passo de UI que prova a conclusão. "Funcionando" não é critério.
 - **Uma migration por Task.** Tasks que compartilham a mesma migration viram uma Task só.
 - **No fechamento do sprint**, Task não concluída volta ao Product Backlog **junto com a História** — não fica pendurada no quadro do sprint seguinte (R5 · §5e).
-- **Toda mudança de marcador ganha linha no Registro de transições** (R24), mesmo quando a Task não muda de estado numa rodada de `/sm board` — nesse caso, não escreva linha nenhuma; "sem transição" não é evento.
-- **🔴 não para a fila do sprint.** A Task bloqueada ganha a linha de transição e entra em "Bloqueios e riscos abertos" **com o degrau nomeado**; a fila segue nas Tasks cujas dependências estão satisfeitas. Só o que o degrau 1 (PO + Arquiteto) não fechar sobe a "Decisões pendentes do stakeholder" (R25).
+- **Toda mudança de marcador aqui ganha linha no Registro de transições e na Série de [`burndown.md`](burndown.md)**, na mesma pasta (R24) — o Registro vive lá, não neste quadro (v3.44.1). Rodada de `/sm board` sem mudança de marcador não escreve linha nenhuma; "sem transição" não é evento.
+- **🔴 não para a fila do sprint.** A Task bloqueada ganha a linha de transição no `burndown.md` e entra em "Bloqueios e riscos abertos" **com o degrau nomeado**; a fila segue nas Tasks cujas dependências estão satisfeitas. Só o que o degrau 1 (PO + Arquiteto) não fechar sobe a "Decisões pendentes do stakeholder" (R25).
 
 ### Exemplo
 

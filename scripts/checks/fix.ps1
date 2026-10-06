@@ -257,7 +257,7 @@ try {
     if (-not $board -or -not $runStart) { Add-Result 'R33/8 Task em construção' 'n-a' $(if (-not $board) { 'sem sprint aberto' } else { 'verdict.md sem "Executado em"' }) }
     else {
         $starts = @{}; $ends = @{}
-        $trans = Get-Section $board '^##\s+Registro de transi'
+        $trans = Get-TransitionLog $sprintDir $board
         if ($trans) {
             foreach ($t in (Get-Tables $trans)) {
                 foreach ($row in $t.Rows) {

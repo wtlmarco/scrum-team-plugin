@@ -72,14 +72,6 @@ function New-Project([string]$Dir) {
 
 ---
 
-## Registro de transições (dado bruto do burndown — R24)
-
-| Task | De → Para | Quando | Por quem |
-|---|---|---|---|
-| T-041 | $($e.todo) → $($e.plan) | 2026-09-01 | Arquiteto |
-| T-041 | $($e.plan) → $($e.build) | 2026-09-02 | dev |
-| T-041 | $($e.build) → $($e.qa) | 2026-09-03 | QA |
-
 ## Entradas fora da Planning
 
 | Task | História | Por que entrou fora da Planning | O que saiu para caber | Data |
@@ -159,8 +151,25 @@ Passed! - Failed: 0, Passed: 12
 | Dia | Data | Evento | Est. restante | Tasks restantes |
 |---|---|---|---|---|
 | 0 | 2026-09-01 | pacote aprovado | 2 | 2 |
-| 1 | 2026-09-02 | — | 2 | 2 |
+| 0 | 2026-09-01 10:00 | T-041 $($e.todo) → $($e.plan) | 2 | 2 |
+| 1 | 2026-09-02 09:00 | T-041 $($e.plan) → $($e.build) | 2 | 2 |
+| 2 | 2026-09-03 15:00 | T-041 $($e.build) → $($e.qa) | 2 | 2 |
+
+## Registro de transições (R24)
+
+| Task | De → Para | Quando | Por quem |
+|---|---|---|---|
+| T-041 | $($e.todo) → $($e.plan) | 2026-09-01 10:00 | Arquiteto |
+| T-041 | $($e.plan) → $($e.build) | 2026-09-02 09:00 | dev |
+| T-041 | $($e.build) → $($e.qa) | 2026-09-03 15:00 | QA |
 "@
+}
+
+# Grava o fechamento de T-041 no burndown.md: linha → ✅ no Registro e ponto na Série.
+function Close-T041([string]$Dir) {
+    $bd = Join-Path $Dir '.team-project/sprints/1/burndown.md'
+    Edit-File $bd "| T-041 | $($e.build) → $($e.qa) | 2026-09-03 15:00 | QA |" ("| T-041 | $($e.build) → $($e.qa) | 2026-09-03 15:00 | QA |`n| T-041 | $($e.qa) → $($e.ok) | 2026-09-04 | SM (``/sm close``) |")
+    Edit-File $bd "| 2 | 2026-09-03 15:00 | T-041 $($e.build) → $($e.qa) | 2 | 2 |" ("| 2 | 2026-09-03 15:00 | T-041 $($e.build) → $($e.qa) | 2 | 2 |`n| 3 | 2026-09-04 | T-041 $($e.qa) → $($e.ok) | 1 | 1 |")
 }
 
 function Invoke-Check([string]$Script, [string[]]$Arguments) {
@@ -171,6 +180,10 @@ function Invoke-Check([string]$Script, [string[]]$Arguments) {
 
 function Edit-File([string]$Path, [string]$From, [string]$To) {
     $t = [System.IO.File]::ReadAllText($Path, $utf8); [System.IO.File]::WriteAllText($Path, $t.Replace($From, $To), $utf8)
+}
+
+function Remove-Line([string]$Path, [string]$Line) {
+    $t = [System.IO.File]::ReadAllText($Path, $utf8); [System.IO.File]::WriteAllText($Path, ($t -replace ([regex]::Escape($Line) + '\r?\n'), ''), $utf8)
 }
 
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('team-checks-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
@@ -191,10 +204,31 @@ if ($r.Out -match '\| falhou \|') { $fail++; Write-Output '---- feliz com falhou
 # 2. -Post sem a linha → ✅ falha R24; com a linha, ok.
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Post', '-Root', $p)
 Check 'C1 -Post sem → ✅: R24 falhou' $r 0 @('\| R24 \| falhou')
-Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') "| T-041 | $($e.build) → $($e.qa) | 2026-09-03 | QA |" ("| T-041 | $($e.build) → $($e.qa) | 2026-09-03 | QA |`n| T-041 | $($e.qa) → $($e.ok) | 2026-09-04 | SM (``/sm close``) |")
-Edit-File (Join-Path $p '.team-project/sprints/1/burndown.md') '| 1 | 2026-09-02 | — | 2 | 2 |' ("| 1 | 2026-09-02 | — | 2 | 2 |`n| 2 | 2026-09-04 | T-041 $($e.ok) | 1 | 1 |")
+Close-T041 $p
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Post', '-Root', $p)
-Check 'C1 -Post com → ✅ e burndown: R24 ok' $r 0 @('\| R24 \| ok')
+Check 'C1 -Post com → ✅ e burndown: R24 ok' $r 0 @('\| R24 \| ok.*4 transi')
+
+# 2b. Sprint aberto antes da v3.44.1: Registro ainda no sprint-backlog.md → lido de lá.
+$p = Join-Path $tmp 'r24legado'; New-Project $p; Close-T041 $p
+$bdp = Join-Path $p '.team-project/sprints/1/burndown.md'; $sbp = Join-Path $p '.team-project/sprints/1/sprint-backlog.md'
+$bdt = [System.IO.File]::ReadAllText($bdp, $utf8); $ix = $bdt.IndexOf('## Registro de transi')
+[System.IO.File]::WriteAllText($bdp, $bdt.Substring(0, $ix), $utf8)
+Edit-File $sbp '## Entradas fora da Planning' ($bdt.Substring($ix) + "`n## Entradas fora da Planning")
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Post', '-Root', $p)
+Check 'C1 -Post com Registro no sprint-backlog (legado): R24 ok' $r 0 @('\| R24 \| ok', '\| R20 \| ok.*2026-09-01 ≤ 1ª entrada em construção 2026-09-02')
+
+# 2c. Série sem a linha de uma transição (burndown parado) → R24 falhou.
+$p = Join-Path $tmp 'r24serie'; New-Project $p; Close-T041 $p
+Remove-Line (Join-Path $p '.team-project/sprints/1/burndown.md') "| 1 | 2026-09-02 09:00 | T-041 $($e.plan) → $($e.build) | 2 | 2 |"
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Post', '-Root', $p)
+Check 'C1 -Post com a Série parada: R24 falhou' $r 0 @('\| R24 \| falhou.*Série com 3 linha.*4 transi')
+
+# 2d. Registro sem → 🟨 (marcador não acompanhado) → R24 falhou.
+$p = Join-Path $tmp 'r24marcador'; New-Project $p; Close-T041 $p
+Remove-Line (Join-Path $p '.team-project/sprints/1/burndown.md') "| T-041 | $($e.plan) → $($e.build) | 2026-09-02 09:00 | dev |"
+Remove-Line (Join-Path $p '.team-project/sprints/1/burndown.md') "| 1 | 2026-09-02 09:00 | T-041 $($e.plan) → $($e.build) | 2 | 2 |"
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Post', '-Root', $p)
+Check 'C1 -Post sem → 🟨 no Registro: R24 falhou' $r 0 @('\| R24 \| falhou.*marcador não acompanhado')
 
 # 3. R12 pendentes → exit 1 (bloqueia).
 $p = Join-Path $tmp 'r12'; New-Project $p
