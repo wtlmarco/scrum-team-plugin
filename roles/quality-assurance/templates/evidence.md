@@ -37,11 +37,11 @@
 **Relatório do `operator`:** `.team-project/operator/<sprint>/<job>/report.md` (ou `report-<log>.md`) · log bruto, disco local, pode ter sido podado: `<arquivo>.log` — <n> linhas *(ou "n/a — comando leve, sem `operator`")*
 
 ### Execução delegada
-*(espelha a do veredito; "nenhuma" quando não houve chamada ao `operator`; sem número: "não disponível — <motivo>", nunca estimado)*
+*(espelha a do veredito — o índice dos jobs; "nenhuma" quando não houve chamada ao `operator`; os números o hook G16 mede)*
 
-| Operator job | Task/História | Modelo | Tokens | Duração |
-|---|---|---|---|---|
-| `.team-project/operator/<sprint\|pre-sprint>/<job>/` | | | | |
+| Operator job | Task/História |
+|---|---|
+| `.team-project/operator/<sprint\|pre-sprint>/<T-ID>[-<slug>]/` | <T-ID / H-ID> |
 
 ### Achados
 

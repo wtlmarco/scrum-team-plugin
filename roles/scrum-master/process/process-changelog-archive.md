@@ -8,6 +8,58 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.42 — Guardas por papel (fase 2): gate protegido, teste ignorado, `Agent` só ao `operator`, matriz de propriedade, escopo do dev e pasta do job — G5 · G6 · G7 · G8 · G9 · G11 (SM + Arquiteto) — 04/10/2026
+
+**Instrução** (stakeholder): "pode aplicar criando a branch a partir de develop" a `proposta-guards-fase2.md`, depois da sonda de 04/10/2026 num `/sm sprint plan` real. Decisões do formulário de 04/10/2026: **P1 — fase 2 inteira** (a recomendação era G7 + G9 + G6 primeiro) · **P2 — adiada:** a G8 entra com `ask` ao Arquiteto em código-fonte, decisão `ask` × `deny` + pedido registrado depois de 2 sprints de `guards.log` · versão-alvo v3.42.0, levando junto o addendum da v3.41 (previsto como v3.41.1).
+**Classificação:** instrumento (G5–G9, G11; C3 `ownership`) · formato de documento (`**Arquivos tocados:**` legível por script; `.active-task`) · propriedade de artefato (linha `.active-task`; `ownership.json` derivado da matriz) · fluxo (`sprint run` passos 3, 4, 8; `fix run` passo 2 e fechamento; `/dev`) · comportamento de agente (cards, `hooks/`, `scripts/`, `commands/dev.md`, guias: aplicados pela sessão). **Sem regra nova** (34): as guardas reforçam R4, R7, R8, R28 e a matriz — critério de entrada de regra mecânica (`review-contract.md`).
+**Papéis movidos (R17):** 2 — SM e Arquiteto → barreira de 10 240 B.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `artifact-ownership.md` | §1 | Linha nova **Escopo ativo do dev** (`.active-task`: dono SM, escritor a sessão); linha `hooks/` cita G5–G9/G11 e declara `hooks/ownership.json` **derivado** desta matriz (mudou a matriz, muda o JSON no mesmo ciclo — R12) |
+| `sprint-run.md` · `fix-run.md` | passos 3, 4, 8 · passo 2 e §Fechamento · "Como o SM verifica" | A sessão grava `.active-task` antes de disparar o dev e o apaga quando a Task/bloco sai dele; GAP que acrescenta arquivo entra na lista do plano; deny seguido de contorno é achado |
+| `working-rules.md` · `working-rules-index.md` | R4 · R7 · R8 · R28 · legenda | "Instrumento" ganha G9 (R4, R8), G5/G6 (R7), G7/G11 (R28); G8 = a matriz |
+| `deliverables/team-project/` | `README.md` · `guards.json` | Chaves `protectedPaths`, `sourceRoots`, `testSkipPatterns`; linha `.active-task` (não semeada) |
+| `roles/architect/templates/` | `implementation-plan.md` (regra 15, exemplo) · `fix-plan.md` | `**Arquivos tocados:**` = lista fechada, um caminho por linha entre crases; `- produção:`/`- teste:` também lidos pela G9 |
+| Sessão (stakeholder) | `hooks/` (`pre-tool.ps1`, `common.ps1`, `session-start.ps1`, `hooks.json` + `Agent`, `ownership.json`, `COVERAGE.md`) · `release.ps1` (C3 `ownership`) · suítes · `agents/` (dev, arquiteto, QA, UX, operator) · `commands/dev.md` · `team-update.md` (7e) · `how-to.md` · `README.md` · `plugin.json` · `CHANGELOG.md` | Aplicados pela sessão |
+
+### Por quê
+A sonda resolveu a dúvida que travava a fase 2: dentro do subagente o hook recebe `agent_type` = `team:<papel>`; na sessão principal, nada. Com isso o "papel X não faz Y" dos cards passa a valer mesmo quando o modelo esquece — inclusive o dev em Haiku, que é quem mais improvisa escopo. O filtro casa o sufixo (`(^|:)developer$`), como a G4 já fazia com o `operator`.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| Sessão / SM | grava e apaga `.active-task`; lê os deny no `guards.log` na retrospectiva |
+| Arquiteto | lista de arquivos do plano legível e completa (produção e teste); GAP que acrescenta arquivo entra nela; código-fonte só com o "sim" do stakeholder |
+| dev | barrado fora do plano, em gate e em teste ignorado — o caminho é 🔺 GAP |
+| Stakeholder | responde a pergunta da G8 quando o Arquiteto vai escrever código; ajusta `protectedPaths`/`sourceRoots` do projeto |
+
+### Conflitos com o processo vigente
+- **R25** (sem pergunta ao stakeholder durante o `run`): o `ask` da G8 é uma pergunta. Só dispara se o Arquiteto escrever código — fora do papel dele no `run` —, e a P2 o revisa com dados. Registrado, não resolvido.
+- **Matriz × JSON:** duas fontes possíveis. Resolvido: a matriz é a fonte, o JSON cita linha e dono, o C3 reprova a divergência.
+
+### Como saberemos que funcionou
+Em 2 sprints: zero arquivo fora do plano no diff de Task fechada (R4) e de Correção fechada (C4 item 5); zero teste ignorado introduzido pelo dev; `guards.log` sem linha `erro`; falso positivo ≤ 1 por guarda; contagem dos `ask` da G8 para decidir a P2.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Sonda (entrada) | linhas `probe` do `guards.log` de um projeto, `/sm sprint plan` de 04/10/2026 | `agent_type=team:product-owner` · `team:architect` · `team:user-experience` · `team:quality-assurance` · `team:scrum-master`; sessão `agent_type=(ausente)`; `script_ms` 144–393 | ✅ |
+| Teste | `run-guard-tests.ps1` | `51 casos · 0 falharam` (30 novos: G5–G9, G11, G8 no repositório-fonte, projeto sem o time) | ✅ |
+| Teste | `run-check-tests.ps1` | `20 casos · 0 falharam` (1 novo: `ownership.json` com dono divergente → exit 1) | ✅ |
+| Arquivamento | `Contains` ordinal do bloco `## v3.39` no arquivo, depois de sair do vivo | True (7 506 B); índice com a linha `v3.39`; 3 entradas vivas (v3.42, v3.41, v3.40) | ✅ |
+| Carga fixa (caracteres, `git show HEAD:` → arquivo) | cards | `developer` 3 896 → 3 960 · `architect` 5 316 → 5 278 · `quality-assurance` 6 534 → 6 437 · `user-experience` 5 469 → 5 474 · `operator` 5 941 → 5 990 · `commands/dev.md` 2 083 → 2 313 | medida |
+| Release (R17 · R18 · ownership) | `powershell -NoProfile -File scripts/checks/release.ps1` (depois de gravar a v3.42) | R18 ok: plugin.json = CHANGELOG = README L3 = v3.42.0; processo 3.42, 3.41, 3.40 com entrega · R17 ok: bloco v3.42 ≤ barreira 10240 (2 papéis); 3 entradas vivas · ps1-5.1 ok: 11 scripts com BOM · ownership ok: 50 regras batem com linha e dono de §1, 7 com nota · órfãos ok: 45 modelos · exit 0 | ✅ |
+**Não exercitado:** disparo real de cada guarda numa sessão com o plugin atualizado (só os testes, que entregam ao despachante o JSON do harness); `team:developer` e `team:operator` literais (deduzidos); o `ask` da G8 dentro de subagente no harness real.
+
+### Pendente do stakeholder
+Atualizar o plugin e **reiniciar a sessão**; `/team update` (passo 7e) em cada projeto; ligar a sonda no primeiro `sprint run` para confirmar `team:developer`/`team:operator`. Remover `proposta-guards-fase2.md` depois do aceite desta entrada (a fase 3, G12, segue registrada em `hooks/COVERAGE.md`).
+
+---
+
+---
+
 ## v3.41 — R34: contato remoto por Remote Control — identidade do projeto, pendência em disco, fim do `sprint run` em formulário de autorização da Review e protótipo publicável como artifact (SM + UX) — 03/10/2026
 
 **Instrução** (stakeholder, `/review`): "finalizamos os testes do `proposta-remote.md`, podemos rodar o review e aplicá-lo". Decisões D1–D6 da proposta (Remote Control; ① e ③ respondíveis no celular com a navegação **declarada**; Identificador remoto; fim do `run` em formulário; artifact privado pela conta do celular; conta por projeto) e as do formulário de 03/10/2026: **G3 estendida** (prefixo + pendência em §7) · pendência = **item numerado em §7**, sem rótulo "Aguarda stakeholder" · **fim do `fix run` sem formulário** (R33 intacta) · ficha do ① na opção A · protótipo num `index.html` único (ratificado).

@@ -59,6 +59,9 @@ segue para o passo seguinte. Vale igualmente para versão fora da faixa aceita. 
 regra de parada:** ela diz o que aceitar, não o que fazer quando a ferramenta não existe.
 
 ## 4. Passos, em ordem de execução
+*(Plano com mais de 8 arquivos: os passos ficam dentro de `### Bloco <k> — <título>`, cada um aberto por
+`**Arquivos do bloco:**`, `**Depende de:**` e `**Pronto do bloco:**` — regra 2. Até 8 arquivos: passos direto.)*
+
 ### Passo 1 — <título>
 - **Arquivo:** <caminho completo>
 - **Anel:** domínio | aplicação | adaptador/infraestrutura | borda
@@ -113,13 +116,13 @@ comando de cobertura, isso é gap de configuração e entra na seção 9, não v
 - **Regra aplicável:** `${CLAUDE_PLUGIN_ROOT}/standards/implementation-security-lgpd-copyright.md` §<n>
 
 ## 11. Execução delegada (registro do Arquiteto — não é passo; o dev não executa nada daqui)
-*(uma linha por chamada minha ao `operator` para este plano — tipicamente a medição da seção 3 —, com os
-números que a chamada devolveu ao terminar. Sem número: "não disponível — <motivo>", nunca estimado (R7).
-Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que disparou o `/arc` transcreve.)*
+*(uma linha por chamada minha ao `operator` para este plano — tipicamente a medição da seção 3. É o
+**índice dos jobs** que o C1 confere (R28); tokens e duração o hook G16 mede no transcript do `operator`
+e o `consumption.ps1` grava — não copio número. Sem chamada: "nenhuma".)*
 
-| Operator job | Task/História | Modelo | Tokens | Duração |
-|---|---|---|---|---|
-| `.team-project/operator/<sprint\|pre-sprint>/<job>/` *(+ ` — <log>` se houver mais de uma chamada na mesma pasta)* | <T-ID / H-ID> | <`model:` de `agents/operator.md`> | <n ou "não disponível — motivo"> | <tempo ou "não disponível — motivo"> |
+| Operator job | Task/História |
+|---|---|
+| `.team-project/operator/<sprint\|pre-sprint>/<T-ID>[-<slug>]/` *(+ ` — <log>` se houver mais de uma chamada na mesma pasta)* | <T-ID / H-ID> |
 
 ## 12. Arquivos protegidos — a sessão aplica antes do dev *(só quando o cabeçalho diz "ver §12")*
 *(Arquivo de `guards.json` → `protectedPaths` que a Task precisa mudar. A G5 o nega a todo subagente —
@@ -139,7 +142,7 @@ passo 3, com a permissão do stakeholder. Não entra em `**Arquivos tocados:**`.
 ## Regras do formato
 
 1. **Sequência linear** quando o time tem um único dev; sem faixas paralelas.
-2. **Cabe em uma unidade de trabalho** — acima de ~10 passos ou duas áreas do sistema, quebrar em `<T-ID>a`/`<T-ID>b`, **sempre dentro da mesma História** (R2 · R20).
+2. **Cabe em uma unidade de trabalho** — acima de ~10 passos ou duas áreas do sistema, quebrar em `<T-ID>a`/`<T-ID>b`, **sempre dentro da mesma História** (R2 · R20). **Blocos (v3.45): acima de 8 arquivos em `**Arquivos tocados:**` (produção + teste), os passos se dividem em `### Bloco <k> — <título>`**, cada um com até 8 arquivos e três linhas antes dos passos: `**Arquivos do bloco:**` (subconjunto da lista do cabeçalho, entre crases — a G9 continua lendo só o cabeçalho), `**Depende de:** bloco <j> | nenhum` e `**Pronto do bloco:** <comando focado> → exit 0 · <n> teste(s) passando` (o critério objetivo com que o dev para e a sessão segue). Cada bloco deixa o repositório compilando. O dev recebe **um bloco por instância** ([`sprint-run.md`](../../scrum-master/process/sprint-run.md) passo 3): bloco grande esgota o contexto do dev, que para no meio e relata como pronto (sprint 1 do projeto-piloto: 32 arquivos, quatro instâncias, duas paradas no meio; com blocos de até ~8, nenhuma).
 3. **Ordem preserva o repositório íntegro** no maior número de pontos intermediários.
 4. **Uma migration de banco por Task** — Tasks que dependem da mesma migration viram uma Task só.
 5. **Nomes exatamente como na especificação** — grafia é contrato.
@@ -151,7 +154,7 @@ passo 3, com a permissão do stakeholder. Não entra em `**Arquivos tocados:**`.
 11. **Ambiente medido antes dos passos** (R26). A seção 3 sai preenchida com comando e saída real — **minha ou do `operator`, com código de saída, versões e o ponteiro do `report` do job (R28)**, nunca veredito `inconclusivo`: nenhum passo cita comando que eu não vi existir na versão medida, e a parada incondicional cobre **ausência** do pré-requisito, não só versão fora da faixa. Faixa de versão sozinha não é regra de parada. Plano sem a seção 3 não entra em construção.
 12. **Task retomada de outro sprint ganha plano novo, aqui, com a linha `Retomada de:`** — o plano antigo vive em `sprints/<n-1>/plan/` e é **registro fechado: não se edita, não se copia, não se reaproveita por referência**. O plano novo declara o que já foi feito (a partir do "Parei no passo" do relatório do dev) e **reconfere no código real** as assinaturas dos passos restantes: o repositório mudou no intervalo, e passo executado sobre premissa velha é a causa nº 1 de 🔺 GAP ([`../skills.md`](../skills.md) §1 · R3 · R5).
 13. **Todo passo é conferível pelo QA sem julgamento de desenho** — é deste plano que sai a tabela passo × conforme da frente 2 ([`workflow.md` §4a](../../scrum-master/process/workflow.md)). A linha **Conferência** diz o que se observa no código (arquivo, assinatura, nomenclatura, registro de infra, teste); a seção de standard citada no passo diz contra o quê. Passo que o QA não consegue marcar conforme/divergente sem decidir é defeito do plano e volta ao Arquiteto (🔺 GAP → `/arc question`); divergência de execução volta ao dev (`/dev resume`).
-14. **Seção 11 sempre presente — é o controle da delegação** (R28). Todo job citado na seção 3 tem linha na seção 11, e toda chamada que fiz ao `operator` para este plano também — inclusive uma remedição posterior, que **acrescenta** linha. O número de linhas é o número de chamadas ("nenhuma" quando zero), sem célula de número em branco. A minha resposta ao `/arc` repete as mesmas linhas, para a sessão transcrever em `consumption.md`; o plano é o registro que o SM confere depois. Plano retomado (regra 12) lista só as chamadas feitas para o plano novo. A frente 2 do QA não confere a seção 11: ela não é passo.
+14. **Seção 11 sempre presente — é o controle da delegação** (R28). Todo job citado na seção 3 tem linha na seção 11, e toda chamada que fiz ao `operator` para este plano também — inclusive uma remedição posterior, que **acrescenta** linha. O número de linhas é o número de chamadas ("nenhuma" quando zero). O C1 lê os jobs daqui para contar os `report*.md` da Task; os números vêm do hook G16, não desta seção. Plano retomado (regra 12) lista só as chamadas feitas para o plano novo. A frente 2 do QA não confere a seção 11: ela não é passo.
 15. **`**Arquivos tocados:**` é lido por script — a guarda G9 nega ao dev todo arquivo de produto fora dela** (R4 · R8). Lista **fechada e completa** — produção **e** teste, inclusive arquivo novo —, um caminho por linha, **entre crases**, relativo à raiz do repositório, com `/`; as linhas seguem o rótulo sem linha em branco no meio (a linha em branco encerra a lista). Nada de diretório, curinga nem "e afins". Arquivo que um 🔺 GAP acrescentar entra **aqui**, além do passo — senão o dev é barrado ao retomar. Rótulo com outra grafia não é lido. **Todo arquivo de produção da lista leva o seu arquivo de teste na lista** — o que a seção 6 prevê, e também o teste existente que o passo altera; arquivo de produção sem teste só com a linha `sem teste: <arquivo> — <motivo>` na seção 6 (teste esquecido na lista vira negação da G9 no meio da Task).
 16. **Arquivo de gate protegido não é do dev nem meu** — `guards.json` → `protectedPaths` (`.editorconfig`, CI, hooks de pre-commit…): a G5 o nega a todo subagente. Se a Task precisa mudá-lo, ele vai em `**Arquivos protegidos:** ver §12`, com o diff exato na seção 12, **separado por linha em branco** de `**Arquivos tocados:**` (senão a G9 o leria como do dev); a sessão aplica antes de disparar o dev ([`sprint-run.md`](../../scrum-master/process/sprint-run.md) passo 3). Sem arquivo protegido: `**Arquivos protegidos:** nenhum`. Descobrir no meio da Task que precisa mudar um é 🔺 GAP: o plano ganha a seção 12 e a sessão aplica antes de retomar o dev.
 
@@ -212,7 +215,7 @@ sem teste: `Api/appsettings.json`, `infra/.env.Development` — configuração; 
 - Se `UrlSigner` já compuser a mensagem de forma diferente da descrita no passo 2.
 
 ## 11. Execução delegada
-| Operator job | Task/História | Modelo | Tokens | Duração |
-|---|---|---|---|---|
-| `.team-project/operator/<sprint>/<job>/` | T-042 | haiku | 8.310 | não disponível — a chamada terminou sem devolver a duração |
+| Operator job | Task/História |
+|---|---|
+| `.team-project/operator/<sprint>/T-042-ambiente/` | T-042 |
 ```

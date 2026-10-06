@@ -16,16 +16,15 @@ Salvo em `.team-project/architect/spikes/<ID>-<slug>.md` — **fora** da pasta d
 ## Etapa <n+1> — …
 
 ## Execução delegada
-*(uma linha por chamada ao `operator` neste spike, acrescentada na mesma gravação da etapa que a usou, com os
-números que a chamada devolveu ao terminar. Sem número: "não disponível — <motivo>", nunca estimado (R7).
-Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que me disparou transcreve.)*
+*(uma linha por chamada ao `operator` neste spike, acrescentada na mesma gravação da etapa que a usou, como índice do job.
+Tokens e duração o hook G16 mede (v3.45). Sem chamada: "nenhuma". Não gravo em `consumption.md`.)*
 
-| Operator job | Task/História | Modelo | Tokens | Duração |
-|---|---|---|---|---|
-| `.team-project/operator/<sprint\|pre-sprint>/<job>/` *(+ ` — <log>` se houver mais de uma chamada na mesma pasta)* | <T-ID / H-ID> | <`model:` de `agents/operator.md`> | <n ou "não disponível — motivo"> | <tempo ou "não disponível — motivo"> |
+| Operator job | Task/História |
+|---|---|
+| `.team-project/operator/<sprint\|pre-sprint>/<T-ID>[-<slug>]/` *(+ ` — <log>` se houver mais de uma chamada na mesma pasta)* | <T-ID / H-ID> |
 ```
 
 ## Regras
 
 - **Checkpoint sem "Próxima etapa" não serve para retomar** (§12). Etapa sem desfecho — concluída com saída real, ou inconclusiva com o erro do provedor — é etapa não relatada (§11).
-- **Toda linha de Log que aponta para `.team-project/operator/` tem linha em "Execução delegada"**, e vice-versa: o número de linhas da seção é o número de chamadas ao `operator` do spike ("nenhuma" quando zero), sem célula de número em branco. A minha resposta repete as linhas da gravação corrente, para a sessão transcrever em `consumption.md`; o checkpoint é o registro que o SM confere depois (R28).
+- **Toda linha de Log que aponta para `.team-project/operator/` tem linha em "Execução delegada"**, e vice-versa: o número de linhas da seção é o número de chamadas ao `operator` do spike ("nenhuma" quando zero). Os números vêm do hook G16; o checkpoint é o índice que o SM confere (R28).

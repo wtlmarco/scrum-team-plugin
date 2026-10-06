@@ -7,6 +7,7 @@ Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere c
 
 **Plano:** `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md`
 **Passos concluídos:** <n> de <m>
+**Bloco:** <k> de <m> · **Pronto do bloco:** `<comando>` → exit <n> · <contagem> *(plano sem blocos: omitir a linha)*
 
 ### Arquivos
 **CRIADOS**
@@ -39,11 +40,11 @@ Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere c
 ```
 
 ### Execução delegada
-*(uma linha por chamada ao `operator`, com os números que a chamada devolveu ao terminar. Sem número: "não disponível — <motivo>", nunca estimado (R7). Sem chamada: "nenhuma". Não gravo em `consumption.md` — a sessão que disparou o `/dev` transcreve.)*
+*(uma linha por chamada ao `operator` — o índice dos jobs (R28). Tokens e duração o hook G16 mede; não copio número nem gravo em `consumption.md`. Sem chamada: "nenhuma".)*
 
-| Operator job | Task/História | Modelo | Tokens | Duração |
-|---|---|---|---|---|
-| `.team-project/operator/<sprint\|pre-sprint>/<job>/` — `<log>` | <T-ID / H-ID> | <`model:` de `agents/operator.md`> | <n ou "não disponível — motivo"> | <tempo ou "não disponível — motivo"> |
+| Operator job | Task/História |
+|---|---|
+| `.team-project/operator/<sprint\|pre-sprint>/<T-ID>[-<slug>]/` — `<log>` | <T-ID / H-ID> |
 
 ### Gaps levantados
 <🔺 GAP … ou "nenhum". Marcar o tipo de cada um — `plano` ou `standard`>
@@ -60,7 +61,7 @@ Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere c
 - **Saída real, sempre — em trecho e ponteiro** (R7 · R28). "Build ok" sem saída não conta; log inteiro colado também não, e só o caminho do arquivo muito menos. Cada comando entra com **código de saída**, **trecho decisivo literal** e **ponteiro do `report` do job** — `report.md`, ou `report-<log>.md` quando há mais de uma chamada na pasta (R28). `report` ausente é entrega sem evidência (R7); o **build de fim de passo**, meu, é **isento de `report`** e entra com o caminho do log. Log podado não é achado. Trecho sem ponteiro impede o QA de auditar e o PO de conferir na Review. Se falhou, mostrar a falha. O que recortar de cada tipo de comando está em [`../skills.md`](../skills.md) §6. O log em `.team-project/operator/<sprint>/<T-ID>/` é **registro de execução, não entrega**: não entra em CRIADOS/ALTERADOS/REMOVIDOS.
 - **Gate de qualidade não some do relatório.** Gate desligado, afrouxado, removido do build, trocado por outro comando, contornado por configuração ou **não exercitado** aparece aqui como 🔺 GAP **e** na seção Verificação, com o motivo — e a entrega não se declara concluída nessa condição (R7 · R23). Nenhum dos dois estados se resolve no relatório: os dois sobem ao Arquiteto.
 - **Cobertura é saída, não alegação.** Toda Task que altera código de produção — **inclusive front-end** — traz a saída do gate de 80% da unidade que tocou, na mesma forma das demais: trecho (pior módulo × limiar) **e** ponteiro. Sem ela, o QA trata como não verificado (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.4/§5.5).
-- **Execução delegada é retratada, não gravada.** Cada chamada ao `operator` vira uma linha, com os números que a própria chamada devolveu — o que permite ver, por Task, o meu consumo × o do `operator`. Número que não voltou é "não disponível — <motivo>", nunca estimado (R7); o build de fim de passo que rodei eu mesmo (skills §6) não entra, porque não foi chamada ao `operator`. Quem grava em `consumption.md` é a sessão que me disparou, não eu.
+- **Execução delegada é índice, não número.** Cada chamada ao `operator` vira uma linha com o job e a Task — é o que o QA e o C1 usam para achar o `report`. Tokens, duração e modelo o hook G16 mede no transcript do `operator` (v3.45); eu não copio número. O build de fim de passo que rodei eu mesmo (skills §6) não entra, porque não foi chamada ao `operator`.
 - **Grupo vazio é declarado**, não omitido — evita ambiguidade na hora do QA.
 - **GAP de tipo `standard` fica no relatório mesmo depois de respondido** (R16). A decisão do Arquiteto desbloqueia a Task; o defeito no documento só se fecha no `/review` seguinte, e o relatório é a trilha que garante que ele chegue lá. Citar `<arquivo do standard> §<n>`.
 - **Nenhum arquivo de `${CLAUDE_PLUGIN_ROOT}/standards/` aparece em CRIADOS/ALTERADOS/REMOVIDOS.** O dev consome o normativo, não o edita — a caneta é do Arquiteto (R16).
@@ -142,10 +143,10 @@ Regras da variante, além das de cima:
 | `<gate de cobertura>` | 0 | `pior módulo 84,2% ≥ 80% — gate ok` | `.team-project/operator/3/ABC-02/report-coverage.md` |
 
 ### Execução delegada
-| Operator job | Task/História | Modelo | Tokens | Duração |
-|---|---|---|---|---|
-| `.team-project/operator/3/ABC-02/` — `test.log` | ABC-02 | haiku | 21.480 | 3 min 12 s |
-| `.team-project/operator/3/ABC-02/` — `coverage.log` | ABC-02 | haiku | 9.905 | não disponível — a chamada terminou sem devolver a duração |
+| Operator job | Task/História |
+|---|---|
+| `.team-project/operator/3/ABC-02/` — `test.log` | ABC-02 |
+| `.team-project/operator/3/ABC-02/` — `coverage.log` | ABC-02 |
 
 *(o `build.log` não aparece aqui: foi o build de fim de passo, rodado por mim com a saída redirecionada — não foi chamada ao `operator`, e por isso o build é isento de `report`.)*
 
