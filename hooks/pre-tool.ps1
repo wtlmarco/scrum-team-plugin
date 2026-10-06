@@ -112,8 +112,16 @@ function Get-WriteTargets([string]$Cmd) {
             $targets += ($rm.Groups[1].Value + $rm.Groups[2].Value + $rm.Groups[3].Value)
         }
     }
-    return @($targets | Where-Object { $_ -and $_ -notmatch '^\$' -and $_ -notmatch '\$\(' })
+    # v3.44.2: texto com caractere inválido em caminho ("List<T>", "<td>" de uma string) não é arquivo — antes derrubava
+    # o IsPathRooted do .NET Framework e o hook falhava aberto sem avaliar G5/G8/G9 (linha "erro" no guards.log).
+    $bad = [regex]::Escape(-join [System.IO.Path]::GetInvalidPathChars())
+    return @($targets | Where-Object { $_ -and $_ -notmatch '^\$' -and $_ -notmatch '\$\(' -and $_ -notmatch "[$bad]" })
 }
+
+# Alvo num drive do PowerShell que não é de arquivo (Env:, Variable:, HKCU:, Cert:…; letra única = disco): não é arquivo do projeto.
+function Test-ProviderDrive([string]$Target) { return $Target -match '^[A-Za-z][\w]+:' }
+# Drives da própria sessão: escrever neles não sai do processo (G14 libera).
+function Test-SessionDrive([string]$Target) { return $Target -match '^(?i)(env|variable|function|alias):' }
 
 # G5 — arquivo de gate (guards.json → protectedPaths): nenhum subagente altera; a sessão segue o pedido de permissão do harness.
 function Test-G5([string]$Rel, [string]$Shown) {
@@ -248,6 +256,7 @@ function Test-RunTargets([string]$Seg) {
     if ($targets.Count -eq 0) { return $false }                       # destino em variável: não se resolve
     $base = if ($script:hookInput.cwd) { [string]$script:hookInput.cwd } else { $script:projectDir }
     foreach ($t in $targets) {
+        if (Test-ProviderDrive $t) { if (Test-SessionDrive $t) { continue } else { return $false } }
         $full = if ([System.IO.Path]::IsPathRooted($t)) { $t } else { Join-Path $base $t }
         if (-not (Get-RelativePath $script:projectDir $full) -and -not (Test-UnderTemp $full)) { return $false }
     }
@@ -323,6 +332,7 @@ try {
             if ($phase2) {
                 $base = if ($script:hookInput.cwd) { [string]$script:hookInput.cwd } else { $script:projectDir }
                 foreach ($t in (Get-WriteTargets ([string]$ti.command))) {
+                    if (Test-ProviderDrive $t) { continue }                        # Env:X, HKCU:… — não é arquivo (G9 negava Env:)
                     $full = if ([System.IO.Path]::IsPathRooted($t)) { $t } else { Join-Path $base $t }
                     $rel = Get-RelativePath $script:projectDir $full
                     $isLog = $t -match '(?i)\.log$'                                # log redirecionado (R28) não é produto
