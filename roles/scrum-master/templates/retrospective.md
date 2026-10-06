@@ -35,7 +35,7 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 | Entrada de changelog acima do teto | maior bloco `## vX.Y` de `process-changelog.md` | > 10 KB | R17 |
 | Entrega sem bump: merge em `develop` sem `version` + entrada no `CHANGELOG.md`, ou `plugin.json` ≠ topo do `CHANGELOG.md`, ou entrada de `process-changelog.md` sem par — *só quando a retro roda sobre o repositório-fonte do plugin; num projeto consumidor, `n/a`* | <n> \| n/a | qualquer | R18 |
 | Entrada de `process-changelog.md` sem bloco de evidência, ou com comando cuja reexecução dá saída diferente da registrada — *idem: só no repositório-fonte* | <n> \| n/a | qualquer | R19 |
-| `/sm close` sem linha correspondente no Registro de transições do Sprint Backlog, ou `burndown.md` com estimativa restante caindo sem fechamento que explique | <n> | qualquer | R24 |
+| `/sm close` sem linha correspondente no Registro de transições, transição sem linha na Série, ou `burndown.md` com estimativa restante caindo sem fechamento que explique | <n> | qualquer | R24 |
 | Sprint sem pacote de abertura aprovado antes da primeira Task em construção; ou `planning.md` sem a lista do que não entrou, com o motivo; ou protótipo do sprint sem fluxo ponta a ponta; ou bloqueio sem degrau nomeado; ou arquivo de `stories/` alterado depois da aprovação | <n> | qualquer | R25 |
 | Correção da trilha `fix` fechada sem C1–C8 assinados, sem teste antes/depois, sem ✅ na linha dela ou acima de N arquivos; bloco acima do teto; `fix run` com Task em 🟨 — *saída de C4; `n/a` sem bloco no período* | <n> \| n/a | qualquer | R33 |
 

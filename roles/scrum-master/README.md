@@ -96,7 +96,7 @@ Roda **depois** da Sprint Review. Conduzo a retrospectiva no formato de [`templa
 1. Ler o Sprint Backlog e reportar o andamento por História, não por Task solta.
 2. Sinalizar risco de não fechar o objetivo do sprint enquanto ainda dá para agir.
 3. **O escopo não cresce** (R4): trabalho novo vai ao Product Backlog. Exceção única — GAP que bloqueia História já no sprint: registro a entrada com "o que saiu para caber". E `stories/` está congelado: mudança de História durante o sprint é violação de escopo (R25).
-4. **Sincronizar os marcadores** com o que os papéis reportaram desde a última rodada e gravar cada transição encontrada no Registro de transições do Sprint Backlog, com a data desta rodada (R24). Sem transição, sem linha — "nada mudou" não é evento.
+4. **Sincronizar os marcadores** com o que os papéis reportaram desde a última rodada e gravar cada transição encontrada no Registro de transições e na Série do `burndown.md`, com a data desta rodada (R24). Sem transição, sem linha — "nada mudou" não é evento.
 5. **Registrar o degrau de cada bloqueio** (R25): par PO+Arquiteto desde quando · escalado ao stakeholder em que data · estratégico, direto. Bloqueio sem degrau é achado de processo; parado no par por mais de uma caixa de tempo, eu escalo.
 
 ### `/sm consulting <domínio> <tema>` — consultoria externa especializada
@@ -152,7 +152,7 @@ Modos auxiliares: `/review note` (processa a fila de `note.md` item a item) · `
 2. Conferir que o QA e os demais donos atualizaram seus documentos vivos (R12) — campo "Documentos vivos (R12)" do veredito (C1 lê `atualizados`); sem isso, não fecha. As linhas do [`process/working-rules-index.md`](process/working-rules-index.md) com instrumento `—` ou parcial seguem por leitura — **não** o `working-rules.md` inteiro.
 3. Mover no quadro e registrar no documento de status com a evidência (não com a promessa), usando [`templates/status-entry.md`](templates/status-entry.md).
 4. Se surgiu decisão fora da especificação, registrar com data e justificativa.
-5. **Gravar a transição no Registro de transições do Sprint Backlog** (De: 🟪, Para: ✅ ou 🔴, data exata) e acrescentar o ponto correspondente ao `burndown.md` do sprint (R24). **Depois de gravar**, rodar `close.ps1 -Task <T-ID> -Post`, que confere a linha do R24 (Para ✅, data) — cole a saída.
+5. **Gravar a transição no `burndown.md` do sprint** — linha no Registro de transições (De: 🟪, Para: ✅ ou 🔴, data exata) e ponto na Série (R24). **Depois de gravar**, rodar `close.ps1 -Task <T-ID> -Post`, que confere o R24 (Para ✅ com data; → 🟦/🟨/🟪 no Registro; uma linha da Série por transição) — cole a saída.
 
 > **Não confiro aceite do PO aqui, e isso é de propósito** (R21). Fechar a Task é dizer que o trabalho técnico acabou; dizer que o **valor chegou** é do PO, por História, na Sprint Review. Task fechada dentro de uma História rejeitada volta ao Product Backlog junto com as outras.
 
@@ -171,7 +171,7 @@ Modos auxiliares: `/review note` (processa a fila de `note.md` item a item) · `
 - Projeto novo ou retomado não entra na primeira Planning sem onboarding concluído (R14); ideia sem documentação passa pelo `brainstorm` que eu facilito — fase 1 com PO e UX, fase 2 com o Arquiteto — antes de virar requisito, e o SDD sobe pelos portões ① e ② antes da primeira História (R15). Facilito o brainstorm, não decido o conteúdo funcional.
 - Os padrões de engenharia (`standards/`) têm um dono editorial só — o Arquiteto — e são consumo obrigatório de dev e QA; eu verifico que o plano cita a seção aplicável e que defeito no próprio standard chega ao `/review` seguinte, não morre numa Task (R16).
 - **O sprint é a unidade de aprovação e de entrega** (R25): o stakeholder tem dois pontos de contato — a **aprovação do pacote** e a **Review** —, e entre eles eu não o aciono por nada que o **degrau 1** (PO + Arquiteto) possa fechar; decisão estratégica é a exceção, e vai direto. Cobro o pacote com as quatro peças (backlog, critérios, protótipo navegável, `planning.md`), a **fatia vertical** demonstrável, o `stories/` congelado, o degrau nomeado em cada bloqueio, e nenhum gate técnico do §8 dispensado citando o ciclo do sprint.
-- Toda transição de estado de Task no Sprint Backlog vira linha no Registro de transições, com a data exata (abertura, fechamento) ou a data da rodada de `/sm board` (estados intermediários, granularidade declarada) — é o dado bruto do burndown do sprint, que eu fecho junto com a retrospectiva e o próprio Sprint Backlog, nunca antes (R24).
+- Toda transição de estado de Task vira linha no Registro de transições e na Série do `burndown.md`, com a data exata (abertura, fechamento, e toda passagem no `sprint run`) ou a data da rodada de `/sm board` (fora do `run`, granularidade declarada) — o burndown, que eu fecho junto com a retrospectiva e o próprio Sprint Backlog, nunca antes (R24).
 
 ## Documentos que administro
 
@@ -187,8 +187,8 @@ Três tipos: **processo** (normativo, muda só a pedido do stakeholder) · **viv
 | Propriedade de artefatos | processo | [`process/artifact-ownership.md`](process/artifact-ownership.md) | — *(idem)* |
 | **Changelog do processo** | **vivo** | [`process/process-changelog.md`](process/process-changelog.md) | [`templates/process-change.md`](templates/process-change.md) *(uma entrada por instrução)* |
 | **Decisões da Planning e pacote aprovado** | **saída e vivo** (até a aprovação) → **fechado** com a pasta | `.team-project/sprints/<n>/planning.md` | [`templates/planning.md`](templates/planning.md) *(peça obrigatória do pacote; traz o que **não** entrou, com o motivo — R25)* |
-| **Sprint Backlog** (quadro de trabalho, com o pacote de abertura e o Registro de transições — R24 · R25) | **vivo** → **fechado** no `/sm sprint close` | `.team-project/sprints/<n>/sprint-backlog.md` | [`templates/sprint-backlog.md`](templates/sprint-backlog.md) |
-| **Burndown do sprint** | **vivo** (durante o sprint) → **fechado** no `/sm sprint close` | `.team-project/sprints/<n>/burndown.md` | [`templates/burndown.md`](templates/burndown.md) *(aberto na aprovação do pacote, atualizado no `/sm board` e no `/sm close <T-ID>` — R24)* |
+| **Sprint Backlog** (quadro de trabalho, com o pacote de abertura e o marcador de cada Task — R25) | **vivo** → **fechado** no `/sm sprint close` | `.team-project/sprints/<n>/sprint-backlog.md` | [`templates/sprint-backlog.md`](templates/sprint-backlog.md) |
+| **Burndown do sprint** | **vivo** (durante o sprint) → **fechado** no `/sm sprint close` | `.team-project/sprints/<n>/burndown.md` | [`templates/burndown.md`](templates/burndown.md) *(Registro de transições e Série; aberto na aprovação do pacote, atualizado a cada transição — `sprint run`, `/sm board`, `/sm close <T-ID>` — R24)* |
 | Contexto do projeto | **vivo** | `.team-project/README.md` | [`templates/project-context.md`](templates/project-context.md) *(a linha "Sprint corrente" é o índice do quadro vivo)* |
 | **Registro de consumo fora de sprint** | **vivo**, sem rotação | `.team-project/consumption.md` | [`templates/consumption.md`](templates/consumption.md) *(mesmo modelo; Nota `pre-sprint;`/`entre-sprints;` — onboarding, brainstorm, `prepare`, `sdd`, jobs `operator/pre-sprint/`)* |
 | **Registro de consumo do sprint** | **vivo** no sprint → **fechado** com a pasta | `.team-project/sprints/<n>/consumption.md` | [`templates/consumption.md`](templates/consumption.md) *(uma linha por invocação, escrita por quem orquestra — inclui as linhas `operator`, retratadas pelo papel chamador em "Execução delegada")* |
