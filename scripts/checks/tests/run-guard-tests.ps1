@@ -228,6 +228,24 @@ $cases = @(
     @{ Name = 'G15 pedido de permissão vai ao guards.log'; Script = 'notification.ps1'; Expect = 0
        Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw -Encoding UTF8) -like '*G15*run ativo: sprint 1*precisa de permissão*' }
        Payload = @{ hook_event_name = 'Notification'; notification_type = 'permission_prompt'; message = 'Claude precisa de permissão para usar PowerShell' } },
+    @{ Name = 'G16 rodada do subagente vai ao usage.jsonl (dedup por message.id, Task do prompt, filho)'; Script = 'subagent-stop.ps1'; Expect = 0
+       Setup = { $sd = Join-Path $tmp 'transcripts/sess1/subagents'; New-Item -ItemType Directory -Force $sd | Out-Null
+                 Set-Content -LiteralPath (Join-Path $tmp 'transcripts/sess1.jsonl') '{}' -Encoding UTF8
+                 $u1 = '{"type":"assistant","timestamp":"2026-10-06T10:00:00Z","message":{"id":"m1","model":"claude-haiku-4-5","usage":{"input_tokens":10,"cache_creation_input_tokens":1000,"cache_read_input_tokens":0,"output_tokens":1}}}'
+                 $u1b = '{"type":"assistant","timestamp":"2026-10-06T10:00:05Z","message":{"id":"m1","model":"claude-haiku-4-5","usage":{"input_tokens":10,"cache_creation_input_tokens":1000,"cache_read_input_tokens":0,"output_tokens":50}}}'
+                 $u2 = '{"type":"assistant","timestamp":"2026-10-06T10:02:00Z","message":{"id":"m2","model":"claude-haiku-4-5","usage":{"input_tokens":5,"cache_creation_input_tokens":200,"cache_read_input_tokens":1000,"output_tokens":20}}}'
+                 $p1 = '{"type":"user","timestamp":"2026-10-06T09:59:59Z","message":{"role":"user","content":"Execute o plano da T-007, bloco 1"}}'
+                 $tr = '{"type":"user","message":{"content":[{"type":"tool_result","content":[{"type":"text","text":"Async agent launched successfully.\nagentId: fedcba9876 (internal ID)"}]}]}}'
+                 [System.IO.File]::WriteAllLines((Join-Path $sd 'agent-abc1234567.jsonl'), [string[]]@($p1, $u1, $u1b, $tr, $u2), (New-Object System.Text.UTF8Encoding($false))) }
+       Check = { $l = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8); $l.Count -eq 1 -and $l[0] -match '"role":"developer".*"round":1.*"work":"T-007".*"calls":2.*"processed":2285.*"final_context":1225.*"children":\["fedcba9876"\]' }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'abc1234567'; agent_type = 'team:developer'; transcript_path = (Join-Path $tmp 'transcripts/sess1.jsonl') } },
+    @{ Name = 'G16 parada sem chamada nova não duplica'; Script = 'subagent-stop.ps1'; Expect = 0
+       Check = { @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl')).Count -eq 1 }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'abc1234567'; agent_type = 'team:developer'; transcript_path = (Join-Path $tmp 'transcripts/sess1.jsonl') } },
+    @{ Name = 'G16 retomada por SendMessage vira rodada 2 com o delta'; Script = 'subagent-stop.ps1'; Expect = 0
+       Setup = { Add-Content -LiteralPath (Join-Path $tmp 'transcripts/sess1/subagents/agent-abc1234567.jsonl') @('{"type":"user","timestamp":"2026-10-06T11:00:00Z","message":{"role":"user","content":"Resposta do GAP da T-007: siga"}}', '{"type":"assistant","timestamp":"2026-10-06T11:00:30Z","message":{"id":"m3","model":"claude-sonnet-5-5","usage":{"input_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":1200,"output_tokens":30}}}') -Encoding UTF8 }
+       Check = { $l = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8); $l.Count -eq 2 -and $l[1] -match '"round":2.*"model":"claude-sonnet-5-5".*"calls":1,"calls_total":3.*"processed":1335' }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'abc1234567'; agent_type = 'team:developer'; transcript_path = (Join-Path $tmp 'transcripts/sess1.jsonl') } },
     @{ Name = 'G13 avisa marcador de run esquecido'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = '.active-run existe'
        Payload = @{ hook_event_name = 'SessionStart' } },
     @{ Name = 'Falha aberta: JSON inválido'; Script = 'pre-tool.ps1'; Expect = 1; Raw = '{nao-e-json' },

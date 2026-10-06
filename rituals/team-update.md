@@ -155,6 +155,15 @@ Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere ap
 
 **Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).runCommands` devolve a lista; depois de reiniciar, `/hooks` lista `Notification` e a linha "Guardas do time" traz G14 e G15.
 
+## 7g. Consumo medido da v3.45 — `usage.jsonl` e o `consumption.ps1`
+
+> Roda quando a versão instalada for anterior à `v3.45.0`, em qualquer projeto. Nada a migrar em disco: o `usage.jsonl` nasce na primeira parada de subagente depois de reiniciar.
+
+1. **Não reescreva as linhas antigas** do `consumption.md` aberto: elas trazem o número da notificação (contexto final), e o script as mantém; os Totais passam a somá-las só na coluna "Σ notificação" ([`templates/consumption.md`](../roles/scrum-master/templates/consumption.md)). Se o `## Totais` do registro aberto tem o cabeçalho antigo (5 colunas), deixe — o script o reescreve no formato novo na primeira execução.
+2. **Diga ao stakeholder**, em três linhas: o hook **G16** mede cada subagente no transcript dele e grava em `.team-project/usage.jsonl`; a sessão **não transcreve mais número** — roda `scripts/checks/consumption.ps1`, que escreve as linhas e os Totais; a coluna Tokens passa a ser o **processado** (o número da notificação, que era o anotado até aqui, é só o contexto final — de 5 a 6 vezes menor, medido). O C1 passa a contar os jobs do `operator` **por Task** (`operator/<n>/<T-ID>…/`). Vale depois de reiniciar a sessão.
+
+**Verificação do passo:** depois de reiniciar, `/hooks` lista `SubagentStop` e a linha "Guardas do time" traz G16; depois do primeiro subagente, `Get-Content .team-project/usage.jsonl -Tail 1` mostra a rodada.
+
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
 Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.

@@ -23,6 +23,13 @@
         ]
       }
     ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "powershell", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${CLAUDE_PLUGIN_ROOT}/hooks/subagent-stop.ps1"], "timeout": 30 }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "PowerShell|Bash",

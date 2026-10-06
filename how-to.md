@@ -201,6 +201,7 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 | **G11** | `operator` escrevendo fora da pasta do próprio job | — (o `operator` só grava log e relatório) |
 | **G14** | durante o `sprint run`/`fix run`: **libera** sozinho o operacional dos papéis (leitura, git sem push, build/teste de `guards.json` → `runCommands`) e nega o que está fora da lista, inclusive comando em segundo plano fora do `operator` | nenhum pedido de permissão para no meio da fila; os agentes do run rodam em segundo plano e a sessão espera a notificação de cada um. Comando de build/teste que falta: acrescente o prefixo em `runCommands` |
 | **G15** | registra no `guards.log` todo pedido de permissão do Claude Code | — (é o rastro para diagnosticar chamada interrompida, R27) |
+| **G16** | registra em `.team-project/usage.jsonl` o consumo **medido** de cada subagente (tokens processados, contexto final, modelo, duração, Task) | — a sessão roda `scripts/checks/consumption.ps1`, que escreve o `consumption.md`; ninguém copia número da notificação |
 
 - **O agente recebe o motivo e corrige o rumo** — você normalmente nem vê o bloqueio. As guardas por papel (G5–G11) não valem para a sua sessão principal.
 - **Falso positivo:** acrescente a guarda a `"disabled"` em `.team-project/guards.json`; vale na hora. Leve o caso ao `/review`, para a guarda ser corrigida.

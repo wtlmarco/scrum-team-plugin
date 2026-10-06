@@ -292,22 +292,41 @@ try {
         if ($iss.Count) { Add-Result 'R26' 'falhou' ($iss -join '; ') } else { Add-Result 'R26' 'ok' 'ambiente medido antes dos passos; parada por pré-requisito ausente declarada' }
     }
 
-    # ---------- R28 · report do operator e consumo ----------
+    # ---------- R28 · report do operator e consumo — desta Task (v3.45: antes era o sprint inteiro, e uma divergência
+    # reprovava todo fechamento seguinte, inclusive de Task sem operator) ----------
     $r28 = @()
+    $taskReports = @{}
+    # Jobs desta Task: pasta operator/<n>/<T-ID>[-…]/ (operator.md §Onde grava) e todo report citado no plano ou na evidência.
+    foreach ($jd in @(Get-ChildItem -LiteralPath (Join-Path $tp "operator/$n") -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match ('^' + [regex]::Escape($Task) + '(?![\w])') })) {
+        foreach ($rf in @(Get-ChildItem -LiteralPath $jd.FullName -Recurse -Filter 'report*.md' -ErrorAction SilentlyContinue)) { $taskReports[$rf.FullName.ToLowerInvariant()] = $true }
+    }
+    $cited = @()
     if ($evBlock) {
         foreach ($pm in [regex]::Matches($evBlock, '(?m)^\*\*Relat[óo]rio do `operator`:\*\*(.*)$')) {
-            foreach ($pp in [regex]::Matches($pm.Groups[1].Value, '`([^`]*report(-[^`/]*)?\.md)`')) {
-                $rel = $pp.Groups[1].Value
-                if ($rel -match '<') { continue }
-                $full = Join-Path $Root $rel
-                if (-not (Test-Path -LiteralPath $full)) { $r28 += "report ausente: $rel"; continue }
-                $fi = Get-Item -LiteralPath $full
-                $lc = @(Get-Content -LiteralPath $full -Encoding UTF8).Count
-                if ($lc -gt 200 -or $fi.Length -gt 20480) { $r28 += "report acima do teto ($lc linhas, $($fi.Length) bytes): $rel" }
-            }
+            foreach ($pp in [regex]::Matches($pm.Groups[1].Value, '`([^`]*report(-[^`/]*)?\.md)`')) { $cited += $pp.Groups[1].Value }
         }
     }
-    $reports = @(Get-ChildItem -LiteralPath (Join-Path $tp "operator/$n") -Recurse -Filter 'report*.md' -ErrorAction SilentlyContinue).Count
+    if ($plan) {
+        $s11 = Get-Section $plan '^##\s+11\.'
+        if ($s11) { foreach ($pp in [regex]::Matches($s11, '`(\.team-project/operator/[^`]+?/)`(?:\s*—\s*`?([\w.-]+)`?)?')) {
+            $dir = $pp.Groups[1].Value; $log = $pp.Groups[2].Value
+            $cited += $(if ($log) { $dir + 'report-' + [System.IO.Path]::GetFileNameWithoutExtension($log) + '.md' } else { $dir + 'report.md' })
+        } }
+    }
+    foreach ($rel in ($cited | Select-Object -Unique)) {
+        if ($rel -match '<') { continue }
+        $full = Join-Path $Root $rel
+        if (-not (Test-Path -LiteralPath $full)) {
+            $alt = Join-Path (Split-Path $full) 'report.md'   # job com uma chamada só grava report.md, mesmo citado por log
+            if ($rel -match 'report-' -and (Test-Path -LiteralPath $alt)) { $full = $alt } else { $r28 += "report ausente: $rel"; continue }
+        }
+        $full = (Get-Item -LiteralPath $full).FullName
+        $taskReports[$full.ToLowerInvariant()] = $true
+        $fi = Get-Item -LiteralPath $full
+        $lc = @(Get-Content -LiteralPath $full -Encoding UTF8).Count
+        if ($lc -gt 200 -or $fi.Length -gt 20480) { $r28 += "report acima do teto ($lc linhas, $($fi.Length) bytes): $rel" }
+    }
+    $reports = $taskReports.Count
     # Segmento do sprint é o número, como em sprints/<n>/ — job gravado em outro nome some da contagem sem aviso.
     foreach ($alt in @(Get-ChildItem -LiteralPath (Join-Path $tp 'operator') -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "^(?i)(sprint|s)[-_ ]?0*$n$" })) {
         $r28 += "pasta fora do padrão: operator/$($alt.Name)/ (o segmento é o número do sprint: operator/$n/)"
@@ -316,10 +335,15 @@ try {
     $consPath = Join-Path $S 'consumption.md'
     if (Test-Path -LiteralPath $consPath) {
         $reg = Get-Section (Read-Text $consPath) '^##\s+Registro'
-        if ($reg) { foreach ($t in (Get-Tables $reg)) { $ip = Find-Col $t 'Papel'; foreach ($row in $t.Rows) { if ((Clean-Cell (Get-Cell $row $ip)) -eq 'operator') { $opLines++ } } } }
+        if ($reg) { foreach ($t in (Get-Tables $reg)) {
+            $ip = Find-Col $t 'Papel'; $it = Find-Col $t 'Task'
+            foreach ($row in $t.Rows) { if ((Clean-Cell (Get-Cell $row $ip)) -eq 'operator' -and (Get-Cell $row $it) -match $idPat) { $opLines++ } }
+        } }
     }
-    if ($reports -ne $opLines) { $r28 += "operator: $reports report(s) em operator/$n × $opLines linha(s) operator no consumo" }
-    if ($r28.Count) { Add-Result 'R28' 'falhou' ($r28 -join '; ') } else { Add-Result 'R28' 'ok' "$reports report(s) = $opLines linha(s) operator; ponteiros da evidência dentro do teto" }
+    if ($reports -ne $opLines) { $r28 += "operator de ${Task}: $reports report(s) (pasta operator/$n/$Task… e citados no plano/evidência) × $opLines linha(s) operator de $Task no consumo" }
+    if ($r28.Count) { Add-Result 'R28' 'falhou' ($r28 -join '; ') }
+    elseif ($reports -eq 0) { Add-Result 'R28' 'ok' "$Task sem job do operator e sem linha operator no consumo" }
+    else { Add-Result 'R28' 'ok' "$Task`: $reports report(s) = $opLines linha(s) operator; ponteiros dentro do teto" }
 
     # ---------- R30 · cenários mapeados e executados ----------
     if (-not ($taskRow -and $taskTable)) { Add-Result 'R30' 'falhou' "$Task não encontrada numa tabela de Tasks do quadro" }

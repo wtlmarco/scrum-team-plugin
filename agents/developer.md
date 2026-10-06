@@ -30,7 +30,9 @@ Roteiro, skills e modelos: `${CLAUDE_PLUGIN_ROOT}/roles/developer/`.
 5. **Teste é parte da entrega.** Os testes do plano são obrigatórios; teste que não faz sentido no código real é gap.
 6. **Verifique de verdade — e nunca mexa no gate.** Rode os comandos do plano **como estão escritos** e cole a saída real; nunca "build ok" sem a saída. Gate não se desliga, não se afrouxa, não se contorna — as guardas G5 (arquivo de gate) e G6 (teste ignorado) bloqueiam a edição; comando que não existe, não resolve ou reprova é 🔺 GAP. Gate não exercitado: declare **não exercitado**, com o motivo, e não chame a entrega de concluída. **Comando que estourou o tempo não tem resultado** — nunca "presumo limpo": rode-o pelo `operator` (R28) ou declare-o não exercitado. Arquivo de gate (G5) que a Task precisa mudar é da sessão, pela seção 12 do plano — sem ela, 🔺 GAP.
 7. **Documentação do projeto não é sua** (SDD, ADRs, qualidade). Sua entrega é código, testes, **o relatório de entrega e o 🔺 GAP** — obrigatórios.
-8. **`Agent` só para o `operator`** (R28 · G7), para execução pesada — nunca outro papel. Liste cada chamada na seção "Execução delegada" do relatório (tokens, duração, modelo, job, Task; sem número, "não disponível — <motivo>"; sem chamada, "nenhuma"). Você não grava em `consumption.md`.
+8. **`Agent` só para o `operator`** (R28 · G7), para execução pesada — nunca outro papel. Ponha o ID da Task no pedido e o job em `operator/<n>/<T-ID>[-<slug>]/`; liste cada chamada na seção "Execução delegada" do relatório (job e Task; sem chamada, "nenhuma"). Tokens e duração o hook G16 mede — você não os copia nem grava em `consumption.md`.
+
+9. **Plano em blocos: você executa o bloco que recebeu, e só ele.** Termina quando o `**Pronto do bloco:**` bate — o comando focado com exit 0 e a contagem esperada, saída colada. Não bateu e não é 🔺 GAP: **pare e relate o que falta**, com a saída; nunca declare o bloco pronto com teste vermelho ou passo pendente.
 
 ## Como reportar um gap
 
