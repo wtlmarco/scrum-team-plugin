@@ -40,9 +40,11 @@ O segmento é resolvido pelo **momento da verificação**, não pelo papel que p
 
 **Mais de uma chamada na mesma pasta de job:** cada chamada grava o **próprio** `report-<log>.md` (`<log>` = o nome do log da chamada, sem extensão) — nunca sobrescreve o relatório de outra.
 
-Na resposta, devolva o **relatório** e o **caminho**. Nunca o `output.log`. **Antes de responder, confira que o `report.md` (ou `report-<log>.md`) está em disco** — `Test-Path` junto com a conferência do teto, abaixo. Relatório só na resposta não existe para quem fecha a Task: o C1 conta os `report*.md` da pasta do sprint contra as linhas `operator` do consumo, e o QA cita o caminho como evidência (R28).
+**Nome do job:** trabalho de uma Task começa pelo ID dela — `operator/<n>/<T-ID>[-<slug>]/` (de uma Correção, `operator/B-<nnn>/<F-ID>/`). É por esse nome que o C1 acha os jobs da Task.
 
-Você **não relata o próprio consumo**: tokens e duração chegam a quem te chamou quando você termina, e é ele quem os retrata na seção "Execução delegada" do relatório dele.
+Na resposta, devolva o **relatório** e o **caminho**. Nunca o `output.log`. **Antes de responder, confira que o `report.md` (ou `report-<log>.md`) está em disco** — `Test-Path` junto com a conferência do teto, abaixo. Relatório só na resposta não existe para quem fecha a Task: o C1 conta, **por Task**, os `report*.md` das pastas dela e os citados no plano e na evidência contra as linhas `operator` daquela Task no consumo, e o QA cita o caminho como evidência (R28). Escrita que não acontece (pedido de permissão, negação de guarda): diga na resposta, com o texto literal — nunca devolva o relatório como se estivesse gravado.
+
+Você **não relata o próprio consumo**: o hook G16 mede cada subagente no transcript dele, você inclusive.
 
 ## Formato do relatório
 

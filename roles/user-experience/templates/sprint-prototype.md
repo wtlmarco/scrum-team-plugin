@@ -69,11 +69,11 @@ telas reaproveitadas já verificadas | tela nova: <nomes> | recostura de devolu�
 **Relatório do job (R28):** <caminho do `report` devolvido pelo `operator`>
 
 ## Execução delegada
-| Operator job | Task/História | Modelo | Tokens | Duração |
-|---|---|---|---|---|
-| `.team-project/operator/<sprint\|pre-sprint>/<job>/` | <Task/História> | <`model:` de `agents/operator.md`> | <n, ou "não disponível — <motivo>"> | <t, ou "não disponível — <motivo>"> |
+| Operator job | Task/História |
+|---|---|
+| `.team-project/operator/<sprint\|pre-sprint>/<T-ID>[-<slug>]/` | <Task/História> |
 
-Uma linha por chamada, com o que ela devolveu ao terminar; nunca estimado (R7). Sem chamada: "nenhuma". Não grava em `consumption.md` — a sessão que disparou transcreve ([`../skills.md` §10](../skills.md)).
+Uma linha por chamada — o índice do job (R28); tokens, duração e modelo o hook G16 mede (v3.45). Sem chamada: "nenhuma". Não grava em `consumption.md` ([`../skills.md` §10](../skills.md)).
 
 ## Registro do portão ③ (append — devolução não se apaga)
 | Data | Evento | Quem | Canal | Artifact (URL · rótulo) | O que foi pedido |

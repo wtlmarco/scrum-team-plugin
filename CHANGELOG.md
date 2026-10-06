@@ -13,6 +13,18 @@
 
 ---
 
+## v3.45.0 — 2026-10-06
+
+**Branch:** `feat/v3.45.0` a partir de `develop` (v3.44.2 mesclada) · **Processo:** [`v3.45`](roles/scrum-master/process/process-changelog.md)
+Primeiro pacote de `proposta-custo-run.md` (relatório do primeiro `sprint run` do projeto-piloto: ~620 mil tokens por Task fechada, ~34 h corridas): medir certo antes de mudar o resto.
+
+- **G16 — consumo medido** (`hooks/subagent-stop.ps1`, evento `SubagentStop`): cada rodada de subagente vira uma linha em `.team-project/usage.jsonl`, somada no transcript dele — tokens processados, contexto da 1ª chamada (carga fixa), pico e final, modelo servido, duração, Task, subagentes disparados. **Medido:** o número da notificação é o contexto da última chamada, não o processado (49 004 × 273 190; 53 245 × 322 194).
+- **`scripts/checks/consumption.ps1`**: escreve as linhas medidas e os Totais do `consumption.md` aberto; a sessão não transcreve mais número. Coluna Tokens = processado; "Σ notificação" ao lado.
+- **C1 R28 por Task**: jobs `operator/<n>/<T-ID>…/` e os citados no plano e na evidência × linhas `operator` daquela Task (antes: o sprint inteiro, e uma divergência reprovava todo fechamento seguinte).
+- **Plano em blocos** acima de 8 arquivos (`### Bloco <k>` com Pronto objetivo), **uma instância de dev por bloco**, terceira instância do mesmo bloco em Sonnet.
+- "Execução delegada" vira índice dos jobs nos relatórios e modelos; `team-update.md` 7g; `COVERAGE.md` (G16 e o que não cobre). Suítes: guardas 84 casos (3 novos), conferências 33 (5 novos).
+
+---
 ## v3.44.2 — 2026-10-06
 
 **Branch:** `feat/v3.44.2` a partir de `develop` (v3.44.1 mesclada) · **Processo:** [`v3.44` — addendum v3.44.2](roles/scrum-master/process/process-changelog.md)

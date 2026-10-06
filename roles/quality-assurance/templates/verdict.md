@@ -59,11 +59,11 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 *(repetir o par comando/trecho + relatório do `operator` para cada comando executado)*
 
 ### Execução delegada
-*(uma linha por chamada ao `operator`, com os números que a chamada devolveu ao terminar. Sem número: "não disponível — <motivo>", nunca estimado (R7). Sem chamada: "nenhuma". Não grava em `consumption.md` — a sessão que disparou o QA transcreve.)*
+*(uma linha por chamada ao `operator` — o índice dos jobs (R28). Tokens e duração o hook G16 mede; não se copia número nem se grava em `consumption.md`. Sem chamada: "nenhuma".)*
 
-| Operator job | Task/História | Modelo | Tokens | Duração |
-|---|---|---|---|---|
-| `.team-project/operator/<sprint\|pre-sprint>/<job>/` | <T-ID / H-ID> | <`model:` de `agents/operator.md`> | <n ou "não disponível — motivo"> | <tempo ou "não disponível — motivo"> |
+| Operator job | Task/História |
+|---|---|
+| `.team-project/operator/<sprint\|pre-sprint>/<T-ID>[-<slug>]/` | <T-ID / H-ID> |
 
 ### Achados
 | # | Gravidade | Tipo | O quê | Onde | Impacto | Volta para |

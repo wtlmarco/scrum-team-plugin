@@ -22,7 +22,7 @@ Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta 
 
 Pedido `/qa review …` → responda que o caminho é **`/review …`**. `/qa audit` roda **no projeto** (documentos do produto × código); `/review audit` roda no repositório do plugin (documentos de processo).
 
-Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar (papel `qa`; a seção "Execução delegada" do retorno vira uma linha `operator` por chamada).
+Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar (o hook G16 mede o QA e o `operator` que ele chamou; a sessão roda o script).
 
 Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, "pedir mais contexto" por último (`working-rules.md` R22). O agente não tem a ferramenta: é a sessão que orquestrou quem a chama (por exemplo, item de `pending.md` com `Aguarda decisão do stakeholder`).
 

@@ -267,9 +267,39 @@ $p = Join-Path $tmp 'varios'; New-Project $p
 Edit-File (Join-Path $p '.team-project/sprints/1/evidence/T-041.md') '**Fora do plano:** nada' '**Fora do plano:** src/Extra.cs'
 Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') 'SC-014 (novo)' 'SC-014 (novo), SC-020 (regressivo)'
 Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') '| **Aprovado em** | 2026-09-01 |' '| **Aprovado em** | 2026-09-05 |'
-Put $p '.team-project/operator/1/job2/report.md' "# report 2`n"
+Put $p '.team-project/operator/1/T-041-cobertura/report.md' "# report 2`n"
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
-Check 'C1 falhas não bloqueantes: exit 0' $r 0 @('\| R4 \| falhou.*src/Extra.cs', '\| R30 \| falhou.*SC-020', '\| R28 \| falhou.*2 report', '\| R20 \| falhou')
+Check 'C1 falhas não bloqueantes: exit 0' $r 0 @('\| R4 \| falhou.*src/Extra.cs', '\| R30 \| falhou.*SC-020', '\| R28 \| falhou.*2 report.*1 linha', '\| R20 \| falhou')
+
+# 5b. R28 por Task (v3.45): job de outra Task sem linha no consumo não reprova T-041; job sem Task no nome e não citado não conta.
+$p = Join-Path $tmp 'r28task'; New-Project $p
+Put $p '.team-project/operator/1/T-099/report.md' "# report de outra Task`n"
+Put $p '.team-project/operator/1/avulso/report.md' "# job sem Task no nome`n"
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 R28 por Task: outra Task divergente não reprova' $r 0 @('\| R28 \| ok.*T-041: 1 report')
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041a', '-Root', $p)
+Check 'C1 R28 Task sem operator: ok (sem evidência, R7 barra: exit 1)' $r 1 @('\| R28 \| ok.*T-041a sem job do operator')
+
+# 5c. consumption.ps1 (v3.45): linhas medidas do usage.jsonl entram no Registro, a manual fica, os Totais se refazem; rodar de novo não duplica.
+$p = Join-Path $tmp 'consumo'; New-Project $p
+Edit-File (Join-Path $p '.team-project/sprints/1/consumption.md') '| 2026-09-03 | operator | haiku' "| 2026-09-03 | sessão | vários | ``/usage`` | n/a | cerimônia | sprint-1 | x | 1h | linha de sessão |`n| 2026-09-03 | operator | haiku"
+Put $p '.team-project/sprints/1/consumption.md' ((Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/sprints/1/consumption.md')) + "`n## Totais do sprint (derivado)`n`n| Papel | Modelo | Σ tokens | Nº de invocações | Duração total |`n|---|---|---|---|---|`n| x | y | 0 | 0 | 00:00 |`n")
+$dst = '.team-project/sprints/1/consumption.md'
+Put $p '.team-project/usage.jsonl' (@(
+    ('{"agent_id":"d1","role":"developer","description":"dev T-041","round":1,"work":"T-041","model":"claude-haiku-4-5","start":"2026-09-03T10:00:00","duration_s":125,"calls":10,"processed":300000,"final_context":50000,"cache_read":250000,"output":4000,"first_context":15000,"peak_context":50000,"children":["o1"],"dest":"' + $dst + '","dest_note":""}'),
+    ('{"agent_id":"o1","role":"operator","description":"suite","round":1,"work":"T-041","model":"claude-haiku-4-5","start":"2026-09-03T10:01:00","duration_s":60,"calls":3,"processed":40000,"final_context":12000,"cache_read":30000,"output":500,"first_context":9000,"peak_context":12000,"children":[],"dest":"' + $dst + '","dest_note":""}'),
+    ('{"agent_id":"d1","role":"developer","description":"dev T-041","round":2,"work":"T-041","model":"claude-haiku-4-5","start":"2026-09-03T12:00:00","duration_s":60,"calls":5,"processed":100000,"final_context":60000,"cache_read":90000,"output":1000,"first_context":50000,"peak_context":60000,"children":[],"dest":"' + $dst + '","dest_note":""}')
+) -join "`n")
+$r = Invoke-Check 'consumption.ps1' @('-Root', $p)
+$r = Invoke-Check 'consumption.ps1' @('-Root', $p)
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p $dst))
+Check 'Consumo: medidas entram, manual e sessão ficam, sem duplicar' $r 0 @('3 linha\(s\) medida\(s\), 3 mantida', 'operator \| haiku \| `Agent` · suite \| T-041 \| verificação \| H-014 \| 40.000', 'chamado por dev; medido: o1#1', '\| dev \| haiku .*\| retrabalho \| H-014 \| 100.000', '\| operator ← dev \| haiku \| 40.000 \| 1 ', '\| operator ← qa \| haiku \| 0 \| 1 \| 00:30 \| 500 \|', 'linha de sessão')
+if (([regex]::Matches($r.Out, 'medido: d1#1')).Count -ne 1) { $fail++; Write-Output '---- consumo duplicou a linha medida' }
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 depois do consumo medido: R28 conta a linha do operator da Task' $r 0 @('\| R28 \| falhou.*1 report.*2 linha')
+Put $p '.team-project/sprints/1/retrospective.md' "# Retro`n"
+$r = Invoke-Check 'consumption.ps1' @('-Root', $p)
+Check 'Consumo: sprint fechado não recebe linha' $r 0 @('está fechado')
 
 # 6. Duas Tasks em construção com 1 dev → R1 falhou; T-041 não confunde com T-041a.
 $p = Join-Path $tmp 'r1'; New-Project $p
