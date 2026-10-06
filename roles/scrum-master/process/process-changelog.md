@@ -127,6 +127,18 @@ A lista fechada de paradas da v3.43 não cobria duas saídas do contrato que o p
 ### Pendente do stakeholder
 Atualizar o plugin, rodar `/team update` (passo 7f) em cada projeto e **reiniciar a sessão**; no primeiro run, `"probe": true` para ver as linhas `G14 allow` e `G15`. Remover `proposta-run-sem-travas.md` depois do aceite desta entrada.
 
+### Addendum — 06/10/2026 (mesma v3.44.0): segundo relato, cinco interrupções
+**Instrução** (stakeholder): "Faça uma averiguação profunda sobre essas reclamações e tendo essa certeza pode aplicar". **Relato** (outro usuário): cinco chamadas `Agent` em primeiro plano "interrupted", sem ação dele; não é limite de tempo (uma de 82 min terminou bem); duas coincidem, em até 70 ms, com a entrega de notificação de agente em fila; quase todos os subagentes estavam parados esperando (comando em segundo plano, pergunta de autorização ou nada registrado). **Averiguação:** (1) transcripts desta máquina — em todo "interrupted" de pedido de permissão, logo antes vem o `tool_result` "The user doesn't want to proceed" (pedido fechado sem aprovação); os demais são Esc durante a ferramenta; (2) issue anthropics/claude-code#84346 (fechada sem correção) — vigia de ~600 s sobre requisição de modelo parada sai como "interrupted by user"; (3) documentação — pedido de permissão em subagente **não expira**; notificação **não interrompe** ferramenta em curso (confirmado aqui com comando em primeiro plano); sessão interativa dispara subagente em segundo plano por padrão; (4) **não medido:** se notificação fecha pedido pendente (o modo desta sessão não abre pedido). **Conclusão:** a coincidência com notificação não está provada; o que está provado é que o papel parado esperando — permissão, comando em segundo plano ou modelo — derruba a chamada em primeiro plano e prende a sessão, e os seis `commands/` forçavam esse primeiro plano.
+
+| Documento | Mudança |
+|---|---|
+| `sprint-run.md` §Disparo (era §Task pesada) · Como o SM verifica · `fix-run.md` | **todo** agente do `run` com `run_in_background: true`; série R1 mantida aguardando a notificação; encerrar o turno à espera não é parada |
+| `commands/{arc,dev,qa,po,ux,sm}.md` | `run_in_background: false`, salvo no `sprint run`/`fix run` (`true`) |
+| `hooks/pre-tool.ps1` G14 · `COVERAGE.md` · `how-to.md` | nega comando com `run_in_background: true` aos papéis no run, salvo `operator` (R28) |
+| `working-rules.md` R27 · `sprint-run.md` | transcript lido pelas três assinaturas: permissão fechada (com a `G15`) · ~600 s de silêncio (vigia) · notificação no mesmo segundo (só registro); sem nenhuma, "causa não identificada" |
+
+**Verificação (R19):** `run-guard-tests.ps1` → 75 casos · 0 falharam (G14 nega comando em segundo plano ao QA, libera ao `operator`) · `release.ps1` → exit 0 (R17: bloco v3.44 ≤ 12800). **Não exercitado:** um run real todo em segundo plano.
+
 ---
 
 ## v3.43 — `sprint run` sem paradas fora do contrato: lista fechada de paradas, rota do gate protegido, negação ao dev vira 🔺 GAP, interrupção pelo stakeholder e marcador acompanhando a Task; addendum: veredito pelo primeiro marcador, desvio aceito no R4, código de saída do `operator` (SM + Arquiteto + QA) — 05/10/2026

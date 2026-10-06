@@ -22,7 +22,8 @@
 - **G14 — run sem trava:** com `.team-project/.active-run` (gravado pela sessão no `sprint run` e no `fix run`), o operacional dos papéis já conferido pelas guardas sai liberado (`allow`) e o que está fora da lista é negado com a rota. Nova chave `runCommands` no `guards.json`.
 - **G15:** todo pedido de permissão do harness vai ao `guards.log` (hook `Notification`, novo `hooks/notification.ps1`). A R27 ganha a segunda conferência: o transcript do subagente.
 - **`/team init` e `/team update` (7f):** `runCommands` no `.team-project/guards.json` a partir do `developer/context.md`, só acrescentando. O plugin não escreve permissão nas configurações do Claude Code: a lista vive no `.team-project` e a G14 a aplica.
-- G13 avisa marcador sobrando. Suíte de guardas: 73 casos (19 novos).
+- G13 avisa marcador sobrando. Suíte de guardas: 75 casos (21 novos).
+- **Addendum (segundo relato, mesmo dia):** todo agente do `sprint run` e do `fix run` em segundo plano, com a sessão aguardando a notificação (antes, só a Task pesada); os seis `commands/` deixam de fixar `run_in_background: false` no run; a G14 nega comando em segundo plano aos papéis (fora o `operator`); a R27 lê o transcript pelas três assinaturas do "interrupted" (permissão fechada, vigia de ~600 s, notificação coincidente).
 
 ---
 

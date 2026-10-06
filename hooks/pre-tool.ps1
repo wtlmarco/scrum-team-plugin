@@ -283,6 +283,10 @@ function Test-G14([object]$ToolInput) {
     }
     $cmd = [string]$ToolInput.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return $false }
+    # Comando em segundo plano deixa o papel parado esperando a notificação — execução longa é do operator (R28).
+    if ($ToolInput.run_in_background -eq $true -and $script:role -ne 'operator') {
+        Deny 'G14' 'run_in_background' "comando em segundo plano durante o run: o papel fica parado esperando a notificação, e a chamada que o disparou pode voltar 'interrupted'. Rode em primeiro plano com timeout; execução longa (build, suíte, cobertura) vai ao operator (R28)."
+    }
     if ($cmd -match '^\s*(?i)(powershell|pwsh)(\.exe)?\s+(-\w+\s+)*-File\s+"?[^";|&]*[\\/]scripts[\\/]checks[\\/][\w-]+\.ps1"?[^;|&]*$') { return $true }   # conferências C1–C4
     $why = 'fora da lista operacional do run'
     if ($cmd -match '(?i)--no-verify|\bInvoke-Expression\b|\biex\b|-EncodedCommand|\bStart-Process\b|\[(System\.)?IO\.(File|Directory)\]::(Write|Append|Delete|Move|Copy|Replace|Create)') { $why = 'construção que a G14 não libera (--no-verify, Invoke-Expression, Start-Process, escrita por .NET)' }
