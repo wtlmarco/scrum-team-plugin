@@ -164,6 +164,16 @@ Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere ap
 
 **Verificação do passo:** depois de reiniciar, `/hooks` lista `SubagentStop` e a linha "Guardas do time" traz G16; depois do primeiro subagente, `Get-Content .team-project/usage.jsonl -Tail 1` mostra a rodada.
 
+## 7h. Evidência mecânica da v3.45.1 — `verify` no `guards.json`
+
+> Roda quando a versão instalada for anterior à `v3.45.1`, em qualquer projeto; o `/team init` também o executa (passo 4a). Pede repositório git na raiz do projeto (a impressão digital da árvore é o tree do git); sem git, deixe `verify` vazio — a verificação segue pelo `operator`.
+
+1. **`verify` no `.team-project/guards.json`:** se a chave falta, acrescente-a; se existe, só preencha o que estiver vazio. Cinco chaves, cada uma um comando (ou uma lista, para mais de uma unidade implantável), **como `.team-project/developer/context.md` os escreve**: `focused` — o teste de um conjunto de arquivos, com `{tests}` onde entram os caminhos (`npx jest {tests}`, `dotnet test --filter …`); `lint`; `build`; `suite` — a suíte inteira; `coverage` — o gate de cobertura da unidade (o que sai com código ≠ 0 abaixo do limiar). Comando que o projeto não tem fica `""`. Os mesmos prefixos entram em `runCommands` (7f), se faltarem.
+2. **Um formulário só** (`AskUserQuestion`, R22), junto com o de 7f quando os dois rodam: mostre os cinco comandos — *aplicar · ajustar · pedir mais contexto*. Sem resposta, deixe `verify` vazio: o C1 trata como não configurado (`R7-verify n-a`) e tudo segue como antes.
+3. **Diga ao stakeholder**, em três linhas: o dev roda `scripts/checks/verify.ps1` (focado durante o bloco, completo no fim) e o resultado fica em `.team-project/verify/<n>/<T-ID>/result.json`, amarrado à **impressão digital da árvore** (arquivo novo não rastreado incluído); o QA **não reexecuta** a suíte quando a árvore é a mesma (`-Mode check`) e só a roda de novo quando mudou; o C1 **não fecha** a Task com o `verify` vermelho ou de uma árvore que mudou depois dele.
+
+**Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).verify` devolve os comandos; `powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/verify.ps1" -Task T-000 -Mode full` roda e grava `.team-project/verify/…/T-000/result.json` (apague a pasta depois).
+
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
 Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.

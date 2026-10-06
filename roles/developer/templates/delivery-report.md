@@ -26,6 +26,12 @@ Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere c
 |---|---|---|
 
 ### Verificação
+**Evidência mecânica** *(projeto com `verify` no `guards.json`, v3.45.1 — a tabela abaixo fica só para o que o `verify` não cobre)*: `.team-project/verify/<n>/<T-ID>/result.json` · `-Mode full` em <aaaa-mm-dd hh:mm> · árvore `<12 primeiros>` · as linhas que o script imprimiu, coladas:
+```
+<verify full T-ID · árvore … · tudo exit 0 · …>
+<  build: exit 0 · … · log …>
+```
+
 *(Trecho **e** ponteiro, sempre os dois — R28. O log bruto inteiro fica no arquivo, não aqui.)*
 
 | Comando | Código de saída | Trecho decisivo (literal, recortado) | Ponteiro |

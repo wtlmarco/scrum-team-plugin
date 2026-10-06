@@ -198,7 +198,7 @@ function Check([string]$Name, $Result, [int]$Code, [string[]]$Expect) {
 # 1. Caminho feliz: nada falha.
 $p = Join-Path $tmp 'feliz'; New-Project $p
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
-Check 'C1 feliz: exit 0, nenhuma regra falhou' $r 0 @('\| R7 \| ok', '\| R12 \| ok', '\| R1 \| ok', '\| R4 \| ok', '\| R8 \| ok', '\| R16 \| ok', '\| R20 \| ok', '\| R24 \| n-a', '\| R25 \| ok', '\| R26 \| ok', '\| R28 \| ok', '\| R30 \| ok')
+Check 'C1 feliz: exit 0, nenhuma regra falhou' $r 0 @('\| R7 \| ok', '\| R7-verify \| n-a', '\| R12 \| ok', '\| R1 \| ok', '\| R4 \| ok', '\| R8 \| ok', '\| R16 \| ok', '\| R20 \| ok', '\| R24 \| n-a', '\| R25 \| ok', '\| R26 \| ok', '\| R28 \| ok', '\| R30 \| ok')
 if ($r.Out -match '\| falhou \|') { $fail++; Write-Output '---- feliz com falhou:'; Write-Output $r.Out }
 
 # 2. -Post sem a linha → ✅ falha R24; com a linha, ok.
@@ -300,6 +300,33 @@ Check 'C1 depois do consumo medido: R28 conta a linha do operator da Task' $r 0 
 Put $p '.team-project/sprints/1/retrospective.md' "# Retro`n"
 $r = Invoke-Check 'consumption.ps1' @('-Root', $p)
 Check 'Consumo: sprint fechado não recebe linha' $r 0 @('está fechado')
+
+# 5d. verify.ps1 (v3.45.1): evidência mecânica amarrada à árvore; o C1 a lê quando guards.json tem "verify".
+$p = Join-Path $tmp 'verify'; New-Project $p
+$ErrorActionPreference = 'Continue'   # aviso de CRLF do git no stderr viraria exceção no 5.1
+& git -C $p init -q 2>$null; Put $p 'src/a.ts' "x`n"; Put $p '.gitignore' "coverage/`n.team-project/`n"
+& git -C $p add -A 2>$null; & git -C $p -c user.email=t@t -c user.name=t commit -qm init 2>$null
+$ErrorActionPreference = 'Stop'
+Put $p '.team-project/guards.json' '{ "verify": { "focused": "Write-Output \"Tests: 2 passed {tests}\"", "build": "Write-Output \"Build succeeded. 0 Warning(s)\"", "suite": "Write-Output \"Tests: 12 passed\"; New-Item -ItemType Directory -Force coverage | Out-Null; Set-Content coverage/l.info x" } }'
+Put $p 'src/novo.ts' "y`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'focused', '-Root', $p)
+Check 'verify focused sem -Tests: exit 2' $r 2 @()
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'verify full verde: exit 0, log e result.json em verify/1/T-041' $r 0 @('verify full T-041', 'tudo exit 0', 'verify/1/T-041/result.json', 'suite: exit 0 .*Tests: 12 passed')
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 R7-verify ok com a árvore igual' $r 0 @('\| R7-verify \| ok.*árvore igual')
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'check', '-Root', $p)
+Check 'verify check com a árvore igual: exit 0' $r 0 @('IGUAL')
+Put $p 'src/outro.ts' "z`n"   # arquivo novo não rastreado depois do verify (o furo da T-019 do piloto)
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'check', '-Root', $p)
+Check 'verify check com arquivo novo não rastreado: árvore diferente, exit 1' $r 1 @('DIFERENTE')
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 R7-verify falhou com a árvore mudada: exit 1' $r 1 @('\| R7-verify \| falhou.*a árvore mudou', 'Não fecha')
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output ok", "suite": "cmd /c exit 4" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'verify full com suíte reprovada: exit 1 e o código real' $r 1 @('suite: exit 4')
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 R7-verify falhou com verify vermelho' $r 1 @('\| R7-verify \| falhou.*suite exit 4')
 
 # 6. Duas Tasks em construção com 1 dev → R1 falhou; T-041 não confunde com T-041a.
 $p = Join-Path $tmp 'r1'; New-Project $p

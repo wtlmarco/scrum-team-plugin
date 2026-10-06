@@ -93,7 +93,8 @@ cobertura — código de saída, pior módulo × limiar — **e** o ponteiro do 
 (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.4 e §5.5).
 
 ## 7. Comandos de verificação
-<Os comandos do projeto — ver `.team-project/developer/context.md`. Cada um já validado na seção 3.
+<Com `verify` no `.team-project/guards.json` (v3.45.1): só os testes do Pronto de cada bloco e "`verify.ps1 -Mode full` no fim" —
+os comandos vivem no `guards.json`, não se repetem aqui. Sem `verify`: os comandos do projeto — ver `.team-project/developer/context.md`. Cada um já validado na seção 3.
 Incluir **sempre** o comando do gate de cobertura da unidade tocada; se aquela unidade ainda não tem
 comando de cobertura, isso é gap de configuração e entra na seção 9, não vira Task sem verificação.>
 
@@ -142,7 +143,7 @@ passo 3, com a permissão do stakeholder. Não entra em `**Arquivos tocados:**`.
 ## Regras do formato
 
 1. **Sequência linear** quando o time tem um único dev; sem faixas paralelas.
-2. **Cabe em uma unidade de trabalho** — acima de ~10 passos ou duas áreas do sistema, quebrar em `<T-ID>a`/`<T-ID>b`, **sempre dentro da mesma História** (R2 · R20). **Blocos (v3.45): acima de 8 arquivos em `**Arquivos tocados:**` (produção + teste), os passos se dividem em `### Bloco <k> — <título>`**, cada um com até 8 arquivos e três linhas antes dos passos: `**Arquivos do bloco:**` (subconjunto da lista do cabeçalho, entre crases — a G9 continua lendo só o cabeçalho), `**Depende de:** bloco <j> | nenhum` e `**Pronto do bloco:** <comando focado> → exit 0 · <n> teste(s) passando` (o critério objetivo com que o dev para e a sessão segue). Cada bloco deixa o repositório compilando. O dev recebe **um bloco por instância** ([`sprint-run.md`](../../scrum-master/process/sprint-run.md) passo 3): bloco grande esgota o contexto do dev, que para no meio e relata como pronto (sprint 1 do projeto-piloto: 32 arquivos, quatro instâncias, duas paradas no meio; com blocos de até ~8, nenhuma).
+2. **Cabe em uma unidade de trabalho** — acima de ~10 passos ou duas áreas do sistema, quebrar em `<T-ID>a`/`<T-ID>b`, **sempre dentro da mesma História** (R2 · R20). **Blocos (v3.45): acima de 8 arquivos em `**Arquivos tocados:**` (produção + teste), os passos se dividem em `### Bloco <k> — <título>`**, cada um com até 8 arquivos e três linhas antes dos passos: `**Arquivos do bloco:**` (subconjunto da lista do cabeçalho, entre crases — a G9 continua lendo só o cabeçalho), `**Depende de:** bloco <j> | nenhum` e `**Pronto do bloco:** <comando focado — com `verify`, "`verify.ps1 -Mode focused -Tests <testes do bloco>`"> → exit 0 · <n> teste(s) passando` (o critério objetivo com que o dev para e a sessão segue). Cada bloco deixa o repositório compilando. O dev recebe **um bloco por instância** ([`sprint-run.md`](../../scrum-master/process/sprint-run.md) passo 3): bloco grande esgota o contexto do dev, que para no meio e relata como pronto (sprint 1 do projeto-piloto: 32 arquivos, quatro instâncias, duas paradas no meio; com blocos de até ~8, nenhuma).
 3. **Ordem preserva o repositório íntegro** no maior número de pontos intermediários.
 4. **Uma migration de banco por Task** — Tasks que dependem da mesma migration viram uma Task só.
 5. **Nomes exatamente como na especificação** — grafia é contrato.

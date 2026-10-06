@@ -2,7 +2,7 @@
 # Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/close.ps1" -Task T-041 [-Post] [-Root <projeto>]
 #   sem -Post: antes de o SM gravar o fechamento (R24 fica n-a); com -Post: depois da linha → ✅.
 # Saída: tabela regra · resultado (ok / falhou / n-a) · linha decisiva — é a evidência da conferência (R7).
-# Exit 1 só se R7 ou R12 falharem (o close não acontece) · exit 2 = erro de uso ou de leitura · senão 0.
+# Exit 1 só se R7, R7-verify (com guards.json → verify) ou R12 falharem (o close não acontece) · exit 2 = erro de uso ou de leitura · senão 0.
 
 param(
     [Parameter(Mandatory = $true)][string]$Task,
@@ -69,6 +69,23 @@ try {
         elseif (-not $okV)      { Add-Result 'R7' 'falhou' ("Veredito:" + $v + " — fecha só com ✅ como primeiro marcador da linha") }
         elseif (-not $okCmd)    { Add-Result 'R7' 'falhou' 'nenhum bloco de comando (> comando + saída) no bloco mais recente' }
         else                    { Add-Result 'R7' 'ok' ("Veredito:" + $v.Trim() + "; " + $blocks.Count + " bloco(s) de comando") }
+    }
+
+    # ---------- R7 · evidência mecânica (v3.45.1): verify full verde e da árvore que está no disco ----------
+    $gj = $null; $gp = Join-Path $tp 'guards.json'
+    if (Test-Path -LiteralPath $gp) { try { $gj = Read-Text $gp | ConvertFrom-Json } catch { } }
+    $hasVerify = $null -ne $gj -and $null -ne $gj.verify -and @($gj.verify.PSObject.Properties | Where-Object { $_.Value }).Count -gt 0
+    if (-not $hasVerify) { Add-Result 'R7-verify' 'n-a' 'guards.json sem comandos em "verify" — evidência só pelo veredito e pelo operator' }
+    else {
+        $vr = Join-Path (Get-VerifyDir $Root $Task) 'result.json'
+        $vfull = $null; if (Test-Path -LiteralPath $vr) { try { $vfull = (Read-Text $vr | ConvertFrom-Json).full } catch { } }
+        $now = Get-WorkTree $Root
+        $vrel = $vr.Substring($Root.Length + 1) -replace '\\', '/'
+        if ($null -eq $vfull) { Add-Result 'R7-verify' 'falhou' "sem verify full em $vrel — o dev roda verify.ps1 -Mode full no fim da Task" }
+        elseif (@($vfull.commands | Where-Object { [int]$_.exit -ne 0 }).Count) { Add-Result 'R7-verify' 'falhou' ("verify full com falha: " + ((@($vfull.commands | Where-Object { [int]$_.exit -ne 0 }) | ForEach-Object { "$($_.key) exit $($_.exit)" }) -join ', ')) }
+        elseif (-not $now) { Add-Result 'R7-verify' 'n-a' 'sem git: a árvore não se compara' }
+        elseif ([string]$vfull.tree -ne $now) { Add-Result 'R7-verify' 'falhou' ("a árvore mudou depois do verify full de $($vfull.at) (" + ([string]$vfull.tree).Substring(0, 12) + " → " + $now.Substring(0, 12) + ") — rode -Mode full de novo e o QA confere") }
+        else { Add-Result 'R7-verify' 'ok' ("verify full de $($vfull.at): " + (@($vfull.commands | ForEach-Object { "$($_.key) 0" }) -join ', ') + "; árvore igual (" + $now.Substring(0, 12) + ")") }
     }
 
     # ---------- R12 · documentos vivos ----------
@@ -374,7 +391,7 @@ try {
     foreach ($r in 'R2', 'R6', 'R9', 'R21', 'R32') { Add-Result $r 'n-a' $(if ($r -eq 'R21') { 'aceite é da Review — conferido por C2' } else { 'julgamento' }) }
 
     Write-Results "C1 · close $Task · sprint $n$(if ($Post) { ' · -Post' })"
-    $blocking = @($script:Results | Where-Object { $_.Regra -in 'R7', 'R12' -and $_.Resultado -eq 'falhou' })
+    $blocking = @($script:Results | Where-Object { $_.Regra -in 'R7', 'R7-verify', 'R12' -and $_.Resultado -eq 'falhou' })
     if ($blocking.Count) { [Console]::Out.WriteLine(''); [Console]::Out.WriteLine('**Não fecha:** ' + (($blocking | ForEach-Object { $_.Regra }) -join ' e ') + ' falhou.'); exit 1 }
     exit 0
 } catch {

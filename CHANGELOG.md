@@ -13,6 +13,17 @@
 
 ---
 
+## v3.45.1 — 2026-10-06
+
+**Branch:** `feat/v3.45.1` empilhada sobre `feat/v3.45.0` · **Processo:** [`v3.45` — addendum v3.45.1](roles/scrum-master/process/process-changelog.md)
+Segundo pacote de `proposta-custo-run.md` (M1): a verificação roda uma vez e quem confere não a repete.
+
+- **`scripts/checks/verify.ps1`**: `focused` (teste do bloco) · `full` (build, lint, suíte, cobertura de `guards.json` → `verify`) · `check` (só compara). Log por comando e `result.json` em `.team-project/verify/<n>/<ID>/`, com código de saída real e a **impressão digital da árvore** (tree do git num índice temporário — arquivo novo não rastreado muda a impressão; o índice do projeto não é tocado).
+- **QA** começa por `-Mode check`: árvore igual e verde → cita sem reexecutar; diferente → roda `full` uma vez. **Sessão** não reexecuta verificação de papel.
+- **C1 `R7-verify`** (com `verify` configurado): não fecha com o `full` vermelho, ausente ou de uma árvore que mudou depois dele.
+- R7 e R28 alinhadas; `team-update.md` 7h e `team-init.md` 4a preenchem `verify`; modelo do `guards.json`. Suítes: conferências 41 casos (8 novos), guardas 85 (1 novo).
+
+---
 ## v3.45.0 — 2026-10-06
 
 **Branch:** `feat/v3.45.0` a partir de `develop` (v3.44.2 mesclada) · **Processo:** [`v3.45`](roles/scrum-master/process/process-changelog.md)

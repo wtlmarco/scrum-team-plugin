@@ -125,6 +125,48 @@ function Get-LabelValue([string]$Text, [string]$Label) {
 
 function Get-IdPattern([string]$Id) { return '(?<![\w-])' + [regex]::Escape($Id) + '(?![\w])' }
 
+# Impressão digital da árvore de trabalho (v3.45.1): o tree do git com tudo o que está no disco — rastreado, alterado e
+# novo não ignorado —, montado num índice temporário (o índice do projeto não é tocado) e sem .team-project/ (R31).
+# Mesma impressão = mesmo código: evidência de verify.ps1 com ela vale sem reexecução. $null fora de um repositório git.
+function Get-WorkTree([string]$Root) {
+    $ErrorActionPreference = 'Continue'   # no 5.1, stderr do git (aviso de CRLF) viraria exceção com 'Stop'
+    $top = & git -C $Root rev-parse --show-toplevel 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not $top) { return $null }
+    $idx = [System.IO.Path]::GetTempFileName()
+    $old = $env:GIT_INDEX_FILE
+    try {
+        Remove-Item -LiteralPath $idx -Force
+        $env:GIT_INDEX_FILE = $idx
+        & git -C $top rev-parse --verify -q HEAD *> $null
+        if ($LASTEXITCODE -eq 0) { & git -C $top read-tree HEAD 2>$null } else { & git -C $top read-tree --empty 2>$null }
+        & git -C $top add -A -- . ':(exclude).team-project' 2>$null
+        $tree = & git -C $top write-tree 2>$null
+        if ($LASTEXITCODE -ne 0) { return $null }
+        return ([string]$tree).Trim()
+    } finally {
+        if ($null -eq $old) { Remove-Item Env:GIT_INDEX_FILE -ErrorAction SilentlyContinue } else { $env:GIT_INDEX_FILE = $old }
+        Remove-Item -LiteralPath $idx -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# Pasta da evidência mecânica de um trabalho: .team-project/verify/<sprint|B-nnn|pre-sprint>/<ID>/.
+function Get-VerifyDir([string]$Root, [string]$Id) {
+    $tp = Join-Path $Root '.team-project'
+    $seg = 'pre-sprint'
+    if ($Id -match '^[FB]-\d+') {
+        $run = Join-Path $tp '.active-run'
+        if ($Id -match '^B-\d+$') { $seg = $Id }
+        elseif (Test-Path -LiteralPath $run) { try { $r = Get-Content -LiteralPath $run -Raw -Encoding UTF8 | ConvertFrom-Json; if ([string]$r.trilha -eq 'fix') { $seg = [string]$r.id } } catch { } }
+    } else {
+        $readme = Join-Path $tp 'README.md'
+        if (Test-Path -LiteralPath $readme) {
+            $m = [regex]::Match((Read-Text $readme), '(?m)^\|\s*\*\*Sprint corrente\*\*\s*\|\s*\*\*(\d+)\*\*')
+            if ($m.Success) { $seg = $m.Groups[1].Value }
+        }
+    }
+    return (Join-Path $tp "verify/$seg/$Id")
+}
+
 # Registro de transições (R24): vive no burndown.md do sprint (v3.44.1); sprint aberto antes disso o tem no sprint-backlog.md. $null se nenhum.
 function Get-TransitionLog([string]$SprintDir, [string]$Board) {
     $bd = Join-Path $SprintDir 'burndown.md'
