@@ -208,6 +208,9 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 - **Cada disparo custa de 0,8 a 1,2 s.** O que cada guarda **não** cobre está em `hooks/COVERAGE.md`; as decisões ficam em `.team-project/guards.log`, contadas na retrospectiva.
 - **O `/sm close` começa por uma conferência automática** (`close.ps1`): sem evidência com veredito ✅ (R7) ou com documento vivo pendente (R12), a Task não fecha.
 - **Verificação uma vez só** (v3.45.1, com `verify` no `guards.json`): o dev roda `scripts/checks/verify.ps1` — o teste focado durante o bloco, build/lint/suíte/cobertura uma vez no fim — e o resultado fica amarrado à impressão digital do código no disco. O QA confere com `-Mode check` e só roda a suíte de novo se o código mudou; o `close` não fecha com o `verify` vermelho ou de um código que mudou depois dele.
+- **Plano em contrato** (v3.46): o Arquiteto escreve assinaturas, testes com "deve falhar se…" e a **mutação** que prova cada um — não o código inteiro (trecho literal até 15 linhas, ou validado). O `plan.ps1` confere o plano antes de o dev começar, e o `verify.ps1 -Mode mutation` prova que cada teste falha sem a regra, restaurando o arquivo depois.
+- **Trilha leve** (v3.46): Task de até meio dia, até 4 arquivos, sem migration, segurança, interface nem arquivo de gate é marcada `leve` na Planning — plano curto e QA só no que ela toca, com a mesma evidência.
+- **Fechamento sem o SM** (v3.46): no `sprint run`, a sessão fecha cada Task com `close.ps1 -Apply` (quadro, burndown, conferência e a entrada de status para colar); o SM só entra quando o fechamento pede decisão.
 
 ## Os seus quatro portões
 

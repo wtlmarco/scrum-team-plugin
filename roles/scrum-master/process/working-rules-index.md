@@ -28,8 +28,8 @@
 
 | Regra | Conferir | Instrumento |
 |---|---|---|
-| R7 · sem evidência, não aconteceu **[close]** | bloco no registro de evidências com comando e saída; critério de aceite demonstrado na Review aponta a evidência da Task — **bloqueia o fechamento** | C1 (bloqueante) · G5 · G6 |
-| R8 · sem plano, sem código **[close]** | existe plano para toda Task em construção | C1 · G9 |
+| R7 · sem evidência, não aconteceu **[close]** | bloco no registro de evidências com comando e saída; critério de aceite demonstrado na Review aponta a evidência da Task; com `verify`, `full` verde da árvore do disco e toda mutação do plano pega — **bloqueia o fechamento** | C1 (bloqueante: R7 · R7-verify · R7-mutação) · `verify.ps1` · G5 · G6 |
+| R8 · sem plano, sem código **[close]** | existe plano para toda Task em construção, conferido antes do dev (lista, blocos, trecho ≤ 15 linhas, mutações) | C1 · G9 · `plan.ps1` |
 | R9 · gap vira pergunta **[close]** | gap respondido; decisão refletida no plano (não só em prosa); gap sem resposta há mais de um sprint vira bloqueio; quem respondeu não reproduziu a verificação do QA | — (julgamento) |
 | R10 · nomenclatura é contrato | achado de nomenclatura no veredito conta como reprovação, não ressalva | — (julgamento) |
 | R11 · segurança no plano | Task sensível sem seção de segurança no plano não entra em construção | — (julgamento) |
@@ -49,7 +49,7 @@
 | R20 · História × Task **[close]** | toda Task com História de origem; História detalhada antes da quebra; **nenhuma Task em construção antes da data do pacote aprovado**; detalhamento sem arquivo/classe/endpoint; Product Backlog só índice com ponteiro | C1 |
 | R21 · aceite por História **[close]** | nenhum aceite fora da Review; todo aceite cita por critério a evidência da Task; ressalva virou Task com dono; nenhum `/po accept` mira Task | C2 (parcial) |
 | R22 · pergunta e decisão de portão em formulário | alternativas descritas + recomendação + "pedir mais contexto" por último; decisão de portão ①–④ chegou em `AskUserQuestion`, não em texto corrido (achado contra a orquestração); ③ registrado no Sprint Backlog, ④ em `review.md`; ① e ③ com "aprovar" descrito como declaração de navegação, ④ com resumo do dossiê na pergunta | G3 (parcial) |
-| R23 · modo leve | entrega "leve" declara o que foi e o que não foi reexecutado; nenhum gate do §8 pulado; nunca na primeira entrega | — (julgamento) |
+| R23 · modo leve | entrega "leve" declara o que foi e o que não foi reexecutado; nenhum gate do §8 pulado; nunca na primeira entrega; Task de trilha leve dentro do critério mecânico | `plan.ps1` (trilha leve) · resto julgamento |
 | R24 · transições e burndown **[close]** | `/sm close` tem linha no Registro de transições do `burndown.md` (Para ✅, data), com → 🟦/🟨/🟪 antes; cada transição tem linha na Série; burndown não cai sem linha de fechamento; `/sm board` que muda marcador grava a linha | C1 |
 | R25 · unidade de aprovação e entrega **[close]** | pacote aprovado (data, quem, decisão, ponteiro do protótipo, canal e URL · rótulo do artifact — R34); `planning.md` com o que não entrou e por quê; protótipo cobre fluxo ponta a ponta; degrau nomeado em cada bloqueio; `stories/` congelado; nenhum gate do §8 dispensado pelo ciclo | C1 |
 | R26 · plano mede o ambiente | seção de ambiente medido (comando e saída, próprios ou do `operator` com caminho do log) antes dos passos; comando citado validado; "onde parar" cobre pré-requisito **ausente** | C1 (parcial) |
