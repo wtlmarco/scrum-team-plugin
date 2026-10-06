@@ -196,9 +196,11 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 | **G5** | subagente editando arquivo de gate (`.editorconfig`, CI, `*.ruleset`… — lista em `guards.json` → `protectedPaths`) | o papel levanta 🔺 GAP; mudança de gate é sua. Projeto com outro arquivo de gate: acrescente-o à lista |
 | **G6** | dev acrescentando teste ignorado (`[Skip`, `.skip(`, `xit(`…) | o dev levanta 🔺 GAP ao Arquiteto |
 | **G7** | Arquiteto, QA, dev ou UX disparando outro papel pela ferramenta `Agent` (R28) | só o `operator` é disparado por eles; o resto volta a quem orquestra |
-| **G8** | papel editando arquivo de outro dono (matriz de `artifact-ownership.md`) ou código-fonte; **pergunta a você** quando o Arquiteto vai escrever código (spike) | o papel pede a mudança ao dono. Na pergunta do Arquiteto: autorize só em spike ou pedido seu |
+| **G8** | papel editando arquivo de outro dono (matriz de `artifact-ownership.md`) ou código-fonte — o Arquiteto inclusive, salvo em spike declarado (`.team-project/.active-spike`) | o papel pede a mudança ao dono; o Arquiteto decide e devolve a resposta, validando no scratchpad. Nada é perguntado a você |
 | **G9** | dev editando arquivo fora da lista do plano (R4 · R8), ou sem Task ativa | 🔺 GAP ao Arquiteto, que acrescenta o arquivo ao plano. Rodando `/dev` à mão, a sessão grava antes `.team-project/.active-task` |
 | **G11** | `operator` escrevendo fora da pasta do próprio job | — (o `operator` só grava log e relatório) |
+| **G14** | durante o `sprint run`/`fix run`: **libera** sozinho o operacional dos papéis (leitura, git sem push, build/teste de `guards.json` → `runCommands`) e nega o que está fora da lista | nenhum pedido de permissão para no meio da fila. Comando de build/teste que falta: acrescente o prefixo em `runCommands` |
+| **G15** | registra no `guards.log` todo pedido de permissão do Claude Code | — (é o rastro para diagnosticar chamada interrompida, R27) |
 
 - **O agente recebe o motivo e corrige o rumo** — você normalmente nem vê o bloqueio. As guardas por papel (G5–G11) não valem para a sua sessão principal.
 - **Falso positivo:** acrescente a guarda a `"disabled"` em `.team-project/guards.json`; vale na hora. Leve o caso ao `/review`, para a guarda ser corrigida.

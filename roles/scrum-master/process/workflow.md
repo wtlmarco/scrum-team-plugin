@@ -203,6 +203,8 @@ bug achado pelo próprio time ──▶ direto ao registro da QA (dev: 🔺 GAP 
 capacidade, fila, bloqueio ─▶ SM              (quanto cabe, em que ordem)
 lacuna de especificação  ──▶ PO ──▶ stakeholder (opções descritas + recomendação + pedir mais contexto, em formulário — R22)
 decisão estratégica      ──▶ stakeholder       (stack, provedor, custo, risco aceito)
+desvio relevante         ──▶ stakeholder, pelo PO ou pelo Arquiteto (mudança funcional · impacto significativo · arquitetura fora do SDD que altera o que se espera do sistema — v3.44)
+questão técnica operacional ─▶ Arquiteto decide e devolve a quem pediu (não sobe ao stakeholder; não escreve no código — v3.44)
 exceção a um padrão      ──▶ stakeholder ──▶ ADR escrita pelo Arquiteto
 decisão especializada    ──▶ /sm consulting (opcional, antes do stakeholder; só fora do sprint run) ──▶ técnica: proposta de ADR · business:<área>: proposta de negócio ──▶ stakeholder (R22 · R32)
 defeito em ${CLAUDE_PLUGIN_ROOT}/standards/ ──▶ Arquiteto (dev: 🔺 GAP · QA: achado de processo) ──▶ /review   (R16)
