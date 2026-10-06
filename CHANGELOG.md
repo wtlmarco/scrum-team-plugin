@@ -13,6 +13,19 @@
 
 ---
 
+## v3.46.0 — 2026-10-06
+
+**Branch:** `feat/v3.46.0` empilhada sobre `feat/v3.45.1` · **Processo:** [`v3.46`](roles/scrum-master/process/process-changelog.md)
+Terceiro e último pacote de `proposta-custo-run.md` (M2, M3, M5, M6, M7; decisões D2, D3, D5, D6, D7).
+
+- **Plano em contrato**: regra 7 qualificada (o dev escolhe o corpo; o plano fecha comportamento, contrato, camada e standard); trecho literal até 15 linhas ou `**Validado em:**`; `**Mutações:**` por teste. **`scripts/checks/plan.ps1`** confere o plano antes do dev (lista, protegidos, blocos, trecho, mutações, trilha leve) — reprovado volta ao Arquiteto sem custo de dev.
+- **Prova de falha por script**: `verify.ps1 -Mode mutation -Plan` troca o trecho declarado, roda o teste focado, espera exit ≠ 0 e restaura byte a byte; a árvore tem de voltar igual. C1 `R7-mutação` não fecha com mutação não pega. O QA amostra uma (`-Only`).
+- **Trilha leve por Task** (R23): coluna `Trilha` no Sprint Backlog, critério mecânico, plano curto em Sonnet, QA nas frentes que a Task toca, mesma evidência.
+- **Fechamento pela sessão**: `close.ps1 -Apply` marca ✅, grava Registro e Série, roda o `-Post` e imprime a entrada de status; o Agent `scrum-master` só quando o fechamento pede julgamento.
+- **Arquiteto um passo à frente** (R1): planeja a Task independente seguinte durante a construção; lê o índice de `standards/` e só as seções da Task.
+- v3.43 arquivada. Suítes: conferências 52 casos (11 novos), guardas 85.
+
+---
 ## v3.45.1 — 2026-10-06
 
 **Branch:** `feat/v3.45.1` empilhada sobre `feat/v3.45.0` · **Processo:** [`v3.45` — addendum v3.45.1](roles/scrum-master/process/process-changelog.md)

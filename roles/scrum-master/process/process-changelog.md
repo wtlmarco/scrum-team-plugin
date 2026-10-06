@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.43`](process-changelog-archive.md) | `sprint run` sem paradas fora do contrato: lista fechada de paradas, rota do gate protegido, negação ao dev vira 🔺 GAP, interrupção pelo stakeholder e marcador acompanhando a Task; addendum: veredito pelo primeiro marcador, desvio aceito no R4, código de saída do `operator` (SM + Arquiteto + QA) — 05/10/2026 |
 | [`v3.42`](process-changelog-archive.md) | Guardas por papel (fase 2): gate protegido, teste ignorado, `Agent` só ao `operator`, matriz de propriedade, escopo do dev e pasta do job — G5 · G6 · G7 · G8 · G9 · G11 (SM + Arquiteto) — 04/10/2026 |
 | [`v3.41`](process-changelog-archive.md) | R34: contato remoto por Remote Control — identidade do projeto, pendência em disco, fim do `sprint run` em formulário de autorização da Review e protótipo publicável como artifact (SM + UX) — 03/10/2026 |
 | [`v3.40`](process-changelog-archive.md) | R33: trilha `fix` para defeito e ajuste pequeno — critério verificável na entrada, plano e execução em bloco, consumo próprio, piso de evidência por Correção e conferência C4 (SM + PO + Arquiteto + QA + UX) — 03/10/2026 |
@@ -81,6 +82,51 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.46 — Plano em contrato conferido antes do dev, prova de falha por mutação, trilha leve por Task, Arquiteto um passo à frente e fechamento pela sessão (SM + Arquiteto + Dev + QA) — 06/10/2026
+
+**Instrução** (stakeholder): "pode aplicar", sobre `proposta-custo-run.md` com as decisões D2, D3, D5, D6 e D7 (formulário de 06/10/2026, todas pela recomendação). Terceiro e último pacote da §4 da proposta (M2, resto da M3, M5 `close -Apply`, M6, M7), sobre a v3.45.1. **Causas medidas no piloto (v3.42):** 5 de 8 Tasks com defeito no código literal do plano (Opus escrevendo código sem compilar, 20 a 70 mil tokens e 10 a 30 min por ciclo de 🔺 GAP); a prova de falha sem lugar (6 negações da G9 a arquivo temporário, prova rodada pelo dev e de novo pelo QA); Task de harness com o pacote inteiro (~530 mil tokens); o SM chamado só para edição mecânica (213 mil tokens em 8 fechamentos); plano fora do caminho crítico proibido pela série total, embora a R1 o permita.
+**Classificação:** formato de documento (plano, Sprint Backlog) · instrumento (`plan.ps1` novo, `verify.ps1 -Mode mutation`, C1 `R7-mutação`, `close.ps1 -Apply`) · fluxo (`sprint-run.md` 1, 3, 7, §Disparo; Planning passo 5) · comportamento de agente (Arquiteto lê o índice de `standards/` e a seção do modo). **Sem regra nova** (34): reforça R7, R8, R23, R1, R24.
+**Papéis movidos (R17):** 4 — SM, Arquiteto, Dev, QA → barreira de 15 360 B.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `implementation-plan.md` | regras 7, 17–20 · §6 · cabeçalho · Variante leve (nova) | **plano é contrato**: escolha que não muda comportamento, contrato, camada ou standard é do dev; trecho literal até 15 linhas ou `**Validado em:**`; teste não vai escrito no plano; `**Mutações:**` por teste (`- M<k> · teste … · produção · trecho → mutante`) ou `sem prova:`; `plan.ps1` antes do dev; `**Planejado durante:**`; `**Trilha:**` e a variante leve |
+| `scripts/checks/plan.ps1` (novo) | — | lista legível com teste · protegidos · blocos (≤ 8, Pronto com exit 0) · trecho ≤ 15 linhas ou validado · mutações dentro da lista · critério mecânico da leve; exit 1 = o plano volta ao Arquiteto |
+| `verify.ps1` | `-Mode mutation -Plan [-Only]` | sobre a árvore do último `full`: troca o trecho (uma ocorrência, arquivo do plano), roda o teste focado, espera exit ≠ 0, restaura byte a byte (BOM preservado; backup restaurado na próxima execução se o processo morrer); árvore tem de voltar igual; amostragem do QA mantém as outras do registro |
+| `close.ps1` (C1) | `R7-mutação` · `-Apply` | toda mutação do plano pega, na árvore do `full` (bloqueante com `verify`); `-Apply`: sem falha bloqueante, marca ✅, grava Registro e Série (estimativa baixada, composição recontada), roda o `-Post` e imprime a entrada de status pré-preenchida |
+| `agents/architect.md` · README do Arquiteto | leitura · passo 4 | `standards/README.md` e só as seções da Task (não os ~135 KB a cada invocação); a seção do modo, não o README inteiro; plano em contrato e `plan.ps1` antes de responder |
+| `sprint-run.md` | 1 · 3 · 7 · §Disparo · Como o SM verifica | leve em Sonnet; `plan.ps1` antes do dev (reprovado volta ao mesmo Arquiteto); `-Mode mutation` no fim; **a sessão fecha com `close.ps1 -Apply`**, o Agent `scrum-master` só com julgamento; Arquiteto planeja a Task independente seguinte durante a construção |
+| `agents/developer.md` · `agents/quality-assurance.md` · README do QA | prova de falha · trilha leve | o dev roda a mutação e não cria arquivo temporário; o QA julga se a mutação representa a regra e reexecuta uma por amostragem; Task leve: frentes 1, 2 (objeto 1), 4 e cenários |
+| `templates/sprint-backlog.md` · `workflow-sprint.md` Planning 5 · `working-rules.md` R23 · índice das regras | Trilha | coluna `Trilha` (`plena`/`leve`) com o critério mecânico; quadro anterior sem a coluna = plena |
+| README do SM · `COVERAGE.md` · `how-to.md` | — | o `close` da sessão; a escrita temporária da mutação fora da G9 e os limites dela |
+| Sessão (stakeholder) | `scripts/*` e testes · `agents/*` · `plugin.json` · `README.md` · `CHANGELOG.md` | aplicados pela sessão, a pedido |
+
+### Por quê
+O texto mais caro do sprint — o plano em Opus — era o que menos se validava, porque a regra 7 pedia o código inteiro e a G8 (certa) proíbe o Arquiteto de compilar no projeto. Contrato com mutação desloca o "como" para quem tem o compilador e mantém o controle: a Conferência do passo, o `verify` e a mutação dizem se o resultado está certo, sem o Arquiteto escrever o corpo. A prova de falha passa a ser dado do plano, executada uma vez por script e amostrada pelo QA. A trilha leve aplica a R23 à Task: menos escopo verificado, a mesma evidência. O `close -Apply` tira um agente do caminho de cada fechamento — a escrita é a mesma que a sessão já faz a cada transição (§Marcador).
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| Arquiteto | escreve contrato e mutações; trecho longo só validado; passa no `plan.ps1`; lê o índice dos standards; adianta o plano da Task independente |
+| Dev | escreve o corpo; roda `-Mode mutation` no fim; não cria arquivo para provar falha |
+| QA | julga a mutação e reexecuta uma; frentes reduzidas na leve |
+| SM / sessão | `plan.ps1` antes do dev; `close.ps1 -Apply`; trilha decidida na Planning |
+
+### Verificação (R19)
+| Item | Comando | Resultado | |
+|---|---|---|---|
+| Conferências | `run-check-tests.ps1` | 52 casos · 0 falharam (11 novos: mutação sem execução não fecha; mutação pega com árvore restaurada; `R7-mutação` ok; mutação decorativa com `-Only` reprova e mantém a amostra anterior; `-Apply` grava quadro, Registro, Série, `-Post` ok e entrada de status; `-Apply` de novo = 2; `-Apply` com R12 pendente não toca o quadro; plano em contrato ok; plano com código longo, 9 arquivos sem bloco, sem teste, sem mutação e sem protegidos reprova; leve com 6 arquivos volta à plena) | ✅ |
+| Guardas | `run-guard-tests.ps1` | 85 casos · 0 falharam | ✅ |
+| Release | `release.ps1` | exit 0 — R18 v3.46.0 · R17 bloco v3.46 ≤ 15 360 (v3.43 arquivada) · ps1-5.1 16 · ownership 53 · órfãos 45 | ✅ |
+
+**Não exercitado:** um `sprint run` real com plano em contrato, mutação e `-Apply`; mutação em arquivo com CRLF misto ou codificação que não seja UTF-8 (o script lê e grava UTF-8, preservando o BOM).
+
+### Pendente do stakeholder
+Atualizar o plugin, `/team update` (7g, 7h) e reiniciar. **Medir** com o consumo da v3.45 os indicadores da §5 da proposta nos dois sprints seguintes (tokens por Task, suítes por Task, ciclos de GAP por defeito de plano). Remover `proposta-custo-run.md` depois do aceite desta entrada.
 
 ---
 
@@ -216,58 +262,3 @@ Atualizar o plugin, rodar `/team update` (passo 7f) em cada projeto e **reinicia
 **Instrução** (stakeholder): "pode corrigir", sobre o `guards.log` do primeiro `sprint run` (v3.42/3.43): 7 linhas `erro` (`IsPathRooted`) e 2 negações da G9 em `Env:`. **Classificação:** instrumento (heurística do `PowerShell` em G5/G8/G9/G14). **Sem regra nova.** `pre-tool.ps1`: alvo com caractere inválido descartado; drive que não é de arquivo fora de G5/G8/G9; G14 libera drive da sessão e nega outro. `COVERAGE.md` alinhado.
 
 **Verificação (R19):** `run-guard-tests.ps1` → 81 casos · 0 falharam; os 6 novos reprovam no código anterior. **Não exercitado:** run real com a v3.44.2. Indicador da fase 2 recomeça aqui (`proposta-guards-fase2.md`).
-
----
-
-## v3.43 — `sprint run` sem paradas fora do contrato: lista fechada de paradas, rota do gate protegido, negação ao dev vira 🔺 GAP, interrupção pelo stakeholder e marcador acompanhando a Task; addendum: veredito pelo primeiro marcador, desvio aceito no R4, código de saída do `operator` (SM + Arquiteto + QA) — 05/10/2026
-
-**Instrução** (stakeholder): "aplique o proposta-run-interrupcoes.md para termos um teste mais correto" — pré-requisito do benchmark de projeto (simulação sem intervenção). Origem: 4 interrupções e 1 queixa de burndown em `note.md` (sprint 1 de um projeto-piloto). Decisões do formulário de 05/10/2026: **P2 — sessão principal aplica o arquivo protegido** (com o pedido de permissão do harness) · **P5 — sem modo novo:** "já existe uma marcação, ela só precisa refletir onde a tarefa está" (a sessão marca no momento da transição; `board --marca` descartado) · versão única v3.43.0.
-**Classificação:** fluxo (`sprint-run.md`, `fix-run.md`) · formato de documento (plano: `**Arquivos protegidos:**`, §12, teste de cada arquivo de produção na lista) · propriedade de artefato (a sessão escreve marcador e transição no `run`) · comportamento de agente (card do dev, `commands/sm.md`, mensagens da G5/G9 — aplicados pela sessão). **Sem regra nova** (34): reforça R22, R24, R25, R27 e R7.
-**Papéis movidos (R17):** 3 — SM, Arquiteto e QA (este no addendum) → barreira de 12 800 B.
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `sprint-run.md` | Quem executa · Ordem da fila · passos 1, 3–6, 8 · §Marcador (nova) · Como o SM verifica | **P1** paradas legítimas em lista fechada (fim da fila, bloqueio de R22 sem Task elegível, pré-condição, interrupção); fim de Task não é parada; "sigo?", fronteira de História e resumo no meio da fila proibidos; Task 🔴 não para o `run`. **P2** passo 3: a sessão aplica o diff de `**Arquivos protegidos:**` antes do dev; recusado → 🔴 e a fila segue. **P3** passo 4: deny de G9/G6/G5 ao dev é sempre 🔺 GAP, nunca pergunta ao stakeholder. **P4** interrupção pelo stakeholder: não reexecuta, disco consistente, uma linha, espera. **P5** a sessão marca ⬜→🟦→🟨→🟪 (e 🟪→🟨, →🔴) na hora: marcador, Registro de transições e linha de composição no burndown; o `run` deixa de acionar `board` |
-| `fix-run.md` | §Run | Mesmas paradas, deny ao dev = GAP, timeout = não exercitado |
-| `working-rules.md` | R24 | A sessão do `run` também grava transição; intermediários exatos no `run`; Task fechada sem → 🟦/🟨/🟪 é achado |
-| `artifact-ownership.md` | §1 Sprint Backlog · Burndown | Escritor adicional no `run`: a sessão (marcador e linhas), como no `.active-task` |
-| `templates/burndown.md` · `sprint-backlog.md` | cabeçalho · granularidade · custo · Registro de transições | Linha por transição do `run`, com data e hora |
-| `roles/architect/templates/implementation-plan.md` | cabeçalho · §12 (nova) · regras 15 e 16 · exemplo | `**Arquivos protegidos:** nenhum \| ver §12`, separado por linha em branco (a G9 não o lê); §12 com o diff exato; teste de cada arquivo de produção na lista, ou `sem teste: <arquivo> — <motivo>` na §6 |
-| `roles/scrum-master/README.md` | `sprint run` | SM só no `close` |
-| Sessão (stakeholder) | `agents/developer.md` (timeout ≠ limpo; gate protegido é da §12) · `commands/sm.md` (tabela de modos; R27 com ação do stakeholder) · `hooks/pre-tool.ps1` (mensagens G5 e G9 dão a rota) · `hooks/COVERAGE.md` · `run-guard-tests.ps1` (`ExpectErr` + 3 casos) · `plugin.json` · `README.md` · `CHANGELOG.md` | Aplicados pela sessão |
-
-### Por quê
-No sprint 1 do piloto o `run` parou quatro vezes sem motivo de contrato: ofereceu parar depois de uma Task fechada, travou num `ci.yml` que nenhum subagente pode editar (sem rota), repassou ao stakeholder a negação da G9 de um `*.spec.ts` esquecido no plano, e não retomou depois de uma interrupção manual. O burndown só via abertura e fechamentos porque o `board` rodava no fim da Task. O benchmark de projeto exige `sprint run` e `fix run` sem intervenção — cada parada fora do contrato seria medida como custo do plugin, não como defeito.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda para ele |
-|---|---|
-| Sessão que orquestra | não para entre Tasks; aplica o diff protegido no passo 3; transforma deny ao dev em GAP; marca cada transição; responde em uma linha à interrupção |
-| Arquiteto | lista o teste de cada arquivo de produção; arquivo de gate vai à §12 com diff exato |
-| dev | timeout não é resultado; arquivo de gate é da §12 |
-| SM | entra só no `close`; verifica paradas, linhas de transição e `.active-task` × 🟨 |
-
-### Verificação (R19)
-| Item | Comando | Resultado | |
-|---|---|---|---|
-| Guardas | `powershell -NoProfile -File scripts/checks/tests/run-guard-tests.ps1` | 54 casos · 0 falharam (G5 cita `sprint-run.md passo 3`; §12 fora do escopo da G9; teste listado liberado) | ✅ |
-| Conferências | `powershell -NoProfile -File scripts/checks/tests/run-check-tests.ps1` | 20 casos · 0 falharam (C1 R24 lê a data de `aaaa-mm-dd hh:mm`) | ✅ |
-| Release (R17 · R18) | `powershell -NoProfile -File scripts/checks/release.ps1` | R18 ok: plugin.json = CHANGELOG = README L3 = v3.43.0, processo 3.43/3.42/3.41 com entrega · R17 ok: bloco v3.43 ≤ 10240 (2 papéis), 3 entradas vivas (v3.40 arquivada) · ps1-5.1 ok · ownership ok: 50 regras · órfãos ok: 45 modelos · exit 0 | ✅ |
-
-**Não exercitado:** um `sprint run` real com a v3.43 (exige plugin atualizado e sessão reiniciada). **Não mecanizado:** a conferência "teste de cada arquivo de produção na lista" do plano — fica na verificação do SM e na frente 2 do QA até existir conferência de plano por script.
-
-### Pendente do stakeholder
-Atualizar o plugin e **reiniciar a sessão**. Remover `proposta-run-interrupcoes.md` depois do aceite desta entrada. Os cinco itens de `note.md` que originaram a P1–P5 saíram da fila; ficaram os três achados de processo do mesmo sprint que esta entrada não trata — tratados no addendum abaixo, no mesmo dia.
-
-### Addendum — 05/10/2026 (`/review note`, entregue na mesma v3.43.0): os três achados de processo do sprint 1 do piloto, e um quarto
-**Instrução** (stakeholder): "pode rodar o /review note". Fonte: `scrum-master/context.md` do piloto (achado de processo de 05/10/2026) e o bloqueio 14 do quadro. **Classificação:** instrumento (C1 R7/R4/R28, C4 item 4) · formato de documento (evidência e veredito: `**Desvio aceito:**`; um bloco `##` completo por rodada) · comportamento de agente (card do `operator`) · regra (R4 "SM verifica", R28 nome da pasta). **Sem regra nova** (34).
-
-| # | Sintoma | Causa | Mudança |
-|---|---|---|---|
-| 1 | O `operator` tabulou "código 0" para provas que reprovam e não gravou `report.md` | o código lido era o do *wrapper* da ferramenta `PowerShell`; nada mandava conferir o relatório em disco | card: `$LASTEXITCODE` capturado na mesma chamada e gravado como `EXIT=<n>` no log; prova que deve reprovar compara o real com o esperado; `Test-Path` do `report` antes de responder |
-| 2 | `close.ps1` R7 barrou a T-019 duas vezes: revisão do QA sem `**Veredito:**`, depois "✅ único" com ⚠️/❌ do histórico na linha | o C1 lê só o bloco mais recente e exigia a linha sem nenhum outro marcador | C1 e C4 leem o **primeiro** marcador da linha (`Get-VerdictMark`, `lib.ps1`); `evidence.md`: toda rodada é bloco `##` completo, e o primeiro marcador é o veredito |
-| 3 | R4 barrou "Fora do plano" com desvio que o stakeholder decidiu manter (`ci.yml:6-7`) | não havia rótulo para a decisão; qualquer arquivo listado era falha | `**Desvio aceito:** aaaa-mm-dd — quem decidiu — onde está` em `evidence.md` e `verdict.md` (Arquiteto se técnico e incluído no plano; stakeholder por formulário se muda escopo); C1 R4 aceita com data, falha sem ela; não vale na trilha `fix` (lá é promoção) |
-| 4 | Job do Arquiteto em `operator/sprint-1/` ficou fora da contagem do C1 (0 reports) | `<sprint>` sem valor definido; o C1 conta `operator/<n>/` | R28 e card: `<sprint>` é o número; C1 R28 aponta `operator/sprint-<n>/` como nome fora do padrão |
-
-**Verificação (R19):** `run-check-tests.ps1` → 25 casos · 0 falharam (novos: ✅ com histórico ok; ⚠ antes do ✅ falha; desvio aceito com data ok; sem data falha + `operator/sprint-1` apontado; C4 ✅ com histórico fecha e ⚠ não) · `run-guard-tests.ps1` → 54 · 0 · `release.ps1` → exit 0. **Não exercitado:** o card do `operator` num job real.
