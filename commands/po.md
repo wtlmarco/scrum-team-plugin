@@ -7,7 +7,7 @@ Aciona o **Product Owner** do time.
 
 Pedido do stakeholder: **$ARGUMENTS**
 
-Antes de abrir instância nova, confira com ListAgents se há `product-owner` recente sobre o mesmo tema; se houver, retome-o com SendMessage (R3). Senão, use a ferramenta Agent com `subagent_type: "product-owner"` e `run_in_background: false`, passando ao agente:
+Antes de abrir instância nova, confira com ListAgents se há `product-owner` recente sobre o mesmo tema; se houver, retome-o com SendMessage (R3). Senão, use a ferramenta Agent com `subagent_type: "product-owner"` e `run_in_background: false` (no `sprint run` e no `fix run`, `true` — `sprint-run.md` §Disparo em segundo plano), passando ao agente:
 
 1. O pedido acima, literal.
 2. A instrução de ler antes de responder: `.team-project/README.md`, `.team-project/product-owner/context.md`, `.team-project/product-owner/product-backlog.md` (índice das Histórias **e plano de entrega**) e os documentos de requisitos/critérios indicados no contexto. Nos modos `status` e `prioritize`, ler também `.team-project/sprints/<n>/sprint-backlog.md` (`<n>` = sprint corrente, em `.team-project/README.md` §2) — só leitura.

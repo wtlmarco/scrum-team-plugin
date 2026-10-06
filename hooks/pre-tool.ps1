@@ -1,7 +1,8 @@
 ﻿# Despachante PreToolUse — fase 1 (v3.39): G1 (R31) · G2 (cópia instalada) · G3 (R22);
 # fase 2 (v3.42), por papel (sufixo de agent_type): G5 gate protegido · G6 teste ignorado · G7 Agent só ao operator (R28)
-# · G8 matriz de propriedade (hooks/ownership.json) · G9 escopo do dev (R4 · R8) · G11 pasta do job do operator.
-# Devolve a PRIMEIRA negação: exit 2 com o motivo no stderr; "ask" (G8, Arquiteto em código) sai em JSON com exit 0.
+# · G8 matriz de propriedade (hooks/ownership.json) · G9 escopo do dev (R4 · R8) · G11 pasta do job do operator;
+# v3.44: G14 permissão operacional do run (.team-project/.active-run) — nenhum pedido de permissão do harness trava um papel.
+# Devolve a PRIMEIRA negação: exit 2 com o motivo no stderr; "allow" (G14) sai em JSON com exit 0. Nenhuma guarda pergunta.
 # Qualquer exceção → exit 1 (erro não bloqueante — falha aberta, D5). Cobertura e limites: hooks/COVERAGE.md.
 
 $ErrorActionPreference = 'Stop'
@@ -14,11 +15,9 @@ function Deny([string]$Guard, [string]$Target, [string]$Reason) {
     exit 2
 }
 
-function Ask([string]$Guard, [string]$Target, [string]$Reason) {
-    Write-GuardLog $script:projectDir $Guard $script:hookInput $Target "ask: $Reason"
-    $out = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; permissionDecision = 'ask'; permissionDecisionReason = "[$Guard] $Reason" } } | ConvertTo-Json -Depth 4 -Compress
+function Write-Allow([string]$Reason) {
+    $out = @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; permissionDecision = 'allow'; permissionDecisionReason = "[G14] $Reason" } } | ConvertTo-Json -Depth 4 -Compress
     [Console]::Out.Write($out)
-    exit 0
 }
 
 # G1 — R31: o git recebe só o produto; .team-project/ nunca entra num commit.
@@ -171,7 +170,8 @@ function Test-G8([string]$Rel, [string]$Shown) {
     if (-not $isSource) { return }
     if ($r -eq 'developer') { return }                                # G9 restringe ao plano
     if ($r -eq 'architect') {
-        Ask 'G8' $Shown "o Arquiteto vai escrever código-fonte ($Rel). Código é do dev, pelo Plano de Implementação; só vale em spike ou a pedido explícito do stakeholder. Autorizar?"
+        if ($null -ne (Get-Marker $script:projectDir '.active-spike')) { return }   # spike declarado pela sessão
+        Deny 'G8' $Shown "$Rel é código-fonte: o Arquiteto decide e devolve a resposta a quem pediu — quem escreve é o dev, pelo plano (artifact-ownership.md §1). Para validar um trecho, use uma cópia no scratchpad da sessão (fora do projeto) ou, no sprint, o operator; provar que o teste de regressão falha é o passo 1 do dev. Spike que precisa tocar o código: a sessão grava .team-project/.active-spike antes (roles/architect/README.md §Validar sem escrever no produto)."
     }
     Deny 'G8' $Shown "$Rel é código-fonte: escreve o dev, só nos arquivos do Plano de Implementação (artifact-ownership.md §1). Leve a mudança ao Arquiteto, que planeja."
 }
@@ -222,6 +222,87 @@ function Test-G11([string]$Rel, [string]$Shown) {
     Deny 'G11' $Shown "o operator escreve só na pasta do próprio job — .team-project/operator/<sprint|pre-sprint|B-nnn>/<job>/ (contrato, item 6). Réplica e rascunho ficam lá dentro; o código do projeto não se toca."
 }
 
+# G14 — run sem trava: com .team-project/.active-run (gravado pela sessão no sprint run e no fix run), o que já passou
+# pelas guardas e é operacional sai liberado — o harness não pergunta ao stakeholder no meio do run. Comando fora da
+# lista é negado com a rota (como a G9: pergunta no meio do run contraria R25), nunca deixado numa pergunta sem resposta.
+$script:runBase = @(
+    'git status', 'git diff', 'git log', 'git show', 'git grep', 'git blame', 'git add', 'git commit', 'git restore --staged',
+    'git rev-parse', 'git ls-files', 'git branch --show-current', 'git check-ignore', 'git stash list',
+    'get-childitem', 'gci', 'ls', 'dir', 'get-content', 'gc', 'cat', 'type', 'get-item', 'gi', 'get-itemproperty', 'test-path',
+    'resolve-path', 'split-path', 'join-path', 'select-string', 'sls', 'select-object', 'select', 'where-object', 'where', '?',
+    'foreach-object', '%', 'sort-object', 'sort', 'group-object', 'measure-object', 'measure', 'compare-object', 'format-table',
+    'ft', 'format-list', 'fl', 'out-string', 'out-null', 'write-output', 'echo', 'write-host', 'get-date', 'get-location', 'pwd',
+    'set-location', 'cd', 'push-location', 'pop-location', 'convertfrom-json', 'convertto-json', 'get-command', 'get-filehash',
+    'get-member', 'get-winevent',
+    'head', 'tail', 'wc', 'grep', 'rg', 'find', 'uniq', 'diff', 'which', 'stat', 'tree', 'true')
+$script:runWriteVerbs = 'set-content', 'add-content', 'out-file', 'new-item', 'clear-content', 'remove-item', 'copy-item', 'move-item'
+
+function Test-UnderTemp([string]$Path) {
+    $n = Normalize-PathText $Path
+    return $n.StartsWith((Normalize-PathText ([System.IO.Path]::GetTempPath())) + '/') -or $n -match '/appdata/local/temp/'
+}
+
+# Alvo de escrita resolvido: no projeto (as guardas de escrita já o conferiram) ou no temporário (scratchpad).
+function Test-RunTargets([string]$Seg) {
+    $targets = @(Get-WriteTargets $Seg)
+    if ($targets.Count -eq 0) { return $false }                       # destino em variável: não se resolve
+    $base = if ($script:hookInput.cwd) { [string]$script:hookInput.cwd } else { $script:projectDir }
+    foreach ($t in $targets) {
+        $full = if ([System.IO.Path]::IsPathRooted($t)) { $t } else { Join-Path $base $t }
+        if (-not (Get-RelativePath $script:projectDir $full) -and -not (Test-UnderTemp $full)) { return $false }
+    }
+    return $true
+}
+
+function Test-RunSegment([string]$Seg, [string[]]$Allowed) {
+    $s = $Seg.Trim()
+    $s = $s -replace '^(?i)(if|elseif|else|foreach|for|while|switch|try|catch|finally|return|do)\b\s*', ''
+    $s = $s -replace '^(\[[^\]]+\]\s*)+', '' -replace '^\$[\w:.]+\s*[-+]?=\s*', '' -replace '^&\s*', ''
+    $s = $s.Trim()
+    if (-not $s -or $s -match '^[\$@''"\-\d\[,!=+*/%<>]' -or $s -match '^\w+\s*=\s') { return $true }   # expressão, não comando
+    $s = $s -replace '^(?i)git\s+(-C\s+\S+\s+|--no-pager\s+)+', 'git '
+    $low = $s.ToLowerInvariant()
+    $verb = ($low -split '\s+')[0]
+    if ($script:runWriteVerbs -contains $verb) { return (Test-RunTargets $s) }
+    foreach ($p in $Allowed) {
+        $pl = ([string]$p).Trim().ToLowerInvariant()
+        if ($pl -and ($low -eq $pl -or $low.StartsWith($pl + ' ') -or $low.StartsWith($pl + "`t"))) {
+            if ($low -match '(^|\s)\d?>{1,2}(?!&)\s*[^\s$]') { return (Test-RunTargets $s) }   # redirecionamento para arquivo
+            return $true
+        }
+    }
+    return $false
+}
+
+function Test-G14([object]$ToolInput) {
+    if ($null -eq (Get-Marker $script:projectDir '.active-run')) { return $false }
+    if ($script:tool -match '^(Edit|Write)$') {
+        $path = [string]$ToolInput.file_path
+        if ((Get-RelativePath $script:projectDir $path) -or (Test-UnderTemp $path)) { return $true }
+        Deny 'G14' $path "escrita fora do projeto durante o run ($path). Rascunho vai no scratchpad da sessão; o resto, reporte a quem orquestra."
+    }
+    $cmd = [string]$ToolInput.command
+    if ([string]::IsNullOrWhiteSpace($cmd)) { return $false }
+    # Comando em segundo plano deixa o papel parado esperando a notificação — execução longa é do operator (R28).
+    if ($ToolInput.run_in_background -eq $true -and $script:role -ne 'operator') {
+        Deny 'G14' 'run_in_background' "comando em segundo plano durante o run: o papel fica parado esperando a notificação, e a chamada que o disparou pode voltar 'interrupted'. Rode em primeiro plano com timeout; execução longa (build, suíte, cobertura) vai ao operator (R28)."
+    }
+    if ($cmd -match '^\s*(?i)(powershell|pwsh)(\.exe)?\s+(-\w+\s+)*-File\s+"?[^";|&]*[\\/]scripts[\\/]checks[\\/][\w-]+\.ps1"?[^;|&]*$') { return $true }   # conferências C1–C4
+    $why = 'fora da lista operacional do run'
+    if ($cmd -match '(?i)--no-verify|\bInvoke-Expression\b|\biex\b|-EncodedCommand|\bStart-Process\b|\[(System\.)?IO\.(File|Directory)\]::(Write|Append|Delete|Move|Copy|Replace|Create)') { $why = 'construção que a G14 não libera (--no-verify, Invoke-Expression, Start-Process, escrita por .NET)' }
+    else {
+        $flat = [regex]::Replace($cmd, '"([^"]*)"', { param($m) if ($m.Groups[1].Value.Contains('$(')) { ' ' + $m.Groups[1].Value + ' ' } else { '""' } })
+        $flat = $flat -replace "'[^']*'", "''"
+        $allowed = @($script:runBase) + @($cfg.runCommands)
+        $ok = $true
+        foreach ($seg in ($flat -split '\$\(|;|&&|\|\||\||\r?\n|[{}()]')) { if (-not (Test-RunSegment $seg $allowed)) { $ok = $false; break } }
+        if ($ok) { return $true }
+        if (@($cfg.runCommands).Count -eq 0) { return $false }        # projeto sem runCommands: o harness decide, como antes
+    }
+    $short = if ($cmd.Length -gt 120) { $cmd.Substring(0, 120) + '…' } else { $cmd }
+    Deny 'G14' $short "comando $why ($short). Durante o run, o harness não pode parar para perguntar ao stakeholder: rode comandos simples, um por chamada, da lista (hooks/COVERAGE.md G14 + guards.json → runCommands). Comando de build/teste/lint do projeto que falta na lista: reporte a quem orquestra, que o acrescenta em runCommands; dev → 🔺 GAP. Instalação, rede, push ou destrutivo não entram no run: bloqueio da Task (degrau 1)."
+}
+
 try {
     $script:hookInput = Read-HookInput
     if ($null -eq $script:hookInput) { exit 0 }
@@ -234,6 +315,7 @@ try {
     $script:teamProject = Test-Path -LiteralPath (Join-Path $script:projectDir '.team-project')
     $script:pluginSource = Test-PluginSource $script:projectDir
     $phase2 = $script:role -and ($script:teamProject -or $script:pluginSource)   # sessão principal e projeto sem o time: fora
+    $allow = $false
 
     switch -Regex ($tool) {
         '^(PowerShell|Bash)$'   {
@@ -243,8 +325,10 @@ try {
                 foreach ($t in (Get-WriteTargets ([string]$ti.command))) {
                     $full = if ([System.IO.Path]::IsPathRooted($t)) { $t } else { Join-Path $base $t }
                     $rel = Get-RelativePath $script:projectDir $full
+                    $isLog = $t -match '(?i)\.log$'                                # log redirecionado (R28) não é produto
                     if (Test-GuardEnabled $cfg 'G5') { Test-G5 $rel $t }
-                    if ((Test-GuardEnabled $cfg 'G9') -and $t -notmatch '(?i)\.log$') { Test-G9 $rel $t }   # log redirecionado (R28) não é produto
+                    if ((Test-GuardEnabled $cfg 'G8') -and -not $isLog) { Test-G8 $rel $t }
+                    if ((Test-GuardEnabled $cfg 'G9') -and -not $isLog) { Test-G9 $rel $t }
                 }
             }
         }
@@ -264,11 +348,17 @@ try {
         '^Agent$'               { if ($phase2 -and (Test-GuardEnabled $cfg 'G7')) { Test-G7 $ti } }
     }
 
+    # G14 — depois de todas as negações: só papel do time, em projeto com o time, com run ativo.
+    if ($phase2 -and $script:teamProject -and $tool -match '^(PowerShell|Bash|Edit|Write)$' -and (Test-GuardEnabled $cfg 'G14')) {
+        $allow = Test-G14 $ti
+    }
+
     # Sonda (guards.json "probe": true): agent_type recebido e tempo do script — verifica a fase 2 e mede o custo do hook.
     if ($cfg.probe) {
         $agent = if ($script:hookInput.agent_type) { [string]$script:hookInput.agent_type } else { '(ausente)' }
-        Write-GuardLog $script:projectDir 'probe' $script:hookInput '' ("agent_type=$agent; agent_id=" + [string]$script:hookInput.agent_id + "; script_ms=" + $sw.ElapsedMilliseconds)
+        Write-GuardLog $script:projectDir 'probe' $script:hookInput '' ("agent_type=$agent; agent_id=" + [string]$script:hookInput.agent_id + "; script_ms=" + $sw.ElapsedMilliseconds + $(if ($allow) { '; G14 allow' } else { '' }))
     }
+    if ($allow) { Write-Allow 'operação do run, já conferida pelas guardas (.team-project/.active-run)' }
     exit 0
 } catch {
     try { Write-GuardLog $script:projectDir 'erro' $script:hookInput 'pre-tool.ps1' $_.Exception.Message } catch { }

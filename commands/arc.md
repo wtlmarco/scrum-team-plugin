@@ -7,7 +7,7 @@ Aciona o **Arquiteto de Software Sênior** do time.
 
 Pedido do stakeholder: **$ARGUMENTS**
 
-Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta sessão, um agente `architect` sobre a mesma Task/tema; se existir, retome-o com SendMessage (R3). Senão, use a ferramenta Agent com `subagent_type: "architect"` e `run_in_background: false` (salvo quando o `sprint run` dispara em segundo plano — `sprint-run.md` "Task pesada"), passando o pedido acima, literal, e o modo, conforme o primeiro termo:
+Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta sessão, um agente `architect` sobre a mesma Task/tema; se existir, retome-o com SendMessage (R3). Senão, use a ferramenta Agent com `subagent_type: "architect"` e `run_in_background: false` (no `sprint run` e no `fix run`, `true` — `sprint-run.md` §Disparo em segundo plano), passando o pedido acima, literal, e o modo, conforme o primeiro termo:
 
 - **plan `<ID>`** → Plano de Implementação de **uma Task do Sprint Backlog aprovado, só depois do ③** — no fluxo normal, disparado pelo `/sm sprint run` (`roles/scrum-master/process/sprint-run.md`); avulso, só para retomada manual. **Sem sprint corrente** (calibração da instalação — `how-to.md` § "Calibrar a instalação" — ou antes da 1ª Planning) o plano é só de calibração e vai para `.team-project/architect/calibration/<ID>-<slug>.md`. Com sprint corrente, Task fora do Sprint Backlog aprovado: o agente não escreve o plano e responde o que falta.
 - **adr `<tema>`** → ADR no formato de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/adr.md`.

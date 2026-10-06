@@ -151,8 +151,18 @@ $cases = @(
        Payload = @{ tool_name = 'Write'; agent_type = 'team:scrum-master'; tool_input = @{ file_path = (Join-Path $proj '.team-project/rascunho.md'); content = 'x' } } },
     @{ Name = 'G8 QA escreve código-fonte'; Script = 'pre-tool.ps1'; Expect = 2
        Payload = @{ tool_name = 'Edit'; agent_type = 'team:quality-assurance'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); old_string = 'a'; new_string = 'b' } } },
-    @{ Name = 'G8 Arquiteto em código-fonte pergunta'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"ask"'
+    @{ Name = 'G8 Arquiteto em código-fonte sem spike: nega com a rota'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'scratchpad'
        Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj 'src/spike.cs'); content = 'x' } } },
+    @{ Name = 'G8 Arquiteto com .active-spike'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = ''
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-spike') '{ "id": "S-001", "motivo": "spike S-001", "desde": "2026-10-06 10:00" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj 'src/spike.cs'); content = 'x' } } },
+    @{ Name = 'G8 Arquiteto Set-Content em código, sem spike'; Script = 'pre-tool.ps1'; Expect = 2
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-spike') -Force }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:architect'; tool_input = @{ command = "Set-Content -Path src/relogio.service.spec.ts -Value 'x'" } } },
+    @{ Name = 'G8 Arquiteto no scratchpad (fora do projeto)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $tmp 'scratchpad/relogio.service.ts'); content = 'x' } } },
+    @{ Name = 'G8 QA com log redirecionado'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = 'npm test *> test.log' } } },
     @{ Name = 'G8 PO escreve em docs/'; Script = 'pre-tool.ps1'; Expect = 0
        Payload = @{ tool_name = 'Write'; agent_type = 'team:product-owner'; tool_input = @{ file_path = (Join-Path $proj 'docs/sdd/01-requirements.md'); content = 'x' } } },
     @{ Name = 'G8 UX escreve o protótipo'; Script = 'pre-tool.ps1'; Expect = 0
@@ -169,9 +179,48 @@ $cases = @(
        Payload = @{ tool_name = 'Edit'; agent_type = 'team:product-owner'; tool_input = @{ file_path = (Join-Path $root 'roles/scrum-master/process/process-changelog.md'); old_string = 'a'; new_string = 'b' } } },
     @{ Name = 'Fase 2 calada em projeto sem o time'; Script = 'pre-tool.ps1'; Expect = 0; Env = @{ CLAUDE_PROJECT_DIR = $bare }
        Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $bare 'src/a.cs'); content = 'x' } } },
+    # ---------- v3.44 — G14 run sem trava (.active-run) · G15 pedido de permissão no guards.log ----------
+    @{ Name = 'G14 sem run ativo: nada liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = ''
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = 'git status' } } },
+    @{ Name = 'G14 run ativo: git status liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "1", "desde": "2026-10-06 10:00" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = 'git status' } } },
+    @{ Name = 'G14 leitura composta liberada'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = "git -C src diff --stat; Get-ChildItem src -Recurse | Select-String -Pattern 'a|b' | ForEach-Object { `$_.Line }" } } },
+    @{ Name = 'G14 sessão principal: harness decide'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = ''
+       Payload = @{ tool_name = 'PowerShell'; tool_input = @{ command = 'git status' } } },
+    @{ Name = 'G14 sem runCommands: comando do projeto fica com o harness'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = ''
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'npm test' } } },
+    @{ Name = 'G14 runCommands: comando do projeto liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "runCommands": ["npm test", "npx tsc"] }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'npm test -- relogio *> test.log' } } },
+    @{ Name = 'G14 comando fora da lista: nega com a rota'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'runCommands'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'npm install lodash' } } },
+    @{ Name = 'G14 --no-verify negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'git commit --no-verify -m "x"' } } },
+    @{ Name = 'G14 escrita em destino variável negada'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = 'Get-ChildItem dist | ForEach-Object { Remove-Item $_ }' } } },
+    @{ Name = 'G14 QA com comando em segundo plano: nega'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'operator'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = 'npm test'; run_in_background = $true } } },
+    @{ Name = 'G14 operator com comando em segundo plano: liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'npm test *> .team-project/operator/1/suite/test.log'; run_in_background = $true } } },
+    @{ Name = 'G14 dev Edit no escopo liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/e.cs'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G14 Arquiteto no scratchpad liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path ([System.IO.Path]::GetTempPath()) 'claude/x/scratchpad/a.ts'); content = 'x' } } },
+    @{ Name = 'G14 escrita fora do projeto negada'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'fora do projeto'
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:quality-assurance'; tool_input = @{ file_path = 'Z:\fora-do-projeto\x.md'; content = 'x' } } },
+    @{ Name = 'G14 SM roda conferência C1'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:scrum-master'; tool_input = @{ command = "powershell -NoProfile -File `"$root\scripts\checks\close.ps1`" -Task T-001" } } },
+    @{ Name = 'G15 pedido de permissão vai ao guards.log'; Script = 'notification.ps1'; Expect = 0
+       Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw -Encoding UTF8) -like '*G15*run ativo: sprint 1*precisa de permissão*' }
+       Payload = @{ hook_event_name = 'Notification'; notification_type = 'permission_prompt'; message = 'Claude precisa de permissão para usar PowerShell' } },
+    @{ Name = 'G13 avisa marcador de run esquecido'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = '.active-run existe'
+       Payload = @{ hook_event_name = 'SessionStart' } },
     @{ Name = 'Falha aberta: JSON inválido'; Script = 'pre-tool.ps1'; Expect = 1; Raw = '{nao-e-json' },
     @{ Name = 'guards.json desliga G3 e liga a sonda'; Script = 'pre-tool.ps1'; Expect = 0
-       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "disabled": ["G3"], "probe": true }' -Encoding UTF8 }
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-run') -Force
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "disabled": ["G3"], "probe": true }' -Encoding UTF8 }
        Payload = @{ tool_name = 'AskUserQuestion'; agent_type = 'team:product-owner'; agent_id = 'a1'; tool_input = @{ questions = @(@{ question = 'Q?'; header = 'Q'; multiSelect = $false; options = @((Opt 'Sim'), (Opt 'Não')) }) } } },
     @{ Name = 'Sonda gravou agent_type no guards.log'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'desativadas G3'
        Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw) -like '*probe*agent_type=team:product-owner*script_ms=*' }

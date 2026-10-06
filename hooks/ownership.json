@@ -11,6 +11,7 @@
   },
   "project": [
     { "paths": [".team-project/.active-task"], "writers": [], "matriz": "Escopo ativo do dev (`.team-project/.active-task`)", "dono": "SM" },
+    { "paths": [".team-project/.active-run", ".team-project/.active-spike"], "writers": [], "matriz": "Run ativo e spike ativo (`.team-project/.active-run`, `.team-project/.active-spike`)", "dono": "SM" },
     { "paths": [".team-project/guards.json", ".team-project/guards.log"], "writers": [], "matriz": "Configuração e registro das guardas", "dono": "stakeholder" },
     { "paths": [".team-project/readme.md", ".team-project/how-to.md"], "writers": ["scrum-master"], "nota": "manifesto (deliverables/team-project/README.md): README do SM; how-to.md é cópia literal do update" },
     { "paths": [".team-project/note.md"], "writers": ["product-owner"], "matriz": "Relatos do stakeholder (`.team-project/note.md`)", "dono": "stakeholder" },

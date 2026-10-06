@@ -141,9 +141,19 @@ Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere ap
 
 1. **`.team-project/guards.json`:** acrescente as chaves que faltarem com o valor do modelo (`${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/guards.json`) — `protectedPaths`, `sourceRoots`, `testSkipPatterns`. **Nunca sobrescreva** `disabled` nem valor já escolhido pelo projeto (passo 8).
 2. **Pergunte ao stakeholder** (`AskUserQuestion`, R22) **só se** o código-fonte do projeto não é "tudo fora de `.team-project/` e `docs/`" (por exemplo, `docs/` com código, ou documentação de produto em outra pasta): ofereça preencher `sourceRoots` com os globs do código. Caso comum: nada a perguntar.
-3. **Diga ao stakeholder**, em três linhas: as guardas por papel (G5 gate, G6 teste ignorado, G7 `Agent` só ao `operator`, G8 dono do arquivo, G9 escopo do dev, G11 pasta do job) **só valem depois de reiniciar a sessão** e não se aplicam à sessão principal dele; a G8 **pergunta** quando o Arquiteto vai escrever código; o `/dev` à mão passa a gravar `.team-project/.active-task` antes de disparar o dev (`hooks/COVERAGE.md`).
+3. **Diga ao stakeholder**, em três linhas: as guardas por papel (G5 gate, G6 teste ignorado, G7 `Agent` só ao `operator`, G8 dono do arquivo, G9 escopo do dev, G11 pasta do job) **só valem depois de reiniciar a sessão** e não se aplicam à sessão principal dele; a G8 **nega** código ao Arquiteto fora de spike declarado em `.active-spike` (v3.44 — até a v3.43 ela perguntava); o `/dev` à mão passa a gravar `.team-project/.active-task` antes de disparar o dev (`hooks/COVERAGE.md`).
 
 **Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).protectedPaths` devolve a lista; depois de reiniciar, a linha "Guardas do time: ativas …" lista G5–G9 e G11.
+
+## 7f. Run sem trava da v3.44 — `runCommands`
+
+> Roda quando a versão instalada for anterior à `v3.44.0`, em qualquer projeto; o `/team init` também o executa (passo 4a).
+
+1. **`runCommands` no `.team-project/guards.json`:** se a chave falta, acrescente-a com os **prefixos** dos comandos de build, teste, lint e cobertura que `.team-project/developer/context.md` (e o `README.md` §ambiente) declaram — como estão escritos, sem argumento de arquivo: `dotnet build`, `dotnet test`, `npm run lint`, `npx ng test`… Se a chave já existe, só acrescente o que faltar; nunca remova valor do projeto. **Nada de instalação, rede, push ou comando destrutivo** (`npm install`, `git push`, `rm`): esses não entram no run (a G14 os nega, e a falta vira bloqueio da Task). **A lista vive só aqui:** o plugin não escreve permissão nas configurações do Claude Code (`.claude/settings*.json`) — dentro do run quem libera é a G14, lendo esta chave; fora do run vale o pedido de permissão normal, com o stakeholder presente.
+2. **Um formulário só** (`AskUserQuestion`, R22): mostre os prefixos propostos para `runCommands` — *aplicar · ajustar a lista · pedir mais contexto*. Sem resposta, não aplique: o run segue funcionando, mas comando do projeto fica com o pedido de permissão do harness.
+3. **Diga ao stakeholder**, em três linhas: o `sprint run` e o `fix run` gravam `.team-project/.active-run` e, com ele, a **G14** libera o operacional dos papéis e nega com a rota o que está fora da lista — **nenhum pedido de permissão parado no meio da fila**; a **G8** passa a **negar** código ao Arquiteto fora de spike declarado (`.active-spike`); a **G15** grava no `guards.log` todo pedido de permissão do harness (`hooks/COVERAGE.md`). Valem depois de reiniciar a sessão.
+
+**Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).runCommands` devolve a lista; depois de reiniciar, `/hooks` lista `Notification` e a linha "Guardas do time" traz G14 e G15.
 
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
