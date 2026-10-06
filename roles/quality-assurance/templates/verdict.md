@@ -50,6 +50,7 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 | **Não bloqueia** | Ganha entrada no Product Backlog, escrita pelo **PO**, no mesmo ciclo (R12) | GAP em `pending.md` com **ID: <MÓDULO-NN>** → **roteado ao PO** nesta linha; o PO abre a linha do Product Backlog citando este ID |
 
 ### Comandos executados
+**Evidência mecânica** *(projeto com `verify` no `guards.json`, v3.45.1)*: `.team-project/verify/<n>/<ID>/result.json` · árvore `<12 primeiros do tree>` · `-Mode check` → **igual** ao `full` do dev de <aaaa-mm-dd hh:mm> (não reexecutei) | **diferente** → `full` rodado por mim em <aaaa-mm-dd hh:mm> · <chave: exit — uma por comando>. O primeiro bloco abaixo é o `verify.ps1` com as linhas que ele imprimiu.
 *(um bloco por comando; comando pesado — build, suíte, cobertura, lint do projeto inteiro, carga V19 — é delegado ao `operator`, R28. Comando leve, cuja saída já cabe sem inflar o contexto, roda direto e traz só o comando/saída, sem log próprio.)*
 ```
 > <comando>
