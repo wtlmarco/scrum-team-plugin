@@ -13,6 +13,17 @@
 
 ---
 
+## v3.44.2 — 2026-10-06
+
+**Branch:** `feat/v3.44.2` a partir de `develop` (v3.44.1 mesclada) · **Processo:** [`v3.44` — addendum v3.44.2](roles/scrum-master/process/process-changelog.md)
+Dois defeitos da heurística de escrita pelo `PowerShell`, achados no `guards.log` do primeiro `sprint run` de um projeto-piloto (04 a 06/10/2026).
+
+- **Linha `erro` "IsPathRooted … Caracteres inválidos no caminho"** (7× no run: QA, `operator`, Arquiteto): um texto de string (`"List<T>"`, `"<td>"`) era lido como destino de redirecionamento e derrubava o hook — falha aberta, **sem G5/G8/G9 avaliadas no comando**. `Get-WriteTargets` descarta alvo com caractere inválido em caminho.
+- **Falso positivo da G9** em `Env:MIG02_PROVA` (2×): drive do PowerShell que não é de arquivo (`Env:`, `Variable:`, `HKCU:`, `Cert:`…) era juntado à raiz do projeto. Sai da checagem de G5/G8/G9; na G14, drive da sessão (`Env:`, `Variable:`, `Function:`, `Alias:`) é liberado e outro drive (registro, certificados) é negado.
+- `hooks/COVERAGE.md` (heurística do `PowerShell`, G14, `team:developer`/`team:operator` confirmados, custo do disparo em `Agent`, sonda desligada) · `proposta-guards-fase2.md` reduzida ao que fica pendente. Suíte de guardas: 81 casos (6 novos, todos reprovados pelo código anterior).
+
+---
+
 ## v3.44.1 — 2026-10-06
 
 **Branch:** `feat/v3.44.1` a partir de `develop` (v3.44.0 mesclada) · **Processo:** [`v3.44` — addendum v3.44.1](roles/scrum-master/process/process-changelog.md)

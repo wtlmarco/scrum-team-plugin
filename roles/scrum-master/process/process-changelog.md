@@ -150,6 +150,11 @@ Atualizar o plugin, rodar `/team update` (passo 7f) em cada projeto e **reinicia
 
 **Verificação (R19):** `run-check-tests.ps1` → 28 casos · 0 falharam (Registro legado lido; Série parada e → 🟨 ausente reprovam o R24). **Não exercitado:** um `sprint run` real gravando no burndown.
 
+### Addendum — 06/10/2026 (v3.44.2): o `guards.log` do primeiro `sprint run`
+**Instrução** (stakeholder): "pode corrigir", sobre o `guards.log` do primeiro `sprint run` (v3.42/3.43): 7 linhas `erro` (`IsPathRooted`) e 2 negações da G9 em `Env:`. **Classificação:** instrumento (heurística do `PowerShell` em G5/G8/G9/G14). **Sem regra nova.** `pre-tool.ps1`: alvo com caractere inválido descartado; drive que não é de arquivo fora de G5/G8/G9; G14 libera drive da sessão e nega outro. `COVERAGE.md` alinhado.
+
+**Verificação (R19):** `run-guard-tests.ps1` → 81 casos · 0 falharam; os 6 novos reprovam no código anterior. **Não exercitado:** run real com a v3.44.2. Indicador da fase 2 recomeça aqui (`proposta-guards-fase2.md`).
+
 ---
 
 ## v3.43 — `sprint run` sem paradas fora do contrato: lista fechada de paradas, rota do gate protegido, negação ao dev vira 🔺 GAP, interrupção pelo stakeholder e marcador acompanhando a Task; addendum: veredito pelo primeiro marcador, desvio aceito no R4, código de saída do `operator` (SM + Arquiteto + QA) — 05/10/2026
