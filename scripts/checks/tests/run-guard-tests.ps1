@@ -311,6 +311,75 @@ $cases = @(
     @{ Name = 'G17 limpeza: sem models.json volta ao livre'; Script = 'pre-tool.ps1'; Expect = 0
        Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/models.json') -Force -ErrorAction SilentlyContinue }
        Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; model = 'haiku'; prompt = 'x' } } },
+    # ---------- v3.47 (M2) — perfil Arquiteto executor: models.json "executor" + .active-executor ----------
+    @{ Name = 'M2 sem perfil: o Arquiteto segue sem escrever código (G8)'; Script = 'pre-tool.ps1'; Expect = 2
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/models.json') -Force -ErrorAction SilentlyContinue
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-executor') '{ "trilha": "sprint", "id": "T-001", "desde": "2026-10-10 09:00" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); content = 'x' } } },
+    @{ Name = 'M2 só o perfil, sem o marcador: G8 nega'; Script = 'pre-tool.ps1'; Expect = 2
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-executor') -Force -ErrorAction SilentlyContinue
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "executor": "architect" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); content = 'x' } } },
+    @{ Name = 'M2 perfil + marcador: o Arquiteto escreve arquivo do plano'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-executor') '{ "trilha": "sprint", "id": "T-001", "desde": "2026-10-10 09:00" }' -Encoding UTF8
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-task') '{ "trilha": "sprint", "id": "T-001", "plano": ".team-project/sprints/1/plan/T-001-x.md" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); content = 'x' } } },
+    @{ Name = 'M2 perfil + marcador: arquivo fora do plano é negado pela G9 (com a rota do executor)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'Perfil executor'
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj 'src/b.cs'); content = 'x' } } },
+    @{ Name = 'M2 perfil + marcador: o Arquiteto edita o plano em .team-project/'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/plan/T-001-x.md'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'M2 o executor não acrescenta teste ignorado (G6)'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj 'tests/ATests.cs'); content = '[Ignore] void T() {}' } } },
+    @{ Name = 'M2 o executor não toca arquivo de gate (G5)'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj '.editorconfig'); content = 'x' } } },
+    @{ Name = 'M2 o PO continua sem escrever código com o perfil ligado'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:product-owner'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); content = 'x' } } },
+    @{ Name = 'M2 valor inválido de executor é ignorado (falha aberta: G8 nega)'; Script = 'pre-tool.ps1'; Expect = 2
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "executor": "developer" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); content = 'x' } } },
+    @{ Name = 'M2 o SessionStart mostra o perfil executor ligado'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'Perfil executor ligado'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "executor": "architect" }' -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'M2 o SessionStart avisa .active-executor esquecido'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = '.active-executor existe'
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'M2 limpeza dos marcadores e do perfil'; Script = 'pre-tool.ps1'; Expect = 2
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-executor') -Force -ErrorAction SilentlyContinue
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/models.json') -Force -ErrorAction SilentlyContinue }
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); content = 'x' } } },
+    # ---------- v3.47 (M3) — G18 modo benchmark: respostas do dossiê e primeiro plano ----------
+    @{ Name = 'G18 sem bench: a G3 segue valendo'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = '[ACME · S4 · ③ pacote] Aprova o pacote?'; header = 'P'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'G18 bench: o dossiê responde (pick casa o rótulo)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'resposta do stakeholder: Aprovar'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj 'bench-answers.json') '{ "respostas": [ { "tema": "Portões", "match": "(?i)pacote|portão", "pick": "^(?i)aprovar" } ] }' -Encoding UTF8
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "bench": { "arm": "P0-r1", "answers": "bench-answers.json", "foreground": true } }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Aprova o pacote de abertura?'; header = 'Portão ③'; multiSelect = $false; options = @((Opt 'Reprovar'), (Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'G18 bench: a pergunta vai para o questions.log com o tema e a origem'; Script = 'pre-tool.ps1'; Expect = 2
+       Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/benchmark/P0-r1/questions.log') -Raw -Encoding UTF8) -like '*| Portões | dossie | Aprova o pacote de abertura? | Aprovar*' }
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Aprova o pacote de abertura?'; header = 'Portão ③'; multiSelect = $false; options = @((Opt 'Reprovar'), (Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'G18 bench: fora do dossiê vale a opção recomendada, nunca "Pedir mais contexto"'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'Opção B (Recomendado)'
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Qual biblioteca de datas?'; header = 'Lib'; multiSelect = $false; options = @((Opt 'Opção A'), (Opt 'Opção B (Recomendado)'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'G18 bench: sem recomendada, a primeira que não é "Pedir mais contexto"'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'resposta do stakeholder: Sim'
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Posso seguir assim?'; header = 'Q'; multiSelect = $false; options = @((Opt 'Sim'), (Opt 'Não'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'G18 bench: formulário com duas perguntas responde as duas'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'pergunta 2'
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(
+           @{ question = 'Aprova o pacote?'; header = 'A'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) },
+           @{ question = 'Qual cor?'; header = 'B'; multiSelect = $false; options = @((Opt 'Azul'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'G18 bench: foreground nega agente em segundo plano'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'primeiro plano'
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; run_in_background = $true; prompt = 'x' } } },
+    @{ Name = 'G18 bench: foreground aceita agente em primeiro plano'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; run_in_background = $false; prompt = 'x' } } },
+    @{ Name = 'G18 bench sem answers: a G3 decide (formulário sem "Pedir mais contexto" é negado)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G3'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "bench": { "arm": "P0-r1" } }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Q?'; header = 'Q'; multiSelect = $false; options = @((Opt 'Sim'), (Opt 'Não')) }) } } },
+    @{ Name = 'G18 desligada em guards.json: a G3 volta a valer'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G3'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "disabled": ["G18"], "bench": { "arm": "x", "answers": "bench-answers.json" } }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Aprova o pacote?'; header = 'Q'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Não')) }) } } },
+    @{ Name = 'G13 avisa o modo benchmark ligado'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'Modo benchmark ligado'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "bench": { "arm": "P0-r1", "foreground": true } }' -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'G18 limpeza: sem bench'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.json') -Force -ErrorAction SilentlyContinue }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; run_in_background = $true; prompt = 'x' } } },
     @{ Name = 'Falha aberta: JSON inválido'; Script = 'pre-tool.ps1'; Expect = 1; Raw = '{nao-e-json' },
     @{ Name = 'guards.json desliga G3 e liga a sonda'; Script = 'pre-tool.ps1'; Expect = 0
        Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-run') -Force

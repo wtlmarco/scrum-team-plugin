@@ -413,6 +413,18 @@ if (Test-Path (Join-Path $checks 'project.ps1')) {
     Edit-File (Join-Path $p '.team-project/README.md') '1. [ACME · S1 · ③ pacote] Aprova? — decisão: [No preference]' '1. nenhuma'
     $r = Invoke-Check 'project.ps1' @('-Root', $p)
     Check 'C2 R34 configurado sem verificação: aviso' $r 0 @('\| R34 \| aviso.*não verificado')
+
+    # v3.47 (M3): "navegação simulada" só vale com guards.json → bench ligado.
+    $p = Join-Path $tmp 'bench'; New-Project $p
+    Put $p '.team-project/user-experience/prototype/ficha.md' "# Protótipo funcional`n`n**Navegado pelo stakeholder em:** n/a — navegação simulada (benchmark)`n"
+    $r = Invoke-Check 'project.ps1' @('-Root', $p)
+    Check 'C2 navegação simulada sem bench: R15 falhou' $r 0 @('\| R15 \| falhou.*navegação simulada.* fora do modo benchmark')
+    Put $p '.team-project/guards.json' '{ "bench": { "arm": "P0-r1", "answers": "bench/answers.json", "foreground": true } }'
+    $r = Invoke-Check 'project.ps1' @('-Root', $p)
+    Check 'C2 navegação simulada com bench: R15 n-a' $r 0 @('\| R15 \| n-a.*modo benchmark')
+    Put $p '.team-project/user-experience/prototype/ficha.md' "# Protótipo funcional`n`n**Navegado pelo stakeholder em:** 2026-09-01 · canal: terminal · declarada`n"
+    $r = Invoke-Check 'project.ps1' @('-Root', $p)
+    Check 'C2 navegação real com bench ligado: R15 segue a regra de sempre' $r 0 @('\| R15 \| n-a')
 }
 
 # 10. C4 (fix.ps1): bloco B-001 com um defeito, um ajuste e uma promovida.
@@ -577,6 +589,18 @@ Check 'models.ps1 tabela: efetivo e origem de cada papel' $r 0 @('\| developer \
 Put $p '.team-project/models.json' '{ "developer": "gpt-9", "cozinheiro": "opus", "scrum-master": "opus" }'
 $r = Invoke-Check 'models.ps1' @('-Check', '-Root', $p)
 Check 'models.ps1 -Check valor e papel inválidos: exit 1' $r 1 @('ignorado: developer: modelo ''gpt-9''', 'ignorado: papel desconhecido ''cozinheiro''', 'models\.json ok: 1 papel')
+Put $p '.team-project/models.json' '{ "executor": "architect", "developer": "sonnet" }'
+$r = Invoke-Check 'models.ps1' @('-Check', '-Root', $p)
+Check 'models.ps1 -Check com perfil executor: exit 0' $r 0 @('models\.json ok: 1 papel.*perfil executor: architect')
+$r = Invoke-Check 'models.ps1' @('-Root', $p)
+Check 'models.ps1 tabela mostra o perfil executor ligado' $r 0 @('Perfil executor: LIGADO', '\| developer \| sonnet \| models\.json')
+$r = Invoke-Check 'models.ps1' @('-Role', 'executor', '-Root', $p)
+Check 'models.ps1 -Role executor não é papel: exit 2' $r 2 @('papel desconhecido')
+Put $p '.team-project/models.json' '{ "executor": "developer" }'
+$r = Invoke-Check 'models.ps1' @('-Check', '-Root', $p)
+Check 'models.ps1 -Check executor inválido: exit 1' $r 1 @('ignorado: executor: valor ''developer''')
+$r = Invoke-Check 'models.ps1' @('-Root', $p)
+Check 'models.ps1 tabela com executor inválido: perfil desligado' $r 0 @('Perfil executor: desligado')
 Put $p '.team-project/models.json' '{ nao-e-json'
 $r = Invoke-Check 'models.ps1' @('-Check', '-Root', $p)
 Check 'models.ps1 -Check JSON ilegível: exit 1' $r 1 @('ilegível')

@@ -27,13 +27,15 @@ try {
             'ausente'  { Write-Output 'models.json ausente: valem os modelos dos agentes e as exceções do processo.'; exit 0 }
             'invalido' { Write-Output 'models.json ilegível: JSON inválido — valem os modelos dos agentes.'; exit 1 }
         }
-        Write-Output ("models.json ok: {0} papel(is) configurado(s)." -f $mc.Models.Count)
+        Write-Output ("models.json ok: {0} papel(is) configurado(s)$(if ($mc.Executor) { '; perfil executor: architect' })." -f $mc.Models.Count)
         foreach ($p in $mc.Problems) { Write-Output "  ignorado: $p" }
         if ($mc.Problems.Count) { exit 1 }
         exit 0
     }
 
     $out = New-Object System.Text.StringBuilder
+    [void]$out.AppendLine("Perfil executor: " + $(if ($mc.State -eq 'ok' -and $mc.Executor) { 'LIGADO — o Arquiteto implementa o plano (sprint-run.md passo 3)' } else { 'desligado — o dev implementa' }))
+    [void]$out.AppendLine('')
     [void]$out.AppendLine('| Papel | Modelo efetivo | Origem |')
     [void]$out.AppendLine('|---|---|---|')
     foreach ($role in $script:ModelRoles) {

@@ -11,7 +11,7 @@
   },
   "project": [
     { "paths": [".team-project/.active-task"], "writers": [], "matriz": "Escopo ativo do dev (`.team-project/.active-task`)", "dono": "SM" },
-    { "paths": [".team-project/.active-run", ".team-project/.active-spike"], "writers": [], "matriz": "Run ativo e spike ativo (`.team-project/.active-run`, `.team-project/.active-spike`)", "dono": "SM" },
+    { "paths": [".team-project/.active-run", ".team-project/.active-spike", ".team-project/.active-executor"], "writers": [], "matriz": "Run ativo, spike ativo e executor ativo (`.team-project/.active-run`, `.team-project/.active-spike`, `.team-project/.active-executor`)", "dono": "SM" },
     { "paths": [".team-project/guards.json", ".team-project/guards.log"], "writers": [], "matriz": "Configuração e registro das guardas", "dono": "stakeholder" },
     { "paths": [".team-project/models.json"], "writers": [], "matriz": "Modelo por papel (`.team-project/models.json`)", "dono": "stakeholder" },
     { "paths": [".team-project/usage.jsonl"], "writers": [], "matriz": "Consumo medido (`.team-project/usage.jsonl`)", "dono": "SM" },

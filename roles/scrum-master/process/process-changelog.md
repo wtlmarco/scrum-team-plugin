@@ -85,27 +85,29 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
-## v3.47 — Modelo por papel em `.team-project/models.json` (G17): o stakeholder escolhe o modelo de cada papel, e a chave vence o agente e as exceções do processo (SM + Arquiteto + QA) — 10/10/2026
+## v3.47 — Modelo por papel (G17), perfil Arquiteto executor, modo benchmark (G18) e ritual "modo projeto": o plugin pronto para o experimento sem intervenção (SM + Arquiteto + QA + Dev) — 10/10/2026
 
-**Instrução** (stakeholder): "já habilite esse chaveamento configurável pelo `models.json` sendo possível para todas as rules e assim poderemos ter mais flexibilidade" — M1 de `proposta-benchmark-projeto.md` (perfil de modelos para o dev do braço P1), generalizada a **todos** os papéis. **Causa:** o modelo de cada papel estava fixo no `model:` de `agents/<papel>.md`, com duas exceções escritas no processo (trilha leve → Arquiteto em `sonnet`; terceira instância do bloco → dev em `sonnet`); trocar o modelo de um papel exigia editar o plugin.
-**Classificação:** instrumento (G17 no `pre-tool.ps1`, `scripts/checks/models.ps1`) · formato (`.team-project/models.json` e o modelo em `deliverables/`) · fluxo (`sprint-run.md` §Modelo por papel; os seis comandos de papel). **Sem regra nova** (34).
-**Papéis movidos (R17):** 3 — SM, Arquiteto, QA → barreira de 12 800 B.
+**Instrução** (stakeholder): "já habilite esse chaveamento configurável pelo `models.json` sendo possível para todas as rules" (M1, generalizada a todos os papéis) e, depois, "pode executar [M2, M3 e M4] sobre a branch 3.47.0 como um novo commit" — sobre `proposta-benchmark-projeto.md` (§9, §13). **Causa:** o modelo de cada papel estava fixo no `model:` de `agents/<papel>.md` e em duas exceções do processo; o experimento de benchmark em modo projeto exige três coisas que o plugin não tinha — variar o papel que implementa (P2), responder os formulários sem o stakeholder e tratar a navegação do protótipo como simulada — e um roteiro para o conjunto.
+**Classificação:** instrumento (G17 e G18 no `pre-tool.ps1`, `models.ps1`, C2) · formato (`models.json`, `.active-executor`, `guards.json` → `bench`) · fluxo (`sprint-run.md` §Modelo por papel, §Modo benchmark, passos 3, 4 e 8) · comportamento de agente (`/arc execute`) · ritual (`benchmark.md` §7). **Sem regra nova** (34).
+**Papéis movidos (R17):** 4 — SM, Arquiteto, QA, Dev → barreira de 15 360 B.
 
 ### O que mudou
 | Documento | Seção | Mudança |
 |---|---|---|
-| `.team-project/models.json` (novo, opcional, **do stakeholder**) | — | chave = papel (`architect` `developer` `operator` `product-owner` `quality-assurance` `scrum-master` `user-experience`) ou apelido do comando (`arc dev po qa sm ux`); valor `opus` `sonnet` `haiku` `fable`; `""`/ausente = não configurado; `_…` = comentário |
-| `hooks/pre-tool.ps1` · `common.ps1` | **G17** | nega (exit 2, com a rota) o disparo pela ferramenta `Agent` cujo modelo efetivo — o `model` passado, ou o do agente — difere do `models.json`; vale para a sessão e para o `operator` disparado por papel; arquivo ilegível ou valor inválido → ignorado (falha aberta); desligável em `guards.json` |
-| `scripts/checks/models.ps1` (novo) | `-Role` · `-Check` · tabela | imprime o modelo configurado de um papel (vazio = não configurado), valida o arquivo ou lista o efetivo dos 7 papéis |
-| `sprint-run.md` | §Modelo por papel (nova) · passo 1 · blocos | **chave ligada vence** o agente e as exceções (trilha leve, 3ª instância); sem a chave nada muda; vale no `run`, no `fix run` e avulso |
-| `commands/*.md` (6) · `agents/architect.md` · `agents/quality-assurance.md` · `fix-run.md` | dispatch | `model: "<valor>"` quando o papel está configurado; o operator disparado pelo Arquiteto e pelo QA também |
-| `artifact-ownership.md` §1 · `ownership.json` · `deliverables/team-project/models.json` | linha nova | dono: stakeholder (o SM mantém o modelo e **lê** o arquivo); papel nenhum edita |
-| `hooks/COVERAGE.md` · `session-start.ps1` | G17 · G13 | limites da G17; o `SessionStart` mostra os modelos em vigor |
+| `.team-project/models.json` (novo, opcional, **do stakeholder**) | — | chave = papel ou apelido do comando; valor `opus` `sonnet` `haiku` `fable`; `""` = não configurado; **chave ligada vence o agente e as exceções** (trilha leve, 3ª instância); `executor` liga o perfil Arquiteto executor |
+| `hooks/pre-tool.ps1` · `common.ps1` | **G17** | nega o disparo pela ferramenta `Agent` cujo modelo efetivo difere do `models.json`; sessão e `operator` disparado por papel; arquivo ilegível ou valor inválido → ignorado |
+| `hooks/pre-tool.ps1` | **perfil executor (M2)** | `models.json` → `executor: architect` **e** `.active-executor`: a **G8** libera o código ao Arquiteto, a **G9** o limita aos arquivos do plano (rota "corrija o plano"), a **G6** veta teste ignorado; marcador sem perfil é ignorado |
+| `hooks/pre-tool.ps1` | **G18 (M3)** | `guards.json` → `bench`: o `AskUserQuestion` é **negado com a resposta do dossiê** (`answers`: regex pergunta → regex rótulo; sem regra, a recomendada; nunca "Pedir mais contexto"), `questions.log` por braço, e `foreground` nega `Agent` em segundo plano |
+| `scripts/checks/project.ps1` (C2) | R15 | "navegação simulada (benchmark)" aceita **só com `bench` ligado**; fora dele, falha |
+| `scripts/checks/models.ps1` (novo) | `-Role` · `-Check` · tabela | modelo configurado, validação e efetivo dos 7 papéis, com o estado do perfil executor |
+| `agents/architect.md` · `roles/architect/README.md` | `/arc execute <ID>` | o Arquiteto implementa o próprio plano: contrato do dev, plano errado se corrige (linha em `**Plano corrigido durante a execução:**`), mudança funcional continua subindo, sem planejar a Task seguinte |
+| `sprint-run.md` | §Modelo por papel · §Modo benchmark · passos 3, 4, 8 · pré-condição 1 | despacho por `models.json`; perfil executor no passo 3; apagar `.active-executor` na saída da Task; "navegação simulada" vale com `bench` |
+| `rituals/benchmark.md` §7 · `templates/benchmark.md` | modo projeto | projeto-padrão, braços P · N · N-forte, escopo de 1 sprint + `fix`, oráculo oculto, rubrica de documentação, sonda de manutenibilidade, regra datada, laço de melhoria, modelo do `result.md` |
+| `artifact-ownership.md` §1 · `ownership.json` · manifesto · `how-to.md` · `COVERAGE.md` | linhas novas | `models.json` (stakeholder); `.active-executor` com `.active-run`/`.active-spike`; G17, G18 e o perfil executor |
 
-**Verificação (R19):** `run-guard-tests.ps1` → 108 casos · 0 falharam (23 novos: chave vence exceção, apelidos, operator por QA e Arquiteto, valor inválido, JSON ilegível, guarda desligada, projeto sem o time); `run-check-tests.ps1` → 66 casos · 0 falharam (14 novos do `models.ps1`). **Não exercitado:** um `sprint run` real com `models.json`; o modelo **servido** pelo harness quando o `model` pedido difere do que ele aceita — a conferência é o `usage.jsonl` (G16).
+**Verificação (R19):** `run-guard-tests.ps1` → 132 casos · 0 falharam (47 novos desde a v3.46: G17, perfil executor, G18); `run-check-tests.ps1` → 74 casos · 0 falharam (22 novos: `models.ps1`, C2). **Não exercitado:** um `sprint run` real com qualquer das três configurações sob `claude -p`; se o harness lê a negação do `AskUserQuestion` como resposta — o ensaio do P0 é o primeiro teste real.
 
 ---
-
 ## v3.46 — Plano em contrato conferido antes do dev, prova de falha por mutação, trilha leve por Task, Arquiteto um passo à frente e fechamento pela sessão (SM + Arquiteto + Dev + QA) — 06/10/2026
 
 **Instrução** (stakeholder): "pode aplicar", sobre `proposta-custo-run.md` com as decisões D2, D3, D5, D6 e D7 (formulário de 06/10/2026, todas pela recomendação). Terceiro e último pacote da §4 da proposta (M2, resto da M3, M5 `close -Apply`, M6, M7), sobre a v3.45.1. **Causas medidas no piloto (v3.42):** 5 de 8 Tasks com defeito no código literal do plano (Opus escrevendo código sem compilar, 20 a 70 mil tokens e 10 a 30 min por ciclo de 🔺 GAP); a prova de falha sem lugar (6 negações da G9 a arquivo temporário, prova rodada pelo dev e de novo pelo QA); Task de harness com o pacote inteiro (~530 mil tokens); o SM chamado só para edição mecânica (213 mil tokens em 8 fechamentos); plano fora do caminho crítico proibido pela série total, embora a R1 o permita.
