@@ -1,7 +1,8 @@
 ﻿# Despachante PreToolUse — fase 1 (v3.39): G1 (R31) · G2 (cópia instalada) · G3 (R22);
 # fase 2 (v3.42), por papel (sufixo de agent_type): G5 gate protegido · G6 teste ignorado · G7 Agent só ao operator (R28)
 # · G8 matriz de propriedade (hooks/ownership.json) · G9 escopo do dev (R4 · R8) · G11 pasta do job do operator;
-# v3.44: G14 permissão operacional do run (.team-project/.active-run) — nenhum pedido de permissão do harness trava um papel.
+# v3.44: G14 permissão operacional do run (.team-project/.active-run) — nenhum pedido de permissão do harness trava um papel;
+# v3.47: G17 modelo do papel (.team-project/models.json) — a ferramenta Agent obedece ao modelo configurado.
 # Devolve a PRIMEIRA negação: exit 2 com o motivo no stderr; "allow" (G14) sai em JSON com exit 0. Nenhuma guarda pergunta.
 # Qualquer exceção → exit 1 (erro não bloqueante — falha aberta, D5). Cobertura e limites: hooks/COVERAGE.md.
 
@@ -157,6 +158,21 @@ function Test-G7([object]$ToolInput) {
         $shown = if ($ToolInput.subagent_type) { [string]$ToolInput.subagent_type } else { '(sem subagent_type)' }
         Deny 'G7' $shown "a ferramenta Agent serve só ao operator (R28) — disparar outro papel ($shown) atropela a propriedade dos artefatos. Delegue a execução pesada ao operator; o resto, reporte a quem orquestra."
     }
+}
+
+# G17 — v3.47: o modelo de cada papel é o de .team-project/models.json (stakeholder). Vale para a sessão e para o operator
+# disparado por um papel. Sem a chave do papel, nada muda: valem o agente e as exceções do processo (trilha leve, 3ª instância).
+function Test-G17([object]$ToolInput) {
+    $target = (([string]$ToolInput.subagent_type) -replace '^.*:', '').Trim().ToLowerInvariant()
+    if (-not $target) { return }
+    $mc = Get-ModelsConfig $script:projectDir
+    if ($mc.State -ne 'ok' -or -not $mc.Models.ContainsKey($target)) { return }
+    $want = [string]$mc.Models[$target]
+    $given = ([string]$ToolInput.model).Trim().ToLowerInvariant()
+    $effective = if ($given) { $given } else { Get-AgentDefaultModel $target }
+    if ($effective -eq $want) { return }
+    $shown = if ($effective) { $effective } else { 'o do agente' }
+    Deny 'G17' ([string]$ToolInput.subagent_type) "o modelo de '$target' é '$want' (.team-project/models.json) e o disparo usaria '$shown'. Dispare de novo com model: ""$want"" — a chave vence o modelo do agente e as exceções do processo. Para mudar o modelo, o dono é o stakeholder: edite models.json (ou desligue a G17 em guards.json)."
 }
 
 # G8 — matriz de propriedade (hooks/ownership.json, derivado de artifact-ownership.md §1). Primeira regra que casa decide.
@@ -355,7 +371,10 @@ try {
             }
         }
         '^AskUserQuestion$'     { if (Test-GuardEnabled $cfg 'G3') { Test-G3 $ti } }
-        '^Agent$'               { if ($phase2 -and (Test-GuardEnabled $cfg 'G7')) { Test-G7 $ti } }
+        '^Agent$'               {
+            if ($phase2 -and (Test-GuardEnabled $cfg 'G7')) { Test-G7 $ti }
+            if ($script:teamProject -and (Test-GuardEnabled $cfg 'G17')) { Test-G17 $ti }   # vale também para a sessão principal
+        }
     }
 
     # G14 — depois de todas as negações: só papel do time, em projeto com o time, com run ativo.

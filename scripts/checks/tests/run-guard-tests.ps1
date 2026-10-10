@@ -250,6 +250,67 @@ $cases = @(
        Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'abc1234567'; agent_type = 'team:developer'; transcript_path = (Join-Path $tmp 'transcripts/sess1.jsonl') } },
     @{ Name = 'G13 avisa marcador de run esquecido'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = '.active-run existe'
        Payload = @{ hook_event_name = 'SessionStart' } },
+    # ---------- v3.47 — G17: modelo por papel (.team-project/models.json) ----------
+    @{ Name = 'G17 sem models.json: disparo livre (como na v3.46)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; model = 'opus'; prompt = 'x' } } },
+    @{ Name = 'G17 sessão dispara o dev sem model; models.json pede sonnet (agente é haiku)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'sonnet'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "developer": "sonnet" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; prompt = 'x' } } },
+    @{ Name = 'G17 sessão dispara o dev com model sonnet'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; model = 'sonnet'; prompt = 'x' } } },
+    @{ Name = 'G17 sessão dispara o dev com model diferente'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G17'
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; model = 'haiku'; prompt = 'x' } } },
+    @{ Name = 'G17 chave vence a exceção do processo (3ª instância pede sonnet, models.json pede haiku)'; Script = 'pre-tool.ps1'; Expect = 2
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "developer": "haiku" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; model = 'sonnet'; prompt = 'x' } } },
+    @{ Name = 'G17 papel sem chave segue livre (Arquiteto em sonnet na trilha leve)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:architect'; model = 'sonnet'; prompt = 'x' } } },
+    @{ Name = 'G17 chave igual ao modelo do agente dispensa o model (operator haiku)'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "operator": "haiku" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:operator'; prompt = 'x' } } },
+    @{ Name = 'G17 vale para o operator disparado pelo QA'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'sonnet'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "operator": "sonnet" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:quality-assurance'; tool_input = @{ subagent_type = 'team:operator'; prompt = 'x' } } },
+    @{ Name = 'G17 operator disparado pelo Arquiteto com o model certo'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:architect'; tool_input = @{ subagent_type = 'team:operator'; model = 'sonnet'; prompt = 'x' } } },
+    @{ Name = 'G17 todos os papéis: PO, QA, SM, UX e Arquiteto configurados'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'opus'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "product-owner": "haiku", "quality-assurance": "opus", "scrum-master": "opus", "user-experience": "haiku", "architect": "sonnet" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:quality-assurance'; prompt = 'x' } } },
+    @{ Name = 'G17 PO com model certo'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:product-owner'; model = 'haiku'; prompt = 'x' } } },
+    @{ Name = 'G17 SM sem model: o agente é sonnet, o arquivo pede opus'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:scrum-master'; prompt = 'x' } } },
+    @{ Name = 'G17 apelido do comando vale como chave (ux)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'haiku'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "ux": "haiku", "dev": "opus" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'user-experience'; model = 'sonnet'; prompt = 'x' } } },
+    @{ Name = 'G17 apelido dev com model certo, subagent_type sem prefixo'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'developer'; model = 'opus'; prompt = 'x' } } },
+    @{ Name = 'G17 agente fora do time não é tocado'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'Explore'; model = 'haiku'; prompt = 'x' } } },
+    @{ Name = 'G17 valor inválido e papel desconhecido são ignorados (falha aberta)'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "developer": "gpt-9", "cozinheiro": "opus", "_comentario": "x" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; model = 'haiku'; prompt = 'x' } } },
+    @{ Name = 'G17 chave vazia = não configurado'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "developer": "", "architect": null }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; model = 'opus'; prompt = 'x' } } },
+    @{ Name = 'G17 models.json ilegível: falha aberta'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ nao-e-json' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; model = 'opus'; prompt = 'x' } } },
+    @{ Name = 'G17 desligada em guards.json'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "developer": "sonnet" }' -Encoding UTF8
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "disabled": ["G17"] }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; model = 'haiku'; prompt = 'x' } } },
+    @{ Name = 'G17 projeto sem o time (.team-project ausente): silêncio'; Script = 'pre-tool.ps1'; Expect = 0; Env = @{ CLAUDE_PROJECT_DIR = $bare }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; model = 'haiku'; prompt = 'x' } } },
+    @{ Name = 'G13 mostra os modelos em vigor'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'Modelos por papel (models.json): developer=sonnet'
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.json') -Force -ErrorAction SilentlyContinue }
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'G13 avisa models.json ilegível'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'models.json ilegível'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ nao-e-json' -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'G17 limpeza: sem models.json volta ao livre'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/models.json') -Force -ErrorAction SilentlyContinue }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; model = 'haiku'; prompt = 'x' } } },
     @{ Name = 'Falha aberta: JSON inválido'; Script = 'pre-tool.ps1'; Expect = 1; Raw = '{nao-e-json' },
     @{ Name = 'guards.json desliga G3 e liga a sonda'; Script = 'pre-tool.ps1'; Expect = 0
        Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-run') -Force

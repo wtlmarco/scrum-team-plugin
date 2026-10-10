@@ -1,0 +1,10 @@
+{
+  "_comentario": "Modelo por papel (v3.47). Opcional. Dono: stakeholder. Apague a chave (ou deixe \"\") para o papel voltar ao modelo do agente. Chave ligada vence o agente e as exceções do processo (trilha leve, 3ª instância). Valores: opus | sonnet | haiku | fable. Papéis (ou apelido do comando): architect/arc, developer/dev, operator, product-owner/po, quality-assurance/qa, scrum-master/sm, user-experience/ux. A guarda G17 nega o disparo com outro modelo.",
+  "architect": "",
+  "developer": "",
+  "operator": "",
+  "product-owner": "",
+  "quality-assurance": "",
+  "scrum-master": "",
+  "user-experience": ""
+}

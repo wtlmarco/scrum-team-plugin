@@ -64,3 +64,13 @@ O `scripts/checks/verify.ps1` é chamado pelo dev e pelo QA como uma conferênci
 ## Testes
 
 `powershell -NoProfile -File scripts/checks/tests/run-guard-tests.ps1`, na raiz do repositório-fonte: cada caso entrega ao despachante o JSON que o harness mandaria e confere a decisão (G1 com repositório git temporário; G2 com cópia instalada falsa; G5–G11 com `agent_type` no formato medido, plano e `.active-task` falsos, e a G8 também contra o próprio repositório-fonte; falha aberta com JSON inválido; `guards.json` desligando guarda e ligando a sonda). O C3 (`release.ps1`) confere `ownership.json` × matriz. **O teste que vale por último é o disparo real** numa sessão com o plugin atualizado: `/hooks` listando os cinco eventos (`SessionStart`, `PreToolUse`, `PostToolUse`, `Notification`, `SubagentStop`), e um caso de cada guarda com o texto literal devolvido ao agente.
+
+## v3.47 — modelo por papel
+
+O stakeholder escolhe o modelo de cada papel em `.team-project/models.json` (opcional; modelo em `deliverables/team-project/models.json`; resolvedor e validador em `scripts/checks/models.ps1`). Antes, o modelo era o `model:` de cada `agents/<papel>.md` e duas exceções do processo (trilha leve → Arquiteto em `sonnet`; terceira instância do mesmo bloco → dev em `sonnet`).
+
+| Guarda | Evento · ferramenta | Papel | Regra | Decisão | O que **não** cobre |
+|---|---|---|---|---|---|
+| **G17** | `PreToolUse` · `Agent` | **qualquer** disparo, inclusive o da sessão principal e o do `operator` por um papel (só em projeto com `.team-project/`) | `sprint-run.md` §Modelo por papel | **nega** (exit 2, com a rota) o disparo cujo **modelo efetivo** — o `model` passado, ou o do agente se não passou — difere do `models.json` para aquele papel. A chave ligada vence o agente e as exceções; chave ausente ou `""` = a guarda cala. `models.json` ilegível = como ausente (falha aberta) | `SendMessage` (a instância continua no modelo em que nasceu); agente fora do time (`Explore`, `general-purpose`…); o que o harness **serve** de fato — o `model` pedido pode ser trocado por ele, e o `usage.jsonl` (G16) é a conferência do modelo servido; `models.json` com papel desconhecido ou valor fora de `opus\|sonnet\|haiku\|fable` (ignorado e avisado no `SessionStart`, `models.ps1 -Check` reprova) |
+
+`SessionStart` (G13) mostra uma linha com os modelos em vigor quando o arquivo existe.

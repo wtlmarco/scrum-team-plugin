@@ -85,6 +85,27 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.47 — Modelo por papel em `.team-project/models.json` (G17): o stakeholder escolhe o modelo de cada papel, e a chave vence o agente e as exceções do processo (SM + Arquiteto + QA) — 10/10/2026
+
+**Instrução** (stakeholder): "já habilite esse chaveamento configurável pelo `models.json` sendo possível para todas as rules e assim poderemos ter mais flexibilidade" — M1 de `proposta-benchmark-projeto.md` (perfil de modelos para o dev do braço P1), generalizada a **todos** os papéis. **Causa:** o modelo de cada papel estava fixo no `model:` de `agents/<papel>.md`, com duas exceções escritas no processo (trilha leve → Arquiteto em `sonnet`; terceira instância do bloco → dev em `sonnet`); trocar o modelo de um papel exigia editar o plugin.
+**Classificação:** instrumento (G17 no `pre-tool.ps1`, `scripts/checks/models.ps1`) · formato (`.team-project/models.json` e o modelo em `deliverables/`) · fluxo (`sprint-run.md` §Modelo por papel; os seis comandos de papel). **Sem regra nova** (34).
+**Papéis movidos (R17):** 3 — SM, Arquiteto, QA → barreira de 12 800 B.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `.team-project/models.json` (novo, opcional, **do stakeholder**) | — | chave = papel (`architect` `developer` `operator` `product-owner` `quality-assurance` `scrum-master` `user-experience`) ou apelido do comando (`arc dev po qa sm ux`); valor `opus` `sonnet` `haiku` `fable`; `""`/ausente = não configurado; `_…` = comentário |
+| `hooks/pre-tool.ps1` · `common.ps1` | **G17** | nega (exit 2, com a rota) o disparo pela ferramenta `Agent` cujo modelo efetivo — o `model` passado, ou o do agente — difere do `models.json`; vale para a sessão e para o `operator` disparado por papel; arquivo ilegível ou valor inválido → ignorado (falha aberta); desligável em `guards.json` |
+| `scripts/checks/models.ps1` (novo) | `-Role` · `-Check` · tabela | imprime o modelo configurado de um papel (vazio = não configurado), valida o arquivo ou lista o efetivo dos 7 papéis |
+| `sprint-run.md` | §Modelo por papel (nova) · passo 1 · blocos | **chave ligada vence** o agente e as exceções (trilha leve, 3ª instância); sem a chave nada muda; vale no `run`, no `fix run` e avulso |
+| `commands/*.md` (6) · `agents/architect.md` · `agents/quality-assurance.md` · `fix-run.md` | dispatch | `model: "<valor>"` quando o papel está configurado; o operator disparado pelo Arquiteto e pelo QA também |
+| `artifact-ownership.md` §1 · `ownership.json` · `deliverables/team-project/models.json` | linha nova | dono: stakeholder (o SM mantém o modelo e **lê** o arquivo); papel nenhum edita |
+| `hooks/COVERAGE.md` · `session-start.ps1` | G17 · G13 | limites da G17; o `SessionStart` mostra os modelos em vigor |
+
+**Verificação (R19):** `run-guard-tests.ps1` → 108 casos · 0 falharam (23 novos: chave vence exceção, apelidos, operator por QA e Arquiteto, valor inválido, JSON ilegível, guarda desligada, projeto sem o time); `run-check-tests.ps1` → 66 casos · 0 falharam (14 novos do `models.ps1`). **Não exercitado:** um `sprint run` real com `models.json`; o modelo **servido** pelo harness quando o `model` pedido difere do que ele aceita — a conferência é o `usage.jsonl` (G16).
+
+---
+
 ## v3.46 — Plano em contrato conferido antes do dev, prova de falha por mutação, trilha leve por Task, Arquiteto um passo à frente e fechamento pela sessão (SM + Arquiteto + Dev + QA) — 06/10/2026
 
 **Instrução** (stakeholder): "pode aplicar", sobre `proposta-custo-run.md` com as decisões D2, D3, D5, D6 e D7 (formulário de 06/10/2026, todas pela recomendação). Terceiro e último pacote da §4 da proposta (M2, resto da M3, M5 `close -Apply`, M6, M7), sobre a v3.45.1. **Causas medidas no piloto (v3.42):** 5 de 8 Tasks com defeito no código literal do plano (Opus escrevendo código sem compilar, 20 a 70 mil tokens e 10 a 30 min por ciclo de 🔺 GAP); a prova de falha sem lugar (6 negações da G9 a arquivo temporário, prova rodada pelo dev e de novo pelo QA); Task de harness com o pacote inteiro (~530 mil tokens); o SM chamado só para edição mecânica (213 mil tokens em 8 fechamentos); plano fora do caminho crítico proibido pela série total, embora a R1 o permita.
@@ -188,77 +209,3 @@ Atualizar o plugin, `/team update` (passo 7g) e **reiniciar a sessão**; no prim
 | `guards.json` (modelo) · `team-update.md` 7h (novo) · `team-init.md` 4a · `ownership.json` · `artifact-ownership.md` §1 (linha nova) | chave `verify`; preenchida a partir do `developer/context.md` num formulário; `.team-project/verify/` sem escritor de papel |
 
 **Verificação (R19):** `run-check-tests.ps1` → 41 casos · 0 falharam (8 novos: `focused` sem `-Tests` = 2; `full` verde grava `result.json`; C1 `R7-verify` ok com a árvore igual; `check` igual = 0; arquivo novo não rastreado → `check` diferente e C1 não fecha; suíte com exit 4 → código real e C1 não fecha) · `run-guard-tests.ps1` → 85 · 0 (G14 libera o `verify.ps1` ao dev) · `release.ps1` → exit 0 (R18 v3.45.1; R17 bloco v3.45 ≤ 17 920; ps1-5.1 15; ownership 53; órfãos 45). **Não exercitado:** `verify.ps1` com a toolchain real de um projeto (npm/dotnet) e suíte acima do timeout da ferramenta (600 s — acima disso, `operator`).
-
----
-
-## v3.44 — Run sem trava: o Arquiteto decide e não escreve no código (G8 nega), a G14 libera o operacional do run, a G15 registra pedido de permissão, a R27 lê o transcript; o que sobe ao stakeholder (SM + Arquiteto + PO) — 06/10/2026
-
-**Instrução** (stakeholder): "Gere um plano de alteração para corrigir esses problemas", sobre o relato de um projeto-piloto (v3.42, 05–06/10/2026): quatro chamadas a agentes voltaram "interrupted" — uma por pergunta da G8 (Arquiteto escrevendo `relogio.service.spec.ts`, recusada), três paradas de 24 min a 5 h 33 min sem nada no `guards.log`. Mais duas perguntas da G8 aceitas. As quatro escritas do Arquiteto vieram do prompt de GAP da sessão ("valide contra o compilador"). Plano em `proposta-run-sem-travas.md`. **Decisões do stakeholder (06/10/2026):** **D1** — "o Arquiteto pode resolver questões técnicas operacionais mais complexas sem precisar subir para eu decidir… ele orienta e passa para o demandante a resposta" (fecha o P2 da v3.42: G8 nega, sem pergunta); **D2** — registrar o pedido de permissão **e** "no operacional do sprint run e fix os guards… podem permitir o acesso"; **D3** — lista liberada no `init`/`update`: ok; **revista no mesmo dia** ("ela não deveria estar no `.team-project` para o usuário do plugin?"): a lista é só `runCommands` no `guards.json`, aplicada pela G14 — o plugin não escreve em `.claude/settings*.json` (o harness só lê permissão de lá, e fora do run o stakeholder está presente). **Detalhe (mesmo dia):** Arquiteto e PO sobem ao stakeholder só mudança funcional, impacto significativo ou arquitetura fora do SDD que altera significativamente o esperado do sistema.
-**Classificação:** instrumento (G8, G14, G15, G13; `notification.ps1` novo) · fluxo (`sprint-run.md`, `fix-run.md`) · propriedade de artefato (`.active-run`, `.active-spike`) · regra (R27: segunda conferência) · comportamento de agente (card do Arquiteto) · roteamento (`workflow.md` §6). **Sem regra nova** (34): reforça R25, R27, R9, R28.
-**Papéis movidos (R17):** 3 — SM, Arquiteto e PO → barreira de 12 800 B.
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `hooks/pre-tool.ps1` · `common.ps1` | G8 · G14 (nova) | **G8** nega código-fonte ao Arquiteto salvo com `.active-spike`, com a rota na mensagem (scratchpad · `operator` no sprint · prova do teste com o dev); vale também para escrita pelo `PowerShell`/`Bash` (heurística, `*.log` liberado). Nenhuma guarda pergunta mais (`Ask` removida). **G14** — com `.active-run`, papel do time: `allow` em `Edit`/`Write` no projeto ou no temporário e em comando cujos segmentos estão todos na lista (git sem push, leitura, `Get-WinEvent`, `runCommands`, conferências `scripts/checks`); nega `--no-verify`, `Invoke-Expression`, `Start-Process`, escrita por `[IO.File]`, escrita fora do projeto e — com `runCommands` preenchido — o que está fora da lista |
-| `hooks/notification.ps1` (novo) · `hooks.json` | `Notification · permission_prompt` | **G15** grava o pedido de permissão no `guards.log`, com o texto e o run ativo |
-| `hooks/session-start.ps1` | G13 | lista G14/G15; avisa `.active-run`/`.active-spike` sobrando |
-| `ownership.json` · `artifact-ownership.md` §1 | linha nova | `.active-run` e `.active-spike`: dono SM, escritor a sessão |
-| `deliverables/team-project/guards.json` | `runCommands` | chave nova, vazia no modelo |
-| `sprint-run.md` | pré-condições · paradas · R27 · passos 2 e 4 · Como o SM verifica | `.active-run` gravado antes do 1º agente e apagado em toda parada; R27 com as duas conferências e "permissão pendente"; escalação só pelo critério novo; prompt de GAP nunca pede escrita/compilação no projeto; deny G8 por prompt é achado contra a orquestração; linha G15 no run vai à retro |
-| `fix-run.md` | §Run, paradas | o mesmo contrato; no fix, validação do Arquiteto só no scratchpad |
-| `working-rules.md` | R27 | segunda conferência: transcript do subagente (último `tool_use` sem `tool_result`) e linhas G15; classificação "permissão pendente" |
-| `roles/architect/README.md` · `skills.md` §11 · `templates/fix-plan.md` regra 6 | `/arc question` 3–4 · §Validar sem escrever no produto (nova) · spike | questão técnica operacional decide e devolve; sobe só o critério novo; validar por scratchpad, `operator` (sprint) ou "não validado"; spike só com `.active-spike`; prova do teste de regressão é do dev |
-| `roles/product-owner/README.md` · `workflow.md` §6 | degrau 1 · roteamento | o que sobe ao stakeholder, e só isso; questão técnica operacional → Arquiteto |
-| `rituals/team-update.md` 7e · 7f (novo) · `team-init.md` 4a (novo) | — | `runCommands` no `.team-project/guards.json` a partir do `developer/context.md`, só acrescentando, um formulário; o plugin não escreve em `.claude/settings*.json` |
-| Sessão (stakeholder) | `agents/architect.md` · `hooks/COVERAGE.md` · `run-guard-tests.ps1` (+19 casos) · `plugin.json` · `README.md` · `CHANGELOG.md` | Aplicados pela sessão, a pedido |
-
-### Por quê
-A lista fechada de paradas da v3.43 não cobria duas saídas do contrato que o piloto mediu: a **pergunta da própria guarda** (G8 `ask`) e o **pedido de permissão do harness**, que trava o subagente — em primeiro ou segundo plano — até alguém responder, sem rastro no `guards.log`. A primeira nascia de prompt da orquestração; a segunda virava "interrompido" sem causa, e a sessão chegou a atribuí-la ao stakeholder (R27 já proibia). A documentação do Claude Code (consultada em 06/10/2026) confirma que `permissionDecision: "allow"` num `PreToolUse` pula o pedido também em subagente — por isso a liberação vive na guarda, restrita ao run e ao que as outras guardas já conferiram.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda para ele |
-|---|---|
-| Sessão que orquestra | grava e apaga `.active-run` (e `.active-spike`); prompt de GAP sem escrita no projeto; R27 com as duas conferências; acrescenta prefixo de build/teste/lint a `runCommands` quando falta |
-| Arquiteto | decide a questão técnica e devolve; não escreve no código fora de spike declarado; registra como validou |
-| PO | sobe ao stakeholder só o critério novo |
-| SM | verifica marcadores sobrando, deny G8 por prompt e linhas G15 no run |
-
-### Verificação (R19)
-| Item | Comando | Resultado | |
-|---|---|---|---|
-| Guardas | `powershell -NoProfile -File scripts/checks/tests/run-guard-tests.ps1` | 73 casos · 0 falharam (G8 nega com a rota, libera com `.active-spike` e no scratchpad, nega `Set-Content` em código; G14 libera git/leitura composta/`runCommands`/C1/escrita no escopo e no temporário, deixa ao harness sem run e sem `runCommands`, nega fora da lista, `--no-verify`, destino variável e fora do projeto; G15 grava; G13 avisa marcador) | ✅ |
-| Release (R17 · R18) | `powershell -NoProfile -File scripts/checks/release.ps1` | R18 ok: plugin.json = CHANGELOG = README L3 = v3.44.0, processo 3.44/3.43/3.42 com entrega · R17 ok: bloco v3.44 ≤ 12800 (3 papéis), 3 entradas vivas (v3.41 arquivada) · ps1-5.1 ok: 12 scripts · ownership ok: 51 regras · órfãos ok: 45 modelos · exit 0; `run-check-tests.ps1` → 25 · 0 | ✅ |
-
-**Não exercitado:** um `sprint run` e um `fix run` reais com a v3.44. **A confirmar no disparo real:** se o evento `Notification · permission_prompt` dispara para pedido feito dentro de subagente (a documentação não diz); se `allow` da G14 prevalece sobre regra `ask`/`deny` do `settings` (não documentado). Sem a G15, a R27 segue pelo transcript.
-
-### Pendente do stakeholder
-Atualizar o plugin, rodar `/team update` (passo 7f) em cada projeto e **reiniciar a sessão**; no primeiro run, `"probe": true` para ver as linhas `G14 allow` e `G15`. Remover `proposta-run-sem-travas.md` depois do aceite desta entrada.
-
-### Addendum — 06/10/2026 (mesma v3.44.0): segundo relato, cinco interrupções
-**Instrução** (stakeholder): "Faça uma averiguação profunda sobre essas reclamações e tendo essa certeza pode aplicar". **Relato** (outro usuário): cinco chamadas `Agent` em primeiro plano "interrupted", sem ação dele; não é limite de tempo (uma de 82 min terminou bem); duas coincidem, em até 70 ms, com a entrega de notificação de agente em fila; quase todos os subagentes estavam parados esperando (comando em segundo plano, pergunta de autorização ou nada registrado). **Averiguação:** (1) transcripts desta máquina — em todo "interrupted" de pedido de permissão, logo antes vem o `tool_result` "The user doesn't want to proceed" (pedido fechado sem aprovação); os demais são Esc durante a ferramenta; (2) issue anthropics/claude-code#84346 (fechada sem correção) — vigia de ~600 s sobre requisição de modelo parada sai como "interrupted by user"; (3) documentação — pedido de permissão em subagente **não expira**; notificação **não interrompe** ferramenta em curso (confirmado aqui com comando em primeiro plano); sessão interativa dispara subagente em segundo plano por padrão; (4) **não medido:** se notificação fecha pedido pendente (o modo desta sessão não abre pedido). **Conclusão:** a coincidência com notificação não está provada; o que está provado é que o papel parado esperando — permissão, comando em segundo plano ou modelo — derruba a chamada em primeiro plano e prende a sessão, e os seis `commands/` forçavam esse primeiro plano.
-
-| Documento | Mudança |
-|---|---|
-| `sprint-run.md` §Disparo (era §Task pesada) · Como o SM verifica · `fix-run.md` | **todo** agente do `run` com `run_in_background: true`; série R1 mantida aguardando a notificação; encerrar o turno à espera não é parada |
-| `commands/{arc,dev,qa,po,ux,sm}.md` | `run_in_background: false`, salvo no `sprint run`/`fix run` (`true`) |
-| `hooks/pre-tool.ps1` G14 · `COVERAGE.md` · `how-to.md` | nega comando com `run_in_background: true` aos papéis no run, salvo `operator` (R28) |
-| `working-rules.md` R27 · `sprint-run.md` | transcript lido pelas três assinaturas: permissão fechada (com a `G15`) · ~600 s de silêncio (vigia) · notificação no mesmo segundo (só registro); sem nenhuma, "causa não identificada" |
-
-**Verificação (R19):** `run-guard-tests.ps1` → 75 casos · 0 falharam (G14 nega comando em segundo plano ao QA, libera ao `operator`) · `release.ps1` → exit 0 (R17: bloco v3.44 ≤ 12800). **Não exercitado:** um run real todo em segundo plano.
-
-### Addendum — 06/10/2026 (v3.44.1): burndown parado até o fim da Task
-**Instrução** (stakeholder): item do `note.md` ("o Registro de transições… deveria ficar dentro do `burndown.md`… o burndown parece congelado até o final da tarefa"), aplicado como v3.44.1. **Causa:** a terceira edição do §Marcador (linha na Série) não era conferida — o C1 só lia → ✅ —, a sessão podia gravar o Registro e pular a Série; o `burndown.md` ainda descrevia a granularidade de antes do `run`. **Classificação:** formato de documento · instrumento (C1 R24). **Sem regra nova.**
-
-| Documento | Mudança |
-|---|---|
-| `templates/burndown.md` · `sprint-backlog.md` | Registro de transições sai do quadro e vive no burndown, ao lado da Série; Evento cita a passagem; texto anterior ao `run` removido |
-| R24 · `workflow-sprint.md` §5f · `sprint-run.md` §Marcador · `artifact-ownership.md` §1 · índice | transição = linha no Registro + linha na Série, no mesmo arquivo |
-| `close.ps1` · `fix.ps1` · `lib.ps1` | R24 `-Post` exige → 🟦/🟨/🟪 e uma linha da Série por transição; Registro lido do burndown, com recuo ao Sprint Backlog (sprint aberto antes) |
-
-**Verificação (R19):** `run-check-tests.ps1` → 28 casos · 0 falharam (Registro legado lido; Série parada e → 🟨 ausente reprovam o R24). **Não exercitado:** um `sprint run` real gravando no burndown.
-
-### Addendum — 06/10/2026 (v3.44.2): o `guards.log` do primeiro `sprint run`
-**Instrução** (stakeholder): "pode corrigir", sobre o `guards.log` do primeiro `sprint run` (v3.42/3.43): 7 linhas `erro` (`IsPathRooted`) e 2 negações da G9 em `Env:`. **Classificação:** instrumento (heurística do `PowerShell` em G5/G8/G9/G14). **Sem regra nova.** `pre-tool.ps1`: alvo com caractere inválido descartado; drive que não é de arquivo fora de G5/G8/G9; G14 libera drive da sessão e nega outro. `COVERAGE.md` alinhado.
-
-**Verificação (R19):** `run-guard-tests.ps1` → 81 casos · 0 falharam; os 6 novos reprovam no código anterior. **Não exercitado:** run real com a v3.44.2. Indicador da fase 2 recomeça aqui (`proposta-guards-fase2.md`).

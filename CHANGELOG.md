@@ -13,6 +13,18 @@
 
 ---
 
+## v3.47.0 — 2026-10-10
+
+**Branch:** `feat/v3.47.0` a partir de `develop` (v3.46.0 mesclada) · **Processo:** [`v3.47`](roles/scrum-master/process/process-changelog.md)
+M1 de `proposta-benchmark-projeto.md` (perfil de modelos), generalizada a **todos os papéis** a pedido do stakeholder: o modelo de cada papel deixa de ser fixo no plugin.
+
+- **`.team-project/models.json`** (opcional, do stakeholder): `{ "developer": "sonnet", "architect": "opus" }`. Chaves = os 7 agentes (ou o apelido do comando: `arc dev po qa sm ux`); valores `opus` · `sonnet` · `haiku` · `fable`. **Chave ligada vence** o `model:` do agente **e** as exceções do processo (trilha leve, 3ª instância do bloco); sem a chave, nada muda. Modelo em `deliverables/team-project/models.json`.
+- **G17** (`hooks/pre-tool.ps1`, ferramenta `Agent`): nega o disparo cujo modelo efetivo difere do configurado, para a sessão e para o `operator` disparado por papel; arquivo ilegível ou valor inválido é ignorado (falha aberta); `SessionStart` mostra os modelos em vigor.
+- **`scripts/checks/models.ps1`**: `-Role <papel>` imprime o modelo configurado (vazio = não configurado), `-Check` valida, sem argumento lista o efetivo dos 7 papéis.
+- Os seis comandos de papel, `agents/architect.md`, `agents/quality-assurance.md`, `sprint-run.md` (§Modelo por papel) e `fix-run.md` mandam passar o `model`; `artifact-ownership.md` §1 e `ownership.json` ganham a linha (dono: stakeholder). v3.44 arquivada. Suítes: guardas **108 casos** (23 novos), conferências **66** (14 novos).
+- **Não exercitado:** `sprint run` real com `models.json`; o modelo **servido** pelo harness é conferido pelo `usage.jsonl` (G16).
+
+---
 ## v3.46.0 — 2026-10-06
 
 **Branch:** `feat/v3.46.0` empilhada sobre `feat/v3.45.1` · **Processo:** [`v3.46`](roles/scrum-master/process/process-changelog.md)

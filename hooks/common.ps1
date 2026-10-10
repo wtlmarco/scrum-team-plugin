@@ -126,6 +126,45 @@ function Get-Marker([string]$ProjectDir, [string]$Name) {
     try { return (Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return $null }
 }
 
+# v3.47 (G17) - modelo por papel: .team-project/models.json, do stakeholder e opcional.
+# Chaves = os 7 agentes do time (ou o apelido do comando: arc dev po qa sm ux); valores = o enum da ferramenta Agent.
+# Chave que falta = o modelo do proprio agente (agents/<papel>.md) e as excecoes do processo. Chave ligada VENCE tudo.
+# Chave que comeca com "_" e comentario. Valor ou chave invalida e ignorado e listado em Problems; arquivo
+# ilegivel = como ausente (falha aberta, D5).
+$script:ModelRoles   = @('architect', 'developer', 'operator', 'product-owner', 'quality-assurance', 'scrum-master', 'user-experience')
+$script:ModelAliases = @{ arc = 'architect'; dev = 'developer'; po = 'product-owner'; qa = 'quality-assurance'; sm = 'scrum-master'; ux = 'user-experience' }
+$script:ModelValues  = @('opus', 'sonnet', 'haiku', 'fable')
+
+function Get-ModelsConfig([string]$ProjectDir) {
+    $res = @{ State = 'ausente'; Models = @{}; Problems = @() }
+    $path = Join-Path $ProjectDir '.team-project/models.json'
+    if (-not (Test-Path -LiteralPath $path)) { return $res }
+    try { $json = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { $res.State = 'invalido'; $res.Problems = @('JSON ilegivel'); return $res }
+    $res.State = 'ok'
+    foreach ($p in $json.PSObject.Properties) {
+        $key = $p.Name.Trim().ToLowerInvariant()
+        if ($key.StartsWith('_')) { continue }
+        $role = if ($script:ModelAliases.ContainsKey($key)) { $script:ModelAliases[$key] } else { $key }
+        if ($script:ModelRoles -notcontains $role) { $res.Problems += "papel desconhecido '$($p.Name)'"; continue }
+        $val = ([string]$p.Value).Trim().ToLowerInvariant()
+        if ([string]::IsNullOrEmpty($val)) { continue }                              # "" ou null = nao configurado
+        if ($script:ModelValues -notcontains $val) { $res.Problems += "$role`: modelo '$($p.Value)' fora de $($script:ModelValues -join '|')"; continue }
+        $res.Models[$role] = $val
+    }
+    return $res
+}
+
+# Modelo do proprio agente (frontmatter de agents/<papel>.md); $null se nao achar.
+function Get-AgentDefaultModel([string]$Role) {
+    $f = Join-Path $PSScriptRoot "..\agents\$Role.md"
+    if (-not (Test-Path -LiteralPath $f)) { return $null }
+    $head = (Get-Content -LiteralPath $f -TotalCount 15 -Encoding UTF8) -join "`n"
+    $m = [regex]::Match($head, '(?m)^model:\s*(\S+)')
+    if ($m.Success) { return $m.Groups[1].Value.ToLowerInvariant() }
+    return $null
+}
+
 # Repositorio-fonte do plugin (onde o /review roda): a matriz vale sobre roles/, agents/, hooks/...
 function Test-PluginSource([string]$ProjectDir) {
     return (Test-Path -LiteralPath (Join-Path $ProjectDir '.claude-plugin/plugin.json')) -and
