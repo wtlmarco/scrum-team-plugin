@@ -31,6 +31,8 @@ function Get-GuardConfig([string]$ProjectDir) {
         testSkipPatterns = @('[Skip', '[Ignore', 'Skip =', 'Skip=', '.skip(', 'xit(', 'xdescribe(', 'xtest(', '@Disabled', '@Ignore', 'pytest.mark.skip', 't.Skip(')
         # v3.44 (G14): prefixos dos comandos de build/teste/lint do projeto, liberados aos papeis durante o run
         runCommands      = @()
+        # v3.47 (G18) - modo benchmark: respostas do dossie ao AskUserQuestion e agente em primeiro plano; $null = desligado
+        bench            = $null
         state            = 'ausente'
     }
     $path = Join-Path $ProjectDir '.team-project/guards.json'
@@ -44,6 +46,7 @@ function Get-GuardConfig([string]$ProjectDir) {
         if ($null -ne $json.sourceRoots)      { $cfg.sourceRoots      = @($json.sourceRoots) }
         if ($null -ne $json.testSkipPatterns) { $cfg.testSkipPatterns = @($json.testSkipPatterns) }
         if ($null -ne $json.runCommands)      { $cfg.runCommands      = @($json.runCommands) }
+        if ($null -ne $json.bench)            { $cfg.bench            = $json.bench }
         $cfg.state = 'ok'
     } catch {
         $cfg.state = 'invalido'
@@ -126,6 +129,59 @@ function Get-Marker([string]$ProjectDir, [string]$Name) {
     try { return (Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return $null }
 }
 
+# v3.47 (G17) - modelo por papel: .team-project/models.json, do stakeholder e opcional.
+# Chaves = os 7 agentes do time (ou o apelido do comando: arc dev po qa sm ux); valores = o enum da ferramenta Agent.
+# Chave que falta = o modelo do proprio agente (agents/<papel>.md) e as excecoes do processo. Chave ligada VENCE tudo.
+# Chave que comeca com "_" e comentario. Valor ou chave invalida e ignorado e listado em Problems; arquivo
+# ilegivel = como ausente (falha aberta, D5).
+$script:ModelRoles   = @('architect', 'developer', 'operator', 'product-owner', 'quality-assurance', 'scrum-master', 'user-experience')
+$script:ModelAliases = @{ arc = 'architect'; dev = 'developer'; po = 'product-owner'; qa = 'quality-assurance'; sm = 'scrum-master'; ux = 'user-experience' }
+$script:ModelValues  = @('opus', 'sonnet', 'haiku', 'fable')
+
+function Get-ModelsConfig([string]$ProjectDir) {
+    $res = @{ State = 'ausente'; Models = @{}; Problems = @(); Executor = $null }
+    $path = Join-Path $ProjectDir '.team-project/models.json'
+    if (-not (Test-Path -LiteralPath $path)) { return $res }
+    try { $json = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { $res.State = 'invalido'; $res.Problems = @('JSON ilegivel'); return $res }
+    $res.State = 'ok'
+    foreach ($p in $json.PSObject.Properties) {
+        $key = $p.Name.Trim().ToLowerInvariant()
+        if ($key.StartsWith('_')) { continue }
+        if ($key -eq 'executor') {                                                     # perfil, nao papel (v3.47, M2)
+            $ev = ([string]$p.Value).Trim().ToLowerInvariant()
+            if ($ev -eq 'architect') { $res.Executor = 'architect' }
+            elseif ($ev) { $res.Problems += "executor: valor '$($p.Value)' invalido (use architect)" }
+            continue
+        }
+        $role = if ($script:ModelAliases.ContainsKey($key)) { $script:ModelAliases[$key] } else { $key }
+        if ($script:ModelRoles -notcontains $role) { $res.Problems += "papel desconhecido '$($p.Name)'"; continue }
+        $val = ([string]$p.Value).Trim().ToLowerInvariant()
+        if ([string]::IsNullOrEmpty($val)) { continue }                              # "" ou null = nao configurado
+        if ($script:ModelValues -notcontains $val) { $res.Problems += "$role`: modelo '$($p.Value)' fora de $($script:ModelValues -join '|')"; continue }
+        $res.Models[$role] = $val
+    }
+    return $res
+}
+
+# Modelo do proprio agente (frontmatter de agents/<papel>.md); $null se nao achar.
+function Get-AgentDefaultModel([string]$Role) {
+    $f = Join-Path $PSScriptRoot "..\agents\$Role.md"
+    if (-not (Test-Path -LiteralPath $f)) { return $null }
+    $head = (Get-Content -LiteralPath $f -TotalCount 15 -Encoding UTF8) -join "`n"
+    $m = [regex]::Match($head, '(?m)^model:\s*(\S+)')
+    if ($m.Success) { return $m.Groups[1].Value.ToLowerInvariant() }
+    return $null
+}
+
+# v3.47 (M2) - perfil Arquiteto executor: models.json "executor": "architect" liga o perfil; o marcador .active-executor
+# (gravado pela sessao no passo 3 do sprint run, como o .active-task) diz que o Arquiteto esta implementando a Task.
+# O marcador sozinho nao basta: sem o perfil no models.json ele e ignorado (G8 continua negando codigo ao Arquiteto).
+function Test-ExecutorActive([string]$ProjectDir) {
+    if ($null -eq (Get-Marker $ProjectDir '.active-executor')) { return $false }
+    $mc = Get-ModelsConfig $ProjectDir
+    return ($mc.State -eq 'ok' -and $mc.Executor -eq 'architect')
+}
 # Repositorio-fonte do plugin (onde o /review roda): a matriz vale sobre roles/, agents/, hooks/...
 function Test-PluginSource([string]$ProjectDir) {
     return (Test-Path -LiteralPath (Join-Path $ProjectDir '.claude-plugin/plugin.json')) -and

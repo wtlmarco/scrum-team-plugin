@@ -34,17 +34,25 @@ try {
     if ($r14.Count) { Add-Result 'R14' 'falhou' ($r14 -join '; ') } else { Add-Result 'R14' 'ok' '§4, §7 e cadência preenchidos (datas: n-a — o modelo não tem campo de data)' }
 
     # ---------- R15 · ① antes do SDD técnico (03/04/05) ----------
-    $navDate = $null
+    $navDate = $null; $navSimulada = $false
+    # v3.47 (M3): "n/a — navegação simulada (benchmark)" só vale com guards.json → bench ligado.
+    $benchOn = $false; $gjPath = Join-Path $tp 'guards.json'
+    if (Test-Path -LiteralPath $gjPath) { try { $benchOn = ($null -ne ((Read-Text $gjPath | ConvertFrom-Json).bench)) } catch { } }
     $protoDir = Join-Path $tp 'user-experience/prototype'
     if (Test-Path -LiteralPath $protoDir) {
         foreach ($f in (Get-ChildItem -LiteralPath $protoDir -Recurse -Filter '*.md' | Where-Object { $_.FullName -notmatch '[\\/]sprint-[^\\/]*[\\/]' })) {
             $nm = [regex]::Match((Read-Text $f.FullName), '\*\*Navegado pelo stakeholder em:\*\*\s*(.+)')
+            if ($nm.Success -and $nm.Groups[1].Value -match '(?i)n/a\s*[—-]\s*navegação simulada') { $navSimulada = $true }
             if ($nm.Success) { $d = Get-FirstDate $nm.Groups[1].Value; if ($d) { $navDate = $d; break } }
         }
     }
     $isGit = $false
     try { $null = & git -C $Root rev-parse --is-inside-work-tree 2>$null; $isGit = ($LASTEXITCODE -eq 0) } catch { }
-    if (-not $navDate) { Add-Result 'R15' 'n-a' 'ficha do protótipo funcional sem "Navegado pelo stakeholder em:" com data' }
+    if ($navSimulada -and -not $navDate) {
+        if ($benchOn) { Add-Result 'R15' 'n-a' 'navegação simulada (modo benchmark: guards.json → bench)' }
+        else { Add-Result 'R15' 'falhou' 'ficha do protótipo com "navegação simulada" fora do modo benchmark (guards.json sem "bench") — o ① exige navegação do stakeholder, com data' }
+    }
+    elseif (-not $navDate) { Add-Result 'R15' 'n-a' 'ficha do protótipo funcional sem "Navegado pelo stakeholder em:" com data' }
     elseif (-not $isGit) { Add-Result 'R15' 'n-a' 'fora de repositório git: sem data de criação do SDD técnico' }
     else {
         $early = @(); $seen = 0

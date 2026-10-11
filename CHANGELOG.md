@@ -13,6 +13,18 @@
 
 ---
 
+## v3.47.0 — 2026-10-10
+
+**Branch:** `feat/v3.47.0` a partir de `develop` (v3.46.0 mesclada) · **Processo:** [`v3.47`](roles/scrum-master/process/process-changelog.md)
+M1 a M4 de `proposta-benchmark-projeto.md`: o modelo de cada papel configurável e o plugin pronto para o experimento de benchmark em modo projeto, sem intervenção. Dois commits: **M1** (modelo por papel) e **M2–M4**.
+
+- **M1 — `.team-project/models.json`** (opcional, do stakeholder): `{ "developer": "sonnet", "architect": "opus" }`. Chaves = os 7 agentes (ou o apelido do comando: `arc dev po qa sm ux`); valores `opus` · `sonnet` · `haiku` · `fable`. **Chave ligada vence** o `model:` do agente **e** as exceções do processo (trilha leve, 3ª instância do bloco); sem a chave, nada muda. **G17** nega o disparo com outro modelo (sessão e `operator` disparado por papel); `scripts/checks/models.ps1` resolve e valida; o `SessionStart` mostra os modelos em vigor. Modelo em `deliverables/team-project/models.json`.
+- **M2 — perfil Arquiteto executor:** `models.json` → `"executor": "architect"` + o marcador `.team-project/.active-executor` (gravado pela sessão no passo 3 do `sprint run`, junto do `.active-task`) fazem o **Arquiteto implementar o próprio plano**, sem dev. A **G8** libera o código ao Arquiteto, a **G9** o limita aos arquivos de `**Arquivos tocados:**` e a **G6** proíbe teste ignorado; G5 e G7 valem como sempre. Não há 🔺 GAP a si mesmo: **plano errado se corrige** e a correção vira linha em `**Plano corrigido durante a execução:**` (indicador de precisão do plano). Modo `/arc execute <ID>` no cartão e no README do Arquiteto; o Arquiteto não planeja a próxima Task durante a construção. O marcador sem o perfil é ignorado.
+- **M3 — modo benchmark (G18):** `guards.json` → `"bench": { "arm", "answers", "foreground" }`. O **`AskUserQuestion` é respondido pelo dossiê** (`[bench] resposta do stakeholder: <opção>`, por regra no `answers.json`; sem regra, a opção recomendada, nunca "Pedir mais contexto") e cada pergunta vai para `.team-project/benchmark/<arm>/questions.log`; `foreground` nega agente em segundo plano (o `claude -p` encerra antes da notificação). O **C2** aceita `n/a — navegação simulada (benchmark)` **só com `bench` ligado**; fora dele, R15 falha. O `SessionStart` avisa o modo ligado.
+- **M4 — ritual "modo projeto":** `rituals/benchmark.md` §7 (projeto-padrão, braços P · N · N-forte, escopo de 1 sprint com cauda de `fix`, oráculo oculto, avaliação cega com rubrica de documentação e sonda de manutenibilidade, regra datada, laço de melhoria) e o modelo do `result.md` do modo projeto em `templates/benchmark.md`. O driver e o avaliador (M5) ficam no repositório do experimento.
+- Matriz de propriedade (`models.json`; `.active-executor` junto de `.active-run`/`.active-spike`), manifesto, `how-to.md`, `COVERAGE.md` (G17, G18, perfil executor), `sprint-run.md` (§Modelo por papel, §Modo benchmark, passos 3, 4 e 8, pré-condição 1). v3.44 arquivada. Suítes: guardas **132 casos**, conferências **74**.
+- **Não exercitado:** um `sprint run` real com `models.json`, com o perfil executor ou com `bench` ligado sob `claude -p`; o modelo **servido** pelo harness (conferido pelo `usage.jsonl`, G16); se o harness honra a negação do `AskUserQuestion` como resposta (o ensaio do P0 é o primeiro teste real).
+---
 ## v3.46.0 — 2026-10-06
 
 **Branch:** `feat/v3.46.0` empilhada sobre `feat/v3.45.1` · **Processo:** [`v3.46`](roles/scrum-master/process/process-changelog.md)
