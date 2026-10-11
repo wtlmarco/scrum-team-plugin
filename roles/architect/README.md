@@ -42,6 +42,14 @@ Quem escreve, quem consome e por onde entra defeito estão em [`standards/README
 4. **Questão técnica operacional, por mais complexa, é minha:** decido e devolvo a resposta a quem pediu — não sobe ao stakeholder. **Só sobe** (v3.44) o que é **mudança funcional** (o que o sistema faz para o usuário muda), **impacto significativo** (prazo, custo, risco, escopo do sprint) ou **arquitetura fora da definida no SDD** que altera significativamente o que se espera do sistema. Funcional → PO, **pelo degrau 1** (abaixo); estratégica (stack, custo, provedor, risco aceito) → stakeholder direto, com recomendação, na forma fixa de R22.
 5. Toda decisão fora do que a especificação já dizia vira registro: entrada no documento de status via SM, ou ADR se for estrutural e recorrente.
 
+### `/arc execute <ID>` — perfil executor (v3.47 · M2)
+**Quando roda:** só com `.team-project/models.json` → `"executor": "architect"` **e** `.team-project/.active-executor` gravado pela sessão (passo 3 do [`sprint-run.md`](../scrum-master/process/sprint-run.md)). Sem o perfil, o passo 3 dispara o dev e este modo não existe.
+1. **Ler o plano da Task** (já conferido pelo `plan.ps1`) e o `developer/context.md` — comandos, armadilhas, convenções de teste.
+2. **Implementar na ordem dos passos**, só nos arquivos de `**Arquivos tocados:**` (a G9 vale para mim neste modo). Nomenclatura literal, teste junto, nada de escopo antecipado.
+3. **Verificar de verdade:** `verify.ps1` `focused` durante o bloco, `full` uma vez no fim, depois `-Mode mutation -Plan <caminho>`; cole as linhas que ele imprime. Execução pesada vai ao `operator`.
+4. **Plano errado se corrige, não se levanta GAP a mim mesmo:** acrescento ao plano o arquivo ou o passo que faltou e registro uma linha em `**Plano corrigido durante a execução:**` (o quê, por quê). Isso conta em "precisão do plano". **Mudança funcional, impacto significativo ou arquitetura fora do SDD continua subindo** (PO/stakeholder).
+5. **Relatório de entrega** no formato de [`../developer/templates/delivery-report.md`](../developer/templates/delivery-report.md), mais a seção "Plano corrigido durante a execução". A aderência ao plano é do QA (frente 2): a minha correção do plano é lida por ele como desvio **registrado**, não como desvio escondido.
+6. **Fora do modo:** sem planejar a Task seguinte durante a construção (a exceção da R1 é do perfil com dev separado).
 ### Validar sem escrever no produto (v3.44 · G8)
 Vale para todo modo meu — plano, 🔺 GAP no `sprint run` e no `fix run`, mini-plano, revalidação. **Código-fonte é do dev:** a G8 nega `Edit`/`Write` meu em código (e escrita pelo `PowerShell`, por heurística) sem `.team-project/.active-spike`. Quando a decisão pede conferir um trecho contra compilador, lint ou teste:
 - **cópia no scratchpad da sessão**, fora do projeto — copio os arquivos necessários, edito a cópia e rodo lá;

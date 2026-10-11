@@ -1,7 +1,10 @@
 ﻿# Despachante PreToolUse — fase 1 (v3.39): G1 (R31) · G2 (cópia instalada) · G3 (R22);
 # fase 2 (v3.42), por papel (sufixo de agent_type): G5 gate protegido · G6 teste ignorado · G7 Agent só ao operator (R28)
 # · G8 matriz de propriedade (hooks/ownership.json) · G9 escopo do dev (R4 · R8) · G11 pasta do job do operator;
-# v3.44: G14 permissão operacional do run (.team-project/.active-run) — nenhum pedido de permissão do harness trava um papel.
+# v3.44: G14 permissão operacional do run (.team-project/.active-run) — nenhum pedido de permissão do harness trava um papel;
+# v3.47: G17 modelo do papel (.team-project/models.json) — a ferramenta Agent obedece ao modelo configurado;
+# G18 modo benchmark (guards.json → bench) — o dossiê responde o AskUserQuestion e o agente roda em primeiro plano;
+# perfil Arquiteto executor (M2): com .active-executor e models.json "executor", a G8/G9/G6 tratam o Arquiteto como o dev.
 # Devolve a PRIMEIRA negação: exit 2 com o motivo no stderr; "allow" (G14) sai em JSON com exit 0. Nenhuma guarda pergunta.
 # Qualquer exceção → exit 1 (erro não bloqueante — falha aberta, D5). Cobertura e limites: hooks/COVERAGE.md.
 
@@ -131,9 +134,15 @@ function Test-G5([string]$Rel, [string]$Shown) {
     }
 }
 
+# Quem escreve código de produto na Task: o dev; e, no perfil executor (v3.47, M2), o Arquiteto com .active-executor.
+function Test-CodeWriter {
+    if ($script:role -eq 'developer') { return $true }
+    return ($script:role -eq 'architect' -and (Test-ExecutorActive $script:projectDir))
+}
+
 # G6 — o dev não acrescenta teste ignorado (guards.json → testSkipPatterns).
 function Test-G6([object]$ToolInput, [string]$Rel, [string]$Shown) {
-    if ($script:role -ne 'developer' -or -not $Rel) { return }
+    if (-not (Test-CodeWriter) -or -not $Rel) { return }
     if ($Rel -notmatch '(^|/)(tests?|specs?|__tests__)/|(^|/)test_[^/]+$|[._-](test|tests|spec|specs)\.[^/]+$|tests?\.[^/.]+$') { return }
     if ($script:tool -eq 'Edit') { $new = [string]$ToolInput.new_string; $old = [string]$ToolInput.old_string }
     else {
@@ -159,6 +168,75 @@ function Test-G7([object]$ToolInput) {
     }
 }
 
+# G18 — v3.47 (M3), modo benchmark: guards.json "bench". O experimento roda sem o stakeholder.
+#   bench.answers  → JSON { "respostas": [ { "tema", "match" (regex na pergunta+título), "pick" (regex no rótulo da opção) } ] }.
+#                    O AskUserQuestion é NEGADO e a resposta volta no motivo: "[bench] resposta do stakeholder: <opção>".
+#                    Sem regra que case, vale a opção marcada como recomendada (nunca "Pedir mais contexto"). Tudo vai a
+#                    .team-project/benchmark/<bench.arm>/questions.log (tema · origem da resposta · pergunta · resposta).
+#   bench.foreground (true) → agente em segundo plano é negado: o claude -p encerra antes da notificação.
+function Resolve-BenchPath([string]$Path) {
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $null }
+    if ([System.IO.Path]::IsPathRooted($Path)) { return $Path }
+    return (Join-Path $script:projectDir $Path)
+}
+function Write-BenchLog([string]$Theme, [string]$Origin, [string]$Question, [string]$Answer) {
+    $arm = if ($cfg.bench.arm) { ([string]$cfg.bench.arm -replace '[^\w.-]', '_') } else { 'default' }
+    $dir = Join-Path $script:projectDir ".team-project/benchmark/$arm"
+    try {
+        New-Item -ItemType Directory -Force $dir | Out-Null
+        $line = '{0} | {1} | {2} | {3} | {4}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Theme, $Origin, (($Question -replace '\s+', ' ').Trim()), (($Answer -replace '\s+', ' ').Trim())
+        [System.IO.File]::AppendAllText((Join-Path $dir 'questions.log'), $line + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } catch { }
+}
+function Test-G18Ask([object]$ToolInput) {
+    if ($null -eq $cfg.bench -or -not $cfg.bench.answers) { return }
+    $path = Resolve-BenchPath ([string]$cfg.bench.answers)
+    if (-not $path -or -not (Test-Path -LiteralPath $path)) { return }           # sem respostas: a G3 segue valendo
+    $rules = @((Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json).respostas)
+    $answers = @()
+    foreach ($q in @($ToolInput.questions)) {
+        $opts = @($q.options)
+        $text = ([string]$q.question + ' ' + [string]$q.header)
+        $hit = $null
+        foreach ($r in $rules) { if ($r.match -and ($text -match [string]$r.match)) { $hit = $r; break } }
+        $pick = $null
+        if ($hit -and $hit.pick) { $pick = @($opts | Where-Object { ([string]$_.label) -match [string]$hit.pick } | Select-Object -First 1)[0] }
+        $origin = if ($pick) { 'dossie' } else { 'recomendada' }
+        if (-not $pick) { $pick = @($opts | Where-Object { ([string]$_.label) -match '(?i)recomend' } | Select-Object -First 1)[0] }
+        if (-not $pick) { $pick = @($opts | Where-Object { ([string]$_.label) -notmatch '(?i)^pedir mais contexto' } | Select-Object -First 1)[0] }
+        if (-not $pick) { $pick = $opts[0] }
+        $label = [string]$pick.label
+        $theme = if ($hit -and $hit.tema) { [string]$hit.tema } else { '(fora do dossie)' }
+        Write-BenchLog $theme $origin ([string]$q.question) $label
+        $answers += $label
+    }
+    $reason = if ($answers.Count -eq 1) { "resposta do stakeholder: $($answers[0])" }
+              else { 'resposta do stakeholder: ' + (@(0..($answers.Count - 1) | ForEach-Object { "pergunta $($_ + 1) → $($answers[$_])" }) -join ' · ') }
+    Deny 'bench' 'AskUserQuestion' ("$reason. Modo benchmark (guards.json → bench): o stakeholder simulado já respondeu pelo dossiê — trate isto como a decisão dele e siga, sem repetir a pergunta nem pedir mais contexto.")
+}
+function Test-G18Agent([object]$ToolInput) {
+    if ($null -eq $cfg.bench -or $cfg.bench.foreground -ne $true) { return }
+    if ($ToolInput.run_in_background -eq $true) {
+        $shown = if ($ToolInput.subagent_type) { [string]$ToolInput.subagent_type } else { '(sem subagent_type)' }
+        Deny 'bench' $shown 'modo benchmark (guards.json → bench.foreground): dispare o agente em primeiro plano, com run_in_background: false — sob claude -p o processo encerra antes da notificação de agente em segundo plano e a Task fica pela metade. O relógio por Task segue medido pelo burndown.'
+    }
+}
+
+# G17 — v3.47: o modelo de cada papel é o de .team-project/models.json (stakeholder). Vale para a sessão e para o operator
+# disparado por um papel. Sem a chave do papel, nada muda: valem o agente e as exceções do processo (trilha leve, 3ª instância).
+function Test-G17([object]$ToolInput) {
+    $target = (([string]$ToolInput.subagent_type) -replace '^.*:', '').Trim().ToLowerInvariant()
+    if (-not $target) { return }
+    $mc = Get-ModelsConfig $script:projectDir
+    if ($mc.State -ne 'ok' -or -not $mc.Models.ContainsKey($target)) { return }
+    $want = [string]$mc.Models[$target]
+    $given = ([string]$ToolInput.model).Trim().ToLowerInvariant()
+    $effective = if ($given) { $given } else { Get-AgentDefaultModel $target }
+    if ($effective -eq $want) { return }
+    $shown = if ($effective) { $effective } else { 'o do agente' }
+    Deny 'G17' ([string]$ToolInput.subagent_type) "o modelo de '$target' é '$want' (.team-project/models.json) e o disparo usaria '$shown'. Dispare de novo com model: ""$want"" — a chave vence o modelo do agente e as exceções do processo. Para mudar o modelo, o dono é o stakeholder: edite models.json (ou desligue a G17 em guards.json)."
+}
+
 # G8 — matriz de propriedade (hooks/ownership.json, derivado de artifact-ownership.md §1). Primeira regra que casa decide.
 function Test-G8([string]$Rel, [string]$Shown) {
     $r = $script:role
@@ -179,7 +257,8 @@ function Test-G8([string]$Rel, [string]$Shown) {
     if ($r -eq 'developer') { return }                                # G9 restringe ao plano
     if ($r -eq 'architect') {
         if ($null -ne (Get-Marker $script:projectDir '.active-spike')) { return }   # spike declarado pela sessão
-        Deny 'G8' $Shown "$Rel é código-fonte: o Arquiteto decide e devolve a resposta a quem pediu — quem escreve é o dev, pelo plano (artifact-ownership.md §1). Para validar um trecho, use uma cópia no scratchpad da sessão (fora do projeto) ou, no sprint, o operator; provar que o teste de regressão falha é o passo 1 do dev. Spike que precisa tocar o código: a sessão grava .team-project/.active-spike antes (roles/architect/README.md §Validar sem escrever no produto)."
+        if (Test-ExecutorActive $script:projectDir) { return }                       # v3.47 (M2): perfil executor — a G9 restringe ao plano
+        Deny 'G8' $Shown "$Rel é código-fonte: o Arquiteto decide e devolve a resposta a quem pediu — quem escreve é o dev, pelo plano (artifact-ownership.md §1). Para validar um trecho, use uma cópia no scratchpad da sessão (fora do projeto) ou, no sprint, o operator; provar que o teste de regressão falha é o passo 1 do dev. Spike que precisa tocar o código: a sessão grava .team-project/.active-spike antes (roles/architect/README.md §Validar sem escrever no produto). Perfil executor (models.json ""executor"": ""architect""): a sessão grava .team-project/.active-executor antes de disparar o Arquiteto para implementar o plano (sprint-run.md passo 3)."
     }
     Deny 'G8' $Shown "$Rel é código-fonte: escreve o dev, só nos arquivos do Plano de Implementação (artifact-ownership.md §1). Leve a mudança ao Arquiteto, que planeja."
 }
@@ -210,17 +289,18 @@ function Get-ActiveScope {
 
 # G9 — R4 · R8: o dev só escreve no produto o que o escopo ativo lista. Sem escopo ativo, nenhum arquivo de produto.
 function Test-G9([string]$Rel, [string]$Shown) {
-    if ($script:role -ne 'developer' -or -not $Rel -or -not $script:teamProject) { return }
+    if (-not (Test-CodeWriter) -or -not $Rel -or -not $script:teamProject) { return }
     if ($Rel.StartsWith('.team-project/')) { return }                # processo: G8
+    $gap = if ($script:role -eq 'architect') { 'Perfil executor: acrescente o arquivo a **Arquivos tocados:** do plano e registre em **Plano corrigido durante a execução:**, depois siga — não escreva fora do plano' } else { 'Pare e levante 🔺 GAP ao Arquiteto' }
     $scope = Get-ActiveScope
     if ($null -eq $scope) {
         Deny 'G9' $Shown "nenhum escopo ativo (.team-project/.active-task ausente): sem plano, sem código (R8). Pare e reporte — quem orquestra grava o escopo antes de disparar o dev."
     }
     if ($scope.Files.Count -eq 0) {
-        Deny 'G9' $Shown "o plano de $($scope.Id) ($($scope.Plano)) não tem lista de arquivos legível (caminhos entre crases em **Arquivos tocados:** ou em - produção:/- teste:). Pare e levante 🔺 GAP ao Arquiteto (R8)."
+        Deny 'G9' $Shown "o plano de $($scope.Id) ($($scope.Plano)) não tem lista de arquivos legível (caminhos entre crases em **Arquivos tocados:** ou em - produção:/- teste:). $gap (R8)."
     }
     if ($scope.Files -contains $Rel) { return }
-    Deny 'G9' $Shown "arquivo fora do plano: $Rel não está na lista de $($scope.Id) ($($scope.Plano)). Pare e levante 🔺 GAP ao Arquiteto antes de editar (R4 · R8) — quem orquestra resolve com o Arquiteto, não com o stakeholder (R25)."
+    Deny 'G9' $Shown "arquivo fora do plano: $Rel não está na lista de $($scope.Id) ($($scope.Plano)). $gap antes de editar (R4 · R8) — quem orquestra resolve com o Arquiteto, não com o stakeholder (R25)."
 }
 
 # G11 — contrato do operator, item 6: escreve só na pasta do próprio job.
@@ -354,8 +434,15 @@ try {
                 if (Test-GuardEnabled $cfg 'G9')  { Test-G9 $rel $path }
             }
         }
-        '^AskUserQuestion$'     { if (Test-GuardEnabled $cfg 'G3') { Test-G3 $ti } }
-        '^Agent$'               { if ($phase2 -and (Test-GuardEnabled $cfg 'G7')) { Test-G7 $ti } }
+        '^AskUserQuestion$'     {
+            if ($script:teamProject -and (Test-GuardEnabled $cfg 'G18')) { Test-G18Ask $ti }   # modo benchmark responde antes da G3
+            if (Test-GuardEnabled $cfg 'G3') { Test-G3 $ti }
+        }
+        '^Agent$'               {
+            if ($script:teamProject -and (Test-GuardEnabled $cfg 'G18')) { Test-G18Agent $ti }
+            if ($phase2 -and (Test-GuardEnabled $cfg 'G7')) { Test-G7 $ti }
+            if ($script:teamProject -and (Test-GuardEnabled $cfg 'G17')) { Test-G17 $ti }   # vale também para a sessão principal
+        }
     }
 
     # G14 — depois de todas as negações: só papel do time, em projeto com o time, com run ativo.

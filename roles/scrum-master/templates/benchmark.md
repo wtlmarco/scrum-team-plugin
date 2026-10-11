@@ -57,3 +57,40 @@ Responde uma pergunta só: **quanto da qualidade vem do plugin e quanto vem da e
 - **Número indisponível:** "não disponível — <motivo>" (R7). Custo em US$ é o do `/usage` (observado); derivado só com fórmula e preço ao lado.
 - **Amostra:** 3 a 5 itens já aceitos e com evidência, de tamanhos diferentes. Resultado direcional.
 - **Pasta:** `protocol.md` e `result.md` (SM) · `orientation-<versão>.md` (SM, sonda de orientação por papel) · `<item>/<braço>/` (stakeholder executa, SM registra: `/usage` colado, saída dos cenários, revisão cega, métricas).
+
+## Modo projeto (v3.47) — `protocol.md` e `result.md` de um projeto-padrão
+
+Roteiro em [`rituals/benchmark.md`](../../../rituals/benchmark.md) §7. O modo projeto mede o plugin num **projeto inteiro em um sprint**; os registros vivem no **repositório do experimento**, não em `.team-project/benchmark/`. Estrutura do `result.md` por projeto e braço:
+
+```markdown
+# Resultado — <projeto> · braço <P|N|N-forte> · repetição <n> · <data>
+
+## Configuração
+<!-- versão do plugin · models.json · executor (sim/não) · guards.json bench · emulador · ordem de execução · hora de início -->
+
+## Portões (eliminatórios)
+| Portão | Critério | Resultado |
+|---|---|---|
+| G-build | build e suíte verdes, reexecutados pelo avaliador | |
+| G-aceite | ≥ 80% dos fluxos | <n de N> |
+| G-rnf | os 4 RNF | |
+| G-conclusão | sem aborto, dentro do teto de US$ e de tempo | |
+| G-regressão | fluxos do sprint depois do fix | |
+
+## Custo e tempo — por fase (abertura · sprint · fix) e total
+| Fase | US$ | Tokens | Relógio | Σ agentes | Paralelismo | Paradas | Toques (dossiê/fora) |
+
+## Qualidade
+<!-- fluxos falhos · defeitos da revisão cega · regressões · rubrica de documentação (0–3 × 6) · sonda de manutenibilidade (tokens · tempo · fluxos novos · regressões) -->
+
+## Assertividade e precisão do plano
+<!-- aceite de primeira · voltas 🟪→🟨 · GAPs por negação · planos reprovados · mutações não pegas · falso verde · linhas de "Plano corrigido durante a execução" -->
+
+## Fix
+<!-- Correções fechadas na 1ª rodada (de 4, menos as não reproduzidas) · regressões · custo e tempo por Correção fechada -->
+
+## Leitura
+<!-- pela regra datada do protocolo; "dentro da amostra" quando o projeto também serviu ao ajuste -->
+```
+
+**Registros do laço** (`resultados/laco.md`): por iteração — versão do plugin, `models.json`, hipótese (registrada **antes**), resultado por projeto, decisão pela regra de aceite. Custo e tempo absolutos **não** se comparam entre projetos: compara-se cada braço com o N-forte do **mesmo** projeto, em razão.
