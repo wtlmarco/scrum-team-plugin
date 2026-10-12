@@ -9,8 +9,15 @@
 #   … -Mode mutation -Plan <plano>   prova de falha (v3.46): para cada linha de **Mutações:** do plano, troca o trecho no
 #                    arquivo de produção, roda o teste focado e ESPERA exit ≠ 0; restaura byte a byte; a árvore tem de voltar igual
 #                    (-Only M1,M3 roda só essas — amostragem do QA)
+#                    v3.47.1: antes das mutações, a LINHA DE BASE — o teste focado sem mutação tem de passar e executar
+#                    teste; mutação só conta como pega se o log não mostrar compilação quebrada, zero teste ou runner caído
+#                    (padrões embutidos + guards.json → verify.inconclusive; verify.caught, se houver, tem de aparecer).
+#                    Senão "inconclusivo — motivo". -MaxMinutes (padrão 8) para a chamada antes do vigia de 600 s: o que
+#                    ficou pendente roda no MESMO comando de novo, que continua de onde parou (exit 3 = parcial).
+# -Tests aceita lista por vírgula ("a,b", como chega pelo powershell -File) ou por espaço. guards.json → verify.testRoot
+# (ex.: "source/") tira esse prefixo do {tests} quando o comando focado roda dentro dessa pasta.
 # Saída: ~10 linhas (o log fica no disco). Exit 0 = tudo com código 0 (check: árvore igual e full verde) · 1 = algum
-# comando falhou, árvore diferente ou sem full · 2 = erro de uso (sem guards.json → verify, sem git).
+# comando falhou, árvore diferente ou sem full · 2 = erro de uso (sem guards.json → verify, sem git) · 3 = mutação parcial.
 
 param(
     [Parameter(Mandatory = $true)][string]$Task,
@@ -18,6 +25,7 @@ param(
     [string[]]$Tests = @(),
     [string]$Plan = '',
     [string[]]$Only = @(),
+    [int]$MaxMinutes = 8,
     [string]$Root = (Get-Location).Path
 )
 
@@ -45,7 +53,62 @@ function Invoke-Logged([string]$Key, [string]$Cmd, [string]$Log) {
     return [ordered]@{ key = $Key; command = $Cmd; exit = $code; seconds = [int]$sw.Elapsed.TotalSeconds; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive }
 }
 
-function Format-Tests([string[]]$List) { return (($List | ForEach-Object { if ($_ -match '\s') { "'$_'" } else { $_ } }) -join ' ') }
+# Lista que chega por powershell -File vem numa string só ("a,b"): divide por vírgula e, se o item não é um caminho que
+# existe, por espaço.
+function Split-List([string[]]$List) {
+    $out = @()
+    foreach ($x in @($List)) {
+        foreach ($part in ([string]$x -split ',')) {
+            $t = $part.Trim()
+            if (-not $t) { continue }
+            if ($t -match '\s' -and -not (Test-Path -LiteralPath (Join-Path $Root $t))) { $out += @($t -split '\s+' | Where-Object { $_ }) } else { $out += $t }
+        }
+    }
+    return $out
+}
+
+function Format-Tests([string[]]$List) {
+    $pre = ''; if ($verify -and $verify.PSObject.Properties['testRoot']) { $pre = (([string]$verify.testRoot).Trim() -replace '\\', '/').TrimEnd('/') + '/' }
+    return (($List | ForEach-Object {
+        $t = ([string]$_ -replace '\\', '/') -replace '^\./', ''
+        if ($pre -ne '/' -and $t.StartsWith($pre, [StringComparison]::OrdinalIgnoreCase)) { $t = $t.Substring($pre.Length) }
+        if ($t -match '\s') { "'$t'" } else { $t }
+    }) -join ' ')
+}
+
+# Sinais de que o teste NÃO rodou de verdade (v3.47.1): o exit ≠ 0 de um mutante que não compila, de zero teste executado
+# ou do runner que caiu não prova nada. Embutidos (as stacks do processo) + guards.json → verify.inconclusive.
+$script:inconclusiveBase = @(
+    'Executed 0 of 0', '\bDisconnected\b', '(?i)\bno tests? (were )?found\b', '(?i)\bno tests ran\b', '(?i)no test is available',
+    '(?i)\bERROR collecting\b', '\berror TS\d{4}\b', '\berror CS\d{4}\b', '(?i)\bcompilation (error|failed)\b', '(?m)^e: (file:|/|\w:)',
+    '(?i)\bcannot find symbol\b', '\bSyntaxError\b')
+
+function Get-Inconclusive([string]$Log) {
+    $pats = @($script:inconclusiveBase)
+    if ($verify -and $verify.PSObject.Properties['inconclusive']) { $pats += @(@($verify.inconclusive) | Where-Object { $_ } | ForEach-Object { [string]$_ }) }
+    $text = [System.IO.File]::ReadAllText($Log, $utf8)
+    foreach ($p in $pats) {
+        $m = [regex]::Match($text, $p)
+        if ($m.Success) {
+            $s = $text.LastIndexOf("`n", [Math]::Max(0, $m.Index - 1)) + 1; $e2 = $text.IndexOf("`n", $m.Index); if ($e2 -lt 0) { $e2 = $text.Length }
+            $line = $text.Substring($s, $e2 - $s).Trim(); if ($line.Length -gt 160) { $line = $line.Substring(0, 160) + '…' }
+            return $line
+        }
+    }
+    return $null
+}
+
+# Classifica uma execução do teste focado sobre o mutante.
+function Get-MutationVerdict($Run) {
+    $full = Join-Path $Root $Run.log
+    $why = Get-Inconclusive $full
+    if ($why) { return "inconclusivo — o teste não rodou de verdade: $why" }
+    if ([int]$Run.exit -eq 0) { return 'falhou — o teste passou com a regra removida (decoração)' }
+    if ($verify.PSObject.Properties['caught'] -and $verify.caught) {
+        if (-not ([regex]::IsMatch([System.IO.File]::ReadAllText($full, $utf8), [string]$verify.caught))) { return "inconclusivo — exit $($Run.exit) sem a marca de teste reprovado (verify.caught)" }
+    }
+    return 'ok — o teste reprovou com a regra removida'
+}
 
 # Mutações do plano (v3.46): "- M<k> · teste `<arquivo de teste>` · `<arquivo de produção>` · `<trecho exato>` → `<trecho mutante>`".
 function Get-Mutations([string]$PlanText) {
@@ -88,6 +151,7 @@ try {
     if (-not (Test-Path -LiteralPath $cfgPath)) { [Console]::Error.WriteLine("verify: $cfgPath não existe — rode na raiz do projeto ou passe -Root."); exit 2 }
     $cfg = Read-Text $cfgPath | ConvertFrom-Json
     $verify = $cfg.verify
+    $Tests = @(Split-List $Tests); $Only = @(Split-List $Only)
     $dir = Get-VerifyDir $Root $Task
     $resPath = Join-Path $dir 'result.json'
     $prev = $null
@@ -118,19 +182,41 @@ try {
         $full = if ($prev) { $prev.full } else { $null }
         if ($null -eq $full -or [string]$full.tree -ne $tree) { [Console]::Error.WriteLine("verify: a mutação roda sobre a árvore do último full — rode -Mode full antes (árvore agora $($tree.Substring(0, 12)))."); exit 2 }
         $planText = Read-Text (Join-Path $Root $Plan)
-        $muts = @(Get-Mutations $planText)
+        $planMuts = @(Get-Mutations $planText)
+        $muts = $planMuts
         if ($Only.Count) { $muts = @($muts | Where-Object { $Only -contains $_.Id }) }
         if ($muts.Count -eq 0) { [Console]::Error.WriteLine('verify: nenhuma linha "- M<k> · teste `…` · `…` · `trecho` → `mutante`" em **Mutações:** do plano' + $(if ($Only.Count) { ' com ' + ($Only -join ',') } else { '' }) + '.'); exit 2 }
+        # Retomada (v3.47.1): sem -Only, o que já tem resultado conclusivo nesta mesma árvore não roda de novo — a chamada
+        # anterior parou no -MaxMinutes e esta continua de onde ela parou.
+        $sameTree = $prev -and $prev.mutation -and [string]$prev.mutation.tree -eq $tree
+        if (-not $Only.Count -and $sameTree) {
+            $done = @(@($prev.mutation.items) | Where-Object { ([string]$_.result) -match '^(ok|falhou)\b' } | ForEach-Object { [string]$_.id })
+            $muts = @($muts | Where-Object { $done -notcontains $_.Id })
+        }
         $scopeM = [regex]::Match($planText, '(?s)\*\*Arquivos tocados:\*\*(.*?)(?:\r?\n[ \t]*\r?\n|\r?\n#|\z)')
         $scope = @(); if ($scopeM.Success) { $scope = @([regex]::Matches($scopeM.Groups[1].Value, '`([^`]+)`') | ForEach-Object { ($_.Groups[1].Value.Trim() -replace '\\', '/') -replace '^\./', '' }) }
         New-Item -ItemType Directory -Force $dir | Out-Null
-        $items = @()
+        $items = @(); $pending = @()
+        $budget = [System.Diagnostics.Stopwatch]::StartNew(); $lastSec = 0; $ranAny = $false
+        $base = @{}   # teste → $null (passou e executou) ou o motivo de não servir de linha de base
         foreach ($mu in $muts) {
             $rel = ($mu.File -replace '\\', '/') -replace '^\./', ''
             $item = [ordered]@{ id = $mu.Id; test = $mu.Test; file = $rel; result = ''; exit = $null; decisive = @(); log = '' }
             $full2 = Join-Path $Root $rel
             if ($scope -notcontains $rel) { $item.result = 'inconclusivo — arquivo fora de **Arquivos tocados:** do plano'; $items += $item; continue }
             if (-not (Test-Path -LiteralPath $full2)) { $item.result = 'inconclusivo — arquivo não existe'; $items += $item; continue }
+            if ($mu.Find -eq '') { $item.result = 'inconclusivo — trecho vazio no plano (crase dupla ou trecho com crase: escolha outro trecho)'; $items += $item; continue }
+            # Orçamento: a próxima execução não cabe → fica pendente para a próxima chamada (a primeira sempre roda).
+            if ($ranAny -and ($budget.Elapsed.TotalSeconds + $lastSec) -gt ($MaxMinutes * 60)) { $pending += $mu.Id; continue }
+            $ranAny = $true
+            if (-not $base.ContainsKey($mu.Test)) {
+                $bk = 'base-' + ($base.Count + 1)
+                $b = Invoke-Logged $bk $focusedCmd[0].Replace('{tests}', (Format-Tests @($mu.Test))) (Join-Path $dir "mutation-$bk.log")
+                $bw = Get-Inconclusive (Join-Path $Root $b.log)
+                $base[$mu.Test] = if ([int]$b.exit -ne 0) { "o teste falha sem mutação (linha de base exit $($b.exit), $($b.log))" } elseif ($bw) { "a linha de base não executou teste: $bw" } else { $null }
+                $lastSec = $b.seconds
+            }
+            if ($base[$mu.Test]) { $item.result = "inconclusivo — $($base[$mu.Test])"; $items += $item; continue }
             $bytes = [System.IO.File]::ReadAllBytes($full2)
             $bom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
             $skip = if ($bom) { 3 } else { 0 }
@@ -149,20 +235,26 @@ try {
                 foreach ($tmpf in 'mutation-pending.json', 'mutation.bak') { $pth = Join-Path $dir $tmpf; if (Test-Path -LiteralPath $pth) { [System.IO.File]::Delete($pth) } }
             }
             $item.exit = $r.exit; $item.decisive = $r.decisive; $item.log = $r.log
-            $item.result = if ([int]$r.exit -ne 0) { 'ok — o teste reprovou com a regra removida' } else { 'falhou — o teste passou com a regra removida (decoração)' }
+            $item.result = Get-MutationVerdict $r
+            $lastSec = $r.seconds
             $items += $item
         }
         $after = Get-WorkTree $Root
         if ($after -ne $tree) { [Console]::Error.WriteLine("verify: ERRO — a árvore não voltou igual depois das mutações ($($tree.Substring(0, 12)) → $($after.Substring(0, 12))). Confira com git status/git diff antes de seguir."); exit 2 }
-        # Amostragem (-Only) sobre a mesma árvore substitui só as mutações que rodou; as outras do registro ficam.
+        # Amostragem (-Only) e retomada sobre a mesma árvore substituem só as mutações que rodaram; as outras do registro ficam.
         $merged = @()
-        if ($prev -and $prev.mutation -and [string]$prev.mutation.tree -eq $tree) { $ran = @($items | ForEach-Object { $_.id }); $merged = @(@($prev.mutation.items) | Where-Object { $ran -notcontains [string]$_.id }) }
+        if ($sameTree) { $ran = @($items | ForEach-Object { $_.id }); $merged = @(@($prev.mutation.items) | Where-Object { $ran -notcontains [string]$_.id }) }
         $all = @($merged) + @($items) | Sort-Object { [int](([string]$_.id) -replace '\D', '') }
-        $res = [ordered]@{ task = $Task; full = $prev.full; focused = $prev.focused; mutation = [ordered]@{ at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = $tree; plan = $Plan; only = $Only; items = $all } }
+        $res = [ordered]@{ task = $Task; full = $prev.full; focused = $prev.focused; mutation = [ordered]@{ at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = $tree; plan = $Plan; only = $Only; pending = $pending; items = $all } }
         [System.IO.File]::WriteAllText($resPath, ($res | ConvertTo-Json -Depth 8), $utf8)
-        $badM = @($items | Where-Object { -not ([string]$_.result).StartsWith('ok') })
-        [Console]::Out.WriteLine("verify mutation $Task · árvore $($tree.Substring(0, 12)) (restaurada igual) · $($items.Count - $badM.Count) de $($items.Count) mutação(ões) pegas pelo teste · $($resPath.Substring($Root.Length + 1) -replace '\\', '/')")
+        $want = @($(if ($Only.Count) { $Only } else { $planMuts | ForEach-Object { $_.Id } }))
+        $mine = @($all | Where-Object { $want -contains [string]$_.id })
+        $okN = @($mine | Where-Object { ([string]$_.result).StartsWith('ok') }).Count
+        $badM = @($mine | Where-Object { -not ([string]$_.result).StartsWith('ok') })
+        [Console]::Out.WriteLine("verify mutation $Task · árvore $($tree.Substring(0, 12)) (restaurada igual) · $okN de $($want.Count) mutação(ões) pegas pelo teste" + $(if ($pending.Count) { " · $($pending.Count) pendente(s)" } else { '' }) + " · $($resPath.Substring($Root.Length + 1) -replace '\\', '/')")
         foreach ($it in $items) { [Console]::Out.WriteLine("  $($it.id) $($it.file): $($it.result)" + $(if ($null -ne $it.exit) { " · exit $($it.exit) · $(@($it.decisive) | Select-Object -Last 1)" } else { '' })) }
+        foreach ($it in @($merged | Where-Object { $want -contains [string]$_.id })) { [Console]::Out.WriteLine("  $($it.id) $($it.file): $($it.result) (chamada anterior, mesma árvore)") }
+        if ($pending.Count) { [Console]::Out.WriteLine("  parcial: $($pending -join ', ') não couberam em -MaxMinutes $MaxMinutes — rode o MESMO comando de novo; ele continua de onde parou."); exit 3 }
         if ($badM.Count) { exit 1 }
         exit 0
     }
