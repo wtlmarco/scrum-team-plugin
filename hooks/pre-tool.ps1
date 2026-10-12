@@ -349,8 +349,17 @@ function Test-RunSegment([string]$Seg, [string[]]$Allowed) {
     $s = $s -replace '^(\[[^\]]+\]\s*)+', '' -replace '^\$[\w:.]+\s*[-+]?=\s*', '' -replace '^&\s*', ''
     $s = $s.Trim()
     if (-not $s -or $s -match '^[\$@''"\-\d\[,!=+*/%<>]' -or $s -match '^\w+\s*=\s') { return $true }   # expressão, não comando
+    # Propriedade do resultado entre parênteses — (Get-Content f).Count — é leitura; método chega aqui como __metodo_<nome>.
+    if ($s -match '^\.[A-Za-z_]\w*(\.[A-Za-z_]\w*)*(\s*\[[^\]]*\])?$') { return $true }
     $s = $s -replace '^(?i)git\s+(-C\s+\S+\s+|--no-pager\s+)+', 'git '
     $low = $s.ToLowerInvariant()
+    if ($low -match '^git branch(\s|$)') {                               # listar sim; criar, apagar, renomear, copiar não
+        $tok = @($low -split '\s+' | Select-Object -Skip 2)
+        if ($tok | Where-Object { $_ -match '^(-[dmcfu]|--(delete|move|copy|force|set-upstream-to|unset-upstream|edit-description|track|no-track|create-reflog)\b)' }) { return $false }
+        if ($tok.Count -eq 0 -or ($tok | Where-Object { $_ -match '^(-[arlv]+|--(all|remotes|list|verbose|contains|no-contains|merged|no-merged|show-current|points-at|sort|format)\b)' })) { return $true }
+        return $false
+    }
+    if ($low -match '^[\w.-]+\s+(--version|-version)$') { return $true }   # versão de ferramenta (R26)
     $verb = ($low -split '\s+')[0]
     if ($script:runWriteVerbs -contains $verb) { return (Test-RunTargets $s) }
     foreach ($p in $Allowed) {
@@ -382,11 +391,16 @@ function Test-G14([object]$ToolInput) {
     else {
         $flat = [regex]::Replace($cmd, '"([^"]*)"', { param($m) if ($m.Groups[1].Value.Contains('$(')) { ' ' + $m.Groups[1].Value + ' ' } else { '""' } })
         $flat = $flat -replace "'[^']*'", "''"
+        # Chamada de método sobre o resultado — (Get-Item f).Delete() — vira um segmento próprio, que nenhuma lista libera.
+        $flat = [regex]::Replace($flat, '\)\s*\.\s*([A-Za-z_]\w*)\s*\(', { param($m) ') ; __metodo_' + $m.Groups[1].Value + ' (' })
         $allowed = @($script:runBase) + @($cfg.runCommands)
-        $ok = $true
-        foreach ($seg in ($flat -split '\$\(|;|&&|\|\||\||\r?\n|[{}()]')) { if (-not (Test-RunSegment $seg $allowed)) { $ok = $false; break } }
+        $ok = $true; $badSeg = ''
+        foreach ($seg in ($flat -split '\$\(|;|&&|\|\||\||\r?\n|[{}()]')) { if (-not (Test-RunSegment $seg $allowed)) { $ok = $false; $badSeg = $seg.Trim(); break } }
         if ($ok) { return $true }
         if (@($cfg.runCommands).Count -eq 0) { return $false }        # projeto sem runCommands: o harness decide, como antes
+        if ($badSeg.Length -gt 80) { $badSeg = $badSeg.Substring(0, 80) + '…' }
+        if ($badSeg -match '^__metodo_(\w+)') { $why = "fora da lista operacional do run — chamada de método .$($Matches[1])() sobre o resultado de um comando; a G14 só libera propriedade (.Count, .Length, .Lines) — para escrever ou apagar, use o cmdlet" }
+        else { $why = "fora da lista operacional do run — o trecho recusado é ``$badSeg``" + $(if ($badSeg -ne $cmd.Trim()) { ' (os outros trechos do comando composto passaram; rode esse trecho sozinho ou troque a forma)' } else { '' }) }
     }
     $short = if ($cmd.Length -gt 120) { $cmd.Substring(0, 120) + '…' } else { $cmd }
     Deny 'G14' $short "comando $why ($short). Durante o run, o harness não pode parar para perguntar ao stakeholder: rode comandos simples, um por chamada, da lista (hooks/COVERAGE.md G14 + guards.json → runCommands). Comando de build/teste/lint do projeto que falta na lista: reporte a quem orquestra, que o acrescenta em runCommands; dev → 🔺 GAP. Instalação, rede, push ou destrutivo não entram no run: bloqueio da Task (degrau 1)."

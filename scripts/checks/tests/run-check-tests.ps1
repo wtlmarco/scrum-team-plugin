@@ -352,6 +352,34 @@ Check 'verify mutation decorativa (-Only M2): exit 1' $r 1 @('M2 src/calc.ts: fa
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'C1 R7-mutação com M2 não pega (M1 da amostra anterior mantida)' $r 1 @('\| R7-mutação \| falhou.*não pegas: M2')
 
+# 5d3. verify.ps1 -Mode mutation (v3.47.1): exit ≠ 0 só prova com o teste rodando de verdade — linha de base, mutante que
+# não compila, zero teste executado; -MaxMinutes com retomada; -Only e -Tests em lista por vírgula; verify.testRoot.
+$p = Join-Path $tmp 'mutacao2'; New-Project $p
+$ErrorActionPreference = 'Continue'
+& git -C $p init -q 2>$null; Put $p '.gitignore' ".team-project/`n"
+Put $p 'src/calc.ts' "export function soma(a, b) {`n  return a + b; // fim`n}`n"
+Put $p 'tests/check.ps1' ('$c = Get-Content src/calc.ts -Raw' + "`n" + 'if ($c -match "NAOCOMPILA") { "src/calc.ts(2,3): error TS2871: x"; exit 1 }' + "`n" + 'if ($c -match "ZEROTESTE") { "Executed 0 of 0 ERROR"; exit 1 }' + "`n" + 'if ($c -match "a \+ b") { "Tests: 1 passed" } else { "Tests: 1 failed"; exit 1 }')
+Put $p 'tests/base.ps1' '"Tests: 1 failed"; exit 1'
+& git -C $p add -A 2>$null; & git -C $p -c user.email=t@t -c user.name=t commit -qm init 2>$null
+$ErrorActionPreference = 'Stop'
+Put $p '.team-project/guards.json' '{ "verify": { "focused": "powershell -NoProfile -File {tests}", "suite": "powershell -NoProfile -File tests/check.ps1" } }'
+$pl = '.team-project/sprints/1/plan/T-041-export.md'
+Edit-File (Join-Path $p $pl) '## 3. Ambiente' ("**Arquivos tocados:** ``src/calc.ts```n``tests/check.ps1```n`n**Mutações:**`n- M1 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``a + b`` → ``a - b```n- M2 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``// fim`` → ``// NAOCOMPILA```n- M3 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``// fim`` → ``// ZEROTESTE```n- M4 · teste ``tests/base.ps1`` · ``src/calc.ts`` · ``a + b`` → ``a * b```n`n## 3. Ambiente")
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-MaxMinutes', '0', '-Root', $p)
+Check 'verify mutation -MaxMinutes 0: roda uma, o resto pendente, exit 3' $r 3 @('M1 src/calc.ts: ok', '3 pendente', 'parcial: M2, M3, M4')
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-MaxMinutes', '0', '-Root', $p)
+Check 'verify mutation retomada: M1 não roda de novo, M2 roda' $r 3 @('M2 src/calc.ts: inconclusivo.*error TS2871', 'M1 src/calc.ts: ok.*chamada anterior', 'parcial: M3, M4')
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+Check 'verify mutation: zero teste e linha de base vermelha são inconclusivos, exit 1' $r 1 @('M3 src/calc.ts: inconclusivo.*Executed 0 of 0', 'M4 src/calc.ts: inconclusivo.*falha sem mutação', '1 de 4 mutação')
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 R7-mutação com inconclusivas: não fecha' $r 1 @('\| R7-mutação \| falhou.*não pegas: M2 inconclusivo, M3 inconclusivo, M4 inconclusivo')
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Only', 'M1,M2', '-Root', $p)
+Check 'verify mutation -Only "M1,M2" numa string só (powershell -File)' $r 1 @('1 de 2 mutação', 'M1 src/calc.ts: ok', 'M2 src/calc.ts: inconclusivo')
+Put $p '.team-project/guards.json' '{ "verify": { "focused": "Write-Output \"Tests: 2 passed [{tests}]\"", "testRoot": "source/" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'focused', '-Tests', 'source/a.spec.ts,source/b.spec.ts', '-Root', $p)
+Check 'verify focused -Tests "a,b" com testRoot: dois testes, sem o prefixo' $r 0 @('Tests: 2 passed \[a\.spec\.ts b\.spec\.ts\]')
+
 # 5e. close.ps1 -Apply (v3.46): a sessão fecha sem o Agent scrum-master — quadro, Registro, Série, -Post e entrada de status.
 $p = Join-Path $tmp 'apply'; New-Project $p
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Apply', '-Root', $p)
@@ -378,6 +406,9 @@ Check 'Plano com código longo, 9 arquivos sem bloco, sem teste, sem mutação, 
 Put $p $pl ("# Plano`n**Trilha:** leve`n`n**Arquivos tocados:** " + ((1..5 | ForEach-Object { "``src/f$_.ts``" }) -join "`n") + "`n``tests/f.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: só configuração`n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'Plano leve com 6 arquivos: volta à plena' $r 1 @('\| leve \| falhou.*6 arquivos', '\| mutação \| ok.*sem prova')
+Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · ```` → ``x```n")
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano com trecho de mutação vazio (crase dupla): exit 1 (v3.47.1)' $r 1 @('\| mutação \| falhou.*M1: trecho vazio')
 
 # 6. Duas Tasks em construção com 1 dev → R1 falhou; T-041 não confunde com T-041a.
 $p = Join-Path $tmp 'r1'; New-Project $p

@@ -90,6 +90,7 @@ try {
             if ($files -and $files -notcontains $f) { $iss += "$($m.Groups[1].Value): $f fora de **Arquivos tocados:**" }
             if ($files -and $files -notcontains $t) { $iss += "$($m.Groups[1].Value): teste $t fora de **Arquivos tocados:**" }
             if ($m.Groups[4].Value -eq $m.Groups[5].Value) { $iss += "$($m.Groups[1].Value): trecho e mutante iguais" }
+            if ($m.Groups[4].Value -eq '') { $iss += "$($m.Groups[1].Value): trecho vazio (crase dupla ou trecho com crase — escolha um trecho sem crase)" }
         }
         if ($iss.Count) { Add-Result 'mutação' 'falhou' ($iss -join '; ') } else { Add-Result 'mutação' 'ok' "$($muts.Count) mutação(ões) declaradas" }
     } elseif ($noProof) { Add-Result 'mutação' 'ok' "sem mutação, com 'sem prova: <motivo>'" }

@@ -107,6 +107,19 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 **Verificação (R19):** `run-guard-tests.ps1` → 132 casos · 0 falharam (47 novos desde a v3.46: G17, perfil executor, G18); `run-check-tests.ps1` → 74 casos · 0 falharam (22 novos: `models.ps1`, C2). **Não exercitado:** um `sprint run` real com qualquer das três configurações sob `claude -p`; se o harness lê a negação do `AskUserQuestion` como resposta — o ensaio do P0 é o primeiro teste real.
 
+### Addendum v3.47.1 — prova de falha que só conta com o teste rodando, mutação em fatias, G14 sem falso negado (12/10/2026)
+**Instrução** (stakeholder): "Sim faça" — itens 1 a 3 da avaliação de `relatorio-processo-sprint-1-parte-2.md` (projeto-piloto, 07 a 12/10). **Causa:** `verify.ps1` contava como mutação pega **todo** exit ≠ 0 — mutante que não compila, `Executed 0 of 0`, navegador desconectado (T-012 fechada com prova inválida e reaberta); a mutação inteira (~25 min) numa chamada estourava o vigia de 600 s; a G14 cortava `(Get-Content f).Count` nos parênteses e negava o `.Count` como comando — a forma que o próprio card do `operator` manda usar —, e a mensagem não dizia qual trecho do comando composto falhou (🔺 GAP indevido).
+**Classificação:** instrumento (`verify.ps1`, `plan.ps1`, G14) · formato (`guards.json` → `verify.testRoot`, `inconclusive`, `caught`) · comportamento de agente (dev, QA: exit 3 e `inconclusivo`). **Sem regra nova.**
+
+| Documento | Mudança |
+|---|---|
+| `scripts/checks/verify.ps1` | **linha de base** por teste (sem mutação: passa e executa teste) · `inconclusivo` com compilação quebrada, zero teste ou runner caído (padrões embutidos + `inconclusive`; `caught` opcional) · trecho vazio não estoura · **`-MaxMinutes`** (padrão 8) → exit 3, a chamada seguinte na mesma árvore continua · `-Tests`/`-Only` em lista por vírgula (`powershell -File`) · `testRoot` |
+| `scripts/checks/plan.ps1` | trecho de mutação vazio (crase dupla) reprova |
+| `hooks/pre-tool.ps1` (G14) | propriedade entre parênteses liberada, método negado · `git branch` só de listagem · `--version` · a negação cita o trecho recusado |
+| `agents/developer.md` · `agents/quality-assurance.md` · `sprint-run.md` passo 3 · modelo do plano (regra 18) · `team-update.md` 7h · modelo do `guards.json` · `COVERAGE.md` | exit 3 = rodar de novo; `inconclusivo` não é pega; mutante tem de compilar; chaves opcionais |
+
+**Verificação (R19):** `run-check-tests.ps1` → 81 casos · 0 falharam (7 novos); `run-guard-tests.ps1` → 140 · 0 (8 novos). **Fora deste addendum:** o `report.md` do `operator` — o harness recusa a subagente gravar relatório ("Subagents should return findings as text, not write report files", testado em 12/10), e contornar pelo shell seria burlar a recusa; o contrato da R28 muda em entrega própria.
+
 ---
 ## v3.46 — Plano em contrato conferido antes do dev, prova de falha por mutação, trilha leve por Task, Arquiteto um passo à frente e fechamento pela sessão (SM + Arquiteto + Dev + QA) — 06/10/2026
 
