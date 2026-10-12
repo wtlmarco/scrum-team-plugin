@@ -13,6 +13,20 @@
 
 ---
 
+## v3.47.1 — 2026-10-12
+
+**Branch:** `fix/v3.47.1` a partir de `develop` (v3.47.0 mesclada) · **Processo:** [`v3.47` — addendum v3.47.1](roles/scrum-master/process/process-changelog.md)
+Itens 1 a 3 da avaliação de `relatorio-processo-sprint-1-parte-2.md` (projeto-piloto, 07 a 12/10/2026), antes do ensaio do benchmark.
+
+- **Prova de falha só conta com o teste rodando** (`verify.ps1 -Mode mutation`): linha de base por teste (sem mutação, passa e executa teste); exit ≠ 0 com mutante que não compila, zero teste ou runner caído vira `inconclusivo` (padrões embutidos + `guards.json` → `verify.inconclusive`; `verify.caught` opcional). Trecho vazio não estoura mais (`plan.ps1` o reprova).
+- **Mutação em fatias:** `-MaxMinutes` (padrão 8) para antes do vigia de 600 s com exit 3; o mesmo comando, na mesma árvore, continua de onde parou.
+- **`-Tests` e `-Only` em lista por vírgula** (como chegam pelo `powershell -File`) e `verify.testRoot` (comando focado que roda numa subpasta).
+- **G14:** `(Get-Content f).Count` e afins liberados (método sobre o resultado continua negado); `git branch` de listagem; `<ferramenta> --version`; a negação cita o trecho recusado do comando composto.
+- Dev, QA, `sprint-run.md`, modelo do plano, `team-update.md` 7h, modelo do `guards.json`, `COVERAGE.md`. Suítes: conferências **81** (7 novos), guardas **140** (8 novos).
+- **Não entrou:** o `report.md` do `operator` — o harness recusa relatório gravado por subagente; muda o contrato da R28 em entrega própria.
+
+---
+
 ## v3.47.0 — 2026-10-10
 
 **Branch:** `feat/v3.47.0` a partir de `develop` (v3.46.0 mesclada) · **Processo:** [`v3.47`](roles/scrum-master/process/process-changelog.md)
