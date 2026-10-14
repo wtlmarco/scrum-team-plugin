@@ -16,6 +16,9 @@
 #                    ficou pendente roda no MESMO comando de novo, que continua de onde parou (exit 3 = parcial).
 # -Tests aceita lista por vírgula ("a,b", como chega pelo powershell -File) ou por espaço. guards.json → verify.testRoot
 # (ex.: "source/") tira esse prefixo do {tests} quando o comando focado roda dentro dessa pasta.
+# v3.48.1: guards.json → verify.testItem — o molde de CADA teste no {tests}, para runner que não recebe caminho de arquivo:
+# {path} = o caminho (padrão) · {class} = o nome qualificado da classe (src/<conjunto>/java|kotlin/a/b/FooTest.kt → a.b.FooTest).
+# Gradle: "focused": "./gradlew testDebugUnitTest {tests}", "testItem": "--tests {class}" → --tests a.b.FooTest --tests a.b.BarTest.
 # Saída: ~10 linhas (o log fica no disco). Exit 0 = tudo com código 0 (check: árvore igual e full verde) · 1 = algum
 # comando falhou, árvore diferente ou sem full · 2 = erro de uso (sem guards.json → verify, sem git) · 3 = mutação parcial.
 
@@ -67,12 +70,22 @@ function Split-List([string[]]$List) {
     return $out
 }
 
+# Nome qualificado da classe de teste a partir do caminho (v3.48.1): o trecho depois de src/<conjunto>/(java|kotlin|scala|groovy)/,
+# sem extensão, com "." no lugar de "/"; fora desse padrão, o nome do arquivo sem extensão.
+function Get-TestClass([string]$Path) {
+    $m = [regex]::Match($Path, '(?:^|/)src/[^/]+/(?:java|kotlin|scala|groovy)/(.+)\.[^./]+$')
+    if ($m.Success) { return ($m.Groups[1].Value -replace '/', '.') }
+    return [System.IO.Path]::GetFileNameWithoutExtension($Path)
+}
+
 function Format-Tests([string[]]$List) {
     $pre = ''; if ($verify -and $verify.PSObject.Properties['testRoot']) { $pre = (([string]$verify.testRoot).Trim() -replace '\\', '/').TrimEnd('/') + '/' }
+    $item = '{path}'; if ($verify -and $verify.PSObject.Properties['testItem'] -and $verify.testItem) { $item = [string]$verify.testItem }
     return (($List | ForEach-Object {
         $t = ([string]$_ -replace '\\', '/') -replace '^\./', ''
         if ($pre -ne '/' -and $t.StartsWith($pre, [StringComparison]::OrdinalIgnoreCase)) { $t = $t.Substring($pre.Length) }
-        if ($t -match '\s') { "'$t'" } else { $t }
+        $p = if ($t -match '\s') { "'$t'" } else { $t }
+        $item.Replace('{path}', $p).Replace('{class}', (Get-TestClass $t))
     }) -join ' ')
 }
 

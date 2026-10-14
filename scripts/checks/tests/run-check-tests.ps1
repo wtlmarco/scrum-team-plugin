@@ -379,6 +379,13 @@ Check 'verify mutation -Only "M1,M2" numa string só (powershell -File)' $r 1 @(
 Put $p '.team-project/guards.json' '{ "verify": { "focused": "Write-Output \"Tests: 2 passed [{tests}]\"", "testRoot": "source/" } }'
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'focused', '-Tests', 'source/a.spec.ts,source/b.spec.ts', '-Root', $p)
 Check 'verify focused -Tests "a,b" com testRoot: dois testes, sem o prefixo' $r 0 @('Tests: 2 passed \[a\.spec\.ts b\.spec\.ts\]')
+# v3.48.1 — verify.testItem: runner que recebe classe, não caminho (Gradle --tests).
+Put $p '.team-project/guards.json' '{ "verify": { "focused": "Write-Output \"Tests: 2 passed [{tests}]\"", "testRoot": "source/", "testItem": "--tests {class}" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'focused', '-Tests', 'source/app/src/test/java/br/app/agenda/AgendaTest.kt,source/app/src/androidTest/kotlin/br/app/ui/TelaTest.kt', '-Root', $p)
+Check 'verify focused com testItem "--tests {class}": um --tests por classe qualificada (v3.48.1)' $r 0 @('Tests: 2 passed \[--tests br\.app\.agenda\.AgendaTest --tests br\.app\.ui\.TelaTest\]')
+Put $p '.team-project/guards.json' '{ "verify": { "focused": "Write-Output \"Tests: 1 passed [{tests}]\"", "testItem": "{path}::{class}" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'focused', '-Tests', 'tests/test_calc.py', '-Root', $p)
+Check 'verify testItem fora de src/<conjunto>/: {class} é o nome do arquivo' $r 0 @('Tests: 1 passed \[tests/test_calc\.py::test_calc\]')
 
 # 5e. close.ps1 -Apply (v3.46): a sessão fecha sem o Agent scrum-master — quadro, Registro, Série, -Post e entrada de status.
 $p = Join-Path $tmp 'apply'; New-Project $p

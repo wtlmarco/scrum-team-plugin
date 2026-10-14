@@ -121,6 +121,17 @@ A proposta das guardas pedia dois sprints sem linha `erro` e com até um falso p
 ### Pendente do stakeholder
 Grupo C da avaliação (retomada por `SendMessage` com contexto grande, Totais do consumo por instância, onde gravar a quebra em Tasks, prova de UI com render real) vai pelo `/review` — registrado como sintoma em `note.md`, itens 1 a 5. A contagem dos 2 sprints do indicador da fase 2 e da condição da G12 recomeça com esta versão instalada no piloto.
 
+### Addendum v3.48.1 — `verify.testItem`: o teste focado em runner que recebe classe (14/10/2026)
+**Instrução** (stakeholder): "atualize o necessário para iniciarmos o teste de benchmark". **Causa:** os três projetos-padrão do benchmark são Android/Gradle; o `verify.ps1` troca `{tests}` pelos **caminhos** dos arquivos de teste, e o `--tests` do Gradle espera **classe** — o `focused`, a linha de base e toda mutação dariam "No tests found" (`inconclusivo`), e o C1 não fecharia nenhuma Task com `**Mutações:**`.
+**Classificação:** instrumento (`verify.ps1`) · formato (`guards.json` → `verify.testItem`). **Sem regra nova.**
+
+| Documento | Mudança |
+|---|---|
+| `scripts/checks/verify.ps1` | `testItem`: molde por teste com `{path}` (padrão) e `{class}` (`src/<conjunto>/java\|kotlin\|scala\|groovy/…` → nome qualificado; fora disso, o nome do arquivo) |
+| `deliverables/team-project/guards.json` · `team-update.md` 7h | chave opcional documentada, com o exemplo do Gradle |
+
+**Verificação (R19):** `run-check-tests.ps1` → 91 · 0 (2 novos: Gradle com `testRoot` + `--tests {class}`; `{path}::{class}` fora do padrão `src/`); `run-guard-tests.ps1` → 161 · 0. **Não exercitado:** um Gradle real — o ensaio do P é o primeiro.
+
 ---
 
 ## v3.47 — Modelo por papel (G17), perfil Arquiteto executor, modo benchmark (G18) e ritual "modo projeto": o plugin pronto para o experimento sem intervenção (SM + Arquiteto + QA + Dev) — 10/10/2026
