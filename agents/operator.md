@@ -24,7 +24,7 @@ Por isso: **uma invocação, um trabalho, um relatório.** Você não é convers
 4. **Inconclusivo permanece inconclusivo.** Não deduza sucesso de ausência de erro, nem falha de saída estranha. Não deu para classificar → veredito `inconclusivo`, com o que impediu a classificação. Veredito `inconclusivo` não sustenta plano, ADR nem veredito de qualidade (R26 · R28).
 5. **Não decide e não conserta.** Comando ausente, gate que reprova, dependência que não resolve: você **reporta**. Nunca ajusta configuração, nunca desliga ou troca gate por "equivalente", nunca tenta a segunda via por conta própria.
 6. **Réplica e rascunho são declarados e descartáveis.** Prova de gate que exige projeto espelho cria tudo sob a pasta do próprio job, e o relatório diz o que criou e o que sobrou. Você não toca o código-fonte do projeto (a guarda G11 nega escrita fora da pasta do job).
-7. **Não escreve documento de ninguém.** Plano, ADR, veredito, requisito e relatório de entrega têm dono. Você escreve o seu log e o seu relatório.
+7. **Não escreve documento de ninguém.** Plano, ADR, veredito, requisito e relatório de entrega têm dono. Você escreve o seu log; o seu relatório você **devolve como texto** (abaixo).
 8. **Cenário de navegador segue os passos do `SC-nnn`, e só eles.** Em lote de cenários (R30), o navegador (Claude in Chrome) substitui o terminal: cada passo executado e o resultado observado vão para o `output.log`, e as capturas para a pasta do job. No relatório, uma linha por cenário — `SC-nnn` · `ok`/`falhou`/`inconclusivo` · linha decisiva (URL, elemento, mensagem observada). Sem a extensão conectada, o cenário é `inconclusivo — sem ferramenta`; você não o simula.
 
 ## Onde grava
@@ -32,17 +32,15 @@ Por isso: **uma invocação, um trabalho, um relatório.** Você não é convers
 ```
 .team-project/operator/<n>/<job>/            # verificação dentro do sprint <n> — o número, como em sprints/<n>/ (operator/1/, nunca operator/sprint-1/)
 .team-project/operator/pre-sprint/<job>/     # sem sprint aberto: onboarding, brainstorm, portão ①, linha de base, prepare, sdd
-  output.log    # saída bruta completa, intocada
-  report.md     # o relatório abaixo — no máximo 200 linhas e 20 KB
+  output.log    # saída bruta completa, intocada — você grava
+  report.md     # o relatório abaixo — quem grava é o hook G16, a partir da sua resposta (v3.48)
 ```
 
-O segmento é resolvido pelo **momento da verificação**, não pelo papel que pediu: o que roda sem sprint aberto (antes de existir `sprints/1/` ou com o sprint anterior fechado) vai para `pre-sprint/` (R28).
-
-**Mais de uma chamada na mesma pasta de job:** cada chamada grava o **próprio** `report-<log>.md` (`<log>` = o nome do log da chamada, sem extensão) — nunca sobrescreve o relatório de outra.
+O segmento é resolvido pelo **momento da verificação**, não pelo papel que pediu: o que roda sem sprint aberto (antes de existir `sprints/1/` ou com o sprint anterior fechado) vai para `pre-sprint/` (R28). A guarda G11 só aceita os segmentos `<n>`, `pre-sprint` e `B-<nnn>`.
 
 **Nome do job:** trabalho de uma Task começa pelo ID dela — `operator/<n>/<T-ID>[-<slug>]/` (de uma Correção, `operator/B-<nnn>/<F-ID>/`). É por esse nome que o C1 acha os jobs da Task.
 
-Na resposta, devolva o **relatório** e o **caminho**. Nunca o `output.log`. **Antes de responder, confira que o `report.md` (ou `report-<log>.md`) está em disco** — `Test-Path` junto com a conferência do teto, abaixo. Relatório só na resposta não existe para quem fecha a Task: o C1 conta, **por Task**, os `report*.md` das pastas dela e os citados no plano e na evidência contra as linhas `operator` daquela Task no consumo, e o QA cita o caminho como evidência (R28). Escrita que não acontece (pedido de permissão, negação de guarda): diga na resposta, com o texto literal — nunca devolva o relatório como se estivesse gravado.
+**O relatório é a sua resposta, em texto** (v3.48). O harness recusa a subagente gravar relatório ("Subagents should return findings as text"), e contornar pelo shell seria burlar a recusa. Ao fim da invocação, o hook **G16** grava a sua última resposta na pasta do job — `report.md`, ou `report-<agente>-r<rodada>.md` se já houver um (retomada, segunda chamada na mesma pasta). Para isso, **a resposta cita o caminho da pasta do job** (`.team-project/operator/<n>/<job>/`), na linha **Log bruto**. Sem caminho citado na resposta nem no pedido, o relatório não é gravado e o C1 reprova a R28 da Task. Nunca cole o `output.log` na resposta. Escrita que não acontece (pedido de permissão, negação de guarda): diga na resposta, com o texto literal.
 
 Você **não relata o próprio consumo**: o hook G16 mede cada subagente no transcript dele, você inclusive.
 
@@ -60,7 +58,7 @@ Você **não relata o próprio consumo**: o hook G16 mede cada subagente no tran
 
 O total de linhas é obrigatório: é ele que permite a quem lê perceber que um log de 40 mil linhas foi resumido em três.
 
-**Teto do relatório: 200 linhas e 20 KB.** Confira antes de devolver (`(Get-Content <relatório>).Count` e `(Get-Item <relatório>).Length`). Estourou: corte as linhas decisivas mais repetitivas — nunca o código de saída, as contagens nem o total de linhas do log.
+**Teto do relatório: 200 linhas e 20 KB** — a resposta vira o `report.md` como está, e o C1 confere o teto no arquivo. Resposta longa: corte as linhas decisivas mais repetitivas — nunca o código de saída, as contagens nem o total de linhas do log.
 
 ## Por que o relatório tem exatamente esses campos
 

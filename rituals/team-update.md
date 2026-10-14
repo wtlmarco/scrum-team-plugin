@@ -174,6 +174,17 @@ Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere ap
 
 **Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).verify` devolve os comandos; `powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/verify.ps1" -Task T-000 -Mode full` roda e grava `.team-project/verify/…/T-000/result.json` (apague a pasta depois).
 
+## 7i. Primeiro sprint do piloto — v3.48
+
+> Roda quando a versão instalada for anterior à `v3.48.0`, em qualquer projeto.
+
+1. **Registro de transições no lugar:** sprint aberto com `## Registro de transições` no `sprint-backlog.md` (quadro anterior à v3.44.1) — mova a seção inteira, tabela e linhas, para o fim do `burndown.md` do mesmo sprint, sem reescrever linha. O C1 lê e o `close.ps1 -Apply` grava nos dois lugares, mas o modelo é o `burndown.md`.
+2. **`verify.focused` com contorno de pasta:** comando que tira o prefixo do caminho à mão (`-replace '^source/'`, `Set-Location <pasta>` antes do `{tests}`) — proponha trocar por `testRoot` (7h) no mesmo formulário de 7f/7h; sem resposta, deixe como está.
+3. **Coluna nova no quadro aberto:** acrescente `Decisão do stakeholder` à tabela "Entradas fora da Planning" do `sprint-backlog.md` aberto (célula vazia nas linhas existentes).
+4. **Diga ao stakeholder**, em três linhas: o relatório do `operator` passa a ser **gravado pelo hook G16** a partir da resposta dele (o harness recusa relatório gravado por subagente — era a falha de R28/R26 em toda Task com `operator`); o `.active-task` ilegível faz a G9 **negar** (antes o hook caía e o dev escrevia sem guarda); a G14 deixa de negar escrita com caminho entre aspas, conferência com `2>&1`, `Get-Process`, `npm --prefix` e `[Math]::…`, e o `>` dentro de texto deixa de virar destino (G8/G9). Valem depois de reiniciar a sessão.
+
+**Verificação do passo:** `Select-String .team-project/sprints/*/sprint-backlog.md -Pattern '^## Registro de transi'` não devolve nada no sprint aberto; depois do primeiro `operator`, a pasta do job tem `report.md` com a linha `<!-- G16: resposta do operator`.
+
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
 Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.

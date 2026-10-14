@@ -56,10 +56,10 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 
 ## Entradas fora da Planning
 
-> O Sprint Backlog **não cresce** durante o sprint (R4). A única exceção é o GAP que bloqueia uma História já no sprint. Toda entrada aqui declara **o que saiu para caber**.
+> O Sprint Backlog **não cresce** durante o sprint (R4). A única exceção é o GAP que bloqueia uma História já no sprint. Toda entrada aqui declara **o que saiu para caber** — ou, quando nada sai porque o stakeholder decidiu que o sprint cresce, a **Decisão do stakeholder** com data e onde ela está (`aceito em aaaa-mm-dd — formulário da Review`). Sem uma das duas, o C1 reprova a R4.
 
-| Task | História | Por que entrou fora da Planning | O que saiu para caber | Data |
-|---|---|---|---|---|
+| Task | História | Por que entrou fora da Planning | O que saiu para caber | Data | Decisão do stakeholder |
+|---|---|---|---|---|---|
 
 ## Bloqueios e riscos abertos
 

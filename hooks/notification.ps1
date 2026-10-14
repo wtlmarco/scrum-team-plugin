@@ -13,6 +13,9 @@ try {
     if (-not (Test-GuardEnabled $cfg 'G15')) { exit 0 }
     $type = [string]$hookInput.notification_type
     if ($type -and $type -ne 'permission_prompt') { exit 0 }
+    # v3.48: o formulário ao stakeholder (AskUserQuestion) chega como permission_prompt — é a pergunta, não uma trava;
+    # no primeiro sprint do piloto foram as 12 linhas G15, todas ruído.
+    if ([string]$hookInput.message -match '\bAskUserQuestion\b') { exit 0 }
     $run = Get-Marker $projectDir '.active-run'
     $ctx = if ($null -ne $run) { "run ativo: $([string]$run.trilha) $([string]$run.id)" } else { 'sem run ativo' }
     Write-GuardLog $projectDir 'G15' $hookInput 'permissão' ("pedido de permissão do harness ($ctx): " + [string]$hookInput.message)

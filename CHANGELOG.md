@@ -13,6 +13,20 @@
 
 ---
 
+## v3.48.0 — 2026-10-14
+
+**Branch:** `feat/v3.48.0` a partir de `develop` (v3.47.1 mesclada) · **Processo:** [`v3.48`](roles/scrum-master/process/process-changelog.md)
+Grupos A e B de `avaliacao-first-result.md` — o primeiro sprint completo do projeto-piloto (04 a 13/10/2026, plugin 3.46.0), com o `guards.log` reexecutado contra o hook da v3.47.1.
+
+- **Sem falha aberta silenciosa:** `.active-task` ilegível faz a G9 negar com o formato certo — antes o hook caía e 9 edições do dev passaram sem G6/G8/G9.
+- **Texto entre aspas não é destino:** `Select-String -Pattern 'ion-item > ion-label'` deixa de dar G8/G9; variável atribuída a literal no mesmo comando (`$d = "…"`, `Join-Path (Get-Location) "…"`) se resolve para G5/G8/G9/G14.
+- **G14 sem os falsos negados medidos:** escrita com caminho entre aspas, conferência com `2>&1`, `Get-Process`, `npm --prefix`, `[Math]::…`/`[IO.File]::Read*`; `*>` confere o destino; `Start-Sleep` e `robocopy` negados com a rota do `operator`. G11 só no segmento canônico (`operator/sprint-1/` negado com o nome certo). G15 ignora o `AskUserQuestion`. `guards.log` com alvo numa linha.
+- **Relatório do `operator` gravado pelo hook G16** a partir da resposta (o harness recusa relatório de subagente); C1 conta todo `report*.md` das pastas citadas.
+- **C1:** R7/R12/R4/R30 leem a última rodada com veredito; R4 aceita "Decisão do stakeholder" datada (coluna nova no Sprint Backlog); `-Apply` grava o Registro no `sprint-backlog.md` do quadro antigo. **`plan.ps1`:** arquivo de outro papel ou de gate na lista reprova (linha `dono`).
+- `agents/operator.md`, R28, modelos do consumo, do Sprint Backlog e do plano, `sprint-run.md`, `team-update.md` 7i, `COVERAGE.md`; v3.45 arquivada no changelog do processo. Suítes: guardas **161** (21 novos), conferências **89** (8 novos).
+
+---
+
 ## v3.47.1 — 2026-10-12
 
 **Branch:** `fix/v3.47.1` a partir de `develop` (v3.47.0 mesclada) · **Processo:** [`v3.47` — addendum v3.47.1](roles/scrum-master/process/process-changelog.md)

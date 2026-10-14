@@ -47,13 +47,16 @@ try {
     }
     foreach ($t in $boardTables) { if ((Find-Col $t 'Plano') -ge 0 -and (Find-Col $t 'Cenários') -ge 0) { $taskTable = $t; break } }
 
-    # Evidência: bloco mais recente (o primeiro "## " do arquivo).
+    # Evidência: a rodada do QA mais recente — o primeiro bloco "## " que tem **Veredito:** (v3.48: nota ou revisão sem veredito
+    # acima dela não esconde mais a rodada; antes, só o primeiro bloco contava e a revisão tinha de repetir o veredito).
     $evPath = Join-Path $S "evidence/$Task.md"
-    $ev = $null; $evBlock = $null
+    $ev = $null; $evBlock = $null; $evSkipped = 0
     if (Test-Path -LiteralPath $evPath) {
         $ev = Read-Text $evPath
-        $bm = [regex]::Match($ev, '(?ms)^## .*?(?=^## |\z)')
-        $evBlock = if ($bm.Success) { $bm.Value } else { $ev }
+        $bms = @([regex]::Matches($ev, '(?ms)^## .*?(?=^## |\z)'))
+        $evBlock = if ($bms.Count) { $bms[0].Value } else { $ev }
+        foreach ($b in $bms) { if ($b.Value -match '(?m)^\*\*Veredito:\*\*') { $evBlock = $b.Value; break }; $evSkipped++ }
+        if ($evSkipped -ge $bms.Count) { $evSkipped = 0 }
     }
 
     # ---------- R7 · evidência com veredito ✅ e comando + saída ----------
@@ -72,7 +75,7 @@ try {
         if (-not $vm.Success)   { Add-Result 'R7' 'falhou' 'bloco mais recente sem linha **Veredito:** — cada rodada do QA é um bloco ## completo, com o próprio veredito' }
         elseif (-not $okV)      { Add-Result 'R7' 'falhou' ("Veredito:" + $v + " — fecha só com ✅ como primeiro marcador da linha") }
         elseif (-not $okCmd)    { Add-Result 'R7' 'falhou' 'nenhum bloco de comando (> comando + saída) no bloco mais recente' }
-        else                    { Add-Result 'R7' 'ok' ("Veredito:" + $v.Trim() + "; " + $blocks.Count + " bloco(s) de comando") }
+        else                    { Add-Result 'R7' 'ok' ("Veredito:" + $v.Trim() + "; " + $blocks.Count + " bloco(s) de comando" + $(if ($evSkipped) { "; $evSkipped bloco(s) mais novo(s) sem veredito (nota/revisão) — vale a última rodada com veredito" } else { '' })) }
     }
 
     # ---------- R7 · evidência mecânica (v3.45.1): verify full verde e da árvore que está no disco ----------
@@ -121,9 +124,15 @@ try {
     if ($outside) {
         foreach ($t in (Get-Tables $outside)) {
             $ci = Find-Col $t 'O que saiu para caber'
+            $di = Find-Col $t 'Decisão do stakeholder'
             foreach ($row in $t.Rows) {
                 if ($row[0] -match $idPat) {
-                    if (Test-Placeholder (Get-Cell $row $ci)) { $r4 += 'falhou: entrada fora da Planning sem "o que saiu para caber"' }
+                    # v3.48: o sprint pode crescer sem nada sair quando o stakeholder decide — a coluna "Decisão do stakeholder"
+                    # com data destrava (antes não havia onde registrar e o R4 reprovava sempre).
+                    $leftOut = Clean-Cell (Get-Cell $row $ci); $dec = Get-Cell $row $di
+                    $decDate = if ($di -ge 0 -and -not (Test-Placeholder $dec)) { Get-FirstDate $dec } else { $null }
+                    if ($decDate) { $r4 += ("entrada fora da Planning aceita pelo stakeholder em " + $decDate.ToString('yyyy-MM-dd')) }
+                    elseif ((Test-Placeholder $leftOut) -or $leftOut -match '^(?i)(nada|nenhum[a]?|—|-)\.?$') { $r4 += 'falhou: entrada fora da Planning sem "o que saiu para caber" nem "Decisão do stakeholder" com data' }
                     else { $r4 += 'entrada fora da Planning declarada' }
                 }
             }
@@ -338,31 +347,30 @@ try {
     foreach ($jd in @(Get-ChildItem -LiteralPath (Join-Path $tp "operator/$n") -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match ('^' + [regex]::Escape($Task) + '(?![\w])') })) {
         foreach ($rf in @(Get-ChildItem -LiteralPath $jd.FullName -Recurse -Filter 'report*.md' -ErrorAction SilentlyContinue)) { $taskReports[$rf.FullName.ToLowerInvariant()] = $true }
     }
-    $cited = @()
+    # v3.48: o report é gravado pelo hook G16 a partir da resposta do operator (report.md ou report-<agent>-r<k>.md) — o
+    # nome não se prevê pelo log, então o que vale é a PASTA citada: todo report*.md dela conta.
+    $citedDirs = @()
     if ($evBlock) {
         foreach ($pm in [regex]::Matches($evBlock, '(?m)^\*\*Relat[óo]rio do `operator`:\*\*(.*)$')) {
-            foreach ($pp in [regex]::Matches($pm.Groups[1].Value, '`([^`]*report(-[^`/]*)?\.md)`')) { $cited += $pp.Groups[1].Value }
+            foreach ($pp in [regex]::Matches($pm.Groups[1].Value, '`([^`]*/)report(-[^`/]*)?\.md`')) { $citedDirs += $pp.Groups[1].Value }
         }
     }
     if ($plan) {
         $s11 = Get-Section $plan '^##\s+11\.'
-        if ($s11) { foreach ($pp in [regex]::Matches($s11, '`(\.team-project/operator/[^`]+?/)`(?:\s*—\s*`?([\w.-]+)`?)?')) {
-            $dir = $pp.Groups[1].Value; $log = $pp.Groups[2].Value
-            $cited += $(if ($log) { $dir + 'report-' + [System.IO.Path]::GetFileNameWithoutExtension($log) + '.md' } else { $dir + 'report.md' })
-        } }
+        if ($s11) { foreach ($pp in [regex]::Matches($s11, '`(\.team-project/operator/[^`]+?/)`')) { $citedDirs += $pp.Groups[1].Value } }
     }
-    foreach ($rel in ($cited | Select-Object -Unique)) {
+    foreach ($rel in ($citedDirs | Select-Object -Unique)) {
         if ($rel -match '<') { continue }
-        $full = Join-Path $Root $rel
-        if (-not (Test-Path -LiteralPath $full)) {
-            $alt = Join-Path (Split-Path $full) 'report.md'   # job com uma chamada só grava report.md, mesmo citado por log
-            if ($rel -match 'report-' -and (Test-Path -LiteralPath $alt)) { $full = $alt } else { $r28 += "report ausente: $rel"; continue }
-        }
-        $full = (Get-Item -LiteralPath $full).FullName
-        $taskReports[$full.ToLowerInvariant()] = $true
-        $fi = Get-Item -LiteralPath $full
-        $lc = @(Get-Content -LiteralPath $full -Encoding UTF8).Count
-        if ($lc -gt 200 -or $fi.Length -gt 20480) { $r28 += "report acima do teto ($lc linhas, $($fi.Length) bytes): $rel" }
+        $dirFull = Join-Path $Root $rel
+        $found = @(Get-ChildItem -LiteralPath $dirFull -Filter 'report*.md' -ErrorAction SilentlyContinue)
+        if ($found.Count -eq 0) { $r28 += "report ausente em $rel (o hook G16 grava a resposta do operator na pasta do job citada na resposta ou no pedido)"; continue }
+        foreach ($f in $found) { $taskReports[$f.FullName.ToLowerInvariant()] = $true }
+    }
+    foreach ($k in @($taskReports.Keys)) {
+        $fi = Get-Item -LiteralPath $k
+        $lc = @(Get-Content -LiteralPath $k -Encoding UTF8).Count
+        $relShown = $fi.FullName.Substring($Root.Length).TrimStart('\', '/') -replace '\\', '/'
+        if ($lc -gt 200 -or $fi.Length -gt 20480) { $r28 += "report acima do teto ($lc linhas, $($fi.Length) bytes): $relShown" }
     }
     $reports = $taskReports.Count
     # Segmento do sprint é o número, como em sprints/<n>/ — job gravado em outro nome some da contagem sem aviso.
@@ -463,9 +471,20 @@ try {
             if ($ci -ge 0) { $cells += "$v" }
         }
         $lines.Insert($se + 1, '| ' + ($cells -join ' | ') + ' |')
+        $regRow = "| $Task | $from → $($E.Done) | $now | sessão (``close.ps1 -Apply``) |"
+        $regNote = ''
         $re = Get-TableEnd $lines '^##\s+Registro de transi'
-        if ($re -lt 0) { [Console]::Error.WriteLine('C1 -Apply: burndown sem tabela no "## Registro de transições".'); exit 2 }
-        $lines.Insert($re + 1, "| $Task | $from → $($E.Done) | $now | sessão (``close.ps1 -Apply``) |")
+        if ($re -ge 0) { $lines.Insert($re + 1, $regRow) }
+        else {
+            # v3.48: quadro aberto antes da v3.44.1 tem o Registro no sprint-backlog.md (o -Post já o lia lá; o -Apply saía com exit 2).
+            $bText = Read-Text $boardPath
+            $bLines = New-Object System.Collections.ArrayList; foreach ($l in ($bText -split "`r?`n")) { [void]$bLines.Add($l) }
+            $rb = Get-TableEnd $bLines '^##\s+Registro de transi'
+            if ($rb -lt 0) { [Console]::Error.WriteLine('C1 -Apply: nem o burndown nem o Sprint Backlog têm tabela no "## Registro de transições".'); exit 2 }
+            $bLines.Insert($rb + 1, $regRow)
+            [System.IO.File]::WriteAllText($boardPath, ($bLines -join $nl), $utf8)
+            $regNote = ' · Registro no sprint-backlog.md (quadro anterior à v3.44.1 — o /team update o leva ao burndown)'
+        }
         [System.IO.File]::WriteAllText($bdPath, ($lines -join $bnl), $utf8)
 
         # 3 · o -Post confere o que acabou de ser gravado
@@ -474,7 +493,7 @@ try {
         $postOut = & powershell -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath -Task $Task -Post -Root $Root 2>&1 | Out-String
         $postCode = $LASTEXITCODE
         $r24 = ([regex]::Match($postOut, '(?m)^\| R24 \|[^\n]*')).Value
-        [Console]::Out.WriteLine("**-Apply:** quadro $from → $($E.Done) · Registro e Série gravados (estimativa $('{0:0.##}' -f $est) baixada; restante $('{0:0.##}' -f $restante)) · -Post: $r24")
+        [Console]::Out.WriteLine("**-Apply:** quadro $from → $($E.Done) · Registro e Série gravados (estimativa $('{0:0.##}' -f $est) baixada; restante $('{0:0.##}' -f $restante))$regNote · -Post: $r24")
 
         # 4 · entrada de status pré-preenchida (templates/status-entry.md) — a frase do produto é da sessão
         $title = Clean-Cell (Get-Cell $taskRow (Find-Col $taskTable 'Task'))
