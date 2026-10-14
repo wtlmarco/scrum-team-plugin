@@ -13,6 +13,16 @@
 
 ---
 
+## v3.48.1 — 2026-10-14
+
+**Branch:** `fix/v3.48.1` a partir de `develop` (v3.48.0 mesclada) · **Processo:** [`v3.48` — addendum v3.48.1](roles/scrum-master/process/process-changelog.md)
+Preparação do ensaio do benchmark (modo projeto): os três projetos-padrão são Android/Gradle, e o `verify` só sabia entregar **caminho de arquivo** no `{tests}`.
+
+- **`verify.testItem`** no `guards.json`: o molde de cada teste no `{tests}` — `{path}` (padrão, comportamento de antes) ou `{class}`, o nome qualificado da classe (`src/<conjunto>/java|kotlin/a/b/FooTest.kt` → `a.b.FooTest`). Gradle: `"focused": "./gradlew testDebugUnitTest {tests}"` + `"testItem": "--tests {class}"` → um `--tests` por classe. Vale para o `focused`, a linha de base e cada mutação. Sem isso, `--tests <caminho>` dava "No tests found" e toda prova de falha saía `inconclusivo`.
+- Modelo do `guards.json` e `team-update.md` 7h com a chave. Suíte de conferências **91** (2 novos); guardas **161**.
+
+---
+
 ## v3.48.0 — 2026-10-14
 
 **Branch:** `feat/v3.48.0` a partir de `develop` (v3.47.1 mesclada) · **Processo:** [`v3.48`](roles/scrum-master/process/process-changelog.md)
