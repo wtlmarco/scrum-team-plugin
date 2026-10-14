@@ -244,6 +244,49 @@ $cases = @(
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'git branch novo' } } },
     @{ Name = 'G14 versão de ferramenta liberada (R26)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:architect'; tool_input = @{ command = 'node --version; npm --version; java -version' } } },
+    # ---------- v3.48 — achados do guards.log do primeiro sprint do piloto (first-result/) ----------
+    @{ Name = 'G8 ">" dentro de padrão entre aspas não é destino (Arquiteto)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:architect'; tool_input = @{ command = "Select-String -Path src/x.scss -Pattern 'ion-item > ion-label'" } } },
+    @{ Name = 'G9 ">" dentro de código citado não é destino (dev)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "Select-String -Path src/e.cs -Pattern 'a > this.gravar(loteId, x)'" } } },
+    @{ Name = 'G9 redirecionamento real fora do plano continua negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G9'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "Write-Output 'a > b' > src/b.cs" } } },
+    @{ Name = 'G9 destino em variável do mesmo comando se resolve (fora do plano: nega)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'src/b.cs'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = '$p = "src/b.cs"; Set-Content -Path $p -Value x' } } },
+    @{ Name = 'G14 New-Item com caminho entre aspas no projeto liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = "New-Item -ItemType Directory -Force -Path `"$proj\.team-project\operator\1\T-003`"" } } },
+    @{ Name = 'G14 pasta do job em variável do mesmo comando liberada'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = '$dir = ".team-project/operator/1/T-003"; if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }' } } },
+    @{ Name = 'G14 Join-Path (Get-Location) do mesmo comando liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = '$job = Join-Path (Get-Location) ".team-project/operator/1/T-003-medicao"; New-Item -ItemType Directory -Force -Path $job' } } },
+    @{ Name = 'G14 caminho entre aspas fora do projeto continua negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'New-Item -ItemType Directory -Path "Z:\fora-do-projeto\x"' } } },
+    @{ Name = 'G14 conferência com 2>&1 liberada'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:architect'; tool_input = @{ command = "powershell -NoProfile -File `"$root\scripts\checks\plan.ps1`" -Plan .team-project/sprints/1/plan/T-003-z.md 2>&1" } } },
+    @{ Name = 'G14 Get-Process liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = 'Get-Process node,chrome -ErrorAction SilentlyContinue | Select-Object Name,Id' } } },
+    @{ Name = 'G14 npm --prefix casa com runCommands'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'npm --prefix src test *> ".team-project/operator/1/T-003/test.log"' } } },
+    @{ Name = 'G14 [Math]::Min dentro de leitura liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = "Select-String -Path src/a.cs -Pattern 'x' | ForEach-Object { `$_.Line.Substring(0, [Math]::Min(80, `$_.Line.Length)) }" } } },
+    @{ Name = 'G14 separador dentro de aspas não parte o comando'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = "Select-String -Path src/a.cs -Pattern 'a; npm install x | rm'" } } },
+    @{ Name = 'G14 Start-Sleep nega com a rota própria'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'espera com Start-Sleep'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'Start-Sleep -Seconds 240' } } },
+    @{ Name = 'guards.log: comando multilinha fica numa linha'; Script = 'pre-tool.ps1'; Expect = 2
+       Check = { -not (@(Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Encoding UTF8) | Where-Object { $_ -match '^npm install segunda' }) }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "npm install primeira`nnpm install segunda" } } },
+    @{ Name = 'G9 .active-task ilegível nega (antes derrubava o hook)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'escopo ativo ilegível'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-task') '.team-project/sprints/1/plan/T-003-z.md' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/e.cs'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G11 operator/sprint-1 negado com o segmento certo'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'operator/1/, nunca operator/sprint-1/'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-task') '{ "trilha": "sprint", "id": "T-003", "plano": ".team-project/sprints/1/plan/T-003-z.md" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:operator'; tool_input = @{ file_path = (Join-Path $proj '.team-project/operator/sprint-1/T-003/x.log'); content = 'x' } } },
+    @{ Name = 'G11 operator em B-nnn/F-ID liberado'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:operator'; tool_input = @{ file_path = (Join-Path $proj '.team-project/operator/B-001/F-001/checkpoint.md'); content = 'x' } } },
+    @{ Name = 'G15 ignora o formulário (AskUserQuestion)'; Script = 'notification.ps1'; Expect = 0
+       Check = { -not (@(Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Encoding UTF8) | Where-Object { $_ -match '\| G15 \|.*AskUserQuestion' }) }
+       Payload = @{ hook_event_name = 'Notification'; notification_type = 'permission_prompt'; message = 'Claude needs your permission to use AskUserQuestion' } },
     @{ Name = 'G15 pedido de permissão vai ao guards.log'; Script = 'notification.ps1'; Expect = 0
        Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw -Encoding UTF8) -like '*G15*run ativo: sprint 1*precisa de permissão*' }
        Payload = @{ hook_event_name = 'Notification'; notification_type = 'permission_prompt'; message = 'Claude precisa de permissão para usar PowerShell' } },
@@ -265,6 +308,21 @@ $cases = @(
        Setup = { Add-Content -LiteralPath (Join-Path $tmp 'transcripts/sess1/subagents/agent-abc1234567.jsonl') @('{"type":"user","timestamp":"2026-10-06T11:00:00Z","message":{"role":"user","content":"Resposta do GAP da T-007: siga"}}', '{"type":"assistant","timestamp":"2026-10-06T11:00:30Z","message":{"id":"m3","model":"claude-sonnet-5-5","usage":{"input_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":1200,"output_tokens":30}}}') -Encoding UTF8 }
        Check = { $l = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8); $l.Count -eq 2 -and $l[1] -match '"round":2.*"model":"claude-sonnet-5-5".*"calls":1,"calls_total":3.*"processed":1335' }
        Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'abc1234567'; agent_type = 'team:developer'; transcript_path = (Join-Path $tmp 'transcripts/sess1.jsonl') } },
+    @{ Name = 'G16 operator: a resposta vira report.md na pasta do job (v3.48)'; Script = 'subagent-stop.ps1'; Expect = 0
+       Setup = { $sd = Join-Path $tmp 'transcripts/sess1/subagents'
+                 $p = '{"type":"user","timestamp":"2026-10-06T12:00:00Z","message":{"role":"user","content":"Rode a suíte da T-003; job .team-project/operator/1/T-003-suite/"}}'
+                 $a = '{"type":"assistant","timestamp":"2026-10-06T12:01:00Z","message":{"id":"o1","model":"claude-haiku-4-5","content":[{"type":"text","text":"## Relatório\nVeredito: ok · exit 0 · log: .team-project/operator/1/T-003-suite/test.log"}],"usage":{"input_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":0,"output_tokens":10}}}'
+                 [System.IO.File]::WriteAllLines((Join-Path $sd 'agent-op12345678.jsonl'), [string[]]@($p, $a), (New-Object System.Text.UTF8Encoding($false))) }
+       Check = { $f = Join-Path $proj '.team-project/operator/1/T-003-suite/report.md'
+                 (Test-Path -LiteralPath $f) -and ((Get-Content -LiteralPath $f -Raw -Encoding UTF8) -like '*G16: resposta do operator*Veredito: ok*') -and
+                 ((Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8 | Select-Object -Last 1) -match '"report":".team-project/operator/1/T-003-suite/report.md"') }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'op12345678'; agent_type = 'team:operator'; transcript_path = (Join-Path $tmp 'transcripts/sess1.jsonl') } },
+    @{ Name = 'G16 operator retomado: segunda resposta vira report-<agente>-r2.md'; Script = 'subagent-stop.ps1'; Expect = 0
+       Setup = { Add-Content -LiteralPath (Join-Path $tmp 'transcripts/sess1/subagents/agent-op12345678.jsonl') @('{"type":"user","timestamp":"2026-10-06T12:10:00Z","message":{"role":"user","content":"Rode de novo o focado"}}', '{"type":"assistant","timestamp":"2026-10-06T12:11:00Z","message":{"id":"o2","model":"claude-haiku-4-5","content":[{"type":"text","text":"Focado: exit 1 — 1 falhou."}],"usage":{"input_tokens":5,"cache_creation_input_tokens":10,"cache_read_input_tokens":100,"output_tokens":10}}}') -Encoding UTF8 }
+       Check = { $f = Join-Path $proj '.team-project/operator/1/T-003-suite/report-op123456-r2.md'
+                 (Test-Path -LiteralPath $f) -and ((Get-Content -LiteralPath $f -Raw -Encoding UTF8) -like '*Focado: exit 1*') -and
+                 ((Get-Content -LiteralPath (Join-Path $proj '.team-project/operator/1/T-003-suite/report.md') -Raw -Encoding UTF8) -like '*Veredito: ok*') }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'op12345678'; agent_type = 'team:operator'; transcript_path = (Join-Path $tmp 'transcripts/sess1.jsonl') } },
     @{ Name = 'G13 avisa marcador de run esquecido'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = '.active-run existe'
        Payload = @{ hook_event_name = 'SessionStart' } },
     # ---------- v3.47 — G17: modelo por papel (.team-project/models.json) ----------

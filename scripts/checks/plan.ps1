@@ -12,6 +12,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib.ps1')
+. (Join-Path $PSScriptRoot '..\..\hooks\common.ps1')   # v3.48: glob e guards.json, como as guardas leem
 
 $testRe = '(^|/)(tests?|specs?|__tests__)/|(^|/)test_[^/]+$|[._-](test|tests|spec|specs)\.[^/]+$|tests?\.[^/.]+$'
 
@@ -35,6 +36,28 @@ try {
         $noTest = @($prod | Where-Object { $text -notmatch ('sem teste:[^\n]*' + [regex]::Escape($_)) })
         if ($prod.Count -and $tests.Count -eq 0 -and $noTest.Count) { Add-Result 'lista' 'falhou' ("$($prod.Count) arquivo(s) de produção e nenhum de teste na lista, sem 'sem teste: <arquivo> — <motivo>' na §6") }
         else { Add-Result 'lista' 'ok' "$($files.Count) arquivo(s): $($prod.Count) de produção, $($tests.Count) de teste" }
+    }
+
+    # ---------- v3.48 · todo arquivo da lista é do executor ----------
+    # A G8 nega ao dev arquivo de .team-project/ que não é dele e a G5 nega arquivo de gate — no piloto, o plano mandou o dev
+    # escrever documento do time e a Task parou no meio. Aqui o plano volta ao Arquiteto antes.
+    if ($files -and $files.Count) {
+        $own = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\..\hooks\ownership.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+        $gcfg = Get-GuardConfig $Root
+        $iss = @()
+        foreach ($f in $files) {
+            $rel = Normalize-PathText $f
+            if (Test-GlobMatch $rel $gcfg.protectedPaths) { $iss += "$f é arquivo de gate (guards.json → protectedPaths): vai em **Arquivos protegidos:** ver §12, aplicado pela sessão"; continue }
+            foreach ($rule in @($own.project)) {
+                if (-not (Test-GlobMatch $rel @($rule.paths))) { continue }
+                if (@($rule.writers) -notcontains 'developer') {
+                    $who = if (@($rule.writers).Count) { (@($rule.writers) | ForEach-Object { $own.roles.$_ }) -join ' · ' } else { 'stakeholder / a sessão' }
+                    $iss += "$f é de $who (artifact-ownership.md §1): a G8 nega ao dev — tire da lista e peça ao dono"
+                }
+                break
+            }
+        }
+        if ($iss.Count) { Add-Result 'dono' 'falhou' ($iss -join '; ') } else { Add-Result 'dono' 'ok' 'todo arquivo da lista é escrito pelo executor (nenhum de gate nem de outro papel)' }
     }
 
     # ---------- 16 · arquivos protegidos declarados ----------

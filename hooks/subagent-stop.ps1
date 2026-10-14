@@ -3,6 +3,7 @@
 # Por quê: o número da notificação ("subagent_tokens") é o tamanho do contexto na ÚLTIMA chamada ao modelo, não a soma
 # do que o subagente processou (medido em 06/10/2026: 49 004 notificados × 273 190 processados; 53 245 × 322 194).
 # Uma linha por rodada: a retomada por SendMessage acrescenta chamadas ao mesmo transcript, e a linha seguinte traz só o delta.
+# v3.48: rodada do operator também grava o relatório dele (a resposta em texto) na pasta do job — o harness recusa ao subagente.
 # Só registra; nunca bloqueia. Qualquer exceção → exit 1 (falha aberta, D5). Cobertura e limites: hooks/COVERAGE.md.
 
 $ErrorActionPreference = 'Stop'
@@ -100,7 +101,7 @@ try {
     # Chamadas ao modelo, deduplicadas por message.id (uma resposta pode ocupar várias linhas do transcript).
     $calls = New-Object System.Collections.ArrayList
     $index = @{}
-    $firstPrompt = $null; $roundPrompt = $null; $children = @{}
+    $firstPrompt = $null; $roundPrompt = $null; $children = @{}; $lastText = $null
     foreach ($line in [System.IO.File]::ReadLines($transcript)) {
         # Subagente que este disparou (o operator de um papel): o resultado do Agent cita o agentId — liga a linha dele ao chamador.
         if ($line.IndexOf('"tool_result"') -ge 0 -and $line.IndexOf('agentId') -ge 0) {
@@ -125,6 +126,9 @@ try {
         if (-not $id -or -not $o.message.usage) { continue }
         $rec = [pscustomobject]@{ model = [string]$o.message.model; u = $o.message.usage; ts = [string]$o.timestamp }
         if ($index.ContainsKey($id)) { $calls[$index[$id]] = $rec } else { $index[$id] = $calls.Count; [void]$calls.Add($rec) }
+        # Texto da resposta desta rodada (o relatório do operator é o último texto).
+        $txt = (@($o.message.content) | Where-Object { $_.type -eq 'text' } | ForEach-Object { [string]$_.text }) -join "`n"
+        if ($txt.Trim() -and $index[$id] -ge $seen) { $lastText = $txt }
     }
     if ($calls.Count -le $seen) { exit 0 }                                   # nenhuma chamada nova nesta parada
 
@@ -148,6 +152,30 @@ try {
     if (-not $work) { $at = Get-Marker $projectDir '.active-task'; if ($null -ne $at -and $at.id) { $work = [string]$at.id } }
     $run = Get-Marker $projectDir '.active-run'
     $dst = Get-Destination $projectDir $work $run
+
+    # v3.48 (R28): o harness recusa ao subagente gravar relatório ("Subagents should return findings as text"). O operator
+    # devolve o relatório como texto, e este hook o grava na pasta do job citada na resposta (ou no pedido) — report.md, ou
+    # report-<agent>-r<rodada>.md se já houver um. Resposta que já cita um report*.md existente: o operator gravou, nada a fazer.
+    $reportRel = ''
+    if ($role -eq 'operator' -and $lastText) {
+        $jobRe = '\.team-project[\\/]operator[\\/](\d+|pre-sprint|B-\d+)[\\/]([\w.-]+)'
+        $own = [regex]::Match($lastText, '(\.team-project[\\/]operator[\\/][^\s`''"()]+?[\\/]report[\w.-]*\.md)')
+        if (-not ($own.Success -and (Test-Path -LiteralPath (Join-Path $projectDir $own.Groups[1].Value)))) {
+            $jm = $null
+            foreach ($src in @($lastText, $roundPrompt, $firstPrompt)) { if ($src) { $mm = [regex]::Match($src, $jobRe); if ($mm.Success) { $jm = $mm; break } } }
+            if ($jm) {
+                $jobRel = ".team-project/operator/$($jm.Groups[1].Value)/$($jm.Groups[2].Value)"
+                $jobDir = Join-Path $projectDir $jobRel
+                New-Item -ItemType Directory -Force $jobDir | Out-Null
+                $name = if (Test-Path -LiteralPath (Join-Path $jobDir 'report.md')) { "report-$($agentId.Substring(0, [Math]::Min(8, $agentId.Length)))-r$($round + 1).md" } else { 'report.md' }
+                $head = "<!-- G16: resposta do operator (agent_id $agentId, rodada $($round + 1), $(Get-Date -Format 'yyyy-MM-dd HH:mm')) — gravada pelo hook; o operator devolve o relatório como texto (R28) -->"
+                [System.IO.File]::WriteAllText((Join-Path $jobDir $name), $head + "`n`n" + $lastText.Trim() + "`n", (New-Object System.Text.UTF8Encoding($false)))
+                $reportRel = "$jobRel/$name"
+            } else {
+                Write-GuardLog $projectDir 'G16' $hookInput 'report' "resposta do operator sem pasta de job citada (agent_id=$agentId) — relatório não gravado; quem chamou cola o texto em Execução delegada"
+            }
+        }
+    }
 
     $row = [ordered]@{
         ts            = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
@@ -174,6 +202,7 @@ try {
         run           = if ($null -ne $run) { "$([string]$run.trilha) $([string]$run.id)" } else { '' }
         dest          = $dst.dest
         dest_note     = [string]$dst.note
+        report        = $reportRel
     }
     $json = $row | ConvertTo-Json -Compress
     [System.IO.File]::AppendAllText($usagePath, $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
