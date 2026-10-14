@@ -409,6 +409,44 @@ Check 'Plano leve com 6 arquivos: volta à plena' $r 1 @('\| leve \| falhou.*6 a
 Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · ```` → ``x```n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'Plano com trecho de mutação vazio (crase dupla): exit 1 (v3.47.1)' $r 1 @('\| mutação \| falhou.*M1: trecho vazio')
+Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n``.team-project/scrum-master/context.md```n``.github/workflows/ci.yml```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: x`n")
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano com documento de outro papel e arquivo de gate na lista: exit 1 (v3.48)' $r 1 @('\| dono \| falhou.*scrum-master/context\.md é de SM.*ci\.yml é arquivo de gate')
+Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n``.team-project/developer/context.md```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: x`n")
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano com o contexto do próprio dev: dono ok (v3.48)' $r 0 @('\| dono \| ok')
+
+# 5g. v3.48 — achados do primeiro sprint do piloto: revisão sem veredito acima da rodada, entrada aceita pelo stakeholder,
+# report gravado pelo hook com nome livre, pasta citada sem report, -Apply com o Registro no quadro antigo.
+$p = Join-Path $tmp 'v348'; New-Project $p
+$ev = Join-Path $p '.team-project/sprints/1/evidence/T-041.md'
+Edit-File $ev '## T-041 — Endpoint de exportação — 2026-09-03' "## Nota do Arquiteto — 2026-09-04`nRevisão do plano corrigido; sem rodada nova do QA.`n`n## T-041 — Endpoint de exportação — 2026-09-03"
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 nota sem veredito acima da rodada: R7 e R12 leem a rodada, exit 0' $r 0 @('\| R7 \| ok.*1 bloco\(s\) mais novo\(s\) sem veredito', '\| R12 \| ok')
+$sb = Join-Path $p '.team-project/sprints/1/sprint-backlog.md'
+$hdr = '| O que saiu para caber | Data |'
+Edit-File $sb $hdr "$hdr`n|---|---|---|---|---|`n| T-041 | H-014 | pedido do stakeholder na Review | nada | 2026-09-02 |"   # a linha |---| original sobra depois: Get-Tables a ignora
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 entrada fora da Planning sem nada sair e sem decisão: R4 falhou' $r 0 @('\| R4 \| falhou.*nem "Decisão do stakeholder" com data', '\| R30 \| ok')
+Edit-File $sb $hdr '| O que saiu para caber | Data | Decisão do stakeholder |'
+Edit-File $sb '| nada | 2026-09-02 |' '| nada | 2026-09-02 | aceito em 2026-09-02 (formulário) |'
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 entrada com Decisão do stakeholder datada: R4 ok' $r 0 @('\| R4 \| ok.*aceita pelo stakeholder em 2026-09-02')
+Put $p '.team-project/operator/1/job1/report-ab12cd34-r2.md' "<!-- G16 -->`nsegunda resposta`n"
+Edit-File (Join-Path $p '.team-project/sprints/1/consumption.md') '| 500 | 00:30 | chamado por qa |' "| 500 | 00:30 | chamado por qa |`n| 2026-09-03 | operator | haiku | ``/qa`` | T-041 | verificação | H-014 | 300 | 00:10 | chamado por qa |"
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 R28 conta todo report*.md da pasta citada (nome do hook G16)' $r 0 @('\| R28 \| ok.*2 report\(s\) = 2 linha')
+Edit-File $ev '`.team-project/operator/1/job1/report.md`' '`.team-project/operator/1/job2/report.md`'
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 R28 pasta citada sem report: aponta a pasta' $r 0 @('\| R28 \| falhou.*report ausente em \.team-project/operator/1/job2/')
+$p = Join-Path $tmp 'applylegado'; New-Project $p
+$bdp = Join-Path $p '.team-project/sprints/1/burndown.md'; $sbp = Join-Path $p '.team-project/sprints/1/sprint-backlog.md'
+$bdt = [System.IO.File]::ReadAllText($bdp, $utf8); $ix = $bdt.IndexOf('## Registro de transi')
+[System.IO.File]::WriteAllText($bdp, $bdt.Substring(0, $ix), $utf8)
+Edit-File $sbp '## Entradas fora da Planning' ($bdt.Substring($ix) + "`n## Entradas fora da Planning")
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Apply', '-Root', $p)
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 $sbp)
+Check 'C1 -Apply com o Registro no sprint-backlog (quadro antigo): grava lá, R24 ok' $r 0 @('Registro no sprint-backlog\.md', '\*\*-Apply:\*\*.*R24 \| ok', "\| T-041 \| $($e.qa) → $($e.ok) \| \d{4}-\d\d-\d\d \d\d:\d\d \| sessão")
 
 # 6. Duas Tasks em construção com 1 dev → R1 falhou; T-041 não confunde com T-041a.
 $p = Join-Path $tmp 'r1'; New-Project $p

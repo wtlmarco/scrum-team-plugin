@@ -13,6 +13,8 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.45`](process-changelog-archive.md) | Consumo medido no transcript (G16), R28 por Task e plano em blocos de até 8 arquivos com uma instância de dev por bloco; addendum v3.45.1: verificação uma vez só, amarrada à árvore (SM + Arquiteto + Dev + QA + UX) — 06/10/2026 |
+| [`v3.44`](process-changelog-archive.md) | Run sem trava: o Arquiteto decide e não escreve no código (G8 nega), a G14 libera o operacional do run, a G15 registra pedido de permissão; addendum v3.44.1/v3.44.2 (SM + Arquiteto) — 06/10/2026 |
 | [`v3.43`](process-changelog-archive.md) | `sprint run` sem paradas fora do contrato: lista fechada de paradas, rota do gate protegido, negação ao dev vira 🔺 GAP, interrupção pelo stakeholder e marcador acompanhando a Task; addendum: veredito pelo primeiro marcador, desvio aceito no R4, código de saída do `operator` (SM + Arquiteto + QA) — 05/10/2026 |
 | [`v3.42`](process-changelog-archive.md) | Guardas por papel (fase 2): gate protegido, teste ignorado, `Agent` só ao `operator`, matriz de propriedade, escopo do dev e pasta do job — G5 · G6 · G7 · G8 · G9 · G11 (SM + Arquiteto) — 04/10/2026 |
 | [`v3.41`](process-changelog-archive.md) | R34: contato remoto por Remote Control — identidade do projeto, pendência em disco, fim do `sprint run` em formulário de autorização da Review e protótipo publicável como artifact (SM + UX) — 03/10/2026 |
@@ -82,6 +84,42 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.48 — O que o primeiro sprint do piloto mostrou: relatório do `operator` gravado pelo hook, guardas sem falha aberta nem falso negado, C1 que fecha o que é legítimo (SM + Arquiteto + Dev + QA) — 14/10/2026
+
+**Instrução** (stakeholder): "Pode aplicar", sobre `avaliacao-first-result.md` — grupos A (fechamento) e B (guardas). Base: `first-result/plugin-report.md` (relatório do SM do piloto, plugin 3.46.0 instalado), `first-result/guards.log` (04 a 13/10/2026, 4 821 linhas) e o `guards.json` do projeto; os comandos negados foram **reexecutados contra o hook da v3.47.1** antes da correção. **Causas medidas:** 9 edições do dev sem G6/G8/G9 (`.active-task` não JSON derrubava o hook — falha aberta); 6 falsos negados na G8/G9 (`>` dentro de texto lido como destino); ≥ 19 na G14 (caminho entre aspas virava `""`, conferência com `2>&1`, `Get-Process`, `npm --prefix`, `[Math]::`); C1 com R26/R28 `falhou` em toda Task com `operator` (o harness recusa relatório gravado por subagente), sem lugar para a decisão do stakeholder na R4, lendo só o bloco mais novo da evidência (R7) e com o `-Apply` saindo com exit 2 no quadro anterior à v3.44.1.
+**Classificação:** instrumento (G9, G11, G14, G15, G16, `Get-WriteTargets`, C1, `plan.ps1`) · formato de documento (Sprint Backlog: coluna "Decisão do stakeholder"; plano: regra 16) · comportamento de agente (`operator`: relatório em texto, pasta do job citada). **Sem regra nova** (34): R28 muda quem grava o `report`; R4 ganha o registro da exceção decidida.
+**Papéis movidos (R17):** 4 — SM, Arquiteto, Dev (via `operator`/guardas), QA.
+
+### O que mudou
+| Documento | Mudança |
+|---|---|
+| `hooks/pre-tool.ps1` | G9 nega com `.active-task` ilegível; `Get-WriteTargets` mascara texto entre aspas e resolve variável atribuída a literal no mesmo comando; G14 restaura o texto entre aspas para ler o destino, aceita conferência com `2>&1` ou `Out-String` no fim, `Get-Process`, `npm --prefix`, método estático de leitura, confere destino de `*>`, mensagens próprias para `Start-Sleep` e `robocopy`; G11 só no segmento `<n>`/`pre-sprint`/`B-nnn` |
+| `hooks/subagent-stop.ps1` (G16) | rodada do `operator` grava a última resposta como `report.md` (ou `report-<agente>-r<rodada>.md`) na pasta do job citada; campo `report` no `usage.jsonl` |
+| `hooks/notification.ps1` · `hooks/common.ps1` | G15 ignora o `AskUserQuestion`; `guards.log` com alvo numa linha |
+| `scripts/checks/close.ps1` (C1) | R28 conta todo `report*.md` das pastas citadas; R7/R12/R4/R30 leem a última rodada **com** veredito; R4 aceita "Decisão do stakeholder" datada; `-Apply` grava o Registro no `sprint-backlog.md` quando o burndown não o tem |
+| `scripts/checks/plan.ps1` | linha `dono`: arquivo de outro papel (matriz) ou de gate na lista reprova o plano |
+| `agents/operator.md` · R28 (`working-rules.md`) · `templates/consumption.md` | o relatório é a resposta; o hook grava; a resposta cita a pasta do job |
+| `templates/sprint-backlog.md` · `implementation-plan.md` regra 16 · `sprint-run.md` passo 3 · `team-update.md` 7i · `COVERAGE.md` | coluna nova; arquivo de outro papel fora da lista; `.active-task` é JSON; migração do Registro e do `testRoot`; cobertura v3.48 |
+
+### Por quê
+A proposta das guardas pedia dois sprints sem linha `erro` e com até um falso positivo por guarda; o piloto reprovou as duas, e a G12 não pode entrar enquanto o C1 diverge do fechamento legítimo. O caso mais grave não aparecia no relatório do SM: a falha aberta é silenciosa por desenho (D5) e só o `guards.log` a mostra. A regra que fica: dado ruim do projeto decide (nega com a rota); só defeito do hook falha aberto. O `report` do `operator` passa ao hook porque a recusa é do harness — contorná-la pelo shell burlaria a recusa; gravar a resposta depois que ela existe não.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| `operator` | não grava `report.md`; devolve o relatório em texto, citando a pasta do job |
+| Arquiteto | `**Arquivos tocados:**` só com arquivo do executor (o `plan.ps1` reprova o resto) |
+| SM / sessão | `.active-task` em JSON; entrada fora da Planning com "o que saiu" **ou** "Decisão do stakeholder" datada |
+| QA | revisão/nota acima da rodada não esconde mais o veredito |
+
+### Verificação (R19)
+`run-guard-tests.ps1` → **161** casos · 0 falharam (21 novos); `run-check-tests.ps1` → **89** · 0 (8 novos). Replay do `guards.log` do piloto contra o hook novo: os falsos negados reproduzíveis passam; o que segue negado são comandos que o log truncou em 120 caracteres (aspas sem fechar), `Start-Sleep` (com a rota nova), `robocopy`, script `.ps1` do scratchpad e `run_in_background` — negações corretas. **Não exercitado:** um `sprint run` real; se o `SubagentStop` traz a resposta final do `operator` no transcript antes do hook rodar (a suíte usa transcript montado).
+
+### Pendente do stakeholder
+Grupo C da avaliação (retomada por `SendMessage` com contexto grande, Totais do consumo por instância, onde gravar a quebra em Tasks, prova de UI com render real) vai pelo `/review` — registrado como sintoma em `note.md`, itens 1 a 5. A contagem dos 2 sprints do indicador da fase 2 e da condição da G12 recomeça com esta versão instalada no piloto.
 
 ---
 
@@ -163,64 +201,3 @@ O texto mais caro do sprint — o plano em Opus — era o que menos se validava,
 
 ### Pendente do stakeholder
 Atualizar o plugin, `/team update` (7g, 7h) e reiniciar. **Medir** com o consumo da v3.45 os indicadores da §5 da proposta nos dois sprints seguintes (tokens por Task, suítes por Task, ciclos de GAP por defeito de plano). Remover `proposta-custo-run.md` depois do aceite desta entrada.
-
----
-
-## v3.45 — Consumo medido no transcript (G16), R28 por Task e plano em blocos de até 8 arquivos com uma instância de dev por bloco (SM + Arquiteto + Dev + QA + UX) — 06/10/2026
-
-**Instrução** (stakeholder): "Avalie profundamente pois realmente a execução está onerosa e demorada; gere a proposta de correção", sobre o relatório de processo do primeiro `sprint run` de um projeto-piloto (v3.42, 04–06/10/2026: 8 de 19 Tasks, 4,99 M tokens registrados, ~620 mil por Task fechada, ~34 h corridas). Proposta em `proposta-custo-run.md`, decisões D1–D7 em formulário (todas pela recomendação), "pode aplicar". **Esta entrega é o primeiro pacote da §4** (M0, M5, blocos da M3/M4); `verify.ps1` (M1) vem na v3.45.1 e o resto na v3.46.
-**Classificação:** instrumento (G16 novo, `consumption.ps1` novo, C1 R28) · formato de documento (consumo, Execução delegada, plano, relatório do dev) · fluxo (`sprint-run.md` passo 3). **Sem regra nova** (34): reforça R28, R7, R1.
-**Papéis movidos (R17):** 5 — SM, Arquiteto, Dev, QA, UX → barreira de 17 920 B.
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `hooks/subagent-stop.ps1` (novo) · `hooks.json` · `session-start.ps1` | `SubagentStop` · **G16** | uma linha por rodada de subagente em `.team-project/usage.jsonl`, somada no transcript dele (dedup por `message.id`): processado, contexto 1ª/pico/final, modelo servido, duração, Task do prompt, filhos (`agentId`), destino; retomada = rodada nova com o delta; nunca bloqueia |
-| `scripts/checks/consumption.ps1` (novo) | — | reescreve as linhas medidas (`medido:` na Nota) e os Totais de cada `consumption.md` aberto; mantém as linhas à mão; categoria mecânica (retomada, QA depois de QA, Arquiteto/dev depois de QA, Arquiteto depois do dev = `retrabalho`); `triagem;` em F-ID fora do bloco; sprint/bloco fechado recusado |
-| `templates/consumption.md` | cabeçalho · §O que mede · Registro · Totais · §Como gravar · §Regras | Tokens = **processado**; a Nota traz o número da notificação; uma linha por **rodada**; modelo **servido**; a sessão só roda o script e grava a linha de sessão; Totais com "Σ notificação" (linhas antigas somam só ali) |
-| `scripts/checks/close.ps1` (C1) | R28 | conta **por Task**: `report*.md` de `operator/<n>/<T-ID>…/` + os citados na §11 do plano e na evidência × linhas `operator` daquela Task |
-| `agents/{developer,quality-assurance,architect,operator}.md` · `commands/qa.md` · `delivery-report.md` · `verdict.md` · `evidence.md` · `implementation-plan.md` §11 · `spike-checkpoint.md` · protótipos do UX · `skills.md` de Dev, QA, Arquiteto e UX | Execução delegada | vira **índice dos jobs** (job + Task); ninguém copia token nem duração; job da Task em `operator/<n>/<T-ID>[-<slug>]/`; o `operator` diz quando o `report` não foi gravado |
-| `implementation-plan.md` regra 2 · §4 | blocos | acima de 8 arquivos, `### Bloco <k>` com `**Arquivos do bloco:**`, `**Depende de:**`, `**Pronto do bloco:**` |
-| `sprint-run.md` passo 3 · §Disparo · Como o SM verifica · `agents/developer.md` item 9 · `delivery-report.md` | blocos · consumo | uma instância de dev por bloco; duas sem o Pronto no mesmo bloco → a terceira com `model: "sonnet"`; o dev para quando o Pronto não bate; a sessão roda o `consumption.ps1` |
-| `working-rules.md` R28 · índice · `workflow-sprint.md` · `workflow-processo.md` · README do SM · `artifact-ownership.md` §1 (linha nova `usage.jsonl`) · `ownership.json` | — | alinhados |
-| Sessão (stakeholder) | `hooks/*` · `COVERAGE.md` · testes · `team-update.md` 7g · `how-to.md` · `plugin.json` · `README.md` · `CHANGELOG.md` | aplicados pela sessão, a pedido |
-
-### Por quê
-O registro de consumo copiava o número da notificação, e esse número — medido em dois transcripts desta máquina — é o **contexto da última chamada**, não o processado (49 004 × 273 190; 53 245 × 322 194). O sprint do piloto custou de 5 a 6 vezes os 4,99 M anotados, quase tudo leitura de cache; e a transcrição à mão teve seis correções. Sem medida certa, nenhuma das mudanças seguintes da proposta se avalia. O R28 contava o sprint inteiro: uma divergência reprovava todo fechamento seguinte (7 de 8 no piloto). Blocos de até ~8 arquivos acabaram com as paradas do dev por contexto esgotado no próprio piloto (T-009, T-010); a regra não existia.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda para ele |
-|---|---|
-| Sessão que orquestra | roda `consumption.ps1`; não transcreve número; uma instância de dev por bloco; escalona a terceira para Sonnet |
-| Arquiteto | divide em blocos acima de 8 arquivos, com o Pronto de cada um; §11 é índice |
-| Dev | executa um bloco; para quando o Pronto não bate; ID da Task no pedido ao `operator` |
-| QA · UX | Execução delegada como índice |
-| SM | confere consumo medido e R28 por Task |
-
-### Verificação (R19)
-| Item | Comando | Resultado | |
-|---|---|---|---|
-| Guardas | `run-guard-tests.ps1` | 84 casos · 0 falharam (3 novos: rodada com dedup por `message.id`, Task do prompt e filho; parada sem chamada nova não grava; retomada = rodada 2 com o delta e o modelo servido) | ✅ |
-| Conferências | `run-check-tests.ps1` | 33 casos · 0 falharam (novos: R28 por Task com outra Task divergente; Task sem `operator`; `consumption.ps1` mantém manual e sessão, não duplica, liga o `operator` ao chamador, recusa sprint fechado; C1 lendo as linhas medidas) | ✅ |
-| Release | `release.ps1` | R18 ok v3.45.0 · R17 ok (bloco v3.45 ≤ 17 920; v3.42 arquivada) · ps1-5.1 ok (14) · ownership ok (52) · órfãos ok (45) · exit 0 | ✅ |
-| Hook real | `subagent-stop.ps1` num transcript desta máquina (`agent-a537fd715c6f98b7e`) | 9 chamadas, 322 194 processados, contexto final 52 082 (notificação: 53 245), 1,35 s; segunda parada sem chamada nova não grava | ✅ |
-
-**Não exercitado:** o `SubagentStop` disparado pelo harness num `sprint run` (campo do caminho do transcript não documentado — o hook deriva; a sonda grava os campos recebidos); `operator` aninhado ligado ao chamador num run real.
-
-### Pendente do stakeholder
-Atualizar o plugin, `/team update` (passo 7g) e **reiniciar a sessão**; no primeiro run, `"probe": true` para ver os campos do `SubagentStop`. `proposta-custo-run.md` fica até a v3.46.
-
-### Addendum — 06/10/2026 (v3.45.1): verificação uma vez só, amarrada à árvore
-**Instrução** (stakeholder): a mesma ("pode aplicar"), segundo pacote da §4 da proposta (M1, decisão D1). **Causa medida no piloto:** a mesma suíte (~2 min) e a mesma prova de falha (4 a 8 min) rodavam duas ou três vezes por Task — dev pelo `operator`, QA pelo `operator` de novo, a sessão com `--include` —, porque nenhuma evidência estava amarrada ao código: o "nunca aceite alegação" do QA chocava com o "não reexecuta para conferir" da R28. **Classificação:** instrumento (`verify.ps1` novo, `Get-WorkTree`, C1 `R7-verify`) · fluxo (dev, QA, sessão). **Sem regra nova:** R7 e R28 ganham a frase que resolve o choque.
-
-| Documento | Mudança |
-|---|---|
-| `scripts/checks/verify.ps1` (novo) · `lib.ps1` | `-Mode focused` (`{tests}`) · `full` (build, lint, suíte, cobertura) · `check` (só compara); comandos de `guards.json` → `verify`; código de saída real (`-EncodedCommand`, cmdlet que falha = 1); log por comando e `result.json` em `.team-project/verify/<n>/<ID>/`, com a **impressão digital da árvore** — tree do git num índice temporário, novo não rastreado incluído, `.team-project/` fora — antes e depois |
-| `close.ps1` (C1) | `R7-verify` bloqueante quando `verify` está configurado: `full` presente, todo exit 0, árvore igual à do disco |
-| `working-rules.md` R7 · R28 | saída do `verify.ps1` para a árvore do disco é saída real; não se reexecuta — nem QA, nem sessão; `operator` fica para o que o `verify` não cobre |
-| `agents/developer.md` 6 · `delivery-report.md` | `focused` durante o bloco, `full` uma vez no fim, linhas coladas |
-| `agents/quality-assurance.md` · README do QA (frente 4, `/qa <ID>` 3) · `verdict.md` | começa por `-Mode check`; igual e verde → cita, não reexecuta; diferente → `full` dele, uma vez; o tempo vai para "o teste pega a regressão" |
-| `sprint-run.md` 3 · 5 · 7 · `fix-run.md` · `implementation-plan.md` §7 e Pronto · `how-to.md` | a sessão não reexecuta verificação de papel; prompt do dev com o `verify`; C1 lê o `result.json` |
-| `guards.json` (modelo) · `team-update.md` 7h (novo) · `team-init.md` 4a · `ownership.json` · `artifact-ownership.md` §1 (linha nova) | chave `verify`; preenchida a partir do `developer/context.md` num formulário; `.team-project/verify/` sem escritor de papel |
-
-**Verificação (R19):** `run-check-tests.ps1` → 41 casos · 0 falharam (8 novos: `focused` sem `-Tests` = 2; `full` verde grava `result.json`; C1 `R7-verify` ok com a árvore igual; `check` igual = 0; arquivo novo não rastreado → `check` diferente e C1 não fecha; suíte com exit 4 → código real e C1 não fecha) · `run-guard-tests.ps1` → 85 · 0 (G14 libera o `verify.ps1` ao dev) · `release.ps1` → exit 0 (R18 v3.45.1; R17 bloco v3.45 ≤ 17 920; ps1-5.1 15; ownership 53; órfãos 45). **Não exercitado:** `verify.ps1` com a toolchain real de um projeto (npm/dotnet) e suíte acima do timeout da ferramenta (600 s — acima disso, `operator`).

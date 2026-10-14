@@ -67,7 +67,8 @@ function Write-GuardLog([string]$ProjectDir, [string]$Guard, [object]$HookInput,
     $tool = ''
     if ($HookInput -and $HookInput.tool_name) { $tool = [string]$HookInput.tool_name }
     $clean = ($Message -replace '\s+', ' ').Trim()
-    $line = '{0} | {1} | {2} | {3} | {4} | {5}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Guard, $role, $tool, $Target, $clean
+    $flatTarget = ([string]$Target -replace '\s+', ' ').Trim()   # v3.48: comando multilinha quebrava o log em linhas soltas
+    $line = '{0} | {1} | {2} | {3} | {4} | {5}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Guard, $role, $tool, $flatTarget, $clean
     try {
         [System.IO.File]::AppendAllText((Join-Path $dir 'guards.log'), $line + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
     } catch { }
