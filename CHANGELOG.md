@@ -13,6 +13,20 @@
 
 ---
 
+## v3.50.0 — 2026-10-16
+
+**Branch:** `feat/v3.50.0` empilhada sobre `feat/v3.49.0` (não mesclada) · **Processo:** [`v3.50`](roles/scrum-master/process/process-changelog.md)
+Dois itens de `note.md` vindos do primeiro sprint do piloto: a regressão de UI que passou por todos os portões e as paradas do `run` fora do contrato. A entrega abre a v3.50 porque o bloco v3.49 do changelog do processo chegou à barreira R17.
+
+- **Mudança de layout se prova em render real:** o plano de Task com interface traz a tabela **Render real** (medição de caixas em navegador headless, 3 tamanhos de fonte × telas), o navegador na §3 e uma mutação que quebra a medição. Prova só por estrutura (CSSOM, seletor) não basta, e Task com interface nunca vai para a trilha leve (`implementation-plan.md` regra 21, `fix-plan.md` regra 15). Sem headless no projeto, a falta vira GAP.
+- **`standards/implementation-principles.md`:** nível Render, V22 (navegador ou driver e comando) e linha 23 do quadro; a Ficha do SDD passa a V1–V22. O relatório de entrega do dev traz a saída do render.
+- **QA:** decide se a Task tem interface, executa ou reexecuta a medição e reprova, ou abre GAP, sem ela. Veredito, evidência e cenário ganham a tabela e a regra.
+- **Paradas do `run` (`sprint-run.md`, R25(c)):** "sigo?", "parei num marco natural", pergunta sobre defeito do plugin e formulário com Task elegível não são paradas. O formulário de bloqueio só abre com a Task 🔴 e a fila esgotada, e a sessão que reabre com `.active-run` retoma a fila.
+- **Propostas pendentes** em `roles/scrum-master/process/proposals-pending.md`: hook `Stop` (G20), `session-start` com retomada, orientação de energia no `how-to.md` e conferência `render` no `plan.ps1`.
+- v3.47 do changelog do processo arquivada. Itens 1, 3 e 5 de `note.md` esperam o benchmark.
+
+---
+
 ## v3.49.0 — 2026-10-16
 
 **Branch:** `feat/v3.49.0` a partir de `develop` (v3.48.1 mesclada) · **Processo:** [`v3.49`](roles/scrum-master/process/process-changelog.md)

@@ -39,7 +39,7 @@
 <As convenções reais deste projeto: sufixos, prefixos, plural/singular, idioma.>
 
 # 2b. Ficha de Vinculação de Stack  ← obrigatória
-<A tabela V1–V21 dos princípios de implementação (§6) preenchida: o nome real de cada anel,
+<A tabela V1–V22 dos princípios de implementação (§6) preenchida: o nome real de cada anel,
 as unidades implantáveis, e a ferramenta + comando que verifica cada regra (dependência, formatação,
 lint, duplicação, testes, cobertura de 80%, métricas, estágios de CI, ponto de composição, pipeline
 transversal) e, em V18–V21, o desempenho: operações sob orçamento (lista fechada, cinco campos por
