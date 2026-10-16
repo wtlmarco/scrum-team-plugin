@@ -10,8 +10,6 @@
 >
 > Toda a evidência é da v3.46.0: revalidar num sprint na versão atual.
 >
-> **Aplicados na v3.49** (saíram desta fila e vivem no changelog do processo): retomada cara do Arquiteto por `SendMessage`, trabalho perdido em interrupção, cache de prompt expirando (toque da sessão), relatório de agente inteiro na sessão, e na trilha `fix` o GAP a Arquiteto novo e o dev por F-ID.
->
 > **Leitura conjunta: volume não é custo.** O sprint teve 758 M tokens e custou ~US$ 282: a sessão principal (Sonnet 5.5) foi 37 % do volume e 40 % do custo; o Arquiteto (Opus 5.5), 22 % e 38 %; o QA, 13 % e 13 %; o dev (Haiku 4.5 e 5.5), 23 % e 5 %. O dev pesa em relógio e capacidade, não em dinheiro. Grupos para o `/review`:
 > - **Medição:** 1, 6, 7 e 10. Vêm antes do benchmark, no lado do time; o benchmark já mede pelos transcripts.
 > - **Sessão:** 4 e 5.
