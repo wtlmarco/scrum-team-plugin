@@ -185,6 +185,20 @@ Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere ap
 
 **Verificação do passo:** `Select-String .team-project/sprints/*/sprint-backlog.md -Pattern '^## Registro de transi'` não devolve nada no sprint aberto; depois do primeiro `operator`, a pasta do job tem `report.md` com a linha `<!-- G16: resposta do operator`.
 
+## 7j. Retorno curto, relatório em arquivo e retomada do Arquiteto — v3.49
+
+> Roda quando a versão instalada for anterior à `v3.49.0`, em qualquer projeto.
+
+1. **Nada a migrar no disco.** `sprints/<n>/delivery/`, `fixes/B-<nnn>/delivery.md` e `architect/breakdown/` nascem sob demanda. Sprint aberto com Task em 🟨: o dev grava o relatório no arquivo a partir da próxima rodada, e a rodada anterior fica na conversa.
+2. **Diga ao stakeholder**, em três linhas:
+   - no `run`, cada papel devolve à sessão só o retorno curto (R28), e o relatório do dev fica em `delivery/`;
+   - o Arquiteto parado há mais de 5 min é aberto em instância nova para o GAP, em vez de retomado;
+   - enquanto o `run` está ativo, a sessão cria um toque de cache a cada 30 min (em avaliação).
+
+   Valem depois de reiniciar a sessão.
+
+**Verificação do passo:** depois do primeiro dev do `run`, `Test-Path .team-project/sprints/<n>/delivery/<T-ID>.md` devolve `True`.
+
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
 Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.

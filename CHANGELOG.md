@@ -13,6 +13,21 @@
 
 ---
 
+## v3.49.0 — 2026-10-16
+
+**Branch:** `feat/v3.49.0` a partir de `develop` (v3.48.1 mesclada) · **Processo:** [`v3.49`](roles/scrum-master/process/process-changelog.md)
+Os itens de `note.md` medidos nos transcripts do primeiro sprint do piloto, aplicados antes do benchmark. O sprint custou ~US$ 282 em preço de API: a sessão principal 40 %, o Arquiteto 38 %, as quebras de cache 34 %.
+
+- **Retorno curto à sessão (R28):** no `sprint run` e no `fix run`, cada papel grava o artefato e devolve até 15 linhas (estado, arquivo, próximo passo, execução delegada); a sessão passa caminhos, não conteúdo. O **relatório de entrega do dev passa a ser arquivo**: `sprints/<n>/delivery/<T-ID>.md` e, no `fix`, `fixes/B-<nnn>/delivery.md`.
+- **Arquiteto novo quando o cache venceu (R27, `sprint-run.md` §Retomada):** parado há mais de 5 min, o Arquiteto que vai responder um GAP ou corrigir o plano é uma instância nova, que lê o plano e o GAP. O cache de 1 h para subagentes foi simulado e descartado: sairia mais caro.
+- **Toque de cache da sessão** (em avaliação): `CronCreate` a cada 30 min enquanto o `.active-run` existe, fora do modo benchmark.
+- **Nada se perde numa interrupção:** o Arquiteto grava o plano seção a seção e a quebra em Tasks em `architect/breakdown/S<n>.md`; o QA grava a evidência frente a frente.
+- **`fix run`:** uma instância do dev por F-ID.
+- **`scripts/metrics/transcript-metrics.js`** (novo): `cost`, `breaks`, `growth`, `session`, `waits`, medidos nos transcripts, para o sprint real e para todos os braços do benchmark.
+- Matriz de propriedade e `hooks/ownership.json` com os caminhos novos (5 casos novos da G8); `agents/*`, `commands/dev.md`, `team-update.md` 7j. Suítes: guardas **166**, conferências **91**.
+
+---
+
 ## v3.48.1 — 2026-10-14
 
 **Branch:** `fix/v3.48.1` a partir de `develop` (v3.48.0 mesclada) · **Processo:** [`v3.48` — addendum v3.48.1](roles/scrum-master/process/process-changelog.md)

@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.46`](process-changelog-archive.md) | Plano em contrato conferido antes do dev, prova de falha por mutação, trilha leve por Task, Arquiteto um passo à frente e fechamento pela sessão (SM + Arquiteto + Dev + QA) — 06/10/2026 |
 | [`v3.45`](process-changelog-archive.md) | Consumo medido no transcript (G16), R28 por Task e plano em blocos de até 8 arquivos com uma instância de dev por bloco; addendum v3.45.1: verificação uma vez só, amarrada à árvore (SM + Arquiteto + Dev + QA + UX) — 06/10/2026 |
 | [`v3.44`](process-changelog-archive.md) | Run sem trava: o Arquiteto decide e não escreve no código (G8 nega), a G14 libera o operacional do run, a G15 registra pedido de permissão; addendum v3.44.1/v3.44.2 (SM + Arquiteto) — 06/10/2026 |
 | [`v3.43`](process-changelog-archive.md) | `sprint run` sem paradas fora do contrato: lista fechada de paradas, rota do gate protegido, negação ao dev vira 🔺 GAP, interrupção pelo stakeholder e marcador acompanhando a Task; addendum: veredito pelo primeiro marcador, desvio aceito no R4, código de saída do `operator` (SM + Arquiteto + QA) — 05/10/2026 |
@@ -84,6 +85,82 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.49 — Custo medido nos transcripts: retorno curto à sessão com o relatório do dev em arquivo, Arquiteto novo quando o cache venceu, toque de cache da sessão, gravação por etapa e dev por F-ID no `fix` (SM + Arquiteto + Dev + QA) — 16/10/2026
+
+**Instrução** (stakeholder): "Pode seguir", sobre a classificação dos itens de `note.md` a aplicar antes do benchmark (antigos 1, 2, 11, 13 e 15), com as decisões do formulário de 16/10/2026: retomada → **"Arquiteto novo"**; relatório → **"Retorno curto + arquivo"**. **Condução:** os agentes do time não estavam carregados na sessão que aplicou (plugin instalado em outro diretório de configuração). Por isso a sessão conduziu os cinco passos de `review-contract.md`, respeitando o alcance de cada papel, e aplicou `agents/`, `commands/`, `README.md`, `rituals/`, `hooks/ownership.json` e `scripts/` só pela decisão do stakeholder.
+**Causas medidas** nos transcripts do primeiro sprint do piloto (04–13/10, plugin 3.46.0; 758 M tokens, ~US$ 282 em preço de API):
+- **A sessão principal** é ~40 % do custo, com 403 mil tokens por chamada; ~37 % do crescimento dela são retornos de agente (estimado).
+- **As quebras de cache** custaram ~US$ 96 (34 %), quase todas por expiração. US$ 38 vieram da sessão esperando agente por mais de 1 h, e US$ 22 de 16 retomadas do Arquiteto (Opus, 288 mil tokens) depois de o cache de 5 min vencer.
+- **Trabalho perdido em interrupção:** o Arquiteto ficou ~2 h sem gravar o plano, e o QA 5 h 33 min sem gravar a evidência.
+
+**Classificação:**
+- fluxo: `sprint-run.md` passos 3–6, §Disparo e §Retomada (nova); `fix-run.md` passos 2–3 e §Bloco;
+- regra: a R27 ganha a exceção do Arquiteto, e a R28 ganha o retorno à sessão;
+- propriedade: `delivery/` no sprint e `delivery.md` no bloco, dono dev; `architect/breakdown/`;
+- formato: o relatório de entrega passa a ser arquivo;
+- comportamento de agente.
+
+**Sem regra nova** (34).
+**Papéis movidos (R17):** 4 — SM, Arquiteto, Dev, QA → barreira de 15 360 B.
+
+### O que mudou
+| Documento | Mudança |
+|---|---|
+| `working-rules.md` R27 · R28 | R27: o Arquiteto parado há mais de 5 min é aberto em instância nova, que lê o disco. R28: **retorno à sessão** no `run`, em até 15 linhas (estado · arquivo · próximo · execução delegada); o conteúdo fica no artefato e passa pelo caminho; fora do `run`, vale o artefato inteiro |
+| `sprint-run.md` | passo 3: relatório em `sprints/<n>/delivery/<T-ID>.md`; passo 4: GAP ao Arquiteto pelo caminho (o mesmo se parou há menos de 5 min, senão um novo); §Retomada; §Disparo: retorno curto e **toque de cache** (`CronCreate` `17,47 * * * *` junto com o `.active-run`, fora do benchmark, em avaliação); Como o SM verifica |
+| `fix-run.md` | dev **uma instância por F-ID**, com o `.active-task` da F-ID; relatório em `fixes/B-<nnn>/delivery.md`; GAP a Arquiteto novo; N + 2 invocações por bloco |
+| README do Arquiteto · `workflow-sprint.md` Planning 4 | plano gravado seção a seção; quebra em Tasks em `architect/breakdown/S<n>.md` a cada História; `/arc question` em instância nova lê só o plano, o GAP e o código citado |
+| README do QA | evidência aberta no passo 1 e gravada frente a frente; retorno curto |
+| `delivery-report.md` · `gap.md` · README do dev | onde fica o relatório; seções acrescentadas no fim; o GAP no mesmo arquivo; na calibração, o relatório continua na resposta |
+| `artifact-ownership.md` §1 · §1e · `hooks/ownership.json` · `deliverables/team-project/README.md` | linhas novas para os relatórios de entrega e o `delivery.md` do bloco (dono dev; escritores dev e Arquiteto executor); `architect/breakdown/`; `scripts/metrics/` junto de `hooks/`; cinco donos na pasta do sprint |
+| Pela decisão do stakeholder | `agents/*` (retorno curto; o dev grava o relatório; o QA lê o arquivo; o Arquiteto em instância nova) · `commands/dev.md` · `README.md` (tipos de documento) · `team-update.md` 7j · `scripts/metrics/` (novo) · 5 casos novos da G8 · `note.md` renumerado |
+
+### Por quê
+O registro do time media o volume dos subagentes. Medido em US$ e com a sessão incluída, o custo está na sessão (40 %) e no Arquiteto (38 %); o dev em Haiku é ~5 %. Dois mecanismos explicam a maior parte:
+- **O que volta inteiro para a sessão é relido em cada chamada seguinte dela.** Os papéis já gravavam o artefato (plano, evidência); faltava o relatório do dev, que só existia na resposta. Com ele em arquivo, a sessão passa caminhos.
+- **O cache que vence durante a espera é regravado inteiro.** Para o Arquiteto, as duas formas de manter o cache vivo foram medidas e descartadas. O cache de 1 h para subagentes (`CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`, documentado no Claude Code), simulado no mesmo sprint, sairia US$ 5,6 **mais caro**: toda gravação passa a 2×, e as retomadas caras vieram depois de mais de 1 h. O toque, por sua vez, não alcança subagente. Na sessão, o toque compensa: as esperas de 1 a 4 h custaram US$ 27,8 regravando, contra ~US$ 5 com um toque a cada 30 min.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| Dev | grava o relatório de entrega (e o GAP) em arquivo e devolve o retorno curto; no fix, uma instância por F-ID |
+| Arquiteto | grava o plano e a quebra por etapa; numa instância nova, lê só o plano, o GAP e o código citado |
+| QA | lê o relatório do arquivo; grava a evidência frente a frente; retorno curto |
+| Sessão / SM | passa caminhos, não conteúdo; decide entre a mesma instância e uma nova pelo tempo parado; cria e apaga o toque junto com o `.active-run` |
+
+### Conflitos com o processo vigente
+- **R27 e o passo 4 do `sprint-run.md`** mandavam sempre retomar o mesmo agente por `SendMessage`. Levado ao stakeholder (formulário de 16/10/2026): só a retomada do Arquiteto muda, decidida pelo tempo parado.
+- **O README** classificava o relatório de entrega como "saída". Reclassificado como vivo, pela mesma decisão.
+
+### Como saberemos que funcionou
+No próximo sprint real, medido com `scripts/metrics/transcript-metrics.js` contra o sprint 1 do piloto, **mecanismo por mecanismo**:
+- retornos de agente em até 15 % do crescimento da sessão (`growth --session`; eram ~37 %);
+- regravação do Arquiteto depois de devolver em até US$ 5 (`breaks`; eram US$ 22, em 16 retomadas), sem subir o número de GAPs por plano;
+- regravação da sessão por pausa de mais de 1 h com agente rodando em até US$ 10 (eram US$ 38), e nenhum toque em que a sessão trabalhou;
+- nenhuma interrupção que descarte plano ou veredito parcial.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | `Select-String` em todo `*.md` fora dos changelogs: `uma F-ID por vez` · `quatro donos diferentes` · `três subpastas de outros donos` · a linha "Saída" antiga do README | zero ocorrências | ✅ |
+| Leitura no contexto | `delivery/` e `delivery.md` (27 ocorrências em 16 arquivos) e `§Retomada` (8 em 6), lidos um a um | caminho, dono e seção coerentes em cada ocorrência; a pasta do sprint passa a ter cinco donos e quatro subpastas de outros donos | ✅ |
+| Arquivamento de entrada | o bloco v3.46 que saiu do vivo × o que entrou no arquivo (`.Contains`) | idêntico; `git diff --stat`: −44 no vivo, +45 no arquivo (o separador) | ✅ |
+| Guardas | `run-guard-tests.ps1` | 166 casos · 0 falharam (5 novos da G8: dev em `delivery/` e em `delivery.md` do bloco liberados; QA em `delivery/` e dev em `plan.md` do bloco negados; Arquiteto em `breakdown/` liberado) | ✅ |
+| Conferências | `run-check-tests.ps1` | 91 casos · 0 falharam | ✅ |
+| Medição | `transcript-metrics.js cost · breaks · session · waits · growth` sobre o piloto | reproduz os números da análise (US$ 282,3; quebras US$ 95,7; sessão com 697 chamadas e 403 mil por chamada; plano com 18 % do crescimento) | ✅ |
+
+**Não exercitado:** um `sprint run` real com retorno curto, instância nova do Arquiteto e o toque (o `CronCreate` disparando durante a espera da notificação). O ensaio do benchmark roda em primeiro plano, onde o toque não dispara.
+
+### Pendente do stakeholder
+Propostas com especificação, sem texto aplicado:
+- **G19 (nova):** `PreToolUse · SendMessage` na sessão. Nega o `SendMessage` a uma instância de `team:architect` cuja última rodada no `usage.jsonl` terminou há mais de 5 min, com a rota "instância nova — `sprint-run.md` §Retomada". É o instrumento da exceção da R27.
+- **G16:** gravar o tamanho da resposta final (linhas e bytes) no `usage.jsonl`. É o instrumento do retorno curto (R28).
+- **Itens 1, 4, 5, 6, 7 e 10 de `note.md`** (todos em scripts e hooks): o registro de consumo que fecha; o marcador por script; o preparo do disparo num passo só; o `consumption.ps1` chamado pela G16; a sessão medida pelo `transcript_path`; o modelo servido com a versão.
+
+Depois de mesclar: atualizar o plugin no piloto e no benchmark, `/team update` (7j), reiniciar a sessão.
 
 ---
 
@@ -168,47 +245,3 @@ Grupo C da avaliação (retomada por `SendMessage` com contexto grande, Totais d
 | `agents/developer.md` · `agents/quality-assurance.md` · `sprint-run.md` passo 3 · modelo do plano (regra 18) · `team-update.md` 7h · modelo do `guards.json` · `COVERAGE.md` | exit 3 = rodar de novo; `inconclusivo` não é pega; mutante tem de compilar; chaves opcionais |
 
 **Verificação (R19):** `run-check-tests.ps1` → 81 casos · 0 falharam (7 novos); `run-guard-tests.ps1` → 140 · 0 (8 novos). **Fora deste addendum:** o `report.md` do `operator` — o harness recusa a subagente gravar relatório ("Subagents should return findings as text, not write report files", testado em 12/10), e contornar pelo shell seria burlar a recusa; o contrato da R28 muda em entrega própria.
-
----
-## v3.46 — Plano em contrato conferido antes do dev, prova de falha por mutação, trilha leve por Task, Arquiteto um passo à frente e fechamento pela sessão (SM + Arquiteto + Dev + QA) — 06/10/2026
-
-**Instrução** (stakeholder): "pode aplicar", sobre `proposta-custo-run.md` com as decisões D2, D3, D5, D6 e D7 (formulário de 06/10/2026, todas pela recomendação). Terceiro e último pacote da §4 da proposta (M2, resto da M3, M5 `close -Apply`, M6, M7), sobre a v3.45.1. **Causas medidas no piloto (v3.42):** 5 de 8 Tasks com defeito no código literal do plano (Opus escrevendo código sem compilar, 20 a 70 mil tokens e 10 a 30 min por ciclo de 🔺 GAP); a prova de falha sem lugar (6 negações da G9 a arquivo temporário, prova rodada pelo dev e de novo pelo QA); Task de harness com o pacote inteiro (~530 mil tokens); o SM chamado só para edição mecânica (213 mil tokens em 8 fechamentos); plano fora do caminho crítico proibido pela série total, embora a R1 o permita.
-**Classificação:** formato de documento (plano, Sprint Backlog) · instrumento (`plan.ps1` novo, `verify.ps1 -Mode mutation`, C1 `R7-mutação`, `close.ps1 -Apply`) · fluxo (`sprint-run.md` 1, 3, 7, §Disparo; Planning passo 5) · comportamento de agente (Arquiteto lê o índice de `standards/` e a seção do modo). **Sem regra nova** (34): reforça R7, R8, R23, R1, R24.
-**Papéis movidos (R17):** 4 — SM, Arquiteto, Dev, QA → barreira de 15 360 B.
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `implementation-plan.md` | regras 7, 17–20 · §6 · cabeçalho · Variante leve (nova) | **plano é contrato**: escolha que não muda comportamento, contrato, camada ou standard é do dev; trecho literal até 15 linhas ou `**Validado em:**`; teste não vai escrito no plano; `**Mutações:**` por teste (`- M<k> · teste … · produção · trecho → mutante`) ou `sem prova:`; `plan.ps1` antes do dev; `**Planejado durante:**`; `**Trilha:**` e a variante leve |
-| `scripts/checks/plan.ps1` (novo) | — | lista legível com teste · protegidos · blocos (≤ 8, Pronto com exit 0) · trecho ≤ 15 linhas ou validado · mutações dentro da lista · critério mecânico da leve; exit 1 = o plano volta ao Arquiteto |
-| `verify.ps1` | `-Mode mutation -Plan [-Only]` | sobre a árvore do último `full`: troca o trecho (uma ocorrência, arquivo do plano), roda o teste focado, espera exit ≠ 0, restaura byte a byte (BOM preservado; backup restaurado na próxima execução se o processo morrer); árvore tem de voltar igual; amostragem do QA mantém as outras do registro |
-| `close.ps1` (C1) | `R7-mutação` · `-Apply` | toda mutação do plano pega, na árvore do `full` (bloqueante com `verify`); `-Apply`: sem falha bloqueante, marca ✅, grava Registro e Série (estimativa baixada, composição recontada), roda o `-Post` e imprime a entrada de status pré-preenchida |
-| `agents/architect.md` · README do Arquiteto | leitura · passo 4 | `standards/README.md` e só as seções da Task (não os ~135 KB a cada invocação); a seção do modo, não o README inteiro; plano em contrato e `plan.ps1` antes de responder |
-| `sprint-run.md` | 1 · 3 · 7 · §Disparo · Como o SM verifica | leve em Sonnet; `plan.ps1` antes do dev (reprovado volta ao mesmo Arquiteto); `-Mode mutation` no fim; **a sessão fecha com `close.ps1 -Apply`**, o Agent `scrum-master` só com julgamento; Arquiteto planeja a Task independente seguinte durante a construção |
-| `agents/developer.md` · `agents/quality-assurance.md` · README do QA | prova de falha · trilha leve | o dev roda a mutação e não cria arquivo temporário; o QA julga se a mutação representa a regra e reexecuta uma por amostragem; Task leve: frentes 1, 2 (objeto 1), 4 e cenários |
-| `templates/sprint-backlog.md` · `workflow-sprint.md` Planning 5 · `working-rules.md` R23 · índice das regras | Trilha | coluna `Trilha` (`plena`/`leve`) com o critério mecânico; quadro anterior sem a coluna = plena |
-| README do SM · `COVERAGE.md` · `how-to.md` | — | o `close` da sessão; a escrita temporária da mutação fora da G9 e os limites dela |
-| Sessão (stakeholder) | `scripts/*` e testes · `agents/*` · `plugin.json` · `README.md` · `CHANGELOG.md` | aplicados pela sessão, a pedido |
-
-### Por quê
-O texto mais caro do sprint — o plano em Opus — era o que menos se validava, porque a regra 7 pedia o código inteiro e a G8 (certa) proíbe o Arquiteto de compilar no projeto. Contrato com mutação desloca o "como" para quem tem o compilador e mantém o controle: a Conferência do passo, o `verify` e a mutação dizem se o resultado está certo, sem o Arquiteto escrever o corpo. A prova de falha passa a ser dado do plano, executada uma vez por script e amostrada pelo QA. A trilha leve aplica a R23 à Task: menos escopo verificado, a mesma evidência. O `close -Apply` tira um agente do caminho de cada fechamento — a escrita é a mesma que a sessão já faz a cada transição (§Marcador).
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda para ele |
-|---|---|
-| Arquiteto | escreve contrato e mutações; trecho longo só validado; passa no `plan.ps1`; lê o índice dos standards; adianta o plano da Task independente |
-| Dev | escreve o corpo; roda `-Mode mutation` no fim; não cria arquivo para provar falha |
-| QA | julga a mutação e reexecuta uma; frentes reduzidas na leve |
-| SM / sessão | `plan.ps1` antes do dev; `close.ps1 -Apply`; trilha decidida na Planning |
-
-### Verificação (R19)
-| Item | Comando | Resultado | |
-|---|---|---|---|
-| Conferências | `run-check-tests.ps1` | 52 casos · 0 falharam (11 novos: mutação sem execução não fecha; mutação pega com árvore restaurada; `R7-mutação` ok; mutação decorativa com `-Only` reprova e mantém a amostra anterior; `-Apply` grava quadro, Registro, Série, `-Post` ok e entrada de status; `-Apply` de novo = 2; `-Apply` com R12 pendente não toca o quadro; plano em contrato ok; plano com código longo, 9 arquivos sem bloco, sem teste, sem mutação e sem protegidos reprova; leve com 6 arquivos volta à plena) | ✅ |
-| Guardas | `run-guard-tests.ps1` | 85 casos · 0 falharam | ✅ |
-| Release | `release.ps1` | exit 0 — R18 v3.46.0 · R17 bloco v3.46 ≤ 15 360 (v3.43 arquivada) · ps1-5.1 16 · ownership 53 · órfãos 45 | ✅ |
-
-**Não exercitado:** um `sprint run` real com plano em contrato, mutação e `-Apply`; mutação em arquivo com CRLF misto ou codificação que não seja UTF-8 (o script lê e grava UTF-8, preservando o BOM).
-
-### Pendente do stakeholder
-Atualizar o plugin, `/team update` (7g, 7h) e reiniciar. **Medir** com o consumo da v3.45 os indicadores da §5 da proposta nos dois sprints seguintes (tokens por Task, suítes por Task, ciclos de GAP por defeito de plano). Remover `proposta-custo-run.md` depois do aceite desta entrada.

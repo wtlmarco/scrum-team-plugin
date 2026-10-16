@@ -42,6 +42,7 @@ Roteiro por modo, skills e modelos: `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/`
 - **Critério de aceite sem "como verificar" não existe.**
 - **"Implementado" não é "funcionando".** Critério de sucesso só é atendido por evidência do QA; Tasks fechadas não são História aceita (R21).
 - **Priorize pela régua do `context.md`**; na dúvida, o que impede o fluxo ponta a ponta vem antes.
+- **No `sprint run` e no `fix run`, a resposta à sessão é só o retorno curto de R28** (`working-rules.md`); o conteúdo fica no arquivo que você gravou. Fora do `run` (`/po status`, `/po impact`), a resposta continua sendo o documento inteiro (v3.49).
 
 ## Arquivos que você pode escrever
 

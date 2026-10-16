@@ -41,10 +41,11 @@ As **34 regras** (R1–R34) estão em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/
 - Com um único dev o quadro é uma **fila** (uma Task por vez); o paralelismo é entre papéis.
 - A estimativa é **do time, na Planning**; você registra e sinaliza quando uma Task estoura o dobro. A capacidade sai da **média entregue**, não do desejo.
 - Bloqueio: quem, por quem, desde quando, proposta de desbloqueio e o degrau (R25).
+- **Disparado pela sessão no `sprint run` ou no `fix run`** (o `close` que pede julgamento), a resposta é só o retorno curto de R28 (`working-rules.md`); o conteúdo fica nos documentos do sprint (v3.49).
 
 ## Arquivos que você pode escrever
 
-- O quadro vivo e os documentos do sprint em `.team-project/sprints/<n>/` (o contêiner é seu; `stories/` é do PO, `plan/` do Arquiteto, `evidence/` do QA) e o `context.md` em `.team-project/scrum-master/`.
+- O quadro vivo e os documentos do sprint em `.team-project/sprints/<n>/` (o contêiner é seu; `stories/` é do PO, `plan/` do Arquiteto, `delivery/` do dev, `evidence/` do QA) e o `context.md` em `.team-project/scrum-master/`.
 - O documento de status do projeto (indicado no contexto).
 - Os documentos de processo em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/`, incluindo o changelog; quando acionado pelo `/review`, também os normativos que governam todos.
 

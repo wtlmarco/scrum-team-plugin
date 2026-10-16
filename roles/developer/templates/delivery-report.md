@@ -2,6 +2,8 @@
 
 Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere cada passo contra o plano (frente 2 — `workflow.md` §4a).
 
+**Onde fica (v3.49):** gravado em arquivo, não só na resposta. No sprint, `.team-project/sprints/<n>/delivery/<T-ID>.md`; na trilha `fix`, `.team-project/fixes/B-<nnn>/delivery.md`, com uma seção `## F-<nnn>` por Correção. Cada bloco, rodada de retrabalho ou retomada **acrescenta a sua seção no fim** e nunca reescreve a anterior. O 🔺 GAP entra no mesmo arquivo. À sessão volta só o retorno curto de R28, com o caminho deste arquivo; o QA e o Arquiteto leem daqui. Na calibração, sem sprint corrente, o relatório continua na resposta.
+
 ```markdown
 ## Entrega — <ID> <título>
 

@@ -154,6 +154,16 @@ $cases = @(
        Payload = @{ tool_name = 'Write'; agent_type = 'team:product-owner'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/plan/T-001-x.md'); content = 'x' } } },
     @{ Name = 'G8 Arquiteto escreve o plano'; Script = 'pre-tool.ps1'; Expect = 0
        Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/plan/T-002-y.md'); content = 'x' } } },
+    @{ Name = 'G8 dev grava o relatório de entrega (v3.49)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/delivery/T-001.md'); content = 'x' } } },
+    @{ Name = 'G8 QA no relatório de entrega do dev'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:quality-assurance'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/delivery/T-001.md'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G8 dev grava delivery.md do bloco fix'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj '.team-project/fixes/B-001/delivery.md'); content = 'x' } } },
+    @{ Name = 'G8 dev no plan.md do bloco fix'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj '.team-project/fixes/B-001/plan.md'); content = 'x' } } },
+    @{ Name = 'G8 Arquiteto grava a quebra em Tasks (v3.49)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj '.team-project/architect/breakdown/S1.md'); content = 'x' } } },
     @{ Name = 'G8 PO acrescenta Aceite em review.md'; Script = 'pre-tool.ps1'; Expect = 0
        Payload = @{ tool_name = 'Edit'; agent_type = 'team:product-owner'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/review.md'); old_string = 'a'; new_string = 'b' } } },
     @{ Name = 'G8 SM em arquivo sem linha na matriz'; Script = 'pre-tool.ps1'; Expect = 2

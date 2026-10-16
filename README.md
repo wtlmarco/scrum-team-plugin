@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.48.1** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.49.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -84,8 +84,8 @@ Cada pasta em `roles/`:
 |---|---|---|
 | **Processo / guia** | Normativo: regras de trabalho, fluxo, propriedade de artefatos, padrões de engenharia. Vive aqui e muda a pedido do stakeholder. | — *(o documento já é o normativo)* |
 | **Entregável** | Documento de projeto que o time elabora e mantém: o SDD e as ADRs. Tem dono, critérios de qualidade e é validado pelo QA a cada entrega. | [`deliverables/`](deliverables/README.md) |
-| **Vivo** | Arquivo atualizado a cada ciclo em `.team-project/` — quadro, backlog, planos, evidências. | `roles/<papel>/templates/` |
-| **Saída** | Produzido na resposta de um comando, não vira arquivo — status, análise de impacto, veredito, relatório de entrega, 🔺 GAP. | `roles/<papel>/templates/` |
+| **Vivo** | Arquivo atualizado a cada ciclo em `.team-project/` — quadro, backlog, planos, relatórios de entrega (com o 🔺 GAP, desde a v3.49), evidências. | `roles/<papel>/templates/` |
+| **Saída** | Produzido na resposta de um comando, não vira arquivo — status, análise de impacto, veredito do comando avulso, e o retorno curto de cada papel à sessão no `run` (R28). | `roles/<papel>/templates/` |
 
 Os **entregáveis** são a diferença entre um time que escreve código e um time que entrega um sistema mantenível: são a memória que permite retomar o projeto meses depois, e a referência contra a qual o QA valida cada Task. Cada um tem um dono explícito — 5 documentos do SDD são do PO, 3 são do Arquiteto — e documento desatualizado é tratado como defeito, não como pendência de organização.
 

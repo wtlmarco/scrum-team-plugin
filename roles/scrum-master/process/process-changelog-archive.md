@@ -8,6 +8,51 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.46 — Plano em contrato conferido antes do dev, prova de falha por mutação, trilha leve por Task, Arquiteto um passo à frente e fechamento pela sessão (SM + Arquiteto + Dev + QA) — 06/10/2026
+
+**Instrução** (stakeholder): "pode aplicar", sobre `proposta-custo-run.md` com as decisões D2, D3, D5, D6 e D7 (formulário de 06/10/2026, todas pela recomendação). Terceiro e último pacote da §4 da proposta (M2, resto da M3, M5 `close -Apply`, M6, M7), sobre a v3.45.1. **Causas medidas no piloto (v3.42):** 5 de 8 Tasks com defeito no código literal do plano (Opus escrevendo código sem compilar, 20 a 70 mil tokens e 10 a 30 min por ciclo de 🔺 GAP); a prova de falha sem lugar (6 negações da G9 a arquivo temporário, prova rodada pelo dev e de novo pelo QA); Task de harness com o pacote inteiro (~530 mil tokens); o SM chamado só para edição mecânica (213 mil tokens em 8 fechamentos); plano fora do caminho crítico proibido pela série total, embora a R1 o permita.
+**Classificação:** formato de documento (plano, Sprint Backlog) · instrumento (`plan.ps1` novo, `verify.ps1 -Mode mutation`, C1 `R7-mutação`, `close.ps1 -Apply`) · fluxo (`sprint-run.md` 1, 3, 7, §Disparo; Planning passo 5) · comportamento de agente (Arquiteto lê o índice de `standards/` e a seção do modo). **Sem regra nova** (34): reforça R7, R8, R23, R1, R24.
+**Papéis movidos (R17):** 4 — SM, Arquiteto, Dev, QA → barreira de 15 360 B.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `implementation-plan.md` | regras 7, 17–20 · §6 · cabeçalho · Variante leve (nova) | **plano é contrato**: escolha que não muda comportamento, contrato, camada ou standard é do dev; trecho literal até 15 linhas ou `**Validado em:**`; teste não vai escrito no plano; `**Mutações:**` por teste (`- M<k> · teste … · produção · trecho → mutante`) ou `sem prova:`; `plan.ps1` antes do dev; `**Planejado durante:**`; `**Trilha:**` e a variante leve |
+| `scripts/checks/plan.ps1` (novo) | — | lista legível com teste · protegidos · blocos (≤ 8, Pronto com exit 0) · trecho ≤ 15 linhas ou validado · mutações dentro da lista · critério mecânico da leve; exit 1 = o plano volta ao Arquiteto |
+| `verify.ps1` | `-Mode mutation -Plan [-Only]` | sobre a árvore do último `full`: troca o trecho (uma ocorrência, arquivo do plano), roda o teste focado, espera exit ≠ 0, restaura byte a byte (BOM preservado; backup restaurado na próxima execução se o processo morrer); árvore tem de voltar igual; amostragem do QA mantém as outras do registro |
+| `close.ps1` (C1) | `R7-mutação` · `-Apply` | toda mutação do plano pega, na árvore do `full` (bloqueante com `verify`); `-Apply`: sem falha bloqueante, marca ✅, grava Registro e Série (estimativa baixada, composição recontada), roda o `-Post` e imprime a entrada de status pré-preenchida |
+| `agents/architect.md` · README do Arquiteto | leitura · passo 4 | `standards/README.md` e só as seções da Task (não os ~135 KB a cada invocação); a seção do modo, não o README inteiro; plano em contrato e `plan.ps1` antes de responder |
+| `sprint-run.md` | 1 · 3 · 7 · §Disparo · Como o SM verifica | leve em Sonnet; `plan.ps1` antes do dev (reprovado volta ao mesmo Arquiteto); `-Mode mutation` no fim; **a sessão fecha com `close.ps1 -Apply`**, o Agent `scrum-master` só com julgamento; Arquiteto planeja a Task independente seguinte durante a construção |
+| `agents/developer.md` · `agents/quality-assurance.md` · README do QA | prova de falha · trilha leve | o dev roda a mutação e não cria arquivo temporário; o QA julga se a mutação representa a regra e reexecuta uma por amostragem; Task leve: frentes 1, 2 (objeto 1), 4 e cenários |
+| `templates/sprint-backlog.md` · `workflow-sprint.md` Planning 5 · `working-rules.md` R23 · índice das regras | Trilha | coluna `Trilha` (`plena`/`leve`) com o critério mecânico; quadro anterior sem a coluna = plena |
+| README do SM · `COVERAGE.md` · `how-to.md` | — | o `close` da sessão; a escrita temporária da mutação fora da G9 e os limites dela |
+| Sessão (stakeholder) | `scripts/*` e testes · `agents/*` · `plugin.json` · `README.md` · `CHANGELOG.md` | aplicados pela sessão, a pedido |
+
+### Por quê
+O texto mais caro do sprint — o plano em Opus — era o que menos se validava, porque a regra 7 pedia o código inteiro e a G8 (certa) proíbe o Arquiteto de compilar no projeto. Contrato com mutação desloca o "como" para quem tem o compilador e mantém o controle: a Conferência do passo, o `verify` e a mutação dizem se o resultado está certo, sem o Arquiteto escrever o corpo. A prova de falha passa a ser dado do plano, executada uma vez por script e amostrada pelo QA. A trilha leve aplica a R23 à Task: menos escopo verificado, a mesma evidência. O `close -Apply` tira um agente do caminho de cada fechamento — a escrita é a mesma que a sessão já faz a cada transição (§Marcador).
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| Arquiteto | escreve contrato e mutações; trecho longo só validado; passa no `plan.ps1`; lê o índice dos standards; adianta o plano da Task independente |
+| Dev | escreve o corpo; roda `-Mode mutation` no fim; não cria arquivo para provar falha |
+| QA | julga a mutação e reexecuta uma; frentes reduzidas na leve |
+| SM / sessão | `plan.ps1` antes do dev; `close.ps1 -Apply`; trilha decidida na Planning |
+
+### Verificação (R19)
+| Item | Comando | Resultado | |
+|---|---|---|---|
+| Conferências | `run-check-tests.ps1` | 52 casos · 0 falharam (11 novos: mutação sem execução não fecha; mutação pega com árvore restaurada; `R7-mutação` ok; mutação decorativa com `-Only` reprova e mantém a amostra anterior; `-Apply` grava quadro, Registro, Série, `-Post` ok e entrada de status; `-Apply` de novo = 2; `-Apply` com R12 pendente não toca o quadro; plano em contrato ok; plano com código longo, 9 arquivos sem bloco, sem teste, sem mutação e sem protegidos reprova; leve com 6 arquivos volta à plena) | ✅ |
+| Guardas | `run-guard-tests.ps1` | 85 casos · 0 falharam | ✅ |
+| Release | `release.ps1` | exit 0 — R18 v3.46.0 · R17 bloco v3.46 ≤ 15 360 (v3.43 arquivada) · ps1-5.1 16 · ownership 53 · órfãos 45 | ✅ |
+
+**Não exercitado:** um `sprint run` real com plano em contrato, mutação e `-Apply`; mutação em arquivo com CRLF misto ou codificação que não seja UTF-8 (o script lê e grava UTF-8, preservando o BOM).
+
+### Pendente do stakeholder
+Atualizar o plugin, `/team update` (7g, 7h) e reiniciar. **Medir** com o consumo da v3.45 os indicadores da §5 da proposta nos dois sprints seguintes (tokens por Task, suítes por Task, ciclos de GAP por defeito de plano). Remover `proposta-custo-run.md` depois do aceite desta entrada.
+
+---
+
 ## v3.45 — Consumo medido no transcript (G16), R28 por Task e plano em blocos de até 8 arquivos com uma instância de dev por bloco (SM + Arquiteto + Dev + QA + UX) — 06/10/2026
 
 **Instrução** (stakeholder): "Avalie profundamente pois realmente a execução está onerosa e demorada; gere a proposta de correção", sobre o relatório de processo do primeiro `sprint run` de um projeto-piloto (v3.42, 04–06/10/2026: 8 de 19 Tasks, 4,99 M tokens registrados, ~620 mil por Task fechada, ~34 h corridas). Proposta em `proposta-custo-run.md`, decisões D1–D7 em formulário (todas pela recomendação), "pode aplicar". **Esta entrega é o primeiro pacote da §4** (M0, M5, blocos da M3/M4); `verify.ps1` (M1) vem na v3.45.1 e o resto na v3.46.

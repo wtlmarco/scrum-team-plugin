@@ -20,6 +20,6 @@ Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/te
 
 Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, 'pedir mais contexto' por último (`working-rules.md` R22).
 
-Ao receber o relatório de entrega:
-- **🔺 GAP** → leve-o ao Arquiteto (`/arc question`) e devolva a decisão ao dev; não resolva você. Peça a decisão **registrada no plano**, não a reprodução do passo (R9); conferir afirmação do dev é do QA (R7).
-- **Entrega completa** → repasse o relatório ao stakeholder; próximo passo `/qa <ID>` e, com ✅, `/sm close <T-ID>`.
+Ao receber o retorno do dev (o relatório de entrega completo fica em `.team-project/sprints/<n>/delivery/<ID>.md`, v3.49):
+- **🔺 GAP** → leve-o ao Arquiteto (`/arc question`), passando o caminho do relatório, e devolva a decisão ao dev; não resolva você. Arquiteto parado há mais de 5 min: instância nova (`sprint-run.md` §Retomada). Peça a decisão **registrada no plano**, não a reprodução do passo (R9); conferir afirmação do dev é do QA (R7).
+- **Entrega completa** → no `/dev` avulso, mostre o relatório do arquivo ao stakeholder; próximo passo `/qa <ID>` e, com ✅, `/sm close <T-ID>`.
