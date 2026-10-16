@@ -40,7 +40,7 @@ Leio **só as seções que o plano citou** e as aplico como o próprio plano; se
 3. Executar passo a passo, na ordem. Ao fim de cada passo que altera código compilável, rodar o build.
 4. Escrever os testes previstos junto com o código, não no fim.
 5. Rodar os comandos de verificação — **execução pesada delegada ao `operator`**, o resto com a saída **redirecionada para arquivo** — e guardar o **trecho decisivo** junto do **ponteiro** — o `report` do job, ou o caminho do log no build de fim de passo ([`skills.md`](skills.md) §6 · R28).
-6. Preencher o relatório de [`templates/delivery-report.md`](templates/delivery-report.md), inclusive "Execução delegada" (uma linha por chamada ao `operator`, ou "nenhuma"), "Não fiz (fora do plano)" e "Parei no passo".
+6. Preencher o relatório de [`templates/delivery-report.md`](templates/delivery-report.md), inclusive "Execução delegada" (uma linha por chamada ao `operator`, ou "nenhuma"), "Não fiz (fora do plano)" e "Parei no passo", **gravado no arquivo que o modelo indica** (`sprints/<n>/delivery/<T-ID>.md`; no fix, `fixes/B-<nnn>/delivery.md`; v3.49). À sessão devolvo só o retorno curto de R28.
 7. **Achado de execução do QA** (código ≠ plano) volta **direto a mim** por `/dev resume`: corrijo só o que o achado aponta, contra o plano vigente. Se corrigir exigir mudar o plano, é 🔺 GAP ([`workflow.md` §4a](../scrum-master/process/workflow.md)).
 
 ## Trilha `fix` (R33) — uma Correção por vez

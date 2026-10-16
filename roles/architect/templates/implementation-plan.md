@@ -45,6 +45,7 @@ serviço local que algum passo exige:
 | Pré-requisito | Comando de medição | Saída real (recortada) | Log bruto | Atende ao plano? |
 |---|---|---|---|---|
 | <o que o passo exige> | `<comando que imprime a versão>` | `<o que o comando devolveu, literal>` | `<caminho>.log` — <n> linhas | sim / **não — <o que falta>** |
+| *(Task com interface — regra 21)* navegador headless do teste de render | `<comando que imprime a versão do navegador/driver>` | `<literal>` | `<caminho>.log` — <n> linhas | sim / **não — 🔺 GAP (§9)** |
 
 **Comandos citados nos passos e na seção 7, validados na versão medida** — um por comando; memória de
 outro projeto ou de outra stack não é validação:
@@ -92,6 +93,11 @@ regra de parada:** ela diz o que aceitar, não o que fazer quando a ferramenta n
 - M1 · teste `<arquivo de teste>` · `<arquivo de produção>` · `<trecho exato>` → `<trecho mutante>`
 *(uma por teste com "Deve falhar se…" — regra 18; teste sem regra a remover: `sem prova: <arquivo> — <motivo>`)*
 
+**Render real** *(só Task com interface — regra 21; a matriz que o teste de render mede)*:
+| Teste de render | Tela (largura × altura) | Fontes | Caixas medidas | Deve falhar se… |
+|---|---|---|---|---|
+| `<arquivo de teste>` | `<cada tamanho relevante da spec de tela>` | `<3: padrão · <menor> · <maior>>` | `<elementos: posição, tamanho, sobreposição, transbordamento>` | `<a geometria que quebra — ex.: a caixa X sai do contêiner na fonte maior>` |
+
 **Cobertura:** a Task mantém o gate de **80% mínimo por módulo** na unidade implantável que ela toca —
 back-end, worker **ou front-end**. O dev leva ao relatório o trecho decisivo da saída do comando de
 cobertura — código de saída, pior módulo × limiar — **e** o ponteiro do `report` do job (R28)
@@ -111,6 +117,7 @@ comando de cobertura, isso é gap de configuração e entra na seção 9, não v
 - *(fixo)* Se uma seção de standard citada aqui **se contradisser, tiver lacuna ou não disser como se verifica**: 🔺 GAP ao Arquiteto — o standard não se corrige de passagem (R16)
 - *(fixo)* **Pré-requisito ausente** — qualquer item da seção 3 que não exista no ambiente, além do caso "versão incompatível": 🔺 GAP, sem instalar por conta própria e sem substituir por ferramenta equivalente (R26)
 - *(fixo)* **Gate de qualidade que não roda, não resolve ou reprova**: 🔺 GAP. Desligar, afrouxar limiar, remover do build, trocar por comando equivalente ou acrescentar configuração que contorne a checagem **nunca** é decisão do dev (R4 · R7)
+- *(fixo em Task com interface)* **Navegador headless ausente, ou teste de render que não abre a tela ou não mede**: 🔺 GAP — trocar a medição por teste de estrutura não é decisão do dev (regra 21 · R23 · R26)
 
 ## 10. Segurança (obrigatório se a Task toca autenticação, autorização, escopo, dado pessoal ou conteúdo de terceiro)
 - [ ] Identidade/escopo do contexto autenticado, nunca do request
@@ -168,10 +175,11 @@ passo 3, com a permissão do stakeholder. Não entra em `**Arquivos tocados:**`.
 18. **Prova de falha declarada (v3.46).** Todo teste da §6 com "Deve falhar se…" ganha uma linha em `**Mutações:**`: `- M<k> · teste `<arquivo de teste>` · `<arquivo de produção>` · `<trecho exato>` → `<trecho mutante>`` — o que "remover a regra" significa, literal; o trecho aparece **uma vez** no arquivo depois da implementação (escolha um trecho que o dev vai escrever com essa grafia — a assinatura, um operador, uma constante), **não é vazio e não tem crase** (o `plan.ps1` recusa), e o mutante **compila**: mutante que não compila sai `inconclusivo`, não prova o teste (v3.47.1). Os dois arquivos estão em `**Arquivos tocados:**`. O `verify.ps1 -Mode mutation` aplica cada uma, roda o teste focado, espera exit ≠ 0 e restaura; o dev não cria arquivo temporário para provar falha (a G9 o negaria). Teste sem regra a remover (configuração, contrato de tipo): `sem prova: <arquivo de teste> — <motivo>` na §6.
 19. **O plano passa pela conferência antes do dev (v3.46):** `scripts/checks/plan.ps1 -Plan <caminho>` — lista legível com teste, protegidos declarados, blocos (regra 2), trecho (17), mutações (18) e o critério da trilha leve. Reprovado, volta a mim na mesma instância, sem custo de dev ([`sprint-run.md`](../../scrum-master/process/sprint-run.md) passo 3).
 20. **Plano escrito com outra Task em construção (v3.46, R1):** o cabeçalho traz `**Planejado durante:** <T-ID> em 🟨`. Só para Task que **não depende** da que está em construção; as assinaturas que eu li podem mudar até o dev começar — o passo 4 do dev (conferir as assinaturas no código real) é o que fecha esse risco.
+21. **Task com interface: prova em render real (v3.50).** Task que muda layout ou estilo visível — toca arquivo de estilo, marcação ou componente de tela, ou cita a especificação em `user-experience/screens/` — tem na §6 ao menos um **teste de render**: abre a tela num navegador headless e mede as caixas dos elementos que a mudança afeta (`getBoundingClientRect` ou o equivalente da ferramenta: posição, tamanho, sobreposição, transbordamento do contêiner), em **3 tamanhos de fonte** (o padrão, o menor e o maior que a especificação suporta) × **cada tamanho de tela relevante** (os da especificação de tela; sem lista nela, o menor e o maior suportados). A tabela **Render real** da §6 declara essa matriz, e o "Deve falhar se…" descreve a geometria, não a regra. **Prova só por estrutura** — regra presente no CSSOM, seletor que casa, snapshot de classe ou de DOM — **não basta para mudança de layout**: pode acompanhar, não substitui (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.1). **Mutação (regra 18 · R23):** ao menos uma `M<k>` tem o teste de render como teste e, como trecho, a declaração de estilo ou de marcação que a Task introduz, revertida ou removida no mutante — ela tem de **quebrar a medição**; mutação que só derruba o teste de estrutura não prova a Task. **Navegador headless é pré-requisito da §3** (R26): ausente no toolchain, a linha sai "não" e a §9 leva o GAP — o plano não dispensa a prova em silêncio, e a Task não entra em construção até a decisão (instalar entra no toolchain pelo stakeholder; aceitar sem a prova é risco que ele assina). O passo de teste leva na **Conferência** que o arquivo de teste de render existe e mede a matriz da tabela. (No piloto, uma mudança de layout provada por regra e seletor passou no plano, no QA e na mutação, e o defeito só apareceu no aparelho.)
 
 ## Variante leve (v3.46 · R23)
 
-Para Task com **`Trilha: leve`** no Sprint Backlog — decidida na Planning, só se tudo for verdade: estimativa ≤ 0,5; até 4 arquivos em `**Arquivos tocados:**`; sem migration; sem item da §10 (segurança); sem interface; sem arquivo protegido. Documentação pura entra sempre como leve. O `plan.ps1` confere o mecânico (arquivos, protegidos, migration); o resto é da Planning. Disparado com `model: "sonnet"`.
+Para Task com **`Trilha: leve`** no Sprint Backlog — decidida na Planning, só se tudo for verdade: estimativa ≤ 0,5; até 4 arquivos em `**Arquivos tocados:**`; sem migration; sem item da §10 (segurança); sem interface (Task que muda layout ou estilo visível **nunca é leve**: a prova em render da regra 21 exige o navegador medido na §3, que a leve não tem); sem arquivo protegido. Documentação pura entra sempre como leve. O `plan.ps1` confere o mecânico (arquivos, protegidos, migration); o resto é da Planning. Disparado com `model: "sonnet"`.
 
 ```markdown
 # Plano de Implementação — <T-ID> <título> · leve
@@ -186,7 +194,7 @@ Para Task com **`Trilha: leve`** no Sprint Backlog — decidida na Planning, só
 ## 9. Onde parar e perguntar 🔺 (as três linhas fixas)
 ```
 
-A leve reduz **escopo**, nunca evidência (R23): o `verify full`, a mutação e o veredito continuam. Critério que cai no meio da Task (arquivo a mais, migration) devolve a Task à trilha plena — o Arquiteto completa o plano no modelo cheio.
+A leve reduz **escopo**, nunca evidência (R23): o `verify full`, a mutação e o veredito continuam. Critério que cai no meio da Task (arquivo a mais, migration, mudança visível de layout) devolve a Task à trilha plena — o Arquiteto completa o plano no modelo cheio.
 
 ## Exemplo abreviado
 

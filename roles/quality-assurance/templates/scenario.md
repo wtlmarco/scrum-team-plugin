@@ -60,6 +60,8 @@
 | **Navegador (`mcp__claude-in-chrome`)** | Cenário de interface, **condicional à extensão estar conectada na sessão que executa** — o card do QA (isolado) e o do `operator` (grupo/suíte, R28) já carregam a ferramenta | Trecho decisivo da interação (URL, elemento, resposta observada) + ponteiro, quando a extensão estiver conectada |
 | **Script/CLI** | Cenário automatizável por comando (chamada de API, seed + asserção, teste E2E já existente que cobre o mesmo caminho) | Comando + saída real (R7); pesado ou em lote segue R28 (`operator`) |
 
+**Cenário não prova layout.** Caixa, transbordamento e tamanho de fonte de Task com interface são medidos pelo teste de render da regra 21 (veredito, "Render real"); passar o cenário não dispensa essa medição.
+
 **Sem a extensão conectada, cenário de interface não é fingido como executado.** Duas saídas honestas: **(a)** roda por script/CLI quando o caminho puder ser exercitado por chamada direta (API por trás da tela, seed de dado + asserção de estado); **(b)** fica registrado como **⚠️ "não executado — sem ferramenta"** no Histórico de execuções e no veredito — verificável (a extensão não estava conectada naquela sessão), nunca uma alegação de que "a tela foi conferida".
 
 ## Regras

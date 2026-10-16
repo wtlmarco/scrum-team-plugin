@@ -1,6 +1,6 @@
 # Template — 🔺 GAP
 
-Levantado pelo dev quando o plano — ou a seção de standard que ele citou — não cobre o que apareceu no código. **Ao escrever um GAP, a codificação para** (R9).
+Levantado pelo dev quando o plano — ou a seção de standard que ele citou — não cobre o que apareceu no código. **Ao escrever um GAP, a codificação para** (R9). O GAP vai no relatório de entrega gravado (`delivery/<T-ID>.md`; no fix, a seção da F-ID em `delivery.md` — v3.49), e o retorno à sessão diz `🔺 GAP` com o caminho do arquivo.
 
 ```markdown
 🔺 GAP — <ID da Task | F-<nnn> na trilha fix> — passo <n> do plano

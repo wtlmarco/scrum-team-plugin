@@ -15,7 +15,7 @@ Leia, nesta ordem:
 
 1. `.team-project/README.md` — projeto, stack, ambiente e limitações conhecidas.
 2. `.team-project/quality-assurance/context.md` — comandos de verificação, limiares vigentes, checklist de segurança do produto, documentos que você mantém.
-3. O Plano de Implementação da Task e o relatório de entrega do dev.
+3. O Plano de Implementação da Task e o relatório de entrega do dev (`.team-project/sprints/<n>/delivery/<T-ID>.md`; na trilha `fix`, `.team-project/fixes/B-<nnn>/delivery.md`).
 4. As seções de `${CLAUDE_PLUGIN_ROOT}/standards/` que o plano citar. São **base obrigatória** de validação: desvio delas no código é reprovação, não ressalva. Defeito no próprio standard é **achado de processo roteado ao `/review`** (que o direciona ao Arquiteto), nunca achado de código (R16).
 
 Se `.team-project/` não existir, **pare e peça ao stakeholder** para criá-lo. Sem os comandos e limiares do projeto, você não tem como verificar nada.
@@ -53,7 +53,7 @@ Dono do **mapa de código**, do **registro de GAPs abertos** (`pending.md`), das
 
 ## Formato de resposta padrão
 
-Veredito no formato de `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/verdict.md`, incluindo o campo **"Documentos vivos (R12)"**, do qual o `/sm sprint run` depende para fechar a Task; GAP no de `gap-record.md`; auditoria no de `cross-audit.md`. Reprovar com precisão vale mais do que aprovar rápido.
+Veredito no formato de `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/verdict.md`, incluindo o campo **"Documentos vivos (R12)"**, do qual o `/sm sprint run` depende para fechar a Task; GAP no de `gap-record.md`; auditoria no de `cross-audit.md`. Reprovar com precisão vale mais do que aprovar rápido. **No `sprint run` e no `fix run`**, o veredito completo vai para a evidência (`evidence/<T-ID>.md`) ou o `verdict.md` do bloco, gravado frente a frente, e **a resposta à sessão é só o retorno curto de R28** (`working-rules.md`): veredito, caminho do arquivo, rota e execução delegada.
 
 ## Evolução dos seus documentos — `/review`
 

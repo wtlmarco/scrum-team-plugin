@@ -228,10 +228,12 @@ Estes são os limites da organização. O perfil de stack configura a ferramenta
 | **Integração** | Adaptadores contra as dependências reais (banco, fila, cache, armazenamento) | Reais | Merge para a linha principal e de integração |
 | **E2E** | Fluxo ponta a ponta pela borda | Todas | Merge para a linha principal |
 | **Carga** | Só as operações declaradas sob orçamento de desempenho (§5.6, V18) | Reais, no ambiente de medição de V21 | Merge para a linha principal **e** em toda Task que toca uma operação sob orçamento |
+| **Render** | Layout e estilo visível da interface: caixas medidas na tela renderizada | Navegador headless real (V22) | Toda Task que muda layout ou estilo visível |
 
 - **Nenhum mock de banco de dados em teste de integração.** Se o banco é falso, o teste não é de integração.
 - Todo teste de integração que acessa dados isola o escopo (tenant/usuário) e prova que dado de outro escopo não vaza, respondendo `404` — nunca `403` — ao acesso cruzado (ver [`implementation-security-lgpd-copyright.md`](implementation-security-lgpd-copyright.md) §7).
 - Cada test run cria e limpa os próprios dados.
+- **Mudança de layout se prova em render real.** O teste abre a tela num navegador headless e mede as caixas dos elementos afetados (posição, tamanho, sobreposição, transbordamento) em **3 tamanhos de fonte** × os tamanhos de tela relevantes. Regra de estilo presente, seletor que casa ou snapshot de estrutura **não** provam layout — o navegador pode aplicar a regra e a caixa quebrar mesmo assim. Unidade com interface sem navegador headless no toolchain é Ficha incompleta (V22).
 
 ### 5.2 O teste precisa proteger algo
 
@@ -354,6 +356,7 @@ Preenchida uma vez por projeto pelo Arquiteto, mantida no documento de arquitetu
 | V19 | **Ferramenta e comando do teste de carga, por unidade implantável** | ferramenta + caminho do cenário + **comando literal** que sai com código ≠ 0 quando o limiar é violado + artefato de saída. Uma linha por unidade que tenha operação em V18, front-end incluído |
 | V20 | **Margem de ruído do ambiente de medição** | percentual de variação aceito entre execuções, **medido** (execuções repetidas sem mudança de código) e como foi medido — nunca estimado |
 | V21 | **Ambiente de medição e onde vive a baseline** | ambiente (dedicado/compartilhado, e o que ele tem de diferente da produção) + arquivo versionado da baseline + quem aprova a atualização dela |
+| V22 | **Navegador headless e comando do teste de render, por unidade com interface** (§5.1) | navegador/driver + versão medida + comando literal que roda o teste de render e sai com código ≠ 0 quando uma medição falha. Unidade sem interface: "não aplicável", escrito |
 
 > **Regra de preenchimento:** V11 e V12 são **por unidade implantável**, não por repositório. Uma ficha com um único comando de cobertura num repositório com back-end e front-end é ficha incompleta — e o front-end é exatamente a unidade que costuma sumir da lista.
 
@@ -399,6 +402,7 @@ Toda regra deste normativo tem uma forma de verificação. Regra sem verificaç�
 | 20 | Regressão acima da margem medida (§5.6 P5) | Comparação com a baseline versionada (V21), margem de V20 | carga | **Bloqueia** — só passa com baseline atualizada e justificada no mesmo merge |
 | 21 | Operação de V18 sem cenário executável, ou Task que a toca sem a saída do comando (§5.6 P6) | Uma linha de V18 ↔ um cenário ↔ um job; saída real no relatório de entrega — trecho **e** ponteiro do relatório da execução (§5.4) | auditoria | Achado bloqueante de aderência |
 | 22 | Ficha com V18–V21 ausentes (§5.6 P2) | Seção existe no documento de arquitetura do produto | antes do plano | Ficha incompleta — sem Plano de Implementação |
+| 23 | Mudança de layout sem teste de render que mede caixas (§5.1) | Teste de render na lista do plano, saída do comando de V22 no relatório de entrega e mutação que quebra a medição | QA | Task volta ao dev |
 
 ---
 

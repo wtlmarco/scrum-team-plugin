@@ -70,6 +70,7 @@ n/a — sem mudança
 12. **Revalidação** (só no `fix run`, D9): `n/a — sem mudança` até lá. Revalidada, a seção traz `aaaa-mm-dd hh:mm`, o que mudou no código (`arquivo:linha`, commit ou Task que o tocou) e o que o mini-plano passou a dizer; Causa, Arquivos e Passos são corrigidos **no lugar**, e C5–C8 reconferidos. "n/a" depois de arquivo alterado é aviso do C4.
 13. **Resposta a 🔺 GAP no `fix run`** entra no mini-plano da F-ID — no passo que ela altera, com `(GAP <data>: <decisão>)` —, como no plano completo (R9). Decisão que quebra C5–C8 é promoção (regra 10), não passo novo.
 14. **Uma F-ID, um mini-plano.** Nada de passo compartilhado entre F-IDs nem "mesma mudança da F-<nnn>": cada uma é desfeita sozinha pelo diff isolado dela (R33).
+15. **Correção de layout ou estilo visível: o teste de regressão é de render** (regra 21 do [plano completo](implementation-plan.md) · `${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.1). Mede, num navegador headless, a caixa que quebrou, no tamanho de tela do defeito e nos 3 tamanhos de fonte; "Antes da correção, falha com" é a medição (ex.: largura da caixa > a do contêiner), nunca a ausência de uma regra ou classe. Sem navegador headless e comando de render no `developer/context.md`: **C7 ✘** e promoção — teste de estrutura no lugar não prova a Correção.
 
 ## Exemplo abreviado
 

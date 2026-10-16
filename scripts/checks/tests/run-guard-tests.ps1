@@ -154,6 +154,16 @@ $cases = @(
        Payload = @{ tool_name = 'Write'; agent_type = 'team:product-owner'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/plan/T-001-x.md'); content = 'x' } } },
     @{ Name = 'G8 Arquiteto escreve o plano'; Script = 'pre-tool.ps1'; Expect = 0
        Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/plan/T-002-y.md'); content = 'x' } } },
+    @{ Name = 'G8 dev grava o relatório de entrega (v3.49)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/delivery/T-001.md'); content = 'x' } } },
+    @{ Name = 'G8 QA no relatório de entrega do dev'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:quality-assurance'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/delivery/T-001.md'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G8 dev grava delivery.md do bloco fix'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj '.team-project/fixes/B-001/delivery.md'); content = 'x' } } },
+    @{ Name = 'G8 dev no plan.md do bloco fix'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj '.team-project/fixes/B-001/plan.md'); content = 'x' } } },
+    @{ Name = 'G8 Arquiteto grava a quebra em Tasks (v3.49)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj '.team-project/architect/breakdown/S1.md'); content = 'x' } } },
     @{ Name = 'G8 PO acrescenta Aceite em review.md'; Script = 'pre-tool.ps1'; Expect = 0
        Payload = @{ tool_name = 'Edit'; agent_type = 'team:product-owner'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/review.md'); old_string = 'a'; new_string = 'b' } } },
     @{ Name = 'G8 SM em arquivo sem linha na matriz'; Script = 'pre-tool.ps1'; Expect = 2
@@ -308,6 +318,18 @@ $cases = @(
        Setup = { Add-Content -LiteralPath (Join-Path $tmp 'transcripts/sess1/subagents/agent-abc1234567.jsonl') @('{"type":"user","timestamp":"2026-10-06T11:00:00Z","message":{"role":"user","content":"Resposta do GAP da T-007: siga"}}', '{"type":"assistant","timestamp":"2026-10-06T11:00:30Z","message":{"id":"m3","model":"claude-sonnet-5-5","usage":{"input_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":1200,"output_tokens":30}}}') -Encoding UTF8 }
        Check = { $l = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8); $l.Count -eq 2 -and $l[1] -match '"round":2.*"model":"claude-sonnet-5-5".*"calls":1,"calls_total":3.*"processed":1335' }
        Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'abc1234567'; agent_type = 'team:developer'; transcript_path = (Join-Path $tmp 'transcripts/sess1.jsonl') } },
+    @{ Name = 'G16 grava a linha medida no consumption.md do sprint aberto (v3.49)'; Script = 'subagent-stop.ps1'; Expect = 0; ExpectOut = ''
+       Setup = { $sd = Join-Path $tmp 'transcripts/sess1/subagents'
+                 New-Item -ItemType Directory -Force (Join-Path $proj '.team-project/sprints/1') | Out-Null
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/README.md') "# Contexto`n`n| Campo | Valor |`n|---|---|`n| **Sprint corrente** | **1** |" -Encoding UTF8
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/sprints/1/consumption.md') "# Consumo — Sprint 1`n`n## Registro`n| Data | Papel | Modelo | Comando | Task/História | Categoria | Unidade | Tokens | Duração | Nota |`n|---|---|---|---|---|---|---|---|---|---|`n`n## Totais do sprint (derivado)`n| a | b |`n|---|---|`n| x | y |" -Encoding UTF8
+                 $p = '{"type":"user","timestamp":"2026-10-06T11:30:00Z","message":{"role":"user","content":"Plano da T-009"}}'
+                 $a = '{"type":"assistant","timestamp":"2026-10-06T11:31:00Z","message":{"id":"q1","model":"claude-opus-5-5","usage":{"input_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":0,"output_tokens":10}}}'
+                 [System.IO.File]::WriteAllLines((Join-Path $sd 'agent-arc9876543.jsonl'), [string[]]@($p, $a), (New-Object System.Text.UTF8Encoding($false))) }
+       Check = { $c = Get-Content -LiteralPath (Join-Path $proj '.team-project/sprints/1/consumption.md') -Raw -Encoding UTF8
+                 $ok = ($c -like '*| arc | opus 5.5 |*| T-009 |*medido: arc9876543#1*') -and ($c -like '*| arc | opus 5.5 | 115 | 1 | 1 |*')
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/README.md') 'local' -Encoding UTF8; $ok }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'arc9876543'; agent_type = 'team:architect'; transcript_path = (Join-Path $tmp 'transcripts/sess1.jsonl') } },
     @{ Name = 'G16 operator: a resposta vira report.md na pasta do job (v3.48)'; Script = 'subagent-stop.ps1'; Expect = 0
        Setup = { $sd = Join-Path $tmp 'transcripts/sess1/subagents'
                  $p = '{"type":"user","timestamp":"2026-10-06T12:00:00Z","message":{"role":"user","content":"Rode a suíte da T-003; job .team-project/operator/1/T-003-suite/"}}'

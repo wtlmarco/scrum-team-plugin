@@ -33,6 +33,15 @@ Divergência volta **direto** a `/dev resume`, sem Arquiteto. **Passo sem Confer
 
 **Reverificação independente da interseção:** cada linha "citada e aplicada" teve a aplicação conferida neste veredito (`arquivo:linha` nos Achados quando divergente) — verificação própria, não a alegação do relatório do dev nem de qualquer auditoria anterior.
 
+### Render real — só Task com interface (regra 21 do plano · V22)
+*(Decido eu se a Task tem interface. Tem ⇒ tabela obrigatória; não tem ⇒ "n/a — sem interface" com o motivo. Prova só estrutural (CSSOM, seletor, snapshot) não preenche esta tabela.)*
+
+| Tela (largura × altura) | Fonte padrão | Fonte menor | Fonte maior | Caixas medidas | Executado por |
+|---|---|---|---|---|---|
+| <tamanho do plano> | ✅/❌ <n/total> | ✅/❌ | ✅/❌ | <elementos medidos> | QA (reexecução) / dev (`result.json`, mesma árvore) |
+
+**Mutação × medição:** M<k> quebrou a medição? sim (`<caixa/combinação que falhou>`) / não (só regra de estilo → defeito do plano, 🔺 GAP) · **Navegador headless (V22):** `<versão medida>` / **ausente → 🔺 GAP, `/arc question`** · **Trilha:** plena / leve (→ achado de processo à Planning).
+
 ### Cenários de teste — resultado por cenário mapeado (R30)
 *(Task não fecha sem esta tabela preenchida para todo cenário referenciado na Task do Sprint Backlog — DoD §4a-i. "Nenhum mapeado" só é válido quando a própria referência da Task já dizia isso, com o motivo.)*
 
@@ -103,6 +112,7 @@ Cada linha desta tabela é também gravada no **Histórico de execuções** do p
 - **Frente 2 sem as duas tabelas não cobriu os dois objetos** (`workflow.md` §4a). Veredito com só a tabela do objeto 2 (como antes de v3.31) é achado de processo contra o próprio veredito. Divergência do objeto 1 volta **direto** a `/dev resume`, sem passar pelo Arquiteto. **Passo "inconferível sem decidir"** (Conferência do plano insuficiente, R13 de `implementation-plan.md`) não é "conforme" nem achado de execução: é 🔺 GAP do plano, para `/arc question`.
 - **Desempenho registra sempre um dos três estados.** "Fora" (comando de V19 sai ≠ 0) é reprovação; "não exercitado" exige o motivo. Task que toca operação de V18 sem o trecho e o ponteiro do comando é achado bloqueante, não "ok" (`implementation-principles.md` §5.6 P6).
 - **Cenário mapeado sem linha na tabela de resultado não fecha a Task** (R30, DoD §4a-i) — regressivo aplicável incluído. Cenário ❌ segue o roteamento pelo bloqueio: bloqueia a História em voo → Task no sprint corrente (R25); não bloqueia → **ID de `pending.md` explícito nesta seção, endereçado ao PO** — sem esse ID, o GAP fica preso em `pending.md` e nunca chega ao Product Backlog (R30 · R12).
+- **Task com interface sem render real é ❌ ou GAP, nunca ✅** (v3.50 · regra 21): matriz incompleta (falta fonte ou tela), prova só estrutural ou mutação que não quebra a medição → ❌ volta ao dev; navegador headless que não roda ou V22 vazia → 🔺 GAP (`/arc question`), registrado também em "Não exercitado". A saída é a do comando que eu rodei, com trecho decisivo e ponteiro do `report`.
 - **"Não exercitado" é obrigatório**, mesmo que seja "nada — todo o fluxo foi exercitado".
 - ⚠️ (ressalva) só quando a Task é utilizável e a pendência tem ID próprio no backlog.
 

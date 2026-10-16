@@ -293,13 +293,86 @@ Put $p '.team-project/usage.jsonl' (@(
 $r = Invoke-Check 'consumption.ps1' @('-Root', $p)
 $r = Invoke-Check 'consumption.ps1' @('-Root', $p)
 $r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p $dst))
-Check 'Consumo: medidas entram, manual e sessão ficam, sem duplicar' $r 0 @('3 linha\(s\) medida\(s\), 3 mantida', 'operator \| haiku \| `Agent` · suite \| T-041 \| verificação \| H-014 \| 40.000', 'chamado por dev; medido: o1#1', '\| dev \| haiku .*\| retrabalho \| H-014 \| 100.000', '\| operator ← dev \| haiku \| 40.000 \| 1 ', '\| operator ← qa \| haiku \| 0 \| 1 \| 00:30 \| 500 \|', 'linha de sessão')
+Check 'Consumo: medidas entram, manual e sessão ficam, sem duplicar' $r 0 @('3 linha\(s\) medida\(s\), 3 mantida', 'operator \| haiku 4\.5 \| `Agent` · suite \| T-041 \| verificação \| H-014 \| 40.000', 'chamado por dev; medido: o1#1', '\| dev \| haiku 4\.5 .*\| retrabalho \| H-014 \| 100.000', '\| operator ← dev \| haiku 4\.5 \| 40.000 \| 1 \| 1 ', '\| operator ← qa \| haiku \| não medido — só notificação \| 1 \| 1 \| 00:30 \| 500 \|', 'linha de sessão')
 if (([regex]::Matches($r.Out, 'medido: d1#1')).Count -ne 1) { $fail++; Write-Output '---- consumo duplicou a linha medida' }
+# v3.49: Totais separam instâncias (agentes distintos) de rodadas — o dev d1 tem 2 rodadas e 1 instância — e o modelo vem com a versão.
+Check 'Consumo: Totais com instâncias × rodadas e modelo com versão (v3.49)' $r 0 @('\| Papel \| Modelo \| Σ tokens processados \| Instâncias \| Rodadas \|', '\| dev \| haiku 4\.5 \| 400.000 \| 1 \| 2 \|')
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'C1 depois do consumo medido: R28 conta a linha do operator da Task' $r 0 @('\| R28 \| falhou.*1 report.*2 linha')
 Put $p '.team-project/sprints/1/retrospective.md' "# Retro`n"
 $r = Invoke-Check 'consumption.ps1' @('-Root', $p)
 Check 'Consumo: sprint fechado não recebe linha' $r 0 @('está fechado')
+
+# 5c'. consumption.ps1 (v3.49): operator sem o filho na linha do pai — o chamador sai pelo horário, na mesma Task.
+$p = Join-Path $tmp 'consumo-horario'; New-Project $p
+$dst = '.team-project/sprints/1/consumption.md'
+Put $p $dst ((Get-Content -Raw -Encoding UTF8 (Join-Path $p $dst)) + "`n## Totais do sprint (derivado)`n`n| a | b |`n|---|---|`n| x | y |`n")
+Put $p '.team-project/usage.jsonl' (@(
+    ('{"agent_id":"q1","role":"quality-assurance","description":"qa T-041","round":1,"work":"T-041","model":"claude-sonnet-5-5","start":"2026-09-03T10:00:00","duration_s":600,"calls":10,"processed":200000,"final_context":50000,"cache_read":150000,"output":4000,"first_context":15000,"peak_context":50000,"children":[],"dest":"' + $dst + '","dest_note":""}'),
+    ('{"agent_id":"o9","role":"operator","description":"cenarios","round":1,"work":"T-041","model":"claude-haiku-5-5","start":"2026-09-03T10:04:00","duration_s":60,"calls":3,"processed":40000,"final_context":12000,"cache_read":30000,"output":500,"first_context":9000,"peak_context":12000,"children":[],"dest":"' + $dst + '","dest_note":""}')
+) -join "`n")
+$r = Invoke-Check 'consumption.ps1' @('-Root', $p)
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p $dst))
+Check 'Consumo: operator sem filho no pai ganha o chamador pelo horário (v3.49)' $r 0 @('chamado por qa \(pelo horário\); medido: o9#1', '\| operator ← qa \| haiku 5\.5 \| 40.000 \| 1 \| 1 ')
+
+# 5c''. consumption.ps1 -Session (v3.49): a sessão principal medida pelo transcript que a G16 grava em cada linha;
+# uuid repetido (linha regravada antes de compactação) não conta; sem -Session a linha medida fica.
+$p = Join-Path $tmp 'consumo-sessao'; New-Project $p
+Put $p $dst ((Get-Content -Raw -Encoding UTF8 (Join-Path $p $dst)) + "`n## Totais do sprint (derivado)`n`n| a | b |`n|---|---|`n| x | y |`n")
+$sess = Join-Path $p 'sess-abcdef12.jsonl'
+Put $p 'sess-abcdef12.jsonl' (@(
+    '{"type":"assistant","uuid":"u1","timestamp":"2026-09-03T09:00:00Z","message":{"id":"x0","model":"claude-sonnet-5-5","usage":{"input_tokens":1,"cache_creation_input_tokens":1,"cache_read_input_tokens":1,"output_tokens":1}}}',
+    '{"type":"assistant","uuid":"u2","timestamp":"2026-09-03T13:05:00Z","message":{"id":"s1","model":"claude-sonnet-5-5","usage":{"input_tokens":10,"cache_creation_input_tokens":1000,"cache_read_input_tokens":4000,"output_tokens":90}}}',
+    '{"type":"assistant","uuid":"u3","timestamp":"2026-09-03T13:20:00Z","message":{"id":"s2","model":"claude-sonnet-5-5","usage":{"input_tokens":10,"cache_creation_input_tokens":100,"cache_read_input_tokens":5000,"output_tokens":90}}}',
+    '{"type":"assistant","uuid":"u3","timestamp":"2026-09-03T13:20:00Z","message":{"id":"s2","model":"claude-sonnet-5-5","usage":{"input_tokens":10,"cache_creation_input_tokens":100,"cache_read_input_tokens":5000,"output_tokens":90}}}'
+) -join "`n")
+$sj = ($sess -replace '\\', '\\')
+Put $p '.team-project/usage.jsonl' ('{"agent_id":"q1","role":"quality-assurance","description":"qa T-041","round":1,"work":"T-041","model":"claude-sonnet-5-5","start":"' + ([datetime]'2026-09-03T13:00:00Z').ToString('yyyy-MM-ddTHH:mm:ss') + '","duration_s":600,"calls":10,"processed":200000,"final_context":50000,"cache_read":150000,"output":4000,"first_context":15000,"peak_context":50000,"children":[],"dest":"' + $dst + '","dest_note":"","session_transcript":"' + $sj + '"}')
+$r = Invoke-Check 'consumption.ps1' @('-Root', $p, '-Session')
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p $dst))
+Check 'Consumo -Session: a sessão principal vira linha medida e entra nos Totais (v3.49)' $r 0 @('\| sessão \| sonnet 5\.5 \| `sessão principal` \| n/a \| cerimônia \| sprint-1 \| 10.300 \|', 'medido: sessão sess-abc; 2 chamada\(s\)', '\| sessão principal \| sonnet 5\.5 \| 10.300 \| 1 \| 1 \|')
+$r = Invoke-Check 'consumption.ps1' @('-Root', $p)
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p $dst))
+Check 'Consumo sem -Session mantém a linha da sessão já medida' $r 0 @('medido: sessão sess-abc', '\| sessão principal \| sonnet 5\.5 \| 10.300 \|')
+if (([regex]::Matches($r.Out, 'medido: sessão sess-abc')).Count -ne 1) { $fail++; Write-Output '---- consumo duplicou a linha da sessão' }
+
+# 5c'''. mark.ps1 (v3.49): a transição numa chamada — quadro, Série (estimativa inalterada) e Registro; o ✅ é do close.
+$p = Join-Path $tmp 'marcador'; New-Project $p
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'plan', '-Root', $p)
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/sprints/1/sprint-backlog.md')) + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/sprints/1/burndown.md'))
+Check 'mark.ps1: quadro, Série e Registro numa chamada' $r 0 @("mark: T-041a $($e.todo) → $($e.plan)", "\| $($e.plan) T-041a \| Variante", "\| T-041a $($e.todo) → $($e.plan) \| 2 \| 2 \|", "\| T-041a \| $($e.todo) → $($e.plan) \| [\d-]+ [\d:]+ \| dev · sessão \(``mark\.ps1``\) \|")
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'plan', '-Root', $p)
+Check 'mark.ps1: Task já no marcador pedido não grava' $r 2 @('já está')
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'done', '-Root', $p)
+Check 'mark.ps1: o ✅ é do close.ps1 -Apply' $r 2 @('close\.ps1 -Apply')
+$bd = Join-Path $p '.team-project/sprints/1/burndown.md'
+Edit-File $bd '| Dia | Data | Evento | Est. restante | Tasks restantes |' "| Dia | Data | Evento | Est. restante | Tasks restantes | $($e.todo) | $($e.plan) | $($e.build) | $($e.qa) | $($e.ok) | $([char]::ConvertFromUtf32(0x1F534)) |"
+Edit-File $bd '|---|---|---|---|---|' '|---|---|---|---|---|---|---|---|---|---|---|'
+Edit-File $bd "| T-041a $($e.todo) → $($e.plan) | 2 | 2 |" "| T-041a $($e.todo) → $($e.plan) | 2 | 2 | 0 | 1 | 0 | 1 | 0 | 0 |"
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'build', '-Root', $p)
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 $bd)
+Check 'mark.ps1: a composição recontada na Série' $r 0 @("\| T-041a $($e.plan) → $($e.build) \| 2 \| 2 \| 0 \| 0 \| 1 \| 1 \| 0 \| 0 \|")
+
+# 5c''''. dispatch.ps1 (v3.49): .active-task em JSON, marcador, modelo do models.json, primeiro plano no benchmark, -Clear.
+$p = Join-Path $tmp 'disparo'; New-Project $p
+Put $p '.team-project/sprints/1/plan/T-041a-x.md' '# Plano'
+$r = Invoke-Check 'dispatch.ps1' @('-Role', 'dev', '-Id', 'T-041a', '-Plan', '.team-project/sprints/1/plan/T-041a-x.md', '-Mark', 'build', '-Root', $p)
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/.active-task'))
+Check 'dispatch.ps1: .active-task em JSON, marcador e parâmetros do Agent' $r 0 @('\{"trilha":"sprint","id":"T-041a","plano":".team-project/sprints/1/plan/T-041a-x.md"\}', "mark: T-041a $($e.todo) → $($e.build)", 'subagent_type "developer" · model omitido — vale o do agente \(haiku\)', 'run_in_background true')
+Put $p '.team-project/models.json' '{ "developer": "sonnet" }'
+Put $p '.team-project/guards.json' '{ "bench": { "arm": "t", "answers": "x.json", "foreground": true } }'
+$r = Invoke-Check 'dispatch.ps1' @('-Role', 'qa', '-Id', 'T-041a', '-Root', $p)
+Check 'dispatch.ps1: papel sem escopo de escrita, e primeiro plano no modo benchmark' $r 0 @('subagent_type "quality-assurance"', 'run_in_background false \(modo benchmark')
+if (Test-Path -LiteralPath (Join-Path $p '.team-project/.active-task')) { } else { $fail++; Write-Output '---- dispatch do QA apagou o .active-task do dev' }
+$r = Invoke-Check 'dispatch.ps1' @('-Role', 'developer', '-Id', 'T-041a', '-Plan', '.team-project/sprints/1/plan/T-041a-x.md', '-Root', $p)
+Check 'dispatch.ps1: model do models.json' $r 0 @('model "sonnet" \(models\.json\)')
+Put $p '.team-project/models.json' '{ "executor": "architect" }'
+$r = Invoke-Check 'dispatch.ps1' @('-Role', 'developer', '-Id', 'T-041a', '-Plan', '.team-project/sprints/1/plan/T-041a-x.md', '-Root', $p)
+Check 'dispatch.ps1: perfil executor dispara o Arquiteto e grava .active-executor' $r 0 @('perfil executor', 'subagent_type "architect"', '\.active-executor: \{"trilha":"sprint","id":"T-041a"')
+$r = Invoke-Check 'dispatch.ps1' @('-Clear', '-Root', $p)
+Check 'dispatch.ps1 -Clear apaga os dois marcadores' $r 0 @('apagado\(s\) \.active-task, \.active-executor')
+$r = Invoke-Check 'dispatch.ps1' @('-Role', 'dev', '-Id', 'T-041a', '-Root', $p)
+Check 'dispatch.ps1: dev sem plano não grava nada' $r 2 @('precisa de -Id e -Plan')
 
 # 5d. verify.ps1 (v3.45.1): evidência mecânica amarrada à árvore; o C1 a lê quando guards.json tem "verify".
 $p = Join-Path $tmp 'verify'; New-Project $p
