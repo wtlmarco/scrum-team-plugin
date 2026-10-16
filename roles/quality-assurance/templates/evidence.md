@@ -21,6 +21,9 @@
 | Documentação | ok/falha | |
 | Desempenho | dentro do orçamento/fora/não exercitado | |
 
+### Render real — só Task com interface (regra 21 · V22)
+*(espelha a do veredito; "n/a — sem interface" com o motivo quando não há. Matriz tela × 3 fontes com ✅/❌ e n/total de medições, mutação que quebrou a medição, versão do navegador headless e trecho + ponteiro do `report`. Headless ausente ou prova só estrutural: ❌/🔺 GAP, nunca ✅.)*
+
 ### Cenários de teste — resultado por cenário mapeado (R30)
 *(todo `SC-nnn` referenciado nesta Task no Sprint Backlog, novo e regressivo aplicável; "nenhum mapeado" só quando a referência já dizia isso)*
 

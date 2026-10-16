@@ -203,9 +203,25 @@ try {
         dest          = $dst.dest
         dest_note     = [string]$dst.note
         report        = $reportRel
+        # v3.49: o transcript da sessão que disparou — o consumption.ps1 -Session mede a sessão principal por ele, no close.
+        session_transcript = [string]$hookInput.transcript_path
     }
     $json = $row | ConvertTo-Json -Compress
     [System.IO.File]::AppendAllText($usagePath, $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+
+    # v3.49: o registro do destino se atualiza aqui, sem depender de a sessão lembrar de rodar o consumption.ps1 (no piloto,
+    # 33 chamadas da sessão a ~400 mil tokens cada). Roda no mesmo processo, com a saída fora do harness; falha vira linha G16.
+    $cons = Join-Path $PSScriptRoot '..\scripts\checks\consumption.ps1'
+    if ((Test-Path -LiteralPath $cons) -and (Test-Path -LiteralPath (Join-Path $projectDir $dst.dest))) {
+        $prevOut = [Console]::Out; $prevErr = [Console]::Error; $rc = 0
+        try {
+            [Console]::SetOut([System.IO.TextWriter]::Null); [Console]::SetError([System.IO.TextWriter]::Null)
+            $global:LASTEXITCODE = 0
+            & $cons -Root $projectDir -File $dst.dest *> $null
+            $rc = $LASTEXITCODE
+        } catch { $rc = 2 } finally { [Console]::SetOut($prevOut); [Console]::SetError($prevErr) }
+        if ($rc -ne 0) { Write-GuardLog $projectDir 'G16' $hookInput 'consumo' "consumption.ps1 saiu com $rc ao gravar $($dst.dest) — rode-o à mão antes do close" }
+    }
     exit 0
 } catch {
     try { Write-GuardLog $projectDir 'erro' $hookInput 'subagent-stop.ps1' $_.Exception.Message } catch { }

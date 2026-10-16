@@ -40,7 +40,7 @@ Roteiro por modo, skills e modelos: `${CLAUDE_PLUGIN_ROOT}/roles/user-experience
 
 ## Formato de resposta padrão
 
-Protótipo funcional · Jornada · Especificação de tela · Revisão de usabilidade — modelos em `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/templates/`.
+Protótipo funcional · Jornada · Especificação de tela · Revisão de usabilidade — modelos em `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/templates/`. **No `sprint run` e no `fix run`, a resposta à sessão é só o retorno curto de R28** (`working-rules.md`); o conteúdo fica no arquivo que você gravou (v3.49).
 
 ## Evolução dos seus documentos — `/review`
 

@@ -22,11 +22,13 @@
     { "paths": [".team-project/fixes.md"], "writers": ["scrum-master"], "matriz": "Trilha `fix` — índice das Correções (`.team-project/fixes.md`)", "dono": "SM" },
     { "paths": [".team-project/fixes/f-*.md"], "writers": ["product-owner"], "matriz": "Trilha `fix` — ficha da Correção (`.team-project/fixes/F-<nnn>.md`)", "dono": "PO" },
     { "paths": [".team-project/fixes/b-*/plan.md"], "writers": ["architect"], "matriz": "Trilha `fix` — pasta do bloco (`.team-project/fixes/B-<nnn>/`)", "dono": "Arquiteto" },
+    { "paths": [".team-project/fixes/b-*/delivery.md"], "writers": ["developer", "architect"], "matriz": "Trilha `fix` — pasta do bloco (`.team-project/fixes/B-<nnn>/`)", "dono": "dev" },
     { "paths": [".team-project/fixes/b-*/verdict.md"], "writers": ["quality-assurance"], "matriz": "Trilha `fix` — pasta do bloco (`.team-project/fixes/B-<nnn>/`)", "dono": "QA" },
     { "paths": [".team-project/fixes/b-*/consumption.md"], "writers": ["scrum-master"], "matriz": "Trilha `fix` — pasta do bloco (`.team-project/fixes/B-<nnn>/`)", "dono": "SM" },
     { "paths": [".team-project/operator/**"], "writers": ["operator"], "matriz": "Jobs do `operator`", "dono": "papel chamador" },
     { "paths": [".team-project/sprints/*/stories/**"], "writers": ["product-owner"], "matriz": "Histórias congeladas do sprint (`.team-project/sprints/<n>/stories/`)", "dono": "PO" },
     { "paths": [".team-project/sprints/*/plan/**"], "writers": ["architect"], "matriz": "Planos de Implementação (`.team-project/sprints/<n>/plan/`)", "dono": "Arquiteto" },
+    { "paths": [".team-project/sprints/*/delivery/**"], "writers": ["developer", "architect"], "matriz": "Relatórios de entrega (`.team-project/sprints/<n>/delivery/`)", "dono": "dev" },
     { "paths": [".team-project/sprints/*/evidence/**"], "writers": ["quality-assurance"], "matriz": "Evidências de execução do sprint (`.team-project/sprints/<n>/evidence/`)", "dono": "QA" },
     { "paths": [".team-project/sprints/*/review.md"], "writers": ["scrum-master", "product-owner"], "matriz": "Registro de sprint — Review e retrospectiva", "dono": "SM" },
     { "paths": [".team-project/sprints/*/*.md"], "writers": ["scrum-master"], "matriz": "Pasta do sprint (`.team-project/sprints/<n>/`)", "dono": "SM" },
@@ -72,7 +74,7 @@
     { "paths": ["agents/**", "commands/**", ".claude-plugin/**"], "writers": [], "matriz": "`${CLAUDE_PLUGIN_ROOT}/agents/*`, `commands/*`, `.claude-plugin/*`", "dono": "stakeholder" },
     { "paths": ["readme.md", "how-to.md", "rituals/**"], "writers": [], "matriz": "Guias e rituais de raiz", "dono": "stakeholder" },
     { "paths": ["changelog.md"], "writers": [], "matriz": "`CHANGELOG.md` (raiz)", "dono": "stakeholder" },
-    { "paths": ["hooks/**", "scripts/checks/**"], "writers": [], "matriz": "`hooks/` e `scripts/checks/`", "dono": "stakeholder" },
+    { "paths": ["hooks/**", "scripts/checks/**", "scripts/metrics/**"], "writers": [], "matriz": "`hooks/` e `scripts/checks/`", "dono": "stakeholder" },
     { "paths": ["note.md"], "writers": ["scrum-master"], "nota": "fila do /review (artifact-ownership.md §1b, homônimo 'note'): dono stakeholder, tratada pelo Agent scrum-master" }
   ]
 }

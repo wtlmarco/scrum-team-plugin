@@ -16,12 +16,12 @@ O projeto **não edita o plugin**. Este relatório é o canal de volta: tira da 
 **Ocorrência que motivou o relatório:** <falha R27 persistente (n) | papel · modelo com consumo > 2× a média dos últimos sprints | ambas> — a investigação e as evidências estão nas seções 2 e 3
 
 ## 1. Consumo por papel e por modelo
-> Fonte: `consumption.md` do sprint. O **modelo** é o configurado no cartão do agente (ou override declarado), não o servido; tokens são um total por invocação, sem divisão entrada/saída. **Piso** — a sessão principal não se autoobserva. O `operator` entra no total, em linha própria por papel chamador; premissa: o número do papel não inclui o do `operator` aninhado.
+> Fonte: `consumption.md` do sprint. O **modelo** é o servido, com a versão (`haiku 4.5`, `opus 5.5`), das linhas medidas (v3.49); linha à mão traz o configurado no cartão; tokens são um total por invocação, sem divisão entrada/saída. **Piso** — a sessão principal não se autoobserva. O `operator` entra no total, em linha própria por papel chamador; premissa: o número do papel não inclui o do `operator` aninhado.
 
-| Papel | Modelo | Σ tokens | Invocações | Duração total | % do total |
+| Papel | Modelo | Σ tokens | Instâncias · rodadas | Duração total | % do total |
 |---|---|---|---|---|---|
-| <papel> | <modelo \| "não disponível — <motivo>"> | <n> | <n> | <mm:ss> | <n%> |
-| operator ← <papel chamador> *(uma linha por chamador)* | <modelo do `operator`> | <n> | <n chamadas> | <mm:ss> | <n%> |
+| <papel> *(uma linha por papel e modelo)* | <modelo \| "não disponível — <motivo>"> | <n> | <n · n> | <mm:ss> | <n%> |
+| operator ← <papel chamador> *(uma linha por chamador)* | <modelo do `operator`> | <n> | <n · n chamadas> | <mm:ss> | <n%> |
 | **Total** (papéis + `operator`) | — | **<n>** | **<n>** | **<mm:ss>** | 100% |
 
 - **Contra o sprint anterior:** <Δ% e a causa | primeiro sprint com registro>

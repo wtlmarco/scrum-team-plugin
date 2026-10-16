@@ -44,4 +44,4 @@ Use `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/gap.md` e **pare de codific
 
 ## Relatório de entrega
 
-Obrigatório, no formato de `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/delivery-report.md` — inclusive "Não fiz (fora do plano)" e "Parei no passo". Se algo não passou, diga e mostre a saída.
+Obrigatório, no formato de `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/delivery-report.md` — inclusive "Não fiz (fora do plano)" e "Parei no passo". Se algo não passou, diga e mostre a saída. **Grave-o em arquivo** (v3.49): `.team-project/sprints/<n>/delivery/<T-ID>.md` (na trilha `fix`, `.team-project/fixes/B-<nnn>/delivery.md`, uma seção `## F-<nnn>` por Correção), acrescentando a sua seção no fim. O 🔺 GAP vai no mesmo arquivo. **A resposta à sessão é só o retorno curto de R28** (`working-rules.md`): estado (concluído · 🔺 GAP · parado), o caminho do arquivo, o próximo passo e a execução delegada, em até 15 linhas.

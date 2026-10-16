@@ -50,9 +50,9 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 
 > Lê [`consumption.md`](consumption.md) da **mesma pasta do sprint**, e só existe quando o projeto registra consumo — sem o arquivo, escreva `n/a` e siga. **Não é footprint** e **não se soma** às duas linhas de KB acima: aquelas medem a pegada estática do processo, esta mede o gasto real do trabalho dos papéis ([`../process/workflow-processo.md` §5c](../process/workflow-processo.md)).
 
-| Papel | Modelo | Σ tokens | Nº de invocações | Duração total | Leitura em uma linha |
+| Papel | Modelo | Σ tokens | Instâncias · rodadas | Duração total | Leitura em uma linha |
 |---|---|---|---|---|---|
-| SM · PO · Arquiteto · UX · dev · QA | <modelo do registro> | <n> | <n> | <mm:ss> | <o que explica o número — sprint de spike, retrabalho, harness completo> |
+| SM · PO · Arquiteto · UX · dev · QA | <modelo servido, com versão, do registro> | <n> | <n · n> | <mm:ss> | <o que explica o número — sprint de spike, retrabalho, harness completo> |
 | operator ← <arc\|qa\|dev\|ux> *(uma linha por chamador)* | <modelo do `operator`> | <n> | <n chamadas> | <mm:ss> | <o que o chamador delegou — build, suíte, réplica> |
 | **Total do sprint** (papéis + `operator`) | — | **<n>** | **<n>** | **<mm:ss>** | — |
 

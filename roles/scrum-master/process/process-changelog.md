@@ -13,6 +13,8 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.47`](process-changelog-archive.md) | Modelo por papel (G17), perfil Arquiteto executor, modo benchmark (G18) e ritual "modo projeto": o plugin pronto para o experimento sem intervenção (SM + Arquiteto + QA + Dev) — 10/10/2026 · *com addendum v3.47.1 de 12/10/2026* |
+| [`v3.46`](process-changelog-archive.md) | Plano em contrato conferido antes do dev, prova de falha por mutação, trilha leve por Task, Arquiteto um passo à frente e fechamento pela sessão (SM + Arquiteto + Dev + QA) — 06/10/2026 |
 | [`v3.45`](process-changelog-archive.md) | Consumo medido no transcript (G16), R28 por Task e plano em blocos de até 8 arquivos com uma instância de dev por bloco; addendum v3.45.1: verificação uma vez só, amarrada à árvore (SM + Arquiteto + Dev + QA + UX) — 06/10/2026 |
 | [`v3.44`](process-changelog-archive.md) | Run sem trava: o Arquiteto decide e não escreve no código (G8 nega), a G14 libera o operacional do run, a G15 registra pedido de permissão; addendum v3.44.1/v3.44.2 (SM + Arquiteto) — 06/10/2026 |
 | [`v3.43`](process-changelog-archive.md) | `sprint run` sem paradas fora do contrato: lista fechada de paradas, rota do gate protegido, negação ao dev vira 🔺 GAP, interrupção pelo stakeholder e marcador acompanhando a Task; addendum: veredito pelo primeiro marcador, desvio aceito no R4, código de saída do `operator` (SM + Arquiteto + QA) — 05/10/2026 |
@@ -87,6 +89,162 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.50 — Mudança de layout se prova em render real: navegador headless, 3 fontes × telas, mutação que quebra a medição; e as paradas do `run` fecham no texto (SM + Arquiteto + Dev + QA) — 16/10/2026
+
+**Instrução** (stakeholder, `/review note`, item 2, decisão "Render real" de 16/10/2026; item 4 movido da v3.49): Task que muda layout ou estilo visível exige, no plano, caixas medidas em navegador headless, 3 tamanhos de fonte × as telas relevantes; prova só por estrutura não basta; a mutação tem de quebrar a medição. **Causa medida:** layout (Ionic) provado por CSSOM/seletor passou no plano, no QA e na mutação e quebrou no aparelho (~15,5 M tokens de conserto no piloto).
+**Classificação:** formato de documento (plano, veredito, evidência, relatório de entrega) · standard (`implementation-principles.md`) · comportamento de agente (QA decide "interface" e executa a medição). **Sem regra nova** (34): reforça R23 e R26. A R17 abriu esta versão, e não um addendum da v3.49, porque o bloco v3.49 estava na barreira (15 344 de 15 360 B); o item 4 foi **movido** para cá, texto intacto.
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `roles/architect/templates/implementation-plan.md` | §3, §6, §9, regra 21, trilha leve | Linha do navegador headless medido; tabela **Render real** (teste × tela × 3 fontes × caixas × "deve falhar se…"); linha fixa de 🔺 GAP (headless ausente); regra 21; leve **nunca** com interface |
+| `roles/architect/templates/fix-plan.md` · `roles/architect/README.md` | regra 15 · regra 21 e indicador | Correção de layout: o teste de regressão é de render; sem headless no `developer/context.md` é C7 ✘ e promoção |
+| `standards/implementation-principles.md` | §5.1, §6, §7 | Nível **Render**; "mudança de layout se prova em render real"; **V22** (navegador/driver, versão, comando); linha 23 do quadro (Task volta ao dev) |
+| `roles/developer/templates/delivery-report.md` | regras | Saída do render em trecho **e** ponteiro; render pulado ou trocado por estrutura é 🔺 GAP |
+| `roles/quality-assurance/README.md` · `templates/verdict.md` · `evidence.md` · `scenario.md` | frente 1, `/qa`, trilha leve; tabela **Render real**; cenário | O QA decide se há interface, **executa ou reexecuta** o comando de V22, confere 3 fontes × telas e a mutação sobre a medição; sem render real é ❌ ou 🔺 GAP, nunca ✅; cenário não prova layout; Task "leve" com interface = achado de processo à Planning |
+| `roles/scrum-master/process/fix-run.md` · `deliverables/sdd/03-architecture.md` | §Plan passo 4 · Ficha | Ponteiro à regra 15 do `fix-plan.md`; a Ficha passa a V1–V22 |
+
+### Por quê
+Estrutura (regra presente, seletor que casa, snapshot) não prova geometria: o navegador pode aplicar a regra e a caixa quebrar mesmo assim. Sem a medição no plano, o QA não tinha o que reexecutar e a mutação sobre uma regra de estilo "matava" sem tocar a caixa; o defeito só aparecia no aparelho do stakeholder, depois de três portões. A leve fica de fora porque a prova exige o navegador medido na §3, que ela não tem.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| Arquiteto | Task com interface sem tabela **Render real**, headless medido na §3 e mutação sobre a medição não sai do plano; layout provado por estrutura é achado de processo contra ele |
+| Dev | Entrega a saída do teste de render; trocar a medição por teste de estrutura não é decisão dele (🔺 GAP) |
+| QA | Em Task com interface, executa a medição e reprova ou abre GAP sem ela; "há interface?" é julgamento dele, por stack |
+| SM | Task "leve" com interface devolve-se à trilha plena na Planning |
+
+### Conflitos com o processo vigente
+Nenhum (R23 e R26 reforçadas). Trilha leve do Arquiteto ("nunca com interface") e do QA ("se chegou como leve, a render é exigida e vira achado") dizem a mesma coisa pelos dois lados.
+
+### Como saberemos que funcionou
+Zero defeito de layout achado pelo stakeholder no aparelho depois do ✅ do QA em Task com interface; todo veredito de Task com interface traz a tabela **Render real** preenchida (conferível em `evidence/<T-ID>.md`).
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| substituição de padrão | `Select-String -List "Render real\|render real\|regra 21\|V22"` em `roles/architect`, `roles/developer`, `roles/quality-assurance`, `standards/implementation-principles.md` | 9 arquivos (os 9 da tabela acima), cada ocorrência lida no contexto | ✅ |
+| substituição de padrão | `Select-String "render real \(v3\.49\)"` em `implementation-plan.md` · `Grep "V1–V21"` fora dos changelogs | 0 · 0 (regra 21 marcada v3.50, que o Arquiteto escreveu como v3.49; Ficha de `03-architecture.md` passa a V1–V22) | ✅ (2 resíduos consertados) |
+| arquivamento | bloco v3.49 e v3.47 do HEAD × working tree (`git show HEAD:` contra o arquivo, `-ceq`); `git diff HEAD -U0` do changelog | v3.49 igual ao HEAD (o addendum saiu dele; hunks só no índice, no bloco v3.50 e na saída da v3.47); v3.48 igual; v3.47 no arquivo igual ao HEAD; addendum movido sem uma linha diferente | ✅ |
+| extração/remoção | `powershell -NoProfile -File scripts/checks/release.ps1` | R17 ok (bloco v3.50 ≤ 15 360 B, 4 papéis, 3 entradas vivas), ps1-5.1, ownership e órfãos ok; R18 falha só por `CHANGELOG.md` ainda na v3.49.0 (a sessão escreve a entrada) | ✅ (R18 esperado) |
+
+### Pendente do stakeholder
+**(d) `scripts/checks/plan.ps1`: resultado novo `render`** (Arquiteto; texto em [`proposals-pending.md`](proposals-pending.md) §Item 2); as três propostas do addendum abaixo seguem pendentes. **Achado do QA:** a trilha `fix` não tem tabela **Render real** no veredito, embora a regra 15 do `fix-plan.md` exija o teste de render.
+
+### Addendum — as paradas do `run`: o texto fecha, o instrumento fica proposto (16/10/2026)
+**Instrução** (`/review note`, item 4). **Causa medida:** 4 paradas fora da lista fechada (~24,5 h) e ~122 h de máquina suspensa com `.active-run` (71 h sem retomar). **Sem regra nova** (regra mecânica só com guarda).
+- `sprint-run.md` §Ordem da fila e §Como o SM verifica: não-paradas listadas; formulário de bloqueio só com a Task 🔴, degrau 1 aberto e fila esgotada; retomada da fila ao reabrir com `.active-run`. R25(c): ponteiro.
+- **Achado:** nenhuma regra sobre atualizar o plugin no meio do sprint (`team-update.md` só cobre migração de pastas). Sem regra criada.
+- **Indicador:** zero parada fora da lista no próximo `run` real (`waits` > 1 h com Task ⬜ elegível).
+- **Evidência (R19):** `release.ps1` ok; `Select-String` de "duas condições" em `sprint-run.md` → 0 (corrigido para "três").
+- **Pendente do stakeholder:** (a) hook `Stop` G20, (b) `session-start.ps1` com retomada, (c) `how-to.md` energia — texto e especificação em [`proposals-pending.md`](proposals-pending.md).
+
+---
+
+## v3.49 — Custo medido nos transcripts: retorno curto à sessão com o relatório do dev em arquivo, Arquiteto novo quando o cache venceu, toque de cache da sessão, gravação por etapa e dev por F-ID no `fix` (SM + Arquiteto + Dev + QA) — 16/10/2026
+
+**Instrução** (stakeholder): "Pode seguir", sobre a classificação dos itens de `note.md` a aplicar antes do benchmark (antigos 1, 2, 11, 13 e 15), com as decisões do formulário de 16/10/2026: retomada → **"Arquiteto novo"**; relatório → **"Retorno curto + arquivo"**. **Condução:** os agentes do time não estavam carregados na sessão que aplicou (plugin instalado em outro diretório de configuração). Por isso a sessão conduziu os cinco passos de `review-contract.md`, respeitando o alcance de cada papel, e aplicou `agents/`, `commands/`, `README.md`, `rituals/`, `hooks/ownership.json` e `scripts/` só pela decisão do stakeholder.
+**Causas medidas** nos transcripts do primeiro sprint do piloto (04–13/10, plugin 3.46.0; 758 M tokens, ~US$ 282 em preço de API):
+- **A sessão principal** é ~40 % do custo, com 403 mil tokens por chamada; ~37 % do crescimento dela são retornos de agente (estimado).
+- **As quebras de cache** custaram ~US$ 96 (34 %), quase todas por expiração. US$ 38 vieram da sessão esperando agente por mais de 1 h, e US$ 22 de 16 retomadas do Arquiteto (Opus, 288 mil tokens) depois de o cache de 5 min vencer.
+- **Trabalho perdido em interrupção:** o Arquiteto ficou ~2 h sem gravar o plano, e o QA 5 h 33 min sem gravar a evidência.
+
+**Classificação:**
+- fluxo: `sprint-run.md` passos 3–6, §Disparo e §Retomada (nova); `fix-run.md` passos 2–3 e §Bloco;
+- regra: a R27 ganha a exceção do Arquiteto, e a R28 ganha o retorno à sessão;
+- propriedade: `delivery/` no sprint e `delivery.md` no bloco, dono dev; `architect/breakdown/`;
+- formato: o relatório de entrega passa a ser arquivo;
+- comportamento de agente.
+
+**Sem regra nova** (34).
+**Papéis movidos (R17):** 4 — SM, Arquiteto, Dev, QA → barreira de 15 360 B.
+
+### O que mudou
+| Documento | Mudança |
+|---|---|
+| `working-rules.md` R27 · R28 | R27: o Arquiteto parado há mais de 5 min é aberto em instância nova, que lê o disco. R28: **retorno à sessão** no `run`, em até 15 linhas (estado · arquivo · próximo · execução delegada); o conteúdo fica no artefato e passa pelo caminho; fora do `run`, vale o artefato inteiro |
+| `sprint-run.md` | passo 3: relatório em `sprints/<n>/delivery/<T-ID>.md`; passo 4: GAP ao Arquiteto pelo caminho (o mesmo se parou há menos de 5 min, senão um novo); §Retomada; §Disparo: retorno curto e **toque de cache** (`CronCreate` `17,47 * * * *` junto com o `.active-run`, fora do benchmark, em avaliação); Como o SM verifica |
+| `fix-run.md` | dev **uma instância por F-ID**, com o `.active-task` da F-ID; relatório em `fixes/B-<nnn>/delivery.md`; GAP a Arquiteto novo; N + 2 invocações por bloco |
+| README do Arquiteto · `workflow-sprint.md` Planning 4 | plano gravado seção a seção; quebra em Tasks em `architect/breakdown/S<n>.md` a cada História; `/arc question` em instância nova lê só o plano, o GAP e o código citado |
+| README do QA | evidência aberta no passo 1 e gravada frente a frente; retorno curto |
+| `delivery-report.md` · `gap.md` · README do dev | onde fica o relatório; seções acrescentadas no fim; o GAP no mesmo arquivo; na calibração, o relatório continua na resposta |
+| `artifact-ownership.md` §1 · §1e · `hooks/ownership.json` · `deliverables/team-project/README.md` | linhas novas para os relatórios de entrega e o `delivery.md` do bloco (dono dev; escritores dev e Arquiteto executor); `architect/breakdown/`; `scripts/metrics/` junto de `hooks/`; cinco donos na pasta do sprint |
+| Pela decisão do stakeholder | `agents/*` (retorno curto; o dev grava o relatório; o QA lê o arquivo; o Arquiteto em instância nova) · `commands/dev.md` · `README.md` (tipos de documento) · `team-update.md` 7j · `scripts/metrics/` (novo) · 5 casos novos da G8 · `note.md` renumerado |
+
+### Por quê
+O registro do time media o volume dos subagentes. Medido em US$ e com a sessão incluída, o custo está na sessão (40 %) e no Arquiteto (38 %); o dev em Haiku é ~5 %. Dois mecanismos explicam a maior parte:
+- **O que volta inteiro para a sessão é relido em cada chamada seguinte dela.** Os papéis já gravavam o artefato (plano, evidência); faltava o relatório do dev, que só existia na resposta. Com ele em arquivo, a sessão passa caminhos.
+- **O cache que vence durante a espera é regravado inteiro.** Para o Arquiteto, as duas formas de manter o cache vivo foram medidas e descartadas. O cache de 1 h para subagentes (`CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`, documentado no Claude Code), simulado no mesmo sprint, sairia US$ 5,6 **mais caro**: toda gravação passa a 2×, e as retomadas caras vieram depois de mais de 1 h. O toque, por sua vez, não alcança subagente. Na sessão, o toque compensa: as esperas de 1 a 4 h custaram US$ 27,8 regravando, contra ~US$ 5 com um toque a cada 30 min.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| Dev | grava o relatório de entrega (e o GAP) em arquivo e devolve o retorno curto; no fix, uma instância por F-ID |
+| Arquiteto | grava o plano e a quebra por etapa; numa instância nova, lê só o plano, o GAP e o código citado |
+| QA | lê o relatório do arquivo; grava a evidência frente a frente; retorno curto |
+| Sessão / SM | passa caminhos, não conteúdo; decide entre a mesma instância e uma nova pelo tempo parado; cria e apaga o toque junto com o `.active-run` |
+
+### Conflitos com o processo vigente
+- **R27 e o passo 4 do `sprint-run.md`** mandavam sempre retomar o mesmo agente por `SendMessage`. Levado ao stakeholder (formulário de 16/10/2026): só a retomada do Arquiteto muda, decidida pelo tempo parado.
+- **O README** classificava o relatório de entrega como "saída". Reclassificado como vivo, pela mesma decisão.
+
+### Como saberemos que funcionou
+No próximo sprint real, medido com `scripts/metrics/transcript-metrics.js` contra o sprint 1 do piloto, **mecanismo por mecanismo**:
+- retornos de agente em até 15 % do crescimento da sessão (`growth --session`; eram ~37 %);
+- regravação do Arquiteto depois de devolver em até US$ 5 (`breaks`; eram US$ 22, em 16 retomadas), sem subir o número de GAPs por plano;
+- regravação da sessão por pausa de mais de 1 h com agente rodando em até US$ 10 (eram US$ 38), e nenhum toque em que a sessão trabalhou;
+- nenhuma interrupção que descarte plano ou veredito parcial.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | `Select-String` em todo `*.md` fora dos changelogs: `uma F-ID por vez` · `quatro donos diferentes` · `três subpastas de outros donos` · a linha "Saída" antiga do README | zero ocorrências | ✅ |
+| Leitura no contexto | `delivery/` e `delivery.md` (27 ocorrências em 16 arquivos) e `§Retomada` (8 em 6), lidos um a um | caminho, dono e seção coerentes em cada ocorrência; a pasta do sprint passa a ter cinco donos e quatro subpastas de outros donos | ✅ |
+| Arquivamento de entrada | o bloco v3.46 que saiu do vivo × o que entrou no arquivo (`.Contains`) | idêntico; `git diff --stat`: −44 no vivo, +45 no arquivo (o separador) | ✅ |
+| Guardas | `run-guard-tests.ps1` | 166 casos · 0 falharam (5 novos da G8: dev em `delivery/` e em `delivery.md` do bloco liberados; QA em `delivery/` e dev em `plan.md` do bloco negados; Arquiteto em `breakdown/` liberado) | ✅ |
+| Conferências | `run-check-tests.ps1` | 91 casos · 0 falharam | ✅ |
+| Medição | `transcript-metrics.js cost · breaks · session · waits · growth` sobre o piloto | reproduz os números da análise (US$ 282,3; quebras US$ 95,7; sessão com 697 chamadas e 403 mil por chamada; plano com 18 % do crescimento) | ✅ |
+
+**Não exercitado:** um `sprint run` real com retorno curto, instância nova do Arquiteto e o toque (o `CronCreate` disparando durante a espera da notificação). O ensaio do benchmark roda em primeiro plano, onde o toque não dispara.
+
+### Pendente do stakeholder
+Propostas com especificação, sem texto aplicado:
+- **G19 (nova):** `PreToolUse · SendMessage` na sessão. Nega o `SendMessage` a uma instância de `team:architect` cuja última rodada no `usage.jsonl` terminou há mais de 5 min, com a rota "instância nova — `sprint-run.md` §Retomada". É o instrumento da exceção da R27.
+- **G16:** gravar o tamanho da resposta final (linhas e bytes) no `usage.jsonl`. É o instrumento do retorno curto (R28).
+- Os itens de scripts e hooks da fila entraram nos addenda abaixo; ficam em `note.md` os 5 itens de desenho e medição.
+
+Depois de mesclar: atualizar o plugin no piloto e no benchmark, `/team update` (7j), reiniciar a sessão.
+
+### Addendum — o registro de consumo que fecha, atualizado pelo hook, com o modelo servido (16/10/2026)
+**Instrução** (stakeholder): "Vamos seguir na opção 1": itens 1, 6 e 10 da fila, e a investigação do item 9. **Causa:** no piloto, os Totais diziam 100 invocações contra 137 linhas no Registro, e o fechamento os corrigiu à mão. Havia uma linha de `operator` sem chamador, o SM aparecia com 0 processado (só tinha a notificação), e "haiku" juntava Haiku 4.5 e 5.5, com preço por token ~10× diferente. A sessão rodou `consumption.ps1` 33 vezes e editou o `consumption.md` à mão 20 vezes, a ~400 mil tokens por chamada.
+**Classificação:** instrumento (`consumption.ps1`, G16) · formato (`templates/consumption.md`, `plugin-report.md`, `retrospective.md`). **Sem regra nova.**
+
+| Documento | Mudança |
+|---|---|
+| `scripts/checks/consumption.ps1` | modelo servido com versão (`haiku 4.5`); Totais com uma linha por papel e modelo, **Instâncias** e **Rodadas** em colunas separadas, e `não medido — só notificação` no grupo sem medida; `operator` sem filho na linha do pai ganha o chamador pela rodada de outro papel, na mesma Task, que contém o início dele (`chamado por <papel> (pelo horário)`) |
+| `hooks/subagent-stop.ps1` (G16) | roda o `consumption.ps1` no destino ao fim de cada rodada, no mesmo processo e com a saída fora do harness; uma falha vira linha `G16 · consumo` |
+| `templates/consumption.md` · `plugin-report.md` · `retrospective.md` · `sprint-run.md` §Disparo · `how-to.md` · `COVERAGE.md` · `team-update.md` 7j | a sessão só roda o script antes de uma conferência; colunas e modelo novos; corrigida uma linha de regra colada à anterior no modelo do consumo |
+| `scripts/metrics/transcript-metrics.js` | descarta evento repetido (mesmo `uuid`): a "parada de 68 h" do piloto era uma linha regravada antes de uma compactação; `waits` cai de ~206 h para ~137 h, e custo e quebras não mudam |
+| `note.md` | saem os itens de consumo; o item das paradas é reescrito com a investigação: ~24,5 h fora do contrato, ~122 h de máquina suspensa com agentes rodando, ~6,8 h de decisão legítima do stakeholder |
+
+**Verificação (R19):** `run-check-tests.ps1` → 93 · 0 (2 novos: Totais com instâncias × rodadas e o modelo com versão; chamador pelo horário); `run-guard-tests.ps1` → 167 · 0 (1 novo: a G16 grava a linha medida no `consumption.md` do sprint aberto); `release.ps1` ok. **Não exercitado:** a G16 rodando o script num sprint real, e duas rodadas terminando no mesmo instante (as duas reescrevem a partir do `usage.jsonl`, e a última vence com os dados completos).
+
+### Addendum — as escritas mecânicas da sessão em script (16/10/2026)
+**Instrução** (stakeholder): "Pode fazer o 3 que são scripts mecânicos". **Causa medida:** no piloto, a sessão gastou 18 chamadas em quadro e burndown, 50 em `.active-*` e 33 em `consumption.ps1`, a ~400 mil tokens cada. Um `.active-task` gravado fora do formato derrubou a G9. E a sessão, ~40 % do custo, não entrava no registro do time.
+**Classificação:** instrumento (`mark.ps1` e `dispatch.ps1` novos, `consumption.ps1 -Session`, G16) · fluxo (`sprint-run.md` passos 3, 7, 8, §Marcador e §Modelo por papel; `fix-run.md` passo 2). **Sem regra nova.**
+
+| Documento | Mudança |
+|---|---|
+| `scripts/checks/mark.ps1` (novo) | `-Task -To plan\|build\|qa\|blocked\|todo`: troca o marcador no quadro, acrescenta a linha da Série (composição recontada, estimativa inalterada) e a do Registro (no burndown, ou no quadro anterior à v3.44.1). Calcula tudo antes de gravar. Recusa o ✅, que é do `close.ps1 -Apply` |
+| `scripts/checks/dispatch.ps1` (novo) | grava o `.active-task` em JSON (e o `.active-executor` no perfil executor), marca pelo `mark.ps1` e imprime o papel efetivo, o `model` do `models.json` e o `run_in_background` (falso no benchmark com `foreground`); `-Clear` apaga os dois marcadores |
+| `consumption.ps1 -Session` · G16 | a G16 grava o `session_transcript` em cada linha; com `-Session` (no `close` e na retrospectiva, nunca no hook), o script mede a sessão desde a primeira rodada do destino, deduplicado por `message.id` e `uuid`, e a escreve como linha `sessão` medida, que entra nos Totais. Sem `-Session`, a linha já medida fica |
+| `sprint-run.md` · `fix-run.md` · `commands/dev.md` · `artifact-ownership.md` · `templates/consumption.md` · `COVERAGE.md` · `README.md` · `team-update.md` 7j | os passos usam os scripts; a sessão medida no registro |
+
+**Verificação (R19):** `run-check-tests.ps1` → 105 · 0 (12 novos: `mark` em quadro, Série e Registro, a composição recontada, o marcador repetido e o ✅ recusados; `dispatch` com o JSON, o marcador, o modelo do `models.json`, o primeiro plano no benchmark, o executor, o `-Clear` e o dev sem plano; `-Session` com o `uuid` repetido descartado e a linha mantida sem `-Session`); `run-guard-tests.ps1` → 167 · 0; `release.ps1` ok. **Medido:** o `-Session` sobre um transcript real de sessão do piloto (9,4 MB, 418 chamadas) leva 7 s no PowerShell 5.1 e dá 204,6 M processados, coerente com `scripts/metrics`. **Não exercitado:** os três scripts num sprint real.
+
+---
+
 ## v3.48 — O que o primeiro sprint do piloto mostrou: relatório do `operator` gravado pelo hook, guardas sem falha aberta nem falso negado, C1 que fecha o que é legítimo (SM + Arquiteto + Dev + QA) — 14/10/2026
 
 **Instrução** (stakeholder): "Pode aplicar", sobre `avaliacao-first-result.md` — grupos A (fechamento) e B (guardas). Base: `first-result/plugin-report.md` (relatório do SM do piloto, plugin 3.46.0 instalado), `first-result/guards.log` (04 a 13/10/2026, 4 821 linhas) e o `guards.json` do projeto; os comandos negados foram **reexecutados contra o hook da v3.47.1** antes da correção. **Causas medidas:** 9 edições do dev sem G6/G8/G9 (`.active-task` não JSON derrubava o hook — falha aberta); 6 falsos negados na G8/G9 (`>` dentro de texto lido como destino); ≥ 19 na G14 (caminho entre aspas virava `""`, conferência com `2>&1`, `Get-Process`, `npm --prefix`, `[Math]::`); C1 com R26/R28 `falhou` em toda Task com `operator` (o harness recusa relatório gravado por subagente), sem lugar para a decisão do stakeholder na R4, lendo só o bloco mais novo da evidência (R7) e com o `-Apply` saindo com exit 2 no quadro anterior à v3.44.1.
@@ -131,84 +289,3 @@ Grupo C da avaliação (retomada por `SendMessage` com contexto grande, Totais d
 | `deliverables/team-project/guards.json` · `team-update.md` 7h | chave opcional documentada, com o exemplo do Gradle |
 
 **Verificação (R19):** `run-check-tests.ps1` → 91 · 0 (2 novos: Gradle com `testRoot` + `--tests {class}`; `{path}::{class}` fora do padrão `src/`); `run-guard-tests.ps1` → 161 · 0. **Não exercitado:** um Gradle real — o ensaio do P é o primeiro.
-
----
-
-## v3.47 — Modelo por papel (G17), perfil Arquiteto executor, modo benchmark (G18) e ritual "modo projeto": o plugin pronto para o experimento sem intervenção (SM + Arquiteto + QA + Dev) — 10/10/2026
-
-**Instrução** (stakeholder): "já habilite esse chaveamento configurável pelo `models.json` sendo possível para todas as rules" (M1, generalizada a todos os papéis) e, depois, "pode executar [M2, M3 e M4] sobre a branch 3.47.0 como um novo commit" — sobre `proposta-benchmark-projeto.md` (§9, §13). **Causa:** o modelo de cada papel estava fixo no `model:` de `agents/<papel>.md` e em duas exceções do processo; o experimento de benchmark em modo projeto exige três coisas que o plugin não tinha — variar o papel que implementa (P2), responder os formulários sem o stakeholder e tratar a navegação do protótipo como simulada — e um roteiro para o conjunto.
-**Classificação:** instrumento (G17 e G18 no `pre-tool.ps1`, `models.ps1`, C2) · formato (`models.json`, `.active-executor`, `guards.json` → `bench`) · fluxo (`sprint-run.md` §Modelo por papel, §Modo benchmark, passos 3, 4 e 8) · comportamento de agente (`/arc execute`) · ritual (`benchmark.md` §7). **Sem regra nova** (34).
-**Papéis movidos (R17):** 4 — SM, Arquiteto, QA, Dev → barreira de 15 360 B.
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `.team-project/models.json` (novo, opcional, **do stakeholder**) | — | chave = papel ou apelido do comando; valor `opus` `sonnet` `haiku` `fable`; `""` = não configurado; **chave ligada vence o agente e as exceções** (trilha leve, 3ª instância); `executor` liga o perfil Arquiteto executor |
-| `hooks/pre-tool.ps1` · `common.ps1` | **G17** | nega o disparo pela ferramenta `Agent` cujo modelo efetivo difere do `models.json`; sessão e `operator` disparado por papel; arquivo ilegível ou valor inválido → ignorado |
-| `hooks/pre-tool.ps1` | **perfil executor (M2)** | `models.json` → `executor: architect` **e** `.active-executor`: a **G8** libera o código ao Arquiteto, a **G9** o limita aos arquivos do plano (rota "corrija o plano"), a **G6** veta teste ignorado; marcador sem perfil é ignorado |
-| `hooks/pre-tool.ps1` | **G18 (M3)** | `guards.json` → `bench`: o `AskUserQuestion` é **negado com a resposta do dossiê** (`answers`: regex pergunta → regex rótulo; sem regra, a recomendada; nunca "Pedir mais contexto"), `questions.log` por braço, e `foreground` nega `Agent` em segundo plano |
-| `scripts/checks/project.ps1` (C2) | R15 | "navegação simulada (benchmark)" aceita **só com `bench` ligado**; fora dele, falha |
-| `scripts/checks/models.ps1` (novo) | `-Role` · `-Check` · tabela | modelo configurado, validação e efetivo dos 7 papéis, com o estado do perfil executor |
-| `agents/architect.md` · `roles/architect/README.md` | `/arc execute <ID>` | o Arquiteto implementa o próprio plano: contrato do dev, plano errado se corrige (linha em `**Plano corrigido durante a execução:**`), mudança funcional continua subindo, sem planejar a Task seguinte |
-| `sprint-run.md` | §Modelo por papel · §Modo benchmark · passos 3, 4, 8 · pré-condição 1 | despacho por `models.json`; perfil executor no passo 3; apagar `.active-executor` na saída da Task; "navegação simulada" vale com `bench` |
-| `rituals/benchmark.md` §7 · `templates/benchmark.md` | modo projeto | projeto-padrão, braços P · N · N-forte, escopo de 1 sprint + `fix`, oráculo oculto, rubrica de documentação, sonda de manutenibilidade, regra datada, laço de melhoria, modelo do `result.md` |
-| `artifact-ownership.md` §1 · `ownership.json` · manifesto · `how-to.md` · `COVERAGE.md` | linhas novas | `models.json` (stakeholder); `.active-executor` com `.active-run`/`.active-spike`; G17, G18 e o perfil executor |
-
-**Verificação (R19):** `run-guard-tests.ps1` → 132 casos · 0 falharam (47 novos desde a v3.46: G17, perfil executor, G18); `run-check-tests.ps1` → 74 casos · 0 falharam (22 novos: `models.ps1`, C2). **Não exercitado:** um `sprint run` real com qualquer das três configurações sob `claude -p`; se o harness lê a negação do `AskUserQuestion` como resposta — o ensaio do P0 é o primeiro teste real.
-
-### Addendum v3.47.1 — prova de falha que só conta com o teste rodando, mutação em fatias, G14 sem falso negado (12/10/2026)
-**Instrução** (stakeholder): "Sim faça" — itens 1 a 3 da avaliação de `relatorio-processo-sprint-1-parte-2.md` (projeto-piloto, 07 a 12/10). **Causa:** `verify.ps1` contava como mutação pega **todo** exit ≠ 0 — mutante que não compila, `Executed 0 of 0`, navegador desconectado (T-012 fechada com prova inválida e reaberta); a mutação inteira (~25 min) numa chamada estourava o vigia de 600 s; a G14 cortava `(Get-Content f).Count` nos parênteses e negava o `.Count` como comando — a forma que o próprio card do `operator` manda usar —, e a mensagem não dizia qual trecho do comando composto falhou (🔺 GAP indevido).
-**Classificação:** instrumento (`verify.ps1`, `plan.ps1`, G14) · formato (`guards.json` → `verify.testRoot`, `inconclusive`, `caught`) · comportamento de agente (dev, QA: exit 3 e `inconclusivo`). **Sem regra nova.**
-
-| Documento | Mudança |
-|---|---|
-| `scripts/checks/verify.ps1` | **linha de base** por teste (sem mutação: passa e executa teste) · `inconclusivo` com compilação quebrada, zero teste ou runner caído (padrões embutidos + `inconclusive`; `caught` opcional) · trecho vazio não estoura · **`-MaxMinutes`** (padrão 8) → exit 3, a chamada seguinte na mesma árvore continua · `-Tests`/`-Only` em lista por vírgula (`powershell -File`) · `testRoot` |
-| `scripts/checks/plan.ps1` | trecho de mutação vazio (crase dupla) reprova |
-| `hooks/pre-tool.ps1` (G14) | propriedade entre parênteses liberada, método negado · `git branch` só de listagem · `--version` · a negação cita o trecho recusado |
-| `agents/developer.md` · `agents/quality-assurance.md` · `sprint-run.md` passo 3 · modelo do plano (regra 18) · `team-update.md` 7h · modelo do `guards.json` · `COVERAGE.md` | exit 3 = rodar de novo; `inconclusivo` não é pega; mutante tem de compilar; chaves opcionais |
-
-**Verificação (R19):** `run-check-tests.ps1` → 81 casos · 0 falharam (7 novos); `run-guard-tests.ps1` → 140 · 0 (8 novos). **Fora deste addendum:** o `report.md` do `operator` — o harness recusa a subagente gravar relatório ("Subagents should return findings as text, not write report files", testado em 12/10), e contornar pelo shell seria burlar a recusa; o contrato da R28 muda em entrega própria.
-
----
-## v3.46 — Plano em contrato conferido antes do dev, prova de falha por mutação, trilha leve por Task, Arquiteto um passo à frente e fechamento pela sessão (SM + Arquiteto + Dev + QA) — 06/10/2026
-
-**Instrução** (stakeholder): "pode aplicar", sobre `proposta-custo-run.md` com as decisões D2, D3, D5, D6 e D7 (formulário de 06/10/2026, todas pela recomendação). Terceiro e último pacote da §4 da proposta (M2, resto da M3, M5 `close -Apply`, M6, M7), sobre a v3.45.1. **Causas medidas no piloto (v3.42):** 5 de 8 Tasks com defeito no código literal do plano (Opus escrevendo código sem compilar, 20 a 70 mil tokens e 10 a 30 min por ciclo de 🔺 GAP); a prova de falha sem lugar (6 negações da G9 a arquivo temporário, prova rodada pelo dev e de novo pelo QA); Task de harness com o pacote inteiro (~530 mil tokens); o SM chamado só para edição mecânica (213 mil tokens em 8 fechamentos); plano fora do caminho crítico proibido pela série total, embora a R1 o permita.
-**Classificação:** formato de documento (plano, Sprint Backlog) · instrumento (`plan.ps1` novo, `verify.ps1 -Mode mutation`, C1 `R7-mutação`, `close.ps1 -Apply`) · fluxo (`sprint-run.md` 1, 3, 7, §Disparo; Planning passo 5) · comportamento de agente (Arquiteto lê o índice de `standards/` e a seção do modo). **Sem regra nova** (34): reforça R7, R8, R23, R1, R24.
-**Papéis movidos (R17):** 4 — SM, Arquiteto, Dev, QA → barreira de 15 360 B.
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `implementation-plan.md` | regras 7, 17–20 · §6 · cabeçalho · Variante leve (nova) | **plano é contrato**: escolha que não muda comportamento, contrato, camada ou standard é do dev; trecho literal até 15 linhas ou `**Validado em:**`; teste não vai escrito no plano; `**Mutações:**` por teste (`- M<k> · teste … · produção · trecho → mutante`) ou `sem prova:`; `plan.ps1` antes do dev; `**Planejado durante:**`; `**Trilha:**` e a variante leve |
-| `scripts/checks/plan.ps1` (novo) | — | lista legível com teste · protegidos · blocos (≤ 8, Pronto com exit 0) · trecho ≤ 15 linhas ou validado · mutações dentro da lista · critério mecânico da leve; exit 1 = o plano volta ao Arquiteto |
-| `verify.ps1` | `-Mode mutation -Plan [-Only]` | sobre a árvore do último `full`: troca o trecho (uma ocorrência, arquivo do plano), roda o teste focado, espera exit ≠ 0, restaura byte a byte (BOM preservado; backup restaurado na próxima execução se o processo morrer); árvore tem de voltar igual; amostragem do QA mantém as outras do registro |
-| `close.ps1` (C1) | `R7-mutação` · `-Apply` | toda mutação do plano pega, na árvore do `full` (bloqueante com `verify`); `-Apply`: sem falha bloqueante, marca ✅, grava Registro e Série (estimativa baixada, composição recontada), roda o `-Post` e imprime a entrada de status pré-preenchida |
-| `agents/architect.md` · README do Arquiteto | leitura · passo 4 | `standards/README.md` e só as seções da Task (não os ~135 KB a cada invocação); a seção do modo, não o README inteiro; plano em contrato e `plan.ps1` antes de responder |
-| `sprint-run.md` | 1 · 3 · 7 · §Disparo · Como o SM verifica | leve em Sonnet; `plan.ps1` antes do dev (reprovado volta ao mesmo Arquiteto); `-Mode mutation` no fim; **a sessão fecha com `close.ps1 -Apply`**, o Agent `scrum-master` só com julgamento; Arquiteto planeja a Task independente seguinte durante a construção |
-| `agents/developer.md` · `agents/quality-assurance.md` · README do QA | prova de falha · trilha leve | o dev roda a mutação e não cria arquivo temporário; o QA julga se a mutação representa a regra e reexecuta uma por amostragem; Task leve: frentes 1, 2 (objeto 1), 4 e cenários |
-| `templates/sprint-backlog.md` · `workflow-sprint.md` Planning 5 · `working-rules.md` R23 · índice das regras | Trilha | coluna `Trilha` (`plena`/`leve`) com o critério mecânico; quadro anterior sem a coluna = plena |
-| README do SM · `COVERAGE.md` · `how-to.md` | — | o `close` da sessão; a escrita temporária da mutação fora da G9 e os limites dela |
-| Sessão (stakeholder) | `scripts/*` e testes · `agents/*` · `plugin.json` · `README.md` · `CHANGELOG.md` | aplicados pela sessão, a pedido |
-
-### Por quê
-O texto mais caro do sprint — o plano em Opus — era o que menos se validava, porque a regra 7 pedia o código inteiro e a G8 (certa) proíbe o Arquiteto de compilar no projeto. Contrato com mutação desloca o "como" para quem tem o compilador e mantém o controle: a Conferência do passo, o `verify` e a mutação dizem se o resultado está certo, sem o Arquiteto escrever o corpo. A prova de falha passa a ser dado do plano, executada uma vez por script e amostrada pelo QA. A trilha leve aplica a R23 à Task: menos escopo verificado, a mesma evidência. O `close -Apply` tira um agente do caminho de cada fechamento — a escrita é a mesma que a sessão já faz a cada transição (§Marcador).
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda para ele |
-|---|---|
-| Arquiteto | escreve contrato e mutações; trecho longo só validado; passa no `plan.ps1`; lê o índice dos standards; adianta o plano da Task independente |
-| Dev | escreve o corpo; roda `-Mode mutation` no fim; não cria arquivo para provar falha |
-| QA | julga a mutação e reexecuta uma; frentes reduzidas na leve |
-| SM / sessão | `plan.ps1` antes do dev; `close.ps1 -Apply`; trilha decidida na Planning |
-
-### Verificação (R19)
-| Item | Comando | Resultado | |
-|---|---|---|---|
-| Conferências | `run-check-tests.ps1` | 52 casos · 0 falharam (11 novos: mutação sem execução não fecha; mutação pega com árvore restaurada; `R7-mutação` ok; mutação decorativa com `-Only` reprova e mantém a amostra anterior; `-Apply` grava quadro, Registro, Série, `-Post` ok e entrada de status; `-Apply` de novo = 2; `-Apply` com R12 pendente não toca o quadro; plano em contrato ok; plano com código longo, 9 arquivos sem bloco, sem teste, sem mutação e sem protegidos reprova; leve com 6 arquivos volta à plena) | ✅ |
-| Guardas | `run-guard-tests.ps1` | 85 casos · 0 falharam | ✅ |
-| Release | `release.ps1` | exit 0 — R18 v3.46.0 · R17 bloco v3.46 ≤ 15 360 (v3.43 arquivada) · ps1-5.1 16 · ownership 53 · órfãos 45 | ✅ |
-
-**Não exercitado:** um `sprint run` real com plano em contrato, mutação e `-Apply`; mutação em arquivo com CRLF misto ou codificação que não seja UTF-8 (o script lê e grava UTF-8, preservando o BOM).
-
-### Pendente do stakeholder
-Atualizar o plugin, `/team update` (7g, 7h) e reiniciar. **Medir** com o consumo da v3.45 os indicadores da §5 da proposta nos dois sprints seguintes (tokens por Task, suítes por Task, ciclos de GAP por defeito de plano). Remover `proposta-custo-run.md` depois do aceite desta entrada.
