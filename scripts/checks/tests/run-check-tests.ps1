@@ -336,6 +336,18 @@ $r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p $dst))
 Check 'Consumo sem -Session mantém a linha da sessão já medida' $r 0 @('medido: sessão sess-abc', '\| sessão principal \| sonnet 5\.5 \| 10.300 \|')
 if (([regex]::Matches($r.Out, 'medido: sessão sess-abc')).Count -ne 1) { $fail++; Write-Output '---- consumo duplicou a linha da sessão' }
 
+# 5c''''. bench-answer.ps1 (v3.50.1): sem AskUserQuestion (claude -p) a sessão consulta o dossiê pela mesma lógica da G18.
+$p = Join-Path $tmp 'bench-answer'; New-Project $p
+$r = Invoke-Check 'bench-answer.ps1' @('-Question', 'Aprova o pacote?', '-Options', 'Aprovar|Pedir mais contexto', '-Root', $p)
+Check 'bench-answer.ps1: sem bench a pergunta é do stakeholder' $r 2 @('modo benchmark desligado')
+Set-Content -LiteralPath (Join-Path $p 'bench-answers.json') '{ "respostas": [ { "tema": "Portões", "match": "(?i)pacote", "pick": "(?i)^aprovar" } ] }' -Encoding UTF8
+Set-Content -LiteralPath (Join-Path $p '.team-project/guards.json') '{ "bench": { "arm": "P0-r1", "answers": "bench-answers.json" } }' -Encoding UTF8
+$r = Invoke-Check 'bench-answer.ps1' @('-Question', 'Aprova o pacote?', '-Options', 'Reprovar|Aprovar|Pedir mais contexto', '-Root', $p)
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/benchmark/P0-r1/questions.log'))
+Check 'bench-answer.ps1: o dossiê responde e a pergunta vai ao questions.log' $r 0 @('\[bench\] resposta do stakeholder: Aprovar', '\| dossie \| Aprova o pacote\? \| Aprovar')
+$r = Invoke-Check 'bench-answer.ps1' @('-Question', 'Qual lib?', '-Options', 'A|B (Recomendado)|Pedir mais contexto', '-Root', $p)
+Check 'bench-answer.ps1: fora do dossiê vale a recomendada' $r 0 @('stakeholder: B \(Recomendado\)')
+
 # 5c'''. mark.ps1 (v3.49): a transição numa chamada — quadro, Série (estimativa inalterada) e Registro; o ✅ é do close.
 $p = Join-Path $tmp 'marcador'; New-Project $p
 $r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'plan', '-Root', $p)

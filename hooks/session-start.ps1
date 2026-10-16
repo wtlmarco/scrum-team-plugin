@@ -25,7 +25,7 @@ try {
         if ($mc.Problems.Count) { $line += ' models.json ignora: ' + ($mc.Problems -join '; ') + '.' }
     } elseif ($mc.State -eq 'invalido') { $line += ' models.json ilegível: valem os modelos dos agentes — corrija o JSON.' }
     # v3.47 (M3): modo benchmark ligado em guards.json → uma linha de aviso.
-    if ($null -ne $cfg.bench) { $line += " Modo benchmark ligado (guards.json → bench): AskUserQuestion é respondido pelo dossiê" + $(if ($cfg.bench.foreground -eq $true) { '; agentes em primeiro plano' } else { '' }) + '.' }
+    if ($null -ne $cfg.bench) { $line += " Modo benchmark ligado (guards.json → bench): AskUserQuestion é respondido pelo dossiê. Se a ferramenta AskUserQuestion não existir nesta sessão (claude -p), NÃO pare nem trate a pergunta como premissa sua: para cada formulário ao stakeholder rode powershell -NoProfile -File `"$env:CLAUDE_PLUGIN_ROOT/scripts/checks/bench-answer.ps1`" -Question `"<pergunta>`" -Header `"<cabeçalho>`" -Options `"<rótulo 1>|<rótulo 2>|…`" e siga a resposta como decisão do stakeholder" + $(if ($cfg.bench.foreground -eq $true) { '; agentes em primeiro plano' } else { '' }) + '.' }
     # Marcador da sessão anterior: run ou spike que não terminou deixa a G14 liberando ou a G8 aberta ao Arquiteto.
     foreach ($mk in '.active-run', '.active-spike', '.active-executor') {
         $m = Get-Marker $projectDir $mk
