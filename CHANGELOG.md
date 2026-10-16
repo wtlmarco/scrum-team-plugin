@@ -21,6 +21,7 @@ Defeito achado no ensaio do braço P do benchmark (`mente-ativa-P-r3`): sob `cla
 - **`scripts/checks/bench-answer.ps1`:** a sessão informa pergunta, cabeçalho e rótulos (`-Options "A|B"`) e recebe `[bench] resposta do stakeholder: <rótulo>`, pela mesma lógica da G18 e com a mesma linha em `questions.log`. Sem bench ou sem dossiê, exit 2 (a pergunta é do stakeholder).
 - **`hooks/common.ps1`:** a resolução do dossiê (`Get-BenchAnswers`, `Write-BenchLog`, `Format-BenchAnswers`) saiu do `pre-tool.ps1` para ser comum à G18 e ao script; o comportamento da G18 não muda.
 - **G13 (`session-start.ps1`):** com `bench` ligado, a abertura manda usar o `bench-answer.ps1` quando o `AskUserQuestion` não existir, em vez de parar ou assumir premissa.
+- **`/team init` com configuração semeada (`rituals/team-init.md` §1):** pasta `.team-project/` com **só** `guards.json`, `models.json` e/ou `usage.jsonl` não é contexto existente. O `init` segue e preserva esses arquivos (o driver do benchmark os semeia para ligar o `bench` antes da primeira pergunta; antes o `init` parava e o `sdd` recusava-se a rodar).
 - Suítes: 168 guardas e 108 conferências.
 
 ---

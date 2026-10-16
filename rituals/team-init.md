@@ -8,6 +8,8 @@ Cria o `.team-project/`, que é a fonte de contexto do time. **Sem ele, todo pap
 
 Diga o que já está lá. Nunca sobrescreva contexto existente — para revisar um contexto que já existe, o caminho é `/sm onboarding`.
 
+**Exceção (v3.50.1): só configuração semeada.** Se a pasta tem **apenas** `guards.json`, `models.json` e/ou `usage.jsonl` (o stakeholder, ou o driver do benchmark, os semeia antes porque o modo `bench` e os modelos por papel precisam existir desde a primeira pergunta), não há contexto a proteger: siga para o passo 2 e **preserve esses arquivos como estão** — `guards.json` e `models.json` não são recriados a partir do modelo, e `bench` e `foreground` ficam. Qualquer outro arquivo na pasta volta à regra acima.
+
 ## 2. Crie a estrutura
 
 A partir de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/project-context.md`:
@@ -17,7 +19,7 @@ A partir de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/project-context.
 ├── README.md                 produto · situação · stack · fontes da verdade · ambiente · limitações
 ├── how-to.md                 cópia de `${CLAUDE_PLUGIN_ROOT}/how-to.md`
 ├── consumption.md            consumo fora de sprint (Nota pre-sprint;/entre-sprints;) — nasce com o cabeçalho e a tabela vazia, sem rotação
-├── guards.json               configuração das guardas (hooks/COVERAGE.md) — cópia de deliverables/team-project/guards.json
+├── guards.json               configuração das guardas (hooks/COVERAGE.md) — cópia de deliverables/team-project/guards.json (se já existir semeado, fica como está)
 ├── sprints/                  registro de execução — um subdiretório por sprint; nasce vazio
 │   └── <n>/                  planning.md · sprint-backlog.md · stories/ · plan/ · evidence/
 │                             consumption.md · burndown.md · review.md · retrospective.md · plugin-report.md
