@@ -3,13 +3,17 @@
 # v3.49: a própria G16 roda este script ao fim de cada rodada (-File com o destino); a sessão só o roda antes de uma
 # conferência que leia o consumo (C1, C4, retrospectiva).
 # Linha que não veio do hook (sem "medido:" na Nota — a de sessão do /usage, as anteriores à v3.45) fica como está.
-# Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/consumption.ps1" [-Root <projeto>] [-File <consumption.md relativo>] [-Print]
+# Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/consumption.ps1" [-Root <projeto>] [-File <consumption.md relativo>] [-Session] [-Print]
+#   -Session (v3.49): mede também a sessão principal, pelo transcript que a G16 grava em cada linha (session_transcript),
+#     desde a primeira rodada medida do destino; uma linha "sessão" medida por sessão. Lê o transcript inteiro (dezenas de
+#     MB): roda no close e na retrospectiva, nunca dentro do hook. Sem -Session, as linhas de sessão já medidas ficam.
 #   -Print: só mostra o que gravaria. Sprint ou bloco fechado nunca recebe linha (templates/consumption.md).
 # Exit 0 · 2 = erro de uso ou de leitura.
 
 param(
     [string]$Root = (Get-Location).Path,
     [string]$File = '',
+    [switch]$Session,
     [switch]$Print
 )
 
@@ -56,6 +60,33 @@ function Get-StoryMap([string]$Board) {
         }
     }
     return $map
+}
+
+# Sessão principal (v3.49): soma o usage das chamadas dela desde $Since, deduplicado por message.id (vale o último) e por
+# uuid (o harness regrava linhas antigas antes de uma compactação). O transcript da sessão não tem os subagentes: cada um
+# tem o seu, medido pela G16 — as duas somas se acrescentam, não se sobrepõem.
+function Measure-SessionTranscript([string]$Path, [datetime]$Since) {
+    $calls = @{}; $order = New-Object System.Collections.ArrayList; $seenUuid = @{}
+    foreach ($line in [System.IO.File]::ReadLines($Path)) {
+        if ($line.IndexOf('"usage"') -lt 0 -or $line.IndexOf('"type":"assistant"') -lt 0) { continue }
+        try { $o = $line | ConvertFrom-Json } catch { continue }
+        if ($o.uuid) { if ($seenUuid.ContainsKey([string]$o.uuid)) { continue }; $seenUuid[[string]$o.uuid] = $true }
+        $id = [string]$o.message.id
+        if (-not $id -or -not $o.message.usage -or [string]$o.message.model -eq '<synthetic>') { continue }
+        $ts = [datetime][string]$o.timestamp
+        if ($ts -lt $Since) { continue }
+        if (-not $calls.ContainsKey($id)) { [void]$order.Add($id) }
+        $calls[$id] = @{ u = $o.message.usage; model = [string]$o.message.model; ts = $ts }
+    }
+    if (-not $order.Count) { return $null }
+    $r = @{ Calls = $order.Count; Processed = 0L; CacheRead = 0L; Output = 0L; Models = @{}; First = $calls[$order[0]].ts; Last = $calls[$order[$order.Count - 1]].ts }
+    foreach ($id in $order) {
+        $u = $calls[$id].u
+        $r.Processed += [int64]$u.input_tokens + [int64]$u.cache_creation_input_tokens + [int64]$u.cache_read_input_tokens + [int64]$u.output_tokens
+        $r.CacheRead += [int64]$u.cache_read_input_tokens; $r.Output += [int64]$u.output_tokens
+        if ($calls[$id].model) { $r.Models[$calls[$id].model] = $true }
+    }
+    return $r
 }
 
 # Destino fechado: sprint com retrospectiva, bloco com "## Fechamento" no verdict.md.
@@ -135,6 +166,24 @@ try {
             }
         }
 
+        # Sessão principal (v3.49, -Session): uma linha medida por transcript de sessão citado nas rodadas deste destino.
+        $sessionRows = @()
+        if ($Session -and $mine.Count) {
+            $since = [datetime][string]$mine[0].start
+            $unitS = if ($isBlock) { ($dest -replace '^.*/fixes/(B-\d+)/.*$', '$1') } elseif ($sm.Success) { "sprint-$($sm.Groups[1].Value)" } else { 'n/a' }
+            foreach ($st in @($mine | ForEach-Object { [string]$_.session_transcript } | Where-Object { $_ } | Select-Object -Unique)) {
+                if (-not (Test-Path -LiteralPath $st)) { [Console]::Out.WriteLine("consumo: transcript da sessão não encontrado ($st) — sessão sem linha medida."); continue }
+                $ms = Measure-SessionTranscript $st $since
+                if ($null -eq $ms) { continue }
+                $sid = [System.IO.Path]::GetFileNameWithoutExtension($st); $sid = $sid.Substring(0, [Math]::Min(8, $sid.Length))
+                $model = Get-ShortModel ((@($ms.Models.Keys)) -join ',')
+                $secs = [int]([Math]::Max(0, ($ms.Last - $ms.First).TotalSeconds))
+                $sessionRows += [pscustomobject]@{
+                    Line = ('| {0} | sessão | {1} | `sessão principal` | n/a | cerimônia | {2} | {3:N0} | {4} | medido: sessão {5}; {6} chamada(s); contexto médio {7:N0}; cache lido {8:N0}; saída {9:N0} |' -f $ms.First.ToString('yyyy-MM-dd HH:mm'), $model, $unitS, $ms.Processed, (Format-Duration $secs), $sid, $ms.Calls, [int64]($ms.Processed / $ms.Calls), $ms.CacheRead, $ms.Output)
+                    Model = $model; Tokens = $ms.Processed; Seconds = $secs; Id = $sid }
+            }
+        }
+
         # ## Registro: mantém cabeçalho e as linhas que não vieram do hook; as medidas são reescritas por inteiro.
         $lines = New-Object System.Collections.ArrayList; foreach ($l in ($text -split "`r?`n")) { [void]$lines.Add($l) }
         $hi = -1; for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^##\s+Registro\b') { $hi = $i; break } }
@@ -142,8 +191,9 @@ try {
         $ts = -1; for ($i = $hi + 1; $i -lt $lines.Count; $i++) { if ($lines[$i].TrimStart().StartsWith('|')) { $ts = $i; break }; if ($lines[$i] -match '^#') { break } }
         if ($ts -lt 0) { [Console]::Error.WriteLine("consumo: $dest sem a tabela do '## Registro'."); continue }
         $te = $ts; while ($te + 1 -lt $lines.Count -and $lines[$te + 1].TrimStart().StartsWith('|')) { $te++ }
-        $kept = @(); for ($i = $ts + 2; $i -le $te; $i++) { if ($lines[$i] -notmatch 'medido:') { $kept += $lines[$i] } }
-        $newTable = @($lines[$ts], $lines[$ts + 1]) + $kept + @($measured | ForEach-Object { $_.Line })
+        # A linha de sessão já medida fica quando esta execução não mede a sessão (a G16 roda sem -Session).
+        $kept = @(); for ($i = $ts + 2; $i -le $te; $i++) { if ($lines[$i] -notmatch 'medido:' -or (-not $Session -and $lines[$i] -match 'medido: sessão ')) { $kept += $lines[$i] } }
+        $newTable = @($lines[$ts], $lines[$ts + 1]) + $kept + @($measured | ForEach-Object { $_.Line }) + @($sessionRows | ForEach-Object { $_.Line })
         $lines.RemoveRange($ts, $te - $ts + 1); $lines.InsertRange($ts, [string[]]$newTable)
 
         # ## Totais (derivado): uma linha por papel e modelo, e uma por operator ← chamador e modelo, das linhas mantidas +
@@ -154,7 +204,18 @@ try {
         foreach ($k in $kept) {
             $c = Split-Row $k
             if ($c.Count -lt 9 -or ($c -join '') -match '<[^>]+>') { continue }
-            $role = Clean-Cell $c[1]; if (-not $role -or $role -eq 'sessão') { continue }
+            $role = Clean-Cell $c[1]; if (-not $role) { continue }
+            if ($role -eq 'sessão') {
+                # Só a sessão medida pelo transcript entra (v3.49); a linha do /usage continua lida à parte.
+                $smm = [regex]::Match($k, 'medido: sessão (\w+)')
+                if ($smm.Success) {
+                    $model = Clean-Cell $c[2]; $key = "sessão principal|$model"
+                    if (-not $agg.Contains($key)) { $agg[$key] = & $newAgg 'sessão principal' $model }
+                    $a = $agg[$key]; $t = Get-Number $c[7]; if ($null -ne $t) { $a.Tokens += $t }
+                    $a.Measured++; $a.Ids['s:' + $smm.Groups[1].Value] = $true; $a.Rounds++; $a.Seconds += (Get-Seconds $c[8])
+                }
+                continue
+            }
             $papel = if ($role -eq 'operator') { $cm = [regex]::Match($c[-1], 'chamado por (\w+)'); 'operator ← ' + $(if ($cm.Success) { $cm.Groups[1].Value } else { '?' }) } else { $role }
             $model = Clean-Cell $c[2]; $key = "$papel|$model"
             if (-not $agg.Contains($key)) { $agg[$key] = & $newAgg $papel $model }
@@ -168,6 +229,11 @@ try {
             $key = "$papel|$($m.Model)"
             if (-not $agg.Contains($key)) { $agg[$key] = & $newAgg $papel $m.Model }
             $a = $agg[$key]; $a.Tokens += $m.Tokens; $a.Measured++; $a.Ids[$m.AgentId] = $true; $a.Rounds++; $a.Seconds += $m.Seconds; $a.Notified += $m.Notified
+        }
+        foreach ($s in $sessionRows) {
+            $key = "sessão principal|$($s.Model)"
+            if (-not $agg.Contains($key)) { $agg[$key] = & $newAgg 'sessão principal' $s.Model }
+            $a = $agg[$key]; $a.Tokens += $s.Tokens; $a.Measured++; $a.Ids['s:' + $s.Id] = $true; $a.Rounds++; $a.Seconds += $s.Seconds
         }
         $totI = -1; for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^##\s+Totais') { $totI = $i; break } }
         if ($totI -ge 0) {

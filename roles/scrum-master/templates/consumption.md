@@ -79,7 +79,7 @@ A revalidação **não** é `retrabalho` (a definição de `retrabalho` exige ve
 > Uma linha por invocação de papel, escrita por quem orquestrou — mais uma linha por chamada ao `operator`, a partir da seção "Execução delegada" do relatório do papel chamador.
 
 ## O que este número mede — e o que não mede
-Toda vez que um subagente (papel ou `operator`) para, o hook **G16** soma, no transcript dele, o `usage` de cada chamada ao modelo daquela rodada — é isso que vira uma linha aqui, pelo `scripts/checks/consumption.ps1`. **Tokens** = soma processada (entrada + cache gravado + cache lido + saída); a Nota traz o número da notificação (contexto final), que é o que a sessão via antes da v3.45. **A sessão principal não é medida**: leitura, triagem e consolidação feitas fora de um subagente não entram nesta tabela. O `operator` aparece em linha própria, com o chamador na Nota (o hook liga o filho ao pai pelo `agentId`). Este registro mede **o trabalho dos papéis e do `operator`**, não **o custo total da sessão** — leia o total como um piso. A **linha de sessão** (`/usage` colado pelo stakeholder) é a única fonte observada do custo da sessão inteira, mas **é lida à parte** até a verificação da premissa dela (§Regras).
+Toda vez que um subagente (papel ou `operator`) para, o hook **G16** soma, no transcript dele, o `usage` de cada chamada ao modelo daquela rodada — é isso que vira uma linha aqui, pelo `scripts/checks/consumption.ps1`. **Tokens** = soma processada (entrada + cache gravado + cache lido + saída); a Nota traz o número da notificação (contexto final), que é o que a sessão via antes da v3.45. **A sessão principal é medida à parte (v3.49):** o `consumption.ps1 -Session`, rodado no `close` e na retrospectiva, lê o transcript dela (a G16 grava o caminho em cada linha) e escreve uma linha `sessão` com `medido: sessão <id>`, desde a primeira rodada medida do destino. Essa linha entra nos Totais, porque o transcript da sessão não tem as chamadas dos subagentes. Sem o `-Session`, a sessão fica de fora. O `operator` aparece em linha própria, com o chamador na Nota (o hook liga o filho ao pai pelo `agentId`). Este registro mede **o trabalho dos papéis e do `operator`**, não **o custo total da sessão** — leia o total como um piso. A **linha de sessão** (`/usage` colado pelo stakeholder) é a única fonte observada do custo da sessão inteira, mas **é lida à parte** até a verificação da premissa dela (§Regras).
 
 ## Registro
 | Data | Papel | Modelo | Comando | Task/História | Categoria | Unidade | Tokens | Duração | Nota |
@@ -97,7 +97,8 @@ Toda vez que um subagente (papel ou `operator`) para, o hook **G16** soma, no tr
 |---|---|---|---|---|---|---|
 | sm · po · arc · ux · qa · dev *(uma linha por papel e modelo)* | <modelo servido com versão> | <n \| não medido — só notificação> | <n> | <n> | <mm:ss> | <n> |
 | operator ← <arc\|qa\|dev\|ux> *(uma linha por chamador e modelo)* | <modelo do `operator`> | <n> | <n> | <n chamadas> | <mm:ss> | <n> |
-| **Total do sprint** (papéis + `operator`) | — | **<n>** | **<n>** | **<n>** | **<mm:ss>** | **<n>** |
+| sessão principal *(com `-Session`)* | <modelo servido com versão> | <n> | <n sessões> | <n> | <mm:ss> | — |
+| **Total do sprint** (papéis + `operator` + sessão medida) | — | **<n>** | **<n>** | **<n>** | **<mm:ss>** | **<n>** |
 
 **Instâncias × rodadas (v3.49).** Instância = um agente (um `agent_id`); rodada = uma linha do Registro, e a retomada por `SendMessage` é rodada nova da mesma instância. Linha à mão, sem `agent_id`, conta uma de cada. Grupo só com linhas à mão não tem número processado e mostra `não medido — só notificação`, nunca 0.
 

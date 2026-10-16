@@ -197,6 +197,7 @@ Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere ap
 
    Valem depois de reiniciar a sessão.
 3. **Registro de consumo aberto:** não edite. Na primeira rodada medida, a G16 roda o `consumption.ps1` e ele reescreve os `## Totais` no formato novo: uma linha por papel e modelo (modelo com versão: `haiku 4.5`), as colunas **Instâncias** e **Rodadas** no lugar de "Nº de invocações", e `não medido — só notificação` onde só há linha à mão. As linhas medidas antigas passam a mostrar o modelo com versão; as linhas à mão ficam como estão.
+4. **Nada a instalar para os scripts da sessão:** `mark.ps1`, `dispatch.ps1` e o `consumption.ps1 -Session` vêm com o plugin. A sessão do `run` passa a usá-los pelo `sprint-run.md`. A sessão só entra no registro a partir das rodadas gravadas pela G16 da v3.49, que traz o caminho do transcript.
 
 **Verificação do passo:** depois do primeiro dev do `run`, `Test-Path .team-project/sprints/<n>/delivery/<T-ID>.md` devolve `True`.
 

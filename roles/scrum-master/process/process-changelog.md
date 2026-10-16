@@ -158,7 +158,7 @@ No próximo sprint real, medido com `scripts/metrics/transcript-metrics.js` cont
 Propostas com especificação, sem texto aplicado:
 - **G19 (nova):** `PreToolUse · SendMessage` na sessão. Nega o `SendMessage` a uma instância de `team:architect` cuja última rodada no `usage.jsonl` terminou há mais de 5 min, com a rota "instância nova — `sprint-run.md` §Retomada". É o instrumento da exceção da R27.
 - **G16:** gravar o tamanho da resposta final (linhas e bytes) no `usage.jsonl`. É o instrumento do retorno curto (R28).
-- **Itens 3, 4 e 5 de `note.md`** (scripts e hooks): o marcador por script; o preparo do disparo num passo só; a sessão no registro do time pelo `transcript_path`. Os itens de consumo entraram no addendum abaixo.
+- Os itens de scripts e hooks da fila entraram nos addenda abaixo; ficam em `note.md` os 5 itens de desenho e medição.
 
 Depois de mesclar: atualizar o plugin no piloto e no benchmark, `/team update` (7j), reiniciar a sessão.
 
@@ -175,6 +175,19 @@ Depois de mesclar: atualizar o plugin no piloto e no benchmark, `/team update` (
 | `note.md` | saem os itens de consumo; o item das paradas é reescrito com a investigação: ~24,5 h fora do contrato, ~122 h de máquina suspensa com agentes rodando, ~6,8 h de decisão legítima do stakeholder |
 
 **Verificação (R19):** `run-check-tests.ps1` → 93 · 0 (2 novos: Totais com instâncias × rodadas e o modelo com versão; chamador pelo horário); `run-guard-tests.ps1` → 167 · 0 (1 novo: a G16 grava a linha medida no `consumption.md` do sprint aberto); `release.ps1` ok. **Não exercitado:** a G16 rodando o script num sprint real, e duas rodadas terminando no mesmo instante (as duas reescrevem a partir do `usage.jsonl`, e a última vence com os dados completos).
+
+### Addendum — as escritas mecânicas da sessão em script (16/10/2026)
+**Instrução** (stakeholder): "Pode fazer o 3 que são scripts mecânicos". **Causa medida:** no piloto, a sessão gastou 18 chamadas em quadro e burndown, 50 em `.active-*` e 33 em `consumption.ps1`, a ~400 mil tokens cada. Um `.active-task` gravado fora do formato derrubou a G9. E a sessão, ~40 % do custo, não entrava no registro do time.
+**Classificação:** instrumento (`mark.ps1` e `dispatch.ps1` novos, `consumption.ps1 -Session`, G16) · fluxo (`sprint-run.md` passos 3, 7, 8, §Marcador e §Modelo por papel; `fix-run.md` passo 2). **Sem regra nova.**
+
+| Documento | Mudança |
+|---|---|
+| `scripts/checks/mark.ps1` (novo) | `-Task -To plan\|build\|qa\|blocked\|todo`: troca o marcador no quadro, acrescenta a linha da Série (composição recontada, estimativa inalterada) e a do Registro (no burndown, ou no quadro anterior à v3.44.1). Calcula tudo antes de gravar. Recusa o ✅, que é do `close.ps1 -Apply` |
+| `scripts/checks/dispatch.ps1` (novo) | grava o `.active-task` em JSON (e o `.active-executor` no perfil executor), marca pelo `mark.ps1` e imprime o papel efetivo, o `model` do `models.json` e o `run_in_background` (falso no benchmark com `foreground`); `-Clear` apaga os dois marcadores |
+| `consumption.ps1 -Session` · G16 | a G16 grava o `session_transcript` em cada linha; com `-Session` (no `close` e na retrospectiva, nunca no hook), o script mede a sessão desde a primeira rodada do destino, deduplicado por `message.id` e `uuid`, e a escreve como linha `sessão` medida, que entra nos Totais. Sem `-Session`, a linha já medida fica |
+| `sprint-run.md` · `fix-run.md` · `commands/dev.md` · `artifact-ownership.md` · `templates/consumption.md` · `COVERAGE.md` · `README.md` · `team-update.md` 7j | os passos usam os scripts; a sessão medida no registro |
+
+**Verificação (R19):** `run-check-tests.ps1` → 105 · 0 (12 novos: `mark` em quadro, Série e Registro, a composição recontada, o marcador repetido e o ✅ recusados; `dispatch` com o JSON, o marcador, o modelo do `models.json`, o primeiro plano no benchmark, o executor, o `-Clear` e o dev sem plano; `-Session` com o `uuid` repetido descartado e a linha mantida sem `-Session`); `run-guard-tests.ps1` → 167 · 0; `release.ps1` ok. **Medido:** o `-Session` sobre um transcript real de sessão do piloto (9,4 MB, 418 chamadas) leva 7 s no PowerShell 5.1 e dá 204,6 M processados, coerente com `scripts/metrics`. **Não exercitado:** os três scripts num sprint real.
 
 ---
 

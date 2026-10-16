@@ -203,6 +203,8 @@ try {
         dest          = $dst.dest
         dest_note     = [string]$dst.note
         report        = $reportRel
+        # v3.49: o transcript da sessão que disparou — o consumption.ps1 -Session mede a sessão principal por ele, no close.
+        session_transcript = [string]$hookInput.transcript_path
     }
     $json = $row | ConvertTo-Json -Compress
     [System.IO.File]::AppendAllText($usagePath, $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))

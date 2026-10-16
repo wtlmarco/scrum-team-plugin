@@ -24,8 +24,9 @@ Os itens de `note.md` medidos nos transcripts do primeiro sprint do piloto, apli
 - **Nada se perde numa interrupção:** o Arquiteto grava o plano seção a seção e a quebra em Tasks em `architect/breakdown/S<n>.md`; o QA grava a evidência frente a frente.
 - **`fix run`:** uma instância do dev por F-ID.
 - **`scripts/metrics/transcript-metrics.js`** (novo): `cost`, `breaks`, `growth`, `session`, `waits`, medidos nos transcripts, para o sprint real e para todos os braços do benchmark.
-- Matriz de propriedade e `hooks/ownership.json` com os caminhos novos (5 casos novos da G8); `agents/*`, `commands/dev.md`, `team-update.md` 7j. Suítes: guardas **167**, conferências **93**.
+- Matriz de propriedade e `hooks/ownership.json` com os caminhos novos (5 casos novos da G8); `agents/*`, `commands/dev.md`, `team-update.md` 7j. Suítes: guardas **167**, conferências **105**.
 - **Registro de consumo que fecha:** o `consumption.ps1` grava o modelo servido com a versão (`haiku 4.5`), os Totais têm uma linha por papel e modelo, com **Instâncias** e **Rodadas** em colunas separadas e `não medido` onde só há notificação, e o `operator` sem chamador ganha o chamador pelo horário. A **G16 roda o script** ao fim de cada rodada; a sessão só o roda antes de uma conferência.
+- **Escritas mecânicas da sessão em script:** `mark.ps1` (marcador, Registro e Série numa chamada), `dispatch.ps1` (`.active-task` em JSON, marcador, parâmetros do `Agent`, `-Clear`) e `consumption.ps1 -Session`, que mede a sessão principal no `close` pelo transcript cujo caminho a G16 grava em cada linha.
 - **`scripts/metrics`** descarta evento repetido do transcript (a "parada de 68 h" do piloto não existiu). As paradas do `run` foram reclassificadas em `note.md`: ~24,5 h fora do contrato, ~122 h de máquina suspensa, ~6,8 h de decisão do stakeholder.
 - **`commands/sm.md`:** a `description:` passa a ir entre aspas. O `sprint: prepare` dentro do texto quebrava o YAML do cabeçalho, e o `/sm` carregava sem descrição nem `argument-hint`, desde a v3.47.0 ou antes. Agora `claude plugin validate . --strict` passa.
 
