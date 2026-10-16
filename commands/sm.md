@@ -1,5 +1,5 @@
 ---
-description: Aciona o Scrum Master — processo, organização e eficiência. Gere os rituais (onboarding, brainstorm, sdd, e o sprint: prepare, plan, run, review, close), o Sprint Backlog, a capacidade e os riscos; facilita acordo entre papéis; fecha Task. Prazo, prioridade, status e impacto são do PO.
+description: "Aciona o Scrum Master — processo, organização e eficiência. Gere os rituais (onboarding, brainstorm, sdd, e o sprint: prepare, plan, run, review, close), o Sprint Backlog, a capacidade e os riscos; facilita acordo entre papéis; fecha Task. Prazo, prioridade, status e impacto são do PO."
 argument-hint: "[onboarding | brainstorm <ideia> | sdd [<tema>] | sprint prepare|plan|run [<T-ID>]|review|close | fix [plan [<F-ID> …]|run] | board | agreement <questão> | consulting <domínio> <tema> | close <T-ID>]"
 ---
 

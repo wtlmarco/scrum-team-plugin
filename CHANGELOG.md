@@ -25,6 +25,7 @@ Os itens de `note.md` medidos nos transcripts do primeiro sprint do piloto, apli
 - **`fix run`:** uma instância do dev por F-ID.
 - **`scripts/metrics/transcript-metrics.js`** (novo): `cost`, `breaks`, `growth`, `session`, `waits`, medidos nos transcripts, para o sprint real e para todos os braços do benchmark.
 - Matriz de propriedade e `hooks/ownership.json` com os caminhos novos (5 casos novos da G8); `agents/*`, `commands/dev.md`, `team-update.md` 7j. Suítes: guardas **166**, conferências **91**.
+- **`commands/sm.md`:** a `description:` passa a ir entre aspas. O `sprint: prepare` dentro do texto quebrava o YAML do cabeçalho, e o `/sm` carregava sem descrição nem `argument-hint`, desde a v3.47.0 ou antes. Agora `claude plugin validate . --strict` passa.
 
 ---
 
