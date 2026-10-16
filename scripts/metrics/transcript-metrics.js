@@ -37,7 +37,13 @@ if (!cmd || !root || !fs.existsSync(root)) {
 }
 
 // ---------- leitura ----------
-const readJsonl = (fp) => fs.readFileSync(fp, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+// Evento repetido (mesmo uuid) é cópia: o harness regrava linhas antigas antes de uma compactação, com o timestamp original —
+// sem descartar, uma resposta de dias atrás parece uma pausa longa (medido no piloto: uma "parada de 68 h" que não existiu).
+const readJsonl = (fp) => {
+  const seen = new Set();
+  return fs.readFileSync(fp, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch { return null; } })
+    .filter(o => { if (!o) return false; if (o.uuid) { if (seen.has(o.uuid)) return false; seen.add(o.uuid); } return true; });
+};
 function transcripts() {
   const out = [];
   for (const e of fs.readdirSync(root, { withFileTypes: true })) {

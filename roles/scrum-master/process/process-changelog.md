@@ -158,9 +158,23 @@ No próximo sprint real, medido com `scripts/metrics/transcript-metrics.js` cont
 Propostas com especificação, sem texto aplicado:
 - **G19 (nova):** `PreToolUse · SendMessage` na sessão. Nega o `SendMessage` a uma instância de `team:architect` cuja última rodada no `usage.jsonl` terminou há mais de 5 min, com a rota "instância nova — `sprint-run.md` §Retomada". É o instrumento da exceção da R27.
 - **G16:** gravar o tamanho da resposta final (linhas e bytes) no `usage.jsonl`. É o instrumento do retorno curto (R28).
-- **Itens 1, 4, 5, 6, 7 e 10 de `note.md`** (todos em scripts e hooks): o registro de consumo que fecha; o marcador por script; o preparo do disparo num passo só; o `consumption.ps1` chamado pela G16; a sessão medida pelo `transcript_path`; o modelo servido com a versão.
+- **Itens 3, 4 e 5 de `note.md`** (scripts e hooks): o marcador por script; o preparo do disparo num passo só; a sessão no registro do time pelo `transcript_path`. Os itens de consumo entraram no addendum abaixo.
 
 Depois de mesclar: atualizar o plugin no piloto e no benchmark, `/team update` (7j), reiniciar a sessão.
+
+### Addendum — o registro de consumo que fecha, atualizado pelo hook, com o modelo servido (16/10/2026)
+**Instrução** (stakeholder): "Vamos seguir na opção 1": itens 1, 6 e 10 da fila, e a investigação do item 9. **Causa:** no piloto, os Totais diziam 100 invocações contra 137 linhas no Registro, e o fechamento os corrigiu à mão. Havia uma linha de `operator` sem chamador, o SM aparecia com 0 processado (só tinha a notificação), e "haiku" juntava Haiku 4.5 e 5.5, com preço por token ~10× diferente. A sessão rodou `consumption.ps1` 33 vezes e editou o `consumption.md` à mão 20 vezes, a ~400 mil tokens por chamada.
+**Classificação:** instrumento (`consumption.ps1`, G16) · formato (`templates/consumption.md`, `plugin-report.md`, `retrospective.md`). **Sem regra nova.**
+
+| Documento | Mudança |
+|---|---|
+| `scripts/checks/consumption.ps1` | modelo servido com versão (`haiku 4.5`); Totais com uma linha por papel e modelo, **Instâncias** e **Rodadas** em colunas separadas, e `não medido — só notificação` no grupo sem medida; `operator` sem filho na linha do pai ganha o chamador pela rodada de outro papel, na mesma Task, que contém o início dele (`chamado por <papel> (pelo horário)`) |
+| `hooks/subagent-stop.ps1` (G16) | roda o `consumption.ps1` no destino ao fim de cada rodada, no mesmo processo e com a saída fora do harness; uma falha vira linha `G16 · consumo` |
+| `templates/consumption.md` · `plugin-report.md` · `retrospective.md` · `sprint-run.md` §Disparo · `how-to.md` · `COVERAGE.md` · `team-update.md` 7j | a sessão só roda o script antes de uma conferência; colunas e modelo novos; corrigida uma linha de regra colada à anterior no modelo do consumo |
+| `scripts/metrics/transcript-metrics.js` | descarta evento repetido (mesmo `uuid`): a "parada de 68 h" do piloto era uma linha regravada antes de uma compactação; `waits` cai de ~206 h para ~137 h, e custo e quebras não mudam |
+| `note.md` | saem os itens de consumo; o item das paradas é reescrito com a investigação: ~24,5 h fora do contrato, ~122 h de máquina suspensa com agentes rodando, ~6,8 h de decisão legítima do stakeholder |
+
+**Verificação (R19):** `run-check-tests.ps1` → 93 · 0 (2 novos: Totais com instâncias × rodadas e o modelo com versão; chamador pelo horário); `run-guard-tests.ps1` → 167 · 0 (1 novo: a G16 grava a linha medida no `consumption.md` do sprint aberto); `release.ps1` ok. **Não exercitado:** a G16 rodando o script num sprint real, e duas rodadas terminando no mesmo instante (as duas reescrevem a partir do `usage.jsonl`, e a última vence com os dados completos).
 
 ---
 

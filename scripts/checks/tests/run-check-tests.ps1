@@ -293,13 +293,27 @@ Put $p '.team-project/usage.jsonl' (@(
 $r = Invoke-Check 'consumption.ps1' @('-Root', $p)
 $r = Invoke-Check 'consumption.ps1' @('-Root', $p)
 $r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p $dst))
-Check 'Consumo: medidas entram, manual e sessão ficam, sem duplicar' $r 0 @('3 linha\(s\) medida\(s\), 3 mantida', 'operator \| haiku \| `Agent` · suite \| T-041 \| verificação \| H-014 \| 40.000', 'chamado por dev; medido: o1#1', '\| dev \| haiku .*\| retrabalho \| H-014 \| 100.000', '\| operator ← dev \| haiku \| 40.000 \| 1 ', '\| operator ← qa \| haiku \| 0 \| 1 \| 00:30 \| 500 \|', 'linha de sessão')
+Check 'Consumo: medidas entram, manual e sessão ficam, sem duplicar' $r 0 @('3 linha\(s\) medida\(s\), 3 mantida', 'operator \| haiku 4\.5 \| `Agent` · suite \| T-041 \| verificação \| H-014 \| 40.000', 'chamado por dev; medido: o1#1', '\| dev \| haiku 4\.5 .*\| retrabalho \| H-014 \| 100.000', '\| operator ← dev \| haiku 4\.5 \| 40.000 \| 1 \| 1 ', '\| operator ← qa \| haiku \| não medido — só notificação \| 1 \| 1 \| 00:30 \| 500 \|', 'linha de sessão')
 if (([regex]::Matches($r.Out, 'medido: d1#1')).Count -ne 1) { $fail++; Write-Output '---- consumo duplicou a linha medida' }
+# v3.49: Totais separam instâncias (agentes distintos) de rodadas — o dev d1 tem 2 rodadas e 1 instância — e o modelo vem com a versão.
+Check 'Consumo: Totais com instâncias × rodadas e modelo com versão (v3.49)' $r 0 @('\| Papel \| Modelo \| Σ tokens processados \| Instâncias \| Rodadas \|', '\| dev \| haiku 4\.5 \| 400.000 \| 1 \| 2 \|')
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'C1 depois do consumo medido: R28 conta a linha do operator da Task' $r 0 @('\| R28 \| falhou.*1 report.*2 linha')
 Put $p '.team-project/sprints/1/retrospective.md' "# Retro`n"
 $r = Invoke-Check 'consumption.ps1' @('-Root', $p)
 Check 'Consumo: sprint fechado não recebe linha' $r 0 @('está fechado')
+
+# 5c'. consumption.ps1 (v3.49): operator sem o filho na linha do pai — o chamador sai pelo horário, na mesma Task.
+$p = Join-Path $tmp 'consumo-horario'; New-Project $p
+$dst = '.team-project/sprints/1/consumption.md'
+Put $p $dst ((Get-Content -Raw -Encoding UTF8 (Join-Path $p $dst)) + "`n## Totais do sprint (derivado)`n`n| a | b |`n|---|---|`n| x | y |`n")
+Put $p '.team-project/usage.jsonl' (@(
+    ('{"agent_id":"q1","role":"quality-assurance","description":"qa T-041","round":1,"work":"T-041","model":"claude-sonnet-5-5","start":"2026-09-03T10:00:00","duration_s":600,"calls":10,"processed":200000,"final_context":50000,"cache_read":150000,"output":4000,"first_context":15000,"peak_context":50000,"children":[],"dest":"' + $dst + '","dest_note":""}'),
+    ('{"agent_id":"o9","role":"operator","description":"cenarios","round":1,"work":"T-041","model":"claude-haiku-5-5","start":"2026-09-03T10:04:00","duration_s":60,"calls":3,"processed":40000,"final_context":12000,"cache_read":30000,"output":500,"first_context":9000,"peak_context":12000,"children":[],"dest":"' + $dst + '","dest_note":""}')
+) -join "`n")
+$r = Invoke-Check 'consumption.ps1' @('-Root', $p)
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p $dst))
+Check 'Consumo: operator sem filho no pai ganha o chamador pelo horário (v3.49)' $r 0 @('chamado por qa \(pelo horário\); medido: o9#1', '\| operator ← qa \| haiku 5\.5 \| 40.000 \| 1 \| 1 ')
 
 # 5d. verify.ps1 (v3.45.1): evidência mecânica amarrada à árvore; o C1 a lê quando guards.json tem "verify".
 $p = Join-Path $tmp 'verify'; New-Project $p

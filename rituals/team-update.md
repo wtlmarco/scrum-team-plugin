@@ -196,6 +196,7 @@ Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere ap
    - enquanto o `run` está ativo, a sessão cria um toque de cache a cada 30 min (em avaliação).
 
    Valem depois de reiniciar a sessão.
+3. **Registro de consumo aberto:** não edite. Na primeira rodada medida, a G16 roda o `consumption.ps1` e ele reescreve os `## Totais` no formato novo: uma linha por papel e modelo (modelo com versão: `haiku 4.5`), as colunas **Instâncias** e **Rodadas** no lugar de "Nº de invocações", e `não medido — só notificação` onde só há linha à mão. As linhas medidas antigas passam a mostrar o modelo com versão; as linhas à mão ficam como estão.
 
 **Verificação do passo:** depois do primeiro dev do `run`, `Test-Path .team-project/sprints/<n>/delivery/<T-ID>.md` devolve `True`.
 

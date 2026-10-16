@@ -318,6 +318,18 @@ $cases = @(
        Setup = { Add-Content -LiteralPath (Join-Path $tmp 'transcripts/sess1/subagents/agent-abc1234567.jsonl') @('{"type":"user","timestamp":"2026-10-06T11:00:00Z","message":{"role":"user","content":"Resposta do GAP da T-007: siga"}}', '{"type":"assistant","timestamp":"2026-10-06T11:00:30Z","message":{"id":"m3","model":"claude-sonnet-5-5","usage":{"input_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":1200,"output_tokens":30}}}') -Encoding UTF8 }
        Check = { $l = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8); $l.Count -eq 2 -and $l[1] -match '"round":2.*"model":"claude-sonnet-5-5".*"calls":1,"calls_total":3.*"processed":1335' }
        Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'abc1234567'; agent_type = 'team:developer'; transcript_path = (Join-Path $tmp 'transcripts/sess1.jsonl') } },
+    @{ Name = 'G16 grava a linha medida no consumption.md do sprint aberto (v3.49)'; Script = 'subagent-stop.ps1'; Expect = 0; ExpectOut = ''
+       Setup = { $sd = Join-Path $tmp 'transcripts/sess1/subagents'
+                 New-Item -ItemType Directory -Force (Join-Path $proj '.team-project/sprints/1') | Out-Null
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/README.md') "# Contexto`n`n| Campo | Valor |`n|---|---|`n| **Sprint corrente** | **1** |" -Encoding UTF8
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/sprints/1/consumption.md') "# Consumo — Sprint 1`n`n## Registro`n| Data | Papel | Modelo | Comando | Task/História | Categoria | Unidade | Tokens | Duração | Nota |`n|---|---|---|---|---|---|---|---|---|---|`n`n## Totais do sprint (derivado)`n| a | b |`n|---|---|`n| x | y |" -Encoding UTF8
+                 $p = '{"type":"user","timestamp":"2026-10-06T11:30:00Z","message":{"role":"user","content":"Plano da T-009"}}'
+                 $a = '{"type":"assistant","timestamp":"2026-10-06T11:31:00Z","message":{"id":"q1","model":"claude-opus-5-5","usage":{"input_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":0,"output_tokens":10}}}'
+                 [System.IO.File]::WriteAllLines((Join-Path $sd 'agent-arc9876543.jsonl'), [string[]]@($p, $a), (New-Object System.Text.UTF8Encoding($false))) }
+       Check = { $c = Get-Content -LiteralPath (Join-Path $proj '.team-project/sprints/1/consumption.md') -Raw -Encoding UTF8
+                 $ok = ($c -like '*| arc | opus 5.5 |*| T-009 |*medido: arc9876543#1*') -and ($c -like '*| arc | opus 5.5 | 115 | 1 | 1 |*')
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/README.md') 'local' -Encoding UTF8; $ok }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'arc9876543'; agent_type = 'team:architect'; transcript_path = (Join-Path $tmp 'transcripts/sess1.jsonl') } },
     @{ Name = 'G16 operator: a resposta vira report.md na pasta do job (v3.48)'; Script = 'subagent-stop.ps1'; Expect = 0
        Setup = { $sd = Join-Path $tmp 'transcripts/sess1/subagents'
                  $p = '{"type":"user","timestamp":"2026-10-06T12:00:00Z","message":{"role":"user","content":"Rode a suíte da T-003; job .team-project/operator/1/T-003-suite/"}}'
