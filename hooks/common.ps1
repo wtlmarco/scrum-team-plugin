@@ -188,3 +188,48 @@ function Test-PluginSource([string]$ProjectDir) {
     return (Test-Path -LiteralPath (Join-Path $ProjectDir '.claude-plugin/plugin.json')) -and
            (Test-Path -LiteralPath (Join-Path $ProjectDir 'roles/scrum-master/process/artifact-ownership.md'))
 }
+
+# v3.50.1 - modo benchmark: resposta do dossie a um formulario (G18 em pre-tool.ps1 e scripts/checks/bench-answer.ps1).
+function Resolve-BenchPath([string]$ProjectDir, [string]$Path) {
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $null }
+    if ([System.IO.Path]::IsPathRooted($Path)) { return $Path }
+    return (Join-Path $ProjectDir $Path)
+}
+function Write-BenchLog([object]$Config, [string]$ProjectDir, [string]$Theme, [string]$Origin, [string]$Question, [string]$Answer) {
+    $arm = if ($Config.bench.arm) { ([string]$Config.bench.arm -replace '[^\w.-]', '_') } else { 'default' }
+    $dir = Join-Path $ProjectDir ".team-project/benchmark/$arm"
+    try {
+        New-Item -ItemType Directory -Force $dir | Out-Null
+        $line = '{0} | {1} | {2} | {3} | {4}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Theme, $Origin, (($Question -replace '\s+', ' ').Trim()), (($Answer -replace '\s+', ' ').Trim())
+        [System.IO.File]::AppendAllText((Join-Path $dir 'questions.log'), $line + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } catch { }
+}
+# Responde cada pergunta de um AskUserQuestion pelo dossie (bench.answers). $null = sem bench ou sem respostas; senao, os rotulos.
+function Get-BenchAnswers([object]$Config, [string]$ProjectDir, [object]$ToolInput) {
+    if ($null -eq $Config.bench -or -not $Config.bench.answers) { return $null }
+    $path = Resolve-BenchPath $ProjectDir ([string]$Config.bench.answers)
+    if (-not $path -or -not (Test-Path -LiteralPath $path)) { return $null }
+    $rules = @((Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json).respostas)
+    $answers = @()
+    foreach ($q in @($ToolInput.questions)) {
+        $opts = @($q.options)
+        $text = ([string]$q.question + ' ' + [string]$q.header)
+        $hit = $null
+        foreach ($r in $rules) { if ($r.match -and ($text -match [string]$r.match)) { $hit = $r; break } }
+        $pick = $null
+        if ($hit -and $hit.pick) { $pick = @($opts | Where-Object { ([string]$_.label) -match [string]$hit.pick } | Select-Object -First 1)[0] }
+        $origin = if ($pick) { 'dossie' } else { 'recomendada' }
+        if (-not $pick) { $pick = @($opts | Where-Object { ([string]$_.label) -match '(?i)recomend' } | Select-Object -First 1)[0] }
+        if (-not $pick) { $pick = @($opts | Where-Object { ([string]$_.label) -notmatch '(?i)^pedir mais contexto' } | Select-Object -First 1)[0] }
+        if (-not $pick) { $pick = $opts[0] }
+        $label = [string]$pick.label
+        $theme = if ($hit -and $hit.tema) { [string]$hit.tema } else { '(fora do dossie)' }
+        Write-BenchLog $Config $ProjectDir $theme $origin ([string]$q.question) $label
+        $answers += $label
+    }
+    return ,$answers
+}
+function Format-BenchAnswers([string[]]$Answers) {
+    if ($Answers.Count -eq 1) { return "resposta do stakeholder: $($Answers[0])" }
+    return 'resposta do stakeholder: ' + (@(0..($Answers.Count - 1) | ForEach-Object { "pergunta $($_ + 1) → $($Answers[$_])" }) -join ' · ')
+}

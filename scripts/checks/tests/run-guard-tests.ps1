@@ -474,6 +474,9 @@ $cases = @(
     @{ Name = 'G13 avisa o modo benchmark ligado'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'Modo benchmark ligado'
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "bench": { "arm": "P0-r1", "foreground": true } }' -Encoding UTF8 }
        Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'G13 bench: sem AskUserQuestion (claude -p) a sessão é mandada ao bench-answer.ps1'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'scripts/checks/bench-answer.ps1'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "bench": { "arm": "P0-r1", "foreground": true } }' -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'SessionStart' } },
     @{ Name = 'G18 limpeza: sem bench'; Script = 'pre-tool.ps1'; Expect = 0
        Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.json') -Force -ErrorAction SilentlyContinue }
        Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; run_in_background = $true; prompt = 'x' } } },

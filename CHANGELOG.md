@@ -13,6 +13,18 @@
 
 ---
 
+## v3.50.1 — 2026-10-16
+
+**Branch:** `fix/v3.50.1` a partir de `develop` · **Processo:** sem mudança
+Defeito achado no ensaio do braço P do benchmark (`mente-ativa-P-r3`): sob `claude -p` a ferramenta `AskUserQuestion` não é oferecida à sessão (testado com `--tools`, `--allowedTools`, `--permission-prompts host` e `stream-json`; o ambiente limpo também não a expõe), então a G18, que nega a ferramenta e devolve a resposta do dossiê, nunca disparava. O brainstorm tratou as recomendações como premissas e o `sdd` recusou-se a rodar.
+
+- **`scripts/checks/bench-answer.ps1`:** a sessão informa pergunta, cabeçalho e rótulos (`-Options "A|B"`) e recebe `[bench] resposta do stakeholder: <rótulo>`, pela mesma lógica da G18 e com a mesma linha em `questions.log`. Sem bench ou sem dossiê, exit 2 (a pergunta é do stakeholder).
+- **`hooks/common.ps1`:** a resolução do dossiê (`Get-BenchAnswers`, `Write-BenchLog`, `Format-BenchAnswers`) saiu do `pre-tool.ps1` para ser comum à G18 e ao script; o comportamento da G18 não muda.
+- **G13 (`session-start.ps1`):** com `bench` ligado, a abertura manda usar o `bench-answer.ps1` quando o `AskUserQuestion` não existir, em vez de parar ou assumir premissa.
+- Suítes: 168 guardas e 108 conferências.
+
+---
+
 ## v3.50.0 — 2026-10-16
 
 **Branch:** `feat/v3.50.0` empilhada sobre `feat/v3.49.0` (não mesclada) · **Processo:** [`v3.50`](roles/scrum-master/process/process-changelog.md)

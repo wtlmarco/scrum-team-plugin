@@ -91,6 +91,8 @@ O experimento de benchmark ([`rituals/benchmark.md`](../../../rituals/benchmark.
 2. **`foreground: true`** nega `Agent` com `run_in_background: true`.
 
 **O que o modo muda no `run`:** a navegação do protótipo não existe (o simulador não navega): o ponteiro do ③ e da ficha do ① leva `n/a — navegação simulada (benchmark)`, e o C2 (`project.ps1`) aceita essa forma **só com `bench` ligado** — fora dele, `R15` falha. O modo é do **stakeholder** (`guards.json` é dele): nenhum papel o liga. A sessão avisa que ele está ligado na abertura (G13).
+**Sem a ferramenta `AskUserQuestion` (`claude -p`, v3.50.1):** a sessão não a recebe e a G18 nunca dispara. Cada formulário ao stakeholder vira uma chamada a `scripts/checks/bench-answer.ps1 -Question … -Header … -Options "A|B|C"`, que responde pelo mesmo dossiê e grava a mesma linha em `questions.log`; a resposta vale como decisão do stakeholder. Sem resposta (exit 2), o modo não está ligado e a pergunta é do stakeholder.
+
 ## Ao fim da fila
 
 Reporte: o que fechou, o que ficou bloqueado **e em que degrau**, o que foi pulado por dependência. **Quando o `run` percorreu a fila** (não vale para `sprint run <T-ID>`), a fila terminada não para em silêncio: a sessão chama `AskUserQuestion` — **formulário de autorização da Review, igual no terminal e no celular**. Em projeto com Identificador remoto, **grava antes a pendência em `README.md` §7** (item numerado, R34) e a pergunta leva o prefixo `[<ID> · S<n> · fim do run]`; nos demais, o mesmo formulário sai sem prefixo nem item em §7. O resumo vai na pergunta (*N fechadas · N bloqueadas, com o degrau · N puladas por dependência*); o relatório completo vem antes, na saída da sessão. Opções, na ordem, a última sempre a via de contexto (R22):
