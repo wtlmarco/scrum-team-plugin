@@ -10,6 +10,7 @@
 //   growth   de onde vem o crescimento do contexto (estimado); --session mede a sessão principal
 //   session  chamadas da sessão principal por tipo de trabalho
 //   waits    tempo da sessão parada à espera do stakeholder × à espera de agente
+//   activity custo por atividade (plano, código, teste, documentação, verificação, aparelho…); --by-role abre por papel
 // Requisito: Node.js 18+. Só lê; não grava nada fora do --json.
 'use strict';
 const fs = require('fs'), path = require('path');
@@ -32,7 +33,7 @@ const opt = (k) => { const i = argv.indexOf(k); return i > 0 ? argv[i + 1] : und
 const SINCE = opt('--since') ? Date.parse(opt('--since')) : 0;
 const JSON_OUT = opt('--json');
 if (!cmd || !root || !fs.existsSync(root)) {
-  console.error('uso: node transcript-metrics.js <cost|breaks|growth|session|waits> <pasta do projeto> [--since <ISO>] [--json <arquivo>] [--session]');
+  console.error('uso: node transcript-metrics.js <cost|breaks|growth|session|waits|activity> <pasta do projeto> [--since <ISO>] [--json <arquivo>] [--session] [--by-role]');
   process.exit(2);
 }
 
@@ -307,7 +308,63 @@ function cmdWaits() {
   Object.assign(out, { forms, waits_min: w });
 }
 
-const table = { cost: cmdCost, breaks: cmdBreaks, growth: cmdGrowth, session: cmdSession, waits: cmdWaits };
+// ---------- activity ----------
+// Custo por ATIVIDADE (v3.51), igual para qualquer braço do benchmark, com ou sem o plugin: cada chamada é atribuída à
+// atividade das ferramentas que ela usou (a chamada com várias divide o custo por igual). Não muda o comportamento de
+// ninguém: lê o transcript depois. Chamada sem ferramenta = raciocínio e relato (o texto que não virou ação).
+const isTestPath = (s) => /(^|\/)(test|tests|androidtest|__tests__|spec|specs)\//.test(s) || /(test|tests|spec)\.(kt|kts|java|cs|ts|tsx|js|jsx|py|go)$/.test(s)
+  || /\.(test|spec)\.[cm]?[jt]sx?$/.test(s) || /\.scn$/.test(s) || /quality-assurance\/scenarios\//.test(s);
+function writeAct(p) {
+  const s = relPath(p).toLowerCase();
+  if (/\.team-project\/.*\/plan\/|\.team-project\/fixes\/[^/]+\/plan\.md$/.test(s)) return 'plano';
+  if (isTestPath(s)) return 'teste';
+  if (s.includes('.team-project/') || /(^|\/)work\//.test(s)) return 'registros do processo';
+  if (/(^|\/)docs\//.test(s) || /\.(md|txt|adoc|rst)$/.test(s)) return 'documentação';
+  return 'código';
+}
+function shellAct(c) {
+  c = String(c || '').toLowerCase().replace(/\\/g, '/');
+  if (/\badb\b|emulator|uiautomator|accept\.ps1|playwright|target\.ps1|flaui|screencap/.test(c)) return 'aparelho e cenários';
+  if (/verify\.ps1|gate\.ps1|quality\.ps1|\b(gradle|gradlew|npm|npx|dotnet|jest|vitest|pytest|mvn|msbuild|ng)\b/.test(c)) return 'verificação (build, teste, lint)';
+  if (/scripts\/checks|records\.ps1|consumption\.ps1|\.active-/.test(c)) return 'orquestração e registros';
+  if (/^\s*git\b|[;&|]\s*git\b/.test(c)) return 'versionamento (git)';
+  return 'leitura e exploração';
+}
+function toolAct(t) {
+  const i = t.input || {};
+  if (['Write', 'Edit', 'NotebookEdit'].includes(t.name)) return writeAct(i.file_path || i.notebook_path);
+  if (t.name === 'PowerShell' || t.name === 'Bash') return shellAct(i.command);
+  if (t.name === 'Read') return readCat(i.file_path) === 'Read: processo do plugin' ? 'leitura do processo do plugin' : 'leitura e exploração';
+  if (['Grep', 'Glob'].includes(t.name)) return 'leitura e exploração';
+  if (['Agent', 'SendMessage', 'TaskStop', 'ListAgents', 'Skill', 'AskUserQuestion', 'CronCreate', 'CronDelete', 'TodoWrite'].includes(t.name)) return 'orquestração e registros';
+  return 'outros';
+}
+function cmdActivity() {
+  const byRole = argv.includes('--by-role');
+  const agg = {}, roles = {}; let total = 0, n = 0;
+  findProjectRoot();
+  for (const t of transcripts()) {
+    for (const c of calls(readJsonl(t.fp)).filter(inWindow)) {
+      const x = usd(c) || 0; total += x; n++;
+      const acts = c.tools.length ? [...new Set(c.tools.map(toolAct))] : ['raciocínio e relato'];
+      for (const k of acts) {
+        const a = agg[k] = agg[k] || { n: 0, usd: 0, tok: 0 }; a.n++; a.usd += x / acts.length; a.tok += c.ctx / acts.length;
+        if (byRole) { const r = roles[t.role] = roles[t.role] || {}; r[k] = (r[k] || 0) + x / acts.length; }
+      }
+    }
+  }
+  console.log(`Custo por atividade: ${n} chamadas · ${money(total).trim()} (a chamada com várias atividades divide o custo por igual)\n`);
+  for (const [k, a] of Object.entries(agg).sort((x, y) => y[1].usd - x[1].usd))
+    console.log(`  ${k.padEnd(34)} ${String(a.n).padStart(6)} cham · ${money(a.usd)} · ${pct(a.usd, total)}`);
+  if (byRole) {
+    console.log('\nPor papel (US$):');
+    for (const [r, m] of Object.entries(roles).sort((x, y) => Object.values(y[1]).reduce((s, v) => s + v, 0) - Object.values(x[1]).reduce((s, v) => s + v, 0)))
+      console.log(`  ${r.padEnd(18)} ` + Object.entries(m).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · '));
+  }
+  Object.assign(out, { total_usd: total, calls: n, activities: agg, roles });
+}
+
+const table = { cost: cmdCost, breaks: cmdBreaks, growth: cmdGrowth, session: cmdSession, waits: cmdWaits, activity: cmdActivity };
 if (!table[cmd]) { console.error(`comando desconhecido: ${cmd}`); process.exit(2); }
 table[cmd]();
 if (JSON_OUT) fs.writeFileSync(JSON_OUT, JSON.stringify(out, null, 1));
