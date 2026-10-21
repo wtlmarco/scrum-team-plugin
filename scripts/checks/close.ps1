@@ -215,7 +215,7 @@ try {
     # ---------- R16 · standards citados com seção (informativo) ----------
     if ($null -eq $plan) { Add-Result 'R16' 'n-a' 'sem plano' }
     else {
-        $sc = [regex]::Matches($plan, 'standards/[\w.-]+\.md`?\s*§\s*\d')
+        $sc = @([regex]::Matches($plan, 'standards/[\w./-]+\.md`?\s*§\s*\d')) + @([regex]::Matches($plan, '\b(Q\d{1,2}|KA-Q?\d+|RE-Q?\d+|NG-Q?\d+|NET-D\d+)\b'))   # v3.51: perfis em stacks/<tecnologia>/ e identificadores
         if ($sc.Count -ge 1) { Add-Result 'R16' 'ok' "$($sc.Count) citação(ões) de standards/ com seção" }
         else { Add-Result 'R16' 'falhou' 'nenhuma citação de standards/ com § numerado — conferir se todo passo é "Standard aplicável: n/a" com motivo' }
     }
