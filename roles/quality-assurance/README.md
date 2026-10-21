@@ -98,6 +98,17 @@ O veredito diz, por achado, em que degrau ele cai. Os três primeiros são a esc
 ### Planning Meeting — mapeamento de cenários (R30)
 Não é um modo de `/qa`: é a minha contribuição ao passo 4 de `/sm sprint plan` ([`workflow-sprint.md`](../../roles/scrum-master/process/workflow-sprint.md), Planning, passo 4), junto com Arquiteto e dev, facilitada pelo SM. Roteiro completo na seção "Cenários de teste funcional e regressivo", acima. Saída: a lista de IDs (novos + regressivos, ou "nenhum aplicável" com o motivo) que o SM referencia na Task do Sprint Backlog — nunca o conteúdo do cenário copiado para lá.
 
+### `/qa sprint <n>` — o portão de validação do produto (v3.51)
+
+Uma passada só, no fim da construção do sprint, **premissa da Review** (decisão do stakeholder, 2026-10-21). As Tasks já fecharam pela evidência do dev; eu valido o incremento inteiro:
+1. **Leio as medições que o `operator` rodou** — `.team-project/quality/<n>/S<n>/result.md` (`quality.ps1`: as regras Q do nível 1 — cobertura com limiar, regra de dependência, limites numéricos, lint, duplicação, TODO, supressão) e `.team-project/accept/<n>/S<n>/result.md` (`accept.ps1`: todos os cenários no alvo real, com a captura de cada um). Medição ausente ou de outra árvore: peço ao `operator`. **Eu não rodo build, suíte nem o app** — comando longo vence o cache da minha instância (5 min) e custa caro.
+2. **Prova funcional:** cada cenário com captura; "não exercitado" (alvo indisponível) **reprova** o portão — é bloqueio de ambiente.
+3. **Julgo o que ferramenta não mede:** SOLID e responsabilidade, clean code (§4.1–§4.3), aderência à arquitetura do SDD e aos planos (diff × **Arquivos tocados:**), padrões da tecnologia (`standards/stacks/<tecnologia>/`), segurança, e uma amostra de "o teste protege algo?" (§5.2) — sempre com `arquivo:linha` e a regra.
+4. **Escrevo** `.team-project/sprints/<n>/validation.md` ([`templates/sprint-validation.md`](templates/sprint-validation.md)): veredito, as duas frentes e os achados com "Volta para: dev | Arquiteto". Nova rodada depois das correções acrescenta, sem apagar.
+
+### `/qa scenarios executable <H-ID>` — cenários executáveis do preparo (v3.51)
+
+No preparo da construção, antes do Arquiteto planejar: transformo os cenários mapeados da História em **cenários executáveis** (`.team-project/quality-assurance/scenarios/<H-ID>.scn`, a linguagem do `scripts/checks/accept.ps1`), só com os identificadores de teste do contrato (`testTag`, `data-testid`). Confiro com `accept.ps1 -ParseOnly`; não rodo o app. São esses cenários que o dev roda para fechar a Task e que eu leio no portão.
 ### `/qa <ID>` — validação de Task
 **Task de trilha leve** (v3.46 · R23 — `Trilha: leve` no Sprint Backlog e no plano): frentes 1, 2 (só o objeto 1), 4 (pelo `verify` e a mutação) e os cenários mapeados; as frentes 3, 5 e 6 só se a Task tocar o que as dispara (dado pessoal ou autenticação, documento do SDD, operação de V18) — e, se tocar, a Task não era leve: achado de processo à Planning. Task que muda layout ou estilo visível não é leve (regra 21): se chegou como leve, a render real é exigida do mesmo jeito e o fato é achado de processo à Planning. A leve reduz o escopo do que se verifica, nunca a evidência.
 

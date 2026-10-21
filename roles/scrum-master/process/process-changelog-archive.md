@@ -8,6 +8,53 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.48 — O que o primeiro sprint do piloto mostrou: relatório do `operator` gravado pelo hook, guardas sem falha aberta nem falso negado, C1 que fecha o que é legítimo (SM + Arquiteto + Dev + QA) — 14/10/2026
+
+**Instrução** (stakeholder): "Pode aplicar", sobre `avaliacao-first-result.md` — grupos A (fechamento) e B (guardas). Base: `first-result/plugin-report.md` (relatório do SM do piloto, plugin 3.46.0 instalado), `first-result/guards.log` (04 a 13/10/2026, 4 821 linhas) e o `guards.json` do projeto; os comandos negados foram **reexecutados contra o hook da v3.47.1** antes da correção. **Causas medidas:** 9 edições do dev sem G6/G8/G9 (`.active-task` não JSON derrubava o hook — falha aberta); 6 falsos negados na G8/G9 (`>` dentro de texto lido como destino); ≥ 19 na G14 (caminho entre aspas virava `""`, conferência com `2>&1`, `Get-Process`, `npm --prefix`, `[Math]::`); C1 com R26/R28 `falhou` em toda Task com `operator` (o harness recusa relatório gravado por subagente), sem lugar para a decisão do stakeholder na R4, lendo só o bloco mais novo da evidência (R7) e com o `-Apply` saindo com exit 2 no quadro anterior à v3.44.1.
+**Classificação:** instrumento (G9, G11, G14, G15, G16, `Get-WriteTargets`, C1, `plan.ps1`) · formato de documento (Sprint Backlog: coluna "Decisão do stakeholder"; plano: regra 16) · comportamento de agente (`operator`: relatório em texto, pasta do job citada). **Sem regra nova** (34): R28 muda quem grava o `report`; R4 ganha o registro da exceção decidida.
+**Papéis movidos (R17):** 4 — SM, Arquiteto, Dev (via `operator`/guardas), QA.
+
+### O que mudou
+| Documento | Mudança |
+|---|---|
+| `hooks/pre-tool.ps1` | G9 nega com `.active-task` ilegível; `Get-WriteTargets` mascara texto entre aspas e resolve variável atribuída a literal no mesmo comando; G14 restaura o texto entre aspas para ler o destino, aceita conferência com `2>&1` ou `Out-String` no fim, `Get-Process`, `npm --prefix`, método estático de leitura, confere destino de `*>`, mensagens próprias para `Start-Sleep` e `robocopy`; G11 só no segmento `<n>`/`pre-sprint`/`B-nnn` |
+| `hooks/subagent-stop.ps1` (G16) | rodada do `operator` grava a última resposta como `report.md` (ou `report-<agente>-r<rodada>.md`) na pasta do job citada; campo `report` no `usage.jsonl` |
+| `hooks/notification.ps1` · `hooks/common.ps1` | G15 ignora o `AskUserQuestion`; `guards.log` com alvo numa linha |
+| `scripts/checks/close.ps1` (C1) | R28 conta todo `report*.md` das pastas citadas; R7/R12/R4/R30 leem a última rodada **com** veredito; R4 aceita "Decisão do stakeholder" datada; `-Apply` grava o Registro no `sprint-backlog.md` quando o burndown não o tem |
+| `scripts/checks/plan.ps1` | linha `dono`: arquivo de outro papel (matriz) ou de gate na lista reprova o plano |
+| `agents/operator.md` · R28 (`working-rules.md`) · `templates/consumption.md` | o relatório é a resposta; o hook grava; a resposta cita a pasta do job |
+| `templates/sprint-backlog.md` · `implementation-plan.md` regra 16 · `sprint-run.md` passo 3 · `team-update.md` 7i · `COVERAGE.md` | coluna nova; arquivo de outro papel fora da lista; `.active-task` é JSON; migração do Registro e do `testRoot`; cobertura v3.48 |
+
+### Por quê
+A proposta das guardas pedia dois sprints sem linha `erro` e com até um falso positivo por guarda; o piloto reprovou as duas, e a G12 não pode entrar enquanto o C1 diverge do fechamento legítimo. O caso mais grave não aparecia no relatório do SM: a falha aberta é silenciosa por desenho (D5) e só o `guards.log` a mostra. A regra que fica: dado ruim do projeto decide (nega com a rota); só defeito do hook falha aberto. O `report` do `operator` passa ao hook porque a recusa é do harness — contorná-la pelo shell burlaria a recusa; gravar a resposta depois que ela existe não.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| `operator` | não grava `report.md`; devolve o relatório em texto, citando a pasta do job |
+| Arquiteto | `**Arquivos tocados:**` só com arquivo do executor (o `plan.ps1` reprova o resto) |
+| SM / sessão | `.active-task` em JSON; entrada fora da Planning com "o que saiu" **ou** "Decisão do stakeholder" datada |
+| QA | revisão/nota acima da rodada não esconde mais o veredito |
+
+### Verificação (R19)
+`run-guard-tests.ps1` → **161** casos · 0 falharam (21 novos); `run-check-tests.ps1` → **89** · 0 (8 novos). Replay do `guards.log` do piloto contra o hook novo: os falsos negados reproduzíveis passam; o que segue negado são comandos que o log truncou em 120 caracteres (aspas sem fechar), `Start-Sleep` (com a rota nova), `robocopy`, script `.ps1` do scratchpad e `run_in_background` — negações corretas. **Não exercitado:** um `sprint run` real; se o `SubagentStop` traz a resposta final do `operator` no transcript antes do hook rodar (a suíte usa transcript montado).
+
+### Pendente do stakeholder
+Grupo C da avaliação (retomada por `SendMessage` com contexto grande, Totais do consumo por instância, onde gravar a quebra em Tasks, prova de UI com render real) vai pelo `/review` — registrado como sintoma em `note.md`, itens 1 a 5. A contagem dos 2 sprints do indicador da fase 2 e da condição da G12 recomeça com esta versão instalada no piloto.
+
+### Addendum v3.48.1 — `verify.testItem`: o teste focado em runner que recebe classe (14/10/2026)
+**Instrução** (stakeholder): "atualize o necessário para iniciarmos o teste de benchmark". **Causa:** os três projetos-padrão do benchmark são Android/Gradle; o `verify.ps1` troca `{tests}` pelos **caminhos** dos arquivos de teste, e o `--tests` do Gradle espera **classe** — o `focused`, a linha de base e toda mutação dariam "No tests found" (`inconclusivo`), e o C1 não fecharia nenhuma Task com `**Mutações:**`.
+**Classificação:** instrumento (`verify.ps1`) · formato (`guards.json` → `verify.testItem`). **Sem regra nova.**
+
+| Documento | Mudança |
+|---|---|
+| `scripts/checks/verify.ps1` | `testItem`: molde por teste com `{path}` (padrão) e `{class}` (`src/<conjunto>/java\|kotlin\|scala\|groovy/…` → nome qualificado; fora disso, o nome do arquivo) |
+| `deliverables/team-project/guards.json` · `team-update.md` 7h | chave opcional documentada, com o exemplo do Gradle |
+
+**Verificação (R19):** `run-check-tests.ps1` → 91 · 0 (2 novos: Gradle com `testRoot` + `--tests {class}`; `{path}::{class}` fora do padrão `src/`); `run-guard-tests.ps1` → 161 · 0. **Não exercitado:** um Gradle real — o ensaio do P é o primeiro.
+
+---
+
 ## v3.47 — Modelo por papel (G17), perfil Arquiteto executor, modo benchmark (G18) e ritual "modo projeto": o plugin pronto para o experimento sem intervenção (SM + Arquiteto + QA + Dev) — 10/10/2026
 
 **Instrução** (stakeholder): "já habilite esse chaveamento configurável pelo `models.json` sendo possível para todas as rules" (M1, generalizada a todos os papéis) e, depois, "pode executar [M2, M3 e M4] sobre a branch 3.47.0 como um novo commit" — sobre `proposta-benchmark-projeto.md` (§9, §13). **Causa:** o modelo de cada papel estava fixo no `model:` de `agents/<papel>.md` e em duas exceções do processo; o experimento de benchmark em modo projeto exige três coisas que o plugin não tinha — variar o papel que implementa (P2), responder os formulários sem o stakeholder e tratar a navegação do protótipo como simulada — e um roteiro para o conjunto.

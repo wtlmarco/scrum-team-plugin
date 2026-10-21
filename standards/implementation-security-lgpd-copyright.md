@@ -12,7 +12,7 @@
 >
 > **A aplicação concreta destes padrões a um produto específico é responsabilidade do documento de arquitetura daquele produto** — o caminho está em `.team-project/README.md` §4, nas seções de autenticação e autorização aplicadas, direitos autorais aplicados e segurança de infraestrutura. É lá que se definem os perfis reais, as permissões reais e o modelo de direitos autorais real. Este guia nunca deve ser editado para acomodar uma decisão de um produto específico.
 >
-> Este guia **complementa** `implementation-guide.md` — não repete o que já está lá. Isolamento multi-tenant no banco (§4), portas de infraestrutura (§6), logging (§7), configuração/segredos (§8), testes (§9) e formato de erro (§11) daquele guia aplicam-se integralmente aqui; este documento cobre apenas o que é específico de identidade, autorização, privacidade e direitos autorais.
+> Este guia **complementa** `stacks/dotnet/guide.md` — não repete o que já está lá. Isolamento multi-tenant no banco (§4), portas de infraestrutura (§6), logging (§7), configuração/segredos (§8), testes (§9) e formato de erro (§11) daquele guia aplicam-se integralmente aqui; este documento cobre apenas o que é específico de identidade, autorização, privacidade e direitos autorais.
 
 ---
 
@@ -21,8 +21,8 @@
 | Documento | Conteúdo |
 |---|---|
 | [`implementation-principles.md`](implementation-principles.md) | **Nível 1, agnóstico de linguagem** — Clean Architecture, Clean Code, CQRS, testes e gate de 80%. Os exemplos em C# **deste** guia são ilustração do perfil .NET; a obrigação é a porta/abstração, não a sintaxe |
-| [`implementation-guide.md`](implementation-guide.md) | Perfil .NET: estrutura, CQRS, isolamento multi-tenant, adaptadores, logging, configuração, testes — pré-requisito de leitura para este guia |
-| [`implementation-quality.md`](implementation-quality.md) | Perfil .NET/GitLab: Code Analysis, Coverage, Metrics e pipeline de CI |
+| [`stacks/dotnet/guide.md`](stacks/dotnet/guide.md) | Perfil .NET: estrutura, CQRS, isolamento multi-tenant, adaptadores, logging, configuração, testes — pré-requisito de leitura para este guia |
+| [`stacks/dotnet/quality.md`](stacks/dotnet/quality.md) | Perfil .NET/GitLab: Code Analysis, Coverage, Metrics e pipeline de CI |
 
 ---
 
@@ -108,7 +108,7 @@ O JWT contém apenas o necessário para identificação e autorização — nunc
 }
 ```
 
-A autenticação é **desacoplada do domínio via adaptadores** (mesmo padrão de portas e adaptadores de `implementation-guide.md` §5/§6), permitindo múltiplos provedores de identidade sem que a aplicação dependa diretamente de nenhum deles:
+A autenticação é **desacoplada do domínio via adaptadores** (mesmo padrão de portas e adaptadores de `stacks/dotnet/guide.md` §5/§6), permitindo múltiplos provedores de identidade sem que a aplicação dependa diretamente de nenhum deles:
 
 ```csharp
 // Application/Interfaces/IAuthenticationProvider.cs
@@ -136,7 +136,7 @@ Regras:
 
 - vínculo de identidade externa deve ser **explícito e autenticado** — nunca inferido apenas por coincidência de e-mail;
 - a entidade de vínculo (`ExternalIdentity` ou equivalente) armazena apenas `UserId`, `Provider`, `ProviderSubject`, `CreatedAt`, `LastLoginAt` — nada além disso (ver §8, minimização);
-- cada produto define, no seu documento de arquitetura, **quais** provedores externos suporta; este guia define **como** qualquer provedor deve ser integrado — seguindo o mesmo padrão de registro `AddKeyedScoped` de `implementation-guide.md` §5.2 quando mais de um provedor de identidade externo coexistir.
+- cada produto define, no seu documento de arquitetura, **quais** provedores externos suporta; este guia define **como** qualquer provedor deve ser integrado — seguindo o mesmo padrão de registro `AddKeyedScoped` de `stacks/dotnet/guide.md` §5.2 quando mais de um provedor de identidade externo coexistir.
 
 ---
 
@@ -224,7 +224,7 @@ Decisão de acesso completa:
 User → Tenant Membership → Role → Permission → Resource → Resource Ownership → Allow / Deny
 ```
 
-**Possuir a permissão `{recurso}.write` não é suficiente** — é sempre necessário validar também se a identidade tem acesso ao recurso específico (ownership/escopo — mesmo mecanismo de `ITenantContext`/`I{SubRecurso}Context` de `implementation-guide.md` §4.1), não apenas à classe de recurso.
+**Possuir a permissão `{recurso}.write` não é suficiente** — é sempre necessário validar também se a identidade tem acesso ao recurso específico (ownership/escopo — mesmo mecanismo de `ITenantContext`/`I{SubRecurso}Context` de `stacks/dotnet/guide.md` §4.1), não apenas à classe de recurso.
 
 Cada Tenant deve poder criar **perfis personalizados**, compostos livremente a partir do catálogo de permissões:
 
@@ -249,7 +249,7 @@ public interface IAuthorizationService
 }
 ```
 
-Aplicado como `IPipelineBehavior` (ver `implementation-guide.md` §3), executado depois de `ValidationBehavior` e antes do Handler — commands/queries anotados como `IAuthorizableRequest` declaram a permissão exigida.
+Aplicado como `IPipelineBehavior` (ver `stacks/dotnet/guide.md` §3), executado depois de `ValidationBehavior` e antes do Handler — commands/queries anotados como `IAuthorizableRequest` declaram a permissão exigida.
 
 ---
 
@@ -278,7 +278,7 @@ Regras válidas para qualquer produto:
 
 ## 7. Multi-Tenancy Aplicado à Identidade
 
-O isolamento multi-tenant em si (filtro por `TenantId`, `ITenantContext`, testes de isolamento cruzado) é definido em `implementation-guide.md` §4 e se aplica sem alteração. Este guia acrescenta apenas o que é específico da identidade:
+O isolamento multi-tenant em si (filtro por `TenantId`, `ITenantContext`, testes de isolamento cruzado) é definido em `stacks/dotnet/guide.md` §4 e se aplica sem alteração. Este guia acrescenta apenas o que é específico da identidade:
 
 - o **contexto de Tenant nunca é confiado a partir de um valor enviado pelo cliente** — é resolvido a partir do claim `tenant` do JWT autenticado, e validado contra a relação `User ↔ Tenant` armazenada no banco (não apenas assumido);
 - um `User` pode pertencer a múltiplos Tenants (relação N:N via uma entidade de vínculo, ex.: `TenantUser`), com um `Role` potencialmente diferente em cada Tenant;
@@ -288,7 +288,7 @@ O isolamento multi-tenant em si (filtro por `TenantId`, `ITenantContext`, testes
 Request → JWT Validation → User Identity → Tenant Context → Permission Check → Resource Ownership → Allow / Deny
 ```
 
-- consequência prática de API: buscar um recurso de outro Tenant responde `404`, nunca `403` — para não confirmar a existência do recurso a quem não tem acesso a ele (mesma regra de `implementation-guide.md` §4.3 e §11.2).
+- consequência prática de API: buscar um recurso de outro Tenant responde `404`, nunca `403` — para não confirmar a existência do recurso a quem não tem acesso a ele (mesma regra de `stacks/dotnet/guide.md` §4.3 e §11.2).
 
 ---
 
@@ -335,7 +335,7 @@ Infrastructure/Encryption/
 
 Regras:
 
-- chaves **nunca** no código-fonte — seguem `implementation-guide.md` §8 (gestão de segredos);
+- chaves **nunca** no código-fonte — seguem `stacks/dotnet/guide.md` §8 (gestão de segredos);
 - dados sensíveis em repouso (banco, object storage, backup, arquivos temporários) usam criptografia nativa do serviço quando disponível, com camada adicional da aplicação para dados particularmente sensíveis;
 - **senhas nunca são criptografadas de forma reversível** — usam algoritmo de hash com salt e custo configurável, dedicado a senhas:
 
@@ -388,7 +388,7 @@ Categorias mínimas de eventos auditáveis, adaptadas ao domínio do produto:
 Regras invioláveis:
 
 - registros de auditoria são **append-only**; o próprio usuário nunca apaga os registros gerados por suas ações — remoção segue apenas política de retenção (ver §11);
-- implementado como `IPipelineBehavior` (`AuditBehavior`, ver `implementation-guide.md` §3), **na mesma transação** do handler — se a auditoria falhar, a operação é revertida (fail-closed);
+- implementado como `IPipelineBehavior` (`AuditBehavior`, ver `stacks/dotnet/guide.md` §3), **na mesma transação** do handler — se a auditoria falhar, a operação é revertida (fail-closed);
 - logs e auditoria **nunca** armazenam: senhas, tokens, refresh tokens, códigos de confirmação, chaves criptográficas, conteúdo integral de documentos privados, ou PII desnecessária à finalidade do log.
 
 ---
@@ -503,7 +503,7 @@ Compartilhamento é sempre explícito, com níveis graduais:
 Private → TenantOnly → Restricted → Public
 ```
 
-Links de entrega/download seguem a porta `IObjectStorage` de `implementation-guide.md` §6.2 — nunca expõem o caminho físico do armazenamento diretamente:
+Links de entrega/download seguem a porta `IObjectStorage` de `stacks/dotnet/guide.md` §6.2 — nunca expõem o caminho físico do armazenamento diretamente:
 
 ```text
 Consumer → Delivery URL → Authorization → Signed URL (IObjectStorage.GetDownloadUrlAsync) → Object Storage
@@ -526,7 +526,7 @@ IAuditService
 ISecretProvider     // ver implementation-guide.md §8
 ```
 
-O domínio e a camada de aplicação dependem exclusivamente dessas abstrações — nunca de implementações concretas de provedor específico (biblioteca de OAuth, SDK de nuvem etc.), seguindo o mesmo princípio de portas e adaptadores de `implementation-guide.md` §5/§6.
+O domínio e a camada de aplicação dependem exclusivamente dessas abstrações — nunca de implementações concretas de provedor específico (biblioteca de OAuth, SDK de nuvem etc.), seguindo o mesmo princípio de portas e adaptadores de `stacks/dotnet/guide.md` §5/§6.
 
 ---
 
@@ -543,7 +543,7 @@ O domínio e a camada de aplicação dependem exclusivamente dessas abstrações
 - [ ] Perfis podem ser personalizados por Tenant.
 - [ ] `SystemAdmin`/equivalente não tem acesso automático a conteúdo privado de Tenant.
 - [ ] PII é minimizada e protegida (criptografia quando sensível).
-- [ ] Segredos não estão no código-fonte (ver `implementation-guide.md` §8).
+- [ ] Segredos não estão no código-fonte (ver `stacks/dotnet/guide.md` §8).
 - [ ] Existe estrutura central de auditoria (`AuditLog`), append-only, registrada na mesma transação do handler, sem dados sensíveis nos logs.
 - [ ] Processos de direito dos titulares (acesso, correção, anonimização, eliminação, portabilidade) estão previstos.
 - [ ] Política de retenção definida por categoria de dado.

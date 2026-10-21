@@ -1,0 +1,62 @@
+{
+  "_comentario": "Higiene por ferramenta (v3.51, D1/D2/D4). Lido pelo verify.ps1 (lib.ps1 Get-ToolHygiene/Get-EnvFailure). 'tools': quando 'match' (regex, sem diferenciar maiúscula) casa o comando, as variáveis de 'env' entram no processo filho (append = acrescenta ao valor que já existe) e cada 'warn' cujo padrão casa vira aviso. 'envSignatures': saída de comando que casa 'pattern' é FALHA DE AMBIENTE (exit 4 do verify), não defeito do código. Acrescente ferramenta aqui, sem mexer no script.",
+  "tools": [
+    {
+      "tool": "gradle",
+      "match": "(^|[\\s;&|/\\\\])gradlew?(\\.bat)?\\b|\\bgradle\\b",
+      "env": {
+        "GRADLE_OPTS": { "value": "-Dorg.gradle.daemon=false", "append": true },
+        "ORG_GRADLE_PROJECT_kotlin.compiler.execution.strategy": { "value": "in-process" }
+      },
+      "why": "o daemon do Gradle (e o do Kotlin) herda o canal de saída e o chamador fica esperando até ele expirar (até 3 h, medido no benchmark)"
+    },
+    {
+      "tool": "dotnet",
+      "match": "\\bdotnet\\b|\\bmsbuild\\b",
+      "env": {
+        "MSBUILDDISABLENODEREUSE": { "value": "1" },
+        "UseSharedCompilation": { "value": "false" },
+        "DOTNET_CLI_TELEMETRY_OPTOUT": { "value": "1" }
+      },
+      "why": "os nós do MSBuild e o servidor do compilador ficam vivos depois do build e seguram o processo chamador"
+    },
+    {
+      "tool": "node",
+      "match": "\\b(npm|npx|pnpm|yarn|ng|vitest|jest|karma)\\b",
+      "env": { "CI": { "value": "true" } },
+      "warn": [
+        { "pattern": "\\bng\\s+test\\b(?!.*--watch(=|\\s+)false)", "text": "ng test sem --watch=false fica observando arquivos e nunca termina: acrescente --watch=false --browsers=ChromeHeadless" },
+        { "pattern": "\\bjest\\b.*--watch\\b", "text": "jest --watch nunca termina: tire o --watch do comando de verificação" },
+        { "pattern": "\\bvitest\\b(?!.*\\b(run|--run)\\b)", "text": "vitest sem 'run' entra em modo de observação fora de CI: use 'vitest run'" }
+      ],
+      "why": "executores de teste em modo de observação nunca devolvem o controle"
+    }
+  ],
+  "envSignatures": [
+    {
+      "tool": "gradle",
+      "pattern": "ClassNotFoundException:\\s*worker\\.org\\.gradle\\.process\\.internal\\.worker\\.GradleWorkerMain",
+      "message": "o Gradle não carrega o worker de teste porque o caminho do perfil do Windows tem acento. Crie uma junção ASCII para a pasta .gradle (cmd /c mklink /J C:\\gradle-home \"%USERPROFILE%\\.gradle\") e ponha \"env\": { \"GRADLE_USER_HOME\": \"C:\\\\gradle-home\" } em guards.json → verify"
+    },
+    {
+      "tool": "android",
+      "pattern": "(?i)error:\\s*(no devices/emulators found|device offline|device '[^']*' not found)",
+      "message": "nenhum emulador ou aparelho disponível: rode scripts/checks/target.ps1 -Target android -Repair"
+    },
+    {
+      "tool": "android",
+      "pattern": "(?i)null root node returned by UiTestAutomationBridge|UiAutomationService .* already registered",
+      "message": "o emulador não está desenhando a tela ou outro automatizador está usando o aparelho: rode scripts/checks/target.ps1 -Target android -Repair"
+    },
+    {
+      "tool": "node",
+      "pattern": "(?i)browserType\\.launch: Executable doesn't exist|Cannot start ChromeHeadless|No binary for ChromeHeadless",
+      "message": "o navegador headless não está instalado: rode npx playwright install chromium (ou configure CHROME_BIN para o Karma)"
+    },
+    {
+      "tool": "any",
+      "pattern": "(?i)\\b(ENOSPC|There is not enough space on the disk|No space left on device)\\b",
+      "message": "disco cheio: libere espaço antes de rodar de novo"
+    }
+  ]
+}

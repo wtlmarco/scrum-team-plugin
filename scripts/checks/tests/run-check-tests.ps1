@@ -103,7 +103,7 @@ function New-Project([string]$Dir) {
 ## 4. Passos, em ordem de execução
 
 ### Passo 1 — endpoint
-- **Standard aplicável:** ```${CLAUDE_PLUGIN_ROOT}/standards/implementation-guide.md`` §3 — contrato
+- **Standard aplicável:** ```${CLAUDE_PLUGIN_ROOT}/standards/stacks/dotnet/guide.md`` §3 — contrato
 
 ## 9. Onde parar e perguntar
 - **Pré-requisito ausente** — 🔺 GAP
@@ -471,6 +471,76 @@ Check 'verify focused com testItem "--tests {class}": um --tests por classe qual
 Put $p '.team-project/guards.json' '{ "verify": { "focused": "Write-Output \"Tests: 1 passed [{tests}]\"", "testItem": "{path}::{class}" } }'
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'focused', '-Tests', 'tests/test_calc.py', '-Root', $p)
 Check 'verify testItem fora de src/<conjunto>/: {class} é o nome do arquivo' $r 0 @('Tests: 1 passed \[tests/test_calc\.py::test_calc\]')
+# v3.51 (D1/D2/D4): tempo limite próprio, árvore de processos encerrada, higiene por ferramenta e falha de ambiente (exit 4).
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Start-Process powershell -ArgumentList ''-NoProfile'',''-Command'',''Start-Sleep 90'' -WindowStyle Hidden; Write-Output ''Build succeeded''", "suite": "Start-Sleep 60", "timeoutMinutes": 0.08 } }'
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-051', '-Mode', 'full', '-Root', $p)
+Check 'verify: filho que deixa processo vivo não prende a espera; suíte que não termina estoura o tempo: exit 4 (ambiente)' $r 4 @('build: exit 0', 'suite: exit 124', 'FALHA DE AMBIENTE', 'ambiente \(suite\): tempo esgotado')
+Check 'verify: o tempo total respeita o limite (bem abaixo dos 60 s da suíte e dos 90 s do órfão)' @{ Code = $(if ($sw.Elapsed.TotalSeconds -lt 40) { 0 } else { 1 }); Out = "$([int]$sw.Elapsed.TotalSeconds) s" } 0 @()
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output ''Caused by: java.lang.ClassNotFoundException: worker.org.gradle.process.internal.worker.GradleWorkerMain''; exit 1 # ./gradlew", "lint": "Write-Output (''GO='' + $env:GRADLE_OPTS + '' UH='' + $env:GRADLE_USER_HOME + '' CI='' + $env:CI) # ./gradlew lint e npm", "env": { "GRADLE_USER_HOME": "C:\\gh" } } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-051', '-Mode', 'full', '-Root', $p)
+Check 'verify: assinatura do Gradle com perfil acentuado é falha de ambiente (exit 4), com a ação' $r 4 @('ambiente \(build\): o Gradle não carrega o worker', 'GRADLE_USER_HOME')
+$lintLog = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/verify/1/T-051/full-lint.log'), $utf8)
+Check 'verify: higiene entra no filho (Gradle sem daemon, CI=true no node) e verify.env vence' @{ Code = 0; Out = $lintLog } 0 @('GO=-Dorg.gradle.daemon=false', 'UH=C:\\gh', 'CI=true')
+Put $p '.team-project/guards.json' '{ "verify": { "suite": "Write-Output ''Tests: 3 passed'' # ng test" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-051', '-Mode', 'full', '-Root', $p)
+Check 'verify: ng test sem --watch=false passa, mas com o aviso de que nunca termina' $r 0 @('tudo exit 0', 'atenção: ng test sem --watch=false')
+
+# v3.51 (F1, D3): executor de cenários e pré-voo do alvo — o que se confere sem emulador nem navegador.
+$p = Join-Path $tmp 'accept'; New-Project $p
+Put $p '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-001 Abre`nreset`nlaunch`nassert-text texto.raio = 150 km`n`nscenario SC-002 Conta`nlaunch`nassert-count destino.card. = 12`n"
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Root', $p)
+Check 'accept -ParseOnly: cenários do QA lidos do lugar padrão' $r 0 @('2 cenário\(s\) válidos em 1 arquivo', 'SC-001, SC-002')
+Put $p '.team-project/quality-assurance/scenarios/b.scn' "tap antes\nscenario SC-003 Ruim`npular muro`nassert-text texto.raio`n`nscenario SC-001 Repetido`nlaunch`n"
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Root', $p)
+Check 'accept: cenário malformado sai com arquivo:linha (passo desconhecido, sem "=", id repetido): exit 2' $r 2 @("passo desconhecido 'pular'", "'assert-text' pede '<id> = <valor>'", 'SC-001 definido mais de uma vez')
+Remove-Item -LiteralPath (Join-Path $p '.team-project/quality-assurance/scenarios/b.scn') -Force
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Only', 'SC-009', '-Root', $p)
+Check 'accept -Only com cenário que não existe: exit 2' $r 2 @('SC-009 pedido em -Only não existe')
+Put $p '.team-project/guards.json' '{ "targets": { "web": { "url": "http://127.0.0.1:9", "startTimeoutSec": 3 } } }'
+$r = Invoke-Check 'target.ps1' @('-Target', 'web', '-Root', $p)
+Check 'target web fora do ar: FALHA DE AMBIENTE (exit 4), com a ação' $r 4 @('FALHA DE AMBIENTE', 'não responde em http://127.0.0.1:9', '-Repair')
+Put $p '.team-project/.target-lock' ('{"target":"web","owner":"accept T-777","pid":' + $PID + ',"desde":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '"}')
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-Target', 'web', '-Root', $p)
+Check 'accept com o alvo em uso por outro automatizador: exit 4, sem tocar no alvo' $r 4 @('está em uso por ''accept T-777''')
+Put $p '.team-project/.target-lock' '{"target":"web","owner":"accept velho","pid":999999,"desde":"2026-01-01 00:00:00"}'
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-Target', 'web', '-NoRepair', '-Root', $p)
+Check 'accept: trava de processo morto é ignorada; sem servidor e sem reparo: exit 4 pelo pré-voo' $r 4 @('FALHA DE AMBIENTE \(web\)', 'não responde')
+Check 'accept: a trava é devolvida ao sair' @{ Code = $(if (Test-Path -LiteralPath (Join-Path $p '.team-project/.target-lock')) { 1 } else { 0 }); Out = '' } 0 @()
+# v3.51 (A4): métricas do portão do QA, uma linha por regra do nível 1 (Quadro de Verificação §7).
+$p = Join-Path $tmp 'quality'; New-Project $p
+Put $p 'src/app.ts' "export const a = 1 // TODO melhorar`n// eslint-disable-next-line no-console`nexport const b = 2 // TODO T-041 ok`n"
+Put $p '.team-project/guards.json' '{ "quality": { "coverage": "Write-Output ''All files | 72.5 % |''", "lint": "Write-Output ''0 problems''", "architecture": "Write-Output ''erro de dependencia''; exit 1" } }'
+$r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $p)
+Check 'quality: cobertura abaixo do limiar, regra de dependência quebrada, TODO sem ID e supressão sem motivo: exit 1' $r 1 @('Q11 falhou.*72\.5 % medido × limiar 80', 'Q7 ok', 'Q1 falhou', 'Q6 não configurado', 'Q9 falhou.*src/app\.ts:1', 'Q17 falhou.*src/app\.ts:2', 'quality/1/S1/result\.md')
+Put $p 'src/app.ts' "export const a = 1 // TODO T-050 melhorar`n// eslint-disable-next-line no-console -- log de diagnóstico exigido pela regra R12`n"
+Put $p '.team-project/guards.json' '{ "quality": { "coverage": "Write-Output ''Total coverage: 86%''", "coverageThreshold": 85 } }'
+$r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $p)
+Check 'quality: cobertura acima do limiar configurado, padrões com ID e justificativa: exit 0' $r 0 @('Q11 ok.*86 % medido × limiar 85', 'Q9 ok', 'Q17 ok', 'regras configuradas ok')
+# v3.51 (G1, G2): kanban.md no lugar do burndown.md (o controle das Tasks embaixo) e o kanban.html regravado a cada transição.
+$p = Join-Path $tmp 'kanban'; New-Project $p
+$bd = Join-Path $p '.team-project/sprints/1/burndown.md'
+$kb = Join-Path $p '.team-project/sprints/1/kanban.md'
+[System.IO.File]::WriteAllText($kb, "# Kanban — Sprint 1`n`n## Kanban`n`n| x |`n|---|`n`n" + [System.IO.File]::ReadAllText($bd, $utf8).Replace('# Burndown — Sprint 1', '') + "`n## Controle`n`n### Bloqueios e riscos abertos`n`n| # | Task / História | Natureza | Degrau | Quem destrava | Desde |`n|---|---|---|---|---|---|`n| 1 | T-041a | ambiente | par PO+Arquiteto desde 2026-09-02 | PO | 2026-09-02 |`n", $utf8)
+Remove-Item -LiteralPath $bd -Force
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'plan', '-Root', $p)
+$html = Join-Path $p '.team-project/sprints/1/kanban.html'
+Check 'mark com kanban.md: a transição vai ao kanban.md, a tabela Kanban e o kanban.html são regravados' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($kb, $utf8) + "`nHTML=" + $(if (Test-Path -LiteralPath $html) { [System.IO.File]::ReadAllText($html, $utf8) } else { 'ausente' }) } 0 @('Registro em kanban\.md', 'T-041a ⬜ → 🟦', '\| T-041a \|', 'Kanban · Sprint 1', 'Bloqueios e riscos abertos', 'http-equiv="refresh"')
+
+# v3.51 (B1, C2): run.ps1 — a próxima ação do sprint sai do quadro e do disco, pronta para a sessão executar.
+$p = Join-Path $tmp 'run'; New-Project $p
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'run next: sem .scn, o preparo começa pelos cenários executáveis da História (QA)' $r 0 @('preparo da construção — cenários executáveis da História H-014', 'SC-014', 'team:quality-assurance')
+Put $p '.team-project/quality-assurance/scenarios/H-014.scn' "scenario SC-014 Exporta`nlaunch`n"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'run next: com os cenários, os planos que faltam da História numa instância do Arquiteto' $r 0 @('planos da História H-014 numa instância do Arquiteto', 'T-041a', 'team:architect')
+Put $p '.team-project/sprints/1/plan/T-041a-x.md' "# Plano`n"
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') '[`plan/T-041a-x.md`](plan/)' '[`plan/T-041a-x.md`](plan/T-041a-x.md)'
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'run next: preparo completo, a Task em andamento vai à construção' $r 0 @('construir T-041', 'run\.ps1 start -Task T-041')
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
+Check 'run handoff: cartão de passagem curto com plano, cenários e o comando do accept' @{ Code = $r.Code; Out = $(if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) + "`nKB=" + [int]((Get-Item -LiteralPath $card).Length / 1024) } else { 'sem cartão' }) } 0 @('Cartão de passagem — T-041', 'accept\.ps1 -Task T-041 -Only SC-014', 'KB=[0-2]\b')
 
 # 5e. close.ps1 -Apply (v3.46): a sessão fecha sem o Agent scrum-master — quadro, Registro, Série, -Post e entrada de status.
 $p = Join-Path $tmp 'apply'; New-Project $p
@@ -485,10 +555,26 @@ $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Apply', '-Root', $p)
 $r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/sprints/1/sprint-backlog.md'))
 Check 'C1 -Apply com R12 pendente: não fecha, quadro intacto' $r 1 @('Não fecha', "\| $($e.qa) T-041 \|")
 
+# 5e2. v3.51 (A3): a Task fecha pela evidência do DEV (delivery/<T-ID>.md), com os cenários rodados no alvo (R7-aceite).
+$p = Join-Path $tmp 'dev-evid'; New-Project $p
+Remove-Item -LiteralPath (Join-Path $p '.team-project/sprints/1/evidence/T-041.md') -Force
+Put $p '.team-project/sprints/1/delivery/T-041.md' ("## Entrega — T-041 Endpoint`n`n### Verificação`n``````n> verify full T-041`nverify full T-041 · tudo exit 0`n``````n`n### Documentos vivos (R12)`n**Estado:** a consolidar no fim do sprint — 03-architecture §4`n`n### Não fiz (fora do plano)`nnada`n")
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 evidência do dev sem alvo configurado: fecha (R7 do dev, R12 a consolidar, R7-aceite n-a)' $r 0 @('\| R7 \| ok.*evidência do dev', '\| R12 \| ok.*a consolidar', '\| R7-aceite \| n-a')
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 evidência do dev com alvo e sem accept: não fecha (R7-aceite)' $r 1 @('\| R7-aceite \| falhou.*accept\.ps1 -Task T-041 -Only SC-014', 'Não fecha')
+Put $p '.team-project/accept/1/T-041/result.json' '{ "task": "T-041", "target": "android", "at": "2026-10-21 10:00:00", "tree": null, "environment": null, "results": [ { "id": "SC-014", "status": "FALHOU", "detail": "x" } ] }'
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 evidência do dev com cenário reprovado no alvo: não fecha' $r 1 @('\| R7-aceite \| falhou.*falharam: SC-014')
+Put $p '.team-project/accept/1/T-041/result.json' '{ "task": "T-041", "target": "android", "at": "2026-10-21 10:00:00", "tree": null, "environment": null, "results": [ { "id": "SC-014", "status": "PASSOU", "detail": "" } ] }'
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 evidência do dev com os cenários da Task passando no alvo: fecha' $r 0 @('\| R7-aceite \| ok.*1 cenário', '\| R30 \| ok.*SC-014')
+
 # 5f. plan.ps1 (v3.46): o plano é conferido antes do dev.
 $p = Join-Path $tmp 'plano'; New-Project $p
 $pl = '.team-project/sprints/1/plan/T-050-x.md'; $fence = '```'
-Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 4. Passos`n`n### Passo 1 — x`n- **Assinatura exata:**`n  $fence`n  export function a(): number`n  $fence`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · ``return 1`` → ``return 0```n")
+Put $p $pl ("# Plano`n**Cenários:** nenhum — só domínio, coberto por teste unitário`n**Risco:** regra de negócio`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 4. Passos`n`n### Passo 1 — x`n- **Assinatura exata:**`n  $fence`n  export function a(): number`n  $fence`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · ``return 1`` → ``return 0```n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'Plano em contrato: exit 0' $r 0 @('\| lista \| ok', '\| protegidos \| ok', '\| blocos \| n-a', '\| trecho \| ok', '\| mutação \| ok.*1 muta')
 $long = (1..20 | ForEach-Object { "  linha $_" }) -join "`n"
@@ -504,9 +590,30 @@ Check 'Plano com trecho de mutação vazio (crase dupla): exit 1 (v3.47.1)' $r 1
 Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n``.team-project/scrum-master/context.md```n``.github/workflows/ci.yml```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: x`n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'Plano com documento de outro papel e arquivo de gate na lista: exit 1 (v3.48)' $r 1 @('\| dono \| falhou.*scrum-master/context\.md é de SM.*ci\.yml é arquivo de gate')
-Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n``.team-project/developer/context.md```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: x`n")
+Put $p $pl ("# Plano`n**Cenários:** nenhum — configuração`n**Risco:** infraestrutura`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n``.team-project/developer/context.md```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: x`n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'Plano com o contexto do próprio dev: dono ok (v3.48)' $r 0 @('\| dono \| ok')
+# v3.51 — plano enxuto (22), cenários ao lado (23), teste pelo risco (24) e render só com layout novo (21).
+$head = "**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: x`n"
+Put $p $pl ("# Plano`n**Cenários:** SC-001, SC-009`n**Risco:** interface simples`n**Layout novo:** não`n`n" + $head)
+Put $p '.team-project/quality-assurance/scenarios/t.scn' "scenario SC-001 Abre`nlaunch`n"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano cita cenário que não existe nos .scn: exit 1 (regra 23)' $r 1 @('\| cenários \| falhou.*SC-009', '\| render \| n-a.*sem layout novo', '\| risco \| ok')
+Put $p '.team-project/quality-assurance/scenarios/t.scn' "scenario SC-001 Abre`nlaunch`n`nscenario SC-009 Conta`nlaunch`n"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano com cenários existentes e interface simples sem layout novo: exit 0' $r 0 @('\| cenários \| ok.*SC-001, SC-009', '\| tamanho \| ok')
+Put $p $pl ("# Plano`n**Cenários:** SC-001`n**Risco:** regra de negócio`n`n" + $head)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano de regra de negócio sem mutação: exit 1 (regra 24)' $r 1 @('\| risco \| falhou.*pede mutação')
+Put $p $pl ("# Plano`n**Cenários:** SC-001`n**Risco:** interface simples`n`n" + $head)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano de interface sem **Layout novo:**: exit 1 (regra 21)' $r 1 @('\| render \| falhou.*Layout novo')
+Put $p $pl ("# Plano`n**Cenários:** SC-001`n**Risco:** interface simples`n**Layout novo:** sim`n`n" + $head)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano com layout novo sem Render real: exit 1 (proposta d ajustada)' $r 1 @('\| render \| falhou.*Render real.*headless')
+Put $p $pl ("# Plano`n**Risco:** infraestrutura`n`n" + $head + ('x' * 21000))
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano acima de 20 KB e sem **Cenários:**: exit 1 (regras 22 e 23)' $r 1 @('\| tamanho \| falhou', '\| cenários \| falhou.*sem \*\*Cenários')
 
 # 5g. v3.48 — achados do primeiro sprint do piloto: revisão sem veredito acima da rodada, entrada aceita pelo stakeholder,
 # report gravado pelo hook com nome livre, pasta citada sem report, -Apply com o Registro no quadro antigo.

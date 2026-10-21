@@ -47,6 +47,17 @@ Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere c
 <primeira linha de erro por arquivo; ou nome do teste que falhou + a asserção que falhou>
 ```
 
+### Aceite no alvo *(v3.51 — os cenários da Task, `accept.ps1`)*
+`.team-project/accept/<n>/<T-ID>/result.md` · <passaram> de <total> · alvo <android|web> · as linhas que o script imprimiu, coladas:
+```
+<[SC-nnn] PASSOU …>
+<accept T-ID · alvo … · n de n cenário(s) passaram · …>
+```
+
+### Documentos vivos (R12)
+**Estado:** a consolidar | atualizados | n/a — <motivo>
+- <documento> §<seção> — <o que muda> *(o Arquiteto consolida uma vez no fim do sprint — A5)*
+
 ### Execução delegada
 *(uma linha por chamada ao `operator` — o índice dos jobs (R28). Tokens e duração o hook G16 mede; não copio número nem gravo em `consumption.md`. Sem chamada: "nenhuma".)*
 

@@ -67,7 +67,7 @@ $cases = @(
     @{ Name = 'G2 Write fora do plugin'; Script = 'pre-tool.ps1'; Expect = 0; Env = @{ CLAUDE_PLUGIN_ROOT = $installed }
        Payload = @{ tool_name = 'Write'; tool_input = @{ file_path = (Join-Path $proj 'app.txt'); content = 'x' } } },
     @{ Name = 'G3 formulário correto'; Script = 'pre-tool.ps1'; Expect = 0
-       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Q?'; header = 'Q'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Q? Exemplo: hoje a lista aparece vazia.'; header = 'Q'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
     @{ Name = 'G3 sem "Pedir mais contexto" por último'; Script = 'pre-tool.ps1'; Expect = 2
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Q?'; header = 'Q'; multiSelect = $false; options = @((Opt 'Pedir mais contexto'), (Opt 'Aprovar')) }) } } },
     @{ Name = 'G3 segunda pergunta errada'; Script = 'pre-tool.ps1'; Expect = 2
@@ -83,14 +83,14 @@ $cases = @(
     @{ Name = 'G13 autoteste';Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'Guardas do time'
        Payload = @{ hook_event_name = 'SessionStart' } },
     @{ Name = 'G3 R34 sem Identificador remoto: prefixo não exigido'; Script = 'pre-tool.ps1'; Expect = 0
-       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Aprova o pacote?'; header = 'P'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Aprova o pacote? Exemplo: a tela de exportação.'; header = 'P'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
     @{ Name = 'G3 R34 com ID, pergunta sem prefixo'; Script = 'pre-tool.ps1'; Expect = 2
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/README.md') "# Contexto`n`n## 1. O produto`n**Identificador remoto:** ACME`n**Conta remota:** pessoal`n`n## 7. Decisões pendentes do stakeholder`n`n1. [ACME · S4 · ③ pacote] Aprova o pacote? — material: sprint-backlog.md — 2026-10-03 10:00`n`n## 7a. Registro de consultores`n" -Encoding UTF8 }
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Aprova o pacote?'; header = 'P'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
     @{ Name = 'G3 R34 prefixo sem pendência em §7'; Script = 'pre-tool.ps1'; Expect = 2
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = '[ACME · S4 · ④ H-012] Aceita a H-012?'; header = 'P'; multiSelect = $false; options = @((Opt 'Aceita'), (Opt 'Pedir mais contexto')) }) } } },
     @{ Name = 'G3 R34 prefixo com pendência em §7'; Script = 'pre-tool.ps1'; Expect = 0
-       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = '[ACME · S4 · ③ pacote] Aprova o pacote?'; header = 'P'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = '[ACME · S4 · ③ pacote] Aprova o pacote? Exemplo: a tela de exportação.'; header = 'P'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
     # ---------- Fase 2 (v3.42) — agent_type no formato medido pela sonda: team:<papel> ----------
     @{ Name = 'G7 dev dispara outro papel'; Script = 'pre-tool.ps1'; Expect = 2
        Payload = @{ tool_name = 'Agent'; agent_type = 'team:developer'; tool_input = @{ subagent_type = 'team:architect'; prompt = 'x' } } },
@@ -345,7 +345,20 @@ $cases = @(
                  (Test-Path -LiteralPath $f) -and ((Get-Content -LiteralPath $f -Raw -Encoding UTF8) -like '*Focado: exit 1*') -and
                  ((Get-Content -LiteralPath (Join-Path $proj '.team-project/operator/1/T-003-suite/report.md') -Raw -Encoding UTF8) -like '*Veredito: ok*') }
        Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'op12345678'; agent_type = 'team:operator'; transcript_path = (Join-Path $tmp 'transcripts/sess1.jsonl') } },
-    @{ Name = 'G13 avisa marcador de run esquecido'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = '.active-run existe'
+    @{ Name = 'G13 retoma o sprint run esquecido (v3.51, proposta b)'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'Retomada: o sprint run 1 *Retome agora, sem esperar o stakeholder: /sm sprint run'
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'G13 retoma o fix run esquecido com o comando do fix'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'Retomada: o fix run B-002 */sm fix run'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "fix", "id": "B-002", "desde": "2026-10-06 10:00" }' -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'G13 .active-run ilegível: só o aviso'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = '.active-run existe mas está ilegível'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') 'não é json' -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'G13 perfil com acento: avisa a junção ASCII do Gradle (v3.51, D2)'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'tem acento*GRADLE_USER_HOME'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "1", "desde": "2026-10-06 10:00" }' -Encoding UTF8 }
+       Env = @{ USERPROFILE = 'C:\Users\JoãoAçaí'; GRADLE_USER_HOME = '' }
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'G13 perfil com acento e GRADLE_USER_HOME já definido: sem aviso'; Script = 'session-start.ps1'; Expect = 0; NotOut = 'tem acento'
+       Env = @{ USERPROFILE = 'C:\Users\JoãoAçaí'; GRADLE_USER_HOME = 'C:\gh' }
        Payload = @{ hook_event_name = 'SessionStart' } },
     # ---------- v3.47 — G17: modelo por papel (.team-project/models.json) ----------
     @{ Name = 'G17 sem models.json: disparo livre (como na v3.46)'; Script = 'pre-tool.ps1'; Expect = 0
@@ -445,7 +458,7 @@ $cases = @(
        Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); content = 'x' } } },
     # ---------- v3.47 (M3) — G18 modo benchmark: respostas do dossiê e primeiro plano ----------
     @{ Name = 'G18 sem bench: a G3 segue valendo'; Script = 'pre-tool.ps1'; Expect = 0
-       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = '[ACME · S4 · ③ pacote] Aprova o pacote?'; header = 'P'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = '[ACME · S4 · ③ pacote] Aprova o pacote? Exemplo: a tela de exportação.'; header = 'P'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
     @{ Name = 'G18 bench: o dossiê responde (pick casa o rótulo)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'resposta do stakeholder: Aprovar'
        Setup = { Set-Content -LiteralPath (Join-Path $proj 'bench-answers.json') '{ "respostas": [ { "tema": "Portões", "match": "(?i)pacote|portão", "pick": "^(?i)aprovar" } ] }' -Encoding UTF8
                  Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "bench": { "arm": "P0-r1", "answers": "bench-answers.json", "foreground": true } }' -Encoding UTF8 }
@@ -487,7 +500,49 @@ $cases = @(
        Payload = @{ tool_name = 'AskUserQuestion'; agent_type = 'team:product-owner'; agent_id = 'a1'; tool_input = @{ questions = @(@{ question = 'Q?'; header = 'Q'; multiSelect = $false; options = @((Opt 'Sim'), (Opt 'Não')) }) } } },
     @{ Name = 'Sonda gravou agent_type no guards.log'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'desativadas G3'
        Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw) -like '*probe*agent_type=team:product-owner*script_ms=*' }
-       Payload = @{ hook_event_name = 'SessionStart' } }
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    # ---------- v3.51 — H1 (G3 com exemplo prático), G19 (retomada de papel caro) e G20 (hook Stop) ----------
+    @{ Name = 'H1 pergunta sem exemplo prático: negada pela G3'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'H1 (v3.51)'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/README.md') "# Contexto`n" -Encoding UTF8; Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "disabled": [] }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Aprova o ajuste?'; header = 'A'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'H1 exemplo na descrição de uma opção: liberado'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Aprova o ajuste?'; header = 'A'; multiSelect = $false; options = @(@{ label = 'Aprovar'; description = 'por exemplo: o raio começa em 150 km' }, (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'G19 SendMessage ao Arquiteto parado há 20 min: instância nova'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G19'
+       Setup = { Add-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') ('{"ts":"' + (Get-Date).AddMinutes(-20).ToString('yyyy-MM-ddTHH:mm:ss') + '","agent_id":"arc19old","role":"architect","model":"claude-opus-5-5"}') -Encoding UTF8
+                 Add-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') ('{"ts":"' + (Get-Date).AddMinutes(-2).ToString('yyyy-MM-ddTHH:mm:ss') + '","agent_id":"arc19new","role":"architect","model":"claude-opus-5-5"}') -Encoding UTF8
+                 Add-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') ('{"ts":"' + (Get-Date).AddMinutes(-40).ToString('yyyy-MM-ddTHH:mm:ss') + '","agent_id":"dev19old","role":"developer","model":"claude-haiku-5-5"}') -Encoding UTF8 }
+       Payload = @{ tool_name = 'SendMessage'; tool_input = @{ to = 'arc19old'; message = 'x' } } },
+    @{ Name = 'G19 Arquiteto parado há 2 min: retomada liberada'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'SendMessage'; tool_input = @{ to = 'arc19new'; message = 'x' } } },
+    @{ Name = 'G19 dev (Haiku) parado há 40 min: retomada liberada'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'SendMessage'; tool_input = @{ to = 'dev19old'; message = 'x' } } },
+    @{ Name = 'G20 sem .active-run: fim de turno livre'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-run') -Force -ErrorAction SilentlyContinue
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue
+                 New-Item -ItemType Directory -Force (Join-Path $proj '.team-project/sprints/7') | Out-Null
+                 [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/sprints/7/sprint-backlog.md'), "## História H-1 — x`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2705)) T-1 | a | — |`n| $([char]::ConvertFromUtf32(0x2B1C)) T-2 | b | T-1 |`n| $([char]::ConvertFromUtf32(0x2B1C)) T-3 | c | T-9 |`n", (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'G20 run ativo com Task elegível: barra o fim de turno'; Script = 'stop.ps1'; Expect = 2; ExpectErr = 'T-2 está elegível'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "7", "desde": "2026-10-06 10:00" }' -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'G20 agente em segundo plano em voo: espera legítima'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') ('[{"type":"team:developer","description":"Dev T-2","desde":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '"}]') -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'G20 SubagentStop tira o agente da lista; o fim de turno volta a ser barrado'; Script = 'stop.ps1'; Expect = 2
+       Setup = { $null = Invoke-Hook 'subagent-stop.ps1' @{ hook_event_name = 'SubagentStop'; agent_id = 'semtranscript'; agent_type = 'team:developer' } }
+       Check = { -not (Test-Path -LiteralPath (Join-Path $proj '.team-project/.active-agents')) }
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'G20 laço: depois de 3 bloqueios em 10 min, libera'; Script = 'stop.ps1'; Expect = 0
+       Setup = { foreach ($i in 1..3) { Add-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') ("$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') | G20 | sessao |  | T-2 | bloqueio: fim de turno com Task elegível") -Encoding UTF8 } }
+       Payload = @{ hook_event_name = 'Stop'; stop_hook_active = $true } },
+    @{ Name = 'G20 trilha fix: fora do escopo da v1'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "fix", "id": "B-001", "desde": "2026-10-06 10:00" }' -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'G20 run ativo e nenhuma elegível (dependência aberta): libera'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "7", "desde": "2026-10-06 10:00" }' -Encoding UTF8
+                 [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/sprints/7/sprint-backlog.md'), "## História H-1 — x`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2B1C)) T-3 | c | T-9 |`n", (New-Object System.Text.UTF8Encoding($false)))
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.log') -Force -ErrorAction SilentlyContinue }
+       Payload = @{ hook_event_name = 'Stop' } }
 )
 
 $rows = @(); $fail = 0
@@ -500,6 +555,7 @@ foreach ($c in $cases) {
         if ($c.ExpectOut -eq '') { $ok = [string]::IsNullOrWhiteSpace($r.Out) } else { $ok = $r.Out -like "*$($c.ExpectOut)*" }
     }
     if ($ok -and $c.ContainsKey('ExpectErr')) { $ok = $r.Err -like "*$($c.ExpectErr)*" }
+    if ($ok -and $c.ContainsKey('NotOut')) { $ok = $r.Out -notlike "*$($c.NotOut)*" }
     if ($ok -and $c.Check) { $ok = [bool](& $c.Check) }
     if (-not $ok) { $fail++ }
     $detail = (($r.Err + ' ' + $r.Out) -replace '\s+', ' ').Trim()

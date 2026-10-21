@@ -6,5 +6,6 @@
   "sourceRoots": [],
   "testSkipPatterns": ["[Skip", "[Ignore", "Skip =", "Skip=", ".skip(", "xit(", "xdescribe(", "xtest(", "@Disabled", "@Ignore", "pytest.mark.skip", "t.Skip("],
   "runCommands": [],
-  "verify": { "focused": "", "lint": "", "build": "", "suite": "", "coverage": "", "testRoot": "", "testItem": "", "inconclusive": [], "caught": "" }
+  "verify": { "focused": "", "lint": "", "build": "", "suite": "", "coverage": "", "testRoot": "", "testItem": "", "inconclusive": [], "caught": "", "timeoutMinutes": 9, "env": {} },
+  "targets": {}
 }

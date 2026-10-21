@@ -5,6 +5,8 @@
 # v3.47: G17 modelo do papel (.team-project/models.json) — a ferramenta Agent obedece ao modelo configurado;
 # G18 modo benchmark (guards.json → bench) — o dossiê responde o AskUserQuestion e o agente roda em primeiro plano;
 # perfil Arquiteto executor (M2): com .active-executor e models.json "executor", a G8/G9/G6 tratam o Arquiteto como o dev.
+# v3.51: G3 exige o exemplo prático (H1); G19 nega SendMessage a papel caro parado há mais de 5 min (C1); o Agent em
+# segundo plano durante o run é registrado em .active-agents para o hook Stop (G20).
 # v3.48 (primeiro sprint do piloto): .active-task ilegível nega (antes derrubava o hook); texto entre aspas não é destino;
 # destino em variável do mesmo comando se resolve; G14 sem os falsos negados medidos; G11 só no segmento canônico.
 # Devolve a PRIMEIRA negação: exit 2 com o motivo no stderr; "allow" (G14) sai em JSON com exit 0. Nenhuma guarda pergunta.
@@ -77,6 +79,12 @@ function Test-G3([object]$ToolInput) {
         if ($last -notmatch '^(?i)pedir mais contexto') {
             Deny 'G3' $text "a última opção de '$text' é '$last' — R22: toda pergunta ao stakeholder, até a simples, termina com 'Pedir mais contexto' (descrita como resposta válida, que reabre o time para aprofundar). Refaça o formulário."
         }
+        # v3.51 (H1): o stakeholder decide com um exemplo prático na frente — o problema em linguagem simples e um caso
+        # concreto do produto, na pergunta ou na descrição de uma opção.
+        $all = $text + ' ' + ((@($opts) | ForEach-Object { [string]$_.description }) -join ' ')
+        if ($all -notmatch '(?i)\b(exemplo|por exemplo|ex\.:|ex:|e\.g\.|for example|example)') {
+            Deny 'G3' $text "H1 (v3.51): a pergunta '$text' não traz um exemplo prático. Diga o problema em uma ou duas frases, sem sigla nem nome de regra, e um exemplo concreto do produto ('Exemplo: hoje, se o usuário …'), o que muda em cada opção (na descrição) e a recomendação primeiro (roles/scrum-master/templates/stakeholder-question.md). Refaça o formulário."
+        }
         if ($remoteId) {
             $pm = [regex]::Match($text, '^\s*(\[' + [regex]::Escape($remoteId) + ' · [^\]]+\])')
             if (-not $pm.Success) {
@@ -86,6 +94,25 @@ function Test-G3([object]$ToolInput) {
                 Deny 'G3' $text ("R34: grave antes a pendência em .team-project/README.md §7 — 'N. " + $pm.Groups[1].Value + " <pergunta> — material: <ponteiro> — aaaa-mm-dd hh:mm' — e só então chame o formulário (R5).")
             }
         }
+    }
+}
+
+# G19 (v3.51, C1) — a sessão não retoma por SendMessage um papel caro parado há mais de 5 min: o cache do subagente dura
+# 5 min, e a retomada regrava todo o contexto dele (P-r6: Arquiteto 7×, US$ 3,4; PO, UX e SM, US$ 1,5). Instância nova
+# com o cartão de passagem (run.ps1 handoff) custa menos. Haiku (dev, operator) segue retomável: a regravação é barata.
+function Test-G19([object]$ToolInput) {
+    if ($script:role) { return }                                   # só a sessão principal retoma agentes
+    $to = [string]$ToolInput.to; if (-not $to) { return }
+    $u = Join-Path $script:projectDir '.team-project/usage.jsonl'
+    if (-not (Test-Path -LiteralPath $u)) { return }
+    $last = $null
+    foreach ($line in [System.IO.File]::ReadLines($u)) { if ($line.Contains($to)) { try { $o = $line | ConvertFrom-Json; if ([string]$o.agent_id -eq $to) { $last = $o } } catch { } } }
+    if ($null -eq $last) { return }
+    if ([string]$last.model -match '(?i)haiku' -or [string]$last.role -in @('developer', 'operator')) { return }
+    $ts = $null; try { $ts = [datetime]::Parse([string]$last.ts) } catch { return }
+    $idle = ((Get-Date) - $ts).TotalMinutes
+    if ($idle -gt 5) {
+        Deny 'G19' $to ("o $([string]$last.role) ($to) está parado há $([int]$idle) min e o cache dele (5 min) já venceu: retomar regravaria todo o contexto no modelo $([string]$last.model). Abra uma instância NOVA com os caminhos do cartão de passagem (run.ps1 handoff -Task <ID>) e do artefato que motivou a volta (sprint-run.md §Retomada).")
     }
 }
 
@@ -486,6 +513,13 @@ try {
             if ($script:teamProject -and (Test-GuardEnabled $cfg 'G18')) { Test-G18Agent $ti }
             if ($phase2 -and (Test-GuardEnabled $cfg 'G7')) { Test-G7 $ti }
             if ($script:teamProject -and (Test-GuardEnabled $cfg 'G17')) { Test-G17 $ti }   # vale também para a sessão principal
+            # v3.51 (G20): agente em segundo plano disparado pela sessão durante o run fica registrado até voltar.
+            if ($script:teamProject -and -not $script:role -and $ti.run_in_background -eq $true -and (Test-Path -LiteralPath (Join-Path $script:projectDir '.team-project/.active-run'))) {
+                Add-ActiveAgent $script:projectDir ([string]$ti.subagent_type) ([string]$ti.description)
+            }
+        }
+        '^SendMessage$'         {
+            if ($script:teamProject -and (Test-GuardEnabled $cfg 'G19')) { Test-G19 $ti }
         }
     }
 

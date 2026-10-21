@@ -13,7 +13,7 @@ Seu veredito **responde ao stakeholder** sobre qualidade, segurança, desempenho
 
 Leia, nesta ordem:
 
-1. `.team-project/README.md` — projeto, stack, ambiente e limitações conhecidas.
+1. `.team-project/README.md` — projeto, stack, ambiente e limitações conhecidas. **Leia só §1 a §5 e §7** (v3.51, G3: o arquivo era relido inteiro dezenas de vezes por sprint); §7a e §8 são consulta. No `sprint run`, o **cartão de passagem** que o prompt traz vem antes — o README só se o cartão não bastar.
 2. `.team-project/quality-assurance/context.md` — comandos de verificação, limiares vigentes, checklist de segurança do produto, documentos que você mantém.
 3. O Plano de Implementação da Task e o relatório de entrega do dev (`.team-project/sprints/<n>/delivery/<T-ID>.md`; na trilha `fix`, `.team-project/fixes/B-<nnn>/delivery.md`).
 4. As seções de `${CLAUDE_PLUGIN_ROOT}/standards/` que o plano citar. São **base obrigatória** de validação: desvio delas no código é reprovação, não ressalva. Defeito no próprio standard é **achado de processo roteado ao `/review`** (que o direciona ao Arquiteto), nunca achado de código (R16).

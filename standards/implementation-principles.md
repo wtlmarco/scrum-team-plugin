@@ -18,7 +18,7 @@
 | Nível | Documento | Responde |
 |---|---|---|
 | **1 — princípios** | **este documento** | O que vale em qualquer projeto, em qualquer linguagem |
-| **2 — perfil de stack** | [`implementation-guide.md`](implementation-guide.md) · [`implementation-quality.md`](implementation-quality.md) | Como o nível 1 se escreve numa stack concreta (hoje: .NET / xUnit / GitLab CI) |
+| **2 — perfil de stack** | `stacks/<tecnologia>/guide.md` · `quality.md` ([índice](README.md)) | Como o nível 1 se escreve numa stack concreta: .NET (API e desktop), Kotlin/Android, React, Angular (v3.51) |
 | **transversal** | [`implementation-security-lgpd-copyright.md`](implementation-security-lgpd-copyright.md) | Identidade, autorização, privacidade e direitos autorais — vale nos dois níveis |
 
 **Regra de precedência:** onde o nível 2 divergir do nível 1, **o nível 1 vence** e a divergência é defeito de documento, corrigida no mesmo ciclo. Um perfil de stack pode **acrescentar** obrigação; nunca afrouxar uma daqui.
@@ -31,8 +31,10 @@
 
 | Documento | Conteúdo |
 |---|---|
-| [`implementation-guide.md`](implementation-guide.md) | Perfil .NET — estrutura de pastas, contratos de CQRS, portas de infraestrutura, logging, configuração |
-| [`implementation-quality.md`](implementation-quality.md) | Perfil .NET/GitLab — analisadores, cobertura, métricas e pipeline |
+| [`stacks/dotnet/guide.md`](stacks/dotnet/guide.md) | Perfil .NET — estrutura de pastas, contratos de CQRS, portas de infraestrutura, logging, configuração |
+| [`stacks/dotnet/quality.md`](stacks/dotnet/quality.md) | Perfil .NET/GitLab — analisadores, cobertura, métricas e pipeline |
+| [`stacks/dotnet/desktop.md`](stacks/dotnet/desktop.md) | .NET desktop (WPF, WinForms, WinUI) — MVVM, `AutomationId`, testes de UI |
+| [`stacks/kotlin-android/`](stacks/kotlin-android/guide.md) · [`stacks/react/`](stacks/react/guide.md) · [`stacks/angular/`](stacks/angular/guide.md) | Perfis Kotlin/Android, React e Angular — `guide.md` e `quality.md` com a Ficha pré-preenchida (v3.51) |
 | [`implementation-security-lgpd-copyright.md`](implementation-security-lgpd-copyright.md) | Autenticação, autorização, PII, retenção, direitos autorais |
 
 ---
@@ -331,7 +333,7 @@ Atualizar a baseline é a válvula de escape, e ela é **visível**: aparece no 
 
 ## 6. Ficha de Vinculação de Stack
 
-Preenchida uma vez por projeto pelo Arquiteto, mantida no documento de arquitetura do produto e atualizada no mesmo ciclo em que a stack mudar. É o que permite aplicar este normativo **a qualquer linguagem ou plataforma** sem reescrevê-lo.
+Preenchida uma vez por projeto pelo Arquiteto, mantida no documento de arquitetura do produto e atualizada no mesmo ciclo em que a stack mudar. **Stack com perfil (v3.51):** comece pela Ficha pré-preenchida do `stacks/<tecnologia>/quality.md` e ajuste os nomes — inclusive a coluna "ecossistema restrito", quando o projeto proíbe ferramenta de terceiros. É o que permite aplicar este normativo **a qualquer linguagem ou plataforma** sem reescrevê-lo.
 
 | # | Task a vincular | O que preencher |
 |---|---|---|

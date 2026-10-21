@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.50.1** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.51.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -37,8 +37,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 ├── standards/                       padrões de engenharia — normativo agnóstico de produto, base de qualidade comum de Arquiteto, dev e QA (R16)
 │   ├── README.md                       índice e os dois níveis
 │   ├── implementation-principles.md    nível 1 — princípios agnósticos de linguagem (não mudam entre projetos)
-│   ├── implementation-guide.md         nível 2 — perfil de stack (.NET)
-│   ├── implementation-quality.md       nível 2 — perfil de stack (.NET/GitLab)
+│   ├── stacks/<tecnologia>/            nível 2 — guide.md + quality.md por tecnologia (.NET + desktop, Kotlin/Android, React, Angular)
 │   └── implementation-security-lgpd-copyright.md   transversal
 ├── README.md                        ← este índice
 ├── CHANGELOG.md                     changelog de entregas (vX.Y.Z) — o que saiu em cada versão e a branch

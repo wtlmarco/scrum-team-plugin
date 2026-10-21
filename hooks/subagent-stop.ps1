@@ -67,6 +67,7 @@ try {
     if (-not (Test-Path -LiteralPath $tp)) { exit 0 }                       # projeto sem o time: silêncio
     $cfg = Get-GuardConfig $projectDir
     if ($cfg.probe) { Write-GuardLog $projectDir 'probe' $hookInput '' ("subagent-stop campos=" + ($hookInput.PSObject.Properties.Name -join ',')) }
+    Remove-ActiveAgent $projectDir ([string]$hookInput.agent_type)   # v3.51 (G20): o agente em segundo plano voltou
     if (-not (Test-GuardEnabled $cfg 'G16')) { exit 0 }
 
     $agentId = [string]$hookInput.agent_id

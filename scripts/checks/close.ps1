@@ -2,7 +2,9 @@
 # Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/close.ps1" -Task T-041 [-Post] [-Root <projeto>]
 #   sem -Post: antes de o SM gravar o fechamento (R24 fica n-a); com -Post: depois da linha → ✅.
 # Saída: tabela regra · resultado (ok / falhou / n-a) · linha decisiva — é a evidência da conferência (R7).
-# Exit 1 só se R7, R7-verify (com guards.json → verify) ou R12 falharem (o close não acontece) · exit 2 = erro de uso ou de leitura · senão 0.
+# Exit 1 só se R7, R7-verify (com guards.json → verify), R7-mutação, R7-aceite ou R12 falharem (o close não acontece) · exit 2 = erro de uso ou de leitura · senão 0.
+# v3.51 (A3): sem evidence/<T-ID>.md do QA, a Task fecha pela evidência do DEV (delivery/<T-ID>.md + verify + mutação + accept
+# dos cenários da Task no alvo, R7-aceite); o QA é o portão do sprint. Com evidence/ do QA, vale a regra de antes.
 
 #   -Apply (v3.46, D6): sem falha bloqueante, a sessão fecha a Task sem o Agent scrum-master — marcador → ✅ no quadro,
 #   linha no Registro e ponto na Série do burndown (estimativa baixada), roda o -Post e imprime a entrada de status
@@ -58,10 +60,23 @@ try {
         foreach ($b in $bms) { if ($b.Value -match '(?m)^\*\*Veredito:\*\*') { $evBlock = $b.Value; break }; $evSkipped++ }
         if ($evSkipped -ge $bms.Count) { $evSkipped = 0 }
     }
+    # v3.51 (A3): sem evidência do QA por Task, a Task fecha pela EVIDÊNCIA DO DEV — o relatório de entrega (delivery/<T-ID>.md,
+    # a seção mais recente), o verify full, a mutação e os cenários da Task rodados no alvo (accept). O veredito do QA vira o
+    # portão do sprint (sprint-run.md §Validação do sprint), uma passada só antes da Review.
+    $devMode = $false; $dvPath = Join-Path $S "delivery/$Task.md"
+    if ($null -eq $ev -and (Test-Path -LiteralPath $dvPath)) {
+        $devMode = $true; $ev = Read-Text $dvPath
+        $bms = @([regex]::Matches($ev, '(?ms)^## .*?(?=^## |\z)'))
+        $evBlock = if ($bms.Count) { $bms[$bms.Count - 1].Value } else { $ev }
+    }
 
     # ---------- R7 · evidência com veredito ✅ e comando + saída ----------
     if ($null -eq $ev -or [string]::IsNullOrWhiteSpace($ev)) {
-        Add-Result 'R7' 'falhou' "sprints/$n/evidence/$Task.md ausente ou vazio"
+        Add-Result 'R7' 'falhou' "sem evidência: nem sprints/$n/delivery/$Task.md (dev, v3.51) nem sprints/$n/evidence/$Task.md (QA)"
+    } elseif ($devMode) {
+        $okCmd = [regex]::IsMatch($evBlock, '(?ms)^```[^\n]*\n\s*(>\s|verify |accept )')
+        if (-not $okCmd) { Add-Result 'R7' 'falhou' "delivery/$Task.md sem a saída colada do verify ou do accept na seção mais recente" }
+        else { Add-Result 'R7' 'ok' "evidência do dev (v3.51): delivery/$Task.md; o veredito do QA é o portão do sprint" }
     } else {
         $vm = [regex]::Match($evBlock, '(?m)^\*\*Veredito:\*\*(.*)$')
         $v = if ($vm.Success) { $vm.Groups[1].Value } else { '' }
@@ -103,6 +118,7 @@ try {
         $sm = [regex]::Match($r12, '(?m)^\*\*Estado:\*\*\s*(.+)$')
         $st = if ($sm.Success) { $sm.Groups[1].Value.Trim() } else { '' }
         if ($st -match 'atualizados' -and $st -notmatch 'pendentes') { Add-Result 'R12' 'ok' "Estado: $st" }
+        elseif ($devMode -and $st -match 'a consolidar') { Add-Result 'R12' 'ok' "Estado: $st (consolidação única no fim do sprint, A5)" }
         else { Add-Result 'R12' 'falhou' ("Estado: " + $(if ($st) { $st } else { '(vazio)' })) }
     }
 
@@ -120,7 +136,7 @@ try {
 
     # ---------- R4 · escopo ----------
     $r4 = @()
-    $outside = Get-Section $board '^##\s+Entradas fora da Planning'
+    $outside = Get-ControlSection $S $board '^##\s+Entradas fora da Planning'
     if ($outside) {
         foreach ($t in (Get-Tables $outside)) {
             $ci = Find-Col $t 'O que saiu para caber'
@@ -139,7 +155,8 @@ try {
         }
     }
     $esc = if ($evBlock) { Get-Section $evBlock '^###\s+Escopo' } else { $null }
-    if ($null -eq $esc) { $r4 += 'falhou: evidência sem "### Escopo"' }
+    if ($null -eq $esc -and $devMode) { $r4 += 'escopo do dev: "Não fiz (fora do plano)" no relatório; o diff × plano é do portão do QA' }
+    elseif ($null -eq $esc) { $r4 += 'falhou: evidência sem "### Escopo"' }
     else {
         $fm = [regex]::Match($esc, '(?m)^\*\*Fora do plano:\*\*\s*(.+)$')
         $fv = if ($fm.Success) { $fm.Groups[1].Value.Trim() } else { '' }
@@ -198,7 +215,7 @@ try {
     # ---------- R16 · standards citados com seção (informativo) ----------
     if ($null -eq $plan) { Add-Result 'R16' 'n-a' 'sem plano' }
     else {
-        $sc = [regex]::Matches($plan, 'standards/[\w.-]+\.md`?\s*§\s*\d')
+        $sc = @([regex]::Matches($plan, 'standards/[\w./-]+\.md`?\s*§\s*\d')) + @([regex]::Matches($plan, '\b(Q\d{1,2}|KA-Q?\d+|RE-Q?\d+|NG-Q?\d+|NET-D\d+)\b'))   # v3.51: perfis em stacks/<tecnologia>/ e identificadores
         if ($sc.Count -ge 1) { Add-Result 'R16' 'ok' "$($sc.Count) citação(ões) de standards/ com seção" }
         else { Add-Result 'R16' 'falhou' 'nenhuma citação de standards/ com § numerado — conferir se todo passo é "Standard aplicável: n/a" com motivo' }
     }
@@ -252,7 +269,7 @@ try {
         # Marcador acompanhado (sprint-run.md §Marcador): a Task fechada passou por 🟦, 🟨 e 🟪 no Registro.
         $skipped = @($E.Plan, $E.Build, $E.QA | Where-Object { -not $reached.ContainsKey($_) })
         if ($closed -and $skipped.Count) { $bdIssues += "Registro sem a linha → " + ($skipped -join ', → ') + " de $Task (marcador não acompanhado)" }
-        $bdPath = Join-Path $S 'burndown.md'
+        $bdPath = Get-ChartPath $S
         if (Test-Path -LiteralPath $bdPath) {
             $serie = Get-Section (Read-Text $bdPath) '^##\s+S[ée]rie'
             if ($serie) {
@@ -305,7 +322,7 @@ try {
         }
         if (-not $hasData) { $r25 += 'planning.md §5 "O que NÃO entrou" vazio' }
     }
-    $blk = Get-Section $board '^##\s+Bloqueios e riscos abertos'
+    $blk = Get-ControlSection $S $board '^##\s+Bloqueios e riscos abertos'
     if ($blk) {
         foreach ($t in (Get-Tables $blk)) {
             $id = Find-Col $t 'Degrau'
@@ -398,6 +415,24 @@ try {
         $ids = @([regex]::Matches($cen, 'SC-\d+') | ForEach-Object { $_.Value } | Select-Object -Unique)
         if ($cen -match '(?i)^nenhum aplic[áa]vel\s*[—-]\s*\S') { Add-Result 'R30' 'ok' "nenhum aplicável: $cen" }
         elseif ($ids.Count -eq 0) { Add-Result 'R30' 'falhou' 'coluna Cenários vazia ou sem SC-nnn nem "nenhum aplicável — motivo"' }
+        elseif ($devMode) {
+            # v3.51 (A3): os cenários da Task rodados no alvo real pelo accept.ps1, na árvore de agora, com captura de cada um.
+            $targetsCfg = Get-TargetsConfig $Root
+            $ar = Join-Path ((Get-VerifyDir $Root $Task) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'
+            $acc = $null; if (Test-Path -LiteralPath $ar) { try { $acc = Read-Text $ar | ConvertFrom-Json } catch { } }
+            if (-not $targetsCfg) { Add-Result 'R30' 'n-a' 'guards.json sem "targets": a prova no alvo fica para o portão do QA'; Add-Result 'R7-aceite' 'n-a' 'sem alvo configurado' }
+            elseif ($null -eq $acc) { Add-Result 'R30' 'falhou' "sem resultado do accept.ps1 para $Task"; Add-Result 'R7-aceite' 'falhou' "o dev roda accept.ps1 -Task $Task -Only $($ids -join ',') no alvo antes de fechar" }
+            else {
+                $res = @{}; foreach ($x in @($acc.results)) { $res[[string]$x.id] = [string]$x.status }
+                $miss = @($ids | Where-Object { -not $res.ContainsKey($_) }); $bad = @($ids | Where-Object { $res.ContainsKey($_) -and $res[$_] -ne 'PASSOU' })
+                $nowT = Get-WorkTree $Root
+                if ($acc.environment) { Add-Result 'R7-aceite' 'falhou' "o último accept parou por falha de ambiente: $($acc.environment)" }
+                elseif ($miss.Count -or $bad.Count) { Add-Result 'R7-aceite' 'falhou' ((@($(if ($miss.Count) { 'sem execução: ' + ($miss -join ', ') }), $(if ($bad.Count) { 'falharam: ' + ($bad -join ', ') })) | Where-Object { $_ }) -join '; ') }
+                elseif ($nowT -and $acc.tree -and [string]$acc.tree -ne $nowT) { Add-Result 'R7-aceite' 'falhou' "a árvore mudou depois do accept de $($acc.at) — rode de novo" }
+                else { Add-Result 'R7-aceite' 'ok' "$($ids.Count) cenário(s) passaram no alvo $($acc.target) em $($acc.at), com captura" }
+                Add-Result 'R30' $(if ($miss.Count) { 'falhou' } else { 'ok' }) ("cenários da Task no accept: " + ($ids -join ', '))
+            }
+        }
         else {
             $done = @{}
             $sec = if ($evBlock) { Get-Section $evBlock '^###\s+Cen[áa]rios de teste' } else { $null }
@@ -420,7 +455,7 @@ try {
     foreach ($r in 'R2', 'R6', 'R9', 'R21', 'R32') { Add-Result $r 'n-a' $(if ($r -eq 'R21') { 'aceite é da Review — conferido por C2' } else { 'julgamento' }) }
 
     Write-Results "C1 · close $Task · sprint $n$(if ($Post) { ' · -Post' })"
-    $blocking = @($script:Results | Where-Object { $_.Regra -in 'R7', 'R7-verify', 'R7-mutação', 'R12' -and $_.Resultado -eq 'falhou' })
+    $blocking = @($script:Results | Where-Object { $_.Regra -in 'R7', 'R7-verify', 'R7-mutação', 'R7-aceite', 'R12' -and $_.Resultado -eq 'falhou' })
     if ($blocking.Count) { [Console]::Out.WriteLine(''); [Console]::Out.WriteLine('**Não fecha:** ' + (($blocking | ForEach-Object { $_.Regra }) -join ' e ') + ' falhou.'); exit 1 }
     if ($Apply) {
         $utf8 = New-Object System.Text.UTF8Encoding($false)
@@ -442,7 +477,7 @@ try {
         [System.IO.File]::WriteAllText($boardPath, ($bl -join $nl), $utf8)
 
         # 2 · Registro e Série no burndown (R24): uma transição = uma linha em cada
-        $bdPath = Join-Path $S 'burndown.md'
+        $bdPath = Get-ChartPath $S
         if (-not (Test-Path -LiteralPath $bdPath)) { [Console]::Error.WriteLine("C1 -Apply: $bdPath não existe."); exit 2 }
         $bdText = Read-Text $bdPath; $bnl = if ($bdText.Contains("`r`n")) { "`r`n" } else { "`n" }
         $lines = New-Object System.Collections.ArrayList; foreach ($l in ($bdText -split "`r?`n")) { [void]$lines.Add($l) }
@@ -486,6 +521,7 @@ try {
             $regNote = ' · Registro no sprint-backlog.md (quadro anterior à v3.44.1 — o /team update o leva ao burndown)'
         }
         [System.IO.File]::WriteAllText($bdPath, ($lines -join $bnl), $utf8)
+        try { $null = & (Join-Path $PSScriptRoot 'kanban-html.ps1') -Root $Root 2>&1 } catch { }   # v3.51 (G2): o Kanban visual acompanha o fechamento
 
         # 3 · o -Post confere o que acabou de ser gravado
         [Console]::Out.WriteLine('')
@@ -505,7 +541,7 @@ try {
         $done = @($sib | Where-Object { $_.Contains($E.Done) }).Count
         $okN = @($script:Results | Where-Object { $_.Resultado -eq 'ok' }).Count; $naN = @($script:Results | Where-Object { $_.Resultado -eq 'n-a' }).Count
         $failR = @($script:Results | Where-Object { $_.Resultado -eq 'falhou' } | ForEach-Object { $_.Regra })
-        $evid = 'ver `sprints/' + $n + '/evidence/' + $Task + '.md`'
+        $evid = if ($devMode) { 'ver `sprints/' + $n + '/delivery/' + $Task + '.md` (dev) — portão do QA no fim do sprint' } else { 'ver `sprints/' + $n + '/evidence/' + $Task + '.md`' }
         if ($hasVerify -and $vfull) { $evid = 'verify full ' + $vfull.at + ' — ' + ((@($vfull.commands) | ForEach-Object { "$($_.key) exit $($_.exit) (" + (@($_.decisive) | Select-Object -Last 1) + ')' }) -join '; ') }
         $nex = if ($evBlock) { $s = Get-Section $evBlock '^###\s+N[ãa]o exercitado'; if ($s) { (($s -split "`r?`n") | Where-Object { $_.Trim() } | Select-Object -First 1) } else { $null } } else { $null }
         $nfiles = if ($plan) { $pl = [regex]::Match($plan, '(?s)\*\*Arquivos tocados:\*\*(.*?)(?:\r?\n[ \t]*\r?\n|\r?\n#|\z)'); if ($pl.Success) { [regex]::Matches($pl.Groups[1].Value, '`[^`]+`').Count } else { '?' } } else { '?' }

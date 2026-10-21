@@ -25,6 +25,7 @@ A pasta do projeto fica em `~/.claude/projects/<projeto>/`, ou em `~/.claude-<pe
 | `growth` | de onde vem o crescimento do contexto (leitura de plano, de código, retorno de agente…); `--session` mede a sessão principal | **estimado**: tamanho do trecho × chamadas seguintes, calibrado pelo `usage` |
 | `session` | chamadas da sessão principal por tipo de trabalho (disparo, marcador, `consumption.ps1`, conferências) | **medido** |
 | `waits` | sessão parada à espera do stakeholder × à espera de agente | **medido**. Sessões simultâneas podem contar a mesma hora duas vezes, e a espera inclui máquina suspensa: separe-a com o log de energia do SO (R27). No piloto, ~122 h das esperas foram standby ou sleep |
+| `activity` (v3.51) | custo por **atividade**: plano, código, teste, documentação, verificação (build, teste, lint), aparelho e cenários, leitura e exploração, orquestração e registros, raciocínio sem ferramenta; `--by-role` abre por papel | **medido** o custo de cada chamada; a atividade sai das ferramentas que a chamada usou (chamada com várias divide o custo por igual). Lê o transcript depois, então vale igual para um braço sem o plugin, sem mudar o comportamento dele |
 
 ## Limites
 

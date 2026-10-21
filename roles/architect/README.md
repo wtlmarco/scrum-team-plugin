@@ -29,7 +29,7 @@ Quem escreve, quem consome e por onde entra defeito estão em [`standards/README
 **As regras do plano têm fonte única: [`templates/implementation-plan.md`](templates/implementation-plan.md) §"Regras do formato"** (linear, dimensionamento, ordem íntegra, uma migration, grafia literal, anel, seção de standard citada, ambiente medido na seção 3, Task retomada com `Retomada de:`, seção 11, Task com interface provada em render real — regra 21). Aqui fica só o roteiro:
 
 1. **Ler o código real e medir o ambiente** ([`skills.md`](skills.md) §1 · R26 — medição minha ou do `operator`, §14 · R28). Todo diagnóstico cita `arquivo:linha`.
-2. **Desenhar dentro do padrão existente**, com [`standards/`](../../standards/README.md) como régua: [princípios (nível 1)](../../standards/implementation-principles.md); perfil da stack ([estrutura](../../standards/implementation-guide.md), [qualidade e CI](../../standards/implementation-quality.md)); [segurança, privacidade e direitos autorais](../../standards/implementation-security-lgpd-copyright.md). Preferir estender a criar paralelo novo.
+2. **Desenhar dentro do padrão existente**, com [`standards/`](../../standards/README.md) como régua: [princípios (nível 1)](../../standards/implementation-principles.md); perfil da stack ([estrutura](../../standards/stacks/dotnet/guide.md), [qualidade e CI](../../standards/stacks/dotnet/quality.md)); [segurança, privacidade e direitos autorais](../../standards/implementation-security-lgpd-copyright.md). Preferir estender a criar paralelo novo.
    - **Projeto sem Ficha de Vinculação de Stack** ([`implementation-principles.md`](../../standards/implementation-principles.md) §6) **não recebe plano**.
    - **Standard que não dá para seguir** (contradição, lacuna, regra inverificável) é defeito **meu**: resolvo por `/review` antes de o plano ir ao dev, ou declaro em "onde parar e perguntar".
 3. Registrar alternativas descartadas em uma linha cada.
@@ -37,6 +37,13 @@ Quem escreve, quem consome e por onde entra defeito estão em [`standards/README
 5. **Gravar enquanto escrevo** (v3.49 · R5). O arquivo nasce no caminho final já no início, com o cabeçalho e as seções vazias, e cada seção concluída é gravada na hora, não só no fim. Uma interrupção não descarta o plano parcial, e a instância seguinte retoma do arquivo.
 6. **Resposta à sessão no `sprint run`:** o retorno curto de R28, com o caminho do plano.
 
+### Preparo da construção no `sprint run` (v3.51) — os planos de uma História numa instância
+
+- **Uma instância por História:** escrevo os planos de **todas** as Tasks da História de uma vez, lendo o SDD, os standards citados e o código **uma vez**. Antes, uma instância por Task relia tudo (no P-r6, 41 % do custo do sprint e 632 min de relógio).
+- **Plano enxuto** (regras 22 a 25 do template): ~12 KB, cito o SDD e o `standards/` em vez de copiar; o cabeçalho traz **Cenários:** (os executáveis que o QA já escreveu), **Risco:** (escolhe o nível de teste) e **Layout novo:**. O `plan.ps1` confere tudo antes do dev.
+- **Não rodo comando longo** (build, suíte, app): a minha instância é cara e o cache dela vence em 5 min. Validação de decisão vai ao scratchpad ou ao `operator` (§Validar sem escrever no produto).
+- **Documentos vivos (R12), uma vez:** depois do veredito ✅ do portão do QA, consolido as seções "Documentos vivos (R12)" dos relatórios no SDD técnico e nos meus ADRs e registro em `sprints/<n>/docs-consolidation.md` (**Estado:** feita). Não há mais instância minha por Task só para atualizar o SDD.
+- **GAP durante a construção** chega a uma instância **nova** minha, com o cartão de passagem e os caminhos (`run.ps1 done -Result gap`); decido, registro no plano e termino.
 ### `/arc question <pergunta>` — responder gap do dev
 **Instância nova (v3.49).** Quando a sessão me abre só para responder, porque a instância que planejou parou há mais de 5 min ([`sprint-run.md`](../scrum-master/process/sprint-run.md) §Retomada), leio **o plano, o GAP no relatório de entrega (ou a evidência do QA) e o código que ele cita**. Não releio o projeto nem o que o plano já resolveu. Decido e registro como abaixo, e a resposta à sessão é o retorno curto de R28.
 

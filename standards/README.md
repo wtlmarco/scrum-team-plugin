@@ -35,33 +35,27 @@ Guias normativos **agnósticos de produto**: regras, princípios e contratos reu
 
 | Arquivo | Nível | Conteúdo |
 |---|---|---|
-| [`implementation-principles.md`](implementation-principles.md) | **1** | Clean Architecture (quatro anéis e regra de dependência verificada por teste), CQRS, Clean Code (limites numéricos e regras verificáveis), testes e **gate de cobertura de 80%**, **desempenho (§5.6 — RNF verificável, orçamento e regressão)**, Ficha de Vinculação de Stack, quadro de verificação e roteiro de adoção em projeto existente |
-| [`implementation-guide.md`](implementation-guide.md) | 2 — .NET | Estrutura de pastas, nomenclatura, contratos de CQRS, isolamento multi-tenant, adaptadores multi-provedor, portas de infraestrutura (Object Storage, Cache, Message Broker), logging, configuração, testes e **cenários de carga (§9.6)** |
-| [`implementation-quality.md`](implementation-quality.md) | 2 — .NET/GitLab | Code Analysis, Coverage, Metrics, **gates de desempenho (§4.2)** e pipeline de CI |
-| [`implementation-security-lgpd-copyright.md`](implementation-security-lgpd-copyright.md) | transversal | Segurança, Privacidade (LGPD) e Direitos Autorais — autenticação, autorização, multi-tenancy aplicada à identidade, proteção de dados pessoais e rastreabilidade de direitos autorais sobre conteúdo de terceiros |
+| [`implementation-principles.md`](implementation-principles.md) | **1** | Clean Architecture (quatro anéis e regra de dependência verificada por teste), CQRS, Clean Code (limites numéricos e regras verificáveis), testes e **gate de cobertura de 80%**, **desempenho (§5.6)**, Ficha de Vinculação de Stack (§6), **quadro de verificação (§7, regras Q1–Q23)** e adoção em projeto existente |
+| [`implementation-security-lgpd-copyright.md`](implementation-security-lgpd-copyright.md) | transversal | Segurança, Privacidade (LGPD) e Direitos Autorais |
+| [`stacks/dotnet/guide.md`](stacks/dotnet/guide.md) · [`quality.md`](stacks/dotnet/quality.md) · [`desktop.md`](stacks/dotnet/desktop.md) | 2 — .NET | API e workers (estrutura, CQRS, portas, logging, configuração, carga) · analisadores, cobertura, métricas e pipeline · **desktop WPF, WinForms, WinUI** (MVVM, `AutomationId`) |
+| [`stacks/kotlin-android/guide.md`](stacks/kotlin-android/guide.md) · [`quality.md`](stacks/kotlin-android/quality.md) | 2 — Kotlin/Android | anéis em pacotes, estado com `StateFlow`, Compose, `testTag`, testes por nível · detekt, ktlint, Lint, JaCoCo/Kover, Ficha pré-preenchida |
+| [`stacks/react/guide.md`](stacks/react/guide.md) · [`quality.md`](stacks/react/quality.md) | 2 — React | anéis em pastas, estado do servidor × de tela, `data-testid`, testes por nível · ESLint, Prettier, Vitest, fronteira de import, Ficha pré-preenchida |
+| [`stacks/angular/guide.md`](stacks/angular/guide.md) · [`quality.md`](stacks/angular/quality.md) | 2 — Angular | portas como `InjectionToken`, signals, `data-testid` · `angular-eslint`, Jest/Karma, Ficha pré-preenchida |
 
-## Como usar
+**Um diretório por tecnologia** (v3.51), sempre com o mesmo par: `guide.md` (como se escreve) e `quality.md` (com qual ferramenta, o comando do `guards.json`, a coluna **ecossistema restrito** — o substituto aceito quando o projeto proíbe ferramenta de terceiros — e a **Ficha de Vinculação pré-preenchida**, que o Arquiteto copia e ajusta em vez de escrever as 22 linhas do zero). Stack sem perfil segue o nível 1 e preenche a Ficha.
 
-Estes documentos nunca devem ser editados para acomodar uma decisão de um produto específico — a decisão concreta (nomes reais de entidades, capacidades, integrações, perfis, permissões) vai sempre no documento de arquitetura do produto, que referencia a seção correspondente aqui.
+### Identificadores — leia a seção, não o arquivo
 
-**Por papel:**
+Cada regra verificável tem um identificador estável. **O plano e o veredito citam o identificador; o dev e o QA leem só a seção citada.** No benchmark, `implementation-principles.md` sozinho foi relido 7 vezes num sprint (2,6 milhões de tokens).
 
-| Papel | Como consome |
-|---|---|
-| **Arquiteto** | Cita a seção aplicável em **cada Plano de Implementação** que toca engenharia — anel, nomenclatura, testes/cobertura e, em Task sensível, a seção de segurança |
-| **dev** | Lê **as seções que o plano citou**, não o diretório inteiro (R3). O que o plano não citou e o passo exige é 🔺 GAP |
-| **QA** | Valida a entrega contra as seções citadas no plano e contra os gates de cobertura e de análise estática |
-
-**Por dúvida:**
-
-- Projeto novo, ou stack sem perfil → **começar por `implementation-principles.md`** e preencher a Ficha de Vinculação (§6) antes do primeiro Plano de Implementação
-- Dúvida sobre camadas, CQRS, nomes, limites de código, testes ou cobertura → `implementation-principles.md`
-- Dúvida sobre como isso se escreve em .NET (estrutura de pastas, contratos, logging, configuração) → `implementation-guide.md`
-- Dúvida sobre analisadores, ferramenta de cobertura ou pipeline → `implementation-quality.md`
-- Dúvida sobre **desempenho** (o que é RNF verificável, orçamento por operação, o que conta como regressão) → `implementation-principles.md` §5.6; a ferramenta e o cenário → `implementation-guide.md` §9.6; os gates no pipeline → `implementation-quality.md` §4.2. **Os números são do projeto**, na Ficha V18–V21
-- Dúvida sobre autenticação, autorização, multi-tenancy de identidade, LGPD ou direitos autorais → `implementation-security-lgpd-copyright.md`
-- Dúvida sobre como um desses padrões se aplica *na prática* ao produto → documento de arquitetura do projeto (ver `.team-project/README.md` §4)
-
+| Identificador | Onde | Exemplo |
+|---|---|---|
+| `Q1`–`Q23` | `implementation-principles.md` §7 (Quadro de Verificação) — também as linhas do `scripts/checks/quality.ps1` | `Q11` cobertura ≥ 80 % em cada módulo |
+| `§n.n` do nível 1 | `implementation-principles.md` | `§4.4` limites numéricos |
+| `KA-<n>` · `KA-Q<n>` | `stacks/kotlin-android/` | `KA-6` identificadores de teste |
+| `RE-<n>` · `RE-Q<n>` | `stacks/react/` | `RE-3` estado e efeitos |
+| `NG-<n>` · `NG-Q<n>` | `stacks/angular/` | `NG-Q2` `guards.json` de referência |
+| `NET-D<n>` · seção do `guide.md`/`quality.md` .NET | `stacks/dotnet/` | `NET-D4` `AutomationId` |
 ## Documentos relacionados (fora deste diretório)
 
 | Documento | Conteúdo |
