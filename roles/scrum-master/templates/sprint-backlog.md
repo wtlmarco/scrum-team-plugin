@@ -48,34 +48,13 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 
 | ID | Task | Est. | Trilha | Dono | Depende de | Plano | Evidência | Cenários | Critério de pronto |
 |---|---|---|---|---|---|---|---|---|---|
-| ⬜ T-<nnn> | <o que é feito, em uma linha> | <n> | plena | dev | <IDs ou —> | [`plan/T-<nnn>-<slug>.md`](plan/) | [`evidence/T-<nnn>.md`](evidence/) | <SC-nnn (novo), SC-nnn (regressivo) \| nenhum aplicável — motivo> | <como se prova que ficou pronto> |
+| ⬜ T-<nnn> | <o que é feito, em uma linha> | <n> | plena | dev | <IDs ou —> | [`plan/T-<nnn>-<slug>.md`](plan/) | [`delivery/T-<nnn>.md`](delivery/) | <SC-nnn (novo), SC-nnn (regressivo) \| nenhum aplicável — motivo> | <como se prova que ficou pronto> |
 
 > Nota do SM: <serialização forçada, migration compartilhada, risco específico — só quando houver>
 
 ---
 
-## Entradas fora da Planning
-
-> O Sprint Backlog **não cresce** durante o sprint (R4). A única exceção é o GAP que bloqueia uma História já no sprint. Toda entrada aqui declara **o que saiu para caber** — ou, quando nada sai porque o stakeholder decidiu que o sprint cresce, a **Decisão do stakeholder** com data e onde ela está (`aceito em aaaa-mm-dd — formulário da Review`). Sem uma das duas, o C1 reprova a R4.
-
-| Task | História | Por que entrou fora da Planning | O que saiu para caber | Data | Decisão do stakeholder |
-|---|---|---|---|---|---|
-
-## Bloqueios e riscos abertos
-
-> **Todo bloqueio nomeia o degrau em que está** (R25 · [`../process/workflow-sprint.md` §5g](../process/workflow-sprint.md)). Linha sem degrau é achado de processo; bloqueio parado no degrau 1 por mais de uma caixa de tempo **escala**.
-
-| # | Task / História | Natureza | Degrau | Quem destrava | Desde |
-|---|---|---|---|---|---|
-| 1 | <T-nnn / H-nnn> | <dependência · lacuna funcional · risco técnico · qualidade> | <par PO+Arquiteto desde <data> \| escalado ao stakeholder em <data> \| estratégico — direto> | <papel ou stakeholder> | <data> |
-
-## Decisões pendentes do stakeholder
-
-> Chega aqui **só o que o degrau 1 não fechou** (PO + Arquiteto), mais a **decisão estratégica**, que vai direto. Cada linha sobe na forma fixa de **R22**: opções descritas · recomendação do time · a via de pedir mais contexto.
-
-| # | Decisão pendente | Por que o degrau 1 não fechou (ou "estratégica — direto") | Task(s) que destrava | Desde |
-|---|---|---|---|---|
-| 1 | <a decisão, em uma frase> | <o que PO e Arquiteto concluíram, e onde ficaram presos> | <IDs> | <data> |
+> **Controle das Tasks** — Entradas fora da Planning, Bloqueios e riscos abertos, Decisões pendentes do stakeholder — vive no [`kanban.md`](kanban.md) da mesma pasta, embaixo do Burndown (v3.51, G1). Este quadro fica só com as Histórias e as Tasks.
 
 ---
 
@@ -96,8 +75,8 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 - **Critério de pronto / evidência** — precisa citar o comando, teste ou passo de UI que prova a conclusão. "Funcionando" não é critério.
 - **Uma migration por Task.** Tasks que compartilham a mesma migration viram uma Task só.
 - **No fechamento do sprint**, Task não concluída volta ao Product Backlog **junto com a História** — não fica pendurada no quadro do sprint seguinte (R5 · §5e).
-- **Toda mudança de marcador aqui ganha linha no Registro de transições e na Série de [`burndown.md`](burndown.md)**, na mesma pasta (R24) — o Registro vive lá, não neste quadro (v3.44.1). Rodada de `/sm board` sem mudança de marcador não escreve linha nenhuma; "sem transição" não é evento.
-- **🔴 não para a fila do sprint.** A Task bloqueada ganha a linha de transição no `burndown.md` e entra em "Bloqueios e riscos abertos" **com o degrau nomeado**; a fila segue nas Tasks cujas dependências estão satisfeitas. Só o que o degrau 1 (PO + Arquiteto) não fechar sobe a "Decisões pendentes do stakeholder" (R25).
+- **Toda mudança de marcador aqui ganha linha no Registro de transições e na Série de [`kanban.md`](kanban.md)** (até a v3.50, `burndown.md`), na mesma pasta (R24) — o Registro vive lá, não neste quadro (v3.44.1). Rodada de `/sm board` sem mudança de marcador não escreve linha nenhuma; "sem transição" não é evento.
+- **🔴 não para a fila do sprint.** A Task bloqueada ganha a linha de transição no `kanban.md` e entra em "Bloqueios e riscos abertos" (no `kanban.md`, §Controle) **com o degrau nomeado**; a fila segue nas Tasks cujas dependências estão satisfeitas. Só o que o degrau 1 (PO + Arquiteto) não fechar sobe a "Decisões pendentes do stakeholder" (R25).
 
 ### Exemplo
 

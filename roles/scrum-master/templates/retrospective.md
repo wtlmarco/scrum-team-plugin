@@ -2,7 +2,7 @@
 
 Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o sprint. Curta e acionável: uma retrospectiva que não gera **uma** ação concreta foi tempo perdido.
 
-> **Persistido em** `.team-project/sprints/<n>/retrospective.md`. No mesmo `/sm sprint close`, o SM **fecha** `sprint-backlog.md` e `burndown.md` — sem cópia nem snapshot. Com `planning.md`, `stories/`, `plan/`, `evidence/`, `consumption.md`, `review.md` e — se houve "investigar" — `plugin-report.md`, a pasta forma o registro completo e imutável do sprint ([`../process/artifact-ownership.md` §1e](../process/artifact-ownership.md)).
+> **Persistido em** `.team-project/sprints/<n>/retrospective.md`. No mesmo `/sm sprint close`, o SM **fecha** `sprint-backlog.md` e `kanban.md` — sem cópia nem snapshot. Com `planning.md`, `stories/`, `plan/`, `evidence/`, `consumption.md`, `review.md` e — se houve "investigar" — `plugin-report.md`, a pasta forma o registro completo e imutável do sprint ([`../process/artifact-ownership.md` §1e](../process/artifact-ownership.md)).
 
 ```markdown
 ## Retrospectiva — Sprint <n> — <data>
@@ -35,7 +35,7 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 | Entrada de changelog acima do teto | maior bloco `## vX.Y` de `process-changelog.md` | > 10 KB | R17 |
 | Entrega sem bump: merge em `develop` sem `version` + entrada no `CHANGELOG.md`, ou `plugin.json` ≠ topo do `CHANGELOG.md`, ou entrada de `process-changelog.md` sem par — *só quando a retro roda sobre o repositório-fonte do plugin; num projeto consumidor, `n/a`* | <n> \| n/a | qualquer | R18 |
 | Entrada de `process-changelog.md` sem bloco de evidência, ou com comando cuja reexecução dá saída diferente da registrada — *idem: só no repositório-fonte* | <n> \| n/a | qualquer | R19 |
-| `/sm close` sem linha correspondente no Registro de transições, transição sem linha na Série, ou `burndown.md` com estimativa restante caindo sem fechamento que explique | <n> | qualquer | R24 |
+| `/sm close` sem linha correspondente no Registro de transições, transição sem linha na Série, ou `kanban.md` com estimativa restante caindo sem fechamento que explique | <n> | qualquer | R24 |
 | Sprint sem pacote de abertura aprovado antes da primeira Task em construção; ou `planning.md` sem a lista do que não entrou, com o motivo; ou protótipo do sprint sem fluxo ponta a ponta; ou bloqueio sem degrau nomeado; ou arquivo de `stories/` alterado depois da aprovação | <n> | qualquer | R25 |
 | Correção da trilha `fix` fechada sem C1–C8 assinados, sem teste antes/depois, sem ✅ na linha dela ou acima de N arquivos; bloco acima do teto; `fix run` com Task em 🟨 — *saída de C4; `n/a` sem bloco no período* | <n> \| n/a | qualquer | R33 |
 
@@ -131,7 +131,7 @@ Condicional a **ocorrência de plugin** (falha R27 persistente ≥ 2 · consumo 
 - **Ressalvas e débitos da Review registrados no Product Backlog:** <sim — com dono | nenhum>
 - **Consumo do sprint lido antes do fechamento:** <sim — seção acima preenchida, com modelo e ineficiências | n/a — o projeto não registra consumo>
 - **`plugin-report.md` escrito e relido contra vazamento de contexto do projeto:** <sim | n/a — não houve "investigar">
-- **`sprints/<n>/` fechado (R24 · R25):** `sprint-backlog.md` fechado, `burndown.md` fechado (seção "Fechamento" preenchida), `stories/`/`plan/`/`evidence/` com o que seus donos produziram — <sim | não, com o motivo>
+- **`sprints/<n>/` fechado (R24 · R25):** `sprint-backlog.md` fechado, `kanban.md` fechado (seção "Fechamento" preenchida), `stories/`/`plan/`/`evidence/` com o que seus donos produziram — <sim | não, com o motivo>
 ```
 
 ## Regras
@@ -146,7 +146,7 @@ Condicional a **ocorrência de plugin** (falha R27 persistente ≥ 2 · consumo 
 - **O consumo é lido antes do fechamento da pasta.** A seção acima lê `sprints/<n>/consumption.md` enquanto o sprint ainda está aberto; depois do `/sm sprint close` a pasta é registro imutável. Não há arquivamento a fazer — o registro já nasceu dentro do sprint a que pertence.
 - **Sintoma de processo é sintoma, não proposta.** O `plugin-report.md` descreve **o que doeu**, com quantas vezes; quem transforma sintoma em mudança é o `/review`, no repositório-fonte. Retrospectiva que já traz a regra reescrita pulou o único lugar onde conflito com regra vigente é analisado.
 - **A análise de consumo aponta onde olhar, não o que cortar.** Repetição, Task cara e modelo desproporcional são **candidatos a investigar** — a causa vem do registro (Nota, Task/História) e do quadro, e a decisão de mudar é do `/review`. Achado sem linha de `consumption.md` que o sustente não entra (R7). A divisão entrada/saída de tokens **não é observável** ([`consumption.md`](consumption.md)); não se calcula.
-- **`sprints/<n>/` fecha por último, depois de tudo o resto estar decidido** (R24 · R25): fechar `sprint-backlog.md` e `burndown.md` antes de a Review decidir aceite/ressalva/rejeição, ou antes de Tasks inacabadas voltarem ao Product Backlog, congela um estado que ainda vai mudar. `review.md` é exceção: entra antes, no `/sm sprint review`, porque é o registro do próprio evento da Review.
+- **`sprints/<n>/` fecha por último, depois de tudo o resto estar decidido** (R24 · R25): fechar `sprint-backlog.md` e `kanban.md` antes de a Review decidir aceite/ressalva/rejeição, ou antes de Tasks inacabadas voltarem ao Product Backlog, congela um estado que ainda vai mudar. `review.md` é exceção: entra antes, no `/sm sprint review`, porque é o registro do próprio evento da Review.
 
 ## Exemplo de leitura
 

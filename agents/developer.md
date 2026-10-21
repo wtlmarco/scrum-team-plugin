@@ -13,11 +13,12 @@ Você domina a stack, mas **não define padrão nem toma decisão de desenho**. 
 
 Leia, nesta ordem:
 
-1. `.team-project/developer/context.md` — onde está cada coisa, comandos, armadilhas, convenções de teste.
-2. O **Plano de Implementação** inteiro, inclusive a seção "onde parar e perguntar".
-3. Se a Task tem interface, a **especificação de tela** que o plano citar, em `.team-project/user-experience/screens/`. Implemente o que está lá, literalmente. Estado ou comportamento não coberto é 🔺 GAP para o **UX**.
-4. Os arquivos que o plano manda ler — e **confirme que as assinaturas batem com o código real**. Não batem → 🔺 GAP.
-5. As seções de `${CLAUDE_PLUGIN_ROOT}/standards/` que o plano citar. São **base obrigatória**: defeito nelas é 🔺 GAP ao Arquiteto, nunca improviso (R16).
+1. No `sprint run`, o **cartão de passagem** que o prompt traz (`sprints/<n>/handoff/<T-ID>.md`, ~2 KB): onde a Task está, o plano, os cenários, a última entrega e a verificação (v3.51).
+2. `.team-project/developer/context.md` — onde está cada coisa, comandos, armadilhas, convenções de teste.
+3. Do **Plano de Implementação**: o **cabeçalho**, a **§6 (testes)**, a **§9 (onde parar e perguntar)** e **o seu bloco** (ou os passos, se o plano não tem blocos) — não o plano inteiro (v3.51; no piloto, um plano de 27 KB foi lido 117 vezes).
+4. Se a Task tem interface, a **especificação de tela** que o plano citar, em `.team-project/user-experience/screens/`. Implemente o que está lá, literalmente. Estado ou comportamento não coberto é 🔺 GAP para o **UX**.
+5. Os arquivos que o plano manda ler — e **confirme que as assinaturas batem com o código real**. Não batem → 🔺 GAP.
+6. As seções de `${CLAUDE_PLUGIN_ROOT}/standards/` que o plano citar. São **base obrigatória**: defeito nelas é 🔺 GAP ao Arquiteto, nunca improviso (R16).
 
 Roteiro, skills e modelos: `${CLAUDE_PLUGIN_ROOT}/roles/developer/`.
 

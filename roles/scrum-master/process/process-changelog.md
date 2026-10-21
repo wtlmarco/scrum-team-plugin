@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.48`](process-changelog-archive.md) | O que o primeiro sprint do piloto mostrou: relatório do `operator` gravado pelo hook, guardas sem falha aberta nem falso negado, C1 que fecha o que é legítimo; addendum v3.48.1: `verify.testItem` (SM + Arquiteto + Dev + QA) — 14/10/2026 |
 | [`v3.47`](process-changelog-archive.md) | Modelo por papel (G17), perfil Arquiteto executor, modo benchmark (G18) e ritual "modo projeto": o plugin pronto para o experimento sem intervenção (SM + Arquiteto + QA + Dev) — 10/10/2026 · *com addendum v3.47.1 de 12/10/2026* |
 | [`v3.46`](process-changelog-archive.md) | Plano em contrato conferido antes do dev, prova de falha por mutação, trilha leve por Task, Arquiteto um passo à frente e fechamento pela sessão (SM + Arquiteto + Dev + QA) — 06/10/2026 |
 | [`v3.45`](process-changelog-archive.md) | Consumo medido no transcript (G16), R28 por Task e plano em blocos de até 8 arquivos com uma instância de dev por bloco; addendum v3.45.1: verificação uma vez só, amarrada à árvore (SM + Arquiteto + Dev + QA + UX) — 06/10/2026 |
@@ -89,6 +90,51 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.51 — O sprint do benchmark: dev constrói e verifica sozinho, plano por História ao lado dos cenários, portão do QA no fim, orquestração por script, contexto e cache, ambiente em qualquer tecnologia (SM + Arquiteto + Dev + QA + PO) — 21/10/2026
+
+**Instrução** (stakeholder, 21/10/2026, a partir do benchmark P × N-forte × protótipo Coordenador–Operador; plano aprovado em `plano-plugin-p-plus.md`, decisões no §8 e em formulário): manter o processo e a documentação antes e depois da Sprint, mas chegar o mais perto possível do N-forte na construção — o plano e os cenários prontos antes do dev, o dev (Haiku) construindo, verificando e corrigindo sozinho, o QA como portão de validação do produto (qualidade de código e funcional, com prova no alvo real) uma vez no fim, a dúvida subindo ao Arquiteto só quando é dúvida; atacar a transferência de contexto e a perda de cache; scripts para qualquer tecnologia (Android e Web nesta versão; API e Windows desktop depois); toda decisão ao stakeholder com o problema simples, um exemplo e formulário; os itens do `note.md` e as propostas pendentes.
+**Classificação:** fluxo da Sprint e da trilha `fix` · formato de documento (plano, relatório de entrega, validação do sprint, Kanban) · comportamento de agente (os seis papéis) · guardas novas (G19, G20) e guarda alterada (G3) · scripts novos e alterados · standard (perfis de nível 2 por tecnologia). **Sem regra nova** (34): R7, R12, R22 e R30 ganham o parágrafo v3.51.
+
+### O que mudou
+
+- **Construção (A1–A6).** A Sprint abre com o **preparo da construção** por História: o QA escreve os cenários executáveis (`.scn`, linguagem do `accept.ps1`), depois **uma instância do Arquiteto** escreve os planos de todas as Tasks da História. O plano fica enxuto (regras 22 a 25: ~12 KB, cenários, risco, layout novo) e o `plan.ps1` confere tamanho, cenários, risco e render. O **dev** constrói, roda `verify` e os cenários da Task no alvo, e corrige sozinho; a Task fecha pela **evidência do dev** (`close.ps1`, R7-aceite). O **QA** é o portão do sprint (`/qa sprint <n>`, `validation.md`): mede pelo `operator` (`quality.ps1`, `accept.ps1`) e julga SOLID, clean code, aderência e segurança. Documentos vivos (R12) consolidados **uma vez** pelo Arquiteto (`docs-consolidation.md`). Teste pelo risco, freado pela cobertura medida no portão.
+- **Orquestração (B1, B2).** `scripts/checks/run.ps1` (`next`, `start`, `done`, `handoff`) devolve a próxima ação pronta; o `sprint-run.md` foi reescrito para esse fluxo (34 KB → ~14 KB).
+- **Contexto e cache (C1–C5).** Papel em Sonnet ou Opus parado há mais de 5 min abre **instância nova** com o **cartão de passagem** (~2 KB, `handoff/<T-ID>.md`); a **G19** nega o `SendMessage` fora disso. Comando longo só no dev, no `operator` ou em script. Os agentes leem só as seções do README do time que usam; o dev lê cabeçalho, §6, §9 e o próprio bloco do plano.
+- **Ambiente (D1–D4) em qualquer tecnologia.** `verify.ps1` com tempo limite próprio, árvore de processos encerrada e higiene por ferramenta (`tool-hygiene.json`: Gradle sem daemon, `dotnet` sem reúso de nó, `CI=true` no Node); **exit 4 = falha de ambiente**. `target.ps1` (pré-voo e reparo: emulador desenhando a tela, site no ar) e `accept.ps1` (cenários no alvo, Android por uiautomator, Web por Playwright com Edge/Chrome de reserva, captura por cenário), com a trava de dono único. `SessionStart` avisa perfil do Windows com acento.
+- **Trilha `fix` (§3a).** Defeito vira cenário `FX-<nnn>` (falha antes, passa depois, com captura); métricas só dos arquivos tocados; formulário dos ajustes no formato H1.
+- **Organização (G1–G4).** `kanban.md` no lugar do `burndown.md` (Kanban, Burndown e o controle das Tasks embaixo); `kanban.html` regravado a cada transição, sem token. `standards/stacks/<tecnologia>/` (.NET com `desktop.md`, Kotlin/Android, React, Angular) com ferramenta por regra Q, coluna "ecossistema restrito" e Ficha pré-preenchida; índice com identificadores.
+- **Comunicação (H1).** Modelo `templates/stakeholder-question.md`; a G3 nega formulário sem exemplo prático.
+- **Paradas (propostas a e b).** Hook `Stop` (**G20**): barra o fim de turno com Task elegível e `.active-run`; o `SessionStart` **retoma** o run em vez de só avisar. Proposta c (energia) no `how-to.md`; proposta d (render no `plan.ps1`) entrou ajustada pelo A6. O `proposals-pending.md` foi apagado (todas aplicadas).
+- **Medição (M1).** `transcript-metrics.js activity`: custo por atividade, igual para qualquer braço do benchmark.
+
+### Por quê
+
+Medido no P-r6 (Mente Ativa, v3.50.1, transcripts): Arquiteto 41 % do custo e 632 min de relógio; sessão principal 35 %, a 274 mil tokens por chamada; dev em Haiku 3 %. O plugin escreveu mais documento (planos de 42 KB em média) que código e 6× mais teste que o N-forte. Perda de cache: 15 % no P-r6, 30 % no protótipo, zero no N-forte. No protótipo, a vistoria repetida depois do construtor nunca achou defeito real, e 38 % do custo foram chamadas que só diagnosticaram ambiente quebrado.
+
+### Quem passa a ser cobrado de forma diferente
+
+- **Dev:** fecha a Task com a própria evidência, inclusive os cenários no alvo; corrige sem esperar o QA; exit 4 é parar e dizer.
+- **QA:** sai da verificação por Task; entra no portão do sprint e na escrita dos cenários executáveis; não roda comando longo.
+- **Arquiteto:** planeja por História, sem instância por Task; consolida R12 uma vez; não roda comando longo.
+- **Sessão / SM:** orquestra por `run.ps1`; não retoma papel caro depois de 5 min; formulários no formato H1.
+
+### Conflitos com o processo vigente
+
+O `/qa <ID>` continua para validação avulsa fora do `run`; a evidência do QA por Task (`evidence/`) continua aceita pelo `close.ps1` (regra anterior). Sprint aberto antes da v3.51 segue com o `burndown.md` e o controle no `sprint-backlog.md` — os scripts leem os dois lugares.
+
+### Como saberemos que funcionou
+
+Etapa 6a do benchmark (P+ no SunScape, contra N-forte e protótipo, mesmo oráculo): a construção do dev ≤ 1,5× o custo e ≤ 2× o relógio do N-forte; qualidade 15/15 e lote 4/4; documentação não abaixo do P-r6 na avaliação cega. Projeção registrada no plano: de US$ 59 para ~US$ 28 num projeto como o Mente Ativa.
+
+### Evidência (R19)
+
+Suítes: guardas e conferências (contagem na entrega), C3, `claude plugin validate`. Validação real: `accept.ps1` e `target.ps1 -Repair` no emulador do benchmark (3 cenários do SunScape com captura; reinício do AVD em 88 s) e num site local pelo Edge headless (deslizante, toque, contagem, ordem; servidor subido e encerrado pelo executor).
+
+### Pendente do stakeholder
+
+Autorização de custo da Etapa 6a (P+ no SunScape). API e Windows desktop no executor de cenários: próximo incremento.
+
+---
 ## v3.50 — Mudança de layout se prova em render real: navegador headless, 3 fontes × telas, mutação que quebra a medição; e as paradas do `run` fecham no texto (SM + Arquiteto + Dev + QA) — 16/10/2026
 
 **Instrução** (stakeholder, `/review note`, item 2, decisão "Render real" de 16/10/2026; item 4 movido da v3.49): Task que muda layout ou estilo visível exige, no plano, caixas medidas em navegador headless, 3 tamanhos de fonte × as telas relevantes; prova só por estrutura não basta; a mutação tem de quebrar a medição. **Causa medida:** layout (Ionic) provado por CSSOM/seletor passou no plano, no QA e na mutação e quebrou no aparelho (~15,5 M tokens de conserto no piloto).
@@ -244,48 +290,3 @@ Depois de mesclar: atualizar o plugin no piloto e no benchmark, `/team update` (
 **Verificação (R19):** `run-check-tests.ps1` → 105 · 0 (12 novos: `mark` em quadro, Série e Registro, a composição recontada, o marcador repetido e o ✅ recusados; `dispatch` com o JSON, o marcador, o modelo do `models.json`, o primeiro plano no benchmark, o executor, o `-Clear` e o dev sem plano; `-Session` com o `uuid` repetido descartado e a linha mantida sem `-Session`); `run-guard-tests.ps1` → 167 · 0; `release.ps1` ok. **Medido:** o `-Session` sobre um transcript real de sessão do piloto (9,4 MB, 418 chamadas) leva 7 s no PowerShell 5.1 e dá 204,6 M processados, coerente com `scripts/metrics`. **Não exercitado:** os três scripts num sprint real.
 
 ---
-
-## v3.48 — O que o primeiro sprint do piloto mostrou: relatório do `operator` gravado pelo hook, guardas sem falha aberta nem falso negado, C1 que fecha o que é legítimo (SM + Arquiteto + Dev + QA) — 14/10/2026
-
-**Instrução** (stakeholder): "Pode aplicar", sobre `avaliacao-first-result.md` — grupos A (fechamento) e B (guardas). Base: `first-result/plugin-report.md` (relatório do SM do piloto, plugin 3.46.0 instalado), `first-result/guards.log` (04 a 13/10/2026, 4 821 linhas) e o `guards.json` do projeto; os comandos negados foram **reexecutados contra o hook da v3.47.1** antes da correção. **Causas medidas:** 9 edições do dev sem G6/G8/G9 (`.active-task` não JSON derrubava o hook — falha aberta); 6 falsos negados na G8/G9 (`>` dentro de texto lido como destino); ≥ 19 na G14 (caminho entre aspas virava `""`, conferência com `2>&1`, `Get-Process`, `npm --prefix`, `[Math]::`); C1 com R26/R28 `falhou` em toda Task com `operator` (o harness recusa relatório gravado por subagente), sem lugar para a decisão do stakeholder na R4, lendo só o bloco mais novo da evidência (R7) e com o `-Apply` saindo com exit 2 no quadro anterior à v3.44.1.
-**Classificação:** instrumento (G9, G11, G14, G15, G16, `Get-WriteTargets`, C1, `plan.ps1`) · formato de documento (Sprint Backlog: coluna "Decisão do stakeholder"; plano: regra 16) · comportamento de agente (`operator`: relatório em texto, pasta do job citada). **Sem regra nova** (34): R28 muda quem grava o `report`; R4 ganha o registro da exceção decidida.
-**Papéis movidos (R17):** 4 — SM, Arquiteto, Dev (via `operator`/guardas), QA.
-
-### O que mudou
-| Documento | Mudança |
-|---|---|
-| `hooks/pre-tool.ps1` | G9 nega com `.active-task` ilegível; `Get-WriteTargets` mascara texto entre aspas e resolve variável atribuída a literal no mesmo comando; G14 restaura o texto entre aspas para ler o destino, aceita conferência com `2>&1` ou `Out-String` no fim, `Get-Process`, `npm --prefix`, método estático de leitura, confere destino de `*>`, mensagens próprias para `Start-Sleep` e `robocopy`; G11 só no segmento `<n>`/`pre-sprint`/`B-nnn` |
-| `hooks/subagent-stop.ps1` (G16) | rodada do `operator` grava a última resposta como `report.md` (ou `report-<agente>-r<rodada>.md`) na pasta do job citada; campo `report` no `usage.jsonl` |
-| `hooks/notification.ps1` · `hooks/common.ps1` | G15 ignora o `AskUserQuestion`; `guards.log` com alvo numa linha |
-| `scripts/checks/close.ps1` (C1) | R28 conta todo `report*.md` das pastas citadas; R7/R12/R4/R30 leem a última rodada **com** veredito; R4 aceita "Decisão do stakeholder" datada; `-Apply` grava o Registro no `sprint-backlog.md` quando o burndown não o tem |
-| `scripts/checks/plan.ps1` | linha `dono`: arquivo de outro papel (matriz) ou de gate na lista reprova o plano |
-| `agents/operator.md` · R28 (`working-rules.md`) · `templates/consumption.md` | o relatório é a resposta; o hook grava; a resposta cita a pasta do job |
-| `templates/sprint-backlog.md` · `implementation-plan.md` regra 16 · `sprint-run.md` passo 3 · `team-update.md` 7i · `COVERAGE.md` | coluna nova; arquivo de outro papel fora da lista; `.active-task` é JSON; migração do Registro e do `testRoot`; cobertura v3.48 |
-
-### Por quê
-A proposta das guardas pedia dois sprints sem linha `erro` e com até um falso positivo por guarda; o piloto reprovou as duas, e a G12 não pode entrar enquanto o C1 diverge do fechamento legítimo. O caso mais grave não aparecia no relatório do SM: a falha aberta é silenciosa por desenho (D5) e só o `guards.log` a mostra. A regra que fica: dado ruim do projeto decide (nega com a rota); só defeito do hook falha aberto. O `report` do `operator` passa ao hook porque a recusa é do harness — contorná-la pelo shell burlaria a recusa; gravar a resposta depois que ela existe não.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda para ele |
-|---|---|
-| `operator` | não grava `report.md`; devolve o relatório em texto, citando a pasta do job |
-| Arquiteto | `**Arquivos tocados:**` só com arquivo do executor (o `plan.ps1` reprova o resto) |
-| SM / sessão | `.active-task` em JSON; entrada fora da Planning com "o que saiu" **ou** "Decisão do stakeholder" datada |
-| QA | revisão/nota acima da rodada não esconde mais o veredito |
-
-### Verificação (R19)
-`run-guard-tests.ps1` → **161** casos · 0 falharam (21 novos); `run-check-tests.ps1` → **89** · 0 (8 novos). Replay do `guards.log` do piloto contra o hook novo: os falsos negados reproduzíveis passam; o que segue negado são comandos que o log truncou em 120 caracteres (aspas sem fechar), `Start-Sleep` (com a rota nova), `robocopy`, script `.ps1` do scratchpad e `run_in_background` — negações corretas. **Não exercitado:** um `sprint run` real; se o `SubagentStop` traz a resposta final do `operator` no transcript antes do hook rodar (a suíte usa transcript montado).
-
-### Pendente do stakeholder
-Grupo C da avaliação (retomada por `SendMessage` com contexto grande, Totais do consumo por instância, onde gravar a quebra em Tasks, prova de UI com render real) vai pelo `/review` — registrado como sintoma em `note.md`, itens 1 a 5. A contagem dos 2 sprints do indicador da fase 2 e da condição da G12 recomeça com esta versão instalada no piloto.
-
-### Addendum v3.48.1 — `verify.testItem`: o teste focado em runner que recebe classe (14/10/2026)
-**Instrução** (stakeholder): "atualize o necessário para iniciarmos o teste de benchmark". **Causa:** os três projetos-padrão do benchmark são Android/Gradle; o `verify.ps1` troca `{tests}` pelos **caminhos** dos arquivos de teste, e o `--tests` do Gradle espera **classe** — o `focused`, a linha de base e toda mutação dariam "No tests found" (`inconclusivo`), e o C1 não fecharia nenhuma Task com `**Mutações:**`.
-**Classificação:** instrumento (`verify.ps1`) · formato (`guards.json` → `verify.testItem`). **Sem regra nova.**
-
-| Documento | Mudança |
-|---|---|
-| `scripts/checks/verify.ps1` | `testItem`: molde por teste com `{path}` (padrão) e `{class}` (`src/<conjunto>/java\|kotlin\|scala\|groovy/…` → nome qualificado; fora disso, o nome do arquivo) |
-| `deliverables/team-project/guards.json` · `team-update.md` 7h | chave opcional documentada, com o exemplo do Gradle |
-
-**Verificação (R19):** `run-check-tests.ps1` → 91 · 0 (2 novos: Gradle com `testRoot` + `--tests {class}`; `{path}::{class}` fora do padrão `src/`); `run-guard-tests.ps1` → 161 · 0. **Não exercitado:** um Gradle real — o ensaio do P é o primeiro.

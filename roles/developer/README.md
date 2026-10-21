@@ -43,6 +43,13 @@ Leio **só as seções que o plano citou** e as aplico como o próprio plano; se
 6. Preencher o relatório de [`templates/delivery-report.md`](templates/delivery-report.md), inclusive "Execução delegada" (uma linha por chamada ao `operator`, ou "nenhuma"), "Não fiz (fora do plano)" e "Parei no passo", **gravado no arquivo que o modelo indica** (`sprints/<n>/delivery/<T-ID>.md`; no fix, `fixes/B-<nnn>/delivery.md`; v3.49). À sessão devolvo só o retorno curto de R28.
 7. **Achado de execução do QA** (código ≠ plano) volta **direto a mim** por `/dev resume`: corrijo só o que o achado aponta, contra o plano vigente. Se corrigir exigir mudar o plano, é 🔺 GAP ([`workflow.md` §4a](../scrum-master/process/workflow.md)).
 
+## No `sprint run` desde a v3.51 — construo, verifico e corrijo sozinho
+
+- **O que leio:** o **cartão de passagem** da Task (`sprints/<n>/handoff/<T-ID>.md`, ~2 KB), o **cabeçalho e a §6 do plano** e **o meu bloco** — não o plano inteiro, nem o histórico. O resto só quando o passo pede.
+- **O que rodo:** `verify.ps1 -Mode focused` durante, `-Mode full` no fim, `-Mode mutation` quando o plano declara **Mutações:**, e **os cenários da Task no alvo real** — `accept.ps1 -Task <T-ID> -Only <cenários do cabeçalho do plano>` (emulador ou navegador, com captura de cada cenário).
+- **Falhou, eu corrijo** na mesma instância e rodo de novo; não espero o QA — ele valida o sprint inteiro no fim (`sprint-run.md` §Validação do sprint). **Exit 4** do `verify` ou do `accept` é **falha de ambiente** (tempo esgotado, emulador sem tela, site fora do ar): paro e digo, não depuro o ambiente.
+- **Dúvida de desenho** continua 🔺 GAP: paro e registro no relatório.
+- **O que gravo:** a seção nova no fim de `delivery/<T-ID>.md`, com a saída **colada** do `verify` e do `accept` e `### Documentos vivos (R12)` com **Estado:** a consolidar e a lista do que muda (o Arquiteto consolida uma vez no fim do sprint). A Task fecha pelo `close.ps1` com essa evidência.
 ## Trilha `fix` (R33) — uma Correção por vez
 
 A sessão me aciona **uma vez por bloco**, no `/sm fix run`, com `.team-project/fixes/B-<nnn>/plan.md` — um mini-plano do Arquiteto por Correção (`F-<nnn>`), no formato de [`../architect/templates/fix-plan.md`](../architect/templates/fix-plan.md). Fluxo: `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/fix-run.md` §Run. Vale todo o contrato acima — o mini-plano é o plano, e `### Arquivos` é a lista fechada. Muda o seguinte:

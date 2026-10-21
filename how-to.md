@@ -153,7 +153,8 @@ Item tratado **sai do `note.md`** e passa a viver no destino.
 
 ### F · O trabalho parou no meio
 
-- **O `run` foi interrompido** (sessão fechada, erro de ambiente): rode `/sm sprint run` de novo. Ele retoma cada Task de onde parou, sem replanejar o que já tem plano.
+- **O `run` foi interrompido** (sessão fechada, erro de ambiente): ao reabrir a sessão, o time retoma sozinho (v3.51: a abertura da sessão vê o `.team-project/.active-run` e manda seguir a fila). Se não retomar, rode `/sm sprint run` de novo. Ele retoma cada Task de onde parou, sem replanejar o que já tem plano. Para não parar, deixe o computador acordado durante o run (ver "Responder pelo celular", item 9).
+- **Falha de ambiente** (v3.51): quando o `verify` ou o executor de cenários devolvem **exit 4**, o problema é a máquina, não o código — tempo esgotado, emulador com a tela em branco, site fora do ar, outro automatizador usando o aparelho, perfil do Windows com acento. O time tenta o reparo uma vez e, sem sucesso, a Task fica bloqueada por ambiente com a ação para você (§"Ambiente de execução", abaixo).
 - **O `fix run` foi interrompido:** rode `/sm fix run` de novo. Ele retoma da correção em que parou; as já fechadas não são refeitas.
 - **O `sdd` parou num portão:** rode `/sm sdd` de novo; ele retoma na primeira etapa não concluída.
 - **Não sabe em que ponto está:** `/po status` (visão de entrega) ou `/sm board` (quadro do sprint).
@@ -191,7 +192,7 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 |---|---|---|
 | **G1** | commit com arquivo de `.team-project/` (R31) | `git restore --staged .team-project` e commitar só o produto. Na migração do `/team update` (passo 7b), o próprio ritual desliga a G1 durante o passo |
 | **G2** | edição da cópia instalada do plugin | mudança de processo vai pelo `/review`, no clone do repositório do plugin |
-| **G3** | formulário cuja última opção não é "Pedir mais contexto" (R22); em projeto com identificador remoto, pergunta sem o prefixo `[<ID> · …]` ou sem a pendência gravada antes (R34) | o agente refaz a pergunta; vale para toda pergunta, até a simples |
+| **G3** | formulário cuja última opção não é "Pedir mais contexto" (R22), ou sem um exemplo prático (v3.51, H1); em projeto com identificador remoto, pergunta sem o prefixo `[<ID> · …]` ou sem a pendência gravada antes (R34) | o agente refaz a pergunta; vale para toda pergunta, até a simples |
 | **G4** | aviso: saída de comando com mais de 300 linhas no contexto (R28) | delegar a execução pesada ao `operator` |
 | **G5** | subagente editando arquivo de gate (`.editorconfig`, CI, `*.ruleset`… — lista em `guards.json` → `protectedPaths`) | o papel levanta 🔺 GAP; mudança de gate é sua. Projeto com outro arquivo de gate: acrescente-o à lista |
 | **G6** | dev acrescentando teste ignorado (`[Skip`, `.skip(`, `xit(`…) | o dev levanta 🔺 GAP ao Arquiteto |
@@ -203,6 +204,8 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 | **G17** | disparo de papel (inclusive o `operator`) com modelo diferente do de `.team-project/models.json` | dispare de novo com o `model` indicado. Para trocar o modelo de um papel, edite `models.json` (`{ "developer": "sonnet", "architect": "opus" }`; vale para os 7 papéis, vence o agente e as exceções do processo; `scripts/checks/models.ps1` mostra o que está em vigor) |
 | **G18** | só no experimento de benchmark (`guards.json` → `bench`): o `AskUserQuestion` é negado e respondido pelo dossiê; com `foreground`, `Agent` em segundo plano é negado | siga a resposta `[bench]` como se fosse a do stakeholder (`rituals/benchmark.md` §7). Fora do experimento não há `bench` no `guards.json`: nada a fazer |
 | **G15** | registra no `guards.log` todo pedido de permissão do Claude Code | — (é o rastro para diagnosticar chamada interrompida, R27) |
+| **G19** | a sessão retomando por `SendMessage` um papel caro (Arquiteto, QA, PO, UX, SM) parado há mais de 5 min (v3.51) | — o time abre uma instância nova com o cartão de passagem; retomar regravaria todo o contexto no modelo caro |
+| **G20** | o fim de turno no meio do `sprint run` com Task elegível no quadro (v3.51) | — a sessão segue a fila sozinha; esperar agente em segundo plano é permitido |
 | **G16** | registra em `.team-project/usage.jsonl` o consumo **medido** de cada subagente (tokens processados, contexto final, modelo, duração, Task) | — e roda `scripts/checks/consumption.ps1`, que escreve o `consumption.md` (v3.49; antes, a sessão o rodava); ninguém copia número da notificação |
 
 - **O agente recebe o motivo e corrige o rumo** — você normalmente nem vê o bloqueio. As guardas por papel (G5–G11) não valem para a sua sessão principal.
@@ -241,7 +244,7 @@ O time pode te perguntar — e você pode retomar o trabalho — pelo **Claude C
 6. **"Pular" não decide nada:** a pergunta fica pendente em `.team-project/README.md` §7 e volta quando o time retomar.
 7. **① e ③ também se respondem pelo celular.** A pergunta traz o link do protótipo publicado como página privada na sua conta: navegue nele e decida. "Aprovar" declara que você navegou — a responsabilidade é sua. Se o produto também tem site, a navegação no desktop continua por sua conta.
 8. **Quando a fila do `sprint run` termina,** chega `[ACME · S4 · fim do run] Iniciar a Sprint Review?` — no terminal e no celular. "Agora" já abre a Review; "depois" deixa anotado. Iniciar a Review não é aceitar nada.
-9. **Se o computador suspender, a sessão cai.** Nada se perde: a pergunta está em §7 e volta quando você reabrir o projeto. Para trabalhar longe da máquina, deixe-a na tomada e sem suspensão.
+9. **Se o computador suspender, a sessão cai.** Nada se perde: a pergunta está em §7 e volta quando você reabrir o projeto. Enquanto existir `.team-project/.active-run` (um `sprint run` ou `fix run` em andamento), mantenha o computador acordado: na tomada, com a suspensão e a hibernação desligadas. No Windows: `powercfg /change standby-timeout-ac 0` e `powercfg /change hibernate-timeout-ac 0` (a tela pode apagar; ela não é a suspensão) e, em notebook, a ação de fechar a tampa em "Não fazer nada" (Opções de energia → Escolher a função do fechamento da tampa). Desfaça ao fim do run. Medido no piloto: ~122 h de máquina suspensa com agentes em segundo plano, que viraram o vigia de 600 s, rede caída e um desligamento inesperado. Se a máquina suspendeu, ao reabrir a sessão o time retoma sozinho pelo marcador; você não precisa reenviar a fila.
 
 ## Regras que valem em qualquer cenário
 
@@ -315,7 +318,7 @@ Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — a nã
 │       ├── plan/                    um Plano de Implementação por Task
 │       ├── evidence/                a evidência de cada Task: comando e saída real
 │       ├── consumption.md           tokens e duração por invocação (inclui o operator)
-│       ├── burndown.md              estimativa restante, em série datada
+│       ├── kanban.md                Kanban, burndown e controle das Tasks (+ kanban.html, visual)
 │       ├── review.md                a Sprint Review e a sua decisão por História
 │       ├── retrospective.md         o que o time corrige no sprint seguinte
 │       └── plugin-report.md         só se você escolher "investigar" uma ocorrência de plugin na Review: relatório de processo, sem contexto do projeto, que você encaminha ao dono do plugin
@@ -404,6 +407,25 @@ Antes da 1ª Planning use os comandos de papel; `/sm sprint run <T-ID>` exige o 
 - [ ] `/qa baseline` registrado em `.team-project/quality-assurance/baseline.md`
 - [ ] Primeira Task fechada com veredito ✅ (`/sm sprint run`, depois da 1ª Planning com pacote aprovado)
 
+### Ambiente de execução (v3.51)
+
+O time roda o app de verdade para provar que ele funciona: no emulador ou aparelho (Android), no navegador com o site no ar (web). Isso se configura no `.team-project/guards.json`:
+
+```json
+"verify": { "build": "...", "suite": "...", "timeoutMinutes": 9, "env": { "GRADLE_USER_HOME": "C:\\gradle-home" } },
+"targets": {
+  "android": { "package": "br.com.app", "apk": "app/build/outputs/apk/release/app-release.apk", "avd": "Pixel_API_34", "maxUptimeHours": 24 },
+  "web": { "url": "http://localhost:4200", "start": "npm run start", "startTimeoutSec": 120 }
+}
+```
+
+- **`scripts/checks/target.ps1 -Target android|web [-Repair]`** confere se o alvo está pronto (emulador desenhando a tela, site respondendo) e, com `-Repair`, tenta consertar uma vez (reinicia o emulador, sobe o servidor).
+- **`scripts/checks/accept.ps1 -Task <ID>`** roda os cenários de `.team-project/quality-assurance/scenarios/*.scn` no alvo, com uma captura de tela por cenário (a prova que o QA anexa ao veredito). Um cenário que falha é repetido uma vez do zero; o relatório mostra as duas tentativas.
+- **Um automatizador por vez.** A trava `.team-project/.target-lock` impede dois executores no mesmo aparelho (os dois quebram). Executor que caiu deixa a trava: `target.ps1 -Unlock`.
+- **Web sem baixar navegador:** o executor usa o navegador do Playwright e, sem ele, o Edge ou o Chrome instalados. O Playwright vem do projeto (`npm i -D playwright`).
+- **Comandos que não terminam:** o `verify` encerra cada comando em `timeoutMinutes` (padrão 9) e mata os processos que sobram (daemon do Gradle, nós do MSBuild). A higiene de cada ferramenta (Gradle sem daemon, `dotnet` sem reúso de nó, `CI=true` no Node) entra sozinha, de `scripts/checks/tool-hygiene.json`. Comando de teste em modo de observação (`ng test` sem `--watch=false`, `vitest` sem `run`) gera aviso.
+- **Perfil do Windows com acento** (`C:\Users\João…`): os testes do Gradle falham sem aviso. Crie uma junção ASCII (`cmd /c mklink /J C:\gradle-home "%USERPROFILE%\.gradle"`) e ponha `GRADLE_USER_HOME` em `verify.env`, como no exemplo. A abertura da sessão avisa quando falta.
+- **Emulador ligado por muito tempo para de desenhar a tela** (medido: depois de ~1 dia). O pré-voo confere o tempo ligado (`maxUptimeHours`) e reinicia o AVD no reparo.
 ### Problemas de instalação
 
 - **O plugin "some" na sessão.** O registro caiu em *user settings*, não no projeto: remova e refaça com `--scope project`. A forma do identificador também importa — `{"source":"github","repo":…}` e `{"source":"git","url":"….git"}` são dois identificadores para o mesmo marketplace, e misturá-los impede o resolvedor de casar o plugin com o cache.

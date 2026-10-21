@@ -124,6 +124,31 @@ function Test-GlobMatch([string]$RelPath, [object[]]$Globs) {
 
 # Marcadores gravados pela sessao (dono SM): .active-run (sprint run / fix run em andamento, G14)
 # e .active-spike (spike ou pedido do stakeholder declarado, G8). Ausente ou invalido -> $null.
+# Agentes em segundo plano disparados durante o run (v3.51, G20): .team-project/.active-agents, lista JSON de
+# { type, description, desde }. A PreToolUse acrescenta ao liberar um Agent em segundo plano com .active-run; a SubagentStop
+# tira o mais antigo do mesmo tipo. O hook Stop libera o fim de turno enquanto há agente em voo há menos de 3 h.
+function Get-ActiveAgents([string]$ProjectDir) {
+    $p = Join-Path $ProjectDir '.team-project/.active-agents'
+    if (-not (Test-Path -LiteralPath $p)) { return @() }
+    try { return @(Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return @() }
+}
+function Set-ActiveAgents([string]$ProjectDir, $List) {
+    $p = Join-Path $ProjectDir '.team-project/.active-agents'
+    if (-not @($List).Count) { if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Force }; return }
+    [System.IO.File]::WriteAllText($p, (ConvertTo-Json -InputObject @($List) -Depth 3 -Compress), (New-Object System.Text.UTF8Encoding($false)))
+}
+function Add-ActiveAgent([string]$ProjectDir, [string]$Type, [string]$Description) {
+    $l = @(Get-ActiveAgents $ProjectDir) + @([pscustomobject]@{ type = $Type; description = $Description; desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') })
+    Set-ActiveAgents $ProjectDir $l
+}
+function Remove-ActiveAgent([string]$ProjectDir, [string]$Type) {
+    $l = @(Get-ActiveAgents $ProjectDir); if (-not $l.Count) { return }
+    $ix = -1; for ($i = 0; $i -lt $l.Count; $i++) { if ([string]$l[$i].type -eq $Type -or ([string]$l[$i].type -replace '^team:', '') -eq ($Type -replace '^team:', '')) { $ix = $i; break } }
+    if ($ix -lt 0) { return }
+    $keep = @(); for ($i = 0; $i -lt $l.Count; $i++) { if ($i -ne $ix) { $keep += $l[$i] } }
+    Set-ActiveAgents $ProjectDir $keep
+}
+
 function Get-Marker([string]$ProjectDir, [string]$Name) {
     $p = Join-Path $ProjectDir ".team-project/$Name"
     if (-not (Test-Path -LiteralPath $p)) { return $null }

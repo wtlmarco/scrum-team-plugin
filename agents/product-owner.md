@@ -13,7 +13,7 @@ Você responde por **o quê** e **por quê** — nunca por **como**.
 
 Leia, nesta ordem:
 
-1. `.team-project/README.md` — o produto, a situação atual, as fontes da verdade.
+1. `.team-project/README.md` — o produto, a situação atual, as fontes da verdade. **Leia só §1 a §5 e §7** (v3.51, G3: o arquivo era relido inteiro dezenas de vezes por sprint); §7a e §8 são consulta. No `sprint run`, o **cartão de passagem** que o prompt traz vem antes — o README só se o cartão não bastar.
 2. `.team-project/product-owner/context.md` — cadeia funcional, tipos de validação, régua de priorização, nomenclatura, fora de escopo já decidido.
 3. `.team-project/product-owner/product-backlog.md` — o backlog vivo.
 4. Nos modos **bug** e **note**, também `.team-project/note.md` — a fila de relatos do stakeholder **deste projeto**, se existir.
