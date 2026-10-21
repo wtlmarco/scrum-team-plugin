@@ -202,6 +202,42 @@ function Get-EnvFailure([string]$Text) {
     return $null
 }
 
+# Linhas decisivas de um log: as últimas que falam de teste, falha, cobertura ou porcentagem.
+function Get-Decisive([string]$Log) {
+    $u8 = New-Object System.Text.UTF8Encoding($false)
+    $lines = @([System.IO.File]::ReadAllLines($Log, $u8))
+    $hit = @($lines | Where-Object { $_ -match '(?i)\b(pass(ed|ing)?|fail(ed|ures?)?|errors?|warnings?|tests?|total|coverage|cobertura|threshold)\b|\d+(\.\d+)?\s*%' } | Select-Object -Last 4)
+    if ($hit.Count -eq 0) { $hit = @($lines | Where-Object { $_.Trim() } | Select-Object -Last 2) }
+    return @{ Lines = $lines.Count; Decisive = @($hit | ForEach-Object { $t = $_.Trim(); if ($t.Length -gt 200) { $t.Substring(0, 200) + '…' } else { $t } }) }
+}
+
+# Roda um comando do projeto num PowerShell filho (v3.45.1; comum ao verify e ao quality desde a v3.51): código de saída
+# real, saída inteira no log, tempo limite próprio com a árvore de processos encerrada (exit 124), descendentes que sobram
+# encerrados ao fim (daemon), higiene da ferramenta e $EnvExtra como variáveis do filho, falha de ambiente por assinatura.
+function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [string]$Log, [double]$TimeoutMinutes, $EnvExtra) {
+    $u8 = New-Object System.Text.UTF8Encoding($false)
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $hy = Get-ToolHygiene $Cmd $EnvExtra
+    $envPrefix = (@($hy.Env.Keys) | ForEach-Object { "[Environment]::SetEnvironmentVariable('$($_ -replace "'", "''")', '$(([string]$hy.Env[$_]) -replace "'", "''")', 'Process'); " }) -join ''
+    # Código de saída real: o do último comando nativo; cmdlet que falha sem código = 1 (contrato do operator, item 2).
+    $wrapped = $envPrefix + '$global:LASTEXITCODE = 0; ' + $Cmd + '; if (-not $?) { if ($LASTEXITCODE) { exit $LASTEXITCODE } else { exit 1 } }; exit $LASTEXITCODE'
+    $enc = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($wrapped))   # aspas do comando passam intactas
+    # Sem -Wait: no 5.1 ele espera também os descendentes, e o daemon do build é descendente (nota 4).
+    $p = Start-Process -FilePath 'powershell' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $enc) -WorkingDirectory $Root -RedirectStandardOutput $Log -RedirectStandardError "$Log.err" -NoNewWindow -PassThru
+    $null = $p.Handle   # sem o handle aberto, o ExitCode volta vazio no 5.1
+    $limit = if ($TimeoutMinutes -gt 0) { [Math]::Max(0.05, $TimeoutMinutes) } else { 9 }
+    $timedOut = -not $p.WaitForExit([int]($limit * 60000))
+    if ($timedOut) { $null = Stop-ProcessTree $p.Id; $p.WaitForExit(5000) | Out-Null; $code = 124 }
+    else { $p.WaitForExit(); $code = $p.ExitCode; $null = Stop-ProcessTree $p.Id -ChildrenOnly }
+    Start-Sleep -Milliseconds 200   # o arquivo de saída fica livre depois que os descendentes saem
+    if (Test-Path -LiteralPath "$Log.err") { $err = [System.IO.File]::ReadAllText("$Log.err", $u8); if ($err) { [System.IO.File]::AppendAllText($Log, $err, $u8) }; Remove-Item -LiteralPath "$Log.err" -Force }
+    if ($timedOut) { [System.IO.File]::AppendAllText($Log, "`nTEMPO ESGOTADO: $limit min — árvore do processo encerrada`n", $u8) }
+    [System.IO.File]::AppendAllText($Log, "`nEXIT=$code`n", $u8)
+    $d = Get-Decisive $Log
+    $envFail = if ($timedOut) { "tempo esgotado ($limit min): o comando não devolveu o controle — confira modo de observação ou processo que não termina (tool-hygiene.json)" }
+               elseif ($code -ne 0) { Get-EnvFailure ([System.IO.File]::ReadAllText($Log, $u8)) } else { $null }
+    return [ordered]@{ key = $Key; command = $Cmd; exit = $code; seconds = [int]$sw.Elapsed.TotalSeconds; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive; environment = $envFail; hygiene = @($hy.Tools); warnings = @($hy.Warnings) }
+}
 # Encerra um processo e todos os descendentes, filhos primeiro (v3.51, D1). Vale também para órfão cujo pai já saiu:
 # o ParentProcessId continua apontando para o PID que o criou (o daemon do Gradle fica assim depois do gradlew).
 function Stop-ProcessTree([int]$RootPid, [switch]$ChildrenOnly) {

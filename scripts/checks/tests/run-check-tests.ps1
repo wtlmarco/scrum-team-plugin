@@ -507,6 +507,16 @@ Put $p '.team-project/.target-lock' '{"target":"web","owner":"accept velho","pid
 $r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-Target', 'web', '-NoRepair', '-Root', $p)
 Check 'accept: trava de processo morto é ignorada; sem servidor e sem reparo: exit 4 pelo pré-voo' $r 4 @('FALHA DE AMBIENTE \(web\)', 'não responde')
 Check 'accept: a trava é devolvida ao sair' @{ Code = $(if (Test-Path -LiteralPath (Join-Path $p '.team-project/.target-lock')) { 1 } else { 0 }); Out = '' } 0 @()
+# v3.51 (A4): métricas do portão do QA, uma linha por regra do nível 1 (Quadro de Verificação §7).
+$p = Join-Path $tmp 'quality'; New-Project $p
+Put $p 'src/app.ts' "export const a = 1 // TODO melhorar`n// eslint-disable-next-line no-console`nexport const b = 2 // TODO T-041 ok`n"
+Put $p '.team-project/guards.json' '{ "quality": { "coverage": "Write-Output ''All files | 72.5 % |''", "lint": "Write-Output ''0 problems''", "architecture": "Write-Output ''erro de dependencia''; exit 1" } }'
+$r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $p)
+Check 'quality: cobertura abaixo do limiar, regra de dependência quebrada, TODO sem ID e supressão sem motivo: exit 1' $r 1 @('Q11 falhou.*72\.5 % medido × limiar 80', 'Q7 ok', 'Q1 falhou', 'Q6 não configurado', 'Q9 falhou.*src/app\.ts:1', 'Q17 falhou.*src/app\.ts:2', 'quality/1/S1/result\.md')
+Put $p 'src/app.ts' "export const a = 1 // TODO T-050 melhorar`n// eslint-disable-next-line no-console -- log de diagnóstico exigido pela regra R12`n"
+Put $p '.team-project/guards.json' '{ "quality": { "coverage": "Write-Output ''Total coverage: 86%''", "coverageThreshold": 85 } }'
+$r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $p)
+Check 'quality: cobertura acima do limiar configurado, padrões com ID e justificativa: exit 0' $r 0 @('Q11 ok.*86 % medido × limiar 85', 'Q9 ok', 'Q17 ok', 'regras configuradas ok')
 
 # 5e. close.ps1 -Apply (v3.46): a sessão fecha sem o Agent scrum-master — quadro, Registro, Série, -Post e entrada de status.
 $p = Join-Path $tmp 'apply'; New-Project $p
