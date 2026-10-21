@@ -42,7 +42,7 @@ try {
     $m = [regex]::Match((Read-Text $readmePath), '(?m)^\|\s*\*\*Sprint corrente\*\*\s*\|\s*\*\*(\d+)\*\*')
     if (-not $m.Success) { [Console]::Error.WriteLine('mark: .team-project/README.md §2 sem a linha "Sprint corrente".'); exit 2 }
     $S = Join-Path $tp "sprints/$($m.Groups[1].Value)"
-    $boardPath = Join-Path $S 'sprint-backlog.md'; $bdPath = Join-Path $S 'burndown.md'
+    $boardPath = Join-Path $S 'sprint-backlog.md'; $bdPath = Get-ChartPath $S   # kanban.md (v3.51) ou burndown.md
     foreach ($p in $boardPath, $bdPath) { if (-not (Test-Path -LiteralPath $p)) { [Console]::Error.WriteLine("mark: $p não existe."); exit 2 } }
     $idPat = Get-IdPattern $Task
     $now = Get-Date -Format 'yyyy-MM-dd HH:mm'
@@ -85,7 +85,7 @@ try {
 
     # 3 · Registro de transições: no burndown; quadro anterior à v3.44.1 o tem no sprint-backlog.md
     $regRow = "| $Task | $from → $target | $now | $By · sessão (``mark.ps1``) |"
-    $where = 'burndown.md'
+    $where = Split-Path $bdPath -Leaf
     $re = Get-TableEnd $lines '^##\s+Registro de transi'
     if ($re -ge 0) { $lines.Insert($re + 1, $regRow) }
     else {
@@ -99,6 +99,7 @@ try {
     [System.IO.File]::WriteAllText($boardPath, ($bl -join $nl), $utf8)
     [System.IO.File]::WriteAllText($bdPath, ($lines -join $bnl), $utf8)
     [Console]::Out.WriteLine("mark: $Task $from → $target · quadro, Série e Registro gravados (Registro em $where; por quem: $By)")
+    try { $null = & (Join-Path $PSScriptRoot 'kanban-html.ps1') -Root $Root 2>&1 } catch { }   # v3.51 (G2): o Kanban visual acompanha a transição
     exit 0
 } catch {
     [Console]::Error.WriteLine("mark: erro — $($_.Exception.Message)")

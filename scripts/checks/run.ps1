@@ -31,28 +31,6 @@ $plugin = '${CLAUDE_PLUGIN_ROOT}/scripts/checks'
 
 function Out([string]$s) { [Console]::Out.WriteLine($s) }
 
-# Quadro: Histórias e Tasks (marcador, depende de, plano, cenários).
-function Get-Board([string]$S) {
-    $board = Read-Text (Join-Path $S 'sprint-backlog.md')
-    $tasks = @(); $story = $null; $header = $null
-    foreach ($line in ($board -split "`r?`n")) {
-        $hm = [regex]::Match($line, '^##\s+Hist[oó]ria\s+(H-[\w]+)\s*[—-]?\s*(.*)$')
-        if ($hm.Success) { $story = $hm.Groups[1].Value; $header = $null; continue }
-        if (-not $line.TrimStart().StartsWith('|') -or -not $story) { continue }
-        $cells = Split-Row $line
-        if ((Clean-Cell $cells[0]) -eq 'ID') { $header = @($cells | ForEach-Object { Clean-Cell $_ }); continue }
-        if (-not $header -or $line -match '^\s*\|[\s:\-|]+\|\s*$') { continue }
-        $idm = [regex]::Match($cells[0], '[A-Z]+-\d+[a-z]?'); if (-not $idm.Success) { continue }
-        $col = { param($n) $i = -1; for ($k = 0; $k -lt $header.Count; $k++) { if ($header[$k] -like "*$n*") { $i = $k; break } }; if ($i -ge 0 -and $i -lt $cells.Count) { [string]$cells[$i] } else { '' } }
-        $mk = $null; foreach ($m in @($todoMk, $E.Plan, $E.Build, $E.QA, $E.Done, $redMk)) { if ($cells[0].Contains($m)) { $mk = $m; break } }
-        $planCell = & $col 'Plano'
-        $pm = [regex]::Match($planCell, '\]\(([^)]+)\)'); $pp = if ($pm.Success) { $pm.Groups[1].Value } else { ([regex]::Match($planCell, '`([^`]+)`')).Groups[1].Value }
-        $deps = @([regex]::Matches((& $col 'Depende'), '[A-Z]+-\d+[a-z]?') | ForEach-Object { $_.Value })
-        $scn = @([regex]::Matches((& $col 'Cenários'), 'SC-\d+') | ForEach-Object { $_.Value } | Select-Object -Unique)
-        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn }
-    }
-    return $tasks
-}
 function Get-Defined([string]$Root) {
     $d = Join-Path $Root '.team-project/quality-assurance/scenarios'
     return @(Get-ChildItem -Path $d -Filter '*.scn' -File -ErrorAction SilentlyContinue | ForEach-Object { [regex]::Matches((Read-Text $_.FullName), '(?m)^\s*scenario\s+(\S+)') } | ForEach-Object { $_.Groups[1].Value })
@@ -108,7 +86,7 @@ try {
     if (-not $m.Success) { [Console]::Error.WriteLine('run: .team-project/README.md §2 sem a linha "Sprint corrente".'); exit 2 }
     $n = $m.Groups[1].Value; $S = Join-Path $tp "sprints/$n"
     if (-not (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md'))) { [Console]::Error.WriteLine("run: sprints/$n/sprint-backlog.md não existe."); exit 2 }
-    $tasks = @(Get-Board $S)
+    $tasks = @(Get-SprintTasks $S)
     $T = if ($Task) { $tasks | Where-Object { $_.Id -eq $Task } | Select-Object -First 1 } else { $null }
     if ($Task -and -not $T) { [Console]::Error.WriteLine("run: $Task não está no quadro do sprint $n."); exit 2 }
 

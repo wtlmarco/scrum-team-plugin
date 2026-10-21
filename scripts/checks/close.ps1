@@ -136,7 +136,7 @@ try {
 
     # ---------- R4 · escopo ----------
     $r4 = @()
-    $outside = Get-Section $board '^##\s+Entradas fora da Planning'
+    $outside = Get-ControlSection $S $board '^##\s+Entradas fora da Planning'
     if ($outside) {
         foreach ($t in (Get-Tables $outside)) {
             $ci = Find-Col $t 'O que saiu para caber'
@@ -269,7 +269,7 @@ try {
         # Marcador acompanhado (sprint-run.md §Marcador): a Task fechada passou por 🟦, 🟨 e 🟪 no Registro.
         $skipped = @($E.Plan, $E.Build, $E.QA | Where-Object { -not $reached.ContainsKey($_) })
         if ($closed -and $skipped.Count) { $bdIssues += "Registro sem a linha → " + ($skipped -join ', → ') + " de $Task (marcador não acompanhado)" }
-        $bdPath = Join-Path $S 'burndown.md'
+        $bdPath = Get-ChartPath $S
         if (Test-Path -LiteralPath $bdPath) {
             $serie = Get-Section (Read-Text $bdPath) '^##\s+S[ée]rie'
             if ($serie) {
@@ -322,7 +322,7 @@ try {
         }
         if (-not $hasData) { $r25 += 'planning.md §5 "O que NÃO entrou" vazio' }
     }
-    $blk = Get-Section $board '^##\s+Bloqueios e riscos abertos'
+    $blk = Get-ControlSection $S $board '^##\s+Bloqueios e riscos abertos'
     if ($blk) {
         foreach ($t in (Get-Tables $blk)) {
             $id = Find-Col $t 'Degrau'
@@ -477,7 +477,7 @@ try {
         [System.IO.File]::WriteAllText($boardPath, ($bl -join $nl), $utf8)
 
         # 2 · Registro e Série no burndown (R24): uma transição = uma linha em cada
-        $bdPath = Join-Path $S 'burndown.md'
+        $bdPath = Get-ChartPath $S
         if (-not (Test-Path -LiteralPath $bdPath)) { [Console]::Error.WriteLine("C1 -Apply: $bdPath não existe."); exit 2 }
         $bdText = Read-Text $bdPath; $bnl = if ($bdText.Contains("`r`n")) { "`r`n" } else { "`n" }
         $lines = New-Object System.Collections.ArrayList; foreach ($l in ($bdText -split "`r?`n")) { [void]$lines.Add($l) }
@@ -521,6 +521,7 @@ try {
             $regNote = ' · Registro no sprint-backlog.md (quadro anterior à v3.44.1 — o /team update o leva ao burndown)'
         }
         [System.IO.File]::WriteAllText($bdPath, ($lines -join $bnl), $utf8)
+        try { $null = & (Join-Path $PSScriptRoot 'kanban-html.ps1') -Root $Root 2>&1 } catch { }   # v3.51 (G2): o Kanban visual acompanha o fechamento
 
         # 3 · o -Post confere o que acabou de ser gravado
         [Console]::Out.WriteLine('')

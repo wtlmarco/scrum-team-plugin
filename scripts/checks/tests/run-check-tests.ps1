@@ -517,6 +517,16 @@ Put $p 'src/app.ts' "export const a = 1 // TODO T-050 melhorar`n// eslint-disabl
 Put $p '.team-project/guards.json' '{ "quality": { "coverage": "Write-Output ''Total coverage: 86%''", "coverageThreshold": 85 } }'
 $r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $p)
 Check 'quality: cobertura acima do limiar configurado, padrões com ID e justificativa: exit 0' $r 0 @('Q11 ok.*86 % medido × limiar 85', 'Q9 ok', 'Q17 ok', 'regras configuradas ok')
+# v3.51 (G1, G2): kanban.md no lugar do burndown.md (o controle das Tasks embaixo) e o kanban.html regravado a cada transição.
+$p = Join-Path $tmp 'kanban'; New-Project $p
+$bd = Join-Path $p '.team-project/sprints/1/burndown.md'
+$kb = Join-Path $p '.team-project/sprints/1/kanban.md'
+[System.IO.File]::WriteAllText($kb, "# Kanban — Sprint 1`n`n## Kanban`n`n| x |`n|---|`n`n" + [System.IO.File]::ReadAllText($bd, $utf8).Replace('# Burndown — Sprint 1', '') + "`n## Controle`n`n### Bloqueios e riscos abertos`n`n| # | Task / História | Natureza | Degrau | Quem destrava | Desde |`n|---|---|---|---|---|---|`n| 1 | T-041a | ambiente | par PO+Arquiteto desde 2026-09-02 | PO | 2026-09-02 |`n", $utf8)
+Remove-Item -LiteralPath $bd -Force
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'plan', '-Root', $p)
+$html = Join-Path $p '.team-project/sprints/1/kanban.html'
+Check 'mark com kanban.md: a transição vai ao kanban.md, a tabela Kanban e o kanban.html são regravados' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($kb, $utf8) + "`nHTML=" + $(if (Test-Path -LiteralPath $html) { [System.IO.File]::ReadAllText($html, $utf8) } else { 'ausente' }) } 0 @('Registro em kanban\.md', 'T-041a ⬜ → 🟦', '\| T-041a \|', 'Kanban · Sprint 1', 'Bloqueios e riscos abertos', 'http-equiv="refresh"')
+
 # v3.51 (B1, C2): run.ps1 — a próxima ação do sprint sai do quadro e do disco, pronta para a sessão executar.
 $p = Join-Path $tmp 'run'; New-Project $p
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)

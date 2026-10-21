@@ -289,9 +289,47 @@ function Exit-TargetLock([string]$Root) {
     if (Test-Path -LiteralPath $lp) { try { $l = Read-Text $lp | ConvertFrom-Json; if ([int]$l.pid -eq $PID) { Remove-Item -LiteralPath $lp -Force } } catch { Remove-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue } }
 }
 
-# Registro de transições (R24): vive no burndown.md do sprint (v3.44.1); sprint aberto antes disso o tem no sprint-backlog.md. $null se nenhum.
+# Quadro do sprint (v3.51; run.ps1 e kanban-html.ps1): Histórias e Tasks (marcador, depende de, plano, cenários).
+function Get-SprintTasks([string]$S) {
+    $board = Read-Text (Join-Path $S 'sprint-backlog.md')
+    $tdMk = [char]::ConvertFromUtf32(0x2B1C); $rdMk = [char]::ConvertFromUtf32(0x1F534)
+    $tasks = @(); $story = $null; $header = $null
+    foreach ($line in ($board -split "`r?`n")) {
+        $hm = [regex]::Match($line, '^##\s+Hist[oó]ria\s+(H-[\w]+)\s*[—-]?\s*(.*)$')
+        if ($hm.Success) { $story = $hm.Groups[1].Value; $header = $null; continue }
+        if (-not $line.TrimStart().StartsWith('|') -or -not $story) { continue }
+        $cells = Split-Row $line
+        if ((Clean-Cell $cells[0]) -eq 'ID') { $header = @($cells | ForEach-Object { Clean-Cell $_ }); continue }
+        if (-not $header -or $line -match '^\s*\|[\s:\-|]+\|\s*$') { continue }
+        $idm = [regex]::Match($cells[0], '[A-Z]+-\d+[a-z]?'); if (-not $idm.Success) { continue }
+        $col = { param($n) $i = -1; for ($k = 0; $k -lt $header.Count; $k++) { if ($header[$k] -like "*$n*") { $i = $k; break } }; if ($i -ge 0 -and $i -lt $cells.Count) { [string]$cells[$i] } else { '' } }
+        $mk = $null; foreach ($m in @($tdMk, $E.Plan, $E.Build, $E.QA, $E.Done, $rdMk)) { if ($cells[0].Contains($m)) { $mk = $m; break } }
+        $planCell = & $col 'Plano'
+        $pm = [regex]::Match($planCell, '\]\(([^)]+)\)'); $pp = if ($pm.Success) { $pm.Groups[1].Value } else { ([regex]::Match($planCell, '`([^`]+)`')).Groups[1].Value }
+        $deps = @([regex]::Matches((& $col 'Depende'), '[A-Z]+-\d+[a-z]?') | ForEach-Object { $_.Value })
+        $scn = @([regex]::Matches((& $col 'Cenários'), 'SC-\d+') | ForEach-Object { $_.Value } | Select-Object -Unique)
+        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn }
+    }
+    return $tasks
+}
+# Arquivo do sprint com o Kanban, a Série, o Registro de transições e o controle (v3.51, G1): kanban.md; sprint aberto
+# antes da v3.51 tem burndown.md (o mesmo conteúdo, sem o Kanban). Devolve o que existe, o kanban.md primeiro.
+function Get-ChartPath([string]$SprintDir) {
+    $k = Join-Path $SprintDir 'kanban.md'; if (Test-Path -LiteralPath $k) { return $k }
+    return (Join-Path $SprintDir 'burndown.md')
+}
+# Seção de controle das Tasks (Entradas fora da Planning, Bloqueios e riscos, Decisões pendentes): no kanban.md desde a
+# v3.51 (G1, pedido do stakeholder); antes, no sprint-backlog.md. Procura nos dois, o kanban.md primeiro.
+function Get-ControlSection([string]$SprintDir, [string]$Board, [string]$HeadingRegex) {
+    $k = Join-Path $SprintDir 'kanban.md'
+    if (Test-Path -LiteralPath $k) { $s = Get-Section (Read-Text $k) $HeadingRegex; if ($s) { return $s } }
+    if ($Board) { return Get-Section $Board $HeadingRegex }
+    return $null
+}
+
+# Registro de transições (R24): vive no kanban.md (v3.51) ou no burndown.md (v3.44.1) do sprint; sprint aberto antes disso o tem no sprint-backlog.md. $null se nenhum.
 function Get-TransitionLog([string]$SprintDir, [string]$Board) {
-    $bd = Join-Path $SprintDir 'burndown.md'
+    $bd = Get-ChartPath $SprintDir
     if (Test-Path -LiteralPath $bd) { $s = Get-Section (Read-Text $bd) '^##\s+Registro de transi'; if ($s) { return $s } }
     if ($Board) { return Get-Section $Board '^##\s+Registro de transi' }
     return $null
