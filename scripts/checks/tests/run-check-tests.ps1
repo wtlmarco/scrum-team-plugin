@@ -517,6 +517,20 @@ Put $p 'src/app.ts' "export const a = 1 // TODO T-050 melhorar`n// eslint-disabl
 Put $p '.team-project/guards.json' '{ "quality": { "coverage": "Write-Output ''Total coverage: 86%''", "coverageThreshold": 85 } }'
 $r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $p)
 Check 'quality: cobertura acima do limiar configurado, padrões com ID e justificativa: exit 0' $r 0 @('Q11 ok.*86 % medido × limiar 85', 'Q9 ok', 'Q17 ok', 'regras configuradas ok')
+# v3.51 (B1, C2): run.ps1 — a próxima ação do sprint sai do quadro e do disco, pronta para a sessão executar.
+$p = Join-Path $tmp 'run'; New-Project $p
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'run next: sem .scn, o preparo começa pelos cenários executáveis da História (QA)' $r 0 @('preparo da construção — cenários executáveis da História H-014', 'SC-014', 'team:quality-assurance')
+Put $p '.team-project/quality-assurance/scenarios/H-014.scn' "scenario SC-014 Exporta`nlaunch`n"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'run next: com os cenários, os planos que faltam da História numa instância do Arquiteto' $r 0 @('planos da História H-014 numa instância do Arquiteto', 'T-041a', 'team:architect')
+Put $p '.team-project/sprints/1/plan/T-041a-x.md' "# Plano`n"
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') '[`plan/T-041a-x.md`](plan/)' '[`plan/T-041a-x.md`](plan/T-041a-x.md)'
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'run next: preparo completo, a Task em andamento vai à construção' $r 0 @('construir T-041', 'run\.ps1 start -Task T-041')
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
+Check 'run handoff: cartão de passagem curto com plano, cenários e o comando do accept' @{ Code = $r.Code; Out = $(if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) + "`nKB=" + [int]((Get-Item -LiteralPath $card).Length / 1024) } else { 'sem cartão' }) } 0 @('Cartão de passagem — T-041', 'accept\.ps1 -Task T-041 -Only SC-014', 'KB=[0-2]\b')
 
 # 5e. close.ps1 -Apply (v3.46): a sessão fecha sem o Agent scrum-master — quadro, Registro, Série, -Post e entrada de status.
 $p = Join-Path $tmp 'apply'; New-Project $p
