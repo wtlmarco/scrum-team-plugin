@@ -16,7 +16,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 ├── fixes/                    F-<nnn>.md (ficha, PO) e B-<nnn>/ (bloco: plan.md · consumption.md · verdict.md) — nasce na primeira Correção
 ├── sprints/                  registro de execução, um subdiretório por sprint
 │   └── <n>/                  planning.md · sprint-backlog.md · stories/ · plan/ · evidence/
-│                             consumption.md · burndown.md · review.md · retrospective.md · plugin-report.md
+│                             consumption.md · kanban.md (+ kanban.html) · review.md · retrospective.md · plugin-report.md
 ├── scrum-master/             context.md
 ├── product-owner/            context.md · product-backlog.md
 ├── architect/                context.md · spikes/ · calibration/ *(sob demanda: plano de calibração, sem sprint corrente)*
@@ -42,7 +42,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 | `sprints/<n>/plan/` | `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md` — **Arquiteto** *(um plano por Task)* |
 | `sprints/<n>/evidence/` | `${CLAUDE_PLUGIN_ROOT}/roles/quality-assurance/templates/evidence.md` — **QA** *(evidência por Task do sprint)* |
 | `sprints/<n>/consumption.md` | `templates/consumption.md` — **SM** *(uma linha por invocação; nasce e fecha no sprint — §1c)* |
-| `sprints/<n>/burndown.md` | `templates/burndown.md` — **SM** *(Registro de transições e Série — R24; dia 0 = aprovação do pacote)* |
+| `sprints/<n>/kanban.md` | `templates/kanban.md` — **SM** *(Registro de transições e Série — R24; dia 0 = aprovação do pacote)* |
 | `sprints/<n>/review.md` · `retrospective.md` | `templates/sprint-review.md` · `templates/retrospective.md` — **SM** |
 | `sprints/<n>/plugin-report.md` | `templates/plugin-report.md` — **SM** *(só se "investigar"; sem contexto do projeto; o stakeholder encaminha ao dono do plugin)* |
 | `product-owner/product-backlog.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/product-backlog.md` *(o índice ordenado das Histórias, com ponteiro para o arquivo de cada uma — v3.21)* |

@@ -192,7 +192,7 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 |---|---|---|
 | **G1** | commit com arquivo de `.team-project/` (R31) | `git restore --staged .team-project` e commitar só o produto. Na migração do `/team update` (passo 7b), o próprio ritual desliga a G1 durante o passo |
 | **G2** | edição da cópia instalada do plugin | mudança de processo vai pelo `/review`, no clone do repositório do plugin |
-| **G3** | formulário cuja última opção não é "Pedir mais contexto" (R22); em projeto com identificador remoto, pergunta sem o prefixo `[<ID> · …]` ou sem a pendência gravada antes (R34) | o agente refaz a pergunta; vale para toda pergunta, até a simples |
+| **G3** | formulário cuja última opção não é "Pedir mais contexto" (R22), ou sem um exemplo prático (v3.51, H1); em projeto com identificador remoto, pergunta sem o prefixo `[<ID> · …]` ou sem a pendência gravada antes (R34) | o agente refaz a pergunta; vale para toda pergunta, até a simples |
 | **G4** | aviso: saída de comando com mais de 300 linhas no contexto (R28) | delegar a execução pesada ao `operator` |
 | **G5** | subagente editando arquivo de gate (`.editorconfig`, CI, `*.ruleset`… — lista em `guards.json` → `protectedPaths`) | o papel levanta 🔺 GAP; mudança de gate é sua. Projeto com outro arquivo de gate: acrescente-o à lista |
 | **G6** | dev acrescentando teste ignorado (`[Skip`, `.skip(`, `xit(`…) | o dev levanta 🔺 GAP ao Arquiteto |
@@ -204,6 +204,8 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 | **G17** | disparo de papel (inclusive o `operator`) com modelo diferente do de `.team-project/models.json` | dispare de novo com o `model` indicado. Para trocar o modelo de um papel, edite `models.json` (`{ "developer": "sonnet", "architect": "opus" }`; vale para os 7 papéis, vence o agente e as exceções do processo; `scripts/checks/models.ps1` mostra o que está em vigor) |
 | **G18** | só no experimento de benchmark (`guards.json` → `bench`): o `AskUserQuestion` é negado e respondido pelo dossiê; com `foreground`, `Agent` em segundo plano é negado | siga a resposta `[bench]` como se fosse a do stakeholder (`rituals/benchmark.md` §7). Fora do experimento não há `bench` no `guards.json`: nada a fazer |
 | **G15** | registra no `guards.log` todo pedido de permissão do Claude Code | — (é o rastro para diagnosticar chamada interrompida, R27) |
+| **G19** | a sessão retomando por `SendMessage` um papel caro (Arquiteto, QA, PO, UX, SM) parado há mais de 5 min (v3.51) | — o time abre uma instância nova com o cartão de passagem; retomar regravaria todo o contexto no modelo caro |
+| **G20** | o fim de turno no meio do `sprint run` com Task elegível no quadro (v3.51) | — a sessão segue a fila sozinha; esperar agente em segundo plano é permitido |
 | **G16** | registra em `.team-project/usage.jsonl` o consumo **medido** de cada subagente (tokens processados, contexto final, modelo, duração, Task) | — e roda `scripts/checks/consumption.ps1`, que escreve o `consumption.md` (v3.49; antes, a sessão o rodava); ninguém copia número da notificação |
 
 - **O agente recebe o motivo e corrige o rumo** — você normalmente nem vê o bloqueio. As guardas por papel (G5–G11) não valem para a sua sessão principal.
@@ -316,7 +318,7 @@ Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — a nã
 │       ├── plan/                    um Plano de Implementação por Task
 │       ├── evidence/                a evidência de cada Task: comando e saída real
 │       ├── consumption.md           tokens e duração por invocação (inclui o operator)
-│       ├── burndown.md              estimativa restante, em série datada
+│       ├── kanban.md                Kanban, burndown e controle das Tasks (+ kanban.html, visual)
 │       ├── review.md                a Sprint Review e a sua decisão por História
 │       ├── retrospective.md         o que o time corrige no sprint seguinte
 │       └── plugin-report.md         só se você escolher "investigar" uma ocorrência de plugin na Review: relatório de processo, sem contexto do projeto, que você encaminha ao dono do plugin

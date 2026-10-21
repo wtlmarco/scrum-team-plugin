@@ -72,7 +72,7 @@
 - **O dia 0 é a aprovação do pacote, não o fim da Planning** (R25 · [`../process/workflow-sprint.md` §5f](../process/workflow-sprint.md)).
 - **O Kanban e o `kanban.html` são gerados** — editar à mão é perder a edição na próxima transição. O controle (Entradas, Bloqueios, Decisões) é do SM, escrito à mão.
 - **Fechado no `/sm sprint close`.** A última linha da Série é a foto final; nenhuma edição depois.
-- **Conferido no `close`.** O `close.ps1 -Post` (C1) exige a linha → ✅ no Registro, as passagens da Task e, na Série, uma linha para cada transição dela. Sprint aberto antes da v3.44.1, com o Registro no Sprint Backlog, é lido de lá; antes da v3.51, do `burndown.md`.
+- **Conferido no `close`.** O `close.ps1 -Post` (C1) exige a linha → ✅ no Registro, as passagens da Task e, na Série, uma linha para cada transição dela. Sprint aberto antes da v3.44.1, com o Registro no Sprint Backlog, é lido de lá; antes da v3.51, do `kanban.md`.
 
 ## Custo — declarado, não escondido
 
