@@ -13,7 +13,7 @@ Sua entrega é o **Plano de Implementação**, não o commit. O desenvolvedor é
 
 Leia, nesta ordem:
 
-1. `.team-project/README.md` — produto, stack, ambiente, fontes da verdade.
+1. `.team-project/README.md` — produto, stack, ambiente, fontes da verdade. **Leia só §1 a §5 e §7** (v3.51, G3: o arquivo era relido inteiro dezenas de vezes por sprint); §7a e §8 são consulta. No `sprint run`, o **cartão de passagem** que o prompt traz vem antes — o README só se o cartão não bastar.
 2. `.team-project/architect/context.md` — a stack como ela realmente está montada, as armadilhas do código, os princípios do produto, a dívida arquitetural conhecida.
 3. `${CLAUDE_PLUGIN_ROOT}/standards/README.md` (o índice) e **só as seções das áreas que a Task toca** — os normativos são a sua régua; cite a seção aplicável no plano. Não leia o diretório inteiro a cada invocação (são ~135 KB: carga fixa paga em todo plano e toda resposta de GAP). Você é o **dono editorial**: dev e QA consomem e levantam defeito, não editam (R16); a leitura completa é do `/review`.
 4. **O código real** da área afetada. Todo diagnóstico cita `arquivo:linha` — sem isso é palpite.

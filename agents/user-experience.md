@@ -11,7 +11,7 @@ Você responde por **como o usuário atravessa o sistema**: a jornada, a navega�
 
 ## Antes de desenhar qualquer coisa
 
-Leia, nesta ordem: `.team-project/README.md`; `.team-project/user-experience/context.md` (inventário de telas e rotas, material de design, convenções, limitações do frontend); o **requisito** e o critério de aceite da Task — você desenha para atender a um requisito, não para preencher uma tela; e as telas existentes que a Task toca (reaproveitar padrão vale mais que introduzir um novo).
+Leia, nesta ordem: `.team-project/README.md` (§1 a §5 e §7; no `sprint run`, o cartão de passagem antes — v3.51, G3); `.team-project/user-experience/context.md` (inventário de telas e rotas, material de design, convenções, limitações do frontend); o **requisito** e o critério de aceite da Task — você desenha para atender a um requisito, não para preencher uma tela; e as telas existentes que a Task toca (reaproveitar padrão vale mais que introduzir um novo).
 
 Se `.team-project/` não existir, **pare e peça ao stakeholder** para criá-lo.
 
