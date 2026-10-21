@@ -521,6 +521,22 @@ $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Apply', '-Root', $p)
 $r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/sprints/1/sprint-backlog.md'))
 Check 'C1 -Apply com R12 pendente: não fecha, quadro intacto' $r 1 @('Não fecha', "\| $($e.qa) T-041 \|")
 
+# 5e2. v3.51 (A3): a Task fecha pela evidência do DEV (delivery/<T-ID>.md), com os cenários rodados no alvo (R7-aceite).
+$p = Join-Path $tmp 'dev-evid'; New-Project $p
+Remove-Item -LiteralPath (Join-Path $p '.team-project/sprints/1/evidence/T-041.md') -Force
+Put $p '.team-project/sprints/1/delivery/T-041.md' ("## Entrega — T-041 Endpoint`n`n### Verificação`n``````n> verify full T-041`nverify full T-041 · tudo exit 0`n``````n`n### Documentos vivos (R12)`n**Estado:** a consolidar no fim do sprint — 03-architecture §4`n`n### Não fiz (fora do plano)`nnada`n")
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 evidência do dev sem alvo configurado: fecha (R7 do dev, R12 a consolidar, R7-aceite n-a)' $r 0 @('\| R7 \| ok.*evidência do dev', '\| R12 \| ok.*a consolidar', '\| R7-aceite \| n-a')
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 evidência do dev com alvo e sem accept: não fecha (R7-aceite)' $r 1 @('\| R7-aceite \| falhou.*accept\.ps1 -Task T-041 -Only SC-014', 'Não fecha')
+Put $p '.team-project/accept/1/T-041/result.json' '{ "task": "T-041", "target": "android", "at": "2026-10-21 10:00:00", "tree": null, "environment": null, "results": [ { "id": "SC-014", "status": "FALHOU", "detail": "x" } ] }'
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 evidência do dev com cenário reprovado no alvo: não fecha' $r 1 @('\| R7-aceite \| falhou.*falharam: SC-014')
+Put $p '.team-project/accept/1/T-041/result.json' '{ "task": "T-041", "target": "android", "at": "2026-10-21 10:00:00", "tree": null, "environment": null, "results": [ { "id": "SC-014", "status": "PASSOU", "detail": "" } ] }'
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 evidência do dev com os cenários da Task passando no alvo: fecha' $r 0 @('\| R7-aceite \| ok.*1 cenário', '\| R30 \| ok.*SC-014')
+
 # 5f. plan.ps1 (v3.46): o plano é conferido antes do dev.
 $p = Join-Path $tmp 'plano'; New-Project $p
 $pl = '.team-project/sprints/1/plan/T-050-x.md'; $fence = '```'
