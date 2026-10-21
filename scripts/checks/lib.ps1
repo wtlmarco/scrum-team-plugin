@@ -223,6 +223,36 @@ function Stop-ProcessTree([int]$RootPid, [switch]$ChildrenOnly) {
     return $ids.Count
 }
 
+# Alvos de execução (v3.51, D3): guards.json → targets ({ "android": {…}, "web": {…} }). $null sem a chave.
+function Get-TargetsConfig([string]$Root) {
+    $g = Join-Path $Root '.team-project/guards.json'
+    if (-not (Test-Path -LiteralPath $g)) { return $null }
+    try { $j = Read-Text $g | ConvertFrom-Json } catch { return $null }
+    if ($j.PSObject.Properties['targets']) { return $j.targets }
+    return $null
+}
+
+# Trava de dono único do alvo (v3.51, D3): .team-project/.target-lock. Dois automatizadores no mesmo aparelho quebram os
+# dois (medido no benchmark: 33 cenários falharam por isso). Devolve $null se pegou a trava, senão o motivo.
+function Enter-TargetLock([string]$Root, [string]$Target, [string]$Owner, [int]$StaleHours = 3) {
+    $lp = Join-Path $Root '.team-project/.target-lock'
+    if (Test-Path -LiteralPath $lp) {
+        try { $l = Read-Text $lp | ConvertFrom-Json } catch { $l = $null }
+        if ($l -and [int]$l.pid -ne $PID) {
+            $alive = [bool](Get-Process -Id ([int]$l.pid) -ErrorAction SilentlyContinue)
+            $age = try { ((Get-Date) - [datetime]::ParseExact([string]$l.desde, 'yyyy-MM-dd HH:mm:ss', $null)).TotalHours } catch { 999 }
+            if ($alive -and $age -lt $StaleHours) { return "o alvo $([string]$l.target) está em uso por '$([string]$l.owner)' (PID $([int]$l.pid), desde $([string]$l.desde)): espere terminar — dois automatizadores no mesmo alvo quebram os dois" }
+        }
+    }
+    New-Item -ItemType Directory -Force (Split-Path $lp) | Out-Null
+    [System.IO.File]::WriteAllText($lp, ([ordered]@{ target = $Target; owner = $Owner; pid = $PID; desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+    return $null
+}
+function Exit-TargetLock([string]$Root) {
+    $lp = Join-Path $Root '.team-project/.target-lock'
+    if (Test-Path -LiteralPath $lp) { try { $l = Read-Text $lp | ConvertFrom-Json; if ([int]$l.pid -eq $PID) { Remove-Item -LiteralPath $lp -Force } } catch { Remove-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue } }
+}
+
 # Registro de transições (R24): vive no burndown.md do sprint (v3.44.1); sprint aberto antes disso o tem no sprint-backlog.md. $null se nenhum.
 function Get-TransitionLog([string]$SprintDir, [string]$Board) {
     $bd = Join-Path $SprintDir 'burndown.md'

@@ -486,6 +486,28 @@ Put $p '.team-project/guards.json' '{ "verify": { "suite": "Write-Output ''Tests
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-051', '-Mode', 'full', '-Root', $p)
 Check 'verify: ng test sem --watch=false passa, mas com o aviso de que nunca termina' $r 0 @('tudo exit 0', 'atenção: ng test sem --watch=false')
 
+# v3.51 (F1, D3): executor de cenários e pré-voo do alvo — o que se confere sem emulador nem navegador.
+$p = Join-Path $tmp 'accept'; New-Project $p
+Put $p '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-001 Abre`nreset`nlaunch`nassert-text texto.raio = 150 km`n`nscenario SC-002 Conta`nlaunch`nassert-count destino.card. = 12`n"
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Root', $p)
+Check 'accept -ParseOnly: cenários do QA lidos do lugar padrão' $r 0 @('2 cenário\(s\) válidos em 1 arquivo', 'SC-001, SC-002')
+Put $p '.team-project/quality-assurance/scenarios/b.scn' "tap antes\nscenario SC-003 Ruim`npular muro`nassert-text texto.raio`n`nscenario SC-001 Repetido`nlaunch`n"
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Root', $p)
+Check 'accept: cenário malformado sai com arquivo:linha (passo desconhecido, sem "=", id repetido): exit 2' $r 2 @("passo desconhecido 'pular'", "'assert-text' pede '<id> = <valor>'", 'SC-001 definido mais de uma vez')
+Remove-Item -LiteralPath (Join-Path $p '.team-project/quality-assurance/scenarios/b.scn') -Force
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Only', 'SC-009', '-Root', $p)
+Check 'accept -Only com cenário que não existe: exit 2' $r 2 @('SC-009 pedido em -Only não existe')
+Put $p '.team-project/guards.json' '{ "targets": { "web": { "url": "http://127.0.0.1:9", "startTimeoutSec": 3 } } }'
+$r = Invoke-Check 'target.ps1' @('-Target', 'web', '-Root', $p)
+Check 'target web fora do ar: FALHA DE AMBIENTE (exit 4), com a ação' $r 4 @('FALHA DE AMBIENTE', 'não responde em http://127.0.0.1:9', '-Repair')
+Put $p '.team-project/.target-lock' ('{"target":"web","owner":"accept T-777","pid":' + $PID + ',"desde":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '"}')
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-Target', 'web', '-Root', $p)
+Check 'accept com o alvo em uso por outro automatizador: exit 4, sem tocar no alvo' $r 4 @('está em uso por ''accept T-777''')
+Put $p '.team-project/.target-lock' '{"target":"web","owner":"accept velho","pid":999999,"desde":"2026-01-01 00:00:00"}'
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-Target', 'web', '-NoRepair', '-Root', $p)
+Check 'accept: trava de processo morto é ignorada; sem servidor e sem reparo: exit 4 pelo pré-voo' $r 4 @('FALHA DE AMBIENTE \(web\)', 'não responde')
+Check 'accept: a trava é devolvida ao sair' @{ Code = $(if (Test-Path -LiteralPath (Join-Path $p '.team-project/.target-lock')) { 1 } else { 0 }); Out = '' } 0 @()
+
 # 5e. close.ps1 -Apply (v3.46): a sessão fecha sem o Agent scrum-master — quadro, Registro, Série, -Post e entrada de status.
 $p = Join-Path $tmp 'apply'; New-Project $p
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Apply', '-Root', $p)
