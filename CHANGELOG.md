@@ -13,6 +13,18 @@
 
 ---
 
+## v3.51.0 — 2026-10-21
+
+**Branch:** `feat/v3.51.0` a partir de `develop` · **Processo:** v3.51 (`process-changelog.md`)
+O plugin otimizado com o que o benchmark mostrou (P × N-forte × protótipo Coordenador–Operador; plano em `plano-plugin-p-plus.md`, aprovado pelo stakeholder em 21/10/2026). Mantém o processo e a documentação antes e depois da Sprint e aproxima a construção do N-forte: o dev constrói, verifica e corrige sozinho; o plano e os cenários ficam prontos antes; o QA é o portão do sprint, com prova no alvo real; a sessão orquestra por script; o contexto passa por um cartão curto.
+
+- **Sprint (A1–A6):** preparo por História (QA escreve `.scn`, Arquiteto planeja a História numa instância); plano enxuto (regras 22–25 do template; `plan.ps1` confere tamanho, cenários, risco e render); Task fecha pela evidência do dev (`close.ps1`: R7-aceite, R12 "a consolidar"); portão do QA no fim (`/qa sprint`, `templates/sprint-validation.md`); consolidação R12 única (`docs-consolidation.md`); teste pelo risco com a cobertura medida como freio.
+- **Scripts novos:** `run.ps1` (próxima ação, `start`, `done`, `handoff` com o cartão de passagem), `accept.ps1` + `targets/android.ps1`, `targets/web.ps1`, `targets/web-runner.js` (cenários no alvo real com captura; Edge/Chrome de reserva no web), `target.ps1` (pré-voo e reparo), `quality.ps1` (as regras Q do nível 1), `kanban-html.ps1` (Kanban visual, sem token), `tool-hygiene.json` (higiene e assinaturas de ambiente por ferramenta).
+- **Scripts alterados:** `verify.ps1` (tempo limite próprio, árvore de processos encerrada — o daemon do Gradle não prende mais —, higiene por ferramenta, `verify.env`, exit 4 = ambiente); `lib.ps1` (executor de comando comum, trava do alvo, leitura do quadro, `kanban.md`); `mark.ps1` e `close.ps1` (`kanban.md`, Kanban regravado; R16 com `stacks/` e identificadores); `transcript-metrics.js activity` (custo por atividade).
+- **Guardas:** G19 (sem retomar papel caro parado há mais de 5 min), G20 (hook `Stop`: sem fim de turno com Task elegível no run; `.active-agents`), G3 com o exemplo prático (H1); `SessionStart` retoma o run e avisa perfil com acento.
+- **Fix (§3a):** cenário `FX-<nnn>` antes e depois, métricas só dos arquivos tocados, formulário H1.
+- **Organização:** `kanban.md` no lugar do `burndown.md` (controle das Tasks embaixo) e `kanban.html`; `standards/stacks/<tecnologia>/` (.NET + `desktop.md`, Kotlin/Android, React, Angular) com Ficha pré-preenchida e identificadores; agentes leem só o que usam.
+- **`note.md`:** itens 1 a 5 e os três pedidos de "Outros" aplicados. **`proposals-pending.md`:** propostas a, b, c e d aplicadas; arquivo apagado.
 ## v3.50.1 — 2026-10-16
 
 **Branch:** `fix/v3.50.1` a partir de `develop` · **Processo:** sem mudança
