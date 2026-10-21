@@ -40,13 +40,37 @@ function Repair-Android {
     if (-not (Test-Path -LiteralPath $emu)) { return "emulador não encontrado em $emu" }
     Adb emu kill | Out-Null; Start-Sleep -Seconds 3
     Get-Process qemu-system-* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    Start-Process -FilePath $emu -ArgumentList @('-avd', $avd, '-no-snapshot', '-no-boot-anim', '-no-audio') -WindowStyle Hidden | Out-Null
+    # Na pasta do SDK: o emulador vive mais que o executor e não pode prender a pasta do projeto (v3.51.1).
+    Start-Process -FilePath $emu -ArgumentList @('-avd', $avd, '-no-snapshot', '-no-boot-anim', '-no-audio') -WorkingDirectory (Split-Path $emu) -WindowStyle Hidden | Out-Null
     $t = Get-Date
     do { Start-Sleep -Seconds 5; $ok = ((Sh getprop sys.boot_completed) -join '').Trim() -eq '1' } while (-not $ok -and ((Get-Date) - $t).TotalSeconds -lt 240)
     if (-not $ok) { return "o emulador $avd não terminou de iniciar em 240 s" }
-    Start-Sleep -Seconds 10
+    Start-Sleep -Seconds 25   # o launcher e os serviços do sistema ainda estão subindo depois do boot_completed
     return Test-AndroidHealth
 }
+# APK a instalar (v3.51.1): -Apk, senão targets.android.apk, senão o mais recente de <projeto>/**/build/outputs/apk/{release,debug}/.
+# O pedido nem sempre fixa o applicationId e o guards.json é do stakeholder: o executor descobre o que o time construiu.
+function Resolve-AndroidApk([string]$Root, [string]$Explicit) {
+    if ($Explicit) { return $Explicit }
+    if ($script:AdCfg -and $script:AdCfg.apk) { $p = Join-Path $Root ([string]$script:AdCfg.apk); if (Test-Path -LiteralPath $p) { return $p } }
+    $c = Get-ChildItem -Path $Root -Recurse -Filter '*.apk' -File -ErrorAction SilentlyContinue |
+         Where-Object { $_.FullName -match '[\\/]build[\\/]outputs[\\/]apk[\\/](release|debug)[\\/]' -and $_.FullName -notmatch '[\\/](\.team-project|node_modules)[\\/]' -and $_.Name -notmatch 'androidTest' } |
+         Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($c) { return $c.FullName }
+    return ''
+}
+# applicationId do APK (v3.51.1): aapt2 (build-tools mais novo) ou, sem ele, aapt dump badging.
+function Get-ApkPackage([string]$Apk) {
+    if (-not $Apk -or -not (Test-Path -LiteralPath $Apk)) { return '' }
+    $bt = Join-Path $script:Sdk 'build-tools'
+    $a2 = Get-ChildItem -Path $bt -Recurse -Filter 'aapt2.exe' -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
+    $ErrorActionPreference = 'Continue'
+    if ($a2) { $p = ((& $a2.FullName dump packagename $Apk 2>$null) -join '').Trim(); if ($p -match '^[\w.]+$') { return $p } }
+    $a1 = Get-ChildItem -Path $bt -Recurse -Filter 'aapt.exe' -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
+    if ($a1) { $m = [regex]::Match(((& $a1.FullName dump badging $Apk 2>$null) -join "`n"), "package: name='([^']+)'"); if ($m.Success) { return $m.Groups[1].Value } }
+    return ''
+}
+function Set-AndroidPackage([string]$Pkg) { if ($Pkg) { $script:Pkg = $Pkg } }
 function Install-AndroidApk([string]$Apk) {
     if (-not $Apk) { return $null }
     if (-not (Test-Path -LiteralPath $Apk)) { return "APK não existe: $Apk" }
@@ -92,7 +116,7 @@ function ScrollTop {
 }
 function WaitFor([string]$Id, [int]$Sec = 20) { $t = Get-Date; do { if (Has $Id) { return $true }; Start-Sleep -Milliseconds 400 } while (((Get-Date) - $t).TotalSeconds -lt $Sec); $false }
 function Reach([string]$Id, [int]$Sec = 4) {
-    if (WaitFor $Id ([Math]::Min(2, $Sec))) { return $true }
+    if (WaitFor $Id $Sec) { return $true }   # v3.51.1: a espera inteira antes de rolar (primeira abertura depois de instalar é lenta)
     foreach ($i in 1..12) { Sh input swipe 360 600 360 1250 800 | Out-Null; Start-Sleep -Milliseconds 350; if (Has $Id) { return $true } }
     foreach ($i in 1..40) { Sh input swipe 360 1250 360 750 1100 | Out-Null; Start-Sleep -Milliseconds 350; if (Has $Id) { return $true } }
     $false
@@ -154,7 +178,7 @@ function Invoke-AndroidStep([string]$Verb, [string]$Rest, [string]$ShotBase) {
         'shot' { Save-AndroidShot "$ShotBase-$Rest.png" }
         'assert-text' { $k, $v = $Rest -split '\s*=\s*', 2; $a = TextOf $k; if ($a -ne $v) { throw "esperado '$v', obtido '$a' em $k" } }
         'assert-contains' { $k, $v = $Rest -split '\s*=\s*', 2; $a = TextOf $k; if (-not ($a -like "*$v*")) { throw "'$a' não contém '$v' em $k" } }
-        'assert-exists' { if (-not (Reach $Rest 4)) { throw "tag ausente: $Rest" } }
+        'assert-exists' { if (-not (Reach $Rest 8)) { throw "tag ausente: $Rest" } }
         'assert-absent' { if (Has $Rest) { throw "tag presente (esperada ausente): $Rest" } }
         'assert-checked' { $k, $v = $Rest -split '\s*=\s*', 2; if (-not (Reach $k 4)) { throw "tag ausente: $k" }; $c = [bool](Find $k).Checked; if ($c -ne ($v -match '^(true|sim|1)$')) { throw "$k marcado = $c, esperado $v" } }
         'assert-count' { $k, $v = $Rest -split '\s*=\s*', 2; $ids = @(CollectIds $k); if ($ids.Count -ne [int]$v) { throw "esperado $v itens '$k*' na lista inteira, obtido $($ids.Count): [$($ids -join ',')]" } }

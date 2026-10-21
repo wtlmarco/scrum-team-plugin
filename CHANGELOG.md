@@ -13,6 +13,14 @@
 
 ---
 
+## v3.51.1 — 2026-10-21
+
+**Branch:** `fix/v3.51.1` a partir de `develop` · **Processo:** sem mudança
+Achado no preparo do P+ do benchmark (SunScape): o pedido não fixa o `applicationId` e o `guards.json` é do stakeholder — nenhum papel o preenche durante o run. Sem `targets.android.package`, o executor de cenários não abria o app e a Task não fechava (R7-aceite).
+
+- **`accept.ps1` e `targets/android.ps1`:** sem `targets.android.package`/`apk`, o executor acha o APK mais recente do projeto (`**/build/outputs/apk/{release,debug}/`) e lê o `applicationId` dele (`aapt2 dump packagename`, ou `aapt dump badging`). Validado no emulador com o APK do SunScape, sem nada configurado além do AVD.
+- **Primeira abertura depois de instalar:** `assert-exists` e o alcance de elemento esperam o tempo inteiro antes de rolar a tela (a primeira tentativa falhava com o app ainda abrindo).
+- **Reparo do emulador:** espera 25 s depois do boot (launcher e serviços) e sobe o emulador na pasta do SDK, sem prender a pasta do projeto.
 ## v3.51.0 — 2026-10-21
 
 **Branch:** `feat/v3.51.0` a partir de `develop` · **Processo:** v3.51 (`process-changelog.md`)

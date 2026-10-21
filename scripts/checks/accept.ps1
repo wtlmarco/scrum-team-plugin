@@ -86,8 +86,13 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
     $h = & $Health
     if ($h -and -not $NoRepair) { [Console]::Out.WriteLine("accept: pré-voo falhou ($h) — tentando o reparo uma vez"); $h = & $Repair }
     if ($h) { [Console]::Out.WriteLine("accept: FALHA DE AMBIENTE ($script:Tgt) — $h. Não é defeito do app: reinicie o alvo e rode de novo."); return 4 }
-    $appApk = if ($Apk) { $Apk } elseif ($Cfg -and $Cfg.apk) { Join-Path $Root ([string]$Cfg.apk) } else { '' }
-    if ($script:Tgt -eq 'android' -and $appApk) { $ie = Install-AndroidApk $appApk; if ($ie) { [Console]::Out.WriteLine("accept: $ie"); return 2 } }
+    if ($script:Tgt -eq 'android') {
+        # v3.51.1: sem targets.android.package/apk, o executor descobre o APK construído e o applicationId dele.
+        $appApk = Resolve-AndroidApk $Root $Apk
+        if (-not ($Cfg -and $Cfg.package)) { Set-AndroidPackage (Get-ApkPackage $appApk) }
+        if (-not $script:Pkg) { [Console]::Out.WriteLine('accept: sem o pacote do app — nenhum APK em <projeto>/**/build/outputs/apk/ e nada em targets.android.package; construa o app (assembleDebug ou assembleRelease) antes'); return 2 }
+        if ($appApk) { $ie = Install-AndroidApk $appApk; if ($ie) { [Console]::Out.WriteLine("accept: $ie"); return 2 }; [Console]::Out.WriteLine("accept: $($script:Pkg) instalado de $($appApk.Replace($Root, '').TrimStart('\', '/'))") }
+    }
 
     $dir = (Get-VerifyDir $Root $Task) -replace '[\\/]verify[\\/]', '/accept/'
     $script:Shots = Join-Path $dir 'shots'; New-Item -ItemType Directory -Force $script:Shots | Out-Null
