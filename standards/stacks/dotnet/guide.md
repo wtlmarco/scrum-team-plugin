@@ -6,7 +6,7 @@
 **Nível:** 2 — perfil de stack
 **Stack alvo:** .NET 10 · Clean Architecture · CQRS
 
-> **Este documento é a vinculação .NET do normativo de nível 1**, [`implementation-principles.md`](implementation-principles.md) — Clean Architecture, Clean Code, CQRS e o gate de cobertura de 80%. Aquele documento diz **o que** precisa ser verdade em qualquer linguagem; este diz **como isso se escreve em .NET**.
+> **Este documento é a vinculação .NET do normativo de nível 1**, [`implementation-principles.md`](../../implementation-principles.md) — Clean Architecture, Clean Code, CQRS e o gate de cobertura de 80%. Aquele documento diz **o que** precisa ser verdade em qualquer linguagem; este diz **como isso se escreve em .NET**.
 >
 > **Precedência:** onde este perfil divergir do nível 1, o nível 1 vence e a divergência é defeito de documento. Este perfil pode acrescentar obrigação; nunca afrouxar uma de lá.
 >
@@ -22,8 +22,8 @@
 
 | Documento | Conteúdo |
 |---|---|
-| [`implementation-principles.md`](implementation-principles.md) | **Nível 1** — os princípios que este perfil vincula: Clean Architecture, Clean Code, CQRS, testes e gate de 80% |
-| [`implementation-quality.md`](implementation-quality.md) | Code Analysis, Coverage, Metrics e pipeline de CI — perfil da mesma stack |
+| [`implementation-principles.md`](../../implementation-principles.md) | **Nível 1** — os princípios que este perfil vincula: Clean Architecture, Clean Code, CQRS, testes e gate de 80% |
+| [`stacks/dotnet/quality.md`](quality.md) | Code Analysis, Coverage, Metrics e pipeline de CI — perfil da mesma stack |
 
 ---
 
@@ -31,7 +31,7 @@
 
 | Referência | Assunto | Status |
 |---|---|---|
-| ~~PERF-TEST~~ | **Resolvida** — 06/09/2026, Arquiteto: **k6** para carga sobre a borda HTTP, **NBomber** só para alvo não-HTTP. Cenários, gate de orçamento e gate de regressão em §9.6; pipeline em [`implementation-quality.md`](implementation-quality.md) §4.2. Obrigação e forma de verificação no nível 1, [`implementation-principles.md`](implementation-principles.md) §5.6 | Fechada |
+| ~~PERF-TEST~~ | **Resolvida** — 06/09/2026, Arquiteto: **k6** para carga sobre a borda HTTP, **NBomber** só para alvo não-HTTP. Cenários, gate de orçamento e gate de regressão em §9.6; pipeline em [`stacks/dotnet/quality.md`](quality.md) §4.2. Obrigação e forma de verificação no nível 1, [`implementation-principles.md`](../../implementation-principles.md) §5.6 | Fechada |
 | OUTBOX-PATTERN | Formalizar o Transactional Outbox para handlers de dual-write DB↔broker | Definição Futura |
 
 ---
@@ -54,7 +54,7 @@
 
 ## 1. Estrutura de Pastas por Camada (Clean Architecture)
 
-> **Regra normativa:** [`implementation-principles.md`](implementation-principles.md) §2 — os quatro anéis, a regra de dependência e a exigência de **teste automatizado de arquitetura**. Abaixo, como esses anéis se materializam em uma solution .NET.
+> **Regra normativa:** [`implementation-principles.md`](../../implementation-principles.md) §2 — os quatro anéis, a regra de dependência e a exigência de **teste automatizado de arquitetura**. Abaixo, como esses anéis se materializam em uma solution .NET.
 
 Cada bounded context é uma **solution independente**. A estrutura de pastas segue as quatro camadas da Clean Architecture.
 
@@ -196,7 +196,7 @@ Declarados em `Domain/Enums/`. Valores em `PascalCase`. Os valores reais de cada
 
 ## 3. Padrão CQRS — Commands, Queries, Handlers
 
-> **Regra normativa:** [`implementation-principles.md`](implementation-principles.md) §3 — separação escrita/leitura, consulta que nunca escreve, handler que não chama handler, e o que o CQRS **não** obriga (banco separado, projeção, event sourcing). Abaixo, os contratos concretos em .NET.
+> **Regra normativa:** [`implementation-principles.md`](../../implementation-principles.md) §3 — separação escrita/leitura, consulta que nunca escreve, handler que não chama handler, e o que o CQRS **não** obriga (banco separado, projeção, event sourcing). Abaixo, os contratos concretos em .NET.
 
 Clean Architecture e CQRS resolvem problemas diferentes e se encaixam naturalmente: a Clean Architecture define **onde** cada coisa vive (Domain, Application, Infrastructure, Presentation); o CQRS define **como** os dados fluem pela camada Application — separando escrita (`Command`) de leitura (`Query`).
 
@@ -444,7 +444,7 @@ public class {Entity}Repository(AppDbContext db, I{SubRecurso}Context subRecurso
 }
 ```
 
-**Regra:** Pull Requests com queries ao banco sem o filtro de escopo apropriado (`TenantId` para consultas de nível de tenant, o Id do sub-recurso para o restante) são bloqueados no code review e, idealmente, por um analisador estático customizado (ver `implementation-quality.md`).
+**Regra:** Pull Requests com queries ao banco sem o filtro de escopo apropriado (`TenantId` para consultas de nível de tenant, o Id do sub-recurso para o restante) são bloqueados no code review e, idealmente, por um analisador estático customizado (ver `stacks/dotnet/quality.md`).
 
 ### 4.3 Testes de isolamento
 
@@ -715,7 +715,7 @@ services.AddOptions<{Integração}Options>()
 
 ## 9. Estratégia de Testes
 
-> **Regra normativa:** [`implementation-principles.md`](implementation-principles.md) §5 — níveis, o que torna um teste válido, escopo e exclusões de cobertura, e o **gate de 80%** (incluindo cobertura do diff e gate por unidade implantável). Abaixo, as ferramentas e a organização de pastas em .NET.
+> **Regra normativa:** [`implementation-principles.md`](../../implementation-principles.md) §5 — níveis, o que torna um teste válido, escopo e exclusões de cobertura, e o **gate de 80%** (incluindo cobertura do diff e gate por unidade implantável). Abaixo, as ferramentas e a organização de pastas em .NET.
 
 ### 9.1 Visão geral
 
@@ -785,7 +785,7 @@ tests/
 
 ### 9.6 Load Tests — cenário de carga, orçamento e regressão
 
-> **Regra normativa:** [`implementation-principles.md`](implementation-principles.md) §5.6 — o RNF de cinco campos (P1), a lista fechada de operações sob orçamento (V18), o cenário com limiar dentro dele (P3), a baseline medida (P4) e a definição de regressão (P5). Abaixo, a ferramenta e a forma do cenário nesta stack. O pipeline está em [`implementation-quality.md`](implementation-quality.md) §4.2.
+> **Regra normativa:** [`implementation-principles.md`](../../implementation-principles.md) §5.6 — o RNF de cinco campos (P1), a lista fechada de operações sob orçamento (V18), o cenário com limiar dentro dele (P3), a baseline medida (P4) e a definição de regressão (P5). Abaixo, a ferramenta e a forma do cenário nesta stack. O pipeline está em [`stacks/dotnet/quality.md`](quality.md) §4.2.
 
 #### Ferramenta — decidido, não opcional
 
@@ -835,7 +835,7 @@ Regras do cenário — cada uma com o mesmo peso das regras de teste de §9.2–
 | **Cenário sem `thresholds` não conta** — é relatório, não gate | Busca por `thresholds` em cada `*.perf.js`; ausência = achado bloqueante (§5.6 P3) |
 | Um arquivo por linha de **V18**, com o mesmo nome de operação na tag | Uma linha de V18 ↔ um arquivo ↔ um job (nível 1 §7, #21) |
 | O cenário **cria e limpa** o próprio escopo de carga (`lib/setup.js`), com tenant/usuário dedicados | Execução repetida não acumula dado; mesma regra de §9.3 |
-| **Nunca** contra dado pessoal de produção nem cópia dele | [`implementation-security-lgpd-copyright.md`](implementation-security-lgpd-copyright.md) §8 |
+| **Nunca** contra dado pessoal de produção nem cópia dele | [`implementation-security-lgpd-copyright.md`](../../implementation-security-lgpd-copyright.md) §8 |
 | Credenciais e URL por variável de ambiente do runner, nunca no arquivo | §8 deste guia |
 | `tests/perf/` fora de `src/` — **não** entra na cobertura e **não** é exclusão de cobertura | Nível 1 §5.3 |
 
@@ -850,7 +850,7 @@ k6 run tests/perf/{operacao}.perf.js \
 echo $?   # 0 = dentro do orçamento · != 0 = orçamento violado
 ```
 
-A saída real deste comando — não a alegação — é o que vai no relatório de entrega da Task que toca uma operação de V18 (§5.6 P6), na forma de **trecho decisivo e ponteiro do relatório da execução**, os dois juntos ([`implementation-principles.md`](implementation-principles.md) §5.4).
+A saída real deste comando — não a alegação — é o que vai no relatório de entrega da Task que toca uma operação de V18 (§5.6 P6), na forma de **trecho decisivo e ponteiro do relatório da execução**, os dois juntos ([`implementation-principles.md`](../../implementation-principles.md) §5.4).
 
 ---
 

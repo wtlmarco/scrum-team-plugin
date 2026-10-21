@@ -6,13 +6,13 @@
 **Nível:** 2 — perfil de stack
 **Stack alvo:** .NET 10 · xUnit · GitLab CI
 
-> **Este documento é a vinculação .NET/GitLab dos gates definidos no nível 1**, [`implementation-principles.md`](implementation-principles.md) §4 (limites de Clean Code), §5 (testes e cobertura de 80%) e §7 (quadro de verificação). Aquele documento diz **qual** gate precisa existir e **o que ele bloqueia**; este diz **com qual ferramenta e em qual estágio**.
+> **Este documento é a vinculação .NET/GitLab dos gates definidos no nível 1**, [`implementation-principles.md`](../../implementation-principles.md) §4 (limites de Clean Code), §5 (testes e cobertura de 80%) e §7 (quadro de verificação). Aquele documento diz **qual** gate precisa existir e **o que ele bloqueia**; este diz **com qual ferramenta e em qual estágio**.
 >
 > **Precedência:** onde este perfil divergir do nível 1, o nível 1 vence. Divergência conhecida e ainda não resolvida fica registrada em "Decisões Pendentes", nunca em silêncio.
 >
 > **Decisão do stakeholder em 02/09/2026, já refletida neste documento:** o gate de 80% é **mínimo por módulo** (`ThresholdStat=minimum`), e cobre **toda unidade implantável e todos os anéis — front-end incluído**, não apenas `Domain`/`Application`.
 >
-> Guia normativo de qualidade, **agnóstico de produto**, complementar ao [`implementation-guide.md`](implementation-guide.md), com configuração detalhada de ferramentas e pipeline de qualidade. Assim como o guia de implementação, este documento não contém nomes de entidades, integrações ou regras de negócio de nenhum produto específico — a aplicação real (thresholds ajustados, exceções aprovadas, stages adicionais) é decidida e documentada no documento de arquitetura de cada produto.
+> Guia normativo de qualidade, **agnóstico de produto**, complementar ao [`stacks/dotnet/guide.md`](guide.md), com configuração detalhada de ferramentas e pipeline de qualidade. Assim como o guia de implementação, este documento não contém nomes de entidades, integrações ou regras de negócio de nenhum produto específico — a aplicação real (thresholds ajustados, exceções aprovadas, stages adicionais) é decidida e documentada no documento de arquitetura de cada produto.
 
 ---
 
@@ -20,8 +20,8 @@
 
 | Documento | Conteúdo |
 |---|---|
-| [`implementation-principles.md`](implementation-principles.md) | **Nível 1** — limites de Clean Code (§4.4), gate de cobertura de 80% (§5.4), **desempenho: RNF verificável, orçamento e regressão (§5.6)** e quadro de verificação (§7) |
-| [`implementation-guide.md`](implementation-guide.md) | Estrutura de código, CQRS, isolamento por escopo (tenant e sub-recurso), adaptadores multi-provedor, logging, configuração, testes |
+| [`implementation-principles.md`](../../implementation-principles.md) | **Nível 1** — limites de Clean Code (§4.4), gate de cobertura de 80% (§5.4), **desempenho: RNF verificável, orçamento e regressão (§5.6)** e quadro de verificação (§7) |
+| [`stacks/dotnet/guide.md`](guide.md) | Estrutura de código, CQRS, isolamento por escopo (tenant e sub-recurso), adaptadores multi-provedor, logging, configuração, testes |
 
 ---
 
@@ -33,7 +33,7 @@
 | ~~COVERAGE-SCOPE~~ | **Resolvida** — 02/09/2026, stakeholder: o gate cobre todos os anéis e todas as unidades implantáveis, front-end incluído. Aplicada em §2 e §4.1 | Fechada |
 | COVERAGE-DIFF | Ferramenta de cobertura **do diff** (código novo/alterado ≥ 80%, nível 1 §5.4) ainda não escolhida para este perfil | Definição Futura |
 | DUPLICATION | Detector de duplicação e limite de bloco (nível 1 §4.3) ainda não escolhido para este perfil | Definição Futura |
-| ~~PERF-TEST~~ | **Resolvida** — 06/09/2026, Arquiteto: **k6** (borda HTTP) / **NBomber** (não-HTTP); forma do cenário em [`implementation-guide.md`](implementation-guide.md) §9.6; gate de orçamento e gate de regressão em §4.2 abaixo; obrigação e verificação no nível 1 §5.6. **Os números (limiar, carga, ambiente) são de cada projeto**, na Ficha V18–V21 — não deste perfil | Fechada |
+| ~~PERF-TEST~~ | **Resolvida** — 06/09/2026, Arquiteto: **k6** (borda HTTP) / **NBomber** (não-HTTP); forma do cenário em [`stacks/dotnet/guide.md`](guide.md) §9.6; gate de orçamento e gate de regressão em §4.2 abaixo; obrigação e verificação no nível 1 §5.6. **Os números (limiar, carga, ambiente) são de cada projeto**, na Ficha V18–V21 — não deste perfil | Fechada |
 
 ---
 
@@ -102,9 +102,9 @@ Aplica a todos os projetos automaticamente:
 | `CA1062` — Validate arguments of public methods | Previne `NullReferenceException` em boundaries públicos |
 | `CA2007` — Do not directly await a Task | Evita deadlock em contextos síncronos |
 | `CS8600–CS8625` — Nullable reference warnings | Cobertura total de nullabilidade com `<Nullable>enable</Nullable>` |
-| Roslyn customizado: query sem filtro de escopo | Analisador personalizado que detecta queries `DbSet<T>` sem filtro de escopo (tenant ou sub-recurso) — ver [`implementation-guide.md` §4.2](implementation-guide.md#42-repositórios--filtro-obrigatório-no-where) |
-| Roslyn customizado: log direto sem `[LoggerMessage]` | Detecta chamadas diretas a `ILogger.LogInformation`/`LogWarning`/etc. fora de uma classe `Log` anotada com `[LoggerMessage]` — ver [`implementation-guide.md` §7.3](implementation-guide.md#73-padrão-loggermessage-source-generated--obrigatório) |
-| Regra proibida: SDK de integração externa fora do diretório de adaptadores | Nenhum pacote/cliente HTTP de um provedor externo específico pode ser referenciado fora do diretório de adaptadores dedicado a essa integração — ver [`implementation-guide.md` §5.4](implementation-guide.md#54-regras) |
+| Roslyn customizado: query sem filtro de escopo | Analisador personalizado que detecta queries `DbSet<T>` sem filtro de escopo (tenant ou sub-recurso) — ver [`stacks/dotnet/guide.md` §4.2](guide.md#42-repositórios--filtro-obrigatório-no-where) |
+| Roslyn customizado: log direto sem `[LoggerMessage]` | Detecta chamadas diretas a `ILogger.LogInformation`/`LogWarning`/etc. fora de uma classe `Log` anotada com `[LoggerMessage]` — ver [`stacks/dotnet/guide.md` §7.3](guide.md#73-padrão-loggermessage-source-generated--obrigatório) |
+| Regra proibida: SDK de integração externa fora do diretório de adaptadores | Nenhum pacote/cliente HTTP de um provedor externo específico pode ser referenciado fora do diretório de adaptadores dedicado a essa integração — ver [`stacks/dotnet/guide.md` §5.4](guide.md#54-regras) |
 
 ### Supressão pontual (uso controlado)
 
@@ -205,7 +205,7 @@ Métricas quantificam o quão difícil o código é de manter e testar. Usamos a
 
 ### Métricas e limites
 
-> **Fonte única dos limites:** [`implementation-principles.md`](implementation-principles.md) §4.4. A tabela abaixo é a cópia vigente, para leitura junto da configuração da ferramenta — divergência entre as duas é defeito de documento, e o §4.4 vence.
+> **Fonte única dos limites:** [`implementation-principles.md`](../../implementation-principles.md) §4.4. A tabela abaixo é a cópia vigente, para leitura junto da configuração da ferramenta — divergência entre as duas é defeito de documento, e o §4.4 vence.
 
 | Métrica | O que mede | Limite |
 |---|---|---|
@@ -411,7 +411,7 @@ test-e2e:
 
 ### 4.2 Estágio `test-perf` — dois gates: orçamento e regressão
 
-> **Regra normativa:** nível 1 [`implementation-principles.md`](implementation-principles.md) §5.6 — P3 (limiar dentro do cenário), P4 (baseline medida), P5 (o que é regressão e quando bloqueia). Forma do cenário em [`implementation-guide.md`](implementation-guide.md) §9.6.
+> **Regra normativa:** nível 1 [`implementation-principles.md`](../../implementation-principles.md) §5.6 — P3 (limiar dentro do cenário), P4 (baseline medida), P5 (o que é regressão e quando bloqueia). Forma do cenário em [`stacks/dotnet/guide.md`](guide.md) §9.6.
 
 Dois jobs, dois propósitos distintos — **não** se juntam:
 
@@ -494,7 +494,7 @@ O GitLab exibe automaticamente o percentual de coverage no MR quando o artifact 
 | Operação de V18 sem cenário `*.perf.js` e sem job | Inspeção: uma linha de V18 ↔ um cenário ↔ um job | auditoria | **Bloqueia** — Task não é dado como verificado |
 | Cenário de carga sem `thresholds` declarado | Busca por padrão em `tests/perf/*.perf.js` | `test-perf` | **Bloqueia** — relatório não é gate |
 
-> A lista completa do que bloqueia, independente de stack, está em [`implementation-principles.md`](implementation-principles.md) §7. Task daquele quadro **sem** linha correspondente aqui é gate não configurado nesta stack — achado de auditoria, não pendência de organização.
+> A lista completa do que bloqueia, independente de stack, está em [`implementation-principles.md`](../../implementation-principles.md) §7. Task daquele quadro **sem** linha correspondente aqui é gate não configurado nesta stack — achado de auditoria, não pendência de organização.
 
 > **Regra para projetos novos:** threshold de métricas é bloqueante desde o primeiro commit — nenhum código entra fora do limite.
 >

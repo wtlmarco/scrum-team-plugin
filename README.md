@@ -37,8 +37,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 ├── standards/                       padrões de engenharia — normativo agnóstico de produto, base de qualidade comum de Arquiteto, dev e QA (R16)
 │   ├── README.md                       índice e os dois níveis
 │   ├── implementation-principles.md    nível 1 — princípios agnósticos de linguagem (não mudam entre projetos)
-│   ├── implementation-guide.md         nível 2 — perfil de stack (.NET)
-│   ├── implementation-quality.md       nível 2 — perfil de stack (.NET/GitLab)
+│   ├── stacks/<tecnologia>/            nível 2 — guide.md + quality.md por tecnologia (.NET + desktop, Kotlin/Android, React, Angular)
 │   └── implementation-security-lgpd-copyright.md   transversal
 ├── README.md                        ← este índice
 ├── CHANGELOG.md                     changelog de entregas (vX.Y.Z) — o que saiu em cada versão e a branch

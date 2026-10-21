@@ -103,7 +103,7 @@ function New-Project([string]$Dir) {
 ## 4. Passos, em ordem de execução
 
 ### Passo 1 — endpoint
-- **Standard aplicável:** ```${CLAUDE_PLUGIN_ROOT}/standards/implementation-guide.md`` §3 — contrato
+- **Standard aplicável:** ```${CLAUDE_PLUGIN_ROOT}/standards/stacks/dotnet/guide.md`` §3 — contrato
 
 ## 9. Onde parar e perguntar
 - **Pré-requisito ausente** — 🔺 GAP
