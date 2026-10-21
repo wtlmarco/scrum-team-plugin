@@ -20,7 +20,12 @@
 # {path} = o caminho (padrão) · {class} = o nome qualificado da classe (src/<conjunto>/java|kotlin/a/b/FooTest.kt → a.b.FooTest).
 # Gradle: "focused": "./gradlew testDebugUnitTest {tests}", "testItem": "--tests {class}" → --tests a.b.FooTest --tests a.b.BarTest.
 # Saída: ~10 linhas (o log fica no disco). Exit 0 = tudo com código 0 (check: árvore igual e full verde) · 1 = algum
-# comando falhou, árvore diferente ou sem full · 2 = erro de uso (sem guards.json → verify, sem git) · 3 = mutação parcial.
+# comando falhou, árvore diferente ou sem full · 2 = erro de uso (sem guards.json → verify, sem git) · 3 = mutação parcial ·
+# 4 = FALHA DE AMBIENTE (v3.51): tempo esgotado ou saída com assinatura conhecida de ambiente (tool-hygiene.json) — não é
+# defeito do código: o papel não depura; a sessão tenta o reparo (target.ps1 -Repair) uma vez e, sem sucesso, bloqueio de ambiente.
+# v3.51: -TimeoutMinutes (ou guards.json → verify.timeoutMinutes, padrão 9) por comando; verify.env = variáveis do filho
+# (ex.: GRADLE_USER_HOME numa junção ASCII); a higiene da ferramenta (Gradle sem daemon, dotnet sem reúso de nó, CI=true no
+# node) entra sozinha, de scripts/checks/tool-hygiene.json.
 
 param(
     [Parameter(Mandatory = $true)][string]$Task,
@@ -29,6 +34,7 @@ param(
     [string]$Plan = '',
     [string[]]$Only = @(),
     [int]$MaxMinutes = 8,
+    [double]$TimeoutMinutes = 0,
     [string]$Root = (Get-Location).Path
 )
 
@@ -43,17 +49,35 @@ function Get-Commands($Verify, [string]$Key) {
 }
 
 # Roda um comando do projeto num PowerShell filho, com o código de saída real, saída inteira no log. Devolve o resultado.
+# v3.51 (D1/D4): tempo limite próprio (verify.timeoutMinutes, padrão 9, abaixo do vigia de 600 s) — estourou, a árvore do
+# processo é encerrada e o resultado é exit 124 com "falha de ambiente: tempo esgotado"; ao terminar, os descendentes que
+# sobraram (daemon) são encerrados; a higiene da ferramenta (tool-hygiene.json) e verify.env entram como variáveis de
+# ambiente do filho; saída que casa assinatura conhecida de ambiente marca o comando como falha de ambiente.
+$script:hygieneWarnings = @()
 function Invoke-Logged([string]$Key, [string]$Cmd, [string]$Log) {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $extra = if ($verify -and $verify.PSObject.Properties['env']) { $verify.env } else { $null }
+    $hy = Get-ToolHygiene $Cmd $extra
+    foreach ($w in $hy.Warnings) { if ($script:hygieneWarnings -notcontains $w) { $script:hygieneWarnings += $w } }
+    $envPrefix = (@($hy.Env.Keys) | ForEach-Object { "[Environment]::SetEnvironmentVariable('$($_ -replace "'", "''")', '$(([string]$hy.Env[$_]) -replace "'", "''")', 'Process'); " }) -join ''
     # Código de saída real: o do último comando nativo; cmdlet que falha sem código = 1 (contrato do operator, item 2).
-    $wrapped = '$global:LASTEXITCODE = 0; ' + $Cmd + '; if (-not $?) { if ($LASTEXITCODE) { exit $LASTEXITCODE } else { exit 1 } }; exit $LASTEXITCODE'
+    $wrapped = $envPrefix + '$global:LASTEXITCODE = 0; ' + $Cmd + '; if (-not $?) { if ($LASTEXITCODE) { exit $LASTEXITCODE } else { exit 1 } }; exit $LASTEXITCODE'
     $enc = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($wrapped))   # aspas do comando passam intactas
-    $p = Start-Process -FilePath 'powershell' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $enc) -WorkingDirectory $Root -RedirectStandardOutput $Log -RedirectStandardError "$Log.err" -NoNewWindow -PassThru -Wait
-    $code = $p.ExitCode
+    # Sem -Wait: no 5.1 ele espera também os descendentes, e o daemon do build é descendente (nota 4).
+    $p = Start-Process -FilePath 'powershell' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $enc) -WorkingDirectory $Root -RedirectStandardOutput $Log -RedirectStandardError "$Log.err" -NoNewWindow -PassThru
+    $null = $p.Handle   # sem o handle aberto, o ExitCode volta vazio no 5.1
+    $limit = [Math]::Max(0.05, [double]$script:timeoutMinutes)
+    $timedOut = -not $p.WaitForExit([int]($limit * 60000))
+    if ($timedOut) { $null = Stop-ProcessTree $p.Id; $p.WaitForExit(5000) | Out-Null; $code = 124 }
+    else { $p.WaitForExit(); $code = $p.ExitCode; $null = Stop-ProcessTree $p.Id -ChildrenOnly }
+    Start-Sleep -Milliseconds 200   # o arquivo de saída fica livre depois que os descendentes saem
     if (Test-Path -LiteralPath "$Log.err") { $err = [System.IO.File]::ReadAllText("$Log.err", $utf8); if ($err) { [System.IO.File]::AppendAllText($Log, $err, $utf8) }; Remove-Item -LiteralPath "$Log.err" -Force }
+    if ($timedOut) { [System.IO.File]::AppendAllText($Log, "`nTEMPO ESGOTADO: $limit min (verify.timeoutMinutes) — árvore do processo encerrada`n", $utf8) }
     [System.IO.File]::AppendAllText($Log, "`nEXIT=$code`n", $utf8)
     $d = Get-Decisive $Log
-    return [ordered]@{ key = $Key; command = $Cmd; exit = $code; seconds = [int]$sw.Elapsed.TotalSeconds; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive }
+    $envFail = if ($timedOut) { "tempo esgotado ($limit min): o comando não devolveu o controle — confira modo de observação ou processo que não termina (tool-hygiene.json)" }
+               elseif ($code -ne 0) { Get-EnvFailure ([System.IO.File]::ReadAllText($Log, $utf8)) } else { $null }
+    return [ordered]@{ key = $Key; command = $Cmd; exit = $code; seconds = [int]$sw.Elapsed.TotalSeconds; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive; environment = $envFail; hygiene = @($hy.Tools) }
 }
 
 # Lista que chega por powershell -File vem numa string só ("a,b"): divide por vírgula e, se o item não é um caminho que
@@ -164,6 +188,7 @@ try {
     if (-not (Test-Path -LiteralPath $cfgPath)) { [Console]::Error.WriteLine("verify: $cfgPath não existe — rode na raiz do projeto ou passe -Root."); exit 2 }
     $cfg = Read-Text $cfgPath | ConvertFrom-Json
     $verify = $cfg.verify
+    $script:timeoutMinutes = if ($TimeoutMinutes -gt 0) { $TimeoutMinutes } elseif ($verify -and $verify.PSObject.Properties['timeoutMinutes'] -and [double]$verify.timeoutMinutes -gt 0) { [double]$verify.timeoutMinutes } else { 9 }
     $Tests = @(Split-List $Tests); $Only = @(Split-List $Only)
     $dir = Get-VerifyDir $Root $Task
     $resPath = Join-Path $dir 'result.json'
@@ -292,9 +317,13 @@ try {
     [System.IO.File]::WriteAllText($resPath, ($res | ConvertTo-Json -Depth 8), $utf8)
 
     $bad = @($results | Where-Object { [int]$_.exit -ne 0 })
-    [Console]::Out.WriteLine("verify $Mode $Task · árvore $($tree.Substring(0, 12)) · " + $(if ($bad.Count) { "$($bad.Count) comando(s) com falha" } else { 'tudo exit 0' }) + " · $($resPath.Substring($Root.Length + 1) -replace '\\', '/')")
+    $envBad = @($results | Where-Object { $_.environment })
+    [Console]::Out.WriteLine("verify $Mode $Task · árvore $($tree.Substring(0, 12)) · " + $(if ($envBad.Count) { "FALHA DE AMBIENTE em $($envBad.Count) comando(s)" } elseif ($bad.Count) { "$($bad.Count) comando(s) com falha" } else { 'tudo exit 0' }) + " · $($resPath.Substring($Root.Length + 1) -replace '\\', '/')")
     foreach ($r in $results) { [Console]::Out.WriteLine("  $($r.key): exit $($r.exit) · $($r.seconds) s · $(@($r.decisive) | Select-Object -Last 1) · log $($r.log) ($($r.lines) linhas)") }
+    foreach ($r in $envBad) { [Console]::Out.WriteLine("  ambiente ($($r.key)): $($r.environment)") }
+    foreach ($w in $script:hygieneWarnings) { [Console]::Out.WriteLine("  atenção: $w") }
     if ($after -ne $tree) { [Console]::Out.WriteLine("  atenção: os comandos alteraram a árvore (antes $($tree.Substring(0, 12)), depois $(([string]$after).Substring(0, [Math]::Min(12, ([string]$after).Length)))) — arquivo gerado fora do .gitignore; a evidência vale para a árvore de antes") }
+    if ($envBad.Count) { [Console]::Out.WriteLine('  não é defeito do código: não depure; a sessão tenta o reparo do ambiente uma vez (target.ps1 -Repair) e, sem sucesso, bloqueio de ambiente'); exit 4 }
     if ($bad.Count) { exit 1 }
     exit 0
 } catch {

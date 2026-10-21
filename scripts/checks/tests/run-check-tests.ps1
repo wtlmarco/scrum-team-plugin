@@ -471,6 +471,20 @@ Check 'verify focused com testItem "--tests {class}": um --tests por classe qual
 Put $p '.team-project/guards.json' '{ "verify": { "focused": "Write-Output \"Tests: 1 passed [{tests}]\"", "testItem": "{path}::{class}" } }'
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'focused', '-Tests', 'tests/test_calc.py', '-Root', $p)
 Check 'verify testItem fora de src/<conjunto>/: {class} é o nome do arquivo' $r 0 @('Tests: 1 passed \[tests/test_calc\.py::test_calc\]')
+# v3.51 (D1/D2/D4): tempo limite próprio, árvore de processos encerrada, higiene por ferramenta e falha de ambiente (exit 4).
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Start-Process powershell -ArgumentList ''-NoProfile'',''-Command'',''Start-Sleep 90'' -WindowStyle Hidden; Write-Output ''Build succeeded''", "suite": "Start-Sleep 60", "timeoutMinutes": 0.08 } }'
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-051', '-Mode', 'full', '-Root', $p)
+Check 'verify: filho que deixa processo vivo não prende a espera; suíte que não termina estoura o tempo: exit 4 (ambiente)' $r 4 @('build: exit 0', 'suite: exit 124', 'FALHA DE AMBIENTE', 'ambiente \(suite\): tempo esgotado')
+Check 'verify: o tempo total respeita o limite (bem abaixo dos 60 s da suíte e dos 90 s do órfão)' @{ Code = $(if ($sw.Elapsed.TotalSeconds -lt 40) { 0 } else { 1 }); Out = "$([int]$sw.Elapsed.TotalSeconds) s" } 0 @()
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output ''Caused by: java.lang.ClassNotFoundException: worker.org.gradle.process.internal.worker.GradleWorkerMain''; exit 1 # ./gradlew", "lint": "Write-Output (''GO='' + $env:GRADLE_OPTS + '' UH='' + $env:GRADLE_USER_HOME + '' CI='' + $env:CI) # ./gradlew lint e npm", "env": { "GRADLE_USER_HOME": "C:\\gh" } } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-051', '-Mode', 'full', '-Root', $p)
+Check 'verify: assinatura do Gradle com perfil acentuado é falha de ambiente (exit 4), com a ação' $r 4 @('ambiente \(build\): o Gradle não carrega o worker', 'GRADLE_USER_HOME')
+$lintLog = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/verify/1/T-051/full-lint.log'), $utf8)
+Check 'verify: higiene entra no filho (Gradle sem daemon, CI=true no node) e verify.env vence' @{ Code = 0; Out = $lintLog } 0 @('GO=-Dorg.gradle.daemon=false', 'UH=C:\\gh', 'CI=true')
+Put $p '.team-project/guards.json' '{ "verify": { "suite": "Write-Output ''Tests: 3 passed'' # ng test" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-051', '-Mode', 'full', '-Root', $p)
+Check 'verify: ng test sem --watch=false passa, mas com o aviso de que nunca termina' $r 0 @('tudo exit 0', 'atenção: ng test sem --watch=false')
 
 # 5e. close.ps1 -Apply (v3.46): a sessão fecha sem o Agent scrum-master — quadro, Registro, Série, -Post e entrada de status.
 $p = Join-Path $tmp 'apply'; New-Project $p

@@ -26,10 +26,28 @@ try {
     } elseif ($mc.State -eq 'invalido') { $line += ' models.json ilegível: valem os modelos dos agentes — corrija o JSON.' }
     # v3.47 (M3): modo benchmark ligado em guards.json → uma linha de aviso.
     if ($null -ne $cfg.bench) { $line += " Modo benchmark ligado (guards.json → bench): AskUserQuestion é respondido pelo dossiê. Se a ferramenta AskUserQuestion não existir nesta sessão (claude -p), NÃO pare nem trate a pergunta como premissa sua: para cada formulário ao stakeholder rode powershell -NoProfile -File `"$env:CLAUDE_PLUGIN_ROOT/scripts/checks/bench-answer.ps1`" -Question `"<pergunta>`" -Header `"<cabeçalho>`" -Options `"<rótulo 1>|<rótulo 2>|…`" e siga a resposta como decisão do stakeholder" + $(if ($cfg.bench.foreground -eq $true) { '; agentes em primeiro plano' } else { '' }) + '.' }
-    # Marcador da sessão anterior: run ou spike que não terminou deixa a G14 liberando ou a G8 aberta ao Arquiteto.
-    foreach ($mk in '.active-run', '.active-spike', '.active-executor') {
+    # v3.51 (proposta b): run que não terminou é RETOMADO, não só avisado — a sessão que reabre segue a fila pelo marcador.
+    $runPath = Join-Path $projectDir '.team-project/.active-run'
+    $run = Get-Marker $projectDir '.active-run'
+    if ($null -ne $run -and [string]$run.trilha -in @('sprint', 'fix')) {
+        $cmd = if ([string]$run.trilha -eq 'sprint') { '/sm sprint run' } else { '/sm fix run' }
+        $line += " Retomada: o $([string]$run.trilha) run $([string]$run.id) estava em andamento (desde $([string]$run.desde)). Retome agora, sem esperar o stakeholder: $cmd — a fila continua pelo marcador do quadro (sprint-run.md §Ordem da fila e retomada). Recrie o toque de cache (CronCreate), que não sobrevive à sessão. Só apague o .active-run se o run terminou ou o stakeholder mandou parar."
+    } elseif (Test-Path -LiteralPath $runPath) {
+        $line += " Atenção: .team-project/.active-run existe mas está ilegível — se nada está em andamento, retome com o comando do run ou apague o arquivo."
+    }
+    # Marcador da sessão anterior: spike ou executor que não terminou deixa a G8 aberta ao Arquiteto.
+    foreach ($mk in '.active-spike', '.active-executor') {
         $m = Get-Marker $projectDir $mk
         if ($null -ne $m) { $line += " Atenção: .team-project/$mk existe (desde $([string]$m.desde)) — se nada está em andamento, retome com o comando do run/spike ou apague o arquivo." }
+    }
+    # v3.51 (D2): perfil do Windows com caractere fora do ASCII — ferramentas com cache no perfil podem falhar sem aviso.
+    $prof = [string]$env:USERPROFILE
+    if ($prof -match '[^\x00-\x7F]') {
+        $gh = $null
+        try { $gj = Get-Content -LiteralPath (Join-Path $projectDir '.team-project/guards.json') -Raw -Encoding UTF8 | ConvertFrom-Json; if ($gj.verify -and $gj.verify.env) { $gh = $gj.verify.env.GRADLE_USER_HOME } } catch { }
+        if (-not $gh -and -not $env:GRADLE_USER_HOME) {
+            $line += " Ambiente: o caminho do perfil do Windows ($prof) tem acento. Medido: os testes do Gradle falham sem aviso (ClassNotFoundException do GradleWorkerMain) — se o projeto usa Gradle, crie uma junção ASCII (cmd /c mklink /J C:\gradle-home `"$prof\.gradle`") e ponha `"env`": { `"GRADLE_USER_HOME`": `"C:\\gradle-home`" } em guards.json → verify (how-to.md §Ambiente). A conferir, se aparecer erro estranho de cache: NuGet (NUGET_PACKAGES) e npm (npm_config_cache)."
+        }
     }
     [Console]::Out.Write($line)
     exit 0

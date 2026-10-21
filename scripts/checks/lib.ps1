@@ -167,6 +167,62 @@ function Get-VerifyDir([string]$Root, [string]$Id) {
     return (Join-Path $tp "verify/$seg/$Id")
 }
 
+# Higiene por ferramenta (v3.51, D1): variáveis de ambiente e avisos para o comando, lidos de tool-hygiene.json.
+# Devolve @{ Env = [ordered] nome → valor final; Warnings = textos; Tools = nomes }. $Extra (guards.json → verify.env) vence.
+function Get-ToolHygiene([string]$Cmd, $Extra) {
+    $res = @{ Env = [ordered]@{}; Warnings = @(); Tools = @() }
+    $path = Join-Path $PSScriptRoot 'tool-hygiene.json'
+    if (Test-Path -LiteralPath $path) {
+        $h = Read-Text $path | ConvertFrom-Json
+        foreach ($t in @($h.tools)) {
+            if (-not [regex]::IsMatch($Cmd, [string]$t.match, 'IgnoreCase')) { continue }
+            $res.Tools += [string]$t.tool
+            if ($t.env) {
+                foreach ($p in $t.env.PSObject.Properties) {
+                    $v = [string]$p.Value.value
+                    $cur = [Environment]::GetEnvironmentVariable($p.Name)
+                    if ($p.Value.append -and $cur -and $cur -notlike "*$v*") { $v = "$cur $v" }
+                    $res.Env[$p.Name] = $v
+                }
+            }
+            foreach ($w in @($t.warn)) { if ($w -and [regex]::IsMatch($Cmd, [string]$w.pattern, 'IgnoreCase')) { $res.Warnings += [string]$w.text } }
+        }
+    }
+    if ($Extra) { foreach ($p in $Extra.PSObject.Properties) { $res.Env[$p.Name] = [string]$p.Value } }
+    return $res
+}
+
+# Falha de ambiente (v3.51, D4): a saída casa uma assinatura conhecida de tool-hygiene.json → a mensagem com a ação; senão $null.
+function Get-EnvFailure([string]$Text) {
+    $path = Join-Path $PSScriptRoot 'tool-hygiene.json'
+    if (-not (Test-Path -LiteralPath $path) -or -not $Text) { return $null }
+    foreach ($s in @((Read-Text $path | ConvertFrom-Json).envSignatures)) {
+        if ([regex]::IsMatch($Text, [string]$s.pattern)) { return [string]$s.message }
+    }
+    return $null
+}
+
+# Encerra um processo e todos os descendentes, filhos primeiro (v3.51, D1). Vale também para órfão cujo pai já saiu:
+# o ParentProcessId continua apontando para o PID que o criou (o daemon do Gradle fica assim depois do gradlew).
+function Stop-ProcessTree([int]$RootPid, [switch]$ChildrenOnly) {
+    $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Select-Object ProcessId, ParentProcessId, CreationDate)
+    $root = $all | Where-Object { $_.ProcessId -eq $RootPid } | Select-Object -First 1
+    $kill = New-Object System.Collections.ArrayList
+    $queue = New-Object System.Collections.Queue; $queue.Enqueue($RootPid)
+    while ($queue.Count) {
+        $cur = $queue.Dequeue()
+        foreach ($c in @($all | Where-Object { $_.ParentProcessId -eq $cur -and $_.ProcessId -ne $cur })) {
+            # PID reaproveitado: só é descendente quem nasceu depois do pai (quando o pai ainda existe para comparar).
+            if ($root -and $c.CreationDate -and $root.CreationDate -and $c.CreationDate -lt $root.CreationDate) { continue }
+            if (-not $kill.Contains($c.ProcessId)) { [void]$kill.Add($c.ProcessId); $queue.Enqueue($c.ProcessId) }
+        }
+    }
+    $ids = @($kill); [array]::Reverse($ids)
+    foreach ($id in $ids) { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue }
+    if (-not $ChildrenOnly) { Stop-Process -Id $RootPid -Force -ErrorAction SilentlyContinue }
+    return $ids.Count
+}
+
 # Registro de transições (R24): vive no burndown.md do sprint (v3.44.1); sprint aberto antes disso o tem no sprint-backlog.md. $null se nenhum.
 function Get-TransitionLog([string]$SprintDir, [string]$Board) {
     $bd = Join-Path $SprintDir 'burndown.md'

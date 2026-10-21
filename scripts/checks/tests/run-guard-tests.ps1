@@ -345,7 +345,20 @@ $cases = @(
                  (Test-Path -LiteralPath $f) -and ((Get-Content -LiteralPath $f -Raw -Encoding UTF8) -like '*Focado: exit 1*') -and
                  ((Get-Content -LiteralPath (Join-Path $proj '.team-project/operator/1/T-003-suite/report.md') -Raw -Encoding UTF8) -like '*Veredito: ok*') }
        Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'op12345678'; agent_type = 'team:operator'; transcript_path = (Join-Path $tmp 'transcripts/sess1.jsonl') } },
-    @{ Name = 'G13 avisa marcador de run esquecido'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = '.active-run existe'
+    @{ Name = 'G13 retoma o sprint run esquecido (v3.51, proposta b)'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'Retomada: o sprint run 1 *Retome agora, sem esperar o stakeholder: /sm sprint run'
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'G13 retoma o fix run esquecido com o comando do fix'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'Retomada: o fix run B-002 */sm fix run'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "fix", "id": "B-002", "desde": "2026-10-06 10:00" }' -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'G13 .active-run ilegível: só o aviso'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = '.active-run existe mas está ilegível'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') 'não é json' -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'G13 perfil com acento: avisa a junção ASCII do Gradle (v3.51, D2)'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'tem acento*GRADLE_USER_HOME'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "1", "desde": "2026-10-06 10:00" }' -Encoding UTF8 }
+       Env = @{ USERPROFILE = 'C:\Users\JoãoAçaí'; GRADLE_USER_HOME = '' }
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'G13 perfil com acento e GRADLE_USER_HOME já definido: sem aviso'; Script = 'session-start.ps1'; Expect = 0; NotOut = 'tem acento'
+       Env = @{ USERPROFILE = 'C:\Users\JoãoAçaí'; GRADLE_USER_HOME = 'C:\gh' }
        Payload = @{ hook_event_name = 'SessionStart' } },
     # ---------- v3.47 — G17: modelo por papel (.team-project/models.json) ----------
     @{ Name = 'G17 sem models.json: disparo livre (como na v3.46)'; Script = 'pre-tool.ps1'; Expect = 0
@@ -500,6 +513,7 @@ foreach ($c in $cases) {
         if ($c.ExpectOut -eq '') { $ok = [string]::IsNullOrWhiteSpace($r.Out) } else { $ok = $r.Out -like "*$($c.ExpectOut)*" }
     }
     if ($ok -and $c.ContainsKey('ExpectErr')) { $ok = $r.Err -like "*$($c.ExpectErr)*" }
+    if ($ok -and $c.ContainsKey('NotOut')) { $ok = $r.Out -notlike "*$($c.NotOut)*" }
     if ($ok -and $c.Check) { $ok = [bool](& $c.Check) }
     if (-not $ok) { $fail++ }
     $detail = (($r.Err + ' ' + $r.Out) -replace '\s+', ' ').Trim()
