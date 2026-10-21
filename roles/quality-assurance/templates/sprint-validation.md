@@ -53,11 +53,7 @@ O que a ferramenta não mede, com `arquivo:linha` e a seção de `standards/` qu
 |---|---|---|---|---|---|
 | 1 | T-<nnn> | <o que está errado e o que o standard pede> | | dev · Arquiteto (dúvida de desenho) | aberto · corrigido em <data> |
 
-## 5. Consolidação dos documentos vivos (R12)
-
-*(Preenchida pelo Arquiteto depois do veredito ✅ — uma vez no sprint, A5.)*
-**Estado:** feita | pendente — <aaaa-mm-dd>
-- <documento> — <o que mudou> — <dono>
+*(A consolidação dos documentos vivos (R12) é do Arquiteto, depois do veredito ✅, em `.team-project/sprints/<n>/docs-consolidation.md` — A5.)*
 ```
 
 ## Regras
@@ -66,4 +62,4 @@ O que a ferramenta não mede, com `arquivo:linha` e a seção de `standards/` qu
 - **Achado tem endereço:** `arquivo:linha` ou saída de comando, a regra (`Q<n>` ou a seção) e para quem volta. Sem isso é suspeita, não achado.
 - **Achado de execução volta ao dev** (Haiku, retomável); **dúvida de desenho, ao Arquiteto** (instância nova, com o caminho deste arquivo). Depois da correção, o `operator` mede de novo o que mudou e o QA, em instância nova, revisa o veredito **neste mesmo arquivo** (nova rodada, sem apagar a anterior).
 - **⚠️ aprovado com ressalva** só com o achado aceito pelo PO como dívida, com Task no backlog.
-- **A Review só abre com ✅ ou ⚠️** e com a consolidação dos documentos vivos feita.
+- **A Review só abre com ✅ ou ⚠️** e com a consolidação dos documentos vivos feita (`docs-consolidation.md`, **Estado:** feita).

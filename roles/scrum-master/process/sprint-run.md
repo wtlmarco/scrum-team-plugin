@@ -14,7 +14,7 @@
 | 3 | **Fechamento da Task** | script | `run.ps1 done -Task <ID> -Result ok` → `close.ps1 -Apply`: fecha **pela evidência do dev** (R7, R7-verify, R7-mutação, R7-aceite, R12 "a consolidar"). Não fecha → volta ao **mesmo** dev por `SendMessage` com o que falta |
 | 4 | **Validação do sprint** — o portão do QA | operator, depois QA | o `operator` mede (`quality.ps1 -Id S<n>` e `accept.ps1 -Task S<n>`, todos os cenários, com captura); o QA, numa passada só, julga código e produto e escreve `sprints/<n>/validation.md` ([`templates/sprint-validation.md`](../../quality-assurance/templates/sprint-validation.md)) |
 | 5 | **Correção dos achados** | dev (dúvida → Arquiteto) | um dev por grupo de achados; depois o `operator` mede de novo e o QA, em instância nova, revisa o veredito |
-| 6 | **Consolidação dos documentos vivos** (R12, A5) e fim da fila | Arquiteto, uma vez | as seções "Documentos vivos (R12)" dos relatórios viram o SDD técnico atualizado; depois, o formulário de autorização da Review (§Ao fim da fila) |
+| 6 | **Consolidação dos documentos vivos** (R12, A5) e fim da fila | Arquiteto, uma vez | as seções "Documentos vivos (R12)" dos relatórios viram o SDD técnico atualizado (`sprints/<n>/docs-consolidation.md`); depois, o formulário de autorização da Review (§Ao fim da fila) |
 
 **Por que assim** (benchmark de 2026-10, `plano-plugin-p-plus.md`): no P-r6 o Arquiteto planejou Task a Task no caminho crítico (41 % do custo, 632 min) e o QA reverificou cada Task (13 instâncias); o dev em Haiku custou 3 %. No protótipo do benchmark, o executor que repetia build e navegação depois do construtor nunca achou defeito real. O plano por História, a verificação pelo próprio dev e um portão só no fim cortam as releituras sem tirar nenhuma verificação.
 

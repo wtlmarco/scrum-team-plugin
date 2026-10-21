@@ -223,11 +223,11 @@ try {
         exit 0
     }
     # 5 · consolidação dos documentos vivos (A5) e 6 · Review.
-    $vt = Read-Text $val
-    if ($vt -notmatch '(?ms)^###\s+Consolida[çc][ãa]o dos documentos vivos.*?\*\*Estado:\*\*\s*feita') {
+    $cons = Join-Path $S 'docs-consolidation.md'
+    if (-not (Test-Path -LiteralPath $cons) -or (Read-Text $cons) -notmatch '(?m)^\*\*Estado:\*\*\s*feita') {
         Out "PRÓXIMA AÇÃO: consolidação dos documentos vivos (R12) — Arquiteto, uma vez no sprint (A5)"
         Out "  $(Get-AgentLine 'architect')"
-        Out "  prompt: `"Consolide os documentos vivos do sprint ${n}: leia as seções 'Documentos vivos (R12)' de .team-project/sprints/$n/delivery/*.md, atualize o SDD técnico e os ADRs que são seus e peça ao dono o que não é seu. Registre em .team-project/sprints/$n/validation.md, seção ### Consolidação dos documentos vivos (R12), com **Estado:** feita e a lista. Volte em até 15 linhas.`""
+        Out "  prompt: `"Consolide os documentos vivos do sprint ${n}: leia as seções 'Documentos vivos (R12)' de .team-project/sprints/$n/delivery/*.md, atualize o SDD técnico e os ADRs que são seus e peça ao dono o que não é seu. Registre em .team-project/sprints/$n/docs-consolidation.md, com **Estado:** feita na primeira linha e a lista (documento, o que mudou, dono). Volte em até 15 linhas.`""
         exit 0
     }
     Out "PRÓXIMA AÇÃO: fim da fila — formulário de autorização da Review (sprint-run.md §Ao fim da fila), no formato do H1: o problema simples, um exemplo, as opções e 'Pedir mais contexto' por último."
