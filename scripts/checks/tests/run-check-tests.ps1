@@ -524,7 +524,7 @@ Check 'C1 -Apply com R12 pendente: não fecha, quadro intacto' $r 1 @('Não fech
 # 5f. plan.ps1 (v3.46): o plano é conferido antes do dev.
 $p = Join-Path $tmp 'plano'; New-Project $p
 $pl = '.team-project/sprints/1/plan/T-050-x.md'; $fence = '```'
-Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 4. Passos`n`n### Passo 1 — x`n- **Assinatura exata:**`n  $fence`n  export function a(): number`n  $fence`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · ``return 1`` → ``return 0```n")
+Put $p $pl ("# Plano`n**Cenários:** nenhum — só domínio, coberto por teste unitário`n**Risco:** regra de negócio`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 4. Passos`n`n### Passo 1 — x`n- **Assinatura exata:**`n  $fence`n  export function a(): number`n  $fence`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · ``return 1`` → ``return 0```n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'Plano em contrato: exit 0' $r 0 @('\| lista \| ok', '\| protegidos \| ok', '\| blocos \| n-a', '\| trecho \| ok', '\| mutação \| ok.*1 muta')
 $long = (1..20 | ForEach-Object { "  linha $_" }) -join "`n"
@@ -540,9 +540,30 @@ Check 'Plano com trecho de mutação vazio (crase dupla): exit 1 (v3.47.1)' $r 1
 Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n``.team-project/scrum-master/context.md```n``.github/workflows/ci.yml```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: x`n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'Plano com documento de outro papel e arquivo de gate na lista: exit 1 (v3.48)' $r 1 @('\| dono \| falhou.*scrum-master/context\.md é de SM.*ci\.yml é arquivo de gate')
-Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n``.team-project/developer/context.md```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: x`n")
+Put $p $pl ("# Plano`n**Cenários:** nenhum — configuração`n**Risco:** infraestrutura`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n``.team-project/developer/context.md```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: x`n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'Plano com o contexto do próprio dev: dono ok (v3.48)' $r 0 @('\| dono \| ok')
+# v3.51 — plano enxuto (22), cenários ao lado (23), teste pelo risco (24) e render só com layout novo (21).
+$head = "**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: x`n"
+Put $p $pl ("# Plano`n**Cenários:** SC-001, SC-009`n**Risco:** interface simples`n**Layout novo:** não`n`n" + $head)
+Put $p '.team-project/quality-assurance/scenarios/t.scn' "scenario SC-001 Abre`nlaunch`n"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano cita cenário que não existe nos .scn: exit 1 (regra 23)' $r 1 @('\| cenários \| falhou.*SC-009', '\| render \| n-a.*sem layout novo', '\| risco \| ok')
+Put $p '.team-project/quality-assurance/scenarios/t.scn' "scenario SC-001 Abre`nlaunch`n`nscenario SC-009 Conta`nlaunch`n"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano com cenários existentes e interface simples sem layout novo: exit 0' $r 0 @('\| cenários \| ok.*SC-001, SC-009', '\| tamanho \| ok')
+Put $p $pl ("# Plano`n**Cenários:** SC-001`n**Risco:** regra de negócio`n`n" + $head)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano de regra de negócio sem mutação: exit 1 (regra 24)' $r 1 @('\| risco \| falhou.*pede mutação')
+Put $p $pl ("# Plano`n**Cenários:** SC-001`n**Risco:** interface simples`n`n" + $head)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano de interface sem **Layout novo:**: exit 1 (regra 21)' $r 1 @('\| render \| falhou.*Layout novo')
+Put $p $pl ("# Plano`n**Cenários:** SC-001`n**Risco:** interface simples`n**Layout novo:** sim`n`n" + $head)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano com layout novo sem Render real: exit 1 (proposta d ajustada)' $r 1 @('\| render \| falhou.*Render real.*headless')
+Put $p $pl ("# Plano`n**Risco:** infraestrutura`n`n" + $head + ('x' * 21000))
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano acima de 20 KB e sem **Cenários:**: exit 1 (regras 22 e 23)' $r 1 @('\| tamanho \| falhou', '\| cenários \| falhou.*sem \*\*Cenários')
 
 # 5g. v3.48 — achados do primeiro sprint do piloto: revisão sem veredito acima da rodada, entrada aceita pelo stakeholder,
 # report gravado pelo hook com nome livre, pasta citada sem report, -Apply com o Registro no quadro antigo.

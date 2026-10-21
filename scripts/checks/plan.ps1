@@ -2,7 +2,8 @@
 # o dev — plano reprovado volta ao Arquiteto na mesma instância, sem custo de dev nem ciclo de 🔺 GAP.
 # Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/plan.ps1" -Plan <caminho do plano> [-Root <projeto>]
 # Regras: implementation-plan.md "Regras do formato" 2 (blocos), 15 (lista legível, teste por arquivo), 16 (protegidos),
-# 17 (trecho literal ≤ 15 linhas ou validado), 18 (mutações) e a variante leve.
+# 17 (trecho literal ≤ 15 linhas ou validado), 18 (mutações), a variante leve e, desde a v3.51, 21 (render só com layout
+# novo), 22 (tamanho: aviso acima de 12 KB, falha acima de 20 KB), 23 (cenários citados existem nos .scn do QA) e 24 (risco).
 # Saída: tabela regra · resultado · linha decisiva. Exit 1 se alguma falhou · 2 = erro de uso.
 
 param(
@@ -119,6 +120,55 @@ try {
     } elseif ($noProof) { Add-Result 'mutação' 'ok' "sem mutação, com 'sem prova: <motivo>'" }
     elseif ($hasMutBlock) { Add-Result 'mutação' 'falhou' '**Mutações:** sem linha no formato "- M<k> · teste `…` · `<produção>` · `<trecho>` → `<mutante>`"' }
     else { Add-Result 'mutação' 'falhou' "nenhuma **Mutações:** nem 'sem prova: <motivo>' na §6 (regra 18)" }
+
+    # ---------- 22 · plano enxuto (v3.51) ----------
+    $kb = [Math]::Round(([System.Text.Encoding]::UTF8.GetByteCount($text)) / 1024, 1)
+    if ($kb -gt 20) { Add-Result 'tamanho' 'falhou' "$kb KB (máximo 20; alvo ~12): cite o SDD e o standards/ em vez de copiar (regra 22)" }
+    elseif ($kb -gt 12) { Add-Result 'tamanho' 'aviso' "$kb KB, acima do alvo de ~12 KB (regra 22)" }
+    else { Add-Result 'tamanho' 'ok' "$kb KB" }
+
+    # ---------- 23 · cenários ao lado do plano (v3.51) ----------
+    $cm = [regex]::Match($text, '(?m)^\*\*Cen[áa]rios:\*\*\s*(.+)$')
+    if (-not $cm.Success) { Add-Result 'cenários' 'falhou' "cabeçalho sem **Cenários:** SC-… | nenhum — <motivo> (regra 23)" }
+    elseif ($cm.Groups[1].Value -match '^\s*nenhum\s*[—-]\s*\S') { Add-Result 'cenários' 'ok' ($cm.Groups[1].Value.Trim()) }
+    else {
+        $ids = @([regex]::Matches($cm.Groups[1].Value, '\b[A-Z]{2,}-\d+\b') | ForEach-Object { $_.Value } | Select-Object -Unique)
+        $scnDir = Join-Path $Root '.team-project/quality-assurance/scenarios'
+        $scn = @(Get-ChildItem -Path $scnDir -Filter '*.scn' -File -ErrorAction SilentlyContinue)
+        if (-not $ids.Count) { Add-Result 'cenários' 'falhou' '**Cenários:** sem identificador (SC-nnn) nem "nenhum — <motivo>"' }
+        elseif (-not $scn.Count) { Add-Result 'cenários' 'falhou' "nenhum arquivo .scn em .team-project/quality-assurance/scenarios/ — o QA escreve os cenários executáveis antes do dev (regra 23)" }
+        else {
+            $defined = @($scn | ForEach-Object { [regex]::Matches((Read-Text $_.FullName), '(?m)^\s*scenario\s+(\S+)') } | ForEach-Object { $_.Groups[1].Value })
+            $miss = @($ids | Where-Object { $defined -notcontains $_ })
+            if ($miss.Count) { Add-Result 'cenários' 'falhou' ("cenário(s) citado(s) sem definição nos .scn: " + ($miss -join ', ')) }
+            else { Add-Result 'cenários' 'ok' "$($ids.Count) cenário(s) da Task nos arquivos .scn: $($ids -join ', ')" }
+        }
+    }
+
+    # ---------- 24 · risco e 21 · render só com layout novo (v3.51; conferência de render da proposta d, ajustada) ----------
+    $rk = [regex]::Match($text, '(?m)^\*\*Risco:\*\*\s*(regra de neg[óo]cio|integra[çc][ãa]o|interface simples|infraestrutura)\b')
+    if (-not $rk.Success) { Add-Result 'risco' 'falhou' 'cabeçalho sem **Risco:** regra de negócio | integração | interface simples | infraestrutura (regra 24)' }
+    else {
+        $r = $rk.Groups[1].Value
+        if ($r -match '^(regra|integra)' -and $muts.Count -eq 0) { Add-Result 'risco' 'falhou' "risco '$r' pede mutação (regra 24)" }
+        else { Add-Result 'risco' 'ok' $r }
+    }
+    $ui = ($text -match '(?i)user-experience/screens/') -or @($files | Where-Object { $_ -match '(?i)\.(css|scss|sass|less|styl|pcss)$' }).Count -or ($rk.Success -and $rk.Groups[1].Value -eq 'interface simples')
+    $lay = [regex]::Match($text, '(?m)^\*\*Layout novo:\*\*\s*(sim|n[ãa]o)\b')
+    if (-not $ui) { Add-Result 'render' 'n-a' 'sem interface (sem estilo nem especificação de tela citada)' }
+    elseif (-not $lay.Success) { Add-Result 'render' 'falhou' 'Task com interface sem **Layout novo:** sim | não (regra 21)' }
+    elseif ($lay.Groups[1].Value -notmatch '^sim') { Add-Result 'render' 'n-a' 'interface sem layout novo (regra 24: sem render real)' }
+    else {
+        $iss = @()
+        if ($text -notmatch '(?m)^\*\*Render real\*\*') { $iss += 'sem a tabela **Render real** na §6 (regra 21)' }
+        elseif ($text -notmatch '(?ms)^\*\*Render real\*\*.*?^\|\s*`[^`]+`\s*\|') { $iss += 'tabela **Render real** sem teste' }
+        $s3 = Get-Section $text '^##\s+3\.'
+        if (-not $s3 -or $s3 -notmatch '(?i)headless') { $iss += '§3 sem o navegador headless medido (R26)' }
+        elseif ($s3 -match '(?im)headless.*\|\s*\*\*n[ãa]o\b') { $iss += 'navegador headless ausente — 🔺 GAP, a Task não entra em construção' }
+        $rt = @([regex]::Matches($text, '(?ms)^\*\*Render real\*\*.*?(?=^\*\*Cobertura|^##\s|\z)') | ForEach-Object { [regex]::Matches($_.Value, '(?m)^\|\s*`([^`]+)`') } | ForEach-Object { ($_.Groups[1].Value -replace '\\', '/') })
+        if ($rt.Count -and -not @($muts | Where-Object { $rt -contains ($_.Groups[2].Value.Trim() -replace '\\', '/') }).Count) { $iss += 'nenhuma mutação com o teste de render (regra 21: o mutante tem de quebrar a medição)' }
+        if ($iss.Count) { Add-Result 'render' 'falhou' ($iss -join '; ') } else { Add-Result 'render' 'ok' "$($rt.Count) teste(s) de render com mutação sobre a medição" }
+    }
 
     # ---------- variante leve ----------
     if ($light) {
