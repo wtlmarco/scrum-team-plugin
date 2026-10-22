@@ -6,7 +6,7 @@ Salvo em `.team-project/fixes/B-<nnn>/plan.md` — **um arquivo por bloco, um mi
 
 > **`- produção:` / `- teste:` também são lidos pela guarda G9** (`hooks/pre-tool.ps1`): no `fix run`, o dev só escreve no produto os caminhos entre crases dessas linhas, da F-ID em execução (ou do bloco). Arquivo que um 🔺 GAP acrescentar entra em `### Arquivos` — senão o dev é barrado.
 >
-> **Os rótulos abaixo são lidos pelo script C4** (`scripts/checks/fix.ps1`) — **não varie a grafia**, não traduza, não acrescente rótulo em negrito novo nas linhas que ele lê: `**Data:**` com `aaaa-mm-dd` (a revalidação usa a data); `## F-<nnn>` (conta as Correções do teto); `- C5 ✔ · …` a `- C8` (assinatura técnica); `- produção:` / `- teste:` sob `### Arquivos` (limite N e teto 2N); `**Critério que caiu:** C<n> — <motivo>` (promoção); `### Revalidação`.
+> **Os rótulos abaixo são lidos pelo script C4** (`scripts/checks/fix.ps1`) — **não varie a grafia**, não traduza, não acrescente rótulo em negrito novo nas linhas que ele lê: `**Data:**` com `aaaa-mm-dd` (a revalidação usa a data); `## F-<nnn>` (conta as Correções do teto); `- C5 ✔ · …` a `- C8` (assinatura técnica); `- produção:` / `- teste:` sob `### Arquivos` (limite N e teto 2N); `**Critério que caiu:** C<n> — <motivo>` (promoção); `### Revalidação`. **`**Mutações:**` é lido pelo `verify.ps1 -Mode mutation`** — a linha `- M<k> · teste …` no formato do modelo abaixo, sem variar separador nem crase.
 
 ```markdown
 # B-<nnn> · mini-planos
@@ -28,6 +28,8 @@ Salvo em `.team-project/fixes/B-<nnn>/plan.md` — **um arquivo por bloco, um mi
 **Nome:** <nome do teste> · **Afirma:** <o comportamento do SDD/requisito, uma frase>
 **Comando (só este teste):** `<comando de .team-project/developer/context.md, filtrado a este teste>`
 **Antes da correção, falha com:** <a asserção que deve falhar — nunca erro de compilação ou símbolo ausente>
+**Mutações:**
+- M<k> · teste `<caminho do teste>` · `<caminho de produção>` · `<trecho novo, exato>` → `<trecho atual>`
 ### Passos
 1. **CRIAR | ALTERAR** `<caminho do teste>` — <o teste acima, literal no essencial>; rodar o comando → exit ≠ 0 com a asserção acima
    **Conferência:** <o teste existe no arquivo, com o nome literal; a saída "antes" do relatório mostra a asserção esperada>
@@ -61,7 +63,7 @@ n/a — sem mudança
 3. **C5–C8 conferidos com o código real**, não com a ficha nem com a reprodução: cada linha leva `✔` ou `✘`, um ` · ` e a evidência em uma linha (`arquivo:linha`, a contagem de arquivos × N, o comando já validado). Critérios (R33 · `fix-run.md` §Elegibilidade): **C5** sem contrato de API, schema, migration, autenticação nem autorização; **C6** no máximo N arquivos de produção (N em `.team-project/README.md`, "Limite de arquivos por Correção (N)"; padrão 5) e nenhum arquivo novo além do teste; **C7** sem dependência nova, mudança de toolchain nem configuração de gate; **C8** causa identificada com `arquivo:linha`.
 4. **Causa (C8):** no **defeito**, parto do `arquivo:linha` que o QA registrou no `pending.md` na reprodução (a ficha aponta a entrada) e **confiro no código** que ele explica o sintoma — o ponto do QA pode ser o sintoma, e a causa estar acima dele; escrevo a linha que eu confirmei. No **ajuste**, a causa é o ponto do código que implementa o requisito **antes** do delta da ficha (já confirmado em formulário). Sem causa confirmada, é investigação, não Correção: `C8 ✘` e promoção.
 5. **`### Arquivos` é lista fechada**, um caminho por linha, entre crases, **relativo à raiz do repositório e com `/`** — é a forma que o C4 compara com o commit da F-ID. `- produção:` só para arquivo que **já existe** (C6); `- teste:` para o arquivo do teste de regressão (pode ser novo). Nada de diretório, curinga nem "e afins". Caminho com espaço não é lido pelo C4: declaro o caso em "Onde parar e perguntar" e aviso a sessão.
-6. **Teste de regressão é o primeiro passo**, e tem de **falhar pela asserção declarada** antes da correção — falha de compilação, de import ou de símbolo ausente não prova o defeito. **Quem prova a falha é o dev, no passo 1, com a saída colada** — eu não escrevo nem rodo o teste no projeto (G8; README §Validar sem escrever no produto). O comando é o de teste do `context.md` do dev **filtrado a este teste**; se o `context.md` não diz como filtrar, isso é configuração faltando e a Correção cai em C7.
+6. **Teste de regressão é o primeiro passo**, e tem de **falhar pela asserção declarada** antes da correção — falha de compilação, de import ou de símbolo ausente não prova o defeito. **Quem prova a falha é o dev, no passo 1, com a saída colada** — eu não escrevo nem rodo o teste no projeto (G8; README §Validar sem escrever no produto). O comando é o de teste do `context.md` do dev **filtrado a este teste**; se o `context.md` não diz como filtrar, isso é configuração faltando e a Correção cai em C7. **`**Mutações:**`:** ao menos uma linha por Correção — o trecho que o passo de correção deixa no arquivo (uma única ocorrência) → o trecho que ele substitui; o teste tem de reprovar com ele. `M<k>` não se repete no bloco. O dev roda `-Mode mutation` depois do `full` do bloco.
 7. **Passos: de 2 a 5**, na ordem teste → correção → teste passando; cada passo com **CRIAR** (só o teste) ou **ALTERAR**, o arquivo, a mudança literal e a linha **Conferência** — a mesma régua da regra 13 do [plano completo](implementation-plan.md): o QA marca conforme/divergente sem julgar desenho.
 8. **Standard aplicável:** só a seção que a mudança toca, com número; "nenhuma" com o motivo. Trecho que lê escopo do usuário ou dado pessoal (não sensível — o sensível já caiu no C4 do PO) cita a seção de `implementation-security-lgpd-copyright.md` aplicável.
 9. **R26 se cumpre por citação:** "Verificação do bloco" cita os comandos de `.team-project/developer/context.md` como estão escritos — já validados no projeto —, sem seção de ambiente medido e **sem chamada ao `operator`** no `fix plan`. Correção que exigiria medir ambiente, mudar toolchain ou escrever comando que o `context.md` não tem **não é elegível** (C7 ✘). Por isso este modelo não tem seção "Execução delegada".
@@ -94,6 +96,8 @@ n/a — sem mudança
 **Nome:** `nascimento_futuro_rejeitado` · **Afirma:** data de nascimento posterior a hoje é rejeitada (RF-07)
 **Comando (só este teste):** `<comando de teste> -t nascimento_futuro_rejeitado`
 **Antes da correção, falha com:** `expected false, received true`
+**Mutações:**
+- M1 · teste `src/cadastro/validacao.test.ts` · `src/cadastro/validacao.ts` · `if (!nascimento || nascimento > hoje())` → `if (!nascimento)`
 ### Passos
 1. **ALTERAR** `src/cadastro/validacao.test.ts` — acrescentar `nascimento_futuro_rejeitado`; rodar → exit ≠ 0
    **Conferência:** teste com o nome literal no arquivo; "antes" mostra `expected false, received true`

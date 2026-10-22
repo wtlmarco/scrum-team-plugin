@@ -212,16 +212,30 @@ try {
 
     # v3.49: o registro do destino se atualiza aqui, sem depender de a sessão lembrar de rodar o consumption.ps1 (no piloto,
     # 33 chamadas da sessão a ~400 mil tokens cada). Roda no mesmo processo, com a saída fora do harness; falha vira linha G16.
-    $cons = Join-Path $PSScriptRoot '..\scripts\checks\consumption.ps1'
-    if ((Test-Path -LiteralPath $cons) -and (Test-Path -LiteralPath (Join-Path $projectDir $dst.dest))) {
+    $checks = Join-Path $PSScriptRoot '..\scripts\checks'
+    function Invoke-Quiet([string]$Script, [hashtable]$ScriptArgs) {
         $prevOut = [Console]::Out; $prevErr = [Console]::Error; $rc = 0
         try {
             [Console]::SetOut([System.IO.TextWriter]::Null); [Console]::SetError([System.IO.TextWriter]::Null)
             $global:LASTEXITCODE = 0
-            & $cons -Root $projectDir -File $dst.dest *> $null
+            & (Join-Path $checks $Script) @ScriptArgs *> $null
             $rc = $LASTEXITCODE
         } catch { $rc = 2 } finally { [Console]::SetOut($prevOut); [Console]::SetError($prevErr) }
+        return $rc
+    }
+    # v3.51.2: o consumption.md do bloco de fix nasce aqui, na primeira rodada do bloco — antes dependia de a sessão lembrar.
+    $blk = [regex]::Match($dst.dest, 'fixes/(B-\d+)/')
+    if ($blk.Success -and -not (Test-Path -LiteralPath (Join-Path $projectDir $dst.dest))) { $null = Invoke-Quiet 'kanban.ps1' @{ Root = $projectDir; Block = $blk.Groups[1].Value; Init = $true } }
+
+    if ((Test-Path -LiteralPath (Join-Path $checks 'consumption.ps1')) -and (Test-Path -LiteralPath (Join-Path $projectDir $dst.dest))) {
+        $rc = Invoke-Quiet 'consumption.ps1' @{ Root = $projectDir; File = $dst.dest }
         if ($rc -ne 0) { Write-GuardLog $projectDir 'G16' $hookInput 'consumo' "consumption.ps1 saiu com $rc ao gravar $($dst.dest) — rode-o à mão antes do close" }
+    }
+    # v3.51.2: o kanban.md (sprint ou bloco) mostra a rodada na hora — papel, modelo, tokens e tempo.
+    if ($blk.Success) { $kargs = @{ Root = $projectDir; Block = $blk.Groups[1].Value } } elseif ($dst.sprint) { $kargs = @{ Root = $projectDir } } else { $kargs = $null }
+    if ($kargs) {
+        $rc = Invoke-Quiet 'kanban.ps1' $kargs
+        if ($rc -ne 0) { Write-GuardLog $projectDir 'G16' $hookInput 'kanban' "kanban.ps1 saiu com $rc — rode-o à mão: scripts/checks/kanban.ps1 $(if ($kargs.Block) { '-Block ' + $kargs.Block })" }
     }
     exit 0
 } catch {

@@ -13,6 +13,18 @@
 
 ---
 
+## v3.51.2 — 2026-10-22
+
+**Branch:** `fix/v3.51.2` a partir de `develop` · **Processo:** entrada v3.51.2 do changelog do processo (`/review note`, itens 1–10)
+Relato de uso da trilha `fix` na v3.51.1: oito comandos barrados por guardas do próprio plugin e uma conferência que reprovou por formato. Mais dois pedidos de acompanhamento (Kanban só em Markdown, com o gasto por rodada; Kanban do bloco de fix).
+
+- **G14 (`hooks/pre-tool.ps1`):** a conferência do plugin (`verify.ps1` e as demais de `scripts/checks/`) passa também dentro de comando composto e com `-ExecutionPolicy Bypass`, mas **só dentro da pasta do plugin** (antes passava qualquer caminho terminado em `scripts/checks/*.ps1`, inclusive do projeto). `$env:TEMP` no destino se resolve (criar pasta no scratchpad). A negação de `cmd /c` diz para rodar o comando direto. Executar arquivo do scratchpad continua negado: contornaria a G8 e a G9.
+- **Kanban em Markdown (`scripts/checks/kanban.ps1`, novo; sai o `kanban-html.ps1` e o `kanban.html`):** o `kanban.md` do sprint ganha a seção `## Rodadas`, regravada ao fim de cada rodada de agente (hook G16): por tarefa e fase (Plano · Construção · Verificação · Outros, em tokens e tempo, com o consolidado), por papel e modelo, e rodada a rodada. O bloco de fix ganha `fixes/B-<nnn>/kanban.md`, com as colunas do sprint, o Registro de transições e as mesmas Rodadas. Script: não custa token.
+- **`consumption.md` do bloco:** nasce com `kanban.ps1 -Block B-<nnn> -Init` no fix plan e, como rede, na primeira rodada do bloco (G16).
+- **`verify.ps1 -Mode mutation`:** lê os blocos **Mutações:** de todas as F-IDs do mini-plano e usa `- produção:`/`- teste:` como escopo. O `fix-plan.md` ganha o campo.
+- **Roteiros:** dev com o comando completo do `verify.ps1`; o Arquiteto não executa nada no run (valida lendo, ou "não validado — o dev confirma"); promoção sem escrita na ficha fora do PO; modelo do veredito com o formato que o C4 lê. Detalhe no changelog do processo.
+- **Testes:** guardas 189 casos, conferências 140 casos, 0 falhas.
+
 ## v3.51.1 — 2026-10-21
 
 **Branch:** `fix/v3.51.1` a partir de `develop` · **Processo:** sem mudança

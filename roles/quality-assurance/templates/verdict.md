@@ -168,6 +168,7 @@ Regras da variante:
 
 - **Uma seção `## QA — F-<nnn> …` por F-ID** do bloco, na ordem do `plan.md`; `### Teste de regressão`, `### Escopo` e `### Documentos vivos (R12)` dentro de cada uma. Frentes 2 parcial, 5 e 6 são "n/a — trilha fix (R33)" **exceto** nas condições da própria linha (ajuste; operação de V18–V21).
 - **Teste de regressão é piso, não ressalva:** `Antes` com exit ≠ 0 (saída do dev) **e** `Depois` com exit 0 (saída do QA, rodada por mim) — sem os dois, o veredito da F-ID não é ✅ (R7, `workflow.md` §8). Defeito sem teste que falhava antes é ❌.
+- **Formato lido pelo C4 (`scripts/checks/fix.ps1`, R33/3):** sob `**Antes:**` e `**Depois:**` ele conta as linhas que começam com `> ` seguido do comando (precisa de 2 no total) e lê `exit <n>` na própria linha do rótulo; a saída vai **nas linhas seguintes**, em bloco cercado, nunca na mesma linha. Certo: `**Antes:** exit 1` · `> npm test -- foo` · bloco cercado com a saída. Errado: `**Antes:** exit 1 — FAIL foo…` com tudo na mesma linha (o C4 conta 0 comando).
 - **Regressivos e suíte do módulo: uma vez por bloco**, não por F-ID; suíte inteira só pelo `operator`, quando o contexto do QA a exige para o módulo (R28). Falha atribuível a uma F-ID reprova **aquela** F-ID.
 - **Defeito funcional achado** (regressivo falhou, borda não coberta) vira `SC-nnn` na suíte de cenários (`scenario.md`), com o roteamento pelo bloqueio de sempre.
 - **`## Fechamento` é gravado pela sessão** (passo final do `fix run`, depois do C4), não por mim; eu entrego os vereditos. Fechado, nada mais é gravado na pasta.

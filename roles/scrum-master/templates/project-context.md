@@ -16,7 +16,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 ├── fixes/                    F-<nnn>.md (ficha, PO) e B-<nnn>/ (bloco: plan.md · consumption.md · verdict.md) — nasce na primeira Correção
 ├── sprints/                  registro de execução, um subdiretório por sprint
 │   └── <n>/                  planning.md · sprint-backlog.md · stories/ · plan/ · evidence/
-│                             consumption.md · kanban.md (+ kanban.html) · review.md · retrospective.md · plugin-report.md
+│                             consumption.md · kanban.md · review.md · retrospective.md · plugin-report.md
 ├── scrum-master/             context.md
 ├── product-owner/            context.md · product-backlog.md
 ├── architect/                context.md · spikes/ · calibration/ *(sob demanda: plano de calibração, sem sprint corrente)*

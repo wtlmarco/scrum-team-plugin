@@ -521,7 +521,7 @@ try {
             $regNote = ' · Registro no sprint-backlog.md (quadro anterior à v3.44.1 — o /team update o leva ao burndown)'
         }
         [System.IO.File]::WriteAllText($bdPath, ($lines -join $bnl), $utf8)
-        try { $null = & (Join-Path $PSScriptRoot 'kanban-html.ps1') -Root $Root 2>&1 } catch { }   # v3.51 (G2): o Kanban visual acompanha o fechamento
+        try { $null = & (Join-Path $PSScriptRoot 'kanban.ps1') -Root $Root 2>&1 } catch { }   # v3.51.2: o Kanban (Markdown) acompanha o fechamento
 
         # 3 · o -Post confere o que acabou de ser gravado
         [Console]::Out.WriteLine('')

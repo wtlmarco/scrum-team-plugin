@@ -99,7 +99,7 @@ try {
     [System.IO.File]::WriteAllText($boardPath, ($bl -join $nl), $utf8)
     [System.IO.File]::WriteAllText($bdPath, ($lines -join $bnl), $utf8)
     [Console]::Out.WriteLine("mark: $Task $from → $target · quadro, Série e Registro gravados (Registro em $where; por quem: $By)")
-    try { $null = & (Join-Path $PSScriptRoot 'kanban-html.ps1') -Root $Root 2>&1 } catch { }   # v3.51 (G2): o Kanban visual acompanha a transição
+    try { $null = & (Join-Path $PSScriptRoot 'kanban.ps1') -Root $Root 2>&1 } catch { }   # v3.51.2: o Kanban (Markdown) acompanha a transição
     exit 0
 } catch {
     [Console]::Error.WriteLine("mark: erro — $($_.Exception.Message)")
