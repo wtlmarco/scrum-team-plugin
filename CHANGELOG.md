@@ -13,6 +13,15 @@
 
 ---
 
+## v3.51.3 — 2026-10-22
+
+**Branch:** `fix/v3.51.3` a partir de `develop` · **Processo:** addendum v3.51.3 do changelog do processo (`/review note`)
+O kanban do bloco de fix só mudava o estado da F-ID depois que a rodada terminava; durante a rodada do dev a F-ID seguia em ⬜.
+
+- **`kanban.ps1 -Block B-<nnn> -Fid F-<n> -To plan|build|qa`:** marca a F-ID na entrada da fase (`fixes/B-<nnn>/.marks`) e regrava o `kanban.md` na hora; as rodadas (G16) só confirmam o estado e somam custo.
+- **Roteiro (`fix-run.md`) e modelo (`templates/kanban.md`):** a sessão marca a fase antes de acionar dev, Arquiteto ou QA numa F-ID.
+- **Testes:** guardas 189 casos, conferências 140 casos, 0 falhas. Sem caso novo para o `-Fid`/`-To` (verificado à mão).
+
 ## v3.51.2 — 2026-10-22
 
 **Branch:** `fix/v3.51.2` a partir de `develop` · **Processo:** entrada v3.51.2 do changelog do processo (`/review note`, itens 1–10)
