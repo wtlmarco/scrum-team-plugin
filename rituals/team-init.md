@@ -22,7 +22,7 @@ A partir de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/project-context.
 ├── guards.json               configuração das guardas (hooks/COVERAGE.md) — cópia de deliverables/team-project/guards.json (se já existir semeado, fica como está)
 ├── sprints/                  registro de execução — um subdiretório por sprint; nasce vazio
 │   └── <n>/                  planning.md · sprint-backlog.md · stories/ · plan/ · evidence/
-│                             consumption.md · kanban.md (+ kanban.html) · review.md · retrospective.md · plugin-report.md
+│                             consumption.md · kanban.md · review.md · retrospective.md · plugin-report.md
 ├── scrum-master/             context.md
 ├── product-owner/            context.md · product-backlog.md
 ├── architect/                context.md · spikes/

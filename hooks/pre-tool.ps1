@@ -122,7 +122,7 @@ function Test-G19([object]$ToolInput) {
 # $d = Join-Path $raiz "x" (com $raiz já resolvida). Outra forma não se resolve — o destino fica de fora, como antes.
 function Get-CommandVars([string]$Cmd) {
     $vars = @{}
-    $q = '(?:''([^'']*)''|"([^"$`]*)")'
+    $q = '(?:''([^'']*)''|"((?:\$env:(?:TEMP|TMP)\b)?[^"$`]*)")'   # v3.51.2: "$env:TEMP\…" (scratchpad) se resolve
     foreach ($m in [regex]::Matches($Cmd, '\$(\w+)\s*=\s*(?:Join-Path\s+(\(Get-Location\)(?:\.Path)?|\$PWD|\$\w+)\s+' + $q + '|' + $q + ')\s*(?=;|\r?\n|$)')) {
         $name = $m.Groups[1].Value.ToLowerInvariant()
         if ($m.Groups[2].Success) {
@@ -135,7 +135,15 @@ function Get-CommandVars([string]$Cmd) {
             } else { $vars[$name] = $lit }                     # (Get-Location) / $PWD: relativo à pasta corrente
         } else { $vars[$name] = $m.Groups[5].Value + $m.Groups[6].Value }
     }
+    foreach ($k in @($vars.Keys)) { $vars[$k] = Expand-TempVar ([string]$vars[$k]) }
     return $vars
+}
+
+# v3.51.2: $env:TEMP / $env:TMP no começo do caminho vira a pasta temporária — o scratchpad da sessão fica lá.
+function Expand-TempVar([string]$Text) {
+    if ($Text -notmatch '^(?i)\$env:(TEMP|TMP)\b') { return $Text }
+    $tmp = [Environment]::GetEnvironmentVariable($Matches[1]); if (-not $tmp) { $tmp = [System.IO.Path]::GetTempPath() }
+    return $tmp.TrimEnd('\', '/') + $Text.Substring($Matches[0].Length)
 }
 
 # Alvos de escrita num comando PowerShell (heurística: cmdlets de escrita e redirecionamento). v3.48: o texto entre aspas
@@ -174,7 +182,7 @@ function Get-WriteTargets([string]$Cmd, [hashtable]$Vars = $null) {
     }
     # Variável do mesmo comando ($dir, "$dir\x.log"): troca pelo literal; o que sobrar com $ não se resolve.
     $targets = @($targets | ForEach-Object {
-        $t = [string]$_
+        $t = Expand-TempVar ([string]$_)
         if ($t -match '\$') { $t = [regex]::Replace($t, '\$\{?(\w+)\}?', { param($m) $k = $m.Groups[1].Value.ToLowerInvariant(); if ($Vars.ContainsKey($k)) { $Vars[$k] } else { $m.Value } }) }
         $t
     })
@@ -387,7 +395,28 @@ function Test-RunTargets([string]$Seg) {
     return $true
 }
 
+# v3.51.2: conferência do próprio plugin (scripts/checks/*.ps1) — sozinha ou como trecho de comando composto
+# (Set-Location …; $log = …; powershell -File …), com opção que leva valor (-ExecutionPolicy Bypass). Só vale o script
+# dentro da pasta do plugin: antes, qualquer caminho terminado em scripts/checks/*.ps1 passava, inclusive um do projeto.
+function Test-PluginCheck([string]$Seg) {
+    $m = [regex]::Match($Seg.Trim(), '^(?i)(?:&\s*)?(?:powershell|pwsh)(?:\.exe)?\s+(?:-(?!file\b)\w+(?:\s+(?!-)[\w.]+)?\s+)*-File\s+(?:"([^"]+)"|''([^'']+)''|(\S+))')
+    if (-not $m.Success) { return $false }
+    $p = Expand-TempVar ($m.Groups[1].Value + $m.Groups[2].Value + $m.Groups[3].Value)
+    if ($p -match '\$' -or $p -notmatch '(?i)\.ps1$') { return $false }
+    try { $full = Normalize-PathText ([System.IO.Path]::GetFullPath($p)) } catch { return $false }
+    foreach ($r in @($env:CLAUDE_PLUGIN_ROOT, (Split-Path $PSScriptRoot -Parent))) {
+        if ([string]::IsNullOrWhiteSpace($r)) { continue }
+        $base = (Normalize-PathText ([System.IO.Path]::GetFullPath($r))).TrimEnd('/') + '/scripts/checks/'
+        if ($full.StartsWith($base) -and $full.Substring($base.Length) -notmatch '/') { return $true }
+    }
+    return $false
+}
+
 function Test-RunSegment([string]$Seg, [string[]]$Allowed) {
+    if (Test-PluginCheck (Restore-Quoted $Seg)) {
+        if ($Seg -match '(^|\s)[\d*]?>{1,2}(?!&)\s*[^\s$]') { return (Test-RunTargets $Seg) }   # saída para arquivo
+        return $true
+    }
     $s = $Seg.Trim()
     $s = $s -replace '^(?i)(if|elseif|else|foreach|for|while|switch|try|catch|finally|return|do)\b\s*', ''
     $s = $s -replace '^\$[\w:.]+\s*[-+]?=\s*', ''
@@ -437,7 +466,8 @@ function Test-G14([object]$ToolInput) {
         Deny 'G14' 'run_in_background' "comando em segundo plano durante o run: o papel fica parado esperando a notificação, e a chamada que o disparou pode voltar 'interrupted'. Rode em primeiro plano com timeout; execução longa (build, suíte, cobertura) vai ao operator (R28)."
     }
     # Conferências C1–C4 (scripts/checks/*.ps1); v3.48: com 2>&1, *> arquivo ou | Out-String no fim (a regex excluía "&").
-    if ($cmd -match '^\s*(?i)(powershell|pwsh)(\.exe)?\s+(-\w+\s+)*-File\s+"?[^";|&]*[\\/]scripts[\\/]checks[\\/][\w-]+\.ps1"?([^;|&]|[*\d]?>&1)*(\|\s*Out-String\s*)?$') { return $true }
+    # v3.51.2: só o script dentro da pasta do plugin (Test-PluginCheck); composto com ele passa pelos trechos, abaixo.
+    if ($cmd -match '^\s*(?i)(powershell|pwsh)(\.exe)?\s+(-\w+\s+)*-File\s+"?[^";|&]*[\\/]scripts[\\/]checks[\\/][\w-]+\.ps1"?([^;|&]|[*\d]?>&1)*(\|\s*Out-String\s*)?$' -and (Test-PluginCheck $cmd)) { return $true }
     $why = 'fora da lista operacional do run'
     if ($cmd -match '(?i)--no-verify|\bInvoke-Expression\b|\biex\b|-EncodedCommand|\bStart-Process\b|\[(System\.)?IO\.(File|Directory)\]::(Write|Append|Delete|Move|Copy|Replace|Create)') { $why = 'construção que a G14 não libera (--no-verify, Invoke-Expression, Start-Process, escrita por .NET)' }
     else {
@@ -453,9 +483,12 @@ function Test-G14([object]$ToolInput) {
         foreach ($seg in ($flat -split '\$\(|;|&&|\|\||\||\r?\n|[{}()]')) { if (-not (Test-RunSegment $seg $allowed)) { $ok = $false; $badSeg = (Restore-Quoted $seg).Trim(); break } }
         if ($ok) { return $true }
         if (@($cfg.runCommands).Count -eq 0) { return $false }        # projeto sem runCommands: o harness decide, como antes
+        $plugCheck = $badSeg -match '^(?i)(&\s*)?(powershell|pwsh)(\.exe)?\s.*-File\s.*[\\/]scripts[\\/]checks[\\/]'   # antes do corte
         if ($badSeg.Length -gt 80) { $badSeg = $badSeg.Substring(0, 80) + '…' }
         if ($badSeg -match '^(?i)start-sleep\b') { $why = "espera com Start-Sleep durante o run (``$badSeg``) — o papel fica parado consumindo contexto. Não espere processo: rode o comando em primeiro plano, com timeout; execução longa (build, suíte, cobertura) vai ao operator, em primeiro plano (R28)" }
         elseif ($badSeg -match '^(?i)(robocopy|xcopy)\b') { $why = "cópia em massa (``$badSeg``) — réplica do projeto para medir ou provar é trabalho do operator, na pasta do job (R28)" }
+        elseif ($badSeg -match '^(?i)cmd(\.exe)?\s+/[ck]\b') { $why = "``cmd /c`` em volta do comando (``$badSeg``) — a G14 não lê o que está dentro do cmd. Rode o comando direto, sem ``cmd /c``: o prefixo de runCommands passa sozinho" }
+        elseif ($plugCheck) { $why = "script de conferência fora da pasta do plugin (``$badSeg``) — só os de `${CLAUDE_PLUGIN_ROOT}/scripts/checks/ passam; use o caminho que o roteiro cita" }
         elseif ($badSeg -match '^__metodo_(\w+)') { $why = "fora da lista operacional do run — chamada de método .$($Matches[1])() sobre o resultado de um comando; a G14 só libera propriedade (.Count, .Length, .Lines) — para escrever ou apagar, use o cmdlet" }
         else { $why = "fora da lista operacional do run — o trecho recusado é ``$badSeg``" + $(if ($badSeg -ne $cmd.Trim()) { ' (os outros trechos do comando composto passaram; rode esse trecho sozinho ou troque a forma)' } else { '' }) }
     }

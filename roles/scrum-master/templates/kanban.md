@@ -3,17 +3,25 @@
 > **Dono:** SM · Vive em `.team-project/sprints/<n>/kanban.md` (v3.51; até a v3.50, `burndown.md`, sem o Kanban nem o controle — sprint aberto antes continua com ele, e os scripts leem os dois).
 > **Um arquivo para acompanhar o sprint** (pedido do stakeholder, 2026-10-21): primeiro **onde cada Task está** (o Kanban), depois **quanto falta** (o Burndown: Série e Registro de transições) e, embaixo, **o controle** — o que entrou fora da Planning, o que está bloqueado e o que espera o stakeholder. O `sprint-backlog.md` fica só com as Histórias e as Tasks.
 > Nasce no `/sm sprint plan` (linha de abertura, dia 0 — **a data da aprovação do pacote de abertura**, não a do fechamento da Planning · R25), ganha **uma linha na Série e uma no Registro a cada transição de marcador** — no `sprint run`, gravadas pelo `mark.ps1` e pelo `close.ps1 -Apply` no momento da passagem ([`sprint-run.md`](../process/sprint-run.md) §Marcador); fora dele, no `/sm board` e no `/sm close <T-ID>` (R24) —, e **fecha** — sem mais edição — no `/sm sprint close`.
-> **Página visual (v3.51, G2):** a cada transição, `scripts/checks/kanban-html.ps1` regrava `sprints/<n>/kanban.html` a partir deste arquivo, do quadro e do consumo — colunas do Kanban, gráfico do burndown, bloqueios e consumo por papel, atualizando sozinha no navegador. É script: **não custa token**.
+> **Só Markdown (v3.51.2):** não há página HTML. `scripts/checks/kanban.ps1` regrava o `## Kanban` e a `## Rodadas` — ao fim de cada rodada de agente (hook G16) e a cada transição (`mark.ps1`, `close.ps1`). É script: **não custa token**.
+> **Bloco de fix:** `fixes/<B-nnn>/kanban.md`, gerado **inteiro** por `kanban.ps1 -Block B-<nnn>` (`-Init` no `fix plan`) — ver a variante no fim.
 
 ```markdown
 # Kanban — Sprint <n>
 
 ## Kanban
-*(Regravado pelo `kanban-html.ps1` a cada transição — não editar à mão.)*
+*(Regravado pelo `kanban.ps1` — não editar à mão.)*
 
 | ⬜ A fazer | 🟦 Plano | 🟨 Construção | 🟪 Verificação | ✅ Fechada | 🔴 Bloqueada |
 |---|---|---|---|---|---|
 | T-<nnn> | | | | | |
+
+## Rodadas
+*(Regravada pelo `kanban.ps1` ao fim de cada rodada — não editar à mão. Custo = tokens e tempo, sem valor em dinheiro.)*
+
+- **Por tarefa e fase:** Plano (Arquiteto) · Construção (dev) · Verificação (QA + operator) · Outros (PO, SM, UX) — `tokens · tempo`, e a linha Consolidado.
+- **Por papel e modelo:** uma linha por par, com o Total.
+- **Rodada a rodada:** uma linha por rodada (data e hora, Task ou F-ID, papel, modelo, tokens, tempo), a mais nova primeiro.
 
 ## Linha de base
 
@@ -70,10 +78,14 @@
 - **Uma transição = uma linha no Registro + uma linha na Série, no mesmo arquivo e no mesmo momento.** O **Evento** da Série cita a Task e a passagem (`T-041 🟦 → 🟨`). Sprint sem eventos num dia não gera linha vazia — o burndown é por evento.
 - **Est. restante só cai quando uma Task fecha (✅).** Passar a 🟦/🟨/🟪 não reduz o restante — muda a composição das colunas de estado.
 - **O dia 0 é a aprovação do pacote, não o fim da Planning** (R25 · [`../process/workflow-sprint.md` §5f](../process/workflow-sprint.md)).
-- **O Kanban e o `kanban.html` são gerados** — editar à mão é perder a edição na próxima transição. O controle (Entradas, Bloqueios, Decisões) é do SM, escrito à mão.
+- **O Kanban e as Rodadas são gerados** — editar à mão é perder a edição na próxima rodada ou transição. O controle (Entradas, Bloqueios, Decisões) é do SM, escrito à mão.
 - **Fechado no `/sm sprint close`.** A última linha da Série é a foto final; nenhuma edição depois.
 - **Conferido no `close`.** O `close.ps1 -Post` (C1) exige a linha → ✅ no Registro, as passagens da Task e, na Série, uma linha para cada transição dela. Sprint aberto antes da v3.44.1, com o Registro no Sprint Backlog, é lido de lá; antes da v3.51, do `kanban.md`.
 
 ## Custo — declarado, não escondido
 
-Este artefato **reaproveita** o que já acontece: no `sprint run`, os scripts gravam a transição sem disparar agente; fora dele, a leitura que o `/sm board` já faz. O HTML é gerado por script, sem modelo. **Rodar `/sm board` só para alimentar o gráfico inverte o custo-benefício.**
+Este artefato **reaproveita** o que já acontece: no `sprint run`, os scripts gravam a transição sem disparar agente; fora dele, a leitura que o `/sm board` já faz. O Kanban e as Rodadas são gerados por script, sem modelo. **Rodar `/sm board` só para alimentar o gráfico inverte o custo-benefício.**
+
+## Variante — bloco de fix (`fixes/B-<nnn>/kanban.md`)
+
+Gerado **inteiro** pelo `kanban.ps1 -Block B-<nnn>` (`-Init` no `fix plan`, junto com o `consumption.md` do bloco; a G16 cria os dois na primeira rodada se faltarem). Seções: **Kanban** das F-IDs, com as **mesmas colunas do sprint**; **Registro de transições**, derivado das rodadas (dev → 🟨, Arquiteto na F-ID → 🟦, QA → 🟪; fechamento do `verdict.md` → ✅, com "(promovida)" ou "(devolvida)" como nota; "Critério que caiu" → 🔴 "(promoção)"); **Rodadas**, como acima. Sem Série, burndown nem Controle. Com `**Fechado em:**` no `verdict.md`, o script não regrava mais (a pasta é imutável).

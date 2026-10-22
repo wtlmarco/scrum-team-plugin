@@ -129,20 +129,32 @@ function Get-MutationVerdict($Run) {
 }
 
 # Mutações do plano (v3.46): "- M<k> · teste `<arquivo de teste>` · `<arquivo de produção>` · `<trecho exato>` → `<trecho mutante>`".
+# v3.51.2: todos os blocos **Mutações:** do arquivo — o mini-plano do fix tem um por F-ID.
 function Get-Mutations([string]$PlanText) {
-    $list = @(); $in = $false
+    $list = @(); $in = $false; $got = 0
     foreach ($line in ($PlanText -split "`r?`n")) {
-        if ($line -match '^\*\*Muta[çc][õo]es:\*\*') { $in = $true; continue }
+        if ($line -match '^\*\*Muta[çc][õo]es:\*\*') { $in = $true; $got = 0; continue }
         if (-not $in) { continue }
         if ($line -match '^\s*-\s') {
             $m = [regex]::Match($line, '^\s*-\s*(M\d+)\b.*?`([^`]+)`.*?`([^`]+)`.*?`([^`]*)`\s*→\s*`([^`]*)`')
-            if ($m.Success) { $list += @{ Id = $m.Groups[1].Value; Test = $m.Groups[2].Value.Trim(); File = $m.Groups[3].Value.Trim(); Find = $m.Groups[4].Value; Replace = $m.Groups[5].Value } }
+            if ($m.Success) { $list += @{ Id = $m.Groups[1].Value; Test = $m.Groups[2].Value.Trim(); File = $m.Groups[3].Value.Trim(); Find = $m.Groups[4].Value; Replace = $m.Groups[5].Value }; $got++ }
             continue
         }
-        if ($line.Trim() -eq '' -and $list.Count -eq 0) { continue }
-        break
+        if ($line.Trim() -eq '' -and $got -eq 0) { continue }
+        $in = $false
     }
     return $list
+}
+
+# Escopo do plano: **Arquivos tocados:**; no mini-plano do fix (v3.51.2), os caminhos de "- produção:" e "- teste:" de
+# todas as F-IDs — a mesma regra da G9 na trilha fix.
+function Get-PlanScope([string]$PlanText) {
+    $norm = { param($p) ($p.Trim() -replace '\\', '/') -replace '^\./', '' }
+    $m = [regex]::Match($PlanText, '(?s)\*\*Arquivos tocados:\*\*(.*?)(?:\r?\n[ \t]*\r?\n|\r?\n#|\z)')
+    if ($m.Success) { return @([regex]::Matches($m.Groups[1].Value, '`([^`]+)`') | ForEach-Object { & $norm $_.Groups[1].Value }) }
+    $out = @()
+    foreach ($l in [regex]::Matches($PlanText, '(?m)^\s*-\s*(?:produ[çc][ãa]o|teste):(.*)$')) { $out += @([regex]::Matches($l.Groups[1].Value, '`([^`]+)`') | ForEach-Object { & $norm $_.Groups[1].Value }) }
+    return $out
 }
 
 # Escrita temporária em produto: restaura o que uma execução interrompida deixou mutado, antes de qualquer coisa.
@@ -205,8 +217,7 @@ try {
             $done = @(@($prev.mutation.items) | Where-Object { ([string]$_.result) -match '^(ok|falhou)\b' } | ForEach-Object { [string]$_.id })
             $muts = @($muts | Where-Object { $done -notcontains $_.Id })
         }
-        $scopeM = [regex]::Match($planText, '(?s)\*\*Arquivos tocados:\*\*(.*?)(?:\r?\n[ \t]*\r?\n|\r?\n#|\z)')
-        $scope = @(); if ($scopeM.Success) { $scope = @([regex]::Matches($scopeM.Groups[1].Value, '`([^`]+)`') | ForEach-Object { ($_.Groups[1].Value.Trim() -replace '\\', '/') -replace '^\./', '' }) }
+        $scope = @(Get-PlanScope $planText)
         New-Item -ItemType Directory -Force $dir | Out-Null
         $items = @(); $pending = @()
         $budget = [System.Diagnostics.Stopwatch]::StartNew(); $lastSec = 0; $ranAny = $false

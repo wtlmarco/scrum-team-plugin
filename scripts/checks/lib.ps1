@@ -289,7 +289,7 @@ function Exit-TargetLock([string]$Root) {
     if (Test-Path -LiteralPath $lp) { try { $l = Read-Text $lp | ConvertFrom-Json; if ([int]$l.pid -eq $PID) { Remove-Item -LiteralPath $lp -Force } } catch { Remove-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue } }
 }
 
-# Quadro do sprint (v3.51; run.ps1 e kanban-html.ps1): Histórias e Tasks (marcador, depende de, plano, cenários).
+# Quadro do sprint (v3.51; run.ps1 e kanban.ps1): Histórias e Tasks (marcador, depende de, plano, cenários).
 function Get-SprintTasks([string]$S) {
     $board = Read-Text (Join-Path $S 'sprint-backlog.md')
     $tdMk = [char]::ConvertFromUtf32(0x2B1C); $rdMk = [char]::ConvertFromUtf32(0x1F534)

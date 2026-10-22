@@ -129,7 +129,7 @@ try {
 
     foreach ($dest in $dests) {
         $path = Join-Path $Root $dest
-        if (-not (Test-Path -LiteralPath $path)) { [Console]::Out.WriteLine("consumo: $dest não existe — o registro nasce no sprint plan, no fix plan ou no /team init; linhas medidas ficam no usage.jsonl."); continue }
+        if (-not (Test-Path -LiteralPath $path)) { [Console]::Out.WriteLine("consumo: $dest não existe — linhas medidas ficam no usage.jsonl. Bloco de fix: a G16 o cria na primeira rodada (kanban.ps1 -Block B-<nnn> -Init); sprint: nasce no sprint plan; fora de sprint: no /team init."); continue }
         if (Test-Closed $dest) { [Console]::Out.WriteLine("consumo: $dest está fechado — nenhuma linha nova (templates/consumption.md)."); continue }
         $text = Read-Text $path
         $storyMap = @{}

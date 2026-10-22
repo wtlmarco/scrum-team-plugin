@@ -237,6 +237,17 @@ $cases = @(
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:scrum-master'; tool_input = @{ command = "powershell -NoProfile -File `"$root\scripts\checks\close.ps1`" -Task T-001" } } },
     @{ Name = 'G14 dev roda verify.ps1 no run (v3.45.1)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "powershell -NoProfile -File `"$root\scripts\checks\verify.ps1`" -Task T-001 -Mode focused -Tests src/a.spec.ts src/b.spec.ts" } } },
+    # ---------- v3.51.2 — negações do fix run (note.md itens 1, 2 e 3) ----------
+    @{ Name = 'G14 verify.ps1 do plugin dentro de comando composto liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'Set-Location src; $log = "verify.log"; powershell -NoProfile -ExecutionPolicy Bypass -File "' + $root + '\scripts\checks\verify.ps1" -Task B-001 -Mode full 2>&1 | Select-Object -Last 30' } } },
+    @{ Name = 'G14 script scripts/checks fora da pasta do plugin negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'fora da pasta do plugin'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'powershell -NoProfile -File "' + $proj + '\scripts\checks\verify.ps1" -Task B-001 -Mode full' } } },
+    @{ Name = 'G14 cmd /c em volta de comando liberado: nega com a forma certa'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'Rode o comando direto'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'Set-Location src; cmd /c "npm test -- --watch=false"' } } },
+    @{ Name = 'G14 Arquiteto cria pasta no scratchpad por $env:TEMP'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:architect'; tool_input = @{ command = '$d = "$env:TEMP\claude\x\scratchpad\f003"; New-Item -ItemType Directory -Force $d' } } },
+    @{ Name = 'G14 Arquiteto executa arquivo do scratchpad: negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:architect'; tool_input = @{ command = 'node "$env:TEMP\claude\x\scratchpad\f003\gap1.js"' } } },
     # ---------- v3.47.1 — G14: propriedade entre parênteses, método negado, git branch de leitura, --version, trecho citado ----------
     @{ Name = 'G14 (Get-Content f).Count liberado (teto do report do operator)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = '(Get-Content .team-project/operator/1/T-001/report.md).Count; (Get-Item .team-project/operator/1/T-001/report.md).Length' } } },
