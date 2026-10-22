@@ -134,6 +134,17 @@ Suítes: guardas e conferências (contagem na entrega), C3, `claude plugin valid
 
 Autorização de custo da Etapa 6a (P+ no SunScape). API e Windows desktop no executor de cenários: próximo incremento.
 
+### Addendum v3.51.3 — kanban do bloco de fix marcado na entrada de cada fase (SM) — 22/10/2026
+
+**Instrução** (stakeholder, `note.md`): "o kanban do sprint e do fix devem ser atualizado a cada transição de fase de trabalho para verdadeiramente indicar o status da evolução das tarefas". No sprint o quadro já acompanha cada transição (`mark.ps1`, `close.ps1`, G16); no bloco de fix o estado da F-ID era deduzido de rodadas **concluídas**, então ficava em ⬜ durante a rodada do dev.
+**Classificação:** fluxo da trilha `fix` (roteiro SM) · formato de documento (`kanban.md`) · script alterado (`kanban.ps1`, aplicado pelo stakeholder). **Sem regra nova** (34).
+
+- `kanban.ps1 -Block B-<nnn> -Fid F-<n> -To plan|build|qa` marca a F-ID na **entrada** da fase (`fixes/B-<nnn>/.marks`) e regrava na hora; as rodadas (G16) só confirmam o estado e somam custo.
+- `fix-run.md`: **Marca de fase** no preâmbulo do §Run (antes de acionar dev, Arquiteto ou QA; QA uma chamada por F-ID), `-To plan` no passo 4 do §Plan, fechamento sem `-Fid`.
+- `templates/kanban.md`: variante do bloco marca na entrada de cada fase (fechamento e "Critério que caiu" seguem derivados); notas dizem "a cada transição e ao fim de cada rodada"; histórico de versão enxugado do cabeçalho.
+- **Indicador:** no próximo `fix run`, cada F-ID tem a marca de entrada (🟦/🟨/🟪) no `kanban.md` antes da primeira rodada da fase.
+- **Evidência (R19):** `release.ps1` (C3) ok, conferências 140/0, guardas 189/0; `-Fid F-1 -To build` em bloco de teste moveu a F-ID ⬜ → 🟨 com "marca na entrada da fase", e F-ID fora do plano foi recusada.
+
 ### Addendum v3.51.2 — relato de uso do `fix` e um quadro só (SM + Arquiteto + Dev + QA + PO) — 22/10/2026
 
 **Instrução** (stakeholder, 21 e 22/10/2026, `note.md`, itens 1–10 e decisões em formulário): resolver, pela opção que **não aumenta o gasto**, o que a v3.51.1 mostrou na trilha `fix` (negações da G14 ao dev e ao Arquiteto, ficha negada pela G8, veredito reprovado pelo C4 por formato, `consumption.md` do bloco que não nasce, `verify -Mode mutation` que não rodou) e dar ao sprint e ao bloco **um quadro só**, em Markdown, com o gasto de cada rodada. Hooks, scripts, versão e CHANGELOG aplicados direto nesta rodada.
@@ -149,7 +160,6 @@ Autorização de custo da Etapa 6a (P+ no SunScape). API e Windows desktop no ex
 - **Item 7.** `kanban.ps1 -Block B-<nnn> -Init` cria a pasta, o `consumption.md` e o `kanban.md` do bloco no passo 2 do `fix plan`; o hook G16 (`subagent-stop.ps1`) os cria na primeira rodada se faltarem (rede).
 - **Item 8.** `fix-plan.md` ganha `**Mutações:**` por F-ID no formato do `verify.ps1`; o `-Mode mutation` lê todos os blocos e, sem `**Arquivos tocados:**`, usa `- produção:`/`- teste:` como escopo; o dev o roda depois do `full` do bloco.
 - **Itens 9 e 10 — um quadro só.** `kanban.html` e `kanban-html.ps1` **saem do plugin**. O `kanban.ps1` regrava, ao fim de cada rodada (G16) e a cada transição (`mark.ps1`, `close.ps1`), o `## Kanban` e a nova `## Rodadas` do `sprints/<n>/kanban.md` — por tarefa e fase (Plano · Construção · Verificação · Outros), por papel e modelo, e rodada a rodada, **custo = tokens e tempo** — e o `fixes/B-<nnn>/kanban.md` **inteiro** (F-IDs nas colunas do sprint; promovida e devolvida como nota no Registro). `fix-run.md` §Fechamento roda `kanban.ps1 -Block` uma vez depois do `## Fechamento`. Documentos: `templates/kanban.md` (seção Rodadas e variante do bloco), `artifact-ownership.md` §1 (bloco), `project-context.md`, `how-to.md`, `rituals/team-init.md` sem o `kanban.html`.
-- **Item 11 — kanban a cada transição de fase** (stakeholder, `note.md`: "o kanban do sprint e do fix devem ser atualizados a cada transição de fase"). `kanban.ps1 -Block B-<nnn> -Fid F-<n> -To plan|build|qa` (script, já aplicado pelo stakeholder/sessão) marca a F-ID na **entrada** da fase (`fixes/B-<nnn>/.marks`) e regrava na hora. `fix-run.md`: nova **Marca de fase** no preâmbulo do §Run (antes de acionar dev, Arquiteto ou QA; QA uma chamada por F-ID), `-To plan` no passo 4 do §Plan, fechamento sem `-Fid`. `templates/kanban.md`: variante do bloco marca na entrada de cada fase (fechamento e "Critério que caiu" seguem derivados); notas dizem "a cada transição e ao fim de cada rodada"; histórico de versão enxugado do cabeçalho. Classe: comportamento de fluxo (roteiro SM) + formato de documento; sem regra nova. Indicador: no próximo `fix run`, cada F-ID tem marca de entrada (🟦/🟨/🟪) no `kanban.md` antes do primeiro `consumption` da fase.
 - **Roteiro mais curto.** `fix-run.md` §Run: 7 443 → 6 383 B (arquivo: 21 771 → 21 451 B), com as regras novas dentro.
 
 #### Por quê
