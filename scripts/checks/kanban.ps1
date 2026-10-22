@@ -1,0 +1,195 @@
+﻿# Kanban em Markdown do sprint e do bloco de fix (v3.51.2 — pedido do stakeholder, 22/10/2026; substitui o kanban-html.ps1).
+# Sprint: regrava em sprints/<n>/kanban.md a tabela "## Kanban" (do quadro) e a seção "## Rodadas" (do usage.jsonl).
+# Bloco (-Block B-<nnn>): regrava fixes/B-<nnn>/kanban.md inteiro — Kanban das F-IDs com as colunas do sprint, Registro de
+# transições e Rodadas, derivados do plan.md, do verdict.md e do usage.jsonl. -Init cria a pasta e o consumption.md do bloco.
+# Rodadas: uma linha por rodada de subagente (quando, item, papel, modelo, tokens, tempo), a mais nova primeiro, e o total
+# por papel e modelo. Custo = tokens processados e tempo; o consolidado continua no consumption.md.
+# Chamado pelo hook G16 ao fim de cada rodada, pelo mark.ps1 e pelo close.ps1 -Apply. É script: não custa token.
+# Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/kanban.ps1" [-Block B-<nnn> [-Init]] [-Root <projeto>]
+# Saída: uma linha. Exit 0 · 2 = erro de uso ou de leitura. Nunca falha quem o chamou.
+
+param([string]$Block = '', [switch]$Init, [string]$Root = (Get-Location).Path)
+
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'lib.ps1')
+$utf8 = New-Object System.Text.UTF8Encoding($false)
+$pt = [System.Globalization.CultureInfo]::GetCultureInfo('pt-BR')
+$short = @{ 'scrum-master' = 'sm'; 'product-owner' = 'po'; 'architect' = 'arc'; 'user-experience' = 'ux'; 'quality-assurance' = 'qa'; 'developer' = 'dev'; 'operator' = 'operator' }
+$todo = [char]::ConvertFromUtf32(0x2B1C); $red = [char]::ConvertFromUtf32(0x1F534)
+$cols = @(@{ mk = $todo; t = 'A fazer' }, @{ mk = $E.Plan; t = 'Plano' }, @{ mk = $E.Build; t = 'Construção' }, @{ mk = $E.QA; t = 'Verificação' }, @{ mk = $E.Done; t = 'Fechada' }, @{ mk = $red; t = 'Bloqueada' })
+
+# Modelo servido com a versão, como no consumption.ps1: "claude-haiku-4-5-20251001" → "haiku 4.5".
+function Get-ShortModel([string]$Model) {
+    $out = @()
+    foreach ($m in ($Model -split ',')) {
+        $mm = [regex]::Match($m, '(?i)(opus|sonnet|haiku|fable|mythos)-(\d+)(?:-(\d{1,2}))?(?!\d)')
+        if ($mm.Success) { $out += ($mm.Groups[1].Value.ToLowerInvariant() + ' ' + $mm.Groups[2].Value + $(if ($mm.Groups[3].Success) { '.' + $mm.Groups[3].Value } else { '' })); continue }
+        if ($m) { $out += $m }
+    }
+    if ($out.Count) { return ($out | Select-Object -Unique) -join '+' }
+    return 'n/d'
+}
+function Format-Duration([int]$Seconds) { return ('{0:00}:{1:00}' -f [Math]::Floor($Seconds / 60), ($Seconds % 60)) }
+function Format-Tokens([double]$N) { return $N.ToString('N0', $pt) }
+function Get-Role($Row) { $r = [string]$Row.role; if ($short.ContainsKey($r)) { $short[$r] } else { $r } }
+
+# Rodadas medidas pela G16 cujo destino é o registro dado, em ordem de início.
+function Get-Rounds([string]$Tp, [string]$Dest) {
+    $up = Join-Path $Tp 'usage.jsonl'
+    if (-not (Test-Path -LiteralPath $up)) { return @() }
+    $rows = @()
+    foreach ($line in [System.IO.File]::ReadAllLines($up, $utf8)) {
+        if ($line.IndexOf($Dest) -lt 0) { continue }
+        try { $o = $line | ConvertFrom-Json } catch { continue }
+        if ([string]$o.dest -eq $Dest) { $rows += $o }
+    }
+    return @($rows | Sort-Object { [string]$_.start })
+}
+
+function Format-Rounds($Rows, [string]$Nl) {
+    $o = @('## Rodadas', '*(Regravado pelo `kanban.ps1` ao fim de cada rodada de agente — não editar à mão. Custo = tokens processados e tempo; o consolidado fica no `consumption.md`.)*', '')
+    if (-not $Rows.Count) { return (($o + 'Nenhuma rodada medida ainda.' + '') -join $Nl) + $Nl }
+    # Por tarefa e fase: Plano (Arquiteto) · Construção (dev) · Verificação (QA e operator) · Outros (PO, SM, UX); a última
+    # linha é o consolidado. Rodada sem Task/F-ID própria (bloco, sprint, n/a) fica na linha do item que ela cita.
+    $phase = @{ arc = 'Plano'; dev = 'Construção'; qa = 'Verificação'; operator = 'Verificação' }
+    $names = 'Plano', 'Construção', 'Verificação', 'Outros'
+    $cell = { param($rs) if (-not @($rs).Count) { '—' } else { "$(Format-Tokens ((@($rs) | Measure-Object processed -Sum).Sum)) · $(Format-Duration ([int]((@($rs) | Measure-Object duration_s -Sum).Sum)))" } }
+    $ph = { param($r) $k = Get-Role $r; if ($phase.ContainsKey($k)) { $phase[$k] } else { 'Outros' } }
+    $o += '### Por tarefa e fase *(tokens · tempo)*'; $o += ''
+    $o += '| Item | ' + ($names -join ' | ') + ' | Total |'; $o += '|---|---|---|---|---|---|'
+    foreach ($g in @($Rows | Group-Object { [string]$_.work } | Sort-Object Name)) {
+        $o += "| $($g.Name) | " + (($names | ForEach-Object { $n = $_; & $cell @($g.Group | Where-Object { (& $ph $_) -eq $n }) }) -join ' | ') + " | $(& $cell $g.Group) |"
+    }
+    $o += '| **Consolidado** | ' + (($names | ForEach-Object { $n = $_; & $cell @($Rows | Where-Object { (& $ph $_) -eq $n }) }) -join ' | ') + " | **$(& $cell $Rows)** |"
+    $o += ''; $o += '### Por papel e modelo'; $o += ''
+    $o += '| Papel | Modelo | Rodadas | Tokens | Tempo |'; $o += '|---|---|---|---|---|'
+    $groups = @($Rows | Group-Object { (Get-Role $_) + '|' + (Get-ShortModel ([string]$_.model)) } | ForEach-Object {
+        [pscustomobject]@{ k = $_.Name; n = $_.Count; t = ($_.Group | Measure-Object processed -Sum).Sum; s = ($_.Group | Measure-Object duration_s -Sum).Sum } } | Sort-Object t -Descending)
+    foreach ($g in $groups) { $rm = $g.k -split '\|', 2; $o += "| $($rm[0]) | $($rm[1]) | $($g.n) | $(Format-Tokens $g.t) | $(Format-Duration ([int]$g.s)) |" }
+    $o += "| **Total** | — | **$($Rows.Count)** | **$(Format-Tokens (($Rows | Measure-Object processed -Sum).Sum))** | **$(Format-Duration ([int](($Rows | Measure-Object duration_s -Sum).Sum)))** |"
+    $o += ''; $o += '### Rodada a rodada *(a mais nova primeiro)*'; $o += ''
+    $o += '| Quando | Item | Papel | Modelo | Tokens | Tempo |'; $o += '|---|---|---|---|---|---|'
+    for ($i = $Rows.Count - 1; $i -ge 0; $i--) {
+        $r = $Rows[$i]; $when = try { ([datetime]$r.start).ToString('yyyy-MM-dd HH:mm') } catch { [string]$r.start }
+        $o += "| $when | $([string]$r.work) | $(Get-Role $r) | $(Get-ShortModel ([string]$r.model)) | $(Format-Tokens ([double]$r.processed)) | $(Format-Duration ([int]$r.duration_s)) |"
+    }
+    return (($o + '') -join $Nl) + $Nl
+}
+
+# Troca a seção "## <título>" (até o próximo "## ") ou a insere antes da seção indicada; sem ela, no fim.
+function Set-Section([string]$Text, [string]$Heading, [string]$New, [string]$Before) {
+    $sec = [regex]::Match($Text, '(?ms)^##\s+' + $Heading + '\s*\r?\n.*?(?=^##\s|\z)')
+    if ($sec.Success) { return $Text.Substring(0, $sec.Index) + $New + $Text.Substring($sec.Index + $sec.Length) }
+    $at = [regex]::Match($Text, '(?m)^##\s+' + $Before)
+    if ($at.Success) { return $Text.Substring(0, $at.Index) + $New + $Text.Substring($at.Index) }
+    return $Text.TrimEnd() + "`n`n" + $New
+}
+
+function Format-Board($Items, [string]$Nl) {
+    $rows = [Math]::Max(1, (@($cols | ForEach-Object { $c = $_; @($Items | Where-Object { $_.Mark -eq $c.mk }).Count } | Measure-Object -Maximum).Maximum))
+    $tbl = @(('| ' + (($cols | ForEach-Object { "$($_.mk) $($_.t)" }) -join ' | ') + ' |'), ('|' + ('---|' * $cols.Count)))
+    for ($r = 0; $r -lt $rows; $r++) { $tbl += '| ' + (($cols | ForEach-Object { $c = $_; $l = @($Items | Where-Object { $_.Mark -eq $c.mk }); if ($r -lt $l.Count) { $l[$r].Label } else { '' } }) -join ' | ') + ' |' }
+    return $tbl -join $Nl
+}
+
+try {
+    $tp = Join-Path $Root '.team-project'
+    if (-not (Test-Path -LiteralPath $tp)) { [Console]::Error.WriteLine("kanban: $tp não existe — rode na raiz do projeto ou passe -Root."); exit 2 }
+
+    if (-not $Block) {
+        # ---------- sprint ----------
+        $readme = Join-Path $tp 'README.md'
+        $m = if (Test-Path -LiteralPath $readme) { [regex]::Match((Read-Text $readme), '(?m)^\|\s*\*\*Sprint corrente\*\*\s*\|\s*\*\*(\d+)\*\*') } else { $null }
+        if (-not $m -or -not $m.Success) { [Console]::Error.WriteLine('kanban: README §2 sem "Sprint corrente".'); exit 2 }
+        $n = $m.Groups[1].Value; $S = Join-Path $tp "sprints/$n"
+        $kb = Join-Path $S 'kanban.md'
+        if (-not (Test-Path -LiteralPath $kb)) { [Console]::Out.WriteLine("kanban: sprints/$n/kanban.md não existe (sprint anterior à v3.51) — nada a regravar."); exit 0 }
+        if (Test-Path -LiteralPath (Join-Path $S 'retrospective.md')) { [Console]::Out.WriteLine("kanban: sprint $n fechado — o kanban.md não muda mais."); exit 0 }
+        $text = Read-Text $kb; $nl = if ($text.Contains("`r`n")) { "`r`n" } else { "`n" }
+        $tasks = @(); if (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md')) { $tasks = @(Get-SprintTasks $S | ForEach-Object { [pscustomobject]@{ Mark = $_.Mark; Label = $_.Id } }) }
+        if ($text -match '(?m)^##\s+Kanban\s*$') {
+            $text = Set-Section $text 'Kanban' ("## Kanban$nl*(Regravado pelo ``kanban.ps1`` a cada transição — não editar à mão.)*$nl$nl" + (Format-Board $tasks $nl) + "$nl$nl") 'Linha de base'
+        }
+        $rounds = @(Get-Rounds $tp ".team-project/sprints/$n/consumption.md")
+        $text = Set-Section $text 'Rodadas' (Format-Rounds $rounds $nl) 'Linha de base'
+        [System.IO.File]::WriteAllText($kb, $text, $utf8)
+        [Console]::Out.WriteLine("kanban: sprints/$n/kanban.md · $($tasks.Count) Task(s) · $($rounds.Count) rodada(s)")
+        exit 0
+    }
+
+    # ---------- bloco de fix ----------
+    $B = $Block.Trim().ToUpperInvariant()
+    if ($B -notmatch '^B-\d+$') { [Console]::Error.WriteLine("kanban: -Block '$Block' inválido — use B-<nnn>."); exit 2 }
+    $bdir = Join-Path $tp "fixes/$B"
+    if (-not (Test-Path -LiteralPath $bdir)) {
+        if (-not $Init) { [Console]::Error.WriteLine("kanban: fixes/$B não existe — o fix plan cria o bloco com -Init."); exit 2 }
+        New-Item -ItemType Directory -Force $bdir | Out-Null
+    }
+    $kb = Join-Path $bdir 'kanban.md'
+    if ((Test-Path -LiteralPath $kb) -and ((Read-Text $kb) -match '(?m)^\*\*Fechado em:\*\*')) { [Console]::Out.WriteLine("kanban: bloco $B fechado — o kanban.md não muda mais."); exit 0 }
+    $made = @()
+    $cons = Join-Path $bdir 'consumption.md'
+    if ($Init -and -not (Test-Path -LiteralPath $cons)) {
+        $c = "# Consumo — Bloco $B`n`n> **DOCUMENTO VIVO até o fechamento do bloco** · **Dono:** SM`n> Uma linha por rodada de papel do bloco (``fix plan`` a partir da montagem, ``fix run`` até o fechamento), gravada pela G16 e pelo ``consumption.ps1``. Modelo: ``templates/consumption.md``, variante ""bloco"".`n`n## Registro`n| Data | Papel | Modelo | Comando | Task/História | Categoria | Unidade | Tokens | Duração | Nota |`n|---|---|---|---|---|---|---|---|---|---|`n`n## Totais do bloco (derivado)`n| Papel | Modelo | Σ tokens processados | Instâncias | Rodadas | Duração total | Σ notificação |`n|---|---|---|---|---|---|---|`n"
+        [System.IO.File]::WriteAllText($cons, $c, $utf8); $made += 'consumption.md'
+    }
+
+    # F-IDs e títulos do plan.md; promoção pendente pelo "**Critério que caiu:**" na seção da F-ID.
+    $fids = [ordered]@{}; $fell = @{}
+    $planPath = Join-Path $bdir 'plan.md'
+    if (Test-Path -LiteralPath $planPath) {
+        foreach ($sec in [regex]::Matches((Read-Text $planPath), '(?ms)^##\s+(F-\d+)\b[^\r\n]*\r?\n(.*?)(?=^##\s|\z)')) {
+            $id = $sec.Groups[1].Value; $fids[$id] = $todo
+            if ($sec.Groups[2].Value -match '(?m)^\*\*Crit[ée]rio que caiu:\*\*\s*\S') { $fell[$id] = $true }
+        }
+    }
+    # Estado final do ## Fechamento do verdict.md.
+    $final = @{}; $closedAt = ''
+    $vPath = Join-Path $bdir 'verdict.md'
+    if (Test-Path -LiteralPath $vPath) {
+        $fsec = Get-Section (Read-Text $vPath) '^##\s+Fechamento'
+        if ($fsec) {
+            $cm = [regex]::Match($fsec, '\*\*Fechado em:\*\*\s*(\d{4}-\d{2}-\d{2})'); if ($cm.Success) { $closedAt = $cm.Groups[1].Value }
+            $t = (Get-Tables $fsec)[0]
+            if ($t) { foreach ($row in $t.Rows) { $id = Clean-Cell (Get-Cell $row 0); $st = (Clean-Cell (Get-Cell $row 1)).ToLowerInvariant(); if ($id -match '^F-\d+$' -and $st -match '^(fechada|promovida|devolvida)') { $final[$id] = $Matches[1] } } }
+        }
+    }
+
+    # Estado pelas rodadas: dev → Construção; Arquiteto numa F-ID → Plano (GAP ou revalidação); QA → Verificação
+    # (QA do bloco inteiro move as F-IDs que já passaram pelo dev).
+    $rounds = @(Get-Rounds $tp ".team-project/fixes/$B/consumption.md")
+    $reg = @()
+    foreach ($r in $rounds) {
+        $role = Get-Role $r; $work = [string]$r.work
+        $to = switch ($role) { 'dev' { $E.Build } 'arc' { $E.Plan } 'qa' { $E.QA } default { $null } }
+        if (-not $to) { continue }
+        $targets = @()
+        if ($fids.Contains($work)) { $targets = @($work) }
+        elseif ($work -eq $B -and $role -eq 'qa') { $targets = @($fids.Keys | Where-Object { $fids[$_] -in $E.Build, $E.Plan }) }
+        $when = try { ([datetime]$r.start).ToString('yyyy-MM-dd HH:mm') } catch { [string]$r.start }
+        foreach ($f in $targets) { if ($fids[$f] -ne $to) { $reg += "| $f | $($fids[$f]) → $to | $when | $role |"; $fids[$f] = $to } }
+    }
+    $items = @()
+    foreach ($f in @($fids.Keys)) {
+        $mk = $fids[$f]; $label = $f
+        if ($final.ContainsKey($f)) {
+            $label = if ($final[$f] -eq 'fechada') { $f } else { "$f ($($final[$f]))" }
+            $reg += "| $f | $mk → $($E.Done) | $(if ($closedAt) { $closedAt } else { 'fechamento' }) | sessão — $($final[$f]) |"; $mk = $E.Done
+        } elseif ($fell.ContainsKey($f)) { $label = "$f (promoção)"; if ($mk -ne $red) { $reg += "| $f | $mk → $red | — | promoção: Critério que caiu no plan.md |" }; $mk = $red }
+        $items += [pscustomobject]@{ Mark = $mk; Label = $label }
+    }
+
+    $nl = "`n"
+    $doc = @("# Kanban — Bloco $B", '',
+        "> Regravado inteiro pelo ``kanban.ps1`` ao fim de cada rodada de agente e no fechamento do bloco — não editar à mão. Colunas iguais às do sprint; $($E.Done) Fechada = saiu do bloco (fechada, promovida ou devolvida — o Registro diz qual).", '',
+        '## Kanban', '', (Format-Board $items $nl), '',
+        '## Registro de transições', '', '| F-ID | De → Para | Quando | Por quem |', '|---|---|---|---|') + $reg + @('', (Format-Rounds $rounds $nl).TrimEnd())
+    if ($closedAt) { $doc += @('', "**Fechado em:** $closedAt") }
+    [System.IO.File]::WriteAllText($kb, (($doc -join $nl) + $nl), $utf8)
+    $made += 'kanban.md'
+    [Console]::Out.WriteLine("kanban: fixes/$B/ · $($made -join ' e ') · $($fids.Count) F-ID(s) · $($rounds.Count) rodada(s)$(if ($closedAt) { ' · fechado' })")
+    exit 0
+} catch {
+    [Console]::Error.WriteLine("kanban: erro — $($_.Exception.Message)")
+    exit 2
+}

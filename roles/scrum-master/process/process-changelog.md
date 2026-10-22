@@ -134,6 +134,52 @@ Suítes: guardas e conferências (contagem na entrega), C3, `claude plugin valid
 
 Autorização de custo da Etapa 6a (P+ no SunScape). API e Windows desktop no executor de cenários: próximo incremento.
 
+### Addendum v3.51.2 — relato de uso do `fix` e um quadro só (SM + Arquiteto + Dev + QA + PO) — 22/10/2026
+
+**Instrução** (stakeholder, 21 e 22/10/2026, `note.md`, itens 1–10 e decisões em formulário): resolver, pela opção que **não aumenta o gasto**, o que a v3.51.1 mostrou na trilha `fix` (negações da G14 ao dev e ao Arquiteto, ficha negada pela G8, veredito reprovado pelo C4 por formato, `consumption.md` do bloco que não nasce, `verify -Mode mutation` que não rodou) e dar ao sprint e ao bloco **um quadro só**, em Markdown, com o gasto de cada rodada. Hooks, scripts, versão e CHANGELOG aplicados direto nesta rodada.
+**Classificação:** comportamento de agente (roteiros do dev, do Arquiteto e do QA) · formato de documento (`kanban.md`, `fix-plan.md`, `verdict.md`) · guarda alterada (G14, G16) · script novo (`kanban.ps1`, no lugar do `kanban-html.ps1`) e alterados · fluxo da trilha `fix`. **Sem regra nova** (34).
+
+#### O que mudou
+
+- **Item 1 (e 5, consequência).** `fix-run.md` §Run passo 2 cita o comando completo do `verify.ps1` (`-Mode full`, depois `-Mode mutation -Plan …`), um por chamada, sem `cmd /c`, `-ExecutionPolicy` nem `Tee`; o `developer/README.md` diz que teste do projeto é o prefixo de `runCommands` puro. **G14** (`hooks/pre-tool.ps1`): script de conferência liberado também como trecho de comando composto (`Set-Location …; $log = …; powershell -NoProfile -File "<plugin>/scripts/checks/x.ps1" … | Select-Object …`), **só com o caminho dentro de `${CLAUDE_PLUGIN_ROOT}/scripts/checks/` (antes passava qualquer `scripts/checks/*.ps1`, inclusive do projeto). Sem o item 1, o dev não escreveria evidência à mão em `verify/` (item 5).
+- **Item 2.** A negação de `cmd /c` diz "rode o comando direto, sem cmd /c".
+- **Item 3.** `$env:TEMP`/`$env:TMP` em variável ou no destino se resolve (criar pasta no scratchpad passa); **executar arquivo do scratchpad (`node` etc.) continua negado** — contornaria a G8 e a G9. No run (`sprint run`, `fix plan`, `fix run`) o Arquiteto valida lendo o código e escreve "não validado — o dev confirma no passo <n>"; scratchpad executável e `operator` ficam só no sprint fora do run (`architect/README.md`, `fix-run.md`).
+- **Item 4 (sem exceção na matriz).** `fix-run.md` §Promoção: o Arquiteto registra `**Critério que caiu:**` no mini-plano; dev e QA, no próprio relatório, e a sessão copia a linha para o mini-plano (sem invocar o Arquiteto só para isso); a sessão muda o estado e devolve ao PO, que grava `## Destino` na ficha (a linha que o C4 confere) **na invocação que a promoção já dispara**. A ficha continua só do PO.
+- **Item 6.** `quality-assurance/templates/verdict.md` (trilha fix): o formato que o C4 lê (R33/3) fica explícito — `> comando` em linha própria, saída em bloco nas linhas seguintes, `exit <n>` na linha do rótulo. O C4 **não foi flexibilizado**.
+- **Item 7.** `kanban.ps1 -Block B-<nnn> -Init` cria a pasta, o `consumption.md` e o `kanban.md` do bloco no passo 2 do `fix plan`; o hook G16 (`subagent-stop.ps1`) os cria na primeira rodada se faltarem (rede).
+- **Item 8.** `fix-plan.md` ganha `**Mutações:**` por F-ID no formato do `verify.ps1`; o `-Mode mutation` lê todos os blocos e, sem `**Arquivos tocados:**`, usa `- produção:`/`- teste:` como escopo; o dev o roda depois do `full` do bloco.
+- **Itens 9 e 10 — um quadro só.** `kanban.html` e `kanban-html.ps1` **saem do plugin**. O `kanban.ps1` regrava, ao fim de cada rodada (G16) e a cada transição (`mark.ps1`, `close.ps1`), o `## Kanban` e a nova `## Rodadas` do `sprints/<n>/kanban.md` — por tarefa e fase (Plano · Construção · Verificação · Outros), por papel e modelo, e rodada a rodada, **custo = tokens e tempo** — e o `fixes/B-<nnn>/kanban.md` **inteiro** (F-IDs nas colunas do sprint; promovida e devolvida como nota no Registro). `fix-run.md` §Fechamento roda `kanban.ps1 -Block` uma vez depois do `## Fechamento`. Documentos: `templates/kanban.md` (seção Rodadas e variante do bloco), `artifact-ownership.md` §1 (bloco), `project-context.md`, `how-to.md`, `rituals/team-init.md` sem o `kanban.html`.
+- **Roteiro mais curto.** `fix-run.md` §Run: 7 443 → 6 383 B (arquivo: 21 771 → 21 451 B), com as regras novas dentro.
+
+#### Por quê
+
+Cada negação custou uma invocação extra ou a sessão fazendo o trabalho do papel (o dev sem `verify`, o PO copiando uma linha, o QA reescrevendo um veredito); o quadro em dois formatos repetia a informação e o gasto da rodada só aparecia no `consumption.md`. As correções saem de roteiro, modelo e script — nada de papel novo nem instância a mais.
+
+#### Quem passa a ser cobrado de forma diferente
+
+- **Dev:** roda o `verify` com o comando completo e sem decoração; reporta a promoção no relatório.
+- **Arquiteto:** no run não executa nada — lê e marca "não validado"; escreve `**Mutações:**` e a promoção no mini-plano.
+- **QA:** escreve `Antes`/`Depois` no formato que o C4 lê. **PO:** grava `## Destino` na invocação da promoção. **SM/sessão:** `-Init` no `fix plan`, `kanban.ps1 -Block` no fechamento, e copia para o mini-plano a promoção que o dev ou o QA reportou.
+
+#### Conflitos com o processo vigente
+
+Nenhum. A G14 ficou **mais estreita** num ponto (só scripts do plugin) e mais larga noutro (trecho composto). A matriz de propriedade não mudou de dono; o `kanban.md` do bloco é do SM, escrito por script. O `kanban.html` da v3.51 (acima) é revertido por esta entrada.
+
+#### Como saberemos que funcionou
+
+No próximo `fix run`: zero negações G14 ao dev em `verify.ps1` e ao Arquiteto por executar arquivo do scratchpad; `verify mutation` com ok em cada F-ID não promovida; nenhuma F-ID reprovada pelo C4 R33/3 por formato; `consumption.md` e `kanban.md` do bloco existindo desde o `fix plan`; nenhum `Edit`/`Write` negado pela G8 na ficha.
+
+#### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | `Grep "kanban\.html\|kanban-html"` em `RAIZ/`, fora de `CHANGELOG.md`, `plano-plugin-p-plus.md`, v3.51 arquivada e testes que afirmam a ausência | zero fora de `process-changelog.md` (v3.51 e este adendo, histórico), `kanban.ps1:1` e dos testes que afirmam a ausência (`run-check-tests.ps1`); `note.md` limpo | ✅ |
+| Extração/remoção | `Length` de `fix-run.md` e do §Run, antes (HEAD) × depois | 21 771 → 21 451 B; §Run 7 443 → 6 383 B | ✅ |
+| Entrega | `release.ps1` (C3) | R18 ok (3.51.2 nos três); R17 ok (bloco v3.51 com 13 658 B ≤ 17 920, 5 papéis, 3 entradas); ps1-5.1 ok; ownership ok (62 regras); órfãos ok (47 modelos) | ✅ |
+
+#### Pendente do stakeholder
+
+Reiniciar a sessão (comportamento de agente e guarda mudam). Versão, `CHANGELOG.md` e `note.md` da sessão.
 ---
 ## v3.50 — Mudança de layout se prova em render real: navegador headless, 3 fontes × telas, mutação que quebra a medição; e as paradas do `run` fecham no texto (SM + Arquiteto + Dev + QA) — 16/10/2026
 

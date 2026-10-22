@@ -318,7 +318,7 @@ Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — a nã
 │       ├── plan/                    um Plano de Implementação por Task
 │       ├── evidence/                a evidência de cada Task: comando e saída real
 │       ├── consumption.md           tokens e duração por invocação (inclui o operator)
-│       ├── kanban.md                Kanban, burndown e controle das Tasks (+ kanban.html, visual)
+│       ├── kanban.md                Kanban, rodadas (tokens e tempo), burndown e controle das Tasks
 │       ├── review.md                a Sprint Review e a sua decisão por História
 │       ├── retrospective.md         o que o time corrige no sprint seguinte
 │       └── plugin-report.md         só se você escolher "investigar" uma ocorrência de plugin na Review: relatório de processo, sem contexto do projeto, que você encaminha ao dono do plugin

@@ -525,7 +525,19 @@ $kb = Join-Path $p '.team-project/sprints/1/kanban.md'
 Remove-Item -LiteralPath $bd -Force
 $r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'plan', '-Root', $p)
 $html = Join-Path $p '.team-project/sprints/1/kanban.html'
-Check 'mark com kanban.md: a transição vai ao kanban.md, a tabela Kanban e o kanban.html são regravados' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($kb, $utf8) + "`nHTML=" + $(if (Test-Path -LiteralPath $html) { [System.IO.File]::ReadAllText($html, $utf8) } else { 'ausente' }) } 0 @('Registro em kanban\.md', 'T-041a ⬜ → 🟦', '\| T-041a \|', 'Kanban · Sprint 1', 'Bloqueios e riscos abertos', 'http-equiv="refresh"')
+Check 'mark com kanban.md: a transição vai ao kanban.md e a tabela Kanban é regravada, sem kanban.html (v3.51.2)' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($kb, $utf8) + "`nHTML=" + $(if (Test-Path -LiteralPath $html) { 'presente' } else { 'ausente' }) } 0 @('Registro em kanban\.md', 'T-041a ⬜ → 🟦', '\| T-041a \|', 'Bloqueios e riscos abertos', '## Rodadas', 'HTML=ausente')
+# v3.51.2 (note.md itens 7, 9 e 10): rodadas no kanban.md do sprint; kanban.md e consumption.md do bloco de fix.
+Put $p '.team-project/usage.jsonl' ('{"role":"developer","work":"T-041a","model":"claude-sonnet-5-5","start":"2026-09-03T10:00:00","duration_s":360,"processed":180000,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"developer","work":"F-001","model":"claude-haiku-4-5-20251001","start":"2026-09-03T11:00:00","duration_s":120,"processed":50000,"dest":".team-project/fixes/B-001/consumption.md"}' + "`n" + '{"role":"quality-assurance","work":"B-001","model":"claude-sonnet-5-5","start":"2026-09-03T12:00:00","duration_s":240,"processed":90000,"dest":".team-project/fixes/B-001/consumption.md"}' + "`n")
+$r = Invoke-Check 'kanban.ps1' @('-Root', $p)
+Check 'kanban (sprint): seção Rodadas com papel, modelo, tokens e tempo, e o total' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($kb, $utf8) } 0 @('1 rodada', '\| dev \| sonnet 5\.5 \| 1 \| 180\.000 \| 06:00 \|', '\| 2026-09-03 10:00 \| T-041a \| dev \|', '\*\*Total\*\*')
+Put $p '.team-project/fixes/B-001/plan.md' "# B-001 · mini-planos`n`n## F-001 · Data futura`n`n### Arquivos`n- produção: ``src/a.ts```n`n## F-002 · CPF`n`n**Critério que caiu:** C5 — schema`n`n## Verificação do bloco`n"
+$r = Invoke-Check 'kanban.ps1' @('-Root', $p, '-Block', 'B-001', '-Init')
+$kbB = Join-Path $p '.team-project/fixes/B-001/kanban.md'
+Check 'kanban -Block -Init: cria consumption.md e kanban.md; F-001 dev → QA, F-002 em promoção' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($kbB, $utf8) + "`nCONS=" + $(if (Test-Path -LiteralPath (Join-Path $p '.team-project/fixes/B-001/consumption.md')) { 'ok' } else { 'ausente' }) } 0 @('consumption\.md e kanban\.md', '\| F-001 \| — \| 50\.000 · 02:00 \| — \| — \| 50\.000 · 02:00 \|', '\| \*\*Consolidado\*\* \| — \| 50\.000 · 02:00 \| 90\.000 · 04:00 \| — \| \*\*140\.000 · 06:00\*\* \|', '\| F-001 \| ⬜ → 🟨 \|', '\| F-001 \| 🟨 → 🟪 \| 2026-09-03 12:00 \| qa \|', 'F-002 \(promoção\)', '\| qa \| sonnet 5\.5 \| 1 \| 90\.000 \| 04:00 \|', 'CONS=ok')
+Put $p '.team-project/fixes/B-001/verdict.md' "# Veredito`n`n## Fechamento`n`n**Fechado em:** 2026-09-04`n`n| F-ID | Estado final |`n|---|---|`n| F-001 | fechada |`n| F-002 | promovida |`n"
+$r = Invoke-Check 'kanban.ps1' @('-Root', $p, '-Block', 'B-001')
+$r2 = Invoke-Check 'kanban.ps1' @('-Root', $p, '-Block', 'B-001')
+Check 'kanban -Block no fechamento: estados finais e Fechado em; depois disso não regrava' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($kbB, $utf8) + "`n" + $r2.Out } 0 @('\| F-001 \| 🟪 → ✅ \| 2026-09-04 \| sessão — fechada \|', 'F-002 \(promovida\)', '\*\*Fechado em:\*\* 2026-09-04', 'bloco B-001 fechado')
 
 # v3.51 (B1, C2): run.ps1 — a próxima ação do sprint sai do quadro e do disco, pronta para a sessão executar.
 $p = Join-Path $tmp 'run'; New-Project $p
