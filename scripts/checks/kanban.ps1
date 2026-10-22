@@ -4,11 +4,13 @@
 # transições e Rodadas, derivados do plan.md, do verdict.md e do usage.jsonl. -Init cria a pasta e o consumption.md do bloco.
 # Rodadas: uma linha por rodada de subagente (quando, item, papel, modelo, tokens, tempo), a mais nova primeiro, e o total
 # por papel e modelo. Custo = tokens processados e tempo; o consolidado continua no consumption.md.
+# Bloco: -Fid F-n -To plan|build|qa marca a F-ID na ENTRADA da fase (antes de acionar o papel) e regrava na hora; as rodadas
+# depois só confirmam o estado e somam custo.
 # Chamado pelo hook G16 ao fim de cada rodada, pelo mark.ps1 e pelo close.ps1 -Apply. É script: não custa token.
-# Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/kanban.ps1" [-Block B-<nnn> [-Init]] [-Root <projeto>]
+# Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/kanban.ps1" [-Block B-<nnn> [-Init] [-Fid F-<n> -To plan|build|qa]] [-Root <projeto>]
 # Saída: uma linha. Exit 0 · 2 = erro de uso ou de leitura. Nunca falha quem o chamou.
 
-param([string]$Block = '', [switch]$Init, [string]$Root = (Get-Location).Path)
+param([string]$Block = '', [switch]$Init, [string]$Fid = '', [string]$To = '', [string]$Root = (Get-Location).Path)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib.ps1')
@@ -108,7 +110,7 @@ try {
         $text = Read-Text $kb; $nl = if ($text.Contains("`r`n")) { "`r`n" } else { "`n" }
         $tasks = @(); if (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md')) { $tasks = @(Get-SprintTasks $S | ForEach-Object { [pscustomobject]@{ Mark = $_.Mark; Label = $_.Id } }) }
         if ($text -match '(?m)^##\s+Kanban\s*$') {
-            $text = Set-Section $text 'Kanban' ("## Kanban$nl*(Regravado pelo ``kanban.ps1`` a cada transição — não editar à mão.)*$nl$nl" + (Format-Board $tasks $nl) + "$nl$nl") 'Linha de base'
+            $text = Set-Section $text 'Kanban' ("## Kanban$nl*(Regravado pelo ``kanban.ps1`` a cada transição e ao fim de cada rodada — não editar à mão.)*$nl$nl" + (Format-Board $tasks $nl) + "$nl$nl") 'Linha de base'
         }
         $rounds = @(Get-Rounds $tp ".team-project/sprints/$n/consumption.md")
         $text = Set-Section $text 'Rodadas' (Format-Rounds $rounds $nl) 'Linha de base'
@@ -159,15 +161,36 @@ try {
     # (QA do bloco inteiro move as F-IDs que já passaram pelo dev).
     $rounds = @(Get-Rounds $tp ".team-project/fixes/$B/consumption.md")
     $reg = @()
-    foreach ($r in $rounds) {
-        $role = Get-Role $r; $work = [string]$r.work
-        $to = switch ($role) { 'dev' { $E.Build } 'arc' { $E.Plan } 'qa' { $E.QA } default { $null } }
-        if (-not $to) { continue }
-        $targets = @()
-        if ($fids.Contains($work)) { $targets = @($work) }
-        elseif ($work -eq $B -and $role -eq 'qa') { $targets = @($fids.Keys | Where-Object { $fids[$_] -in $E.Build, $E.Plan }) }
-        $when = try { ([datetime]$r.start).ToString('yyyy-MM-dd HH:mm') } catch { [string]$r.start }
-        foreach ($f in $targets) { if ($fids[$f] -ne $to) { $reg += "| $f | $($fids[$f]) → $to | $when | $role |"; $fids[$f] = $to } }
+    # Marca na entrada da fase (-Fid F-n -To plan|build|qa): fica em fixes/B-n/.marks, "F-n|fase|aaaa-mm-ddTHH:mm:ss".
+    $marksPath = Join-Path $bdir '.marks'
+    $phaseTo = @{ plan = $E.Plan; build = $E.Build; qa = $E.QA }
+    if ($Fid -or $To) {
+        $F = $Fid.Trim().ToUpperInvariant(); $T = $To.Trim().ToLowerInvariant()
+        if ($F -notmatch '^F-\d+$' -or -not $phaseTo.ContainsKey($T)) { [Console]::Error.WriteLine("kanban: use -Fid F-<n> -To plan|build|qa."); exit 2 }
+        if (-not $fids.Contains($F)) { [Console]::Error.WriteLine("kanban: $F não está no plan.md de $B."); exit 2 }
+        [System.IO.File]::AppendAllText($marksPath, "$F|$T|$((Get-Date).ToString('yyyy-MM-ddTHH:mm:ss'))`n", $utf8)
+    }
+    # Eventos em ordem de tempo: marcas (entrada da fase) e rodadas (confirmam o estado e somam custo).
+    $events = @()
+    foreach ($r in $rounds) { $events += [pscustomobject]@{ t = [string]$r.start; r = $r; f = $null; to = $null } }
+    if (Test-Path -LiteralPath $marksPath) {
+        foreach ($ml in [System.IO.File]::ReadAllLines($marksPath, $utf8)) {
+            $p = $ml -split '\|'
+            if ($p.Count -ge 3 -and $phaseTo.ContainsKey($p[1])) { $events += [pscustomobject]@{ t = $p[2]; r = $null; f = $p[0]; to = $phaseTo[$p[1]] } }
+        }
+    }
+    foreach ($ev in @($events | Sort-Object t)) {
+        if ($ev.r) {
+            $r = $ev.r; $role = Get-Role $r; $work = [string]$r.work
+            $to = switch ($role) { 'dev' { $E.Build } 'arc' { $E.Plan } 'qa' { $E.QA } default { $null } }
+            if (-not $to) { continue }
+            $targets = @()
+            if ($fids.Contains($work)) { $targets = @($work) }
+            elseif ($work -eq $B -and $role -eq 'qa') { $targets = @($fids.Keys | Where-Object { $fids[$_] -in $E.Build, $E.Plan }) }
+            $by = $role
+        } else { $to = $ev.to; $targets = @($ev.f | Where-Object { $fids.Contains($_) }); $by = 'marca na entrada da fase' }
+        $when = try { ([datetime]$ev.t).ToString('yyyy-MM-dd HH:mm') } catch { [string]$ev.t }
+        foreach ($f in $targets) { if ($fids[$f] -ne $to) { $reg += "| $f | $($fids[$f]) → $to | $when | $by |"; $fids[$f] = $to } }
     }
     $items = @()
     foreach ($f in @($fids.Keys)) {
@@ -181,7 +204,7 @@ try {
 
     $nl = "`n"
     $doc = @("# Kanban — Bloco $B", '',
-        "> Regravado inteiro pelo ``kanban.ps1`` ao fim de cada rodada de agente e no fechamento do bloco — não editar à mão. Colunas iguais às do sprint; $($E.Done) Fechada = saiu do bloco (fechada, promovida ou devolvida — o Registro diz qual).", '',
+        "> Regravado inteiro pelo ``kanban.ps1`` na entrada de cada fase (``-Fid``/``-To``), ao fim de cada rodada de agente e no fechamento do bloco — não editar à mão. Colunas iguais às do sprint; $($E.Done) Fechada = saiu do bloco (fechada, promovida ou devolvida — o Registro diz qual).", '',
         '## Kanban', '', (Format-Board $items $nl), '',
         '## Registro de transições', '', '| F-ID | De → Para | Quando | Por quem |', '|---|---|---|---|') + $reg + @('', (Format-Rounds $rounds $nl).TrimEnd())
     if ($closedAt) { $doc += @('', "**Fechado em:** $closedAt") }
