@@ -1,16 +1,16 @@
 # Template — Kanban do Sprint (Kanban · Burndown · Controle)
 
-> **Dono:** SM · Vive em `.team-project/sprints/<n>/kanban.md` (v3.51; até a v3.50, `burndown.md`, sem o Kanban nem o controle — sprint aberto antes continua com ele, e os scripts leem os dois).
+> **Dono:** SM · Vive em `.team-project/sprints/<n>/kanban.md` (sprint aberto antes da v3.51 continua com `burndown.md`, e os scripts leem os dois).
 > **Um arquivo para acompanhar o sprint** (pedido do stakeholder, 2026-10-21): primeiro **onde cada Task está** (o Kanban), depois **quanto falta** (o Burndown: Série e Registro de transições) e, embaixo, **o controle** — o que entrou fora da Planning, o que está bloqueado e o que espera o stakeholder. O `sprint-backlog.md` fica só com as Histórias e as Tasks.
 > Nasce no `/sm sprint plan` (linha de abertura, dia 0 — **a data da aprovação do pacote de abertura**, não a do fechamento da Planning · R25), ganha **uma linha na Série e uma no Registro a cada transição de marcador** — no `sprint run`, gravadas pelo `mark.ps1` e pelo `close.ps1 -Apply` no momento da passagem ([`sprint-run.md`](../process/sprint-run.md) §Marcador); fora dele, no `/sm board` e no `/sm close <T-ID>` (R24) —, e **fecha** — sem mais edição — no `/sm sprint close`.
-> **Só Markdown (v3.51.2):** não há página HTML. `scripts/checks/kanban.ps1` regrava o `## Kanban` e a `## Rodadas` — ao fim de cada rodada de agente (hook G16) e a cada transição (`mark.ps1`, `close.ps1`). É script: **não custa token**.
+> **Só Markdown:** não há página HTML. `scripts/checks/kanban.ps1` regrava o `## Kanban` e a `## Rodadas` **a cada transição** (`mark.ps1`, `close.ps1`) **e ao fim de cada rodada de agente** (hook G16, que confirma o estado e soma o custo). É script: **não custa token**.
 > **Bloco de fix:** `fixes/<B-nnn>/kanban.md`, gerado **inteiro** por `kanban.ps1 -Block B-<nnn>` (`-Init` no `fix plan`) — ver a variante no fim.
 
 ```markdown
 # Kanban — Sprint <n>
 
 ## Kanban
-*(Regravado pelo `kanban.ps1` — não editar à mão.)*
+*(Regravado pelo `kanban.ps1` a cada transição e ao fim de cada rodada — não editar à mão.)*
 
 | ⬜ A fazer | 🟦 Plano | 🟨 Construção | 🟪 Verificação | ✅ Fechada | 🔴 Bloqueada |
 |---|---|---|---|---|---|
@@ -88,4 +88,4 @@ Este artefato **reaproveita** o que já acontece: no `sprint run`, os scripts gr
 
 ## Variante — bloco de fix (`fixes/B-<nnn>/kanban.md`)
 
-Gerado **inteiro** pelo `kanban.ps1 -Block B-<nnn>` (`-Init` no `fix plan`, junto com o `consumption.md` do bloco; a G16 cria os dois na primeira rodada se faltarem). Seções: **Kanban** das F-IDs, com as **mesmas colunas do sprint**; **Registro de transições**, derivado das rodadas (dev → 🟨, Arquiteto na F-ID → 🟦, QA → 🟪; fechamento do `verdict.md` → ✅, com "(promovida)" ou "(devolvida)" como nota; "Critério que caiu" → 🔴 "(promoção)"); **Rodadas**, como acima. Sem Série, burndown nem Controle. Com `**Fechado em:**` no `verdict.md`, o script não regrava mais (a pasta é imutável).
+Gerado **inteiro** pelo `kanban.ps1 -Block B-<nnn>` (`-Init` no `fix plan`, junto com o `consumption.md` do bloco; a G16 cria os dois na primeira rodada se faltarem). Seções: **Kanban** das F-IDs, com as **mesmas colunas do sprint**; **Registro de transições**, marcado **na entrada de cada fase** (`-Fid F-<n> -To plan|build|qa`, chamado pela sessão antes de acionar o papel: Arquiteto → 🟦, dev → 🟨, QA → 🟪; marcas em `fixes/B-<nnn>/.marks`); fechamento do `verdict.md` (→ ✅, com "(promovida)" ou "(devolvida)" como nota) e "Critério que caiu" (→ 🔴 "(promoção)") seguem derivados; **Rodadas**, como acima, só confirmam o estado e somam o custo. Sem Série, burndown nem Controle. Com `**Fechado em:**` no `verdict.md`, o script não regrava mais (a pasta é imutável).

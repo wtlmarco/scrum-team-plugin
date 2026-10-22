@@ -134,6 +134,17 @@ Suítes: guardas e conferências (contagem na entrega), C3, `claude plugin valid
 
 Autorização de custo da Etapa 6a (P+ no SunScape). API e Windows desktop no executor de cenários: próximo incremento.
 
+### Addendum v3.51.3 — kanban do bloco de fix marcado na entrada de cada fase (SM) — 22/10/2026
+
+**Instrução** (stakeholder, `note.md`): "o kanban do sprint e do fix devem ser atualizado a cada transição de fase de trabalho para verdadeiramente indicar o status da evolução das tarefas". No sprint o quadro já acompanha cada transição (`mark.ps1`, `close.ps1`, G16); no bloco de fix o estado da F-ID era deduzido de rodadas **concluídas**, então ficava em ⬜ durante a rodada do dev.
+**Classificação:** fluxo da trilha `fix` (roteiro SM) · formato de documento (`kanban.md`) · script alterado (`kanban.ps1`, aplicado pelo stakeholder). **Sem regra nova** (34).
+
+- `kanban.ps1 -Block B-<nnn> -Fid F-<n> -To plan|build|qa` marca a F-ID na **entrada** da fase (`fixes/B-<nnn>/.marks`) e regrava na hora; as rodadas (G16) só confirmam o estado e somam custo.
+- `fix-run.md`: **Marca de fase** no preâmbulo do §Run (antes de acionar dev, Arquiteto ou QA; QA uma chamada por F-ID), `-To plan` no passo 4 do §Plan, fechamento sem `-Fid`.
+- `templates/kanban.md`: variante do bloco marca na entrada de cada fase (fechamento e "Critério que caiu" seguem derivados); notas dizem "a cada transição e ao fim de cada rodada"; histórico de versão enxugado do cabeçalho.
+- **Indicador:** no próximo `fix run`, cada F-ID tem a marca de entrada (🟦/🟨/🟪) no `kanban.md` antes da primeira rodada da fase.
+- **Evidência (R19):** `release.ps1` (C3) ok, conferências 140/0, guardas 189/0; `-Fid F-1 -To build` em bloco de teste moveu a F-ID ⬜ → 🟨 com "marca na entrada da fase", e F-ID fora do plano foi recusada.
+
 ### Addendum v3.51.2 — relato de uso do `fix` e um quadro só (SM + Arquiteto + Dev + QA + PO) — 22/10/2026
 
 **Instrução** (stakeholder, 21 e 22/10/2026, `note.md`, itens 1–10 e decisões em formulário): resolver, pela opção que **não aumenta o gasto**, o que a v3.51.1 mostrou na trilha `fix` (negações da G14 ao dev e ao Arquiteto, ficha negada pela G8, veredito reprovado pelo C4 por formato, `consumption.md` do bloco que não nasce, `verify -Mode mutation` que não rodou) e dar ao sprint e ao bloco **um quadro só**, em Markdown, com o gasto de cada rodada. Hooks, scripts, versão e CHANGELOG aplicados direto nesta rodada.
