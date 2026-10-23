@@ -136,7 +136,7 @@ Autorização de custo da Etapa 6a (P+ no SunScape). API e Windows desktop no ex
 
 ### Addendum v3.51.4 — o run do SunScape e o sprint 2 do garden: G14 lendo o que os papéis escrevem, limite de uso legível, quadro que não perde linha (SM + Arquiteto + Dev + UX) — 23/10/2026
 
-**Instrução** (stakeholder, 23/10/2026, `note.md` itens 1–15 e `plugin-report-garden.md` itens 1–27, tudo numa entrega só; item 14 decidido em 23/10: reduzir a partida do Gradle sem tirar mutação nem verificação completa).
+**Instrução** (stakeholder, 23/10/2026, `note.md` itens 1–16 e `plugin-report-garden.md` itens 1–27, tudo numa entrega só; item 14 decidido em 23/10: reduzir a partida do Gradle sem tirar mutação nem verificação completa).
 **Classificação:** guardas (G8, G14, G16, G20) · fluxo do `run` (paradas, retomada, marcador) · formato (Kanban, plano) · instrumentos (`run`, `mark`, `close`, `kanban`, `plan`, `verify`, `dispatch`). **Regra nova: nenhuma.** Paradas legítimas ganham **(e)** pausa pedida pelo stakeholder no ponto seguro (o stakeholder pediu o ponto seguro no item 11).
 
 - `sprint-run.md`: 🟦 no preparo, sem `.scn` sem `targets`; `run.ps1 done` confere, marca 🟪 e fecha (GAP → 🟨); `verify` exit 3 = parcial; §Retomada após limite de uso; §Pausa segura; "## Agora"; marcador sob trava.

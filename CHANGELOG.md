@@ -16,7 +16,7 @@
 ## v3.51.4 — 2026-10-23
 
 **Branch:** `fix/v3.51.4` a partir de `develop` · **Processo:** addendum v3.51.4 do changelog do processo (`/review note`)
-Relato do braço P+ no SunScape (`note.md`, itens 1–15; v3.51.3) e do sprint 2 do garden (`plugin-report-garden.md`, itens 1–27; v3.51.2): 30 negações da G14 em ~3 h de run, o run cortado duas vezes pelo limite de uso da conta sem sinal legível, rodadas e transições registradas no lugar errado ou sumindo, e fechamentos que reprovavam por formato.
+Relato do braço P+ no SunScape (`note.md`, itens 1–16; v3.51.3 — o 16, terceiro corte por limite de conta no mesmo run, reforça o 11) e do sprint 2 do garden (`plugin-report-garden.md`, itens 1–27; v3.51.2): 30 negações da G14 em ~3 h de run, o run cortado duas vezes pelo limite de uso da conta sem sinal legível, rodadas e transições registradas no lugar errado ou sumindo, e fechamentos que reprovavam por formato.
 
 - **G14 (`hooks/pre-tool.ps1`):** texto entre aspas com `$( … )` não vira mais trecho recusado (cada subexpressão é conferida); `if`/`param`/atribuição/`[xml]` em cadeia; propriedade com os argumentos do comando de fora; leitura por `[array]`, `[Text.Encoding]`, `[xml]`, `[IO.Directory]`; escrita por .NET com destino resolvido (passa pela G5/G8/G9); `"$root\…"` resolvido; caminho do script do plugin em variável; função do próprio comando; `cmd /c "<comando>"` lido por dentro; **script que o papel gravou** (scratchpad ou `.team-project/`) roda quando o conteúdo passaria pela G14; `Get-CimInstance`; `Stop-Process -Id` só ao operator; `adb` e `Start-Sleep` negados com a rota do `target.ps1` e do exit 3.
 - **G8:** `pasta/**` casa a própria pasta — `stories/` (PO) e `delivery/` (dev) não caem mais em "dono ambíguo".
