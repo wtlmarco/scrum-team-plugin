@@ -65,7 +65,7 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 ## Como preencher
 
 - **ID** — segue a convenção do projeto (`.team-project/scrum-master/context.md`): `T-nnn` para Task, `H-nnn` para História; Task nascida de GAP reusa o ID do GAP; quebra usa sufixo (`T-012a`).
-- **Toda Task fica sob a História a que pertence.** Task sem História é violação de R20 e não entra no quadro.
+- **Toda Task fica sob a História a que pertence.** Task sem História é violação de R20 e não entra no quadro. **Task habilitadora** (scaffold, ambiente, base comum): fica sob a primeira História que depende dela; as das outras Histórias a citam em "Depende de". Não há seção `## Habilitadora` (decisão do stakeholder, 23/10/2026).
 - **Tabelas auxiliares** (rastreabilidade Task ↔ História, trilha por Task) podem vir depois da última História, sob um título `## ` próprio: os scripts (`run.ps1`, `kanban.ps1`, `close.ps1`, G20) leem como Task só as linhas das tabelas sob `## História H-…` (v3.51.4 — antes elas viravam Tasks-fantasma da última História).
 - **A linha "Sprint corrente"** de `.team-project/README.md` §2 segue o modelo (`| **Sprint corrente** | **<n>** — …`); desde a v3.51.4 os scripts aceitam também o número sem negrito ou depois de "sprint" (`| **Sprint corrente** | sprint **2** …`).
 - **As colunas Plano, Evidência e Cenários são ponteiros, não conteúdo.** O plano é do Arquiteto (`plan/`), a evidência é do QA (`evidence/`), e este quadro é o que **relaciona** História ↔ Task ↔ plano ↔ evidência ([`../process/artifact-ownership.md` §1e](../process/artifact-ownership.md)). Ponteiro que não resolve é achado de processo.

@@ -228,7 +228,7 @@ try {
 
     # ---------- R20 · Task com História; aprovação do pacote antes da construção ----------
     if (-not $story) { Add-Result 'R20' 'falhou' "$Task não está sob um cabeçalho '## História H-nnn' (nem '## Habilitadora') no quadro" }
-    elseif ($story -eq 'habilitadora') { Add-Result 'R20' 'falhou' "$Task está sob '## Habilitadora' — Task sem História viola a R20 (templates/sprint-backlog.md); o parser não a põe mais na História de cima (v3.51.4)" }
+    elseif ($story -eq 'habilitadora') { Add-Result 'R20' 'falhou' "$Task está sob '## Habilitadora' — Task sem História viola a R20: mova-a para baixo da primeira História que depende dela e cite-a em 'Depende de' nas outras (workflow-sprint.md §5e Planning, passo 4)" }
     else {
         $approvedCell = Get-LabelValue $board 'Aprovado em'
         $frozenCell = Get-LabelValue $board 'stories/'
