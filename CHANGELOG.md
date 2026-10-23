@@ -13,6 +13,15 @@
 
 ---
 
+## v3.51.5 — 2026-10-23
+
+**Branch:** `fix/v3.51.5` a partir de `develop` · **Processo:** addendum v3.51.5 do changelog do processo (decisão do stakeholder)
+Decisão pendente da v3.51.4 (garden item 20): Task habilitadora sem História. O stakeholder manteve a R20.
+
+- **Planning (`workflow-sprint.md` §5e, passo 4) e modelo do Sprint Backlog:** a Task habilitadora (scaffold, ambiente, base comum) entra sob a **primeira História que depende dela**; as Tasks das outras Histórias a citam em "Depende de". Não há seção `## Habilitadora`.
+- **`close.ps1` (R20):** a mensagem de Task sob `## Habilitadora` diz como corrigir o quadro.
+- **Testes:** conferências e guardas sem caso novo (a reprovação da R20 já era testada); C3 ok.
+
 ## v3.51.4 — 2026-10-23
 
 **Branch:** `fix/v3.51.4` a partir de `develop` · **Processo:** addendum v3.51.4 do changelog do processo (`/review note`)
