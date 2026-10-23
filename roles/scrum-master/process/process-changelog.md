@@ -134,6 +134,10 @@ Suítes: guardas e conferências (contagem na entrega), C3, `claude plugin valid
 
 Autorização de custo da Etapa 6a (P+ no SunScape). API e Windows desktop no executor de cenários: próximo incremento.
 
+### Addendum v3.51.5 — Task habilitadora fica sob uma História (SM) — 23/10/2026
+
+**Decisão** (stakeholder, pendência da v3.51.4): R20 mantida. Planning passo 4 e `sprint-backlog.md`: a Task habilitadora fica sob a 1ª História que depende dela; as outras a citam em "Depende de". **Evidência:** C3 ok.
+
 ### Addendum v3.51.4 — o run do SunScape e o sprint 2 do garden: G14 lendo o que os papéis escrevem, limite de uso legível, quadro que não perde linha (SM + Arquiteto + Dev + UX) — 23/10/2026
 
 **Instrução** (stakeholder, 23/10/2026, `note.md` itens 1–16 e `plugin-report-garden.md` itens 1–27, tudo numa entrega só; item 14 decidido em 23/10: reduzir a partida do Gradle sem tirar mutação nem verificação completa).
