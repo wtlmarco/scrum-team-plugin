@@ -138,7 +138,7 @@ try {
         $noDecision = @()
         $s7r = Get-Section $readme '^##\s+7\.\s'
         if ($s7r -and $s7r -match '(?i)no preference|expirad') { $noDecision += 'README §7' }
-        $sprintM = [regex]::Match($readme, '(?m)^\|\s*\*\*Sprint corrente\*\*\s*\|\s*\*\*(\d+)\*\*')
+        $sprintM = [regex]::Match($readme, $script:SprintLineRe)
         if ($sprintM.Success) {
             $sd = Join-Path $tp ('sprints/' + $sprintM.Groups[1].Value)
             $bp = Join-Path $sd 'sprint-backlog.md'

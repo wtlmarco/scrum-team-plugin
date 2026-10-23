@@ -61,7 +61,7 @@ try {
     $nv = Get-LabelValue $readme 'Limite de arquivos por Correção'; if ($nv) { $m = [regex]::Match($nv, '\d+'); if ($m.Success) { $N = [int]$m.Value } }
     $tv = Get-LabelValue $readme 'Teto de Correções por bloco';     if ($tv) { $m = [regex]::Match($tv, '\d+'); if ($m.Success) { $cap = [int]$m.Value } }
 
-    $sm = [regex]::Match($readme, '(?m)^\|\s*\*\*Sprint corrente\*\*\s*\|\s*\*\*(\d+)\*\*')
+    $sm = [regex]::Match($readme, $script:SprintLineRe)
     $sprintDir = if ($sm.Success) { Join-Path $tp ("sprints/" + $sm.Groups[1].Value) } else { $null }
     $board = $null
     if ($sprintDir -and (Test-Path -LiteralPath (Join-Path $sprintDir 'sprint-backlog.md')) -and -not (Test-Path -LiteralPath (Join-Path $sprintDir 'retrospective.md'))) {

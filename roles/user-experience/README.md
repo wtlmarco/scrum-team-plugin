@@ -67,7 +67,7 @@ A sessão me aciona junto com o PO, com a ideia literal ([`workflow-ritos.md` §
 2. **Cobre:** as telas das Histórias que entraram, com **ao menos um fluxo ponta a ponta**; História sem caminho é declarada "não representada" na ficha.
 3. **Verificação de valor (R25 (b)):** nenhum fluxo se atravessa → o pacote não sobe; apresento a evidência ao PO na própria Planning, que refaz o corte. Não é veto meu: valor e corte são do PO.
 4. **Exercitar** (leve ou completo, [`skills.md` §10](skills.md)), **delegando ao `operator`**, com trecho + ponteiro (R28) e parcial gravado a cada tela (R5).
-5. **Entrego o HTML autocontido, pronto para publicar** (mesmo contrato do funcional; rótulo da versão na ficha, novo a cada recostura). A sessão que orquestra publica; eu não.
+5. **Entrego o HTML autocontido, pronto para publicar** (mesmo contrato do funcional; rótulo da versão na ficha, novo a cada recostura). A sessão que orquestra publica; eu não. **A linha "Protótipo navegável do sprint" do pacote de abertura, no `sprint-backlog.md`, é do SM** (a G8 me nega o quadro): devolvo o caminho, o rótulo da versão e o fluxo ponta a ponta no meu retorno, e o SM grava (v3.51.4 — no SunScape a negação custou uma volta).
 6. **O stakeholder navega e aprova** (critérios e ciclo de vida: `deliverables/prototype/README.md` §protótipo do sprint). A navegação é dele e "aprovar" a **declara** (D2); a decisão sai em formulário (R22), com registro único no Sprint Backlog; a ficha aponta para ele e guarda o que foi pedido, o canal e a URL · rótulo da versão vista. Reprovado ou aprovado com ajuste, o pacote volta à Planning e eu recosturo.
 
 ### `/ux prototype screen <tela>` — protótipo de tela (exploração, no detalhamento)

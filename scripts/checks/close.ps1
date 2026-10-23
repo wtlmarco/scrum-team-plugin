@@ -24,8 +24,8 @@ try {
     $readmePath = Join-Path $tp 'README.md'
     if (-not (Test-Path -LiteralPath $readmePath)) { [Console]::Error.WriteLine("C1: $readmePath não existe — rode na raiz do projeto ou passe -Root."); exit 2 }
     $readme = Read-Text $readmePath
-    $m = [regex]::Match($readme, '(?m)^\|\s*\*\*Sprint corrente\*\*\s*\|\s*\*\*(\d+)\*\*')
-    if (-not $m.Success) { [Console]::Error.WriteLine('C1: .team-project/README.md §2 sem a linha "Sprint corrente".'); exit 2 }
+    $m = [regex]::Match($readme, $script:SprintLineRe)
+    if (-not $m.Success) { [Console]::Error.WriteLine('C1: .team-project/README.md §2 sem a linha "Sprint corrente" — esperado: ' + $script:SprintLineHelp); exit 2 }
     $n = $m.Groups[1].Value
     $S = Join-Path $tp "sprints/$n"
     $idPat = Get-IdPattern $Task
@@ -36,10 +36,13 @@ try {
     $boardTables = Get-Tables $board
 
     # Linha da Task no quadro e a História acima dela.
+    # v3.51.4 (garden item 20): título "## " que não é de História encerra a História (tabelas de rastreabilidade e de trilha
+    # depois da última História não são o quadro); "## Habilitadora …" é o grupo das Tasks sem História.
     $taskRow = $null; $taskTable = $null; $story = $null; $curStory = $null
     foreach ($line in ($board -split "`r?`n")) {
         $hm = [regex]::Match($line, '^##\s+Hist[oó]ria\s+(H-[\w]+)')
         if ($hm.Success) { $curStory = $hm.Groups[1].Value }
+        elseif ($line -match '^##\s') { $curStory = if ($line -match '^##\s+(?i)habilitadora') { 'habilitadora' } else { $null } }
         if ($line.TrimStart().StartsWith('|')) {
             $cells = Split-Row $line
             if ($cells.Count -gt 1 -and $cells[0] -match $idPat -and $cells[0] -notmatch '^\s*Task\s*$') {
@@ -74,7 +77,10 @@ try {
     if ($null -eq $ev -or [string]::IsNullOrWhiteSpace($ev)) {
         Add-Result 'R7' 'falhou' "sem evidência: nem sprints/$n/delivery/$Task.md (dev, v3.51) nem sprints/$n/evidence/$Task.md (QA)"
     } elseif ($devMode) {
-        $okCmd = [regex]::IsMatch($evBlock, '(?ms)^```[^\n]*\n\s*(>\s|verify |accept )')
+        # v3.51.4 (garden item 17): o comando (ou a 1ª linha da saída do verify/accept) em QUALQUER linha do bloco de código —
+        # antes só a 1ª linha valia, e a saída certa colada sem o comando no topo custava uma rodada extra do dev.
+        $okCmd = $false
+        foreach ($cb in [regex]::Matches($evBlock, '(?ms)^```[^\n]*\n(.*?)^```')) { if ($cb.Groups[1].Value -match '(?m)^\s*(>\s*\S|(?:\S*[\\/])?(verify|accept)(\.ps1)?\s)') { $okCmd = $true; break } }
         if (-not $okCmd) { Add-Result 'R7' 'falhou' "delivery/$Task.md sem a saída colada do verify ou do accept na seção mais recente" }
         else { Add-Result 'R7' 'ok' "evidência do dev (v3.51): delivery/$Task.md; o veredito do QA é o portão do sprint" }
     } else {
@@ -221,7 +227,8 @@ try {
     }
 
     # ---------- R20 · Task com História; aprovação do pacote antes da construção ----------
-    if (-not $story) { Add-Result 'R20' 'falhou' "$Task não está sob um cabeçalho '## História H-nnn' no quadro" }
+    if (-not $story) { Add-Result 'R20' 'falhou' "$Task não está sob um cabeçalho '## História H-nnn' (nem '## Habilitadora') no quadro" }
+    elseif ($story -eq 'habilitadora') { Add-Result 'R20' 'falhou' "$Task está sob '## Habilitadora' — Task sem História viola a R20 (templates/sprint-backlog.md); o parser não a põe mais na História de cima (v3.51.4)" }
     else {
         $approvedCell = Get-LabelValue $board 'Aprovado em'
         $frozenCell = Get-LabelValue $board 'stories/'
@@ -376,11 +383,16 @@ try {
         $s11 = Get-Section $plan '^##\s+11\.'
         if ($s11) { foreach ($pp in [regex]::Matches($s11, '`(\.team-project/operator/[^`]+?/)`')) { $citedDirs += $pp.Groups[1].Value } }
     }
+    # v3.51.4 (garden item 21): job de OUTRA Task ou da História (operator/<n>/T-022-…/, operator/<n>/H-003-…/), citado porque o
+    # plano por História reaproveita a medição, só precisa existir — a rodada dele é de quem o chamou, não desta Task.
+    $reused = 0
     foreach ($rel in ($citedDirs | Select-Object -Unique)) {
         if ($rel -match '<') { continue }
         $dirFull = Join-Path $Root $rel
         $found = @(Get-ChildItem -LiteralPath $dirFull -Filter 'report*.md' -ErrorAction SilentlyContinue)
         if ($found.Count -eq 0) { $r28 += "report ausente em $rel (o hook G16 grava a resposta do operator na pasta do job citada na resposta ou no pedido)"; continue }
+        $leaf = Split-Path ($rel.TrimEnd('/', '\')) -Leaf
+        if ($leaf -match '^(T-\d+[a-z]?|H-[\w]+)(?![\w])' -and $Matches[1] -ne $Task) { $reused++; continue }
         foreach ($f in $found) { $taskReports[$f.FullName.ToLowerInvariant()] = $true }
     }
     foreach ($k in @($taskReports.Keys)) {
@@ -405,7 +417,7 @@ try {
     }
     if ($reports -ne $opLines) { $r28 += "operator de ${Task}: $reports report(s) (pasta operator/$n/$Task… e citados no plano/evidência) × $opLines linha(s) operator de $Task no consumo" }
     if ($r28.Count) { Add-Result 'R28' 'falhou' ($r28 -join '; ') }
-    elseif ($reports -eq 0) { Add-Result 'R28' 'ok' "$Task sem job do operator e sem linha operator no consumo" }
+    elseif ($reports -eq 0) { Add-Result 'R28' 'ok' ("$Task sem job do operator e sem linha operator no consumo" + $(if ($reused) { "; $reused medição(ões) de outra Task/História reaproveitada(s), report presente" } else { '' })) }
     else { Add-Result 'R28' 'ok' "$Task`: $reports report(s) = $opLines linha(s) operator; ponteiros dentro do teto" }
 
     # ---------- R30 · cenários mapeados e executados ----------
@@ -467,6 +479,9 @@ try {
         $est = 0.0; $em = [regex]::Match((Get-Cell $taskRow (Find-Col $taskTable 'Est')), '\d+([.,]\d+)?'); if ($em.Success) { $est = [double]($em.Value -replace ',', '.') }
         $now = Get-Date -Format 'yyyy-MM-dd HH:mm'
 
+        # v3.51.4 (garden item 23): quadro e kanban.md gravados sob a trava do kanban.md (a G16 o regrava ao mesmo tempo).
+        $lockPath = Get-ChartPath $S; $lockFs = Enter-FileLock $lockPath
+        $board = Read-Text $boardPath
         # 1 · marcador no quadro (só a 1ª célula da linha da Task)
         $bl = $board -split "`r?`n"; $nl = if ($board.Contains("`r`n")) { "`r`n" } else { "`n" }
         for ($i = 0; $i -lt $bl.Count; $i++) {
@@ -521,6 +536,7 @@ try {
             $regNote = ' · Registro no sprint-backlog.md (quadro anterior à v3.44.1 — o /team update o leva ao burndown)'
         }
         [System.IO.File]::WriteAllText($bdPath, ($lines -join $bnl), $utf8)
+        Exit-FileLock $lockFs $lockPath
         try { $null = & (Join-Path $PSScriptRoot 'kanban.ps1') -Root $Root 2>&1 } catch { }   # v3.51.2: o Kanban (Markdown) acompanha o fechamento
 
         # 3 · o -Post confere o que acabou de ser gravado

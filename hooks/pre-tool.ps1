@@ -120,22 +120,26 @@ function Test-G19([object]$ToolInput) {
 
 # Variáveis atribuídas no próprio comando a um caminho literal (v3.48): $d = "x" · $d = Join-Path (Get-Location) "x" ·
 # $d = Join-Path $raiz "x" (com $raiz já resolvida). Outra forma não se resolve — o destino fica de fora, como antes.
+# v3.51.4: texto entre aspas duplas com $outra (já resolvida no mesmo comando) se resolve — $job = "$root\.team-project\…"
+# (o operator do SunScape teve Add-Content $log negado porque $log saía de $job, que saía de $root).
 function Get-CommandVars([string]$Cmd) {
     $vars = @{}
-    $q = '(?:''([^'']*)''|"((?:\$env:(?:TEMP|TMP)\b)?[^"$`]*)")'   # v3.51.2: "$env:TEMP\…" (scratchpad) se resolve
+    $q = '(?:''([^'']*)''|"([^"`]*)")'
+    $expand = { param($s) $r = [regex]::Replace((Expand-TempVar $s), '\$\{?(\w+)\}?', { param($mm) $k = $mm.Groups[1].Value.ToLowerInvariant(); if ($vars.ContainsKey($k)) { [string]$vars[$k] } else { $mm.Value } }); $r }
     foreach ($m in [regex]::Matches($Cmd, '\$(\w+)\s*=\s*(?:Join-Path\s+(\(Get-Location\)(?:\.Path)?|\$PWD|\$\w+)\s+' + $q + '|' + $q + ')\s*(?=;|\r?\n|$)')) {
         $name = $m.Groups[1].Value.ToLowerInvariant()
         if ($m.Groups[2].Success) {
-            $lit = $m.Groups[3].Value + $m.Groups[4].Value
+            $lit = $m.Groups[3].Value + $(if ($m.Groups[4].Success) { & $expand $m.Groups[4].Value } else { '' })
             $base = $m.Groups[2].Value
             if ($base -match '^\$(\w+)$' -and $base -notmatch '^\$PWD$') {
                 $bn = $Matches[1].ToLowerInvariant()
                 if (-not $vars.ContainsKey($bn)) { continue }
                 try { $vars[$name] = (Join-Path $vars[$bn] $lit) } catch { }
             } else { $vars[$name] = $lit }                     # (Get-Location) / $PWD: relativo à pasta corrente
-        } else { $vars[$name] = $m.Groups[5].Value + $m.Groups[6].Value }
+        } elseif ($m.Groups[6].Success) { $vars[$name] = & $expand $m.Groups[6].Value }   # aspas duplas: interpola o que já se conhece
+        else { $vars[$name] = $m.Groups[5].Value }
     }
-    foreach ($k in @($vars.Keys)) { $vars[$k] = Expand-TempVar ([string]$vars[$k]) }
+    foreach ($k in @($vars.Keys)) { $vars[$k] = Expand-TempVar ([string]$vars[$k]); if ([string]$vars[$k] -match '\$') { $vars.Remove($k) } }
     return $vars
 }
 
@@ -179,6 +183,13 @@ function Get-WriteTargets([string]$Cmd, [hashtable]$Vars = $null) {
             if ($t -match '^"(.*)"$|^''(.*)''$') { $t = $Matches[1] + $Matches[2] }
             $targets += $t
         }
+    }
+    # v3.51.4: escrita por .NET ([IO.File]::WriteAllText(<caminho>, …)) — o 1º argumento é destino como o de um cmdlet, e passa
+    # pelas mesmas guardas (G5/G8/G9). É a forma natural de gravar UTF-8 sem BOM no 5.1 (o .scn do QA, note.md item 10).
+    foreach ($nm in [regex]::Matches($masked, '\[(?:System\.)?IO\.File\]::(?:WriteAll\w+|AppendAll\w+)\s*\(\s*(\x01\d+\x01|\$\{?\w+\}?|[^,\s)]+)')) {
+        $t = & $unmask $nm.Groups[1].Value
+        if ($t -match '^"(.*)"$|^''(.*)''$') { $t = $Matches[1] + $Matches[2] }
+        $targets += $t
     }
     # Variável do mesmo comando ($dir, "$dir\x.log"): troca pelo literal; o que sobrar com $ não se resolve.
     $targets = @($targets | ForEach-Object {
@@ -365,7 +376,7 @@ $script:runBase = @(
     'foreach-object', '%', 'sort-object', 'sort', 'group-object', 'measure-object', 'measure', 'compare-object', 'format-table',
     'ft', 'format-list', 'fl', 'out-string', 'out-null', 'write-output', 'echo', 'write-host', 'get-date', 'get-location', 'pwd',
     'set-location', 'cd', 'push-location', 'pop-location', 'convertfrom-json', 'convertto-json', 'get-command', 'get-filehash',
-    'get-member', 'get-winevent', 'get-process',
+    'get-member', 'get-winevent', 'get-process', 'get-ciminstance', 'get-wmiobject',
     'head', 'tail', 'wc', 'grep', 'rg', 'find', 'uniq', 'diff', 'which', 'stat', 'tree', 'true')
 $script:runWriteVerbs = 'set-content', 'add-content', 'out-file', 'new-item', 'clear-content', 'remove-item', 'copy-item', 'move-item'
 
@@ -386,13 +397,84 @@ function Restore-Quoted([string]$Seg) {
 function Test-RunTargets([string]$Seg) {
     $targets = @(Get-WriteTargets (Restore-Quoted $Seg) $script:cmdVars)
     if ($targets.Count -eq 0) { return $false }                       # destino em variável: não se resolve
-    $base = if ($script:hookInput.cwd) { [string]$script:hookInput.cwd } else { $script:projectDir }
-    foreach ($t in $targets) {
-        if (Test-ProviderDrive $t) { if (Test-SessionDrive $t) { continue } else { return $false } }
-        $full = if ([System.IO.Path]::IsPathRooted($t)) { $t } else { Join-Path $base $t }
-        if (-not (Get-RelativePath $script:projectDir $full) -and -not (Test-UnderTemp $full)) { return $false }
-    }
+    foreach ($t in $targets) { if (-not (Test-RunPath $t)) { return $false } }
     return $true
+}
+function Test-RunPath([string]$Target) {
+    if (Test-ProviderDrive $Target) { return (Test-SessionDrive $Target) }
+    $base = if ($script:hookInput.cwd) { [string]$script:hookInput.cwd } else { $script:projectDir }
+    $full = if ([System.IO.Path]::IsPathRooted($Target)) { $Target } else { Join-Path $base $Target }
+    return [bool]((Get-RelativePath $script:projectDir $full) -or (Test-UnderTemp $full))
+}
+
+# v3.51.4: escrita por .NET ([IO.File]::WriteAllText/AppendAllText…) passa quando TODO destino dela se resolve no projeto
+# ou no temporário — o destino já passou pela G5/G8/G9 (Get-WriteTargets o lê). Destino em variável que não se resolve: não.
+function Test-NetWrites([string]$Cmd) {
+    $calls = [regex]::Matches($Cmd, '\[(?:System\.)?IO\.File\]::(?:WriteAll|AppendAll)\w*\s*\(').Count
+    if (-not $calls) { return $true }
+    $qs = New-Object System.Collections.ArrayList
+    $masked = [regex]::Replace($Cmd, '"[^"]*"|''[^'']*''', { param($m) [void]$qs.Add($m.Value); "$([char]1)$($qs.Count - 1)$([char]1)" })
+    $got = 0
+    foreach ($nm in [regex]::Matches($masked, '\[(?:System\.)?IO\.File\]::(?:WriteAll\w+|AppendAll\w+)\s*\(\s*(\x01\d+\x01|\$\{?\w+\}?|[^,\s)]+)')) {
+        $t = [regex]::Replace($nm.Groups[1].Value, "\x01(\d+)\x01", { param($m) $qs[[int]$m.Groups[1].Value] })
+        if ($t -match '^"(.*)"$|^''(.*)''$') { $t = $Matches[1] + $Matches[2] }
+        $t = Expand-TempVar $t
+        if ($t -match '\$') { $t = [regex]::Replace($t, '\$\{?(\w+)\}?', { param($m) $k = $m.Groups[1].Value.ToLowerInvariant(); if ($script:cmdVars.ContainsKey($k)) { $script:cmdVars[$k] } else { $m.Value } }) }
+        if ($t -match '\$' -or -not (Test-RunPath $t)) { return $false }
+        $got++
+    }
+    return ($got -eq $calls)
+}
+
+# v3.51.4: script .ps1 que o papel escreveu — no scratchpad (temporário) ou em .team-project/ — roda quando o CONTEÚDO dele
+# passaria pela G14 linha a linha e cada destino de escrita dele passa pela G5/G8/G9 (a tabela-ouro do QA e a medição de
+# cobertura do operator, note.md item 10). Um nível só: script que chama outro script fica de fora.
+function Test-ScriptRun([string]$Seg) {
+    if ($script:g14Depth -gt 0) { return $false }
+    $s = (Restore-Quoted $Seg).Trim()
+    $m = [regex]::Match($s, '^(?i)(?:&\s*)?(?:(?:powershell|pwsh)(?:\.exe)?\s+(?:-(?!file\b)\w+(?:\s+(?!-)[\w.]+)?\s+)*-File\s+)?(?:"([^"]+\.ps1)"|''([^'']+\.ps1)''|([^\s"'']+\.ps1))(\s.*)?$')
+    if (-not $m.Success) { return $false }
+    if ($s -notmatch '^(?i)(&|powershell|pwsh)' -and $s -notmatch '^(?i)\.{0,2}[\\/]|^[a-z]:[\\/]') { return $false }
+    $p = Expand-TempVar ($m.Groups[1].Value + $m.Groups[2].Value + $m.Groups[3].Value)
+    if ($p -match '\$') { $p = [regex]::Replace($p, '\$\{?(\w+)\}?', { param($x) $k = $x.Groups[1].Value.ToLowerInvariant(); if ($script:cmdVars.ContainsKey($k)) { $script:cmdVars[$k] } else { $x.Value } }) }
+    if ($p -match '\$') { return $false }
+    $base = if ($script:hookInput.cwd) { [string]$script:hookInput.cwd } else { $script:projectDir }
+    $full = if ([System.IO.Path]::IsPathRooted($p)) { $p } else { Join-Path $base $p }
+    $rel = Get-RelativePath $script:projectDir $full
+    if (-not ((Test-UnderTemp $full) -or ($rel -and $rel.StartsWith('.team-project/')))) { return $false }
+    if (-not (Test-Path -LiteralPath $full -PathType Leaf) -or (Get-Item -LiteralPath $full).Length -gt 65536) { return $false }
+    $body = [System.IO.File]::ReadAllText($full, (New-Object System.Text.UTF8Encoding($false)))
+    if ($body -match $script:g14Forbidden) { return $false }
+    foreach ($t in (Get-WriteTargets $body)) {
+        if (Test-ProviderDrive $t) { continue }
+        $tf = if ([System.IO.Path]::IsPathRooted($t)) { $t } else { Join-Path $base $t }
+        $tr = Get-RelativePath $script:projectDir $tf
+        if (Test-GuardEnabled $cfg 'G5') { Test-G5 $tr $t }
+        if ($t -notmatch '(?i)\.log$') { if (Test-GuardEnabled $cfg 'G8') { Test-G8 $tr $t }; if (Test-GuardEnabled $cfg 'G9') { Test-G9 $tr $t } }
+    }
+    return (Test-CommandText $body 1)
+}
+
+# v3.51.4: cmd /c "<comando>" — a G14 lê o que está dentro (antes negava sempre): cada trecho passa pela lista, e o destino
+# de ">" passa pela G5/G8/G9 (log não é produto) e tem de ficar no projeto ou no temporário.
+function Test-CmdWrapper([string]$Seg) {
+    $m = [regex]::Match($Seg.Trim(), '^(?i)cmd(?:\.exe)?\s+/[ck]\s+"__q(\d+)__"\s*$')
+    if (-not $m.Success) { return $null }
+    $inner = ([string]$script:qmap[[int]$m.Groups[1].Value]).Trim('"')
+    $base = if ($script:hookInput.cwd) { [string]$script:hookInput.cwd } else { $script:projectDir }
+    foreach ($t in (Get-WriteTargets $inner)) {
+        if (Test-ProviderDrive $t) { return $false }
+        $tf = if ([System.IO.Path]::IsPathRooted($t)) { $t } else { Join-Path $base $t }
+        $tr = Get-RelativePath $script:projectDir $tf
+        if (Test-GuardEnabled $cfg 'G5') { Test-G5 $tr $t }
+        if ($t -notmatch '(?i)\.log$') { if (Test-GuardEnabled $cfg 'G8') { Test-G8 $tr $t }; if (Test-GuardEnabled $cfg 'G9') { Test-G9 $tr $t } }
+    }
+    $saved = $script:qmap
+    try {
+        $script:qmap = $null
+        foreach ($piece in ($inner -split '&&|\|\||&|\|')) { if ($piece.Trim() -and -not (Test-RunSegment $piece $script:g14Allowed)) { return $false } }
+        return $true
+    } finally { $script:qmap = $saved }
 }
 
 # v3.51.2: conferência do próprio plugin (scripts/checks/*.ps1) — sozinha ou como trecho de comando composto
@@ -402,6 +484,8 @@ function Test-PluginCheck([string]$Seg) {
     $m = [regex]::Match($Seg.Trim(), '^(?i)(?:&\s*)?(?:powershell|pwsh)(?:\.exe)?\s+(?:-(?!file\b)\w+(?:\s+(?!-)[\w.]+)?\s+)*-File\s+(?:"([^"]+)"|''([^'']+)''|(\S+))')
     if (-not $m.Success) { return $false }
     $p = Expand-TempVar ($m.Groups[1].Value + $m.Groups[2].Value + $m.Groups[3].Value)
+    # v3.51.4: caminho numa variável do mesmo comando ($acc = '…/scripts/checks/accept.ps1'; powershell -File $acc …).
+    if ($p -match '\$' -and $script:cmdVars) { $p = [regex]::Replace($p, '\$\{?(\w+)\}?', { param($x) $k = $x.Groups[1].Value.ToLowerInvariant(); if ($script:cmdVars.ContainsKey($k)) { $script:cmdVars[$k] } else { $x.Value } }) }
     if ($p -match '\$' -or $p -notmatch '(?i)\.ps1$') { return $false }
     try { $full = Normalize-PathText ([System.IO.Path]::GetFullPath($p)) } catch { return $false }
     foreach ($r in @($env:CLAUDE_PLUGIN_ROOT, (Split-Path $PSScriptRoot -Parent))) {
@@ -417,18 +501,34 @@ function Test-RunSegment([string]$Seg, [string[]]$Allowed) {
         if ($Seg -match '(^|\s)[\d*]?>{1,2}(?!&)\s*[^\s$]') { return (Test-RunTargets $Seg) }   # saída para arquivo
         return $true
     }
+    $cw = Test-CmdWrapper $Seg; if ($null -ne $cw) { return $cw }
+    if (Test-ScriptRun $Seg) { return $true }
     $s = $Seg.Trim()
-    $s = $s -replace '^(?i)(if|elseif|else|foreach|for|while|switch|try|catch|finally|return|do)\b\s*', ''
-    $s = $s -replace '^\$[\w:.]+\s*[-+]?=\s*', ''
-    # v3.48: método estático de leitura do .NET — [Math]::Min, [regex]::Replace, [IO.File]::ReadAllText (escrita por .NET
-    # já foi negada antes, em Test-G14).
-    if ($s -match '^(?i)\[(System\.)?(Math|String|Char|Convert|Int32|Int64|Double|Decimal|DateTime|TimeSpan|Guid|Text\.RegularExpressions\.Regex|Regex|IO\.Path|Linq\.Enumerable)\]::\w+\s*$') { return $true }
+    # v3.51.4: palavra-chave, atribuição e conversão em cadeia ($pct = if …, [xml]$x = Get-Content …, else) — antes só a
+    # primeira de cada saía, e "$pct = if" ou "if" sozinho virava trecho recusado.
+    do {
+        $prev = $s
+        $s = $s -replace '^(?i)(if|elseif|else|foreach|for|while|switch|try|catch|finally|return|do|until|begin|process|end|param)\b\s*', ''
+        $s = $s -replace '^(\[[^\]]+\]\s*)+(?=\$)', ''
+        $s = $s -replace '^\$[\w:.]+\s*[-+*/]?=\s*', ''
+        $s = $s.Trim()
+    } while ($s -ne $prev)
+    # v3.48: método estático de leitura do .NET — [Math]::Min, [regex]::Replace, [IO.File]::ReadAllText; v3.51.4: [array],
+    # [Text.Encoding], [xml], leitura de pasta e escrita por .NET com destino resolvido (Test-NetWrites).
+    if ($s -match '^(?i)\[(System\.)?(Math|String|Char|Convert|Int32|Int64|Double|Decimal|DateTime|TimeSpan|Guid|Text\.RegularExpressions\.Regex|Regex|IO\.Path|Linq\.Enumerable|Array|Text\.Encoding|Xml|Xml\.XmlDocument)\]::\w+\s*$') { return $true }
     if ($s -match '^(?i)\[(System\.)?IO\.File\]::(ReadAllText|ReadAllLines|ReadAllBytes|ReadLines|Exists)\s*$') { return $true }
+    if ($s -match '^(?i)\[(System\.)?IO\.Directory\]::(Exists|GetFiles|GetDirectories|EnumerateFiles|EnumerateDirectories)\s*$') { return $true }
+    if ($s -match '^(?i)\[(System\.)?IO\.File\]::(WriteAll|AppendAll)\w*\s*$') { return [bool]$script:netWriteOk }
+    if ($s -match '^(?i)\[(System\.)?Environment\]::(GetEnvironmentVariable|NewLine|CurrentDirectory)\s*$') { return $true }
     $s = $s -replace '^(\[[^\]]+\]\s*)+', '' -replace '^\$[\w:.]+\s*[-+]?=\s*', '' -replace '^&\s*', ''
     $s = $s.Trim()
     if (-not $s -or $s -match '^[\$@''"\-\d\[,!=+*/%<>]' -or $s -match '^\w+\s*=\s') { return $true }   # expressão, não comando
     # Propriedade do resultado entre parênteses — (Get-Content f).Count — é leitura; método chega aqui como __metodo_<nome>.
-    if ($s -match '^\.[A-Za-z_]\w*(\.[A-Za-z_]\w*)*(\s*\[[^\]]*\])?$') { return $true }
+    # v3.51.4: com o resto dos argumentos do comando de fora — Get-Content (Get-ChildItem x).FullName -Encoding UTF8.
+    if ($s -match '^\.[A-Za-z_]\w*(\.[A-Za-z_]\w*)*(\s*\[[^\]]*\])?(\s.*)?$') {
+        if ($s -match '(^|\s)[\d*]?>{1,2}(?!&)\s*[^\s$]') { return (Test-RunTargets $s) }
+        return $true
+    }
     $s = $s -replace '^(?i)git\s+(-C\s+\S+\s+|--no-pager\s+)+', 'git '
     $s = $s -replace '^(?i)(npm|npx)\s+--prefix(?:\s+|=)\S+\s+', '$1 '    # v3.48: npm --prefix source run x = npm run x na pasta
 
@@ -440,7 +540,17 @@ function Test-RunSegment([string]$Seg, [string[]]$Allowed) {
         return $false
     }
     if ($low -match '^[\w.-]+\s+(--version|-version)$') { return $true }   # versão de ferramenta (R26)
+    # v3.51.4: função definida no próprio comando — a definição e a chamada passam; o corpo é conferido trecho a trecho.
+    if ($low -match '^function\s+[\w-]+$') { return $true }
+    # v3.51.4: objeto .NET para ler ou codificar (New-Object Text.UTF8Encoding($false)); COM fica de fora.
+    if ($low -match '^new-object\s+(-typename\s+)?(system\.)?(text\.|io\.(stringreader|memorystream)|collections\.|xml\.)' -and $low -notmatch '-comobject') { return $true }
     $verb = ($low -split '\s+')[0]
+    if ($script:fnNames -and $script:fnNames -contains $verb) {
+        if ($low -match '(^|\s)[\d*]?>{1,2}(?!&)\s*[^\s$]') { return (Test-RunTargets $s) }
+        return $true
+    }
+    # v3.51.4: o operator encerra o processo que ele mesmo deixou preso (accept.ps1 parado) — só pelo número do processo.
+    if ($script:role -eq 'operator' -and $low -match '^stop-process\s+(-id\s+)?\d+(\s*,\s*\d+)*(\s+-force)?(\s+-erroraction\s+\w+)?$') { return $true }
     if ($script:runWriteVerbs -contains $verb) { return (Test-RunTargets $s) }
     foreach ($p in $Allowed) {
         $pl = ([string]$p).Trim().ToLowerInvariant()
@@ -451,6 +561,44 @@ function Test-RunSegment([string]$Seg, [string[]]$Allowed) {
     }
     return $false
 }
+
+# Confere um texto de comando (o da ferramenta ou o de um script do papel) trecho a trecho. Devolve $true/$false e deixa o
+# trecho recusado em $script:badSeg. v3.51.4: texto entre aspas duplas com $( … ) vira "__q<k>__" e cada subexpressão um
+# trecho próprio — antes o texto inteiro voltava ao comando e "tests=", ":", "brotas" ou "node:" viravam trechos recusados.
+function Test-CommandText([string]$Cmd, [int]$Depth = 0) {
+    $saved = @{ vars = $script:cmdVars; qmap = $script:qmap; fn = $script:fnNames; net = $script:netWriteOk; depth = $script:g14Depth }
+    try {
+        $script:g14Depth = $Depth
+        $script:cmdVars = Get-CommandVars $Cmd
+        $script:fnNames = @([regex]::Matches($Cmd, '(?im)\bfunction\s+([\w-]+)') | ForEach-Object { $_.Groups[1].Value.ToLowerInvariant() })
+        $script:netWriteOk = Test-NetWrites $Cmd
+        $script:qmap = New-Object System.Collections.ArrayList
+        $flat = [regex]::Replace($Cmd, '"([^"]*)"|''[^'']*''', { param($m)
+            [void]$script:qmap.Add($m.Value); $tok = '"__q' + ($script:qmap.Count - 1) + '__"'
+            if (-not ($m.Value.StartsWith('"') -and $m.Groups[1].Value.Contains('$('))) { return $tok }
+            $inner = $m.Groups[1].Value; $subs = @(); $i = 0
+            while (($i = $inner.IndexOf('$(', $i)) -ge 0) {
+                $depthP = 0; $j = $i + 1
+                for (; $j -lt $inner.Length; $j++) { if ($inner[$j] -eq '(') { $depthP++ } elseif ($inner[$j] -eq ')') { $depthP--; if ($depthP -eq 0) { break } } }
+                $sub = $inner.Substring($i + 2, [Math]::Max(0, $j - $i - 2))
+                $sub = [regex]::Replace($sub, '''[^'']*''', { param($q) [void]$script:qmap.Add($q.Value); '"__q' + ($script:qmap.Count - 1) + '__"' })
+                $subs += $sub; $i = $j + 1
+            }
+            return $tok + ' ; ' + ($subs -join ' ; ') + ' ; ' })
+        # Chamada de método sobre o resultado — (Get-Item f).Delete() — vira um segmento próprio, que nenhuma lista libera.
+        $flat = [regex]::Replace($flat, '\)\s*\.\s*([A-Za-z_]\w*)\s*\(', { param($m) ') ; __metodo_' + $m.Groups[1].Value + ' (' })
+        foreach ($seg in ($flat -split '\$\(|;|&&|\|\||\||\r?\n|[{}()]')) {
+            if (-not (Test-RunSegment $seg $script:g14Allowed)) { $script:badSeg = (Restore-Quoted $seg).Trim(); return $false }
+        }
+        return $true
+    } finally {
+        $script:cmdVars = $saved.vars; $script:qmap = $saved.qmap; $script:fnNames = $saved.fn; $script:netWriteOk = $saved.net; $script:g14Depth = $saved.depth
+    }
+}
+
+# v3.51.4: o que a G14 nunca libera, no comando e no conteúdo de script do papel. A escrita por .NET (WriteAll/AppendAll)
+# saiu daqui: passa quando o destino se resolve (Test-NetWrites) e a G5/G8/G9 o conferiram.
+$script:g14Forbidden = '(?i)--no-verify|\bInvoke-Expression\b|\biex\b|-EncodedCommand|\bStart-Process\b|\[(System\.)?IO\.(File|Directory)\]::(Delete|Move|Copy|Replace|Create\w*)'
 
 function Test-G14([object]$ToolInput) {
     if ($null -eq (Get-Marker $script:projectDir '.active-run')) { return $false }
@@ -469,26 +617,25 @@ function Test-G14([object]$ToolInput) {
     # v3.51.2: só o script dentro da pasta do plugin (Test-PluginCheck); composto com ele passa pelos trechos, abaixo.
     if ($cmd -match '^\s*(?i)(powershell|pwsh)(\.exe)?\s+(-\w+\s+)*-File\s+"?[^";|&]*[\\/]scripts[\\/]checks[\\/][\w-]+\.ps1"?([^;|&]|[*\d]?>&1)*(\|\s*Out-String\s*)?$' -and (Test-PluginCheck $cmd)) { return $true }
     $why = 'fora da lista operacional do run'
-    if ($cmd -match '(?i)--no-verify|\bInvoke-Expression\b|\biex\b|-EncodedCommand|\bStart-Process\b|\[(System\.)?IO\.(File|Directory)\]::(Write|Append|Delete|Move|Copy|Replace|Create)') { $why = 'construção que a G14 não libera (--no-verify, Invoke-Expression, Start-Process, escrita por .NET)' }
+    $fm = [regex]::Match($cmd, $script:g14Forbidden)
+    if ($fm.Success) {
+        $hint = if ($fm.Value -match '(?i)IO\.(File|Directory)') { ' — para gravar arquivo use o Edit/Write ou [IO.File]::WriteAllText(<caminho resolvido>, …); apagar, mover e copiar vão pelo cmdlet (Remove-Item, Move-Item, Copy-Item) com o caminho literal' } else { '' }
+        $why = "construção que a G14 não libera (``$($fm.Value)``)$hint"
+    }
     else {
-        $script:cmdVars = Get-CommandVars $cmd
-        $script:qmap = New-Object System.Collections.ArrayList
-        $flat = [regex]::Replace($cmd, '"([^"]*)"|''[^'']*''', { param($m)
-            if ($m.Value.StartsWith('"') -and $m.Groups[1].Value.Contains('$(')) { return ' ' + $m.Groups[1].Value + ' ' }
-            [void]$script:qmap.Add($m.Value); return '"__q' + ($script:qmap.Count - 1) + '__"' })
-        # Chamada de método sobre o resultado — (Get-Item f).Delete() — vira um segmento próprio, que nenhuma lista libera.
-        $flat = [regex]::Replace($flat, '\)\s*\.\s*([A-Za-z_]\w*)\s*\(', { param($m) ') ; __metodo_' + $m.Groups[1].Value + ' (' })
-        $allowed = @($script:runBase) + @($cfg.runCommands)
-        $ok = $true; $badSeg = ''
-        foreach ($seg in ($flat -split '\$\(|;|&&|\|\||\||\r?\n|[{}()]')) { if (-not (Test-RunSegment $seg $allowed)) { $ok = $false; $badSeg = (Restore-Quoted $seg).Trim(); break } }
-        if ($ok) { return $true }
+        $script:g14Allowed = @($script:runBase) + @($cfg.runCommands)
+        $script:badSeg = ''
+        if (Test-CommandText $cmd 0) { return $true }
         if (@($cfg.runCommands).Count -eq 0) { return $false }        # projeto sem runCommands: o harness decide, como antes
+        $badSeg = [string]$script:badSeg
         $plugCheck = $badSeg -match '^(?i)(&\s*)?(powershell|pwsh)(\.exe)?\s.*-File\s.*[\\/]scripts[\\/]checks[\\/]'   # antes do corte
         if ($badSeg.Length -gt 80) { $badSeg = $badSeg.Substring(0, 80) + '…' }
-        if ($badSeg -match '^(?i)start-sleep\b') { $why = "espera com Start-Sleep durante o run (``$badSeg``) — o papel fica parado consumindo contexto. Não espere processo: rode o comando em primeiro plano, com timeout; execução longa (build, suíte, cobertura) vai ao operator, em primeiro plano (R28)" }
+        if ($badSeg -match '^(?i)start-sleep\b') { $why = "espera com Start-Sleep durante o run (``$badSeg``) — o papel fica parado consumindo contexto. Esperar o alvo (emulador, servidor): ``target.ps1 -Target <alvo> -Repair``, que espera ele ficar pronto. Esperar um comando: rode-o em primeiro plano, com timeout — o verify.ps1 e o accept.ps1 voltam com exit 3 (parcial) e continuam do ponto na chamada seguinte; execução longa vai ao operator, em primeiro plano (R28)" }
+        elseif ($badSeg -match '^(?i)(\S*[\\/])?adb(\.exe)?\b') { $why = "``adb`` direto (``$badSeg``) — o alvo se confere e se repara pelo ``target.ps1 -Target android`` (com ``-Repair`` reinicia e espera o emulador), e os cenários rodam pelo ``accept.ps1``; inspeção da tela é do operator pela pasta do job" }
         elseif ($badSeg -match '^(?i)(robocopy|xcopy)\b') { $why = "cópia em massa (``$badSeg``) — réplica do projeto para medir ou provar é trabalho do operator, na pasta do job (R28)" }
-        elseif ($badSeg -match '^(?i)cmd(\.exe)?\s+/[ck]\b') { $why = "``cmd /c`` em volta do comando (``$badSeg``) — a G14 não lê o que está dentro do cmd. Rode o comando direto, sem ``cmd /c``: o prefixo de runCommands passa sozinho" }
+        elseif ($badSeg -match '^(?i)cmd(\.exe)?\s+/[ck]\b') { $why = "``cmd /c`` (``$badSeg``) — a G14 lê o comando de dentro quando ele vem entre aspas duplas (cmd /c ""<comando> > <log>""); o trecho de dentro não está na lista ou o destino não se resolve no projeto" }
         elseif ($plugCheck) { $why = "script de conferência fora da pasta do plugin (``$badSeg``) — só os de `${CLAUDE_PLUGIN_ROOT}/scripts/checks/ passam; use o caminho que o roteiro cita" }
+        elseif ($badSeg -match '(?i)\.ps1\b') { $why = "script (``$badSeg``) — passa o script que o próprio papel gravou no scratchpad ou em .team-project/, quando cada linha dele passaria pela G14 e cada destino de escrita é dele; o trecho do script que não passaria é o motivo — rode-o sozinho para ver" }
         elseif ($badSeg -match '^__metodo_(\w+)') { $why = "fora da lista operacional do run — chamada de método .$($Matches[1])() sobre o resultado de um comando; a G14 só libera propriedade (.Count, .Length, .Lines) — para escrever ou apagar, use o cmdlet" }
         else { $why = "fora da lista operacional do run — o trecho recusado é ``$badSeg``" + $(if ($badSeg -ne $cmd.Trim()) { ' (os outros trechos do comando composto passaram; rode esse trecho sozinho ou troque a forma)' } else { '' }) }
     }
@@ -546,9 +693,12 @@ try {
             if ($script:teamProject -and (Test-GuardEnabled $cfg 'G18')) { Test-G18Agent $ti }
             if ($phase2 -and (Test-GuardEnabled $cfg 'G7')) { Test-G7 $ti }
             if ($script:teamProject -and (Test-GuardEnabled $cfg 'G17')) { Test-G17 $ti }   # vale também para a sessão principal
-            # v3.51 (G20): agente em segundo plano disparado pela sessão durante o run fica registrado até voltar.
-            if ($script:teamProject -and -not $script:role -and $ti.run_in_background -eq $true -and (Test-Path -LiteralPath (Join-Path $script:projectDir '.team-project/.active-run'))) {
-                Add-ActiveAgent $script:projectDir ([string]$ti.subagent_type) ([string]$ti.description)
+            # v3.51 (G20): agente disparado pela sessão fica registrado até voltar. v3.51.4: todo agente da sessão, em primeiro
+            # ou segundo plano, sem depender do .active-run (gravado na mesma resposta, chegava depois — garden item 5); o
+            # Stop só considera os de segundo plano. O kanban.md mostra todos em "## Agora".
+            if ($script:teamProject -and -not $script:role -and $ti.subagent_type) {
+                $desc = ([string]$ti.description + ' ' + $(if ($ti.prompt) { ([string]$ti.prompt).Substring(0, [Math]::Min(400, ([string]$ti.prompt).Length)) } else { '' })).Trim()
+                Add-ActiveAgent $script:projectDir ([string]$ti.subagent_type) $desc ($ti.run_in_background -eq $true)
             }
         }
         '^SendMessage$'         {
@@ -565,6 +715,11 @@ try {
     if ($cfg.probe) {
         $agent = if ($script:hookInput.agent_type) { [string]$script:hookInput.agent_type } else { '(ausente)' }
         Write-GuardLog $script:projectDir 'probe' $script:hookInput '' ("agent_type=$agent; agent_id=" + [string]$script:hookInput.agent_id + "; script_ms=" + $sw.ElapsedMilliseconds + $(if ($allow) { '; G14 allow' } else { '' }))
+    }
+    # v3.51.4: a última ação do subagente vai ao .active-agents e ao "## Agora" do kanban.md (sinal de vida, note.md item 15).
+    if ($script:role -and $script:teamProject) {
+        $act = switch -Regex ($tool) { '^(PowerShell|Bash)$' { [string]$ti.command } '^(Edit|Write)$' { "$tool $(Split-Path ([string]$ti.file_path) -Leaf)" } default { $tool } }
+        try { Update-ActiveAgent $script:projectDir ([string]$script:hookInput.agent_id) ([string]$script:hookInput.agent_type) $act } catch { }
     }
     if ($allow) { Write-Allow 'operação do run, já conferida pelas guardas (.team-project/.active-run)' }
     exit 0

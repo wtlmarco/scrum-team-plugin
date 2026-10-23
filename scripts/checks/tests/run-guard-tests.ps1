@@ -242,8 +242,6 @@ $cases = @(
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'Set-Location src; $log = "verify.log"; powershell -NoProfile -ExecutionPolicy Bypass -File "' + $root + '\scripts\checks\verify.ps1" -Task B-001 -Mode full 2>&1 | Select-Object -Last 30' } } },
     @{ Name = 'G14 script scripts/checks fora da pasta do plugin negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'fora da pasta do plugin'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'powershell -NoProfile -File "' + $proj + '\scripts\checks\verify.ps1" -Task B-001 -Mode full' } } },
-    @{ Name = 'G14 cmd /c em volta de comando liberado: nega com a forma certa'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'Rode o comando direto'
-       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'Set-Location src; cmd /c "npm test -- --watch=false"' } } },
     @{ Name = 'G14 Arquiteto cria pasta no scratchpad por $env:TEMP'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:architect'; tool_input = @{ command = '$d = "$env:TEMP\claude\x\scratchpad\f003"; New-Item -ItemType Directory -Force $d' } } },
     @{ Name = 'G14 Arquiteto executa arquivo do scratchpad: negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
@@ -553,7 +551,88 @@ $cases = @(
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "7", "desde": "2026-10-06 10:00" }' -Encoding UTF8
                  [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/sprints/7/sprint-backlog.md'), "## História H-1 — x`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2B1C)) T-3 | c | T-9 |`n", (New-Object System.Text.UTF8Encoding($false)))
                  Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.log') -Force -ErrorAction SilentlyContinue }
-       Payload = @{ hook_event_name = 'Stop' } }
+       Payload = @{ hook_event_name = 'Stop' } },
+    # ---------- v3.51.4 — negações reais do SunScape (note.md itens 3, 4, 5, 10) e do garden (itens 5, 6, 25) ----------
+    @{ Name = 'G14 texto com $( ) entre aspas: subexpressões conferidas, rótulos não viram trecho (tests=, node:)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "1", "desde": "2026-10-06 10:00" }' -Encoding UTF8
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "runCommands": ["npm test", ".\\source\\gradlew.bat"] }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'Get-ChildItem *.xml | ForEach-Object { "tests=$($_.Name) node: $($_.Length) brotas" }' } } },
+    @{ Name = 'G14 contagem e Select-String com "$($_.LineNumber): …" (Arquiteto)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:architect'; tool_input = @{ command = '$f=''plano.md''; (Get-Content $f).Count; Select-String -Path $f -Pattern ''Passo'' | ForEach-Object { "$($_.LineNumber): $($_.Line)" }' } } },
+    @{ Name = 'G14 propriedade com os argumentos do comando de fora: Get-Content (gci x).FullName -Encoding UTF8'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = 'foreach($n in 19..25){ Get-Content (Get-ChildItem "SC-0$n*.md").FullName -Encoding UTF8 }' } } },
+    @{ Name = 'G14 [xml]$x = …; $pct = if (…) {…} else {…} (operator medindo cobertura)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'foreach ($f in @(''r.xml'')) { [xml]$x = Get-Content $f -Raw; $pct = if ($x) { 1 } else { 0 }; "covered=$pct" }' } } },
+    @{ Name = 'G14 leitura por .NET e [array]::IndexOf não são "escrita por .NET"'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:architect'; tool_input = @{ command = '$p=''plano.md''; $l=[IO.File]::ReadAllLines($p,[Text.Encoding]::UTF8); $ini = [array]::IndexOf($l, ''## 6.''); $l.Count' } } },
+    @{ Name = 'G14 Add-Content $log com $log ← $job ← "$root\…" (operator)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = '$root = ''' + $proj + '''; $job = "$root\.team-project\operator\1\T-001-avd"; $log = Join-Path $job ''out.log''; Add-Content $log ''inicio''' } } },
+    @{ Name = 'G14 cmd /c "<comando da lista>" lido por dentro: liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'Set-Location src; cmd /c "npm test -- --watch=false"' } } },
+    @{ Name = 'G14 cmd /c com redirecionamento ao log do job (operator)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'cmd /c ".\source\gradlew.bat -p source verificarCobertura > .team-project\operator\1\T-001-cob\gradle.log"' } } },
+    @{ Name = 'G14 cmd /c com comando fora da lista: nega'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'cmd /c'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'cmd /c "curl http://x > saida.log"' } } },
+    @{ Name = 'G14 função definida no próprio comando (QA)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = "`$d='.team-project/quality-assurance/tabela-ouro'`nfunction H { Get-ChildItem `$d -Filter *.csv | Out-Null; 'ok' }`nH" } } },
+    @{ Name = 'G14 script do próprio papel em .team-project/: o conteúdo passa pela G14'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Setup = { New-Item -ItemType Directory -Force (Join-Path $proj '.team-project/quality-assurance/tabela-ouro') | Out-Null
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/quality-assurance/tabela-ouro/gerar.ps1') "param(`$Anexo)`n`$l = Get-Content `$Anexo -Encoding UTF8`n`$l.Count`nSet-Content -LiteralPath '.team-project/quality-assurance/tabela-ouro/ouro.csv' -Value 'x'" -Encoding UTF8 }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = 'powershell -NoProfile -File .team-project/quality-assurance/tabela-ouro/gerar.ps1 -Anexo docs/anexo.md' } } },
+    @{ Name = 'G14 script do papel com comando fora da lista: nega'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/quality-assurance/tabela-ouro/baixa.ps1') "Invoke-WebRequest http://x -OutFile y" -Encoding UTF8 }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = '& .\.team-project\quality-assurance\tabela-ouro\baixa.ps1' } } },
+    @{ Name = 'G14 escrita por .NET com destino resolvido e do papel: liberada (.scn do QA sem BOM)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = '$d=''.team-project/quality-assurance/scenarios''; [IO.File]::WriteAllText("$d/H-001.scn", ''scenario SC-1 x'', (New-Object Text.UTF8Encoding($false)))' } } },
+    @{ Name = 'G8 escrita por .NET em arquivo de outro papel: negada pela G8'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G8'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = '[IO.File]::WriteAllText(''.team-project/sprints/1/sprint-backlog.md'', ''x'')' } } },
+    @{ Name = 'G14 apagar por .NET continua negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'Remove-Item'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = '[IO.File]::Delete(''app.txt'')' } } },
+    @{ Name = 'G14 conferência do plugin com o caminho numa variável ($acc)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = '$acc = ''' + $root + '\scripts\checks\accept.ps1''; powershell -NoProfile -File $acc -Task T-003 -Only ''SC-001,SC-002''' } } },
+    @{ Name = 'G14 operator encerra o processo preso pelo número'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'Get-CimInstance Win32_Process -Filter "Name=''powershell.exe''" | Select-Object ProcessId, CommandLine; Stop-Process -Id 105376 -Force' } } },
+    @{ Name = 'G14 dev não encerra processo'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'Stop-Process'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'Stop-Process -Id 105376 -Force' } } },
+    @{ Name = 'G14 adb direto: nega com a rota do target.ps1'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'target.ps1'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'adb devices 2>&1; "EXIT=$LASTEXITCODE"' } } },
+    @{ Name = 'G14 Start-Sleep: nega com a rota do target.ps1 -Repair e do exit 3'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'exit 3'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'Start-Sleep -Seconds 60; "ok"' } } },
+    @{ Name = 'G8 New-Item da pasta delivery/ pelo dev: a pasta casa a linha da matriz (garden item 25)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'New-Item -ItemType Directory -Force .team-project/sprints/2/delivery' } } },
+    @{ Name = 'G8 Copy-Item para a pasta stories/ pelo PO: dono PO (note.md item 1, garden item 6)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:product-owner'; tool_input = @{ command = 'Copy-Item .team-project/product-owner/stories/H-001.md -Destination .team-project/sprints/2/stories/' } } },
+    @{ Name = 'G8 pasta stories/ pelo dev: negada (a pasta é do PO)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'PO'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'New-Item -ItemType Directory -Force .team-project/sprints/2/stories' } } },
+    @{ Name = 'Agent da sessão em primeiro plano entra no .active-agents, sem .active-run (garden item 5)'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-run'), (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.json') -Force -ErrorAction SilentlyContinue }
+       Check = { $a = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Raw -Encoding UTF8 | ConvertFrom-Json); $a.Count -eq 1 -and $a[0].bg -eq $false -and $a[0].work -eq 'T-021' }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:architect'; description = 'Planos T-021 e T-026'; prompt = 'Escreva os planos de T-021, T-026'; run_in_background = $false } } },
+    @{ Name = 'PreToolUse do subagente grava a última ação no .active-agents'; Script = 'pre-tool.ps1'; Expect = 0
+       Check = { $a = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Raw -Encoding UTF8 | ConvertFrom-Json); $a[0].agent_id -eq 'arc0000001' -and $a[0].last -like 'Write plano*' }
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; agent_id = 'arc0000001'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/2/plan/plano.md'); content = 'x' } } },
+    @{ Name = 'G20 agente em PRIMEIRO plano não segura o turno'; Script = 'stop.ps1'; Expect = 2
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "7", "desde": "2026-10-06 10:00" }' -Encoding UTF8
+                 [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/sprints/7/sprint-backlog.md'), "## História H-1 — x`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2B1C)) T-3 | c | — |`n`n## Rastreabilidade`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2B1C)) T-99 | fantasma | — |`n", (New-Object System.Text.UTF8Encoding($false)))
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.log') -Force -ErrorAction SilentlyContinue }
+       ExpectErr = 'T-3'
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'G20 turno que acabou no limite de uso da conta: libera e grava .usage-limit'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue
+                 New-Item -ItemType Directory -Force (Join-Path $tmp 'transcripts') | Out-Null
+                 Set-Content -LiteralPath (Join-Path $tmp 'transcripts/lim.jsonl') @('{"type":"user","message":{"role":"user","content":"siga"}}', '{"type":"assistant","isApiErrorMessage":true,"message":{"id":"x1","model":"<synthetic>","content":[{"type":"text","text":"You''ve hit your session limit · resets 11:50pm"}],"usage":{"input_tokens":0,"output_tokens":0}}}') -Encoding UTF8 }
+       Check = { $l = Get-Content -LiteralPath (Join-Path $proj '.team-project/.usage-limit') -Raw -Encoding UTF8 | ConvertFrom-Json; $l.reset -eq '11:50pm' -and $l.quem -eq 'sessão' }
+       Payload = @{ hook_event_name = 'Stop'; transcript_path = (Join-Path $tmp 'transcripts/lim.jsonl') } },
+    @{ Name = 'G20 com o sinal .usage-limit gravado: não barra'; Script = 'stop.ps1'; Expect = 0
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'G16 rodada que cita duas Tasks grava "works" com as duas; pausa acima de 20 min fora da duração'; Script = 'subagent-stop.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.usage-limit') -Force -ErrorAction SilentlyContinue
+                 $sd = Join-Path $tmp 'transcripts/sess4/subagents'; New-Item -ItemType Directory -Force $sd | Out-Null
+                 Set-Content -LiteralPath (Join-Path $sd 'agent-wrk0000001.jsonl') @('{"type":"user","timestamp":"2026-10-22T10:00:00Z","message":{"role":"user","content":"Planos de T-021, T-026 e T-021 de novo"}}', '{"type":"assistant","timestamp":"2026-10-22T10:01:00Z","message":{"id":"w1","model":"claude-opus-5-5","usage":{"input_tokens":10,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":5}}}', '{"type":"assistant","timestamp":"2026-10-22T12:01:00Z","message":{"id":"w2","model":"claude-opus-5-5","usage":{"input_tokens":10,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":5}}}', '{"type":"assistant","timestamp":"2026-10-22T12:02:00Z","message":{"id":"w3","model":"<synthetic>","content":[{"type":"text","text":"You''ve hit your session limit · resets 3pm"}],"usage":{"input_tokens":0,"output_tokens":0}}}') -Encoding UTF8 }
+       Check = { $u = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8 | Where-Object { $_ -match 'wrk0000001' } | ConvertFrom-Json)[0]
+                 (@($u.works) -join ',') -eq 'T-021,T-026' -and [int]$u.paused_s -eq 7200 -and [int]$u.duration_s -eq 60 -and $u.model -notmatch 'synthetic' -and (Test-Path -LiteralPath (Join-Path $proj '.team-project/.usage-limit')) }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'wrk0000001'; agent_type = 'team:architect'; transcript_path = (Join-Path $tmp 'transcripts/sess4.jsonl') } }
 )
 
 $rows = @(); $fail = 0

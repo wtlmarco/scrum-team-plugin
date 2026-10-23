@@ -45,6 +45,37 @@ function Get-AgentLine([string]$Role) {
     $cfg = Get-GuardConfig $Root; $bg = -not ($null -ne $cfg.bench -and $cfg.bench.foreground)
     return "Agent: subagent_type `"team:$Role`" · $model · run_in_background $($bg.ToString().ToLowerInvariant())"
 }
+# Outro script de conferência num processo filho (v3.51.4): os scripts escrevem com [Console]::Out, que no mesmo processo
+# passa por fora do pipeline — o "| Out-String" voltava vazio e a saída do close/dispatch saía solta, sem ser lida.
+function Invoke-Child([string]$Script, [string[]]$ArgList) {
+    $ErrorActionPreference = 'Continue'
+    $o = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot $Script) @ArgList 2>&1 | Out-String
+    return @{ Code = $LASTEXITCODE; Out = $o }
+}
+# Marcador pelo mark.ps1 (v3.51.4): devolve a linha do mark, ou $null se ele recusou (a Task já estava lá).
+function Set-Mark([string]$Id, [string]$To, [string]$By) {
+    $r = Invoke-Child 'mark.ps1' @('-Task', $Id, '-To', $To, '-By', $By, '-Root', $Root)
+    if ($r.Code -eq 0) { return (($r.Out -split "`r?`n") | Where-Object { $_ -match '^mark:' } | Select-Object -First 1) }
+    return $null
+}
+# Estimativa do que falta (v3.51.4, note.md item 11): o consumo medido do sprint (G16) por Task fechada × as Tasks abertas.
+# Piso: não inclui a sessão principal. Sem Task fechada, só o gasto até aqui.
+function Get-RunEstimate {
+    $up = Join-Path $tp 'usage.jsonl'; if (-not (Test-Path -LiteralPath $up)) { return $null }
+    $dest = ".team-project/sprints/$n/consumption.md"
+    $rows = @(foreach ($l in [System.IO.File]::ReadAllLines($up, $utf8)) { if ($l.IndexOf($dest) -lt 0) { continue }; try { $o = $l | ConvertFrom-Json; if ([string]$o.dest -eq $dest) { $o } } catch { } })
+    if (-not $rows.Count) { return $null }
+    $tok = ($rows | Measure-Object processed -Sum).Sum; $sec = ($rows | Measure-Object duration_s -Sum).Sum
+    $doneIds = @($tasks | Where-Object { $_.Mark -eq $E.Done } | ForEach-Object { $_.Id })
+    $openN = @($tasks | Where-Object { $_.Mark -ne $E.Done -and $_.Mark -ne $redMk }).Count
+    $fmt = { param($t) '{0:N1} mi' -f ($t / 1e6) }
+    $s = "CONSUMO DO SPRINT (medido, sem a sessão): $(& $fmt $tok) tokens · $([int]($sec / 60)) min em $($rows.Count) rodada(s)"
+    if ($doneIds.Count -and $openN) {
+        $per = $tok / $doneIds.Count; $perS = $sec / $doneIds.Count
+        $s += " · por Task fechada ≈ $(& $fmt $per) · $([int]($perS / 60)) min → as $openN aberta(s) ≈ $(& $fmt ($per * $openN)) · $([int]($perS * $openN / 60)) min. Pausa segura: entre Tasks (sprint-run.md §Pausa segura)"
+    }
+    return $s
+}
 function Get-VerdictOf([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path)) { return $null }
     $m = [regex]::Match((Read-Text $Path), '(?m)^\*\*Veredito:\*\*(.*)$'); if (-not $m.Success) { return '' }
@@ -82,8 +113,8 @@ try {
     $tp = Join-Path $Root '.team-project'
     $readmePath = Join-Path $tp 'README.md'
     if (-not (Test-Path -LiteralPath $readmePath)) { [Console]::Error.WriteLine('run: .team-project/README.md não existe — rode na raiz do projeto ou passe -Root.'); exit 2 }
-    $m = [regex]::Match((Read-Text $readmePath), '(?m)^\|\s*\*\*Sprint corrente\*\*\s*\|\s*\*\*(\d+)\*\*')
-    if (-not $m.Success) { [Console]::Error.WriteLine('run: .team-project/README.md §2 sem a linha "Sprint corrente".'); exit 2 }
+    $m = [regex]::Match((Read-Text $readmePath), $script:SprintLineRe)
+    if (-not $m.Success) { [Console]::Error.WriteLine('run: .team-project/README.md §2 sem a linha "Sprint corrente" — esperado: ' + $script:SprintLineHelp); exit 2 }
     $n = $m.Groups[1].Value; $S = Join-Path $tp "sprints/$n"
     if (-not (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md'))) { [Console]::Error.WriteLine("run: sprints/$n/sprint-backlog.md não existe."); exit 2 }
     $tasks = @(Get-SprintTasks $S)
@@ -97,15 +128,17 @@ try {
         $pf = Get-PlanFull $T $S; if (-not $pf) { [Console]::Error.WriteLine("run: $($T.Id) sem plano — o preparo da construção vem antes (run.ps1 next)."); exit 2 }
         $planRel = ".team-project/sprints/$n/$($T.Plan)"
         $mark = if ($T.Mark -eq $E.Build) { '' } else { 'build' }
-        $global:LASTEXITCODE = 0
-        $d = & (Join-Path $PSScriptRoot 'dispatch.ps1') -Role developer -Id $T.Id -Plan $planRel -Mark $mark -Root $Root 2>&1 | Out-String
-        if ($LASTEXITCODE -ne 0) { [Console]::Error.WriteLine("run start: dispatch falhou — $($d.Trim())"); exit 2 }
+        $dr = Invoke-Child 'dispatch.ps1' @('-Role', 'developer', '-Id', $T.Id, '-Plan', $planRel, '-Mark', $mark, '-Root', $Root); $d = $dr.Out
+        if ($dr.Code -ne 0) { [Console]::Error.WriteLine("run start: dispatch falhou — $($d.Trim())"); exit 2 }
         $card = Write-Handoff $T $S $n
         $acc = if ($T.Scenarios.Count -and (Get-TargetsConfig $Root)) { " e accept.ps1 -Task $($T.Id) -Only $($T.Scenarios -join ',') no alvo" } else { '' }
         $blk = if ($Block) { " Bloco $Block." } else { '' }
         Out ($d.Trim())
         Out "  cartão: $card"
-        Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk Leia o cartão .team-project/$card, o cabeçalho e a §6 do plano $planRel e o seu bloco — não o plano inteiro. Rode verify.ps1 -Mode focused durante, -Mode full no fim, -Mode mutation se o plano tem **Mutações:**$acc. Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga. Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
+        # v3.51.4: o formato que o close.ps1 lê (garden item 17), a retomada do verify parcial (exit 3, garden item 18) e o
+        # alvo pelo target.ps1, sem adb nem espera à mão (note.md item 4).
+        $tgt = if (Get-TargetsConfig $Root) { " Alvo: confira com target.ps1 -Target <alvo> (com -Repair ele reinicia e espera); não use adb nem Start-Sleep." } else { '' }
+        Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk Leia o cartão .team-project/$card, o cabeçalho e a §6 do plano $planRel e o seu bloco — não o plano inteiro. Rode verify.ps1 -Mode focused durante, -Mode full no fim, -Mode mutation se o plano tem **Mutações:**$acc. Exit 3 = parcial (o tempo da chamada acabou): rode o MESMO comando de novo, ele continua de onde parou. Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga.$tgt Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept — cada bloco de código começa com a linha do comando ('> verify.ps1 -Mode full …') e traz a saída embaixo — e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
         Out "  ao voltar: run.ps1 done -Task $($T.Id) -Result ok|gap|env"
         exit 0
     }
@@ -113,6 +146,8 @@ try {
     if ($Action -eq 'done') {
         if (-not $T -or -not $Result) { [Console]::Error.WriteLine('run done pede -Task e -Result ok|gap|env.'); exit 2 }
         if ($Result -eq 'gap') {
+            # v3.51.4 (garden item 22): Task que a sessão já marcou 🟪 volta a 🟨 — ela segue na construção até o GAP se resolver.
+            if ($T.Mark -eq $E.QA) { $mo = Set-Mark $T.Id 'build' 'sessão (run.ps1 done -Result gap)'; if ($mo) { Out "  $mo" } }
             $card = Write-Handoff $T $S $n
             Out "run: $($T.Id) com 🔺 GAP — Arquiteto em instância NOVA (o cache de 5 min do anterior já venceu; C1), modo /arc question:"
             Out "  $(Get-AgentLine 'architect')"
@@ -128,22 +163,48 @@ try {
             Out "  3. sem reparo → mark.ps1 -Task $($T.Id) -To blocked e linha em Bloqueios (ambiente, com a ação para o stakeholder); a fila segue"
             exit 0
         }
-        $global:LASTEXITCODE = 0
-        $c = & (Join-Path $PSScriptRoot 'close.ps1') -Task $T.Id -Apply -Root $Root 2>&1 | Out-String
-        $code = $LASTEXITCODE
-        if ($code -eq 0) { Out "run: $($T.Id) fechada pela evidência do dev (close.ps1 -Apply)."; Out (($c -split "`r?`n" | Where-Object { $_ -match '^\s*-\s|\*\*|Status' } | Select-Object -Last 6) -join "`n"); Out "  dispatch.ps1 -Clear; depois: run.ps1 next"; exit 0 }
-        $bad = @($c -split "`r?`n" | Where-Object { $_ -match '\|\s*(R7[\w-]*|R12)\s*\|\s*falhou' } | ForEach-Object { ($_ -replace '\s+', ' ').Trim() })
-        Out "run: $($T.Id) ainda não fecha — volte ao MESMO dev por SendMessage com o que falta:"
-        foreach ($b in $bad) { Out "  $b" }
+        # v3.51.4 (garden item 19): confere ANTES (close.ps1 sem -Apply); fechando, a Task passa por 🟪 (verificação) e só então
+        # o -Apply grava o ✅ — antes o -Post reprovava o R24 ("Registro sem a linha → 🟪") com a Task já ✅ e a estimativa baixada.
+        $pr = Invoke-Child 'close.ps1' @('-Task', $T.Id, '-Root', $Root); $pre = $pr.Out
+        if ($pr.Code -ne 0) {
+            $bad = @($pre -split "`r?`n" | Where-Object { $_ -match '\|\s*(R7[\w-]*|R12)\s*\|\s*falhou' } | ForEach-Object { ($_ -replace '\s+', ' ').Trim() })
+            Out "run: $($T.Id) ainda não fecha — volte ao MESMO dev por SendMessage com o que falta (a Task segue em 🟨):"
+            foreach ($b in $bad) { Out "  $b" }
+            if (-not $bad.Count) { Out "  $(($pre -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 2) -join ' ')" }
+            exit 0
+        }
+        if ($T.Mark -ne $E.QA) { $mo = Set-Mark $T.Id 'qa' 'sessão (run.ps1 done)'; if ($mo) { Out "  $mo" } }
+        $cr = Invoke-Child 'close.ps1' @('-Task', $T.Id, '-Apply', '-Root', $Root); $c = $cr.Out
+        $code = $cr.Code
+        if ($code -eq 0) { Out "run: $($T.Id) fechada pela evidência do dev (close.ps1 -Apply)."; Out (($c -split "`r?`n" | Where-Object { $_ -match '^\s*-\s|\*\*|Status' } | Select-Object -Last 6) -join "`n"); Out "  dispatch.ps1 -Clear; depois: run.ps1 next"; Out "  ponto seguro de pausa: entre uma Task fechada e o próximo start nada fica pela metade (sprint-run.md §Pausa segura)"; exit 0 }
+        Out "run: $($T.Id) — o -Apply gravou o fechamento, mas o -Post não confirmou (R24); não feche de novo (baixaria a estimativa duas vezes):"
+        Out "  $((($c -split "`r?`n") | Where-Object { $_ -match '\*\*-Apply:\*\*' } | Select-Object -First 1))"
+        Out "  corrija o Registro/Série do kanban.md à mão (sprint-run.md §Marcador) e confira com close.ps1 -Task $($T.Id) -Post"
         exit 0
     }
 
     # ---------- next ----------
+    # v3.51.4: o run parou por limite de uso da conta (.usage-limit, gravado pela G16 ou pelo Stop) — diz o motivo e segue.
+    $lim = Join-Path $tp '.usage-limit'
+    if (Test-Path -LiteralPath $lim) {
+        try { $l = Read-Text $lim | ConvertFrom-Json; Out "RETOMADA: o run parou por LIMITE DE USO DA CONTA em $($l.desde)$(if ($l.reset) { " (reset: $($l.reset))" }) — $($l.quem)$(if ($l.item) { " em $($l.item)" }). Não é falha de processo: o que estava em voo se retoma pelo próprio agente (SendMessage) ou pelo result.json do verify (sprint-run.md §Retomada após limite de uso)." } catch { }
+        Remove-Item -LiteralPath $lim -Force -ErrorAction SilentlyContinue
+    }
+    $null = Invoke-Child 'kanban.ps1' @('-Init', '-Root', $Root)   # consumption.md do sprint, se a Planning não o criou (garden item 1)
+    $est = Get-RunEstimate
+    if ($est) { Out $est }
     $defined = Get-Defined $Root
+    $hasTargets = [bool](Get-TargetsConfig $Root)
     $open = @($tasks | Where-Object { $_.Mark -ne $E.Done -and $_.Mark -ne $redMk })
     # 1 · preparo da construção: por História, cenários executáveis (QA) e depois os planos (Arquiteto), antes de qualquer dev.
+    # v3.51.4: sem alvo de execução (guards.json sem "targets") não há .scn a escrever — o accept não roda e os cenários
+    # ficam rastreados nos planos e provados por teste (garden item 4). As Tasks da História entram em 🟦 no preparo (item 2).
     foreach ($h in @($open | Group-Object Story)) {
-        $missScn = @($h.Group | ForEach-Object { $_.Scenarios } | Where-Object { $defined -notcontains $_ } | Select-Object -Unique)
+        $missScn = if ($hasTargets) { @($h.Group | ForEach-Object { $_.Scenarios } | Where-Object { $defined -notcontains $_ } | Select-Object -Unique) } else { @() }
+        $noPlan = @($h.Group | Where-Object { -not (Get-PlanFull $_ $S) })
+        if ($missScn.Count -or $noPlan.Count) {
+            foreach ($t in @($h.Group | Where-Object { $_.Mark -eq $todoMk })) { $mo = Set-Mark $t.Id 'plan' 'Arquiteto · preparo (run.ps1 next)'; if ($mo) { Out "  $mo" } }
+        }
         if ($missScn.Count) {
             Out "PRÓXIMA AÇÃO: preparo da construção — cenários executáveis da História $($h.Name) (QA)"
             Out "  $(Get-AgentLine 'quality-assurance')"
@@ -151,7 +212,6 @@ try {
             Out "  depois: run.ps1 next"
             exit 0
         }
-        $noPlan = @($h.Group | Where-Object { -not (Get-PlanFull $_ $S) })
         if ($noPlan.Count) {
             Out "PRÓXIMA AÇÃO: preparo da construção — planos da História $($h.Name) numa instância do Arquiteto (regra 25)"
             Out "  $(Get-AgentLine 'architect')"

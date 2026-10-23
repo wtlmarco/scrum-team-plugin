@@ -48,21 +48,67 @@ function Get-Rounds([string]$Tp, [string]$Dest) {
     return @($rows | Sort-Object { [string]$_.start })
 }
 
-function Format-Rounds($Rows, [string]$Nl) {
+# Marcador de cada Task ao longo do tempo, pelo Registro de transições do kanban.md: Task → lista ordenada de (quando, para).
+function Get-MarkHistory([string]$Text) {
+    $h = @{}
+    $sec = Get-Section $Text '^##\s+Registro de transi'
+    if (-not $sec) { return $h }
+    foreach ($t in (Get-Tables $sec)) {
+        foreach ($row in $t.Rows) {
+            $id = ([regex]::Match((Get-Cell $row 0), '[A-Z]+-\d+[a-z]?')).Value; if (-not $id) { continue }
+            $to = ((Get-Cell $row 1) -split '→')[-1].Trim()
+            $ds = ([regex]::Match((Get-Cell $row 2), '\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?')).Value
+            $when = $null; try { $when = [datetime]::ParseExact($ds, [string[]]@('yyyy-MM-dd HH:mm', 'yyyy-MM-dd'), $null, 'None') } catch { }
+            if (-not $when) { continue }
+            if (-not $h.ContainsKey($id)) { $h[$id] = @() }
+            $h[$id] += [pscustomobject]@{ At = $when; To = $to }
+        }
+    }
+    foreach ($k in @($h.Keys)) { $h[$k] = @($h[$k] | Sort-Object At) }
+    return $h
+}
+
+# v3.51.4 (garden itens 8 e 9; note.md item 13): uma parcela por Task citada na rodada (works; rateio igual do custo e do
+# tempo) e a fase pelo MARCADOR da Task no início da rodada (⬜/🟦 → Plano e preparo · 🟨 → Construção · 🟪/✅ → Verificação);
+# sem Registro para a Task, vale o papel (arc → Plano · dev → Construção · qa/operator → Verificação). A pausa medida pela
+# G16 (paused_s, lacuna acima de 20 min) já está fora da duração e aparece numa coluna própria.
+function Split-Rounds($Rows, $History) {
+    $out = @()
+    $byRole = @{ arc = 'Plano'; dev = 'Construção'; qa = 'Verificação'; operator = 'Verificação' }
+    foreach ($r in $Rows) {
+        $ws = @(@($r.works) | Where-Object { $_ }); if (-not $ws.Count) { $ws = @([string]$r.work) }
+        $k = [Math]::Max(1, $ws.Count)
+        $start = $null; try { $start = [datetime][string]$r.start } catch { }
+        $role = Get-Role $r
+        foreach ($w in $ws) {
+            $phase = $null
+            if ($role -in 'po', 'sm', 'ux') { $phase = 'Outros' }
+            elseif ($start -and $History.ContainsKey($w)) {
+                $mk = $null; foreach ($ev in $History[$w]) { if ($ev.At -le $start) { $mk = $ev.To } }   # $e seria o $E dos marcadores
+                if ($mk) { $phase = if ($mk.Contains($E.Build)) { 'Construção' } elseif ($mk.Contains($E.QA) -or $mk.Contains($E.Done)) { 'Verificação' } else { 'Plano' } }
+            }
+            if (-not $phase) { $phase = if ($byRole.ContainsKey($role)) { $byRole[$role] } else { 'Outros' } }
+            $out += [pscustomobject]@{ work = $w; phase = $phase; processed = [double]$r.processed / $k; duration_s = [double]$r.duration_s / $k; paused_s = [double]$r.paused_s / $k }
+        }
+    }
+    return $out
+}
+
+function Format-Rounds($Rows, [string]$Nl, $History = @{}) {
     $o = @('## Rodadas', '*(Regravado pelo `kanban.ps1` ao fim de cada rodada de agente — não editar à mão. Custo = tokens processados e tempo; o consolidado fica no `consumption.md`.)*', '')
     if (-not $Rows.Count) { return (($o + 'Nenhuma rodada medida ainda.' + '') -join $Nl) + $Nl }
-    # Por tarefa e fase: Plano (Arquiteto) · Construção (dev) · Verificação (QA e operator) · Outros (PO, SM, UX); a última
-    # linha é o consolidado. Rodada sem Task/F-ID própria (bloco, sprint, n/a) fica na linha do item que ela cita.
-    $phase = @{ arc = 'Plano'; dev = 'Construção'; qa = 'Verificação'; operator = 'Verificação' }
+    # Por tarefa e fase: Plano e preparo · Construção · Verificação · Outros (PO, SM, UX); a última linha é o consolidado.
+    # Rodada que cita várias Tasks (plano por História) entra rateada em cada uma; sem Task própria, na linha do item citado.
     $names = 'Plano', 'Construção', 'Verificação', 'Outros'
+    $parts = @(Split-Rounds $Rows $History)
     $cell = { param($rs) if (-not @($rs).Count) { '—' } else { "$(Format-Tokens ((@($rs) | Measure-Object processed -Sum).Sum)) · $(Format-Duration ([int]((@($rs) | Measure-Object duration_s -Sum).Sum)))" } }
-    $ph = { param($r) $k = Get-Role $r; if ($phase.ContainsKey($k)) { $phase[$k] } else { 'Outros' } }
-    $o += '### Por tarefa e fase *(tokens · tempo)*'; $o += ''
-    $o += '| Item | ' + ($names -join ' | ') + ' | Total |'; $o += '|---|---|---|---|---|---|'
-    foreach ($g in @($Rows | Group-Object { [string]$_.work } | Sort-Object Name)) {
-        $o += "| $($g.Name) | " + (($names | ForEach-Object { $n = $_; & $cell @($g.Group | Where-Object { (& $ph $_) -eq $n }) }) -join ' | ') + " | $(& $cell $g.Group) |"
+    $pause = { param($rs) $s = [int]((@($rs) | Measure-Object paused_s -Sum).Sum); if ($s -gt 0) { Format-Duration $s } else { '—' } }
+    $o += '### Por tarefa e fase *(tokens · tempo; pausa = lacuna de limite de conta ou máquina parada, fora do tempo)*'; $o += ''
+    $o += '| Item | ' + ($names -join ' | ') + ' | Total | Pausa |'; $o += '|---|---|---|---|---|---|---|'
+    foreach ($g in @($parts | Group-Object { [string]$_.work } | Sort-Object Name)) {
+        $o += "| $($g.Name) | " + (($names | ForEach-Object { $n = $_; & $cell @($g.Group | Where-Object { $_.phase -eq $n }) }) -join ' | ') + " | $(& $cell $g.Group) | $(& $pause $g.Group) |"
     }
-    $o += '| **Consolidado** | ' + (($names | ForEach-Object { $n = $_; & $cell @($Rows | Where-Object { (& $ph $_) -eq $n }) }) -join ' | ') + " | **$(& $cell $Rows)** |"
+    $o += '| **Consolidado** | ' + (($names | ForEach-Object { $n = $_; & $cell @($parts | Where-Object { $_.phase -eq $n }) }) -join ' | ') + " | **$(& $cell $Rows)** | $(& $pause $parts) |"
     $o += ''; $o += '### Por papel e modelo'; $o += ''
     $o += '| Papel | Modelo | Rodadas | Tokens | Tempo |'; $o += '|---|---|---|---|---|'
     $groups = @($Rows | Group-Object { (Get-Role $_) + '|' + (Get-ShortModel ([string]$_.model)) } | ForEach-Object {
@@ -76,6 +122,23 @@ function Format-Rounds($Rows, [string]$Nl) {
         $o += "| $when | $([string]$r.work) | $(Get-Role $r) | $(Get-ShortModel ([string]$r.model)) | $(Format-Tokens ([double]$r.processed)) | $(Format-Duration ([int]$r.duration_s)) |"
     }
     return (($o + '') -join $Nl) + $Nl
+}
+
+# Espera de comando por Task (v3.51.4, note.md item 12): o tempo que o verify.ps1 passou rodando comandos do projeto
+# (build, teste, lint, mutação), somado de verify/<n>/<T-ID>/time.jsonl — quanto do relógio da Task foi espera, não raciocínio.
+function Format-CommandWait([string]$Tp, [string]$N, [string]$Nl) {
+    $vd = Join-Path $Tp "verify/$N"
+    $rows = @()
+    foreach ($d in @(Get-ChildItem -LiteralPath $vd -Directory -ErrorAction SilentlyContinue | Sort-Object Name)) {
+        $tf = Join-Path $d.FullName 'time.jsonl'; if (-not (Test-Path -LiteralPath $tf)) { continue }
+        $by = @{}; $calls = 0
+        foreach ($l in [System.IO.File]::ReadAllLines($tf, $utf8)) { try { $o = $l | ConvertFrom-Json; $by[[string]$o.mode] = [int]$by[[string]$o.mode] + [int]$o.seconds; $calls++ } catch { } }
+        if (-not $calls) { continue }
+        $tot = ($by.Values | Measure-Object -Sum).Sum
+        $rows += "| $($d.Name) | $calls | " + ((@('focused', 'full', 'mutation') | ForEach-Object { if ($by.ContainsKey($_)) { Format-Duration $by[$_] } else { '—' } }) -join ' | ') + " | **$(Format-Duration $tot)** |"
+    }
+    if (-not $rows.Count) { return '' }
+    return ((@('### Espera de comando *(verify.ps1: tempo rodando build, teste, lint e mutação)*', '', '| Task | Chamadas | focused | full | mutation | Total |', '|---|---|---|---|---|---|') + $rows + '') -join $Nl) + $Nl
 }
 
 # Troca a seção "## <título>" (até o próximo "## ") ou a insere antes da seção indicada; sem ela, no fim.
@@ -101,20 +164,30 @@ try {
     if (-not $Block) {
         # ---------- sprint ----------
         $readme = Join-Path $tp 'README.md'
-        $m = if (Test-Path -LiteralPath $readme) { [regex]::Match((Read-Text $readme), '(?m)^\|\s*\*\*Sprint corrente\*\*\s*\|\s*\*\*(\d+)\*\*') } else { $null }
-        if (-not $m -or -not $m.Success) { [Console]::Error.WriteLine('kanban: README §2 sem "Sprint corrente".'); exit 2 }
+        $m = if (Test-Path -LiteralPath $readme) { [regex]::Match((Read-Text $readme), $script:SprintLineRe) } else { $null }
+        if (-not $m -or -not $m.Success) { [Console]::Error.WriteLine('kanban: README §2 sem "Sprint corrente" — esperado: ' + $script:SprintLineHelp); exit 2 }
         $n = $m.Groups[1].Value; $S = Join-Path $tp "sprints/$n"
+        # v3.51.4 (garden item 1): -Init cria o consumption.md do sprint se faltar (G16 e run.ps1 next o chamam no sprint run).
+        $consS = Join-Path $S 'consumption.md'
+        if ($Init -and (Test-Path -LiteralPath $S) -and -not (Test-Path -LiteralPath $consS) -and -not (Test-Path -LiteralPath (Join-Path $S 'retrospective.md'))) {
+            $c = "# Consumo — Sprint $n`n`n> **DOCUMENTO VIVO durante o sprint** → **fechado** no ``/sm sprint close`` · **Dono:** SM`n> Criado pelo ``kanban.ps1 -Init`` no sprint run (a Planning não o criou). Uma linha por rodada de papel, gravada pela G16 e pelo ``consumption.ps1``. Modelo: ``templates/consumption.md``.`n`n## Registro`n| Data | Papel | Modelo | Comando | Task/História | Categoria | Unidade | Tokens | Duração | Nota |`n|---|---|---|---|---|---|---|---|---|---|`n`n## Totais do sprint (derivado)`n| Papel | Modelo | Σ tokens processados | Instâncias | Rodadas | Duração total | Σ notificação |`n|---|---|---|---|---|---|---|`n"
+            [System.IO.File]::WriteAllText($consS, $c, $utf8)
+            [Console]::Out.WriteLine("kanban: sprints/$n/consumption.md criado")
+        }
         $kb = Join-Path $S 'kanban.md'
         if (-not (Test-Path -LiteralPath $kb)) { [Console]::Out.WriteLine("kanban: sprints/$n/kanban.md não existe (sprint anterior à v3.51) — nada a regravar."); exit 0 }
         if (Test-Path -LiteralPath (Join-Path $S 'retrospective.md')) { [Console]::Out.WriteLine("kanban: sprint $n fechado — o kanban.md não muda mais."); exit 0 }
-        $text = Read-Text $kb; $nl = if ($text.Contains("`r`n")) { "`r`n" } else { "`n" }
         $tasks = @(); if (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md')) { $tasks = @(Get-SprintTasks $S | ForEach-Object { [pscustomobject]@{ Mark = $_.Mark; Label = $_.Id } }) }
-        if ($text -match '(?m)^##\s+Kanban\s*$') {
-            $text = Set-Section $text 'Kanban' ("## Kanban$nl*(Regravado pelo ``kanban.ps1`` a cada transição e ao fim de cada rodada — não editar à mão.)*$nl$nl" + (Format-Board $tasks $nl) + "$nl$nl") 'Linha de base'
-        }
         $rounds = @(Get-Rounds $tp ".team-project/sprints/$n/consumption.md")
-        $text = Set-Section $text 'Rodadas' (Format-Rounds $rounds $nl) 'Linha de base'
-        [System.IO.File]::WriteAllText($kb, $text, $utf8)
+        # v3.51.4: ler, mudar e regravar sob a trava do kanban.md — a G16 e o mark.ps1 escrevem nele ao mesmo tempo (garden item 23).
+        $null = Invoke-WithFileLock $kb {
+            $text = Read-Text $kb; $nl = if ($text.Contains("`r`n")) { "`r`n" } else { "`n" }
+            if ($text -match '(?m)^##\s+Kanban\s*$') {
+                $text = Set-Section $text 'Kanban' ("## Kanban$nl*(Regravado pelo ``kanban.ps1`` a cada transição e ao fim de cada rodada — não editar à mão.)*$nl$nl" + (Format-Board $tasks $nl) + "$nl$nl") 'Linha de base'
+            }
+            $text = Set-Section $text 'Rodadas' ((Format-Rounds $rounds $nl (Get-MarkHistory $text)) + (Format-CommandWait $tp $n $nl)) 'Linha de base'
+            [System.IO.File]::WriteAllText($kb, $text, $utf8)
+        }
         [Console]::Out.WriteLine("kanban: sprints/$n/kanban.md · $($tasks.Count) Task(s) · $($rounds.Count) rodada(s)")
         exit 0
     }
