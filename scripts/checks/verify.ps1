@@ -27,6 +27,15 @@
 # (ex.: GRADLE_USER_HOME numa junção ASCII); a higiene da ferramenta (Gradle sem daemon, dotnet sem reúso de nó, CI=true no
 # node) entra sozinha, de scripts/checks/tool-hygiene.json.
 
+# v3.51.4 (note.md itens 12 e 14, garden item 18):
+#   -Mode full retomável: os comandos que não cabem em -MaxMinutes (padrão 8) ficam pendentes e o MESMO comando, de novo,
+#     continua de onde parou na mesma árvore (exit 3 = parcial) — build ~8 min + suíte ~2 min passavam dos 600 s da ferramenta.
+#   guards.json → verify.daemon: true — o daemon do Gradle LIGADO só durante a chamada: os comandos da mesma chamada o
+#     reaproveitam (sem a partida de ~1 min a cada um) e o verify.ps1 o encerra no fim, antes de devolver o controle (o
+#     daemon solto prendia o chamador). Desligado (padrão), vale a higiene de antes: sem daemon.
+#   -Mode mutation -Precheck: sem rodar teste, confere que cada trecho aparece uma vez no arquivo e, com verify.compile,
+#     que cada mutante compila — logo depois da construção, antes do full (garden item 27).
+#   cada chamada soma o tempo de comando em verify/<seg>/<ID>/time.jsonl — o kanban.md mostra a espera de comando por Task.
 param(
     [Parameter(Mandatory = $true)][string]$Task,
     [ValidateSet('focused', 'full', 'check', 'mutation')][string]$Mode = 'full',
@@ -35,6 +44,7 @@ param(
     [string[]]$Only = @(),
     [int]$MaxMinutes = 8,
     [double]$TimeoutMinutes = 0,
+    [switch]$Precheck,
     [string]$Root = (Get-Location).Path
 )
 
@@ -54,12 +64,26 @@ function Get-Commands($Verify, [string]$Key) {
 # sobraram (daemon) são encerrados; a higiene da ferramenta (tool-hygiene.json) e verify.env entram como variáveis de
 # ambiente do filho; saída que casa assinatura conhecida de ambiente marca o comando como falha de ambiente.
 $script:hygieneWarnings = @()
+$script:daemonPids = @(); $script:cmdSeconds = 0; $script:cmdRuns = 0
 function Invoke-Logged([string]$Key, [string]$Cmd, [string]$Log) {
-    $extra = if ($verify -and $verify.PSObject.Properties['env']) { $verify.env } else { $null }
-    $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $script:timeoutMinutes $extra
+    $extra = [ordered]@{}
+    if ($verify -and $verify.PSObject.Properties['env'] -and $verify.env) { foreach ($p in $verify.env.PSObject.Properties) { $extra[$p.Name] = [string]$p.Value } }
+    $daemon = $verify -and $verify.PSObject.Properties['daemon'] -and $verify.daemon -eq $true
+    if ($daemon -and -not $extra.Contains('GRADLE_OPTS')) { $extra['GRADLE_OPTS'] = (([string]$env:GRADLE_OPTS -replace '-Dorg\.gradle\.daemon=\w+', '').Trim() + ' -Dorg.gradle.daemon=true').Trim() }
+    $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $script:timeoutMinutes ([pscustomobject]$extra) -KeepDescendants:$daemon
     foreach ($w in @($r.warnings)) { if ($w -and $script:hygieneWarnings -notcontains $w) { $script:hygieneWarnings += $w } }
     $r.Remove('warnings')
+    if ($r.Contains('kept')) { $script:daemonPids += @($r.kept); $r.Remove('kept') }
+    $script:cmdSeconds += [int]$r.seconds; $script:cmdRuns++
     return $r
+}
+# Fim da chamada: o daemon guardado é encerrado (com os descendentes) e o tempo de comando vai ao time.jsonl.
+function Complete-Call([string]$Dir) {
+    foreach ($id in @($script:daemonPids | Select-Object -Unique)) { $null = Stop-ProcessTree ([int]$id) }
+    $script:daemonPids = @()
+    if ($Dir -and $script:cmdRuns -gt 0) {
+        try { New-Item -ItemType Directory -Force $Dir | Out-Null; [System.IO.File]::AppendAllText((Join-Path $Dir 'time.jsonl'), (([ordered]@{ at = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss'); mode = $Mode; seconds = $script:cmdSeconds } | ConvertTo-Json -Compress) + "`n"), $utf8) } catch { }
+    }
 }
 # Lista que chega por powershell -File vem numa string só ("a,b"): divide por vírgula e, se o item não é um caminho que
 # existe, por espaço.
@@ -203,6 +227,40 @@ try {
         # Prova de falha (v3.46): só sobre a árvore do último full verde — a mutação prova o teste daquele código.
         if (-not $Plan -or -not (Test-Path -LiteralPath (Join-Path $Root $Plan))) { [Console]::Error.WriteLine('verify: -Mode mutation pede -Plan <caminho do plano, relativo à raiz>.'); exit 2 }
         if ($focusedCmd.Count -eq 0) { [Console]::Error.WriteLine('verify: guards.json → verify sem "focused" — a mutação roda o teste focado.'); exit 2 }
+        if ($Precheck) {
+            # v3.51.4 (garden item 27): conferência prévia, sem teste — trecho único no arquivo e, com verify.compile, mutante que compila.
+            $pt = Read-Text (Join-Path $Root $Plan); $pm = @(Get-Mutations $pt); if ($Only.Count) { $pm = @($pm | Where-Object { $Only -contains $_.Id }) }
+            $compile = @(Get-Commands $verify 'compile') | Select-Object -First 1
+            $probs = @(); $okIds = @()
+            foreach ($mu in $pm) {
+                $rel = ($mu.File -replace '\\', '/') -replace '^\./', ''; $f2 = Join-Path $Root $rel
+                if (-not (Test-Path -LiteralPath $f2)) { $probs += "$($mu.Id): $rel não existe"; continue }
+                if ($mu.Find -eq '') { $probs += "$($mu.Id): trecho vazio"; continue }
+                $bytes = [System.IO.File]::ReadAllBytes($f2); $bom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+                $txt = (New-Object System.Text.UTF8Encoding($false)).GetString($bytes, $(if ($bom) { 3 } else { 0 }), $bytes.Length - $(if ($bom) { 3 } else { 0 }))
+                $hits = 0; $ix = $txt.IndexOf($mu.Find, [StringComparison]::Ordinal); $first = $ix
+                while ($ix -ge 0) { $hits++; $ix = $txt.IndexOf($mu.Find, $ix + [Math]::Max(1, $mu.Find.Length), [StringComparison]::Ordinal) }
+                if ($hits -ne 1) { $probs += "$($mu.Id): o trecho aparece $hits vez(es) em $rel (precisa ser 1)"; continue }
+                if ($compile) {
+                    New-Item -ItemType Directory -Force $dir | Out-Null
+                    [System.IO.File]::WriteAllBytes((Join-Path $dir 'mutation.bak'), $bytes)
+                    [System.IO.File]::WriteAllText((Join-Path $dir 'mutation-pending.json'), (@{ file = $rel; id = $mu.Id } | ConvertTo-Json -Compress), $utf8)
+                    try {
+                        [System.IO.File]::WriteAllText($f2, $txt.Substring(0, $first) + $mu.Replace + $txt.Substring($first + $mu.Find.Length), (New-Object System.Text.UTF8Encoding($bom)))
+                        $cr = Invoke-Logged "compile-$($mu.Id)" $compile (Join-Path $dir "precheck-$($mu.Id).log")
+                    } finally {
+                        [System.IO.File]::WriteAllBytes($f2, $bytes)
+                        foreach ($tmpf in 'mutation-pending.json', 'mutation.bak') { $pth = Join-Path $dir $tmpf; if (Test-Path -LiteralPath $pth) { [System.IO.File]::Delete($pth) } }
+                    }
+                    if ([int]$cr.exit -ne 0) { $probs += "$($mu.Id): o mutante não compila ($compile exit $($cr.exit) · $(@($cr.decisive) | Select-Object -Last 1))"; continue }
+                }
+                $okIds += $mu.Id
+            }
+            if ((Get-WorkTree $Root) -ne $tree) { [Console]::Error.WriteLine('verify: ERRO — a árvore não voltou igual depois da conferência prévia. Confira com git status/git diff.'); exit 2 }
+            [Console]::Out.WriteLine("verify mutation -Precheck $Task · $($okIds.Count) de $($pm.Count) mutação(ões) prontas" + $(if ($compile) { ' (trecho único e mutante compila)' } else { ' (trecho único; sem verify.compile, a compilação se vê na mutação)' }))
+            foreach ($p in $probs) { [Console]::Out.WriteLine("  $p — o plano é do Arquiteto: 🔺 GAP com esta linha") }
+            if ($probs.Count) { exit 1 } else { exit 0 }
+        }
         $full = if ($prev) { $prev.full } else { $null }
         if ($null -eq $full -or [string]$full.tree -ne $tree) { [Console]::Error.WriteLine("verify: a mutação roda sobre a árvore do último full — rode -Mode full antes (árvore agora $($tree.Substring(0, 12)))."); exit 2 }
         $planText = Read-Text (Join-Path $Root $Plan)
@@ -291,15 +349,34 @@ try {
     } elseif ($jobs.Count -eq 0) { [Console]::Error.WriteLine('verify: guards.json → verify sem build, lint, suite nem coverage.'); exit 2 }
 
     New-Item -ItemType Directory -Force $dir | Out-Null
-    $results = @()
-    foreach ($j in $jobs) { $results += (Invoke-Logged $j.Key $j.Cmd.Replace('{tests}', (Format-Tests $Tests)) (Join-Path $dir "$Mode-$($j.Key).log")) }
+    $results = @(); $pendingJobs = @()
+    # v3.51.4: retomada do full parcial na mesma árvore — os comandos que já rodaram não rodam de novo.
+    if ($Mode -eq 'full' -and $prev -and $prev.PSObject.Properties['full_partial'] -and $prev.full_partial -and [string]$prev.full_partial.tree -eq $tree) {
+        $results = @(@($prev.full_partial.commands) | ForEach-Object { $h = [ordered]@{}; foreach ($p in $_.PSObject.Properties) { $h[$p.Name] = $p.Value }; $h })
+        $doneKeys = @($results | ForEach-Object { [string]$_.key })
+        $jobs = @($jobs | Where-Object { $doneKeys -notcontains $_.Key })
+    }
+    $budget = [System.Diagnostics.Stopwatch]::StartNew(); $lastSec = 0; $ranAny = $false
+    foreach ($j in $jobs) {
+        if ($Mode -eq 'full' -and $ranAny -and ($budget.Elapsed.TotalSeconds + $lastSec) -gt ($MaxMinutes * 60)) { $pendingJobs += $j.Key; continue }
+        $ranAny = $true
+        $r1 = Invoke-Logged $j.Key $j.Cmd.Replace('{tests}', (Format-Tests $Tests)) (Join-Path $dir "$Mode-$($j.Key).log")
+        $results += $r1; $lastSec = $r1.seconds
+    }
     $after = Get-WorkTree $Root
     $run = [ordered]@{ at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = $tree; tree_after = $after; tests = $Tests; commands = $results }
 
-    $res = [ordered]@{ task = $Task; full = $null; focused = $null; mutation = $null }
+    $res = [ordered]@{ task = $Task; full = $null; focused = $null; mutation = $null; full_partial = $null }
     if ($prev) { foreach ($k in 'full', 'focused', 'mutation') { if ($prev.PSObject.Properties[$k]) { $res[$k] = $prev.$k } } }
-    $res[$Mode] = $run
+    if ($pendingJobs.Count) { $res.full_partial = [ordered]@{ tree = $tree; commands = $results; pending = $pendingJobs } }
+    else { $res[$Mode] = $run }
     [System.IO.File]::WriteAllText($resPath, ($res | ConvertTo-Json -Depth 8), $utf8)
+    if ($pendingJobs.Count) {
+        [Console]::Out.WriteLine("verify full $Task · árvore $($tree.Substring(0, 12)) · PARCIAL: $(@($results).Count) comando(s) rodado(s), pendente(s): $($pendingJobs -join ', ')")
+        foreach ($r in $results) { [Console]::Out.WriteLine("  $($r.key): exit $($r.exit) · $($r.seconds) s · $(@($r.decisive) | Select-Object -Last 1)") }
+        [Console]::Out.WriteLine("  parcial: rode o MESMO comando de novo — ele continua de onde parou (exit 3); a árvore não pode mudar entre as chamadas.")
+        exit 3
+    }
 
     $bad = @($results | Where-Object { [int]$_.exit -ne 0 })
     $envBad = @($results | Where-Object { $_.environment })
@@ -314,4 +391,6 @@ try {
 } catch {
     [Console]::Error.WriteLine("verify: erro — $($_.Exception.Message)")
     exit 2
+} finally {
+    Complete-Call $dir
 }

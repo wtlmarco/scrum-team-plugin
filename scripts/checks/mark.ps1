@@ -4,7 +4,8 @@
 # fechamento e baixa a estimativa.
 # Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/mark.ps1" -Task T-041 -To build [-By <quem>] [-Root <projeto>]
 #   -To: todo (⬜) · plan (🟦) · build (🟨) · qa (🟪) · blocked (🔴), ou o próprio emoji.
-#   -By: a coluna "Por quem" do Registro (padrão: o papel que assume — plan e build → dev, qa → QA, todo e blocked → SM).
+#   -By: a coluna "Por quem" do Registro (padrão: o papel que assume — plan e build → dev, qa → QA, todo e blocked → SM);
+#        v3.51.4 (garden item 15): vai também ao Evento da Série ("T-041 🟦 → 🟨 · dev"), para ler quem produziu o ponto.
 # Saída: uma linha. Exit 0 · 2 = erro de uso ou de leitura (nada é gravado).
 param(
     [Parameter(Mandatory = $true)][string]$Task,
@@ -39,14 +40,17 @@ try {
     $tp = Join-Path $Root '.team-project'
     $readmePath = Join-Path $tp 'README.md'
     if (-not (Test-Path -LiteralPath $readmePath)) { [Console]::Error.WriteLine("mark: $readmePath não existe — rode na raiz do projeto ou passe -Root."); exit 2 }
-    $m = [regex]::Match((Read-Text $readmePath), '(?m)^\|\s*\*\*Sprint corrente\*\*\s*\|\s*\*\*(\d+)\*\*')
-    if (-not $m.Success) { [Console]::Error.WriteLine('mark: .team-project/README.md §2 sem a linha "Sprint corrente".'); exit 2 }
+    $m = [regex]::Match((Read-Text $readmePath), $script:SprintLineRe)
+    if (-not $m.Success) { [Console]::Error.WriteLine('mark: .team-project/README.md §2 sem a linha "Sprint corrente" — esperado: ' + $script:SprintLineHelp); exit 2 }
     $S = Join-Path $tp "sprints/$($m.Groups[1].Value)"
     $boardPath = Join-Path $S 'sprint-backlog.md'; $bdPath = Get-ChartPath $S   # kanban.md (v3.51) ou burndown.md
     foreach ($p in $boardPath, $bdPath) { if (-not (Test-Path -LiteralPath $p)) { [Console]::Error.WriteLine("mark: $p não existe."); exit 2 } }
     $idPat = Get-IdPattern $Task
     $now = Get-Date -Format 'yyyy-MM-dd HH:mm'
 
+    # v3.51.4 (garden item 23): a leitura e a gravação do quadro e do kanban.md sob a trava do kanban.md — o kanban.ps1 da
+    # G16 regravava o arquivo no meio e a linha da Série desta transição sumia.
+    $null = Invoke-WithFileLock $bdPath {
     # 1 · marcador no quadro (só a 1ª célula da linha da Task)
     $board = Read-Text $boardPath; $nl = if ($board.Contains("`r`n")) { "`r`n" } else { "`n" }
     $bl = ConvertTo-Lines $board
@@ -73,7 +77,7 @@ try {
     $last = Split-Row $lines[$se]; $first = if ($sTable.Rows.Count) { $sTable.Rows[0] } else { $last }
     $d0 = Get-FirstDate (Get-Cell $first (Find-Col $sTable 'Data'))
     $day = if ($d0) { [int]((Get-Date).Date - $d0).TotalDays } else { Clean-Cell (Get-Cell $last 0) }
-    $cells = @("$day", $now, "$Task $from → $target", (Clean-Cell (Get-Cell $last (Find-Col $sTable 'Est. restante'))), (Clean-Cell (Get-Cell $last (Find-Col $sTable 'Tasks restantes'))))
+    $cells = @("$day", $now, "$Task $from → $target · $By",(Clean-Cell (Get-Cell $last (Find-Col $sTable 'Est. restante'))), (Clean-Cell (Get-Cell $last (Find-Col $sTable 'Tasks restantes'))))
     foreach ($mk in @($todo, $E.Plan, $E.Build, $E.QA, $E.Done, $red)) {
         $ci = Find-Col $sTable $mk
         if ($ci -lt 0) { continue }
@@ -99,6 +103,7 @@ try {
     [System.IO.File]::WriteAllText($boardPath, ($bl -join $nl), $utf8)
     [System.IO.File]::WriteAllText($bdPath, ($lines -join $bnl), $utf8)
     [Console]::Out.WriteLine("mark: $Task $from → $target · quadro, Série e Registro gravados (Registro em $where; por quem: $By)")
+    }
     try { $null = & (Join-Path $PSScriptRoot 'kanban.ps1') -Root $Root 2>&1 } catch { }   # v3.51.2: o Kanban (Markdown) acompanha a transição
     exit 0
 } catch {

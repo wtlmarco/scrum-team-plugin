@@ -21,7 +21,8 @@
   "focused": "./gradlew testDebugUnitTest {tests}", "testItem": "--tests {class}", "testRoot": "",
   "build": "./gradlew assembleDebug", "lint": "./gradlew lintDebug", "suite": "./gradlew testDebugUnitTest",
   "coverage": "./gradlew jacocoTestCoverageVerification",
-  "timeoutMinutes": 9, "env": { "GRADLE_USER_HOME": "C:\\gradle-home" }
+  "timeoutMinutes": 9, "env": { "GRADLE_USER_HOME": "C:\\gradle-home" },
+  "daemon": true, "compile": "./gradlew compileDebugUnitTestKotlin"
 },
 "quality": {
   "coverage": "./gradlew jacocoTestReport jacocoTestCoverageVerification", "coverageThreshold": 80,
@@ -32,6 +33,9 @@
 ```
 
 - O `verify.ps1` acrescenta sozinho a higiene do Gradle (sem daemon, compilador Kotlin em processo) e encerra a árvore de processos no fim (`scripts/checks/tool-hygiene.json`).
+- **`"daemon": true`** (v3.51.4, opcional): o daemon do Gradle **ligado só durante a chamada do `verify.ps1`** — o build, a suíte e cada mutação da mesma chamada o reaproveitam (sem a partida a frio de cada comando, a maior parte dos 7–10 min por chamada medidos no SunScape) e o script o encerra antes de devolver o controle. Sem a chave, vale o padrão de antes (sem daemon). Ligue num projeto e compare o tempo em `verify/<n>/<T-ID>/time.jsonl` (o `kanban.md` mostra a "Espera de comando").
+- **`"compile"`** (v3.51.4, opcional): o comando que só compila (código e testes); o `verify.ps1 -Mode mutation -Precheck` aplica cada mutante e confere que ele compila, antes da mutação de verdade.
+- **`-Mode full` em fatias** (v3.51.4): build + suíte passam dos 10 min da ferramenta; o `verify.ps1` para em `-MaxMinutes` (padrão 8) com exit 3 e o mesmo comando continua de onde parou.
 - **Perfil do Windows com acento:** `GRADLE_USER_HOME` numa junção ASCII em `verify.env` (`how-to.md` §Ambiente de execução).
 
 ## KA-Q3 Ficha de Vinculação pré-preenchida

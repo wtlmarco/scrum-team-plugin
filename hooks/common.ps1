@@ -98,12 +98,15 @@ function Get-RelativePath([string]$ProjectDir, [string]$Path) {
 }
 
 # Glob -> regex ancorada: "**/" = zero ou mais pastas, "**" = qualquer coisa, "*" e "?" nao cruzam "/".
+# v3.51.4: "pasta/**" no fim casa tambem a propria pasta - New-Item -ItemType Directory .../delivery e Copy-Item ... -Destination
+# .../stories/ caiam na regra generica ("dono ambiguo", garden itens 6 e 25; note.md item 1), embora a pasta tenha linha.
 function Convert-GlobToRegex([string]$Glob) {
     $g = Normalize-PathText $Glob
     $sb = New-Object System.Text.StringBuilder
     $i = 0
     while ($i -lt $g.Length) {
         $c = [string]$g[$i]
+        if ($c -eq '/' -and $g.Substring($i) -eq '/**') { [void]$sb.Append('(?:/.*)?'); break }
         if ($c -eq '*') {
             if ($i + 1 -lt $g.Length -and [string]$g[$i + 1] -eq '*') {
                 if ($i + 2 -lt $g.Length -and [string]$g[$i + 2] -eq '/') { [void]$sb.Append('(?:.*/)?'); $i += 3; continue }
@@ -124,29 +127,127 @@ function Test-GlobMatch([string]$RelPath, [object[]]$Globs) {
 
 # Marcadores gravados pela sessao (dono SM): .active-run (sprint run / fix run em andamento, G14)
 # e .active-spike (spike ou pedido do stakeholder declarado, G8). Ausente ou invalido -> $null.
-# Agentes em segundo plano disparados durante o run (v3.51, G20): .team-project/.active-agents, lista JSON de
-# { type, description, desde }. A PreToolUse acrescenta ao liberar um Agent em segundo plano com .active-run; a SubagentStop
-# tira o mais antigo do mesmo tipo. O hook Stop libera o fim de turno enquanto há agente em voo há menos de 3 h.
+# Agentes disparados pela sessao (v3.51, G20; v3.51.4): .team-project/.active-agents, lista JSON de
+# { type, description, desde, bg, agent_id, work, last, at }. A PreToolUse acrescenta a cada Agent da sessao em projeto com o
+# time - em primeiro ou segundo plano, com ou sem .active-run (o .active-run gravado na mesma resposta do primeiro disparo
+# chegava depois do hook e o agente ficava fora, garden item 5); a PreToolUse do proprio subagente grava a ultima acao
+# (last, at) e o agent_id; a SubagentStop tira o agente. O hook Stop libera o fim de turno enquanto ha agente em SEGUNDO
+# plano (bg) em voo ha menos de 3 h. O kanban.md mostra todos em "## Agora" (note.md item 15, garden item 11).
 function Get-ActiveAgents([string]$ProjectDir) {
     $p = Join-Path $ProjectDir '.team-project/.active-agents'
     if (-not (Test-Path -LiteralPath $p)) { return @() }
-    try { return @(Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return @() }
+    # No 5.1 o ConvertFrom-Json devolve a lista como UM objeto: o ForEach-Object a desenrola (antes vinha uma lista dentro de outra).
+    try { return @((Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json) | ForEach-Object { $_ }) } catch { return @() }
 }
 function Set-ActiveAgents([string]$ProjectDir, $List) {
     $p = Join-Path $ProjectDir '.team-project/.active-agents'
-    if (-not @($List).Count) { if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Force }; return }
-    [System.IO.File]::WriteAllText($p, (ConvertTo-Json -InputObject @($List) -Depth 3 -Compress), (New-Object System.Text.UTF8Encoding($false)))
+    if (-not @($List).Count) { if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Force } }
+    else { [System.IO.File]::WriteAllText($p, (ConvertTo-Json -InputObject @($List) -Depth 3 -Compress), (New-Object System.Text.UTF8Encoding($false))) }
+    Write-NowSection $ProjectDir @($List)
 }
-function Add-ActiveAgent([string]$ProjectDir, [string]$Type, [string]$Description) {
-    $l = @(Get-ActiveAgents $ProjectDir) + @([pscustomobject]@{ type = $Type; description = $Description; desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') })
+function Add-ActiveAgent([string]$ProjectDir, [string]$Type, [string]$Description, [bool]$Background = $true) {
+    $work = ''; $wm = [regex]::Match($Description, '(?<![\w-])(T-\d+[a-z]?|F-\d+|B-\d+|H-\d+)(?![\w])'); if ($wm.Success) { $work = $wm.Value }
+    $now = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    # Registro com mais de 6 h é resto de queda (a SubagentStop não veio): sai ao entrar o próximo.
+    $old = @(Get-ActiveAgents $ProjectDir | Where-Object { try { ((Get-Date) - [datetime]::Parse([string]$_.desde)).TotalHours -lt 6 } catch { $false } })
+    $l = $old + @([pscustomobject]@{ type = $Type; description = $Description; desde = $now; bg = $Background; agent_id = ''; work = $work; last = 'disparado'; at = $now })
     Set-ActiveAgents $ProjectDir $l
 }
-function Remove-ActiveAgent([string]$ProjectDir, [string]$Type) {
+# Ultima acao de um subagente (PreToolUse dele): casa pelo agent_id; senao, o mais antigo do mesmo tipo ainda sem agent_id.
+function Update-ActiveAgent([string]$ProjectDir, [string]$AgentId, [string]$Type, [string]$Action) {
     $l = @(Get-ActiveAgents $ProjectDir); if (-not $l.Count) { return }
-    $ix = -1; for ($i = 0; $i -lt $l.Count; $i++) { if ([string]$l[$i].type -eq $Type -or ([string]$l[$i].type -replace '^team:', '') -eq ($Type -replace '^team:', '')) { $ix = $i; break } }
+    $t = $Type -replace '^.*:', ''
+    $ix = -1
+    for ($i = 0; $i -lt $l.Count; $i++) { if ($AgentId -and [string]$l[$i].agent_id -eq $AgentId) { $ix = $i; break } }
+    if ($ix -lt 0) { for ($i = 0; $i -lt $l.Count; $i++) { if (-not [string]$l[$i].agent_id -and ([string]$l[$i].type -replace '^.*:', '') -eq $t) { $ix = $i; break } } }
+    if ($ix -lt 0) { return }
+    $a = $l[$ix]
+    foreach ($k in 'agent_id', 'last', 'at') { if (-not $a.PSObject.Properties[$k]) { $a | Add-Member -NotePropertyName $k -NotePropertyValue '' } }
+    if ($AgentId) { $a.agent_id = $AgentId }
+    $a.last = (($Action -replace '\s+', ' ').Trim()); if ($a.last.Length -gt 90) { $a.last = $a.last.Substring(0, 90) + '…' }
+    $a.at = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    Set-ActiveAgents $ProjectDir $l
+}
+function Remove-ActiveAgent([string]$ProjectDir, [string]$Type, [string]$AgentId = '') {
+    $l = @(Get-ActiveAgents $ProjectDir); if (-not $l.Count) { return }
+    $ix = -1
+    if ($AgentId) { for ($i = 0; $i -lt $l.Count; $i++) { if ([string]$l[$i].agent_id -eq $AgentId) { $ix = $i; break } } }
+    if ($ix -lt 0) { for ($i = 0; $i -lt $l.Count; $i++) { if ([string]$l[$i].type -eq $Type -or ([string]$l[$i].type -replace '^team:', '') -eq ($Type -replace '^team:', '')) { $ix = $i; break } } }
     if ($ix -lt 0) { return }
     $keep = @(); for ($i = 0; $i -lt $l.Count; $i++) { if ($i -ne $ix) { $keep += $l[$i] } }
     Set-ActiveAgents $ProjectDir $keep
+}
+
+# Sprint corrente lido pelos hooks (mesma regra de scripts/checks/lib.ps1 Get-CurrentSprint, v3.51.4). $null sem a linha.
+function Get-SprintNumber([string]$ProjectDir) {
+    $readme = Join-Path $ProjectDir '.team-project/README.md'
+    if (-not (Test-Path -LiteralPath $readme)) { return $null }
+    $m = [regex]::Match([System.IO.File]::ReadAllText($readme), '(?im)^\|\s*\*{0,2}Sprint corrente\*{0,2}\s*\|\s*(?:\*\*)?\s*(?:sprint\s*)?(?:\*\*)?\s*(\d+)')
+    if ($m.Success) { return $m.Groups[1].Value }
+    return $null
+}
+
+# "## Agora" do kanban.md do sprint corrente (v3.51.4): uma linha por agente ativo - papel, item, ultima acao, ha quanto
+# tempo. Regravada so essa secao, sem custo de token, a cada disparo, acao e volta de agente. Sprint fechado ou sem
+# kanban.md: nada. Falha nunca sobe (hook).
+function Write-NowSection([string]$ProjectDir, $List) {
+    try {
+        $n = Get-SprintNumber $ProjectDir; if (-not $n) { return }
+        $kb = Join-Path $ProjectDir ".team-project/sprints/$n/kanban.md"
+        if (-not (Test-Path -LiteralPath $kb) -or (Test-Path -LiteralPath (Join-Path $ProjectDir ".team-project/sprints/$n/retrospective.md"))) { return }
+        $now = Get-Date
+        $rows = @('## Agora', '*(Regravado pelos hooks a cada disparo, ação e volta de agente — não editar à mão. "Há" = desde a última ação.)*', '')
+        if (-not @($List).Count) { $rows += 'Nenhum agente em execução.' }
+        else {
+            $rows += '| Papel | Item | Última ação | Há | Desde |'; $rows += '|---|---|---|---|---|'
+            foreach ($a in @($List)) {
+                $at = try { [datetime]::Parse([string]$(if ($a.at) { $a.at } else { $a.desde })) } catch { $now }
+                $since = try { ([datetime]::Parse([string]$a.desde)).ToString('HH:mm') } catch { '?' }
+                $mins = [int][Math]::Max(0, ($now - $at).TotalMinutes)
+                $last = ([string]$a.last -replace '\|', '/'); if (-not $last) { $last = 'disparado' }
+                $rows += "| $(([string]$a.type) -replace '^.*:', '')$(if ($a.bg -eq $false) { '' } else { ' (2º plano)' }) | $(if ($a.work) { $a.work } else { '—' }) | ``$last`` | $mins min | $since |"
+            }
+        }
+        $block = ($rows -join "`n") + "`n`n"
+        $u8 = New-Object System.Text.UTF8Encoding($false)
+        $lp = "$kb.lock"; $fs = $null
+        for ($i = 0; $i -lt 20 -and $null -eq $fs; $i++) { try { $fs = [System.IO.File]::Open($lp, 'OpenOrCreate', 'ReadWrite', 'None') } catch { Start-Sleep -Milliseconds 100 } }
+        try {
+            $text = [System.IO.File]::ReadAllText($kb, $u8)
+            $sec = [regex]::Match($text, '(?ms)^##\s+Agora\s*\r?\n.*?(?=^##\s|\z)')
+            if ($sec.Success) { $text = $text.Substring(0, $sec.Index) + $block + $text.Substring($sec.Index + $sec.Length) }
+            else {
+                $at2 = [regex]::Match($text, '(?m)^##\s+Kanban\s*$')
+                if ($at2.Success) { $text = $text.Substring(0, $at2.Index) + $block + $text.Substring($at2.Index) } else { $text = $text.TrimEnd() + "`n`n" + $block }
+            }
+            [System.IO.File]::WriteAllText($kb, $text, $u8)
+        } finally { if ($fs) { $fs.Dispose(); Remove-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue } }
+    } catch { }
+}
+
+# Limite de uso da conta (v3.51.4, note.md itens 2, 6, 11 e garden item 26): o harness encerra a chamada com uma resposta
+# sintetica ("You've hit your session limit · resets 11:50pm", HTTP 429). O hook que a ve grava .team-project/.usage-limit
+# { desde, reset, quem, item, texto } - o sinal legivel de que o run parou por limite de conta, nao fora do contrato. O
+# run.ps1 next o mostra e o apaga quando a sessao segue; o hook Stop nao barra o fim de turno com ele.
+$script:LimitRe = '(?i)(hit your (session|usage|weekly|daily)? ?limit|usage limit (reached|exceeded)|rate.?limit(ed)?\b|\b429\b.*(too many|limit)|limit (reached|exceeded).*reset|resets? (at )?\d{1,2}(:\d{2})?\s*(am|pm)?)'
+function Get-LimitFromTranscript([string]$Path, [int]$Tail = 30) {
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return $null }
+    $hit = $null
+    foreach ($l in (Get-Content -LiteralPath $Path -Encoding UTF8 -Tail $Tail)) {
+        if ($l.IndexOf('"type":"assistant"') -lt 0) { continue }
+        $synthetic = $l.IndexOf('<synthetic>') -ge 0 -or $l.IndexOf('"isApiErrorMessage":true') -ge 0
+        if (-not $synthetic) { $hit = $null; continue }        # resposta normal depois do limite: a sessao seguiu
+        try { $o = $l | ConvertFrom-Json; $txt = (@($o.message.content) | Where-Object { $_.type -eq 'text' } | ForEach-Object { [string]$_.text }) -join ' ' } catch { $txt = $l }
+        if ($txt -match $script:LimitRe) { $hit = ($txt -replace '\s+', ' ').Trim() }
+    }
+    return $hit
+}
+function Set-LimitMarker([string]$ProjectDir, [string]$Text, [string]$Who, [string]$Item) {
+    $p = Join-Path $ProjectDir '.team-project/.usage-limit'
+    $reset = ([regex]::Match($Text, '(?i)resets?\s+(at\s+)?([^·.,;)]+)')).Groups[2].Value.Trim()
+    $o = [ordered]@{ desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); reset = $reset; quem = $Who; item = $Item; texto = $(if ($Text.Length -gt 200) { $Text.Substring(0, 200) } else { $Text }) }
+    if (Test-Path -LiteralPath $p) { try { $old = Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json; if ($old.desde) { $o.desde = [string]$old.desde } } catch { } }
+    [System.IO.File]::WriteAllText($p, ($o | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
 }
 
 function Get-Marker([string]$ProjectDir, [string]$Name) {

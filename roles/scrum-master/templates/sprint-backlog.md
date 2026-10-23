@@ -66,6 +66,8 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 
 - **ID** — segue a convenção do projeto (`.team-project/scrum-master/context.md`): `T-nnn` para Task, `H-nnn` para História; Task nascida de GAP reusa o ID do GAP; quebra usa sufixo (`T-012a`).
 - **Toda Task fica sob a História a que pertence.** Task sem História é violação de R20 e não entra no quadro.
+- **Tabelas auxiliares** (rastreabilidade Task ↔ História, trilha por Task) podem vir depois da última História, sob um título `## ` próprio: os scripts (`run.ps1`, `kanban.ps1`, `close.ps1`, G20) leem como Task só as linhas das tabelas sob `## História H-…` (v3.51.4 — antes elas viravam Tasks-fantasma da última História).
+- **A linha "Sprint corrente"** de `.team-project/README.md` §2 segue o modelo (`| **Sprint corrente** | **<n>** — …`); desde a v3.51.4 os scripts aceitam também o número sem negrito ou depois de "sprint" (`| **Sprint corrente** | sprint **2** …`).
 - **As colunas Plano, Evidência e Cenários são ponteiros, não conteúdo.** O plano é do Arquiteto (`plan/`), a evidência é do QA (`evidence/`), e este quadro é o que **relaciona** História ↔ Task ↔ plano ↔ evidência ([`../process/artifact-ownership.md` §1e](../process/artifact-ownership.md)). Ponteiro que não resolve é achado de processo.
 - **Cenários** — lista de IDs (`SC-nnn`) mapeados pela QA na Planning, novos e regressivos aplicáveis, ou "nenhum aplicável" com o motivo (R30, DoR da Task). O conteúdo do cenário fica em `.team-project/quality-assurance/scenarios/`, dono da QA — esta coluna nunca copia o cenário, só referencia o ID.
 - **O ponteiro do protótipo do sprint fica no pacote de abertura, não numa cópia.** O artefato é do UX e vive onde ele declara; duplicá-lo aqui criaria duas verdades.

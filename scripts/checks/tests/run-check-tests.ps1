@@ -352,7 +352,7 @@ Check 'bench-answer.ps1: fora do dossiê vale a recomendada' $r 0 @('stakeholder
 $p = Join-Path $tmp 'marcador'; New-Project $p
 $r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'plan', '-Root', $p)
 $r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/sprints/1/sprint-backlog.md')) + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/sprints/1/burndown.md'))
-Check 'mark.ps1: quadro, Série e Registro numa chamada' $r 0 @("mark: T-041a $($e.todo) → $($e.plan)", "\| $($e.plan) T-041a \| Variante", "\| T-041a $($e.todo) → $($e.plan) \| 2 \| 2 \|", "\| T-041a \| $($e.todo) → $($e.plan) \| [\d-]+ [\d:]+ \| dev · sessão \(``mark\.ps1``\) \|")
+Check 'mark.ps1: quadro, Série e Registro numa chamada' $r 0 @("mark: T-041a $($e.todo) → $($e.plan)", "\| $($e.plan) T-041a \| Variante", "\| T-041a $($e.todo) → $($e.plan) · dev \| 2 \| 2 \|", "\| T-041a \| $($e.todo) → $($e.plan) \| [\d-]+ [\d:]+ \| dev · sessão \(``mark\.ps1``\) \|")
 $r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'plan', '-Root', $p)
 Check 'mark.ps1: Task já no marcador pedido não grava' $r 2 @('já está')
 $r = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'done', '-Root', $p)
@@ -360,27 +360,27 @@ Check 'mark.ps1: o ✅ é do close.ps1 -Apply' $r 2 @('close\.ps1 -Apply')
 $bd = Join-Path $p '.team-project/sprints/1/burndown.md'
 Edit-File $bd '| Dia | Data | Evento | Est. restante | Tasks restantes |' "| Dia | Data | Evento | Est. restante | Tasks restantes | $($e.todo) | $($e.plan) | $($e.build) | $($e.qa) | $($e.ok) | $([char]::ConvertFromUtf32(0x1F534)) |"
 Edit-File $bd '|---|---|---|---|---|' '|---|---|---|---|---|---|---|---|---|---|---|'
-Edit-File $bd "| T-041a $($e.todo) → $($e.plan) | 2 | 2 |" "| T-041a $($e.todo) → $($e.plan) | 2 | 2 | 0 | 1 | 0 | 1 | 0 | 0 |"
+Edit-File $bd "| T-041a $($e.todo) → $($e.plan) · dev | 2 | 2 |" "| T-041a $($e.todo) → $($e.plan) · dev | 2 | 2 | 0 | 1 | 0 | 1 | 0 | 0 |"
 $r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'build', '-Root', $p)
 $r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 $bd)
-Check 'mark.ps1: a composição recontada na Série' $r 0 @("\| T-041a $($e.plan) → $($e.build) \| 2 \| 2 \| 0 \| 0 \| 1 \| 1 \| 0 \| 0 \|")
+Check 'mark.ps1: a composição recontada na Série' $r 0 @("\| T-041a $($e.plan) → $($e.build) · dev \| 2 \| 2 \| 0 \| 0 \| 1 \| 1 \| 0 \| 0 \|")
 
 # 5c''''. dispatch.ps1 (v3.49): .active-task em JSON, marcador, modelo do models.json, primeiro plano no benchmark, -Clear.
 $p = Join-Path $tmp 'disparo'; New-Project $p
 Put $p '.team-project/sprints/1/plan/T-041a-x.md' '# Plano'
 $r = Invoke-Check 'dispatch.ps1' @('-Role', 'dev', '-Id', 'T-041a', '-Plan', '.team-project/sprints/1/plan/T-041a-x.md', '-Mark', 'build', '-Root', $p)
 $r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/.active-task'))
-Check 'dispatch.ps1: .active-task em JSON, marcador e parâmetros do Agent' $r 0 @('\{"trilha":"sprint","id":"T-041a","plano":".team-project/sprints/1/plan/T-041a-x.md"\}', "mark: T-041a $($e.todo) → $($e.build)", 'subagent_type "developer" · model omitido — vale o do agente \(haiku\)', 'run_in_background true')
+Check 'dispatch.ps1: .active-task em JSON, marcador e parâmetros do Agent' $r 0 @('\{"trilha":"sprint","id":"T-041a","plano":".team-project/sprints/1/plan/T-041a-x.md"\}', "mark: T-041a $($e.todo) → $($e.build)", 'subagent_type "team:developer" · model omitido — vale o do agente \(haiku\)', 'run_in_background true')
 Put $p '.team-project/models.json' '{ "developer": "sonnet" }'
 Put $p '.team-project/guards.json' '{ "bench": { "arm": "t", "answers": "x.json", "foreground": true } }'
 $r = Invoke-Check 'dispatch.ps1' @('-Role', 'qa', '-Id', 'T-041a', '-Root', $p)
-Check 'dispatch.ps1: papel sem escopo de escrita, e primeiro plano no modo benchmark' $r 0 @('subagent_type "quality-assurance"', 'run_in_background false \(modo benchmark')
+Check 'dispatch.ps1: papel sem escopo de escrita, e primeiro plano no modo benchmark' $r 0 @('subagent_type "team:quality-assurance"', 'run_in_background false \(modo benchmark')
 if (Test-Path -LiteralPath (Join-Path $p '.team-project/.active-task')) { } else { $fail++; Write-Output '---- dispatch do QA apagou o .active-task do dev' }
 $r = Invoke-Check 'dispatch.ps1' @('-Role', 'developer', '-Id', 'T-041a', '-Plan', '.team-project/sprints/1/plan/T-041a-x.md', '-Root', $p)
 Check 'dispatch.ps1: model do models.json' $r 0 @('model "sonnet" \(models\.json\)')
 Put $p '.team-project/models.json' '{ "executor": "architect" }'
 $r = Invoke-Check 'dispatch.ps1' @('-Role', 'developer', '-Id', 'T-041a', '-Plan', '.team-project/sprints/1/plan/T-041a-x.md', '-Root', $p)
-Check 'dispatch.ps1: perfil executor dispara o Arquiteto e grava .active-executor' $r 0 @('perfil executor', 'subagent_type "architect"', '\.active-executor: \{"trilha":"sprint","id":"T-041a"')
+Check 'dispatch.ps1: perfil executor dispara o Arquiteto e grava .active-executor' $r 0 @('perfil executor', 'subagent_type "team:architect"', '\.active-executor: \{"trilha":"sprint","id":"T-041a"')
 $r = Invoke-Check 'dispatch.ps1' @('-Clear', '-Root', $p)
 Check 'dispatch.ps1 -Clear apaga os dois marcadores' $r 0 @('apagado\(s\) \.active-task, \.active-executor')
 $r = Invoke-Check 'dispatch.ps1' @('-Role', 'dev', '-Id', 'T-041a', '-Root', $p)
@@ -540,7 +540,11 @@ $r2 = Invoke-Check 'kanban.ps1' @('-Root', $p, '-Block', 'B-001')
 Check 'kanban -Block no fechamento: estados finais e Fechado em; depois disso não regrava' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($kbB, $utf8) + "`n" + $r2.Out } 0 @('\| F-001 \| 🟪 → ✅ \| 2026-09-04 \| sessão — fechada \|', 'F-002 \(promovida\)', '\*\*Fechado em:\*\* 2026-09-04', 'bloco B-001 fechado')
 
 # v3.51 (B1, C2): run.ps1 — a próxima ação do sprint sai do quadro e do disco, pronta para a sessão executar.
+$p = Join-Path $tmp 'run-sem-alvo'; New-Project $p
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'run next sem alvo (guards.json sem targets): não pede .scn, vai aos planos e marca 🟦 (v3.51.4)' $r 0 @('planos da História H-014', "mark: T-041a $($e.todo) → $($e.plan)")
 $p = Join-Path $tmp 'run'; New-Project $p
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'run next: sem .scn, o preparo começa pelos cenários executáveis da História (QA)' $r 0 @('preparo da construção — cenários executáveis da História H-014', 'SC-014', 'team:quality-assurance')
 Put $p '.team-project/quality-assurance/scenarios/H-014.scn' "scenario SC-014 Exporta`nlaunch`n"
@@ -586,7 +590,9 @@ Check 'C1 evidência do dev com os cenários da Task passando no alvo: fecha' $r
 # 5f. plan.ps1 (v3.46): o plano é conferido antes do dev.
 $p = Join-Path $tmp 'plano'; New-Project $p
 $pl = '.team-project/sprints/1/plan/T-050-x.md'; $fence = '```'
-Put $p $pl ("# Plano`n**Cenários:** nenhum — só domínio, coberto por teste unitário`n**Risco:** regra de negócio`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 4. Passos`n`n### Passo 1 — x`n- **Assinatura exata:**`n  $fence`n  export function a(): number`n  $fence`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · ``return 1`` → ``return 0```n")
+$amb = "## 3. Ambiente medido`n`n| Pré-requisito | Comando de medição | Saída real |`n|---|---|---|`n| Node 20 | node --version | v20.11.0 |`n"
+$parar = "## 9. Onde parar`n- **Pré-requisito ausente** — 🔺 GAP`n"
+Put $p $pl ("# Plano`n**Cenários:** nenhum — só domínio, coberto por teste unitário`n**Risco:** regra de negócio`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n$amb`n## 4. Passos`n`n### Passo 1 — x`n- **Assinatura exata:**`n  $fence`n  export function a(): number`n  $fence`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · ``return 1`` → ``return 0```n`n$parar")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'Plano em contrato: exit 0' $r 0 @('\| lista \| ok', '\| protegidos \| ok', '\| blocos \| n-a', '\| trecho \| ok', '\| mutação \| ok.*1 muta')
 $long = (1..20 | ForEach-Object { "  linha $_" }) -join "`n"
@@ -602,11 +608,11 @@ Check 'Plano com trecho de mutação vazio (crase dupla): exit 1 (v3.47.1)' $r 1
 Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n``.team-project/scrum-master/context.md```n``.github/workflows/ci.yml```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: x`n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'Plano com documento de outro papel e arquivo de gate na lista: exit 1 (v3.48)' $r 1 @('\| dono \| falhou.*scrum-master/context\.md é de SM.*ci\.yml é arquivo de gate')
-Put $p $pl ("# Plano`n**Cenários:** nenhum — configuração`n**Risco:** infraestrutura`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n``.team-project/developer/context.md```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: x`n")
+Put $p $pl ("# Plano`n**Cenários:** nenhum — configuração`n**Risco:** infraestrutura`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n``.team-project/developer/context.md```n`n**Arquivos protegidos:** nenhum`n`n$amb`n## 6. Testes`nsem prova: x`n`n$parar")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'Plano com o contexto do próprio dev: dono ok (v3.48)' $r 0 @('\| dono \| ok')
 # v3.51 — plano enxuto (22), cenários ao lado (23), teste pelo risco (24) e render só com layout novo (21).
-$head = "**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: x`n"
+$head = "**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n$amb`n## 6. Testes`nsem prova: x`n`n$parar"
 Put $p $pl ("# Plano`n**Cenários:** SC-001, SC-009`n**Risco:** interface simples`n**Layout novo:** não`n`n" + $head)
 Put $p '.team-project/quality-assurance/scenarios/t.scn' "scenario SC-001 Abre`nlaunch`n"
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
@@ -886,6 +892,105 @@ $r = Invoke-Check 'models.ps1' @('-Check', '-Root', $p)
 Check 'models.ps1 -Check JSON ilegível: exit 1' $r 1 @('ilegível')
 $r = Invoke-Check 'models.ps1' @('-Role', 'developer', '-Root', $p)
 Check 'models.ps1 JSON ilegível: -Role cai no padrão (vazio), exit 0' $r 0 @('^\s*$')
+
+# 11. v3.51.4 — relato do SunScape (note.md) e do garden (plugin-report-garden.md).
+# 11a. Parser do quadro (garden 12, 13, 20): tabelas depois da última História, Habilitadora, Task retirada; "Sprint corrente"
+# sem negrito (garden 3).
+$p = Join-Path $tmp 'parser'; New-Project $p
+$sbp = Join-Path $p '.team-project/sprints/1/sprint-backlog.md'
+Edit-File $sbp '## Entradas fora da Planning' ("## Habilitadora — ambiente`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários | Critério de pronto |`n|---|---|---|---|---|---|---|---|---|`n| $($e.todo) T-050 | Scaffold | 1 | dev | — | ``plan/`` | — | nenhum aplicável — infraestrutura | build |`n| $($e.todo) ~~T-051~~ retirada | x | 1 | dev | — | — | — | — | — |`n`n## Rastreabilidade Task ↔ História`n`n| ID | História | Trilha |`n|---|---|---|`n| T-041 | H-014 | plena |`n| T-041a | H-014 | plena |`n| T-050 | — | plena |`n`n## Entradas fora da Planning")
+Edit-File (Join-Path $p '.team-project/README.md') '| **Sprint corrente** | **1** —' '| **Sprint corrente** | sprint **1** —'
+Put $p '.team-project/sprints/1/kanban.md' ("# Kanban — Sprint 1`n`n## Kanban`n`n| x |`n|---|`n`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/burndown.md'), $utf8).Replace('# Burndown — Sprint 1', ''))
+Remove-Item -LiteralPath (Join-Path $p '.team-project/sprints/1/burndown.md') -Force
+$r = Invoke-Check 'kanban.ps1' @('-Root', $p)
+Check 'kanban: só as Tasks do quadro (3), sem as linhas da rastreabilidade nem a retirada; "sprint **1**" aceito' $r 0 @('· 3 Task\(s\)')
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-050', '-Root', $p)
+Check 'C1 Task sob ## Habilitadora: não herda a História de cima; R20 falhou (Task sem História)' $r 1 @('\| R20 \| falhou.*Habilitadora.*R20')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'run next: plano da História H-014 lista só T-041a, sem IDs repetidos (garden 13)' $r 0 @('Implementação de T-041a \(História H-014\)')
+
+# 11b. kanban.ps1 -Init cria o consumption.md do sprint; rodadas rateadas entre as Tasks citadas, fase pelo marcador, pausa e
+# espera de comando (garden 1, 8, 9; note.md 12 e 13).
+Remove-Item -LiteralPath (Join-Path $p '.team-project/sprints/1/consumption.md') -Force
+$r = Invoke-Check 'kanban.ps1' @('-Init', '-Root', $p)
+Check 'kanban -Init: cria o consumption.md do sprint' @{ Code = $r.Code; Out = $r.Out + "`nCONS=" + $(if (Test-Path -LiteralPath (Join-Path $p '.team-project/sprints/1/consumption.md')) { 'ok' } else { 'ausente' }) } 0 @('consumption\.md criado', 'CONS=ok')
+Put $p '.team-project/usage.jsonl' ('{"role":"architect","work":"T-041","works":["T-041","T-041a"],"model":"claude-opus-5-5","start":"2026-09-01T11:00:00","duration_s":600,"paused_s":0,"processed":1000000,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"quality-assurance","work":"T-041","model":"claude-sonnet-5-5","start":"2026-09-01T12:00:00","duration_s":120,"paused_s":0,"processed":10000,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"developer","work":"T-041","model":"claude-haiku-5-5","start":"2026-09-02T10:00:00","duration_s":300,"paused_s":9000,"processed":50000,"dest":".team-project/sprints/1/consumption.md"}' + "`n")
+Put $p '.team-project/verify/1/T-041/time.jsonl' ('{"at":"2026-09-02T10:01:00","mode":"full","seconds":480}' + "`n" + '{"at":"2026-09-02T10:20:00","mode":"mutation","seconds":300}' + "`n")
+$r = Invoke-Check 'kanban.ps1' @('-Root', $p)
+$kbt = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/kanban.md'), $utf8)
+Check 'kanban: plano por História rateado (500 mil em cada), QA antes da construção conta no Plano, pausa e espera de comando' @{ Code = $r.Code; Out = $kbt } 0 @('\| T-041 \| 510\.000 · 07:00 \| 50\.000 · 05:00 \| — \| — \| 560\.000 · 12:00 \| 150:00 \|', '\| T-041a \| 500\.000 · 05:00 \|', '### Espera de comando', '\| T-041 \| 2 \| — \| 08:00 \| 05:00 \| \*\*13:00\*\* \|')
+
+# 11c. run.ps1 done (garden 19, 22): confere antes; fechando, passa por 🟪 e o -Post fica ok; GAP volta a 🟨.
+$p = Join-Path $tmp 'done'; New-Project $p
+Remove-Item -LiteralPath (Join-Path $p '.team-project/sprints/1/evidence/T-041.md') -Force
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') "| $($e.qa) T-041 |" "| $($e.build) T-041 |"
+Edit-File (Join-Path $p '.team-project/sprints/1/burndown.md') "| T-041 | $($e.build) → $($e.qa) | 2026-09-03 15:00 | QA |" ''
+Remove-Line (Join-Path $p '.team-project/sprints/1/burndown.md') "| 2 | 2026-09-03 15:00 | T-041 $($e.build) → $($e.qa) | 2 | 2 |"
+Put $p '.team-project/sprints/1/delivery/T-041.md' ("## Entrega — T-041`n`n### Verificação`n```````nverify full T-041 · árvore abc · tudo exit 0`n  build: exit 0`n```````n`n### Documentos vivos (R12)`n**Estado:** a consolidar`n")
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 R7 do dev com a saída do verify sem a linha "> comando" no topo: ok (garden 17)' $r 0 @('\| R7 \| ok.*evidência do dev')
+Put $p '.team-project/sprints/1/delivery/T-041.md' ("## Entrega — T-041`n`n### Verificação`nrodei e passou`n`n### Documentos vivos (R12)`n**Estado:** a consolidar`n")
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'ok', '-Root', $p)
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/sprints/1/sprint-backlog.md'))
+Check 'run done sem evidência: não fecha, não marca 🟪, volta ao dev' $r 0 @('ainda não fecha', 'R7 \| falhou', "\| $($e.build) T-041 \|")
+Put $p '.team-project/sprints/1/delivery/T-041.md' ("## Entrega — T-041`n`n### Verificação`n```````n> verify.ps1 -Mode full`nverify full T-041 · tudo exit 0`n```````n`n### Documentos vivos (R12)`n**Estado:** a consolidar`n")
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'ok', '-Root', $p)
+Check 'run done ok: 🟨 → 🟪 pelo mark, depois -Apply com -Post R24 ok (garden 19)' $r 0 @("mark: T-041 $($e.build) → $($e.qa)", 'fechada pela evidência do dev', 'ponto seguro de pausa')
+$p = Join-Path $tmp 'gap'; New-Project $p
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'run done gap com a Task em 🟪: volta a 🟨 (garden 22)' $r 0 @("mark: T-041 $($e.qa) → $($e.build)", 'GAP')
+
+# 11d. run.ps1 next com o sinal de limite de uso e a estimativa do que falta (note.md 2 e 11).
+$p = Join-Path $tmp 'limite'; New-Project $p
+Put $p '.team-project/.usage-limit' '{"desde":"2026-10-22 16:29:00","reset":"11:50pm","quem":"developer","item":"T-041","texto":"You have hit your session limit"}'
+Put $p '.team-project/usage.jsonl' ('{"role":"developer","work":"T-041","model":"claude-haiku-5-5","start":"2026-09-02T10:00:00","duration_s":600,"processed":2000000,"dest":".team-project/sprints/1/consumption.md"}' + "`n")
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') "| $($e.qa) T-041 |" "| $($e.ok) T-041 |"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'run next: diz que parou por limite de conta, apaga o sinal e estima o que falta' @{ Code = $r.Code; Out = $r.Out + "`nSINAL=" + $(if (Test-Path -LiteralPath (Join-Path $p '.team-project/.usage-limit')) { 'presente' } else { 'apagado' }) } 0 @('LIMITE DE USO DA CONTA em 2026-10-22 16:29:00 \(reset: 11:50pm\)', 'CONSUMO DO SPRINT.*2,0 mi tokens · 10 min.*as 1 aberta\(s\) ≈ 2,0 mi', 'SINAL=apagado')
+
+# 11e. close.ps1 R28: medição de outra Task da mesma História reaproveitada no plano não reprova esta (garden 21).
+$p = Join-Path $tmp 'r28'; New-Project $p
+Put $p '.team-project/operator/1/T-040-amb/report.md' "# medição`n"
+Edit-File (Join-Path $p '.team-project/sprints/1/evidence/T-041.md') '**Relatório do `operator`:** `.team-project/operator/1/job1/report.md`' '**Relatório do `operator`:** `.team-project/operator/1/T-040-amb/report.md`'
+Edit-File (Join-Path $p '.team-project/sprints/1/consumption.md') '| 2026-09-03 | operator | haiku | `/qa` | T-041 | verificação | H-014 | 500 | 00:30 | chamado por qa |' ''
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'C1 R28 com a medição de outra Task reaproveitada: ok' $r 0 @('\| R28 \| ok.*1 medição\(ões\) de outra Task/História reaproveitada')
+
+# 11f. plan.ps1: §3/§9 cobradas no plano (garden 16), trecho duplicado no arquivo existente (garden 27), cenários sem .scn e sem alvo.
+$p = Join-Path $tmp 'plano2'; New-Project $p
+Put $p 'src/a.ts' "export const a = () => { return 1 }`nexport const b = () => { return 1 }`n"
+$pl = '.team-project/sprints/1/plan/T-060-x.md'
+Put $p $pl ("# Plano`n**Cenários:** SC-014`n**Risco:** regra de negócio`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 3. Ambiente`nNode 20 medido.`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · ``return 1`` → ``return 0```n")
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'Plano com §3 em prosa, sem §9 e trecho duplicado no arquivo: exit 1; cenários sem .scn e sem alvo: n-a' $r 1 @('\| ambiente \| falhou.*§3 sem a tabela.*§9 sem', '\| mutação \| falhou.*aparece 2 vezes em src/a\.ts', '\| cenários \| n-a.*sem alvo')
+
+# 11g. verify.ps1: full parcial retomável (garden 18), daemon só durante a chamada (note.md 14), -Precheck (garden 27), time.jsonl.
+$p = Join-Path $tmp 'verify2'; New-Project $p
+$ErrorActionPreference = 'Continue'
+& git -C $p init -q 2>$null; Put $p '.gitignore' ".team-project/`n"
+Put $p 'src/calc.ts' "export function soma(a, b) {`n  return a + b; // fim`n}`n"
+& git -C $p add -A 2>$null; & git -C $p -c user.email=t@t -c user.name=t commit -qm init 2>$null
+$ErrorActionPreference = 'Stop'
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output ''Build succeeded''", "suite": "Write-Output ''Tests: 3 passed''" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-MaxMinutes', '0', '-Root', $p)
+Check 'verify full -MaxMinutes 0: roda o build, deixa a suíte pendente, exit 3' $r 3 @('PARCIAL: 1 comando', 'pendente\(s\): suite', 'MESMO comando')
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'verify full retomado: roda só a suíte e grava o full com os dois' $r 0 @('tudo exit 0', 'build: exit 0', 'suite: exit 0')
+$tj = Join-Path $p '.team-project/verify/1/T-041/time.jsonl'
+Check 'verify: tempo de comando somado em time.jsonl' @{ Code = $(if ((Test-Path -LiteralPath $tj) -and @(Get-Content -LiteralPath $tj).Count -eq 2) { 0 } else { 1 }); Out = '' } 0 @()
+$mark = 'team-daemon-' + [guid]::NewGuid().ToString('N').Substring(0, 6)
+Put $p '.team-project/guards.json' ('{ "verify": { "daemon": true, "build": "Start-Process powershell -ArgumentList ''-NoProfile'',''-Command'',''Start-Sleep 120 # ' + $mark + ''' -WindowStyle Hidden; Write-Output ''Build ok''", "suite": "Write-Output (''GO='' + $env:GRADLE_OPTS + '' VIVO='' + @(Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like ''*' + $mark + '*'' }).Count)" } }')
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$alive = @(Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*$mark*" -and $_.CommandLine -notlike '*Get-CimInstance*' }).Count
+$suiteLog = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/verify/1/T-041/full-suite.log'), $utf8)
+Check 'verify.daemon: o processo do build sobrevive para o comando seguinte e morre no fim da chamada' @{ Code = $r.Code; Out = $suiteLog + "`nDEPOIS=$alive" } 0 @('GO=.*-Dorg\.gradle\.daemon=true', 'VIVO=[1-9]', 'DEPOIS=0')
+Put $p '.team-project/guards.json' '{ "verify": { "focused": "Write-Output ok {tests}", "compile": "powershell -NoProfile -Command \"if ((Get-Content src/calc.ts -Raw) -match ''NAOCOMPILA'') { ''error TS2322''; exit 1 }\"" } }'
+$pl = '.team-project/sprints/1/plan/T-041-export.md'
+Edit-File (Join-Path $p $pl) '## 3. Ambiente' ("**Arquivos tocados:** ``src/calc.ts```n``tests/check.ps1```n`n**Mutações:**`n- M1 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``a + b`` → ``a - b```n- M2 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``// fim`` → ``// NAOCOMPILA```n- M3 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``zzz`` → ``y```n`n## 3. Ambiente")
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Precheck', '-Root', $p)
+Check 'verify mutation -Precheck: M1 pronta, M2 não compila, M3 sem trecho; árvore igual; exit 1' $r 1 @('1 de 3 mutação', 'M2: o mutante não compila', 'M3: o trecho aparece 0 vez')
+$ErrorActionPreference = 'Continue'; $st = (& git -C $p status --porcelain 2>$null) -join ' '; $ErrorActionPreference = 'Stop'
+Check 'verify -Precheck devolve o arquivo igual' @{ Code = $(if ($st -notmatch 'calc\.ts') { 0 } else { 1 }); Out = $st } 0 @()
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output

@@ -159,10 +159,7 @@ function Get-VerifyDir([string]$Root, [string]$Id) {
         elseif (Test-Path -LiteralPath $run) { try { $r = Get-Content -LiteralPath $run -Raw -Encoding UTF8 | ConvertFrom-Json; if ([string]$r.trilha -eq 'fix') { $seg = [string]$r.id } } catch { } }
     } else {
         $readme = Join-Path $tp 'README.md'
-        if (Test-Path -LiteralPath $readme) {
-            $m = [regex]::Match((Read-Text $readme), '(?m)^\|\s*\*\*Sprint corrente\*\*\s*\|\s*\*\*(\d+)\*\*')
-            if ($m.Success) { $seg = $m.Groups[1].Value }
-        }
+        if (Test-Path -LiteralPath $readme) { $n = Get-CurrentSprint (Read-Text $readme); if ($n) { $seg = $n } }
     }
     return (Join-Path $tp "verify/$seg/$Id")
 }
@@ -214,7 +211,9 @@ function Get-Decisive([string]$Log) {
 # Roda um comando do projeto num PowerShell filho (v3.45.1; comum ao verify e ao quality desde a v3.51): código de saída
 # real, saída inteira no log, tempo limite próprio com a árvore de processos encerrada (exit 124), descendentes que sobram
 # encerrados ao fim (daemon), higiene da ferramenta e $EnvExtra como variáveis do filho, falha de ambiente por assinatura.
-function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [string]$Log, [double]$TimeoutMinutes, $EnvExtra) {
+# v3.51.4 (-KeepDescendants, verify.daemon): os descendentes que sobram (o daemon) ficam vivos e voltam em "kept" — o
+# verify.ps1 os reaproveita no comando seguinte e os encerra no fim da chamada (Stop-ProcessTree), antes de devolver o controle.
+function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [string]$Log, [double]$TimeoutMinutes, $EnvExtra, [switch]$KeepDescendants) {
     $u8 = New-Object System.Text.UTF8Encoding($false)
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $hy = Get-ToolHygiene $Cmd $EnvExtra
@@ -227,7 +226,9 @@ function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [strin
     $null = $p.Handle   # sem o handle aberto, o ExitCode volta vazio no 5.1
     $limit = if ($TimeoutMinutes -gt 0) { [Math]::Max(0.05, $TimeoutMinutes) } else { 9 }
     $timedOut = -not $p.WaitForExit([int]($limit * 60000))
+    $kept = @()
     if ($timedOut) { $null = Stop-ProcessTree $p.Id; $p.WaitForExit(5000) | Out-Null; $code = 124 }
+    elseif ($KeepDescendants) { $p.WaitForExit(); $code = $p.ExitCode; $kept = @(Get-DescendantIds $p.Id) }
     else { $p.WaitForExit(); $code = $p.ExitCode; $null = Stop-ProcessTree $p.Id -ChildrenOnly }
     Start-Sleep -Milliseconds 200   # o arquivo de saída fica livre depois que os descendentes saem
     if (Test-Path -LiteralPath "$Log.err") { $err = [System.IO.File]::ReadAllText("$Log.err", $u8); if ($err) { [System.IO.File]::AppendAllText($Log, $err, $u8) }; Remove-Item -LiteralPath "$Log.err" -Force }
@@ -236,7 +237,24 @@ function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [strin
     $d = Get-Decisive $Log
     $envFail = if ($timedOut) { "tempo esgotado ($limit min): o comando não devolveu o controle — confira modo de observação ou processo que não termina (tool-hygiene.json)" }
                elseif ($code -ne 0) { Get-EnvFailure ([System.IO.File]::ReadAllText($Log, $u8)) } else { $null }
-    return [ordered]@{ key = $Key; command = $Cmd; exit = $code; seconds = [int]$sw.Elapsed.TotalSeconds; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive; environment = $envFail; hygiene = @($hy.Tools); warnings = @($hy.Warnings) }
+    $r = [ordered]@{ key = $Key; command = $Cmd; exit = $code; seconds = [int]$sw.Elapsed.TotalSeconds; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive; environment = $envFail; hygiene = @($hy.Tools); warnings = @($hy.Warnings) }
+    if ($KeepDescendants) { $r.kept = $kept }
+    return $r
+}
+# Descendentes vivos de um processo (filhos primeiro na ordem inversa), sem encerrar nenhum.
+function Get-DescendantIds([int]$RootPid) {
+    $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Select-Object ProcessId, ParentProcessId, CreationDate)
+    $root = $all | Where-Object { $_.ProcessId -eq $RootPid } | Select-Object -First 1
+    $ids = New-Object System.Collections.ArrayList
+    $queue = New-Object System.Collections.Queue; $queue.Enqueue($RootPid)
+    while ($queue.Count) {
+        $cur = $queue.Dequeue()
+        foreach ($c in @($all | Where-Object { $_.ParentProcessId -eq $cur -and $_.ProcessId -ne $cur })) {
+            if ($root -and $c.CreationDate -and $root.CreationDate -and $c.CreationDate -lt $root.CreationDate) { continue }
+            if (-not $ids.Contains($c.ProcessId)) { [void]$ids.Add($c.ProcessId); $queue.Enqueue($c.ProcessId) }
+        }
+    }
+    return @($ids)
 }
 # Encerra um processo e todos os descendentes, filhos primeiro (v3.51, D1). Vale também para órfão cujo pai já saiu:
 # o ParentProcessId continua apontando para o PID que o criou (o daemon do Gradle fica assim depois do gradlew).
@@ -289,19 +307,61 @@ function Exit-TargetLock([string]$Root) {
     if (Test-Path -LiteralPath $lp) { try { $l = Read-Text $lp | ConvertFrom-Json; if ([int]$l.pid -eq $PID) { Remove-Item -LiteralPath $lp -Force } } catch { Remove-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue } }
 }
 
+# Sprint corrente (v3.51.4): a linha "Sprint corrente" do README §2. O modelo grava "| **Sprint corrente** | **<n>** — …";
+# aceita também o número sem negrito e com "sprint" antes ("| **Sprint corrente** | sprint **2** …") — no garden o SM
+# escreveu assim e o run.ps1 next saiu com exit 2. $null se a linha não existe.
+$script:SprintLineRe = '(?im)^\|\s*\*{0,2}Sprint corrente\*{0,2}\s*\|\s*(?:\*\*)?\s*(?:sprint\s*)?(?:\*\*)?\s*(\d+)'
+function Get-CurrentSprint([string]$Readme) {
+    $m = [regex]::Match($Readme, $script:SprintLineRe)
+    if ($m.Success) { return $m.Groups[1].Value }
+    return $null
+}
+$script:SprintLineHelp = 'a linha "Sprint corrente" de .team-project/README.md §2 no formato "| **Sprint corrente** | **<n>** — <objetivo> · quadro vivo: ..." (templates/project-context.md)'
+
+# Trava curta de arquivo (v3.51.4): mark.ps1, close.ps1 -Apply e kanban.ps1 leem, mudam e regravam o kanban.md; o
+# kanban.ps1 roda também pelo hook G16 no fim de cada rodada, ao mesmo tempo que a sessão marca uma Task — a escrita que
+# chegava por último apagava a linha da Série gravada no meio (garden item 23). Executa $Body com <arquivo>.lock aberto em
+# modo exclusivo; espera até $WaitMs e, sem a trava, roda assim mesmo (nunca trava o chamador).
+function Invoke-WithFileLock([string]$Path, [scriptblock]$Body, [int]$WaitMs = 8000) {
+    $fs = Enter-FileLock $Path $WaitMs
+    try { return (& $Body) }
+    finally { Exit-FileLock $fs $Path }
+}
+# A mesma trava em dois passos, para quem precisa das variáveis do trecho depois dele (close.ps1 -Apply).
+function Enter-FileLock([string]$Path, [int]$WaitMs = 8000) {
+    $lp = "$Path.lock"; $fs = $null; $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    while ($null -eq $fs -and $sw.ElapsedMilliseconds -lt $WaitMs) {
+        try { $fs = [System.IO.File]::Open($lp, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None) }
+        catch { Start-Sleep -Milliseconds 100 }
+    }
+    return $fs
+}
+function Exit-FileLock($Stream, [string]$Path) {
+    if ($Stream) { $Stream.Dispose(); Remove-Item -LiteralPath "$Path.lock" -Force -ErrorAction SilentlyContinue }
+}
+
 # Quadro do sprint (v3.51; run.ps1 e kanban.ps1): Histórias e Tasks (marcador, depende de, plano, cenários).
+# v3.51.4 (garden item 20): o cabeçalho "ID" vale só para a própria tabela (zera fora dela) e qualquer título "## " que não
+# é de História encerra a História — as tabelas de rastreabilidade e de trilha depois da última História viravam Tasks-
+# fantasma ("18 Task(s)" num sprint de 9) e repetiam IDs no pedido de planos. "## Habilitadora …" vira grupo próprio,
+# Story = 'habilitadora' (antes herdava a História de cima; a R20 continua reprovando Task sem História no close.ps1).
+# Task marcada como retirada (~~T-…~~ ou "retirada" na 1ª célula) fica fora.
 function Get-SprintTasks([string]$S) {
     $board = Read-Text (Join-Path $S 'sprint-backlog.md')
     $tdMk = [char]::ConvertFromUtf32(0x2B1C); $rdMk = [char]::ConvertFromUtf32(0x1F534)
-    $tasks = @(); $story = $null; $header = $null
+    $tasks = @(); $story = $null; $header = $null; $seen = @{}
     foreach ($line in ($board -split "`r?`n")) {
         $hm = [regex]::Match($line, '^##\s+Hist[oó]ria\s+(H-[\w]+)\s*[—-]?\s*(.*)$')
         if ($hm.Success) { $story = $hm.Groups[1].Value; $header = $null; continue }
-        if (-not $line.TrimStart().StartsWith('|') -or -not $story) { continue }
+        if ($line -match '^##\s') { $story = if ($line -match '^##\s+(?i)habilitadora') { 'habilitadora' } else { $null }; $header = $null; continue }
+        if (-not $line.TrimStart().StartsWith('|')) { $header = $null; continue }
+        if (-not $story) { continue }
         $cells = Split-Row $line
         if ((Clean-Cell $cells[0]) -eq 'ID') { $header = @($cells | ForEach-Object { Clean-Cell $_ }); continue }
         if (-not $header -or $line -match '^\s*\|[\s:\-|]+\|\s*$') { continue }
         $idm = [regex]::Match($cells[0], '[A-Z]+-\d+[a-z]?'); if (-not $idm.Success) { continue }
+        if ($cells[0] -match '~~' -or $cells[0] -match '(?i)\bretirada\b' -or $seen.ContainsKey($idm.Value)) { continue }
+        $seen[$idm.Value] = $true
         $col = { param($n) $i = -1; for ($k = 0; $k -lt $header.Count; $k++) { if ($header[$k] -like "*$n*") { $i = $k; break } }; if ($i -ge 0 -and $i -lt $cells.Count) { [string]$cells[$i] } else { '' } }
         $mk = $null; foreach ($m in @($tdMk, $E.Plan, $E.Build, $E.QA, $E.Done, $rdMk)) { if ($cells[0].Contains($m)) { $mk = $m; break } }
         $planCell = & $col 'Plano'
