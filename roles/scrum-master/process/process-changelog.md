@@ -134,6 +134,18 @@ Suítes: guardas e conferências (contagem na entrega), C3, `claude plugin valid
 
 Autorização de custo da Etapa 6a (P+ no SunScape). API e Windows desktop no executor de cenários: próximo incremento.
 
+### Addendum v3.51.4 — o run do SunScape e o sprint 2 do garden: G14 lendo o que os papéis escrevem, limite de uso legível, quadro que não perde linha (SM + Arquiteto + Dev + UX) — 23/10/2026
+
+**Instrução** (stakeholder, 23/10/2026, `note.md` itens 1–16 e `plugin-report-garden.md` itens 1–27, tudo numa entrega só; item 14 decidido em 23/10: reduzir a partida do Gradle sem tirar mutação nem verificação completa).
+**Classificação:** guardas (G8, G14, G16, G20) · fluxo do `run` (paradas, retomada, marcador) · formato (Kanban, plano) · instrumentos (`run`, `mark`, `close`, `kanban`, `plan`, `verify`, `dispatch`). **Regra nova: nenhuma.** Paradas legítimas ganham **(e)** pausa pedida pelo stakeholder no ponto seguro (o stakeholder pediu o ponto seguro no item 11).
+
+- `sprint-run.md`: 🟦 no preparo, sem `.scn` sem `targets`; `run.ps1 done` confere, marca 🟪 e fecha (GAP → 🟨); `verify` exit 3 = parcial; §Retomada após limite de uso; §Pausa segura; "## Agora"; marcador sob trava.
+- Modelos `kanban.md` e `sprint-backlog.md`; dev (exit 3, `target.ps1`, `-Precheck`, comando no topo do bloco); Arquiteto (`plan.ps1` cobra §3/§9 e trecho único); UX (a linha do protótipo no pacote é do SM); `kotlin-android/quality.md` (`verify.daemon`, `verify.compile`).
+- **Fora do plugin:** item 9 (driver do benchmark). **Sem mecanismo novo:** item 8 (custo da T-001 — voltas da G14 e replano; medir com a "Espera de comando"); item 7 (o UX não estava no run: G19 no SDD, G8 na Planning).
+- **Pendente do stakeholder:** Task habilitadora sem História (garden 20) contra a R20 — o close segue reprovando até a decisão.
+- **Indicador:** próximo braço P+ com ≤ 3 negações da G14 e nenhuma de leitura; zero R7/R24/R28 por formato; `.usage-limit` em toda parada por limite.
+- **Evidência (R19):** guardas 217/0 (+28), conferências 159/0 (+19), C3 ok.
+
 ### Addendum v3.51.3 — kanban do bloco de fix marcado na entrada de cada fase (SM) — 22/10/2026
 
 **Instrução** (stakeholder, `note.md`): "o kanban do sprint e do fix devem ser atualizado a cada transição de fase de trabalho para verdadeiramente indicar o status da evolução das tarefas". No sprint o quadro já acompanha cada transição (`mark.ps1`, `close.ps1`, G16); no bloco de fix o estado da F-ID era deduzido de rodadas **concluídas**, então ficava em ⬜ durante a rodada do dev.

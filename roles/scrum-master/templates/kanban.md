@@ -9,6 +9,13 @@
 ```markdown
 # Kanban — Sprint <n>
 
+## Agora
+*(Regravado pelos hooks a cada disparo, ação e volta de agente — não editar à mão. "Há" = desde a última ação.)*
+
+| Papel | Item | Última ação | Há | Desde |
+|---|---|---|---|---|
+| <papel> *(2º plano)* | T-<nnn> | `<último comando ou arquivo>` | <n> min | <hh:mm> |
+
 ## Kanban
 *(Regravado pelo `kanban.ps1` a cada transição e ao fim de cada rodada — não editar à mão.)*
 
@@ -19,9 +26,10 @@
 ## Rodadas
 *(Regravada pelo `kanban.ps1` ao fim de cada rodada — não editar à mão. Custo = tokens e tempo, sem valor em dinheiro.)*
 
-- **Por tarefa e fase:** Plano (Arquiteto) · Construção (dev) · Verificação (QA + operator) · Outros (PO, SM, UX) — `tokens · tempo`, e a linha Consolidado.
+- **Por tarefa e fase:** Plano e preparo · Construção · Verificação · Outros (PO, SM, UX) — `tokens · tempo`, a coluna **Pausa** e a linha Consolidado. v3.51.4: a fase é a do **marcador da Task no início da rodada** (⬜/🟦 → Plano · 🟨 → Construção · 🟪 → Verificação; sem Registro, pelo papel); rodada que cita várias Tasks (plano por História) entra **rateada** em cada uma; lacuna acima de 20 min (limite de conta, máquina parada) fica fora do tempo, na coluna Pausa.
 - **Por papel e modelo:** uma linha por par, com o Total.
 - **Rodada a rodada:** uma linha por rodada (data e hora, Task ou F-ID, papel, modelo, tokens, tempo), a mais nova primeiro.
+- **Espera de comando** (v3.51.4): por Task, o tempo que o `verify.ps1` passou rodando build, teste, lint e mutação (focused · full · mutation) — quanto do relógio foi espera, não raciocínio.
 
 ## Linha de base
 

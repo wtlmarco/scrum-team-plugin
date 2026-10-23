@@ -44,19 +44,34 @@ function Get-Destination([string]$ProjectDir, [string]$WorkId, [object]$Run) {
         $closed = (Test-Path -LiteralPath $verdict) -and ([System.IO.File]::ReadAllText($verdict) -match '(?m)^##\s+Fechamento')
         if ((Test-Path -LiteralPath $bdir) -and -not $closed) { return @{ dest = ".team-project/fixes/$block/consumption.md"; sprint = $null } }
     }
-    $readme = Join-Path $tp 'README.md'
-    if (Test-Path -LiteralPath $readme) {
-        $m = [regex]::Match([System.IO.File]::ReadAllText($readme), '(?m)^\|\s*\*\*Sprint corrente\*\*\s*\|\s*\*\*(\d+)\*\*')
-        if ($m.Success) {
-            $n = $m.Groups[1].Value
-            $sd = Join-Path $tp "sprints/$n"
-            if ((Test-Path -LiteralPath (Join-Path $sd 'consumption.md')) -and -not (Test-Path -LiteralPath (Join-Path $sd 'retrospective.md'))) {
-                return @{ dest = ".team-project/sprints/$n/consumption.md"; sprint = $n }
-            }
-            return @{ dest = '.team-project/consumption.md'; sprint = $null; note = 'entre-sprints' }
+    $n = Get-SprintNumber $ProjectDir
+    if ($n) {
+        $sd = Join-Path $tp "sprints/$n"
+        $open = -not (Test-Path -LiteralPath (Join-Path $sd 'retrospective.md'))
+        # v3.51.4 (garden item 1): com o sprint run da trilha sprint ativo e o quadro do sprint no disco, o consumption.md do
+        # sprint nasce aqui se a Planning não o criou — antes as rodadas do run caíam no registro geral e o kanban.md mostrava 0 rodada.
+        if ($open -and (Test-Path -LiteralPath (Join-Path $sd 'sprint-backlog.md')) -and -not (Test-Path -LiteralPath (Join-Path $sd 'consumption.md')) -and $null -ne $Run -and [string]$Run.trilha -eq 'sprint') {
+            $null = Invoke-Quiet 'kanban.ps1' @{ Root = $ProjectDir; Init = $true }
         }
+        if ($open -and (Test-Path -LiteralPath (Join-Path $sd 'consumption.md'))) {
+            return @{ dest = ".team-project/sprints/$n/consumption.md"; sprint = $n }
+        }
+        return @{ dest = '.team-project/consumption.md'; sprint = $null; note = 'entre-sprints' }
     }
     return @{ dest = '.team-project/consumption.md'; sprint = $null; note = 'pre-sprint' }
+}
+
+# Roda um script de conferência no mesmo processo, com a saída fora do harness; devolve o código de saída.
+$checks = Join-Path $PSScriptRoot '..\scripts\checks'
+function Invoke-Quiet([string]$Script, [hashtable]$ScriptArgs) {
+    $prevOut = [Console]::Out; $prevErr = [Console]::Error; $rc = 0
+    try {
+        [Console]::SetOut([System.IO.TextWriter]::Null); [Console]::SetError([System.IO.TextWriter]::Null)
+        $global:LASTEXITCODE = 0
+        & (Join-Path $checks $Script) @ScriptArgs *> $null
+        $rc = $LASTEXITCODE
+    } catch { $rc = 2 } finally { [Console]::SetOut($prevOut); [Console]::SetError($prevErr) }
+    return $rc
 }
 
 try {
@@ -67,7 +82,7 @@ try {
     if (-not (Test-Path -LiteralPath $tp)) { exit 0 }                       # projeto sem o time: silêncio
     $cfg = Get-GuardConfig $projectDir
     if ($cfg.probe) { Write-GuardLog $projectDir 'probe' $hookInput '' ("subagent-stop campos=" + ($hookInput.PSObject.Properties.Name -join ',')) }
-    Remove-ActiveAgent $projectDir ([string]$hookInput.agent_type)   # v3.51 (G20): o agente em segundo plano voltou
+    Remove-ActiveAgent $projectDir ([string]$hookInput.agent_type) ([string]$hookInput.agent_id)   # v3.51 (G20): o agente voltou
     if (-not (Test-GuardEnabled $cfg 'G16')) { exit 0 }
 
     $agentId = [string]$hookInput.agent_id
@@ -102,7 +117,7 @@ try {
     # Chamadas ao modelo, deduplicadas por message.id (uma resposta pode ocupar várias linhas do transcript).
     $calls = New-Object System.Collections.ArrayList
     $index = @{}
-    $firstPrompt = $null; $roundPrompt = $null; $children = @{}; $lastText = $null
+    $firstPrompt = $null; $roundPrompt = $null; $children = @{}; $lastText = $null; $lastSynthetic = $false
     foreach ($line in [System.IO.File]::ReadLines($transcript)) {
         # Subagente que este disparou (o operator de um papel): o resultado do Agent cita o agentId — liga a linha dele ao chamador.
         if ($line.IndexOf('"tool_result"') -ge 0 -and $line.IndexOf('agentId') -ge 0) {
@@ -129,12 +144,14 @@ try {
         if ($index.ContainsKey($id)) { $calls[$index[$id]] = $rec } else { $index[$id] = $calls.Count; [void]$calls.Add($rec) }
         # Texto da resposta desta rodada (o relatório do operator é o último texto).
         $txt = (@($o.message.content) | Where-Object { $_.type -eq 'text' } | ForEach-Object { [string]$_.text }) -join "`n"
-        if ($txt.Trim() -and $index[$id] -ge $seen) { $lastText = $txt }
+        if ($txt.Trim() -and $index[$id] -ge $seen) { $lastText = $txt; $lastSynthetic = ([string]$o.message.model -eq '<synthetic>') }
     }
     if ($calls.Count -le $seen) { exit 0 }                                   # nenhuma chamada nova nesta parada
 
+    # v3.51.4: a resposta sintética do harness (limite de uso, erro de API) não é chamada ao modelo — fora do modelo e da soma.
     $in = 0L; $cw = 0L; $cr = 0L; $out = 0L; $peak = 0L; $first = $null; $last = 0L; $models = @{}
     for ($i = $seen; $i -lt $calls.Count; $i++) {
+        if ([string]$calls[$i].model -eq '<synthetic>') { continue }
         $u = $calls[$i].u
         $ctx = [int64]$u.input_tokens + [int64]$u.cache_creation_input_tokens + [int64]$u.cache_read_input_tokens
         if ($null -eq $first) { $first = $ctx }
@@ -143,16 +160,27 @@ try {
         $in += [int64]$u.input_tokens; $cw += [int64]$u.cache_creation_input_tokens; $cr += [int64]$u.cache_read_input_tokens; $out += [int64]$u.output_tokens
         if ($calls[$i].model) { $models[$calls[$i].model] = $true }
     }
+    # v3.51.4 (note.md item 13): lacuna acima de 20 min entre duas chamadas é pausa (limite de conta, máquina parada), não
+    # trabalho — sai da duração e vai a paused_s. Comando de build/teste cabe no limite de 10 min da ferramenta.
     $start = [datetime]$calls[$seen].ts; $end = [datetime]$calls[$calls.Count - 1].ts
-    $duration = [int]([Math]::Max(0, ($end - $start).TotalSeconds))
+    $paused = 0
+    for ($i = $seen + 1; $i -lt $calls.Count; $i++) { try { $gap = ([datetime]$calls[$i].ts - [datetime]$calls[$i - 1].ts).TotalSeconds; if ($gap -gt 1200) { $paused += [int]$gap } } catch { } }
+    $duration = [int]([Math]::Max(0, ($end - $start).TotalSeconds - $paused))
 
     # Trabalho: o ID do prompt da rodada (retomada) ou do primeiro prompt; senão o escopo ativo do dev; senão n/a.
     $work = $null
     if ($roundPrompt) { $work = Get-WorkId $roundPrompt }
     if (-not $work -and $firstPrompt) { $work = Get-WorkId $firstPrompt }
     if (-not $work) { $at = Get-Marker $projectDir '.active-task'; if ($null -ne $at -and $at.id) { $work = [string]$at.id } }
+    # v3.51.4 (garden item 8): todas as Tasks citadas no prompt da rodada — o plano por História (regra 25) cobre várias, e o
+    # kanban.ps1 rateia a rodada entre elas em vez de pôr tudo na primeira.
+    $src = if ($roundPrompt) { $roundPrompt } else { [string]$firstPrompt }
+    $works = @([regex]::Matches($src, '(?<![\w-])T-\d+[a-z]?(?![\w])') | ForEach-Object { $_.Value } | Select-Object -Unique | Select-Object -First 12)
     $run = Get-Marker $projectDir '.active-run'
     $dst = Get-Destination $projectDir $work $run
+    # v3.51.4 (note.md itens 2 e 11, garden item 26): o subagente parou no limite de uso da conta — sinal legível para a retomada.
+    $limitText = if ($lastSynthetic -and $lastText -match $script:LimitRe) { $lastText } else { Get-LimitFromTranscript $transcript }
+    if ($limitText) { Set-LimitMarker $projectDir $limitText $role $(if ($work) { $work } else { '' }); Write-GuardLog $projectDir 'G16' $hookInput 'limite' "rodada do $role parou no limite de uso da conta: $(($limitText -replace '\s+', ' ').Trim())" }
 
     # v3.48 (R28): o harness recusa ao subagente gravar relatório ("Subagents should return findings as text"). O operator
     # devolve o relatório como texto, e este hook o grava na pasta do job citada na resposta (ou no pedido) — report.md, ou
@@ -164,7 +192,12 @@ try {
         if (-not ($own.Success -and (Test-Path -LiteralPath (Join-Path $projectDir $own.Groups[1].Value)))) {
             $jm = $null
             foreach ($src in @($lastText, $roundPrompt, $firstPrompt)) { if ($src) { $mm = [regex]::Match($src, $jobRe); if ($mm.Success) { $jm = $mm; break } } }
-            if ($jm) {
+            # v3.51.4 (garden item 24): sem pasta citada (o dev chamou o operator para o verify full), o relatório vai a uma
+            # pasta da própria Task — operator/<n>/<T-ID>-<agente>/ — e o R28 do close.ps1 o acha pela pasta da Task.
+            if (-not $jm -and $work -match '^T-\d+' -and $dst.sprint) {
+                $jm = [regex]::Match(".team-project/operator/$($dst.sprint)/$work-$($agentId.Substring(0, [Math]::Min(8, $agentId.Length)))", $jobRe)
+            }
+            if ($jm -and $jm.Success) {
                 $jobRel = ".team-project/operator/$($jm.Groups[1].Value)/$($jm.Groups[2].Value)"
                 $jobDir = Join-Path $projectDir $jobRel
                 New-Item -ItemType Directory -Force $jobDir | Out-Null
@@ -186,9 +219,11 @@ try {
         description   = $description
         round         = $round + 1
         work          = if ($work) { $work } else { 'n/a' }
+        works         = $works
         model         = (@($models.Keys) -join ',')
         start         = $start.ToString('yyyy-MM-ddTHH:mm:ss')
         duration_s    = $duration
+        paused_s      = $paused
         calls         = $calls.Count - $seen
         calls_total   = $calls.Count
         input         = $in
@@ -210,19 +245,28 @@ try {
     $json = $row | ConvertTo-Json -Compress
     [System.IO.File]::AppendAllText($usagePath, $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
 
+    # v3.51.4 (garden item 10): a rodada de um filho (o operator chamado por este papel) fica no registro do PAI — o filho
+    # termina antes e era gravado com o destino daquele instante (o arquivo do sprint ainda não existia). Linha do filho com
+    # outro destino é regravada com o destino do pai, e os dois registros se refazem.
+    $kids = @($row.children)
+    $redo = @()
+    if ($kids.Count) {
+        $lines = [System.IO.File]::ReadAllLines($usagePath, (New-Object System.Text.UTF8Encoding($false)))
+        $changed = $false
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            if (-not $lines[$i].Trim()) { continue }
+            try { $r = $lines[$i] | ConvertFrom-Json } catch { continue }
+            if ($kids -notcontains [string]$r.agent_id -or [string]$r.dest -eq $dst.dest) { continue }
+            $redo += [string]$r.dest; $r.dest = $dst.dest
+            if ($r.PSObject.Properties['dest_note']) { $r.dest_note = [string]$dst.note }
+            $lines[$i] = $r | ConvertTo-Json -Compress; $changed = $true
+        }
+        if ($changed) { [System.IO.File]::WriteAllLines($usagePath, $lines, (New-Object System.Text.UTF8Encoding($false))) }
+    }
+
     # v3.49: o registro do destino se atualiza aqui, sem depender de a sessão lembrar de rodar o consumption.ps1 (no piloto,
     # 33 chamadas da sessão a ~400 mil tokens cada). Roda no mesmo processo, com a saída fora do harness; falha vira linha G16.
-    $checks = Join-Path $PSScriptRoot '..\scripts\checks'
-    function Invoke-Quiet([string]$Script, [hashtable]$ScriptArgs) {
-        $prevOut = [Console]::Out; $prevErr = [Console]::Error; $rc = 0
-        try {
-            [Console]::SetOut([System.IO.TextWriter]::Null); [Console]::SetError([System.IO.TextWriter]::Null)
-            $global:LASTEXITCODE = 0
-            & (Join-Path $checks $Script) @ScriptArgs *> $null
-            $rc = $LASTEXITCODE
-        } catch { $rc = 2 } finally { [Console]::SetOut($prevOut); [Console]::SetError($prevErr) }
-        return $rc
-    }
+    foreach ($old in @($redo | Select-Object -Unique)) { if (Test-Path -LiteralPath (Join-Path $projectDir $old)) { $null = Invoke-Quiet 'consumption.ps1' @{ Root = $projectDir; File = $old } } }
     # v3.51.2: o consumption.md do bloco de fix nasce aqui, na primeira rodada do bloco — antes dependia de a sessão lembrar.
     $blk = [regex]::Match($dst.dest, 'fixes/(B-\d+)/')
     if ($blk.Success -and -not (Test-Path -LiteralPath (Join-Path $projectDir $dst.dest))) { $null = Invoke-Quiet 'kanban.ps1' @{ Root = $projectDir; Block = $blk.Groups[1].Value; Init = $true } }

@@ -115,11 +115,36 @@ try {
             if ($files -and $files -notcontains $t) { $iss += "$($m.Groups[1].Value): teste $t fora de **Arquivos tocados:**" }
             if ($m.Groups[4].Value -eq $m.Groups[5].Value) { $iss += "$($m.Groups[1].Value): trecho e mutante iguais" }
             if ($m.Groups[4].Value -eq '') { $iss += "$($m.Groups[1].Value): trecho vazio (crase dupla ou trecho com crase — escolha um trecho sem crase)" }
+            # v3.51.4 (garden item 27): o arquivo de produção já existe → o trecho tem de aparecer no máximo uma vez nele (a
+            # mutação troca a ÚNICA ocorrência; duplicado vira inconclusivo depois de ~10 min de construção). Arquivo novo
+            # ou trecho que a Task vai escrever: confere-se depois da construção, com verify.ps1 -Mode mutation -Precheck.
+            $pf = Join-Path $Root $f
+            if ($m.Groups[4].Value -ne '' -and (Test-Path -LiteralPath $pf -PathType Leaf)) {
+                $src = Read-Text $pf; $hits = 0; $ix = $src.IndexOf($m.Groups[4].Value, [StringComparison]::Ordinal)
+                while ($ix -ge 0) { $hits++; $ix = $src.IndexOf($m.Groups[4].Value, $ix + [Math]::Max(1, $m.Groups[4].Value.Length), [StringComparison]::Ordinal) }
+                if ($hits -gt 1) { $iss += "$($m.Groups[1].Value): o trecho aparece $hits vezes em $f (a mutação precisa de uma ocorrência só — alongue o trecho)" }
+            }
         }
         if ($iss.Count) { Add-Result 'mutação' 'falhou' ($iss -join '; ') } else { Add-Result 'mutação' 'ok' "$($muts.Count) mutação(ões) declaradas" }
     } elseif ($noProof) { Add-Result 'mutação' 'ok' "sem mutação, com 'sem prova: <motivo>'" }
     elseif ($hasMutBlock) { Add-Result 'mutação' 'falhou' '**Mutações:** sem linha no formato "- M<k> · teste `…` · `<produção>` · `<trecho>` → `<mutante>`"' }
     else { Add-Result 'mutação' 'falhou' "nenhuma **Mutações:** nem 'sem prova: <motivo>' na §6 (regra 18)" }
+
+    # ---------- R26 · ambiente medido (v3.51.4, garden item 16): a mesma regra do close.ps1, cobrada no plano ----------
+    # Antes só o fechamento a conferia, e o primeiro close do sprint reprovava todos os planos de uma vez.
+    if ($light) { Add-Result 'ambiente' 'n-a' 'trilha leve' }
+    else {
+        $iss = @()
+        $s3 = Get-Section $text '^##\s+3\.'
+        $p3 = $text.IndexOf("`n## 3."); $p4 = $text.IndexOf("`n## 4.")
+        $rowsOk = $false
+        if ($s3) { foreach ($t in (Get-Tables $s3)) { $iq = Find-Col $t 'Pré-requisito'; $io = Find-Col $t 'Saída real'; if ($iq -lt 0 -or $io -lt 0) { continue }; foreach ($row in $t.Rows) { if (-not ($row -join '' -match '<[^>]+>') -and -not [string]::IsNullOrWhiteSpace((Get-Cell $row $io))) { $rowsOk = $true } } } }
+        if (-not $s3 -or ($p4 -ge 0 -and $p3 -gt $p4)) { $iss += '§3 (ambiente medido) ausente ou depois dos passos' }
+        elseif (-not $rowsOk) { $iss += '§3 sem a tabela | Pré-requisito | … | Saída real | … | com uma linha medida (prosa não vale — o close.ps1 lê a tabela)' }
+        $s9 = Get-Section $text '^##\s+9\.'
+        if (-not $s9 -or $s9 -notmatch 'Pré-requisito ausente') { $iss += '§9 sem "Pré-requisito ausente"' }
+        if ($iss.Count) { Add-Result 'ambiente' 'falhou' (($iss -join '; ') + ' (R26)') } else { Add-Result 'ambiente' 'ok' '§3 com pré-requisito medido; §9 com a parada por pré-requisito ausente' }
+    }
 
     # ---------- 22 · plano enxuto (v3.51) ----------
     $kb = [Math]::Round(([System.Text.Encoding]::UTF8.GetByteCount($text)) / 1024, 1)
@@ -136,6 +161,7 @@ try {
         $scnDir = Join-Path $Root '.team-project/quality-assurance/scenarios'
         $scn = @(Get-ChildItem -Path $scnDir -Filter '*.scn' -File -ErrorAction SilentlyContinue)
         if (-not $ids.Count) { Add-Result 'cenários' 'falhou' '**Cenários:** sem identificador (SC-nnn) nem "nenhum — <motivo>"' }
+        elseif (-not $scn.Count -and -not (Get-TargetsConfig $Root)) { Add-Result 'cenários' 'n-a' "sem alvo de execução (guards.json sem ""targets""): $($ids -join ', ') rastreados no plano e provados por teste, sem .scn (v3.51.4)" }
         elseif (-not $scn.Count) { Add-Result 'cenários' 'falhou' "nenhum arquivo .scn em .team-project/quality-assurance/scenarios/ — o QA escreve os cenários executáveis antes do dev (regra 23)" }
         else {
             $defined = @($scn | ForEach-Object { [regex]::Matches((Read-Text $_.FullName), '(?m)^\s*scenario\s+(\S+)') } | ForEach-Object { $_.Groups[1].Value })

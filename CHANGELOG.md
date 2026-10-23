@@ -13,6 +13,24 @@
 
 ---
 
+## v3.51.4 — 2026-10-23
+
+**Branch:** `fix/v3.51.4` a partir de `develop` · **Processo:** addendum v3.51.4 do changelog do processo (`/review note`)
+Relato do braço P+ no SunScape (`note.md`, itens 1–16; v3.51.3 — o 16, terceiro corte por limite de conta no mesmo run, reforça o 11) e do sprint 2 do garden (`plugin-report-garden.md`, itens 1–27; v3.51.2): 30 negações da G14 em ~3 h de run, o run cortado duas vezes pelo limite de uso da conta sem sinal legível, rodadas e transições registradas no lugar errado ou sumindo, e fechamentos que reprovavam por formato.
+
+- **G14 (`hooks/pre-tool.ps1`):** texto entre aspas com `$( … )` não vira mais trecho recusado (cada subexpressão é conferida); `if`/`param`/atribuição/`[xml]` em cadeia; propriedade com os argumentos do comando de fora; leitura por `[array]`, `[Text.Encoding]`, `[xml]`, `[IO.Directory]`; escrita por .NET com destino resolvido (passa pela G5/G8/G9); `"$root\…"` resolvido; caminho do script do plugin em variável; função do próprio comando; `cmd /c "<comando>"` lido por dentro; **script que o papel gravou** (scratchpad ou `.team-project/`) roda quando o conteúdo passaria pela G14; `Get-CimInstance`; `Stop-Process -Id` só ao operator; `adb` e `Start-Sleep` negados com a rota do `target.ps1` e do exit 3.
+- **G8:** `pasta/**` casa a própria pasta — `stories/` (PO) e `delivery/` (dev) não caem mais em "dono ambíguo".
+- **Limite de uso da conta:** a G16 e o `Stop` gravam `.team-project/.usage-limit`; a G20 não barra o turno cortado; o `run.ps1 next` diz que o run parou por limite e apaga o sinal; roteiro §Retomada após limite de uso. A G16 tira da duração as lacunas acima de 20 min (`paused_s`) e ignora a resposta `<synthetic>`.
+- **Ponto seguro e estimativa:** o `run.ps1 next` imprime o consumo medido do sprint e a estimativa das Tasks abertas; parada **(e)** "pausa pedida pelo stakeholder" no ponto seguro (logo depois de uma Task fechada).
+- **Sinal de vida:** seção **"## Agora"** no `kanban.md` — papel, item, última ação e há quanto tempo de cada agente, regravada pelos hooks a cada disparo e ação. A G20 só conta agente em segundo plano; o registro não depende mais do `.active-run`.
+- **Quadro e Kanban:** parser do Sprint Backlog só lê tabelas sob "## História" (sem Tasks-fantasma nem IDs repetidos; "## Habilitadora" vira grupo próprio, R20 segue valendo); "Sprint corrente" aceita `sprint **2**`; `run.ps1 next` marca 🟦 no preparo e não pede `.scn` sem `targets`; `run.ps1 done` confere antes, marca 🟪 e só então fecha (R24 ok), e devolve a 🟨 num GAP; quadro, Registro e Série sob a trava do `kanban.md` (a G16 apagava uma linha da Série); Evento da Série com "por quem"; tipo do agente com `team:`.
+- **Rodadas:** `consumption.md` do sprint criado pelo `kanban.ps1 -Init` (G16/`run.ps1 next`) quando a Planning não o criou; rodada de plano por História rateada entre as Tasks citadas; fase pelo marcador no início da rodada; o `operator` filho no destino do pai; coluna Pausa; "Espera de comando" por Task (`verify/<n>/<T-ID>/time.jsonl`).
+- **Fechamento (`close.ps1`):** R7 do dev aceita o comando em qualquer linha do bloco; R28 não cobra de uma Task a medição de outra Task/História reaproveitada; relatório do `operator` sem pasta citada vai a `operator/<n>/<T-ID>-<agente>/`.
+- **Plano (`plan.ps1`):** §3 em tabela e §9 com "Pré-requisito ausente" cobradas no plano (antes só no fechamento); trecho de mutação duplicado no arquivo existente reprova; cenários sem `.scn` e sem alvo = n-a.
+- **`verify.ps1`:** `-Mode full` em fatias (exit 3, o mesmo comando continua); `verify.daemon: true` liga o daemon do Gradle só durante a chamada e o encerra no fim (opcional); `-Mode mutation -Precheck` (trecho único e, com `verify.compile`, mutante que compila).
+- **Roteiros:** `sprint-run.md`, dev, Arquiteto, UX (a linha do protótipo no pacote é do SM), modelos `kanban.md` e `sprint-backlog.md`, `standards/stacks/kotlin-android/quality.md`, `hooks/COVERAGE.md`.
+- **Testes:** guardas 217 casos (+28), conferências 159 casos (+19), 0 falhas.
+
 ## v3.51.3 — 2026-10-22
 
 **Branch:** `fix/v3.51.3` a partir de `develop` · **Processo:** addendum v3.51.3 do changelog do processo (`/review note`)
