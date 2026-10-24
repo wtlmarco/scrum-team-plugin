@@ -42,8 +42,8 @@ function Get-PlanFull($T, [string]$S) {
 function Get-AgentLine([string]$Role) {
     $mc = Get-ModelsConfig $Root
     $model = if ($mc.State -eq 'ok' -and $mc.Models.ContainsKey($Role)) { "model `"$($mc.Models[$Role])`" (models.json)" } else { "model do agente ($(Get-AgentDefaultModel $Role))" }
-    $cfg = Get-GuardConfig $Root; $bg = -not ($null -ne $cfg.bench -and $cfg.bench.foreground)
-    return "Agent: subagent_type `"team:$Role`" · $model · run_in_background $($bg.ToString().ToLowerInvariant())"
+    # v3.52: todo agente do run em primeiro plano — a chamada bloqueia até a volta, sem a sessão esperar pagando (G22).
+    return "Agent: subagent_type `"team:$Role`" · $model · run_in_background false"
 }
 # Outro script de conferência num processo filho (v3.51.4): os scripts escrevem com [Console]::Out, que no mesmo processo
 # passa por fora do pipeline — o "| Out-String" voltava vazio e a saída do close/dispatch saía solta, sem ser lida.
@@ -52,6 +52,26 @@ function Invoke-Child([string]$Script, [string[]]$ArgList) {
     $o = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot $Script) @ArgList 2>&1 | Out-String
     return @{ Code = $LASTEXITCODE; Out = $o }
 }
+# v3.52 (note.md item 9): o código da Task fechada vai a um commit próprio (`T-<nnn>: <título>`), sem .team-project/ (R31);
+# projeto sem git: o checkpoint é por cópia (sprint-run.md, fechamento da Task). Devolve a linha para a saída.
+function Save-TaskCommit($T) {
+    $ErrorActionPreference = 'Continue'
+    $null = & git -C $Root rev-parse --is-inside-work-tree 2>$null
+    if ($LASTEXITCODE -ne 0) { return "  commit: projeto sem git — checkpoint por cópia dos arquivos da $($T.Id) (sprint-run.md, fechamento da Task)" }
+    $null = & git -C $Root add -A -- . ':(exclude).team-project' 2>$null
+    $null = & git -C $Root diff --cached --quiet 2>$null
+    if ($LASTEXITCODE -eq 0) { return "  commit: nada a versionar para a $($T.Id)" }
+    $msg = "$($T.Id): $($T.Title)"; if ($msg.Length -gt 72) { $msg = $msg.Substring(0, 72) }
+    $o = & git -C $Root commit -q -m $msg 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) { return "  commit: falhou ($(($o -replace '\s+', ' ').Trim())) — o código da $($T.Id) segue no disco; reporte na Review" }
+    return "  commit: $(& git -C $Root rev-parse --short HEAD 2>$null) $msg"
+}
+# v3.52 (R29, parada (f)): Task fechada = ponto seguro. O marcador libera o fim de turno na G20; o próximo start o apaga.
+function Set-SafePoint($T, [string]$n) {
+    $o = [ordered]@{ task = $T.Id; sprint = $n; desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') }
+    [System.IO.File]::WriteAllText((Join-Path $tp '.safe-point'), ($o | ConvertTo-Json -Compress), $utf8)
+}
+
 # Marcador pelo mark.ps1 (v3.51.4): devolve a linha do mark, ou $null se ele recusou (a Task já estava lá).
 function Set-Mark([string]$Id, [string]$To, [string]$By) {
     $r = Invoke-Child 'mark.ps1' @('-Task', $Id, '-To', $To, '-By', $By, '-Root', $Root)
@@ -130,6 +150,7 @@ try {
         $mark = if ($T.Mark -eq $E.Build) { '' } else { 'build' }
         $dr = Invoke-Child 'dispatch.ps1' @('-Role', 'developer', '-Id', $T.Id, '-Plan', $planRel, '-Mark', $mark, '-Root', $Root); $d = $dr.Out
         if ($dr.Code -ne 0) { [Console]::Error.WriteLine("run start: dispatch falhou — $($d.Trim())"); exit 2 }
+        Remove-Item -LiteralPath (Join-Path $tp '.safe-point') -Force -ErrorAction SilentlyContinue   # v3.52: Task em voo não é ponto seguro
         $card = Write-Handoff $T $S $n
         $acc = if ($T.Scenarios.Count -and (Get-TargetsConfig $Root)) { " e accept.ps1 -Task $($T.Id) -Only $($T.Scenarios -join ',') no alvo" } else { '' }
         $blk = if ($Block) { " Bloco $Block." } else { '' }
@@ -152,14 +173,14 @@ try {
             Out "run: $($T.Id) com 🔺 GAP — Arquiteto em instância NOVA (o cache de 5 min do anterior já venceu; C1), modo /arc question:"
             Out "  $(Get-AgentLine 'architect')"
             Out "  prompt: `"Decida o 🔺 GAP da $($T.Id): cartão .team-project/$card, plano .team-project/sprints/$n/$($T.Plan), relatório .team-project/sprints/$n/delivery/$($T.Id).md. Registre a decisão no plano (R9); não escreva código nem rode build. Volte em até 15 linhas.`""
-            Out "  depois: devolva a decisão ao MESMO dev por SendMessage (Haiku: retomar custa pouco) e rode run.ps1 done de novo"
+            Out "  depois: dev em instância NOVA com a decisão — run.ps1 start -Task $($T.Id) (o cartão regerado aponta o plano com a decisão) e rode run.ps1 done de novo"
             exit 0
         }
         if ($Result -eq 'env') {
             $tg = Get-TargetsConfig $Root; $names = @(if ($tg) { $tg.PSObject.Properties | ForEach-Object { $_.Name } })
             Out "run: $($T.Id) parou por FALHA DE AMBIENTE (D4) — não é defeito do código; nenhum papel caro é chamado."
             foreach ($nm in $names) { Out "  1. $plugin/target.ps1 -Target $nm -Repair" }
-            Out "  2. pronto → retome o MESMO dev por SendMessage: `"o ambiente foi reparado; rode de novo o que falhou`""
+            Out "  2. pronto → dev em instância NOVA: run.ps1 start -Task $($T.Id) (o relatório em delivery/ diz o que já foi feito; rode de novo o que falhou)"
             Out "  3. sem reparo → mark.ps1 -Task $($T.Id) -To blocked e linha em Bloqueios (ambiente, com a ação para o stakeholder); a fila segue"
             exit 0
         }
@@ -168,7 +189,7 @@ try {
         $pr = Invoke-Child 'close.ps1' @('-Task', $T.Id, '-Root', $Root); $pre = $pr.Out
         if ($pr.Code -ne 0) {
             $bad = @($pre -split "`r?`n" | Where-Object { $_ -match '\|\s*(R7[\w-]*|R12)\s*\|\s*falhou' } | ForEach-Object { ($_ -replace '\s+', ' ').Trim() })
-            Out "run: $($T.Id) ainda não fecha — volte ao MESMO dev por SendMessage com o que falta (a Task segue em 🟨):"
+            Out "run: $($T.Id) ainda não fecha — dev em instância NOVA (run.ps1 start -Task $($T.Id)) com o que falta (a Task segue em 🟨):"
             foreach ($b in $bad) { Out "  $b" }
             if (-not $bad.Count) { Out "  $(($pre -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 2) -join ' ')" }
             exit 0
@@ -176,7 +197,13 @@ try {
         if ($T.Mark -ne $E.QA) { $mo = Set-Mark $T.Id 'qa' 'sessão (run.ps1 done)'; if ($mo) { Out "  $mo" } }
         $cr = Invoke-Child 'close.ps1' @('-Task', $T.Id, '-Apply', '-Root', $Root); $c = $cr.Out
         $code = $cr.Code
-        if ($code -eq 0) { Out "run: $($T.Id) fechada pela evidência do dev (close.ps1 -Apply)."; Out (($c -split "`r?`n" | Where-Object { $_ -match '^\s*-\s|\*\*|Status' } | Select-Object -Last 6) -join "`n"); Out "  dispatch.ps1 -Clear; depois: run.ps1 next"; Out "  ponto seguro de pausa: entre uma Task fechada e o próximo start nada fica pela metade (sprint-run.md §Pausa segura)"; exit 0 }
+        if ($code -eq 0) {
+            Out "run: $($T.Id) fechada pela evidência do dev (close.ps1 -Apply)."; Out (($c -split "`r?`n" | Where-Object { $_ -match '^\s*-\s|\*\*|Status' } | Select-Object -Last 6) -join "`n")
+            Out (Save-TaskCommit $T)
+            Set-SafePoint $T $n
+            Out "  dispatch.ps1 -Clear; depois: PONTO SEGURO (.team-project/.safe-point) — encerre esta sessão e continue em sessão nova com /sm sprint run (o run.ps1 next retoma pelo marcador; R29). Seguir nesta sessão: run.ps1 next."
+            exit 0
+        }
         Out "run: $($T.Id) — o -Apply gravou o fechamento, mas o -Post não confirmou (R24); não feche de novo (baixaria a estimativa duas vezes):"
         Out "  $((($c -split "`r?`n") | Where-Object { $_ -match '\*\*-Apply:\*\*' } | Select-Object -First 1))"
         Out "  corrija o Registro/Série do kanban.md à mão (sprint-run.md §Marcador) e confira com close.ps1 -Task $($T.Id) -Post"
@@ -187,8 +214,14 @@ try {
     # v3.51.4: o run parou por limite de uso da conta (.usage-limit, gravado pela G16 ou pelo Stop) — diz o motivo e segue.
     $lim = Join-Path $tp '.usage-limit'
     if (Test-Path -LiteralPath $lim) {
-        try { $l = Read-Text $lim | ConvertFrom-Json; Out "RETOMADA: o run parou por LIMITE DE USO DA CONTA em $($l.desde)$(if ($l.reset) { " (reset: $($l.reset))" }) — $($l.quem)$(if ($l.item) { " em $($l.item)" }). Não é falha de processo: o que estava em voo se retoma pelo próprio agente (SendMessage) ou pelo result.json do verify (sprint-run.md §Retomada após limite de uso)." } catch { }
+        try { $l = Read-Text $lim | ConvertFrom-Json; Out "RETOMADA: o run parou por LIMITE DE USO DA CONTA em $($l.desde)$(if ($l.reset) { " (reset: $($l.reset))" }) — $($l.quem)$(if ($l.item) { " em $($l.item)" }). Não é falha de processo: o que estava em voo se retoma por instância nova com o cartão (run.ps1 start) e pelo result.json do verify (sprint-run.md §Retomada após limite de uso)." } catch { }
         Remove-Item -LiteralPath $lim -Force -ErrorAction SilentlyContinue
+    }
+    # v3.52: a sessão anterior parou no ponto seguro (Task fechada) — esta continua a fila; o marcador sai no próximo start.
+    $sp = Get-Marker $Root '.safe-point'
+    if ($null -ne $sp) {
+        Out "RETOMADA: ponto seguro depois da $([string]$sp.task) (fechada em $([string]$sp.desde)). Esta sessão segue a fila pelo quadro; leia o run-log.md do sprint só se houver bloqueio ou retomada pendente."
+        Remove-Item -LiteralPath (Join-Path $tp '.safe-point') -Force -ErrorAction SilentlyContinue   # vale só entre o done e o next
     }
     $null = Invoke-Child 'kanban.ps1' @('-Init', '-Root', $Root)   # consumption.md do sprint, se a Planning não o criou (garden item 1)
     $est = Get-RunEstimate

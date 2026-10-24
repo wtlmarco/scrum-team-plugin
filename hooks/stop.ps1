@@ -1,6 +1,7 @@
 ﻿# Stop — G20 (v3.51, proposta a das paradas do run): durante o sprint run, a sessão não encerra o turno com Task elegível
 # no quadro. Paradas legítimas (sprint-run.md §Ordem da fila): fim da fila → formulário da Review · bloqueio sem elegível
-# · pré-condição falha · interrupção do stakeholder — em todas a sessão apaga o .active-run antes. Esperar agente em
+# · pré-condição falha · interrupção do stakeholder — em todas a sessão apaga o .active-run antes. v3.52: ponto seguro
+# (.safe-point, Task recém-fechada) também libera, sem apagar o .active-run — a sessão curta por Task (R29). Esperar agente em
 # segundo plano também não é parada: a notificação reabre a sessão (.active-agents, gravado pela PreToolUse).
 # Medido no piloto: 4 paradas fora do contrato e ~24,5 h de fila parada. Exit 2 devolve o motivo à sessão, que continua.
 # Qualquer exceção → exit 1 (falha aberta, D5). Cobertura e limites: hooks/COVERAGE.md.
@@ -44,6 +45,10 @@ try {
         exit 0
     }
     if (Test-Path -LiteralPath (Join-Path $tp '.usage-limit')) { exit 0 }   # run parado por limite: a retomada passa pelo run.ps1 next
+    # v3.52 (R29, parada (f)): o run.ps1 done que fechou a Task grava .safe-point — fim de Task é parada permitida; a próxima
+    # sessão retoma pelo .active-run e o run.ps1 next. O próximo start apaga o marcador (Task em voo volta a ser barrada).
+    $sp = Get-Marker $projectDir '.safe-point'
+    if ($null -ne $sp) { Write-GuardLog $projectDir 'G20' $hookInput ([string]$sp.task) 'liberado: ponto seguro (Task fechada; a próxima sessão retoma pelo run.ps1 next)'; exit 0 }
     if ($tr -and (Test-Path -LiteralPath $tr)) {
         $tail = @(Get-Content -LiteralPath $tr -Encoding UTF8 -Tail 40)
         $lastAsst = @($tail | Where-Object { $_ -match '"type":"assistant"' } | Select-Object -Last 1)
@@ -77,7 +82,7 @@ try {
     if (-not $eligible.Count) { exit 0 }
     $t = $eligible[0]
     Write-GuardLog $projectDir 'G20' $hookInput $t.Id 'bloqueio: fim de turno com Task elegível'
-    [Console]::Error.WriteLine("[G20] O sprint run está em andamento (.active-run, sprint $([string]$run.id)) e a Task $($t.Id) está elegível. Encerrar o turno aqui não é parada legítima (sprint-run.md §Ordem da fila): siga — rode run.ps1 next e faça a PRÓXIMA AÇÃO que ele imprimir (dev de volta: run.ps1 done -Task <ID> -Result ok|gap|env). Só encerre por (a) fim da fila → formulário de autorização da Review, (b) Task marcada 🔴 sem elegível restante → formulário de R22, (c) pré-condição falha, (d) interrupção do stakeholder, (e) pausa pedida pelo stakeholder entre Tasks (sprint-run.md §Pausa segura) — nesses casos apague o .active-run antes. Esperando agente em segundo plano? A notificação reabre a sessão.")
+    [Console]::Error.WriteLine("[G20] O sprint run está em andamento (.active-run, sprint $([string]$run.id)) e a Task $($t.Id) está elegível. Encerrar o turno aqui não é parada legítima (sprint-run.md §Ordem da fila): siga — rode run.ps1 next e faça a PRÓXIMA AÇÃO que ele imprimir (dev de volta: run.ps1 done -Task <ID> -Result ok|gap|env). Só encerre por (a) fim da fila → formulário de autorização da Review, (b) Task marcada 🔴 sem elegível restante → formulário de R22, (c) pré-condição falha, (d) interrupção do stakeholder, (e) pausa pedida pelo stakeholder entre Tasks (sprint-run.md §Pausa segura) — nesses casos apague o .active-run antes; (f) ponto seguro: o run.ps1 done que fecha a Task grava .team-project/.safe-point e libera o fim de turno sem apagar o .active-run. Esperando agente em segundo plano? A notificação reabre a sessão.")
     exit 2
 } catch {
     exit 1

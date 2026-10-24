@@ -632,7 +632,39 @@ $cases = @(
                  Set-Content -LiteralPath (Join-Path $sd 'agent-wrk0000001.jsonl') @('{"type":"user","timestamp":"2026-10-22T10:00:00Z","message":{"role":"user","content":"Planos de T-021, T-026 e T-021 de novo"}}', '{"type":"assistant","timestamp":"2026-10-22T10:01:00Z","message":{"id":"w1","model":"claude-opus-5-5","usage":{"input_tokens":10,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":5}}}', '{"type":"assistant","timestamp":"2026-10-22T12:01:00Z","message":{"id":"w2","model":"claude-opus-5-5","usage":{"input_tokens":10,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":5}}}', '{"type":"assistant","timestamp":"2026-10-22T12:02:00Z","message":{"id":"w3","model":"<synthetic>","content":[{"type":"text","text":"You''ve hit your session limit · resets 3pm"}],"usage":{"input_tokens":0,"output_tokens":0}}}') -Encoding UTF8 }
        Check = { $u = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8 | Where-Object { $_ -match 'wrk0000001' } | ConvertFrom-Json)[0]
                  (@($u.works) -join ',') -eq 'T-021,T-026' -and [int]$u.paused_s -eq 7200 -and [int]$u.duration_s -eq 60 -and $u.model -notmatch 'synthetic' -and (Test-Path -LiteralPath (Join-Path $proj '.team-project/.usage-limit')) }
-       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'wrk0000001'; agent_type = 'team:architect'; transcript_path = (Join-Path $tmp 'transcripts/sess4.jsonl') } }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'wrk0000001'; agent_type = 'team:architect'; transcript_path = (Join-Path $tmp 'transcripts/sess4.jsonl') } },
+    # ---------- v3.52 — orquestrador enxuto: ponto seguro (G20), espera da sessão (G22), ritual em sessão nova (G21) ----------
+    @{ Name = 'G20 ponto seguro (.safe-point, Task recém-fechada): libera sem apagar o .active-run'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.usage-limit'), (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "7", "desde": "2026-10-06 10:00" }' -Encoding UTF8
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.safe-point') '{ "task": "T-1", "sprint": "7", "desde": "2026-10-23 10:00:00" }' -Encoding UTF8 }
+       Check = { (Test-Path -LiteralPath (Join-Path $proj '.team-project/.active-run')) -and ((Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw -Encoding UTF8) -like '*G20*T-1*ponto seguro*') }
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'G20 sem o ponto seguro (Task em voo): volta a barrar e cita a parada (f)'; Script = 'stop.ps1'; Expect = 2; ExpectErr = '(f) ponto seguro'
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.safe-point') -Force -ErrorAction SilentlyContinue }
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'G22 sessão com Start-Sleep durante o run: nega'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G22'
+       Payload = @{ tool_name = 'PowerShell'; tool_input = @{ command = 'Start-Sleep -Seconds 598; Get-Content .team-project/sprints/1/delivery/T-003.md' } } },
+    @{ Name = 'G22 sessão com comando em segundo plano durante o run: nega'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'operator'
+       Payload = @{ tool_name = 'PowerShell'; tool_input = @{ command = 'powershell -NoProfile -File accept.ps1 -Task T-003 *> lote1.out'; run_in_background = $true } } },
+    @{ Name = 'G22 sessão em primeiro plano sem espera durante o run: livre'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'PowerShell'; tool_input = @{ command = 'Get-Content .team-project/sprints/7/sprint-backlog.md' } } },
+    @{ Name = 'G22 sessão com Start-Sleep sem run ativo: livre'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-run') -Force -ErrorAction SilentlyContinue }
+       Payload = @{ tool_name = 'PowerShell'; tool_input = @{ command = 'Start-Sleep -Seconds 5' } } },
+    @{ Name = 'G21 ritual novo em sessão que já rodou outro (formato interativo): avisa'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = '[G21]'
+       Setup = { Set-Content -LiteralPath (Join-Path $tmp 'transcripts/g21.jsonl') @('{"type":"user","message":{"role":"user","content":"<command-message>sm</command-message>\n<command-name>/sm</command-name>\n<command-args>sprint plan</command-args>"}}', '{"type":"assistant","message":{"id":"a1","content":[{"type":"text","text":"ok"}]}}') -Encoding UTF8 }
+       Payload = @{ prompt = '/sm sprint run'; transcript_path = (Join-Path $tmp 'transcripts/g21.jsonl') } },
+    @{ Name = 'G21 o mesmo ritual de novo (retomada): silêncio'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
+       Payload = @{ prompt = '/sm sprint plan'; transcript_path = (Join-Path $tmp 'transcripts/g21.jsonl') } },
+    @{ Name = 'G21 formato do claude -p (texto cru com BOM): avisa'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = '/sm fix plan'
+       Setup = { Set-Content -LiteralPath (Join-Path $tmp 'transcripts/g21p.jsonl') @(('{"type":"user","message":{"role":"user","content":"' + [char]0xFEFF + '/sm sprint run\r\n"}}')) -Encoding UTF8 }
+       Payload = @{ prompt = '/team:sm fix plan'; transcript_path = (Join-Path $tmp 'transcripts/g21p.jsonl') } },
+    @{ Name = 'G21 comando que não é ritual: silêncio'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
+       Payload = @{ prompt = '/po status'; transcript_path = (Join-Path $tmp 'transcripts/g21.jsonl') } },
+    @{ Name = 'G19 SendMessage da sessão durante o run, até ao dev (Haiku): nega com a rota da instância nova (v3.52)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'instância NOVA'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "7", "desde": "2026-10-06 10:00" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'SendMessage'; tool_input = @{ to = 'dev19old'; message = 'x' } } }
 )
 
 $rows = @(); $fail = 0

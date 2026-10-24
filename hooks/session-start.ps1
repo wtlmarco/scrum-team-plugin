@@ -10,7 +10,7 @@ try {
     $cfg = Get-GuardConfig $projectDir
     if (-not (Test-GuardEnabled $cfg 'G13')) { exit 0 }
 
-    $all = 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G11', 'G14', 'G15', 'G16', 'G17', 'G18', 'G19', 'G20'
+    $all = 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G11', 'G14', 'G15', 'G16', 'G17', 'G18', 'G19', 'G20', 'G21', 'G22'
     $on= @($all | Where-Object { Test-GuardEnabled $cfg $_ })
     $off = @($all | Where-Object { -not (Test-GuardEnabled $cfg $_) })
     $line = "Guardas do time (hooks/COVERAGE.md): ativas " + ($(if ($on.Count) { $on -join ', ' } else { 'nenhuma' })) +
@@ -31,7 +31,7 @@ try {
     $run = Get-Marker $projectDir '.active-run'
     if ($null -ne $run -and [string]$run.trilha -in @('sprint', 'fix')) {
         $cmd = if ([string]$run.trilha -eq 'sprint') { '/sm sprint run' } else { '/sm fix run' }
-        $line += " Retomada: o $([string]$run.trilha) run $([string]$run.id) estava em andamento (desde $([string]$run.desde)). Retome agora, sem esperar o stakeholder: $cmd — a fila continua pelo marcador do quadro (sprint-run.md §Ordem da fila e retomada). Recrie o toque de cache (CronCreate), que não sobrevive à sessão. Só apague o .active-run se o run terminou ou o stakeholder mandou parar."
+        $line += " Retomada: o $([string]$run.trilha) run $([string]$run.id) estava em andamento (desde $([string]$run.desde)). Retome agora, sem esperar o stakeholder: $cmd — a fila continua pelo marcador do quadro e pelo run.ps1 next (sprint-run.md §Ordem da fila e retomada); agentes em primeiro plano, retomada por instância nova com o cartão. Só apague o .active-run se o run terminou ou o stakeholder mandou parar."
     } elseif (Test-Path -LiteralPath $runPath) {
         $line += " Atenção: .team-project/.active-run existe mas está ilegível — se nada está em andamento, retome com o comando do run ou apague o arquivo."
     }

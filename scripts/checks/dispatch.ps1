@@ -79,10 +79,9 @@ try {
     # Modelo: a chave do models.json vence o agente e as exceções do processo (sprint-run.md §Modelo por papel; G17 confere).
     $model = if ($mc.State -eq 'ok' -and $mc.Models.ContainsKey($effective)) { $mc.Models[$effective] } else { '' }
     $modelText = if ($model) { "model `"$model`" (models.json)" } else { "model omitido — vale o do agente ($(Get-AgentDefaultModel $effective)), e as exceções do processo (trilha leve, 3ª instância do bloco)" }
-    $cfg = Get-GuardConfig $Root
-    $bg = -not ($null -ne $cfg.bench -and $cfg.bench.foreground)
     # v3.51.4 (garden item 14): o tipo com o prefixo do plugin — "developer" sozinho não existe na instalação.
-    $lines += "  Agent: subagent_type `"team:$effective`" · $modelText · run_in_background $($bg.ToString().ToLowerInvariant())$(if (-not $bg) { ' (modo benchmark: primeiro plano)' })"
+    # v3.52: sempre em primeiro plano — a chamada bloqueia até a volta, sem a sessão esperar pagando (G22).
+    $lines += "  Agent: subagent_type `"team:$effective`" · $modelText · run_in_background false"
     $lines += '  prompt: o caminho do plano (e o bloco), nunca o conteúdo colado; pedir o retorno curto de R28'
     [Console]::Out.WriteLine(($lines -join "`n"))
     exit 0
