@@ -197,6 +197,10 @@ try {
             if (-not $jm -and $work -match '^T-\d+' -and $dst.sprint) {
                 $jm = [regex]::Match(".team-project/operator/$($dst.sprint)/$work-$($agentId.Substring(0, [Math]::Min(8, $agentId.Length)))", $jobRe)
             }
+            # v3.52.1 (garden item 24): o mesmo no bloco de fix — operator/B-<nnn>/<F-ID>-<agente>/ (a pasta que o C4 e o R28 olham).
+            if (-not $jm -and $work -match '^F-\d+' -and [string]$dst.dest -match 'fixes/(B-\d+)/') {
+                $jm = [regex]::Match(".team-project/operator/$($Matches[1])/$work-$($agentId.Substring(0, [Math]::Min(8, $agentId.Length)))", $jobRe)
+            }
             if ($jm -and $jm.Success) {
                 $jobRel = ".team-project/operator/$($jm.Groups[1].Value)/$($jm.Groups[2].Value)"
                 $jobDir = Join-Path $projectDir $jobRel

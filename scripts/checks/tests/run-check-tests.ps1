@@ -364,6 +364,11 @@ Edit-File $bd "| T-041a $($e.todo) → $($e.plan) · dev | 2 | 2 |" "| T-041a $(
 $r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'build', '-Root', $p)
 $r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 $bd)
 Check 'mark.ps1: a composição recontada na Série' $r 0 @("\| T-041a $($e.plan) → $($e.build) · dev \| 2 \| 2 \| 0 \| 0 \| 1 \| 1 \| 0 \| 0 \|")
+# v3.52.1 (garden item 15): a Série e o Registro apontam a última rodada medida da Task (usage.jsonl).
+Put $p '.team-project/usage.jsonl' ('{"ts":"2026-09-02T10:05:00","agent_id":"arcabc123456","role":"architect","model":"claude-opus-5-5","work":"T-041a","works":["T-041a"]}' + "`n" + '{"ts":"2026-09-02T10:40:00","agent_id":"dev9876543210","role":"developer","model":"claude-haiku-5-5","work":"T-041a","works":["T-041a"]}' + "`n" + '{"ts":"2026-09-02T10:50:00","agent_id":"outra0000000","role":"developer","model":"claude-haiku-5-5","work":"T-099","works":["T-099"]}' + "`n")
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'qa', '-Root', $p)
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 $bd)
+Check 'mark.ps1: a transição aponta a última rodada da Task (papel · agente · hora), não a de outra Task (garden 15)' $r 0 @("T-041a $($e.build) → $($e.qa) · QA ← developer dev98765 10:40", "após a rodada developer dev98765 10:40")
 
 # 5c''''. dispatch.ps1 (v3.49): .active-task em JSON, marcador, modelo do models.json, primeiro plano no benchmark, -Clear.
 $p = Join-Path $tmp 'disparo'; New-Project $p
@@ -461,6 +466,21 @@ $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'C1 R7-mutação com inconclusivas: não fecha' $r 1 @('\| R7-mutação \| falhou.*não pegas: M2 inconclusivo, M3 inconclusivo, M4 inconclusivo')
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Only', 'M1,M2', '-Root', $p)
 Check 'verify mutation -Only "M1,M2" numa string só (powershell -File)' $r 1 @('1 de 2 mutação', 'M1 src/calc.ts: ok', 'M2 src/calc.ts: inconclusivo')
+# 5d3b. v3.52.1 (garden item 28): mutante que não compila no TypeScript não conta como pego, mesmo sem a palavra "error" na
+# frente do código (ts-jest, Karma/Angular) e quando o Jest/esbuild avisam que a suíte nem rodou.
+$p = Join-Path $tmp 'mutacao3'; New-Project $p
+$ErrorActionPreference = 'Continue'
+& git -C $p init -q 2>$null; Put $p '.gitignore' ".team-project/`n"
+Put $p 'src/calc.ts' "export function soma(a, b) {`n  return a + b; // fim`n}`n"
+Put $p 'tests/check.ps1' ('$c = Get-Content src/calc.ts -Raw' + "`n" + 'if ($c -match "TSJEST") { "FAIL src/calc.spec.ts"; "  Test suite failed to run"; "    src/calc.ts:2:3 - TS18047: x is possibly null."; exit 1 }' + "`n" + 'if ($c -match "ANGULAR") { "Chrome 120: Executed 0 of 5 ERROR"; "Error: src/app/x.ts:12:5 - TS2339: Property a does not exist on type never."; exit 1 }' + "`n" + 'if ($c -match "ESBUILD") { "Error: Transform failed with 1 error:"; "src/calc.ts:2:3: ERROR: Unexpected token"; exit 1 }' + "`n" + 'if ($c -match "a \+ b") { "Tests: 1 passed" } else { "Tests: 1 failed"; exit 1 }')
+& git -C $p add -A 2>$null; & git -C $p -c user.email=t@t -c user.name=t commit -qm init 2>$null
+$ErrorActionPreference = 'Stop'
+Put $p '.team-project/guards.json' '{ "verify": { "focused": "powershell -NoProfile -File {tests}", "suite": "powershell -NoProfile -File tests/check.ps1" } }'
+$pl = '.team-project/sprints/1/plan/T-041-export.md'
+Edit-File (Join-Path $p $pl) '## 3. Ambiente' ("**Arquivos tocados:** ``src/calc.ts```n``tests/check.ps1```n`n**Mutações:**`n- M1 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``a + b`` → ``a - b```n- M2 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``// fim`` → ``// TSJEST```n- M3 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``export function`` → ``// ANGULAR```n- M4 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``return a`` → ``// ESBUILD```n`n## 3. Ambiente")
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+Check 'verify mutation: TS sem "error" na frente, suíte que não rodou e esbuild são inconclusivos (garden 28)' $r 1 @('M1 src/calc.ts: ok', 'M2 src/calc.ts: inconclusivo.*TS18047', 'M3 src/calc.ts: inconclusivo.*(Executed 0 of 5|TS2339)', 'M4 src/calc.ts: inconclusivo.*Transform failed', '1 de 4 mutação')
 Put $p '.team-project/guards.json' '{ "verify": { "focused": "Write-Output \"Tests: 2 passed [{tests}]\"", "testRoot": "source/" } }'
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'focused', '-Tests', 'source/a.spec.ts,source/b.spec.ts', '-Root', $p)
 Check 'verify focused -Tests "a,b" com testRoot: dois testes, sem o prefixo' $r 0 @('Tests: 2 passed \[a\.spec\.ts b\.spec\.ts\]')

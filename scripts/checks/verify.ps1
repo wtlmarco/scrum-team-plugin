@@ -123,7 +123,12 @@ function Format-Tests([string[]]$List) {
 $script:inconclusiveBase = @(
     'Executed 0 of 0', '\bDisconnected\b', '(?i)\bno tests? (were )?found\b', '(?i)\bno tests ran\b', '(?i)no test is available',
     '(?i)\bERROR collecting\b', '\berror TS\d{4}\b', '\berror CS\d{4}\b', '(?i)\bcompilation (error|failed)\b', '(?m)^e: (file:|/|\w:)',
-    '(?i)\bcannot find symbol\b', '\bSyntaxError\b')
+    '(?i)\bcannot find symbol\b', '\bSyntaxError\b',
+    # v3.52.1 (garden item 28): mutante que não compila saiu "pego" no TypeScript — ts-jest, Karma e o Angular imprimem o código
+    # sem a palavra "error" na frente (`src/x.ts:12:5 - TS18047: …`, `Error: … TS2339: …`); Jest, webpack e esbuild avisam que a
+    # suíte nem rodou. Um teste que reprova por falha de compilação ou de transformação não provou nada.
+    '\bTS\d{4,5}:', '(?i)\bTest suite failed to run\b', '(?i)\bModule build failed\b', '(?i)\bFailed to compile\b',
+    '(?i)\bTransform failed\b', '(?i)\bBuild failed with \d+ errors?\b', '(?i)\bTests:\s+0 total\b', '(?m)^\s*\S+\.java:\d+: error:')
 
 function Get-Inconclusive([string]$Log) {
     $pats = @($script:inconclusiveBase)
