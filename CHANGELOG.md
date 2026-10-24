@@ -13,6 +13,16 @@
 
 ---
 
+## v3.52.1 — 2026-10-24
+
+**Branch:** `fix/v3.52.1` a partir de `develop` · **Processo:** sem mudança
+Itens do relatório do garden (sprint 2, `plugin-report.md`) que a v3.51.4 não fechou: o 28 (novo no relatório), o 15 e o 24 (parciais). Os outros 25 itens do relatório já estavam atendidos na v3.51.4.
+
+- **`verify.ps1` (item 28):** mutante que não compila no TypeScript não conta mais como "pego pelo teste". Entram nos sinais de "o teste não rodou de verdade" o código `TS####:` **sem** a palavra "error" na frente (ts-jest, Karma, Angular), `Test suite failed to run`, `Module build failed`, `Failed to compile`, `Transform failed`, `Build failed with N errors`, `Tests: 0 total` e o erro de `javac`. A mutação vira "inconclusivo" e o R7-mutação não fecha.
+- **`mark.ps1` (item 15):** o Evento da Série e a linha do Registro de transições apontam a **última rodada medida da Task** (papel, agente, hora do fim), lida do `usage.jsonl`: `T-041 🟨 → 🟪 · QA ← developer dev98765 10:40`. O stakeholder não cruza mais o Registro com as Rodadas do `kanban.md`.
+- **G16 (`subagent-stop.ps1`, item 24):** o relatório do `operator` chamado sem pasta de job citada também é gravado no **bloco de fix**: `operator/B-<nnn>/<F-ID>-<agente>/report.md` (antes só em sprint, por Task).
+- **Testes:** guardas 229 casos (+1), conferências 163 casos (+2), 0 falhas.
+
 ## v3.52.0 — 2026-10-24
 
 **Branch:** `feat/v3.52.0` a partir de `develop` · **Processo:** v3.52 (`process-changelog.md`, `/review note`, itens 1 a 9)

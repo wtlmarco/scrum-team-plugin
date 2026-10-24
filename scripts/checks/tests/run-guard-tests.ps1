@@ -348,6 +348,17 @@ $cases = @(
                  (Test-Path -LiteralPath $f) -and ((Get-Content -LiteralPath $f -Raw -Encoding UTF8) -like '*G16: resposta do operator*Veredito: ok*') -and
                  ((Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8 | Select-Object -Last 1) -match '"report":".team-project/operator/1/T-003-suite/report.md"') }
        Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'op12345678'; agent_type = 'team:operator'; transcript_path = (Join-Path $tmp 'transcripts/sess1.jsonl') } },
+    @{ Name = 'G16 operator no bloco de fix, sem pasta citada: relatório em operator/B-<nnn>/<F-ID>-<agente>/ (garden 24, v3.52.1)'; Script = 'subagent-stop.ps1'; Expect = 0
+       Setup = { New-Item -ItemType Directory -Force (Join-Path $proj '.team-project/fixes/B-001') | Out-Null
+                 $runPath = Join-Path $proj '.team-project/.active-run'
+                 $script:runSalvo = if (Test-Path -LiteralPath $runPath) { [System.IO.File]::ReadAllText($runPath) } else { $null }
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "fix", "id": "B-001", "desde": "2026-10-06 10:00" }' -Encoding UTF8
+                 $sd = Join-Path $tmp 'transcripts/sess5/subagents'; New-Item -ItemType Directory -Force $sd | Out-Null
+                 $p = '{"type":"user","timestamp":"2026-10-06T12:00:00Z","message":{"role":"user","content":"Rode o teste focado da F-001 e devolva o resultado"}}'
+                 $a = '{"type":"assistant","timestamp":"2026-10-06T12:01:00Z","message":{"id":"of1","model":"claude-haiku-4-5","content":[{"type":"text","text":"## Relatório\nVeredito: ok · exit 0"}],"usage":{"input_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":0,"output_tokens":10}}}'
+                 [System.IO.File]::WriteAllLines((Join-Path $sd 'agent-opfix12345.jsonl'), [string[]]@($p, $a), (New-Object System.Text.UTF8Encoding($false))) }
+       Check = { $f = Join-Path $proj '.team-project/operator/B-001/F-001-opfix123/report.md'; $okR = (Test-Path -LiteralPath $f) -and ((Get-Content -LiteralPath $f -Raw -Encoding UTF8) -like '*Veredito: ok*'); if ($script:runSalvo) { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/.active-run'), $script:runSalvo) }; $okR }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'opfix12345'; agent_type = 'team:operator'; transcript_path = (Join-Path $tmp 'transcripts/sess5.jsonl') } },
     @{ Name = 'G16 operator retomado: segunda resposta vira report-<agente>-r2.md'; Script = 'subagent-stop.ps1'; Expect = 0
        Setup = { Add-Content -LiteralPath (Join-Path $tmp 'transcripts/sess1/subagents/agent-op12345678.jsonl') @('{"type":"user","timestamp":"2026-10-06T12:10:00Z","message":{"role":"user","content":"Rode de novo o focado"}}', '{"type":"assistant","timestamp":"2026-10-06T12:11:00Z","message":{"id":"o2","model":"claude-haiku-4-5","content":[{"type":"text","text":"Focado: exit 1 — 1 falhou."}],"usage":{"input_tokens":5,"cache_creation_input_tokens":10,"cache_read_input_tokens":100,"output_tokens":10}}}') -Encoding UTF8 }
        Check = { $f = Join-Path $proj '.team-project/operator/1/T-003-suite/report-op123456-r2.md'
