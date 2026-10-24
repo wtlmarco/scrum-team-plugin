@@ -370,11 +370,11 @@ $p = Join-Path $tmp 'disparo'; New-Project $p
 Put $p '.team-project/sprints/1/plan/T-041a-x.md' '# Plano'
 $r = Invoke-Check 'dispatch.ps1' @('-Role', 'dev', '-Id', 'T-041a', '-Plan', '.team-project/sprints/1/plan/T-041a-x.md', '-Mark', 'build', '-Root', $p)
 $r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/.active-task'))
-Check 'dispatch.ps1: .active-task em JSON, marcador e parâmetros do Agent' $r 0 @('\{"trilha":"sprint","id":"T-041a","plano":".team-project/sprints/1/plan/T-041a-x.md"\}', "mark: T-041a $($e.todo) → $($e.build)", 'subagent_type "team:developer" · model omitido — vale o do agente \(haiku\)', 'run_in_background true')
+Check 'dispatch.ps1: .active-task em JSON, marcador e parâmetros do Agent' $r 0 @('\{"trilha":"sprint","id":"T-041a","plano":".team-project/sprints/1/plan/T-041a-x.md"\}', "mark: T-041a $($e.todo) → $($e.build)", 'subagent_type "team:developer" · model omitido — vale o do agente \(haiku\)', 'run_in_background false')
 Put $p '.team-project/models.json' '{ "developer": "sonnet" }'
 Put $p '.team-project/guards.json' '{ "bench": { "arm": "t", "answers": "x.json", "foreground": true } }'
 $r = Invoke-Check 'dispatch.ps1' @('-Role', 'qa', '-Id', 'T-041a', '-Root', $p)
-Check 'dispatch.ps1: papel sem escopo de escrita, e primeiro plano no modo benchmark' $r 0 @('subagent_type "team:quality-assurance"', 'run_in_background false \(modo benchmark')
+Check 'dispatch.ps1: papel sem escopo de escrita, sempre em primeiro plano (v3.52)' $r 0 @('subagent_type "team:quality-assurance"', 'run_in_background false')
 if (Test-Path -LiteralPath (Join-Path $p '.team-project/.active-task')) { } else { $fail++; Write-Output '---- dispatch do QA apagou o .active-task do dev' }
 $r = Invoke-Check 'dispatch.ps1' @('-Role', 'developer', '-Id', 'T-041a', '-Plan', '.team-project/sprints/1/plan/T-041a-x.md', '-Root', $p)
 Check 'dispatch.ps1: model do models.json' $r 0 @('model "sonnet" \(models\.json\)')
@@ -935,7 +935,12 @@ $r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/
 Check 'run done sem evidência: não fecha, não marca 🟪, volta ao dev' $r 0 @('ainda não fecha', 'R7 \| falhou', "\| $($e.build) T-041 \|")
 Put $p '.team-project/sprints/1/delivery/T-041.md' ("## Entrega — T-041`n`n### Verificação`n```````n> verify.ps1 -Mode full`nverify full T-041 · tudo exit 0`n```````n`n### Documentos vivos (R12)`n**Estado:** a consolidar`n")
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'ok', '-Root', $p)
-Check 'run done ok: 🟨 → 🟪 pelo mark, depois -Apply com -Post R24 ok (garden 19)' $r 0 @("mark: T-041 $($e.build) → $($e.qa)", 'fechada pela evidência do dev', 'ponto seguro de pausa')
+Check 'run done ok: 🟨 → 🟪 pelo mark, depois -Apply com -Post R24 ok (garden 19)' $r 0 @("mark: T-041 $($e.build) → $($e.qa)", 'fechada pela evidência do dev', 'PONTO SEGURO')
+# v3.52: Task fechada grava .safe-point (a G20 libera o fim de turno) e diz o commit; sem git, o checkpoint é por cópia.
+$sp = Join-Path $p '.team-project/.safe-point'
+Check 'run done ok: grava .safe-point e informa o commit (v3.52)' @{ Code = $r.Code; Out = $r.Out + "`nSP=" + $(if (Test-Path -LiteralPath $sp) { (Get-Content -LiteralPath $sp -Raw -Encoding UTF8) } else { 'ausente' }) } 0 @('  commit: ', 'SP=\{"task":"T-041","sprint":"1"')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'run next depois do ponto seguro: RETOMADA pelo marcador e o marcador sai (v3.52)' @{ Code = $r.Code; Out = $r.Out + "`nSP=" + $(if (Test-Path -LiteralPath $sp) { 'presente' } else { 'apagado' }) } $r.Code @('RETOMADA: ponto seguro depois da T-041', 'SP=apagado')
 $p = Join-Path $tmp 'gap'; New-Project $p
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
 Check 'run done gap com a Task em 🟪: volta a 🟨 (garden 22)' $r 0 @("mark: T-041 $($e.qa) → $($e.build)", 'GAP')

@@ -12,7 +12,7 @@ Pedido do stakeholder: **$ARGUMENTS**
 Com o plano em mãos, **grave `.team-project/.active-task`** — `{ "trilha": "sprint", "id": "<ID>", "plano": "<caminho do plano relativo ao projeto>" }`, de preferência por `scripts/checks/dispatch.ps1 -Role developer -Id <ID> -Plan <plano>`, que grava o JSON e imprime os parâmetros do disparo (v3.49). Sem ele, a guarda G9 nega ao dev todo arquivo de produto; apague-o (`dispatch.ps1 -Clear`) quando a Task sair do dev — e use a ferramenta Agent com `subagent_type: "developer"` e `run_in_background: false` (no `sprint run` e no `fix run`, `true` — `sprint-run.md` §Disparo em segundo plano) e, **se `.team-project/models.json` define o papel, `model: "<valor>"`** (`sprint-run.md` §Modelo por papel; a G17 nega outro), passando o caminho do plano, o ID da Task e o modo:
 - **`<ID>`** → executar o plano do início ao fim, na ordem dos passos.
 - **resume `<ID>`** → continuar de onde parou, **ou** corrigir o achado de execução do QA — **só o que ele aponta**; em ambos, conferir no código o que já existe antes de escrever.
-- **gap `<resposta>`** → retomar aplicando a decisão do Arquiteto; se o agente anterior ainda estiver ativo, continue por SendMessage.
+- **gap `<resposta>`** → retomar aplicando a decisão do Arquiteto; se o agente anterior ainda estiver ativo, continue por SendMessage — fora do `sprint run`/`fix run`; no run, instância nova com o cartão de passagem (G19).
 
 O contrato de trabalho e o formato do 🔺 GAP estão no próprio agente (`agents/developer.md`) e não se repetem aqui. Pedido `/dev review …` → o caminho é **`/review …`**.
 

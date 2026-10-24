@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.49`](process-changelog-archive.md) | Custo medido nos transcripts: retorno curto à sessão com o relatório do dev em arquivo, Arquiteto novo quando o cache venceu, toque de cache da sessão, gravação por etapa e dev por F-ID no `fix` (SM + Arquiteto + Dev + QA) — 16/10/2026 |
 | [`v3.48`](process-changelog-archive.md) | O que o primeiro sprint do piloto mostrou: relatório do `operator` gravado pelo hook, guardas sem falha aberta nem falso negado, C1 que fecha o que é legítimo; addendum v3.48.1: `verify.testItem` (SM + Arquiteto + Dev + QA) — 14/10/2026 |
 | [`v3.47`](process-changelog-archive.md) | Modelo por papel (G17), perfil Arquiteto executor, modo benchmark (G18) e ritual "modo projeto": o plugin pronto para o experimento sem intervenção (SM + Arquiteto + QA + Dev) — 10/10/2026 · *com addendum v3.47.1 de 12/10/2026* |
 | [`v3.46`](process-changelog-archive.md) | Plano em contrato conferido antes do dev, prova de falha por mutação, trilha leve por Task, Arquiteto um passo à frente e fechamento pela sessão (SM + Arquiteto + Dev + QA) — 06/10/2026 |
@@ -90,6 +91,42 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.52 — Orquestrador enxuto: sessão nova por ritual, `run` em sessões curtas, espera sem sondagem, registro de decisões e commit por Task (SM) — 23/10/2026
+
+**Instrução** (stakeholder, 23/10/2026, `note.md` itens 1 a 9 e decisões em formulário): reduzir o custo da sessão que orquestra, medido no benchmark `sunscape-P-r1` (plugin v3.51.3). Decisões: (1) o fim de cada Task é **parada permitida** (`.team-project/.safe-point`); (2) **ampliar a R29**, sem regra nova; (3) o brief do brainstorm é gravado ao **fechar**, em `scrum-master/context.md` §"SDD em elaboração"; (4) hooks e scripts a sessão principal implementa.
+**Medido (itens 1 a 4):** passo `run` de 504 min, US$ 14,20; a sessão que orquestra gastou 67 % (US$ 10,76 em 113 chamadas, mediana de 376 mil tokens, máximo de 438 mil), quase tudo releitura do próprio contexto; leitura de documentos pesou ~6 %, a construção ~US$ 6,3 e o dev em Haiku menos de US$ 1. O contexto já chegava a ~200 mil quando o `run` começava (init a plan na mesma sessão). **48 chamadas de `Start-Sleep`** (60 a 598 s) custaram US$ 3,68. A trilha `fix` começaria com ~440 mil tokens.
+**Causa confirmada da espera (item 3):** o disparo em primeiro plano bloqueia normalmente (62 disparos, até 3.824 s) — a hipótese do vigia de 600 s caiu. Vem de **(a)** retomada por `SendMessage`, assíncrona, com a sessão sondando o disco, e **(b)** a sessão rodando ela mesma comando longo em segundo plano (aceite, lotes com `adb`) e sondando por horas — trabalho do `operator` (R28).
+**Classificação:** fluxo (`run`, `fix`, rituais) · regra ampliada (R29; R15 e R27 com exceção) · formato (modelo novo `run-log.md`) · propriedade (`run-log.md`, `.safe-point`). **Sem regra nova** (34). **Papéis movidos (R17):** 1 — SM.
+
+### O que mudou
+- **R29 ampliada** (`working-rules.md`, índice): troca de ritual, fronteira sprint → fix e cada Task do `run`; tudo o que o ritual decide fica em disco antes de fechar. **R15:** o brainstorm não escreve durante as fases, mas **ao fechar** grava o brief (≤ 15 linhas, fronteira de escopo, confirmação) em `context.md` §"SDD em elaboração". **R27:** no `run` a retomada é sempre instância nova em primeiro plano.
+- **Cada ritual** (`workflow-ritos.md` onboarding e brainstorm, `workflow-sdd.md`, `workflow-sprint.md` prepare/plan/review/close, `sprint-run.md`, `fix-run.md` note → fix plan → fix run): lista fixa de leitura na abertura e fecho "em sessão nova (`/clear` e o comando)".
+- **`sprint-run.md`:** sessão curta, uma Task por sessão; commit `T-<nnn>: <título>` no fechamento (nunca `.team-project/`, R31; sem git, cópia como o `fix run`); parada **(f)** e `.safe-point`; §Disparo e espera (primeiro plano, sem `Start-Sleep`, comando longo só pelo `operator`); §Retomada sem `SendMessage` — **inclusive Haiku** (assíncrono, e o ganho de reaproveitar o contexto dele é de centavos); **toque de cache retirado** (não dispara durante a chamada bloqueante, e a sessão curta regrava barato); preparo de História independente vira passo sequencial do `next` (exceção da R1 retirada); §Registro de decisões.
+- **`templates/run-log.md`** (novo): quando · item · decisão · porquê · evidência; `sprints/<n>/` e `fixes/B-<nnn>/`; lido só em retomada, bloqueio e Review; diz o que fica no `kanban.md`, `handoff/`, `guards.log`, `.usage-limit` e `.safe-point`. `artifact-ownership.md`: linhas do `run-log.md` e do `.safe-point`.
+
+### Por quê
+Quase todo o custo da sessão era reler contexto longo; sessão curta (50 a 80 mil), espera dentro da chamada bloqueante e passagem pelo disco o tiram sem retirar verificação alguma. Estimativa (não medição): a releitura do `run` do P-r1 (US$ 14,5) cairia para ~US$ 3 e a espera (US$ 3,7) para perto de zero; cada sessão nova regrava ~US$ 0,15 a 0,20.
+
+### Conflitos com o processo vigente
+O "Fim de Task não é parada" do `sprint-run.md` e a G20 ganham a exceção do `.safe-point`. A v3.49 mandava retomar Haiku por `SendMessage` e criar o toque de cache: esta entrada reverte as duas. A G19 hoje só nega papel caro depois de 5 min.
+
+### Quem passa a ser cobrado de forma diferente
+**Sessão/SM:** abre cada ritual lendo só a lista fixa, para em sessão nova, não sonda o disco nem roda comando longo, anota o `run-log.md`. **Dev:** o commit da Task é do script. **Demais papéis:** sem mudança de roteiro.
+
+### Como saberemos que funcionou
+P-r2 (SunScape, mesma regra de comparação): contexto mediano da sessão ≤ 80 mil tokens e máximo ≤ 150 mil; zero chamada de `Start-Sleep` da sessão no `run`; releitura da sessão ≤ US$ 4; cada Task ✅ com um commit `T-<nnn>:`; nenhum ritual iniciado na sessão que já rodou outro sem aviso.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.49 que saiu do vivo × arquivo (`.Contains`) | True; vivo termina em `---`, arquivo tem v3.49 antes da v3.48 | ✅ |
+| Substituição de padrão | `Grep` de `SendMessage`/`segundo plano`/`CronCreate`/toque em `roles/scrum-master/` | restam só `consumption.md` (histórico de rodada) e `artifact-ownership.md` (`.active-agents`), lidos no contexto; o resto reescrito e lido | ✅ |
+| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | C3 exit 1 só por R18 (v3.52 ainda sem CHANGELOG/bump, a sessão escreve); R17 ok (bloco 5,8 KB, 1 papel), ownership 62 ok, órfãos ok; conferências 161/0; guardas 227/0 | ✅ (R18 esperado) |
+
+### Parte mecânica (implementada pela sessão principal, citada aqui)
+`run.ps1 done` grava `.team-project/.safe-point` (JSON `task`, `sprint`, `desde`; só no `sprint run`) e faz o commit `T-<nnn>: <título>` (sem `.team-project/`; sem git, checkpoint por cópia); `next` mostra RETOMADA e apaga o marcador (o `start` também). **G20** libera com `.safe-point`; **G21** (`hooks/prompt-submit.ps1`) avisa ritual aberto em sessão que já rodou outro; **G22** (`pre-tool`) nega à sessão principal `Start-Sleep` e comando em segundo plano durante o `run`. **Ainda proposta ao stakeholder:** G19 negar `SendMessage` a qualquer papel com `.active-run`; retirar o `CronCreate` do toque de cache onde `SessionStart`/`commands` o mencionem; `ownership.json` para o `run-log.md`; driver do benchmark sem `--resume`.
+
+---
 ## v3.51 — O sprint do benchmark: dev constrói e verifica sozinho, plano por História ao lado dos cenários, portão do QA no fim, orquestração por script, contexto e cache, ambiente em qualquer tecnologia (SM + Arquiteto + Dev + QA + PO) — 21/10/2026
 
 **Instrução** (stakeholder, 21/10/2026, a partir do benchmark P × N-forte × protótipo Coordenador–Operador; plano aprovado em `plano-plugin-p-plus.md`, decisões no §8 e em formulário): manter o processo e a documentação antes e depois da Sprint, mas chegar o mais perto possível do N-forte na construção — o plano e os cenários prontos antes do dev, o dev (Haiku) construindo, verificando e corrigindo sozinho, o QA como portão de validação do produto (qualidade de código e funcional, com prova no alvo real) uma vez no fim, a dúvida subindo ao Arquiteto só quando é dúvida; atacar a transferência de contexto e a perda de cache; scripts para qualquer tecnologia (Android e Web nesta versão; API e Windows desktop depois); toda decisão ao stakeholder com o problema simples, um exemplo e formulário; os itens do `note.md` e as propostas pendentes.
@@ -261,105 +298,3 @@ Zero defeito de layout achado pelo stakeholder no aparelho depois do ✅ do QA e
 
 ---
 
-## v3.49 — Custo medido nos transcripts: retorno curto à sessão com o relatório do dev em arquivo, Arquiteto novo quando o cache venceu, toque de cache da sessão, gravação por etapa e dev por F-ID no `fix` (SM + Arquiteto + Dev + QA) — 16/10/2026
-
-**Instrução** (stakeholder): "Pode seguir", sobre a classificação dos itens de `note.md` a aplicar antes do benchmark (antigos 1, 2, 11, 13 e 15), com as decisões do formulário de 16/10/2026: retomada → **"Arquiteto novo"**; relatório → **"Retorno curto + arquivo"**. **Condução:** os agentes do time não estavam carregados na sessão que aplicou (plugin instalado em outro diretório de configuração). Por isso a sessão conduziu os cinco passos de `review-contract.md`, respeitando o alcance de cada papel, e aplicou `agents/`, `commands/`, `README.md`, `rituals/`, `hooks/ownership.json` e `scripts/` só pela decisão do stakeholder.
-**Causas medidas** nos transcripts do primeiro sprint do piloto (04–13/10, plugin 3.46.0; 758 M tokens, ~US$ 282 em preço de API):
-- **A sessão principal** é ~40 % do custo, com 403 mil tokens por chamada; ~37 % do crescimento dela são retornos de agente (estimado).
-- **As quebras de cache** custaram ~US$ 96 (34 %), quase todas por expiração. US$ 38 vieram da sessão esperando agente por mais de 1 h, e US$ 22 de 16 retomadas do Arquiteto (Opus, 288 mil tokens) depois de o cache de 5 min vencer.
-- **Trabalho perdido em interrupção:** o Arquiteto ficou ~2 h sem gravar o plano, e o QA 5 h 33 min sem gravar a evidência.
-
-**Classificação:**
-- fluxo: `sprint-run.md` passos 3–6, §Disparo e §Retomada (nova); `fix-run.md` passos 2–3 e §Bloco;
-- regra: a R27 ganha a exceção do Arquiteto, e a R28 ganha o retorno à sessão;
-- propriedade: `delivery/` no sprint e `delivery.md` no bloco, dono dev; `architect/breakdown/`;
-- formato: o relatório de entrega passa a ser arquivo;
-- comportamento de agente.
-
-**Sem regra nova** (34).
-**Papéis movidos (R17):** 4 — SM, Arquiteto, Dev, QA → barreira de 15 360 B.
-
-### O que mudou
-| Documento | Mudança |
-|---|---|
-| `working-rules.md` R27 · R28 | R27: o Arquiteto parado há mais de 5 min é aberto em instância nova, que lê o disco. R28: **retorno à sessão** no `run`, em até 15 linhas (estado · arquivo · próximo · execução delegada); o conteúdo fica no artefato e passa pelo caminho; fora do `run`, vale o artefato inteiro |
-| `sprint-run.md` | passo 3: relatório em `sprints/<n>/delivery/<T-ID>.md`; passo 4: GAP ao Arquiteto pelo caminho (o mesmo se parou há menos de 5 min, senão um novo); §Retomada; §Disparo: retorno curto e **toque de cache** (`CronCreate` `17,47 * * * *` junto com o `.active-run`, fora do benchmark, em avaliação); Como o SM verifica |
-| `fix-run.md` | dev **uma instância por F-ID**, com o `.active-task` da F-ID; relatório em `fixes/B-<nnn>/delivery.md`; GAP a Arquiteto novo; N + 2 invocações por bloco |
-| README do Arquiteto · `workflow-sprint.md` Planning 4 | plano gravado seção a seção; quebra em Tasks em `architect/breakdown/S<n>.md` a cada História; `/arc question` em instância nova lê só o plano, o GAP e o código citado |
-| README do QA | evidência aberta no passo 1 e gravada frente a frente; retorno curto |
-| `delivery-report.md` · `gap.md` · README do dev | onde fica o relatório; seções acrescentadas no fim; o GAP no mesmo arquivo; na calibração, o relatório continua na resposta |
-| `artifact-ownership.md` §1 · §1e · `hooks/ownership.json` · `deliverables/team-project/README.md` | linhas novas para os relatórios de entrega e o `delivery.md` do bloco (dono dev; escritores dev e Arquiteto executor); `architect/breakdown/`; `scripts/metrics/` junto de `hooks/`; cinco donos na pasta do sprint |
-| Pela decisão do stakeholder | `agents/*` (retorno curto; o dev grava o relatório; o QA lê o arquivo; o Arquiteto em instância nova) · `commands/dev.md` · `README.md` (tipos de documento) · `team-update.md` 7j · `scripts/metrics/` (novo) · 5 casos novos da G8 · `note.md` renumerado |
-
-### Por quê
-O registro do time media o volume dos subagentes. Medido em US$ e com a sessão incluída, o custo está na sessão (40 %) e no Arquiteto (38 %); o dev em Haiku é ~5 %. Dois mecanismos explicam a maior parte:
-- **O que volta inteiro para a sessão é relido em cada chamada seguinte dela.** Os papéis já gravavam o artefato (plano, evidência); faltava o relatório do dev, que só existia na resposta. Com ele em arquivo, a sessão passa caminhos.
-- **O cache que vence durante a espera é regravado inteiro.** Para o Arquiteto, as duas formas de manter o cache vivo foram medidas e descartadas. O cache de 1 h para subagentes (`CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`, documentado no Claude Code), simulado no mesmo sprint, sairia US$ 5,6 **mais caro**: toda gravação passa a 2×, e as retomadas caras vieram depois de mais de 1 h. O toque, por sua vez, não alcança subagente. Na sessão, o toque compensa: as esperas de 1 a 4 h custaram US$ 27,8 regravando, contra ~US$ 5 com um toque a cada 30 min.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda para ele |
-|---|---|
-| Dev | grava o relatório de entrega (e o GAP) em arquivo e devolve o retorno curto; no fix, uma instância por F-ID |
-| Arquiteto | grava o plano e a quebra por etapa; numa instância nova, lê só o plano, o GAP e o código citado |
-| QA | lê o relatório do arquivo; grava a evidência frente a frente; retorno curto |
-| Sessão / SM | passa caminhos, não conteúdo; decide entre a mesma instância e uma nova pelo tempo parado; cria e apaga o toque junto com o `.active-run` |
-
-### Conflitos com o processo vigente
-- **R27 e o passo 4 do `sprint-run.md`** mandavam sempre retomar o mesmo agente por `SendMessage`. Levado ao stakeholder (formulário de 16/10/2026): só a retomada do Arquiteto muda, decidida pelo tempo parado.
-- **O README** classificava o relatório de entrega como "saída". Reclassificado como vivo, pela mesma decisão.
-
-### Como saberemos que funcionou
-No próximo sprint real, medido com `scripts/metrics/transcript-metrics.js` contra o sprint 1 do piloto, **mecanismo por mecanismo**:
-- retornos de agente em até 15 % do crescimento da sessão (`growth --session`; eram ~37 %);
-- regravação do Arquiteto depois de devolver em até US$ 5 (`breaks`; eram US$ 22, em 16 retomadas), sem subir o número de GAPs por plano;
-- regravação da sessão por pausa de mais de 1 h com agente rodando em até US$ 10 (eram US$ 38), e nenhum toque em que a sessão trabalhou;
-- nenhuma interrupção que descarte plano ou veredito parcial.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Substituição de padrão | `Select-String` em todo `*.md` fora dos changelogs: `uma F-ID por vez` · `quatro donos diferentes` · `três subpastas de outros donos` · a linha "Saída" antiga do README | zero ocorrências | ✅ |
-| Leitura no contexto | `delivery/` e `delivery.md` (27 ocorrências em 16 arquivos) e `§Retomada` (8 em 6), lidos um a um | caminho, dono e seção coerentes em cada ocorrência; a pasta do sprint passa a ter cinco donos e quatro subpastas de outros donos | ✅ |
-| Arquivamento de entrada | o bloco v3.46 que saiu do vivo × o que entrou no arquivo (`.Contains`) | idêntico; `git diff --stat`: −44 no vivo, +45 no arquivo (o separador) | ✅ |
-| Guardas | `run-guard-tests.ps1` | 166 casos · 0 falharam (5 novos da G8: dev em `delivery/` e em `delivery.md` do bloco liberados; QA em `delivery/` e dev em `plan.md` do bloco negados; Arquiteto em `breakdown/` liberado) | ✅ |
-| Conferências | `run-check-tests.ps1` | 91 casos · 0 falharam | ✅ |
-| Medição | `transcript-metrics.js cost · breaks · session · waits · growth` sobre o piloto | reproduz os números da análise (US$ 282,3; quebras US$ 95,7; sessão com 697 chamadas e 403 mil por chamada; plano com 18 % do crescimento) | ✅ |
-
-**Não exercitado:** um `sprint run` real com retorno curto, instância nova do Arquiteto e o toque (o `CronCreate` disparando durante a espera da notificação). O ensaio do benchmark roda em primeiro plano, onde o toque não dispara.
-
-### Pendente do stakeholder
-Propostas com especificação, sem texto aplicado:
-- **G19 (nova):** `PreToolUse · SendMessage` na sessão. Nega o `SendMessage` a uma instância de `team:architect` cuja última rodada no `usage.jsonl` terminou há mais de 5 min, com a rota "instância nova — `sprint-run.md` §Retomada". É o instrumento da exceção da R27.
-- **G16:** gravar o tamanho da resposta final (linhas e bytes) no `usage.jsonl`. É o instrumento do retorno curto (R28).
-- Os itens de scripts e hooks da fila entraram nos addenda abaixo; ficam em `note.md` os 5 itens de desenho e medição.
-
-Depois de mesclar: atualizar o plugin no piloto e no benchmark, `/team update` (7j), reiniciar a sessão.
-
-### Addendum — o registro de consumo que fecha, atualizado pelo hook, com o modelo servido (16/10/2026)
-**Instrução** (stakeholder): "Vamos seguir na opção 1": itens 1, 6 e 10 da fila, e a investigação do item 9. **Causa:** no piloto, os Totais diziam 100 invocações contra 137 linhas no Registro, e o fechamento os corrigiu à mão. Havia uma linha de `operator` sem chamador, o SM aparecia com 0 processado (só tinha a notificação), e "haiku" juntava Haiku 4.5 e 5.5, com preço por token ~10× diferente. A sessão rodou `consumption.ps1` 33 vezes e editou o `consumption.md` à mão 20 vezes, a ~400 mil tokens por chamada.
-**Classificação:** instrumento (`consumption.ps1`, G16) · formato (`templates/consumption.md`, `plugin-report.md`, `retrospective.md`). **Sem regra nova.**
-
-| Documento | Mudança |
-|---|---|
-| `scripts/checks/consumption.ps1` | modelo servido com versão (`haiku 4.5`); Totais com uma linha por papel e modelo, **Instâncias** e **Rodadas** em colunas separadas, e `não medido — só notificação` no grupo sem medida; `operator` sem filho na linha do pai ganha o chamador pela rodada de outro papel, na mesma Task, que contém o início dele (`chamado por <papel> (pelo horário)`) |
-| `hooks/subagent-stop.ps1` (G16) | roda o `consumption.ps1` no destino ao fim de cada rodada, no mesmo processo e com a saída fora do harness; uma falha vira linha `G16 · consumo` |
-| `templates/consumption.md` · `plugin-report.md` · `retrospective.md` · `sprint-run.md` §Disparo · `how-to.md` · `COVERAGE.md` · `team-update.md` 7j | a sessão só roda o script antes de uma conferência; colunas e modelo novos; corrigida uma linha de regra colada à anterior no modelo do consumo |
-| `scripts/metrics/transcript-metrics.js` | descarta evento repetido (mesmo `uuid`): a "parada de 68 h" do piloto era uma linha regravada antes de uma compactação; `waits` cai de ~206 h para ~137 h, e custo e quebras não mudam |
-| `note.md` | saem os itens de consumo; o item das paradas é reescrito com a investigação: ~24,5 h fora do contrato, ~122 h de máquina suspensa com agentes rodando, ~6,8 h de decisão legítima do stakeholder |
-
-**Verificação (R19):** `run-check-tests.ps1` → 93 · 0 (2 novos: Totais com instâncias × rodadas e o modelo com versão; chamador pelo horário); `run-guard-tests.ps1` → 167 · 0 (1 novo: a G16 grava a linha medida no `consumption.md` do sprint aberto); `release.ps1` ok. **Não exercitado:** a G16 rodando o script num sprint real, e duas rodadas terminando no mesmo instante (as duas reescrevem a partir do `usage.jsonl`, e a última vence com os dados completos).
-
-### Addendum — as escritas mecânicas da sessão em script (16/10/2026)
-**Instrução** (stakeholder): "Pode fazer o 3 que são scripts mecânicos". **Causa medida:** no piloto, a sessão gastou 18 chamadas em quadro e burndown, 50 em `.active-*` e 33 em `consumption.ps1`, a ~400 mil tokens cada. Um `.active-task` gravado fora do formato derrubou a G9. E a sessão, ~40 % do custo, não entrava no registro do time.
-**Classificação:** instrumento (`mark.ps1` e `dispatch.ps1` novos, `consumption.ps1 -Session`, G16) · fluxo (`sprint-run.md` passos 3, 7, 8, §Marcador e §Modelo por papel; `fix-run.md` passo 2). **Sem regra nova.**
-
-| Documento | Mudança |
-|---|---|
-| `scripts/checks/mark.ps1` (novo) | `-Task -To plan\|build\|qa\|blocked\|todo`: troca o marcador no quadro, acrescenta a linha da Série (composição recontada, estimativa inalterada) e a do Registro (no burndown, ou no quadro anterior à v3.44.1). Calcula tudo antes de gravar. Recusa o ✅, que é do `close.ps1 -Apply` |
-| `scripts/checks/dispatch.ps1` (novo) | grava o `.active-task` em JSON (e o `.active-executor` no perfil executor), marca pelo `mark.ps1` e imprime o papel efetivo, o `model` do `models.json` e o `run_in_background` (falso no benchmark com `foreground`); `-Clear` apaga os dois marcadores |
-| `consumption.ps1 -Session` · G16 | a G16 grava o `session_transcript` em cada linha; com `-Session` (no `close` e na retrospectiva, nunca no hook), o script mede a sessão desde a primeira rodada do destino, deduplicado por `message.id` e `uuid`, e a escreve como linha `sessão` medida, que entra nos Totais. Sem `-Session`, a linha já medida fica |
-| `sprint-run.md` · `fix-run.md` · `commands/dev.md` · `artifact-ownership.md` · `templates/consumption.md` · `COVERAGE.md` · `README.md` · `team-update.md` 7j | os passos usam os scripts; a sessão medida no registro |
-
-**Verificação (R19):** `run-check-tests.ps1` → 105 · 0 (12 novos: `mark` em quadro, Série e Registro, a composição recontada, o marcador repetido e o ✅ recusados; `dispatch` com o JSON, o marcador, o modelo do `models.json`, o primeiro plano no benchmark, o executor, o `-Clear` e o dev sem plano; `-Session` com o `uuid` repetido descartado e a linha mantida sem `-Session`); `run-guard-tests.ps1` → 167 · 0; `release.ps1` ok. **Medido:** o `-Session` sobre um transcript real de sessão do piloto (9,4 MB, 418 chamadas) leva 7 s no PowerShell 5.1 e dá 204,6 M processados, coerente com `scripts/metrics`. **Não exercitado:** os três scripts num sprint real.
-
----

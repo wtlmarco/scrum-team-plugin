@@ -1,14 +1,23 @@
 # Fluxo de Trabalho — O sprint (§5e caixa de tempo · §5f burndown · §5g ciclo do sprint)
 
-> **Dono:** SM · Parte do fluxo — o núcleo está em [`workflow.md`](workflow.md). **Lido nos modos do sprint** (prepare, plan, 
-eview, close) e na manutenção. O roteiro do **
-un** está em [sprint-run.md](sprint-run.md), fonte única. A numeração (§5e, §5f, §5g) é a de sempre; só o arquivo mudou (v3.34).
+> **Dono:** SM · Parte do fluxo — o núcleo está em [`workflow.md`](workflow.md). **Lido nos modos do sprint** (prepare, plan, review, close) e na manutenção. O roteiro do **run** está em [sprint-run.md](sprint-run.md), fonte única. A numeração (§5e, §5f, §5g) é a de sempre; só o arquivo mudou (v3.34).
 
 ## 5e. O sprint — caixa de tempo
 
 O sprint é a **unidade de cadência do time**: uma caixa de tempo de duração fixa, declarada em `.team-project/README.md` e respondida pelo stakeholder no onboarding (§5a, passo 5).
 
 **Como citar os passos.** A Preparação e a Planning têm numeração própria — *prepare*, passos 1–7; *Planning*, passos 1–11. Toda citação nomeia a tabela: **"prepare, passo N"** ou **"Planning, passo N"**. "Passo N" sem a tabela é ambíguo (os passos 2, 3 e 4 existem nas duas). O processo não fixa a duração — fixa que ela **não muda dentro do sprint**.
+
+**Abertura e fecho de cada ritual do sprint (R29 · v3.52).** Cada ritual começa em **sessão nova** e lê **só** esta lista, nesta ordem — a sessão limpa não sai explorando o projeto —; e termina dizendo o próximo passo **em sessão nova (`/clear` e o comando)**, depois de gravar em disco tudo o que decidiu (a conversa não passa para o ritual seguinte). Em todos, `.team-project/README.md` é lido em §1 a §5 e §7.
+
+| Ritual | Leitura de abertura (além do `README.md` e do `scrum-master/context.md`) | Fecho — próximo passo, em sessão nova |
+|---|---|---|
+| `prepare` | Histórias do SDD aprovado e o Product Backlog (índice); `context.md` §"Candidatas do próximo sprint" | `/clear` e `/sm sprint plan` |
+| `plan` | `context.md` §"Candidatas do próximo sprint" (DoR-a gravada e decisões do passo 7); retrospectiva do sprint anterior, se houver | `/clear` e `/sm sprint run` (depois do pacote aprovado, passo 10) |
+| `review` | `sprints/<n>/validation.md` e `docs-consolidation.md`; `run.ps1 next` (confirma o fim da fila); `run-log.md` do sprint ([`templates/run-log.md`](../templates/run-log.md)) | `/clear` e `/sm sprint close` |
+| `close` | `sprints/<n>/review.md`, o `kanban.md` e o `consumption.md` do sprint | `/clear` e `/sm sprint prepare` (próximo sprint) — ou `/po note` / `/sm fix plan` se a Review deixou defeito |
+
+O `run` tem a própria abertura e a parada por Task em [`sprint-run.md`](sprint-run.md).
 
 ### Preparação — leva as candidatas até a DoR (`/sm sprint prepare`)
 

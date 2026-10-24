@@ -13,6 +13,26 @@
 
 ---
 
+## v3.52.0 — 2026-10-24
+
+**Branch:** `feat/v3.52.0` a partir de `develop` · **Processo:** v3.52 (`process-changelog.md`, `/review note`, itens 1 a 9)
+Orquestrador enxuto. No braço `sunscape-P-r1` (v3.51.3), 67 % do custo do `run` foi a sessão que orquestra relendo o próprio contexto: mediana de 376 mil tokens por chamada, ~200 mil herdados das etapas anteriores, que correram na mesma sessão. Mais 48 chamadas só de espera (US$ 3,68). A construção custou o mesmo que no N-forte.
+
+- **R29 ampliada:** cada ritual começa em sessão nova e lê só o disco. Vale também na passagem do sprint para o fix e em cada Task do `run`. Os roteiros ganham uma lista curta de leitura na abertura e o fecho "`/clear` e o comando". O brainstorm grava o brief ao fechar (exceção da R15), e o `sdd` o retoma.
+- **Ponto seguro (parada (f)):** o `run.ps1 done` que fecha a Task grava `.team-project/.safe-point` e a **G20** libera o fim de turno sem apagar o `.active-run`. O `next` e o `start` seguintes apagam o marcador.
+- **Commit por Task:** o `run.ps1 done` versiona o código da Task fechada (`T-<nnn>: <título>`, sem `.team-project/`, R31). Sem git, o checkpoint é por cópia.
+- **Espera sem custo:**
+  - Todo agente vai em primeiro plano (`run.ps1`, `dispatch.ps1`), e a retomada no run é sempre instância nova com o cartão.
+  - **G19** nega `SendMessage` com run ativo, inclusive ao Haiku.
+  - **G22 (nova)** nega à sessão `Start-Sleep` e comando em segundo plano durante o run.
+  - O toque de cache saiu.
+- **G21 (nova, `hooks/prompt-submit.ps1`, `UserPromptSubmit`):** avisa sem bloquear quando um ritual abre numa sessão que já rodou outro. Lê o transcript interativo e o do `claude -p`.
+- **Registro de decisões:** novo modelo `templates/run-log.md` (`sprints/<n>/run-log.md`, `fixes/B-<nnn>/run-log.md`), com o que não está no quadro nem no cartão.
+- **Comandos (`commands/sm.md`, `dev.md`):** sessão nova por ritual, primeiro plano em todo modo, `SendMessage` só fora do run.
+- **`hooks/COVERAGE.md`:** seção v3.52.
+- **Testes:** guardas 228 casos, conferências 161, 0 falhas.
+- **Pendente:** a regra de sessão nova no roteiro do `/ux prototype` (do UX). O driver do benchmark, no repositório do experimento, já roda cada passo em sessão nova para braços com plugin ≥ 3.52.
+
 ## v3.51.5 — 2026-10-23
 
 **Branch:** `fix/v3.51.5` a partir de `develop` · **Processo:** addendum v3.51.5 do changelog do processo (decisão do stakeholder)

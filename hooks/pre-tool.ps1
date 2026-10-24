@@ -103,6 +103,11 @@ function Test-G3([object]$ToolInput) {
 function Test-G19([object]$ToolInput) {
     if ($script:role) { return }                                   # só a sessão principal retoma agentes
     $to = [string]$ToolInput.to; if (-not $to) { return }
+    # v3.52 (R27/R29): no run (sprint ou fix) não há retomada por SendMessage, nem de Haiku — ele volta na hora e a sessão
+    # passava a sondar o disco (sunscape-P-r1: as esperas da sessão). Retomada = instância nova em primeiro plano com o cartão.
+    if ($null -ne (Get-Marker $script:projectDir '.active-run')) {
+        Deny 'G19' $to "retomada por SendMessage durante o run: o SendMessage volta na hora, o agente segue sozinho e a sessão ficaria sondando o disco. Abra uma instância NOVA, em primeiro plano, com o cartão de passagem (run.ps1 start -Task <ID> regera o cartão e o prompt do dev; GAP: run.ps1 done -Result gap) — sprint-run.md §Retomada."
+    }
     $u = Join-Path $script:projectDir '.team-project/usage.jsonl'
     if (-not (Test-Path -LiteralPath $u)) { return }
     $last = $null
@@ -600,6 +605,22 @@ function Test-CommandText([string]$Cmd, [int]$Depth = 0) {
 # saiu daqui: passa quando o destino se resolve (Test-NetWrites) e a G5/G8/G9 o conferiram.
 $script:g14Forbidden = '(?i)--no-verify|\bInvoke-Expression\b|\biex\b|-EncodedCommand|\bStart-Process\b|\[(System\.)?IO\.(File|Directory)\]::(Delete|Move|Copy|Replace|Create\w*)'
 
+# G22 (v3.52, note.md itens 3 e 7) — a sessão que orquestra não espera pagando: com run ativo (sprint ou fix), a sessão
+# principal não roda comando em segundo plano nem Start-Sleep. Medido no sunscape-P-r1: 48 esperas da sessão (US$ 3,68), cada
+# uma relendo ~300 mil tokens — sondando o delivery/ depois de retomar o dev por SendMessage, ou a saída de um aceite que ela
+# mesma rodou em segundo plano. Agente: em primeiro plano, a chamada bloqueia até a volta. Comando longo: operator (R28).
+function Test-G22([object]$ToolInput) {
+    if ($null -eq (Get-Marker $script:projectDir '.active-run')) { return }
+    $cmd = [string]$ToolInput.command
+    $short = if ($cmd.Length -gt 100) { $cmd.Substring(0, 100) + '…' } else { $cmd }
+    if ($ToolInput.run_in_background -eq $true) {
+        Deny 'G22' $short "comando em segundo plano pela sessão durante o run ($short): a sessão passaria a sondar a saída, e cada sondagem relê o contexto inteiro dela. Comando longo (aceite, lote, build, verificação) vai ao operator, em primeiro plano (R28); conferência curta, em primeiro plano."
+    }
+    if ($cmd -match '(?i)\bStart-Sleep\b|\bsleep\s+\d|\btimeout\s+/t\b') {
+        Deny 'G22' $short "espera da sessão durante o run ($short): cada espera relê o contexto inteiro da sessão. Agente: dispare em primeiro plano (a chamada volta quando ele termina) ou instância nova com o cartão de passagem — não retome por SendMessage para depois sondar o disco. Alvo: target.ps1 -Target <alvo> -Repair espera sozinho. Comando longo: operator (R28)."
+    }
+}
+
 function Test-G14([object]$ToolInput) {
     if ($null -eq (Get-Marker $script:projectDir '.active-run')) { return $false }
     if ($script:tool -match '^(Edit|Write)$') {
@@ -660,6 +681,7 @@ try {
     switch -Regex ($tool) {
         '^(PowerShell|Bash)$'   {
             if (Test-GuardEnabled $cfg 'G1') { Test-G1 $ti }   # G1 vale sem guards.json (D5)
+            if (-not $script:role -and $script:teamProject -and (Test-GuardEnabled $cfg 'G22')) { Test-G22 $ti }   # só a sessão principal
             if ($phase2) {
                 $base = if ($script:hookInput.cwd) { [string]$script:hookInput.cwd } else { $script:projectDir }
                 foreach ($t in (Get-WriteTargets ([string]$ti.command))) {
