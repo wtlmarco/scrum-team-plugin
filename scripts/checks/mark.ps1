@@ -6,6 +6,7 @@
 #   -To: todo (⬜) · plan (🟦) · build (🟨) · qa (🟪) · blocked (🔴), ou o próprio emoji.
 #   -By: a coluna "Por quem" do Registro (padrão: o papel que assume — plan e build → dev, qa → QA, todo e blocked → SM);
 #        v3.51.4 (garden item 15): vai também ao Evento da Série ("T-041 🟦 → 🟨 · dev"), para ler quem produziu o ponto.
+#        v3.52.1: e a última rodada medida da Task (usage.jsonl): "T-041 🟦 → 🟨 · dev ← architect a1b2c3d4 14:05".
 # Saída: uma linha. Exit 0 · 2 = erro de uso ou de leitura (nada é gravado).
 param(
     [Parameter(Mandatory = $true)][string]$Task,
@@ -47,6 +48,24 @@ try {
     foreach ($p in $boardPath, $bdPath) { if (-not (Test-Path -LiteralPath $p)) { [Console]::Error.WriteLine("mark: $p não existe."); exit 2 } }
     $idPat = Get-IdPattern $Task
     $now = Get-Date -Format 'yyyy-MM-dd HH:mm'
+    # v3.52.1 (garden item 15): a transição aponta a última rodada de agente medida para esta Task (papel · agente · hora do
+    # fim), lida do usage.jsonl que a G16 grava — o stakeholder não cruza mais o Registro com as Rodadas do kanban.md.
+    $roundRef = ''
+    $usagePath = Join-Path $tp 'usage.jsonl'
+    if (Test-Path -LiteralPath $usagePath) {
+        $lastRow = $null
+        foreach ($ul in [System.IO.File]::ReadLines($usagePath)) {
+            if ($ul.IndexOf($Task) -lt 0) { continue }
+            try { $uo = $ul | ConvertFrom-Json } catch { continue }
+            $uw = @($uo.work) + @($uo.works) | Where-Object { $_ }
+            if ($uw -contains $Task -and $uo.agent_id) { $lastRow = $uo }
+        }
+        if ($lastRow) {
+            $hh = ''; try { $hh = ([datetime]::Parse([string]$lastRow.ts)).ToString('HH:mm') } catch { }
+            $aid = [string]$lastRow.agent_id; if ($aid.Length -gt 8) { $aid = $aid.Substring(0, 8) }
+            $roundRef = "$([string]$lastRow.role) $aid$(if ($hh) { " $hh" })"
+        }
+    }
 
     # v3.51.4 (garden item 23): a leitura e a gravação do quadro e do kanban.md sob a trava do kanban.md — o kanban.ps1 da
     # G16 regravava o arquivo no meio e a linha da Série desta transição sumia.
@@ -77,7 +96,7 @@ try {
     $last = Split-Row $lines[$se]; $first = if ($sTable.Rows.Count) { $sTable.Rows[0] } else { $last }
     $d0 = Get-FirstDate (Get-Cell $first (Find-Col $sTable 'Data'))
     $day = if ($d0) { [int]((Get-Date).Date - $d0).TotalDays } else { Clean-Cell (Get-Cell $last 0) }
-    $cells = @("$day", $now, "$Task $from → $target · $By",(Clean-Cell (Get-Cell $last (Find-Col $sTable 'Est. restante'))), (Clean-Cell (Get-Cell $last (Find-Col $sTable 'Tasks restantes'))))
+    $cells = @("$day", $now, "$Task $from → $target · $By$(if ($roundRef) { " ← $roundRef" })",(Clean-Cell (Get-Cell $last (Find-Col $sTable 'Est. restante'))), (Clean-Cell (Get-Cell $last (Find-Col $sTable 'Tasks restantes'))))
     foreach ($mk in @($todo, $E.Plan, $E.Build, $E.QA, $E.Done, $red)) {
         $ci = Find-Col $sTable $mk
         if ($ci -lt 0) { continue }
@@ -88,7 +107,7 @@ try {
     $lines.Insert($se + 1, '| ' + ($cells -join ' | ') + ' |')
 
     # 3 · Registro de transições: no burndown; quadro anterior à v3.44.1 o tem no sprint-backlog.md
-    $regRow = "| $Task | $from → $target | $now | $By · sessão (``mark.ps1``) |"
+    $regRow = "| $Task | $from → $target | $now | $By · sessão (``mark.ps1``)$(if ($roundRef) { " · após a rodada $roundRef" }) |"
     $where = Split-Path $bdPath -Leaf
     $re = Get-TableEnd $lines '^##\s+Registro de transi'
     if ($re -ge 0) { $lines.Insert($re + 1, $regRow) }
