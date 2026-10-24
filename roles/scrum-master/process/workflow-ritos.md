@@ -4,6 +4,8 @@
 
 ## 5a. Ritual de onboarding do projeto (R14)
 
+**Abertura em sessão limpa (R29 · v3.52) — leitura fixa, nada além dela:** `.team-project/README.md` §1 a §5 e §7 · `.team-project/scrum-master/context.md` · o inventário das fontes que o próprio `README.md` §4 já lista (artefato da etapa anterior: o `/team init`). Não há `run.ps1 next` aqui. **Fecho:** o onboarding grava em disco tudo o que decidiu (registro, `README.md`, quadro) e termina dizendo o próximo passo **em sessão nova (`/clear` e o comando)** — `/sm brainstorm <ideia>` se a documentação funcional faltou, `/sm sdd` se há `/po analyze`, `/sm sprint prepare` se há Histórias.
+
 Acontece **uma vez**, quando o time recebe um projeto novo ou retoma um abandonado, antes da primeira Planning Meeting. O SM coordena; os seis papéis participam. **A documentação existente do projeto é a primeira fonte — o stakeholder é consultado só sobre o que ela não responde.**
 
 | # | Passo | Quem | O que produz |
@@ -40,7 +42,9 @@ Acontece **uma vez**, quando o time recebe um projeto novo ou retoma um abandona
 
 Acionado quando o stakeholder traz uma ideia — um desejo dele — para a qual **não há cobertura** em visão geral / requisitos / fluxos: produto greenfield ou área de capacidade genuinamente nova. Ideia em área já documentada vai por `/po analyze`, não por aqui. O SM **facilita** (abre a sessão, mantém as fases, registra convergência/divergência, declara o fechamento) e **não decide conteúdo funcional**.
 
-**Comando: `/sm brainstorm <ideia>`** (v3.34; antes `/team brainstorm`, **sem alias** — coerente com a remoção de `cycle|plan|build|qa`). É **descoberta, fora da cadência do sprint** (`prepare → plan → run → review → close`). Como `prepare` e `run`, é **orquestrado pela sessão**: ela dispara PO e UX em paralelo na fase 1 e o Arquiteto em rodadas na fase 2, e aciona o Agent `scrum-master` só para facilitar (manter as fases, consolidar o brief, registrar o delta, declarar o fechamento). Não escreve em disco durante as fases.
+**Comando: `/sm brainstorm <ideia>`** (v3.34; antes `/team brainstorm`, **sem alias** — coerente com a remoção de `cycle|plan|build|qa`). É **descoberta, fora da cadência do sprint** (`prepare → plan → run → review → close`). Como `prepare` e `run`, é **orquestrado pela sessão**: ela dispara PO e UX em paralelo na fase 1 e o Arquiteto em rodadas na fase 2, e aciona o Agent `scrum-master` só para facilitar (manter as fases, consolidar o brief, registrar o delta, declarar o fechamento). Não escreve em disco durante as fases; **a única escrita é a do fechamento** (abaixo, "Transição para o SDD").
+
+**Abertura em sessão limpa (R29 · v3.52) — leitura fixa:** `.team-project/README.md` §1 a §5 e §7 · `.team-project/scrum-master/context.md` (inclui §"SDD em elaboração", se houver brief anterior) · o registro do onboarding (artefato da etapa anterior). Sem `run.ps1 next`.
 
 ### Fase 1 — Formação funcional · participantes: stakeholder + PO + UX
 
@@ -67,6 +71,8 @@ Objetivo: um **entendimento funcional base** — o problema do usuário, quem s�
 ### Transição para o SDD — agora é o `/sm sdd` (§5h)
 No fechamento, o SM registra o fechamento do brainstorm e o **próximo passo é `/sm sdd`**, que conduz a transição inteira — SDD funcional, protótipo, portão ①, SDD técnico da primeira fatia, portão ②, Histórias — **na ordem dos portões ① e ② de §8**, sem escrever os sete documentos de uma vez. O roteiro (entradas, etapas, quem é despachado, formulários, retomada, o que não faz) é a **§5h**, em [`workflow-sdd.md`](workflow-sdd.md) — que substitui a antiga tabela desta seção e a sequência manual `/po requirement` → `/ux prototype` → `/arc` → `/po story`. Ideia em **área já documentada** também usa o `sdd`, depois do `/po analyze` (caso B).
 
-O brief de brainstorm **não** é entregável permanente: é absorvido por `00-overview` / `01-requirements` e pelo registro de processo. **Único lugar declarado onde ele vive até o SDD sair: `.team-project/scrum-master/context.md` §"SDD em elaboração"** (até 15 linhas, aberto pelo `/sm sdd` — §5h); não vira outro arquivo.
+O brief de brainstorm **não** é entregável permanente: é absorvido por `00-overview` / `01-requirements` e pelo registro de processo. **Único lugar declarado onde ele vive até o SDD sair: `.team-project/scrum-master/context.md` §"SDD em elaboração"** (até 15 linhas); não vira outro arquivo.
 
-**Como o SM verifica:** a saída do brainstorm mostra as duas fases com os participantes declarados — fase 1 sem o Arquiteto, fase 2 com ele; cada rodada de fase 2 tem delta registrado ou "sem mudança — ponto fixo"; o critério de convergência está cumprido antes do `/sm sdd`; o brief não virou arquivo fora de `context.md` §"SDD em elaboração". **A verificação dos portões ① e ② e das Histórias mora em [`workflow-sdd.md`](workflow-sdd.md) §5h** (nenhum `03`/`04`/`05` antes do ①, nenhuma História antes do ②).
+**Fechamento (v3.52 — exceção do "não escreve em disco").** Cumprido o critério de convergência, o SM grava **na hora**, nessa seção, o **brief de até 15 linhas** com a **fronteira de escopo** (o que entra na primeira fatia, o que fica adiado), a **confirmação do stakeholder** (data) e o tema; a seção nasce aqui (caso A) e o `/sm sdd` a **retoma** em vez de abri-la do zero (§5h). É o que permite o `sdd` correr em sessão nova (R29): o que só foi dito na conversa não existe para ele. **Fecho do ritual:** termina dizendo o próximo passo **em sessão nova (`/clear` e `/sm sdd`)**.
+
+**Como o SM verifica:** a saída do brainstorm mostra as duas fases com os participantes declarados — fase 1 sem o Arquiteto, fase 2 com ele; cada rodada de fase 2 tem delta registrado ou "sem mudança — ponto fixo"; o critério de convergência está cumprido antes do `/sm sdd`; o brief (≤ 15 linhas, com fronteira de escopo e confirmação datada) está gravado em `context.md` §"SDD em elaboração" ao fechar e não virou arquivo fora dela. **A verificação dos portões ① e ② e das Histórias mora em [`workflow-sdd.md`](workflow-sdd.md) §5h** (nenhum `03`/`04`/`05` antes do ①, nenhuma História antes do ②).

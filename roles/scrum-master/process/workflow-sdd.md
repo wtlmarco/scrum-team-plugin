@@ -6,6 +6,8 @@
 
 Cadência completa: `brainstorm → sdd → sprint prepare → plan → run → review → close`. O `sdd` **substitui a sequência manual** (`/po requirement` → `/ux prototype` → ① → `/arc` → ② → `/po story`): uma invocação conduz a transição inteira, e **os formulários dos portões ① e ② são disparados por ela mesma** — não por "a sessão que orquestrou o comando anterior".
 
+**Abertura em sessão limpa (R29 · v3.52) — leitura fixa, nada além dela:** `.team-project/README.md` §1 a §5 e §7 · `.team-project/scrum-master/context.md` §"SDD em elaboração" (o brief gravado pelo brainstorm ao fechar, ou o estado das etapas numa retomada) · o artefato da etapa anterior (caso A: o brief; caso B: a decisão do `/po analyze`). Sem `run.ps1 next`. **Fecho:** termina dizendo o próximo passo **em sessão nova (`/clear` e `/sm sprint prepare`)**; parado no meio (① ou ② pendente), diz também **em sessão nova** `/sm sdd`, que retoma pelo estado em disco.
+
 **Quem executa.** A **sessão** orquestra: dispara PO, UX e Arquiteto diretamente e só aciona o Agent `scrum-master` para registrar o estado (`context.md`). O SM **não escreve conteúdo** de nenhum documento do SDD.
 
 ### Alcance — dois casos, mesmo modo
@@ -19,7 +21,7 @@ Ambos exigem **onboarding concluído** (R14). Sem A nem B, **pare e reporte** �
 
 ### Estado e retomada — `.team-project/scrum-master/context.md` §"SDD em elaboração"
 
-O brief do brainstorm é conversa (R15); **para o `sdd` poder ser retomado em outra sessão**, o SM registra ali, na abertura: tema · caso (A/B) · origem (brainstorm fechado em <data> / `/po analyze` <ponteiro>) · o **brief funcional em até 15 linhas** (é o único lugar declarado onde ele vive — R15) · e uma linha por etapa (1–5) com estado (⬜ · 🟨 · ✅ · dispensada) e data. **Retomada:** o `sdd` entra na **primeira etapa não concluída**; parou no ① (protótipo pronto, decisão pendente), retoma **no ①** — reabre a navegação e o formulário, não refaz o protótipo. Etapa ✅ **nunca é reescrita**; se um documento aprovado mudou depois (ex.: `03` alterado depois do ②), o portão afetado **reabre**.
+O brief do brainstorm é conversa (R15); **para o `sdd` poder ser retomado em outra sessão**, o SM registra ali — no caso A o brainstorm já gravou o brief e a fronteira ao **fechar** (v3.52), e o `sdd` os confere e completa; no caso B o `sdd` abre a seção na abertura —: tema · caso (A/B) · origem (brainstorm fechado em <data> / `/po analyze` <ponteiro>) · o **brief funcional em até 15 linhas** (é o único lugar declarado onde ele vive — R15) · e uma linha por etapa (1–5) com estado (⬜ · 🟨 · ✅ · dispensada) e data. **Retomada:** o `sdd` entra na **primeira etapa não concluída**; parou no ① (protótipo pronto, decisão pendente), retoma **no ①** — reabre a navegação e o formulário, não refaz o protótipo. Etapa ✅ **nunca é reescrita**; se um documento aprovado mudou depois (ex.: `03` alterado depois do ②), o portão afetado **reabre**.
 
 ### Etapas, quem é despachado
 
