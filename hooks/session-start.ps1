@@ -1,4 +1,5 @@
 ﻿# SessionStart — G13: autoteste de uma linha (estado do guards.json, guardas ativas e desativadas). Nunca bloqueia.
+# v3.52.2 (note.md item 3): startup/resume move o .active-agents para .interrupted e avisa a RETOMADA do run.
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
@@ -8,7 +9,36 @@ try {
     $projectDir = Get-ProjectDir $hookInput
     if (-not (Test-Path -LiteralPath (Join-Path $projectDir '.team-project'))) { exit 0 }   # projeto sem o time: silêncio
     $cfg = Get-GuardConfig $projectDir
-    if (-not (Test-GuardEnabled $cfg 'G13')) { exit 0 }
+
+    # v3.52.2 (note.md item 3, C2): processo novo (source startup ou resume) — todo subagente da sessão anterior morreu com o
+    # processo dela. O registro do .active-agents vai a .team-project/.interrupted (lido e apagado pelo run.ps1 next) e sai do
+    # .active-agents; com run ativo, a sessão recebe a RETOMADA. clear/compact: o processo é o mesmo, nada muda. Não é a G13.
+    $resume = ''
+    $src = if ($hookInput) { [string]$hookInput.source } else { '' }
+    if ($src -in @('startup', 'resume')) {
+        $ags = @(Get-ActiveAgents $projectDir)
+        if ($ags.Count) {
+            $ip = Join-Path $projectDir '.team-project/.interrupted'
+            $prev = @()
+            if (Test-Path -LiteralPath $ip) { try { $prev = @((Get-Content -LiteralPath $ip -Raw -Encoding UTF8 | ConvertFrom-Json) | ForEach-Object { $_ }) } catch { $prev = @() } }
+            $recs = @($ags | ForEach-Object { [pscustomobject][ordered]@{ type = [string]$_.type; work = [string]$_.work; parent = [string]$_.parent; desde = [string]$_.desde; last = [string]$_.last; at = [string]$_.at; session = [string]$_.session } })
+            [System.IO.File]::WriteAllText($ip, (ConvertTo-Json -InputObject @($prev + $recs) -Depth 3 -Compress), (New-Object System.Text.UTF8Encoding($false)))
+            Set-ActiveAgents $projectDir @()                      # apaga o .active-agents e regrava o "## Agora"
+            $run0 = Get-Marker $projectDir '.active-run'
+            if ($null -ne $run0 -and [string]$run0.trilha -in @('sprint', 'fix')) {
+                $cmd0 = if ([string]$run0.trilha -eq 'sprint') { '/sm sprint run' } else { '/sm fix run' }
+                # Uma frase por item: o agente com a ação mais recente dele (o que de fato trabalhava — o filho, não o executor).
+                foreach ($g in @($recs | Group-Object { if ($_.work) { $_.work } else { $_.type } })) {
+                    $a = @($g.Group | Sort-Object { [string]$_.at } -Descending)[0]
+                    $at = [string]$(if ($a.at) { $a.at } else { $a.desde }); if ($at.Length -gt 16) { $at = $at.Substring(0, 16) }
+                    $last = [string]$a.last; if (-not $last) { $last = 'disparado' }
+                    $resume += " RETOMADA: a sessão anterior caiu com $(if ($a.work) { $a.work } else { '(sem item)' }) em andamento ($(([string]$a.type) -replace '^.*:', ''), última ação $last às $at)."
+                }
+                $resume += " Rode $cmd0 — o run.ps1 next diz de onde retomar."
+            }
+        }
+    }
+    if (-not (Test-GuardEnabled $cfg 'G13')) { if ($resume) { [Console]::Out.Write($resume.Trim()) }; exit 0 }
 
     $all = 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G11', 'G14', 'G15', 'G16', 'G17', 'G18', 'G19', 'G20', 'G21', 'G22'
     $on= @($all | Where-Object { Test-GuardEnabled $cfg $_ })
@@ -31,7 +61,7 @@ try {
     $run = Get-Marker $projectDir '.active-run'
     if ($null -ne $run -and [string]$run.trilha -in @('sprint', 'fix')) {
         $cmd = if ([string]$run.trilha -eq 'sprint') { '/sm sprint run' } else { '/sm fix run' }
-        $line += " Retomada: o $([string]$run.trilha) run $([string]$run.id) estava em andamento (desde $([string]$run.desde)). Retome agora, sem esperar o stakeholder: $cmd — a fila continua pelo marcador do quadro e pelo run.ps1 next (sprint-run.md §Ordem da fila e retomada); agentes em primeiro plano, retomada por instância nova com o cartão. Só apague o .active-run se o run terminou ou o stakeholder mandou parar."
+        $line += " Retomada: o $([string]$run.trilha) run $([string]$run.id) estava em andamento (desde $([string]$run.desde)). Retome agora, sem esperar o stakeholder: $cmd — a fila continua pelo marcador do quadro e pelo run.ps1 next (sprint-run.md §Ordem da fila e retomada); agente: dispare e encerre o turno — o aviso reabre a sessão; retomada por instância nova com o cartão. Só apague o .active-run se o run terminou ou o stakeholder mandou parar."
     } elseif (Test-Path -LiteralPath $runPath) {
         $line += " Atenção: .team-project/.active-run existe mas está ilegível — se nada está em andamento, retome com o comando do run ou apague o arquivo."
     }
@@ -49,7 +79,7 @@ try {
             $line += " Ambiente: o caminho do perfil do Windows ($prof) tem acento. Medido: os testes do Gradle falham sem aviso (ClassNotFoundException do GradleWorkerMain) — se o projeto usa Gradle, crie uma junção ASCII (cmd /c mklink /J C:\gradle-home `"$prof\.gradle`") e ponha `"env`": { `"GRADLE_USER_HOME`": `"C:\\gradle-home`" } em guards.json → verify (how-to.md §Ambiente). A conferir, se aparecer erro estranho de cache: NuGet (NUGET_PACKAGES) e npm (npm_config_cache)."
         }
     }
-    [Console]::Out.Write($line)
+    [Console]::Out.Write($line + $resume)
     exit 0
 } catch {
     exit 1

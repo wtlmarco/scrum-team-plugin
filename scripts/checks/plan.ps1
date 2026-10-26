@@ -3,7 +3,9 @@
 # Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/plan.ps1" -Plan <caminho do plano> [-Root <projeto>]
 # Regras: implementation-plan.md "Regras do formato" 2 (blocos), 15 (lista legível, teste por arquivo), 16 (protegidos),
 # 17 (trecho literal ≤ 15 linhas ou validado), 18 (mutações), a variante leve e, desde a v3.51, 21 (render só com layout
-# novo), 22 (tamanho: aviso acima de 12 KB, falha acima de 20 KB), 23 (cenários citados existem nos .scn do QA) e 24 (risco).
+# novo), 22 (tamanho: aviso acima de 12 KB, falha acima de 20 KB), 23 (cenários citados existem nos .scn do QA) e 24 (risco);
+# desde a v3.52.2, 26 (linhas "- Contagem:" recontadas e premissas "- P<k> ·" medidas ou com quem verifica) e 27 (layout
+# novo com a linha **Documentos vivos:**; documento de desenho fora de **Arquivos tocados:** — o Arquiteto o consolida).
 # Saída: tabela regra · resultado · linha decisiva. Exit 1 se alguma falhou · 2 = erro de uso.
 
 param(
@@ -104,25 +106,29 @@ try {
     }
 
     # ---------- 18 · mutações da prova de falha ----------
-    $muts = @([regex]::Matches($text, '(?m)^\s*-\s*(M\d+)\s*·.*?`([^`]+)`.*?`([^`]+)`.*?`([^`]*)`\s*→\s*`([^`]*)`'))
+    # v3.52.2 (note.md item 7): o mesmo leitor do verify.ps1 (Get-Mutations, lib.ps1) — antes o plano contava toda linha
+    # "- M<k> ·" do arquivo e o verify parava o bloco na primeira linha em branco; uma mutação passava aqui e nunca rodava lá.
+    $muts = @(Get-Mutations $text)
     $hasMutBlock = $text -match '(?m)^\*\*Muta[çc][õo]es:\*\*'
     $noProof = $text -match '(?m)sem prova:\s*\S'
+    $stray = @([regex]::Matches($text, '(?m)^\s*-\s*(M\d+)\s*·') | ForEach-Object { $_.Groups[1].Value } | Where-Object { @($muts | ForEach-Object { $_.Id }) -notcontains $_ })
     if ($muts.Count) {
         $iss = @()
+        if ($stray.Count) { $iss += "linha(s) $($stray -join ', ') fora do bloco **Mutações:** ou fora do formato — o verify.ps1 não as roda" }
         foreach ($m in $muts) {
-            $t = ($m.Groups[2].Value.Trim() -replace '\\', '/'); $f = ($m.Groups[3].Value.Trim() -replace '\\', '/')
-            if ($files -and $files -notcontains $f) { $iss += "$($m.Groups[1].Value): $f fora de **Arquivos tocados:**" }
-            if ($files -and $files -notcontains $t) { $iss += "$($m.Groups[1].Value): teste $t fora de **Arquivos tocados:**" }
-            if ($m.Groups[4].Value -eq $m.Groups[5].Value) { $iss += "$($m.Groups[1].Value): trecho e mutante iguais" }
-            if ($m.Groups[4].Value -eq '') { $iss += "$($m.Groups[1].Value): trecho vazio (crase dupla ou trecho com crase — escolha um trecho sem crase)" }
+            $t = ($m.Test -replace '\\', '/'); $f = ($m.File -replace '\\', '/')
+            if ($files -and $files -notcontains $f) { $iss += "$($m.Id): $f fora de **Arquivos tocados:**" }
+            if ($files -and $files -notcontains $t) { $iss += "$($m.Id): teste $t fora de **Arquivos tocados:**" }
+            if ($m.Find -eq $m.Replace) { $iss += "$($m.Id): trecho e mutante iguais" }
+            if ($m.Find -eq '') { $iss += "$($m.Id): trecho vazio (crase dupla ou trecho com crase — escolha um trecho sem crase)" }
             # v3.51.4 (garden item 27): o arquivo de produção já existe → o trecho tem de aparecer no máximo uma vez nele (a
             # mutação troca a ÚNICA ocorrência; duplicado vira inconclusivo depois de ~10 min de construção). Arquivo novo
             # ou trecho que a Task vai escrever: confere-se depois da construção, com verify.ps1 -Mode mutation -Precheck.
             $pf = Join-Path $Root $f
-            if ($m.Groups[4].Value -ne '' -and (Test-Path -LiteralPath $pf -PathType Leaf)) {
-                $src = Read-Text $pf; $hits = 0; $ix = $src.IndexOf($m.Groups[4].Value, [StringComparison]::Ordinal)
-                while ($ix -ge 0) { $hits++; $ix = $src.IndexOf($m.Groups[4].Value, $ix + [Math]::Max(1, $m.Groups[4].Value.Length), [StringComparison]::Ordinal) }
-                if ($hits -gt 1) { $iss += "$($m.Groups[1].Value): o trecho aparece $hits vezes em $f (a mutação precisa de uma ocorrência só — alongue o trecho)" }
+            if ($m.Find -ne '' -and (Test-Path -LiteralPath $pf -PathType Leaf)) {
+                $src = Read-Text $pf; $hits = 0; $ix = $src.IndexOf($m.Find, [StringComparison]::Ordinal)
+                while ($ix -ge 0) { $hits++; $ix = $src.IndexOf($m.Find, $ix + [Math]::Max(1, $m.Find.Length), [StringComparison]::Ordinal) }
+                if ($hits -gt 1) { $iss += "$($m.Id): o trecho aparece $hits vezes em $f (a mutação precisa de uma ocorrência só — alongue o trecho)" }
             }
         }
         if ($iss.Count) { Add-Result 'mutação' 'falhou' ($iss -join '; ') } else { Add-Result 'mutação' 'ok' "$($muts.Count) mutação(ões) declaradas" }
@@ -192,9 +198,58 @@ try {
         if (-not $s3 -or $s3 -notmatch '(?i)headless') { $iss += '§3 sem o navegador headless medido (R26)' }
         elseif ($s3 -match '(?im)headless.*\|\s*\*\*n[ãa]o\b') { $iss += 'navegador headless ausente — 🔺 GAP, a Task não entra em construção' }
         $rt = @([regex]::Matches($text, '(?ms)^\*\*Render real\*\*.*?(?=^\*\*Cobertura|^##\s|\z)') | ForEach-Object { [regex]::Matches($_.Value, '(?m)^\|\s*`([^`]+)`') } | ForEach-Object { ($_.Groups[1].Value -replace '\\', '/') })
-        if ($rt.Count -and -not @($muts | Where-Object { $rt -contains ($_.Groups[2].Value.Trim() -replace '\\', '/') }).Count) { $iss += 'nenhuma mutação com o teste de render (regra 21: o mutante tem de quebrar a medição)' }
+        if ($rt.Count -and -not @($muts | Where-Object { $rt -contains ($_.Test -replace '\\', '/') }).Count) { $iss += 'nenhuma mutação com o teste de render (regra 21: o mutante tem de quebrar a medição)' }
         if ($iss.Count) { Add-Result 'render' 'falhou' ($iss -join '; ') } else { Add-Result 'render' 'ok' "$($rt.Count) teste(s) de render com mutação sobre a medição" }
     }
+
+    # ---------- 26 · o plano prova o que afirma (v3.52.2, note.md item 5): contagem recontada e premissa medida ----------
+    # Contagem: "- Contagem: `<regex>` em `<glob>[;<glob>]` → <n>" em qualquer lugar do plano. Reconta as linhas que casam a
+    # regex (diferencia maiúsculas) nos arquivos versionados que casam o glob (git ls-files; sem git, o disco).
+    $cnt = @([regex]::Matches($text, '(?m)^\s*-\s*Contagem:\s*`([^`]+)`\s*em\s*`([^`]+)`\s*→\s*(\d+)'))
+    $cntBad = @([regex]::Matches($text, '(?m)^\s*-\s*Contagem:.*$') | Where-Object { $_.Value -notmatch '^\s*-\s*Contagem:\s*`[^`]+`\s*em\s*`[^`]+`\s*→\s*\d+' } | ForEach-Object { $_.Value.Trim() })
+    if (-not $cnt.Count -and -not $cntBad.Count) { Add-Result 'contagem' 'n-a' 'nenhuma linha "- Contagem:" no plano' }
+    else {
+        $iss = @(); foreach ($b in $cntBad) { $iss += "fora do formato '- Contagem: ``<regex>`` em ``<glob>`` → <n>': $b" }
+        $ErrorActionPreference = 'Continue'
+        $tracked = @(& git -C $Root ls-files 2>$null); $isGit = ($LASTEXITCODE -eq 0)
+        $ErrorActionPreference = 'Stop'
+        if (-not $isGit) { $base = (Get-Item -LiteralPath $Root).FullName.TrimEnd('\', '/'); $tracked = @(Get-ChildItem -LiteralPath $base -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName.Substring($base.Length + 1) -replace '\\', '/' } | Where-Object { $_ -notmatch '^(\.git|\.team-project|node_modules)/' }) }
+        $okN = 0
+        foreach ($c in $cnt) {
+            $re = $c.Groups[1].Value; $globs = @($c.Groups[2].Value -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ }); $want = [int]$c.Groups[3].Value
+            try { $rx = New-Object System.Text.RegularExpressions.Regex($re) } catch { $iss += "regex inválida ``$re``"; continue }
+            $got = 0
+            foreach ($f in @($tracked | Where-Object { Test-GlobMatch (Normalize-PathText $_) $globs })) {
+                $fp = Join-Path $Root $f; if (-not (Test-Path -LiteralPath $fp -PathType Leaf)) { continue }
+                foreach ($ln in [System.IO.File]::ReadAllLines($fp)) { if ($rx.IsMatch($ln)) { $got++ } }
+            }
+            if ($got -ne $want) { $iss += "``$re`` em ``$($globs -join ';')``: o plano diz $want, a recontagem dá $got" } else { $okN++ }
+        }
+        if ($iss.Count) { Add-Result 'contagem' 'falhou' (($iss -join '; ') + ' (regra 26)') } else { Add-Result 'contagem' 'ok' "$okN contagem(ns) recontada(s) e iguais$(if (-not $isGit) { ' (sem git: arquivos do disco)' })" }
+    }
+    # Premissas: as linhas "- P<k> · …" do arquivo todo (o modelo as põe em ### Premissas, no fim da §6).
+    $pl = @([regex]::Matches($text, '(?m)^\s*-\s*P\d+\s*·.*$') | ForEach-Object { $_.Value.Trim() })
+    $pBad = @($pl | Where-Object { $_ -notmatch '·\s*medido:\s*\S.*→\s*\S' -and $_ -notmatch '·\s*n[ãa]o exercitada:\s*\S.*·\s*verifica:\s*\S' })
+    $loose = @(($text -split "`r?`n") | Where-Object { $_ -match '[Nn][ãa]o validad[oa]' -and $_ -notmatch '^\s*-\s*P\d+\s*·' } | ForEach-Object { $_.Trim() })
+    $measured = @($pl | Where-Object { $_ -match '·\s*medido:\s*\S.*→\s*\S' }).Count
+    $layNew = $text -match '(?m)^\*\*Layout novo:\*\*\s*sim\b'
+    $iss = @()
+    foreach ($b in $pBad) { $iss += "premissa sem 'medido: <comando> → <resultado>' nem 'não exercitada: <motivo> · verifica: <papel> em <passo>': $b" }
+    foreach ($b in $loose) { $iss += "'não validado' fora de linha P<k> (vira premissa não exercitada, com quem verifica): $(if ($b.Length -gt 100) { $b.Substring(0, 100) + '…' } else { $b })" }
+    if ($layNew -and -not $measured) { $iss += '**Layout novo:** sim sem nenhuma premissa medido:' }
+    if ($iss.Count) { Add-Result 'premissa' 'falhou' (($iss -join '; ') + ' (regra 26)') }
+    elseif (-not $pl.Count) { Add-Result 'premissa' 'n-a' 'nenhuma linha P<k> (### Premissas)' }
+    else { Add-Result 'premissa' 'ok' "$($pl.Count) premissa(s): $measured medida(s), $($pl.Count - $measured) não exercitada(s) com quem verifica" }
+    # 27 · mudança visível aponta o documento de desenho (v3.52.2, note.md item 13; decisão do stakeholder): o dev não edita o
+    # SDD — a linha **Documentos vivos:** diz o documento e a seção, e o Arquiteto consolida (A5). SDD na lista do dev reprova.
+    $sdd = @($files | Where-Object { $_ -match '(?i)(^|/)docs/sdd/|(^|/)sdd/' })
+    $dvm = [regex]::Match($text, '(?m)^\*\*Documentos vivos:\*\*[^`\r\n]*`([^`\r\n]+)`')
+    $iss = @()
+    if ($sdd.Count) { $iss += "documento de desenho em **Arquivos tocados:** ($($sdd -join ', ')): o dev não edita o SDD; vai em **Documentos vivos:**, o Arquiteto consolida" }
+    if ($layNew -and -not $dvm.Success) { $iss += '**Layout novo:** sim sem a linha **Documentos vivos:** `<documento>` §<seção> — <o que muda>' }
+    if ($iss.Count) { Add-Result 'desenho' 'falhou' (($iss -join '; ') + ' (regra 27)') }
+    elseif ($layNew) { Add-Result 'desenho' 'ok' "Documentos vivos: $($dvm.Groups[1].Value) (consolidado pelo Arquiteto)" }
+    else { Add-Result 'desenho' 'n-a' 'sem **Layout novo:** sim e sem documento de desenho na lista' }
 
     # ---------- variante leve ----------
     if ($light) {

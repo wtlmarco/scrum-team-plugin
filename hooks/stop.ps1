@@ -1,8 +1,9 @@
 ﻿# Stop — G20 (v3.51, proposta a das paradas do run): durante o sprint run, a sessão não encerra o turno com Task elegível
 # no quadro. Paradas legítimas (sprint-run.md §Ordem da fila): fim da fila → formulário da Review · bloqueio sem elegível
 # · pré-condição falha · interrupção do stakeholder — em todas a sessão apaga o .active-run antes. v3.52: ponto seguro
-# (.safe-point, Task recém-fechada) também libera, sem apagar o .active-run — a sessão curta por Task (R29). Esperar agente em
-# segundo plano também não é parada: a notificação reabre a sessão (.active-agents, gravado pela PreToolUse).
+# (.safe-point, Task recém-fechada) também libera, sem apagar o .active-run — a sessão curta por Task (R29). Esperar agente
+# também não é parada: a notificação reabre a sessão (.active-agents, gravado pela PreToolUse). v3.52.2 (note.md item 2): todo
+# agente é assíncrono — vale qualquer agente desta sessão, sem olhar "bg".
 # Medido no piloto: 4 paradas fora do contrato e ~24,5 h de fila parada. Exit 2 devolve o motivo à sessão, que continua.
 # Qualquer exceção → exit 1 (falha aberta, D5). Cobertura e limites: hooks/COVERAGE.md.
 
@@ -29,9 +30,12 @@ try {
         }
         if ($recent -ge 3) { Write-GuardLog $projectDir 'G20' $hookInput '' 'liberado após 3 bloqueios'; exit 0 }
     }
-    # Espera legítima por agente em SEGUNDO plano (menos de 3 h; mais velho é resto de queda). v3.51.4: o registro tem também
-    # os de primeiro plano (para o "## Agora" do kanban.md); esses não seguram o turno — registro antigo, sem "bg", vale como segundo plano.
-    $agents = @(Get-ActiveAgents $projectDir | Where-Object { $_.bg -ne $false } | Where-Object { try { ((Get-Date) - [datetime]::Parse([string]$_.desde)).TotalHours -lt 3 } catch { $false } })
+    # Espera legítima por agente em voo. v3.52.2 (note.md item 2): o Agent não tem mais run_in_background — toda chamada volta
+    # "lançado" e o aviso reabre a sessão; o filtro "bg" barrava a espera (195 G20 no sprint 3 do piloto). Vale QUALQUER agente
+    # disparado nesta sessão (session = session_id do hook; registro antigo sem session também) com sinal de vida há menos de
+    # 3 h (mais velho é resto de queda); agente de outra sessão não segura o turno.
+    $sid = [string]$hookInput.session_id
+    $agents = @(Get-ActiveAgents $projectDir | Where-Object { $s = if ($_.PSObject.Properties['session']) { [string]$_.session } else { '' }; -not $s -or -not $sid -or $s -eq $sid } | Where-Object { (Get-AgentIdleHours $_) -lt 3 })
     if ($agents.Count) { exit 0 }
     $tr = [string]$hookInput.transcript_path
     # v3.51.4 (note.md itens 2, 6 e 11): o turno acabou por limite de uso da conta (resposta sintética do harness) — não é
@@ -65,24 +69,26 @@ try {
     $done = [char]::ConvertFromUtf32(0x2705)
     $open = @([char]::ConvertFromUtf32(0x2B1C), [char]::ConvertFromUtf32(0x1F7E6), [char]::ConvertFromUtf32(0x1F7E8), [char]::ConvertFromUtf32(0x1F7EA))
     $rows = @(); $header = $null; $inTasks = $false
+    $idRe = 'Q-S\d+[a-z]?|[A-Z]+-\d+[a-z]?'   # v3.52.2 (C5): Q-S<n> antes — "[A-Z]+-\d+" não casa "Q-S3"
     foreach ($line in (Get-Content -LiteralPath $board -Encoding UTF8)) {
         # v3.51.4: só as tabelas sob "## História …" ou "## Habilitadora …" (mesma regra do Get-SprintTasks, garden item 20).
-        if ($line -match '^##\s') { $inTasks = $line -match '^##\s+(Hist[oó]ria\s+H-|(?i)habilitadora)'; $header = $null; continue }
+        # v3.52.2 (note.md item 15): e "## Correção do portão — sprint <n>", com IDs Q-S<n>[a-z]?.
+        if ($line -match '^##\s') { $inTasks = $line -match '^##\s+(Hist[oó]ria\s+H-|(?i)habilitadora|(?i)corre[çc][ãa]o do port[ãa]o)'; $header = $null; continue }
         if (-not $line.TrimStart().StartsWith('|')) { $header = $null; continue }
         if (-not $inTasks) { continue }
         $cells = @($line.Trim().Trim('|') -split '\|' | ForEach-Object { $_.Trim() })
         if ($cells[0] -eq 'ID') { $header = $cells; continue }
         if (-not $header -or $line -match '^\s*\|[\s:\-|]+\|\s*$') { continue }
-        $id = [regex]::Match($cells[0], '[A-Z]+-\d+[a-z]?').Value; if (-not $id) { continue }
+        $id = [regex]::Match($cells[0], $idRe).Value; if (-not $id) { continue }
         $di = [array]::IndexOf($header, ($header | Where-Object { $_ -like 'Depende*' } | Select-Object -First 1))
-        $rows += [pscustomobject]@{ Id = $id; Cell = $cells[0]; Deps = $(if ($di -ge 0 -and $di -lt $cells.Count) { @([regex]::Matches($cells[$di], '[A-Z]+-\d+[a-z]?') | ForEach-Object { $_.Value }) } else { @() }) }
+        $rows += [pscustomobject]@{ Id = $id; Cell = $cells[0]; Deps = $(if ($di -ge 0 -and $di -lt $cells.Count) { @([regex]::Matches($cells[$di], $idRe) | ForEach-Object { $_.Value }) } else { @() }) }
     }
     $closed = @($rows | Where-Object { $_.Cell.Contains($done) } | ForEach-Object { $_.Id })
     $eligible = @($rows | Where-Object { $c = $_.Cell; ($open | Where-Object { $c.Contains($_) }).Count -gt 0 -and @($_.Deps | Where-Object { $closed -notcontains $_ }).Count -eq 0 })
     if (-not $eligible.Count) { exit 0 }
     $t = $eligible[0]
     Write-GuardLog $projectDir 'G20' $hookInput $t.Id 'bloqueio: fim de turno com Task elegível'
-    [Console]::Error.WriteLine("[G20] O sprint run está em andamento (.active-run, sprint $([string]$run.id)) e a Task $($t.Id) está elegível. Encerrar o turno aqui não é parada legítima (sprint-run.md §Ordem da fila): siga — rode run.ps1 next e faça a PRÓXIMA AÇÃO que ele imprimir (dev de volta: run.ps1 done -Task <ID> -Result ok|gap|env). Só encerre por (a) fim da fila → formulário de autorização da Review, (b) Task marcada 🔴 sem elegível restante → formulário de R22, (c) pré-condição falha, (d) interrupção do stakeholder, (e) pausa pedida pelo stakeholder entre Tasks (sprint-run.md §Pausa segura) — nesses casos apague o .active-run antes; (f) ponto seguro: o run.ps1 done que fecha a Task grava .team-project/.safe-point e libera o fim de turno sem apagar o .active-run. Esperando agente em segundo plano? A notificação reabre a sessão.")
+    [Console]::Error.WriteLine("[G20] O sprint run está em andamento (.active-run, sprint $([string]$run.id)) e a Task $($t.Id) está elegível. Encerrar o turno aqui não é parada legítima (sprint-run.md §Ordem da fila): siga — rode run.ps1 next e faça a PRÓXIMA AÇÃO que ele imprimir (dev de volta: run.ps1 done -Task <ID> -Result ok|gap|env). Só encerre por (a) fim da fila → formulário de autorização da Review, (b) Task marcada 🔴 sem elegível restante → formulário de R22, (c) pré-condição falha, (d) interrupção do stakeholder, (e) pausa pedida pelo stakeholder entre Tasks (sprint-run.md §Pausa segura) — nesses casos apague o .active-run antes; (f) ponto seguro: o run.ps1 done que fecha a Task grava .team-project/.safe-point e libera o fim de turno sem apagar o .active-run. Para esperar um agente: dispare e encerre o turno; o aviso reabre a sessão.")
     exit 2
 } catch {
     exit 1

@@ -54,6 +54,16 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 
 ---
 
+## Correção do portão — sprint <n>
+
+> *Só existe se o portão do QA deu ⚠️/❌ sem a decisão do PO* (v3.52.2 · [`../process/sprint-run.md`](../process/sprint-run.md) §Validação do sprint). **A sessão grava a linha** quando o `run.ps1 next` manda abrir a correção; o plano é do Arquiteto e o executor de Task a constrói. O ✅ das Tasks originais **não muda** (R25).
+
+| ID | Task | Est. | Trilha | Dono | Depende de | Plano | Evidência | Cenários | Critério de pronto |
+|---|---|---|---|---|---|---|---|---|---|
+| ⬜ Q-S<n> | <os achados "Volta para: dev" do `validation.md`, em uma linha> | <n> | plena | dev | <IDs ou —> | [`plan/Q-S<n>-<slug>.md`](plan/) | [`delivery/Q-S<n>.md`](delivery/) | <os cenários do sprint que o achado reprovou> | <veredito do QA na rodada seguinte do `validation.md`> |
+
+---
+
 > **Controle das Tasks** — Entradas fora da Planning, Bloqueios e riscos abertos, Decisões pendentes do stakeholder — vive no [`kanban.md`](kanban.md) da mesma pasta, embaixo do Burndown (v3.51, G1). Este quadro fica só com as Histórias e as Tasks.
 
 ---
@@ -66,7 +76,8 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 
 - **ID** — segue a convenção do projeto (`.team-project/scrum-master/context.md`): `T-nnn` para Task, `H-nnn` para História; Task nascida de GAP reusa o ID do GAP; quebra usa sufixo (`T-012a`).
 - **Toda Task fica sob a História a que pertence.** Task sem História é violação de R20 e não entra no quadro. **Task habilitadora** (scaffold, ambiente, base comum): fica sob a primeira História que depende dela; as das outras Histórias a citam em "Depende de". Não há seção `## Habilitadora` (decisão do stakeholder, 23/10/2026).
-- **Tabelas auxiliares** (rastreabilidade Task ↔ História, trilha por Task) podem vir depois da última História, sob um título `## ` próprio: os scripts (`run.ps1`, `kanban.ps1`, `close.ps1`, G20) leem como Task só as linhas das tabelas sob `## História H-…` (v3.51.4 — antes elas viravam Tasks-fantasma da última História).
+- **Tabelas auxiliares** (rastreabilidade Task ↔ História, trilha por Task) podem vir depois da última História, sob um título `## ` próprio: os scripts (`run.ps1`, `kanban.ps1`, `close.ps1`, G20) leem como Task só as linhas das tabelas sob `## História H-…` e sob `## Correção do portão — sprint <n>` (v3.51.4; a seção de correção na v3.52.2 — antes elas viravam Tasks-fantasma da última História).
+- **Correção do portão** (v3.52.2) — ID `Q-S<n>` (mais de uma: `Q-S<n>b`, `Q-S<n>c`), gravada pela sessão quando o portão do QA dá ⚠️/❌ sem a decisão do PO; mesma tabela das Histórias; não é entrada fora da Planning (não cresce o escopo). Sem a seção, a correção que toca código de Task ✅ fica sem registro (R24) — achado contra a orquestração.
 - **A linha "Sprint corrente"** de `.team-project/README.md` §2 segue o modelo (`| **Sprint corrente** | **<n>** — …`); desde a v3.51.4 os scripts aceitam também o número sem negrito ou depois de "sprint" (`| **Sprint corrente** | sprint **2** …`).
 - **As colunas Plano, Evidência e Cenários são ponteiros, não conteúdo.** O plano é do Arquiteto (`plan/`), a evidência é do QA (`evidence/`), e este quadro é o que **relaciona** História ↔ Task ↔ plano ↔ evidência ([`../process/artifact-ownership.md` §1e](../process/artifact-ownership.md)). Ponteiro que não resolve é achado de processo.
 - **Cenários** — lista de IDs (`SC-nnn`) mapeados pela QA na Planning, novos e regressivos aplicáveis, ou "nenhum aplicável" com o motivo (R30, DoR da Task). O conteúdo do cenário fica em `.team-project/quality-assurance/scenarios/`, dono da QA — esta coluna nunca copia o cenário, só referencia o ID.

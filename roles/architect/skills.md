@@ -12,7 +12,9 @@ Plano em cima de premissa falsa é a causa nº 1 de 🔺 GAP. Antes de escrever 
 - qual arquivo concreto serve de modelo para o que será criado;
 - **a versão real do ambiente** que os passos exigem (runtime, SDK, ferramenta de build, serviço local) e se **cada comando que o plano vai citar existe nela** — medido com o comando, nunca lembrado de outro projeto ou de outra stack (R26).
 
-Todo achado entra no diagnóstico como `arquivo:linha`. Sem isso, é suspeita — e suspeita não vira plano. **Ambiente se prova do mesmo jeito**, com a saída do comando de versão: o que a medição não comprovar entra no plano como pré-requisito sujeito à **parada incondicional** — inclusive quando a ferramenta simplesmente não existe, que é o caso que uma faixa de versão aceitável nunca cobre.
+Todo achado entra no diagnóstico como `arquivo:linha`. Sem isso, é suspeita — e suspeita não vira plano.
+
+**Decido, documento e PROVO — não construo** (v3.52.2). O diagnóstico acima vira linha **conferível** no plano: contagem na forma `- Contagem: `<regex>` em `<glob>` → <n>` e afirmação em `### Premissas` (§6 do plano) como `P<k> · <afirmação> · medido: <comando ou job> → <resultado>` ou `· não exercitada: <motivo> · verifica: <papel> em <passo>`. A divisão: **leitura** (contagem, busca no código, conferir seletor ou regra contra o lint) eu rodo e colo a saída; **execução** (app, teste, build, harness, contraste, compilar o mutante) vai ao `operator` em `operator/<n>/<T-ID>-plano/`, que devolve número + comando + saída (§14). Número de aceite que a spec do UX traz eu **meço**, não copio. O que acertei de olho e não medi é palpite — e palpite foi a origem de 27 dos 29 GAPs do sprint 3 do piloto (7 ambiente afirmado, 6 número copiado, 7 inventário de olho, 4 plano contra standard/lint/teste de outra Task, 3 mutação). **Ambiente se prova do mesmo jeito**, com a saída do comando de versão: o que a medição não comprovar entra no plano como pré-requisito sujeito à **parada incondicional** — inclusive quando a ferramenta simplesmente não existe, que é o caso que uma faixa de versão aceitável nunca cobre.
 
 ## 2. Escrever plano que um júnior executa sem decidir
 
@@ -42,7 +44,7 @@ Quando o dev levanta 🔺 GAP:
 
 1. Ler o trecho de código citado — não a interpretação do dev.
 2. Decidir em uma frase, com o arquivo e a assinatura concretos.
-3. Classificar: erro do plano (corrigir o plano), lacuna da especificação (registrar decisão), ou dúvida funcional (PO).
+3. Classificar: erro do plano (corrigir o plano), lacuna da especificação (registrar decisão), ou dúvida funcional (PO). A decisão é **registrada no plano** (R9); se ela afirma algo novo sobre o ambiente (versão, comando, comportamento), entra **também como premissa medida** (§1) — por mim, se for leitura; pelo `operator`, se for executar.
 4. Se o mesmo tipo de gap aparecer duas vezes, o problema é o **formato** do plano — ajuste o formato, não só a resposta.
 
 ## 6. Segurança no desenho, não na revisão
@@ -156,8 +158,10 @@ O custo da execução pesada não está em **rodá-la**, e sim em **carregar a s
 | Fica comigo, inline | Vai para o `operator` |
 |---|---|
 | `--version`/`--help` de **uma** ferramenta — saída de uma a três linhas | Medição de toolchain com várias ferramentas, ou que dispara restauração de pacotes (R26) |
-| `Read`/`Grep` no código, para o diagnóstico `arquivo:linha` | Build (limpo ou incremental), suíte de testes, gate de cobertura, lint, analisador, cenário de carga |
+| `Read`/`Grep` no código, para o diagnóstico `arquivo:linha`; **contagem e busca das premissas do plano** (§1) | Build (limpo ou incremental), suíte de testes, gate de cobertura, lint, analisador, cenário de carga |
 | A leitura do relatório do `operator` e a **decisão** que ele sustenta | Prova de que um gate **reprova** (violação proposital) e réplica de projeto para exercitá-la |
+
+**A chamada é assíncrona** (v3.52.2): o `Agent` volta "lançado" e o resultado chega por aviso. Disparo o `operator` e **encerro o turno** — o aviso me reabre com o relatório; não espero com `Start-Sleep` nem sondo o disco atrás do `report`. Vários jobs independentes do mesmo plano saem juntos, na mesma resposta.
 
 **Nunca reexecuto para conferir.** Recebido o relatório, eu leio — não rodo o mesmo comando "só para ver". Reexecutar é pagar duas vezes pelo mesmo número, e é o que R28 nomeia como achado de processo contra mim. Relatório que não me deixa decidir é defeito do **pedido** que eu fiz: refaço a invocação com o comando certo, não trago o comando para a minha mão.
 

@@ -2,7 +2,7 @@
 
 > **Dono do registro:** SM · **Conduz o aceite:** PO (R21) · **Decide:** o stakeholder, sobre o que viu.
 > Fecha o trabalho do sprint, **antes** da retrospectiva. É o único momento em que uma História é aceita, e o **segundo ponto de contato** do sprint (R25 · [`../process/workflow-sprint.md` §5g](../process/workflow-sprint.md)).
-> **Persistido em** `.team-project/sprints/<n>/review.md` — a pasta já existe desde o `/sm sprint plan`; este arquivo entra nela no `/sm sprint review`.
+> **Persistido em** `.team-project/sprints/<n>/review.md` — a pasta já existe desde o `/sm sprint plan`; este arquivo entra nela no `/sm sprint review`. Duas formas: a Review feita (abaixo) e a **Review adiada** (variante no fim).
 
 O SM conduz o ritual e registra; o **PO demonstra cada História contra os critérios de aceite que o stakeholder aprovou no pacote de abertura** (portão ③) e escreve o dossiê de aceite critério a critério; o QA fornece a evidência por Task; **o stakeholder decide, por História**. O SM **não aceita** — registra.
 
@@ -34,6 +34,13 @@ O aceite detalhado de cada História — critério a critério, com a Task e a e
 
 **Recomendação do PO:** <aceita · com ressalva · rejeitada — uma frase> · **Ressalvas propostas:** <quais, ou "nenhuma">
 
+### Histórias herdadas do sprint <n-1>
+> *Só quando a Review do sprint anterior foi **adiada*** (variante abaixo). Cada História herdada entra na tabela "Histórias do sprint" acima e ganha a sua seção `Aceite — H-<nnn>`, como as deste sprint; aqui fica só a origem.
+
+| História | Sprint de origem | `review.md` adiada em | Motivo do adiamento | Evidência (portão do sprint de origem) |
+|---|---|---|---|---|
+| H-<nnn> | <n-1> | <data> | <o motivo da linha **Estado:**> | `sprints/<n-1>/validation.md` |
+
 ### História não terminada no sprint
 | História | O que ficou pronto | O que falta | Destino |
 |---|---|---|---|
@@ -62,8 +69,25 @@ O aceite detalhado de cada História — critério a critério, com a Task e a e
 - **Volta ao Product Backlog:** <IDs das Histórias rejeitadas ou não terminadas>
 ```
 
+## Variante — Review adiada (v3.52.2 · R21)
+
+Quando o stakeholder **adia** a Review para o sprint seguinte (decisão dele, em formulário — R22; [`../process/workflow-sprint.md` §5e](../process/workflow-sprint.md) "Review adiada"), o `review.md` sai **curto**, sem dossiê nem tabela de decisões:
+
+```markdown
+## Sprint Review — Sprint <n> — <data>
+**Estado:** adiada para o sprint <n+1> — <motivo em uma frase: alvo indisponível, prova no alvo pendente, ausência do stakeholder>
+
+**Decisão do stakeholder (formulário — R22):** adiar · <data> · <canal: celular | terminal>
+**Histórias sem aceite, herdadas pela Review do sprint <n+1>:** H-<nnn>, H-<nnn>
+**Portão do QA:** <✅ | ⚠️ com dívida aceita pelo PO — `validation.md`>
+**Ocorrência de plugin:** <nenhuma | registrada — o formulário investigar × ignorar abre no `/sm sprint close` deste sprint>
+```
+
+A linha **`**Estado:** adiada para o sprint <n+1> — <motivo>`** vem **logo abaixo do título** e é a que o C2 (`project.ps1`, R21) lê para aceitar o sprint fechado sem dossiê. Nenhuma História é aceita nem rejeitada; o ✅ das Tasks não muda.
+
 ## Regras
 
+- **Review adiada não é aceite nem recusa** (v3.52.2). As Histórias seguem sem aceite e entram na Review seguinte, em "Histórias herdadas do sprint <n-1>". O sprint fecha no `/sm sprint close` mesmo assim — com o formulário de ocorrência de plugin lá, porque a Review não aconteceu.
 - **É o único portão de aceite** (R21 · portão ④). História aceita fora daqui é violação, e o SM a registra como achado de processo.
 - **O alvo é sempre a História, nunca a Task.** Task já foi fechada tecnicamente pelo veredito do QA e pelo `/sm close`.
 - **Sem os vereditos do QA das Tasks, não há demonstração** (R7). História cujas Tasks não fecharam não é aceita: é reportada como não terminada e volta ao backlog.

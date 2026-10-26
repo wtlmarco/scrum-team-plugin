@@ -81,12 +81,25 @@ try {
         }
     }
     $sprints = Join-Path $tp 'sprints'
+    # v3.52.2 (note.md item 16, C7): Review adiada é caminho formal — review.md com "**Estado:** adiada para o sprint <n+1> —
+    # <motivo>" logo abaixo do título fecha o sprint sem dossiê nem tabela de decisões; as Histórias sem aceite entram na
+    # Review seguinte, que as traz na seção "Histórias herdadas do sprint <n>" (conferida quando aquele sprint fecha).
+    $postponed = @(); $inherit = @{}
     if (Test-Path -LiteralPath $sprints) {
-        foreach ($d in (Get-ChildItem -LiteralPath $sprints -Directory)) {
+        foreach ($d in @(Get-ChildItem -LiteralPath $sprints -Directory | Sort-Object { $nm = [regex]::Match($_.Name, '\d+'); if ($nm.Success) { [int]$nm.Value } else { 0 } })) {
             if (-not (Test-Path -LiteralPath (Join-Path $d.FullName 'retrospective.md'))) { continue }   # só sprint fechado
             $rv = Join-Path $d.FullName 'review.md'
-            if (-not (Test-Path -LiteralPath $rv)) { $r21 += "sprint $($d.Name) fechado sem review.md"; continue }
-            $hs = Get-Section (Read-Text $rv) '^###\s+Hist[óo]rias do sprint'
+            if (-not (Test-Path -LiteralPath $rv)) { $r21 += "sprint $($d.Name) fechado sem review.md (Review feita, ou adiada com **Estado:** adiada para o sprint <n> — <motivo>)"; continue }
+            $rvText = Read-Text $rv
+            $ad = [regex]::Match($rvText, '(?m)^\*\*Estado:\*\*\s*adiada\b(.*)$')
+            if ($ad.Success) {
+                $to = [regex]::Match($ad.Groups[1].Value, '^\s*para o sprint\s+\**(\d+)\**\s*[—–-]\s*\S')
+                if (-not $to.Success) { $r21 += "sprint $($d.Name): Review adiada sem 'para o sprint <n> — <motivo>'" }
+                else { $postponed += "sprint $($d.Name) → $($to.Groups[1].Value)"; $inherit[$to.Groups[1].Value] = $d.Name }
+                continue
+            }
+            if ($inherit.ContainsKey($d.Name) -and $rvText -notmatch ('(?m)^#{2,4}\s+Hist[óo]rias herdadas do sprint\s+' + $inherit[$d.Name] + '\b')) { $r21 += "sprint $($d.Name): a Review não traz 'Histórias herdadas do sprint $($inherit[$d.Name])' (a Review dele foi adiada para esta)" }
+            $hs = Get-Section $rvText '^###\s+Hist[óo]rias do sprint'
             if ($hs) {
                 foreach ($t in (Get-Tables $hs)) {
                     $ic = Find-Col $t 'Decisão'
@@ -99,7 +112,7 @@ try {
             }
         }
     }
-    if ($r21.Count) { Add-Result 'R21' 'falhou' ($r21 -join '; ') } else { Add-Result 'R21' 'ok' 'dossiês de aceite só em sprints/*/review.md, por História; sprints fechados com decisão' }
+    if ($r21.Count) { Add-Result 'R21' 'falhou' ($r21 -join '; ') } else { Add-Result 'R21' 'ok' ('dossiês de aceite só em sprints/*/review.md, por História; sprints fechados com decisão' + $(if ($postponed.Count) { '; Review adiada: ' + ($postponed -join ', ') } else { '' })) }
 
     # ---------- R31 · git só com o produto ----------
     if (-not $isGit) { Add-Result 'R31' 'n-a' 'projeto fora de repositório git' }

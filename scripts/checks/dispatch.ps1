@@ -3,8 +3,8 @@
 #   - grava .team-project/.active-task (e .active-executor no perfil executor) no formato JSON que a G9 lê. No piloto, um
 #     .active-task gravado como caminho solto derrubou o hook, e 9 edições do dev passaram sem G6/G8/G9;
 #   - marca a Task pelo mark.ps1;
-#   - imprime os parâmetros do Agent: o papel efetivo, o model do models.json (o que a G17 cobra) e o run_in_background
-#     (falso no modo benchmark com foreground).
+#   - imprime os parâmetros do Agent: o papel efetivo e o model do models.json (o que a G17 cobra) ou o -Model da exceção
+#     (v3.52.2: sem run_in_background — a chamada volta "lançado" e o aviso traz o resultado).
 # Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/dispatch.ps1" -Role developer -Id T-041 -Plan <plano> [-Trilha sprint|fix] [-Mark build] [-Root <projeto>]
 #      ... -Role architect -Id T-041 [-Mark plan]       → só os parâmetros (e o marcador, se pedido): o Arquiteto planejando não tem escopo de escrita
 #      ... -Clear                                       → apaga .active-task e .active-executor (saída da Task, sprint-run.md passo 8)
@@ -15,6 +15,8 @@ param(
     [string]$Plan = '',
     [ValidateSet('sprint', 'fix')][string]$Trilha = 'sprint',
     [string]$Mark = '',
+    [string]$Model = '',
+    [string]$ModelWhy = '',
     [switch]$Clear,
     [string]$Root = (Get-Location).Path
 )
@@ -77,11 +79,15 @@ try {
     }
 
     # Modelo: a chave do models.json vence o agente e as exceções do processo (sprint-run.md §Modelo por papel; G17 confere).
-    $model = if ($mc.State -eq 'ok' -and $mc.Models.ContainsKey($effective)) { $mc.Models[$effective] } else { '' }
-    $modelText = if ($model) { "model `"$model`" (models.json)" } else { "model omitido — vale o do agente ($(Get-AgentDefaultModel $effective)), e as exceções do processo (trilha leve, 3ª instância do bloco)" }
+    # v3.52.2 (note.md item 14): -Model/-ModelWhy = a exceção decidida por quem chama (o run.ps1 start escala o dev).
+    $cfgModel = if ($mc.State -eq 'ok' -and $mc.Models.ContainsKey($effective)) { $mc.Models[$effective] } else { '' }   # $model seria o -Model
+    $modelText = if ($cfgModel) { "model `"$cfgModel`" (models.json)" }
+                 elseif ($Model) { "model `"$Model`" ($(if ($ModelWhy) { $ModelWhy } else { 'exceção do processo' }))" }
+                 else { "model omitido — vale o do agente ($(Get-AgentDefaultModel $effective)), e as exceções do processo (trilha leve, 3ª instância do bloco)" }
     # v3.51.4 (garden item 14): o tipo com o prefixo do plugin — "developer" sozinho não existe na instalação.
-    # v3.52: sempre em primeiro plano — a chamada bloqueia até a volta, sem a sessão esperar pagando (G22).
-    $lines += "  Agent: subagent_type `"team:$effective`" · $modelText · run_in_background false"
+    # v3.52.2 (note.md item 2, C1): o Agent não tem mais run_in_background — toda chamada volta "lançado" e o resultado chega
+    # por aviso. Quem dispara encerra o turno; o aviso o acorda (sem Start-Sleep, sem sondar o disco).
+    $lines += "  Agent: subagent_type `"team:$effective`" · $modelText — dispare e encerre o turno; o aviso traz a volta"
     $lines += '  prompt: o caminho do plano (e o bloco), nunca o conteúdo colado; pedir o retorno curto de R28'
     [Console]::Out.WriteLine(($lines -join "`n"))
     exit 0

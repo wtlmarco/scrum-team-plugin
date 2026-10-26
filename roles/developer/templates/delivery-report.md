@@ -2,7 +2,7 @@
 
 Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere cada passo contra o plano (frente 2 — `workflow.md` §4a).
 
-**Onde fica (v3.49):** gravado em arquivo, não só na resposta. No sprint, `.team-project/sprints/<n>/delivery/<T-ID>.md`; na trilha `fix`, `.team-project/fixes/B-<nnn>/delivery.md`, com uma seção `## F-<nnn>` por Correção. Cada bloco, rodada de retrabalho ou retomada **acrescenta a sua seção no fim** e nunca reescreve a anterior. O 🔺 GAP entra no mesmo arquivo. À sessão volta só o retorno curto de R28, com o caminho deste arquivo; o QA e o Arquiteto leem daqui. Na calibração, sem sprint corrente, o relatório continua na resposta.
+**Onde fica (v3.49):** gravado em arquivo, não só na resposta. No sprint, `.team-project/sprints/<n>/delivery/<T-ID>.md`; na trilha `fix`, `.team-project/fixes/B-<nnn>/delivery.md`, com uma seção `## F-<nnn>` por Correção. Cada bloco, rodada de retrabalho ou retomada **acrescenta a sua seção no fim** e nunca reescreve a anterior. O 🔺 GAP entra no mesmo arquivo. A quem me disparou (o executor de Task no run) volta só o retorno curto de R28, com o caminho deste arquivo; o QA e o Arquiteto leem daqui. Na calibração, sem sprint corrente, o relatório continua na resposta.
 
 ```markdown
 ## Entrega — <ID> <título>
@@ -59,7 +59,7 @@ Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere c
 - <documento> §<seção> — <o que muda> *(o Arquiteto consolida uma vez no fim do sprint — A5)*
 
 ### Execução delegada
-*(uma linha por chamada ao `operator` — o índice dos jobs (R28). Tokens e duração o hook G16 mede; não copio número nem gravo em `consumption.md`. Sem chamada: "nenhuma".)*
+*(uma linha por chamada ao `operator` — o índice dos jobs (R28); o pedido dizia "chamado por dev · Task <T-ID>" e o `report.md` do job é o ponteiro da §Verificação. Tokens e duração o hook G16 mede; não copio número nem gravo em `consumption.md`. Sem chamada: "nenhuma".)*
 
 | Operator job | Task/História |
 |---|---|

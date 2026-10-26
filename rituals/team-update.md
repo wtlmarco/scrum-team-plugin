@@ -193,13 +193,28 @@ Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere ap
 2. **Diga ao stakeholder**, em três linhas:
    - no `run`, cada papel devolve à sessão só o retorno curto (R28), e o relatório do dev fica em `delivery/`;
    - o Arquiteto parado há mais de 5 min é aberto em instância nova para o GAP, em vez de retomado;
-   - enquanto o `run` está ativo, a sessão cria um toque de cache a cada 30 min (em avaliação).
+   - o toque de cache da v3.49 foi retirado na v3.52 — a sessão não cria `CronCreate` durante o `run`.
 
    Valem depois de reiniciar a sessão.
 3. **Registro de consumo aberto:** não edite. Na primeira rodada medida, a G16 roda o `consumption.ps1` e ele reescreve os `## Totais` no formato novo: uma linha por papel e modelo (modelo com versão: `haiku 4.5`), as colunas **Instâncias** e **Rodadas** no lugar de "Nº de invocações", e `não medido — só notificação` onde só há linha à mão. As linhas medidas antigas passam a mostrar o modelo com versão; as linhas à mão ficam como estão.
 4. **Nada a instalar para os scripts da sessão:** `mark.ps1`, `dispatch.ps1` e o `consumption.ps1 -Session` vêm com o plugin. A sessão do `run` passa a usá-los pelo `sprint-run.md`. A sessão só entra no registro a partir das rodadas gravadas pela G16 da v3.49, que traz o caminho do transcript.
 
 **Verificação do passo:** depois do primeiro dev do `run`, `Test-Path .team-project/sprints/<n>/delivery/<T-ID>.md` devolve `True`.
+
+## 7k. Medição configurada — seção `quality` e `verify.compile` (v3.52.2)
+
+> Roda quando a versão instalada for anterior à `v3.52.2`, em qualquer projeto; o `/team init` também o executa (passo 4a). Nada a migrar em disco. As duas chaves **não se inferem** (cada projeto tem o comando dele), por isso o ritual **propõe** e o stakeholder decide.
+
+1. **Seção `quality` no `.team-project/guards.json`:** se falta, **proponha** acrescentá-la, com os comandos que `.team-project/developer/context.md` e o `README.md` §ambiente já declaram — cada chave um comando (ou lista, para mais de uma unidade) que **sai ≠ 0 quando a regra quebra**: `coverage` (Q11, o gate de cobertura por módulo) com `coverageThreshold` (80) e, se a saída não traz o percentual no formato comum, `coveragePattern` (regex com o `%` no grupo 1) · `lint` e `format` (Q7) · `architecture` (Q1, o teste da regra de dependência entre anéis) · `metrics` (Q6, limites numéricos) · `duplication` (Q8) · `sourceRoots` (pastas de produção de Q9 e Q17; padrão: o `sourceRoots` do `guards.json` ou `src/`) · `timeoutMinutes` (padrão 9). Exemplo, para um projeto Node:
+   ```json
+   "quality": { "coverage": "npm run test:cov", "coverageThreshold": 80, "lint": "npm run lint", "format": "npx prettier --check .", "architecture": "npx depcruise src --config", "duplication": "npx jscpd src", "sourceRoots": ["src"] }
+   ```
+   Chave que o projeto não tem fica de fora (ou `""`). **Sem a seção, o `quality.ps1` mede só Q9 (TODO com ID) e Q17 (supressão justificada), por busca de padrão — 2 das 8 regras do portão do sprint; as outras seis ficam `não configurado` e passam ao julgamento do QA, sem medição.** Os comandos de `quality` entram também em `runCommands` (7f), se faltarem.
+2. **`verify.compile` no `.team-project/guards.json`:** se `verify` existe (7h) e a chave falta, **proponha** acrescentá-la — o comando que **só compila** o projeto (sem rodar teste), sai ≠ 0 se não compila: `npx tsc --noEmit`, `dotnet build --no-restore`, `./gradlew compileDebugKotlin`… Exemplo: `"verify": { …, "compile": "npx tsc --noEmit" }`. **Sem ela, o `verify.ps1 -Mode mutation -Precheck` confere só que o trecho da mutação aparece uma vez no arquivo; que o mutante compila só se vê quando a mutação roda, e mutante que não compila volta `inconclusivo` — uma rodada de teste perdida por mutação.** Projeto sem `verify` (sem git, ou deixado vazio em 7h): nada a propor.
+3. **Um formulário só** (`AskUserQuestion`, R22), junto com o de 7f/7h quando rodam juntos: mostre as chaves propostas, cada uma com o comando — *aplicar · ajustar · pedir mais contexto*. Sem resposta, não aplique: o portão segue com Q9/Q17 medidas e o `-Precheck` sem compilação; registre a pendência em `.team-project/README.md` §7.
+4. **Diga ao stakeholder**, em duas linhas: com `quality`, o `operator` mede as regras do nível 1 antes do `/qa sprint <n>` e o QA lê números em vez de julgar de olho; com `verify.compile`, o `-Precheck` acusa antes do `full` a mutação que não compila. A forma de cada chave está no cabeçalho de `scripts/checks/quality.ps1` e de `scripts/checks/verify.ps1`; o modelo `${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/guards.json` traz os exemplos.
+
+**Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).quality` e `.verify.compile` devolvem os comandos aprovados; `powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/quality.ps1" -Id S0` mostra as regras configuradas como `ok`/`falhou` em vez de `não configurado` (apague `.team-project/quality/` depois).
 
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 

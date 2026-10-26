@@ -12,6 +12,8 @@
 # fecha pela evidência) · 3 validação do sprint (o operator mede: quality + todos os cenários; o QA julga e escreve
 # validation.md) · 4 achados voltam ao dev (dúvida → Arquiteto) · 5 consolidação dos documentos vivos (Arquiteto, uma vez)
 # · 6 formulário de autorização da Review. Exit 0 · 2 = erro de uso · 3 = nada a fazer (fila vazia ou bloqueada).
+# v3.52.2: a construção de cada Task é do executor de Task (team:task-runner) — o next o dispara; start e done são dele.
+# O next também lê .interrupted (retomada após queda), mede a sessão (SESSÃO:) e abre a correção do portão como Q-S<n>.
 
 param(
     [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff')][string]$Action,
@@ -41,9 +43,35 @@ function Get-PlanFull($T, [string]$S) {
 }
 function Get-AgentLine([string]$Role) {
     $mc = Get-ModelsConfig $Root
-    $model = if ($mc.State -eq 'ok' -and $mc.Models.ContainsKey($Role)) { "model `"$($mc.Models[$Role])`" (models.json)" } else { "model do agente ($(Get-AgentDefaultModel $Role))" }
-    # v3.52: todo agente do run em primeiro plano — a chamada bloqueia até a volta, sem a sessão esperar pagando (G22).
-    return "Agent: subagent_type `"team:$Role`" · $model · run_in_background false"
+    $dm = Get-AgentDefaultModel $Role; if (-not $dm) { $dm = "agents/$Role.md" }
+    $model = if ($mc.State -eq 'ok' -and $mc.Models.ContainsKey($Role)) { "model `"$($mc.Models[$Role])`" (models.json)" } else { "model do agente ($dm)" }
+    # v3.52.2 (note.md item 2, C1): o Agent não tem mais run_in_background — toda chamada volta "lançado" e o resultado
+    # chega por aviso. Quem dispara encerra o turno e é acordado pelo aviso; ninguém espera com Start-Sleep nem sonda o disco.
+    return "Agent: subagent_type `"team:$Role`" · $model — dispare e encerre o turno; o aviso traz a volta"
+}
+# Contador de instâncias do dev por Task e bloco (v3.52.2, note.md item 14): sprints/<n>/handoff/<ID>.json. "fail" conta só
+# a instância encerrada por falha de papel (GAP, evidência reprovada no done); "env" (done -Result env) é queda de ambiente
+# e NÃO conta para o escalonamento — 2 quedas de rede subiam o dev para sonnet no piloto.
+function Get-DevCounter($T, [string]$S) {
+    $p = Join-Path $S "handoff/$($T.Id).json"; $all = @{}
+    if (Test-Path -LiteralPath $p) { try { $j = Read-Text $p | ConvertFrom-Json; foreach ($b in $j.blocks.PSObject.Properties) { $all[$b.Name] = @{ starts = [int]$b.Value.starts; fail = [int]$b.Value.fail; env = [int]$b.Value.env } } } catch { } }
+    return $all
+}
+function Update-DevCounter($T, [string]$S, [string]$Field) {
+    $all = Get-DevCounter $T $S; $k = if ($Block) { $Block } else { '-' }
+    if (-not $all.ContainsKey($k)) { $all[$k] = @{ starts = 0; fail = 0; env = 0 } }
+    $all[$k][$Field]++
+    $dir = Join-Path $S 'handoff'; New-Item -ItemType Directory -Force $dir | Out-Null
+    $o = [ordered]@{ task = $T.Id; blocks = [ordered]@{} }; foreach ($b in ($all.Keys | Sort-Object)) { $o.blocks[$b] = [ordered]@{ starts = $all[$b].starts; fail = $all[$b].fail; env = $all[$b].env } }
+    [System.IO.File]::WriteAllText((Join-Path $dir "$($T.Id).json"), ($o | ConvertTo-Json -Depth 4 -Compress), $utf8)
+    return $all[$k]
+}
+# "Parei no passo" da seção mais recente do delivery/<T-ID>.md; '' se não houver.
+function Get-StopStep([string]$S, [string]$Id) {
+    $dv = Join-Path $S "delivery/$Id.md"; if (-not (Test-Path -LiteralPath $dv)) { return '' }
+    $secs = @([regex]::Matches((Read-Text $dv), '(?ms)^## .*?(?=^## |\z)')); if (-not $secs.Count) { return '' }
+    $sm = [regex]::Match($secs[$secs.Count - 1].Value, '(?ms)^###\s+Parei no passo\s*\r?\n(.+?)(\r?\n\r?\n|\z)')
+    if ($sm.Success) { return (($sm.Groups[1].Value.Trim() -split "`r?`n")[0]).Trim() } else { return '' }
 }
 # Outro script de conferência num processo filho (v3.51.4): os scripts escrevem com [Console]::Out, que no mesmo processo
 # passa por fora do pipeline — o "| Out-String" voltava vazio e a saída do close/dispatch saía solta, sem ser lida.
@@ -54,17 +82,35 @@ function Invoke-Child([string]$Script, [string[]]$ArgList) {
 }
 # v3.52 (note.md item 9): o código da Task fechada vai a um commit próprio (`T-<nnn>: <título>`), sem .team-project/ (R31);
 # projeto sem git: o checkpoint é por cópia (sprint-run.md, fechamento da Task). Devolve a linha para a saída.
-function Save-TaskCommit($T) {
+# v3.52.2 (note.md item 10): a mensagem vai num arquivo (git commit -F) — aspas no título quebravam o -m no 5.1 — e o
+# assunto longo é cortado no espaço, com o título inteiro no corpo; o stage é só o escopo do plano (Arquivos tocados e os
+# testes das mutações): alteração pendente de outro dono fica fora do commit e é citada na saída. Nunca .team-project/.
+# Devolve @{ Line; Sha }.
+function Save-TaskCommit($T, [string]$S) {
     $ErrorActionPreference = 'Continue'
     $null = & git -C $Root rev-parse --is-inside-work-tree 2>$null
-    if ($LASTEXITCODE -ne 0) { return "  commit: projeto sem git — checkpoint por cópia dos arquivos da $($T.Id) (sprint-run.md, fechamento da Task)" }
-    $null = & git -C $Root add -A -- . ':(exclude).team-project' 2>$null
-    $null = & git -C $Root diff --cached --quiet 2>$null
-    if ($LASTEXITCODE -eq 0) { return "  commit: nada a versionar para a $($T.Id)" }
-    $msg = "$($T.Id): $($T.Title)"; if ($msg.Length -gt 72) { $msg = $msg.Substring(0, 72) }
-    $o = & git -C $Root commit -q -m $msg 2>&1 | Out-String
-    if ($LASTEXITCODE -ne 0) { return "  commit: falhou ($(($o -replace '\s+', ' ').Trim())) — o código da $($T.Id) segue no disco; reporte na Review" }
-    return "  commit: $(& git -C $Root rev-parse --short HEAD 2>$null) $msg"
+    if ($LASTEXITCODE -ne 0) { return @{ Line = "  commit: projeto sem git — checkpoint por cópia dos arquivos da $($T.Id) (sprint-run.md, fechamento da Task)"; Sha = '' } }
+    $pf = Get-PlanFull $T $S; $scope = @()
+    if ($pf) { $pt = Read-Text $pf; $scope = @(Get-PlanScope $pt) + @(Get-Mutations $pt | ForEach-Object { ($_.Test -replace '\\', '/') -replace '^\./', '' }) }
+    $scope = @($scope | Where-Object { $_ -and $_ -notmatch '^\.team-project(/|$)' -and $_ -notmatch '[<>*?]' } | Select-Object -Unique)
+    if (-not $scope.Count) { return @{ Line = "  commit: o plano da $($T.Id) sem **Arquivos tocados:** — nada versionado; o código segue no disco (commit à mão, só os arquivos da Task)"; Sha = '' } }
+    foreach ($f in $scope) { $null = & git -C $Root add -A -- ":(literal)$f" 2>$null }
+    $staged = @(& git -C $Root diff --cached --name-only -- @($scope | ForEach-Object { ":(literal)$_" }) 2>$null | Where-Object { $_ })
+    $inScope = @{}; foreach ($f in $scope) { $inScope[$f.ToLowerInvariant()] = $true }
+    $pending = @(& git -C $Root status --porcelain -uall 2>$null | ForEach-Object { ($_.Substring([Math]::Min(3, $_.Length)) -split ' -> ')[-1].Trim('"') } | Where-Object { $_ -and $_ -notmatch '^\.team-project/' -and -not $inScope.ContainsKey($_.ToLowerInvariant()) })
+    $outTxt = if ($pending.Count) { " · fora do escopo, ficou fora do commit: $(($pending | Select-Object -First 5) -join ', ')$(if ($pending.Count -gt 5) { " e mais $($pending.Count - 5)" })" } else { '' }
+    if (-not $staged.Count) { return @{ Line = "  commit: nada a versionar para a $($T.Id) no escopo do plano$outTxt"; Sha = '' } }
+    $subj = "$($T.Id): $($T.Title)"; $body = ''
+    if ($subj.Length -gt 72) { $cut = $subj.LastIndexOf(' ', 70); if ($cut -lt 20) { $cut = 70 }; $body = $subj; $subj = $subj.Substring(0, $cut).TrimEnd(' ', ',', ';', ':', '-', '—') + '…' }
+    $mf = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText($mf, $subj + $(if ($body) { "`n`n$body" } else { '' }) + "`n", $utf8)
+        $o = & git -C $Root commit -q -F $mf -- @($staged | ForEach-Object { ":(literal)$_" }) 2>&1 | Out-String
+        $code = $LASTEXITCODE
+    } finally { Remove-Item -LiteralPath $mf -Force -ErrorAction SilentlyContinue }
+    if ($code -ne 0) { return @{ Line = "  commit: falhou ($(($o -replace '\s+', ' ').Trim())) — o código da $($T.Id) segue no disco; reporte na Review$outTxt"; Sha = '' } }
+    $sha = ([string](& git -C $Root rev-parse --short HEAD 2>$null)).Trim()
+    return @{ Line = "  commit: $sha $subj ($($staged.Count) arquivo(s) do plano)$outTxt"; Sha = $sha }
 }
 # v3.52 (R29, parada (f)): Task fechada = ponto seguro. O marcador libera o fim de turno na G20; o próximo start o apaga.
 function Set-SafePoint($T, [string]$n) {
@@ -96,10 +142,17 @@ function Get-RunEstimate {
     }
     return $s
 }
+# v3.52.2 (note.md item 11, C6): "**Veredito (rodada 2):**" também vale, e vale a ÚLTIMA ocorrência do arquivo — o next
+# só lia "**Veredito:**" exato e voltava a pedir "julgar (QA)" em laço.
 function Get-VerdictOf([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path)) { return $null }
-    $m = [regex]::Match((Read-Text $Path), '(?m)^\*\*Veredito:\*\*(.*)$'); if (-not $m.Success) { return '' }
-    $mk = Get-VerdictMark $m.Groups[1].Value; if ($mk) { return $mk } else { return '' }
+    $ms = @([regex]::Matches((Read-Text $Path), '(?m)^\*\*Veredito[^*\r\n]*:\*\*(.*)$')); if (-not $ms.Count) { return '' }
+    $mk = Get-VerdictMark $ms[$ms.Count - 1].Groups[1].Value; if ($mk) { return $mk } else { return '' }
+}
+# Aceite com dívida (C6): "**Decisão do PO:** aceito com dívida — <motivo e onde a dívida está>", escrita pela sessão.
+function Test-PoDebt([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path)) { return $false }
+    return ((Read-Text $Path) -match '(?m)^\*\*Decis[ãa]o do PO:\*\*\s*aceit[oa] com d[íi]vida\s*[—–-]\s*\S')
 }
 
 # Cartão de passagem (C2): o estado da Task em ~2 KB, para a instância nova não reler o plano inteiro nem o histórico.
@@ -147,8 +200,18 @@ try {
         if (-not $T) { [Console]::Error.WriteLine('run start pede -Task.'); exit 2 }
         $pf = Get-PlanFull $T $S; if (-not $pf) { [Console]::Error.WriteLine("run: $($T.Id) sem plano — o preparo da construção vem antes (run.ps1 next)."); exit 2 }
         $planRel = ".team-project/sprints/$n/$($T.Plan)"
-        $mark = if ($T.Mark -eq $E.Build) { '' } else { 'build' }
-        $dr = Invoke-Child 'dispatch.ps1' @('-Role', 'developer', '-Id', $T.Id, '-Plan', $planRel, '-Mark', $mark, '-Root', $Root); $d = $dr.Out
+        # v3.52.2 (note.md item 9): sem "-Mark ''" — o 5.1 descarta argumento vazio em -File e o dispatch.ps1 caía com a Task
+        # já em 🟨 (retomada depois de GAP).
+        $dargs = @('-Role', 'developer', '-Id', $T.Id, '-Plan', $planRel, '-Root', $Root)
+        if ($T.Mark -ne $E.Build) { $dargs += @('-Mark', 'build') }
+        # v3.52.2 (note.md item 14): o start decide o modelo da linha — duas instâncias encerradas por falha de papel neste
+        # bloco → a terceira com sonnet; quedas de ambiente (done -Result env) não contam. Chave do models.json vence.
+        $cnt = Update-DevCounter $T $S 'starts'
+        $mcs = Get-ModelsConfig $Root
+        if ($cnt.fail -ge 2 -and -not ($mcs.State -eq 'ok' -and ($mcs.Models.ContainsKey('developer') -or $mcs.Executor))) {
+            $dargs += @('-Model', 'sonnet', '-ModelWhy', "escalonamento: $($cnt.fail) instância(s) encerrada(s) por falha de papel$(if ($cnt.env) { "; $($cnt.env) queda(s) de ambiente não contam" })")
+        }
+        $dr = Invoke-Child 'dispatch.ps1' $dargs; $d = $dr.Out
         if ($dr.Code -ne 0) { [Console]::Error.WriteLine("run start: dispatch falhou — $($d.Trim())"); exit 2 }
         Remove-Item -LiteralPath (Join-Path $tp '.safe-point') -Force -ErrorAction SilentlyContinue   # v3.52: Task em voo não é ponto seguro
         $card = Write-Handoff $T $S $n
@@ -169,6 +232,7 @@ try {
         if ($Result -eq 'gap') {
             # v3.51.4 (garden item 22): Task que a sessão já marcou 🟪 volta a 🟨 — ela segue na construção até o GAP se resolver.
             if ($T.Mark -eq $E.QA) { $mo = Set-Mark $T.Id 'build' 'sessão (run.ps1 done -Result gap)'; if ($mo) { Out "  $mo" } }
+            $null = Update-DevCounter $T $S 'fail'   # v3.52.2 (item 14): GAP encerra a instância por falha de papel
             $card = Write-Handoff $T $S $n
             Out "run: $($T.Id) com 🔺 GAP — Arquiteto em instância NOVA (o cache de 5 min do anterior já venceu; C1), modo /arc question:"
             Out "  $(Get-AgentLine 'architect')"
@@ -178,7 +242,8 @@ try {
         }
         if ($Result -eq 'env') {
             $tg = Get-TargetsConfig $Root; $names = @(if ($tg) { $tg.PSObject.Properties | ForEach-Object { $_.Name } })
-            Out "run: $($T.Id) parou por FALHA DE AMBIENTE (D4) — não é defeito do código; nenhum papel caro é chamado."
+            $ec = Update-DevCounter $T $S 'env'   # v3.52.2 (item 14): queda de ambiente não conta para o escalonamento do dev
+            Out "run: $($T.Id) parou por FALHA DE AMBIENTE (D4) — não é defeito do código; nenhum papel caro é chamado. Registrada ($($ec.env) neste bloco); não conta para o escalonamento do dev (R27)."
             foreach ($nm in $names) { Out "  1. $plugin/target.ps1 -Target $nm -Repair" }
             Out "  2. pronto → dev em instância NOVA: run.ps1 start -Task $($T.Id) (o relatório em delivery/ diz o que já foi feito; rode de novo o que falhou)"
             Out "  3. sem reparo → mark.ps1 -Task $($T.Id) -To blocked e linha em Bloqueios (ambiente, com a ação para o stakeholder); a fila segue"
@@ -188,6 +253,7 @@ try {
         # o -Apply grava o ✅ — antes o -Post reprovava o R24 ("Registro sem a linha → 🟪") com a Task já ✅ e a estimativa baixada.
         $pr = Invoke-Child 'close.ps1' @('-Task', $T.Id, '-Root', $Root); $pre = $pr.Out
         if ($pr.Code -ne 0) {
+            $null = Update-DevCounter $T $S 'fail'   # v3.52.2 (item 14): evidência reprovada é falha de papel
             $bad = @($pre -split "`r?`n" | Where-Object { $_ -match '\|\s*(R7[\w-]*|R12)\s*\|\s*falhou' } | ForEach-Object { ($_ -replace '\s+', ' ').Trim() })
             Out "run: $($T.Id) ainda não fecha — dev em instância NOVA (run.ps1 start -Task $($T.Id)) com o que falta (a Task segue em 🟨):"
             foreach ($b in $bad) { Out "  $b" }
@@ -199,9 +265,11 @@ try {
         $code = $cr.Code
         if ($code -eq 0) {
             Out "run: $($T.Id) fechada pela evidência do dev (close.ps1 -Apply)."; Out (($c -split "`r?`n" | Where-Object { $_ -match '^\s*-\s|\*\*|Status' } | Select-Object -Last 6) -join "`n")
-            Out (Save-TaskCommit $T)
+            $cm = Save-TaskCommit $T $S; Out $cm.Line
             Set-SafePoint $T $n
-            Out "  dispatch.ps1 -Clear; depois: PONTO SEGURO (.team-project/.safe-point) — encerre esta sessão e continue em sessão nova com /sm sprint run (o run.ps1 next retoma pelo marcador; R29). Seguir nesta sessão: run.ps1 next."
+            # v3.52.2 (C3): quem lê isto é o executor de Task — ele devolve UMA linha à sessão, que segue com run.ps1 next.
+            $k = 0; foreach ($v in (Get-DevCounter $T $S).Values) { $k += $v.starts }
+            Out "  dispatch.ps1 -Clear; PONTO SEGURO gravado (.team-project/.safe-point). Devolva a linha à sessão: `"$($T.Id) ✅ fechada · commit $(if ($cm.Sha) { $cm.Sha } else { '—' }) · $([Math]::Max(1, $k)) rodadas`" — a sessão segue com run.ps1 next."
             exit 0
         }
         Out "run: $($T.Id) — o -Apply gravou o fechamento, mas o -Post não confirmou (R24); não feche de novo (baixaria a estimativa duas vezes):"
@@ -214,7 +282,7 @@ try {
     # v3.51.4: o run parou por limite de uso da conta (.usage-limit, gravado pela G16 ou pelo Stop) — diz o motivo e segue.
     $lim = Join-Path $tp '.usage-limit'
     if (Test-Path -LiteralPath $lim) {
-        try { $l = Read-Text $lim | ConvertFrom-Json; Out "RETOMADA: o run parou por LIMITE DE USO DA CONTA em $($l.desde)$(if ($l.reset) { " (reset: $($l.reset))" }) — $($l.quem)$(if ($l.item) { " em $($l.item)" }). Não é falha de processo: o que estava em voo se retoma por instância nova com o cartão (run.ps1 start) e pelo result.json do verify (sprint-run.md §Retomada após limite de uso)." } catch { }
+        try { $l = Read-Text $lim | ConvertFrom-Json; Out "RETOMADA: o run parou por LIMITE DE USO DA CONTA em $($l.desde)$(if ($l.reset) { " (reset: $($l.reset))" }) — $($l.quem)$(if ($l.item) { " em $($l.item)" }). Não é falha de processo: o que estava em voo se retoma por instância nova com o cartão (run.ps1 start) e pelo result.json do verify (sprint-run.md §Retomada após queda)." } catch { }
         Remove-Item -LiteralPath $lim -Force -ErrorAction SilentlyContinue
     }
     # v3.52: a sessão anterior parou no ponto seguro (Task fechada) — esta continua a fila; o marcador sai no próximo start.
@@ -223,9 +291,36 @@ try {
         Out "RETOMADA: ponto seguro depois da $([string]$sp.task) (fechada em $([string]$sp.desde)). Esta sessão segue a fila pelo quadro; leia o run-log.md do sprint só se houver bloqueio ou retomada pendente."
         Remove-Item -LiteralPath (Join-Path $tp '.safe-point') -Force -ErrorAction SilentlyContinue   # vale só entre o done e o next
     }
+    # v3.52.2 (note.md item 3, C2): a sessão anterior caiu (processo novo: o SessionStart moveu o .active-agents para o
+    # .interrupted). Uma linha RETOMADA por item citado, com o "Parei no passo" do delivery; a fila segue normal — a Task em
+    # 🟨 é a primeira. O mesmo comando inicia e retoma (/sm sprint run).
+    $intP = Join-Path $tp '.interrupted'
+    if (Test-Path -LiteralPath $intP) {
+        $recs = @(); try { $recs = @((Read-Text $intP | ConvertFrom-Json) | ForEach-Object { $_ }) } catch { }   # no 5.1 a lista JSON chega como um objeto só
+        foreach ($g in @($recs | Where-Object { $_ } | Group-Object { [string]$_.work })) {
+            $r0 = @($g.Group | Sort-Object { [string]$_.at } -Descending)[0]
+            $w = if ($g.Name) { $g.Name } else { '(sem item)' }
+            $stop = if ($g.Name) { Get-StopStep $S $g.Name } else { '' }
+            Out "RETOMADA: a sessão anterior caiu com $w em andamento ($((@($g.Group | ForEach-Object { [string]$_.type } | Where-Object { $_ } | Select-Object -Unique)) -join ', ')), última ação $(if ($r0.last) { [string]$r0.last } else { '—' }) às $(if ($r0.at) { [string]$r0.at } else { [string]$r0.desde })$(if ($stop) { " · parei no passo: $stop" })"
+        }
+        Remove-Item -LiteralPath $intP -Force -ErrorAction SilentlyContinue
+    }
     $null = Invoke-Child 'kanban.ps1' @('-Init', '-Root', $Root)   # consumption.md do sprint, se a Planning não o criou (garden item 1)
     $est = Get-RunEstimate
     if ($est) { Out $est }
+    # v3.52.2 (note.md item 17): o consumo da sessão principal, pelo transcript citado na última linha do usage.jsonl — a
+    # estimativa acima é "sem a sessão". Sem transcript, cala.
+    $up = Join-Path $tp 'usage.jsonl'
+    if (Test-Path -LiteralPath $up) {
+        $lastU = @([System.IO.File]::ReadAllLines($up, $utf8) | Where-Object { $_.Trim() } | Select-Object -Last 1)
+        $stp = ''; if ($lastU.Count) { try { $stp = [string]($lastU[0] | ConvertFrom-Json).session_transcript } catch { } }
+        $sg = Get-SessionGauge $stp
+        if ($sg) {
+            $kk = [int][Math]::Round($sg.LastContext / 1000)
+            Out "SESSÃO: $($sg.Calls) chamada(s) · contexto da última $kk mil tokens"
+            if ($sg.LastContext -gt 150000) { Out "  aviso: acima de 150 mil — a sessão está conduzindo trabalho que é do executor? (o executor de Task conduz start, dev e done; a sessão dispara e lê a linha de volta)" }
+        }
+    }
     $defined = Get-Defined $Root
     $hasTargets = [bool](Get-TargetsConfig $Root)
     $open = @($tasks | Where-Object { $_.Mark -ne $E.Done -and $_.Mark -ne $redMk })
@@ -233,6 +328,17 @@ try {
     # v3.51.4: sem alvo de execução (guards.json sem "targets") não há .scn a escrever — o accept não roda e os cenários
     # ficam rastreados nos planos e provados por teste (garden item 4). As Tasks da História entram em 🟦 no preparo (item 2).
     foreach ($h in @($open | Group-Object Story)) {
+        # v3.52.2 (C5): a correção do portão (Q-S<n>) não escreve cenário novo — o plano de correção sai dos achados.
+        if ($h.Name -eq $script:GateStory) {
+            $noPlan = @($h.Group | Where-Object { -not (Get-PlanFull $_ $S) })
+            if (-not $noPlan.Count) { continue }
+            foreach ($t in @($noPlan | Where-Object { $_.Mark -eq $todoMk })) { $mo = Set-Mark $t.Id 'plan' 'Arquiteto · plano de correção (run.ps1 next)'; if ($mo) { Out "  $mo" } }
+            Out "PRÓXIMA AÇÃO: plano de correção do portão — $(($noPlan | ForEach-Object { $_.Id }) -join ', ') (Arquiteto)"
+            Out "  $(Get-AgentLine 'architect')"
+            Out "  prompt: `"Escreva o plano de correção de $(($noPlan | ForEach-Object { $_.Id }) -join ', ') em .team-project/sprints/$n/plan/<ID>-correcao.md (template fix-plan ou o plano enxuto), a partir dos achados 'Volta para: dev' de .team-project/sprints/$n/validation.md: **Arquivos tocados:** com os arquivos dos achados, teste de regressão por achado. O ✅ das Tasks originais não muda (R25). Rode plan.ps1 e corrija até passar; a sessão atualiza a coluna Plano do quadro. Volte em até 15 linhas.`""
+            Out "  depois: plan.ps1 -Plan <caminho> e run.ps1 next (o executor de Task conduz a correção)"
+            exit 0
+        }
         $missScn = if ($hasTargets) { @($h.Group | ForEach-Object { $_.Scenarios } | Where-Object { $defined -notcontains $_ } | Select-Object -Unique) } else { @() }
         $noPlan = @($h.Group | Where-Object { -not (Get-PlanFull $_ $S) })
         if ($missScn.Count -or $noPlan.Count) {
@@ -257,11 +363,15 @@ try {
     $done = @($tasks | Where-Object { $_.Mark -eq $E.Done } | ForEach-Object { $_.Id })
     $cur = @($open | Where-Object { $_.Mark -eq $E.Build -or $_.Mark -eq $E.QA }) | Select-Object -First 1
     $next = if ($cur) { $cur } else { @($open | Where-Object { @($_.Deps | Where-Object { $done -notcontains $_ }).Count -eq 0 }) | Select-Object -First 1 }
+    # v3.52.2 (note.md item 4, C3): a construção é do executor de Task (team:task-runner), um por Task — ele roda start, dispara
+    # o dev, roda done, leva o GAP ao Arquiteto e volta em UMA linha. A sessão não acumula o contexto da Task.
     if ($next) {
         $dv = Join-Path $S "delivery/$($next.Id).md"
-        if ($cur -and (Test-Path -LiteralPath $dv)) { Out "PRÓXIMA AÇÃO: $($next.Id) está em construção com relatório — se o dev já voltou: run.ps1 done -Task $($next.Id) -Result ok|gap|env; se a sessão caiu no meio, retome o dev: run.ps1 start -Task $($next.Id)"; exit 0 }
-        Out "PRÓXIMA AÇÃO: construir $($next.Id) — $($next.Title) (História $($next.Story))"
-        Out "  run.ps1 start -Task $($next.Id)   (escopo, marcador, cartão e o prompt do dev)"
+        $resume = if ($cur -and (Test-Path -LiteralPath $dv)) { " A Task já está em $($next.Mark) com relatório em .team-project/sprints/$n/delivery/$($next.Id).md: se o dev voltou com a entrega, comece por run.ps1 done; se caiu no meio, run.ps1 start retoma pelo cartão." } else { '' }
+        Out "PRÓXIMA AÇÃO: construir $($next.Id) — $($next.Title) (executor de Task)"
+        Out "  $(Get-AgentLine 'task-runner')"
+        Out "  prompt: `"Conduza a $($next.Id) até fechar ou parar, pelo ciclo do agents/task-runner.md: run.ps1 start -Task $($next.Id), dev, run.ps1 done -Task $($next.Id) -Result ok|gap|env (gap: Arquiteto e start de novo).$resume Volte em UMA linha.`""
+        Out "  ao voltar: run.ps1 next"
         exit 0
     }
     if ($open.Count) { Out "PRÓXIMA AÇÃO: nenhuma Task elegível — $(($open | ForEach-Object { "$($_.Id) espera $($_.Deps -join ',')" }) -join '; '). Bloqueio sobe pelo degrau 1 (R22)."; exit 3 }
@@ -273,24 +383,40 @@ try {
     $tree = Get-WorkTree $Root
     $fresh = { param($p) if (-not (Test-Path -LiteralPath $p)) { return $false }; try { $j = Read-Text $p | ConvertFrom-Json; return (-not $tree -or -not $j.tree -or [string]$j.tree -eq $tree) } catch { return $false } }
     $val = Join-Path $S 'validation.md'; $vv = Get-VerdictOf $val
-    if ($vv -ne $E.Done) {
+    # v3.52.2 (C6): ⚠️ com "**Decisão do PO:** aceito com dívida — …" passa o portão; ❌ nunca.
+    $poDebt = ($vv -eq $E.Warn) -and (Test-PoDebt $val)
+    if ($vv -ne $E.Done -and -not $poDebt) {
         if (-not (& $fresh $qr) -or ((Get-TargetsConfig $Root) -and -not (& $fresh $ar))) {
             Out "PRÓXIMA AÇÃO: validação do sprint $n — medir (operator, comandos longos fora das instâncias caras; C3)"
             Out "  $(Get-AgentLine 'operator')"
-            Out "  prompt: `"Rode na raiz: $plugin/quality.ps1 -Id $sid" + $(if (Get-TargetsConfig $Root) { " e $plugin/accept.ps1 -Task $sid (todos os cenários)" } else { '' }) + ". Exit 4 = ambiente: rode target.ps1 -Repair uma vez e repita. Devolva os caminhos dos result.md e as linhas de resumo.`""
+            Out ("  prompt: `"Rode na raiz: $plugin/quality.ps1 -Id $sid" + $(if (Get-TargetsConfig $Root) { " e $plugin/accept.ps1 -Task $sid (todos os cenários)" } else { '' }) + ". Exit 4 = ambiente: rode target.ps1 -Repair uma vez e repita. Devolva os caminhos dos result.md e as linhas de resumo.`"")
             Out "  depois: run.ps1 next"
             exit 0
         }
         if ($null -eq $vv -or $vv -eq '') {
             Out "PRÓXIMA AÇÃO: validação do sprint $n — julgar (QA, uma passada só; portão da Review)"
             Out "  $(Get-AgentLine 'quality-assurance')"
-            Out "  prompt: `"/qa sprint $n — leia .team-project/quality/$n/$sid/result.md" + $(if (Get-TargetsConfig $Root) { " e .team-project/accept/$n/$sid/result.md (com as capturas)" } else { '' }) + ", os planos e o diff do sprint. Julgue SOLID, clean code, aderência à arquitetura e aos planos, padrões e segurança, citando standards/ (Q<n>). Escreva .team-project/sprints/$n/validation.md (template sprint-validation) com o veredito e os achados (Volta para: dev | Arquiteto). Não rode build nem o app. Volte em até 15 linhas.`""
+            Out ("  prompt: `"/qa sprint $n — leia .team-project/quality/$n/$sid/result.md" + $(if (Get-TargetsConfig $Root) { " e .team-project/accept/$n/$sid/result.md (com as capturas)" } else { '' }) + ", os planos e o diff do sprint. Julgue SOLID, clean code, aderência à arquitetura e aos planos, padrões e segurança, citando standards/ (Q<n>). Escreva .team-project/sprints/$n/validation.md (template sprint-validation) com o veredito e os achados (Volta para: dev | Arquiteto). Não rode build nem o app. Volte em até 15 linhas.`"")
             exit 0
         }
-        Out "PRÓXIMA AÇÃO: corrigir os achados do portão (validation.md: veredito $vv)"
-        Out "  1. um dev por grupo de achados com 'Volta para: dev' — $(Get-AgentLine 'developer') · prompt: `"Corrija os achados <n> de .team-project/sprints/$n/validation.md; rode verify e os cenários afetados; acrescente a seção no fim do delivery da Task. Dúvida: 🔺 GAP. Volte em até 15 linhas.`""
-        Out "  2. achado com 'Volta para: Arquiteto' → instância nova do Arquiteto (/arc question) com o caminho do validation.md"
-        Out "  3. depois: operator mede de novo (quality + cenários afetados) e o QA, em instância nova, revisa o veredito no mesmo validation.md"
+        # v3.52.2 (note.md item 15, C5): medição mais nova que o validation.md = a correção fechou e o operator mediu de novo
+        # → o QA revisa o veredito (rodada nova no mesmo arquivo). Senão, a correção vira Task Q-S<n> no quadro.
+        $measAt = @($qr, $ar | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { (Get-Item -LiteralPath $_).LastWriteTime } | Sort-Object -Descending)
+        if ($measAt.Count -and $measAt[0] -gt (Get-Item -LiteralPath $val).LastWriteTime) {
+            $round = @([regex]::Matches((Read-Text $val), '(?m)^\*\*Veredito[^*\r\n]*:\*\*')).Count + 1
+            Out "PRÓXIMA AÇÃO: validação do sprint $n — revisar o veredito (QA, instância nova; a medição é mais nova que o validation.md)"
+            Out "  $(Get-AgentLine 'quality-assurance')"
+            Out ("  prompt: `"/qa sprint $n — a correção do portão fechou e o operator mediu de novo: leia .team-project/quality/$n/$sid/result.md" + $(if (Get-TargetsConfig $Root) { " e .team-project/accept/$n/$sid/result.md" } else { '' }) + ", os achados e o diff das Tasks Q-S$n. Acrescente no fim de .team-project/sprints/$n/validation.md a linha **Veredito (rodada $round):** ✅ | ⚠️ | ❌ com o estado de cada achado — não apague a rodada anterior. Não rode build nem o app. Volte em até 15 linhas.`"")
+            Out "  depois: run.ps1 next"
+            exit 0
+        }
+        $qs = @($tasks | Where-Object { $_.Id -match "^Q-S$n([a-z]?)$" } | ForEach-Object { $_.Id })
+        $qid = if (-not $qs.Count) { "Q-S$n" } else { $sfx = @($qs | ForEach-Object { if ($_ -match '([a-z])$') { [int][char]$Matches[1] } else { [int][char]'a' } } | Sort-Object -Descending)[0]; "Q-S$n" + [char]($sfx + 1) }
+        Out "PRÓXIMA AÇÃO: abrir $qid — correção do portão (validation.md: veredito $vv, sem decisão do PO)"
+        Out "  1. a sessão grava a linha da $qid no quadro, seção '## Correção do portão — sprint $n' (a tabela das Histórias: ID, Task, Est., Dono, Depende de, Plano, Evidência, Cenários…), marcador $todoMk, com os achados 'Volta para: dev' do validation.md"
+        Out "  2. achado com 'Volta para: Arquiteto' → /arc question (instância nova) com o caminho do validation.md"
+        Out "  3. depois: run.ps1 next — o Arquiteto escreve o plano de correção (template fix-plan ou plano enxuto) e o executor de Task conduz a $qid; fechada, o operator mede de novo e o QA revisa o veredito. O ✅ das Tasks originais não muda (R25)"
+        if ($vv -eq $E.Warn) { Out "  ⚠️ que o PO aceita como dívida (formulário): a sessão grava no validation.md **Decisão do PO:** aceito com dívida — <motivo e onde a dívida está registrada>; com ela o portão passa (❌ nunca passa)" }
         exit 0
     }
     # 5 · consolidação dos documentos vivos (A5) e 6 · Review.

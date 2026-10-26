@@ -13,6 +13,20 @@
 
 ---
 
+## v3.52.2 — 2026-10-26
+
+**Branch:** `fix/v3.52.2` a partir de `develop` · **Processo:** addendum v3.52.2 (`process-changelog.md`, `/review note`, itens 1 a 17)
+Avaliação do sprint 3 do piloto (v3.52.0). A sessão do `run` medida por `message.id` (a análise somava por linha do transcript, ~1,8× a mais): orquestração 207 → 228 mi (+10 %), total ~412 → ~408 mi, respostas sem ferramenta 27 → 259. Causa: o `Agent` não tem mais `run_in_background` — todo subagente é assíncrono — e a G20 só aceitava espera de agente marcado em segundo plano. Spike de 2026-10-26 aprovou o executor de Task (subagente espera o filho encerrando o turno; três níveis; a sessão recebe um aviso só no fim).
+
+- **Executor de Task (`agents/task-runner.md`, novo, sonnet):** a sessão dispara um executor por Task (`sprint run`) ou por F-ID (`fix run`), que conduz dev → GAP → Arquiteto → dev → fechamento pelos scripts e devolve uma linha. É a sessão curta por Task, sem `/clear` manual (R29). G7: dispara só dev, Arquiteto, operator e QA; G8/`ownership.json`: escreve só as linhas dele no `run-log.md`.
+- **Agente assíncrono (G20, `run.ps1`, `dispatch.ps1`, roteiros, `commands/*`):** espera legítima é qualquer agente da sessão em voo (sem o filtro `bg`); "dispare e encerre o turno; o aviso traz a volta"; `run_in_background` sai dos disparos.
+- **Retomada após queda:** `.active-agents` com `session` e `parent`, registro de todo `Agent` (sessão e papel), SubagentStop preserva quem tem filho vivo; SessionStart `startup`/`resume` move o registro para `.interrupted` e avisa; `run.ps1 next` diz de onde retomar. Mesmo comando inicia e retoma (`/sm sprint run`, `/sm fix run`).
+- **Plano que prova (`plan.ps1`, template e roteiro do Arquiteto):** `- Contagem: `regex` em `glob` → n` recontada pelo script; `### Premissas` (medida ou "não exercitada · verifica"); "não validado" solto reprova; `Layout novo: sim` exige premissa medida e a linha `**Documentos vivos:**` — o SDD fica fora de **Arquivos tocados** (o Arquiteto consolida, decisão do stakeholder); medição em execução pelo `operator`.
+- **Scripts:** `Get-Mutations` único (o bloco não acaba em linha em branco) e `Get-PlanScope` no `lib.ps1`; `"targets": {}` não é alvo; `run.ps1 start` com Task em 🟨; commit por `git commit -F` só com o escopo do plano; veredito `**Veredito (rodada N):**` (vale o último) e `**Decisão do PO:** aceito com dívida`; R24 ignora a linha de abertura; árvore do `verify` sem `docs/`; escalonamento do dev conta só falha de papel (`handoff/<ID>.json`); linha `SESSÃO:` no `next` (aviso acima de 150 mil).
+- **Correção do portão = Task `Q-S<n>`** (seção do quadro "Correção do portão", R25 mantida) e **Review adiada** (`**Estado:** adiada para o sprint <n>`, R21 no `project.ps1`; ocorrência de plugin no `close`) — decisões do stakeholder.
+- **`/team init` e `/team update` §7k** propõem `quality` e `verify.compile`; `guards.json` modelo com as chaves vazias e `_exemplos`. `/ux prototype` com abertura e fecho de sessão (R29).
+- **Testes:** guardas 249 casos (+20), conferências 190 casos (+27), 0 falhas; C3 ok.
+
 ## v3.52.1 — 2026-10-24
 
 **Branch:** `fix/v3.52.1` a partir de `develop` · **Processo:** sem mudança

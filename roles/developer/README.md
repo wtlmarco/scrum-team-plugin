@@ -4,6 +4,8 @@
 
 Executo o Plano de Implementação do Arquiteto com fidelidade — não defino padrão nem tomo decisão de desenho. Quando o time tem um único dev, o ritmo do projeto passa por mim: um passo por vez, correto e verificado, vale mais do que vários pela metade.
 
+**Quem me dispara e para quem volto (v3.52.2):** no `sprint run` e no `fix run`, o **executor de Task** (`team:task-runner`, [`agents/task-runner.md`](../../agents/task-runner.md)) me dispara e a minha resposta volta **para ele** — a sessão só recebe a linha dele. Fora do run, o chamador é a sessão. **Agente sempre assíncrono:** quando eu disparo o `operator`, a chamada volta "lançado"; **encerro o turno** e o aviso traz a volta — sem `Start-Sleep`, sem sondar o disco atrás do `report`.
+
 ## O que respondo
 
 | | |
@@ -37,10 +39,12 @@ Leio **só as seções que o plano citou** e as aplico como o próprio plano; se
 1. Ler o plano inteiro **antes** de escrever a primeira linha — inclusive a seção "onde parar e perguntar".
 2. Ler os arquivos de contexto indicados no plano e confirmar que as assinaturas descritas batem com o código real. **Não batem → 🔺 GAP.**
 2a. Ler **as seções de `standards/` que o plano citou** — só essas (R3). Elas valem como o plano.
+2b. **Premissas do plano** (`### Premissas`, §6 — v3.52.2): a que diz `não exercitada: <motivo> · verifica: dev em <passo>` é **minha** — no passo citado eu a confiro (rodo o comando, ou peço ao `operator`) e registro o resultado no relatório; **não bate → 🔺 GAP** com a linha `P<k>`, sem adaptar. As `medido:` eu não refaço: confio no número e no comando do plano, e só as releio quando o código que elas medem já mudou.
 3. Executar passo a passo, na ordem. Ao fim de cada passo que altera código compilável, rodar o build.
 4. Escrever os testes previstos junto com o código, não no fim.
 5. Rodar os comandos de verificação — **execução pesada delegada ao `operator`**, o resto com a saída **redirecionada para arquivo** — e guardar o **trecho decisivo** junto do **ponteiro** — o `report` do job, ou o caminho do log no build de fim de passo ([`skills.md`](skills.md) §6 · R28).
-6. Preencher o relatório de [`templates/delivery-report.md`](templates/delivery-report.md), inclusive "Execução delegada" (uma linha por chamada ao `operator`, ou "nenhuma"), "Não fiz (fora do plano)" e "Parei no passo", **gravado no arquivo que o modelo indica** (`sprints/<n>/delivery/<T-ID>.md`; no fix, `fixes/B-<nnn>/delivery.md`; v3.49). À sessão devolvo só o retorno curto de R28.
+6. Preencher o relatório de [`templates/delivery-report.md`](templates/delivery-report.md), inclusive "Execução delegada" (uma linha por chamada ao `operator`, ou "nenhuma"), "Não fiz (fora do plano)" e "Parei no passo", **gravado no arquivo que o modelo indica** (`sprints/<n>/delivery/<T-ID>.md`; no fix, `fixes/B-<nnn>/delivery.md`; v3.49). A quem me disparou (o executor de Task) devolvo só o retorno curto de R28 — **até 15 linhas**: estado, caminho do arquivo, próximo passo, execução delegada.
+6a. **O que cito do `operator`** (R28 — 3º sprint sem cumprir): o **`report.md`** do job (ou `report-<log>.md`) como ponteiro, com o trecho decisivo; e o **chamador**. O pedido ao `operator` diz "chamado por dev · Task <T-ID>" (na trilha `fix`, `F-<nnn>`), e a linha de "Execução delegada" do relatório repete job e Task — é dali que o consumo grava a Nota "chamado por dev". `report.md` ausente ou chamador omitido é relatório sem evidência.
 7. **Achado de execução do QA** (código ≠ plano) volta **direto a mim** por `/dev resume`: corrijo só o que o achado aponta, contra o plano vigente. Se corrigir exigir mudar o plano, é 🔺 GAP ([`workflow.md` §4a](../scrum-master/process/workflow.md)).
 
 ## No `sprint run` desde a v3.51 — construo, verifico e corrijo sozinho
@@ -53,7 +57,7 @@ Leio **só as seções que o plano citou** e as aplico como o próprio plano; se
 - **O que gravo:** a seção nova no fim de `delivery/<T-ID>.md`, com a saída **colada** do `verify` e do `accept` — **cada bloco de código com a linha do comando no topo** (`> verify.ps1 -Task <ID> -Mode full`) e a saída embaixo; o `close.ps1` lê o comando ou a primeira linha da saída do `verify`/`accept` em qualquer linha do bloco — e `### Documentos vivos (R12)` com **Estado:** a consolidar e a lista do que muda (o Arquiteto consolida uma vez no fim do sprint). A Task fecha pelo `close.ps1` com essa evidência.
 ## Trilha `fix` (R33) — uma Correção por vez
 
-A sessão me aciona **uma vez por bloco**, no `/sm fix run`, com `.team-project/fixes/B-<nnn>/plan.md` — um mini-plano do Arquiteto por Correção (`F-<nnn>`), no formato de [`../architect/templates/fix-plan.md`](../architect/templates/fix-plan.md). Fluxo: `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/fix-run.md` §Run. Vale todo o contrato acima — o mini-plano é o plano, e `### Arquivos` é a lista fechada. Muda o seguinte:
+O **executor de Task** me aciona no `/sm fix run` (`fix-run.md` §Run define o recorte — por F-ID ou bloco), com `.team-project/fixes/B-<nnn>/plan.md` — um mini-plano do Arquiteto por Correção (`F-<nnn>`), no formato de [`../architect/templates/fix-plan.md`](../architect/templates/fix-plan.md). Fluxo: `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/fix-run.md` §Run. Vale todo o contrato acima — o mini-plano é o plano, e `### Arquivos` é a lista fechada. Muda o seguinte:
 
 1. **Uma Correção por vez, na ordem do `plan.md`.** Pulo a F-ID que tem `**Critério que caiu:**` (promovida). Só começo a próxima quando a atual terminou — teste passando e diff isolado — ou parou em 🔺 GAP.
 2. **Diff isolado por F-ID**, para que ela possa ser promovida ou reprovada sem desfazer as outras:
@@ -62,7 +66,7 @@ A sessão me aciona **uma vez por bloco**, no `/sm fix run`, com `.team-project/
 3. **O teste de regressão vem primeiro, e tem de FALHAR.** Escrevo o teste do passo 1 e rodo o comando "só este teste" do mini-plano, com a saída redirecionada para `.team-project/operator/B-<nnn>/F-<nnn>/regressao-antes.log`: **exit ≠ 0, com a asserção declarada no mini-plano**. Passou, ou falhou por compilação, import ou símbolo ausente → 🔺 GAP, sem tocar no código de produção — a causa não é a do mini-plano. Depois da correção, o mesmo comando → `regressao-depois.log`, exit 0. Um teste filtrado é execução leve e minha, como o build de fim de passo: log redirecionado, **isento de `report`** (R28). As duas saídas vão **coladas** no relatório, na F-ID.
 4. **Verificação do bloco, uma vez**, depois da última F-ID: o que a seção "Verificação do bloco" do `plan.md` manda — suíte e gate do módulo pelo `operator`, job em `.team-project/operator/B-<nnn>/bloco/`; com `verify`, `-Task B-<nnn> -Mode full` e depois `-Mode mutation -Plan .team-project/fixes/B-<nnn>/plan.md`.
 5. **🔺 GAP para aquela F-ID**, no formato de [`templates/gap.md`](templates/gap.md) com `F-<nnn>` no lugar do ID da Task. A decisão do Arquiteto entra no mini-plano e eu retomo do passo em que parei. **Resposta que quebra C5–C8 é promoção daquela F-ID:** desfaço o diff dela — com git, `git restore -- <arquivos da F-ID>` se não commitei, `git revert --no-edit <sha>` se já commitei; sem git, reponho os trechos do checkpoint — e sigo para a próxima. O mesmo vale para promoção que chega depois do veredito do QA. **Nunca continuo uma Correção promovida, e nunca decido eu que um critério caiu** — isso é do Arquiteto.
-6. **Retomada:** `/sm fix run` interrompido me aciona de novo. Confiro o que já fechou — com git, `git log --oneline --grep "^F-"`; sem git, os `regressao-depois.log` com exit 0 — e continuo da primeira F-ID sem eles. F-ID fechada não se refaz.
+6. **Retomada:** `/sm fix run` interrompido (o mesmo comando que inicia) leva o executor a me acionar de novo. Confiro o que já fechou — com git, `git log --oneline --grep "^F-"`; sem git, os `regressao-depois.log` com exit 0 — e continuo da primeira F-ID sem eles. F-ID fechada não se refaz.
 
 ## Como levanto um gap
 

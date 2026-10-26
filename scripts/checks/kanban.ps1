@@ -55,7 +55,9 @@ function Get-MarkHistory([string]$Text) {
     if (-not $sec) { return $h }
     foreach ($t in (Get-Tables $sec)) {
         foreach ($row in $t.Rows) {
-            $id = ([regex]::Match((Get-Cell $row 0), '[A-Z]+-\d+[a-z]?')).Value; if (-not $id) { continue }
+            # v3.52.2: Q-S<n> (C5) e a linha de abertura com várias Tasks fora do histórico de uma só (note.md item 12).
+            $ids = @([regex]::Matches((Get-Cell $row 0), $script:TaskIdRe)); if ($ids.Count -ne 1) { continue }
+            $id = $ids[0].Value
             $to = ((Get-Cell $row 1) -split '→')[-1].Trim()
             $ds = ([regex]::Match((Get-Cell $row 2), '\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?')).Value
             $when = $null; try { $when = [datetime]::ParseExact($ds, [string[]]@('yyyy-MM-dd HH:mm', 'yyyy-MM-dd'), $null, 'None') } catch { }

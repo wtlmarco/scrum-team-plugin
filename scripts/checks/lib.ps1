@@ -128,10 +128,16 @@ function Get-IdPattern([string]$Id) { return '(?<![\w-])' + [regex]::Escape($Id)
 # Impressão digital da árvore de trabalho (v3.45.1): o tree do git com tudo o que está no disco — rastreado, alterado e
 # novo não ignorado —, montado num índice temporário (o índice do projeto não é tocado) e sem .team-project/ (R31).
 # Mesma impressão = mesmo código: evidência de verify.ps1 com ela vale sem reexecução. $null fora de um repositório git.
+# v3.52.2 (note.md item 13): sem os documentos de desenho (docs/, o SDD) — o SDD editado depois do full (hoje pela
+# consolidação do Arquiteto) reprovava o R7-verify. Pasta de guards.json → sourceRoots dentro de docs/ continua na impressão. Ficam fora só os documentos:
+# build, testes e configuração fora de sourceRoots seguem na impressão (sem eles, a evidência ficaria velha sem aviso).
 function Get-WorkTree([string]$Root) {
     $ErrorActionPreference = 'Continue'   # no 5.1, stderr do git (aviso de CRLF) viraria exceção com 'Stop'
     $top = & git -C $Root rev-parse --show-toplevel 2>$null
     if ($LASTEXITCODE -ne 0 -or -not $top) { return $null }
+    $keep = @()
+    $gp = Join-Path $Root '.team-project/guards.json'
+    if (Test-Path -LiteralPath $gp) { try { $keep = @(@((Read-Text $gp | ConvertFrom-Json).sourceRoots) | Where-Object { $_ } | ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') } | Where-Object { $_ -match '^docs(/|$)' -and $_ -ne 'docs' -and $_ -ne 'docs/**' }) } catch { } }
     $idx = [System.IO.Path]::GetTempFileName()
     $old = $env:GIT_INDEX_FILE
     try {
@@ -139,7 +145,9 @@ function Get-WorkTree([string]$Root) {
         $env:GIT_INDEX_FILE = $idx
         & git -C $top rev-parse --verify -q HEAD *> $null
         if ($LASTEXITCODE -eq 0) { & git -C $top read-tree HEAD 2>$null } else { & git -C $top read-tree --empty 2>$null }
-        & git -C $top add -A -- . ':(exclude).team-project' 2>$null
+        & git -C $top add -A -- . ':(exclude).team-project' ':(exclude)docs' 2>$null
+        & git -C $top rm -r -q --cached --ignore-unmatch -- docs 2>$null | Out-Null   # o docs/ do HEAD também sai
+        foreach ($k in $keep) { & git -C $top add -A -- $(if ($k -match '[*?]') { ":(glob)$k" } else { $k }) 2>$null }
         $tree = & git -C $top write-tree 2>$null
         if ($LASTEXITCODE -ne 0) { return $null }
         return ([string]$tree).Trim()
@@ -278,11 +286,13 @@ function Stop-ProcessTree([int]$RootPid, [switch]$ChildrenOnly) {
 }
 
 # Alvos de execução (v3.51, D3): guards.json → targets ({ "android": {…}, "web": {…} }). $null sem a chave.
+# v3.52.2 (note.md item 8): "targets": {} (o modelo do guards.json) também é $null — o objeto vazio é verdadeiro no
+# PowerShell, e o next pedia .scn em laço, o plan.ps1 reprovava o cabeçalho de cenário e o close.ps1 o R7-aceite.
 function Get-TargetsConfig([string]$Root) {
     $g = Join-Path $Root '.team-project/guards.json'
     if (-not (Test-Path -LiteralPath $g)) { return $null }
     try { $j = Read-Text $g | ConvertFrom-Json } catch { return $null }
-    if ($j.PSObject.Properties['targets']) { return $j.targets }
+    if ($j.PSObject.Properties['targets'] -and $null -ne $j.targets -and @($j.targets.PSObject.Properties).Count) { return $j.targets }
     return $null
 }
 
@@ -346,27 +356,36 @@ function Exit-FileLock($Stream, [string]$Path) {
 # fantasma ("18 Task(s)" num sprint de 9) e repetiam IDs no pedido de planos. "## Habilitadora …" vira grupo próprio,
 # Story = 'habilitadora' (antes herdava a História de cima; a R20 continua reprovando Task sem História no close.ps1).
 # Task marcada como retirada (~~T-…~~ ou "retirada" na 1ª célula) fica fora.
+# v3.52.2 (note.md item 15, C5): a correção pedida pelo portão é Task Q-S<n> (Q-S<n>b…) sob "## Correção do portão —
+# sprint <n>", Story = 'correção do portão' — todo parser de ID e de seção do quadro usa $TaskIdRe e Get-BoardGroup.
+$script:TaskIdRe = '(?:Q-S\d+[a-z]?|[A-Z]+-\d+[a-z]?)'
+$script:GateStory = 'correção do portão'
+# Grupo do quadro aberto por um título "## ": a História (H-nnn), 'habilitadora', 'correção do portão'; $null encerra o grupo.
+function Get-BoardGroup([string]$Line) {
+    $hm = [regex]::Match($Line, '^##\s+Hist[oó]ria\s+(H-[\w]+)'); if ($hm.Success) { return $hm.Groups[1].Value }
+    if ($Line -match '^##\s+(?i)habilitadora') { return 'habilitadora' }
+    if ($Line -match '^##\s+(?i)corre[çc][ãa]o do port[ãa]o') { return $script:GateStory }
+    return $null
+}
 function Get-SprintTasks([string]$S) {
     $board = Read-Text (Join-Path $S 'sprint-backlog.md')
     $tdMk = [char]::ConvertFromUtf32(0x2B1C); $rdMk = [char]::ConvertFromUtf32(0x1F534)
     $tasks = @(); $story = $null; $header = $null; $seen = @{}
     foreach ($line in ($board -split "`r?`n")) {
-        $hm = [regex]::Match($line, '^##\s+Hist[oó]ria\s+(H-[\w]+)\s*[—-]?\s*(.*)$')
-        if ($hm.Success) { $story = $hm.Groups[1].Value; $header = $null; continue }
-        if ($line -match '^##\s') { $story = if ($line -match '^##\s+(?i)habilitadora') { 'habilitadora' } else { $null }; $header = $null; continue }
+        if ($line -match '^##\s') { $story = Get-BoardGroup $line; $header = $null; continue }
         if (-not $line.TrimStart().StartsWith('|')) { $header = $null; continue }
         if (-not $story) { continue }
         $cells = Split-Row $line
         if ((Clean-Cell $cells[0]) -eq 'ID') { $header = @($cells | ForEach-Object { Clean-Cell $_ }); continue }
         if (-not $header -or $line -match '^\s*\|[\s:\-|]+\|\s*$') { continue }
-        $idm = [regex]::Match($cells[0], '[A-Z]+-\d+[a-z]?'); if (-not $idm.Success) { continue }
+        $idm = [regex]::Match($cells[0], $script:TaskIdRe); if (-not $idm.Success) { continue }
         if ($cells[0] -match '~~' -or $cells[0] -match '(?i)\bretirada\b' -or $seen.ContainsKey($idm.Value)) { continue }
         $seen[$idm.Value] = $true
         $col = { param($n) $i = -1; for ($k = 0; $k -lt $header.Count; $k++) { if ($header[$k] -like "*$n*") { $i = $k; break } }; if ($i -ge 0 -and $i -lt $cells.Count) { [string]$cells[$i] } else { '' } }
         $mk = $null; foreach ($m in @($tdMk, $E.Plan, $E.Build, $E.QA, $E.Done, $rdMk)) { if ($cells[0].Contains($m)) { $mk = $m; break } }
         $planCell = & $col 'Plano'
         $pm = [regex]::Match($planCell, '\]\(([^)]+)\)'); $pp = if ($pm.Success) { $pm.Groups[1].Value } else { ([regex]::Match($planCell, '`([^`]+)`')).Groups[1].Value }
-        $deps = @([regex]::Matches((& $col 'Depende'), '[A-Z]+-\d+[a-z]?') | ForEach-Object { $_.Value })
+        $deps = @([regex]::Matches((& $col 'Depende'), $script:TaskIdRe) | ForEach-Object { $_.Value })
         $scn = @([regex]::Matches((& $col 'Cenários'), 'SC-\d+') | ForEach-Object { $_.Value } | Select-Object -Unique)
         $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn }
     }
@@ -393,4 +412,49 @@ function Get-TransitionLog([string]$SprintDir, [string]$Board) {
     if (Test-Path -LiteralPath $bd) { $s = Get-Section (Read-Text $bd) '^##\s+Registro de transi'; if ($s) { return $s } }
     if ($Board) { return Get-Section $Board '^##\s+Registro de transi' }
     return $null
+}
+
+# Mutações do plano (v3.46): "- M<k> · teste `<arquivo de teste>` · `<arquivo de produção>` · `<trecho exato>` → `<trecho mutante>`".
+# v3.51.2: todos os blocos **Mutações:** do arquivo — o mini-plano do fix tem um por F-ID.
+# v3.52.2 (note.md item 7): um leitor só, no lib.ps1, para o plan.ps1, o verify.ps1 e o close.ps1. O bloco vai até o próximo
+# rótulo "**…:**" no começo da linha ou título "#"; linha em branco no meio NÃO encerra — o plano passava com 4 mutações
+# (o plan.ps1 contava o arquivo todo) e a 4ª, depois de uma linha em branco, nunca rodava no verify.
+function Get-Mutations([string]$PlanText) {
+    $list = @(); $in = $false
+    foreach ($line in ($PlanText -split "`r?`n")) {
+        if ($line -match '^\*\*Muta[çc][õo]es:\*\*') { $in = $true; continue }
+        if (-not $in) { continue }
+        if ($line -match '^\s*#' -or $line -match '^\*\*[^*]+:\*\*') { $in = $false; continue }
+        $m = [regex]::Match($line, '^\s*-\s*(M\d+)\b.*?`([^`]+)`.*?`([^`]+)`.*?`([^`]*)`\s*→\s*`([^`]*)`')
+        if ($m.Success) { $list += @{ Id = $m.Groups[1].Value; Test = $m.Groups[2].Value.Trim(); File = $m.Groups[3].Value.Trim(); Find = $m.Groups[4].Value; Replace = $m.Groups[5].Value } }
+    }
+    return $list
+}
+
+# Escopo do plano: **Arquivos tocados:**; no mini-plano do fix (v3.51.2), os caminhos de "- produção:" e "- teste:" de
+# todas as F-IDs — a mesma regra da G9 na trilha fix. v3.52.2 (note.md item 10): no lib.ps1, para o commit da Task.
+function Get-PlanScope([string]$PlanText) {
+    $norm = { param($p) ($p.Trim() -replace '\\', '/') -replace '^\./', '' }
+    $m = [regex]::Match($PlanText, '(?s)\*\*Arquivos tocados:\*\*(.*?)(?:\r?\n[ \t]*\r?\n|\r?\n#|\z)')
+    if ($m.Success) { return @([regex]::Matches($m.Groups[1].Value, '`([^`]+)`') | ForEach-Object { & $norm $_.Groups[1].Value }) }
+    $out = @()
+    foreach ($l in [regex]::Matches($PlanText, '(?m)^\s*-\s*(?:produ[çc][ãa]o|teste):(.*)$')) { $out += @([regex]::Matches($l.Groups[1].Value, '`([^`]+)`') | ForEach-Object { & $norm $_.Groups[1].Value }) }
+    return $out
+}
+
+# Medida curta da sessão principal (v3.52.2, note.md item 17): chamadas distintas (message.id, sem <synthetic>) e o contexto
+# da última (entrada + cache criado + cache lido). Lê só texto, sem ConvertFrom-Json por linha (o transcript tem dezenas
+# de MB e o run.ps1 next roda a cada Task). $null sem o arquivo ou sem chamada.
+function Get-SessionGauge([string]$Path) {
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return $null }
+    $ids = @{}; $lastLine = $null
+    foreach ($line in [System.IO.File]::ReadLines($Path)) {
+        if ($line.IndexOf('"usage"') -lt 0 -or $line.IndexOf('"type":"assistant"') -lt 0 -or $line.IndexOf('<synthetic>') -ge 0) { continue }
+        $im = [regex]::Match($line, '"id"\s*:\s*"(msg_[^"]+)"'); if (-not $im.Success) { continue }
+        $ids[$im.Groups[1].Value] = $true; $lastLine = $line
+    }
+    if (-not $ids.Count) { return $null }
+    $ctx = 0L
+    foreach ($k in 'input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens') { $vm = [regex]::Match($lastLine, '"' + $k + '"\s*:\s*(\d+)'); if ($vm.Success) { $ctx += [int64]$vm.Groups[1].Value } }
+    return @{ Calls = $ids.Count; LastContext = $ctx }
 }

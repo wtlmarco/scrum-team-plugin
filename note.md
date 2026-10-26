@@ -4,4 +4,4 @@
 
 ## Abertas
 
-1) Resto do pacote v3.52 (R29 ampliada): `/ux prototype` está na lista de rituais que começam em sessão nova (`working-rules.md` R29, G21 avisa), mas o roteiro do UX (`roles/user-experience/`) ainda não tem a leitura curta de abertura nem o fecho "`/clear` e o próximo comando". Dono: UX.
+*(vazia — os itens 1 a 17 de 26/10/2026 foram aplicados na v3.52.2 e vivem no addendum v3.52.2 do `process-changelog.md`)*
