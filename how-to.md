@@ -67,7 +67,7 @@ O time trabalha numa cadência fixa, toda conduzida pelo `/sm`:
 /sm sprint prepare          o time detalha as candidatas (regras, critérios, telas, cenários de teste) — sem te acionar
 /sm sprint plan             Planning: quebra em Tasks, estima, corta pela capacidade, costura o protótipo do sprint
                               ③ você navega o protótipo do sprint e decide o PACOTE
-/sm sprint run              o time constrói a fila inteira — sem te acionar
+/sm sprint run              o time constrói a fila inteira — um executor de Task por Task, sem te acionar; para na Review
 /sm sprint review           ④ você decide, uma pergunta por História
 /sm sprint close            retrospectiva; o sprint seguinte começa no prepare
 ```
@@ -153,7 +153,7 @@ Item tratado **sai do `note.md`** e passa a viver no destino.
 
 ### F · O trabalho parou no meio
 
-- **O `run` foi interrompido** (sessão fechada, erro de ambiente): ao reabrir a sessão, o time retoma sozinho (v3.51: a abertura da sessão vê o `.team-project/.active-run` e manda seguir a fila). Se não retomar, rode `/sm sprint run` de novo. Ele retoma cada Task de onde parou, sem replanejar o que já tem plano. Para não parar, deixe o computador acordado durante o run (ver "Responder pelo celular", item 9).
+- **O `run` foi interrompido** (sessão fechada, erro de ambiente): ao reabrir a sessão, a abertura vê o `.team-project/.active-run` e avisa **"RETOMADA"** (v3.52.2: os agentes que estavam em andamento morrem com a sessão e ficam anotados em `.interrupted`). **A retomada é o mesmo comando que inicia:** rode `/sm sprint run` — o `run.ps1 next` diz de onde seguir e retoma cada Task do passo em que parou (o "Parei no passo" do relatório do dev), sem replanejar o que já tem plano. Para não parar, deixe o computador acordado durante o run (ver "Responder pelo celular", item 9).
 - **Falha de ambiente** (v3.51): quando o `verify` ou o executor de cenários devolvem **exit 4**, o problema é a máquina, não o código — tempo esgotado, emulador com a tela em branco, site fora do ar, outro automatizador usando o aparelho, perfil do Windows com acento. O time tenta o reparo uma vez e, sem sucesso, a Task fica bloqueada por ambiente com a ação para você (§"Ambiente de execução", abaixo).
 - **O `fix run` foi interrompido:** rode `/sm fix run` de novo. Ele retoma da correção em que parou; as já fechadas não são refeitas.
 - **O `sdd` parou num portão:** rode `/sm sdd` de novo; ele retoma na primeira etapa não concluída.
@@ -200,12 +200,12 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 | **G8** | papel editando arquivo de outro dono (matriz de `artifact-ownership.md`) ou código-fonte — o Arquiteto inclusive, salvo em spike declarado (`.team-project/.active-spike`) | o papel pede a mudança ao dono; o Arquiteto decide e devolve a resposta, validando no scratchpad. Nada é perguntado a você |
 | **G9** | dev editando arquivo fora da lista do plano (R4 · R8), ou sem Task ativa | 🔺 GAP ao Arquiteto, que acrescenta o arquivo ao plano. Rodando `/dev` à mão, a sessão grava antes `.team-project/.active-task` |
 | **G11** | `operator` escrevendo fora da pasta do próprio job | — (o `operator` só grava log e relatório) |
-| **G14** | durante o `sprint run`/`fix run`: **libera** sozinho o operacional dos papéis (leitura, git sem push, build/teste de `guards.json` → `runCommands`) e nega o que está fora da lista, inclusive comando em segundo plano fora do `operator` | nenhum pedido de permissão para no meio da fila; os agentes do run rodam em segundo plano e a sessão espera a notificação de cada um. Comando de build/teste que falta: acrescente o prefixo em `runCommands` |
+| **G14** | durante o `sprint run`/`fix run`: **libera** sozinho o operacional dos papéis (leitura, git sem push, build/teste de `guards.json` → `runCommands`) e nega o que está fora da lista, inclusive comando em segundo plano fora do `operator` | nenhum pedido de permissão para no meio da fila; todo agente do run volta assíncrono: quem o dispara encerra o turno e o aviso de conclusão reabre a sessão. Comando de build/teste que falta: acrescente o prefixo em `runCommands` |
 | **G17** | disparo de papel (inclusive o `operator`) com modelo diferente do de `.team-project/models.json` | dispare de novo com o `model` indicado. Para trocar o modelo de um papel, edite `models.json` (`{ "developer": "sonnet", "architect": "opus" }`; vale para os 7 papéis, vence o agente e as exceções do processo; `scripts/checks/models.ps1` mostra o que está em vigor) |
 | **G18** | só no experimento de benchmark (`guards.json` → `bench`): o `AskUserQuestion` é negado e respondido pelo dossiê; com `foreground`, `Agent` em segundo plano é negado | siga a resposta `[bench]` como se fosse a do stakeholder (`rituals/benchmark.md` §7). Fora do experimento não há `bench` no `guards.json`: nada a fazer |
 | **G15** | registra no `guards.log` todo pedido de permissão do Claude Code | — (é o rastro para diagnosticar chamada interrompida, R27) |
 | **G19** | a sessão retomando por `SendMessage` um papel caro (Arquiteto, QA, PO, UX, SM) parado há mais de 5 min (v3.51) | — o time abre uma instância nova com o cartão de passagem; retomar regravaria todo o contexto no modelo caro |
-| **G20** | o fim de turno no meio do `sprint run` com Task elegível no quadro (v3.51) | — a sessão segue a fila sozinha; esperar agente em segundo plano é permitido |
+| **G20** | o fim de turno no meio do `sprint run` com Task elegível no quadro (v3.51) | — a sessão segue a fila sozinha; esperar agente disparado nesta sessão é permitido (o aviso reabre a sessão) |
 | **G16** | registra em `.team-project/usage.jsonl` o consumo **medido** de cada subagente (tokens processados, contexto final, modelo, duração, Task) | — e roda `scripts/checks/consumption.ps1`, que escreve o `consumption.md` (v3.49; antes, a sessão o rodava); ninguém copia número da notificação |
 
 - **O agente recebe o motivo e corrige o rumo** — você normalmente nem vê o bloqueio. As guardas por papel (G5–G11) não valem para a sua sessão principal.
@@ -244,7 +244,7 @@ O time pode te perguntar — e você pode retomar o trabalho — pelo **Claude C
 6. **"Pular" não decide nada:** a pergunta fica pendente em `.team-project/README.md` §7 e volta quando o time retomar.
 7. **① e ③ também se respondem pelo celular.** A pergunta traz o link do protótipo publicado como página privada na sua conta: navegue nele e decida. "Aprovar" declara que você navegou — a responsabilidade é sua. Se o produto também tem site, a navegação no desktop continua por sua conta.
 8. **Quando a fila do `sprint run` termina,** chega `[ACME · S4 · fim do run] Iniciar a Sprint Review?` — no terminal e no celular. "Agora" já abre a Review; "depois" deixa anotado. Iniciar a Review não é aceitar nada.
-9. **Se o computador suspender, a sessão cai.** Nada se perde: a pergunta está em §7 e volta quando você reabrir o projeto. Enquanto existir `.team-project/.active-run` (um `sprint run` ou `fix run` em andamento), mantenha o computador acordado: na tomada, com a suspensão e a hibernação desligadas. No Windows: `powercfg /change standby-timeout-ac 0` e `powercfg /change hibernate-timeout-ac 0` (a tela pode apagar; ela não é a suspensão) e, em notebook, a ação de fechar a tampa em "Não fazer nada" (Opções de energia → Escolher a função do fechamento da tampa). Desfaça ao fim do run. Medido no piloto: ~122 h de máquina suspensa com agentes em segundo plano, que viraram o vigia de 600 s, rede caída e um desligamento inesperado. Se a máquina suspendeu, ao reabrir a sessão o time retoma sozinho pelo marcador; você não precisa reenviar a fila.
+9. **Se o computador suspender, a sessão cai.** Nada se perde: a pergunta está em §7 e volta quando você reabrir o projeto. Enquanto existir `.team-project/.active-run` (um `sprint run` ou `fix run` em andamento), mantenha o computador acordado: na tomada, com a suspensão e a hibernação desligadas. No Windows: `powercfg /change standby-timeout-ac 0` e `powercfg /change hibernate-timeout-ac 0` (a tela pode apagar; ela não é a suspensão) e, em notebook, a ação de fechar a tampa em "Não fazer nada" (Opções de energia → Escolher a função do fechamento da tampa). Desfaça ao fim do run. Medido no piloto: ~122 h de máquina suspensa com agentes em segundo plano, que viraram o vigia de 600 s, rede caída e um desligamento inesperado. Se a máquina suspendeu, os agentes em andamento morreram com a sessão: ao reabrir, a abertura avisa a retomada e você roda o mesmo comando (`/sm sprint run` ou `/sm fix run`); o time segue do passo em que parou, sem reenviar a fila.
 
 ## Regras que valem em qualquer cenário
 
@@ -364,7 +364,7 @@ O `.claude/settings.json` do projeto deve ficar assim:
 claude plugin install team@team --scope project -y
 ```
 
-Depois de reiniciar, `/plugin` mostra `team@team` como **enabled** e `/help` lista os **8 comandos** (`/sm /po /arc /ux /dev /qa /team /review`) e os **7 agentes**. Se não listar, veja *Problemas de instalação*.
+Depois de reiniciar, `/plugin` mostra `team@team` como **enabled** e `/help` lista os **8 comandos** (`/sm /po /arc /ux /dev /qa /team /review`) e os **8 agentes** (os seis papéis, o `operator` e o executor de Task `task-runner`). Se não listar, veja *Problemas de instalação*.
 
 **3. `/team init`** — cria o `.team-project/` e conduz o preenchimento. Sem ele, todo papel para e pede que seja criado.
 
@@ -399,7 +399,7 @@ Antes da 1ª Planning use os comandos de papel; `/sm sprint run <T-ID>` exige o 
 
 - [ ] `claude plugin marketplace list` mostra o `team` nas **settings do projeto**, não nas do usuário
 - [ ] `claude plugin list` mostra `team@team` habilitado (exibição duplicada é ruído)
-- [ ] Sessão reiniciada; `/plugin` mostra `team@team` **enabled** e `/help` lista os 8 comandos e os 7 agentes
+- [ ] Sessão reiniciada; `/plugin` mostra `team@team` **enabled** e `/help` lista os 8 comandos e os 8 agentes
 - [ ] `/team init` executado; `.team-project/README.md` escrito (stack, fontes da verdade, comandos, limitações) e os seis `context.md` com as armadilhas do projeto
 - [ ] Em repositório git: `.gitignore` com `.team-project/` e `git ls-files .team-project` vazio (R31); `.team-project/consumption.md` existe
 - [ ] Projeto retomado: `pending.md` produzido por `/qa audit` antes de qualquer planejamento

@@ -46,7 +46,7 @@ Saída real de comando no relatório, sempre. Se falhou, mostrar a falha. Honest
 
 **Recebido o relatório do `operator`, leio o resumo por padrão, sem abrir o log bruto.** E não reexecuto o comando para conferir o que ele devolveu.
 
-**Cada chamada ao `operator` vira uma linha da seção "Execução delegada" do relatório de entrega** — job e Task, o índice que o QA e o C1 usam (R28). O pedido leva o ID da Task e o job vai em `operator/<n>/<T-ID>[-<slug>]/`. Tokens, duração e modelo o hook G16 mede (v3.45); eu não copio número nem gravo em `consumption.md`.
+**Cada chamada ao `operator` vira uma linha da seção "Execução delegada" do relatório de entrega** — job e Task, o índice que o QA e o C1 usam (R28). O pedido leva o ID da Task, **o chamador ("chamado por dev · Task <T-ID>")** e o job vai em `operator/<n>/<T-ID>[-<slug>]/`; o `report.md` do job é o ponteiro que eu cito (R28). **A chamada é assíncrona** (v3.52.2): dispare o `operator` e encerre o turno — o aviso traz a volta; nada de `Start-Sleep` nem de sondar o disco. Tokens, duração e modelo o hook G16 mede (v3.45); eu não copio número nem gravo em `consumption.md`.
 
 **Os gatilhos de aprofundamento obrigatório são os quatro da lista canônica de R28** (`roles/scrum-master/process/working-rules.md`) — leio lá e não os repito aqui; repetir é achado de processo contra mim. Fora deles, abrir o log bruto é opção minha, não obrigação.
 

@@ -7,7 +7,8 @@
                   "quality-assurance":  "QA",
                   "scrum-master":  "SM",
                   "developer":  "dev",
-                  "operator":  "operator"
+                  "operator":  "operator",
+                  "task-runner":  "executor de Task"
               },
     "project":  [
                     {
@@ -162,6 +163,18 @@
                                         "scrum-master"
                                     ],
                         "matriz":  "Trilha `fix` — pasta do bloco (`.team-project/fixes/B-\u003cnnn\u003e/`)",
+                        "dono":  "SM"
+                    },
+                    {
+                        "paths":  [
+                                      ".team-project/sprints/*/run-log.md",
+                                      ".team-project/fixes/b-*/run-log.md"
+                                  ],
+                        "writers":  [
+                                        "scrum-master",
+                                        "task-runner"
+                                    ],
+                        "matriz":  "Registro do run (`.team-project/sprints/\u003cn\u003e/run-log.md`, `.team-project/fixes/B-\u003cnnn\u003e/run-log.md`)",
                         "dono":  "SM"
                     },
                     {

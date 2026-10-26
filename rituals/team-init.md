@@ -51,6 +51,8 @@ Com as respostas, incluindo a seção compacta "Como usar o time neste projeto" 
 
 Com os comandos reais de build/teste/lint do passo 3, siga os **passos 7f e 7h de `${CLAUDE_PLUGIN_ROOT}/rituals/team-update.md`**: `runCommands` e `verify` no `.team-project/guards.json`, num formulário só. Sem isso, o `sprint run` volta a depender de pedido de permissão do harness no meio da fila.
 
+**Medição do portão e da mutação (v3.52.2).** Com os mesmos comandos, siga o **passo 7k de `${CLAUDE_PLUGIN_ROOT}/rituals/team-update.md`** — no **mesmo formulário**, **proponha** a seção `quality` (`coverage` com limiar, `lint`, `format`, `architecture`, `metrics`, `duplication`, `sourceRoots`: o `quality.ps1` mede as regras do nível 1 do `/qa sprint <n>`) e `verify.compile` (o comando que só compila, para o `verify.ps1 -Mode mutation -Precheck` acusar mutante que não compila). Exemplo: `"quality": { "coverage": "npm run test:cov", "coverageThreshold": 80, "lint": "npm run lint" }` e `"verify": { …, "compile": "npx tsc --noEmit" }`. **Sem elas, diga ao stakeholder o que deixa de ser medido:** o `quality.ps1` mede só Q9 e Q17 (2 das 8 regras) e o resto vai ao julgamento do QA; o `-Precheck` confere só o trecho único, sem compilar o mutante. Sem resposta, não aplique e registre a pendência no `README.md` §7.
+
 ## 5. Aponte o próximo passo
 
 Conforme a resposta do passo 3:

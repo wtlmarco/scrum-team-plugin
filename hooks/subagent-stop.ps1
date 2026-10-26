@@ -25,8 +25,9 @@ function Get-AgentTranscript([object]$HookInput) {
 }
 
 # ID de trabalho no texto: Task, Correção, bloco ou História — o primeiro que aparece.
+# v3.52.2 (note.md item 15): Q-S<n>[a-z]? (correção do portão) é Task.
 function Get-WorkId([string]$Text) {
-    $m = [regex]::Match($Text, '(?<![\w-])(T-\d+[a-z]?|F-\d+|B-\d+|H-\d+)(?![\w])')
+    $m = [regex]::Match($Text, '(?<![\w-])(Q-S\d+[a-z]?|T-\d+[a-z]?|F-\d+|B-\d+|H-\d+)(?![\w])')
     if ($m.Success) { return $m.Value }
     return $null
 }
@@ -82,7 +83,9 @@ try {
     if (-not (Test-Path -LiteralPath $tp)) { exit 0 }                       # projeto sem o time: silêncio
     $cfg = Get-GuardConfig $projectDir
     if ($cfg.probe) { Write-GuardLog $projectDir 'probe' $hookInput '' ("subagent-stop campos=" + ($hookInput.PSObject.Properties.Name -join ',')) }
-    Remove-ActiveAgent $projectDir ([string]$hookInput.agent_type) ([string]$hookInput.agent_id)   # v3.51 (G20): o agente voltou
+    # v3.51 (G20): o agente voltou. v3.52.2 (note.md item 4): com filho vivo no registro (o executor de Task encerra o turno
+    # esperando o dev), fica como 'aguardando filho' — o SubagentStop dispara de novo quando ele parar de vez.
+    $null = Remove-ActiveAgent $projectDir ([string]$hookInput.agent_type) ([string]$hookInput.agent_id)
     if (-not (Test-GuardEnabled $cfg 'G16')) { exit 0 }
 
     $agentId = [string]$hookInput.agent_id
@@ -120,6 +123,8 @@ try {
     $firstPrompt = $null; $roundPrompt = $null; $children = @{}; $lastText = $null; $lastSynthetic = $false
     foreach ($line in [System.IO.File]::ReadLines($transcript)) {
         # Subagente que este disparou (o operator de um papel): o resultado do Agent cita o agentId — liga a linha dele ao chamador.
+        # v3.52.2 (conferido no transcript real de 2026-10-26): o lançamento assíncrono traz "agentId: <17 hex> (internal ID …)"
+        # no texto e "agentId":"<hex>" no toolUseResult — os dois casam; o executor de Task liga assim o dev e o Arquiteto dele.
         if ($line.IndexOf('"tool_result"') -ge 0 -and $line.IndexOf('agentId') -ge 0) {
             foreach ($cm in [regex]::Matches($line, 'agentId:?\\?"?:?\s*\\?"?([a-f0-9]{8,})')) { $children[$cm.Groups[1].Value] = $true }
             continue
@@ -129,6 +134,10 @@ try {
                 $u = $line | ConvertFrom-Json
                 $c = $u.message.content
                 $text = if ($c -is [string]) { $c } else { (@($c) | Where-Object { $_.type -eq 'text' } | ForEach-Object { [string]$_.text }) -join "`n" }
+                # v3.52.2 (note.md item 4): o aviso de volta de um filho ("<agent-message from=""<agentId>"">" ou <task-id>) acorda
+                # o executor — não é pedido novo: a rodada segue com o item do primeiro prompt.
+                $nm = if ($text) { [regex]::Match($text, '(?:<agent-message from="|<task-id>)([a-f0-9]{8,})') } else { $null }
+                if ($nm -and $nm.Success -and $children.ContainsKey($nm.Groups[1].Value)) { $text = '' }
                 if ($text) {
                     if ($null -eq $firstPrompt) { $firstPrompt = $text }
                     if ($calls.Count -ge $seen -and $null -eq $roundPrompt) { $roundPrompt = $text }
@@ -175,7 +184,7 @@ try {
     # v3.51.4 (garden item 8): todas as Tasks citadas no prompt da rodada — o plano por História (regra 25) cobre várias, e o
     # kanban.ps1 rateia a rodada entre elas em vez de pôr tudo na primeira.
     $src = if ($roundPrompt) { $roundPrompt } else { [string]$firstPrompt }
-    $works = @([regex]::Matches($src, '(?<![\w-])T-\d+[a-z]?(?![\w])') | ForEach-Object { $_.Value } | Select-Object -Unique | Select-Object -First 12)
+    $works = @([regex]::Matches($src, '(?<![\w-])(Q-S\d+[a-z]?|T-\d+[a-z]?)(?![\w])') | ForEach-Object { $_.Value } | Select-Object -Unique | Select-Object -First 12)
     $run = Get-Marker $projectDir '.active-run'
     $dst = Get-Destination $projectDir $work $run
     # v3.51.4 (note.md itens 2 e 11, garden item 26): o subagente parou no limite de uso da conta — sinal legível para a retomada.
@@ -194,7 +203,7 @@ try {
             foreach ($src in @($lastText, $roundPrompt, $firstPrompt)) { if ($src) { $mm = [regex]::Match($src, $jobRe); if ($mm.Success) { $jm = $mm; break } } }
             # v3.51.4 (garden item 24): sem pasta citada (o dev chamou o operator para o verify full), o relatório vai a uma
             # pasta da própria Task — operator/<n>/<T-ID>-<agente>/ — e o R28 do close.ps1 o acha pela pasta da Task.
-            if (-not $jm -and $work -match '^T-\d+' -and $dst.sprint) {
+            if (-not $jm -and $work -match '^(T-\d+|Q-S\d+)' -and $dst.sprint) {
                 $jm = [regex]::Match(".team-project/operator/$($dst.sprint)/$work-$($agentId.Substring(0, [Math]::Min(8, $agentId.Length)))", $jobRe)
             }
             # v3.52.1 (garden item 24): o mesmo no bloco de fix — operator/B-<nnn>/<F-ID>-<agente>/ (a pasta que o C4 e o R28 olham).

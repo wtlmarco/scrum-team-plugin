@@ -127,12 +127,13 @@ function Test-GlobMatch([string]$RelPath, [object[]]$Globs) {
 
 # Marcadores gravados pela sessao (dono SM): .active-run (sprint run / fix run em andamento, G14)
 # e .active-spike (spike ou pedido do stakeholder declarado, G8). Ausente ou invalido -> $null.
-# Agentes disparados pela sessao (v3.51, G20; v3.51.4): .team-project/.active-agents, lista JSON de
-# { type, description, desde, bg, agent_id, work, last, at }. A PreToolUse acrescenta a cada Agent da sessao em projeto com o
-# time - em primeiro ou segundo plano, com ou sem .active-run (o .active-run gravado na mesma resposta do primeiro disparo
-# chegava depois do hook e o agente ficava fora, garden item 5); a PreToolUse do proprio subagente grava a ultima acao
-# (last, at) e o agent_id; a SubagentStop tira o agente. O hook Stop libera o fim de turno enquanto ha agente em SEGUNDO
-# plano (bg) em voo ha menos de 3 h. O kanban.md mostra todos em "## Agora" (note.md item 15, garden item 11).
+# Agentes em voo (v3.51, G20; v3.51.4; v3.52.2): .team-project/.active-agents, lista JSON de
+# { type, description, desde, session, parent, agent_id, work, last, at }. A PreToolUse acrescenta TODO Agent em projeto com
+# o time - da sessao (parent '') e de papel (parent = agent_id de quem disparou; o executor de Task e os filhos dele, note.md
+# item 4), com ou sem .active-run (garden item 5); a PreToolUse do proprio subagente grava a ultima acao (last, at) e o
+# agent_id; a SubagentStop tira o agente (com filho vivo, fica como 'aguardando filho'). v3.52.2 (note.md item 2): todo
+# agente e assincrono - o Stop libera o fim de turno enquanto ha agente DESTA sessao com sinal de vida ha menos de 3 h.
+# SessionStart startup/resume move o registro para .team-project/.interrupted (item 3). O kanban.md mostra todos em "## Agora".
 function Get-ActiveAgents([string]$ProjectDir) {
     $p = Join-Path $ProjectDir '.team-project/.active-agents'
     if (-not (Test-Path -LiteralPath $p)) { return @() }
@@ -145,12 +146,18 @@ function Set-ActiveAgents([string]$ProjectDir, $List) {
     else { [System.IO.File]::WriteAllText($p, (ConvertTo-Json -InputObject @($List) -Depth 3 -Compress), (New-Object System.Text.UTF8Encoding($false))) }
     Write-NowSection $ProjectDir @($List)
 }
-function Add-ActiveAgent([string]$ProjectDir, [string]$Type, [string]$Description, [bool]$Background = $true) {
-    $work = ''; $wm = [regex]::Match($Description, '(?<![\w-])(T-\d+[a-z]?|F-\d+|B-\d+|H-\d+)(?![\w])'); if ($wm.Success) { $work = $wm.Value }
+# Horas desde o último sinal de vida do registro (at; senão desde). Ilegível = muito velho.
+function Get-AgentIdleHours($Agent) {
+    try { return ((Get-Date) - [datetime]::Parse([string]$(if ($Agent.at) { $Agent.at } else { $Agent.desde }))).TotalHours } catch { return 1e6 }
+}
+function Add-ActiveAgent([string]$ProjectDir, [string]$Type, [string]$Description, [string]$Session = '', [string]$Parent = '') {
+    # v3.52.2 (note.md item 15): Q-S<n> (correção do portão) também é item de trabalho.
+    $work = ''; $wm = [regex]::Match($Description, '(?<![\w-])(Q-S\d+[a-z]?|T-\d+[a-z]?|F-\d+|B-\d+|H-\d+)(?![\w])'); if ($wm.Success) { $work = $wm.Value }
     $now = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-    # Registro com mais de 6 h é resto de queda (a SubagentStop não veio): sai ao entrar o próximo.
-    $old = @(Get-ActiveAgents $ProjectDir | Where-Object { try { ((Get-Date) - [datetime]::Parse([string]$_.desde)).TotalHours -lt 6 } catch { $false } })
-    $l = $old + @([pscustomobject]@{ type = $Type; description = $Description; desde = $now; bg = $Background; agent_id = ''; work = $work; last = 'disparado'; at = $now })
+    # Registro sem sinal de vida há mais de 6 h é resto de queda (a SubagentStop não veio): sai ao entrar o próximo.
+    $old = @(Get-ActiveAgents $ProjectDir | Where-Object { (Get-AgentIdleHours $_) -lt 6 })
+    # v3.52.2 (note.md itens 2-4): sem "bg" (todo agente é assíncrono); session = sessão que disparou, parent = agente que disparou.
+    $l = $old + @([pscustomobject][ordered]@{ type = $Type; description = $Description; desde = $now; session = $Session; parent = $Parent; agent_id = ''; work = $work; last = 'disparado'; at = $now })
     Set-ActiveAgents $ProjectDir $l
 }
 # Ultima acao de um subagente (PreToolUse dele): casa pelo agent_id; senao, o mais antigo do mesmo tipo ainda sem agent_id.
@@ -169,13 +176,24 @@ function Update-ActiveAgent([string]$ProjectDir, [string]$AgentId, [string]$Type
     Set-ActiveAgents $ProjectDir $l
 }
 function Remove-ActiveAgent([string]$ProjectDir, [string]$Type, [string]$AgentId = '') {
-    $l = @(Get-ActiveAgents $ProjectDir); if (-not $l.Count) { return }
+    $l = @(Get-ActiveAgents $ProjectDir); if (-not $l.Count) { return '' }
     $ix = -1
     if ($AgentId) { for ($i = 0; $i -lt $l.Count; $i++) { if ([string]$l[$i].agent_id -eq $AgentId) { $ix = $i; break } } }
     if ($ix -lt 0) { for ($i = 0; $i -lt $l.Count; $i++) { if ([string]$l[$i].type -eq $Type -or ([string]$l[$i].type -replace '^team:', '') -eq ($Type -replace '^team:', '')) { $ix = $i; break } } }
-    if ($ix -lt 0) { return }
+    if ($ix -lt 0) { return '' }
+    # v3.52.2 (note.md item 4): o executor de Task encerra o turno com o filho vivo e é acordado pelo aviso dele — fica no
+    # registro (a G20 e a retomada o veem), marcado 'aguardando filho'. Filho = registro com parent = o agent_id dele.
+    $me = [string]$l[$ix].agent_id
+    if ($me -and @($l | Where-Object { $_.PSObject.Properties['parent'] -and [string]$_.parent -eq $me }).Count) {
+        $a = $l[$ix]
+        foreach ($k in 'last', 'at') { if (-not $a.PSObject.Properties[$k]) { $a | Add-Member -NotePropertyName $k -NotePropertyValue '' } }
+        $a.last = 'aguardando filho'; $a.at = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+        Set-ActiveAgents $ProjectDir $l
+        return 'aguardando filho'
+    }
     $keep = @(); for ($i = 0; $i -lt $l.Count; $i++) { if ($i -ne $ix) { $keep += $l[$i] } }
     Set-ActiveAgents $ProjectDir $keep
+    return 'removido'
 }
 
 # Sprint corrente lido pelos hooks (mesma regra de scripts/checks/lib.ps1 Get-CurrentSprint, v3.51.4). $null sem a linha.
@@ -205,7 +223,10 @@ function Write-NowSection([string]$ProjectDir, $List) {
                 $since = try { ([datetime]::Parse([string]$a.desde)).ToString('HH:mm') } catch { '?' }
                 $mins = [int][Math]::Max(0, ($now - $at).TotalMinutes)
                 $last = ([string]$a.last -replace '\|', '/'); if (-not $last) { $last = 'disparado' }
-                $rows += "| $(([string]$a.type) -replace '^.*:', '')$(if ($a.bg -eq $false) { '' } else { ' (2º plano)' }) | $(if ($a.work) { $a.work } else { '—' }) | ``$last`` | $mins min | $since |"
+                # v3.52.2 (note.md itens 2 e 4): sem "(2º plano)" — todo agente é assíncrono; filho mostra quem o disparou.
+                $by = ''
+                if ($a.PSObject.Properties['parent'] -and [string]$a.parent) { $pa = @(@($List) | Where-Object { [string]$_.agent_id -eq [string]$a.parent } | Select-Object -First 1); if ($pa.Count) { $by = ' (de ' + (([string]$pa[0].type) -replace '^.*:', '') + ')' } }
+                $rows += "| $(([string]$a.type) -replace '^.*:', '')$by | $(if ($a.work) { $a.work } else { '—' }) | ``$last`` | $mins min | $since |"
             }
         }
         $block = ($rows -join "`n") + "`n`n"
@@ -258,6 +279,8 @@ function Get-Marker([string]$ProjectDir, [string]$Name) {
 
 # v3.47 (G17) - modelo por papel: .team-project/models.json, do stakeholder e opcional.
 # Chaves = os 7 agentes do time (ou o apelido do comando: arc dev po qa sm ux); valores = o enum da ferramenta Agent.
+# v3.52.2: o executor de Task (task-runner) fica fora de propósito — instrumento do run, modelo fixo no agents/task-runner.md
+# (sonnet); a G17 cala para ele e o models.json o trata como papel desconhecido.
 # Chave que falta = o modelo do proprio agente (agents/<papel>.md) e as excecoes do processo. Chave ligada VENCE tudo.
 # Chave que comeca com "_" e comentario. Valor ou chave invalida e ignorado e listado em Problems; arquivo
 # ilegivel = como ausente (falha aberta, D5).

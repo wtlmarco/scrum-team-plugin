@@ -9,6 +9,8 @@ Salvo em `.team-project/sprints/<n>/validation.md`. É o **portão de validaçã
 
 **Veredito:** ✅ aprovado | ⚠️ aprovado com ressalva | ❌ reprovado — <aaaa-mm-dd hh:mm>
 **Árvore validada:** `<12 primeiros do result.json>` · **Rodada:** <1, 2…>
+<!-- Rodada nova, depois que a Q-S<n> fechou: acrescente ao fim do arquivo uma linha `**Veredito (rodada 2):** ✅ | ⚠️ | ❌ — <data>` — o run.ps1 lê o marcador `**Veredito…:**` e vale a ÚLTIMA ocorrência do arquivo. Não apague a anterior. -->
+<!-- Só a sessão escreve, copiando a resposta do PO no formulário, e só com veredito ⚠️ (nunca com ❌); ausente por padrão, e com ela o ⚠️ conta como portão passado: `**Decisão do PO:** aceito com dívida — <motivo e onde a dívida está registrada>` -->
 
 ## 1. Funcional — prova no alvo real
 
@@ -51,7 +53,7 @@ O que a ferramenta não mede, com `arquivo:linha` e a seção de `standards/` qu
 
 | # | Task | Achado | Onde (`arquivo:linha`) | Volta para | Estado |
 |---|---|---|---|---|---|
-| 1 | T-<nnn> | <o que está errado e o que o standard pede> | | dev · Arquiteto (dúvida de desenho) | aberto · corrigido em <data> |
+| 1 | T-<nnn> | <o que está errado e o que o standard pede> | | dev (vira Task Q-S<n>) · Arquiteto (dúvida de desenho) | aberto · Q-S<n> aberta · corrigido em <data> |
 
 *(A consolidação dos documentos vivos (R12) é do Arquiteto, depois do veredito ✅, em `.team-project/sprints/<n>/docs-consolidation.md` — A5.)*
 ```
@@ -60,6 +62,7 @@ O que a ferramenta não mede, com `arquivo:linha` e a seção de `standards/` qu
 
 - **Uma passada, o incremento inteiro.** O QA olha o todo, não Task a Task; o diff do sprint e os planos são a base da aderência.
 - **Achado tem endereço:** `arquivo:linha` ou saída de comando, a regra (`Q<n>` ou a seção) e para quem volta. Sem isso é suspeita, não achado.
-- **Achado de execução volta ao dev** (Haiku, retomável); **dúvida de desenho, ao Arquiteto** (instância nova, com o caminho deste arquivo). Depois da correção, o `operator` mede de novo o que mudou e o QA, em instância nova, revisa o veredito **neste mesmo arquivo** (nova rodada, sem apagar a anterior).
-- **⚠️ aprovado com ressalva** só com o achado aceito pelo PO como dívida, com Task no backlog.
+- **Achado de execução ("Volta para: dev") vira Task `Q-S<n>`** no quadro (seção `## Correção do portão — sprint <n>`), com plano, dev e fechamento próprios; o ✅ das Tasks originais não muda (R25). **Dúvida de desenho, ao Arquiteto** (`/arc question`, instância nova, com o caminho deste arquivo). Depois que a `Q-S<n>` fecha, o `operator` mede de novo o que mudou e o QA, em instância nova, revisa o veredito **neste mesmo arquivo** (nova rodada, sem apagar a anterior).
+- **Linha do veredito:** o `run.ps1` lê o marcador `**Veredito…:**` — `**Veredito:**` na primeira rodada, `**Veredito (rodada 2):**` nas seguintes — e **vale a última ocorrência do arquivo**; a marca ✅/⚠️/❌ vem logo depois dos dois-pontos.
+- **⚠️ aprovado com ressalva** só com o achado aceito pelo PO como dívida, com Task no backlog. A aceitação fica na linha `**Decisão do PO:** aceito com dívida — <motivo e onde a dívida está registrada>`, **escrita pela sessão** com a resposta do PO no formulário (o QA não a escreve nem a presume); com ela, o ⚠️ passa o portão. **❌ nunca passa por essa linha:** reprovado volta pela `Q-S<n>`.
 - **A Review só abre com ✅ ou ⚠️** e com a consolidação dos documentos vivos feita (`docs-consolidation.md`, **Estado:** feita).

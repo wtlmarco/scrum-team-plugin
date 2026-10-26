@@ -22,7 +22,8 @@ $ErrorActionPreference = 'Stop'
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 
 $short = @{ 'scrum-master' = 'sm'; 'product-owner' = 'po'; 'architect' = 'arc'; 'user-experience' = 'ux'; 'quality-assurance' = 'qa'; 'developer' = 'dev'; 'operator' = 'operator' }
-$baseCat = @{ arc = 'produção'; dev = 'produção'; qa = 'verificação'; operator = 'verificação'; sm = 'cerimônia'; po = 'especificação'; ux = 'especificação' }
+# v3.52.2 (C3): o executor de Task (task-runner) é papel próprio nas tabelas — conduz a Task, não a produz: cerimônia.
+$baseCat = @{ arc = 'produção'; dev = 'produção'; qa = 'verificação'; operator = 'verificação'; sm = 'cerimônia'; po = 'especificação'; ux = 'especificação'; 'task-runner' = 'cerimônia' }
 
 # Modelo servido com a versão (v3.49): "claude-haiku-4-5-20251001" → "haiku 4.5". Sem a versão, Haiku 4.5 e 5.5 viravam
 # "haiku" na mesma linha dos Totais, com preço por token ~10× diferente entre eles.
@@ -52,11 +53,12 @@ function Get-Seconds([string]$Cell) {
 
 # Task → História, pelo quadro do sprint (a História é o cabeçalho "## História H-nnn" acima da linha da Task).
 function Get-StoryMap([string]$Board) {
+    # v3.52.2 (C5): Q-S<n> sob "## Correção do portão" tem a unidade 'correção do portão'; Habilitadora, a sua.
     $map = @{}; $cur = $null
     foreach ($line in ($Board -split "`r?`n")) {
-        $hm = [regex]::Match($line, '^##\s+Hist[oó]ria\s+(H-[\w]+)'); if ($hm.Success) { $cur = $hm.Groups[1].Value; continue }
+        if ($line -match '^##\s') { $cur = Get-BoardGroup $line; continue }
         if ($cur -and $line.TrimStart().StartsWith('|')) {
-            $tm = [regex]::Match((Split-Row $line)[0], '(T-\d+[a-z]?)'); if ($tm.Success -and -not $map.ContainsKey($tm.Groups[1].Value)) { $map[$tm.Groups[1].Value] = $cur }
+            $tm = [regex]::Match((Split-Row $line)[0], "($($script:TaskIdRe))"); if ($tm.Success -and -not $map.ContainsKey($tm.Groups[1].Value)) { $map[$tm.Groups[1].Value] = $cur }
         }
     }
     return $map
@@ -156,7 +158,8 @@ try {
             $note = @()
             if (-not $isBlock -and $work -match '^F-\d+$') { $note += 'triagem;' }   # F-ID fora do bloco só na triagem (R33 · C4 item 7)
             if ($u.dest_note) { $note += "$($u.dest_note);" }
-            if ($role -eq 'operator' -and $caller.ContainsKey([string]$u.agent_id)) { $note += "chamado por $($caller[[string]$u.agent_id])$(if ($inferred.ContainsKey([string]$u.agent_id)) { ' (pelo horário)' });" }
+            # v3.52.2 (C3): o filho do executor de Task (dev, Arquiteto, QA) também diz quem o chamou, pelo agentId em children.
+            if ($caller.ContainsKey([string]$u.agent_id)) { $note += "chamado por $($caller[[string]$u.agent_id])$(if ($inferred.ContainsKey([string]$u.agent_id)) { ' (pelo horário)' });" }
             $note += ("medido: {0}#{1}; notificação ≈ {2:N0}; cache lido {3:N0}; saída {4:N0}; {5} chamada(s); contexto 1ª/pico {6:N0}/{7:N0}" -f $u.agent_id, $u.round, [int64]$u.final_context, [int64]$u.cache_read, [int64]$u.output, $u.calls, [int64]$u.first_context, [int64]$u.peak_context)
             $cmd = if ($u.description) { '`Agent` · ' + ([string]$u.description -replace '\|', '/') } else { '`Agent`' }
             $measured += [pscustomobject]@{
@@ -216,7 +219,7 @@ try {
                 }
                 continue
             }
-            $papel = if ($role -eq 'operator') { $cm = [regex]::Match($c[-1], 'chamado por (\w+)'); 'operator ← ' + $(if ($cm.Success) { $cm.Groups[1].Value } else { '?' }) } else { $role }
+            $papel = if ($role -eq 'operator') { $cm = [regex]::Match($c[-1], 'chamado por ([\w-]+)'); 'operator ← ' + $(if ($cm.Success) { $cm.Groups[1].Value } else { '?' }) } else { $role }
             $model = Clean-Cell $c[2]; $key = "$papel|$model"
             if (-not $agg.Contains($key)) { $agg[$key] = & $newAgg $papel $model }
             # Linha transcrita à mão traz o número da notificação (contexto final), não o processado: soma só na última coluna.
