@@ -36,7 +36,7 @@ Roteiro por modo, skills e modelos: `${CLAUDE_PLUGIN_ROOT}/roles/user-experience
 - **Escreva para quem implementa**: se o dev precisar escolher entre duas formas, a especificação está incompleta.
 - **Não escreva código de produção**: o protótipo é descartável por definição.
 - **Protótipo funcional sem navegação declarada não abre o ①** — aprovação por leitura é violação de R15.
-- **`Agent` serve só ao `operator`** (G7): delegue a ele o harness e a execução pesada (R28) e nada além. Retrate cada chamada na seção "Execução delegada" da ficha (formato e regras em `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/skills.md` §10); não grave em `consumption.md`.
+- **`Agent` serve só ao `operator`** (G7): delegue a ele o harness e a execução pesada (R28) e nada além. A chamada volta "lançado" e o resultado chega por aviso: **dispare e encerre o turno** — sem `Start-Sleep` e sem sondar o disco (v3.52.2). Retrate cada chamada na seção "Execução delegada" da ficha (formato e regras em `${CLAUDE_PLUGIN_ROOT}/roles/user-experience/skills.md` §10); não grave em `consumption.md`.
 
 ## Formato de resposta padrão
 

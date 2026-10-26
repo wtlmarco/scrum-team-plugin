@@ -52,9 +52,10 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 
 | Papel | Modelo | Σ tokens | Instâncias · rodadas | Duração total | Leitura em uma linha |
 |---|---|---|---|---|---|
-| SM · PO · Arquiteto · UX · dev · QA | <modelo servido, com versão, do registro> | <n> | <n · n> | <mm:ss> | <o que explica o número — sprint de spike, retrabalho, harness completo> |
-| operator ← <arc\|qa\|dev\|ux> *(uma linha por chamador)* | <modelo do `operator`> | <n> | <n chamadas> | <mm:ss> | <o que o chamador delegou — build, suíte, réplica> |
+| SM · PO · Arquiteto · UX · dev · QA · executor de Task (`task-runner`) | <modelo servido, com versão, do registro> | <n> | <n · n> | <mm:ss> | <o que explica o número — sprint de spike, retrabalho, harness completo> |
+| operator ← <arc\|qa\|dev\|ux\|task-runner> *(uma linha por chamador)* | <modelo do `operator`> | <n> | <n chamadas> | <mm:ss> | <o que o chamador delegou — build, suíte, réplica> |
 | **Total do sprint** (papéis + `operator`) | — | **<n>** | **<n>** | **<mm:ss>** | — |
+| sessão principal *(linha do `consumption.ps1 -Session`, por `message.id` — v3.52.2)* | <modelo> | <n> | <n sessões · n chamadas> | <mm:ss> | <contexto da última chamada; acima de 150 mil, trabalho do executor de Task feito na sessão> |
 
 - **Delegação ao `operator` — economia a investigar** (R28; lida das linhas `operator` e da seção "Execução delegada" dos relatórios). Por Task/História que delegou: consumo do **papel chamador** × consumo do **`operator`** que ele chamou, cada um com o seu modelo — <ID · papel · Σ · modelo × operator · Σ · modelo> \| nenhuma delegação. **Candidato a investigar, nunca economia afirmada:** sem a linha do papel *sem* delegar para comparar, o registro não mede a economia absoluta.
 - **Contagem (R28):** chamadas em `.team-project/operator/<sprint>/` (um `report.md` ou `report-<log>.md` por chamada) = <n> × linhas `operator` do registro do sprint = <n> **·** `operator/pre-sprint/` nascidas desde o fechamento anterior = <n \| 0> × linhas `operator` de `.team-project/consumption.md` na mesma janela = <n \| 0> (exponha à parte as linhas `pre-sprint;`/`entre-sprints;` da janela) · divergência: <nenhuma \| jobs sem linha — o papel chamador não retratou>.
@@ -71,7 +72,7 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 | **Modelo × trabalho** | Σ tokens por **modelo** do registro; o modelo mais caro concentra trabalho mecânico (leitura, repetição, formatação) ou o mais barato concentra retrabalho | <modelo · Σ · achado> \| nenhum — **candidato a investigar, nunca a trocar às cegas** | R3 |
 | **Consumo × falha** | Tasks que também aparecem em "Reprovações no QA", "Tasks reabertas", "Gaps por plano" ou como bloqueio | <ID · indicador · Σ tokens> \| nenhuma | R7 · R8 · R25 |
 
-- **O que este número não mede:** o custo da sessão principal, que não enxerga o próprio consumo. O total (papéis + `operator`) é um **piso**, não o gasto completo do projeto. **Premissa (`operator`):** o número devolvido pelo papel não inclui o do `operator` aninhado; medição em contrário volta ao `/review`. **Linha de sessão (`/usage`):** premissa própria, ainda **não verificada** no projeto-piloto — lida à parte, fora deste total ([`consumption.md`](consumption.md) §Regras).
+- **O que este número não mede:** o custo da sessão principal — ele vem só da linha do `consumption.ps1 -Session`, que deduplica por `message.id` (v3.52.2); **nunca** some o `usage` linha a linha do transcript (cada resposta ocupa várias linhas: a análise à mão do sprint 3 do piloto inflou a orquestração ~1,8×). O total (papéis + `operator`) é um **piso**, não o gasto completo do projeto. **Premissa (`operator`):** o número devolvido pelo papel não inclui o do `operator` aninhado; medição em contrário volta ao `/review`. **Linha de sessão (`/usage`):** premissa própria, ainda **não verificada** no projeto-piloto — lida à parte, fora deste total ([`consumption.md`](consumption.md) §Regras).
 
 ### Custo × resultado
 
@@ -122,7 +123,7 @@ Revisão das metas depois das 10 primeiras Correções ou de 2 sprints, o que vi
 ### Relatório ao dono do plugin
 Condicional a **ocorrência de plugin** (falha R27 persistente ≥ 2 · consumo de um papel > 2× a média dos últimos sprints — [`workflow-sprint.md` §5e](../process/workflow-sprint.md) "Ocorrência de plugin", fonte única). Com "investigar", os sintomas do processo, os números de consumo por papel e por modelo e as ineficiências acima saem em um **arquivo próprio**, [`plugin-report.md`](plugin-report.md), **sem contexto do projeto** — é ele que o stakeholder encaminha ao dono do plugin. Aqui só o ponteiro:
 
-- **Ocorrência de plugin no sprint?** <nenhuma | <n falhas R27 · papel com consumo > 2× a média> — escolha do stakeholder na Review, em <data>: investigar · ignorar e seguir>
+- **Ocorrência de plugin no sprint?** <nenhuma | <n falhas R27 · papel com consumo > 2× a média> — escolha do stakeholder na Review — **ou neste `sprint close`, quando a Review foi adiada** (v3.52.2) —, em <data>: investigar · ignorar e seguir>
 - **`sprints/<n>/plugin-report.md` gerado?** <sim — <n> sintomas · <n> ineficiências | não — sem ocorrência ou "ignorar">
 - **Encaminhado ao dono do plugin?** <sim, em <data>, pelo stakeholder | não — fica no arquivo para reincidência>
 
@@ -136,13 +137,13 @@ Condicional a **ocorrência de plugin** (falha R27 persistente ≥ 2 · consumo 
 
 ## Regras
 
-- **Roda depois da Sprint Review, nunca antes.** A retrospectiva olha o resultado do aceite; invertida, ela discute processo sem saber se o valor chegou.
+- **Roda depois da Sprint Review, nunca antes.** A retrospectiva olha o resultado do aceite; invertida, ela discute processo sem saber se o valor chegou. **Review adiada** (v3.52.2 · `review.md` com `**Estado:** adiada para o sprint <n+1> — <motivo>`): a retrospectiva roda assim mesmo, diz que o aceite ficou para a Review seguinte, e o **formulário de ocorrência de plugin** (investigar × ignorar), que viveria na Review, abre **aqui, no `sprint close`**, uma vez.
 - No máximo **uma** ação por retrospectiva. Três ações = nenhuma ação.
 - Todo "o que corrigir" aponta para uma regra de [`../process/working-rules.md`](../process/working-rules.md) — violada ou faltante. Se não aponta para nenhuma, ou é ruído, ou é regra nova a escrever.
 - Métrica sem fonte não entra. As fontes são: relatórios do dev, `sprints/<n>/evidence/`, `sprints/<n>/sprint-backlog.md` e o registro de aceites de `sprints/<n>/review.md` — todas na pasta do próprio sprint. **Exceção do bloco "Custo × resultado":** lê também `consumption.md` e, para "Defeitos que escaparam", o `pending.md` (fora da pasta, porque a janela de 2 sprints atravessa sprints). Conta só a entrada `Origem: stakeholder` com `História do aceite` = `H-nnn + sprint do aceite` **dentro da janela**; `H-nnn · fora da janela`, `não identificada` e `não aplicável` ficam de fora da contagem e vão numa nota da linha (n de cada).
 - **O sprint não encerra com pendência sem destino.** Task inacabada volta ao Product Backlog com a História (R5); ressalva da Review vira entrada com dono (R12 · R21).
 - A linha de footprint (KB) é a fase **Check** do ciclo de eficiência ([`../process/workflow-processo.md` §5c](../process/workflow-processo.md)): mede `agents/` + `commands/` + `roles/<papel>/` do processo, compara com a retrospectiva anterior e alimenta o giro de `/review metrics`, que roda a cada 3 sprints. Crescimento sem regra ou cerimônia nova é candidato a corte, não a nota.
-- **Consumo real ≠ footprint.** A seção de consumo soma o que a sessão que orquestra registrou por invocação de papel (e as linhas `operator` que o papel chamador retratou) — mede **o trabalho dos papéis**, nunca o custo da própria sessão principal, que não se autoobserva. Não some as duas linhas de footprint com o total de consumo: são medidas diferentes, lado a lado, nunca um total único.
+- **Consumo real ≠ footprint.** A seção de consumo soma o que a sessão que orquestra registrou por invocação de papel (e as linhas `operator` que o papel chamador retratou) — mede **o trabalho dos papéis**; a sessão principal entra só pela linha do `-Session` (por `message.id`), lida à parte. Não some as duas linhas de footprint com o total de consumo: são medidas diferentes, lado a lado, nunca um total único.
 - **O consumo é lido antes do fechamento da pasta.** A seção acima lê `sprints/<n>/consumption.md` enquanto o sprint ainda está aberto; depois do `/sm sprint close` a pasta é registro imutável. Não há arquivamento a fazer — o registro já nasceu dentro do sprint a que pertence.
 - **Sintoma de processo é sintoma, não proposta.** O `plugin-report.md` descreve **o que doeu**, com quantas vezes; quem transforma sintoma em mudança é o `/review`, no repositório-fonte. Retrospectiva que já traz a regra reescrita pulou o único lugar onde conflito com regra vigente é analisado.
 - **A análise de consumo aponta onde olhar, não o que cortar.** Repetição, Task cara e modelo desproporcional são **candidatos a investigar** — a causa vem do registro (Nota, Task/História) e do quadro, e a decisão de mudar é do `/review`. Achado sem linha de `consumption.md` que o sustente não entra (R7). A divisão entrada/saída de tokens **não é observável** ([`consumption.md`](consumption.md)); não se calcula.

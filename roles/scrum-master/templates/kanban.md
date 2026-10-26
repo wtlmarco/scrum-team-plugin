@@ -10,11 +10,11 @@
 # Kanban — Sprint <n>
 
 ## Agora
-*(Regravado pelos hooks a cada disparo, ação e volta de agente — não editar à mão. "Há" = desde a última ação.)*
+*(Regravado pelos hooks a cada disparo, ação e volta de agente — não editar à mão. "Há" = desde a última ação. Todo agente é assíncrono (v3.52.2): uma linha por agente em voo — o executor de Task e os papéis que ele disparou.)*
 
 | Papel | Item | Última ação | Há | Desde |
 |---|---|---|---|---|
-| <papel> *(2º plano)* | T-<nnn> | `<último comando ou arquivo>` | <n> min | <hh:mm> |
+| <papel> *(de <papel que disparou>, se aninhado)* | T-<nnn> | `<último comando ou arquivo>` | <n> min | <hh:mm> |
 
 ## Kanban
 *(Regravado pelo `kanban.ps1` a cada transição e ao fim de cada rodada — não editar à mão.)*
@@ -83,6 +83,7 @@
 
 ## Como preencher
 
+- **Task de correção do portão** (`Q-S<n>`, `Q-S<n>b`… — v3.52.2): entra no Kanban, no Registro e na Série como qualquer Task, a partir da abertura dela na seção `## Correção do portão — sprint <n>` do Sprint Backlog; **não** vai a "Entradas fora da Planning" (não cresce o escopo — corrige o que o sprint entregou; [`sprint-run.md`](../process/sprint-run.md) §Validação do sprint). A estimativa dela soma ao restante na abertura e cai no ✅.
 - **Uma transição = uma linha no Registro + uma linha na Série, no mesmo arquivo e no mesmo momento.** O **Evento** da Série cita a Task e a passagem (`T-041 🟦 → 🟨`). Sprint sem eventos num dia não gera linha vazia — o burndown é por evento.
 - **Est. restante só cai quando uma Task fecha (✅).** Passar a 🟦/🟨/🟪 não reduz o restante — muda a composição das colunas de estado.
 - **O dia 0 é a aprovação do pacote, não o fim da Planning** (R25 · [`../process/workflow-sprint.md` §5f](../process/workflow-sprint.md)).

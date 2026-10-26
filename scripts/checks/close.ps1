@@ -29,6 +29,7 @@ try {
     $n = $m.Groups[1].Value
     $S = Join-Path $tp "sprints/$n"
     $idPat = Get-IdPattern $Task
+    $todoMk = [char]::ConvertFromUtf32(0x2B1C); $redMk = [char]::ConvertFromUtf32(0x1F534)
 
     $boardPath = Join-Path $S 'sprint-backlog.md'
     if (-not (Test-Path -LiteralPath $boardPath)) { [Console]::Error.WriteLine("C1: $boardPath não existe."); exit 2 }
@@ -39,10 +40,9 @@ try {
     # v3.51.4 (garden item 20): título "## " que não é de História encerra a História (tabelas de rastreabilidade e de trilha
     # depois da última História não são o quadro); "## Habilitadora …" é o grupo das Tasks sem História.
     $taskRow = $null; $taskTable = $null; $story = $null; $curStory = $null
+    # v3.52.2 (C5): "## Correção do portão — sprint <n>" é o grupo das Tasks Q-S<n> (Get-BoardGroup, lib.ps1).
     foreach ($line in ($board -split "`r?`n")) {
-        $hm = [regex]::Match($line, '^##\s+Hist[oó]ria\s+(H-[\w]+)')
-        if ($hm.Success) { $curStory = $hm.Groups[1].Value }
-        elseif ($line -match '^##\s') { $curStory = if ($line -match '^##\s+(?i)habilitadora') { 'habilitadora' } else { $null } }
+        if ($line -match '^##\s') { $curStory = Get-BoardGroup $line }
         if ($line.TrimStart().StartsWith('|')) {
             $cells = Split-Row $line
             if ($cells.Count -gt 1 -and $cells[0] -match $idPat -and $cells[0] -notmatch '^\s*Task\s*$') {
@@ -202,7 +202,7 @@ try {
     } else { Add-Result 'R8' 'falhou' "nenhum plano para $Task em sprints/$n/plan/ (nem pela coluna Plano)" }
 
     # ---------- R7 · prova de falha (v3.46): toda mutação do plano pega pelo teste, na árvore do verify full ----------
-    $planMuts = if ($plan) { @([regex]::Matches($plan, '(?m)^\s*-\s*(M\d+)\s*·') | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique) } else { @() }
+    $planMuts = if ($plan) { @(Get-Mutations $plan | ForEach-Object { $_.Id } | Select-Object -Unique) } else { @() }   # v3.52.2: o leitor do verify (item 7)
     if (-not $hasVerify) { Add-Result 'R7-mutação' 'n-a' 'guards.json sem "verify" — a prova de falha segue no relatório do dev e no veredito' }
     elseif ($planMuts.Count -eq 0) { Add-Result 'R7-mutação' 'n-a' 'plano sem **Mutações:** (plano anterior à v3.46, ou "sem prova: <motivo>" na §6)' }
     else {
@@ -229,6 +229,7 @@ try {
     # ---------- R20 · Task com História; aprovação do pacote antes da construção ----------
     if (-not $story) { Add-Result 'R20' 'falhou' "$Task não está sob um cabeçalho '## História H-nnn' (nem '## Habilitadora') no quadro" }
     elseif ($story -eq 'habilitadora') { Add-Result 'R20' 'falhou' "$Task está sob '## Habilitadora' — Task sem História viola a R20: mova-a para baixo da primeira História que depende dela e cite-a em 'Depende de' nas outras (workflow-sprint.md §5e Planning, passo 4)" }
+    elseif ($story -eq $script:GateStory) { Add-Result 'R20' 'ok' "$Task é correção do portão (## Correção do portão, C5): os achados do validation.md são a origem; o ✅ das Tasks originais fica (R25)" }
     else {
         $approvedCell = Get-LabelValue $board 'Aprovado em'
         $frozenCell = Get-LabelValue $board 'stories/'
@@ -265,6 +266,10 @@ try {
             foreach ($t in (Get-Tables $trans)) {
                 foreach ($row in $t.Rows) {
                     if ($row[0] -notmatch $idPat) { continue }
+                    # v3.52.2 (note.md item 12): a linha de abertura (várias Tasks numa linha, ou sem marcador de origem: "— → ⬜")
+                    # não é transição da Task — contava para a primeira citada e a Série, cuja abertura não cita Task, ficava "parada".
+                    $origin = ((Get-Cell $row 1) -split '→')[0]
+                    if (@([regex]::Matches($row[0], $script:TaskIdRe)).Count -gt 1 -or -not @($todoMk, $E.Plan, $E.Build, $E.QA, $E.Done, $redMk | Where-Object { $origin.Contains($_) }).Count) { continue }
                     $taskTrans++
                     $dest = ((Get-Cell $row 1) -split '→')[-1]
                     foreach ($mk in $E.Plan, $E.Build, $E.QA) { if ($dest.Contains($mk)) { $reached[$mk] = $true } }
@@ -392,7 +397,7 @@ try {
         $found = @(Get-ChildItem -LiteralPath $dirFull -Filter 'report*.md' -ErrorAction SilentlyContinue)
         if ($found.Count -eq 0) { $r28 += "report ausente em $rel (o hook G16 grava a resposta do operator na pasta do job citada na resposta ou no pedido)"; continue }
         $leaf = Split-Path ($rel.TrimEnd('/', '\')) -Leaf
-        if ($leaf -match '^(T-\d+[a-z]?|H-[\w]+)(?![\w])' -and $Matches[1] -ne $Task) { $reused++; continue }
+        if ($leaf -match '^(Q-S\d+[a-z]?|T-\d+[a-z]?|H-[\w]+)(?![\w])' -and $Matches[1] -ne $Task) { $reused++; continue }
         foreach ($f in $found) { $taskReports[$f.FullName.ToLowerInvariant()] = $true }
     }
     foreach ($k in @($taskReports.Keys)) {
@@ -551,8 +556,8 @@ try {
         $title = Clean-Cell (Get-Cell $taskRow (Find-Col $taskTable 'Task'))
         $sib = @(); $cur = $null
         foreach ($l in ((Read-Text $boardPath) -split "`r?`n")) {
-            $hm = [regex]::Match($l, '^##\s+Hist[oó]ria\s+(H-[\w]+)'); if ($hm.Success) { $cur = $hm.Groups[1].Value; continue }
-            if ($cur -eq $story -and $l.TrimStart().StartsWith('|')) { $c0 = (Split-Row $l)[0]; if ($c0 -match 'T-\d+') { $sib += $c0 } }
+            if ($l -match '^##\s') { $cur = Get-BoardGroup $l; continue }
+            if ($cur -eq $story -and $l.TrimStart().StartsWith('|')) { $c0 = (Split-Row $l)[0]; if ($c0 -match $script:TaskIdRe -and $c0 -notmatch '^\s*ID\s*$') { $sib += $c0 } }
         }
         $done = @($sib | Where-Object { $_.Contains($E.Done) }).Count
         $okN = @($script:Results | Where-Object { $_.Resultado -eq 'ok' }).Count; $naN = @($script:Results | Where-Object { $_.Resultado -eq 'n-a' }).Count

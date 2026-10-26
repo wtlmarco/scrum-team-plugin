@@ -6,6 +6,13 @@
   "sourceRoots": [],
   "testSkipPatterns": ["[Skip", "[Ignore", "Skip =", "Skip=", ".skip(", "xit(", "xdescribe(", "xtest(", "@Disabled", "@Ignore", "pytest.mark.skip", "t.Skip("],
   "runCommands": [],
-  "verify": { "focused": "", "lint": "", "build": "", "suite": "", "coverage": "", "testRoot": "", "testItem": "", "inconclusive": [], "caught": "", "timeoutMinutes": 9, "env": {} },
-  "targets": {}
+  "verify": { "focused": "", "lint": "", "build": "", "suite": "", "coverage": "", "compile": "", "testRoot": "", "testItem": "", "inconclusive": [], "caught": "", "timeoutMinutes": 9, "env": {} },
+  "quality": { "coverage": "", "coverageThreshold": 80, "coveragePattern": "", "lint": "", "format": "", "architecture": "", "metrics": "", "duplication": "", "sourceRoots": [], "timeoutMinutes": 9 },
+  "targets": {},
+  "_exemplos": {
+    "_nota": "Chave ignorada pelos scripts (v3.52.2). Copie o comando da sua stack para a chave real (verify.compile, quality.*) — perfil completo em standards/stacks/<tecnologia>/quality.md; formato no cabeçalho de scripts/checks/verify.ps1 e quality.ps1. Vazio = não configurado: sem verify.compile o -Precheck não compila o mutante; sem quality o quality.ps1 mede só Q9 e Q17.",
+    "verify.compile": { "kotlin-android": "./gradlew compileDebugUnitTestKotlin", "typescript": "npx tsc --noEmit -p tsconfig.json", "dotnet": "dotnet build --no-restore" },
+    "quality.react": { "coverage": "npx vitest run --coverage", "coverageThreshold": 80, "lint": "npx eslint . --max-warnings 0", "format": "npx prettier --check .", "architecture": "npx depcruise src --config .dependency-cruiser.cjs", "duplication": "npx jscpd src --threshold 3", "sourceRoots": ["src"] },
+    "quality.kotlin-android": { "coverage": "./gradlew jacocoTestReport jacocoTestCoverageVerification", "coverageThreshold": 80, "lint": "./gradlew lintDebug", "architecture": "./gradlew testDebugUnitTest --tests *Arquitetura*", "metrics": "./gradlew detekt", "sourceRoots": ["app/src/main"] }
+  }
 }

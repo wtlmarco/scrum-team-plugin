@@ -3,10 +3,12 @@
 # · G8 matriz de propriedade (hooks/ownership.json) · G9 escopo do dev (R4 · R8) · G11 pasta do job do operator;
 # v3.44: G14 permissão operacional do run (.team-project/.active-run) — nenhum pedido de permissão do harness trava um papel;
 # v3.47: G17 modelo do papel (.team-project/models.json) — a ferramenta Agent obedece ao modelo configurado;
-# G18 modo benchmark (guards.json → bench) — o dossiê responde o AskUserQuestion e o agente roda em primeiro plano;
-# perfil Arquiteto executor (M2): com .active-executor e models.json "executor", a G8/G9/G6 tratam o Arquiteto como o dev.
-# v3.51: G3 exige o exemplo prático (H1); G19 nega SendMessage a papel caro parado há mais de 5 min (C1); o Agent em
-# segundo plano durante o run é registrado em .active-agents para o hook Stop (G20).
+# G18 modo benchmark (guards.json → bench) — o dossiê responde o AskUserQuestion (bench.foreground ficou sem efeito na v3.52.2:
+# o Agent não tem mais run_in_background); perfil Arquiteto executor (M2): com .active-executor e models.json "executor",
+# a G8/G9/G6 tratam o Arquiteto como o dev.
+# v3.51: G3 exige o exemplo prático (H1); G19 nega SendMessage a papel caro parado há mais de 5 min (C1); o Agent é
+# registrado em .active-agents para o hook Stop (G20). v3.52.2: todo Agent (sessão e papel), com session e parent; a G7
+# deixa o executor de Task (task-runner) disparar dev, Arquiteto, operator e QA.
 # v3.48 (primeiro sprint do piloto): .active-task ilegível nega (antes derrubava o hook); texto entre aspas não é destino;
 # destino em variável do mesmo comando se resolve; G14 sem os falsos negados medidos; G11 só no segmento canônico.
 # Devolve a PRIMEIRA negação: exit 2 com o motivo no stderr; "allow" (G14) sai em JSON com exit 0. Nenhuma guarda pergunta.
@@ -104,9 +106,10 @@ function Test-G19([object]$ToolInput) {
     if ($script:role) { return }                                   # só a sessão principal retoma agentes
     $to = [string]$ToolInput.to; if (-not $to) { return }
     # v3.52 (R27/R29): no run (sprint ou fix) não há retomada por SendMessage, nem de Haiku — ele volta na hora e a sessão
-    # passava a sondar o disco (sunscape-P-r1: as esperas da sessão). Retomada = instância nova em primeiro plano com o cartão.
+    # passava a sondar o disco (sunscape-P-r1: as esperas da sessão). Retomada = instância nova com o cartão (v3.52.2: dispare
+    # e encerre o turno; o aviso reabre a sessão).
     if ($null -ne (Get-Marker $script:projectDir '.active-run')) {
-        Deny 'G19' $to "retomada por SendMessage durante o run: o SendMessage volta na hora, o agente segue sozinho e a sessão ficaria sondando o disco. Abra uma instância NOVA, em primeiro plano, com o cartão de passagem (run.ps1 start -Task <ID> regera o cartão e o prompt do dev; GAP: run.ps1 done -Result gap) — sprint-run.md §Retomada."
+        Deny 'G19' $to "retomada por SendMessage durante o run: o SendMessage volta na hora, o agente segue sozinho e a sessão ficaria sondando o disco. Abra uma instância NOVA com o cartão de passagem (run.ps1 start -Task <ID> regera o cartão e o prompt do dev; GAP: run.ps1 done -Result gap), dispare e encerre o turno; o aviso reabre a sessão — sprint-run.md §Retomada."
     }
     $u = Join-Path $script:projectDir '.team-project/usage.jsonl'
     if (-not (Test-Path -LiteralPath $u)) { return }
@@ -245,12 +248,18 @@ function Test-G6([object]$ToolInput, [string]$Rel, [string]$Shown) {
     }
 }
 
-# G7 — R28: a ferramenta Agent serve só ao operator.
+# G7 — R28: a ferramenta Agent serve só ao operator. v3.52.2 (note.md item 4, C3): o executor de Task (task-runner) conduz a
+# Task pelo ciclo do run e dispara só developer, architect, operator e quality-assurance; PO, UX, SM e o próprio executor
+# ficam com a sessão que orquestra.
 function Test-G7([object]$ToolInput) {
-    if ($script:role -notin 'architect', 'developer', 'quality-assurance', 'user-experience') { return }
     $target = (([string]$ToolInput.subagent_type) -replace '^.*:', '').ToLowerInvariant()
+    $shown = if ($ToolInput.subagent_type) { [string]$ToolInput.subagent_type } else { '(sem subagent_type)' }
+    if ($script:role -eq 'task-runner') {
+        if ($target -in 'developer', 'architect', 'operator', 'quality-assurance') { return }
+        Deny 'G7' $shown "o executor de Task dispara só developer, architect, operator e quality-assurance (agents/task-runner.md) — $shown fica com a sessão que orquestra. Pare e devolva a linha à sessão (ex.: T-041 🔴 bloqueada: <motivo>)."
+    }
+    if ($script:role -notin 'architect', 'developer', 'quality-assurance', 'user-experience') { return }
     if ($target -ne 'operator') {
-        $shown = if ($ToolInput.subagent_type) { [string]$ToolInput.subagent_type } else { '(sem subagent_type)' }
         Deny 'G7' $shown "a ferramenta Agent serve só ao operator (R28) — disparar outro papel ($shown) atropela a propriedade dos artefatos. Delegue a execução pesada ao operator; o resto, reporte a quem orquestra."
     }
 }
@@ -261,6 +270,8 @@ function Test-G7([object]$ToolInput) {
 #                    Sem regra que case, vale a opção marcada como recomendada (nunca "Pedir mais contexto"). Tudo vai a
 #                    .team-project/benchmark/<bench.arm>/questions.log (tema · origem da resposta · pergunta · resposta).
 #   bench.foreground (true) → agente em segundo plano é negado: o claude -p encerra antes da notificação.
+#                    v3.52.2: sem efeito — o Agent não tem mais run_in_background (todo agente é assíncrono). O código fica;
+#                    o comportamento sob claude -p está a medir (hooks/COVERAGE.md, risco conhecido).
 function Test-G18Ask([object]$ToolInput) {
     $answers = Get-BenchAnswers $cfg $script:projectDir $ToolInput              # common.ps1; $null = sem bench ou sem respostas: a G3 segue valendo
     if ($null -eq $answers) { return }
@@ -608,16 +619,17 @@ $script:g14Forbidden = '(?i)--no-verify|\bInvoke-Expression\b|\biex\b|-EncodedCo
 # G22 (v3.52, note.md itens 3 e 7) — a sessão que orquestra não espera pagando: com run ativo (sprint ou fix), a sessão
 # principal não roda comando em segundo plano nem Start-Sleep. Medido no sunscape-P-r1: 48 esperas da sessão (US$ 3,68), cada
 # uma relendo ~300 mil tokens — sondando o delivery/ depois de retomar o dev por SendMessage, ou a saída de um aceite que ela
-# mesma rodou em segundo plano. Agente: em primeiro plano, a chamada bloqueia até a volta. Comando longo: operator (R28).
+# mesma rodou em segundo plano. Agente (v3.52.2, note.md item 2): dispare e encerre o turno; o aviso reabre a sessão.
+# Comando longo: operator (R28).
 function Test-G22([object]$ToolInput) {
     if ($null -eq (Get-Marker $script:projectDir '.active-run')) { return }
     $cmd = [string]$ToolInput.command
     $short = if ($cmd.Length -gt 100) { $cmd.Substring(0, 100) + '…' } else { $cmd }
     if ($ToolInput.run_in_background -eq $true) {
-        Deny 'G22' $short "comando em segundo plano pela sessão durante o run ($short): a sessão passaria a sondar a saída, e cada sondagem relê o contexto inteiro dela. Comando longo (aceite, lote, build, verificação) vai ao operator, em primeiro plano (R28); conferência curta, em primeiro plano."
+        Deny 'G22' $short "comando em segundo plano pela sessão durante o run ($short): a sessão passaria a sondar a saída, e cada sondagem relê o contexto inteiro dela. Comando longo (aceite, lote, build, verificação) vai ao operator (R28) — dispare e encerre o turno; o aviso reabre a sessão. Conferência curta, em primeiro plano."
     }
     if ($cmd -match '(?i)\bStart-Sleep\b|\bsleep\s+\d|\btimeout\s+/t\b') {
-        Deny 'G22' $short "espera da sessão durante o run ($short): cada espera relê o contexto inteiro da sessão. Agente: dispare em primeiro plano (a chamada volta quando ele termina) ou instância nova com o cartão de passagem — não retome por SendMessage para depois sondar o disco. Alvo: target.ps1 -Target <alvo> -Repair espera sozinho. Comando longo: operator (R28)."
+        Deny 'G22' $short "espera da sessão durante o run ($short): cada espera relê o contexto inteiro da sessão. Agente: dispare e encerre o turno; o aviso reabre a sessão (retomada: instância nova com o cartão de passagem) — não retome por SendMessage para depois sondar o disco. Alvo: target.ps1 -Target <alvo> -Repair espera sozinho. Comando longo: operator (R28)."
     }
 }
 
@@ -651,7 +663,7 @@ function Test-G14([object]$ToolInput) {
         $badSeg = [string]$script:badSeg
         $plugCheck = $badSeg -match '^(?i)(&\s*)?(powershell|pwsh)(\.exe)?\s.*-File\s.*[\\/]scripts[\\/]checks[\\/]'   # antes do corte
         if ($badSeg.Length -gt 80) { $badSeg = $badSeg.Substring(0, 80) + '…' }
-        if ($badSeg -match '^(?i)start-sleep\b') { $why = "espera com Start-Sleep durante o run (``$badSeg``) — o papel fica parado consumindo contexto. Esperar o alvo (emulador, servidor): ``target.ps1 -Target <alvo> -Repair``, que espera ele ficar pronto. Esperar um comando: rode-o em primeiro plano, com timeout — o verify.ps1 e o accept.ps1 voltam com exit 3 (parcial) e continuam do ponto na chamada seguinte; execução longa vai ao operator, em primeiro plano (R28)" }
+        if ($badSeg -match '^(?i)start-sleep\b') { $why = "espera com Start-Sleep durante o run (``$badSeg``) — o papel fica parado consumindo contexto. Esperar o alvo (emulador, servidor): ``target.ps1 -Target <alvo> -Repair``, que espera ele ficar pronto. Esperar um comando: rode-o em primeiro plano, com timeout — o verify.ps1 e o accept.ps1 voltam com exit 3 (parcial) e continuam do ponto na chamada seguinte; execução longa vai ao operator (R28) — dispare e encerre o turno; o aviso traz a volta" }
         elseif ($badSeg -match '^(?i)(\S*[\\/])?adb(\.exe)?\b') { $why = "``adb`` direto (``$badSeg``) — o alvo se confere e se repara pelo ``target.ps1 -Target android`` (com ``-Repair`` reinicia e espera o emulador), e os cenários rodam pelo ``accept.ps1``; inspeção da tela é do operator pela pasta do job" }
         elseif ($badSeg -match '^(?i)(robocopy|xcopy)\b') { $why = "cópia em massa (``$badSeg``) — réplica do projeto para medir ou provar é trabalho do operator, na pasta do job (R28)" }
         elseif ($badSeg -match '^(?i)cmd(\.exe)?\s+/[ck]\b') { $why = "``cmd /c`` (``$badSeg``) — a G14 lê o comando de dentro quando ele vem entre aspas duplas (cmd /c ""<comando> > <log>""); o trecho de dentro não está na lista ou o destino não se resolve no projeto" }
@@ -715,12 +727,14 @@ try {
             if ($script:teamProject -and (Test-GuardEnabled $cfg 'G18')) { Test-G18Agent $ti }
             if ($phase2 -and (Test-GuardEnabled $cfg 'G7')) { Test-G7 $ti }
             if ($script:teamProject -and (Test-GuardEnabled $cfg 'G17')) { Test-G17 $ti }   # vale também para a sessão principal
-            # v3.51 (G20): agente disparado pela sessão fica registrado até voltar. v3.51.4: todo agente da sessão, em primeiro
-            # ou segundo plano, sem depender do .active-run (gravado na mesma resposta, chegava depois — garden item 5); o
-            # Stop só considera os de segundo plano. O kanban.md mostra todos em "## Agora".
-            if ($script:teamProject -and -not $script:role -and $ti.subagent_type) {
+            # v3.51 (G20): agente disparado fica registrado até voltar, sem depender do .active-run (gravado na mesma resposta,
+            # chegava depois — garden item 5). O kanban.md mostra todos em "## Agora". v3.52.2 (note.md itens 2-4): TODO Agent em
+            # projeto com o time — da sessão e de papel (o executor de Task e os filhos dele, para a retomada) —, com a sessão
+            # (session_id) e quem disparou (parent = agent_id do papel; '' = sessão principal). Sem "bg": todo agente é assíncrono.
+            if ($script:teamProject -and $ti.subagent_type) {
                 $desc = ([string]$ti.description + ' ' + $(if ($ti.prompt) { ([string]$ti.prompt).Substring(0, [Math]::Min(400, ([string]$ti.prompt).Length)) } else { '' })).Trim()
-                Add-ActiveAgent $script:projectDir ([string]$ti.subagent_type) $desc ($ti.run_in_background -eq $true)
+                $parent = if ($script:role) { [string]$script:hookInput.agent_id } else { '' }
+                Add-ActiveAgent $script:projectDir ([string]$ti.subagent_type) $desc ([string]$script:hookInput.session_id) $parent
             }
         }
         '^SendMessage$'         {

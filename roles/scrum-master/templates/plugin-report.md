@@ -1,6 +1,6 @@
 # Template — Relatório ao dono do plugin
 
-> **Dono:** SM · Vive em `.team-project/sprints/<n>/plugin-report.md` · Escrito no `/sm sprint close`, junto com a retrospectiva, **só quando o stakeholder escolheu "investigar"** na Review diante de uma ocorrência de plugin ([`workflow-sprint.md` §5e](../process/workflow-sprint.md) "Ocorrência de plugin") · **Encaminhado pelo stakeholder**
+> **Dono:** SM · Vive em `.team-project/sprints/<n>/plugin-report.md` · Escrito no `/sm sprint close`, junto com a retrospectiva, **só quando o stakeholder escolheu "investigar"** na Review — ou no próprio `sprint close`, quando a Review foi adiada (v3.52.2) — diante de uma ocorrência de plugin ([`workflow-sprint.md` §5e](../process/workflow-sprint.md) "Ocorrência de plugin") · **Encaminhado pelo stakeholder**
 
 O projeto **não edita o plugin**. Este relatório é o canal de volta: tira da retrospectiva o que diz respeito ao **processo do time** — consumo por papel e por modelo, invocações repetidas, bloqueios e falhas ligados a regra ou cerimônia — e o apresenta **sem nada do projeto**, para que o stakeholder o entregue ao dono do plugin. O `/review`, no repositório-fonte, é quem o transforma em mudança; aqui só há **evidência e sintoma**, nunca a regra reescrita.
 
@@ -16,13 +16,14 @@ O projeto **não edita o plugin**. Este relatório é o canal de volta: tira da 
 **Ocorrência que motivou o relatório:** <falha R27 persistente (n) | papel · modelo com consumo > 2× a média dos últimos sprints | ambas> — a investigação e as evidências estão nas seções 2 e 3
 
 ## 1. Consumo por papel e por modelo
-> Fonte: `consumption.md` do sprint. O **modelo** é o servido, com a versão (`haiku 4.5`, `opus 5.5`), das linhas medidas (v3.49); linha à mão traz o configurado no cartão; tokens são um total por invocação, sem divisão entrada/saída. **Piso** — a sessão principal não se autoobserva. O `operator` entra no total, em linha própria por papel chamador; premissa: o número do papel não inclui o do `operator` aninhado.
+> Fonte: `consumption.md` do sprint. O **modelo** é o servido, com a versão (`haiku 4.5`, `opus 5.5`), das linhas medidas (v3.49); linha à mão traz o configurado no cartão; tokens são um total por invocação, sem divisão entrada/saída. A sessão principal entra **só** pela linha do `consumption.ps1 -Session` (deduplicada por `message.id`, v3.52.2) — **nunca** somando o `usage` linha a linha do transcript: cada resposta ocupa várias linhas com o mesmo `message.id`, e a soma por linha inflou a orquestração ~1,8× na análise do sprint 3 do piloto. O executor de Task (`task-runner`) é linha própria. O `operator` entra no total, em linha própria por papel chamador; premissa: o número do papel não inclui o do `operator` aninhado.
 
 | Papel | Modelo | Σ tokens | Instâncias · rodadas | Duração total | % do total |
 |---|---|---|---|---|---|
 | <papel> *(uma linha por papel e modelo)* | <modelo \| "não disponível — <motivo>"> | <n> | <n · n> | <mm:ss> | <n%> |
 | operator ← <papel chamador> *(uma linha por chamador)* | <modelo do `operator`> | <n> | <n · n chamadas> | <mm:ss> | <n%> |
 | **Total** (papéis + `operator`) | — | **<n>** | **<n>** | **<mm:ss>** | 100% |
+| sessão principal *(`consumption.ps1 -Session`, por `message.id`)* | <modelo> | <n> | <n sessões · n chamadas> | <mm:ss> | à parte |
 
 - **Contra o sprint anterior:** <Δ% e a causa | primeiro sprint com registro>
 - **Delegação ao `operator` (candidato a investigar):** por Task (A, B…) que delegou, consumo do papel chamador × consumo do `operator` que ele chamou, cada um com o modelo — <Task · papel · Σ · modelo × Σ · modelo | nenhuma delegação>. Não afirma economia absoluta: o registro não traz o custo da mesma tarefa sem delegar.

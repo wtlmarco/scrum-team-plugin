@@ -615,16 +615,17 @@ $cases = @(
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:product-owner'; tool_input = @{ command = 'Copy-Item .team-project/product-owner/stories/H-001.md -Destination .team-project/sprints/2/stories/' } } },
     @{ Name = 'G8 pasta stories/ pelo dev: negada (a pasta é do PO)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'PO'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'New-Item -ItemType Directory -Force .team-project/sprints/2/stories' } } },
-    @{ Name = 'Agent da sessão em primeiro plano entra no .active-agents, sem .active-run (garden item 5)'; Script = 'pre-tool.ps1'; Expect = 0
+    @{ Name = 'Agent da sessão entra no .active-agents com session e parent vazio, sem .active-run (garden item 5; v3.52.2)'; Script = 'pre-tool.ps1'; Expect = 0
        Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-run'), (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue
                  Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.json') -Force -ErrorAction SilentlyContinue }
-       Check = { $a = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Raw -Encoding UTF8 | ConvertFrom-Json); $a.Count -eq 1 -and $a[0].bg -eq $false -and $a[0].work -eq 'T-021' }
-       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:architect'; description = 'Planos T-021 e T-026'; prompt = 'Escreva os planos de T-021, T-026'; run_in_background = $false } } },
+       Check = { $a = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Raw -Encoding UTF8 | ConvertFrom-Json); $a.Count -eq 1 -and $a[0].session -eq 'sessG5' -and $a[0].parent -eq '' -and -not $a[0].PSObject.Properties['bg'] -and $a[0].work -eq 'T-021' }
+       Payload = @{ tool_name = 'Agent'; session_id = 'sessG5'; tool_input = @{ subagent_type = 'team:architect'; description = 'Planos T-021 e T-026'; prompt = 'Escreva os planos de T-021, T-026' } } },
     @{ Name = 'PreToolUse do subagente grava a última ação no .active-agents'; Script = 'pre-tool.ps1'; Expect = 0
        Check = { $a = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Raw -Encoding UTF8 | ConvertFrom-Json); $a[0].agent_id -eq 'arc0000001' -and $a[0].last -like 'Write plano*' }
        Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; agent_id = 'arc0000001'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/2/plan/plano.md'); content = 'x' } } },
-    @{ Name = 'G20 agente em PRIMEIRO plano não segura o turno'; Script = 'stop.ps1'; Expect = 2
+    @{ Name = 'G20 lê só as tabelas de Task (Rastreabilidade fora)'; Script = 'stop.ps1'; Expect = 2
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "7", "desde": "2026-10-06 10:00" }' -Encoding UTF8
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue
                  [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/sprints/7/sprint-backlog.md'), "## História H-1 — x`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2B1C)) T-3 | c | — |`n`n## Rastreabilidade`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2B1C)) T-99 | fantasma | — |`n", (New-Object System.Text.UTF8Encoding($false)))
                  Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.log') -Force -ErrorAction SilentlyContinue }
        ExpectErr = 'T-3'
@@ -675,7 +676,84 @@ $cases = @(
        Payload = @{ prompt = '/po status'; transcript_path = (Join-Path $tmp 'transcripts/g21.jsonl') } },
     @{ Name = 'G19 SendMessage da sessão durante o run, até ao dev (Haiku): nega com a rota da instância nova (v3.52)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'instância NOVA'
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "7", "desde": "2026-10-06 10:00" }' -Encoding UTF8 }
-       Payload = @{ tool_name = 'SendMessage'; tool_input = @{ to = 'dev19old'; message = 'x' } } }
+       Payload = @{ tool_name = 'SendMessage'; tool_input = @{ to = 'dev19old'; message = 'x' } } },
+    # ---------- v3.52.2 — agente assíncrono (G20), registro com session/parent, retomada após queda, executor de Task (G7/G8/G14/G16), Q-S ----------
+    @{ Name = 'G20 agente sem bg desta sessão: espera legítima (todo agente é assíncrono)'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.log'), (Join-Path $proj '.team-project/models.json') -Force -ErrorAction SilentlyContinue
+                 $n = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') ('[{"type":"team:task-runner","description":"Executor T-3","desde":"' + $n + '","session":"sessA","parent":"","agent_id":"","work":"T-3","last":"disparado","at":"' + $n + '"}]') -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessA' } },
+    @{ Name = 'G20 agente de outra sessão não segura o turno'; Script = 'stop.ps1'; Expect = 2; ExpectErr = 'dispare e encerre o turno'
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessB' } },
+    @{ Name = 'Registro aninhado: Agent do executor grava parent = agent_id dele e a session (G7 deixa o dev)'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue
+                 $null = Invoke-Hook 'pre-tool.ps1' @{ tool_name = 'Agent'; session_id = 'sessA'; tool_input = @{ subagent_type = 'team:task-runner'; description = 'Executor T-041'; prompt = 'Conduza a T-041 até fechar ou parar' } } }
+       Check = { $a = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Raw -Encoding UTF8 | ConvertFrom-Json | ForEach-Object { $_ })
+                 $r = @($a | Where-Object { $_.type -eq 'team:task-runner' })[0]; $d = @($a | Where-Object { $_.type -eq 'team:developer' })[0]
+                 $a.Count -eq 2 -and $r.agent_id -eq 'run0000001' -and $r.parent -eq '' -and $d.parent -eq 'run0000001' -and $d.session -eq 'sessA' -and $d.work -eq 'T-041' }
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run0000001'; session_id = 'sessA'; tool_input = @{ subagent_type = 'team:developer'; description = 'Dev T-041'; prompt = 'Execute o plano da T-041' } } },
+    @{ Name = 'SubagentStop do executor com filho vivo: fica no registro, aguardando filho'; Script = 'subagent-stop.ps1'; Expect = 0; ExpectOut = ''
+       Check = { $a = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Raw -Encoding UTF8 | ConvertFrom-Json | ForEach-Object { $_ })
+                 $a.Count -eq 2 -and @($a | Where-Object { $_.agent_id -eq 'run0000001' -and $_.last -eq 'aguardando filho' }).Count -eq 1 }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'run0000001'; agent_type = 'team:task-runner' } },
+    @{ Name = 'G20 com o executor aguardando filho: espera legítima'; Script = 'stop.ps1'; Expect = 0
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessA' } },
+    @{ Name = 'SessionStart clear: não mexe no .active-agents'; Script = 'session-start.ps1'; Expect = 0; NotOut = 'sessão anterior caiu'
+       Check = { (Test-Path -LiteralPath (Join-Path $proj '.team-project/.active-agents')) -and -not (Test-Path -LiteralPath (Join-Path $proj '.team-project/.interrupted')) }
+       Payload = @{ hook_event_name = 'SessionStart'; source = 'clear'; session_id = 'sessA' } },
+    @{ Name = 'SessionStart startup: registro vai a .interrupted e a sessão recebe a RETOMADA'; Script = 'session-start.ps1'; Expect = 0
+       Setup = { $p = Join-Path $proj '.team-project/.active-agents'; $a = @(Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json | ForEach-Object { $_ })
+                 foreach ($x in $a) { if ($x.type -eq 'team:developer') { $x.last = 'dotnet test'; $x.at = '2099-01-01 10:30:00' } }
+                 [System.IO.File]::WriteAllText($p, (ConvertTo-Json -InputObject @($a) -Compress), (New-Object System.Text.UTF8Encoding($false))) }
+       ExpectOut = 'RETOMADA: a sessão anterior caiu com T-041 em andamento (developer, última ação dotnet test às 2099-01-01 10:30). Rode /sm sprint run — o run.ps1 next diz de onde retomar.'
+       Check = { $i = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/.interrupted') -Raw -Encoding UTF8 | ConvertFrom-Json | ForEach-Object { $_ })
+                 $i.Count -eq 2 -and @($i | Where-Object { $_.parent -eq 'run0000001' -and $_.session -eq 'sessA' -and $_.work -eq 'T-041' }).Count -eq 1 -and -not (Test-Path -LiteralPath (Join-Path $proj '.team-project/.active-agents')) }
+       Payload = @{ hook_event_name = 'SessionStart'; source = 'startup'; session_id = 'sessC' } },
+    @{ Name = 'SubagentStop do filho e depois do executor: registro vazio'; Script = 'subagent-stop.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.interrupted') -Force -ErrorAction SilentlyContinue
+                 $n = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') ('[{"type":"team:task-runner","desde":"' + $n + '","session":"sessA","parent":"","agent_id":"run0000002","work":"T-041","last":"aguardando filho","at":"' + $n + '"},{"type":"team:developer","desde":"' + $n + '","session":"sessA","parent":"run0000002","agent_id":"dev0000002","work":"T-041","last":"x","at":"' + $n + '"}]') -Encoding UTF8
+                 $null = Invoke-Hook 'subagent-stop.ps1' @{ hook_event_name = 'SubagentStop'; agent_id = 'dev0000002'; agent_type = 'team:developer' } }
+       Check = { -not (Test-Path -LiteralPath (Join-Path $proj '.team-project/.active-agents')) }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'run0000002'; agent_type = 'team:task-runner' } },
+    @{ Name = 'G7 executor de Task dispara o product-owner: negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'executor de Task dispara só'
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run0000003'; tool_input = @{ subagent_type = 'team:product-owner'; prompt = 'x' } } },
+    @{ Name = 'G7 executor de Task dispara o Arquiteto (GAP): permitido'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run0000003'; tool_input = @{ subagent_type = 'team:architect'; prompt = 'GAP da T-041' } } },
+    @{ Name = 'G7 dev dispara o Arquiteto: negado (só o operator)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'serve só ao operator'
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:developer'; tool_input = @{ subagent_type = 'team:architect'; prompt = 'x' } } },
+    @{ Name = 'G8 executor escreve o run-log.md do sprint: permitido'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:task-runner'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/7/run-log.md'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G8 executor escreve o run-log.md do bloco de fix (Add-Content): permitido'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:task-runner'; tool_input = @{ command = "Add-Content -LiteralPath .team-project/fixes/B-002/run-log.md -Value '- F-003 fechada'" } } },
+    @{ Name = 'G8 executor no quadro (sprint-backlog.md): negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G8'
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:task-runner'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/7/sprint-backlog.md'); content = 'x' } } },
+    @{ Name = 'G8 executor em código-fonte: negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'código-fonte'
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:task-runner'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G14 executor roda o run.ps1 do plugin: liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:task-runner'; tool_input = @{ command = "powershell -NoProfile -File `"$root\scripts\checks\run.ps1`" start -Task T-041" } } },
+    @{ Name = 'G20 Q-S elegível na seção "Correção do portão": barra'; Script = 'stop.ps1'; Expect = 2; ExpectErr = 'Q-S7 está elegível'
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-agents'), (Join-Path $proj '.team-project/guards.log') -Force -ErrorAction SilentlyContinue
+                 [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/sprints/7/sprint-backlog.md'), "## História H-1 — x`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2705)) T-1 | a | — |`n`n## Correção do portão — sprint 7`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2B1C)) Q-S7b | b | Q-S7 |`n| $([char]::ConvertFromUtf32(0x2B1C)) Q-S7 | achados do portão | T-1 |`n", (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessA' } },
+    @{ Name = 'G16 executor: filho ligado pelo agentId do lançamento assíncrono (texto real)'; Script = 'subagent-stop.ps1'; Expect = 0
+       Setup = { $sd = Join-Path $tmp 'transcripts/sess6/subagents'; New-Item -ItemType Directory -Force $sd | Out-Null
+                 $p1 = '{"type":"user","timestamp":"2026-10-26T10:00:00Z","message":{"role":"user","content":"Conduza a T-041 até fechar ou parar"}}'
+                 $a1 = '{"type":"assistant","timestamp":"2026-10-26T10:00:10Z","message":{"id":"r1","model":"claude-sonnet-5-5","usage":{"input_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":0,"output_tokens":10}}}'
+                 $tr = '{"type":"user","message":{"role":"user","content":[{"tool_use_id":"toolu_1","type":"tool_result","content":[{"type":"text","text":"Async agent launched successfully. (This tool result is internal metadata.)\nagentId: 0a1b2c3d4e5f6a7b8 (internal ID - do not mention to user. Use SendMessage with to: ''0a1b2c3d4e5f6a7b8'' to continue this agent.)\nThe agent is working in the background."}]}]},"toolUseResult":{"isAsync":true,"status":"async_launched","agentId":"0a1b2c3d4e5f6a7b8","description":"Dev T-041"}}'
+                 $a2 = '{"type":"assistant","timestamp":"2026-10-26T10:00:20Z","message":{"id":"r2","model":"claude-sonnet-5-5","usage":{"input_tokens":5,"cache_creation_input_tokens":10,"cache_read_input_tokens":100,"output_tokens":10}}}'
+                 [System.IO.File]::WriteAllLines((Join-Path $sd 'agent-run0000006.jsonl'), [string[]]@($p1, $a1, $tr, $a2), (New-Object System.Text.UTF8Encoding($false))) }
+       Check = { $u = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8 | Where-Object { $_ -match 'run0000006' } | ConvertFrom-Json)
+                 $u.Count -eq 1 -and $u[0].role -eq 'task-runner' -and $u[0].work -eq 'T-041' -and [int]$u[0].calls -eq 2 -and (@($u[0].children) -join ',') -eq '0a1b2c3d4e5f6a7b8' }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'run0000006'; agent_type = 'team:task-runner'; transcript_path = (Join-Path $tmp 'transcripts/sess6.jsonl') } },
+    @{ Name = 'G16 executor acordado pelo aviso do filho: rodada 2 com o delta e o item do primeiro prompt'; Script = 'subagent-stop.ps1'; Expect = 0
+       Setup = { Add-Content -LiteralPath (Join-Path $tmp 'transcripts/sess6/subagents/agent-run0000006.jsonl') @('{"type":"user","timestamp":"2026-10-26T10:20:00Z","message":{"role":"user","content":"Another Claude session sent a message while you were working:\n<agent-message from=\"0a1b2c3d4e5f6a7b8\">\n  H-9: entrega pronta, verify full ok\n</agent-message>"}}', '{"type":"assistant","timestamp":"2026-10-26T10:20:30Z","message":{"id":"r3","model":"claude-sonnet-5-5","usage":{"input_tokens":5,"cache_creation_input_tokens":10,"cache_read_input_tokens":200,"output_tokens":10}}}') -Encoding UTF8 }
+       Check = { $u = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8 | Where-Object { $_ -match 'run0000006' } | ConvertFrom-Json)
+                 $u.Count -eq 2 -and [int]$u[1].round -eq 2 -and $u[1].work -eq 'T-041' -and [int]$u[1].calls -eq 1 -and [int]$u[1].calls_total -eq 3 -and [int]$u[1].processed -eq 225 }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'run0000006'; agent_type = 'team:task-runner'; transcript_path = (Join-Path $tmp 'transcripts/sess6.jsonl') } },
+    @{ Name = 'G16 SubagentStop repetido do mesmo executor: não duplica consumo'; Script = 'subagent-stop.ps1'; Expect = 0
+       Check = { @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8 | Where-Object { $_ -match 'run0000006' }).Count -eq 2 }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'run0000006'; agent_type = 'team:task-runner'; transcript_path = (Join-Path $tmp 'transcripts/sess6.jsonl') } }
 )
 
 $rows = @(); $fail = 0

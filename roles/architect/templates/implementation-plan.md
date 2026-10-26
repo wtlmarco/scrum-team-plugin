@@ -16,7 +16,8 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (plano de calibraçã
 **Planejado durante:** <T-ID> em 🟨 *(linha só quando outra Task estava em construção — regra 20)*
 **Cenários:** SC-<nnn>, SC-<nnn> *(os da Task, em `.team-project/quality-assurance/scenarios/*.scn` — regra 23)* | nenhum — <motivo>
 **Risco:** regra de negócio | integração | interface simples | infraestrutura *(escolhe o nível de teste — regra 24)*
-**Layout novo:** sim | não *(só Task com interface; "sim" pede o Render real — regra 21)*
+**Layout novo:** sim | não *(só Task com interface; "sim" é o marcador de **muda comportamento visível**: pede o Render real — regra 21 —, ao menos uma premissa medida — regra 26 — e a linha **Documentos vivos:** — regra 27)*
+**Documentos vivos:** `<documento de desenho>` §<seção> — <o que muda> *(linha obrigatória com **Layout novo:** sim — regra 27; omitir nos demais casos)*
 **Retomada de:** `sprints/<n-1>/plan/<T-ID>-<slug>.md` — parou no passo <n> de <m>, repositório <estado>
 *(linha obrigatória só quando a Task volta de um sprint anterior; omitir quando a Task é nova)*
 **Arquivos tocados:** `<caminho relativo à raiz do repositório>`
@@ -108,6 +109,12 @@ back-end, worker **ou front-end**. O dev leva ao relatório o trecho decisivo da
 cobertura — código de saída, pior módulo × limiar — **e** o ponteiro do `report` do job (R28)
 (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.4 e §5.5).
 
+### Premissas
+*(regra 26 — o plano prova o que afirma: uma linha por afirmação sobre o código ou o ambiente que algum passo assume. **Substitui prosa, não soma.** O `plan.ps1` lê o formato.)*
+- Contagem: `<regex>` em `<glob>` → <n> *(toda contagem ou inventário do plano; glob relativo à raiz do projeto, `;` separa vários; a regex diferencia maiúsculas)*
+- P1 · <afirmação> · medido: `<comando ou job do operator>` → <resultado literal>
+- P2 · <afirmação> · não exercitada: <motivo> · verifica: <papel> em <passo>
+
 ## 7. Comandos de verificação
 <Com `verify` no `.team-project/guards.json` (v3.45.1): só os testes do Pronto de cada bloco e "`verify.ps1 -Mode full` no fim" —
 os comandos vivem no `guards.json`, não se repetem aqui. Sem `verify`: os comandos do projeto — ver `.team-project/developer/context.md`. Cada um já validado na seção 3.
@@ -134,7 +141,7 @@ comando de cobertura, isso é gap de configuração e entra na seção 9, não v
 - **Regra aplicável:** `${CLAUDE_PLUGIN_ROOT}/standards/implementation-security-lgpd-copyright.md` §<n>
 
 ## 11. Execução delegada (registro do Arquiteto — não é passo; o dev não executa nada daqui)
-*(uma linha por chamada minha ao `operator` para este plano — tipicamente a medição da seção 3. É o
+*(uma linha por chamada minha ao `operator` para este plano — a medição da seção 3 e as premissas da §6 que dependem de executar. É o
 **índice dos jobs** que o C1 confere (R28); tokens e duração o hook G16 mede no transcript do `operator`
 e o `consumption.ps1` grava — não copio número. Sem chamada: "nenhuma".)*
 
@@ -177,7 +184,7 @@ passo 3, com a permissão do stakeholder. Não entra em `**Arquivos tocados:**`.
 16. **Arquivo de outro papel não entra na lista** (v3.48) — `**Arquivos tocados:**` só tem arquivo que o executor escreve: documento de `.team-project/` cujo dono é outro papel (matriz de `artifact-ownership.md` §1) a G8 nega ao dev no meio da Task; o `plan.ps1` reprova antes (linha `dono`). O que a Task precisa de outro dono vai como pedido a ele, no plano ou na evidência. **Arquivo de gate protegido não é do dev nem meu** — `guards.json` → `protectedPaths` (`.editorconfig`, CI, hooks de pre-commit…): a G5 o nega a todo subagente. Se a Task precisa mudá-lo, ele vai em `**Arquivos protegidos:** ver §12`, com o diff exato na seção 12, **separado por linha em branco** de `**Arquivos tocados:**` (senão a G9 o leria como do dev); a sessão aplica antes de disparar o dev ([`sprint-run.md`](../../scrum-master/process/sprint-run.md) passo 3). Sem arquivo protegido: `**Arquivos protegidos:** nenhum`. Descobrir no meio da Task que precisa mudar um é 🔺 GAP: o plano ganha a seção 12 e a sessão aplica antes de retomar o dev.
 
 17. **Trecho literal: até 15 linhas, ou validado (v3.46).** No passo vão a assinatura, o registro de infraestrutura literal e trecho literal **só** onde a forma é a própria decisão (expressão regular, consulta, configuração, mensagem de erro) — **até 15 linhas por bloco de código**. Acima disso, o passo traz `**Validado em:** <scratchpad: caminho> | <job do operator>` (README §Validar sem escrever no produto); sem validação, encurte para contrato. **Teste não vai escrito no plano:** vai a linha da §6. O `plan.ps1` reprova trecho longo sem validação.
-18. **Prova de falha declarada (v3.46; pelo risco desde a v3.51, regra 24).** Em Task de **regra de negócio** ou **integração**, todo teste da §6 com "Deve falhar se…" ganha uma linha em `**Mutações:**`; em Task de **interface simples** ou **infraestrutura**, a §6 traz `sem prova: <arquivo> — <motivo> (regra 24)` e o portão do QA confere a cobertura medida. A linha: `- M<k> · teste `<arquivo de teste>` · `<arquivo de produção>` · `<trecho exato>` → `<trecho mutante>`` — o que "remover a regra" significa, literal; o trecho aparece **uma vez** no arquivo depois da implementação (escolha um trecho que o dev vai escrever com essa grafia — a assinatura, um operador, uma constante), **não é vazio e não tem crase** (o `plan.ps1` recusa), e o mutante **compila**: mutante que não compila sai `inconclusivo`, não prova o teste (v3.47.1). Os dois arquivos estão em `**Arquivos tocados:**`. O `verify.ps1 -Mode mutation` aplica cada uma, roda o teste focado, espera exit ≠ 0 e restaura; o dev não cria arquivo temporário para provar falha (a G9 o negaria). Teste sem regra a remover (configuração, contrato de tipo): `sem prova: <arquivo de teste> — <motivo>` na §6.
+18. **Prova de falha declarada (v3.46; pelo risco desde a v3.51, regra 24).** Em Task de **regra de negócio** ou **integração**, todo teste da §6 com "Deve falhar se…" ganha uma linha em `**Mutações:**`; em Task de **interface simples** ou **infraestrutura**, a §6 traz `sem prova: <arquivo> — <motivo> (regra 24)` e o portão do QA confere a cobertura medida. A linha: `- M<k> · teste `<arquivo de teste>` · `<arquivo de produção>` · `<trecho exato>` → `<trecho mutante>`` — o que "remover a regra" significa, literal; o trecho aparece **uma vez** no arquivo depois da implementação (escolha um trecho que o dev vai escrever com essa grafia — a assinatura, um operador, uma constante), **não é vazio e não tem crase** (o `plan.ps1` recusa), e o mutante **compila**: mutante que não compila sai `inconclusivo`, não prova o teste (v3.47.1) — **por isso confiro que cada mutante compila antes de entregar o plano**: pelo `operator` (compila a cópia mutada) ou, em projeto com `verify.compile` no `guards.json`, por `verify.ps1 -Mode mutation -Plan <plano> -Precheck`; o que só existe depois da implementação (trecho novo) sai como premissa `não exercitada … · verifica: dev em verify -Precheck` (regra 26). Os dois arquivos estão em `**Arquivos tocados:**`. O `verify.ps1 -Mode mutation` aplica cada uma, roda o teste focado, espera exit ≠ 0 e restaura; o dev não cria arquivo temporário para provar falha (a G9 o negaria). Teste sem regra a remover (configuração, contrato de tipo): `sem prova: <arquivo de teste> — <motivo>` na §6.
 19. **O plano passa pela conferência antes do dev (v3.46):** `scripts/checks/plan.ps1 -Plan <caminho>` — lista legível com teste, protegidos declarados, blocos (regra 2), trecho (17), mutações (18) e o critério da trilha leve. Reprovado, volta a mim na mesma instância, sem custo de dev ([`sprint-run.md`](../../scrum-master/process/sprint-run.md) passo 3).
 20. **Plano escrito com outra Task em construção (v3.46, R1):** o cabeçalho traz `**Planejado durante:** <T-ID> em 🟨`. Só para Task que **não depende** da que está em construção; as assinaturas que eu li podem mudar até o dev começar — o passo 4 do dev (conferir as assinaturas no código real) é o que fecha esse risco.
 21. **Task com layout novo: prova em render real (v3.50; só com layout novo desde a v3.51, regra 24).** Task com interface declara `**Layout novo:** sim | não` no cabeçalho. Com **sim** — muda layout ou estilo visível: toca arquivo de estilo, marcação ou componente de tela de um jeito que altera posição, tamanho ou fluxo — ela tem na §6 ao menos um **teste de render**: abre a tela num navegador headless e mede as caixas dos elementos que a mudança afeta (`getBoundingClientRect` ou o equivalente da ferramenta: posição, tamanho, sobreposição, transbordamento do contêiner), em **3 tamanhos de fonte** (o padrão, o menor e o maior que a especificação suporta) × **cada tamanho de tela relevante** (os da especificação de tela; sem lista nela, o menor e o maior suportados). A tabela **Render real** da §6 declara essa matriz, e o "Deve falhar se…" descreve a geometria, não a regra. **Prova só por estrutura** — regra presente no CSSOM, seletor que casa, snapshot de classe ou de DOM — **não basta para mudança de layout**: pode acompanhar, não substitui (`${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.1). **Mutação (regra 18 · R23):** ao menos uma `M<k>` tem o teste de render como teste e, como trecho, a declaração de estilo ou de marcação que a Task introduz, revertida ou removida no mutante — ela tem de **quebrar a medição**; mutação que só derruba o teste de estrutura não prova a Task. **Navegador headless é pré-requisito da §3** (R26): ausente no toolchain, a linha sai "não" e a §9 leva o GAP — o plano não dispensa a prova em silêncio, e a Task não entra em construção até a decisão (instalar entra no toolchain pelo stakeholder; aceitar sem a prova é risco que ele assina). O passo de teste leva na **Conferência** que o arquivo de teste de render existe e mede a matriz da tabela. (No piloto, uma mudança de layout provada por regra e seletor passou no plano, no QA e na mutação, e o defeito só apareceu no aparelho.)
@@ -195,6 +202,14 @@ passo 3, com a permissão do stakeholder. Não entra em `**Arquivos tocados:**`.
 
   **O freio é o portão do QA** (`sprint-run.md` §Validação do sprint): a cobertura medida tem limiar (80 % por unidade implantável, `standards/implementation-principles.md` §5), e unidade abaixo dele volta ao dev. Teste a menos não é cobertura a menos.
 25. **Planos de uma História numa instância (v3.51).** No preparo da construção, uma instância do Arquiteto escreve os planos de todas as Tasks da História: lê o SDD, os standards citados e o código uma vez. Cada plano continua num arquivo próprio, com a sua lista fechada.
+26. **O plano prova o que afirma (v3.52.2 · decisão do stakeholder; sprint 3 do piloto: 27 de 29 GAPs nasceram no plano ou na spec).** Decido, documento **e provo** — não construo. A prova mora na **`### Premissas` da §6** e nas linhas de contagem, no formato exato que o `plan.ps1` confere:
+    - **Contagem:** toda contagem ou inventário (arquivos, ocorrências, rotas, chamadas) vira uma linha `- Contagem: `<regex>` em `<glob>` → <n>` (glob relativo à raiz do projeto, `;` separa vários; o script reconta, com a regex sensível a maiúsculas, nos arquivos versionados; n diferente reprova). Número de ocorrências escrito fora dessa forma não é conferido — não o escreva.
+    - **Premissa:** toda afirmação sobre código ou ambiente que um passo assume é uma linha `- P<k> · <afirmação> · medido: <comando ou job> → <resultado>` ou `- P<k> · <afirmação> · não exercitada: <motivo> · verifica: <papel> em <passo>`. Premissa sem uma das duas formas reprova; "não validado" solto no plano **não é mais aceito** — vira premissa `não exercitada` com quem verifica e onde.
+    - **Quem mede:** contagem, busca e conferência de seletor contra o lint, **eu mesmo**, com comando curto de leitura e a saída colada. O que depende de **executar** — app, teste, build, harness, contraste, compilar o mutante — vai ao `operator` (haiku), job em `operator/<n>/<T-ID>-plano/`, que devolve número + comando + saída (linha na §11); continuo sem escrever código de produção.
+    - **Número de aceite vindo da spec do UX** (contraste, tempo, tamanho) entra como premissa **medida**, nunca copiado.
+    - **Plano com `**Layout novo:** sim`** traz ao menos uma premissa `medido:` (a medição que sustenta a geometria).
+    - **Não soma tamanho (regra 22):** a premissa substitui a prosa que a afirmava. Plano que cresce por causa das premissas está explicando demais — corte a explicação, fica a linha medida.
+27. **Mudança de comportamento visível aponta o documento de desenho, sem pô-lo nas mãos do dev (v3.52.2, decisão do stakeholder).** Plano com `**Layout novo:** sim` leva a linha `**Documentos vivos:**` com o documento de desenho (`docs/sdd/…` do projeto) e a seção que a mudança atualiza. O dev **não** edita o SDD: anota o que mudou na seção "Documentos vivos (R12)" do relatório, e o Arquiteto consolida uma vez no sprint (A5, `docs-consolidation.md`). O `plan.ps1` reprova `Layout novo: sim` sem a linha e documento de desenho em `**Arquivos tocados:**`; o `verify` não conta o documento de desenho na árvore.
 ## Variante leve (v3.46 · R23)
 
 Para Task com **`Trilha: leve`** no Sprint Backlog — decidida na Planning, só se tudo for verdade: estimativa ≤ 0,5; até 4 arquivos em `**Arquivos tocados:**`; sem migration; sem item da §10 (segurança); sem interface (Task que muda layout ou estilo visível **nunca é leve**: a prova em render da regra 21 exige o navegador medido na §3, que a leve não tem); sem arquivo protegido. Documentação pura entra sempre como leve. O `plan.ps1` confere o mecânico (arquivos, protegidos, migration); o resto é da Planning. Disparado com `model: "sonnet"`.
@@ -207,7 +222,7 @@ Para Task com **`Trilha: leve`** no Sprint Backlog — decidida na Planning, só
 **Arquivos protegidos:** nenhum
 
 ## 1. Objetivo e fora de escopo
-## 6. Testes obrigatórios (+ **Mutações:** ou `sem prova:`)
+## 6. Testes obrigatórios (+ **Mutações:** ou `sem prova:` + `### Premissas`, regra 26)
 ## 7. Comandos de verificação — "verify.ps1 -Mode full no fim" (R26 por citação do `developer/context.md`, como no `fix plan`; sem `operator`)
 ## 9. Onde parar e perguntar 🔺 (as três linhas fixas)
 ```
@@ -270,6 +285,11 @@ sem teste: `Api/appsettings.json`, `infra/.env.Development` — configuração; 
 **Mutações:**
 - M1 · teste `Tests/Unit/UrlSignerTests.cs` · `Infrastructure/Storage/UrlSigner.cs` · `$"{path}|{expires}"` → `$"{expires}"`
 - M2 · teste `Tests/Unit/StorageOptionsTests.cs` · `Infrastructure/Storage/StorageOptions.cs` · `[Required, MinLength(32)]` → `[MinLength(0)]`
+
+### Premissas
+- Contagem: `SigningKey` em `Infrastructure/Storage/*.cs;Api/*.cs` → 4
+- P1 · `UrlSigner` é o único leitor de `SigningKey` · medido: `Grep SigningKey Infrastructure/` → 1 arquivo (`UrlSigner.cs:18`)
+- P2 · os dois mutantes compilam · não exercitada: o trecho novo nasce nos passos 1 e 2 · verifica: dev em `verify.ps1 -Mode mutation -Precheck`
 
 ## 9. Onde parar e perguntar 🔺
 - Se `UrlSigner` já compuser a mensagem de forma diferente da descrita no passo 2.

@@ -21,6 +21,10 @@ Salvo em `.team-project/fixes/B-<nnn>/plan.md` — **um arquivo por bloco, um mi
 - C8 ✔ · <evidência>
 ### Causa
 <arquivo:linha + por que diverge>
+### Premissas
+*(só se o mini-plano conta ocorrências ou afirma algo sobre código/ambiente que um passo assume; senão omita a seção)*
+- Contagem: `<regex>` em `<glob>` → <n>
+- P1 · <afirmação> · medido: `<comando de leitura>` → <resultado> | não exercitada: <motivo> · verifica: dev em <passo>
 ### Arquivos
 - produção: <caminho>
 - teste: <caminho>
@@ -73,6 +77,7 @@ n/a — sem mudança
 13. **Resposta a 🔺 GAP no `fix run`** entra no mini-plano da F-ID — no passo que ela altera, com `(GAP <data>: <decisão>)` —, como no plano completo (R9). Decisão que quebra C5–C8 é promoção (regra 10), não passo novo.
 14. **Uma F-ID, um mini-plano.** Nada de passo compartilhado entre F-IDs nem "mesma mudança da F-<nnn>": cada uma é desfeita sozinha pelo diff isolado dela (R33).
 15. **Correção de layout ou estilo visível: o teste de regressão é de render** (regra 21 do [plano completo](implementation-plan.md) · `${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.1). Mede, num navegador headless, a caixa que quebrou, no tamanho de tela do defeito e nos 3 tamanhos de fonte; "Antes da correção, falha com" é a medição (ex.: largura da caixa > a do contêiner), nunca a ausência de uma regra ou classe. Sem navegador headless e comando de render no `developer/context.md`: **C7 ✘** e promoção — teste de estrutura no lugar não prova a Correção.
+16. **O mini-plano também prova o que afirma (v3.52.2 · regra 26 do [plano completo](implementation-plan.md)).** Contagem ou inventário só na forma `- Contagem: `<regex>` em `<glob>` → <n>`, com o comando que eu mesmo rodei (leitura); afirmação sobre código ou ambiente na forma `P<k>` — `medido: <comando> → <resultado>` ou `não exercitada: <motivo> · verifica: dev em <passo>`. Sem `operator` neste modo (regra 9): o que depende de executar sai `não exercitada`, com o dev como quem verifica — e se a Correção só se sustenta com essa execução, é C7 ✘ e promoção. "Não validado" solto deixa de existir. A seção `### Premissas` **substitui** prosa da Causa e conta nas 60 linhas. **Resposta a 🔺 GAP que afirma algo novo sobre o ambiente** (regra 13) entra também como premissa, com a medição.
 
 ## Exemplo abreviado
 
