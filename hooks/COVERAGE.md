@@ -144,3 +144,14 @@ Medido no sprint 3 do piloto (3.52.0) e no spike de 2026-10-26: o `Agent` não t
 | **G18** | `bench.foreground` sem efeito (não há `run_in_background` no `Agent`); comportamento de agente assíncrono sob `claude -p` **a medir** | ver a linha da G18 |
 
 O `models.json` (G17) **não** aceita o `task-runner`: é instrumento do run, com modelo fixo no `agents/task-runner.md` (`sonnet`); a G17 cala para ele.
+
+## v3.52.3 — espera de comando e consumo do agente cortado
+
+Medido no sprint 4 do garden (3.52.2): o harness move para segundo plano o comando que passa de 600 s ("moved to the background") e o aviso de conclusão **chega** ao subagente; negado o sono pela G14, o dev sondou o log (51 chamadas de espera). O agente cortado pelo limite semanal nunca recebeu SubagentStop (13,8 mi fora do `usage.jsonl`). Casos em `run-guard-tests.ps1` (marcados v3.52.3) e `run-check-tests.ps1` (bloco 13).
+
+| Guarda | O que mudou | O que **não** cobre |
+|---|---|---|
+| **G14** | `Start-Sleep` **e `Wait-Process`** com a rota "comando movido para segundo plano: encerre o turno — o aviso de conclusão traz o resultado; não sonde o log nem rode o comando de novo" | sondagem por leitura (`Get-Date` + `Get-Content` em laço): cada chamada é permitida; o roteiro do dev e o prompt do `run.ps1 start` dizem para não sondar |
+| **G16** | (1) campo `usd` por rodada, pelo preço do modelo de cada chamada (`scripts/checks/prices.ps1`: Opus 5.5, Sonnet 5.5, Haiku 5.5 com a faixa acima de 100 mil de prompt; modelo fora da tabela = `null`); (2) agente que parou sem SubagentStop (limite de uso, processo encerrado) é medido pelo `run.ps1 next`: o **SessionStart** grava no `.interrupted` o `agent_id`, o `transcript` do subagente e o `session_transcript`, e o `next` roda o `subagent-stop.ps1` por ele (stdin em UTF-8) | agente cortado sem nenhuma ação de ferramenta (o `.active-agents` não tem o `agent_id` dele); sessão retomada sem `/sm sprint run` (o `next` não roda); o peso que o limite semanal da conta dá a cada parcela (desconhecido) |
+
+**Scripts (v3.52.3):** `verify.ps1` estima cada comando do full pela história da chave (o maior tempo das últimas 5 rodadas em `verify/**/result.json`; sem história, a regra antiga), trava a Task (`verify.lock`; outra rodada viva → **exit 5**) e avisa comando acima de 80 % do teto por comando; `run.ps1` põe o `accept.ps1` no cartão só com `targets`, grava a rota do 🔺 GAP e a queda de ambiente no `run-log.md` (`done -Result gap|env`) e manda o Arquiteto estender a decisão às Tasks abertas; `consumption.ps1` soma a coluna **US$** nos Totais.

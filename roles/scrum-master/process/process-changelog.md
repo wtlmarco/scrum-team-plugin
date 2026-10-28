@@ -139,6 +139,10 @@ P-r2 (SunScape, mesma regra de comparação): contexto mediano da sessão ≤ 80
 - **Indicador:** próximo sprint com zero G20 por espera, linha `SESSÃO:` ≤ 150 mil, orquestração por Task ≤ 5 mi, GAPs de origem no plano ≤ 10 de cada 29, toda correção do portão como Q-S<n>.
 - **Evidência (R19):** guardas 249/0 (+20), conferências 190/0 (+27), C3 ok; `grep` de `run_in_background`/"primeiro plano"/"2º plano" nos documentos de processo: só histórico, lido no contexto.
 
+### Addendum v3.52.3 — espera da verificação, aceite sem alvo, GAP no registro, consumo em US$ (SM + Dev) — 27/10/2026
+
+**Instrução:** stakeholder, 27/10/2026, `/review` dos itens 1–5, 9 e 10 do `note.md` (sprint 4 do garden). Sem regra nova (34), sem conflito. **Mudou:** dev — comando movido para segundo plano: encerre o turno e espere o aviso; exit 5 (`agents/developer.md` regra 6, `roles/developer/README.md`); modelos `run-log.md` (o `done` grava GAP e ambiente) e `consumption.md` (coluna US$). Instrumentos: CHANGELOG v3.52.3. **Indicador:** zero "moved to the background" e zero espera por sondagem no próximo sprint. **Evidência:** conferências 200/0, guardas 252/0, C3 ok.
+
 ---
 ## v3.51 — O sprint do benchmark: dev constrói e verifica sozinho, plano por História ao lado dos cenários, portão do QA no fim, orquestração por script, contexto e cache, ambiente em qualquer tecnologia (SM + Arquiteto + Dev + QA + PO) — 21/10/2026
 

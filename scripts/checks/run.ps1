@@ -155,6 +155,17 @@ function Test-PoDebt([string]$Path) {
     return ((Read-Text $Path) -match '(?m)^\*\*Decis[ãa]o do PO:\*\*\s*aceit[oa] com d[íi]vida\s*[—–-]\s*\S')
 }
 
+# v3.52.3 (note.md item 10): a rota do 🔺 GAP e a queda de ambiente vão ao run-log.md pelo próprio done — no sprint 4 do
+# garden o executor não escreveu nenhuma, e o registro do sprint ficou com uma linha só. Modelo: templates/run-log.md.
+function Add-RunLog([string]$S, [string]$n, [string]$Item, [string]$Decision, [string]$Why, [string]$Evidence) {
+    $p = Join-Path $S 'run-log.md'
+    if (-not (Test-Path -LiteralPath $p)) {
+        [System.IO.File]::WriteAllText($p, "# Registro de decisões do run — S$n`n> DOCUMENTO VIVO até o fechamento do sprint/bloco · Dono: SM · Escritores: a sessão que orquestra e o executor de Task (só as linhas da Task dele)`n`n| Quando | Item | Decisão | Porquê | Evidência |`n|---|---|---|---|---|`n", $utf8)
+    }
+    $cell = { param($x) $t = (([string]$x -replace '\|', '/') -replace '\s+', ' ').Trim(); if ($t.Length -gt 160) { $t.Substring(0, 160) + '…' } else { $t } }
+    [System.IO.File]::AppendAllText($p, "| $(Get-Date -Format 'yyyy-MM-dd HH:mm') | $Item | $(& $cell $Decision) | $(& $cell $Why) | $(& $cell $Evidence) |`n", $utf8)
+}
+
 # Cartão de passagem (C2): o estado da Task em ~2 KB, para a instância nova não reler o plano inteiro nem o histórico.
 function Write-Handoff($T, [string]$S, [string]$n) {
     $dir = Join-Path $S 'handoff'; New-Item -ItemType Directory -Force $dir | Out-Null
@@ -172,9 +183,11 @@ function Write-Handoff($T, [string]$S, [string]$n) {
     $ar = Join-Path ((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'; $atxt = 'sem accept'
     if (Test-Path -LiteralPath $ar) { try { $a = Read-Text $ar | ConvertFrom-Json; $atxt = if ($a.environment) { "falha de ambiente: $($a.environment)" } else { "$($a.passed) de $($a.total) em $($a.at)" } } catch { } }
     $md = @("# Cartão de passagem — $($T.Id) $($T.Title)", '', "**História:** $($T.Story) · **Marcador:** $($T.Mark) · **Depende de:** $(if ($T.Deps.Count) { $T.Deps -join ', ' } else { '—' })",
-            "**Plano:** ``$planRel`` · $files arquivo(s)" + $(if ($blocks.Count) { " · " + ($blocks -join ' · ') } else { '' }),
-            "**Cenários:** $(if ($T.Scenarios.Count) { $T.Scenarios -join ', ' } else { 'nenhum' }) — ``accept.ps1 -Task $($T.Id) -Only $($T.Scenarios -join ',')``",
-            "**Última entrega:** $last" + $(if ($stop) { " · parou: $stop" } else { '' }),
+            ("**Plano:** ``$planRel`` · $files arquivo(s)" + $(if ($blocks.Count) { " · " + ($blocks -join ' · ') } else { '' })),
+            # v3.52.3 (note.md item 1): o aceite só com alvo — sem guards.json → targets, o cartão mandava rodar o accept.ps1 e
+            # 4 de 5 Tasks do sprint 4 do garden pararam no mesmo 🔺 GAP "accept sem .scn".
+            ("**Cenários:** " + $(if (-not $T.Scenarios.Count) { 'nenhum' } elseif (Get-TargetsConfig $Root) { "$($T.Scenarios -join ', ') — ``accept.ps1 -Task $($T.Id) -Only $($T.Scenarios -join ',')``" } else { "$($T.Scenarios -join ', ') — sem alvo de execução: o accept não roda; os cenários se provam pelos testes do plano" })),
+            ("**Última entrega:** $last" + $(if ($stop) { " · parou: $stop" } else { '' })),
             "**Verificação:** $vtxt · **Cenários no alvo:** $atxt",
             "**GAPs:** $(if ($gaps.Count) { $gaps -join ' · ' } else { 'nenhum' })", '',
             'Leia: este cartão, o cabeçalho e a §6 do plano e o seu bloco. O resto só se o passo pedir.')
@@ -222,7 +235,7 @@ try {
         # v3.51.4: o formato que o close.ps1 lê (garden item 17), a retomada do verify parcial (exit 3, garden item 18) e o
         # alvo pelo target.ps1, sem adb nem espera à mão (note.md item 4).
         $tgt = if (Get-TargetsConfig $Root) { " Alvo: confira com target.ps1 -Target <alvo> (com -Repair ele reinicia e espera); não use adb nem Start-Sleep." } else { '' }
-        Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk Leia o cartão .team-project/$card, o cabeçalho e a §6 do plano $planRel e o seu bloco — não o plano inteiro. Rode verify.ps1 -Mode focused durante, -Mode full no fim, -Mode mutation se o plano tem **Mutações:**$acc. Exit 3 = parcial (o tempo da chamada acabou): rode o MESMO comando de novo, ele continua de onde parou. Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga.$tgt Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept — cada bloco de código começa com a linha do comando ('> verify.ps1 -Mode full …') e traz a saída embaixo — e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
+        Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk Leia o cartão .team-project/$card, o cabeçalho e a §6 do plano $planRel e o seu bloco — não o plano inteiro. Rode verify.ps1 -Mode focused durante, -Mode full no fim, -Mode mutation se o plano tem **Mutações:**$acc. Exit 3 = parcial (o tempo da chamada acabou): rode o MESMO comando de novo, ele continua de onde parou. Comando que a ferramenta moveu para segundo plano ('moved to the background'): encerre o turno — o aviso de conclusão traz o resultado; não sonde o log nem dispare outro verify (exit 5 = outra rodada ainda roda). Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga.$tgt Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept — cada bloco de código começa com a linha do comando ('> verify.ps1 -Mode full …') e traz a saída embaixo — e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
         Out "  ao voltar: run.ps1 done -Task $($T.Id) -Result ok|gap|env"
         exit 0
     }
@@ -234,15 +247,19 @@ try {
             if ($T.Mark -eq $E.QA) { $mo = Set-Mark $T.Id 'build' 'sessão (run.ps1 done -Result gap)'; if ($mo) { Out "  $mo" } }
             $null = Update-DevCounter $T $S 'fail'   # v3.52.2 (item 14): GAP encerra a instância por falha de papel
             $card = Write-Handoff $T $S $n
-            Out "run: $($T.Id) com 🔺 GAP — Arquiteto em instância NOVA (o cache de 5 min do anterior já venceu; C1), modo /arc question:"
+            $dvp = Join-Path $S "delivery/$($T.Id).md"
+            $gl = @(if (Test-Path -LiteralPath $dvp) { [regex]::Matches((Read-Text $dvp), '(?m)^.*🔺.*$') | ForEach-Object { $_.Value.Trim() } | Select-Object -Last 1 })
+            Add-RunLog $S $n $T.Id '🔺 GAP → Arquiteto em instância nova (/arc question); a decisão fica no plano (R9)' $(if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }) "sprints/$n/delivery/$($T.Id).md"
+            Out "run: $($T.Id) com 🔺 GAP — Arquiteto em instância NOVA (o cache de 5 min do anterior já venceu; C1), modo /arc question (rota gravada no run-log.md):"
             Out "  $(Get-AgentLine 'architect')"
-            Out "  prompt: `"Decida o 🔺 GAP da $($T.Id): cartão .team-project/$card, plano .team-project/sprints/$n/$($T.Plan), relatório .team-project/sprints/$n/delivery/$($T.Id).md. Registre a decisão no plano (R9); não escreva código nem rode build. Volte em até 15 linhas.`""
+            Out "  prompt: `"Decida o 🔺 GAP da $($T.Id): cartão .team-project/$card, plano .team-project/sprints/$n/$($T.Plan), relatório .team-project/sprints/$n/delivery/$($T.Id).md. Registre a decisão no plano (R9). Se a mesma decisão vale para outra Task ainda não fechada do sprint, registre-a também no plano dela e cite as Tasks na volta. Não escreva código nem rode build. Volte em até 15 linhas.`""
             Out "  depois: dev em instância NOVA com a decisão — run.ps1 start -Task $($T.Id) (o cartão regerado aponta o plano com a decisão) e rode run.ps1 done de novo"
             exit 0
         }
         if ($Result -eq 'env') {
             $tg = Get-TargetsConfig $Root; $names = @(if ($tg) { $tg.PSObject.Properties | ForEach-Object { $_.Name } })
             $ec = Update-DevCounter $T $S 'env'   # v3.52.2 (item 14): queda de ambiente não conta para o escalonamento do dev
+            Add-RunLog $S $n $T.Id "queda de ambiente ($($ec.env) neste bloco) → reparo do alvo e dev em instância nova" 'o dev parou por ambiente (exit 4 do verify/accept, rede, energia); não conta para o escalonamento (R27)' "sprints/$n/delivery/$($T.Id).md"
             Out "run: $($T.Id) parou por FALHA DE AMBIENTE (D4) — não é defeito do código; nenhum papel caro é chamado. Registrada ($($ec.env) neste bloco); não conta para o escalonamento do dev (R27)."
             foreach ($nm in $names) { Out "  1. $plugin/target.ps1 -Target $nm -Repair" }
             Out "  2. pronto → dev em instância NOVA: run.ps1 start -Task $($T.Id) (o relatório em delivery/ diz o que já foi feito; rode de novo o que falhou)"
@@ -302,6 +319,23 @@ try {
             $w = if ($g.Name) { $g.Name } else { '(sem item)' }
             $stop = if ($g.Name) { Get-StopStep $S $g.Name } else { '' }
             Out "RETOMADA: a sessão anterior caiu com $w em andamento ($((@($g.Group | ForEach-Object { [string]$_.type } | Where-Object { $_ } | Select-Object -Unique)) -join ', ')), última ação $(if ($r0.last) { [string]$r0.last } else { '—' }) às $(if ($r0.at) { [string]$r0.at } else { [string]$r0.desde })$(if ($stop) { " · parei no passo: $stop" })"
+        }
+        # v3.52.3 (note.md item 9): agente cortado pelo limite de uso nunca recebe SubagentStop — a G16 não o media (13,8 mi
+        # do sprint 4 do garden fora do usage.jsonl). O SessionStart guardou o transcript dele; a G16 roda aqui por ele.
+        $hook = Join-Path $PSScriptRoot '..\..\hooks\subagent-stop.ps1'
+        foreach ($rc in @($recs | Where-Object { $_ -and $_.PSObject.Properties['transcript'] -and $_.transcript -and $_.agent_id -and (Test-Path -LiteralPath ([string]$_.transcript)) })) {
+            $hin = [ordered]@{ hook_event_name = 'SubagentStop'; agent_id = [string]$rc.agent_id; agent_type = [string]$rc.type; agent_transcript_path = [string]$rc.transcript; transcript_path = [string]$rc.session_transcript; cwd = $Root } | ConvertTo-Json -Compress
+            # stdin em UTF-8 (o pipe do 5.1 manda ASCII e o acento do caminho do perfil virava "?").
+            try {
+                $psi = New-Object System.Diagnostics.ProcessStartInfo
+                $psi.FileName = 'powershell'; $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$hook`""
+                $psi.UseShellExecute = $false; $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
+                $psi.EnvironmentVariables['CLAUDE_PROJECT_DIR'] = $Root
+                $hp = [System.Diagnostics.Process]::Start($psi)
+                $hb = $utf8.GetBytes($hin); $hp.StandardInput.BaseStream.Write($hb, 0, $hb.Length); $hp.StandardInput.Close()
+                $null = $hp.StandardOutput.ReadToEnd(); $null = $hp.StandardError.ReadToEnd(); $hp.WaitForExit(60000) | Out-Null
+            } catch { }
+            Out "  consumo: $(([string]$rc.type) -replace '^.*:', '') $(if ($rc.work) { [string]$rc.work }) medido pelo transcript (parou sem SubagentStop)"
         }
         Remove-Item -LiteralPath $intP -Force -ErrorAction SilentlyContinue
     }

@@ -19,6 +19,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib.ps1')
+. (Join-Path $PSScriptRoot 'prices.ps1')   # v3.52.3 (note.md item 9): custo pelo preço do modelo, ao lado do bruto
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 
 $short = @{ 'scrum-master' = 'sm'; 'product-owner' = 'po'; 'architect' = 'arc'; 'user-experience' = 'ux'; 'quality-assurance' = 'qa'; 'developer' = 'dev'; 'operator' = 'operator' }
@@ -81,9 +82,10 @@ function Measure-SessionTranscript([string]$Path, [datetime]$Since) {
         $calls[$id] = @{ u = $o.message.usage; model = [string]$o.message.model; ts = $ts }
     }
     if (-not $order.Count) { return $null }
-    $r = @{ Calls = $order.Count; Processed = 0L; CacheRead = 0L; Output = 0L; Models = @{}; First = $calls[$order[0]].ts; Last = $calls[$order[$order.Count - 1]].ts }
+    $r = @{ Calls = $order.Count; Processed = 0L; CacheRead = 0L; Output = 0L; Models = @{}; First = $calls[$order[0]].ts; Last = $calls[$order[$order.Count - 1]].ts; Usd = $null }
     foreach ($id in $order) {
         $u = $calls[$id].u
+        $cu = Get-CallUsd $calls[$id].model $u; if ($null -ne $cu) { $r.Usd = [double]$r.Usd + $cu }
         $r.Processed += [int64]$u.input_tokens + [int64]$u.cache_creation_input_tokens + [int64]$u.cache_read_input_tokens + [int64]$u.output_tokens
         $r.CacheRead += [int64]$u.cache_read_input_tokens; $r.Output += [int64]$u.output_tokens
         if ($calls[$id].model) { $r.Models[$calls[$id].model] = $true }
@@ -160,12 +162,13 @@ try {
             if ($u.dest_note) { $note += "$($u.dest_note);" }
             # v3.52.2 (C3): o filho do executor de Task (dev, Arquiteto, QA) também diz quem o chamou, pelo agentId em children.
             if ($caller.ContainsKey([string]$u.agent_id)) { $note += "chamado por $($caller[[string]$u.agent_id])$(if ($inferred.ContainsKey([string]$u.agent_id)) { ' (pelo horário)' });" }
-            $note += ("medido: {0}#{1}; notificação ≈ {2:N0}; cache lido {3:N0}; saída {4:N0}; {5} chamada(s); contexto 1ª/pico {6:N0}/{7:N0}" -f $u.agent_id, $u.round, [int64]$u.final_context, [int64]$u.cache_read, [int64]$u.output, $u.calls, [int64]$u.first_context, [int64]$u.peak_context)
+            $usd = if ($u.PSObject.Properties['usd'] -and $null -ne $u.usd) { [double]$u.usd } else { $null }
+            $note += ("medido: {0}#{1}; notificação ≈ {2:N0}; cache lido {3:N0}; saída {4:N0}; {5} chamada(s); contexto 1ª/pico {6:N0}/{7:N0}" -f $u.agent_id, $u.round, [int64]$u.final_context, [int64]$u.cache_read, [int64]$u.output, $u.calls, [int64]$u.first_context, [int64]$u.peak_context) + $(if ($null -ne $usd) { '; US$ {0:N2}' -f $usd } else { '' })
             $cmd = if ($u.description) { '`Agent` · ' + ([string]$u.description -replace '\|', '/') } else { '`Agent`' }
             $measured += [pscustomobject]@{
                 Line = ('| {0} | {1} | {2} | {3} | {4} | {5} | {6} | {7:N0} | {8} | {9} |' -f ([string]$u.start).Replace('T', ' ').Substring(0, 16), $role, (Get-ShortModel ([string]$u.model)), $cmd, $work, $cat, $unit, [int64]$u.processed, (Format-Duration ([int]$u.duration_s)), ($note -join ' '))
                 Role = $role; AgentId = [string]$u.agent_id; Caller = $(if ($role -eq 'operator' -and $caller.ContainsKey([string]$u.agent_id)) { $caller[[string]$u.agent_id] } else { '' })
-                Model = (Get-ShortModel ([string]$u.model)); Tokens = [int64]$u.processed; Seconds = [int]$u.duration_s; Notified = [int64]$u.final_context
+                Model = (Get-ShortModel ([string]$u.model)); Tokens = [int64]$u.processed; Seconds = [int]$u.duration_s; Notified = [int64]$u.final_context; Usd = $usd
             }
         }
 
@@ -182,8 +185,8 @@ try {
                 $model = Get-ShortModel ((@($ms.Models.Keys)) -join ',')
                 $secs = [int]([Math]::Max(0, ($ms.Last - $ms.First).TotalSeconds))
                 $sessionRows += [pscustomobject]@{
-                    Line = ('| {0} | sessão | {1} | `sessão principal` | n/a | cerimônia | {2} | {3:N0} | {4} | medido: sessão {5}; {6} chamada(s); contexto médio {7:N0}; cache lido {8:N0}; saída {9:N0} |' -f $ms.First.ToString('yyyy-MM-dd HH:mm'), $model, $unitS, $ms.Processed, (Format-Duration $secs), $sid, $ms.Calls, [int64]($ms.Processed / $ms.Calls), $ms.CacheRead, $ms.Output)
-                    Model = $model; Tokens = $ms.Processed; Seconds = $secs; Id = $sid }
+                    Line = ('| {0} | sessão | {1} | `sessão principal` | n/a | cerimônia | {2} | {3:N0} | {4} | medido: sessão {5}; {6} chamada(s); contexto médio {7:N0}; cache lido {8:N0}; saída {9:N0}{10} |' -f $ms.First.ToString('yyyy-MM-dd HH:mm'), $model, $unitS, $ms.Processed, (Format-Duration $secs), $sid, $ms.Calls, [int64]($ms.Processed / $ms.Calls), $ms.CacheRead, $ms.Output, $(if ($null -ne $ms.Usd) { '; US$ {0:N2}' -f $ms.Usd } else { '' }))
+                    Model = $model; Tokens = $ms.Processed; Seconds = $secs; Id = $sid; Usd = $ms.Usd }
             }
         }
 
@@ -203,7 +206,9 @@ try {
         # medidas (sessão fica fora). v3.49: "Instâncias" (agentes distintos) e "Rodadas" (linhas do Registro) lado a lado —
         # antes uma coluna só, e o fechamento do piloto corrigiu os Totais à mão (100 instâncias × 137 rodadas).
         $agg = [ordered]@{}
-        $newAgg = { param($Papel, $Modelo) @{ Papel = $Papel; Model = $Modelo; Tokens = 0L; Measured = 0; Ids = @{}; Manual = 0; Rounds = 0; Seconds = 0; Notified = 0L } }
+        $newAgg = { param($Papel, $Modelo) @{ Papel = $Papel; Model = $Modelo; Tokens = 0L; Measured = 0; Ids = @{}; Manual = 0; Rounds = 0; Seconds = 0; Notified = 0L; Usd = $null } }
+        # v3.52.3 (note.md item 9): o US$ da linha de sessão mantida sai da Nota ("; US$ 1,23", na cultura de quem gravou).
+        $noteUsd = { param($Line) $um = [regex]::Match($Line, 'US\$ ([\d.,]+)'); if ($um.Success) { try { [double]::Parse($um.Groups[1].Value, [Globalization.CultureInfo]::CurrentCulture) } catch { $null } } else { $null } }
         foreach ($k in $kept) {
             $c = Split-Row $k
             if ($c.Count -lt 9 -or ($c -join '') -match '<[^>]+>') { continue }
@@ -216,6 +221,7 @@ try {
                     if (-not $agg.Contains($key)) { $agg[$key] = & $newAgg 'sessão principal' $model }
                     $a = $agg[$key]; $t = Get-Number $c[7]; if ($null -ne $t) { $a.Tokens += $t }
                     $a.Measured++; $a.Ids['s:' + $smm.Groups[1].Value] = $true; $a.Rounds++; $a.Seconds += (Get-Seconds $c[8])
+                    $ku = & $noteUsd $k; if ($null -ne $ku) { $a.Usd = [double]$a.Usd + $ku }
                 }
                 continue
             }
@@ -232,11 +238,13 @@ try {
             $key = "$papel|$($m.Model)"
             if (-not $agg.Contains($key)) { $agg[$key] = & $newAgg $papel $m.Model }
             $a = $agg[$key]; $a.Tokens += $m.Tokens; $a.Measured++; $a.Ids[$m.AgentId] = $true; $a.Rounds++; $a.Seconds += $m.Seconds; $a.Notified += $m.Notified
+            if ($null -ne $m.Usd) { $a.Usd = [double]$a.Usd + $m.Usd }
         }
         foreach ($s in $sessionRows) {
             $key = "sessão principal|$($s.Model)"
             if (-not $agg.Contains($key)) { $agg[$key] = & $newAgg 'sessão principal' $s.Model }
             $a = $agg[$key]; $a.Tokens += $s.Tokens; $a.Measured++; $a.Ids['s:' + $s.Id] = $true; $a.Rounds++; $a.Seconds += $s.Seconds
+            if ($null -ne $s.Usd) { $a.Usd = [double]$a.Usd + $s.Usd }
         }
         $totI = -1; for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^##\s+Totais') { $totI = $i; break } }
         if ($totI -ge 0) {
@@ -244,16 +252,19 @@ try {
             if ($s -ge 0) {
                 $e2 = $s; while ($e2 + 1 -lt $lines.Count -and $lines[$e2 + 1].TrimStart().StartsWith('|')) { $e2++ }
                 $label = if ($isBlock) { 'Total do bloco' } else { 'Total do sprint' }
-                $rows = @('| Papel | Modelo | Σ tokens processados | Instâncias | Rodadas | Duração total | Σ notificação |', '|---|---|---|---|---|---|---|')
-                $sumT = 0L; $sumI = 0; $sumR = 0; $sumS = 0; $sumNot = 0L
+                # v3.52.3 (note.md item 9): "US$" pelo preço do modelo (prices.ps1) — o bruto soma cache lido (0,1× do preço) com
+                # entrada e saída (5×) e não distingue Opus de Haiku; "—" = grupo sem preço (linha à mão, modelo fora da tabela).
+                $rows = @("| Papel | Modelo | Σ tokens processados | Instâncias | Rodadas | Duração total | Σ notificação | US$ (tabela $($script:PriceDate)) |", '|---|---|---|---|---|---|---|---|')
+                $sumT = 0L; $sumI = 0; $sumR = 0; $sumS = 0; $sumNot = 0L; $sumU = $null
                 foreach ($k in $agg.Keys) {
                     $a = $agg[$k]; $inst = $a.Ids.Count + $a.Manual
                     $sumT += $a.Tokens; $sumI += $inst; $sumR += $a.Rounds; $sumS += $a.Seconds; $sumNot += $a.Notified
+                    if ($null -ne $a.Usd) { $sumU = [double]$sumU + $a.Usd }
                     # Grupo só com linhas à mão não tem número processado: "não medido", nunca 0 (R7).
                     $tok = if ($a.Measured) { '{0:N0}' -f $a.Tokens } else { 'não medido — só notificação' }
-                    $rows += ('| {0} | {1} | {2} | {3} | {4} | {5} | {6:N0} |' -f $a.Papel, $a.Model, $tok, $inst, $a.Rounds, (Format-Duration $a.Seconds), $a.Notified)
+                    $rows += ('| {0} | {1} | {2} | {3} | {4} | {5} | {6:N0} | {7} |' -f $a.Papel, $a.Model, $tok, $inst, $a.Rounds, (Format-Duration $a.Seconds), $a.Notified, $(if ($null -ne $a.Usd) { '{0:N2}' -f $a.Usd } else { '—' }))
                 }
-                $rows += ('| **{0}** | — | **{1:N0}** | **{2}** | **{3}** | **{4}** | **{5:N0}** |' -f $label, $sumT, $sumI, $sumR, (Format-Duration $sumS), $sumNot)
+                $rows += ('| **{0}** | — | **{1:N0}** | **{2}** | **{3}** | **{4}** | **{5:N0}** | **{6}** |' -f $label, $sumT, $sumI, $sumR, (Format-Duration $sumS), $sumNot, $(if ($null -ne $sumU) { '{0:N2}' -f $sumU } else { '—' }))
                 $lines.RemoveRange($s, $e2 - $s + 1); $lines.InsertRange($s, [string[]]$rows)
             }
         }

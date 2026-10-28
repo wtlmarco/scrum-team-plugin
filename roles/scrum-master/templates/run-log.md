@@ -16,7 +16,7 @@
 - **Uma linha por decisão que não está em outro lugar.** Entra: rota de 🔺 GAP (quem decidiu e onde), retomada (mesmo agente ou instância nova, e por quê), bloqueio e o degrau, escolha entre opções, exceção do roteiro, Task pulada. **Não entra** o que o quadro, o cartão ou um script já guardam (tabela abaixo).
 - **Quem lê, e quando:** a sessão nova **só** em retomada do run, em bloqueio e na Review (`/sm sprint review` / fechamento do bloco). Fora disso não é leitura de abertura — não pesa o contexto.
 - **Sem conteúdo colado:** o porquê cabe em uma linha e a evidência é um **caminho** (R28). Linha longa é sinal de que o assunto pede o plano, o relatório ou a ficha — e o log só aponta para eles.
-- **Quem escreve o quê (v3.52.2).** O executor de Task: rota de GAP, retomada por instância nova, reparo de ambiente e a parada da Task que conduz, com o ID dela no Item. A sessão: retomada após queda (o que o `.interrupted` trouxe), bloqueio e degrau, Task pulada, abertura da `Q-S<n>`, decisão do portão. Ninguém escreve linha de outro.
+- **Quem escreve o quê (v3.52.2).** O executor de Task: rota de GAP, retomada por instância nova, reparo de ambiente e a parada da Task que conduz, com o ID dela no Item — **no `sprint run`, a rota do GAP e a queda de ambiente o `run.ps1 done -Result gap|env` grava por ele** (v3.52.3), e ele acrescenta a decisão que o Arquiteto estendeu a outras Tasks. A sessão: retomada após queda (o que o `.interrupted` trouxe), bloqueio e degrau, Task pulada, abertura da `Q-S<n>`, decisão do portão. Ninguém escreve linha de outro.
 - **Só se acrescenta.** Linha escrita não se reescreve; correção é linha nova. Fecha com o sprint (`sprints/<n>/`) ou com o bloco (`## Fechamento`).
 
 ## O que fica onde — sem duplicar

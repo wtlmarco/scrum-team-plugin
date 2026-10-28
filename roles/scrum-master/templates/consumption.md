@@ -36,9 +36,9 @@ Registra o que cada subagente consumiu — papel, `operator` incluído — **med
 |---|---|---|---|---|---|---|---|---|---|
 
 ## Totais do bloco (derivado)
-| Papel | Modelo | Σ tokens processados | Instâncias | Rodadas | Duração total | Σ notificação |
-|---|---|---|---|---|---|---|
-| sm · po · arc · ux · qa · dev · task-runner *(uma linha por papel e modelo)* | <modelo servido com versão> | <n \| não medido — só notificação> | <n> | <n> | <mm:ss> | <n> |
+| Papel | Modelo | Σ tokens processados | Instâncias | Rodadas | Duração total | Σ notificação | US$ (tabela <aaaa-mm>) |
+|---|---|---|---|---|---|---|---|
+| sm · po · arc · ux · qa · dev · task-runner *(uma linha por papel e modelo)* | <modelo servido com versão> | <n \| não medido — só notificação> | <n> | <n> | <mm:ss> | <n> | <n,nn \| — sem preço> |
 | operator ← <arc\|qa\|dev\|ux\|task-runner> | <modelo do `operator`> | <n> | <n> | <n chamadas> | <mm:ss> | <n> |
 | **Total do bloco** | — | **<n>** | **<n>** | **<n>** | **<mm:ss>** | **<n>** |
 
@@ -93,9 +93,9 @@ Toda vez que um subagente (papel ou `operator`) para, o hook **G16** soma, no tr
 
 *(Tabela reescrita pelo `consumption.ps1` a cada execução — não se edita à mão.)*
 
-| Papel | Modelo | Σ tokens processados | Instâncias | Rodadas | Duração total | Σ notificação |
-|---|---|---|---|---|---|---|
-| sm · po · arc · ux · qa · dev · task-runner *(uma linha por papel e modelo)* | <modelo servido com versão> | <n \| não medido — só notificação> | <n> | <n> | <mm:ss> | <n> |
+| Papel | Modelo | Σ tokens processados | Instâncias | Rodadas | Duração total | Σ notificação | US$ (tabela <aaaa-mm>) |
+|---|---|---|---|---|---|---|---|
+| sm · po · arc · ux · qa · dev · task-runner *(uma linha por papel e modelo)* | <modelo servido com versão> | <n \| não medido — só notificação> | <n> | <n> | <mm:ss> | <n> | <n,nn \| — sem preço> |
 | operator ← <arc\|qa\|dev\|ux\|task-runner> *(uma linha por chamador e modelo)* | <modelo do `operator`> | <n> | <n> | <n chamadas> | <mm:ss> | <n> |
 | sessão principal *(com `-Session`, por `message.id`)* | <modelo servido com versão> | <n> | <n sessões> | <n> | <mm:ss> | — |
 | **Total do sprint** (papéis + `operator` + sessão medida) | — | **<n>** | **<n>** | **<n>** | **<mm:ss>** | **<n>** |
@@ -121,6 +121,8 @@ Detalhe e justificativa de cada regra: `## Regras`, logo abaixo.
 
 - **Uma linha por rodada.** Rodada = do disparo (ou da retomada por `SendMessage`) até a parada do subagente. A retomada acrescenta chamadas ao mesmo transcript; o hook guarda quantas já contou e a linha nova traz **só o delta**, com `#<rodada>` na Nota. Acaba o "número cumulativo" da notificação de uma instância retomada várias vezes.
 - **Modelo é o servido, com a versão.** Vem do `message.model` de cada chamada no transcript, inclusive o override passado ao disparar (escalonamento do dev, plano leve), e sai como família e versão: `haiku 4.5`, `opus 5.5` (v3.49). Sem a versão, o piloto teve Haiku 4.5 e 5.5 na mesma linha, com preço por token ~10× diferente. Rodada com mais de um modelo mostra os dois (`haiku 4.5+sonnet 5.5`), e os Totais têm uma linha por papel e modelo.
+- **Custo pelo preço do modelo, ao lado do bruto (v3.52.3).** "Σ tokens processados" soma entrada, cache gravado, cache lido e saída com o mesmo peso; o preço não é igual (cache lido 0,1× da entrada, cache gravado 1,25×, saída 5×) e muda por modelo (Opus 5.5 custa 40× o Haiku 5.5; o Haiku sobe 5× acima de 100 mil de prompt). A G16 grava `usd` por rodada e o script soma a coluna "US$" pela tabela de `scripts/checks/prices.ps1` (data no cabeçalho); modelo fora dela fica "—", nunca 0. **Decisão de custo usa a coluna US$**; o bruto mede volume e contexto. No sprint 4 do garden, em bruto a espera dos devs parecia perto do plano da História; em US$ o plano era ~5× todos os devs.
+- **Agente cortado pelo limite de uso também é medido (v3.52.3).** Ele nunca recebe SubagentStop; o SessionStart guarda o transcript dele no `.interrupted` e o `run.ps1 next` roda a G16 por ele.
 - **Número indisponível vira nota, nunca estimativa** — mesma régua de R7: "não disponível — <motivo>".
 - **Toda rodada vira linha.** Qualquer subagente que para é uma linha — inclusive agente fora do time (`claude-code-guide`, `Explore`), com o papel como o harness o nomeia. Filtrar depois é mais barato que reconstruir.
 - **Quem escreve:** o hook (medido) e o script (a tabela). A sessão roda o script e grava só a linha de sessão. Um escritor por linha; o registro continua do SM.

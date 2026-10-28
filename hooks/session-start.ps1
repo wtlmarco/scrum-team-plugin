@@ -21,7 +21,15 @@ try {
             $ip = Join-Path $projectDir '.team-project/.interrupted'
             $prev = @()
             if (Test-Path -LiteralPath $ip) { try { $prev = @((Get-Content -LiteralPath $ip -Raw -Encoding UTF8 | ConvertFrom-Json) | ForEach-Object { $_ }) } catch { $prev = @() } }
-            $recs = @($ags | ForEach-Object { [pscustomobject][ordered]@{ type = [string]$_.type; work = [string]$_.work; parent = [string]$_.parent; desde = [string]$_.desde; last = [string]$_.last; at = [string]$_.at; session = [string]$_.session } })
+            # v3.52.3 (note.md item 9): o transcript de cada agente vai junto — cortado pelo limite, ele nunca recebe SubagentStop,
+            # e o run.ps1 next roda a G16 por ele (<pasta dos transcripts>/<sessão>/subagents/agent-<id>.jsonl).
+            $tdir = if ($hookInput -and $hookInput.transcript_path) { Split-Path ([string]$hookInput.transcript_path) } else { '' }
+            $recs = @($ags | ForEach-Object {
+                $aid = if ($_.PSObject.Properties['agent_id']) { [string]$_.agent_id } else { '' }
+                $ses = [string]$_.session
+                $atr = if ($tdir -and $aid -and $ses) { Join-Path $tdir "$ses/subagents/agent-$aid.jsonl" } else { '' }
+                [pscustomobject][ordered]@{ type = [string]$_.type; work = [string]$_.work; parent = [string]$_.parent; desde = [string]$_.desde; last = [string]$_.last; at = [string]$_.at; session = $ses
+                    agent_id = $aid; transcript = $(if ($atr -and (Test-Path -LiteralPath $atr)) { $atr } else { '' }); session_transcript = $(if ($tdir -and $ses) { Join-Path $tdir "$ses.jsonl" } else { '' }) } })
             [System.IO.File]::WriteAllText($ip, (ConvertTo-Json -InputObject @($prev + $recs) -Depth 3 -Compress), (New-Object System.Text.UTF8Encoding($false)))
             Set-ActiveAgents $projectDir @()                      # apaga o .active-agents e regrava o "## Agora"
             $run0 = Get-Marker $projectDir '.active-run'
