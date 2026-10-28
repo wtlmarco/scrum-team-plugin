@@ -650,6 +650,13 @@ $cases = @(
        Check = { $u = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8 | Where-Object { $_ -match 'wrk0000001' } | ConvertFrom-Json)[0]
                  (@($u.works) -join ',') -eq 'T-021,T-026' -and [int]$u.paused_s -eq 7200 -and [int]$u.duration_s -eq 60 -and $u.model -notmatch 'synthetic' -and (Test-Path -LiteralPath (Join-Path $proj '.team-project/.usage-limit')) }
        Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'wrk0000001'; agent_type = 'team:architect'; transcript_path = (Join-Path $tmp 'transcripts/sess4.jsonl') } },
+    @{ Name = 'G16 v3.53: plano por Task que cita o plano da dependência no caminho — "works" só com a Task do plano'; Script = 'subagent-stop.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.usage-limit') -Force -ErrorAction SilentlyContinue
+                 $sd = Join-Path $tmp 'transcripts/sess5/subagents'; New-Item -ItemType Directory -Force $sd | Out-Null
+                 Set-Content -LiteralPath (Join-Path $sd 'agent-wrk0000002.jsonl') @('{"type":"user","timestamp":"2026-10-28T10:00:00Z","message":{"role":"user","content":"Escreva o Plano de Implementação da T-049 em .team-project/sprints/4/plan/T-049-<slug>.md. Abra só a ficha .team-project/sprints/4/handoff/T-049-ficha.md e o plano da dependência .team-project/sprints/4/plan/T-048-tabela.md"}}', '{"type":"assistant","timestamp":"2026-10-28T10:01:00Z","message":{"id":"v1","model":"claude-opus-5-5","usage":{"input_tokens":10,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":5}}}') -Encoding UTF8 }
+       Check = { $u = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8 | Where-Object { $_ -match 'wrk0000002' } | ConvertFrom-Json)[0]
+                 (@($u.works) -join ',') -eq 'T-049' }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'wrk0000002'; agent_type = 'team:architect'; transcript_path = (Join-Path $tmp 'transcripts/sess5.jsonl') } },
     # ---------- v3.52 — orquestrador enxuto: ponto seguro (G20), espera da sessão (G22), ritual em sessão nova (G21) ----------
     @{ Name = 'G20 ponto seguro (.safe-point, Task recém-fechada): libera sem apagar o .active-run'; Script = 'stop.ps1'; Expect = 0
        Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.usage-limit'), (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue

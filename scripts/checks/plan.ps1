@@ -5,7 +5,9 @@
 # 17 (trecho literal ≤ 15 linhas ou validado), 18 (mutações), a variante leve e, desde a v3.51, 21 (render só com layout
 # novo), 22 (tamanho: aviso acima de 12 KB, falha acima de 20 KB), 23 (cenários citados existem nos .scn do QA) e 24 (risco);
 # desde a v3.52.2, 26 (linhas "- Contagem:" recontadas e premissas "- P<k> ·" medidas ou com quem verifica) e 27 (layout
-# novo com a linha **Documentos vivos:**; documento de desenho fora de **Arquivos tocados:** — o Arquiteto o consolida).
+# novo com a linha **Documentos vivos:**; documento de desenho fora de **Arquivos tocados:** — o Arquiteto o consolida);
+# desde a v3.53, 28 (Task com ficha no breakdown: **Li além da ficha:**, nomes comuns no plano, caminhos da ficha existem).
+# As mensagens dizem o que corrigir: o Arquiteto não precisa abrir este script (note.md item 7).
 # Saída: tabela regra · resultado · linha decisiva. Exit 1 se alguma falhou · 2 = erro de uso.
 
 param(
@@ -250,6 +252,28 @@ try {
     if ($iss.Count) { Add-Result 'desenho' 'falhou' (($iss -join '; ') + ' (regra 27)') }
     elseif ($layNew) { Add-Result 'desenho' 'ok' "Documentos vivos: $($dvm.Groups[1].Value) (consolidado pelo Arquiteto)" }
     else { Add-Result 'desenho' 'n-a' 'sem **Layout novo:** sim e sem documento de desenho na lista' }
+
+    # ---------- 28 · plano pela ficha (v3.53, note.md item 8) ----------
+    # Task com "### Ficha <ID>" no architect/breakdown/S<n>.md: o plano declara o que leu além dela (é a medida da ficha), usa
+    # os nomes comuns literalmente (decisão comum esquecida é divergência entre Tasks) e a ficha só aponta caminho que existe.
+    $sm = [regex]::Match(($path -replace '\\', '/'), '/sprints/(\d+)/plan/([^/]+)$')
+    $fid = if ($sm.Success) { ([regex]::Match($sm.Groups[2].Value, '^' + $script:TaskIdRe)).Value } else { '' }
+    $ficha = if ($fid) { Get-Ficha $Root $sm.Groups[1].Value $fid } else { $null }
+    if (-not $ficha) { Add-Result 'ficha' 'n-a' 'Task sem ficha no breakdown (preparo por História)' }
+    else {
+        $iss = @()
+        $lm = [regex]::Match($text, '(?m)^\*\*Li al[ée]m da ficha:\*\*\s*(.*)$')
+        if (-not $lm.Success -or -not $lm.Groups[1].Value.Trim()) { $iss += 'cabeçalho sem **Li além da ficha:** nenhum | `<arquivo>` — <porquê>' }
+        $miss = @($ficha.Names | Where-Object { -not $text.Contains($_) })
+        if ($miss.Count) { $iss += 'nome comum da ficha ausente no plano: ' + ($miss -join ', ') }
+        $gone = @(@($ficha.Read) + @($ficha.Sources) | Where-Object { $_ -and -not (Test-Path -LiteralPath (Resolve-FichaPath $Root $_)) })
+        if ($gone.Count) { $iss += "a ficha aponta caminho que não existe (corrija em architect/breakdown/S$($sm.Groups[1].Value).md): " + ($gone -join ', ') }
+        if ($iss.Count) { Add-Result 'ficha' 'falhou' (($iss -join '; ') + ' (regra 28)') }
+        else {
+            $extra = if ($lm.Groups[1].Value -match '^\s*nenhum') { 0 } else { @([regex]::Matches($lm.Groups[1].Value, '`[^`]+`')).Count }
+            Add-Result 'ficha' 'ok' "$($ficha.Names.Count) nome(s) comum(ns) no plano; $(@($ficha.Read).Count + @($ficha.Sources).Count) caminho(s) da ficha existem; li além da ficha: $extra"
+        }
+    }
 
     # ---------- variante leve ----------
     if ($light) {
