@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.50`](process-changelog-archive.md) | Mudança de layout se prova em render real: navegador headless, 3 fontes × telas, mutação que quebra a medição; addendum: as paradas do `run` fecham no texto (SM + Arquiteto + Dev + QA) — 16/10/2026 |
 | [`v3.49`](process-changelog-archive.md) | Custo medido nos transcripts: retorno curto à sessão com o relatório do dev em arquivo, Arquiteto novo quando o cache venceu, toque de cache da sessão, gravação por etapa e dev por F-ID no `fix` (SM + Arquiteto + Dev + QA) — 16/10/2026 |
 | [`v3.48`](process-changelog-archive.md) | O que o primeiro sprint do piloto mostrou: relatório do `operator` gravado pelo hook, guardas sem falha aberta nem falso negado, C1 que fecha o que é legítimo; addendum v3.48.1: `verify.testItem` (SM + Arquiteto + Dev + QA) — 14/10/2026 |
 | [`v3.47`](process-changelog-archive.md) | Modelo por papel (G17), perfil Arquiteto executor, modo benchmark (G18) e ritual "modo projeto": o plugin pronto para o experimento sem intervenção (SM + Arquiteto + QA + Dev) — 10/10/2026 · *com addendum v3.47.1 de 12/10/2026* |
@@ -88,6 +89,44 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.53 — Plano pela ficha: a quebra em Tasks traz a ficha de cada Task, um Arquiteto por Task e o template do plano só com o operativo (SM + Arquiteto) — 28/10/2026
+
+**Instrução** (stakeholder, 28/10/2026, `note.md` itens 7 e 8, "pode então fazer" depois da explicação de como um item pesa no outro). **Decisão:** a primeira opção do piloto do item 8, ficha por Task na Planning + um Arquiteto por Task; os itens 7 e 8 numa entrega só, porque um sem o outro rende pouco. Os lotes por dependência ficam como segunda opção.
+**Medido (sprint 4 do garden, plugin 3.52.2, transcripts da sessão `3af98c37…`):** a instância "Planos da H-K1" (8 planos, 100 chamadas, contexto de 19 → 434 mil) custou ≈ US$ 16,3, 63 % dos subagentes, 97 % disso em cache lido. A abertura chegava a ~117 mil antes da pesquisa: README 10,6 mil, `breakdown/S4.md` 19,1 mil, `sprint-backlog.md` 9,0 mil, template 15,6 mil, `plan.ps1` 11,9 mil; a listagem de `sprints/3/plan` (8,9 mil) não foi usada. A seção "Regras do formato" era 16,5 KB dos 34,9 KB do template.
+**Causa:** cada chamada do modelo reenvia a conversa inteira acumulada, então o custo é a abertura somada à pesquisa e aos planos já escritos, reprocessados a cada passo. **Estimativa (não medição):** por Task com a abertura de hoje, −14 %; só o item 7, −9 %; com a abertura enxuta, −34 %; com a ficha, abertura ~35 mil e ≈ US$ 6 a 7 na H-K1 (≈ −55 %).
+**Classificação:** fluxo (preparo do `sprint run`) · formato (template do plano: regras só operativas e regra 28; modelo novo `breakdown.md`) · comportamento de agente (abertura do Arquiteto pela ficha; não abrir o `plan.ps1`). **Sem regra nova** (34): a regra 25 do template muda de "uma instância por História" para "por Task com ficha; por História sem ela". **Papéis movidos (R17):** 2 — SM, Arquiteto.
+
+### O que mudou
+- **Planning, passo 4** (`workflow-sprint.md`, `roles/architect/README.md` §Quebra em Tasks, `templates/breakdown.md` novo): na seção de cada História do `breakdown/S<n>.md`, as **decisões comuns** (nomes que mais de uma Task usa, com a grafia final) e uma **ficha por Task** — `**Código a ler:**` (caminho, linha e porquê), `**Fontes:**` (SDD, standards, tela) e `**Nomes comuns:**`. A ficha só aponta; até ~25 linhas.
+- **`sprint-run.md` etapa 1, "Por que assim" e §Como o SM verifica; `commands/sm.md`:** Task com ficha → um Arquiteto por Task, que abre o recorte da ficha, o template, o plano da dependência e o `architect/context.md`; primeiro a Task cujas dependências já têm plano, uma por vez (R1). Task sem ficha → a História numa instância, como na v3.51. Indicador do piloto no "Como o SM verifica".
+- **Template do plano:** regras só com o operativo, numeração mantida (1–27), ✓ nas que o `plan.ps1` confere e "não abra o script"; o texto até a v3.52.3, íntegro, foi **relocado** para `roles/architect/plan-rules-why.md` (não é leitura do plano). Cabeçalho com `**Li além da ficha:**`; **regra 28** (plano pela ficha). 33,6 → 22,7 KB.
+- **`agents/architect.md`:** leitura de abertura do plano pela ficha; o código do `plan.ps1` não é leitura. **`roles/architect/README.md`** §Preparo e a tabela de documentos; `deliverables/team-project/README.md` (linha do `breakdown/`).
+
+### Por quê
+O plano por História (v3.51) tirou a releitura por Task do P-r6, mas a instância longa passou a reprocessar a própria pesquisa e os planos já escritos a cada chamada. Dividir por Task só rende com a abertura pequena, e a abertura só fica pequena se alguém já tiver separado o que cada Task precisa ler: é o Arquiteto da Planning, que já tem a História e o código abertos para quebrar em Tasks. O template enxuto vale nas duas formas, mas pesa mais por Task: cada instância paga a abertura e grava o cache dela de novo.
+
+### Conflitos com o processo vigente
+A regra 25 e o "Por que assim" da v3.51 (plano por História) passam a valer só para Task sem ficha. O P-r6 mostrou o plano por Task custando 41 % — aquele era por Task **sem ficha**, relendo o projeto inteiro; o risco é medido no piloto.
+
+### Quem passa a ser cobrado de forma diferente
+**Arquiteto:** escreve a ficha e as decisões comuns na Planning; no plano pela ficha, declara o que leu além dela e usa os nomes comuns literalmente; não abre o `plan.ps1`. **SM/sessão:** confere no "Como o SM verifica" um Arquiteto por Task com ficha e o indicador do piloto. **Demais papéis:** sem mudança.
+
+### Como saberemos que funcionou
+Próximo sprint, contra o sprint 4: US$ do plano por Task construída (`consumption.md`) ao menos 40 % menor; 🔺 GAPs de plano por Task construída sem subir (sprint 4: um por Task); arquivos em `**Li além da ficha:**` por plano — ficha com muitos é ficha incompleta. Custo que não cai, ou GAP que sobe, devolve ao `/review` com os lotes por dependência como segunda opção.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.50 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.53, v3.52, v3.51 | ✅ |
+| Extração/remoção | "Regras do formato" do template no HEAD (regras 1 a 27) × `plan-rules-why.md` (`.Contains`); `Length` do template | True; 33 628 → 22 693 B | ✅ |
+| Substituição de padrão | `Grep` de "regra 25"/"planos de todas as Tasks"/"uma instância do Arquiteto" fora dos changelogs | só o fallback sem ficha (`run.ps1`, testes, comentário do G16), lido no contexto | ✅ |
+| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | C3 exit 0 (R18 3.53.0 nos três; R17 bloco v3.53 ≤ 10 240, 2 papéis, 3 entradas; ownership 63; órfãos 49 ok); conferências 206/0 (+6); guardas 253/0 (+1) | ✅ |
+
+### Parte mecânica (implementada pela sessão principal, citada aqui)
+`lib.ps1` `Get-Ficha`/`Resolve-FichaPath`; `run.ps1 next` grava `sprints/<n>/handoff/<T-ID>-ficha.md` e dispara o Arquiteto da Task; `plan.ps1` regra 28 (`**Li além da ficha:**`, nomes comuns no plano, caminhos da ficha existem); G16 (`subagent-stop.ps1`) não conta como trabalho da rodada o ID dentro de caminho (o plano da dependência citado no prompt rateava a rodada entre as duas Tasks).
 
 ---
 
@@ -262,56 +301,3 @@ No próximo `fix run`: zero negações G14 ao dev em `verify.ps1` e ao Arquiteto
 
 Reiniciar a sessão (comportamento de agente e guarda mudam). Versão, `CHANGELOG.md` e `note.md` da sessão.
 ---
-## v3.50 — Mudança de layout se prova em render real: navegador headless, 3 fontes × telas, mutação que quebra a medição; e as paradas do `run` fecham no texto (SM + Arquiteto + Dev + QA) — 16/10/2026
-
-**Instrução** (stakeholder, `/review note`, item 2, decisão "Render real" de 16/10/2026; item 4 movido da v3.49): Task que muda layout ou estilo visível exige, no plano, caixas medidas em navegador headless, 3 tamanhos de fonte × as telas relevantes; prova só por estrutura não basta; a mutação tem de quebrar a medição. **Causa medida:** layout (Ionic) provado por CSSOM/seletor passou no plano, no QA e na mutação e quebrou no aparelho (~15,5 M tokens de conserto no piloto).
-**Classificação:** formato de documento (plano, veredito, evidência, relatório de entrega) · standard (`implementation-principles.md`) · comportamento de agente (QA decide "interface" e executa a medição). **Sem regra nova** (34): reforça R23 e R26. A R17 abriu esta versão, e não um addendum da v3.49, porque o bloco v3.49 estava na barreira (15 344 de 15 360 B); o item 4 foi **movido** para cá, texto intacto.
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `roles/architect/templates/implementation-plan.md` | §3, §6, §9, regra 21, trilha leve | Linha do navegador headless medido; tabela **Render real** (teste × tela × 3 fontes × caixas × "deve falhar se…"); linha fixa de 🔺 GAP (headless ausente); regra 21; leve **nunca** com interface |
-| `roles/architect/templates/fix-plan.md` · `roles/architect/README.md` | regra 15 · regra 21 e indicador | Correção de layout: o teste de regressão é de render; sem headless no `developer/context.md` é C7 ✘ e promoção |
-| `standards/implementation-principles.md` | §5.1, §6, §7 | Nível **Render**; "mudança de layout se prova em render real"; **V22** (navegador/driver, versão, comando); linha 23 do quadro (Task volta ao dev) |
-| `roles/developer/templates/delivery-report.md` | regras | Saída do render em trecho **e** ponteiro; render pulado ou trocado por estrutura é 🔺 GAP |
-| `roles/quality-assurance/README.md` · `templates/verdict.md` · `evidence.md` · `scenario.md` | frente 1, `/qa`, trilha leve; tabela **Render real**; cenário | O QA decide se há interface, **executa ou reexecuta** o comando de V22, confere 3 fontes × telas e a mutação sobre a medição; sem render real é ❌ ou 🔺 GAP, nunca ✅; cenário não prova layout; Task "leve" com interface = achado de processo à Planning |
-| `roles/scrum-master/process/fix-run.md` · `deliverables/sdd/03-architecture.md` | §Plan passo 4 · Ficha | Ponteiro à regra 15 do `fix-plan.md`; a Ficha passa a V1–V22 |
-
-### Por quê
-Estrutura (regra presente, seletor que casa, snapshot) não prova geometria: o navegador pode aplicar a regra e a caixa quebrar mesmo assim. Sem a medição no plano, o QA não tinha o que reexecutar e a mutação sobre uma regra de estilo "matava" sem tocar a caixa; o defeito só aparecia no aparelho do stakeholder, depois de três portões. A leve fica de fora porque a prova exige o navegador medido na §3, que ela não tem.
-
-### Quem passa a ser cobrado de forma diferente
-| Papel | O que muda para ele |
-|---|---|
-| Arquiteto | Task com interface sem tabela **Render real**, headless medido na §3 e mutação sobre a medição não sai do plano; layout provado por estrutura é achado de processo contra ele |
-| Dev | Entrega a saída do teste de render; trocar a medição por teste de estrutura não é decisão dele (🔺 GAP) |
-| QA | Em Task com interface, executa a medição e reprova ou abre GAP sem ela; "há interface?" é julgamento dele, por stack |
-| SM | Task "leve" com interface devolve-se à trilha plena na Planning |
-
-### Conflitos com o processo vigente
-Nenhum (R23 e R26 reforçadas). Trilha leve do Arquiteto ("nunca com interface") e do QA ("se chegou como leve, a render é exigida e vira achado") dizem a mesma coisa pelos dois lados.
-
-### Como saberemos que funcionou
-Zero defeito de layout achado pelo stakeholder no aparelho depois do ✅ do QA em Task com interface; todo veredito de Task com interface traz a tabela **Render real** preenchida (conferível em `evidence/<T-ID>.md`).
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| substituição de padrão | `Select-String -List "Render real\|render real\|regra 21\|V22"` em `roles/architect`, `roles/developer`, `roles/quality-assurance`, `standards/implementation-principles.md` | 9 arquivos (os 9 da tabela acima), cada ocorrência lida no contexto | ✅ |
-| substituição de padrão | `Select-String "render real \(v3\.49\)"` em `implementation-plan.md` · `Grep "V1–V21"` fora dos changelogs | 0 · 0 (regra 21 marcada v3.50, que o Arquiteto escreveu como v3.49; Ficha de `03-architecture.md` passa a V1–V22) | ✅ (2 resíduos consertados) |
-| arquivamento | bloco v3.49 e v3.47 do HEAD × working tree (`git show HEAD:` contra o arquivo, `-ceq`); `git diff HEAD -U0` do changelog | v3.49 igual ao HEAD (o addendum saiu dele; hunks só no índice, no bloco v3.50 e na saída da v3.47); v3.48 igual; v3.47 no arquivo igual ao HEAD; addendum movido sem uma linha diferente | ✅ |
-| extração/remoção | `powershell -NoProfile -File scripts/checks/release.ps1` | R17 ok (bloco v3.50 ≤ 15 360 B, 4 papéis, 3 entradas vivas), ps1-5.1, ownership e órfãos ok; R18 falha só por `CHANGELOG.md` ainda na v3.49.0 (a sessão escreve a entrada) | ✅ (R18 esperado) |
-
-### Pendente do stakeholder
-**(d) `scripts/checks/plan.ps1`: resultado novo `render`** (Arquiteto; texto em [`proposals-pending.md`](proposals-pending.md) §Item 2); as três propostas do addendum abaixo seguem pendentes. **Achado do QA:** a trilha `fix` não tem tabela **Render real** no veredito, embora a regra 15 do `fix-plan.md` exija o teste de render.
-
-### Addendum — as paradas do `run`: o texto fecha, o instrumento fica proposto (16/10/2026)
-**Instrução** (`/review note`, item 4). **Causa medida:** 4 paradas fora da lista fechada (~24,5 h) e ~122 h de máquina suspensa com `.active-run` (71 h sem retomar). **Sem regra nova** (regra mecânica só com guarda).
-- `sprint-run.md` §Ordem da fila e §Como o SM verifica: não-paradas listadas; formulário de bloqueio só com a Task 🔴, degrau 1 aberto e fila esgotada; retomada da fila ao reabrir com `.active-run`. R25(c): ponteiro.
-- **Achado:** nenhuma regra sobre atualizar o plugin no meio do sprint (`team-update.md` só cobre migração de pastas). Sem regra criada.
-- **Indicador:** zero parada fora da lista no próximo `run` real (`waits` > 1 h com Task ⬜ elegível).
-- **Evidência (R19):** `release.ps1` ok; `Select-String` de "duas condições" em `sprint-run.md` → 0 (corrigido para "três").
-- **Pendente do stakeholder:** (a) hook `Stop` G20, (b) `session-start.ps1` com retomada, (c) `how-to.md` energia — texto e especificação em [`proposals-pending.md`](proposals-pending.md).
-
----
-

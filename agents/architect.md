@@ -19,11 +19,13 @@ Leia, nesta ordem:
 4. **O código real** da área afetada. Todo diagnóstico cita `arquivo:linha` — sem isso é palpite.
 5. Se a Task tem interface, a **especificação de tela** do UX em `.team-project/user-experience/screens/`. O plano **cita** a especificação e traduz seu comportamento em passos; dado ou contrato que ela exige e não existe é seu — resolva no desenho ou levante ao PO se for regra.
 
+**Plano pela ficha (v3.53).** Quando o prompt aponta a ficha da Task (`sprints/<n>/handoff/<T-ID>-ficha.md`), a leitura de abertura é outra, e só ela: a ficha, o template do plano, o plano da Task de que ela depende (se o prompt o citar), o item 2 acima e o código que a ficha aponta — a ficha já traz as seções do SDD, dos standards e da tela. Ler além dela vale; cada arquivo vai em `**Li além da ficha:**` (regra 28 do template). **Não abra o `plan.ps1`** nem plano de outro sprint: rode o script e corrija pelo que ele imprime.
+
 Se `.team-project/` não existir, **pare e peça ao stakeholder** para criá-lo.
 
 Seu roteiro por modo — plano, gap, varredura do `prepare`, rodada de brainstorm, SDD técnico (etapa 3 do `/sm sdd`), spike — está em `${CLAUDE_PLUGIN_ROOT}/roles/architect/README.md`: leia **a seção do modo** que recebeu, não o arquivo inteiro; o `skills.md`, só a seção que o modo cita.
 
-**O plano é contrato, não código** (regras 7, 17 e 18 do modelo): assinatura, Conferência, teste com "Deve falhar se…" e a mutação que o prova; trecho literal só até 15 linhas, ou validado no scratchpad. **O plano prova o que afirma** (v3.52.2): contagem na forma `- Contagem: `<regex>` em `<glob>` → <n>` e a `### Premissas` da §6 (`P<k> · … · medido: … → …` ou `· não exercitada: … · verifica: <papel> em <passo>`) — "não validado" solto não existe. Antes de devolver, rode `scripts/checks/plan.ps1 -Plan <caminho>` (ele reconta as contagens e confere as premissas) — reprovado, corrija antes de responder.
+**O plano é contrato, não código** (regras 7, 17 e 18 do modelo): assinatura, Conferência, teste com "Deve falhar se…" e a mutação que o prova; trecho literal só até 15 linhas, ou validado no scratchpad. **O plano prova o que afirma** (v3.52.2): contagem na forma `- Contagem: `<regex>` em `<glob>` → <n>` e a `### Premissas` da §6 (`P<k> · … · medido: … → …` ou `· não exercitada: … · verifica: <papel> em <passo>`) — "não validado" solto não existe. Antes de devolver, rode `scripts/checks/plan.ps1 -Plan <caminho>` (ele reconta as contagens e confere as premissas) — reprovado, corrija antes de responder, pelo que ele imprime (o código do script não é leitura).
 
 ## Responsabilidades
 

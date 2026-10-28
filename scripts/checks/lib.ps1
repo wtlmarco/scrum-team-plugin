@@ -442,6 +442,36 @@ function Get-PlanScope([string]$PlanText) {
     return $out
 }
 
+# Ficha da Task (v3.53, note.md item 8): a seção "### Ficha <ID>" de .team-project/architect/breakdown/S<n>.md, que o
+# Arquiteto escreve na quebra da Planning, mais a "### Decisões comuns" da mesma História (o "## " que contém a ficha). O
+# run.ps1 next grava o recorte para o Arquiteto do plano abrir só ele; o plan.ps1 confere o plano contra ela. Read são os
+# caminhos de **Código a ler:** (o primeiro entre crases de cada linha, sem ":linha"), Sources os de **Fontes:** e Names os
+# de **Nomes comuns:**. $null sem o arquivo ou sem a ficha — a História segue no preparo por História (regra 25).
+function Get-Ficha([string]$Root, [string]$Sprint, [string]$Id) {
+    $bp = Join-Path $Root ".team-project/architect/breakdown/S$Sprint.md"
+    if (-not (Test-Path -LiteralPath $bp)) { return $null }
+    $txt = Read-Text $bp
+    foreach ($h in [regex]::Matches($txt, '(?ms)^##\s[^\r\n]*\r?\n.*?(?=^##\s|\z)')) {
+        $fm = [regex]::Match($h.Value, '(?ms)^###\s+Ficha\s+' + [regex]::Escape($Id) + '(?![\w-])[^\r\n]*\r?\n.*?(?=^#{1,3}\s|\z)')
+        if (-not $fm.Success) { continue }
+        $dm = [regex]::Match($h.Value, '(?ms)^###\s+Decis[õo]es comuns[^\r\n]*\r?\n.*?(?=^#{1,3}\s|\z)')
+        $label = { param($l) $m = [regex]::Match($fm.Value, '(?s)\*\*' + $l + ':\*\*(.*?)(?:\r?\n[ \t]*\r?\n|\r?\n#|\r?\n\*\*[^*\r\n]+:\*\*|\z)'); if ($m.Success) { $m.Groups[1].Value } else { '' } }
+        $norm = { param($p) (($p.Trim() -replace '\\', '/') -replace '^\./', '') -replace '#.*$', '' -replace ':\d+(-\d+)?$', '' }
+        $read = @((& $label 'C[óo]digo a ler') -split "`r?`n" | ForEach-Object { [regex]::Match($_, '`([^`]+)`') } | Where-Object { $_.Success } | ForEach-Object { & $norm $_.Groups[1].Value })
+        $src = @([regex]::Matches((& $label 'Fontes'), '`([^`]+)`') | ForEach-Object { & $norm $_.Groups[1].Value })
+        $names = @([regex]::Matches((& $label 'Nomes comuns'), '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value })
+        return [pscustomobject]@{ Path = $bp; Common = $(if ($dm.Success) { $dm.Value.TrimEnd() } else { '' }); Body = $fm.Value.TrimEnd(); Read = $read; Sources = $src; Names = $names }
+    }
+    return $null
+}
+# Caminho citado na ficha: standards/ e ${CLAUDE_PLUGIN_ROOT}/ resolvem no plugin; o resto, na raiz do projeto.
+function Resolve-FichaPath([string]$Root, [string]$Rel) {
+    $plug = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+    if ($Rel -match '^\$\{CLAUDE_PLUGIN_ROOT\}/(.+)$') { return (Join-Path $plug $Matches[1]) }
+    if ($Rel -match '^standards/') { return (Join-Path $plug $Rel) }
+    return (Join-Path $Root $Rel)
+}
+
 # Medida curta da sessão principal (v3.52.2, note.md item 17): chamadas distintas (message.id, sem <synthetic>) e o contexto
 # da última (entrada + cache criado + cache lido). Lê só texto, sem ConvertFrom-Json por linha (o transcript tem dezenas
 # de MB e o run.ps1 next roda a cada Task). $null sem o arquivo ou sem chamada.

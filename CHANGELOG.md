@@ -13,6 +13,19 @@
 
 ---
 
+## v3.53.0 — 2026-10-28
+
+**Branch:** `fix/v3.53.0` a partir de `develop` · **Processo:** v3.53 (`process-changelog.md`, `note.md` itens 7 e 8)
+O plano do Arquiteto foi o maior custo do sprint 4 do garden: a instância que planejava a H-K1 custou ≈ US$ 16,3 (63 % dos subagentes), porque cada chamada reenvia a conversa acumulada. Esta entrega é o piloto da primeira opção do item 8: a ficha por Task na Planning + um Arquiteto por Task, com o template enxuto do item 7 (um sem o outro rende pouco). Estimativa, não medição: ≈ −55 % no plano.
+
+- **Ficha por Task (item 8):** modelo novo `roles/architect/templates/breakdown.md` — no `breakdown/S<n>.md`, as decisões comuns da História e uma ficha por Task (código a ler, fontes, nomes comuns), escritas na quebra da Planning. Passo 4 da Planning, roteiro do Arquiteto e `deliverables/team-project/README.md`.
+- **Um Arquiteto por Task (`run.ps1 next`):** Task com ficha → recorte em `sprints/<n>/handoff/<T-ID>-ficha.md` e o prompt de um plano só, que abre a ficha, o template, o plano da dependência e o `architect/context.md`; primeiro a Task cujas dependências já têm plano. Sem ficha, a História segue numa instância. `sprint-run.md`, `commands/sm.md` e `agents/architect.md`.
+- **Conferência da ficha (`plan.ps1`, regra 28):** plano com ficha precisa de `**Li além da ficha:**` e dos nomes comuns literais, e a ficha só pode apontar caminho que existe. Função `Get-Ficha` no `lib.ps1`.
+- **Template enxuto (item 7):** "Regras do formato" só com o operativo, numeração mantida, ✓ nas que o `plan.ps1` confere e "não abra o script"; o texto antigo, íntegro, em `roles/architect/plan-rules-why.md`. Template de 33,6 → 22,7 KB.
+- **Consumo (G16, `hooks/subagent-stop.ps1`):** ID dentro de caminho não entra em `works` — o plano da dependência citado no prompt rateava a rodada entre duas Tasks e falseava a medida do piloto.
+- **Processo:** v3.53 no `process-changelog.md`; a v3.50 foi para o arquivo (três entradas vivas).
+- **Testes:** conferências 206 casos (+6), guardas 253 casos (+1), 0 falhas.
+
 ## v3.52.3 — 2026-10-27
 
 **Branch:** `fix/v3.52.3` a partir de `develop` · **Processo:** addendum v3.52.3 (`process-changelog.md`, `/review note`, itens 1 a 5, 9 e 10)
