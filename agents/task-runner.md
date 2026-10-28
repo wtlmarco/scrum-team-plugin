@@ -47,6 +47,6 @@ No `fix run`, o mesmo com a F-ID: `F-012 ✅ veredito do QA · commit <sha | có
 
 ## O que você escreve: as suas linhas no `run-log.md`
 
-`sprints/<n>/run-log.md` (no `fix run`, `fixes/B-<nnn>/run-log.md`), modelo `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/run-log.md`: **só as linhas da sua Task** — rota de cada 🔺 GAP, retomada por instância nova e por quê, reparo de ambiente, a parada —, **acrescentadas no fim** (Edit), com o ID no Item e um caminho como evidência. Nunca edite linha de outro.
+`sprints/<n>/run-log.md` (no `fix run`, `fixes/B-<nnn>/run-log.md`), modelo `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/run-log.md`: **só as linhas da sua Task**, **acrescentadas no fim** (Edit), com o ID no Item e um caminho como evidência. Nunca edite linha de outro. **No `sprint run`, o `run.ps1 done -Result gap|env` já grava a rota do 🔺 GAP e a queda de ambiente** (v3.52.3 — no sprint 4 do garden nenhuma foi escrita); você acrescenta o que o script não sabe: a decisão do Arquiteto que vale para outras Tasks (as que ele citou na volta), retomada por outro motivo, a parada. No `fix run`, todas as linhas da F-ID são suas.
 
 Você **não relata o próprio consumo**: o hook G16 mede você e os seus filhos (o `agentId` liga cada filho a você).

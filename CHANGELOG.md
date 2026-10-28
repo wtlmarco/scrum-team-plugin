@@ -13,6 +13,20 @@
 
 ---
 
+## v3.52.3 — 2026-10-27
+
+**Branch:** `fix/v3.52.3` a partir de `develop` · **Processo:** addendum v3.52.3 (`process-changelog.md`, `/review note`, itens 1 a 5, 9 e 10)
+Avaliação do sprint 4 do garden (3.52.2), conferida nos transcripts e revista com as respostas do cliente. Em US$ (preço por modelo), os subagentes custaram ≈ US$ 25,9: o plano da H-K1 ≈ US$ 16,3 (63 %), os devs Haiku ≈ US$ 3,3. Esta entrega trata as correções diretas e a espera da verificação; o plano do Arquiteto (itens 7 e 8) e o contexto do dev Haiku (item 6) seguem no `note.md`.
+
+- **Cartão sem aceite quando não há alvo (item 1, `run.ps1`):** a linha **Cenários:** só traz o `accept.ps1` com `guards.json → targets` — 4 de 5 Tasks pararam no mesmo 🔺 GAP "accept sem .scn". De quebra, o cartão não abre mais linha em branco (a vírgula prende antes do `+` no PowerShell).
+- **Verificação que cabe nos 600 s (item 2, `verify.ps1`):** o orçamento do `-Mode full` estima cada comando pela história da chave (o maior tempo das últimas 5 rodadas em `verify/**/result.json`), não pela duração do comando anterior (lint de 20 s → suíte de 500 s → 630–709 s).
+- **Espera pelo aviso (item 3):** prompt do dev no `run.ps1 start`, `agents/developer.md` e `roles/developer/README.md`: comando movido para segundo plano → encerre o turno, o aviso traz a saída, não sonde o log. G14 nega também `Wait-Process`, com essa rota.
+- **Uma rodada por Task (item 4, `verify.ps1`):** `verify.lock` na pasta da Task; outra rodada viva → **exit 5** (OCUPADO); trava de processo morto sai sozinha.
+- **Suíte perto do teto (item 5, `verify.ps1`):** comando acima de 80 % do teto por comando sai com `atenção:` e a ação (dividir `verify.suite`).
+- **Consumo (item 9):** G16 grava `usd` por rodada (`scripts/checks/prices.ps1`, tabela 2026-10, Haiku 5.5 com a faixa acima de 100 mil); `consumption.ps1` põe a coluna **US$** nos Totais e na Nota; agente cortado pelo limite (sem SubagentStop) é medido pelo `run.ps1 next` a partir do transcript que o SessionStart guarda no `.interrupted`.
+- **GAP no registro (item 10, `run.ps1`):** `done -Result gap|env` grava a rota no `run-log.md`; o prompt do Arquiteto pede estender a decisão aos planos das Tasks abertas. `agents/task-runner.md` e o modelo `run-log.md` dizem o que fica para o executor.
+- **Testes:** guardas 252 casos (+3), conferências 200 casos (+10), 0 falhas.
+
 ## v3.52.2 — 2026-10-26
 
 **Branch:** `fix/v3.52.2` a partir de `develop` · **Processo:** addendum v3.52.2 (`process-changelog.md`, `/review note`, itens 1 a 17)
