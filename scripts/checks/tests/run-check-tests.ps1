@@ -1177,6 +1177,71 @@ $r = Invoke-Check 'consumption.ps1' @('-Root', $p)
 $r2 = Invoke-Check 'kanban.ps1' @('-Root', $p)
 Check 'C3: task-runner nas tabelas (Totais e Por papel e modelo), o dev "chamado por task-runner"' @{ Code = $r.Code + $r2.Code; Out = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/consumption.md'), $utf8) + "`n" + [System.IO.File]::ReadAllText($kbx, $utf8) } 0 @('\| task-runner \| sonnet 5\.5 \| `Agent` \| T-041 \| cerimônia', '\| dev \| haiku 5\.5 .*chamado por task-runner; medido: dv1#1', '\| task-runner \| sonnet 5\.5 \| 50\.000 \| 1 \| 1 ', '\| task-runner \| sonnet 5\.5 \| 1 \| 50\.000 \| 02:00 \|')
 
+# 13. v3.52.3 — note.md itens 1 a 5, 9 e 10 (sprint 4 do garden).
+# 13a. item 1: sem alvo, o cartão não manda rodar o accept.
+$p = Join-Path $tmp 'cartao-sem-alvo'; New-Project $p
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
+$ct = if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) } else { 'sem cartão' }
+Check 'item 1: sem targets, o cartão diz que o accept não roda e não traz o comando' @{ Code = $(if ($ct -notmatch 'accept\.ps1 -Task') { $r.Code } else { 1 }); Out = $ct } 0 @('\*\*Cenários:\*\* SC-014 — sem alvo de execução: o accept não roda')
+
+# 13b. item 2: o orçamento do full estima a suíte pela história dela, não pela duração do build.
+$p = Join-Path $tmp 'verify3'; New-Project $p
+$ErrorActionPreference = 'Continue'
+& git -C $p init -q 2>$null; Put $p '.gitignore' ".team-project/`n"; Put $p 'src/calc.ts' "export const x = 1`n"
+& git -C $p add -A 2>$null; & git -C $p -c user.email=t@t -c user.name=t commit -qm init 2>$null
+$ErrorActionPreference = 'Stop'
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output ''Build succeeded''", "suite": "Write-Output ''Tests: 3 passed''" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-MaxMinutes', '1', '-Root', $p)
+Check 'item 2: sem história da suíte, vale a regra antiga (cabe no minuto, roda tudo)' $r 0 @('tudo exit 0', 'suite: exit 0')
+Put $p '.team-project/verify/1/T-040/result.json' '{ "task": "T-040", "full": { "at": "2026-10-26 10:00:00", "tree": "x", "commands": [ { "key": "build", "exit": 0, "seconds": 20 }, { "key": "suite", "exit": 0, "seconds": 480 } ] } }'
+Put $p 'src/calc.ts' "export const x = 2`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-MaxMinutes', '1', '-Root', $p)
+Check 'item 2: suíte de 480 s na história de outra Task não cabe no minuto que sobra: fica pendente, exit 3' $r 3 @('PARCIAL: 1 comando', 'pendente\(s\): suite')
+
+# 13c. item 4: uma rodada por Task — trava viva → exit 5; trava de processo morto é resto e sai.
+$lk = Join-Path $p '.team-project/verify/1/T-041/verify.lock'
+Put $p '.team-project/verify/1/T-041/verify.lock' ('{"pid":' + $PID + ',"started":"' + (Get-Process -Id $PID).StartTime.ToString('o') + '","mode":"full","at":"2026-10-27 10:00:00"}')
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'item 4: outra rodada viva da mesma Task: OCUPADO, exit 5, a trava dela fica' @{ Code = $r.Code; Out = $r.Out + "`nTRAVA=" + (Test-Path -LiteralPath $lk) } 5 @('OCUPADO — outra rodada desta Task \(full', 'espere o aviso de conclusão', 'TRAVA=True')
+Put $p '.team-project/verify/1/T-041/verify.lock' '{"pid":999999,"started":"2001-01-01T00:00:00","mode":"full","at":"2026-10-27 09:00:00"}'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'item 4: trava de processo morto sai; a rodada roda e apaga a própria trava' @{ Code = $r.Code; Out = $r.Out + "`nTRAVA=" + (Test-Path -LiteralPath $lk) } 0 @('tudo exit 0', 'TRAVA=False')
+
+# 13d. item 5: comando acima de 80 % do teto por comando sai com "atenção:".
+Put $p '.team-project/guards.json' '{ "verify": { "suite": "Start-Sleep -Milliseconds 14000; Write-Output ''Tests: 3 passed''" } }'
+Put $p 'src/calc.ts' "export const x = 3`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-042', '-Mode', 'full', '-TimeoutMinutes', '0.3', '-Root', $p)
+Check 'item 5: suíte perto do teto (18 s): atenção com a fração e a saída (dividir verify.suite)' $r 0 @('atenção: suite levou 1[4-8] s, (7[89]|[89]\d|100) % do teto por comando \(18 s', 'divide o comando em guards.json → verify')
+
+# 13e. item 10: o done -Result gap grava a rota no run-log.md e pede ao Arquiteto estender a decisão.
+$p = Join-Path $tmp 'gap-log'; New-Project $p
+Put $p '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`n🔺 GAP: o plano manda rodar accept sem .scn`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+$rl = Join-Path $p '.team-project/sprints/1/run-log.md'
+Check 'item 10: rota do GAP no run-log.md (pelo done) e o pedido de estender a decisão às outras Tasks' @{ Code = $r.Code; Out = $r.Out + "`n" + $(if (Test-Path -LiteralPath $rl) { [System.IO.File]::ReadAllText($rl, $utf8) } else { 'sem run-log' }) } 0 @('outra Task ainda não fechada do sprint', '\| Quando \| Item \| Decisão \| Porquê \| Evidência \|', '\| T-041 \| 🔺 GAP → Arquiteto em instância nova .* \| 🔺 GAP: o plano manda rodar accept sem \.scn \| sprints/1/delivery/T-041\.md \|')
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
+Check 'item 10: queda de ambiente também vira linha do run-log.md' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText($rl, $utf8) } 0 @('\| T-041 \| queda de ambiente \(1 neste bloco\)')
+
+# 13f. item 9: o agente cortado pelo limite (sem SubagentStop) é medido pelo run.ps1 next; o consumo tem a coluna US$.
+$p = Join-Path $tmp 'cortado'; New-Project $p
+$sd = Join-Path $tmp 'tr-cortado/sessX/subagents'; New-Item -ItemType Directory -Force $sd | Out-Null
+$atr = Join-Path $sd 'agent-cut0000001.jsonl'
+[System.IO.File]::WriteAllLines($atr, [string[]]@(
+    '{"type":"user","timestamp":"2026-10-27T03:00:00Z","message":{"role":"user","content":"Construa a T-041 — exporta"}}',
+    '{"type":"assistant","timestamp":"2026-10-27T03:00:10Z","message":{"id":"c1","model":"claude-haiku-5-5","usage":{"input_tokens":10,"cache_creation_input_tokens":1000,"cache_read_input_tokens":200000,"output_tokens":100}}}',
+    '{"type":"assistant","timestamp":"2026-10-27T03:58:31Z","message":{"id":"c2","model":"<synthetic>","content":[{"type":"text","text":"You''ve hit your weekly limit · resets Oct 30, 1pm"}],"usage":{"input_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":0}}}'), (New-Object System.Text.UTF8Encoding($false)))
+$stj = (Join-Path $tmp 'tr-cortado/sessX.jsonl'); Set-Content -LiteralPath $stj '{}' -Encoding UTF8
+Put $p '.team-project/.interrupted' ('[' + (@{ type = 'team:developer'; work = 'T-041'; parent = ''; desde = '2026-10-27 03:00:00'; last = 'verify.ps1'; at = '2026-10-27 03:58:00'; session = 'sessX'; agent_id = 'cut0000001'; transcript = $atr; session_transcript = $stj } | ConvertTo-Json -Compress) + ']')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+$uj = Join-Path $p '.team-project/usage.jsonl'
+Check 'item 9: agente cortado medido pelo next, com US$ do Haiku acima de 100 mil (0,5) e sem a chamada sintética' @{ Code = $r.Code; Out = $r.Out + "`n" + $(if (Test-Path -LiteralPath $uj) { [System.IO.File]::ReadAllText($uj, $utf8) } else { 'sem usage' }) } $r.Code @('consumo: developer T-041 medido pelo transcript \(parou sem SubagentStop\)', '"agent_id":"cut0000001".*"calls":2.*"processed":201110,"usd":0\.0109')
+$p = Join-Path $tmp 'usd'; New-Project $p
+Put $p '.team-project/usage.jsonl' ('{"role":"architect","work":"T-041","model":"claude-opus-5-5","start":"2026-09-03T10:00:00","duration_s":120,"processed":500000,"usd":1.5,"dest":".team-project/sprints/1/consumption.md","agent_id":"ar1","round":1}' + "`n" + '{"role":"developer","work":"T-041","model":"claude-haiku-4-5","start":"2026-09-03T10:05:00","duration_s":60,"processed":100000,"dest":".team-project/sprints/1/consumption.md","agent_id":"dv1","round":1}' + "`n")
+[System.IO.File]::AppendAllText((Join-Path $p '.team-project/sprints/1/consumption.md'), "`n## Totais do sprint (derivado)`n| a | b |`n|---|---|`n", $utf8)
+$r = Invoke-Check 'consumption.ps1' @('-Root', $p)
+Check 'item 9: Totais com a coluna US$ — o Opus com preço, o modelo sem preço "—", o total soma o que tem preço' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/consumption.md'), $utf8) } 0 @('\| Σ notificação \| US\$ \(tabela 2026-10\) \|', '\| arc \| opus 5\.5 \| 500\.000 \| 1 \| 1 \| 02:00 \| 0 \| 1,50 \|', '\| dev \| haiku 4\.5 \| 100\.000 \| 1 \| 1 \| 01:00 \| 0 \| — \|', '\*\*Total do sprint\*\* .* \| \*\*1,50\*\* \|', 'medido: ar1#1.*; US\$ 1,50')
+
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
 Write-Output ("{0} casos · {1} falharam" -f $rows.Count, $fail)

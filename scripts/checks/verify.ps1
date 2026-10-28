@@ -23,6 +23,7 @@
 # comando falhou, árvore diferente ou sem full · 2 = erro de uso (sem guards.json → verify, sem git) · 3 = mutação parcial ·
 # 4 = FALHA DE AMBIENTE (v3.51): tempo esgotado ou saída com assinatura conhecida de ambiente (tool-hygiene.json) — não é
 # defeito do código: o papel não depura; a sessão tenta o reparo (target.ps1 -Repair) uma vez e, sem sucesso, bloqueio de ambiente.
+# 5 = OCUPADO (v3.52.3): outra rodada desta Task ainda roda — espere o aviso de conclusão dela; não dispare outra.
 # v3.51: -TimeoutMinutes (ou guards.json → verify.timeoutMinutes, padrão 9) por comando; verify.env = variáveis do filho
 # (ex.: GRADLE_USER_HOME numa junção ASCII); a higiene da ferramenta (Gradle sem daemon, dotnet sem reúso de nó, CI=true no
 # node) entra sozinha, de scripts/checks/tool-hygiene.json.
@@ -36,6 +37,13 @@
 #   -Mode mutation -Precheck: sem rodar teste, confere que cada trecho aparece uma vez no arquivo e, com verify.compile,
 #     que cada mutante compila — logo depois da construção, antes do full (garden item 27).
 #   cada chamada soma o tempo de comando em verify/<seg>/<ID>/time.jsonl — o kanban.md mostra a espera de comando por Task.
+# v3.52.3 (note.md itens 2, 4 e 5, sprint 4 do garden):
+#   o orçamento do -Mode full estima CADA comando pela história dele (o maior tempo das últimas 5 rodadas daquela chave nos
+#     result.json de verify/) — antes, pela duração do comando anterior: lint de 20 s → suíte de 500 s → 630–709 s, e a
+#     ferramenta moveu a chamada para segundo plano. Sem história da chave, vale a regra antiga.
+#   uma rodada por Task de cada vez (verify.lock na pasta da Task): a segunda chamada sai com exit 5 enquanto a primeira
+#     roda — o dev disparou um full sobre outro em segundo plano e o Karma caiu (Disconnected).
+#   comando que passa de 80 % do teto por comando sai com "atenção:" — estourar o teto é exit 4 sem defeito no código.
 param(
     [Parameter(Mandatory = $true)][string]$Task,
     [ValidateSet('focused', 'full', 'check', 'mutation')][string]$Mode = 'full',
@@ -157,6 +165,52 @@ function Get-MutationVerdict($Run) {
     return 'ok — o teste reprovou com a regra removida'
 }
 
+# v3.52.3 (note.md item 2): duração esperada de cada comando do full — o maior tempo das últimas 5 rodadas da chave (build,
+# lint, suite, suite2…) nos result.json de .team-project/verify/, de qualquer Task: a suíte dura o mesmo de uma Task à outra.
+function Get-CommandEstimates([string]$Root) {
+    $hist = @{}
+    $vd = Join-Path $Root '.team-project/verify'
+    if (-not (Test-Path -LiteralPath $vd)) { return @{} }
+    foreach ($f in @(Get-ChildItem -LiteralPath $vd -Recurse -Filter 'result.json' -File -ErrorAction SilentlyContinue)) {
+        try { $j = Read-Text $f.FullName | ConvertFrom-Json } catch { continue }
+        foreach ($sec in 'full', 'full_partial') {
+            $blk = $j.PSObject.Properties[$sec]; if (-not $blk -or -not $blk.Value) { continue }
+            $at = if ($blk.Value.PSObject.Properties['at']) { [string]$blk.Value.at } else { $f.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss') }
+            foreach ($c in @($blk.Value.commands)) {
+                if (-not $c -or -not $c.key -or $null -eq $c.seconds) { continue }
+                $k = [string]$c.key; if (-not $hist.ContainsKey($k)) { $hist[$k] = @() }
+                $hist[$k] += [pscustomobject]@{ At = $at; Seconds = [int]$c.seconds }
+            }
+        }
+    }
+    $est = @{}
+    foreach ($k in $hist.Keys) { $est[$k] = (@($hist[$k] | Sort-Object At -Descending | Select-Object -First 5) | Measure-Object Seconds -Maximum).Maximum }
+    return $est
+}
+
+# v3.52.3 (note.md item 4): trava da Task — CreateNew é atômico; trava de processo que já morreu (ou de outro processo com o
+# mesmo PID) é resto e sai. Devolve $null quando a trava é desta chamada, ou o conteúdo da trava de quem roda.
+function Enter-VerifyLock([string]$Dir) {
+    New-Item -ItemType Directory -Force $Dir | Out-Null
+    $lp = Join-Path $Dir 'verify.lock'
+    $me = Get-Process -Id $PID
+    for ($try = 0; $try -lt 2; $try++) {
+        try {
+            $fs = [System.IO.File]::Open($lp, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+            $b = $utf8.GetBytes((([ordered]@{ pid = $PID; started = $me.StartTime.ToString('o'); mode = $Mode; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') }) | ConvertTo-Json -Compress))
+            $fs.Write($b, 0, $b.Length); $fs.Close()
+            $script:lockPath = $lp
+            return $null
+        } catch [System.IO.IOException] {
+            $other = $null; try { $other = Read-Text $lp | ConvertFrom-Json } catch { }
+            $p = if ($other -and $other.pid) { Get-Process -Id ([int]$other.pid) -ErrorAction SilentlyContinue } else { $null }
+            if ($p -and $other.started -and $p.StartTime.ToString('o') -eq [string]$other.started) { return $other }
+            Remove-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue
+        }
+    }
+    return $null
+}
+
 # Mutações do plano e escopo do plano: Get-Mutations e Get-PlanScope vivem no lib.ps1 desde a v3.52.2 (note.md itens 7 e 10)
 # — um leitor só para o plan.ps1, o verify.ps1, o close.ps1 e o commit da Task (run.ps1).
 
@@ -182,6 +236,14 @@ try {
     $dir = Get-VerifyDir $Root $Task
     $resPath = Join-Path $dir 'result.json'
     $prev = $null
+    if ($Mode -ne 'check') {
+        # Antes do Restore-Pending: a mutação de uma rodada viva NÃO é resto de interrupção.
+        $busy = Enter-VerifyLock $dir
+        if ($busy) {
+            [Console]::Out.WriteLine("verify $Mode $Task`: OCUPADO — outra rodada desta Task ($([string]$busy.mode), pid $($busy.pid), desde $($busy.at)) ainda roda. Não dispare outra: espere o aviso de conclusão dela (se a ferramenta a moveu para segundo plano, encerre o turno — o aviso traz o resultado) e leia a saída dela.")
+            exit 5
+        }
+    }
     if (Test-Path -LiteralPath $resPath) { try { $prev = Read-Text $resPath | ConvertFrom-Json } catch { } }
 
     $restored = Restore-Pending $dir   # mutação interrompida: o arquivo volta antes de qualquer medida
@@ -336,12 +398,17 @@ try {
         $jobs = @($jobs | Where-Object { $doneKeys -notcontains $_.Key })
     }
     $budget = [System.Diagnostics.Stopwatch]::StartNew(); $lastSec = 0; $ranAny = $false
+    $estimates = if ($Mode -eq 'full') { Get-CommandEstimates $Root } else { @{} }
     foreach ($j in $jobs) {
-        if ($Mode -eq 'full' -and $ranAny -and ($budget.Elapsed.TotalSeconds + $lastSec) -gt ($MaxMinutes * 60)) { $pendingJobs += $j.Key; continue }
+        $need = if ($estimates.ContainsKey($j.Key)) { [int]$estimates[$j.Key] } else { $lastSec }   # v3.52.3: a história da chave
+        if ($Mode -eq 'full' -and $ranAny -and ($budget.Elapsed.TotalSeconds + $need) -gt ($MaxMinutes * 60)) { $pendingJobs += $j.Key; continue }
         $ranAny = $true
         $r1 = Invoke-Logged $j.Key $j.Cmd.Replace('{tests}', (Format-Tests $Tests)) (Join-Path $dir "$Mode-$($j.Key).log")
         $results += $r1; $lastSec = $r1.seconds
     }
+    # v3.52.3 (note.md item 5): comando perto do teto por comando — ao passar dele, vira exit 4 (ambiente) sem defeito no código.
+    $ceil = [int]($script:timeoutMinutes * 60)
+    $near = @($results | Where-Object { -not $_.environment -and [int]$_.seconds -ge 0.8 * $ceil } | ForEach-Object { "$($_.key) levou $($_.seconds) s, $([int](100 * [int]$_.seconds / $ceil)) % do teto por comando ($ceil s, verify.timeoutMinutes) — ao passar dele vira falha de ambiente (exit 4). Reporte a quem orquestra: o projeto divide o comando em guards.json → verify (lista: suite, suite2…); teto acima de 9 min passa dos 600 s da ferramenta" })
     $after = Get-WorkTree $Root
     $run = [ordered]@{ at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = $tree; tree_after = $after; tests = $Tests; commands = $results }
 
@@ -353,6 +420,7 @@ try {
     if ($pendingJobs.Count) {
         [Console]::Out.WriteLine("verify full $Task · árvore $($tree.Substring(0, 12)) · PARCIAL: $(@($results).Count) comando(s) rodado(s), pendente(s): $($pendingJobs -join ', ')")
         foreach ($r in $results) { [Console]::Out.WriteLine("  $($r.key): exit $($r.exit) · $($r.seconds) s · $(@($r.decisive) | Select-Object -Last 1)") }
+        foreach ($w in $near) { [Console]::Out.WriteLine("  atenção: $w") }
         [Console]::Out.WriteLine("  parcial: rode o MESMO comando de novo — ele continua de onde parou (exit 3); a árvore não pode mudar entre as chamadas.")
         exit 3
     }
@@ -362,7 +430,7 @@ try {
     [Console]::Out.WriteLine("verify $Mode $Task · árvore $($tree.Substring(0, 12)) · " + $(if ($envBad.Count) { "FALHA DE AMBIENTE em $($envBad.Count) comando(s)" } elseif ($bad.Count) { "$($bad.Count) comando(s) com falha" } else { 'tudo exit 0' }) + " · $($resPath.Substring($Root.Length + 1) -replace '\\', '/')")
     foreach ($r in $results) { [Console]::Out.WriteLine("  $($r.key): exit $($r.exit) · $($r.seconds) s · $(@($r.decisive) | Select-Object -Last 1) · log $($r.log) ($($r.lines) linhas)") }
     foreach ($r in $envBad) { [Console]::Out.WriteLine("  ambiente ($($r.key)): $($r.environment)") }
-    foreach ($w in $script:hygieneWarnings) { [Console]::Out.WriteLine("  atenção: $w") }
+    foreach ($w in @($script:hygieneWarnings) + $near) { [Console]::Out.WriteLine("  atenção: $w") }
     if ($after -ne $tree) { [Console]::Out.WriteLine("  atenção: os comandos alteraram a árvore (antes $($tree.Substring(0, 12)), depois $(([string]$after).Substring(0, [Math]::Min(12, ([string]$after).Length)))) — arquivo gerado fora do .gitignore; a evidência vale para a árvore de antes") }
     if ($envBad.Count) { [Console]::Out.WriteLine('  não é defeito do código: não depure; a sessão tenta o reparo do ambiente uma vez (target.ps1 -Repair) e, sem sucesso, bloqueio de ambiente'); exit 4 }
     if ($bad.Count) { exit 1 }
@@ -372,4 +440,5 @@ try {
     exit 2
 } finally {
     Complete-Call $dir
+    if ($script:lockPath) { Remove-Item -LiteralPath $script:lockPath -Force -ErrorAction SilentlyContinue }
 }

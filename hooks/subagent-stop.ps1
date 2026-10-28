@@ -8,6 +8,7 @@
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
+. (Join-Path $PSScriptRoot '..\scripts\checks\prices.ps1')   # v3.52.3: usd da rodada pelo preço do modelo
 
 # Transcript do subagente: o campo do evento, se vier; senão <dir do transcript da sessão>/<sessão>/subagents/agent-<id>.jsonl.
 function Get-AgentTranscript([object]$HookInput) {
@@ -158,10 +159,11 @@ try {
     if ($calls.Count -le $seen) { exit 0 }                                   # nenhuma chamada nova nesta parada
 
     # v3.51.4: a resposta sintética do harness (limite de uso, erro de API) não é chamada ao modelo — fora do modelo e da soma.
-    $in = 0L; $cw = 0L; $cr = 0L; $out = 0L; $peak = 0L; $first = $null; $last = 0L; $models = @{}
+    $in = 0L; $cw = 0L; $cr = 0L; $out = 0L; $peak = 0L; $first = $null; $last = 0L; $models = @{}; $usd = 0.0; $priced = 0
     for ($i = $seen; $i -lt $calls.Count; $i++) {
         if ([string]$calls[$i].model -eq '<synthetic>') { continue }
         $u = $calls[$i].u
+        $cu = Get-CallUsd ([string]$calls[$i].model) $u; if ($null -ne $cu) { $usd += $cu; $priced++ }
         $ctx = [int64]$u.input_tokens + [int64]$u.cache_creation_input_tokens + [int64]$u.cache_read_input_tokens
         if ($null -eq $first) { $first = $ctx }
         if ($ctx -gt $peak) { $peak = $ctx }
@@ -244,6 +246,8 @@ try {
         cache_read    = $cr
         output        = $out
         processed     = $in + $cw + $cr + $out
+        # v3.52.3 (note.md item 9): custo pelo preço do modelo (scripts/checks/prices.ps1); $null se nenhuma chamada tem preço.
+        usd           = if ($priced) { [Math]::Round($usd, 4) } else { $null }
         first_context = $first
         peak_context  = $peak
         final_context = $last
