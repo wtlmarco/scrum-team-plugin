@@ -14,6 +14,8 @@
 # · 6 formulário de autorização da Review. Exit 0 · 2 = erro de uso · 3 = nada a fazer (fila vazia ou bloqueada).
 # v3.52.2: a construção de cada Task é do executor de Task (team:task-runner) — o next o dispara; start e done são dele.
 # O next também lê .interrupted (retomada após queda), mede a sessão (SESSÃO:) e abre a correção do portão como Q-S<n>.
+# v3.53: Task com ficha no architect/breakdown/S<n>.md é planejada por um Arquiteto só dela, a partir do recorte da ficha
+# (sprints/<n>/handoff/<T-ID>-ficha.md); sem ficha, a História segue numa instância.
 
 param(
     [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff')][string]$Action,
@@ -383,6 +385,27 @@ try {
             Out "  $(Get-AgentLine 'quality-assurance')"
             Out "  prompt: `"Escreva os cenários executáveis $($missScn -join ', ') em .team-project/quality-assurance/scenarios/$($h.Name).scn, na linguagem do accept.ps1 (cabeçalho do script), a partir dos critérios de aceite da $($h.Name) e das fichas SC-nnn. Use só os identificadores de teste do contrato. Confira com accept.ps1 -ParseOnly; não rode o app. Volte em até 15 linhas.`""
             Out "  depois: run.ps1 next"
+            exit 0
+        }
+        # v3.53 (note.md itens 7 e 8): Task com ficha no breakdown ganha um Arquiteto próprio, que abre só a ficha, o template
+        # e o plano da Task de que depende — a instância que planejava a História inteira foi 63 % dos subagentes no sprint 4
+        # (cada chamada reenvia a conversa acumulada). Primeiro a Task cujas dependências já têm plano; uma por vez (R1).
+        $withF = @($noPlan | ForEach-Object { $f = Get-Ficha $Root $n $_.Id; if ($f) { [pscustomobject]@{ T = $_; F = $f } } })
+        if ($withF.Count) {
+            $ready = { param($t) @($t.Deps | Where-Object { $d = $_; $dt = @($tasks | Where-Object { $_.Id -eq $d }) | Select-Object -First 1; $dt -and $dt.Mark -ne $E.Done -and -not (Get-PlanFull $dt $S) }).Count -eq 0 }
+            $pick = @($withF | Where-Object { & $ready $_.T }) | Select-Object -First 1
+            if (-not $pick) { $pick = $withF[0] }
+            $t = $pick.T
+            $dir = Join-Path $S 'handoff'; New-Item -ItemType Directory -Force $dir | Out-Null
+            $card = "# Ficha da $($t.Id) — recorte de ``.team-project/architect/breakdown/S$n.md```n`n> Gerado pelo ``run.ps1 next`` para o Arquiteto do plano (v3.53). A fonte é o breakdown: não edite aqui.`n`n" + $(if ($pick.F.Common) { $pick.F.Common + "`n`n" } else { '' }) + $pick.F.Body + "`n"
+            [System.IO.File]::WriteAllText((Join-Path $dir "$($t.Id)-ficha.md"), $card, $utf8)
+            $depPlans = @($t.Deps | ForEach-Object { $d = $_; $dt = @($tasks | Where-Object { $_.Id -eq $d }) | Select-Object -First 1; if ($dt -and (Get-PlanFull $dt $S)) { ".team-project/sprints/$n/$($dt.Plan)" } })
+            $depTxt = if ($depPlans.Count) { ', o plano da dependência ' + ($depPlans -join ', ') } else { '' }
+            $rest = @($noPlan | Where-Object { $_.Id -ne $t.Id } | ForEach-Object { $_.Id })
+            Out "PRÓXIMA AÇÃO: preparo da construção — plano da $($t.Id) (História $($h.Name)) pela ficha, um Arquiteto por Task (regra 25)"
+            Out "  $(Get-AgentLine 'architect')"
+            Out "  prompt: `"Escreva o Plano de Implementação da $($t.Id) — $($t.Title) em .team-project/sprints/$n/plan/$($t.Id)-<slug>.md, no template enxuto. Abra só a ficha .team-project/sprints/$n/handoff/$($t.Id)-ficha.md, o template `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md$depTxt e o .team-project/architect/context.md; do código, leia o que a ficha aponta. Ler além dela vale: cada arquivo vai na linha **Li além da ficha:** do cabeçalho. Use os nomes comuns da ficha literalmente. Não abra o plan.ps1 nem plano de outro sprint: rode plan.ps1 e corrija pelo que ele imprime. A sessão atualiza a coluna Plano do quadro. Volte em até 15 linhas.`""
+            Out "  depois: plan.ps1 -Plan <caminho> (exit 1 volta à mesma instância se ela respondeu há menos de 5 min; senão instância nova) e run.ps1 next$(if ($rest.Count) { " — faltam $($rest -join ', ')" })"
             exit 0
         }
         if ($noPlan.Count) {

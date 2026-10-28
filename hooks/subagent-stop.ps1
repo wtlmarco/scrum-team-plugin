@@ -184,9 +184,11 @@ try {
     if (-not $work -and $firstPrompt) { $work = Get-WorkId $firstPrompt }
     if (-not $work) { $at = Get-Marker $projectDir '.active-task'; if ($null -ne $at -and $at.id) { $work = [string]$at.id } }
     # v3.51.4 (garden item 8): todas as Tasks citadas no prompt da rodada — o plano por História (regra 25) cobre várias, e o
-    # kanban.ps1 rateia a rodada entre elas em vez de pôr tudo na primeira.
+    # kanban.ps1 rateia a rodada entre elas em vez de pôr tudo na primeira. v3.53: ID dentro de caminho (plan/T-048-x.md,
+    # handoff/T-049-ficha.md) não é trabalho da rodada — o plano por Task cita o plano da dependência, e a rodada da T-049
+    # ia meio a meio com a T-048, falseando a medida do piloto da ficha.
     $src = if ($roundPrompt) { $roundPrompt } else { [string]$firstPrompt }
-    $works = @([regex]::Matches($src, '(?<![\w-])(Q-S\d+[a-z]?|T-\d+[a-z]?)(?![\w])') | ForEach-Object { $_.Value } | Select-Object -Unique | Select-Object -First 12)
+    $works = @([regex]::Matches($src, '(?<![\w/\\-])(Q-S\d+[a-z]?|T-\d+[a-z]?)(?![\w])') | ForEach-Object { $_.Value } | Select-Object -Unique | Select-Object -First 12)
     $run = Get-Marker $projectDir '.active-run'
     $dst = Get-Destination $projectDir $work $run
     # v3.51.4 (note.md itens 2 e 11, garden item 26): o subagente parou no limite de uso da conta — sinal legível para a retomada.

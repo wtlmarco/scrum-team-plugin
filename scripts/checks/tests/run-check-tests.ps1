@@ -578,6 +578,29 @@ $r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
 $card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
 Check 'run handoff: cartão de passagem curto com plano, cenários e o comando do accept' @{ Code = $r.Code; Out = $(if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) + "`nKB=" + [int]((Get-Item -LiteralPath $card).Length / 1024) } else { 'sem cartão' }) } 0 @('Cartão de passagem — T-041', 'accept\.ps1 -Task T-041 -Only SC-014', 'KB=[0-2]\b')
 
+# 5d2. v3.53 (note.md itens 7 e 8): Task com ficha no breakdown → um Arquiteto por Task, que abre só o recorte da ficha.
+$p = Join-Path $tmp 'ficha'; New-Project $p
+Put $p '.team-project/architect/breakdown/S1.md' "# Quebra — Sprint 1`n`n## H-014 Exportar`n`n### Decisões comuns — H-014`n- ``export_job`` — tabela dos pedidos · T-041, T-041a`n`n### Ficha T-041a — Variante`n**Código a ler:**`n- ``src/a.ts:3`` — padrão a espelhar (``IExporter``)`n`n**Fontes:** ``docs/sdd/03-architecture.md`` §4 · ``standards/implementation-principles.md`` §2`n**Nomes comuns:** ``export_job```n`n## H-020 Outra`n`n### Ficha T-099 — fora`n**Nomes comuns:** ``outro```n"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+$fc = Join-Path $p '.team-project/sprints/1/handoff/T-041a-ficha.md'
+Check 'v3.53: Task com ficha → plano por Task pela ficha, com o plano da dependência e sem abrir o plan.ps1' @{ Code = $r.Code; Out = $r.Out + "`n" + $(if (Test-Path -LiteralPath $fc) { [System.IO.File]::ReadAllText($fc, $utf8) } else { 'sem ficha' }) } 0 @('plano da T-041a \(História H-014\) pela ficha, um Arquiteto por Task', 'handoff/T-041a-ficha\.md', 'plano da dependência \.team-project/sprints/1/plan/T-041-export\.md', 'Li além da ficha', 'Não abra o plan\.ps1', '### Decisões comuns — H-014', '### Ficha T-041a')
+Check 'v3.53: o recorte leva só a ficha da Task (não a da outra História)' @{ Code = 0; Out = $(if ((Test-Path -LiteralPath $fc) -and ([System.IO.File]::ReadAllText($fc, $utf8) -notmatch 'T-099')) { 'só a ficha' } else { 'vazou' }) } 0 @('só a ficha')
+$pl = '.team-project/sprints/1/plan/T-041a-x.md'
+$fbase = "**Cenários:** nenhum — interno`n**Risco:** infraestrutura`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 3. Ambiente`n`n| Pré-requisito | Comando de medição | Saída real |`n|---|---|---|`n| Node 20 | node --version | v20.11.0 |`n`n## 6. Testes`nsem prova: x`n`n## 9. Onde parar`n- **Pré-requisito ausente** — 🔺 GAP`n"
+Put $p $pl ("# Plano de Implementação — T-041a Variante`n" + $fbase)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.53 regra 28: sem Li além da ficha, sem o nome comum e a ficha com caminho que não existe: exit 1' $r 1 @('\| ficha \| falhou.*sem \*\*Li além da ficha:\*\*.*export_job.*caminho que não existe.*src/a\.ts, docs/sdd/03-architecture\.md')
+Put $p 'src/a.ts' "export const a = 1`n"; Put $p 'docs/sdd/03-architecture.md' "# Arquitetura`n"
+Put $p $pl ("# Plano de Implementação — T-041a Variante`n**Li além da ficha:** ``src/b.ts`` — o leitor do export_job`n" + $fbase)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.53 regra 28: plano pela ficha conferido — nomes, caminhos e "li além" contado' $r 0 @('\| ficha \| ok.*1 nome.*3 caminho.*li além da ficha: 1')
+Put $p '.team-project/sprints/1/plan/T-050-x.md' ("# Plano`n" + $fbase)
+$r = Invoke-Check 'plan.ps1' @('-Plan', '.team-project/sprints/1/plan/T-050-x.md', '-Root', $p)
+Check 'v3.53 regra 28: Task sem ficha segue sem a conferência (n-a)' $r 0 @('\| ficha \| n-a')
+Remove-Item -LiteralPath (Join-Path $p '.team-project/architect/breakdown/S1.md') -Force
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.53: sem ficha no breakdown, o preparo volta a ser por História (regra 25)' $r 0 @('planos da História H-014 numa instância do Arquiteto')
+
 # 5e. close.ps1 -Apply (v3.46): a sessão fecha sem o Agent scrum-master — quadro, Registro, Série, -Post e entrada de status.
 $p = Join-Path $tmp 'apply'; New-Project $p
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Apply', '-Root', $p)
