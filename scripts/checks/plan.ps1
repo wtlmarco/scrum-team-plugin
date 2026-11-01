@@ -3,7 +3,7 @@
 # Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/plan.ps1" -Plan <caminho do plano> [-Root <projeto>]
 # Regras: implementation-plan.md "Regras do formato" 2 (blocos), 15 (lista legível, teste por arquivo), 16 (protegidos),
 # 17 (trecho literal ≤ 15 linhas ou validado), 18 (mutações), a variante leve e, desde a v3.51, 21 (render só com layout
-# novo), 22 (tamanho: aviso acima de 12 KB, falha acima de 20 KB), 23 (cenários citados existem nos .scn do QA) e 24 (risco);
+# novo), 22 (tamanho: só informa; desde a v3.53.2 sem corte — aviso de Task grande acima de 30 KB), 23 (cenários citados existem nos .scn do QA) e 24 (risco);
 # desde a v3.52.2, 26 (linhas "- Contagem:" recontadas e premissas "- P<k> ·" medidas ou com quem verifica) e 27 (layout
 # novo com a linha **Documentos vivos:**; documento de desenho fora de **Arquivos tocados:** — o Arquiteto o consolida);
 # desde a v3.53, 28 (Task com ficha no breakdown: **Li além da ficha:**, nomes comuns no plano, caminhos da ficha existem).
@@ -154,10 +154,13 @@ try {
         if ($iss.Count) { Add-Result 'ambiente' 'falhou' (($iss -join '; ') + ' (R26)') } else { Add-Result 'ambiente' 'ok' '§3 com pré-requisito medido; §9 com a parada por pré-requisito ausente' }
     }
 
-    # ---------- 22 · plano enxuto (v3.51) ----------
+    # ---------- 22 · plano enxuto (v3.51; sem corte por tamanho desde a v3.53.2) ----------
+    # v3.53.2 (plugin-report prévio do sprint 5 do garden, decisão do stakeholder): o teto de 20 KB fazia o Arquiteto escrever
+    # e depois cortar em dezenas de edições, cada uma relendo a conversa toda — metade do custo do plano da T-042 (US$ 4,39 de
+    # 8,70) e ~US$ 9 do sprint. Cortar não traz informação nova e pode tirar detalhe: o plano fica como saiu. O tamanho só
+    # informa; acima de 30 KB o sinal é de Task grande (divida na quebra), nunca de cortar.
     $kb = [Math]::Round(([System.Text.Encoding]::UTF8.GetByteCount($text)) / 1024, 1)
-    if ($kb -gt 20) { Add-Result 'tamanho' 'falhou' "$kb KB (máximo 20; alvo ~12): cite o SDD e o standards/ em vez de copiar (regra 22)" }
-    elseif ($kb -gt 12) { Add-Result 'tamanho' 'aviso' "$kb KB, acima do alvo de ~12 KB (regra 22)" }
+    if ($kb -gt 30) { Add-Result 'tamanho' 'aviso' "$kb KB: Task grande — não corte o plano; a divisão de Tasks assim é na quebra (breakdown, **Arquivos previstos:**) (regra 22)" }
     else { Add-Result 'tamanho' 'ok' "$kb KB" }
 
     # ---------- 23 · cenários ao lado do plano (v3.51) ----------
@@ -165,17 +168,24 @@ try {
     if (-not $cm.Success) { Add-Result 'cenários' 'falhou' "cabeçalho sem **Cenários:** SC-… | nenhum — <motivo> (regra 23)" }
     elseif ($cm.Groups[1].Value -match '^\s*nenhum\s*[—-]\s*\S') { Add-Result 'cenários' 'ok' ($cm.Groups[1].Value.Trim()) }
     else {
-        $ids = @([regex]::Matches($cm.Groups[1].Value, '\b[A-Z]{2,}-\d+\b') | ForEach-Object { $_.Value } | Select-Object -Unique)
+        # v3.53.2: "SC-nnn (teste)" se prova pelos testes do plano, sem .scn; "# aguarda <T-ID>: SC-…" no .scn vale como declarado.
+        $allIds = @([regex]::Matches($cm.Groups[1].Value, '\b[A-Z]{2,}-\d+\b') | ForEach-Object { $_.Value } | Select-Object -Unique)
+        $ids = @([regex]::Matches($cm.Groups[1].Value, '\b[A-Z]{2,}-\d+\b(?!\s*\((?i:teste)\))') | ForEach-Object { $_.Value } | Select-Object -Unique)
         $scnDir = Join-Path $Root '.team-project/quality-assurance/scenarios'
         $scn = @(Get-ChildItem -Path $scnDir -Filter '*.scn' -File -ErrorAction SilentlyContinue)
-        if (-not $ids.Count) { Add-Result 'cenários' 'falhou' '**Cenários:** sem identificador (SC-nnn) nem "nenhum — <motivo>"' }
+        if (-not $allIds.Count) { Add-Result 'cenários' 'falhou' '**Cenários:** sem identificador (SC-nnn) nem "nenhum — <motivo>"' }
+        elseif (-not $ids.Count) { Add-Result 'cenários' 'ok' "todos provados por teste do plano, sem .scn: $($allIds -join ', ')" }
         elseif (-not $scn.Count -and -not (Get-TargetsConfig $Root)) { Add-Result 'cenários' 'n-a' "sem alvo de execução (guards.json sem ""targets""): $($ids -join ', ') rastreados no plano e provados por teste, sem .scn (v3.51.4)" }
         elseif (-not $scn.Count) { Add-Result 'cenários' 'falhou' "nenhum arquivo .scn em .team-project/quality-assurance/scenarios/ — o QA escreve os cenários executáveis antes do dev (regra 23)" }
         else {
             $defined = @($scn | ForEach-Object { [regex]::Matches((Read-Text $_.FullName), '(?m)^\s*scenario\s+(\S+)') } | ForEach-Object { $_.Groups[1].Value })
-            $miss = @($ids | Where-Object { $defined -notcontains $_ })
+            $defer = Get-DeferredScenarios $Root
+            $miss = @($ids | Where-Object { $defined -notcontains $_ -and -not $defer.ContainsKey($_) })
+            $wait = @($ids | Where-Object { $defined -notcontains $_ -and $defer.ContainsKey($_) } | ForEach-Object { "$_ (aguarda $($defer[$_]))" })
+            $tst = @($allIds | Where-Object { $ids -notcontains $_ })
+            $tail = $(if ($wait.Count) { "; " + ($wait -join ', ') } else { '' }) + $(if ($tst.Count) { "; por teste: " + ($tst -join ', ') } else { '' })
             if ($miss.Count) { Add-Result 'cenários' 'falhou' ("cenário(s) citado(s) sem definição nos .scn: " + ($miss -join ', ')) }
-            else { Add-Result 'cenários' 'ok' "$($ids.Count) cenário(s) da Task nos arquivos .scn: $($ids -join ', ')" }
+            else { Add-Result 'cenários' 'ok' "$($ids.Count) cenário(s) da Task nos arquivos .scn: $($ids -join ', ')$tail" }
         }
     }
 
@@ -266,12 +276,14 @@ try {
         if (-not $lm.Success -or -not $lm.Groups[1].Value.Trim()) { $iss += 'cabeçalho sem **Li além da ficha:** nenhum | `<arquivo>` — <porquê>' }
         $miss = @($ficha.Names | Where-Object { -not $text.Contains($_) })
         if ($miss.Count) { $iss += 'nome comum da ficha ausente no plano: ' + ($miss -join ', ') }
-        $gone = @(@($ficha.Read) + @($ficha.Sources) | Where-Object { $_ -and -not (Test-Path -LiteralPath (Resolve-FichaPath $Root $_)) })
+        $gone = Get-FichaMissing $Root $ficha
         if ($gone.Count) { $iss += "a ficha aponta caminho que não existe (corrija em architect/breakdown/S$($sm.Groups[1].Value).md): " + ($gone -join ', ') }
         if ($iss.Count) { Add-Result 'ficha' 'falhou' (($iss -join '; ') + ' (regra 28)') }
         else {
             $extra = if ($lm.Groups[1].Value -match '^\s*nenhum') { 0 } else { @([regex]::Matches($lm.Groups[1].Value, '`[^`]+`')).Count }
-            Add-Result 'ficha' 'ok' "$($ficha.Names.Count) nome(s) comum(ns) no plano; $(@($ficha.Read).Count + @($ficha.Sources).Count) caminho(s) da ficha existem; li além da ficha: $extra"
+            # v3.53.2: previsto na quebra × arquivos do plano — mede a estimativa que decide a divisão da Task (só informa).
+            $prev = if ($null -ne $ficha.Planned) { "; arquivos previstos $($ficha.Planned), no plano $(@($files).Count)" } else { '' }
+            Add-Result 'ficha' 'ok' "$($ficha.Names.Count) nome(s) comum(ns) no plano; $(@($ficha.Read).Count + @($ficha.Sources).Count) caminho(s) da ficha existem; li além da ficha: $extra$prev"
         }
     }
 

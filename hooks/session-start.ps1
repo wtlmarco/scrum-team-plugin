@@ -1,6 +1,7 @@
 ﻿# SessionStart — G13: autoteste de uma linha (estado do guards.json, guardas ativas e desativadas). Nunca bloqueia.
 # v3.52.2 (note.md item 3): startup/resume move o .active-agents para .interrupted e avisa a RETOMADA do run.
 # v3.53.1: menos o agente cujo processo hospedeiro segue vivo (outra sessão aberta no mesmo projeto) — esse fica.
+# v3.53.2: põe no contexto da sessão a forma da conversa com o stakeholder (R22: toda pergunta em formulário).
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
@@ -58,7 +59,10 @@ try {
             }
         }
     }
-    if (-not (Test-GuardEnabled $cfg 'G13')) { if ($resume) { [Console]::Out.Write($resume.Trim()) }; exit 0 }
+    # v3.53.2 (R22, pedido do stakeholder em 2026-11-01): a forma da conversa vai no contexto de toda sessão — a pergunta já
+    # nasce como formulário, sem a volta a mais que uma guarda no Stop custaria. Não é guarda: sai mesmo com a G13 desligada.
+    $talk = " Conversa com o stakeholder (R22): toda pergunta a ele — decisão, dado, confirmação ou próximo passo — sai já como formulário AskUserQuestion, na mesma resposta; nunca uma pergunta em texto para ele responder depois. Linguagem simples (termo técnico só se indispensável, e explicado), rótulos curtos, a opção recomendada primeiro e 'Pedir mais contexto' por último; para escrever a própria resposta ele usa o campo 'Outro' que o formulário já traz. Se ele pedir mais contexto: explique em texto curto e repita o formulário na mesma resposta."
+    if (-not (Test-GuardEnabled $cfg 'G13')) { [Console]::Out.Write(($talk + $resume).Trim()); exit 0 }
 
     $all = 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G11', 'G14', 'G15', 'G16', 'G17', 'G18', 'G19', 'G20', 'G21', 'G22', 'G23'
     $on= @($all | Where-Object { Test-GuardEnabled $cfg $_ })
@@ -99,7 +103,7 @@ try {
             $line += " Ambiente: o caminho do perfil do Windows ($prof) tem acento. Medido: os testes do Gradle falham sem aviso (ClassNotFoundException do GradleWorkerMain) — se o projeto usa Gradle, crie uma junção ASCII (cmd /c mklink /J C:\gradle-home `"$prof\.gradle`") e ponha `"env`": { `"GRADLE_USER_HOME`": `"C:\\gradle-home`" } em guards.json → verify (how-to.md §Ambiente). A conferir, se aparecer erro estranho de cache: NuGet (NUGET_PACKAGES) e npm (npm_config_cache)."
         }
     }
-    [Console]::Out.Write($line + $resume)
+    [Console]::Out.Write($line + $talk + $resume)
     exit 0
 } catch {
     exit 1

@@ -825,7 +825,20 @@ $cases = @(
                  Set-Content -LiteralPath (Join-Path $sd 'agent-dev0000077.jsonl') @('{"type":"user","timestamp":"2026-10-31T06:53:00Z","message":{"role":"user","content":"Construa a T-052 — prova no alvo. Reaproveite o roteiro de captura da T-051."}}', '{"type":"assistant","timestamp":"2026-10-31T06:54:00Z","message":{"id":"d1","model":"claude-sonnet-5-5","usage":{"input_tokens":10,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":5}}}') -Encoding UTF8 }
        Check = { $u = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8 | Where-Object { $_ -match 'dev0000077' } | ConvertFrom-Json)[0]
                  (@($u.works) -join ',') -eq 'T-052' -and $u.plugin -match '^\d+\.\d+\.\d+$' }
-       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'dev0000077'; agent_type = 'team:developer'; transcript_path = (Join-Path $tmp 'transcripts/sess7.jsonl') } }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'dev0000077'; agent_type = 'team:developer'; transcript_path = (Join-Path $tmp 'transcripts/sess7.jsonl') } },
+    # ---------- v3.53.2 — /team-status e /team-usage respondidos pelo hook, sem passar pelo modelo ----------
+    @{ Name = '/team-status: o hook responde com decision=block e o texto do team-view.ps1'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = '"decision":"block"'
+       Payload = @{ prompt = '/team-status'; transcript_path = '' } },
+    @{ Name = '/team:team-usage 7 (forma com o namespace e o número do sprint): bloqueia e passa o sprint pedido'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = 'Sprint 7'
+       Payload = @{ prompt = '/team:team-usage 7'; transcript_path = '' } },
+    @{ Name = '/team-status com texto a mais: não é a visão, segue ao modelo (silêncio)'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
+       Payload = @{ prompt = '/team-status por favor explique'; transcript_path = '' } },
+    # ---------- v3.53.2 — R22: a forma da conversa com o stakeholder no contexto de toda sessão ----------
+    @{ Name = 'SessionStart (v3.53.2): a sessão recebe a forma da conversa — toda pergunta em formulário, "Outro" para digitar'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = "Conversa com o stakeholder (R22): toda pergunta a ele*formulário AskUserQuestion, na mesma resposta*campo 'Outro'*repita o formulário na mesma resposta"
+       Payload = @{ hook_event_name = 'SessionStart'; source = 'clear' } },
+    @{ Name = 'SessionStart com a G13 desligada: a forma da conversa sai mesmo assim (não é guarda)'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'Conversa com o stakeholder (R22)'
+       Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ "disabled": ["G13"] }', (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ hook_event_name = 'SessionStart'; source = 'clear' } }
 )
 
 $rows = @(); $fail = 0

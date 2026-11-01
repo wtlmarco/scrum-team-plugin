@@ -2,7 +2,8 @@
 # Lê a árvore de acessibilidade (testTag exposto como resource-id) por uiautomator e age por adb. Sem nada de produto.
 # Lições incorporadas do avaliador do benchmark: rolagem lenta e curta, esperar a animação parar antes de ler, coletar
 # listas virtualizadas rolando até não aparecer item novo, tela em branco = falha de ambiente (não do app).
-# Config (guards.json → targets.android): package, apk (opcional), avd (para o reparo), maxUptimeHours (padrão 24).
+# Config (guards.json → targets.android): package, apk (opcional), avd (para o reparo), maxUptimeHours (padrão 24),
+# repair (v3.53.2, opcional: comando PowerShell de reparo do projeto — emulador em container; vence o avd).
 
 $script:AdCfg = $null; $script:Adb = $null; $script:Pkg = ''; $script:Nodes = @(); $script:IdCache = @{}; $script:EmptyDumps = 0
 
@@ -34,17 +35,28 @@ function Test-AndroidHealth {
     return $null
 }
 function Repair-Android {
+    # v3.53.2 (sprint 5 do garden): emulador fora do SDK local (em container Docker, por exemplo) — o reparo é o comando que
+    # o projeto declara em targets.android.repair (ex.: "docker restart horta-emulador; adb connect localhost:5555"); o
+    # guards.json é do stakeholder, então declarar o comando já é a autorização. Depois, a mesma espera do boot.
+    $cmd = if ($script:AdCfg -and $script:AdCfg.PSObject.Properties['repair'] -and $script:AdCfg.repair) { [string]$script:AdCfg.repair } else { '' }
+    if ($cmd) {
+        $ErrorActionPreference = 'Continue'
+        $out = (& powershell -NoProfile -ExecutionPolicy Bypass -Command $cmd 2>&1 | ForEach-Object { "$_" }) -join ' '
+        if ($LASTEXITCODE -ne 0) { return "o reparo declarado (targets.android.repair) saiu com $LASTEXITCODE`: $($out.Substring(0, [Math]::Min(200, $out.Length)))" }
+        Adb wait-for-device | Out-Null
+    } else {
     $avd = if ($script:AdCfg -and $script:AdCfg.avd) { [string]$script:AdCfg.avd } else { '' }
-    if (-not $avd) { return 'sem targets.android.avd no guards.json: reinicie o emulador à mão' }
+    if (-not $avd) { return 'sem targets.android.avd nem targets.android.repair no guards.json: reinicie o emulador à mão' }
     $emu = Join-Path $script:Sdk 'emulator\emulator.exe'
-    if (-not (Test-Path -LiteralPath $emu)) { return "emulador não encontrado em $emu" }
+    if (-not (Test-Path -LiteralPath $emu)) { return "emulador não encontrado em $emu (emulador em container? declare o comando em targets.android.repair)" }
     Adb emu kill | Out-Null; Start-Sleep -Seconds 3
     Get-Process qemu-system-* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     # Na pasta do SDK: o emulador vive mais que o executor e não pode prender a pasta do projeto (v3.51.1).
     Start-Process -FilePath $emu -ArgumentList @('-avd', $avd, '-no-snapshot', '-no-boot-anim', '-no-audio') -WorkingDirectory (Split-Path $emu) -WindowStyle Hidden | Out-Null
+    }
     $t = Get-Date
     do { Start-Sleep -Seconds 5; $ok = ((Sh getprop sys.boot_completed) -join '').Trim() -eq '1' } while (-not $ok -and ((Get-Date) - $t).TotalSeconds -lt 240)
-    if (-not $ok) { return "o emulador $avd não terminou de iniciar em 240 s" }
+    if (-not $ok) { return "o emulador $(if ($cmd) { '(reparo declarado)' } else { $avd }) não terminou de iniciar em 240 s" }
     Start-Sleep -Seconds 25   # o launcher e os serviços do sistema ainda estão subindo depois do boot_completed
     return Test-AndroidHealth
 }

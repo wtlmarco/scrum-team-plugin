@@ -22,6 +22,7 @@ Salvo em `.team-project/architect/breakdown/S<n>.md` — um arquivo por sprint, 
 
 **Fontes:** `docs/sdd/<documento>.md` §<n> · `standards/<arquivo>.md` §<n> · `.team-project/user-experience/screens/<tela>.md`
 **Nomes comuns:** `<nome literal>`, `<nome literal>`
+**Arquivos previstos:** <n>
 ```
 
 ## Regras da ficha
@@ -32,3 +33,5 @@ Salvo em `.team-project/architect/breakdown/S<n>.md` — um arquivo por sprint, 
 4. **Decisões comuns, uma vez por História:** todo nome que mais de uma Task usa (tabela, campo, rota, evento) nasce aqui, com a grafia final. Cada ficha lista em `**Nomes comuns:**` os que a Task usa; o `plan.ps1` confere que o plano os usa literalmente e que todo caminho da ficha existe.
 5. **Dependência é a do quadro** (coluna "Depende de"): o Arquiteto da Task recebe o plano já gravado da Task de que ela depende, e o `run.ps1 next` planeja primeiro a Task cujas dependências já têm plano.
 6. **Curta:** até ~25 linhas por ficha. Ficha que cresce está fazendo o plano — o desenho é do plano.
+7. **Arquivos previstos (v3.53.2): até 6 por Task.** Quantos arquivos a Task deve mudar, produção e teste somados. Acima de 6, **divido a Task aqui**, na quebra (R2), dentro da mesma História: o custo do plano cresce mais rápido que a Task (no garden, sprint 5: 6 arquivos ≈ US$ 2,5; 9 ≈ US$ 4,7; 12 ≈ US$ 8,7, cada chamada relendo uma conversa maior). Se escapar, o `run.ps1 next` não chama o Arquiteto do plano: pede a divisão primeiro. O `plan.ps1` mostra o previsto × o do plano, para a retrospectiva calibrar a estimativa.
+8. **Caminho com pasta, a partir da raiz** (`.team-project/user-experience/screens/x.md`, não `x.md`). O `run.ps1 next` confere os caminhos da ficha **antes** de chamar o Arquiteto do plano e, se algum não existe, pede a correção numa instância curta. Em **Fontes:**, só é caminho o termo com pasta ou extensão — nome de classe entre crases não é conferido.
