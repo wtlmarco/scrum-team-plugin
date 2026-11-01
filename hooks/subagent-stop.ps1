@@ -10,20 +10,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 . (Join-Path $PSScriptRoot '..\scripts\checks\prices.ps1')   # v3.52.3: usd da rodada pelo preço do modelo
 
-# Transcript do subagente: o campo do evento, se vier; senão <dir do transcript da sessão>/<sessão>/subagents/agent-<id>.jsonl.
-function Get-AgentTranscript([object]$HookInput) {
-    foreach ($name in 'agent_transcript_path', 'subagent_transcript_path') {
-        $p = $HookInput.PSObject.Properties[$name]
-        if ($p -and $p.Value -and (Test-Path -LiteralPath ([string]$p.Value))) { return [string]$p.Value }
-    }
-    $parent = [string]$HookInput.transcript_path
-    $id = [string]$HookInput.agent_id
-    if (-not $parent -or -not $id) { return $null }
-    $dir = Join-Path (Split-Path $parent) ([System.IO.Path]::GetFileNameWithoutExtension($parent))
-    $cand = Join-Path $dir "subagents/agent-$id.jsonl"
-    if (Test-Path -LiteralPath $cand) { return $cand }
-    return $null
-}
+# Transcript do subagente: Get-AgentTranscript (common.ps1, v3.53.1).
 
 # ID de trabalho no texto: Task, Correção, bloco ou História — o primeiro que aparece.
 # v3.52.2 (note.md item 15): Q-S<n>[a-z]? (correção do portão) é Task.
@@ -189,6 +176,10 @@ try {
     # ia meio a meio com a T-048, falseando a medida do piloto da ficha.
     $src = if ($roundPrompt) { $roundPrompt } else { [string]$firstPrompt }
     $works = @([regex]::Matches($src, '(?<![\w/\\-])(Q-S\d+[a-z]?|T-\d+[a-z]?)(?![\w])') | ForEach-Object { $_.Value } | Select-Object -Unique | Select-Object -First 12)
+    # v3.53.1 (plugin-report do sprint 4 do garden, item 17): o dev e o executor trabalham UMA Task por instância (dispatch.ps1,
+    # .active-task) — outra Task citada no prompt é referência (roteiro ou script reaproveitado), não trabalho; rateada, a Task
+    # citada recebia metade do custo (21,4 mi de construção da Task B na coluna Verificação da Task A).
+    if ($role -in 'developer', 'task-runner' -and $work -match '^(T-\d+[a-z]?|Q-S\d+[a-z]?)$') { $works = @($work) }
     $run = Get-Marker $projectDir '.active-run'
     $dst = Get-Destination $projectDir $work $run
     # v3.51.4 (note.md itens 2 e 11, garden item 26): o subagente parou no limite de uso da conta — sinal legível para a retomada.
@@ -260,6 +251,8 @@ try {
         report        = $reportRel
         # v3.49: o transcript da sessão que disparou — o consumption.ps1 -Session mede a sessão principal por ele, no close.
         session_transcript = [string]$hookInput.transcript_path
+        # v3.53.1 (plugin-report, item 14): a versão do plugin na rodada — a fronteira de uma atualização no meio do run.
+        plugin        = Get-PluginVersion
     }
     $json = $row | ConvertTo-Json -Compress
     [System.IO.File]::AppendAllText($usagePath, $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))

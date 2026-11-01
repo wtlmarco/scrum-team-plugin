@@ -207,6 +207,7 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 | **G19** | a sessão retomando por `SendMessage` um papel caro (Arquiteto, QA, PO, UX, SM) parado há mais de 5 min (v3.51) | — o time abre uma instância nova com o cartão de passagem; retomar regravaria todo o contexto no modelo caro |
 | **G20** | o fim de turno no meio do `sprint run` com Task elegível no quadro (v3.51) | — a sessão segue a fila sozinha; esperar agente disparado nesta sessão é permitido (o aviso reabre a sessão) |
 | **G16** | registra em `.team-project/usage.jsonl` o consumo **medido** de cada subagente (tokens processados, contexto final, modelo, duração, Task) | — e roda `scripts/checks/consumption.ps1`, que escreve o `consumption.md` (v3.49; antes, a sessão o rodava); ninguém copia número da notificação |
+| **G23** | durante o run, o dev cujo contexto passou do teto (`guards.json` → `devContextCap`, padrão 100 mil; v3.53.1) roda comando ou edita código | — o dev grava o ponto de retomada no relatório e volta com `TETO`; o executor de Task abre instância nova, que segue dali. Projeto que precise de outro teto: ajuste o número (0 desliga) |
 
 - **O agente recebe o motivo e corrige o rumo** — você normalmente nem vê o bloqueio. As guardas por papel (G5–G11) não valem para a sua sessão principal.
 - **Falso positivo:** acrescente a guarda a `"disabled"` em `.team-project/guards.json`; vale na hora. Leve o caso ao `/review`, para a guarda ser corrigida.

@@ -11,3 +11,11 @@ Origem: avaliação do sprint 4 do garden (plugin 3.52.2) de 27/10/2026, em `ana
 8) Piloto da ficha por Task (v3.53.0) ainda não medido. **Medir no próximo sprint** contra o sprint 4 (plano da H-K1 ≈ US$ 16,3, um 🔺 GAP de plano por Task construída): US$ do plano por Task construída (`consumption.md`), GAPs de plano por Task e os arquivos em `**Li além da ficha:**` por plano. Alvo: custo ao menos 40 % menor sem subir os GAPs; se não, os lotes por dependência ({T-048, T-049, T-054}, {T-051, T-052}, {T-047, T-053}, {T-050} no sprint 4) são a segunda opção. Dono: SM + Arquiteto.
 
 9) Falta saber qual peso o limite semanal da conta dá a cada parcela (entrada, cache gravado, cache lido, saída) e a cada modelo — o cliente não tem leitura da tela de uso antes e depois de um sprint. Sem isso, "custo" no `consumption.md` é o preço da API, não o consumo do limite. Dono: SM (medição no próximo sprint).
+
+Origem: `plugin-report.md` do fim do sprint 4 do garden (3.52.2 → 3.53.0), avaliado em 31/10/2026. O que foi aplicado está no `CHANGELOG.md` (v3.53.1). O item 6 acima ganha a G23 (teto de 100 mil também tira o Haiku da faixa 5×) — medir junto.
+
+10) Não há caminho oficial para provar critério de aceite de aplicação híbrida (WebView) em emulador Android em container (acesso por noVNC): o `target.ps1` só conhece AVD nativo, o `accept.ps1` depende de identificador de teste lido pelo `uiautomator`, e a prova real saiu por desvio autorizado (`adb input tap`/`screencap` + leitura de tela por CDP), com 5 comandos liberados um a um. Um projeto só até aqui; esperar o segundo caso antes de um driver por CDP. Dono: SM + QA.
+
+11) Comando legítimo do projeto (`docker compose run`, `node`, leitura de zip/`aapt` pelo `operator`) só é descoberto quando a G14 o nega no meio do run — cada um virou parada e formulário (≈ 25 formulários para 4 Histórias, ≈ 3× o sprint anterior), e nada antes da construção mostra quais comandos os planos vão precisar. Dono: SM + Arquiteto.
+
+12) Medir no próximo sprint a G23 (v3.53.1): instâncias de dev cortadas por TETO, o US$ delas contra os 34 % do sprint 4, 🔺 GAPs por Task (≤ 1,7) e se a instância nova perde estado do alvo. Dono: SM + dev.

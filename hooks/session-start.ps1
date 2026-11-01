@@ -1,5 +1,6 @@
 ﻿# SessionStart — G13: autoteste de uma linha (estado do guards.json, guardas ativas e desativadas). Nunca bloqueia.
 # v3.52.2 (note.md item 3): startup/resume move o .active-agents para .interrupted e avisa a RETOMADA do run.
+# v3.53.1: menos o agente cujo processo hospedeiro segue vivo (outra sessão aberta no mesmo projeto) — esse fica.
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
@@ -16,7 +17,18 @@ try {
     $resume = ''
     $src = if ($hookInput) { [string]$hookInput.source } else { '' }
     if ($src -in @('startup', 'resume')) {
-        $ags = @(Get-ActiveAgents $projectDir)
+        $all = @(Get-ActiveAgents $projectDir)
+        # v3.53.1 (plugin-report do sprint 4 do garden, item 3): processo novo não quer dizer que o anterior morreu — com outra
+        # sessão do Claude Code aberta no mesmo projeto (extensão do VS Code, sessão aberta para atualizar o plugin), os agentes
+        # dela seguem vivos. Agente com o processo hospedeiro vivo fica no .active-agents e a sessão é avisada para não redisparar.
+        $live = @($all | Where-Object { (Test-AgentHostAlive $_) -eq $true })
+        $ags = @($all | Where-Object { (Test-AgentHostAlive $_) -ne $true })
+        if ($live.Count) {
+            foreach ($g in @($live | Group-Object { if ($_.work) { $_.work } else { $_.type } })) {
+                $a = @($g.Group | Sort-Object { [string]$_.at } -Descending)[0]
+                $resume += " AGENTE VIVO EM OUTRA SESSÃO: $(if ($a.work) { $a.work } else { '(sem item)' }) ($(([string]$a.type) -replace '^.*:', ''), processo $($a.host_pid), última ação $(if ($a.last) { $a.last } else { 'disparado' })) — não redispare; o run.ps1 next espera a volta dele."
+            }
+        }
         if ($ags.Count) {
             $ip = Join-Path $projectDir '.team-project/.interrupted'
             $prev = @()
@@ -31,7 +43,7 @@ try {
                 [pscustomobject][ordered]@{ type = [string]$_.type; work = [string]$_.work; parent = [string]$_.parent; desde = [string]$_.desde; last = [string]$_.last; at = [string]$_.at; session = $ses
                     agent_id = $aid; transcript = $(if ($atr -and (Test-Path -LiteralPath $atr)) { $atr } else { '' }); session_transcript = $(if ($tdir -and $ses) { Join-Path $tdir "$ses.jsonl" } else { '' }) } })
             [System.IO.File]::WriteAllText($ip, (ConvertTo-Json -InputObject @($prev + $recs) -Depth 3 -Compress), (New-Object System.Text.UTF8Encoding($false)))
-            Set-ActiveAgents $projectDir @()                      # apaga o .active-agents e regrava o "## Agora"
+            Set-ActiveAgents $projectDir $live                    # só os vivos ficam; sem eles, apaga e regrava o "## Agora"
             $run0 = Get-Marker $projectDir '.active-run'
             if ($null -ne $run0 -and [string]$run0.trilha -in @('sprint', 'fix')) {
                 $cmd0 = if ([string]$run0.trilha -eq 'sprint') { '/sm sprint run' } else { '/sm fix run' }
@@ -48,7 +60,7 @@ try {
     }
     if (-not (Test-GuardEnabled $cfg 'G13')) { if ($resume) { [Console]::Out.Write($resume.Trim()) }; exit 0 }
 
-    $all = 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G11', 'G14', 'G15', 'G16', 'G17', 'G18', 'G19', 'G20', 'G21', 'G22'
+    $all = 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G11', 'G14', 'G15', 'G16', 'G17', 'G18', 'G19', 'G20', 'G21', 'G22', 'G23'
     $on= @($all | Where-Object { Test-GuardEnabled $cfg $_ })
     $off = @($all | Where-Object { -not (Test-GuardEnabled $cfg $_) })
     $line = "Guardas do time (hooks/COVERAGE.md): ativas " + ($(if ($on.Count) { $on -join ', ' } else { 'nenhuma' })) +

@@ -24,6 +24,8 @@ Leia a §1 do `.team-project/README.md`:
 
 Remote Control só roda no **`claude` pelo terminal**. Na extensão do VS Code a resposta é `/remote-control isn't available in this environment.` — diga isso antes de imprimir o comando de abertura.
 
+**Passar da extensão para o terminal com o run em andamento** (v3.53.1, sprint 4 do garden — o stakeholder não pôde trocar de sessão no meio do `run`): **não abra a sessão do terminal com a da extensão ainda trabalhando** — os agentes dela seguem vivos, e a sessão nova não pode redisparar a mesma Task (o `run.ps1 next` manda esperar; sem isso eram dois devs no mesmo alvo). Ordem: (1) peça a pausa entre Tasks (`sprint-run.md` §Pausa segura) e espere a linha da Task fechada; (2) feche a sessão da extensão; (3) no terminal, na raiz do projeto, `claude --remote-control "<ID> · <produto>"` e `/sm sprint run` — o `run.ps1 next` retoma pela fila. Agente cortado no meio (queda) volta em instância nova pelo cartão, como em qualquer retomada.
+
 ## 2. Pré-requisitos que dá para medir (saída real — R7)
 
 | Item | Comando | Atende |

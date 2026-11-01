@@ -63,10 +63,13 @@ function Get-MarkHistory([string]$Text) {
             $when = $null; try { $when = [datetime]::ParseExact($ds, [string[]]@('yyyy-MM-dd HH:mm', 'yyyy-MM-dd'), $null, 'None') } catch { }
             if (-not $when) { continue }
             if (-not $h.ContainsKey($id)) { $h[$id] = @() }
-            $h[$id] += [pscustomobject]@{ At = $when; To = $to }
+            $h[$id] += [pscustomobject]@{ At = $when; To = $to; Ix = $h[$id].Count }
         }
     }
-    foreach ($k in @($h.Keys)) { $h[$k] = @($h[$k] | Sort-Object At) }
+    # v3.53.1 (plugin-report do sprint 4 do garden, item 16): o Registro tem resolução de minuto e o Sort-Object do 5.1 não é
+    # estável — duas transições no mesmo minuto (🟨 → ⬜ e ⬜ → 🟨) saíam em ordem trocada e 17,1 mi de construção caíram em
+    # Plano. Empate: vale a ordem do arquivo (a linha de baixo é a mais recente).
+    foreach ($k in @($h.Keys)) { $h[$k] = @($h[$k] | Sort-Object At, Ix) }
     return $h
 }
 
