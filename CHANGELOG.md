@@ -13,6 +13,18 @@
 
 ---
 
+## v3.53.2 — 2026-11-01
+
+**Branch:** `fix/v3.53.2` a partir de `develop` · **Processo:** sem mudança (ferramenta de consulta; nenhuma regra nova)
+Pedido do stakeholder: acompanhar o sprint pelo console ou pelo celular (Remote Control) sem gastar token. Até aqui, olhar o andamento passava pelo modelo (`/sm board`, `/po status`).
+
+- **`/team-status [<n>]`:** mostra o placar do sprint por marcador, a estimativa restante (Série), o estado do run, o limite de conta e os agentes em voo, com o tempo desde a última ação. Também traz as Tasks por coluna (as em andamento primeiro), a última transição do Registro e as decisões pendentes do stakeholder (README §7, até 3).
+- **`/team-usage [<n>]`:** mostra tokens, US$ e tempo das rodadas medidas pela G16 no sprint, com o total, por Task (com o mesmo rateio do `kanban.ps1`) e por papel e modelo, com a fatia do custo. A rodada sem preço aparece como "sem preço", nunca como US$ 0. Só agentes: a sessão principal continua medida no close e na retrospectiva.
+- **Sem token:** o hook `prompt-submit.ps1` reconhece os dois comandos (também na forma `/team:`), roda o `scripts/checks/team-view.ps1` e devolve o texto com `decision: block`. O prompt não chega ao modelo nem entra no contexto. Medido com `claude -p "/team-status"`: `num_turns` 0, tokens 0, `total_cost_usd` 0, em cerca de 2,5 s. O texto sai em linhas curtas, sem tabela, para caber na tela do celular. Se o hook falhar (falha aberta), o `commands/team-status.md` (ou `team-usage.md`) roda o mesmo script pelo modelo e diz que passou por ele.
+- **`how-to.md`:** os dois comandos entram na tabela "o que você quer fazer" e em "Responder pelo celular". Entra também a seção "Quando a extensão do VS Code usa uma conta e o terminal usa outra" (`CLAUDE_CONFIG_DIR`).
+- **Ainda não medido:** a resposta pelo app do celular (Remote Control) e o comando digitado no meio de um `sprint run`.
+- **Testes:** conferências 219 casos (+5), guardas 267 casos (+3), 0 falhas.
+
 ## v3.53.1 — 2026-11-01
 
 **Branch:** `fix/v3.53.1` a partir de `develop` · **Processo:** addendum v3.53.1 (`process-changelog.md`, `plugin-report.md` do sprint 4 do garden, itens 1, 3, 7, 8, 14, 15, 16 e 17)

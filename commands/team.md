@@ -23,6 +23,7 @@ Identifique o modo pelo primeiro termo. **Sem termo reconhecido, não dispare ag
 | O que o stakeholder trouxe | Rota |
 |---|---|
 | demanda, valor, escopo, prioridade, **prazo**, **status**, plano de entrega | **`/po`** |
+| só olhar o andamento ou o consumo do sprint, sem gastar token | `/team-status` · `/team-usage` |
 | dúvida técnica, desenho, contrato, dívida | `/arc question <dúvida>` |
 | jornada, tela, usabilidade, acessibilidade | `/ux` |
 | questão que atravessa papéis e precisa de **uma** posição | `/sm agreement <questão>` |

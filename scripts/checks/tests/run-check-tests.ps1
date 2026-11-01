@@ -1318,6 +1318,23 @@ Put $p '.team-project/usage.jsonl' ('{"role":"developer","work":"T-041","model":
 $r = Invoke-Check 'consumption.ps1' @('-Root', $p)
 Check 'item 14: Nota com a versão do plugin da rodada' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/consumption.md'), $utf8) } 0 @('medido: dvv1#1.*; plugin 3\.53\.1')
 
+# 15. v3.53.2 — /team-status e /team-usage sem custo de token (team-view.ps1; o hook prompt-submit.ps1 o chama).
+$p = Join-Path $tmp 'view'; New-Project $p
+$r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Root', $p)
+Check 'team-view status: placar, restante da Série, quadro por coluna, última transição; "1. nenhuma" não é pendência' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'Esperando você') { "`nPEND=errado" } else { '' }) } 0 @("Sprint 1 · 2 Tasks · $($e.ok) 0 · $($e.qa) 1 · $($e.build) 0 · $($e.plan) 0 · $($e.todo) 1", 'Restante: 2 de 2', 'Run: parado', 'Agora: nenhum agente', "$($e.qa) Verificação: T-041\r?\n$($e.todo) A fazer: T-041a", "Última transição: T-041 $($e.build) → $($e.qa) · 2026-09-03 15:00")
+Edit-File (Join-Path $p '.team-project/README.md') '1. nenhuma' '1. **[TST · S1 · ③ pacote]** Aprovar o pacote? — material: x — 2026-09-01 10:00'
+Put $p '.team-project/.active-run' '{ "trilha": "sprint", "id": "1", "desde": "2026-09-02 08:00" }'
+Put $p '.team-project/.active-agents' ('[{"type":"team:developer","desde":"2026-09-02 09:00:00","work":"T-041a","last":"verify.ps1 -Mode focused","at":"' + (Get-Date).AddMinutes(-3).ToString('yyyy-MM-dd HH:mm:ss') + '"}]')
+$r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Root', $p)
+Check 'team-view status: run em andamento, agente vivo com "há 3 min" e a pendência de §7 sem negrito' $r 0 @('Run: sprint 1 em andamento desde 2026-09-02 08:00', 'Agora \(1\):', 'dev · T-041a · há 3 min · verify\.ps1 -Mode focused', 'Esperando você: 1 decisão', '1\. \[TST · S1 · ③ pacote\] Aprovar')
+$r = Invoke-Check 'team-view.ps1' @('-View', 'usage', '-Root', $p)
+Check 'team-view usage sem rodadas: diz que nada foi medido' $r 0 @('Nenhuma rodada de agente medida')
+Put $p '.team-project/usage.jsonl' ('{"role":"architect","work":"T-041","works":["T-041","T-041a"],"model":"claude-opus-5-5","start":"2026-09-01T11:00:00","duration_s":600,"processed":1000000,"usd":2.0,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"developer","work":"T-041","model":"claude-haiku-5-5","start":"2026-09-02T10:00:00","duration_s":300,"processed":50000,"usd":0.5,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"quality-assurance","work":"T-041a","model":"claude-sonnet-5-5","start":"2026-09-03T10:00:00","duration_s":30,"processed":8000,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"developer","work":"T-099","model":"claude-haiku-5-5","start":"2026-08-01T10:00:00","duration_s":30,"processed":7,"usd":9,"dest":".team-project/consumption.md"}' + "`n")
+$r = Invoke-Check 'team-view.ps1' @('-View', 'usage', '-Root', $p)
+Check 'team-view usage: só o sprint, total com US$, rateio entre as Tasks citadas, "sem preço" na Task sem preço, papel com % do custo' $r 0 @('Consumo · Sprint 1 · 1,06 mi tokens · US\$ 2,50 · 15 min de agente · 3 rodadas', '\(1 rodada\(s\) sem preço', 'T-041  550 mil · US\$ 1,50 · 10 min', 'T-041a  508 mil · US\$ 1,00 · 5 min', 'arc \(opus 5\.5\)  1,00 mi · US\$ 2,00 · 80% · 1', 'qa \(sonnet 5\.5\)  8 mil · sem preço · 0% · 1', 'Última rodada: 03/09 10:00 · qa · T-041a · 8 mil · sem preço')
+$r = Invoke-Check 'team-view.ps1' @('-View', 'kanban', '-Root', $p)
+Check 'team-view -View inválido: exit 2' $r 2 @('inválido')
+
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
 Write-Output ("{0} casos · {1} falharam" -f $rows.Count, $fail)
