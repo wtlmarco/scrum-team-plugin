@@ -458,9 +458,13 @@ function Get-Ficha([string]$Root, [string]$Sprint, [string]$Id) {
         $label = { param($l) $m = [regex]::Match($fm.Value, '(?s)\*\*' + $l + ':\*\*(.*?)(?:\r?\n[ \t]*\r?\n|\r?\n#|\r?\n\*\*[^*\r\n]+:\*\*|\z)'); if ($m.Success) { $m.Groups[1].Value } else { '' } }
         $norm = { param($p) (($p.Trim() -replace '\\', '/') -replace '^\./', '') -replace '#.*$', '' -replace ':\d+(-\d+)?$', '' }
         $read = @((& $label 'C[óo]digo a ler') -split "`r?`n" | ForEach-Object { [regex]::Match($_, '`([^`]+)`') } | Where-Object { $_.Success } | ForEach-Object { & $norm $_.Groups[1].Value })
-        $src = @([regex]::Matches((& $label 'Fontes'), '`([^`]+)`') | ForEach-Object { & $norm $_.Groups[1].Value })
+        # v3.53.2: em **Fontes:** só é caminho o termo com pasta ou extensão — nome de classe entre crases não é arquivo.
+        $src = @([regex]::Matches((& $label 'Fontes'), '`([^`]+)`') | ForEach-Object { & $norm $_.Groups[1].Value } | Where-Object { $_ -match '/|\.[A-Za-z0-9]{1,6}$' })
         $names = @([regex]::Matches((& $label 'Nomes comuns'), '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value })
-        return [pscustomobject]@{ Path = $bp; Common = $(if ($dm.Success) { $dm.Value.TrimEnd() } else { '' }); Body = $fm.Value.TrimEnd(); Read = $read; Sources = $src; Names = $names }
+        # v3.53.2: **Arquivos previstos:** <n> — quantos arquivos (produção e teste) a Task deve mudar; $null sem a linha.
+        $pm = [regex]::Match($fm.Value, '\*\*Arquivos previstos:\*\*\s*(\d+)')
+        $planned = if ($pm.Success) { [int]$pm.Groups[1].Value } else { $null }
+        return [pscustomobject]@{ Path = $bp; Common = $(if ($dm.Success) { $dm.Value.TrimEnd() } else { '' }); Body = $fm.Value.TrimEnd(); Read = $read; Sources = $src; Names = $names; Planned = $planned }
     }
     return $null
 }
@@ -470,6 +474,29 @@ function Resolve-FichaPath([string]$Root, [string]$Rel) {
     if ($Rel -match '^\$\{CLAUDE_PLUGIN_ROOT\}/(.+)$') { return (Join-Path $plug $Matches[1]) }
     if ($Rel -match '^standards/') { return (Join-Path $plug $Rel) }
     return (Join-Path $Root $Rel)
+}
+# Caminhos da ficha que não existem (Código a ler + Fontes). v3.53.2: o run.ps1 next confere antes de disparar o Arquiteto.
+function Get-FichaMissing([string]$Root, $Ficha) {
+    return @(@($Ficha.Read) + @($Ficha.Sources) | Where-Object { $_ -and -not (Test-Path -LiteralPath (Resolve-FichaPath $Root $_)) })
+}
+# Teto de arquivos previstos por Task com ficha (v3.53.2, plugin-report prévio do sprint 5 do garden): acima dele, o custo
+# do plano cresce mais rápido que a Task (6 arquivos ≈ US$ 2,5; 9 ≈ US$ 4,7; 12 ≈ US$ 8,7) — a Task se divide antes do Opus.
+$script:FichaMaxFiles = 6
+
+# Resumo do plano de uma dependência (v3.53.2): o cabeçalho (até o primeiro "## ") e os títulos dos passos/blocos — o
+# Arquiteto da Task seguinte lê arquivos, nomes e convenções sem abrir o plano inteiro (no garden, 3 planos = ~60 mil
+# caracteres levados por todas as chamadas).
+function Get-PlanSummary([string]$PlanPath) {
+    if (-not (Test-Path -LiteralPath $PlanPath)) { return '' }
+    $t = Read-Text $PlanPath
+    $h = [regex]::Match($t, '(?m)^## ')
+    $head = if ($h.Success) { $t.Substring(0, $h.Index) } else { $t }
+    $s4 = [regex]::Match($t, '(?ms)^## 4\b[^\r\n]*\r?\n(.*?)(?=^## |\z)')
+    $scope = if ($s4.Success) { $s4.Groups[1].Value } else { $t }
+    $steps = @([regex]::Matches($scope, '(?m)^### [^\r\n]+') | ForEach-Object { '- ' + $_.Value.Substring(4).Trim() })
+    $out = $head.TrimEnd()
+    if ($steps.Count) { $out += "`n`n**Passos/blocos:**`n" + ($steps -join "`n") }
+    return $out
 }
 
 # Medida curta da sessão principal (v3.52.2, note.md item 17): chamadas distintas (message.id, sem <synthetic>) e o contexto

@@ -15,8 +15,18 @@
 
 ## v3.53.2 — 2026-11-01
 
-**Branch:** `fix/v3.53.2` a partir de `develop` · **Processo:** addendum v3.53.2 (R22: toda pergunta ao stakeholder em formulário)
-Dois pedidos do stakeholder. O primeiro é acompanhar o sprint pelo console ou pelo celular (Remote Control) sem gastar token: até aqui, olhar o andamento passava pelo modelo (`/sm board`, `/po status`). O segundo é que toda pergunta do time chegue como formulário simples.
+**Branch:** `fix/v3.53.2` a partir de `develop` · **Processo:** addendum v3.53.2 (R22: toda pergunta ao stakeholder em formulário; plano do Arquiteto sem corte por tamanho)
+Três pedidos do stakeholder:
+- Acompanhar o sprint pelo console ou pelo celular (Remote Control) sem gastar token. Até aqui, olhar o andamento passava pelo modelo (`/sm board`, `/po status`).
+- Toda pergunta do time chega como formulário simples.
+- Baixar o custo do Arquiteto, a partir do relatório prévio do sprint 5 do garden.
+
+- **Plano do Arquiteto mais barato (relatório prévio do sprint 5 do garden):** até o início da construção, o Arquiteto já tinha gastado US$ 34,7 de US$ 41,3 do sprint (84%). Foram medidas as conversas de cada plano. As quatro respostas do stakeholder viraram estas mudanças:
+  - **Sem corte por tamanho:** o teto de 20 KB virou alvo. Quatro planos saíram acima dele e foram cortados em dezenas de edições, cada uma relendo até 290 mil tokens. Isso custou ~US$ 9 do sprint e metade do plano da T-042 (US$ 4,39 de 8,70). O `plan.ps1` (regra 22) agora só informa o tamanho. Acima de 30 KB ele avisa **Task grande**, a dividir na quebra, e nunca pede corte. A correção que ele pedir sai numa reescrita só.
+  - **Task grande se divide antes do Opus:** a ficha ganha `**Arquivos previstos:**`, com até 6 por Task (`breakdown.md` regra 7, `workflow-sprint.md` passo 4). Acima disso, o `run.ps1 next` não dispara o plano: ele pede a divisão a um Arquiteto curto, com IDs livres do quadro, e a sessão troca a linha do Sprint Backlog. O `plan.ps1` mostra o número previsto ao lado do número que está no plano.
+  - **Ficha conferida antes:** o `run.ps1 next` confere os caminhos da ficha antes de chamar o Arquiteto do plano e pede a correção numa instância curta. Em **Fontes:**, um nome de classe entre crases deixou de contar como caminho (`Get-Ficha`). Rodada sobre o garden, a conferência já acha a ficha da T-062 com um arquivo citado sem a pasta.
+  - **Ler o trecho, não o arquivo:** o resumo do plano da dependência (cabeçalho, arquivos e passos; ~1,5 KB contra ~20 KB, `Get-PlanSummary`) vai no fim do recorte da ficha. O prompt e a regra 28 mandam ler só o trecho apontado. Na T-042, três planos inteiros (~60 mil caracteres) eram relidos em todas as 69 chamadas.
+  - **Estimativa:** o Arquiteto deve gastar 35–40% menos num sprint como o 5. A medição fica para o próximo sprint, junto com os GAPs de plano.
 
 - **Toda pergunta em formulário (R22):** dado, confirmação e próximo passo agora também saem como formulário, na mesma resposta, e não só a decisão. Na pergunta aberta, as respostas prováveis viram opções e o campo "Outro" serve para digitar. "Pedir mais contexto" traz a explicação curta junto com o mesmo formulário. A linguagem é simples (termo técnico só quando é indispensável). A forma entra no contexto de toda sessão pelo `hooks/session-start.ps1`, mesmo com a G13 desligada. Assim a pergunta nasce certa, sem a volta a mais que uma guarda no fim do turno custaria. Mudaram `working-rules.md` R22, `templates/stakeholder-question.md` (exemplo de pergunta aberta) e `how-to.md`.
 
@@ -25,7 +35,7 @@ Dois pedidos do stakeholder. O primeiro é acompanhar o sprint pelo console ou p
 - **Sem token:** o hook `prompt-submit.ps1` reconhece os dois comandos (também na forma `/team:`), roda o `scripts/checks/team-view.ps1` e devolve o texto com `decision: block`. O prompt não chega ao modelo nem entra no contexto. Medido com `claude -p "/team-status"`: `num_turns` 0, tokens 0, `total_cost_usd` 0, em cerca de 2,5 s. O texto sai em linhas curtas, sem tabela, para caber na tela do celular. Se o hook falhar (falha aberta), o `commands/team-status.md` (ou `team-usage.md`) roda o mesmo script pelo modelo e diz que passou por ele.
 - **`how-to.md`:** os dois comandos ganham a seção própria "Acompanhar o sprint sem gastar token", com um exemplo de cada tela e como ler cada linha. Eles também entram na tabela "o que você quer fazer" e em "Responder pelo celular". Entra também a seção "Quando a extensão do VS Code usa uma conta e o terminal usa outra" (`CLAUDE_CONFIG_DIR`).
 - **Ainda não medido:** a resposta pelo app do celular (Remote Control) e o comando digitado no meio de um `sprint run`.
-- **Testes:** conferências 219 casos (+5), guardas 269 casos (+5), 0 falhas.
+- **Testes:** conferências 223 casos (+9), guardas 269 casos (+5), 0 falhas.
 
 ## v3.53.1 — 2026-11-01
 

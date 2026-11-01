@@ -431,22 +431,46 @@ try {
             $pick = @($withF | Where-Object { & $ready $_.T }) | Select-Object -First 1
             if (-not $pick) { $pick = $withF[0] }
             $t = $pick.T
+            # v3.53.2 (plugin-report prévio do sprint 5 do garden): o que a ficha já mostra se confere ANTES do Opus — Task
+            # grande se divide (o custo do plano cresce mais rápido que ela) e caminho que não existe se corrige numa instância
+            # curta (no garden, só o plan.ps1 o via, com o plano já escrito e a conversa em ~280 mil tokens).
+            $bdRel = ".team-project/architect/breakdown/S$n.md"
+            if ($null -ne $pick.F.Planned -and $pick.F.Planned -gt $script:FichaMaxFiles) {
+                # IDs novos: sufixo de uma letra (TaskIdRe), livres no quadro; a Task dividida não empresta o seu.
+                $base = $t.Id -replace '[a-z]$', ''; $taken = @($tasks | ForEach-Object { $_.Id }) + $t.Id
+                $newIds = @([char[]]'abcdefghijklmnopqrstuvwxyz' | ForEach-Object { "$base$_" } | Where-Object { $taken -notcontains $_ } | Select-Object -First 2)
+                Out "PRÓXIMA AÇÃO: dividir a $($t.Id) antes do plano — a ficha prevê $($pick.F.Planned) arquivos (máximo $($script:FichaMaxFiles)) (Arquiteto, instância curta)"
+                Out "  $(Get-AgentLine 'architect')"
+                Out "  prompt: `"A ficha da $($t.Id) em $bdRel prevê $($pick.F.Planned) arquivos; o máximo por Task é $($script:FichaMaxFiles). Divida-a em $($newIds -join ', ') (e a letra seguinte, se precisar de mais) no próprio $bdRel, dentro da História $($h.Name): uma linha da tabela e uma ficha por Task nova, cada ficha com **Arquivos previstos:** até $($script:FichaMaxFiles), a dependência entre elas na coluna Depende de, e retire a ficha da $($t.Id). O escopo da História não muda (R2). Não escreva plano. Volte em até 8 linhas: as Tasks novas, o título, a estimativa de cada uma (somando a da $($t.Id)) e a dependência.`""
+                Out "  depois: a sessão troca a linha da $($t.Id) no Sprint Backlog pelas Tasks novas, transcritas do breakdown (mesma História), e roda run.ps1 next"
+                exit 0
+            }
+            $miss = Get-FichaMissing $Root $pick.F
+            if ($miss.Count) {
+                Out "PRÓXIMA AÇÃO: corrigir a ficha da $($t.Id) antes do plano — caminho que não existe: $($miss -join ', ') (Arquiteto, instância curta)"
+                Out "  $(Get-AgentLine 'architect')"
+                Out "  prompt: `"Na ficha da $($t.Id) em $bdRel, corrija os caminhos que não existem: $($miss -join ', '). Ache a pasta certa com Glob; o que não existir sai da ficha. Não escreva plano nem abra outros arquivos. Volte em até 3 linhas.`""
+                Out "  depois: run.ps1 next"
+                exit 0
+            }
             $dir = Join-Path $S 'handoff'; New-Item -ItemType Directory -Force $dir | Out-Null
-            $card = "# Ficha da $($t.Id) — recorte de ``.team-project/architect/breakdown/S$n.md```n`n> Gerado pelo ``run.ps1 next`` para o Arquiteto do plano (v3.53). A fonte é o breakdown: não edite aqui.`n`n" + $(if ($pick.F.Common) { $pick.F.Common + "`n`n" } else { '' }) + $pick.F.Body + "`n"
-            [System.IO.File]::WriteAllText((Join-Path $dir "$($t.Id)-ficha.md"), $card, $utf8)
             $depPlans = @($t.Deps | ForEach-Object { $d = $_; $dt = @($tasks | Where-Object { $_.Id -eq $d }) | Select-Object -First 1; if ($dt -and (Get-PlanFull $dt $S)) { ".team-project/sprints/$n/$($dt.Plan)" } })
-            $depTxt = if ($depPlans.Count) { ', o plano da dependência ' + ($depPlans -join ', ') } else { '' }
+            # v3.53.2: o resumo do plano da dependência vai no recorte; o plano inteiro só se abre no trecho que faltar.
+            $depSum = @($depPlans | ForEach-Object { "## Plano da dependência — resumo de ``$_```n`n" + (Get-PlanSummary (Join-Path $Root $_)) })
+            $card = "# Ficha da $($t.Id) — recorte de ``$bdRel```n`n> Gerado pelo ``run.ps1 next`` para o Arquiteto do plano (v3.53). A fonte é o breakdown: não edite aqui.`n`n" + $(if ($pick.F.Common) { $pick.F.Common + "`n`n" } else { '' }) + $pick.F.Body + "`n" + $(if ($depSum.Count) { "`n" + ($depSum -join "`n`n") + "`n" } else { '' })
+            [System.IO.File]::WriteAllText((Join-Path $dir "$($t.Id)-ficha.md"), $card, $utf8)
+            $depTxt = if ($depPlans.Count) { '. O resumo do plano da dependência (' + ($depPlans -join ', ') + ': arquivos, nomes, passos) está no fim da ficha: abra esse plano só no trecho que faltar, com offset e limit' } else { '' }
             $rest = @($noPlan | Where-Object { $_.Id -ne $t.Id } | ForEach-Object { $_.Id })
             Out "PRÓXIMA AÇÃO: preparo da construção — plano da $($t.Id) (História $($h.Name)) pela ficha, um Arquiteto por Task (regra 25)"
             Out "  $(Get-AgentLine 'architect')"
-            Out "  prompt: `"Escreva o Plano de Implementação da $($t.Id) — $($t.Title) em .team-project/sprints/$n/plan/$($t.Id)-<slug>.md, no template enxuto. Abra só a ficha .team-project/sprints/$n/handoff/$($t.Id)-ficha.md, o template `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md$depTxt e o .team-project/architect/context.md; do código, leia o que a ficha aponta. Ler além dela vale: cada arquivo vai na linha **Li além da ficha:** do cabeçalho. Use os nomes comuns da ficha literalmente. Não abra o plan.ps1 nem plano de outro sprint: rode plan.ps1 e corrija pelo que ele imprime. A sessão atualiza a coluna Plano do quadro. Volte em até 15 linhas.`""
+            Out "  prompt: `"Escreva o Plano de Implementação da $($t.Id) — $($t.Title) em .team-project/sprints/$n/plan/$($t.Id)-<slug>.md, no template enxuto. Abra só a ficha .team-project/sprints/$n/handoff/$($t.Id)-ficha.md, o template `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md e o .team-project/architect/context.md$depTxt. Do código e das fontes, leia o trecho que a ficha aponta (caminho:linha e §), não o arquivo inteiro. O plano fica como sair: não o corte por tamanho (regra 22). Ler além dela vale: cada arquivo vai na linha **Li além da ficha:** do cabeçalho. Use os nomes comuns da ficha literalmente. Não abra o plan.ps1 nem plano de outro sprint: rode plan.ps1 e corrija pelo que ele imprime. A sessão atualiza a coluna Plano do quadro. Volte em até 15 linhas.`""
             Out "  depois: plan.ps1 -Plan <caminho> (exit 1 volta à mesma instância se ela respondeu há menos de 5 min; senão instância nova) e run.ps1 next$(if ($rest.Count) { " — faltam $($rest -join ', ')" })"
             exit 0
         }
         if ($noPlan.Count) {
             Out "PRÓXIMA AÇÃO: preparo da construção — planos da História $($h.Name) numa instância do Arquiteto (regra 25)"
             Out "  $(Get-AgentLine 'architect')"
-            Out "  prompt: `"Escreva os Planos de Implementação de $(($noPlan | ForEach-Object { $_.Id }) -join ', ') (História $($h.Name)) em .team-project/sprints/$n/plan/<T-ID>-<slug>.md, no template enxuto (regras 22 a 25: ~12 KB, **Cenários:** com os da Task, **Risco:**, **Layout novo:**). Leia o SDD, os standards citados e o código uma vez para todas. Rode plan.ps1 em cada plano e corrija até passar; atualize a coluna Plano do quadro pela sessão. Volte em até 15 linhas.`""
+            Out "  prompt: `"Escreva os Planos de Implementação de $(($noPlan | ForEach-Object { $_.Id }) -join ', ') (História $($h.Name)) em .team-project/sprints/$n/plan/<T-ID>-<slug>.md, no template enxuto (regras 22 a 25: cite em vez de copiar, sem cortar por tamanho, **Cenários:** com os da Task, **Risco:**, **Layout novo:**). Leia o SDD, os standards citados e o código uma vez para todas. Rode plan.ps1 em cada plano e corrija até passar; atualize a coluna Plano do quadro pela sessão. Volte em até 15 linhas.`""
             Out "  depois: para cada plano, plan.ps1 -Plan <caminho> (exit 1 volta à mesma instância se ela respondeu há menos de 5 min; senão instância nova) e run.ps1 next"
             exit 0
         }

@@ -580,20 +580,31 @@ Check 'run handoff: cartão de passagem curto com plano, cenários e o comando d
 
 # 5d2. v3.53 (note.md itens 7 e 8): Task com ficha no breakdown → um Arquiteto por Task, que abre só o recorte da ficha.
 $p = Join-Path $tmp 'ficha'; New-Project $p
-Put $p '.team-project/architect/breakdown/S1.md' "# Quebra — Sprint 1`n`n## H-014 Exportar`n`n### Decisões comuns — H-014`n- ``export_job`` — tabela dos pedidos · T-041, T-041a`n`n### Ficha T-041a — Variante`n**Código a ler:**`n- ``src/a.ts:3`` — padrão a espelhar (``IExporter``)`n`n**Fontes:** ``docs/sdd/03-architecture.md`` §4 · ``standards/implementation-principles.md`` §2`n**Nomes comuns:** ``export_job```n`n## H-020 Outra`n`n### Ficha T-099 — fora`n**Nomes comuns:** ``outro```n"
-$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+$bdText = "# Quebra — Sprint 1`n`n## H-014 Exportar`n`n### Decisões comuns — H-014`n- ``export_job`` — tabela dos pedidos · T-041, T-041a`n`n### Ficha T-041a — Variante`n**Código a ler:**`n- ``src/a.ts:3`` — padrão a espelhar (``IExporter``)`n`n**Fontes:** ``docs/sdd/03-architecture.md`` §4 · ``standards/implementation-principles.md`` §2 · ``IExporter```n**Nomes comuns:** ``export_job```n**Arquivos previstos:** 2`n`n## H-020 Outra`n`n### Ficha T-099 — fora`n**Nomes comuns:** ``outro```n"
+Put $p '.team-project/architect/breakdown/S1.md' $bdText
 $fc = Join-Path $p '.team-project/sprints/1/handoff/T-041a-ficha.md'
-Check 'v3.53: Task com ficha → plano por Task pela ficha, com o plano da dependência e sem abrir o plan.ps1' @{ Code = $r.Code; Out = $r.Out + "`n" + $(if (Test-Path -LiteralPath $fc) { [System.IO.File]::ReadAllText($fc, $utf8) } else { 'sem ficha' }) } 0 @('plano da T-041a \(História H-014\) pela ficha, um Arquiteto por Task', 'handoff/T-041a-ficha\.md', 'plano da dependência \.team-project/sprints/1/plan/T-041-export\.md', 'Li além da ficha', 'Não abra o plan\.ps1', '### Decisões comuns — H-014', '### Ficha T-041a')
-Check 'v3.53: o recorte leva só a ficha da Task (não a da outra História)' @{ Code = 0; Out = $(if ((Test-Path -LiteralPath $fc) -and ([System.IO.File]::ReadAllText($fc, $utf8) -notmatch 'T-099')) { 'só a ficha' } else { 'vazou' }) } 0 @('só a ficha')
+# v3.53.2: a ficha se confere ANTES do Arquiteto — caminho que não existe (o nome de classe em Fontes não é caminho).
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.53.2: ficha com caminho que não existe → corrigir a ficha antes do plano (nome de classe em Fontes não conta)' @{ Code = $r.Code; Out = $r.Out + "`nrecorte=" + (Test-Path -LiteralPath $fc) } 0 @('corrigir a ficha da T-041a antes do plano — caminho que não existe: src/a\.ts, docs/sdd/03-architecture\.md \(', 'Não escreva plano', 'recorte=False')
+Check 'v3.53.2: IExporter em Fontes não é caminho' @{ Code = 0; Out = $(if ($r.Out -match 'IExporter') { 'contou' } else { 'ignorado' }) } 0 @('ignorado')
+Put $p '.team-project/architect/breakdown/S1.md' ($bdText -replace 'Arquivos previstos:\*\* 2', 'Arquivos previstos:** 9')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.53.2: ficha que prevê 9 arquivos → dividir a Task antes do plano (Arquiteto curto, sessão troca a linha)' $r 0 @('dividir a T-041a antes do plano — a ficha prevê 9 arquivos \(máximo 6\)', 'Divida-a em T-041b, T-041c ','Não escreva plano', 'troca a linha da T-041a no Sprint Backlog')
+Put $p '.team-project/architect/breakdown/S1.md' $bdText
 $pl = '.team-project/sprints/1/plan/T-041a-x.md'
 $fbase = "**Cenários:** nenhum — interno`n**Risco:** infraestrutura`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 3. Ambiente`n`n| Pré-requisito | Comando de medição | Saída real |`n|---|---|---|`n| Node 20 | node --version | v20.11.0 |`n`n## 6. Testes`nsem prova: x`n`n## 9. Onde parar`n- **Pré-requisito ausente** — 🔺 GAP`n"
 Put $p $pl ("# Plano de Implementação — T-041a Variante`n" + $fbase)
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.53 regra 28: sem Li além da ficha, sem o nome comum e a ficha com caminho que não existe: exit 1' $r 1 @('\| ficha \| falhou.*sem \*\*Li além da ficha:\*\*.*export_job.*caminho que não existe.*src/a\.ts, docs/sdd/03-architecture\.md')
 Put $p 'src/a.ts' "export const a = 1`n"; Put $p 'docs/sdd/03-architecture.md' "# Arquitetura`n"
+Remove-Item -LiteralPath (Join-Path $p $pl) -Force
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+$fcText = if (Test-Path -LiteralPath $fc) { [System.IO.File]::ReadAllText($fc, $utf8) } else { 'sem ficha' }
+Check 'v3.53: Task com ficha → plano por Task pela ficha, sem abrir o plan.ps1; v3.53.2: resumo da dependência no recorte, leitura do trecho, sem corte' @{ Code = $r.Code; Out = $r.Out + "`n" + $fcText } 0 @('plano da T-041a \(História H-014\) pela ficha, um Arquiteto por Task', 'handoff/T-041a-ficha\.md', 'resumo do plano da dependência \(\.team-project/sprints/1/plan/T-041-export\.md', 'leia o trecho que a ficha aponta', 'não o corte por tamanho', 'Li além da ficha', 'Não abra o plan\.ps1', '### Decisões comuns — H-014', '### Ficha T-041a', '## Plano da dependência — resumo de `\.team-project/sprints/1/plan/T-041-export\.md`', '# Plano de Implementação — T-041 Endpoint', 'Passos/blocos:\*\*\s+- Passo 1 — endpoint')
+Check 'v3.53: o recorte leva só a ficha da Task (não a da outra História)' @{ Code = 0; Out = $(if ($fcText -notmatch 'T-099') { 'só a ficha' } else { 'vazou' }) } 0 @('só a ficha')
 Put $p $pl ("# Plano de Implementação — T-041a Variante`n**Li além da ficha:** ``src/b.ts`` — o leitor do export_job`n" + $fbase)
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
-Check 'v3.53 regra 28: plano pela ficha conferido — nomes, caminhos e "li além" contado' $r 0 @('\| ficha \| ok.*1 nome.*3 caminho.*li além da ficha: 1')
+Check 'v3.53 regra 28: plano pela ficha conferido — nomes, caminhos, "li além" contado e (v3.53.2) previsto × plano' $r 0 @('\| ficha \| ok.*1 nome.*3 caminho.*li além da ficha: 1; arquivos previstos 2, no plano 2')
 Put $p '.team-project/sprints/1/plan/T-050-x.md' ("# Plano`n" + $fbase)
 $r = Invoke-Check 'plan.ps1' @('-Plan', '.team-project/sprints/1/plan/T-050-x.md', '-Root', $p)
 Check 'v3.53 regra 28: Task sem ficha segue sem a conferência (n-a)' $r 0 @('\| ficha \| n-a')
@@ -674,7 +685,10 @@ $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'Plano com layout novo sem Render real: exit 1 (proposta d ajustada)' $r 1 @('\| render \| falhou.*Render real.*headless')
 Put $p $pl ("# Plano`n**Risco:** infraestrutura`n`n" + $head + ('x' * 21000))
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
-Check 'Plano acima de 20 KB e sem **Cenários:**: exit 1 (regras 22 e 23)' $r 1 @('\| tamanho \| falhou', '\| cenários \| falhou.*sem \*\*Cenários')
+Check 'v3.53.2: plano de 21 KB não reprova por tamanho (sem corte); sem **Cenários:** exit 1 (regra 23)' $r 1 @('\| tamanho \| ok', '\| cenários \| falhou.*sem \*\*Cenários')
+Put $p $pl ("# Plano`n**Cenários:** SC-001, SC-009`n**Risco:** interface simples`n**Layout novo:** não`n`n" + $head + ('x' * 32000))
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.53.2: plano acima de 30 KB passa com aviso de Task grande, nunca de corte (regra 22)' $r 0 @('\| tamanho \| aviso.*Task grande — não corte o plano')
 
 # 5g. v3.48 — achados do primeiro sprint do piloto: revisão sem veredito acima da rodada, entrada aceita pelo stakeholder,
 # report gravado pelo hook com nome livre, pasta citada sem report, -Apply com o Registro no quadro antigo.
