@@ -9,6 +9,7 @@
 # v3.51: G3 exige o exemplo prático (H1); G19 nega SendMessage a papel caro parado há mais de 5 min (C1); o Agent é
 # registrado em .active-agents para o hook Stop (G20). v3.52.2: todo Agent (sessão e papel), com session e parent; a G7
 # deixa o executor de Task (task-runner) disparar dev, Arquiteto, operator e QA.
+# v3.53.1: G23 teto de contexto por instância do dev (guards.json → devContextCap); o registro do Agent leva o processo hospedeiro.
 # v3.48 (primeiro sprint do piloto): .active-task ilegível nega (antes derrubava o hook); texto entre aspas não é destino;
 # destino em variável do mesmo comando se resolve; G14 sem os falsos negados medidos; G11 só no segmento canônico.
 # Devolve a PRIMEIRA negação: exit 2 com o motivo no stderr; "allow" (G14) sai em JSON com exit 0. Nenhuma guarda pergunta.
@@ -387,6 +388,9 @@ function Test-G11([string]$Rel, [string]$Shown) {
 $script:runBase = @(
     'git status', 'git diff', 'git log', 'git show', 'git grep', 'git blame', 'git add', 'git commit', 'git restore --staged',
     'git rev-parse', 'git ls-files', 'git branch --show-current', 'git check-ignore', 'git stash list',
+    # v3.53.1 (plugin-report do sprint 4 do garden, item 7): git só de leitura — cada um virava parada e formulário no run.
+    'git cat-file', 'git ls-tree', 'git rev-list', 'git show-ref', 'git merge-base', 'git describe', 'git name-rev',
+    'git worktree list', 'git remote -v', 'git tag -l', 'git tag --list', 'git config --get', 'git config --list', 'git stash show',
     'get-childitem', 'gci', 'ls', 'dir', 'get-content', 'gc', 'cat', 'type', 'get-item', 'gi', 'get-itemproperty', 'test-path',
     'resolve-path', 'split-path', 'join-path', 'select-string', 'sls', 'select-object', 'select', 'where-object', 'where', '?',
     'foreach-object', '%', 'sort-object', 'sort', 'group-object', 'measure-object', 'measure', 'compare-object', 'format-table',
@@ -633,6 +637,24 @@ function Test-G22([object]$ToolInput) {
     }
 }
 
+# G23 (v3.53.1, plugin-report do sprint 4 do garden, item 15) — teto de contexto por instância do dev: com run ativo, o dev
+# cuja última chamada passou de guards.json → devContextCap (padrão 100 mil; 0 desliga) não roda mais comando nem escreve
+# código; só grava o ponto de retomada no delivery/ (ou no bloco de fix) e volta. Medido: 6 instâncias de dev com 61 a 159
+# chamadas, pico até 242 mil, 34 % do US$ dos subagentes — cada chamada relia o contexto acumulado (≈ 107 mil de cache por
+# chamada na de 157). Instância nova parte de ≈ 18 mil com o cartão. No Haiku 5.5, acima de 100 mil de prompt o preço é 5×.
+function Test-G23([object]$ToolInput) {
+    if ($script:role -ne 'developer' -or [int]$cfg.devContextCap -le 0) { return }
+    if ($null -eq (Get-Marker $script:projectDir '.active-run')) { return }
+    if ($script:tool -match '^(Edit|Write)$') {
+        $rel = Get-RelativePath $script:projectDir ([string]$ToolInput.file_path)
+        if ($rel -and $rel -match '^\.team-project/(sprints/[^/]+/delivery/|fixes/b-\d+/)') { return }   # o ponto de retomada
+    }
+    $ctx = Get-LastContext (Get-AgentTranscript $script:hookInput)
+    if ($ctx -lt [int]$cfg.devContextCap) { return }
+    $k = [int][Math]::Round($ctx / 1000); $cap = [int][Math]::Round([int]$cfg.devContextCap / 1000)
+    Deny 'G23' "$k mil" "teto de contexto desta instância do dev ($k mil, teto $cap mil — guards.json → devContextCap): cada chamada a mais relê todo o contexto acumulado. Não rode mais comando nem edite código nesta instância. Grave AGORA, com o Write ou o Edit, a seção nova no fim do seu delivery/<T-ID>.md (no fix, o relatório do bloco) com ### Parei no passo — o que já está provado (com a saída), o que falta, os próximos comandos e o estado do alvo — e volte com 'TETO' na primeira linha. O executor abre instância nova (run.ps1 done -Result teto), que segue desse ponto pelo cartão."
+}
+
 function Test-G14([object]$ToolInput) {
     if ($null -eq (Get-Marker $script:projectDir '.active-run')) { return $false }
     if ($script:tool -match '^(Edit|Write)$') {
@@ -696,6 +718,7 @@ try {
         '^(PowerShell|Bash)$'   {
             if (Test-GuardEnabled $cfg 'G1') { Test-G1 $ti }   # G1 vale sem guards.json (D5)
             if (-not $script:role -and $script:teamProject -and (Test-GuardEnabled $cfg 'G22')) { Test-G22 $ti }   # só a sessão principal
+            if ($script:teamProject -and (Test-GuardEnabled $cfg 'G23')) { Test-G23 $ti }   # v3.53.1: só o dev
             if ($phase2) {
                 $base = if ($script:hookInput.cwd) { [string]$script:hookInput.cwd } else { $script:projectDir }
                 foreach ($t in (Get-WriteTargets ([string]$ti.command))) {
@@ -711,6 +734,7 @@ try {
         }
         '^(Edit|Write)$'        {
             if (Test-GuardEnabled $cfg 'G2') { Test-G2 $ti }
+            if ($script:teamProject -and (Test-GuardEnabled $cfg 'G23')) { Test-G23 $ti }   # v3.53.1: só o dev; o delivery/ passa
             if ($phase2) {
                 $path = [string]$ti.file_path
                 $rel = Get-RelativePath $script:projectDir $path

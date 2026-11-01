@@ -2,10 +2,11 @@
 # relendo o roteiro: pergunta a este script, que lê o quadro e o disco e devolve a PRÓXIMA AÇÃO pronta — o papel, o modelo,
 # o prompt curto com os caminhos e o comando de volta. No piloto, a sessão principal foi 35 % do custo, a 274 mil tokens
 # de contexto por chamada; no protótipo do benchmark com a orquestração em script, o coordenador custou 6 %.
-# Uso (raiz do projeto): powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/run.ps1" <next|start|done|handoff> [-Task T-041] [-Result ok|gap|env] [-Block k]
+# Uso (raiz do projeto): powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/run.ps1" <next|start|done|handoff> [-Task T-041] [-Result ok|gap|env|teto] [-Block k]
 #   next      a próxima ação do sprint corrente (preparo → construção → validação → consolidação → Review)
 #   start     dispara a construção da Task: escopo e marcador (dispatch.ps1), cartão de passagem e o prompt do dev
 #   done      o dev voltou: ok → close.ps1 -Apply (fecha pela evidência do dev) · gap → rota ao Arquiteto · env → reparo
+#             · teto → a G23 parou o dev no teto de contexto: instância nova pelo ponto de retomada (v3.53.1)
 #   handoff   (re)gera o cartão de passagem da Task: sprints/<n>/handoff/<T-ID>.md, até ~2 KB (C2)
 # Ordem do sprint (sprint-run.md): 1 preparo da construção por História (QA escreve os .scn; o Arquiteto planeja as Tasks
 # da História numa instância) · 2 construção, Task a Task (o dev constrói, verifica, roda os cenários e corrige; o close
@@ -20,7 +21,7 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff')][string]$Action,
     [string]$Task = '',
-    [ValidateSet('', 'ok', 'gap', 'env')][string]$Result = '',
+    [ValidateSet('', 'ok', 'gap', 'env', 'teto')][string]$Result = '',
     [string]$Block = '',
     [string]$Root = (Get-Location).Path
 )
@@ -168,6 +169,23 @@ function Add-RunLog([string]$S, [string]$n, [string]$Item, [string]$Decision, [s
     [System.IO.File]::AppendAllText($p, "| $(Get-Date -Format 'yyyy-MM-dd HH:mm') | $Item | $(& $cell $Decision) | $(& $cell $Why) | $(& $cell $Evidence) |`n", $utf8)
 }
 
+# Agente que parou sem SubagentStop (v3.52.3, note.md item 9): a G16 roda por ele, a partir do transcript. stdin em UTF-8 (o
+# pipe do 5.1 manda ASCII e o acento do caminho do perfil virava "?"). A G16 grava só o que ainda não mediu (calls_total).
+function Measure-CutAgent($Rc) {
+    $hook = Join-Path $PSScriptRoot '..\..\hooks\subagent-stop.ps1'
+    $hin = [ordered]@{ hook_event_name = 'SubagentStop'; agent_id = [string]$Rc.agent_id; agent_type = [string]$Rc.type; agent_transcript_path = [string]$Rc.transcript; transcript_path = [string]$Rc.session_transcript; cwd = $Root } | ConvertTo-Json -Compress
+    try {
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = 'powershell'; $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$hook`""
+        $psi.UseShellExecute = $false; $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
+        $psi.EnvironmentVariables['CLAUDE_PROJECT_DIR'] = $Root
+        $hp = [System.Diagnostics.Process]::Start($psi)
+        $hb = $utf8.GetBytes($hin); $hp.StandardInput.BaseStream.Write($hb, 0, $hb.Length); $hp.StandardInput.Close()
+        $null = $hp.StandardOutput.ReadToEnd(); $null = $hp.StandardError.ReadToEnd(); $hp.WaitForExit(60000) | Out-Null
+    } catch { }
+    Out "  consumo: $(([string]$Rc.type) -replace '^.*:', '') $(if ($Rc.work) { [string]$Rc.work }) medido pelo transcript (parou sem SubagentStop)"
+}
+
 # Cartão de passagem (C2): o estado da Task em ~2 KB, para a instância nova não reler o plano inteiro nem o histórico.
 function Write-Handoff($T, [string]$S, [string]$n) {
     $dir = Join-Path $S 'handoff'; New-Item -ItemType Directory -Force $dir | Out-Null
@@ -214,6 +232,14 @@ try {
     if ($Action -eq 'start') {
         if (-not $T) { [Console]::Error.WriteLine('run start pede -Task.'); exit 2 }
         $pf = Get-PlanFull $T $S; if (-not $pf) { [Console]::Error.WriteLine("run: $($T.Id) sem plano — o preparo da construção vem antes (run.ps1 next)."); exit 2 }
+        # v3.53.1 (plugin-report do sprint 4 do garden, item 3): dev desta Task ainda vivo (processo hospedeiro vivo e sinal de
+        # vida há menos de 20 min) — outra instância poria dois devs no mesmo alvo físico.
+        $liveDev = @(Get-LiveAgents $Root $T.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -eq 'developer' })
+        if ($liveDev.Count) {
+            $a = $liveDev[0]; $idle = [int]((Get-AgentIdleHours $a) * 60)
+            [Console]::Error.WriteLine("run start: a $($T.Id) já tem um dev vivo ($(if ($a.agent_id) { "agent_id $($a.agent_id), " })última ação $(if ($a.last) { $a.last } else { 'disparado' }) há $idle min$(if ($a.host_pid) { ", processo $($a.host_pid)" })) — não dispare outro: seriam duas instâncias no mesmo alvo. Encerre o turno e espere a volta dele; se a sessão dele foi fechada, o registro deixa de valer depois de 20 min sem sinal de vida.")
+            exit 2
+        }
         $planRel = ".team-project/sprints/$n/$($T.Plan)"
         # v3.52.2 (note.md item 9): sem "-Mark ''" — o 5.1 descarta argumento vazio em -File e o dispatch.ps1 caía com a Task
         # já em 🟨 (retomada depois de GAP).
@@ -238,12 +264,12 @@ try {
         # alvo pelo target.ps1, sem adb nem espera à mão (note.md item 4).
         $tgt = if (Get-TargetsConfig $Root) { " Alvo: confira com target.ps1 -Target <alvo> (com -Repair ele reinicia e espera); não use adb nem Start-Sleep." } else { '' }
         Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk Leia o cartão .team-project/$card, o cabeçalho e a §6 do plano $planRel e o seu bloco — não o plano inteiro. Rode verify.ps1 -Mode focused durante, -Mode full no fim, -Mode mutation se o plano tem **Mutações:**$acc. Exit 3 = parcial (o tempo da chamada acabou): rode o MESMO comando de novo, ele continua de onde parou. Comando que a ferramenta moveu para segundo plano ('moved to the background'): encerre o turno — o aviso de conclusão traz o resultado; não sonde o log nem dispare outro verify (exit 5 = outra rodada ainda roda). Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga.$tgt Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept — cada bloco de código começa com a linha do comando ('> verify.ps1 -Mode full …') e traz a saída embaixo — e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
-        Out "  ao voltar: run.ps1 done -Task $($T.Id) -Result ok|gap|env"
+        Out "  ao voltar: run.ps1 done -Task $($T.Id) -Result ok|gap|env|teto (teto = o dev voltou com TETO: a G23 o parou no teto de contexto)"
         exit 0
     }
 
     if ($Action -eq 'done') {
-        if (-not $T -or -not $Result) { [Console]::Error.WriteLine('run done pede -Task e -Result ok|gap|env.'); exit 2 }
+        if (-not $T -or -not $Result) { [Console]::Error.WriteLine('run done pede -Task e -Result ok|gap|env|teto.'); exit 2 }
         if ($Result -eq 'gap') {
             # v3.51.4 (garden item 22): Task que a sessão já marcou 🟪 volta a 🟨 — ela segue na construção até o GAP se resolver.
             if ($T.Mark -eq $E.QA) { $mo = Set-Mark $T.Id 'build' 'sessão (run.ps1 done -Result gap)'; if ($mo) { Out "  $mo" } }
@@ -266,6 +292,16 @@ try {
             foreach ($nm in $names) { Out "  1. $plugin/target.ps1 -Target $nm -Repair" }
             Out "  2. pronto → dev em instância NOVA: run.ps1 start -Task $($T.Id) (o relatório em delivery/ diz o que já foi feito; rode de novo o que falhou)"
             Out "  3. sem reparo → mark.ps1 -Task $($T.Id) -To blocked e linha em Bloqueios (ambiente, com a ação para o stakeholder); a fila segue"
+            exit 0
+        }
+        # v3.53.1 (plugin-report do sprint 4 do garden, item 15): a G23 parou o dev no teto de contexto e ele gravou o ponto de
+        # retomada. Não é falha de papel nem de ambiente — não conta para o escalonamento; a instância nova segue pelo cartão.
+        if ($Result -eq 'teto') {
+            $stop = Get-StopStep $S $T.Id
+            Add-RunLog $S $n $T.Id 'teto de contexto do dev (G23) → dev em instância nova pelo cartão' 'a instância passou de guards.json → devContextCap; não conta para o escalonamento' "sprints/$n/delivery/$($T.Id).md"
+            if (-not $stop) { Out "run: $($T.Id) — o dev voltou por TETO mas o delivery/$($T.Id).md não tem ### Parei no passo na seção mais recente: a instância nova recomeça do último verify. Siga:" }
+            else { Out "run: $($T.Id) parou no TETO de contexto (G23), com o ponto de retomada gravado: $stop" }
+            Out "  dev em instância NOVA: run.ps1 start -Task $($T.Id) (o cartão regerado traz o ponto; nada é refeito) e rode run.ps1 done de novo"
             exit 0
         }
         # v3.51.4 (garden item 19): confere ANTES (close.ps1 sem -Apply); fechando, a Task passa por 🟪 (verificação) e só então
@@ -302,6 +338,17 @@ try {
     $lim = Join-Path $tp '.usage-limit'
     if (Test-Path -LiteralPath $lim) {
         try { $l = Read-Text $lim | ConvertFrom-Json; Out "RETOMADA: o run parou por LIMITE DE USO DA CONTA em $($l.desde)$(if ($l.reset) { " (reset: $($l.reset))" }) — $($l.quem)$(if ($l.item) { " em $($l.item)" }). Não é falha de processo: o que estava em voo se retoma por instância nova com o cartão (run.ps1 start) e pelo result.json do verify (sprint-run.md §Retomada após queda)." } catch { }
+        # v3.53.1 (plugin-report do sprint 4 do garden, item 8): a mesma sessão seguiu depois do reset — sem SessionStart, nada
+        # ia ao .interrupted e o agente cortado ficava fora do registro (≈ 13,9 mi). O que está no .active-agents com o
+        # transcript terminado no limite é medido aqui e sai do registro.
+        $up0 = Join-Path $tp 'usage.jsonl'; $tdir = ''
+        if (Test-Path -LiteralPath $up0) { $lu = @([System.IO.File]::ReadAllLines($up0, $utf8) | Where-Object { $_.Trim() } | Select-Object -Last 1); if ($lu.Count) { try { $st = [string]($lu[0] | ConvertFrom-Json).session_transcript; if ($st) { $tdir = Split-Path $st } } catch { } } }
+        foreach ($a in @(Get-ActiveAgents $Root | Where-Object { $_.agent_id -and $_.session })) {
+            $atr = if ($tdir) { Join-Path $tdir "$([string]$a.session)/subagents/agent-$([string]$a.agent_id).jsonl" } else { '' }
+            if (-not $atr -or -not (Get-LimitFromTranscript $atr)) { continue }
+            Measure-CutAgent ([pscustomobject]@{ agent_id = [string]$a.agent_id; type = [string]$a.type; work = [string]$a.work; transcript = $atr; session_transcript = (Join-Path $tdir "$([string]$a.session).jsonl") })
+            $null = Remove-ActiveAgent $Root ([string]$a.type) ([string]$a.agent_id)
+        }
         Remove-Item -LiteralPath $lim -Force -ErrorAction SilentlyContinue
     }
     # v3.52: a sessão anterior parou no ponto seguro (Task fechada) — esta continua a fila; o marcador sai no próximo start.
@@ -324,20 +371,8 @@ try {
         }
         # v3.52.3 (note.md item 9): agente cortado pelo limite de uso nunca recebe SubagentStop — a G16 não o media (13,8 mi
         # do sprint 4 do garden fora do usage.jsonl). O SessionStart guardou o transcript dele; a G16 roda aqui por ele.
-        $hook = Join-Path $PSScriptRoot '..\..\hooks\subagent-stop.ps1'
         foreach ($rc in @($recs | Where-Object { $_ -and $_.PSObject.Properties['transcript'] -and $_.transcript -and $_.agent_id -and (Test-Path -LiteralPath ([string]$_.transcript)) })) {
-            $hin = [ordered]@{ hook_event_name = 'SubagentStop'; agent_id = [string]$rc.agent_id; agent_type = [string]$rc.type; agent_transcript_path = [string]$rc.transcript; transcript_path = [string]$rc.session_transcript; cwd = $Root } | ConvertTo-Json -Compress
-            # stdin em UTF-8 (o pipe do 5.1 manda ASCII e o acento do caminho do perfil virava "?").
-            try {
-                $psi = New-Object System.Diagnostics.ProcessStartInfo
-                $psi.FileName = 'powershell'; $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$hook`""
-                $psi.UseShellExecute = $false; $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
-                $psi.EnvironmentVariables['CLAUDE_PROJECT_DIR'] = $Root
-                $hp = [System.Diagnostics.Process]::Start($psi)
-                $hb = $utf8.GetBytes($hin); $hp.StandardInput.BaseStream.Write($hb, 0, $hb.Length); $hp.StandardInput.Close()
-                $null = $hp.StandardOutput.ReadToEnd(); $null = $hp.StandardError.ReadToEnd(); $hp.WaitForExit(60000) | Out-Null
-            } catch { }
-            Out "  consumo: $(([string]$rc.type) -replace '^.*:', '') $(if ($rc.work) { [string]$rc.work }) medido pelo transcript (parou sem SubagentStop)"
+            Measure-CutAgent $rc
         }
         Remove-Item -LiteralPath $intP -Force -ErrorAction SilentlyContinue
     }
@@ -383,7 +418,7 @@ try {
         if ($missScn.Count) {
             Out "PRÓXIMA AÇÃO: preparo da construção — cenários executáveis da História $($h.Name) (QA)"
             Out "  $(Get-AgentLine 'quality-assurance')"
-            Out "  prompt: `"Escreva os cenários executáveis $($missScn -join ', ') em .team-project/quality-assurance/scenarios/$($h.Name).scn, na linguagem do accept.ps1 (cabeçalho do script), a partir dos critérios de aceite da $($h.Name) e das fichas SC-nnn. Use só os identificadores de teste do contrato. Confira com accept.ps1 -ParseOnly; não rode o app. Volte em até 15 linhas.`""
+            Out "  prompt: `"Escreva os cenários executáveis $($missScn -join ', ') em .team-project/quality-assurance/scenarios/$($h.Name).scn, na linguagem do accept.ps1 (cabeçalho do script), a partir dos critérios de aceite da $($h.Name) e das fichas SC-nnn. Use só os identificadores de teste do contrato; cada cenário com ao menos um assert-* (sem identificador no alvo: 🔺 GAP, não cenário). Confira com accept.ps1 -ParseOnly; não rode o app. Volte em até 15 linhas.`""
             Out "  depois: run.ps1 next"
             exit 0
         }
@@ -423,11 +458,19 @@ try {
     # v3.52.2 (note.md item 4, C3): a construção é do executor de Task (team:task-runner), um por Task — ele roda start, dispara
     # o dev, roda done, leva o GAP ao Arquiteto e volta em UMA linha. A sessão não acumula o contexto da Task.
     if ($next) {
+        # v3.53.1 (plugin-report do sprint 4 do garden, item 3): executor ou dev desta Task ainda vivo — de outra sessão aberta
+        # no mesmo projeto, ou desta, antes do aviso de volta. Redisparar punha dois devs no mesmo emulador.
+        $liveA = @(Get-LiveAgents $Root $next.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -in 'task-runner', 'developer' })
+        if ($liveA.Count) {
+            $a = @($liveA | Sort-Object { [string]$_.at } -Descending)[0]
+            Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) já tem $(([string]$a.type) -replace '^.*:', '') vivo (última ação $(if ($a.last) { $a.last } else { 'disparado' }) há $([int]((Get-AgentIdleHours $a) * 60)) min$(if ($a.host_pid) { ", processo $($a.host_pid)" })). Não dispare outro executor nem dev: seriam duas instâncias no mesmo alvo. Encerre o turno; o aviso de volta reabre a sessão (se ele é de outra sessão, a volta chega lá). Sem sinal de vida por 20 min, o registro deixa de valer e o next segue."
+            exit 3
+        }
         $dv = Join-Path $S "delivery/$($next.Id).md"
         $resume = if ($cur -and (Test-Path -LiteralPath $dv)) { " A Task já está em $($next.Mark) com relatório em .team-project/sprints/$n/delivery/$($next.Id).md: se o dev voltou com a entrega, comece por run.ps1 done; se caiu no meio, run.ps1 start retoma pelo cartão." } else { '' }
         Out "PRÓXIMA AÇÃO: construir $($next.Id) — $($next.Title) (executor de Task)"
         Out "  $(Get-AgentLine 'task-runner')"
-        Out "  prompt: `"Conduza a $($next.Id) até fechar ou parar, pelo ciclo do agents/task-runner.md: run.ps1 start -Task $($next.Id), dev, run.ps1 done -Task $($next.Id) -Result ok|gap|env (gap: Arquiteto e start de novo).$resume Volte em UMA linha.`""
+        Out "  prompt: `"Conduza a $($next.Id) até fechar ou parar, pelo ciclo do agents/task-runner.md: run.ps1 start -Task $($next.Id), dev, run.ps1 done -Task $($next.Id) -Result ok|gap|env|teto (gap: Arquiteto e start de novo; teto: start de novo).$resume Volte em UMA linha.`""
         Out "  ao voltar: run.ps1 next"
         exit 0
     }

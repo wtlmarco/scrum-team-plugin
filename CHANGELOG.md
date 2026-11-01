@@ -13,6 +13,19 @@
 
 ---
 
+## v3.53.1 — 2026-11-01
+
+**Branch:** `fix/v3.53.1` a partir de `develop` · **Processo:** addendum v3.53.1 (`process-changelog.md`, `plugin-report.md` do sprint 4 do garden, itens 1, 3, 7, 8, 14, 15, 16 e 17)
+Avaliação do relatório de fim do sprint 4 do garden (3.52.2 → 3.53.0 em 30/10). Os itens 4, 9 e o grosso do 8 repetiam ocorrências da janela 3.52.2 já tratadas na 3.52.3; o item 10 (Task fechada sem o QA) é o desenho da v3.51 A3. Esta entrega trata os defeitos que seguiam abertos e a medição que o piloto da ficha (v3.53.0) precisa. Seis instâncias de dev com 61 a 159 chamadas somaram 34 % do US$ dos subagentes.
+
+- **Agente vivo de outra sessão (item 3):** o registro do `Agent` leva o processo do Claude Code que o hospeda (`host_pid`, `host_start`). O `SessionStart` só manda ao `.interrupted` o agente de processo encerrado; o vivo fica, e a sessão é avisada ("AGENTE VIVO EM OUTRA SESSÃO … não redispare"). O `run.ps1 next` responde "esperar" (exit 3) para a Task com executor ou dev vivo, o `run.ps1 start` recusa outro dev para ela (exit 2) e a G20 libera o fim de turno. Antes, uma segunda sessão aberta no mesmo projeto punha dois devs no mesmo emulador.
+- **Teto de contexto do dev (item 15, G23 nova):** com o run ativo, o dev cuja última chamada passou de `guards.json → devContextCap` (padrão 100 mil; 0 desliga) não roda mais comando nem edita código. Ele grava `### Parei no passo` no relatório e volta com `TETO`; `run.ps1 done -Result teto` registra no `run-log.md` e abre instância nova pelo cartão, sem Arquiteto e sem contar para o escalonamento. A leitura do contexto vem só do fim do transcript (256 KB). `agents/developer.md` regra 11 e `agents/task-runner.md`.
+- **Aceite honesto (item 1, parte):** no `accept.ps1`, cenário sem nenhum `assert-*` é malformado (exit 2), em vez de passar só por instalar e abrir o app (eram "18 de 18" numa WebView opaca). Isso também vale no README do QA e no prompt dos `.scn`. O modo de prova por CDP e o emulador em container ficam no `note.md`.
+- **Git de leitura no run (item 7, parte):** a G14 libera `git cat-file`, `ls-tree`, `rev-list`, `show-ref`, `merge-base`, `describe`, `name-rev`, `worktree list`, `remote -v`, `tag -l`, `config --get/--list` e `stash show`.
+- **Medição:** `works` do dev e do executor só com a Task do disparo (item 17: a Task citada como referência recebia metade do custo). No `kanban.ps1`, o empate de minuto no Registro passa a valer pela ordem do arquivo (item 16: 17,1 mi de construção tinham caído em Plano). Cada rodada do `usage.jsonl` grava a versão do plugin (`plugin`), que vai à Nota do `consumption.md` (item 14). O agente parado no limite de uso é medido pelo `run.ps1 next` também quando a mesma sessão segue depois do reset (item 8).
+- **Troca de sessão com o run em andamento (item 2, orientação):** `rituals/team-remote.md` §1a e `sprint-run.md` §Retomada após queda. A ordem é pausa no ponto seguro, fechar a sessão da extensão e abrir a do terminal com `/sm sprint run`.
+- **Testes:** conferências 214 casos (+8), guardas 264 casos (+11), 0 falhas.
+
 ## v3.53.0 — 2026-10-28
 
 **Branch:** `fix/v3.53.0` a partir de `develop` · **Processo:** v3.53 (`process-changelog.md`, `note.md` itens 7 e 8)

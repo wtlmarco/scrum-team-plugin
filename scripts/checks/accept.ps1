@@ -6,7 +6,8 @@
 # Padrão de -Scenarios: .team-project/quality-assurance/scenarios/*.scn · -Target: o único alvo de guards.json → targets.
 # Saída: uma linha por cenário; .team-project/accept/<sprint|B-nnn>/<ID>/result.md e result.json; capturas do estado
 # final (e da falha) de cada cenário em shots/ — a prova anexada ao veredito.
-# Exit 0 = todos passaram · 1 = algum falhou (o app) · 2 = erro de uso ou cenário malformado · 4 = FALHA DE AMBIENTE
+# Exit 0 = todos passaram · 1 = algum falhou (o app) · 2 = erro de uso ou cenário malformado (v3.53.1: também o cenário
+# sem nenhum assert-*, que só provaria que o app abriu) · 4 = FALHA DE AMBIENTE
 # (alvo fora do ar, tela em branco, outro automatizador): não é defeito do app; o reparo já foi tentado uma vez.
 #
 # Linguagem (uma instrução por linha; '#' comenta; texto com espaço vai depois do '='):
@@ -56,6 +57,11 @@ function Read-Scenarios([string[]]$Files) {
     }
     foreach ($d in @($blocks | Group-Object { $_.id } | Where-Object { $_.Count -gt 1 } | ForEach-Object { $_.Name })) { $errors += "cenário $d definido mais de uma vez" }
     foreach ($b in $blocks) { if (-not $b.steps.Count) { $errors += "cenário $($b.id) sem passos" } }
+    # v3.53.1 (plugin-report do sprint 4 do garden, item 1): cenário sem nenhum assert passa só por instalar e abrir o app — o
+    # accept saiu "18 de 18" numa aplicação híbrida (WebView) opaca ao automatizador, sem provar critério nenhum.
+    foreach ($b in @($blocks | Where-Object { $_.steps.Count -and -not @($_.steps | Where-Object { $_ -match '^assert-' }).Count })) {
+        $errors += "cenário $($b.id) sem nenhum assert-* — não prova o critério, só que o app abriu; sem identificador de teste no alvo, o cenário não serve: 🔺 GAP ao Arquiteto (outro modo de prova)"
+    }
     return @{ Blocks = $blocks; Errors = $errors }
 }
 

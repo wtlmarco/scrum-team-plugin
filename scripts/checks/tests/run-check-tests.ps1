@@ -1265,6 +1265,59 @@ Put $p '.team-project/usage.jsonl' ('{"role":"architect","work":"T-041","model":
 $r = Invoke-Check 'consumption.ps1' @('-Root', $p)
 Check 'item 9: Totais com a coluna US$ — o Opus com preço, o modelo sem preço "—", o total soma o que tem preço' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/consumption.md'), $utf8) } 0 @('\| Σ notificação \| US\$ \(tabela 2026-10\) \|', '\| arc \| opus 5\.5 \| 500\.000 \| 1 \| 1 \| 02:00 \| 0 \| 1,50 \|', '\| dev \| haiku 4\.5 \| 100\.000 \| 1 \| 1 \| 01:00 \| 0 \| — \|', '\*\*Total do sprint\*\* .* \| \*\*1,50\*\* \|', 'medido: ar1#1.*; US\$ 1,50')
 
+# 14. v3.53.1 — plugin-report do sprint 4 do garden (itens 1, 3, 8, 14, 15, 16).
+# 14a. item 15: o dev voltou com TETO (G23) — done -Result teto grava o run-log e manda instância nova, sem Arquiteto.
+$p = Join-Path $tmp 'teto'; New-Project $p
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') "| $($e.qa) T-041 |" "| $($e.build) T-041 |"
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') "| $($e.todo) T-041a |" "| $($e.ok) T-041a |"   # sem plano, levaria o next ao preparo
+Put $p '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`n### Parei no passo`npasso 3 de 5 — falta a mutação; emulador ligado`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'teto', '-Root', $p)
+$rl = Join-Path $p '.team-project/sprints/1/run-log.md'
+Check 'item 15: done -Result teto — ponto de retomada, run-log e start de novo sem Arquiteto' @{ Code = $r.Code; Out = $r.Out + "`n" + $(if (Test-Path -LiteralPath $rl) { [System.IO.File]::ReadAllText($rl, $utf8) } else { 'sem run-log' }) } 0 @('parou no TETO de contexto \(G23\), com o ponto de retomada gravado: passo 3 de 5', 'run\.ps1 start -Task T-041', '\| T-041 \| teto de contexto do dev \(G23\)')
+# 14b. item 3: dev da Task vivo (sinal de vida recente) — start recusa outro, next manda esperar; registro velho não segura.
+$n0 = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+Put $p '.team-project/.active-agents' ('[{"type":"team:developer","description":"Dev T-041","desde":"' + $n0 + '","session":"sOutra","parent":"","agent_id":"devviv1","work":"T-041","last":"verify.ps1 -Mode full","at":"' + $n0 + '","host_pid":' + $PID + ',"host_start":"' + (Get-Process -Id $PID).StartTime.ToString('yyyy-MM-dd HH:mm:ss') + '"}]')
+$r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
+Check 'item 3: start com dev vivo da Task (processo hospedeiro vivo): exit 2, não dispara outro' $r 2 @('já tem um dev vivo \(agent_id devviv1', 'duas instâncias no mesmo alvo')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'item 3: next com dev vivo da Task em 🟨: esperar, exit 3' $r 3 @('PRÓXIMA AÇÃO: esperar — a T-041 já tem developer vivo')
+Put $p '.team-project/.active-agents' ('[{"type":"team:developer","desde":"' + $n0 + '","session":"sOutra","parent":"","agent_id":"devmor1","work":"T-041","last":"x","at":"' + $n0 + '","host_pid":999999,"host_start":"2001-01-01 00:00:00"}]')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'item 3: processo hospedeiro encerrado: o next segue com o executor' $r 0 @('PRÓXIMA AÇÃO: construir T-041')
+# 14c. item 8: a mesma sessão seguiu depois do limite — o agente do .active-agents que parou no limite é medido pelo next.
+$p = Join-Path $tmp 'limite-mesma'; New-Project $p
+$sd = Join-Path $tmp 'tr-lim/sessL/subagents'; New-Item -ItemType Directory -Force $sd | Out-Null
+[System.IO.File]::WriteAllLines((Join-Path $sd 'agent-cutL0001.jsonl'), [string[]]@(
+    '{"type":"user","timestamp":"2026-10-30T03:00:00Z","message":{"role":"user","content":"Construa a T-041 — exporta"}}',
+    '{"type":"assistant","timestamp":"2026-10-30T03:00:10Z","message":{"id":"l1","model":"claude-sonnet-5-5","usage":{"input_tokens":10,"cache_creation_input_tokens":1000,"cache_read_input_tokens":50000,"output_tokens":100}}}',
+    '{"type":"assistant","timestamp":"2026-10-30T03:10:00Z","message":{"id":"l2","model":"<synthetic>","content":[{"type":"text","text":"You''ve hit your weekly limit · resets Oct 31, 1pm"}],"usage":{"input_tokens":0,"output_tokens":0}}}'), (New-Object System.Text.UTF8Encoding($false)))
+$stl = (Join-Path $tmp 'tr-lim/sessL.jsonl') -replace '\\', '/'; Set-Content -LiteralPath $stl '{}' -Encoding UTF8
+Put $p '.team-project/usage.jsonl' ('{"role":"quality-assurance","work":"T-041","model":"claude-sonnet-5-5","start":"2026-10-30T02:00:00","duration_s":60,"processed":1000,"dest":".team-project/sprints/1/consumption.md","session_transcript":"' + $stl + '"}' + "`n")
+Put $p '.team-project/.usage-limit' '{"desde":"2026-10-30 03:10:00","reset":"Oct 31, 1pm","quem":"sessão","item":"T-041","texto":"You have hit your weekly limit"}'
+Put $p '.team-project/.active-agents' '[{"type":"team:developer","desde":"2026-10-30 03:00:00","session":"sessL","parent":"","agent_id":"cutL0001","work":"T-041","last":"verify.ps1","at":"2026-10-30 03:09:00"}]'
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+$uj = Join-Path $p '.team-project/usage.jsonl'
+Check 'item 8: limite na mesma sessão — o agente parado no limite é medido pelo next e sai do registro' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($uj, $utf8) + "`nREG=" + $(if (Test-Path -LiteralPath (Join-Path $p '.team-project/.active-agents')) { 'presente' } else { 'vazio' }) } $r.Code @('LIMITE DE USO DA CONTA', 'consumo: developer T-041 medido pelo transcript', '"agent_id":"cutL0001".*"calls":2', 'REG=vazio')
+# 14d. item 1: cenário sem nenhum assert não prova o critério — malformado (exit 2).
+$p = Join-Path $tmp 'sem-assert'; New-Project $p
+Put $p '.team-project/quality-assurance/scenarios/w.scn' "scenario SC-031 Abre a WebView`nlaunch`nshot inicial`n`nscenario SC-032 Conta`nlaunch`nassert-count destino.card. = 2`n"
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Root', $p)
+Check 'item 1: cenário só com launch/shot (sem assert-*): exit 2, nomeado; o outro não' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'SC-032 sem nenhum') { "`nSC032=errado" } else { '' }) } 2 @('cenário SC-031 sem nenhum assert-\*')
+# 14e. item 16: duas transições no mesmo minuto — vale a de baixo no Registro (🟨), não a ordem do Sort-Object.
+$p = Join-Path $tmp 'empate'; New-Project $p
+$bdx = Join-Path $p '.team-project/sprints/1/burndown.md'; $bd = Join-Path $p '.team-project/sprints/1/kanban.md'
+[System.IO.File]::WriteAllText($bd, "# Kanban — Sprint 1`n`n## Kanban`n`n| x |`n|---|`n`n" + [System.IO.File]::ReadAllText($bdx, $utf8).Replace('# Burndown — Sprint 1', ''), $utf8); Remove-Item -LiteralPath $bdx -Force
+Edit-File $bd "| T-041 | $($e.plan) → $($e.build) | 2026-09-02 09:00 | dev |" ("| T-041 | $($e.plan) → $($e.build) | 2026-09-02 09:00 | dev |`n| T-041 | $($e.build) → $($e.todo) | 2026-09-02 10:01 | sessão |`n| T-041 | $($e.todo) → $($e.build) | 2026-09-02 10:01 | dev |")
+Put $p '.team-project/usage.jsonl' ('{"role":"developer","work":"T-041","works":["T-041"],"model":"claude-sonnet-5-5","start":"2026-09-02T10:01:39","duration_s":600,"paused_s":0,"processed":1000000,"dest":".team-project/sprints/1/consumption.md"}' + "`n")
+$r = Invoke-Check 'kanban.ps1' @('-Root', $p)
+$kbt = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/kanban.md'), $utf8)
+Check 'item 16: empate de minuto no Registro — a rodada do dev vai à Construção' @{ Code = $r.Code; Out = $kbt } 0 @('\| T-041 \| — \| 1\.000\.000 · 10:00 \| — \| — \|')
+# 14f. item 14: a versão do plugin na rodada vai à Nota do consumption.md.
+$p = Join-Path $tmp 'versao'; New-Project $p
+Put $p '.team-project/usage.jsonl' ('{"role":"developer","work":"T-041","model":"claude-sonnet-5-5","start":"2026-09-03T10:00:00","duration_s":60,"processed":1000,"dest":".team-project/sprints/1/consumption.md","agent_id":"dvv1","round":1,"plugin":"3.53.1"}' + "`n")
+$r = Invoke-Check 'consumption.ps1' @('-Root', $p)
+Check 'item 14: Nota com a versão do plugin da rodada' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/consumption.md'), $utf8) } 0 @('medido: dvv1#1.*; plugin 3\.53\.1')
+
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
 Write-Output ("{0} casos · {1} falharam" -f $rows.Count, $fail)
