@@ -19,6 +19,7 @@ O time trabalha numa cadência fixa, toda conduzida pelo `/sm`:
 ```
 
 - **Você decide em quatro momentos — os portões ① ② ③ ④ —, sempre por formulário:** aprovar · aprovar com ajuste · reprovar · pedir mais contexto (no ④: aceita · aceita com ressalva · rejeitada · pedir mais contexto).
+- **Toda pergunta do time chega como formulário**, não só as dos portões: opções curtas, a recomendada primeiro e "Pedir mais contexto" por último. Para responder do seu jeito, escreva no campo **"Outro"**. Pediu mais contexto? A explicação vem junto com o mesmo formulário.
 - **Fora dos portões, o time não te chama**, salvo bloqueio que PO e Arquiteto não fecharam entre si, ou decisão estratégica (stack, provedor, custo, risco aceito).
 - **A qualquer momento:** `/po status` diz onde o time está e quando entrega. O PO é o **seu canal** — demanda, prioridade, prazo e status passam por ele.
 
@@ -34,6 +35,7 @@ O time trabalha numa cadência fixa, toda conduzida pelo `/sm`:
 | Abrir um sprint | `/sm sprint prepare` e depois `/sm sprint plan` |
 | Mandar o time construir | `/sm sprint run` (a fila) ou `/sm sprint run <T-ID>` (uma Task) |
 | Saber onde estamos, prazo, andamento | `/po status` |
+| Acompanhar o sprint **sem gastar token** (console ou celular) — [como ler](#acompanhar-o-sprint-sem-gastar-token) | `/team-status` (quadro, quem trabalha agora, o que espera você) · `/team-usage` (tokens e US$ por Task e por papel) |
 | Ver o quadro do sprint | `/sm board` |
 | Saber o custo de uma mudança antes de pedir | `/po impact <mudança>` |
 | Saber se o time compensa (custo × qualidade) | `/usage` no fim de cada sessão, colado ao time · retrospectiva "Custo × resultado" · experimento em `rituals/benchmark.md` → cenário H |
@@ -233,19 +235,110 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 - **Na evolução de área documentada (cenário C)**, um portão sem nada a decidir é dispensado — só com o dono declarando, com motivo, que aquela parte não muda.
 - **Um `/ux prototype` ou `/arc` rodado avulso não abre nem fecha portão**: a decisão fica pendente até o `/sm sdd`.
 
+## Acompanhar o sprint sem gastar token
+
+Dois comandos mostram como o sprint está andando. Quem responde é um script: o modelo não é acionado, então **não gastam token** (medido: 0 tokens, US$ 0, resposta em ~2 s). Funcionam no console e no terminal do VS Code; pelo app do celular e com um `sprint run` em andamento devem funcionar igual, mas isso ainda não foi medido. Eles só leem os arquivos do projeto e não mudam nada.
+
+| Comando | Mostra | Use quando quiser saber |
+|---|---|---|
+| `/team-status` | O quadro do sprint e o que espera você | "Como está o sprint? Quem está trabalhando? Tem decisão minha parada?" |
+| `/team-usage` | Quanto o sprint gastou, por Task e por papel | "Quanto já custou? Qual Task ou papel gasta mais?" |
+
+Sem número, mostram o sprint corrente. Com um número, mostram outro: `/team-status 4`, `/team-usage 4`.
+
+**O que o `/team-status` mostra:**
+
+```text
+Sprint 5 · 16 Tasks · ✅ 1 · 🟪 0 · 🟨 0 · 🟦 13 · ⬜ 2 · 🔴 0
+Restante: 12 de 12,0 (estimativa)
+Run: parado
+Agora: nenhum agente em execução
+
+🟦 Plano: T-071 T-041 T-042 …
+⬜ A fazer: T-065 T-066
+✅ Fechada: T-056
+
+Última transição: T-064 ⬜ → 🟦 · 2026-11-01 14:41
+
+Esperando você: 2 decisão(ões) em README §7
+  1. [ACME · S4 · ④ APK] Liberar o APK 1.05.30? …
+```
+
+- **1ª linha:** o placar. ✅ fechada · 🟪 em verificação · 🟨 em construção · 🟦 com plano · ⬜ a fazer · 🔴 bloqueada.
+- **Restante:** quanto falta do sprint, pela estimativa do burndown.
+- **Run e Agora:** se um `sprint run` está rodando e quais agentes trabalham neste momento, em qual Task e há quanto tempo.
+- **As colunas:** em que etapa cada Task está.
+- **Esperando você:** as decisões suas que estão paradas (até 3 aparecem; o resto está em `.team-project/README.md` §7).
+
+**O que o `/team-usage` mostra:**
+
+```text
+Consumo · Sprint 4 (fechado) · 185,40 mi tokens · US$ 49,39 · 13h24 de agente · 140 rodadas
+
+Por Task (tokens · US$ · tempo):
+  T-053  57,38 mi · US$ 20,30 · 3h09
+  T-047  53,54 mi · US$ 17,91 · 2h35
+  …
+
+Por papel (tokens · US$ · % do custo · rodadas):
+  dev (haiku 5.5, sonnet 5.5)  112,94 mi · US$ 23,14 · 47% · 35
+  arc (opus 5.5)  45,81 mi · US$ 13,30 · 27% · 19
+  …
+
+Última rodada: 31/10 23:21 · po · T-054 · 181 mil · US$ 0,15
+```
+
+- **1ª linha:** o total do sprint: tokens, custo em dólar, tempo somado dos agentes e quantas vezes um agente rodou ("rodadas").
+- **Por Task:** da que mais gastou para a que menos gastou.
+- **Por papel:** quanto cada papel do time gastou, com o modelo que usou e a sua parte no custo total.
+- **"sem preço":** rodadas antigas (antes da v3.52.3) ou de um modelo sem preço na tabela. Os tokens contam, o valor em dólar não.
+
+**Bom saber:**
+
+- **Conta só os agentes.** A conversa principal com você não entra aqui; ela é medida no fechamento da Task e na retrospectiva.
+- **Logo depois de atualizar o plugin** (`/team update`), feche e abra a sessão para os comandos funcionarem sem token.
+- **Se aparecer uma resposta do modelo em vez da tela acima**, o atalho sem token não funcionou nessa sessão. O resultado é o mesmo, mas gasta um pouco de token. Feche e abra a sessão. Se continuar, avise o dono do plugin.
+
 ## Responder pelo celular
 
 O time pode te perguntar — e você pode retomar o trabalho — pelo **Claude Code no celular**, por **Remote Control**: a sessão continua rodando no seu computador, e o app do Claude se conecta a ela.
 
 1. **Uma vez por projeto:** `/team remote`. Ele define o **identificador** do projeto (ex.: `ACME`) e a conta (pessoal ou da organização), confere o que dá para medir e imprime o comando de abertura.
-2. **Abra cada projeto na sua própria janela de terminal** com o comando impresso — `claude --remote-control "ACME · <produto>"`. Um projeto, uma sessão. Remote Control não roda na extensão do VS Code.
+2. **Abra cada projeto na sua própria janela de terminal** com o comando impresso — `claude --remote-control "ACME · <produto>"`. Um projeto, uma sessão. Remote Control não roda na extensão do VS Code. Se a extensão usa uma conta e o terminal outra, veja [abaixo](#quando-a-extensão-do-vs-code-usa-uma-conta-e-o-terminal-usa-outra).
 3. **No app do Claude, aba Code:** cada projeto aparece como uma sessão, com o nome do comando.
 4. **Toda pergunta do time começa com o prefixo** — `[ACME · S4 · ③ pacote]`: projeto, sprint e o que se decide. Responda pelos cartões, como no terminal. Os comandos também funcionam digitados no app (`/sm sprint review`, `/po status`).
 5. **Não espere notificação:** no Android a pergunta não avisa (medido). Abra **Code** no app para ver o que está esperando.
+   **Para acompanhar sem gastar token,** digite `/team-status` (quadro, quem trabalha agora, o que espera você) ou `/team-usage` (tokens e US$ por Task e por papel). Veja [Acompanhar o sprint sem gastar token](#acompanhar-o-sprint-sem-gastar-token).
 6. **"Pular" não decide nada:** a pergunta fica pendente em `.team-project/README.md` §7 e volta quando o time retomar.
 7. **① e ③ também se respondem pelo celular.** A pergunta traz o link do protótipo publicado como página privada na sua conta: navegue nele e decida. "Aprovar" declara que você navegou — a responsabilidade é sua. Se o produto também tem site, a navegação no desktop continua por sua conta.
 8. **Quando a fila do `sprint run` termina,** chega `[ACME · S4 · fim do run] Iniciar a Sprint Review?` — no terminal e no celular. "Agora" já abre a Review; "depois" deixa anotado. Iniciar a Review não é aceitar nada.
 9. **Se o computador suspender, a sessão cai.** Nada se perde: a pergunta está em §7 e volta quando você reabrir o projeto. Enquanto existir `.team-project/.active-run` (um `sprint run` ou `fix run` em andamento), mantenha o computador acordado: na tomada, com a suspensão e a hibernação desligadas. No Windows: `powercfg /change standby-timeout-ac 0` e `powercfg /change hibernate-timeout-ac 0` (a tela pode apagar; ela não é a suspensão) e, em notebook, a ação de fechar a tampa em "Não fazer nada" (Opções de energia → Escolher a função do fechamento da tampa). Desfaça ao fim do run. Medido no piloto: ~122 h de máquina suspensa com agentes em segundo plano, que viraram o vigia de 600 s, rede caída e um desligamento inesperado. Se a máquina suspendeu, os agentes em andamento morreram com a sessão: ao reabrir, a abertura avisa a retomada e você roda o mesmo comando (`/sm sprint run` ou `/sm fix run`); o time segue do passo em que parou, sem reenviar a fila.
+
+### Quando a extensão do VS Code usa uma conta e o terminal usa outra
+
+Cada conta do Claude fica numa **pasta de login** diferente no seu computador. Exemplo: a pasta `.claude` guarda a conta da empresa, usada pelo terminal, e a pasta `.claude-pessoal` guarda a conta pessoal, usada pela extensão. A extensão usa a pasta pessoal porque ela está indicada no VS Code, em `claudeCode.environmentVariables` → `CLAUDE_CONFIG_DIR`. O terminal não recebe essa indicação e, por isso, entra na outra conta.
+
+Como o Remote Control só roda no terminal, abra o terminal **indicando a pasta da conta que você quer usar**:
+
+1. **Feche o painel do Claude na extensão** (pela ordem de `rituals/team-remote.md` §1a, se houver um run em andamento). Um projeto, uma sessão.
+2. No VS Code, abra o projeto e um terminal: **Terminal → New Terminal**.
+3. Cole o comando, com a pasta e o nome do seu projeto:
+   ```powershell
+   $env:CLAUDE_CONFIG_DIR = "$HOME\.claude-pessoal"; claude --remote-control "ACME · <produto>"
+   ```
+4. Na sessão que abrir, digite `/status` e confira se é a conta certa. Ela precisa ser **Pro ou Max**, não chave de API.
+
+A indicação vale **só para aquela janela de terminal**: o console normal continua na outra conta. Para não precisar colar o comando toda vez, ponha no `.vscode/settings.json` **do projeto** (assim, todo terminal novo do VS Code nesse projeto já abre na conta pessoal):
+
+```json
+{
+  "terminal.integrated.env.windows": {
+    "CLAUDE_CONFIG_DIR": "C:\\Users\\<você>\\.claude-pessoal"
+  }
+}
+```
+
+Depois disso, basta `claude --remote-control "ACME · <produto>"`. Duas coisas para manter iguais: o plugin precisa estar instalado **nessa pasta de login** (cada pasta tem os seus plugins), e a **Conta remota** do projeto em `/team remote` precisa ser a mesma conta, porque o protótipo publicado só abre para a conta que o publicou.
 
 ## Regras que valem em qualquer cenário
 
@@ -269,6 +362,7 @@ O time pode te perguntar — e você pode retomar o trabalho — pelo **Claude C
 | `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` · `bug <descrição\|lista>` *(acionado pelo PO ou pelo `fix plan`)* · `scenarios create` · `scenarios run <SC-nnn\|grupo\|all>` | QA — o veredito de qualidade que responde a você |
 | `/team` | `init` · `update` · `version` · `remote` | Instala, atualiza e informa a versão — não dispara agente |
 | `/review` | `<instrução>` · `note` · `metrics` · `audit` · `history` | Evolução do processo do time — **só no repositório-fonte do plugin** |
+| `/team-status` · `/team-usage` | `[<n do sprint>]` (sem número: o sprint corrente) | Consulta **sem token**: um script responde e o modelo não é acionado. `/team-status` mostra o quadro, quem trabalha agora, o run e o que espera você; `/team-usage` mostra tokens, US$ e tempo dos agentes, por Task e por papel |
 
 **No dia a dia você usa quase só `/sm`, `/po` e, às vezes, `/arc question`.** Os `/sm` de ritual chamam os outros papéis por você.
 
@@ -427,6 +521,9 @@ O time roda o app de verdade para provar que ele funciona: no emulador ou aparel
 - **Comandos que não terminam:** o `verify` encerra cada comando em `timeoutMinutes` (padrão 9) e mata os processos que sobram (daemon do Gradle, nós do MSBuild). A higiene de cada ferramenta (Gradle sem daemon, `dotnet` sem reúso de nó, `CI=true` no Node) entra sozinha, de `scripts/checks/tool-hygiene.json`. Comando de teste em modo de observação (`ng test` sem `--watch=false`, `vitest` sem `run`) gera aviso.
 - **Perfil do Windows com acento** (`C:\Users\João…`): os testes do Gradle falham sem aviso. Crie uma junção ASCII (`cmd /c mklink /J C:\gradle-home "%USERPROFILE%\.gradle"`) e ponha `GRADLE_USER_HOME` em `verify.env`, como no exemplo. A abertura da sessão avisa quando falta.
 - **Emulador ligado por muito tempo para de desenhar a tela** (medido: depois de ~1 dia). O pré-voo confere o tempo ligado (`maxUptimeHours`) e reinicia o AVD no reparo.
+- **Emulador num container (Docker) ou fora do SDK local:** declare o conserto em `"repair"` dentro de `targets.android`, por exemplo `"repair": "docker restart horta-emulador; adb connect localhost:5555"`. Declarar o comando já é a sua autorização: o `-Repair` o roda sozinho, espera o aparelho iniciar e confere de novo, sem pedir licença a cada queda.
+- **"OCUPADO" no `verify`:** uma verificação anterior da mesma Task ainda está rodando, em geral de uma instância que caiu. O dev roda o mesmo comando com `-WaitBusySeconds 540`, que espera a anterior acabar e segue, sem pausar o run.
+
 ### Problemas de instalação
 
 - **O plugin "some" na sessão.** O registro caiu em *user settings*, não no projeto: remova e refaça com `--scope project`. A forma do identificador também importa — `{"source":"github","repo":…}` e `{"source":"git","url":"….git"}` são dois identificadores para o mesmo marketplace, e misturá-los impede o resolvedor de casar o plugin com o cache.

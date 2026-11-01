@@ -2,6 +2,7 @@
 # sessão que já rodou OUTRO ritual, avisa (não bloqueia): a sessão herdaria o histórico inteiro da etapa anterior e pagaria
 # por relê-lo a cada chamada — medido no sunscape-P-r1: o sprint run começou com ~200 mil tokens herdados da abertura e
 # chegou a 438 mil. O mesmo ritual de novo (retomada do run) não avisa. Qualquer exceção → exit 1 (falha aberta, D5).
+# v3.53.2: também responde /team-status e /team-usage sem passar pelo modelo (ver abaixo).
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
@@ -28,6 +29,19 @@ try {
     $hookInput = Read-HookInput
     if ($null -eq $hookInput) { exit 0 }
     $projectDir = Get-ProjectDir $hookInput
+    # v3.53.2 (pedido do stakeholder, 2026-11-01): /team-status e /team-usage [<n>] — visão do sprint SEM custo de token. O
+    # texto sai do scripts/checks/team-view.ps1 e volta com decision=block: o harness mostra o reason ao stakeholder e o
+    # prompt não chega ao modelo nem entra no contexto. Vale no console, na extensão e no Remote Control. Falha aqui → exit 1
+    # (falha aberta): o prompt segue e o commands/team-status.md (ou team-usage.md) roda o mesmo script pelo modelo.
+    $vm = [regex]::Match([string]$hookInput.prompt, '^\s*/(?:team:)?team-(status|usage)(?:\s+(\d+))?\s*$')
+    if ($vm.Success) {
+        $va = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot '..\scripts\checks\team-view.ps1'), '-View', $vm.Groups[1].Value, '-Root', $projectDir)
+        if ($vm.Groups[2].Success) { $va += @('-Sprint', $vm.Groups[2].Value) }
+        $text = ((& powershell @va 2>&1 | ForEach-Object { [string]$_ }) -join "`n").TrimEnd()
+        if (-not $text) { $text = "team-view: sem saída (exit $LASTEXITCODE)." }
+        [Console]::Out.Write((@{ decision = 'block'; reason = $text } | ConvertTo-Json -Compress))
+        exit 0
+    }
     if (-not (Test-Path -LiteralPath (Join-Path $projectDir '.team-project'))) { exit 0 }
     $cfg = Get-GuardConfig $projectDir
     if (-not (Test-GuardEnabled $cfg 'G21')) { exit 0 }
