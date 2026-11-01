@@ -168,17 +168,24 @@ try {
     if (-not $cm.Success) { Add-Result 'cenários' 'falhou' "cabeçalho sem **Cenários:** SC-… | nenhum — <motivo> (regra 23)" }
     elseif ($cm.Groups[1].Value -match '^\s*nenhum\s*[—-]\s*\S') { Add-Result 'cenários' 'ok' ($cm.Groups[1].Value.Trim()) }
     else {
-        $ids = @([regex]::Matches($cm.Groups[1].Value, '\b[A-Z]{2,}-\d+\b') | ForEach-Object { $_.Value } | Select-Object -Unique)
+        # v3.53.2: "SC-nnn (teste)" se prova pelos testes do plano, sem .scn; "# aguarda <T-ID>: SC-…" no .scn vale como declarado.
+        $allIds = @([regex]::Matches($cm.Groups[1].Value, '\b[A-Z]{2,}-\d+\b') | ForEach-Object { $_.Value } | Select-Object -Unique)
+        $ids = @([regex]::Matches($cm.Groups[1].Value, '\b[A-Z]{2,}-\d+\b(?!\s*\((?i:teste)\))') | ForEach-Object { $_.Value } | Select-Object -Unique)
         $scnDir = Join-Path $Root '.team-project/quality-assurance/scenarios'
         $scn = @(Get-ChildItem -Path $scnDir -Filter '*.scn' -File -ErrorAction SilentlyContinue)
-        if (-not $ids.Count) { Add-Result 'cenários' 'falhou' '**Cenários:** sem identificador (SC-nnn) nem "nenhum — <motivo>"' }
+        if (-not $allIds.Count) { Add-Result 'cenários' 'falhou' '**Cenários:** sem identificador (SC-nnn) nem "nenhum — <motivo>"' }
+        elseif (-not $ids.Count) { Add-Result 'cenários' 'ok' "todos provados por teste do plano, sem .scn: $($allIds -join ', ')" }
         elseif (-not $scn.Count -and -not (Get-TargetsConfig $Root)) { Add-Result 'cenários' 'n-a' "sem alvo de execução (guards.json sem ""targets""): $($ids -join ', ') rastreados no plano e provados por teste, sem .scn (v3.51.4)" }
         elseif (-not $scn.Count) { Add-Result 'cenários' 'falhou' "nenhum arquivo .scn em .team-project/quality-assurance/scenarios/ — o QA escreve os cenários executáveis antes do dev (regra 23)" }
         else {
             $defined = @($scn | ForEach-Object { [regex]::Matches((Read-Text $_.FullName), '(?m)^\s*scenario\s+(\S+)') } | ForEach-Object { $_.Groups[1].Value })
-            $miss = @($ids | Where-Object { $defined -notcontains $_ })
+            $defer = Get-DeferredScenarios $Root
+            $miss = @($ids | Where-Object { $defined -notcontains $_ -and -not $defer.ContainsKey($_) })
+            $wait = @($ids | Where-Object { $defined -notcontains $_ -and $defer.ContainsKey($_) } | ForEach-Object { "$_ (aguarda $($defer[$_]))" })
+            $tst = @($allIds | Where-Object { $ids -notcontains $_ })
+            $tail = $(if ($wait.Count) { "; " + ($wait -join ', ') } else { '' }) + $(if ($tst.Count) { "; por teste: " + ($tst -join ', ') } else { '' })
             if ($miss.Count) { Add-Result 'cenários' 'falhou' ("cenário(s) citado(s) sem definição nos .scn: " + ($miss -join ', ')) }
-            else { Add-Result 'cenários' 'ok' "$($ids.Count) cenário(s) da Task nos arquivos .scn: $($ids -join ', ')" }
+            else { Add-Result 'cenários' 'ok' "$($ids.Count) cenário(s) da Task nos arquivos .scn: $($ids -join ', ')$tail" }
         }
     }
 

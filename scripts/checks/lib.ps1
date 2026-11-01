@@ -350,6 +350,27 @@ function Exit-FileLock($Stream, [string]$Path) {
     if ($Stream) { $Stream.Dispose(); Remove-Item -LiteralPath "$Path.lock" -Force -ErrorAction SilentlyContinue }
 }
 
+# Cenários de uma célula (v3.53.2, sprint 5 do garden): "SC-145 (teste)" é provado por teste do plano (serviço, render,
+# processo, gate, ação irreversível) — não vai ao .scn nem ao accept no alvo. -TargetOnly devolve só os provados na tela.
+# Antes, todo cenário mapeado exigia .scn: 9 formulários ao stakeholder para "tirar do mapeamento" no meio do run.
+function Get-ScenarioIds([string]$Cell, [switch]$TargetOnly) {
+    $re = if ($TargetOnly) { '\b[A-Z]{2,}-\d+\b(?!\s*\((?i:teste)\))' } else { '\b[A-Z]{2,}-\d+\b' }
+    return @([regex]::Matches($Cell, $re) | ForEach-Object { $_.Value } | Where-Object { $_ -match '^SC-' } | Select-Object -Unique)
+}
+# Cenário que aguarda uma Task (v3.53.2): o QA declara no .scn "# aguarda T-071: SC-143, SC-144" quando os nomes de teste
+# que o cenário usa nascem numa Task do sprint. Até ela fechar, o next não pede o cenário nem constrói a Task que o cita;
+# depois, pede. Antes, o next exigia o .scn antes da Task que criava os nomes (o run do garden travou e a sessão pulou a ordem).
+function Get-DeferredScenarios([string]$Root) {
+    $map = @{}
+    $d = Join-Path $Root '.team-project/quality-assurance/scenarios'
+    foreach ($f in @(Get-ChildItem -Path $d -Filter '*.scn' -File -ErrorAction SilentlyContinue)) {
+        foreach ($m in [regex]::Matches((Read-Text $f.FullName), '(?m)^\s*#\s*aguarda\s+(' + $script:TaskIdRe + ')\s*:\s*(.+)$')) {
+            foreach ($s in [regex]::Matches($m.Groups[2].Value, 'SC-\d+')) { $map[$s.Value] = $m.Groups[1].Value }
+        }
+    }
+    return $map
+}
+
 # Quadro do sprint (v3.51; run.ps1 e kanban.ps1): Histórias e Tasks (marcador, depende de, plano, cenários).
 # v3.51.4 (garden item 20): o cabeçalho "ID" vale só para a própria tabela (zera fora dela) e qualquer título "## " que não
 # é de História encerra a História — as tabelas de rastreabilidade e de trilha depois da última História viravam Tasks-
@@ -386,8 +407,10 @@ function Get-SprintTasks([string]$S) {
         $planCell = & $col 'Plano'
         $pm = [regex]::Match($planCell, '\]\(([^)]+)\)'); $pp = if ($pm.Success) { $pm.Groups[1].Value } else { ([regex]::Match($planCell, '`([^`]+)`')).Groups[1].Value }
         $deps = @([regex]::Matches((& $col 'Depende'), $script:TaskIdRe) | ForEach-Object { $_.Value })
-        $scn = @([regex]::Matches((& $col 'Cenários'), 'SC-\d+') | ForEach-Object { $_.Value } | Select-Object -Unique)
-        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn }
+        $cenCell = & $col 'Cenários'
+        $scn = @(Get-ScenarioIds $cenCell -TargetOnly)
+        $tst = @(Get-ScenarioIds $cenCell | Where-Object { $scn -notcontains $_ })
+        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn; TestScenarios = $tst }
     }
     return $tasks
 }

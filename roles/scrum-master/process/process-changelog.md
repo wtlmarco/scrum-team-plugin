@@ -138,6 +138,8 @@ Próximo sprint, contra o sprint 4: US$ do plano por Task construída (`consumpt
 
 **Plano do Arquiteto (Arquiteto · SM):** decisão do stakeholder sobre o relatório prévio do sprint 5 do garden, em que o Arquiteto gastou 84% e cortar planos custou ~US$ 9. O plano não se corta por tamanho; acima de ~30 KB só se avisa Task grande. A ficha ganha **Arquivos previstos** (até 6, acima disso a Task se divide). O `run.ps1 next` confere a ficha antes do Opus e põe nela o resumo do plano da dependência. A leitura é por trecho. Sem regra nova. **Indicador:** o Arquiteto gasta 35–40% menos por plano no próximo sprint, sem mais GAPs de plano.
 
+**Bloqueios do run (QA · SM · Dev):** 11 de 19 decisões do sprint 5 vieram de nomes de teste. Cenário diz o modo de prova (`(teste)` sem `.scn`); nomes que faltam viram Task na Planning; `# aguarda <T-ID>` no `.scn` adia o cenário; `verify -WaitBusySeconds`; reparo do emulador em `targets.android.repair`. Sem regra nova. **Indicador:** zero formulário de mapeamento no run.
+
 ---
 
 ## v3.52 — Orquestrador enxuto: sessão nova por ritual, `run` em sessões curtas, espera sem sondagem, registro de decisões e commit por Task (SM) — 23/10/2026

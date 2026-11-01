@@ -429,9 +429,12 @@ try {
     if (-not ($taskRow -and $taskTable)) { Add-Result 'R30' 'falhou' "$Task não encontrada numa tabela de Tasks do quadro" }
     else {
         $cen = Clean-Cell (Get-Cell $taskRow (Find-Col $taskTable 'Cenários'))
-        $ids = @([regex]::Matches($cen, 'SC-\d+') | ForEach-Object { $_.Value } | Select-Object -Unique)
+        # v3.53.2: "SC-nnn (teste)" se prova pelos testes do plano (o verify) — sem accept no alvo.
+        $allIds = @(Get-ScenarioIds $cen)
+        $ids = @(Get-ScenarioIds $cen -TargetOnly)
         if ($cen -match '(?i)^nenhum aplic[áa]vel\s*[—-]\s*\S') { Add-Result 'R30' 'ok' "nenhum aplicável: $cen" }
-        elseif ($ids.Count -eq 0) { Add-Result 'R30' 'falhou' 'coluna Cenários vazia ou sem SC-nnn nem "nenhum aplicável — motivo"' }
+        elseif ($allIds.Count -eq 0) { Add-Result 'R30' 'falhou' 'coluna Cenários vazia ou sem SC-nnn nem "nenhum aplicável — motivo"' }
+        elseif ($devMode -and $ids.Count -eq 0) { Add-Result 'R30' 'ok' "todos provados por teste do plano: $($allIds -join ', ')"; Add-Result 'R7-aceite' 'n-a' 'nenhum cenário de tela na Task' }
         elseif ($devMode) {
             # v3.51 (A3): os cenários da Task rodados no alvo real pelo accept.ps1, na árvore de agora, com captura de cada um.
             $targetsCfg = Get-TargetsConfig $Root
@@ -463,9 +466,9 @@ try {
                     }
                 }
             }
-            $missing = @($ids | Where-Object { -not $done.ContainsKey($_) })
+            $missing = @($allIds | Where-Object { -not $done.ContainsKey($_) })
             if ($missing.Count) { Add-Result 'R30' 'falhou' ("sem resultado na evidência: " + ($missing -join ', ')) }
-            else { Add-Result 'R30' 'ok' ("resultado para " + ($ids -join ', ')) }
+            else { Add-Result 'R30' 'ok' ("resultado para " + ($allIds -join ', ')) }
         }
     }
 

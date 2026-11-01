@@ -23,7 +23,8 @@
 # comando falhou, árvore diferente ou sem full · 2 = erro de uso (sem guards.json → verify, sem git) · 3 = mutação parcial ·
 # 4 = FALHA DE AMBIENTE (v3.51): tempo esgotado ou saída com assinatura conhecida de ambiente (tool-hygiene.json) — não é
 # defeito do código: o papel não depura; a sessão tenta o reparo (target.ps1 -Repair) uma vez e, sem sucesso, bloqueio de ambiente.
-# 5 = OCUPADO (v3.52.3): outra rodada desta Task ainda roda — espere o aviso de conclusão dela; não dispare outra.
+# 5 = OCUPADO (v3.52.3): outra rodada desta Task ainda roda — não dispare outra. v3.53.2: -WaitBusySeconds <n> espera
+#     ela acabar dentro da mesma chamada (até n s; 540 cabe no vigia de 600 s) e segue com a rodada desta chamada.
 # v3.51: -TimeoutMinutes (ou guards.json → verify.timeoutMinutes, padrão 9) por comando; verify.env = variáveis do filho
 # (ex.: GRADLE_USER_HOME numa junção ASCII); a higiene da ferramenta (Gradle sem daemon, dotnet sem reúso de nó, CI=true no
 # node) entra sozinha, de scripts/checks/tool-hygiene.json.
@@ -53,6 +54,7 @@ param(
     [int]$MaxMinutes = 8,
     [double]$TimeoutMinutes = 0,
     [switch]$Precheck,
+    [int]$WaitBusySeconds = 0,
     [string]$Root = (Get-Location).Path
 )
 
@@ -239,8 +241,16 @@ try {
     if ($Mode -ne 'check') {
         # Antes do Restore-Pending: a mutação de uma rodada viva NÃO é resto de interrupção.
         $busy = Enter-VerifyLock $dir
+        # v3.53.2 (sprint 5 do garden): o dev caiu, a rodada dele seguiu viva e o dev novo recebeu OCUPADO — o executor não
+        # espera processo e pausou o run duas vezes, até o stakeholder digitar de novo. Com -WaitBusySeconds a MESMA chamada
+        # espera a rodada anterior acabar (uma chamada bloqueada, sem sondagem do modelo) e depois roda a sua.
+        if ($busy -and $WaitBusySeconds -gt 0) {
+            $first = $busy; $sw = [System.Diagnostics.Stopwatch]::StartNew()
+            while ($busy -and $sw.Elapsed.TotalSeconds -lt $WaitBusySeconds) { Start-Sleep -Seconds 5; $busy = Enter-VerifyLock $dir }
+            if (-not $busy) { [Console]::Out.WriteLine("verify: esperou $([int]$sw.Elapsed.TotalSeconds) s pela rodada anterior ($([string]$first.mode), pid $($first.pid)); segue a desta chamada.") }
+        }
         if ($busy) {
-            [Console]::Out.WriteLine("verify $Mode $Task`: OCUPADO — outra rodada desta Task ($([string]$busy.mode), pid $($busy.pid), desde $($busy.at)) ainda roda. Não dispare outra: espere o aviso de conclusão dela (se a ferramenta a moveu para segundo plano, encerre o turno — o aviso traz o resultado) e leia a saída dela.")
+            [Console]::Out.WriteLine("verify $Mode $Task`: OCUPADO — outra rodada desta Task ($([string]$busy.mode), pid $($busy.pid), desde $($busy.at)) ainda roda. Não dispare outra: rode o mesmo comando com -WaitBusySeconds 540, que espera ela acabar nesta chamada e segue (sem pausar o run).")
             exit 5
         }
     }

@@ -206,7 +206,7 @@ function Write-Handoff($T, [string]$S, [string]$n) {
             ("**Plano:** ``$planRel`` · $files arquivo(s)" + $(if ($blocks.Count) { " · " + ($blocks -join ' · ') } else { '' })),
             # v3.52.3 (note.md item 1): o aceite só com alvo — sem guards.json → targets, o cartão mandava rodar o accept.ps1 e
             # 4 de 5 Tasks do sprint 4 do garden pararam no mesmo 🔺 GAP "accept sem .scn".
-            ("**Cenários:** " + $(if (-not $T.Scenarios.Count) { 'nenhum' } elseif (Get-TargetsConfig $Root) { "$($T.Scenarios -join ', ') — ``accept.ps1 -Task $($T.Id) -Only $($T.Scenarios -join ',')``" } else { "$($T.Scenarios -join ', ') — sem alvo de execução: o accept não roda; os cenários se provam pelos testes do plano" })),
+            ("**Cenários:** " + $(if (-not $T.Scenarios.Count) { 'nenhum no alvo' } elseif (Get-TargetsConfig $Root) { "$($T.Scenarios -join ', ') — ``accept.ps1 -Task $($T.Id) -Only $($T.Scenarios -join ',')``" } else { "$($T.Scenarios -join ', ') — sem alvo de execução: o accept não roda; os cenários se provam pelos testes do plano" }) + $(if ($T.TestScenarios.Count) { " · por teste do plano, sem accept: $($T.TestScenarios -join ', ')" } else { '' })),
             ("**Última entrega:** $last" + $(if ($stop) { " · parou: $stop" } else { '' })),
             "**Verificação:** $vtxt · **Cenários no alvo:** $atxt",
             "**GAPs:** $(if ($gaps.Count) { $gaps -join ' · ' } else { 'nenhum' })", '',
@@ -395,6 +395,9 @@ try {
     $defined = Get-Defined $Root
     $hasTargets = [bool](Get-TargetsConfig $Root)
     $open = @($tasks | Where-Object { $_.Mark -ne $E.Done -and $_.Mark -ne $redMk })
+    $doneIds = @($tasks | Where-Object { $_.Mark -eq $E.Done } | ForEach-Object { $_.Id })
+    $deferred = Get-DeferredScenarios $Root
+    $waiting = { param($sc) $deferred.ContainsKey($sc) -and $doneIds -notcontains $deferred[$sc] }
     # 1 · preparo da construção: por História, cenários executáveis (QA) e depois os planos (Arquiteto), antes de qualquer dev.
     # v3.51.4: sem alvo de execução (guards.json sem "targets") não há .scn a escrever — o accept não roda e os cenários
     # ficam rastreados nos planos e provados por teste (garden item 4). As Tasks da História entram em 🟦 no preparo (item 2).
@@ -410,7 +413,8 @@ try {
             Out "  depois: plan.ps1 -Plan <caminho> e run.ps1 next (o executor de Task conduz a correção)"
             exit 0
         }
-        $missScn = if ($hasTargets) { @($h.Group | ForEach-Object { $_.Scenarios } | Where-Object { $defined -notcontains $_ } | Select-Object -Unique) } else { @() }
+        # v3.53.2: cenário declarado "# aguarda <T-ID>" no .scn não é pedido enquanto a Task que cria os nomes não fecha.
+        $missScn = if ($hasTargets) { @($h.Group | ForEach-Object { $_.Scenarios } | Where-Object { $defined -notcontains $_ -and -not (& $waiting $_) } | Select-Object -Unique) } else { @() }
         $noPlan = @($h.Group | Where-Object { -not (Get-PlanFull $_ $S) })
         if ($missScn.Count -or $noPlan.Count) {
             foreach ($t in @($h.Group | Where-Object { $_.Mark -eq $todoMk })) { $mo = Set-Mark $t.Id 'plan' 'Arquiteto · preparo (run.ps1 next)'; if ($mo) { Out "  $mo" } }
@@ -418,7 +422,7 @@ try {
         if ($missScn.Count) {
             Out "PRÓXIMA AÇÃO: preparo da construção — cenários executáveis da História $($h.Name) (QA)"
             Out "  $(Get-AgentLine 'quality-assurance')"
-            Out "  prompt: `"Escreva os cenários executáveis $($missScn -join ', ') em .team-project/quality-assurance/scenarios/$($h.Name).scn, na linguagem do accept.ps1 (cabeçalho do script), a partir dos critérios de aceite da $($h.Name) e das fichas SC-nnn. Use só os identificadores de teste do contrato; cada cenário com ao menos um assert-* (sem identificador no alvo: 🔺 GAP, não cenário). Confira com accept.ps1 -ParseOnly; não rode o app. Volte em até 15 linhas.`""
+            Out "  prompt: `"Escreva os cenários executáveis $($missScn -join ', ') em .team-project/quality-assurance/scenarios/$($h.Name).scn, na linguagem do accept.ps1 (cabeçalho do script), a partir dos critérios de aceite da $($h.Name) e das fichas SC-nnn. Use só os identificadores de teste do contrato; cada cenário com ao menos um assert-*. Cenário cujos identificadores nascem numa Task deste sprint: declare no .scn a linha '# aguarda <T-ID>: SC-…' em vez de escrevê-lo (o next o pede depois que ela fechar). Cenário que não se prova na tela (serviço, render, processo, gate, ação irreversível): aponte na volta como '(teste)' — a sessão marca na coluna Cenários e registra no run-log, sem formulário. Identificador que falta e nenhuma Task do sprint cria: 🔺 GAP. Confira com accept.ps1 -ParseOnly; não rode o app. Volte em até 15 linhas.`""
             Out "  depois: run.ps1 next"
             exit 0
         }
@@ -478,7 +482,9 @@ try {
     # 2 · construção: Task em construção primeiro (retomada), depois a primeira elegível com as dependências fechadas.
     $done = @($tasks | Where-Object { $_.Mark -eq $E.Done } | ForEach-Object { $_.Id })
     $cur = @($open | Where-Object { $_.Mark -eq $E.Build -or $_.Mark -eq $E.QA }) | Select-Object -First 1
-    $next = if ($cur) { $cur } else { @($open | Where-Object { @($_.Deps | Where-Object { $done -notcontains $_ }).Count -eq 0 }) | Select-Object -First 1 }
+    # v3.53.2: cenário que aguarda outra Task (# aguarda <T-ID> no .scn) segura a Task que o cita como uma dependência.
+    $blockers = { param($t) @(@($t.Deps | Where-Object { $done -notcontains $_ }) + @($t.Scenarios | Where-Object { & $waiting $_ } | ForEach-Object { $deferred[$_] }) | Select-Object -Unique) }
+    $next = if ($cur) { $cur } else { @($open | Where-Object { @(& $blockers $_).Count -eq 0 }) | Select-Object -First 1 }
     # v3.52.2 (note.md item 4, C3): a construção é do executor de Task (team:task-runner), um por Task — ele roda start, dispara
     # o dev, roda done, leva o GAP ao Arquiteto e volta em UMA linha. A sessão não acumula o contexto da Task.
     if ($next) {
@@ -498,7 +504,7 @@ try {
         Out "  ao voltar: run.ps1 next"
         exit 0
     }
-    if ($open.Count) { Out "PRÓXIMA AÇÃO: nenhuma Task elegível — $(($open | ForEach-Object { "$($_.Id) espera $($_.Deps -join ',')" }) -join '; '). Bloqueio sobe pelo degrau 1 (R22)."; exit 3 }
+    if ($open.Count) { Out "PRÓXIMA AÇÃO: nenhuma Task elegível — $(($open | ForEach-Object { "$($_.Id) espera $((& $blockers $_) -join ',')" }) -join '; '). Bloqueio sobe pelo degrau 1 (R22)."; exit 3 }
 
     # 3 · validação do sprint: o operator mede (quality + todos os cenários), o QA julga.
     $sid = "S$n"

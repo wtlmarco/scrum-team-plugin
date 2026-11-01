@@ -521,6 +521,9 @@ O time roda o app de verdade para provar que ele funciona: no emulador ou aparel
 - **Comandos que não terminam:** o `verify` encerra cada comando em `timeoutMinutes` (padrão 9) e mata os processos que sobram (daemon do Gradle, nós do MSBuild). A higiene de cada ferramenta (Gradle sem daemon, `dotnet` sem reúso de nó, `CI=true` no Node) entra sozinha, de `scripts/checks/tool-hygiene.json`. Comando de teste em modo de observação (`ng test` sem `--watch=false`, `vitest` sem `run`) gera aviso.
 - **Perfil do Windows com acento** (`C:\Users\João…`): os testes do Gradle falham sem aviso. Crie uma junção ASCII (`cmd /c mklink /J C:\gradle-home "%USERPROFILE%\.gradle"`) e ponha `GRADLE_USER_HOME` em `verify.env`, como no exemplo. A abertura da sessão avisa quando falta.
 - **Emulador ligado por muito tempo para de desenhar a tela** (medido: depois de ~1 dia). O pré-voo confere o tempo ligado (`maxUptimeHours`) e reinicia o AVD no reparo.
+- **Emulador num container (Docker) ou fora do SDK local:** declare o conserto em `"repair"` dentro de `targets.android`, por exemplo `"repair": "docker restart horta-emulador; adb connect localhost:5555"`. Declarar o comando já é a sua autorização: o `-Repair` o roda sozinho, espera o aparelho iniciar e confere de novo, sem pedir licença a cada queda.
+- **"OCUPADO" no `verify`:** uma verificação anterior da mesma Task ainda está rodando, em geral de uma instância que caiu. O dev roda o mesmo comando com `-WaitBusySeconds 540`, que espera a anterior acabar e segue, sem pausar o run.
+
 ### Problemas de instalação
 
 - **O plugin "some" na sessão.** O registro caiu em *user settings*, não no projeto: remova e refaça com `--scope project`. A forma do identificador também importa — `{"source":"github","repo":…}` e `{"source":"git","url":"….git"}` são dois identificadores para o mesmo marketplace, e misturá-los impede o resolvedor de casar o plugin com o cache.

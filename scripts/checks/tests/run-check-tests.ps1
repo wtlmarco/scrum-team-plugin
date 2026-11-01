@@ -578,6 +578,33 @@ $r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
 $card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
 Check 'run handoff: cartão de passagem curto com plano, cenários e o comando do accept' @{ Code = $r.Code; Out = $(if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) + "`nKB=" + [int]((Get-Item -LiteralPath $card).Length / 1024) } else { 'sem cartão' }) } 0 @('Cartão de passagem — T-041', 'accept\.ps1 -Task T-041 -Only SC-014', 'KB=[0-2]\b')
 
+# 5d1b. v3.53.2 (sprint 5 do garden): cenário provado por teste "(teste)" não pede .scn nem accept; cenário que aguarda a
+# Task que cria os nomes de teste ("# aguarda T-041: SC-016" no .scn) não trava o preparo e segura só a Task que o cita.
+$p = Join-Path $tmp 'cenarios'; New-Project $p
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+$sb = Join-Path $p '.team-project/sprints/1/sprint-backlog.md'
+Edit-File $sb 'SC-014 (novo)' 'SC-014 (novo) · SC-015 (teste)'
+Edit-File $sb 'nenhum aplicável — refatoração interna' 'SC-016'
+Put $p '.team-project/quality-assurance/scenarios/H-014.scn' "# aguarda T-041: SC-016`nscenario SC-014 Exporta`nlaunch`nassert-exists x`n"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.53.2: (teste) e "aguarda" não travam o preparo — segue aos planos sem pedir .scn' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'cenários executáveis') { "`nPEDIU-SCN" } else { '' }) } 0 @('planos da História H-014 numa instância do Arquiteto', '^(?![\s\S]*PEDIU-SCN)')
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
+Check 'v3.53.2: cartão — accept só do cenário de tela; o (teste) aparece como prova pelo plano' @{ Code = $r.Code; Out = $(if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) } else { 'sem cartão' }) } 0 @('accept\.ps1 -Task T-041 -Only SC-014`', 'por teste do plano, sem accept: SC-015')
+Put $p '.team-project/sprints/1/plan/T-041a-x.md' "# Plano`n"
+Edit-File $sb '[`plan/T-041a-x.md`](plan/)' '[`plan/T-041a-x.md`](plan/T-041a-x.md)'
+Edit-File $sb "| $($e.qa) T-041 | Endpoint de exportação | 1 | dev | — |" "| $($e.todo) T-041 | Endpoint de exportação | 1 | dev | T-041a |"
+Edit-File $sb "| T-041 | [``plan/T-041a-x.md``]" "| — | [``plan/T-041a-x.md``]"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.53.2: Task cujo cenário aguarda outra Task não é construída antes dela (o bloqueio aparece)' $r 3 @('nenhuma Task elegível — .*T-041a espera T-041')
+Edit-File $sb "| $($e.todo) T-041 | Endpoint de exportação | 1 | dev | T-041a |" "| $($e.ok) T-041 | Endpoint de exportação | 1 | dev | — |"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.53.2: fechada a Task que cria os nomes, o next pede o cenário que aguardava (QA)' $r 0 @('cenários executáveis da História H-014', 'SC-016', "aguarda <T-ID>")
+$pl = '.team-project/sprints/1/plan/T-041a-x.md'
+Put $p $pl ("# Plano`n**Cenários:** SC-014, SC-016, SC-015 (teste)`n**Risco:** infraestrutura`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 3. Ambiente`n`n| Pré-requisito | Comando de medição | Saída real |`n|---|---|---|`n| Node 20 | node --version | v20.11.0 |`n`n## 6. Testes`nsem prova: x`n`n## 9. Onde parar`n- **Pré-requisito ausente** — 🔺 GAP`n")
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.53.2 regra 23: cenário que aguarda conta como declarado; (teste) fica fora do .scn' $r 0 @('\| cenários \| ok.*SC-014.*SC-016 \(aguarda T-041\); por teste: SC-015')
+
 # 5d2. v3.53 (note.md itens 7 e 8): Task com ficha no breakdown → um Arquiteto por Task, que abre só o recorte da ficha.
 $p = Join-Path $tmp 'ficha'; New-Project $p
 $bdText = "# Quebra — Sprint 1`n`n## H-014 Exportar`n`n### Decisões comuns — H-014`n- ``export_job`` — tabela dos pedidos · T-041, T-041a`n`n### Ficha T-041a — Variante`n**Código a ler:**`n- ``src/a.ts:3`` — padrão a espelhar (``IExporter``)`n`n**Fontes:** ``docs/sdd/03-architecture.md`` §4 · ``standards/implementation-principles.md`` §2 · ``IExporter```n**Nomes comuns:** ``export_job```n**Arquivos previstos:** 2`n`n## H-020 Outra`n`n### Ficha T-099 — fora`n**Nomes comuns:** ``outro```n"
@@ -640,6 +667,10 @@ Check 'C1 evidência do dev com cenário reprovado no alvo: não fecha' $r 1 @('
 Put $p '.team-project/accept/1/T-041/result.json' '{ "task": "T-041", "target": "android", "at": "2026-10-21 10:00:00", "tree": null, "environment": null, "results": [ { "id": "SC-014", "status": "PASSOU", "detail": "" } ] }'
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'C1 evidência do dev com os cenários da Task passando no alvo: fecha' $r 0 @('\| R7-aceite \| ok.*1 cenário', '\| R30 \| ok.*SC-014')
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') 'SC-014 (novo)' 'SC-014 (teste)'
+Remove-Item -LiteralPath (Join-Path $p '.team-project/accept/1/T-041/result.json') -Force
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.53.2: Task só com cenário (teste), com alvo e sem accept: fecha (R30 por teste, R7-aceite n-a)' $r 0 @('\| R30 \| ok.*todos provados por teste do plano: SC-014', '\| R7-aceite \| n-a.*nenhum cenário de tela')
 
 # 5f. plan.ps1 (v3.46): o plano é conferido antes do dev.
 $p = Join-Path $tmp 'plano'; New-Project $p
@@ -1240,10 +1271,16 @@ Check 'item 2: suíte de 480 s na história de outra Task não cabe no minuto qu
 $lk = Join-Path $p '.team-project/verify/1/T-041/verify.lock'
 Put $p '.team-project/verify/1/T-041/verify.lock' ('{"pid":' + $PID + ',"started":"' + (Get-Process -Id $PID).StartTime.ToString('o') + '","mode":"full","at":"2026-10-27 10:00:00"}')
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
-Check 'item 4: outra rodada viva da mesma Task: OCUPADO, exit 5, a trava dela fica' @{ Code = $r.Code; Out = $r.Out + "`nTRAVA=" + (Test-Path -LiteralPath $lk) } 5 @('OCUPADO — outra rodada desta Task \(full', 'espere o aviso de conclusão', 'TRAVA=True')
+Check 'item 4: outra rodada viva da mesma Task: OCUPADO, exit 5, a trava dela fica' @{ Code = $r.Code; Out = $r.Out + "`nTRAVA=" + (Test-Path -LiteralPath $lk) } 5 @('OCUPADO — outra rodada desta Task \(full', '-WaitBusySeconds 540', 'TRAVA=True')
 Put $p '.team-project/verify/1/T-041/verify.lock' '{"pid":999999,"started":"2001-01-01T00:00:00","mode":"full","at":"2026-10-27 09:00:00"}'
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
 Check 'item 4: trava de processo morto sai; a rodada roda e apaga a própria trava' @{ Code = $r.Code; Out = $r.Out + "`nTRAVA=" + (Test-Path -LiteralPath $lk) } 0 @('tudo exit 0', 'TRAVA=False')
+# v3.53.2: -WaitBusySeconds espera a rodada viva acabar na mesma chamada e segue (o dev novo não pausa o run).
+$sleeper = Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-Sleep -Seconds 7' -PassThru -WindowStyle Hidden
+Put $p '.team-project/verify/1/T-041/verify.lock' ('{"pid":' + $sleeper.Id + ',"started":"' + $sleeper.StartTime.ToString('o') + '","mode":"full","at":"2026-10-27 10:00:00"}')
+Put $p 'src/calc.ts' "export const x = 21`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-MaxMinutes', '30', '-WaitBusySeconds', '60', '-Root', $p)
+Check 'v3.53.2: OCUPADO com -WaitBusySeconds espera a rodada anterior acabar e roda a sua' @{ Code = $r.Code; Out = $r.Out + "`nTRAVA=" + (Test-Path -LiteralPath $lk) } 0 @('esperou \d+ s pela rodada anterior \(full, pid', 'tudo exit 0', 'TRAVA=False')
 
 # 13d. item 5: comando acima de 80 % do teto por comando sai com "atenção:".
 Put $p '.team-project/guards.json' '{ "verify": { "suite": "Start-Sleep -Milliseconds 14000; Write-Output ''Tests: 3 passed''" } }'
