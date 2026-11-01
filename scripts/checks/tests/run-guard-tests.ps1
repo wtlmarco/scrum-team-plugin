@@ -832,7 +832,13 @@ $cases = @(
     @{ Name = '/team:team-usage 7 (forma com o namespace e o número do sprint): bloqueia e passa o sprint pedido'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = 'Sprint 7'
        Payload = @{ prompt = '/team:team-usage 7'; transcript_path = '' } },
     @{ Name = '/team-status com texto a mais: não é a visão, segue ao modelo (silêncio)'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
-       Payload = @{ prompt = '/team-status por favor explique'; transcript_path = '' } }
+       Payload = @{ prompt = '/team-status por favor explique'; transcript_path = '' } },
+    # ---------- v3.53.2 — R22: a forma da conversa com o stakeholder no contexto de toda sessão ----------
+    @{ Name = 'SessionStart (v3.53.2): a sessão recebe a forma da conversa — toda pergunta em formulário, "Outro" para digitar'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = "Conversa com o stakeholder (R22): toda pergunta a ele*formulário AskUserQuestion, na mesma resposta*campo 'Outro'*repita o formulário na mesma resposta"
+       Payload = @{ hook_event_name = 'SessionStart'; source = 'clear' } },
+    @{ Name = 'SessionStart com a G13 desligada: a forma da conversa sai mesmo assim (não é guarda)'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'Conversa com o stakeholder (R22)'
+       Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ "disabled": ["G13"] }', (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ hook_event_name = 'SessionStart'; source = 'clear' } }
 )
 
 $rows = @(); $fail = 0

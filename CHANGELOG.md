@@ -15,15 +15,17 @@
 
 ## v3.53.2 — 2026-11-01
 
-**Branch:** `fix/v3.53.2` a partir de `develop` · **Processo:** sem mudança (ferramenta de consulta; nenhuma regra nova)
-Pedido do stakeholder: acompanhar o sprint pelo console ou pelo celular (Remote Control) sem gastar token. Até aqui, olhar o andamento passava pelo modelo (`/sm board`, `/po status`).
+**Branch:** `fix/v3.53.2` a partir de `develop` · **Processo:** addendum v3.53.2 (R22: toda pergunta ao stakeholder em formulário)
+Dois pedidos do stakeholder. O primeiro é acompanhar o sprint pelo console ou pelo celular (Remote Control) sem gastar token: até aqui, olhar o andamento passava pelo modelo (`/sm board`, `/po status`). O segundo é que toda pergunta do time chegue como formulário simples.
+
+- **Toda pergunta em formulário (R22):** dado, confirmação e próximo passo agora também saem como formulário, na mesma resposta, e não só a decisão. Na pergunta aberta, as respostas prováveis viram opções e o campo "Outro" serve para digitar. "Pedir mais contexto" traz a explicação curta junto com o mesmo formulário. A linguagem é simples (termo técnico só quando é indispensável). A forma entra no contexto de toda sessão pelo `hooks/session-start.ps1`, mesmo com a G13 desligada. Assim a pergunta nasce certa, sem a volta a mais que uma guarda no fim do turno custaria. Mudaram `working-rules.md` R22, `templates/stakeholder-question.md` (exemplo de pergunta aberta) e `how-to.md`.
 
 - **`/team-status [<n>]`:** mostra o placar do sprint por marcador, a estimativa restante (Série), o estado do run, o limite de conta e os agentes em voo, com o tempo desde a última ação. Também traz as Tasks por coluna (as em andamento primeiro), a última transição do Registro e as decisões pendentes do stakeholder (README §7, até 3).
 - **`/team-usage [<n>]`:** mostra tokens, US$ e tempo das rodadas medidas pela G16 no sprint, com o total, por Task (com o mesmo rateio do `kanban.ps1`) e por papel e modelo, com a fatia do custo. A rodada sem preço aparece como "sem preço", nunca como US$ 0. Só agentes: a sessão principal continua medida no close e na retrospectiva.
 - **Sem token:** o hook `prompt-submit.ps1` reconhece os dois comandos (também na forma `/team:`), roda o `scripts/checks/team-view.ps1` e devolve o texto com `decision: block`. O prompt não chega ao modelo nem entra no contexto. Medido com `claude -p "/team-status"`: `num_turns` 0, tokens 0, `total_cost_usd` 0, em cerca de 2,5 s. O texto sai em linhas curtas, sem tabela, para caber na tela do celular. Se o hook falhar (falha aberta), o `commands/team-status.md` (ou `team-usage.md`) roda o mesmo script pelo modelo e diz que passou por ele.
-- **`how-to.md`:** os dois comandos entram na tabela "o que você quer fazer" e em "Responder pelo celular". Entra também a seção "Quando a extensão do VS Code usa uma conta e o terminal usa outra" (`CLAUDE_CONFIG_DIR`).
+- **`how-to.md`:** os dois comandos ganham a seção própria "Acompanhar o sprint sem gastar token", com um exemplo de cada tela e como ler cada linha. Eles também entram na tabela "o que você quer fazer" e em "Responder pelo celular". Entra também a seção "Quando a extensão do VS Code usa uma conta e o terminal usa outra" (`CLAUDE_CONFIG_DIR`).
 - **Ainda não medido:** a resposta pelo app do celular (Remote Control) e o comando digitado no meio de um `sprint run`.
-- **Testes:** conferências 219 casos (+5), guardas 267 casos (+3), 0 falhas.
+- **Testes:** conferências 219 casos (+5), guardas 269 casos (+5), 0 falhas.
 
 ## v3.53.1 — 2026-11-01
 

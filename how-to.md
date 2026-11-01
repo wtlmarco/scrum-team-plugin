@@ -19,6 +19,7 @@ O time trabalha numa cadência fixa, toda conduzida pelo `/sm`:
 ```
 
 - **Você decide em quatro momentos — os portões ① ② ③ ④ —, sempre por formulário:** aprovar · aprovar com ajuste · reprovar · pedir mais contexto (no ④: aceita · aceita com ressalva · rejeitada · pedir mais contexto).
+- **Toda pergunta do time chega como formulário**, não só as dos portões: opções curtas, a recomendada primeiro e "Pedir mais contexto" por último. Para responder do seu jeito, escreva no campo **"Outro"**. Pediu mais contexto? A explicação vem junto com o mesmo formulário.
 - **Fora dos portões, o time não te chama**, salvo bloqueio que PO e Arquiteto não fecharam entre si, ou decisão estratégica (stack, provedor, custo, risco aceito).
 - **A qualquer momento:** `/po status` diz onde o time está e quando entrega. O PO é o **seu canal** — demanda, prioridade, prazo e status passam por ele.
 
@@ -34,7 +35,7 @@ O time trabalha numa cadência fixa, toda conduzida pelo `/sm`:
 | Abrir um sprint | `/sm sprint prepare` e depois `/sm sprint plan` |
 | Mandar o time construir | `/sm sprint run` (a fila) ou `/sm sprint run <T-ID>` (uma Task) |
 | Saber onde estamos, prazo, andamento | `/po status` |
-| Acompanhar o sprint **sem gastar token** (console ou celular) | `/team-status` (quadro, quem trabalha agora, o que espera você) · `/team-usage` (tokens e US$ por Task e por papel) |
+| Acompanhar o sprint **sem gastar token** (console ou celular) — [como ler](#acompanhar-o-sprint-sem-gastar-token) | `/team-status` (quadro, quem trabalha agora, o que espera você) · `/team-usage` (tokens e US$ por Task e por papel) |
 | Ver o quadro do sprint | `/sm board` |
 | Saber o custo de uma mudança antes de pedir | `/po impact <mudança>` |
 | Saber se o time compensa (custo × qualidade) | `/usage` no fim de cada sessão, colado ao time · retrospectiva "Custo × resultado" · experimento em `rituals/benchmark.md` → cenário H |
@@ -234,6 +235,70 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 - **Na evolução de área documentada (cenário C)**, um portão sem nada a decidir é dispensado — só com o dono declarando, com motivo, que aquela parte não muda.
 - **Um `/ux prototype` ou `/arc` rodado avulso não abre nem fecha portão**: a decisão fica pendente até o `/sm sdd`.
 
+## Acompanhar o sprint sem gastar token
+
+Dois comandos mostram como o sprint está andando. Quem responde é um script: o modelo não é acionado, então **não gastam token** (medido: 0 tokens, US$ 0, resposta em ~2 s). Funcionam no console e no terminal do VS Code; pelo app do celular e com um `sprint run` em andamento devem funcionar igual, mas isso ainda não foi medido. Eles só leem os arquivos do projeto e não mudam nada.
+
+| Comando | Mostra | Use quando quiser saber |
+|---|---|---|
+| `/team-status` | O quadro do sprint e o que espera você | "Como está o sprint? Quem está trabalhando? Tem decisão minha parada?" |
+| `/team-usage` | Quanto o sprint gastou, por Task e por papel | "Quanto já custou? Qual Task ou papel gasta mais?" |
+
+Sem número, mostram o sprint corrente. Com um número, mostram outro: `/team-status 4`, `/team-usage 4`.
+
+**O que o `/team-status` mostra:**
+
+```text
+Sprint 5 · 16 Tasks · ✅ 1 · 🟪 0 · 🟨 0 · 🟦 13 · ⬜ 2 · 🔴 0
+Restante: 12 de 12,0 (estimativa)
+Run: parado
+Agora: nenhum agente em execução
+
+🟦 Plano: T-071 T-041 T-042 …
+⬜ A fazer: T-065 T-066
+✅ Fechada: T-056
+
+Última transição: T-064 ⬜ → 🟦 · 2026-11-01 14:41
+
+Esperando você: 2 decisão(ões) em README §7
+  1. [ACME · S4 · ④ APK] Liberar o APK 1.05.30? …
+```
+
+- **1ª linha:** o placar. ✅ fechada · 🟪 em verificação · 🟨 em construção · 🟦 com plano · ⬜ a fazer · 🔴 bloqueada.
+- **Restante:** quanto falta do sprint, pela estimativa do burndown.
+- **Run e Agora:** se um `sprint run` está rodando e quais agentes trabalham neste momento, em qual Task e há quanto tempo.
+- **As colunas:** em que etapa cada Task está.
+- **Esperando você:** as decisões suas que estão paradas (até 3 aparecem; o resto está em `.team-project/README.md` §7).
+
+**O que o `/team-usage` mostra:**
+
+```text
+Consumo · Sprint 4 (fechado) · 185,40 mi tokens · US$ 49,39 · 13h24 de agente · 140 rodadas
+
+Por Task (tokens · US$ · tempo):
+  T-053  57,38 mi · US$ 20,30 · 3h09
+  T-047  53,54 mi · US$ 17,91 · 2h35
+  …
+
+Por papel (tokens · US$ · % do custo · rodadas):
+  dev (haiku 5.5, sonnet 5.5)  112,94 mi · US$ 23,14 · 47% · 35
+  arc (opus 5.5)  45,81 mi · US$ 13,30 · 27% · 19
+  …
+
+Última rodada: 31/10 23:21 · po · T-054 · 181 mil · US$ 0,15
+```
+
+- **1ª linha:** o total do sprint: tokens, custo em dólar, tempo somado dos agentes e quantas vezes um agente rodou ("rodadas").
+- **Por Task:** da que mais gastou para a que menos gastou.
+- **Por papel:** quanto cada papel do time gastou, com o modelo que usou e a sua parte no custo total.
+- **"sem preço":** rodadas antigas (antes da v3.52.3) ou de um modelo sem preço na tabela. Os tokens contam, o valor em dólar não.
+
+**Bom saber:**
+
+- **Conta só os agentes.** A conversa principal com você não entra aqui; ela é medida no fechamento da Task e na retrospectiva.
+- **Logo depois de atualizar o plugin** (`/team update`), feche e abra a sessão para os comandos funcionarem sem token.
+- **Se aparecer uma resposta do modelo em vez da tela acima**, o atalho sem token não funcionou nessa sessão. O resultado é o mesmo, mas gasta um pouco de token. Feche e abra a sessão. Se continuar, avise o dono do plugin.
+
 ## Responder pelo celular
 
 O time pode te perguntar — e você pode retomar o trabalho — pelo **Claude Code no celular**, por **Remote Control**: a sessão continua rodando no seu computador, e o app do Claude se conecta a ela.
@@ -243,7 +308,7 @@ O time pode te perguntar — e você pode retomar o trabalho — pelo **Claude C
 3. **No app do Claude, aba Code:** cada projeto aparece como uma sessão, com o nome do comando.
 4. **Toda pergunta do time começa com o prefixo** — `[ACME · S4 · ③ pacote]`: projeto, sprint e o que se decide. Responda pelos cartões, como no terminal. Os comandos também funcionam digitados no app (`/sm sprint review`, `/po status`).
 5. **Não espere notificação:** no Android a pergunta não avisa (medido). Abra **Code** no app para ver o que está esperando.
-   **Para acompanhar sem gastar token,** digite `/team-status` (quadro, quem trabalha agora, o que espera você) ou `/team-usage` (tokens e US$ por Task e por papel). Quem responde é um script, não o modelo; com um número, mostra outro sprint (`/team-status 4`). Funciona igual no console.
+   **Para acompanhar sem gastar token,** digite `/team-status` (quadro, quem trabalha agora, o que espera você) ou `/team-usage` (tokens e US$ por Task e por papel). Veja [Acompanhar o sprint sem gastar token](#acompanhar-o-sprint-sem-gastar-token).
 6. **"Pular" não decide nada:** a pergunta fica pendente em `.team-project/README.md` §7 e volta quando o time retomar.
 7. **① e ③ também se respondem pelo celular.** A pergunta traz o link do protótipo publicado como página privada na sua conta: navegue nele e decida. "Aprovar" declara que você navegou — a responsabilidade é sua. Se o produto também tem site, a navegação no desktop continua por sua conta.
 8. **Quando a fila do `sprint run` termina,** chega `[ACME · S4 · fim do run] Iniciar a Sprint Review?` — no terminal e no celular. "Agora" já abre a Review; "depois" deixa anotado. Iniciar a Review não é aceitar nada.

@@ -10,9 +10,25 @@ A guarda G3 confere duas coisas no formulário: a última opção é **"Pedir ma
 2. **Um exemplo prático e concreto**, tirado do próprio produto, começando por "Exemplo:".
 3. **O que muda em cada opção**, na descrição da opção (custo, prazo, risco, o que o usuário vê).
 4. **A recomendação primeiro**, com "(Recomendado)" no rótulo.
-5. **"Pedir mais contexto" sempre por último**: detalha e repete a pergunta.
+5. **"Pedir mais contexto" sempre por último.** Escolhido, a sessão explica em texto curto e **repete o formulário na mesma resposta**. Detalhe longo: uma opção "Ver a explicação completa" mostra o texto e repete o formulário.
+
+**Toda pergunta é formulário (v3.53.2)**, não só a decisão: dado, confirmação, escolha ou próximo passo saem como formulário na mesma resposta, nunca como pergunta em texto. Na pergunta aberta, as respostas prováveis viram opções, e o stakeholder escreve outra no campo **"Outro"**, que o formulário já traz.
+
+**Linguagem simples:** rótulo com 1 a 5 palavras e descrição de uma frase, dizendo o que muda para ele. Termo técnico só quando é indispensável, e explicado na hora ("o plano da Task, isto é, o passo a passo que o dev segue").
 
 Texto de apoio (antes do formulário): no máximo um parágrafo curto. O detalhe técnico fica no material citado, nunca na pergunta.
+
+## Pergunta aberta — exemplo
+
+> **Pergunta:** Qual nome o app deve mostrar na tela inicial? Exemplo: hoje aparece "garden-management", o nome da pasta do projeto.
+>
+> | Opção | Descrição |
+> |---|---|
+> | **Horta Fácil (Recomendado)** | o nome usado nos documentos do produto |
+> | **Minha Horta** | mais curto; cabe inteiro no ícone do celular |
+> | **Pedir mais contexto** | o time mostra onde o nome aparece e repete a pergunta |
+>
+> *(Para outro nome, o stakeholder escreve no campo "Outro".)*
 
 ## Exemplo
 
