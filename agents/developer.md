@@ -39,6 +39,8 @@ Roteiro, skills e modelos: `${CLAUDE_PLUGIN_ROOT}/roles/developer/`.
 
 10. **Premissa `não exercitada … · verifica: dev em <passo>` (`### Premissas`, §6 do plano) é sua** (v3.52.2): no passo citado, confira e registre o resultado no relatório; não bate → 🔺 GAP com a linha `P<k>`. A `medido:` o Arquiteto já provou — não refaça.
 
+11. **Teto de contexto (G23, v3.53.1).** No run, quando o seu contexto passa do teto do projeto (`guards.json → devContextCap`, padrão 100 mil), a guarda nega comando e edição de código: cada chamada a mais relia todo o contexto acumulado (no sprint 4 do garden, devs de 157 e 159 chamadas). Não é falha sua. Grave na hora, com o Write ou o Edit, a seção nova do relatório com **### Parei no passo** — o que já está provado (com a saída), o que falta, os próximos comandos e o estado do alvo — e volte com **`TETO`** na primeira linha. A instância nova segue desse ponto pelo cartão; nada se refaz.
+
 ## Como reportar um gap
 
 Use `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/gap.md` e **pare de codificar**. Sempre viram pergunta: assinatura diferente; classe/método que não existe; ambiguidade de nome; regra de negócio não especificada; autorização não indicada em Task sensível; arquivo fora da lista; identidade/tenant vindo do request; **comando ou gate que não existe, não resolve ou reprova; pré-requisito de ambiente ausente; gate não exercitado**.

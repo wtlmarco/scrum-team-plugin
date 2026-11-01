@@ -87,8 +87,13 @@ try {
     $eligible = @($rows | Where-Object { $c = $_.Cell; ($open | Where-Object { $c.Contains($_) }).Count -gt 0 -and @($_.Deps | Where-Object { $closed -notcontains $_ }).Count -eq 0 })
     if (-not $eligible.Count) { exit 0 }
     $t = $eligible[0]
+    # v3.53.1 (plugin-report do sprint 4 do garden, item 3): a Task elegível já tem executor ou dev vivo de OUTRA sessão aberta
+    # no mesmo projeto — o run.ps1 next manda esperar, e barrar o fim de turno levaria a redisparar (dois devs no mesmo alvo).
+    if (@(Get-LiveAgents $projectDir $t.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -in 'task-runner', 'developer' -and (Test-AgentHostAlive $_) -eq $true }).Count) {
+        Write-GuardLog $projectDir 'G20' $hookInput $t.Id 'liberado: a Task tem agente vivo de outra sessão (run.ps1 next manda esperar)'; exit 0
+    }
     Write-GuardLog $projectDir 'G20' $hookInput $t.Id 'bloqueio: fim de turno com Task elegível'
-    [Console]::Error.WriteLine("[G20] O sprint run está em andamento (.active-run, sprint $([string]$run.id)) e a Task $($t.Id) está elegível. Encerrar o turno aqui não é parada legítima (sprint-run.md §Ordem da fila): siga — rode run.ps1 next e faça a PRÓXIMA AÇÃO que ele imprimir (dev de volta: run.ps1 done -Task <ID> -Result ok|gap|env). Só encerre por (a) fim da fila → formulário de autorização da Review, (b) Task marcada 🔴 sem elegível restante → formulário de R22, (c) pré-condição falha, (d) interrupção do stakeholder, (e) pausa pedida pelo stakeholder entre Tasks (sprint-run.md §Pausa segura) — nesses casos apague o .active-run antes; (f) ponto seguro: o run.ps1 done que fecha a Task grava .team-project/.safe-point e libera o fim de turno sem apagar o .active-run. Para esperar um agente: dispare e encerre o turno; o aviso reabre a sessão.")
+    [Console]::Error.WriteLine("[G20] O sprint run está em andamento (.active-run, sprint $([string]$run.id)) e a Task $($t.Id) está elegível. Encerrar o turno aqui não é parada legítima (sprint-run.md §Ordem da fila): siga — rode run.ps1 next e faça a PRÓXIMA AÇÃO que ele imprimir (dev de volta: run.ps1 done -Task <ID> -Result ok|gap|env|teto). Só encerre por (a) fim da fila → formulário de autorização da Review, (b) Task marcada 🔴 sem elegível restante → formulário de R22, (c) pré-condição falha, (d) interrupção do stakeholder, (e) pausa pedida pelo stakeholder entre Tasks (sprint-run.md §Pausa segura) — nesses casos apague o .active-run antes; (f) ponto seguro: o run.ps1 done que fecha a Task grava .team-project/.safe-point e libera o fim de turno sem apagar o .active-run. Para esperar um agente: dispare e encerre o turno; o aviso reabre a sessão.")
     exit 2
 } catch {
     exit 1

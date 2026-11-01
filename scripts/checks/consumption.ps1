@@ -163,7 +163,7 @@ try {
             # v3.52.2 (C3): o filho do executor de Task (dev, Arquiteto, QA) também diz quem o chamou, pelo agentId em children.
             if ($caller.ContainsKey([string]$u.agent_id)) { $note += "chamado por $($caller[[string]$u.agent_id])$(if ($inferred.ContainsKey([string]$u.agent_id)) { ' (pelo horário)' });" }
             $usd = if ($u.PSObject.Properties['usd'] -and $null -ne $u.usd) { [double]$u.usd } else { $null }
-            $note += ("medido: {0}#{1}; notificação ≈ {2:N0}; cache lido {3:N0}; saída {4:N0}; {5} chamada(s); contexto 1ª/pico {6:N0}/{7:N0}" -f $u.agent_id, $u.round, [int64]$u.final_context, [int64]$u.cache_read, [int64]$u.output, $u.calls, [int64]$u.first_context, [int64]$u.peak_context) + $(if ($null -ne $usd) { '; US$ {0:N2}' -f $usd } else { '' })
+            $note += ("medido: {0}#{1}; notificação ≈ {2:N0}; cache lido {3:N0}; saída {4:N0}; {5} chamada(s); contexto 1ª/pico {6:N0}/{7:N0}" -f $u.agent_id, $u.round, [int64]$u.final_context, [int64]$u.cache_read, [int64]$u.output, $u.calls, [int64]$u.first_context, [int64]$u.peak_context) + $(if ($null -ne $usd) { '; US$ {0:N2}' -f $usd } else { '' }) + $(if ($u.PSObject.Properties['plugin'] -and $u.plugin) { "; plugin $($u.plugin)" } else { '' })   # v3.53.1: versão na rodada
             $cmd = if ($u.description) { '`Agent` · ' + ([string]$u.description -replace '\|', '/') } else { '`Agent`' }
             $measured += [pscustomobject]@{
                 Line = ('| {0} | {1} | {2} | {3} | {4} | {5} | {6} | {7:N0} | {8} | {9} |' -f ([string]$u.start).Replace('T', ' ').Substring(0, 16), $role, (Get-ShortModel ([string]$u.model)), $cmd, $work, $cat, $unit, [int64]$u.processed, (Format-Duration ([int]$u.duration_s)), ($note -join ' '))

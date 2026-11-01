@@ -31,6 +31,8 @@ function Get-GuardConfig([string]$ProjectDir) {
         testSkipPatterns = @('[Skip', '[Ignore', 'Skip =', 'Skip=', '.skip(', 'xit(', 'xdescribe(', 'xtest(', '@Disabled', '@Ignore', 'pytest.mark.skip', 't.Skip(')
         # v3.44 (G14): prefixos dos comandos de build/teste/lint do projeto, liberados aos papeis durante o run
         runCommands      = @()
+        # v3.53.1 (G23): teto de contexto por instancia do dev, em tokens da ultima chamada; 0 = desligado
+        devContextCap    = 100000
         # v3.47 (G18) - modo benchmark: respostas do dossie ao AskUserQuestion e agente em primeiro plano; $null = desligado
         bench            = $null
         state            = 'ausente'
@@ -46,6 +48,7 @@ function Get-GuardConfig([string]$ProjectDir) {
         if ($null -ne $json.sourceRoots)      { $cfg.sourceRoots      = @($json.sourceRoots) }
         if ($null -ne $json.testSkipPatterns) { $cfg.testSkipPatterns = @($json.testSkipPatterns) }
         if ($null -ne $json.runCommands)      { $cfg.runCommands      = @($json.runCommands) }
+        if ($null -ne $json.devContextCap)    { $cfg.devContextCap    = [int]$json.devContextCap }
         if ($null -ne $json.bench)            { $cfg.bench            = $json.bench }
         $cfg.state = 'ok'
     } catch {
@@ -150,6 +153,35 @@ function Set-ActiveAgents([string]$ProjectDir, $List) {
 function Get-AgentIdleHours($Agent) {
     try { return ((Get-Date) - [datetime]::Parse([string]$(if ($Agent.at) { $Agent.at } else { $Agent.desde }))).TotalHours } catch { return 1e6 }
 }
+# v3.53.1 (plugin-report do sprint 4 do garden, item 3): o processo do Claude Code que hospeda o agente - o primeiro ancestral
+# do hook que nao e shell. O SessionStart de uma segunda sessao aberta no mesmo projeto tratava os agentes vivos da primeira
+# como mortos, e o run.ps1 next redisparava a Task: dois devs no mesmo emulador. @{ pid; start } ou $null.
+function Get-HostProcess {
+    try {
+        $id = $PID
+        for ($i = 0; $i -lt 6; $i++) {
+            $p = Get-CimInstance Win32_Process -Filter "ProcessId=$id" -ErrorAction Stop
+            if (-not $p) { return $null }
+            if ($i -gt 0 -and [string]$p.Name -notmatch '^(?i)(powershell|pwsh|cmd|bash|sh|conhost|wsl)(\.exe)?$') {
+                return @{ pid = [int]$p.ProcessId; start = $p.CreationDate.ToString('yyyy-MM-dd HH:mm:ss') }
+            }
+            $id = [int]$p.ParentProcessId; if (-not $id) { return $null }
+        }
+    } catch { }
+    return $null
+}
+# O processo que hospeda o agente segue vivo? $true/$false; $null = registro sem host_pid (anterior à v3.53.1).
+function Test-AgentHostAlive($Agent) {
+    if (-not $Agent.PSObject.Properties['host_pid'] -or -not $Agent.host_pid) { return $null }
+    $p = Get-Process -Id ([int]$Agent.host_pid) -ErrorAction SilentlyContinue
+    if (-not $p) { return $false }
+    try { return ($p.StartTime.ToString('yyyy-MM-dd HH:mm:ss') -eq [string]$Agent.host_start) } catch { return $true }   # sem acesso ao início: existe
+}
+# Agentes do item ainda vivos: processo hospedeiro vivo (ou desconhecido) e sinal de vida há menos de $MaxIdleMin minutos
+# (um verify full fica até ~10 min sem ação de ferramenta). Agente cortado sem SubagentStop sai daqui ao passar do prazo.
+function Get-LiveAgents([string]$ProjectDir, [string]$Work, [int]$MaxIdleMin = 20) {
+    return @(Get-ActiveAgents $ProjectDir | Where-Object { [string]$_.work -eq $Work -and (Get-AgentIdleHours $_) * 60 -lt $MaxIdleMin -and (Test-AgentHostAlive $_) -ne $false })
+}
 function Add-ActiveAgent([string]$ProjectDir, [string]$Type, [string]$Description, [string]$Session = '', [string]$Parent = '') {
     # v3.52.2 (note.md item 15): Q-S<n> (correção do portão) também é item de trabalho.
     $work = ''; $wm = [regex]::Match($Description, '(?<![\w-])(Q-S\d+[a-z]?|T-\d+[a-z]?|F-\d+|B-\d+|H-\d+)(?![\w])'); if ($wm.Success) { $work = $wm.Value }
@@ -157,7 +189,10 @@ function Add-ActiveAgent([string]$ProjectDir, [string]$Type, [string]$Descriptio
     # Registro sem sinal de vida há mais de 6 h é resto de queda (a SubagentStop não veio): sai ao entrar o próximo.
     $old = @(Get-ActiveAgents $ProjectDir | Where-Object { (Get-AgentIdleHours $_) -lt 6 })
     # v3.52.2 (note.md itens 2-4): sem "bg" (todo agente é assíncrono); session = sessão que disparou, parent = agente que disparou.
-    $l = $old + @([pscustomobject][ordered]@{ type = $Type; description = $Description; desde = $now; session = $Session; parent = $Parent; agent_id = ''; work = $work; last = 'disparado'; at = $now })
+    # v3.53.1: host_pid/host_start = o processo do Claude Code que hospeda o agente (Get-HostProcess).
+    $hp = Get-HostProcess
+    $l = $old + @([pscustomobject][ordered]@{ type = $Type; description = $Description; desde = $now; session = $Session; parent = $Parent; agent_id = ''; work = $work; last = 'disparado'; at = $now
+        host_pid = $(if ($hp) { $hp.pid } else { 0 }); host_start = $(if ($hp) { $hp.start } else { '' }) })
     Set-ActiveAgents $ProjectDir $l
 }
 # Ultima acao de um subagente (PreToolUse dele): casa pelo agent_id; senao, o mais antigo do mesmo tipo ainda sem agent_id.
@@ -262,6 +297,44 @@ function Get-LimitFromTranscript([string]$Path, [int]$Tail = 30) {
         if ($txt -match $script:LimitRe) { $hit = ($txt -replace '\s+', ' ').Trim() }
     }
     return $hit
+}
+# Transcript do subagente: o campo do evento, se vier; senão <dir do transcript da sessão>/<sessão>/subagents/agent-<id>.jsonl.
+# v3.53.1: daqui (era do subagent-stop.ps1) — a PreToolUse do dev também o lê (G23).
+function Get-AgentTranscript([object]$HookInput) {
+    foreach ($name in 'agent_transcript_path', 'subagent_transcript_path') {
+        $p = $HookInput.PSObject.Properties[$name]
+        if ($p -and $p.Value -and (Test-Path -LiteralPath ([string]$p.Value))) { return [string]$p.Value }
+    }
+    $parent = [string]$HookInput.transcript_path
+    $id = [string]$HookInput.agent_id
+    if (-not $parent -or -not $id) { return $null }
+    $dir = Join-Path (Split-Path $parent) ([System.IO.Path]::GetFileNameWithoutExtension($parent))
+    $cand = Join-Path $dir "subagents/agent-$id.jsonl"
+    if (Test-Path -LiteralPath $cand) { return $cand }
+    return $null
+}
+# v3.53.1 (G23): contexto da última chamada ao modelo (entrada + cache gravado + cache lido), lido só no fim do transcript
+# (até 256 KB) — o hook roda a cada comando do dev e não pode reler o arquivo inteiro. 0 = sem chamada legível.
+function Get-LastContext([string]$Path) {
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return 0 }
+    $fs = $null
+    try {
+        $fs = [System.IO.File]::Open($Path, 'Open', 'Read', 'ReadWrite')
+        $len = [Math]::Min($fs.Length, 262144); [void]$fs.Seek(-$len, 'End')
+        $buf = New-Object byte[] $len; $got = $fs.Read($buf, 0, $len)
+        $lines = ([System.Text.Encoding]::UTF8.GetString($buf, 0, $got)) -split "`n"
+        for ($i = $lines.Count - 1; $i -ge 0; $i--) {
+            $l = $lines[$i]
+            if ($l.IndexOf('"type":"assistant"') -lt 0 -or $l.IndexOf('"usage"') -lt 0 -or $l.IndexOf('<synthetic>') -ge 0) { continue }
+            try { $u = ($l | ConvertFrom-Json).message.usage } catch { continue }
+            if ($u) { return [int64]$u.input_tokens + [int64]$u.cache_creation_input_tokens + [int64]$u.cache_read_input_tokens }
+        }
+    } catch { } finally { if ($fs) { $fs.Dispose() } }
+    return 0
+}
+# v3.53.1 (plugin-report, item 14): versão do plugin que roda o hook (.claude-plugin/plugin.json); '' se ilegível.
+function Get-PluginVersion {
+    try { return [string]((Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\.claude-plugin\plugin.json') -Raw -Encoding UTF8 | ConvertFrom-Json).version) } catch { return '' }
 }
 function Set-LimitMarker([string]$ProjectDir, [string]$Text, [string]$Who, [string]$Item) {
     $p = Join-Path $ProjectDir '.team-project/.usage-limit'
