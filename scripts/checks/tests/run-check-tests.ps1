@@ -1386,6 +1386,98 @@ Check 'team-view usage: só o sprint, total com US$, rateio entre as Tasks citad
 $r = Invoke-Check 'team-view.ps1' @('-View', 'kanban', '-Root', $p)
 Check 'team-view -View inválido: exit 2' $r 2 @('inválido')
 
+# 16. v3.53.3 (avaliação do sprint 5 do garden).
+# 16a. item 3: preparo de UMA História por vez — a preparada com Task a construir é construída antes de preparar a próxima.
+$p = Join-Path $tmp 'wip'; New-Project $p
+$sb = Join-Path $p '.team-project/sprints/1/sprint-backlog.md'
+$h20 = "## História H-020 — Outra coisa (média)`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários | Critério de pronto |`n|---|---|---|---|---|---|---|---|---|`n| $($e.todo) T-050 | Outra coisa | 1 | dev | DEP | [``plan/T-050-x.md``](plan/) | [``evidence/T-050.md``](evidence/) | nenhum aplicável — interno | teste |`n`n---`n`n"
+Edit-File $sb "| $($e.qa) T-041 | Endpoint" "| $($e.ok) T-041 | Endpoint"
+Edit-File $sb '[`plan/T-041a-x.md`](plan/)' '[`plan/T-041a-x.md`](plan/T-041a-x.md)'
+Put $p '.team-project/sprints/1/plan/T-041a-x.md' "# Plano`n"
+Edit-File $sb '## Entradas fora da Planning' ($h20.Replace('DEP', '—') + '## Entradas fora da Planning')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.53.3 item 3: História preparada com Task a construir → constrói antes de preparar a próxima' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'História H-020') { "`nPREPAROU-H020" } else { '' }) } 0 @('construir T-041a', '^(?![\s\S]*PREPAROU-H020)')
+# A História que depende de Task aberta de outra História espera por ela: a da dependência se prepara primeiro.
+$p = Join-Path $tmp 'wip-dep'; New-Project $p
+$sb = Join-Path $p '.team-project/sprints/1/sprint-backlog.md'
+Edit-File $sb "| $($e.qa) T-041 | Endpoint" "| $($e.ok) T-041 | Endpoint"
+Edit-File $sb '## História H-014' ($h20.Replace('DEP', 'T-041a') + '## História H-014')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.53.3 item 3: H-020 vem antes no quadro mas depende da T-041a (H-014) — o preparo começa pela H-014' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'planos da História H-020') { "`nPREPAROU-H020" } else { '' }) } 0 @('planos da História H-014', '^(?![\s\S]*PREPAROU-H020)')
+
+# 16b. item 4: dev que encerrou o turno esperando verify/accept em segundo plano — done espera, start e next não redisparam.
+$p = Join-Path $tmp 'ocupado'; New-Project $p
+$vl = '.team-project/verify/1/T-041/verify.lock'
+Put $p $vl ('{"pid":' + $PID + ',"started":"' + (Get-Process -Id $PID).StartTime.ToString('o') + '","mode":"full","at":"2026-11-02 07:15:00"}')
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'ok', '-Root', $p)
+Check 'v3.53.3 item 4: done com o verify da Task vivo → ESPERANDO, exit 3, nada fechado' $r 3 @('ESPERANDO — a T-041 ainda tem verify full \(pid \d+', 'encerre o turno')
+$r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
+Check 'v3.53.3 item 4: start com o verify da Task vivo → não dispara outro dev, exit 2' $r 2 @('ainda tem verify full', 'Não dispare outro dev')
+Remove-Item -LiteralPath (Join-Path $p $vl) -Force
+Put $p '.team-project/sprints/1/plan/T-041a-x.md' "# Plano`n"
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') '[`plan/T-041a-x.md`](plan/)' '[`plan/T-041a-x.md`](plan/T-041a-x.md)'
+Put $p '.team-project/.target-lock' ('{"target":"android","owner":"accept T-041","pid":' + $PID + ',"desde":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '"}')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.53.3 item 4: next com o accept da Task em 🟪 vivo → esperar, exit 3' $r 3 @('esperar — a T-041 ainda tem accept no alvo android \(pid')
+Put $p '.team-project/.target-lock' ('{"target":"android","owner":"accept T-099","pid":' + $PID + ',"desde":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '"}')
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'teto', '-Root', $p)
+Check 'v3.53.3 item 4: accept de OUTRA Task no alvo não segura o done desta' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'ESPERANDO') { "`nESPEROU" } else { '' }) } 0 @('TETO', '^(?![\s\S]*ESPEROU)')
+
+# 16c. item 2: GAP da prova no alvo → operator pelas capturas antes do Arquiteto; o done segue o veredito dele.
+$p = Join-Path $tmp 'gap-alvo'; New-Project $p
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+$dvg = '.team-project/sprints/1/delivery/T-041.md'; $dgr = '.team-project/operator/1/T-041-alvo/diagnostico.md'
+Put $p $dvg "## Entrega`n`n🔺 GAP (aceite/alvo): tap tab-button-estufa: tag não encontrada`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.53.3 item 2: GAP de alvo → operator com as capturas e o caminho do veredito; nada ao Arquiteto' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'team:architect') { "`nXARQ-DISPARADO" } else { '' }) } 0 @('team:operator', 'capturas \*-falha\.png', [regex]::Escape($dgr), 'Veredito: AMBIENTE', 'target\.ps1 -Target android', '^(?![\s\S]*XARQ-DISPARADO)')
+Put $p $dgr "Veredito: APP`nA tela da Estufa estava aberta; o botão não existe.`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+$cg = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
+Check 'v3.53.3 item 2: veredito APP → dev em instância nova, cartão com o diagnóstico' @{ Code = $r.Code; Out = $r.Out + "`n" + $(if (Test-Path -LiteralPath $cg) { [System.IO.File]::ReadAllText($cg, $utf8) } else { 'sem cartão' }) } 0 @('diagnosticou APP', 'run\.ps1 start -Task T-041', 'Diagnóstico do alvo \(operator\):\*\* `operator/1/T-041-alvo/diagnostico\.md` · Veredito: APP')
+Put $p $dgr "Veredito: PLANO`nO cenário pede um id que nenhuma Task cria.`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.53.3 item 2: veredito PLANO → Arquiteto com o diagnóstico' $r 0 @('team:architect', 'diagnóstico do operator .*\(veredito PLANO\)')
+Put $p $dvg "## Entrega`n`n🔺 GAP (aceite/alvo): tap tab-button-estufa: tag não encontrada`n"
+Put $p $dgr "Veredito: AMBIENTE`nA captura mostra a tela inicial do Android.`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.53.3 item 2: veredito AMBIENTE → rota de queda de ambiente (reparo e dev novo), sem Arquiteto' $r 0 @('diagnosticou AMBIENTE', 'FALHA DE AMBIENTE', 'target\.ps1 -Target android -Repair')
+Start-Sleep -Milliseconds 1100
+Put $p $dvg "## Entrega 2`n`n🔺 GAP (aceite/alvo): assert-text alertas.titulo`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.53.3 item 2: GAP de alvo novo depois do diagnóstico → operator de novo' $r 0 @('team:operator')
+Put $p $dvg "## Entrega 3`n`n🔺 GAP: o serviço precisa de uma transação que o plano não prevê`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.53.3 item 2: GAP de desenho (não de alvo) segue direto ao Arquiteto' $r 0 @('team:architect')
+
+# 16d. item 1: launch do android abre do zero e, sem o app na frente, para como AMBIENTE (adb e relógio falsos).
+$hs = Join-Path $tmp 'android-harness.ps1'
+[System.IO.File]::WriteAllText($hs, @'
+param([string]$Adapter, [string]$Case)
+$ErrorActionPreference = 'Stop'
+. $Adapter
+$script:log = New-Object Collections.Generic.List[string]; $script:clock = [datetime]'2026-01-01'
+function Start-Sleep { }
+function Get-Date { $script:clock = $script:clock.AddSeconds(1); $script:clock }
+$script:focus = ''
+switch ($Case) { 'outro' { $script:focus = '  mCurrentFocus=Window{2b u0 com.android.launcher3/com.android.launcher3.Launcher}' } 'erro' { $script:focus = '  mCurrentFocus=Window{3c u0 Application Error: br.x}' } 'tap' { $script:focus = '  mCurrentFocus=Window{1a u0 br.x/br.x.MainActivity}' } }
+function Sh { $c = $args -join ' '; $script:log.Add($c); if ($c -like 'monkey*' -and $Case -eq 'ok') { $script:focus = '  mCurrentFocus=Window{1a u0 br.x/br.x.MainActivity}' }; if ($c -eq 'dumpsys window') { return @('  x', $script:focus) }; return @() }
+function Adb { if (($args -join ' ') -like 'exec-out cat*') { return '<?xml version="1.0"?><hierarchy><node resource-id="br.x:id/alertas.titulo" text="Alertas" bounds="[0,0][100,100]" checked="false" /></hierarchy>' }; return @() }
+$script:Pkg = 'br.x'
+$step = if ($Case -eq 'tap') { 'tap' } else { 'launch' }; $arg = if ($Case -eq 'tap') { 'tab-button-estufa' } else { '' }
+try { Invoke-AndroidStep $step $arg 'x'; 'RESULT=ok' } catch { "RESULT=$($_.Exception.Message)" }
+'LOG=' + ($script:log -join ' | ')
+'@, $utf8)
+$ad = Join-Path $checks 'targets/android.ps1'
+$hr = { param($case) $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $hs -Adapter $ad -Case $case 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
+$r = & $hr 'ok'
+Check 'v3.53.3 item 1: launch fecha o app (force-stop) antes de abrir e volta quando ele fica na frente' $r 0 @('RESULT=ok', 'LOG=am force-stop br\.x \| monkey -p br\.x')
+$r = & $hr 'outro'
+Check 'v3.53.3 item 1: app que não fica na frente → AMBIENTE com o foco, sem apertar HOME' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'keyevent 3') { "`nHOME" } else { '' }) } 0 @('RESULT=AMBIENTE: o app br\.x não ficou na frente em 3 aberturas', 'launcher3', '^(?![\s\S]*\nHOME)')
+$r = & $hr 'erro'
+Check 'v3.53.3 item 1: janela de erro do próprio app ao abrir → falha do app, não ambiente' $r 0 @('RESULT=o app br\.x fechou ou travou ao abrir')
+$r = & $hr 'tap'
+Check 'v3.53.3 item 1: tag não encontrada diz a tela, os ids e os textos visíveis' $r 0 @('RESULT=tag não encontrada: tab-button-estufa \[tela: br\.x/br\.x\.MainActivity · ids: alertas\.titulo · textos: Alertas\]')
+
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
 Write-Output ("{0} casos · {1} falharam" -f $rows.Count, $fail)
