@@ -53,6 +53,10 @@ try {
     # sessão retoma pelo .active-run e o run.ps1 next. O próximo start apaga o marcador (Task em voo volta a ser barrada).
     $sp = Get-Marker $projectDir '.safe-point'
     if ($null -ne $sp) { Write-GuardLog $projectDir 'G20' $hookInput ([string]$sp.task) 'liberado: ponto seguro (Task fechada; a próxima sessão retoma pelo run.ps1 next)'; exit 0 }
+    # v3.53.4: o run.ps1 next parou esperando o plano externo (pacote com o stakeholder) — a .external-plan libera o fim de
+    # turno; o próximo next a apaga e lê pack/in/.
+    $xp = Get-Marker $projectDir '.external-plan'
+    if ($null -ne $xp) { Write-GuardLog $projectDir 'G20' $hookInput '' "liberado: esperando o plano externo ($((@($xp.pendente) | ForEach-Object { [string]$_ }) -join ', '))"; exit 0 }
     if ($tr -and (Test-Path -LiteralPath $tr)) {
         $tail = @(Get-Content -LiteralPath $tr -Encoding UTF8 -Tail 40)
         $lastAsst = @($tail | Where-Object { $_ -match '"type":"assistant"' } | Select-Object -Last 1)

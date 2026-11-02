@@ -1478,6 +1478,100 @@ Check 'v3.53.3 item 1: janela de erro do próprio app ao abrir → falha do app,
 $r = & $hr 'tap'
 Check 'v3.53.3 item 1: tag não encontrada diz a tela, os ids e os textos visíveis' $r 0 @('RESULT=tag não encontrada: tab-button-estufa \[tela: br\.x/br\.x\.MainActivity · ids: alertas\.titulo · textos: Alertas\]')
 
+# 17. v3.53.4 — plano externo (guards.json → "run": { "planner": "external" }): pacote por História, retorno conferido
+# pelo plan.ps1, correção, GAP em pacote e o piloto por lista de Tasks.
+Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+$zipList = { param($z) $za = [System.IO.Compression.ZipFile]::OpenRead($z); try { ($za.Entries | ForEach-Object { $_.FullName }) -join "`n" } finally { $za.Dispose() } }
+$zipMake = { param($z, $entries) $fs = [System.IO.File]::Open($z, [System.IO.FileMode]::Create); try { $za = New-Object System.IO.Compression.ZipArchive($fs, [System.IO.Compression.ZipArchiveMode]::Create); try { foreach ($k in $entries.Keys) { $w = New-Object System.IO.StreamWriter($za.CreateEntry($k).Open(), $utf8); try { $w.Write($entries[$k]) } finally { $w.Dispose() } } } finally { $za.Dispose() } } finally { $fs.Dispose() } }
+$xp = Join-Path $tmp 'externo'; New-Project $xp
+Put $xp '.team-project/architect/breakdown/S1.md' $bdText
+Put $xp 'src/a.ts' "export const a = 1`n"; Put $xp 'docs/sdd/03-architecture.md' "# Arquitetura`n"
+Put $xp '.team-project/guards.json' '{ "run": { "planner": "external", "tasks": [] } }'
+$xsb = Join-Path $xp '.team-project/sprints/1/sprint-backlog.md'; $xpk = Join-Path $xp '.team-project/sprints/1/pack'
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $xp)
+Check 'v3.53.4: planner external → pacote da História gerado (sem Arquiteto) e a Task em construção segue' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'team:architect') { "`nXARQ-DISPARADO" } else { '' }) } 0 @('external plan: pacote H-014 gerado \(T-041a; \d+ KB\)', 'construir T-041 ', '^(?![\s\S]*XARQ-DISPARADO)')
+$zl = & $zipList (Join-Path $xpk 'out/H-014.zip')
+$ins = [System.IO.File]::ReadAllText((Join-Path $xpk 'out/H-014/INSTRUCTIONS.md'), $utf8)
+Check 'v3.53.4: o zip leva o roteiro, a ficha (com o resumo da dependência), o modelo, o ambiente medido e os arquivos da ficha, com "/"' @{ Code = 0; Out = $zl + "`n" + $ins + "`n" + [System.IO.File]::ReadAllText((Join-Path $xpk 'out/H-014/tasks/T-041a-ficha.md'), $utf8) } 0 @('(?m)^INSTRUCTIONS\.md$', '(?m)^tasks/T-041a-ficha\.md$', '(?m)^context/implementation-plan\.md$', '(?m)^context/environment\.md$', '(?m)^files/src/a\.ts$', '(?m)^files/docs/sdd/03-architecture\.md$', '(?m)^files/plugin/standards/implementation-principles\.md$', '`T-041a-plan\.md` — Variante', '`H-014-return\.zip`', '\| 1 \| T-041a \| Variante \| T-041 \|', 'Nunca invente uma saída', '## Plano da dependência — resumo de `sprints/1/plan/T-041-export\.md`')
+Edit-File $xsb "| $($e.qa) T-041 | Endpoint" "| $($e.ok) T-041 | Endpoint"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $xp)
+Check 'v3.53.4: sem Task em construção, o run espera o stakeholder (exit 3) e diz onde pegar e onde devolver; a marca libera a G20' @{ Code = $r.Code; Out = $r.Out + "`nmarca=" + (Test-Path -LiteralPath (Join-Path $xp '.team-project/.external-plan')) } 3 @('aguardando o retorno de T-041a \(pacote H-014\)', 'PRÓXIMA AÇÃO: external plan — com o stakeholder', 'pack/out/H-014\.zip \(chat na web\)', 'pack/out/H-014/ \(app do Codex\)', 'devolva o H-014-return\.zip .* em \.team-project/sprints/1/pack/in/', 'marca=True')
+$xbase = "**Cenários:** nenhum — interno`n**Risco:** infraestrutura`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`nUsa a tabela export_job.`n`n## 3. Ambiente`n`n| Pré-requisito | Comando de medição | Saída real |`n|---|---|---|`n| Node 20 | node --version | v20.11.0 |`n`n## 6. Testes`nsem prova: x`n`n## 9. Onde parar`n- **Pré-requisito ausente** — 🔺 GAP`n"
+$xbad = "# Plano de Implementação — T-041a Variante`n" + $xbase
+$xgood = "# Plano de Implementação — T-041a Variante`n**Li além da ficha:** nenhum`n" + $xbase
+New-Item -ItemType Directory -Force (Join-Path $xpk 'in') | Out-Null
+& $zipMake (Join-Path $xpk 'in/H-014-return.zip') @{ 'T-041a-plan.md' = $xbad; 'src/hack.ts' = 'x' }
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $xp)
+Check 'v3.53.4: plano reprovado pelo plan.ps1 não entra; arquivo que não é plano é ignorado; sai o pacote de correção com a tabela' @{ Code = $r.Code; Out = $r.Out + "`nplano=" + (Test-Path -LiteralPath (Join-Path $xp '.team-project/sprints/1/plan/T-041a-x.md')) + " hack=" + (Test-Path -LiteralPath (Join-Path $xp 'src/hack.ts')) + "`n" + (& $zipList (Join-Path $xpk 'out/H-014-fix1.zip')) } 3 @('T-041a reprovado pelo plan\.ps1 \(ficha\)', 'ignorado em H-014-return\.zip .*src/hack\.ts', 'pacote H-014-fix1 gerado \(T-041a', 'plano=False hack=False', '(?m)^review/T-041a-check\.txt$', '(?m)^review/T-041a-plan\.md$')
+Check 'v3.53.4: o roteiro da correção pede só as linhas falhou' @{ Code = 0; Out = [System.IO.File]::ReadAllText((Join-Path $xpk 'out/H-014-fix1/INSTRUCTIONS.md'), $utf8) } 0 @('## Correção \(rodada 2\)', 'corrija só as linhas `falhou`', '`H-014-fix1-return\.zip`')
+Put $xp '.team-project/sprints/1/pack/in/T-041a-plan (1).md' $xgood
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $xp)
+$xrow = @([System.IO.File]::ReadAllLines($xsb, $utf8) | Where-Object { $_ -match 'T-041a \| Variante' })[0]
+Check 'v3.53.4: plano aprovado entra no nome da Planning, o quadro ganha o link e a Task vai à construção; o retorno vai a done/' @{ Code = $r.Code; Out = $r.Out + "`n" + $xrow + "`nin=" + @(Get-ChildItem -LiteralPath (Join-Path $xpk 'in') -File).Count + " done=" + @(Get-ChildItem -LiteralPath (Join-Path $xpk 'done') -File).Count } 0 @('external plan: T-041a aceito \(plan\.ps1 ok\) → sprints/1/plan/T-041a-x\.md', 'construir T-041a', '\[`plan/T-041a-x\.md`\]\(plan/T-041a-x\.md\)', 'in=0 done=2')
+Check 'v3.53.4: o run-log registra o pacote, a reprovação e o aceite' @{ Code = 0; Out = [System.IO.File]::ReadAllText((Join-Path $xp '.team-project/sprints/1/run-log.md'), $utf8) } 0 @('external plan: pacote H-014 gerado', 'external plan reprovado pelo plan\.ps1 \(ficha\)', 'external plan aceito \(plan\.ps1 ok\)')
+# GAP da Task do plano externo: a decisão vai num pacote, a Task espera.
+Edit-File $xsb "| $($e.plan) T-041a |" "| $($e.build) T-041a |"
+Put $xp '.team-project/sprints/1/delivery/T-041a.md' "## Entrega`n`n🔺 GAP: o export_job precisa de índice que o plano não prevê`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041a', '-Result', 'gap', '-Root', $xp)
+Check 'v3.53.4: 🔺 GAP da Task do plano externo → pacote de decisão, sem Arquiteto nem start' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'team:architect') { "`nXARQ-DISPARADO" } else { '' }) + "`n" + (& $zipList (Join-Path $xpk 'out/T-041a-gap.zip')) } 0 @('decisão vai ao plano externo', 'pack/out/T-041a-gap\.zip', 'não dispare Arquiteto nem start', '(?m)^review/T-041a-plan\.md$', '(?m)^review/T-041a-delivery\.md$', '^(?![\s\S]*XARQ-DISPARADO)')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $xp)
+Check 'v3.53.4: com o GAP fora, a Task não é reconstruída — o run espera a decisão (exit 3)' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'construir T-041a') { "`nRECONSTRUIU" } else { '' }) } 3 @('decisão do 🔺 GAP da T-041a: pegue .*T-041a-gap\.zip', '^(?![\s\S]*RECONSTRUIU)')
+Put $xp '.team-project/sprints/1/pack/in/T-041a-plan.md' ($xgood.Replace('**Li além da ficha:** nenhum', "**Li além da ficha:** nenhum`n**Decisão do GAP (02/11/2026):** índice em export_job"))
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $xp)
+Check 'v3.53.4: a decisão do GAP volta aprovada → substitui o plano e a Task volta à construção' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText((Join-Path $xp '.team-project/sprints/1/plan/T-041a-x.md'), $utf8) } 0 @('decisão do 🔺 GAP aceita \(plan\.ps1 ok\)', 'construir T-041a', 'Decisão do GAP \(02/11/2026\)')
+# Piloto: com a lista, só as Tasks dela vão para fora — as outras seguem com o Opus.
+$xp2 = Join-Path $tmp 'externo-piloto'; New-Project $xp2
+Put $xp2 '.team-project/architect/breakdown/S1.md' $bdText
+Put $xp2 'src/a.ts' "export const a = 1`n"; Put $xp2 'docs/sdd/03-architecture.md' "# Arquitetura`n"
+Put $xp2 '.team-project/guards.json' '{ "run": { "planner": "external", "tasks": ["T-099"] } }'
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $xp2)
+Check 'v3.53.4: Task fora da lista do piloto → Arquiteto Opus pela ficha, sem pacote' @{ Code = $r.Code; Out = $r.Out + "`npack=" + (Test-Path -LiteralPath (Join-Path $xp2 '.team-project/sprints/1/pack')) } 0 @('plano da T-041a \(História H-014\) pela ficha', 'pack=False')
+Put $xp2 '.team-project/guards.json' '{ "run": { "planner": "claude", "tasks": [] } }'
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $xp2)
+Check 'v3.53.4: planner "claude" (o padrão) → nada muda' $r 0 @('plano da T-041a \(História H-014\) pela ficha')
+# Trilha fix: o mini-plano do bloco (fix plan, passo 4) e a decisão do 🔺 GAP (fix run) pelo fix-pack.ps1.
+$fx = Join-Path $tmp 'externo-fix'; New-Project $fx; New-FixBlock $fx
+Remove-Item -LiteralPath (Join-Path $fx '.team-project/fixes/B-001/plan.md'), (Join-Path $fx '.team-project/fixes/B-001/verdict.md') -Force
+Put $fx 'src/Export.cs' "class Export {}`n"; Put $fx 'src/Filter.cs' "class Filter {}`n"
+$r = Invoke-Check 'fix-pack.ps1' @('-Block', 'B-001', '-Root', $fx)
+Check 'v3.53.4 fix: sem run.planner external, o fix-pack recusa (exit 2) e o passo segue com o Arquiteto' $r 2 @('segue com o Arquiteto')
+Put $fx '.team-project/guards.json' '{ "run": { "planner": "external", "tasks": [] } }'
+$fpk = Join-Path $fx '.team-project/fixes/B-001/pack'
+$r = Invoke-Check 'fix-pack.ps1' @('-Block', 'B-001', '-Root', $fx)
+$fins = if (Test-Path -LiteralPath (Join-Path $fpk 'out/B-001/INSTRUCTIONS.md')) { [System.IO.File]::ReadAllText((Join-Path $fpk 'out/B-001/INSTRUCTIONS.md'), $utf8) } else { 'sem roteiro' }
+Check 'v3.53.4 fix: pacote do bloco só com as F-IDs em bloco (sem a promovida e a devolvida), exit 3 e onde pegar/devolver' @{ Code = $r.Code; Out = $r.Out + "`n" + (& $zipList (Join-Path $fpk 'out/B-001.zip')) + "`n" + $fins } 3 @('pacote B-001 gerado \(F-001, F-002;', 'PRÓXIMA AÇÃO: external plan', 'fixes/B-001/pack/out/B-001\.zip \(chat na web\)', 'em \.team-project/fixes/B-001/pack/in/', '(?m)^INSTRUCTIONS\.md$', '(?m)^fixes/F-001\.md$', '(?m)^context/fix-plan\.md$', '(?m)^context/pending\.md$', '(?m)^files/src/Export\.cs$', '`B-001-plan\.md`', 'N = 5', '\| F-002 \| ajuste \|')
+$r = Invoke-Check 'fix-pack.ps1' @('-Block', 'B-001', '-Root', $fx)
+Check 'v3.53.4 fix: sem retorno, só espera (não regera)' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'gerado') { "`nREGEROU" } else { '' }) } 3 @('aguardando o retorno do plano do bloco B-001 \(pacote B-001\)', '^(?![\s\S]*REGEROU)')
+$ck2 = [char]::ConvertFromUtf32(0x2714)
+$fxs = { param($id, $prod, [switch]$NoMut)
+    "## $id · correção`n**Tipo:** defeito · **Ficha:** fixes/$id.md`n### Elegibilidade técnica`n- C5 $ck2 · sem contrato`n- C6 $ck2 · 1 arquivo`n- C7 $ck2 · sem dependência`n- C8 $ck2 · ``${prod}:42```n### Causa`n``${prod}:42`` — laço curto`n### Arquivos`n- produção: ``$prod```n- teste: ``tests/${id}Tests.cs```n### Teste de regressão`n**Nome:** ``ultima_linha`` · **Afirma:** a exportação leva a última linha`n**Comando (só este teste):** ``dotnet test --filter $id```n**Antes da correção, falha com:** ``expected 3, got 2```n" + $(if (-not $NoMut) { "**Mutações:**`n- M$($id.Substring(4)) · teste ``tests/${id}Tests.cs`` · ``$prod`` · ``i <= n`` → ``i < n```n" } else { '' }) + "### Passos`n1. **ALTERAR** ``tests/${id}Tests.cs`` — teste; rodar → exit ≠ 0`n   **Conferência:** o teste existe`n2. **ALTERAR** ``$prod`` — ``i < n`` → ``i <= n```n   **Conferência:** a linha mudou`n3. Rodar o teste → exit 0`n   **Conferência:** depois exit 0`n### Standard aplicável`nnenhuma — validação`n### Onde parar e perguntar`n- o laço não estar na linha 42`n### Revalidação`nn/a — sem mudança`n`n" }
+$fhead = "# B-001 · mini-planos`n**Data:** 2026-11-02 10:00 · **Correções:** F-001, F-002 · **Área:** exportação`n`n"
+$ftail = "## Verificação do bloco`n**Fonte (R26 por citação):** ``.team-project/developer/context.md`` §Comandos`n"
+New-Item -ItemType Directory -Force (Join-Path $fpk 'in') | Out-Null
+& $zipMake (Join-Path $fpk 'in/B-001-return.zip') @{ 'B-001-plan.md' = ($fhead + (& $fxs 'F-001' 'src/Export.cs') + (& $fxs 'F-002' 'src/Filter.cs' -NoMut) + $ftail); 'src/Export.cs' = 'hack' }
+$r = Invoke-Check 'fix-pack.ps1' @('-Block', 'B-001', '-Root', $fx)
+Check 'v3.53.4 fix: plano do bloco reprovado pelo fix.ps1 -PlanOnly (F-002 sem mutação) não entra; o código de fora é ignorado; sai a correção' @{ Code = $r.Code; Out = $r.Out + "`nplano=" + (Test-Path -LiteralPath (Join-Path $fx '.team-project/fixes/B-001/plan.md')) + " codigo=" + [System.IO.File]::ReadAllText((Join-Path $fx 'src/Export.cs'), $utf8).Trim() + "`n" + (& $zipList (Join-Path $fpk 'out/B-001-fix1.zip')) } 3 @('reprovado pelo fix\.ps1 -PlanOnly \(mini-planos\)', 'ignorado em B-001-return\.zip .*src/Export\.cs', 'pacote B-001-fix1 gerado', 'plano=False codigo=class Export \{\}', '(?m)^review/B-001-check\.txt$')
+Put $fx '.team-project/fixes/B-001/pack/in/B-001-plan.md' ($fhead + (& $fxs 'F-001' 'src/Export.cs') + (& $fxs 'F-002' 'src/Filter.cs') + $ftail)
+$r = Invoke-Check 'fix-pack.ps1' @('-Block', 'B-001', '-Root', $fx)
+Check 'v3.53.4 fix: plano do bloco aprovado entra no plan.md e o fix plan segue (exit 0)' @{ Code = $r.Code; Out = $r.Out + "`nplano=" + (Test-Path -LiteralPath (Join-Path $fx '.team-project/fixes/B-001/plan.md')) } 0 @('plano do bloco B-001 aceito \(fix\.ps1 -PlanOnly ok\)', 'nada espera o stakeholder', 'plano=True')
+Put $fx '.team-project/fixes/B-001/delivery.md' "## F-001 · entrega`n`n🔺 GAP: o laço está num método gerado; o plano não prevê o gerador`n`n## F-002 · entrega`nok`n"
+$r = Invoke-Check 'fix-pack.ps1' @('-Block', 'B-001', '-Gap', 'F-001', '-Root', $fx)
+Check 'v3.53.4 fix: 🔺 GAP da F-ID → pacote de decisão com a seção dela e o relatório, sem Arquiteto' @{ Code = $r.Code; Out = $r.Out + "`n" + (& $zipList (Join-Path $fpk 'out/F-001-gap.zip')) + "`n" + [System.IO.File]::ReadAllText((Join-Path $fpk 'out/F-001-gap/review/F-001-delivery.md'), $utf8) } 0 @('a decisão vai ao plano externo', 'F-001 🔺 GAP → external plan F-001-gap', '(?m)^review/F-001-plan\.md$', '(?m)^review/F-001-delivery\.md$', 'método gerado', '^(?![\s\S]*F-002 · entrega)')
+$r = Invoke-Check 'fix-pack.ps1' @('-Block', 'B-001', '-Root', $fx)
+Check 'v3.53.4 fix: com o GAP fora, o fix-pack diz que a F-ID espera e as outras seguem (exit 3)' $r 3 @('decisão do 🔺 GAP da F-001 \(as outras F-IDs seguem\): pegue .*F-001-gap\.zip')
+Put $fx '.team-project/fixes/B-001/pack/in/F-001-plan.md' ((& $fxs 'F-001' 'src/Export.cs').Replace('— `i < n` → `i <= n`', '— `i < n` → `i <= n` (GAP 02/11/2026: alterar o gerador)'))
+$r = Invoke-Check 'fix-pack.ps1' @('-Block', 'B-001', '-Root', $fx)
+$fpt = [System.IO.File]::ReadAllText((Join-Path $fx '.team-project/fixes/B-001/plan.md'), $utf8)
+Check 'v3.53.4 fix: a decisão do GAP aprovada troca só a seção da F-ID no plan.md' @{ Code = $r.Code; Out = $r.Out + "`n" + $fpt } 0 @('F-001 — decisão do 🔺 GAP aceita', 'GAP 02/11/2026: alterar o gerador', '## F-002 · correção', '## Verificação do bloco', '\*\*Data:\*\* 2026-11-02 10:00')
+$x2 = [char]::ConvertFromUtf32(0x2718)
+$fpromo = "## F-002 · correção`n**Tipo:** ajuste · **Ficha:** fixes/F-002.md`n### Elegibilidade técnica`n- C5 $x2 · muda o contrato da API`n- C6 $ck2 · 1 arquivo`n- C7 $ck2 · sem dependência`n- C8 $ck2 · ``src/Filter.cs:9```n### Arquivos`nn/a — promovida`n### Onde parar e perguntar`n**Critério que caiu:** C5 — muda o contrato da API`n`n"
+Put $fx '.team-project/fixes/B-001/plan.md' ($fhead + (& $fxs 'F-001' 'src/Export.cs') + $fpromo + $ftail)
+$r = Invoke-Check 'fix.ps1' @('-Block', 'B-001', '-PlanOnly', '-Root', $fx)
+Check 'v3.53.4 fix.ps1 -PlanOnly: promoção com o critério que caiu passa e é listada' $r 0 @('\| mini-planos \| ok .*promovida\(s\): F-002', '\| teto \| ok')
+Put $fx '.team-project/fixes/B-001/plan.md' ($fhead + (& $fxs 'F-001' 'src/Export.cs') + $fpromo.Replace("**Critério que caiu:** C5 — muda o contrato da API`n", '') + $ftail)
+$r = Invoke-Check 'fix.ps1' @('-Block', 'B-001', '-PlanOnly', '-Root', $fx)
+Check 'v3.53.4 fix.ps1 -PlanOnly: C5 ✘ sem o critério que caiu volta (exit 1)' $r 1 @('F-002: C5 ✘ sem \*\*Critério que caiu:\*\*', 'O plano do bloco volta')
+
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
 Write-Output ("{0} casos · {1} falharam" -f $rows.Count, $fail)

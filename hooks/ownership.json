@@ -271,6 +271,17 @@
                     },
                     {
                         "paths":  [
+                                      ".team-project/sprints/*/pack/**",
+                                      ".team-project/fixes/*/pack/**"
+                                  ],
+                        "writers":  [
+
+                                    ],
+                        "matriz":  "Pacotes do plano externo (`.team-project/sprints/\u003cn\u003e/pack/`, `.team-project/fixes/B-\u003cnnn\u003e/pack/`)",
+                        "dono":  "SM"
+                    },
+                    {
+                        "paths":  [
                                       ".team-project/accept/**",
                                       ".team-project/quality/**"
                                   ],

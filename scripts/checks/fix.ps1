@@ -3,11 +3,14 @@
 #   -Pre: passo 0 do /sm fix run — bloco planejado, nenhuma Task em construção, teto. Exit 1 = o run não começa.
 #   sem -Pre: antes de a sessão gravar os estados finais. Exit 1 = as F-IDs listadas em "Não fecham" não vão a
 #   "fechada" (as outras fecham — D6). Avisos (consumo, sobreposição com Task, revalidação) não bloqueiam.
+#   -PlanOnly (v3.53.4): só o plan.md do bloco, contra as regras do fix-plan.md — o que o Arquiteto confere ao escrever e
+#   o que o plano externo (fix-pack.ps1) precisa passar antes de entrar no bloco. Exit 1 = o plano volta.
 # Exit 2 = erro de uso ou de leitura. Formatos lidos: fix-run.md, fix-card.md, fix-plan.md, verdict.md (variante fix).
 
 param(
     [Parameter(Mandatory = $true)][string]$Block,
     [switch]$Pre,
+    [switch]$PlanOnly,
     [string]$Root = (Get-Location).Path
 )
 
@@ -113,6 +116,48 @@ try {
             if ($pp.Count -gt $N) { $tetoIss += "$($m.Groups[1].Value) com $($pp.Count) arquivos de produção (N=$N)" }
         }
         if ($sum -gt 2 * $N) { $tetoIss += "$sum arquivos de produção no bloco (2N=$(2 * $N))" }
+    }
+
+    if ($PlanOnly) {
+        # v3.53.4: o mini-plano do bloco pelas regras do fix-plan.md (as que se conferem sem julgar o desenho).
+        if (-not $plan) { [Console]::Error.WriteLine("C4: fixes/$Block/plan.md não existe."); exit 2 }
+        if ($plan -notmatch '\*\*Data:\*\*\s*\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2}') { Add-Result 'data' 'falhou' '**Data:** aaaa-mm-dd hh:mm ausente no cabeçalho (regra 2: a revalidação parte dela)' } else { Add-Result 'data' 'ok' ([regex]::Match($plan, '\*\*Data:\*\*\s*\S+\s+\S+').Value) }
+        $planIds = @([regex]::Matches($plan, '(?m)^##\s+(F-\d+)\b') | ForEach-Object { $_.Groups[1].Value })
+        $devol = @([regex]::Matches($plan, '(?m)^\*\*Devolvida:\*\*\s*(F-\d+)\s*[—-]\s*\S') | ForEach-Object { $_.Groups[1].Value })
+        $missF = @($fids | Where-Object { $planIds -notcontains $_ -and $devol -notcontains $_ -and $rows[$_].Estado -notmatch '(?i)promovida|devolvida' })
+        if (-not $planIds.Count) { Add-Result 'correções' 'falhou' 'nenhuma seção ## F-<nnn>' }
+        elseif ($missF.Count) { Add-Result 'correções' 'falhou' ("Correção do bloco sem mini-plano nem **Devolvida:** F-<nnn> — <motivo>: " + ($missF -join ', ')) }
+        else { Add-Result 'correções' 'ok' ("$($planIds.Count) mini-plano(s)" + $(if ($devol.Count) { "; devolvida(s): $($devol -join ', ')" } else { '' })) }
+        $iss = @(); $promo = @()
+        foreach ($F in $planIds) {
+            $ps = Get-FSection $plan ('^##\s+' + $F + '\b')
+            $nl = @($ps -split "`r?`n").Count + 1
+            if ($nl -gt 60) { $iss += "${F}: $nl linhas (teto 60, regra 1)" }
+            $el = Get-FSection $ps '^###\s+Elegibilidade t[ée]cnica'
+            $absent = @(5, 6, 7, 8 | Where-Object { -not $el -or $el -notmatch ('(?m)^\s*-\s*C' + $_ + '\s+(' + $Check + '|' + $Cross + ')\s*·\s*\S') })
+            if ($absent.Count) { $iss += "${F}: sem a linha de " + (($absent | ForEach-Object { "C$_" }) -join ', ') + " (✔|✘ · evidência)" }
+            if (Test-Promoted $ps) { $promo += $F; continue }
+            $crossed = @(Get-Criteria $el @(5, 6, 7, 8) | Where-Object { $_ -match $Cross })
+            if ($crossed.Count) { $iss += "${F}: $($crossed -join ', ') sem **Critério que caiu:** C<n> — <motivo> (regra 10)" }
+            $prod = @(Get-ProductionPaths $ps); $tst = @(Get-PathsOf $ps 'teste')
+            if (-not $prod.Count) { $iss += "${F}: ### Arquivos sem - produção: (regra 5)" }
+            if (-not $tst.Count) { $iss += "${F}: ### Arquivos sem - teste: (regra 5)" }
+            $gone = @($prod | Where-Object { -not (Test-Path -LiteralPath (Join-Path $Root $_) -PathType Leaf) })
+            if ($gone.Count) { $iss += "${F}: - produção: que não existe no projeto (C6: só arquivo existente): $($gone -join ', ')" }
+            $tr = Get-FSection $ps '^###\s+Teste de regress[ãa]o'
+            if (-not $tr -or $tr -notmatch '\*\*Comando \(s[óo] este teste\):\*\*\s*`[^`]+`') { $iss += "${F}: Teste de regressão sem **Comando (só este teste):** entre crases (regra 6)" }
+            if (-not $tr -or $tr -notmatch '\*\*Antes da corre[çc][ãa]o, falha com:\*\*\s*\S') { $iss += "${F}: Teste de regressão sem **Antes da correção, falha com:** (regra 6)" }
+            if (-not @(Get-Mutations $ps).Count) { $iss += "${F}: sem **Mutações:** no formato - M<k> · teste ``…`` · ``<produção>`` · ``<trecho>`` → ``<mutante>`` (regra 6)" }
+            $pa = Get-FSection $ps '^###\s+Passos'
+            $np = if ($pa) { @([regex]::Matches($pa, '(?m)^\s*\d+\.\s')).Count } else { 0 }
+            if ($np -lt 2 -or $np -gt 5) { $iss += "${F}: $np passo(s) (regra 7: de 2 a 5)" }
+        }
+        if ($iss.Count) { Add-Result 'mini-planos' 'falhou' ($iss -join '; ') } else { Add-Result 'mini-planos' 'ok' ("C5–C8, arquivos, teste de regressão, mutação e passos em cada F-ID" + $(if ($promo.Count) { "; promovida(s): $($promo -join ', ')" } else { '' })) }
+        if ($plan -notmatch '(?m)^##\s+Verifica[çc][ãa]o do bloco') { Add-Result 'verificação' 'falhou' 'sem ## Verificação do bloco (regra 9: comandos citados do developer/context.md)' } else { Add-Result 'verificação' 'ok' '## Verificação do bloco presente' }
+        if ($tetoIss.Count) { Add-Result 'teto' 'falhou' ($tetoIss -join '; ') } else { Add-Result 'teto' 'ok' "dentro do teto ($cap Correções, N=$N, 2N=$(2 * $N))" }
+        Write-Results "C4 · $Block · -PlanOnly"
+        if (@($script:Results | Where-Object { $_.Resultado -eq 'falhou' }).Count) { [Console]::Out.WriteLine(''); [Console]::Out.WriteLine('**O plano do bloco volta.**'); exit 1 }
+        exit 0
     }
 
     if ($Pre) {

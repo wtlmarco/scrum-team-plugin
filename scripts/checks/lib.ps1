@@ -296,6 +296,23 @@ function Get-TargetsConfig([string]$Root) {
     return $null
 }
 
+# Plano externo (v3.53.4): guards.json → "run": { "planner": "external", "tasks": [] }. $null sem a chave ou com outro
+# planner (o padrão é "claude": o Arquiteto Opus planeja); senão o objeto com Tasks = a lista do piloto (vazia = todas).
+function Get-RunPlanner([string]$Root) {
+    $g = Join-Path $Root '.team-project/guards.json'
+    if (-not (Test-Path -LiteralPath $g)) { return $null }
+    try { $j = Read-Text $g | ConvertFrom-Json } catch { return $null }
+    if (-not $j.PSObject.Properties['run'] -or $null -eq $j.run -or -not $j.run.PSObject.Properties['planner']) { return $null }
+    if ([string]$j.run.planner -ne 'external') { return $null }
+    $ids = @(); if ($j.run.PSObject.Properties['tasks'] -and $null -ne $j.run.tasks) { $ids = @($j.run.tasks | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ }) }
+    return [pscustomobject]@{ Tasks = $ids }
+}
+# A Task vai ao plano externo? Com a lista do piloto, só as dela; sem lista, todas (as com ficha — quem chama confere).
+function Test-ExternalTask($Planner, [string]$Id) {
+    if (-not $Planner) { return $false }
+    return (-not @($Planner.Tasks).Count) -or (@($Planner.Tasks) -contains $Id)
+}
+
 # Trava de dono único do alvo (v3.51, D3): .team-project/.target-lock. Dois automatizadores no mesmo aparelho quebram os
 # dois (medido no benchmark: 33 cenários falharam por isso). Devolve $null se pegou a trava, senão o motivo.
 function Enter-TargetLock([string]$Root, [string]$Target, [string]$Owner, [int]$StaleHours = 3) {
