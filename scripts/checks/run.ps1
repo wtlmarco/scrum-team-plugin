@@ -9,7 +9,7 @@
 #             · teto → a G23 parou o dev no teto de contexto: instância nova pelo ponto de retomada (v3.53.1)
 #   handoff   (re)gera o cartão de passagem da Task: sprints/<n>/handoff/<T-ID>.md, até ~2 KB (C2)
 # Ordem do sprint (sprint-run.md): 1 preparo da construção por História (QA escreve os .scn; o Arquiteto planeja as Tasks
-# da História numa instância) · 2 construção, Task a Task (o dev constrói, verifica, roda os cenários e corrige; o close
+# da História numa instância; v3.53.3: uma História por vez, a próxima a construir) · 2 construção, Task a Task (o dev constrói, verifica, roda os cenários e corrige; o close
 # fecha pela evidência) · 3 validação do sprint (o operator mede: quality + todos os cenários; o QA julga e escreve
 # validation.md) · 4 achados voltam ao dev (dúvida → Arquiteto) · 5 consolidação dos documentos vivos (Arquiteto, uma vez)
 # · 6 formulário de autorização da Review. Exit 0 · 2 = erro de uso · 3 = nada a fazer (fila vazia ou bloqueada).
@@ -200,6 +200,7 @@ function Write-Handoff($T, [string]$S, [string]$n) {
     }
     $vr = Join-Path (Get-VerifyDir $Root $T.Id) 'result.json'; $vtxt = 'sem verify'
     if (Test-Path -LiteralPath $vr) { try { $v = (Read-Text $vr | ConvertFrom-Json).full; if ($v) { $bad = @($v.commands | Where-Object { [int]$_.exit -ne 0 }); $vtxt = "full em $($v.at): " + $(if ($bad.Count) { ($bad | ForEach-Object { "$($_.key) exit $($_.exit)" }) -join ', ' } else { 'verde' }) } } catch { } }
+    $dgRel = "operator/$n/$($T.Id)-alvo/diagnostico.md"; $dg = Join-Path $Root ".team-project/$dgRel"
     $ar = Join-Path ((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'; $atxt = 'sem accept'
     if (Test-Path -LiteralPath $ar) { try { $a = Read-Text $ar | ConvertFrom-Json; $atxt = if ($a.environment) { "falha de ambiente: $($a.environment)" } else { "$($a.passed) de $($a.total) em $($a.at)" } } catch { } }
     $md = @("# Cartão de passagem — $($T.Id) $($T.Title)", '', "**História:** $($T.Story) · **Marcador:** $($T.Mark) · **Depende de:** $(if ($T.Deps.Count) { $T.Deps -join ', ' } else { '—' })",
@@ -209,9 +210,11 @@ function Write-Handoff($T, [string]$S, [string]$n) {
             ("**Cenários:** " + $(if (-not $T.Scenarios.Count) { 'nenhum no alvo' } elseif (Get-TargetsConfig $Root) { "$($T.Scenarios -join ', ') — ``accept.ps1 -Task $($T.Id) -Only $($T.Scenarios -join ',')``" } else { "$($T.Scenarios -join ', ') — sem alvo de execução: o accept não roda; os cenários se provam pelos testes do plano" }) + $(if ($T.TestScenarios.Count) { " · por teste do plano, sem accept: $($T.TestScenarios -join ', ')" } else { '' })),
             ("**Última entrega:** $last" + $(if ($stop) { " · parou: $stop" } else { '' })),
             "**Verificação:** $vtxt · **Cenários no alvo:** $atxt",
-            "**GAPs:** $(if ($gaps.Count) { $gaps -join ' · ' } else { 'nenhum' })", '',
+            "**GAPs:** $(if ($gaps.Count) { $gaps -join ' · ' } else { 'nenhum' })",
+            # v3.53.3: o diagnóstico do operator sobre a falha da prova no alvo (run.ps1 done -Result gap).
+            $(if (Test-Path -LiteralPath $dg) { "**Diagnóstico do alvo (operator):** ``$dgRel`` · $((@((Read-Text $dg) -split "`r?`n" | Where-Object { $_.Trim() }) | Select-Object -First 1))" } else { $null }), '',
             'Leia: este cartão, o cabeçalho e a §6 do plano e o seu bloco. O resto só se o passo pedir.')
-    $path = Join-Path $dir "$($T.Id).md"; [System.IO.File]::WriteAllText($path, ($md -join "`n") + "`n", $utf8)
+    $path = Join-Path $dir "$($T.Id).md"; [System.IO.File]::WriteAllText($path, (@($md | Where-Object { $null -ne $_ }) -join "`n") + "`n", $utf8)
     return "sprints/$n/handoff/$($T.Id).md"
 }
 
@@ -240,6 +243,12 @@ try {
             [Console]::Error.WriteLine("run start: a $($T.Id) já tem um dev vivo ($(if ($a.agent_id) { "agent_id $($a.agent_id), " })última ação $(if ($a.last) { $a.last } else { 'disparado' }) há $idle min$(if ($a.host_pid) { ", processo $($a.host_pid)" })) — não dispare outro: seriam duas instâncias no mesmo alvo. Encerre o turno e espere a volta dele; se a sessão dele foi fechada, o registro deixa de valer depois de 20 min sem sinal de vida.")
             exit 2
         }
+        # v3.53.3: o dev encerrou o turno esperando um comando em segundo plano — ele volta sozinho; outro seria o segundo.
+        $busy = Get-TaskBusy $Root $T.Id
+        if ($busy) {
+            [Console]::Error.WriteLine("run start: a $($T.Id) ainda tem $busy rodando — o dev que o rodou encerrou o turno para esperar por ele e volta sozinho com o resultado. Não dispare outro dev (seriam dois na mesma Task e no mesmo alvo): encerre o turno; na volta dele, run.ps1 done.")
+            exit 2
+        }
         $planRel = ".team-project/sprints/$n/$($T.Plan)"
         # v3.52.2 (note.md item 9): sem "-Mark ''" — o 5.1 descarta argumento vazio em -File e o dispatch.ps1 caía com a Task
         # já em 🟨 (retomada depois de GAP).
@@ -263,13 +272,51 @@ try {
         # v3.51.4: o formato que o close.ps1 lê (garden item 17), a retomada do verify parcial (exit 3, garden item 18) e o
         # alvo pelo target.ps1, sem adb nem espera à mão (note.md item 4).
         $tgt = if (Get-TargetsConfig $Root) { " Alvo: confira com target.ps1 -Target <alvo> (com -Repair ele reinicia e espera); não use adb nem Start-Sleep." } else { '' }
-        Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk Leia o cartão .team-project/$card, o cabeçalho e a §6 do plano $planRel e o seu bloco — não o plano inteiro. Rode verify.ps1 -Mode focused durante, -Mode full no fim, -Mode mutation se o plano tem **Mutações:**$acc. Exit 3 = parcial (o tempo da chamada acabou): rode o MESMO comando de novo, ele continua de onde parou. Comando que a ferramenta moveu para segundo plano ('moved to the background'): encerre o turno — o aviso de conclusão traz o resultado; não sonde o log nem dispare outro verify (exit 5 = outra rodada ainda roda). Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga.$tgt Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept — cada bloco de código começa com a linha do comando ('> verify.ps1 -Mode full …') e traz a saída embaixo — e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
+        Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk Leia o cartão .team-project/$card, o cabeçalho e a §6 do plano $planRel e o seu bloco — não o plano inteiro. Rode verify.ps1 -Mode focused durante, -Mode full no fim, -Mode mutation se o plano tem **Mutações:**$acc. Exit 3 = parcial (o tempo da chamada acabou): rode o MESMO comando de novo, ele continua de onde parou. Comando que a ferramenta moveu para segundo plano ('moved to the background'): encerre o turno com a primeira linha ESPERANDO <comando> — o aviso de conclusão traz o resultado e você segue; não sonde o log nem dispare outro verify (exit 5 = outra rodada ainda roda). Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga.$tgt Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept — cada bloco de código começa com a linha do comando ('> verify.ps1 -Mode full …') e traz a saída embaixo — e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
         Out "  ao voltar: run.ps1 done -Task $($T.Id) -Result ok|gap|env|teto (teto = o dev voltou com TETO: a G23 o parou no teto de contexto)"
         exit 0
     }
 
     if ($Action -eq 'done') {
         if (-not $T -or -not $Result) { [Console]::Error.WriteLine('run done pede -Task e -Result ok|gap|env|teto.'); exit 2 }
+        # v3.53.3 (sprint 5 do garden): o dev "voltou" só porque encerrou o turno esperando um comando em segundo plano — a
+        # entrega ainda não está no relatório. Fechar, reparar ou redisparar aqui punha um segundo dev ao lado do primeiro.
+        $busy = Get-TaskBusy $Root $T.Id
+        if ($busy) {
+            Out "run: ESPERANDO — a $($T.Id) ainda tem $busy rodando. O dev encerrou o turno para esperar esse comando (foi para segundo plano) e volta sozinho com o resultado. Não rode start, reparo nem Arquiteto: encerre o turno; o aviso da volta dele te acorda e aí rode run.ps1 done de novo."
+            exit 3
+        }
+        # v3.53.3 (sprint 5 do garden): GAP da prova no alvo vai primeiro ao operator (haiku), que olha as capturas da falha.
+        # Os 3 GAPs de alvo da T-041 foram ao Arquiteto (Opus, US$ 2,26) e o diagnóstico saiu errado ("APK sem os ids"): a
+        # captura mostrava a tela inicial do Android. O done lê o veredito do operator: AMBIENTE → reparo · APP → dev · PLANO → Arquiteto.
+        $diagRel = ".team-project/operator/$n/$($T.Id)-alvo/diagnostico.md"; $diagP = Join-Path $Root $diagRel; $diagV = ''
+        if ($Result -eq 'gap') {
+            $tgc = Get-TargetsConfig $Root; $dv0 = Join-Path $S "delivery/$($T.Id).md"
+            $g0 = @(if (Test-Path -LiteralPath $dv0) { [regex]::Matches((Read-Text $dv0), '(?m)^.*🔺.*$') | ForEach-Object { $_.Value.Trim() } | Select-Object -Last 1 })
+            $isTgt = [bool]($tgc -and $g0.Count -and $g0[0] -match '(?i)alvo|aceite|accept|emulador|tag n[ãa]o encontrada|tag ausente')
+            if ($isTgt) {
+                $fresh = (Test-Path -LiteralPath $diagP) -and (Test-Path -LiteralPath $dv0) -and (Get-Item -LiteralPath $diagP).LastWriteTime -ge (Get-Item -LiteralPath $dv0).LastWriteTime
+                if ($fresh) { $vm = [regex]::Match((Read-Text $diagP), '(?im)^\W*Veredito\W*\s*(AMBIENTE|APP|PLANO)'); if ($vm.Success) { $diagV = $vm.Groups[1].Value.ToUpperInvariant() } }
+                if (-not $fresh) {
+                    $tn = @($tgc.PSObject.Properties | ForEach-Object { $_.Name })[0]
+                    $accRel = (((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/').Substring($Root.Length + 1) -replace '\\', '/')
+                    Add-RunLog $S $n $T.Id '🔺 GAP da prova no alvo → operator diagnostica pelas capturas antes do Arquiteto' ($g0[0] -replace '^[#>*\-\s]+', '') $diagRel
+                    Out "run: $($T.Id) com 🔺 GAP na prova no alvo — antes do Arquiteto, o operator olha as capturas da falha (centavos; o Opus só entra se for plano):"
+                    Out "  $(Get-AgentLine 'operator')"
+                    Out "  prompt: `"Diagnostique a falha da prova no alvo da $($T.Id). Leia $accRel/result.md e abra com Read as capturas *-falha.png que ele cita; rode $plugin/target.ps1 -Target $tn (só a conferência, sem -Repair). Grave $diagRel com a primeira linha 'Veredito: AMBIENTE', 'Veredito: APP' ou 'Veredito: PLANO' e até 5 linhas do que viu nas capturas e no detalhe [tela · ids · textos] da falha. AMBIENTE = o app não estava aberto ou estava noutra tela (tela inicial do Android, página deixada por outro cenário), diálogo do sistema, alvo travado ou ocupado. APP = a tela certa estava aberta e o elemento, o texto ou o valor do cenário não estava lá. PLANO = o cenário ou o contrato de ids pede o que nenhuma Task cria, ou o cenário não prova o critério; não deu para ver, PLANO dizendo o que faltou. Não altere código, cenário nem plano; não rode accept nem verify. Volte com a linha do veredito.`""
+                    Out "  depois: run.ps1 done -Task $($T.Id) -Result gap de novo — o done lê o veredito: AMBIENTE → reparo e dev novo · APP → dev novo com o diagnóstico · PLANO → Arquiteto"
+                    exit 0
+                }
+                if ($diagV -eq 'AMBIENTE') { $Result = 'env'; Out "run: o operator diagnosticou AMBIENTE na prova da $($T.Id) ($diagRel) — rota de queda de ambiente:" }
+                elseif ($diagV -eq 'APP') {
+                    $null = Update-DevCounter $T $S 'fail'
+                    $card = Write-Handoff $T $S $n
+                    Add-RunLog $S $n $T.Id 'operator: APP (a tela certa estava aberta e o elemento faltou) → dev em instância nova com o diagnóstico' 'veredito do operator pelas capturas da falha' $diagRel
+                    Out "run: o operator diagnosticou APP na prova da $($T.Id) — defeito do código, não do alvo nem do plano. Dev em instância NOVA: run.ps1 start -Task $($T.Id) (o cartão .team-project/$card aponta o diagnóstico $diagRel) e rode run.ps1 done de novo"
+                    exit 0
+                }
+            }
+        }
         if ($Result -eq 'gap') {
             # v3.51.4 (garden item 22): Task que a sessão já marcou 🟪 volta a 🟨 — ela segue na construção até o GAP se resolver.
             if ($T.Mark -eq $E.QA) { $mo = Set-Mark $T.Id 'build' 'sessão (run.ps1 done -Result gap)'; if ($mo) { Out "  $mo" } }
@@ -280,7 +327,7 @@ try {
             Add-RunLog $S $n $T.Id '🔺 GAP → Arquiteto em instância nova (/arc question); a decisão fica no plano (R9)' $(if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }) "sprints/$n/delivery/$($T.Id).md"
             Out "run: $($T.Id) com 🔺 GAP — Arquiteto em instância NOVA (o cache de 5 min do anterior já venceu; C1), modo /arc question (rota gravada no run-log.md):"
             Out "  $(Get-AgentLine 'architect')"
-            Out "  prompt: `"Decida o 🔺 GAP da $($T.Id): cartão .team-project/$card, plano .team-project/sprints/$n/$($T.Plan), relatório .team-project/sprints/$n/delivery/$($T.Id).md. Registre a decisão no plano (R9). Se a mesma decisão vale para outra Task ainda não fechada do sprint, registre-a também no plano dela e cite as Tasks na volta. Não escreva código nem rode build. Volte em até 15 linhas.`""
+            Out "  prompt: `"Decida o 🔺 GAP da $($T.Id): cartão .team-project/$card, plano .team-project/sprints/$n/$($T.Plan), relatório .team-project/sprints/$n/delivery/$($T.Id).md$(if ($diagV) { ", diagnóstico do operator $diagRel (veredito $diagV)" }). Registre a decisão no plano (R9). Se a mesma decisão vale para outra Task ainda não fechada do sprint, registre-a também no plano dela e cite as Tasks na volta. Não escreva código nem rode build. Volte em até 15 linhas.`""
             Out "  depois: dev em instância NOVA com a decisão — run.ps1 start -Task $($T.Id) (o cartão regerado aponta o plano com a decisão) e rode run.ps1 done de novo"
             exit 0
         }
@@ -398,14 +445,28 @@ try {
     $doneIds = @($tasks | Where-Object { $_.Mark -eq $E.Done } | ForEach-Object { $_.Id })
     $deferred = Get-DeferredScenarios $Root
     $waiting = { param($sc) $deferred.ContainsKey($sc) -and $doneIds -notcontains $deferred[$sc] }
+    $done = $doneIds
+    $cur = @($open | Where-Object { $_.Mark -eq $E.Build -or $_.Mark -eq $E.QA }) | Select-Object -First 1
+    # v3.53.2: cenário que aguarda outra Task (# aguarda <T-ID> no .scn) segura a Task que o cita como uma dependência.
+    $blockers = { param($t) @(@($t.Deps | Where-Object { $done -notcontains $_ }) + @($t.Scenarios | Where-Object { & $waiting $_ } | ForEach-Object { $deferred[$_] }) | Select-Object -Unique) }
     # 1 · preparo da construção: por História, cenários executáveis (QA) e depois os planos (Arquiteto), antes de qualquer dev.
     # v3.51.4: sem alvo de execução (guards.json sem "targets") não há .scn a escrever — o accept não roda e os cenários
     # ficam rastreados nos planos e provados por teste (garden item 4). As Tasks da História entram em 🟦 no preparo (item 2).
-    foreach ($h in @($open | Group-Object Story)) {
+    # v3.53.3 (sprint 5 do garden): UMA História por vez — a próxima a construir. O next só construía depois do preparo de
+    # TODAS (15 Tasks em 🟦 antes da primeira construção): a QA escreveu os .scn de quatro Histórias antes de existir a Task
+    # que cria os nomes de teste, o contrato dela cresceu três vezes (~US$ 19 de Opus) e os planos já escritos ficaram velhos
+    # (3 GAPs na T-041). A História seguinte só se prepara quando a atual não tem Task a construir.
+    # Ordem: a do quadro, mas a História com Task que depende de Task aberta de OUTRA História vem depois dela — a ficha segue
+    # dando a sequência, e o plano de quem depende lê o resumo do plano da dependência e o código já construído.
+    $prepared = @()
+    $stories = @($open | Group-Object Story)
+    $extDeps = { param($g) @($g.Group | ForEach-Object { $_.Deps } | Where-Object { $d = $_; $done -notcontains $d -and -not @($g.Group | Where-Object { $_.Id -eq $d }).Count -and @($open | Where-Object { $_.Id -eq $d }).Count }) }
+    $stories = @(@($stories | Where-Object { -not @(& $extDeps $_).Count }) + @($stories | Where-Object { @(& $extDeps $_).Count }))
+    foreach ($h in $stories) {
         # v3.52.2 (C5): a correção do portão (Q-S<n>) não escreve cenário novo — o plano de correção sai dos achados.
         if ($h.Name -eq $script:GateStory) {
             $noPlan = @($h.Group | Where-Object { -not (Get-PlanFull $_ $S) })
-            if (-not $noPlan.Count) { continue }
+            if (-not $noPlan.Count) { $prepared += $h.Name; if (@($h.Group | Where-Object { @(& $blockers $_).Count -eq 0 }).Count) { break }; continue }
             foreach ($t in @($noPlan | Where-Object { $_.Mark -eq $todoMk })) { $mo = Set-Mark $t.Id 'plan' 'Arquiteto · plano de correção (run.ps1 next)'; if ($mo) { Out "  $mo" } }
             Out "PRÓXIMA AÇÃO: plano de correção do portão — $(($noPlan | ForEach-Object { $_.Id }) -join ', ') (Arquiteto)"
             Out "  $(Get-AgentLine 'architect')"
@@ -478,13 +539,13 @@ try {
             Out "  depois: para cada plano, plan.ps1 -Plan <caminho> (exit 1 volta à mesma instância se ela respondeu há menos de 5 min; senão instância nova) e run.ps1 next"
             exit 0
         }
+        # v3.53.3: História preparada com Task a construir — constrói antes de preparar a próxima.
+        $prepared += $h.Name
+        if (@($h.Group | Where-Object { @(& $blockers $_).Count -eq 0 }).Count) { break }
     }
-    # 2 · construção: Task em construção primeiro (retomada), depois a primeira elegível com as dependências fechadas.
-    $done = @($tasks | Where-Object { $_.Mark -eq $E.Done } | ForEach-Object { $_.Id })
-    $cur = @($open | Where-Object { $_.Mark -eq $E.Build -or $_.Mark -eq $E.QA }) | Select-Object -First 1
-    # v3.53.2: cenário que aguarda outra Task (# aguarda <T-ID> no .scn) segura a Task que o cita como uma dependência.
-    $blockers = { param($t) @(@($t.Deps | Where-Object { $done -notcontains $_ }) + @($t.Scenarios | Where-Object { & $waiting $_ } | ForEach-Object { $deferred[$_] }) | Select-Object -Unique) }
-    $next = if ($cur) { $cur } else { @($open | Where-Object { @(& $blockers $_).Count -eq 0 }) | Select-Object -First 1 }
+    # 2 · construção: Task em construção primeiro (retomada), depois a primeira elegível com as dependências fechadas — só
+    # de História já preparada (v3.53.3: as outras ainda não têm plano nem .scn).
+    $next = if ($cur) { $cur } else { @($open | Where-Object { $prepared -contains $_.Story -and @(& $blockers $_).Count -eq 0 }) | Select-Object -First 1 }
     # v3.52.2 (note.md item 4, C3): a construção é do executor de Task (team:task-runner), um por Task — ele roda start, dispara
     # o dev, roda done, leva o GAP ao Arquiteto e volta em UMA linha. A sessão não acumula o contexto da Task.
     if ($next) {
@@ -494,6 +555,12 @@ try {
         if ($liveA.Count) {
             $a = @($liveA | Sort-Object { [string]$_.at } -Descending)[0]
             Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) já tem $(([string]$a.type) -replace '^.*:', '') vivo (última ação $(if ($a.last) { $a.last } else { 'disparado' }) há $([int]((Get-AgentIdleHours $a) * 60)) min$(if ($a.host_pid) { ", processo $($a.host_pid)" })). Não dispare outro executor nem dev: seriam duas instâncias no mesmo alvo. Encerre o turno; o aviso de volta reabre a sessão (se ele é de outra sessão, a volta chega lá). Sem sinal de vida por 20 min, o registro deixa de valer e o next segue."
+            exit 3
+        }
+        # v3.53.3: sem agente no registro, mas com verify/accept da Task vivo — o dev esperava o comando quando o registro saiu.
+        $busyN = Get-TaskBusy $Root $next.Id
+        if ($busyN) {
+            Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) ainda tem $busyN rodando (um dev esperava por ele). Não dispare executor nem dev: seriam dois na mesma Task e no mesmo alvo. Encerre o turno; rode run.ps1 next quando o aviso de volta chegar."
             exit 3
         }
         $dv = Join-Path $S "delivery/$($next.Id).md"
