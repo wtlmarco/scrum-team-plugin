@@ -17,6 +17,10 @@
 # O next também lê .interrupted (retomada após queda), mede a sessão (SESSÃO:) e abre a correção do portão como Q-S<n>.
 # v3.53: Task com ficha no architect/breakdown/S<n>.md é planejada por um Arquiteto só dela, a partir do recorte da ficha
 # (sprints/<n>/handoff/<T-ID>-ficha.md); sem ficha, a História segue numa instância.
+# v3.53.4: com guards.json → "run": { "planner": "external", "tasks": [] }, o plano da Task com ficha sai do Claude — o
+# next monta o pacote da História em sprints/<n>/pack/out/, o stakeholder o leva a um assistente de fora e devolve os
+# planos em pack/in/; o next seguinte confere cada um (plan.ps1) antes de aceitar. O 🔺 GAP de plano dela também vai
+# num pacote (done -Result gap). Funções em external-plan.ps1.
 
 param(
     [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff')][string]$Action,
@@ -29,6 +33,7 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib.ps1')
 . (Join-Path $PSScriptRoot '..\..\hooks\common.ps1')
+. (Join-Path $PSScriptRoot 'external-plan.ps1')
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $todoMk = [char]::ConvertFromUtf32(0x2B1C); $redMk = [char]::ConvertFromUtf32(0x1F534)
@@ -324,6 +329,16 @@ try {
             $card = Write-Handoff $T $S $n
             $dvp = Join-Path $S "delivery/$($T.Id).md"
             $gl = @(if (Test-Path -LiteralPath $dvp) { [regex]::Matches((Read-Text $dvp), '(?m)^.*🔺.*$') | ForEach-Object { $_.Value.Trim() } | Select-Object -Last 1 })
+            # v3.53.4: Task do plano externo — a decisão do GAP vai num pacote, não ao Arquiteto Opus; a Task espera o retorno.
+            $plx = Get-RunPlanner $Root
+            if ($plx -and (Test-ExternalTask $plx $T.Id) -and (Get-Ficha $Root $n $T.Id)) {
+                $gline = if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { '' }
+                $gp = Start-GapPack $T $gline
+                Add-RunLog $S $n $T.Id "🔺 GAP → external plan: pacote $($gp.Name) com o stakeholder; a Task espera a decisão" $(if ($gline) { $gline } else { 'GAP no relatório do dev' }) "sprints/$n/pack/out/$($gp.Name).zip"
+                Out "run: $($T.Id) com 🔺 GAP — a decisão vai ao plano externo (guards.json → run.planner external), não ao Arquiteto Opus: pacote .team-project/sprints/$n/pack/out/$($gp.Name).zip (a pasta ao lado, para o app do Codex)$(if ($diagV) { " com o diagnóstico do operator (veredito $diagV)" })."
+                Out "  executor: não dispare Arquiteto nem start. Devolva à sessão a linha `"$($T.Id) 🔺 GAP → external plan $($gp.Name)`" — o run.ps1 next mostra o pacote ao stakeholder e só reconstrói a Task quando a decisão voltar (plan.ps1 ok)."
+                exit 0
+            }
             Add-RunLog $S $n $T.Id '🔺 GAP → Arquiteto em instância nova (/arc question); a decisão fica no plano (R9)' $(if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }) "sprints/$n/delivery/$($T.Id).md"
             Out "run: $($T.Id) com 🔺 GAP — Arquiteto em instância NOVA (o cache de 5 min do anterior já venceu; C1), modo /arc question (rota gravada no run-log.md):"
             Out "  $(Get-AgentLine 'architect')"
@@ -439,6 +454,18 @@ try {
             if ($sg.LastContext -gt 150000) { Out "  aviso: acima de 150 mil — a sessão está conduzindo trabalho que é do executor? (o executor de Task conduz start, dev e done; a sessão dispara e lê a linha de volta)" }
         }
     }
+    # v3.53.4: plano externo — o retorno em pack/in/ se lê antes de decidir a próxima ação; cada plano passa pelo plan.ps1.
+    Remove-Item -LiteralPath (Join-Path $tp '.external-plan') -Force -ErrorAction SilentlyContinue
+    $planner = Get-RunPlanner $Root
+    $imp = @(Import-PlanReturns $planner)
+    if ($imp.Count) { foreach ($l in $imp) { Out $l }; $tasks = @(Get-SprintTasks $S) }
+    $xst = Get-PackState
+    foreach ($gid in @($xst.gaps.Keys | Where-Object { $xst.gaps[$_].fix })) {
+        $gt = @($tasks | Where-Object { $_.Id -eq $gid }) | Select-Object -First 1
+        if ($gt) { $gp = Start-GapPack $gt ''; Out "  external plan: a decisão do 🔺 GAP da $gid voltou reprovada — pacote de correção .team-project/sprints/$n/pack/out/$($gp.Name).zip" }
+    }
+    # Task com 🔺 GAP no plano externo espera a decisão: não se constrói nem se retoma até ela voltar aprovada.
+    $gapWait = @((Get-PackState).gaps.Keys)
     $defined = Get-Defined $Root
     $hasTargets = [bool](Get-TargetsConfig $Root)
     $open = @($tasks | Where-Object { $_.Mark -ne $E.Done -and $_.Mark -ne $redMk })
@@ -446,7 +473,7 @@ try {
     $deferred = Get-DeferredScenarios $Root
     $waiting = { param($sc) $deferred.ContainsKey($sc) -and $doneIds -notcontains $deferred[$sc] }
     $done = $doneIds
-    $cur = @($open | Where-Object { $_.Mark -eq $E.Build -or $_.Mark -eq $E.QA }) | Select-Object -First 1
+    $cur = @($open | Where-Object { ($_.Mark -eq $E.Build -or $_.Mark -eq $E.QA) -and $gapWait -notcontains $_.Id }) | Select-Object -First 1
     # v3.53.2: cenário que aguarda outra Task (# aguarda <T-ID> no .scn) segura a Task que o cita como uma dependência.
     $blockers = { param($t) @(@($t.Deps | Where-Object { $done -notcontains $_ }) + @($t.Scenarios | Where-Object { & $waiting $_ } | ForEach-Object { $deferred[$_] }) | Select-Object -Unique) }
     # 1 · preparo da construção: por História, cenários executáveis (QA) e depois os planos (Arquiteto), antes de qualquer dev.
@@ -491,6 +518,21 @@ try {
         # e o plano da Task de que depende — a instância que planejava a História inteira foi 63 % dos subagentes no sprint 4
         # (cada chamada reenvia a conversa acumulada). Primeiro a Task cujas dependências já têm plano; uma por vez (R1).
         $withF = @($noPlan | ForEach-Object { $f = Get-Ficha $Root $n $_.Id; if ($f) { [pscustomobject]@{ T = $_; F = $f } } })
+        # v3.53.4: plano externo — as Tasks com ficha (todas, ou as de run.tasks) vão num pacote da História, não ao Opus. A
+        # ficha se confere antes, como antes do Opus: Task grande se divide e caminho que não existe se corrige (instância curta).
+        $xpack = $null
+        $extF = @($withF | Where-Object { Test-ExternalTask $planner $_.T.Id })
+        if ($extF.Count) {
+            $xbad = @($extF | Where-Object { ($null -ne $_.F.Planned -and $_.F.Planned -gt $script:FichaMaxFiles) -or @(Get-FichaMissing $Root $_.F).Count }) | Select-Object -First 1
+            if ($xbad) { $withF = @($xbad) }
+            else {
+                $xpack = Update-StoryPack $h.Name @($extF | ForEach-Object { $_.T })
+                $xids = @($extF | ForEach-Object { $_.T.Id })
+                $withF = @($withF | Where-Object { $xids -notcontains $_.T.Id })
+                $noPlan = @($noPlan | Where-Object { $xids -notcontains $_.Id })
+                Out "  external plan: $(if ($xpack.New) { "pacote $($xpack.Name) gerado ($($xpack.Tasks -join ', '); $($xpack.Kb) KB)" } else { "aguardando o retorno de $($xids -join ', ') (pacote $($xpack.Name))" }) — com o stakeholder"
+            }
+        }
         if ($withF.Count) {
             $ready = { param($t) @($t.Deps | Where-Object { $d = $_; $dt = @($tasks | Where-Object { $_.Id -eq $d }) | Select-Object -First 1; $dt -and $dt.Mark -ne $E.Done -and -not (Get-PlanFull $dt $S) }).Count -eq 0 }
             $pick = @($withF | Where-Object { & $ready $_.T }) | Select-Object -First 1
@@ -539,13 +581,16 @@ try {
             Out "  depois: para cada plano, plan.ps1 -Plan <caminho> (exit 1 volta à mesma instância se ela respondeu há menos de 5 min; senão instância nova) e run.ps1 next"
             exit 0
         }
+        # v3.53.4: só falta o retorno do plano externo — a Task em construção segue; sem ela, o run espera o stakeholder.
+        if ($xpack) { if ($cur) { break }; Write-ExternalWait }
         # v3.53.3: História preparada com Task a construir — constrói antes de preparar a próxima.
         $prepared += $h.Name
         if (@($h.Group | Where-Object { @(& $blockers $_).Count -eq 0 }).Count) { break }
     }
     # 2 · construção: Task em construção primeiro (retomada), depois a primeira elegível com as dependências fechadas — só
     # de História já preparada (v3.53.3: as outras ainda não têm plano nem .scn).
-    $next = if ($cur) { $cur } else { @($open | Where-Object { $prepared -contains $_.Story -and @(& $blockers $_).Count -eq 0 }) | Select-Object -First 1 }
+    $next = if ($cur) { $cur } else { @($open | Where-Object { $prepared -contains $_.Story -and $gapWait -notcontains $_.Id -and @(& $blockers $_).Count -eq 0 }) | Select-Object -First 1 }
+    if ($gapWait.Count -and $next) { Out "  external plan: aguardando a decisão do 🔺 GAP de $($gapWait -join ', ') — com o stakeholder (pack/out/); a Task não se constrói até ela voltar" }
     # v3.52.2 (note.md item 4, C3): a construção é do executor de Task (team:task-runner), um por Task — ele roda start, dispara
     # o dev, roda done, leva o GAP ao Arquiteto e volta em UMA linha. A sessão não acumula o contexto da Task.
     if ($next) {
@@ -571,6 +616,7 @@ try {
         Out "  ao voltar: run.ps1 next"
         exit 0
     }
+    if ($gapWait.Count -or @(Get-ExternalPending).Count) { Write-ExternalWait }
     if ($open.Count) { Out "PRÓXIMA AÇÃO: nenhuma Task elegível — $(($open | ForEach-Object { "$($_.Id) espera $((& $blockers $_) -join ',')" }) -join '; '). Bloqueio sobe pelo degrau 1 (R22)."; exit 3 }
 
     # 3 · validação do sprint: o operator mede (quality + todos os cenários), o QA julga.
