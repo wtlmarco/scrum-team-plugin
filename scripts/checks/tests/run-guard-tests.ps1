@@ -667,6 +667,10 @@ $cases = @(
     @{ Name = 'G20 sem o ponto seguro (Task em voo): volta a barrar e cita a parada (f)'; Script = 'stop.ps1'; Expect = 2; ExpectErr = '(f) ponto seguro'
        Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.safe-point') -Force -ErrorAction SilentlyContinue }
        Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'G20 (v3.53.4): o run espera o plano externo (.external-plan) — libera o fim de turno sem apagar o .active-run'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.external-plan') '{ "sprint": "7", "pendente": ["H-1"], "desde": "2026-11-02 10:00:00" }' -Encoding UTF8 }
+       Check = { $ok = (Test-Path -LiteralPath (Join-Path $proj '.team-project/.active-run')) -and ((Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw -Encoding UTF8) -like '*G20*plano externo (H-1)*'); Remove-Item -LiteralPath (Join-Path $proj '.team-project/.external-plan') -Force -ErrorAction SilentlyContinue; $ok }
+       Payload = @{ hook_event_name = 'Stop' } },
     @{ Name = 'G22 sessão com Start-Sleep durante o run: nega'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G22'
        Payload = @{ tool_name = 'PowerShell'; tool_input = @{ command = 'Start-Sleep -Seconds 598; Get-Content .team-project/sprints/1/delivery/T-003.md' } } },
     @{ Name = 'G22 sessão com comando em segundo plano durante o run: nega'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'operator'
@@ -696,6 +700,7 @@ $cases = @(
                  Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') ('[{"type":"team:task-runner","description":"Executor T-3","desde":"' + $n + '","session":"sessA","parent":"","agent_id":"","work":"T-3","last":"disparado","at":"' + $n + '"}]') -Encoding UTF8 }
        Payload = @{ hook_event_name = 'Stop'; session_id = 'sessA' } },
     @{ Name = 'G20 agente de outra sessão não segura o turno'; Script = 'stop.ps1'; Expect = 2; ExpectErr = 'dispare e encerre o turno'
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.external-plan') -Force -ErrorAction SilentlyContinue }
        Payload = @{ hook_event_name = 'Stop'; session_id = 'sessB' } },
     @{ Name = 'Registro aninhado: Agent do executor grava parent = agent_id dele e a session (G7 deixa o dev)'; Script = 'pre-tool.ps1'; Expect = 0
        Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue

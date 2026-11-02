@@ -18,14 +18,14 @@ Leia só o que o prompt cita: o cartão de passagem (`sprints/<n>/handoff/<T-ID>
 1. `powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/run.ps1" start -Task <ID>` — marca 🟨, grava o escopo e imprime a linha `Agent` do dev (papel, **modelo**, prompt). Dispare **exatamente** essa linha.
 2. **Encerre o turno.** O `Agent` volta "lançado"; o aviso de conclusão do filho te acorda com o retorno curto dele (R28). Nada de `Start-Sleep`, laço de checagem do disco ou `SendMessage`.
 3. **Volta com `ESPERANDO` na primeira linha** (v3.53.3): o dev não terminou — encerrou o turno esperando um comando em segundo plano e volta sozinho quando ele acabar. **Não rode nada:** encerre o turno. (O `done` e o `start` também recusam enquanto o `verify` ou o `accept` da Task roda: `done` sai com exit 3 `ESPERANDO`, `start` com exit 2 — encerre o turno nos dois casos.) Na volta do dev: `run.ps1 done -Task <ID> -Result ok|gap|env|teto` — `ok` se ele diz concluído; `gap` se trouxe 🔺 GAP; `env` se parou por ambiente (exit 4 do `verify`/`accept`, rede, energia); `teto` se a primeira linha é `TETO` (a G23 o parou no teto de contexto, v3.53.1). O script confere, fecha e imprime o próximo passo.
-4. **Não fechou** → faça o que o `done` imprimiu: GAP da prova no alvo (v3.53.3) → o `done` imprime primeiro o **operator**, que olha as capturas da falha e grava o veredito; na volta dele, `run.ps1 done -Task <ID> -Result gap` **de novo** — o script segue o veredito (AMBIENTE → reparo e dev novo · APP → dev novo · PLANO → Arquiteto); GAP → dispare o Arquiteto (linha impressa), encerre o turno, e na volta `run.ps1 start -Task <ID>` de novo (dev em **instância nova**, com o cartão); falta de evidência → o mesmo; `env` → `target.ps1 -Repair` uma vez e o mesmo dev de novo; `teto` → `run.ps1 start -Task <ID>` de novo, sem Arquiteto. `start` com **exit 2 "já tem um dev vivo"** (v3.53.1): não dispare outro — volte à sessão em uma linha, "<ID>: dev vivo de outra sessão, não redisparado".
-5. **Até um destes:** fechada (o `done` fez ✅, commit e `.safe-point`) · bloqueada (🔴, degrau 1 não fechou) · ambiente sem reparo · limite de uso da conta. Aí devolva a linha.
+4. **Não fechou** → faça o que o `done` imprimiu: GAP da prova no alvo (v3.53.3) → o `done` imprime primeiro o **operator**, que olha as capturas da falha e grava o veredito; na volta dele, `run.ps1 done -Task <ID> -Result gap` **de novo** — o script segue o veredito (AMBIENTE → reparo e dev novo · APP → dev novo · PLANO → Arquiteto); GAP → dispare o Arquiteto (linha impressa), encerre o turno, e na volta `run.ps1 start -Task <ID>` de novo (dev em **instância nova**, com o cartão); falta de evidência → o mesmo; `env` → `target.ps1 -Repair` uma vez e o mesmo dev de novo; `teto` → `run.ps1 start -Task <ID>` de novo, sem Arquiteto. `start` com **exit 2 "já tem um dev vivo"** (v3.53.1): não dispare outro — volte à sessão em uma linha, "<ID>: dev vivo de outra sessão, não redisparado". **GAP com plano externo** (v3.53.4: o `done` diz "a decisão vai ao plano externo"): não dispare Arquiteto nem `start` — devolva a linha que ele imprime (`<ID> 🔺 GAP → external plan <pacote>`); a decisão vem de fora, pelo stakeholder.
+5. **Até um destes:** fechada (o `done` fez ✅, commit e `.safe-point`) · bloqueada (🔴, degrau 1 não fechou) · ambiente sem reparo · limite de uso da conta · 🔺 GAP com plano externo. Aí devolva a linha.
 
 **Plano em blocos:** um dev por bloco, na ordem que o `start` imprime. **Escalonamento:** o modelo de cada disparo é o que o `start` imprime — nunca o escolha você (a 3ª instância sobe a sonnet só por falha de papel; queda de ambiente não conta — R27).
 
 ## O ciclo — `fix run` (uma F-ID)
 
-Na ordem do `fix-run.md` §Run passo 2, para **a sua F-ID**: `kanban.ps1 -Block B-<nnn> -Fid F-<nnn> -To plan|build|qa` **antes** de cada papel · [Arquiteto, revalidação — só se o prompt a pede] → `dispatch.ps1 -Role developer -Trilha fix -Id F-<nnn> -Plan …` e o dev → QA da F-ID → ⚠️/❌ volta ao dev ou ao Arquiteto, como o veredito diz. Critério C5–C8 que cai = promoção: pare e devolva. Cada disparo: encerre o turno e espere o aviso.
+Na ordem do `fix-run.md` §Run passo 2, para **a sua F-ID**: `kanban.ps1 -Block B-<nnn> -Fid F-<nnn> -To plan|build|qa` **antes** de cada papel · [Arquiteto, revalidação — só se o prompt a pede] → `dispatch.ps1 -Role developer -Trilha fix -Id F-<nnn> -Plan …` e o dev → QA da F-ID → ⚠️/❌ volta ao dev ou ao Arquiteto, como o veredito diz. Critério C5–C8 que cai = promoção: pare e devolva. Cada disparo: encerre o turno e espere o aviso. **🔺 GAP com plano externo** (v3.53.4, `guards.json` → `run.planner external`): em vez do Arquiteto, `fix-pack.ps1 -Block B-<nnn> -Gap F-<nnn>` e devolva a linha que ele imprime (`F-<nnn> 🔺 GAP → external plan F-<nnn>-gap`).
 
 ## A linha de volta — exatamente uma
 
@@ -34,9 +34,10 @@ T-041 ✅ fechada · commit <sha | cópia> · <k> rodadas
 T-041 🔴 bloqueada: <motivo em uma linha · degrau>
 T-041 ⏸ ambiente: <motivo em uma linha>
 T-041 ⏸ limite de uso
+T-041 🔺 GAP → external plan T-041-gap
 ```
 
-No `fix run`, o mesmo com a F-ID: `F-012 ✅ veredito do QA · commit <sha | cópia> · <k> rodadas` · `F-012 🔴 promovida: C<n> — <motivo>` · `F-012 ⏸ ambiente: …` · `F-012 ⏸ limite de uso`. `<k>` = disparos de papel que você fez. **Nada além da linha** — o conteúdo está nos arquivos dos papéis.
+No `fix run`, o mesmo com a F-ID: `F-012 ✅ veredito do QA · commit <sha | cópia> · <k> rodadas` · `F-012 🔴 promovida: C<n> — <motivo>` · `F-012 ⏸ ambiente: …` · `F-012 ⏸ limite de uso` · `F-012 🔺 GAP → external plan F-012-gap`. `<k>` = disparos de papel que você fez. **Nada além da linha** — o conteúdo está nos arquivos dos papéis.
 
 ## O que você dispara — e o que não faz
 

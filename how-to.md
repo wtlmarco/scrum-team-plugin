@@ -299,6 +299,52 @@ Por papel (tokens · US$ · % do custo · rodadas):
 - **Logo depois de atualizar o plugin** (`/team update`), feche e abra a sessão para os comandos funcionarem sem token.
 - **Se aparecer uma resposta do modelo em vez da tela acima**, o atalho sem token não funcionou nessa sessão. O resultado é o mesmo, mas gasta um pouco de token. Feche e abra a sessão. Se continuar, avise o dono do plugin.
 
+## Plano externo: planejar fora do Claude (v3.53.4)
+
+O plano de cada Task (o Arquiteto, no modelo Opus) é o que mais pesa no limite da conta: no sprint 5 do garden, foi cerca de 2/3 do gasto. Com o plano externo, esse trabalho vai para um assistente de fora (o app do Codex, um chat na web), e o Claude só constrói. As conferências não mudam: o plano que volta passa pelo `plan.ps1` antes de entrar no quadro, e a construção segue com `verify`, `accept` e `close`.
+
+**O que continua no Claude:** o `prepare`, a Planning (inclusive a **ficha** de cada Task, que é o que o pacote leva), os cenários da QA, a construção e o fechamento. Só o plano da Task com ficha (e a decisão de um 🔺 GAP dela) sai.
+
+**Ligar** — no `.team-project/guards.json` do projeto, a qualquer momento antes do `sprint run` (nada antes dele lê a chave):
+
+```json
+"run": { "planner": "external", "tasks": [] }
+```
+
+- `tasks` vazio: todas as Tasks com ficha vão para fora.
+- `tasks` com IDs (`["T-045", "T-046"]`): só elas — é o piloto. As IDs só existem depois da Planning.
+- Desligar: `"planner": "claude"` (o padrão). Vale no próximo `run.ps1 next`.
+
+**O ciclo, por História** (o run prepara uma História por vez):
+
+1. O run para e mostra `PRÓXIMA AÇÃO: external plan`, com o caminho do pacote. Parado, ele não gasta nada; a Task que já estava em construção segue.
+2. **Pegue** em `.team-project/sprints/<n>/pack/out/`:
+   - **chat na web:** suba o `H-012.zip` e escreva *"siga o INSTRUCTIONS.md"*;
+   - **app do Codex:** abra a pasta `out/H-012/` com a mesma frase.
+3. **Devolva** o `H-012-return.zip` que ele gerar (ou os `T-045-plan.md` soltos) em `.team-project/sprints/<n>/pack/in/`.
+4. Rode `/sm sprint run`. O `next` lê `pack/in/`, confere cada plano com o `plan.ps1` e:
+   - **aprovado:** grava em `plan/` com o nome que a Planning deu e põe o link na coluna Plano; a Task vai à construção;
+   - **reprovado:** não entra; sai um pacote de correção (`H-012-fix1.zip`) com o plano devolvido e a tabela do que faltou — volte ao passo 2;
+   - **arquivo que não é `<T-ID>-plan.md`** (código, outra pasta): ignorado, nada entra no projeto.
+   O que foi lido vai para `pack/done/`.
+
+**🔺 GAP na construção:** quando o dev para com uma dúvida de desenho numa Task do plano externo, a decisão também vai num pacote (`T-045-gap.zip`, com o plano atual, o relatório do dev e o diagnóstico do alvo). A Task espera; volta à construção quando o plano com a decisão passa pelo `plan.ps1`.
+
+**Na trilha fix (`/sm fix plan` e `/sm fix run`)** a mesma chave vale. A estrutura do fix não muda: só o passo do Arquiteto vai para fora.
+
+1. O `/sm fix plan` faz a triagem, monta o bloco e o formulário dos ajustes como sempre. No passo dos mini-planos, ele para e mostra o pacote do bloco: `.team-project/fixes/B-007/pack/out/B-007.zip` (ou a pasta `out/B-007/`).
+2. Você leva o pacote, devolve o `B-007-return.zip` (com um arquivo só, o `B-007-plan.md`) em `.team-project/fixes/B-007/pack/in/` e roda **`/sm fix plan` de novo**. Ele não refaz a triagem nem o formulário: confere o retorno com o `fix.ps1 -PlanOnly` e, aprovado, mostra o resumo do bloco. Reprovado, sai o `B-007-fix1.zip`.
+3. O `/sm fix run` segue igual. Um 🔺 GAP numa Correção vai num pacote (`F-012-gap.zip`, devolvido como `F-012-plan.md`, só com a seção dela). As outras Correções seguem, e a do GAP volta quando a decisão passar na conferência.
+
+Para o piloto, `tasks` aceita também o bloco (`"B-007"`) ou uma Correção (`"F-012"`).
+
+**Bom saber:**
+
+- **O pacote é pequeno:** a ficha, o modelo do plano, o ambiente medido no sprint, os cenários e os arquivos que a ficha aponta — não o projeto inteiro.
+- **Quem está de fora não roda comando.** O roteiro manda copiar o ambiente medido no sprint e transformar o que não foi medido em premissa, nunca inventar uma saída.
+- **O consumo de fora não é medido** pela G16; o run-log marca `external plan` em cada Task, para comparar com o sprint anterior.
+- **Conta:** o Claude na web, na mesma conta do Claude Code, usa o **mesmo limite** — não alivia nada. Use outro assistente.
+
 ## Responder pelo celular
 
 O time pode te perguntar — e você pode retomar o trabalho — pelo **Claude Code no celular**, por **Remote Control**: a sessão continua rodando no seu computador, e o app do Claude se conecta a ela.

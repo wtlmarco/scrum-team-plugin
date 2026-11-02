@@ -13,6 +13,42 @@
 
 ---
 
+## v3.53.4 — 2026-11-02
+
+**Branch:** `fix/v3.53.4` a partir de `develop` (com a v3.53.3 mesclada pelo PR #109) · **Processo:** addendum v3.53.4 (plano externo)
+Pedido do stakeholder: tirar do limite da conta Claude o trabalho que mais pesa, aproveitando os controles, as guardas e os scripts que o time já tem. No sprint 5 do garden, o Arquiteto (Opus) custou US$ 66,77 de ~US$ 100 (planos 38,2 · retrabalho 28,6), contra US$ 3,13 do dev. O plano é o trabalho que mais pesa e o que mais fácil se separa: entra um recorte pequeno (a ficha), sai um arquivo, e o `plan.ps1` o confere sem saber quem o escreveu.
+- **Opção do projeto:** `guards.json` → `"run": { "planner": "external", "tasks": [] }`, desligada por padrão (`"claude"`, também no modelo do `guards.json`). `tasks` vazio = todas as Tasks com ficha; com IDs = só elas, para o piloto (`Get-RunPlanner`, `Test-ExternalTask` no `lib.ps1`).
+- **Pacote por História** (`run.ps1 next`, funções em `scripts/checks/external-plan.ps1`): no preparo, a Task com ficha não vai ao Arquiteto Opus. A ficha se confere antes, como antes do Opus (Task grande se divide, caminho que não existe se corrige). O `next` monta `sprints/<n>/pack/out/<H-ID>/` e o `<H-ID>.zip` (nomes com `/`):
+  - `INSTRUCTIONS.md`, do modelo novo `roles/architect/templates/external-plan.md`: o papel, o nome exato de cada retorno, a ordem pelas dependências e o que o `plan.ps1` recusa;
+  - as fichas, com o resumo do plano das dependências de fora do pacote;
+  - o modelo do plano, o contexto do Arquiteto, a §3 do plano mais recente do sprint como ambiente medido (quem está de fora não roda comando: o que não foi medido vira premissa, nunca saída inventada), os `.scn` e a História;
+  - os arquivos que a ficha aponta (`files/`, `files/plugin/`).
+- **Espera sem custo:** a Task que já estava em construção segue. Sem ela, o `next` sai com exit 3 `PRÓXIMA AÇÃO: external plan`, dizendo onde pegar (`out/`) e onde devolver (`in/`), e grava `.team-project/.external-plan`, que libera a G20 (`hooks/stop.ps1`). O próximo `next` apaga a marca.
+- **Retorno conferido:** o `next` lê `pack/in/` (zip ou `<T-ID>-plan.md` solto, também `T-ID-plan (1).md` do navegador):
+  - cada plano passa pelo `plan.ps1` no lugar dele (`plan/`, com o nome que a Planning pôs na coluna Plano);
+  - aprovado: o link vai à coluna Plano do quadro e a Task segue à construção;
+  - reprovado: sai de `plan/`, vai a `pack/review/` com a tabela, e o pacote de correção (`<H-ID>-fix1.zip`) leva só as Tasks recusadas;
+  - qualquer outro arquivo é ignorado, e nada entra no projeto além do plano;
+  - o arquivo lido vai a `pack/done/`, e o run-log registra o pacote, a recusa e o aceite.
+- **🔺 GAP da Task do plano externo:** o `run.ps1 done -Result gap` monta `<T-ID>-gap.zip` (plano atual, relatório do dev, diagnóstico do alvo) em vez de chamar o Arquiteto. A Task não se constrói nem se retoma até a decisão voltar no plano e passar pelo `plan.ps1`. O executor devolve `<T-ID> 🔺 GAP → external plan <pacote>` (`agents/task-runner.md`).
+- **Trilha fix, sem mudar a estrutura** (pedido do stakeholder; refazer o fix como o sprint, com o plano dentro do run, foi descartado: no modo `claude` ele dobraria o uso do Opus por Correção e levaria as promoções de C5–C8 para o meio do run):
+  - `scripts/checks/fix-pack.ps1`: no passo 4 do `/sm fix plan`, monta `fixes/B-<nnn>/pack/out/B-<nnn>.zip`. Leva o roteiro novo `roles/architect/templates/external-fix-plan.md`, as fichas, os arquivos que a reprodução aponta, o `pending.md`, o modelo `fix-plan.md` e os comandos do `developer/context.md`;
+  - o retorno (`B-<nnn>-plan.md`) passa pelo `fix.ps1 -PlanOnly`, um modo novo do C4 que confere o mini-plano pelas regras do `fix-plan.md`: data, seção por F-ID ou `**Devolvida:**`, 60 linhas, C5–C8, promoção com o critério, arquivos existentes, teste de regressão, mutação, 2 a 5 passos, Verificação do bloco e teto;
+  - o `/sm fix plan` de novo retoma no passo 4. O 🔺 GAP no `fix run` vai em `F-<nnn>-gap.zip` e volta como `F-<nnn>-plan.md`: só a seção da F-ID muda, e as outras Correções seguem;
+  - `run.tasks` aceita `B-<nnn>` e `F-<nnn>`. Atualizados: `fix-run.md` §Plan passo 4 e §Run passo 2, `commands/sm.md`, `fix-plan.md` (cabeçalho e regra 11), `agents/task-runner.md`, `how-to.md`, a matriz de donos (`fixes/B-<nnn>/pack/`) e o modelo do `guards.json`.
+- **Documentos:**
+  - `how-to.md` §Plano externo (ligar, o ciclo, o GAP, a trilha fix; o Claude na web na mesma conta usa o mesmo limite);
+  - `sprint-run.md` §Disparo e espera, item 6;
+  - `artifact-ownership.md` e `hooks/ownership.json`, com a pasta `pack/` (dono SM, gerada pelo script);
+  - `hooks/COVERAGE.md`, com a G20 liberando a espera;
+  - `note.md` item 14, para medir o piloto.
+- **Testes:** guardas 270/0 (+1, G20 com `.external-plan`). C3 ok (R17 12.488 de 15.360 B). Conferências 268 casos (+22, seção 17):
+  - **sprint:** o pacote e o conteúdo do zip; a espera com a marca; o retorno reprovado com arquivo estranho; a correção; o retorno aprovado no nome da Planning, com o link no quadro; o run-log; o GAP em pacote com a Task esperando; a decisão aceita; o piloto por lista; `planner: claude`.
+  - **fix:** a recusa sem a chave; o pacote só com as F-IDs em bloco; a espera; o plano do bloco reprovado, com o código de fora ignorado; o aprovado; o GAP em pacote; a espera da F-ID; a decisão que troca só a seção dela; o `-PlanOnly` com promoção válida e com ✘ sem critério.
+- **Não testado:** o pacote num assistente real (app do Codex ou chat na web) e o retorno dele. Os testes montam o retorno à mão.
+
+---
+
 ## v3.53.3 — 2026-11-02
 
 **Branch:** `fix/v3.53.3` a partir de `fix/v3.53.2` (mesclada em `develop` pelo PR #107) · **Processo:** addendum v3.53.3 (construção e prova sem retrabalho; o título do bloco v3.53 passa a declarar Dev e QA)
