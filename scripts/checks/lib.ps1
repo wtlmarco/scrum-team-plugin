@@ -312,6 +312,29 @@ function Enter-TargetLock([string]$Root, [string]$Target, [string]$Owner, [int]$
     [System.IO.File]::WriteAllText($lp, ([ordered]@{ target = $Target; owner = $Owner; pid = $PID; desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
     return $null
 }
+# v3.53.3 (sprint 5 do garden): comando da Task que ainda roda — verify (verify.lock da pasta da Task, processo vivo) ou
+# accept (trava do alvo com dono "accept <ID>", processo vivo). Comando que passa de ~3 min vai para segundo plano e o dev
+# encerra o turno esperando o aviso dele; para quem o disparou, o dev "voltou". O executor rodava done/start e punha outro
+# dev ao lado do primeiro (T-058: 3 devs; T-059: o accept da instância anterior prendeu o alvo e o run pausou). Texto ou $null.
+function Get-TaskBusy([string]$Root, [string]$Id) {
+    $lp = Join-Path (Get-VerifyDir $Root $Id) 'verify.lock'
+    if (Test-Path -LiteralPath $lp) {
+        $l = $null; try { $l = Read-Text $lp | ConvertFrom-Json } catch { }
+        if ($l -and $l.pid -and [int]$l.pid -ne $PID) {
+            $p = Get-Process -Id ([int]$l.pid) -ErrorAction SilentlyContinue
+            if ($p -and (-not $l.started -or $p.StartTime.ToString('o') -eq [string]$l.started)) { return "verify $([string]$l.mode) (pid $([int]$l.pid), desde $([string]$l.at))" }
+        }
+    }
+    $tl = Join-Path $Root '.team-project/.target-lock'
+    if (Test-Path -LiteralPath $tl) {
+        $t = $null; try { $t = Read-Text $tl | ConvertFrom-Json } catch { }
+        if ($t -and [string]$t.owner -eq "accept $Id" -and [int]$t.pid -ne $PID -and (Get-Process -Id ([int]$t.pid) -ErrorAction SilentlyContinue)) {
+            $age = try { ((Get-Date) - [datetime]::ParseExact([string]$t.desde, 'yyyy-MM-dd HH:mm:ss', $null)).TotalHours } catch { 999 }
+            if ($age -lt 3) { return "accept no alvo $([string]$t.target) (pid $([int]$t.pid), desde $([string]$t.desde))" }
+        }
+    }
+    return $null
+}
 function Exit-TargetLock([string]$Root) {
     $lp = Join-Path $Root '.team-project/.target-lock'
     if (Test-Path -LiteralPath $lp) { try { $l = Read-Text $lp | ConvertFrom-Json; if ([int]$l.pid -eq $PID) { Remove-Item -LiteralPath $lp -Force } } catch { Remove-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue } }

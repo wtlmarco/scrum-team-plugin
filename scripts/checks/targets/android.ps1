@@ -134,7 +134,7 @@ function Reach([string]$Id, [int]$Sec = 4) {
     $false
 }
 function TapNode($n) { Sh input tap ([int](($n.X1 + $n.X2) / 2)) ([int](($n.Y1 + $n.Y2) / 2)) | Out-Null; Start-Sleep -Milliseconds 500 }
-function Tap([string]$Id) { if (-not (Reach $Id 6)) { throw "tag não encontrada: $Id" }; Start-Sleep -Milliseconds 300; [void](Dump); TapNode (Find $Id) }
+function Tap([string]$Id) { if (-not (Reach $Id 6)) { throw "tag não encontrada: $Id$(Get-ScreenHint)" }; Start-Sleep -Milliseconds 300; [void](Dump); TapNode (Find $Id) }
 function TextOf([string]$Id) { [void](Dump); $n = Find $Id; if (-not $n -and (Reach $Id 1)) { $n = Find $Id }; NodeText $n }
 # Lista completa de ids com um prefixo, na ordem: lista rolável só mostra os itens visíveis na árvore.
 function CollectIds([string]$Prefix) {
@@ -156,13 +156,33 @@ function SetSlider([string]$Id, [double]$Value, [double]$Min, [double]$Max) {
     $w = $n.X2 - $n.X1; $x = [int]($n.X1 + 30 + ($w - 60) * (($Value - $Min) / ($Max - $Min))); $y = [int](($n.Y1 + $n.Y2) / 2)
     Sh input tap $x $y | Out-Null; Start-Sleep -Milliseconds 700
 }
+# v3.53.3 (sprint 5 do garden): o launch só trazia o app à frente NA TELA EM QUE ELE FICOU (monkey) — cada cenário começava
+# onde o anterior parou (SC-127 abriu em Administração > Alertas, deixada pelo SC-193) — e, sem o app na frente, apertava
+# HOME e saía calado (SC-146 rodou na tela inicial do Android). Todo passo dava "tag não encontrada", lido pelo time como
+# "APK sem os ids": 3 GAPs ao Arquiteto, 8 rodadas da QA e cenário tirado da prova. Agora o app fecha e abre do zero (os
+# dados ficam — quem apaga é o reset), espera ficar na frente e, se não ficar, o cenário para como AMBIENTE (exit 4).
+function Get-FocusLine { @(Sh dumpsys window | Where-Object { $_ -match 'mCurrentFocus=' } | ForEach-Object { $_.Trim() }) | Select-Object -First 1 }
+function Test-AppOnTop { $f = [string](Get-FocusLine); return [bool]($script:Pkg -and $f -match [regex]::Escape("$($script:Pkg)/")) }
+# Onde a tela estava quando o passo falhou: a janela em foco, os ids e os primeiros textos visíveis — para a falha dizer se
+# o app estava em outra tela (ambiente/cenário) ou se a tela certa não tinha o elemento (app).
+function Get-ScreenHint {
+    $f = [string](Get-FocusLine); $w = if ($f -match 'u0 ([^ }]+)\}') { $Matches[1] } elseif ($f) { ($f -replace '^.*mCurrentFocus=', '') } else { '?' }
+    $ids = @($script:Nodes | Where-Object { $_.Id } | ForEach-Object { $_.Id } | Select-Object -Unique -First 8)
+    $tx = @($script:Nodes | Where-Object { $_.Text } | ForEach-Object { $t = ([string]$_.Text).Trim(); if ($t.Length -gt 30) { $t.Substring(0, 30) + '…' } else { $t } } | Where-Object { $_ } | Select-Object -Unique -First 4)
+    " [tela: $w · ids: $(if ($ids.Count) { $ids -join ', ' } else { 'nenhum' }) · textos: $(if ($tx.Count) { $tx -join ' / ' } else { 'nenhum' })]"
+}
 function Launch {
-    foreach ($i in 1..4) {
-        Sh monkey -p $script:Pkg -c android.intent.category.LAUNCHER 1 | Out-Null; Start-Sleep -Milliseconds 1500
-        $top = ((Sh dumpsys activity activities) | Select-String 'mResumedActivity' | Select-Object -First 1)
-        if ($top -and ($top.Line -like "*$($script:Pkg)*")) { return }
-        Sh input keyevent 3 | Out-Null; Start-Sleep -Milliseconds 800
+    if (-not $script:Pkg) { throw 'AMBIENTE: sem o pacote do app (targets.android.package ou um APK construído)' }
+    Sh am force-stop $script:Pkg | Out-Null; Start-Sleep -Milliseconds 700
+    foreach ($i in 1..3) {
+        Sh monkey -p $script:Pkg -c android.intent.category.LAUNCHER 1 | Out-Null
+        $t = Get-Date
+        do { Start-Sleep -Milliseconds 800; if (Test-AppOnTop) { Start-Sleep -Milliseconds 1000; return } } while (((Get-Date) - $t).TotalSeconds -lt 15)
     }
+    $f = [string](Get-FocusLine)
+    # Janela de erro do próprio app (fecha ao abrir, não responde) é defeito do app, não do alvo.
+    if ($f -match '(?i)Application (Error|Not Responding)' -and $f -match [regex]::Escape($script:Pkg)) { throw "o app $($script:Pkg) fechou ou travou ao abrir ($f)" }
+    throw "AMBIENTE: o app $($script:Pkg) não ficou na frente em 3 aberturas de 15 s (foco: $(if ($f) { $f } else { 'nenhum' })) — alvo travado, diálogo do sistema ou outro automatizador; não é o cenário"
 }
 function SetClock([string]$At) {
     $when = [datetime]::ParseExact($At, 'yyyy-MM-dd HH:mm', [Globalization.CultureInfo]::InvariantCulture)
@@ -177,8 +197,9 @@ function Invoke-AndroidStep([string]$Verb, [string]$Rest, [string]$ShotBase) {
     if ($Verb -notmatch '^(assert-|shot$)') { $script:IdCache = @{} }
     switch ($Verb) {
         'reset' { if ($script:Pkg) { Sh pm clear $script:Pkg | Out-Null } }
+        # v3.53.3: launch, open e restart abrem do zero, na tela inicial do app (Launch fecha antes).
         'launch' { Launch }
-        'restart' { Sh am force-stop $script:Pkg | Out-Null; Start-Sleep -Milliseconds 700; Launch }
+        'restart' { Launch }
         'open' { Launch }
         'back' { Sh input keyevent 4 | Out-Null; Start-Sleep -Milliseconds 600 }
         'clock' { SetClock $Rest }
@@ -190,7 +211,7 @@ function Invoke-AndroidStep([string]$Verb, [string]$Rest, [string]$ShotBase) {
         'shot' { Save-AndroidShot "$ShotBase-$Rest.png" }
         'assert-text' { $k, $v = $Rest -split '\s*=\s*', 2; $a = TextOf $k; if ($a -ne $v) { throw "esperado '$v', obtido '$a' em $k" } }
         'assert-contains' { $k, $v = $Rest -split '\s*=\s*', 2; $a = TextOf $k; if (-not ($a -like "*$v*")) { throw "'$a' não contém '$v' em $k" } }
-        'assert-exists' { if (-not (Reach $Rest 8)) { throw "tag ausente: $Rest" } }
+        'assert-exists' { if (-not (Reach $Rest 8)) { throw "tag ausente: $Rest$(Get-ScreenHint)" } }
         'assert-absent' { if (Has $Rest) { throw "tag presente (esperada ausente): $Rest" } }
         'assert-checked' { $k, $v = $Rest -split '\s*=\s*', 2; if (-not (Reach $k 4)) { throw "tag ausente: $k" }; $c = [bool](Find $k).Checked; if ($c -ne ($v -match '^(true|sim|1)$')) { throw "$k marcado = $c, esperado $v" } }
         'assert-count' { $k, $v = $Rest -split '\s*=\s*', 2; $ids = @(CollectIds $k); if ($ids.Count -ne [int]$v) { throw "esperado $v itens '$k*' na lista inteira, obtido $($ids.Count): [$($ids -join ',')]" } }

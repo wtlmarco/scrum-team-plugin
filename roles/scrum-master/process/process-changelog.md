@@ -92,7 +92,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
-## v3.53 — Plano pela ficha: a quebra em Tasks traz a ficha de cada Task, um Arquiteto por Task e o template do plano só com o operativo (SM + Arquiteto) — 28/10/2026
+## v3.53 — Plano pela ficha: a quebra em Tasks traz a ficha de cada Task, um Arquiteto por Task e o template do plano só com o operativo (SM + Arquiteto + Dev + QA) — 28/10/2026
 
 **Instrução** (stakeholder, 28/10/2026, `note.md` itens 7 e 8, "pode então fazer" depois da explicação de como um item pesa no outro). **Decisão:** a primeira opção do piloto do item 8, ficha por Task na Planning + um Arquiteto por Task; os itens 7 e 8 numa entrega só, porque um sem o outro rende pouco. Os lotes por dependência ficam como segunda opção.
 **Medido (sprint 4 do garden, plugin 3.52.2, transcripts da sessão `3af98c37…`):** a instância "Planos da H-K1" (8 planos, 100 chamadas, contexto de 19 → 434 mil) custou ≈ US$ 16,3, 63 % dos subagentes, 97 % disso em cache lido. A abertura chegava a ~117 mil antes da pesquisa: README 10,6 mil, `breakdown/S4.md` 19,1 mil, `sprint-backlog.md` 9,0 mil, template 15,6 mil, `plan.ps1` 11,9 mil; a listagem de `sprints/3/plan` (8,9 mil) não foi usada. A seção "Regras do formato" era 16,5 KB dos 34,9 KB do template.
@@ -139,6 +139,10 @@ Próximo sprint, contra o sprint 4: US$ do plano por Task construída (`consumpt
 **Plano do Arquiteto (Arquiteto · SM):** decisão do stakeholder sobre o relatório prévio do sprint 5 do garden, em que o Arquiteto gastou 84% e cortar planos custou ~US$ 9. O plano não se corta por tamanho; acima de ~30 KB só se avisa Task grande. A ficha ganha **Arquivos previstos** (até 6, acima disso a Task se divide). O `run.ps1 next` confere a ficha antes do Opus e põe nela o resumo do plano da dependência. A leitura é por trecho. Sem regra nova. **Indicador:** o Arquiteto gasta 35–40% menos por plano no próximo sprint, sem mais GAPs de plano.
 
 **Bloqueios do run (QA · SM · Dev):** 11 de 19 decisões do sprint 5 vieram de nomes de teste. Cenário diz o modo de prova (`(teste)` sem `.scn`); nomes que faltam viram Task na Planning; `# aguarda <T-ID>` no `.scn` adia o cenário; `verify -WaitBusySeconds`; reparo do emulador em `targets.android.repair`. Sem regra nova. **Indicador:** zero formulário de mapeamento no run.
+
+### Addendum v3.53.3 — construção e prova sem retrabalho (SM + Dev + QA) — 02/11/2026
+
+**Instrução:** stakeholder, 02/11/2026, avaliação do meio do sprint 5 do garden (itens 1 a 5 aceitos). O título do bloco passou a declarar Dev e QA, que os addenda v3.53.1 e v3.53.2 já tocavam. **Medido:** ~US$ 100 com 4 de 16 Tasks fechadas, sendo o Arquiteto 84 % dos subagentes. O contrato de nomes de teste cresceu 3× (~US$ 19 de Opus): os `.scn` de quatro Histórias foram escritos antes da Task que cria os nomes. As capturas da falha do aceite mostravam a tela inicial do Android ou a página do cenário anterior, e o time leu "APK sem os ids". A T-058 teve 3 devs, porque o dev que esperava um comando em segundo plano parecia ter voltado. **Mudou:** o preparo é de uma História por vez, e a que depende de outra vem depois (`sprint-run.md` passo 1). O GAP da prova no alvo vai ao operator, pelas capturas, antes do Arquiteto. O dev que espera comando volta com `ESPERANDO`, e `done`, `start` e `next` não redisparam enquanto o verify ou o accept da Task roda. Sem regra nova (34). **Indicador (sprint 6):** zero dev duplicado; zero GAP de alvo no Opus sem veredito do operator; nenhum plano refeito por contrato que mudou depois; Arquiteto em retrabalho bem abaixo dos US$ 28,6. **Evidência:** CHANGELOG v3.53.3.
 
 ---
 

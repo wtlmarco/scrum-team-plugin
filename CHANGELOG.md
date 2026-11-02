@@ -13,6 +13,31 @@
 
 ---
 
+## v3.53.3 — 2026-11-02
+
+**Branch:** `fix/v3.53.3` a partir de `fix/v3.53.2` (mesclada em `develop` pelo PR #107) · **Processo:** addendum v3.53.3 (construção e prova sem retrabalho; o título do bloco v3.53 passa a declarar Dev e QA)
+Avaliação do meio do sprint 5 do garden, em 02/11/2026, com 4 de 16 Tasks fechadas. Até ali o sprint custou ~US$ 100: US$ 79,81 nos subagentes e US$ 20,34 na sessão. O Arquiteto ficou com 84 % do gasto dos subagentes (US$ 38,2 em planos e US$ 28,6 em retrabalho). O stakeholder via um conflito contínuo entre construção e QA. A QA custou só US$ 5,14; o custo veio de três ciclos de retrabalho em volta da prova. Os itens 1 a 5 foram aceitos:
+
+- **1. O aceite no Android abre o app do zero:** as capturas de falha do sprint mostravam a **tela inicial do Android** (SC-146) e a **página Alertas** deixada pelo cenário anterior (SC-127). O `launch` usava o `monkey`, que só traz o app à frente na tela em que ele ficou; sem o app na frente, ele apertava HOME e saía sem erro. Todo passo dava "tag não encontrada", e o time leu isso como "APK sem os ids". Foram 3 GAPs ao Opus e 8 rodadas da QA na T-041, a T-059 parou no mesmo ponto e o SC-146 saiu da prova.
+  - `launch`, `open` e `restart` agora fecham o app (`am force-stop`) e o abrem do zero. Os dados ficam, porque quem apaga é o `reset`.
+  - O passo espera até 15 s o app ficar na frente, em 3 tentativas, sem apertar HOME. Se não ficar, o cenário para com **AMBIENTE** (exit 4). Uma janela de erro do próprio app ao abrir é falha do app.
+  - "Tag não encontrada" e "tag ausente" trazem `[tela · ids · textos]` visíveis (`targets/android.ps1`, cabeçalho do `accept.ps1`).
+- **2. GAP da prova no alvo vai ao operator antes do Arquiteto:**
+  - O `run.ps1 done -Result gap` com GAP de aceite, alvo ou tag imprime o **operator** (Haiku). Ele abre o `result.md` e as capturas `*-falha.png` e grava `operator/<n>/<T-ID>-alvo/diagnostico.md` com `Veredito: AMBIENTE | APP | PLANO`.
+  - O `done -Result gap` de novo segue o veredito: AMBIENTE vai à rota de queda de ambiente (reparo e dev novo); APP vai a um dev novo, com o diagnóstico no cartão; PLANO vai ao Arquiteto, com o diagnóstico no prompt.
+  - GAP de desenho segue direto ao Arquiteto (`run.ps1`, `agents/operator.md` item 9, `agents/task-runner.md`).
+- **3. Preparo de uma História por vez:** antes, o `next` só construía depois de preparar todas as Histórias, e as 15 Tasks estavam em 🟦 antes da primeira construção normal. A QA escreveu os `.scn` de quatro Histórias antes de existir a Task que cria os nomes de teste. O contrato dela cresceu 3× (~US$ 19 de Opus), e os planos já escritos ficaram velhos.
+  - Agora a História preparada que tem Task a construir é construída antes de preparar a seguinte. A construção só pega Task de História já preparada.
+  - A História com Task que depende de Task aberta de **outra** História vem depois dela. A ficha continua dando a sequência, e o plano de quem depende lê o resumo do plano da dependência e o código já construído (`run.ps1 next`, `sprint-run.md` passo 1).
+- **4. Dev que espera um comando não ganha um segundo dev ao lado:** um comando que passa de ~180 s vai para segundo plano, e o dev encerra o turno esperando por ele. Para o executor, isso parecia a volta do dev, e ele rodava `done`/`start`. Na T-058 houve 3 devs; na T-059, o `accept` de uma instância anterior prendeu o emulador e o run pausou.
+  - O dev volta com `ESPERANDO <comando>` na primeira linha, e o executor só encerra o turno.
+  - `Get-TaskBusy` (lib) vê o `verify.lock` e a trava do alvo `accept <T-ID>` com processo vivo. Enquanto um deles existir, o `done` sai com exit 3 `ESPERANDO`, o `start` recusa com exit 2 e o `next` manda esperar (`agents/developer.md` regra 6, `agents/task-runner.md`, `sprint-run.md`).
+- **5. Medir no sprint 6:** `note.md` item 13. Fica com os números de referência do sprint 5 (formulários de nomes de teste, ampliações do contrato, cenários tirados da prova, GAPs ao Arquiteto e devs duplicados), a fonte de cada um e o alvo. Nenhum agente novo.
+- **Testes:** conferências 246 casos (+16), guardas 269/0, C3 ok.
+- **Não testado:** o `launch` novo num emulador real (testado com `adb` falso, porque nenhum aparelho estava conectado) e o operator abrindo as capturas num run real.
+
+---
+
 ## v3.53.2 — 2026-11-01
 
 **Branch:** `fix/v3.53.2` a partir de `develop` · **Processo:** addendum v3.53.2 (R22: toda pergunta ao stakeholder em formulário; plano do Arquiteto sem corte por tamanho)

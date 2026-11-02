@@ -13,6 +13,8 @@
 # Linguagem (uma instrução por linha; '#' comenta; texto com espaço vai depois do '='):
 #   scenario <ID> <título>             começa um cenário          reset                  apaga os dados do app (web: sessão nova)
 #   launch | open [/caminho]           abre o app ou a página      restart | back         reabre | volta
+#   (android, v3.53.3: launch/open/restart fecham e abrem o app do zero, na tela inicial — os dados ficam; o app que não
+#    fica na frente em 3 aberturas é FALHA DE AMBIENTE, exit 4; a falha de passo traz [tela · ids · textos] visíveis)
 #   clock <aaaa-mm-dd hh:mm>           fixa o relógio              wait <segundos>        espera
 #   tap <id>                           toca ou clica               type <id> = <texto>    digita
 #   slider <id> <valor> <min> <max>    posiciona o deslizante      font-scale <fator>     escala da fonte
