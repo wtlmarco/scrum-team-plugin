@@ -288,6 +288,7 @@ try {
         # entrega ainda não está no relatório. Fechar, reparar ou redisparar aqui punha um segundo dev ao lado do primeiro.
         $busy = Get-TaskBusy $Root $T.Id
         if ($busy) {
+            Set-NextVerdict $Root 'esperar' $T.Id "comando: $busy"
             Out "run: ESPERANDO — a $($T.Id) ainda tem $busy rodando. O dev encerrou o turno para esperar esse comando (foi para segundo plano) e volta sozinho com o resultado. Não rode start, reparo nem Arquiteto: encerre o turno; o aviso da volta dele te acorda e aí rode run.ps1 done de novo."
             exit 3
         }
@@ -396,6 +397,8 @@ try {
     }
 
     # ---------- next ----------
+    # v3.53.5: a decisão de esperar vale só até o next seguinte — ele a regrava se a espera continua (G20 lê .next-verdict).
+    Set-NextVerdict $Root ''
     # v3.51.4: o run parou por limite de uso da conta (.usage-limit, gravado pela G16 ou pelo Stop) — diz o motivo e segue.
     $lim = Join-Path $tp '.usage-limit'
     if (Test-Path -LiteralPath $lim) {
@@ -599,13 +602,21 @@ try {
         $liveA = @(Get-LiveAgents $Root $next.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -in 'task-runner', 'developer' })
         if ($liveA.Count) {
             $a = @($liveA | Sort-Object { [string]$_.at } -Descending)[0]
-            Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) já tem $(([string]$a.type) -replace '^.*:', '') vivo (última ação $(if ($a.last) { $a.last } else { 'disparado' }) há $([int]((Get-AgentIdleHours $a) * 60)) min$(if ($a.host_pid) { ", processo $($a.host_pid)" })). Não dispare outro executor nem dev: seriam duas instâncias no mesmo alvo. Encerre o turno; o aviso de volta reabre a sessão (se ele é de outra sessão, a volta chega lá). Sem sinal de vida por 20 min, o registro deixa de valer e o next segue."
+            $agTxt = "$(([string]$a.type) -replace '^.*:', '') vivo (última ação $(if ($a.last) { $a.last } else { 'disparado' }) há $([int]((Get-AgentIdleHours $a) * 60)) min$(if ($a.host_pid) { ", processo $($a.host_pid)" }))"
+            Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) já tem $agTxt. Não dispare outro executor nem dev: seriam duas instâncias no mesmo alvo. Encerre o turno; o aviso de volta reabre a sessão (se ele é de outra sessão, a volta chega lá). Sem sinal de vida por 20 min, o registro deixa de valer e o next segue."
+            # v3.53.5: o comando que o agente espera, com o sinal de vida (CPU, arquivo, POSSÍVEL TRAVAMENTO).
+            $wA = Get-TaskWait $Root $next.Id
+            if ($wA) { Out "  espera: $($wA.Text)" }
+            Set-NextVerdict $Root 'esperar' $next.Id "agente: $agTxt"
             exit 3
         }
         # v3.53.3: sem agente no registro, mas com verify/accept da Task vivo — o dev esperava o comando quando o registro saiu.
-        $busyN = Get-TaskBusy $Root $next.Id
-        if ($busyN) {
-            Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) ainda tem $busyN rodando (um dev esperava por ele). Não dispare executor nem dev: seriam dois na mesma Task e no mesmo alvo. Encerre o turno; rode run.ps1 next quando o aviso de volta chegar."
+        # v3.53.5: também o reparo do alvo; a linha traz o sinal de vida e, parado, a saída (não esperar às cegas).
+        $wN = Get-TaskWait $Root $next.Id
+        if ($wN) {
+            Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) ainda tem $($wN.Text) rodando (um dev esperava por ele). Não dispare executor nem dev: seriam dois na mesma Task e no mesmo alvo. Encerre o turno; rode run.ps1 next quando o aviso de volta chegar."
+            if ($wN.Pulse.Stalled) { Out "  POSSÍVEL TRAVAMENTO: o comando não gasta CPU nem grava arquivo há 10 min ou mais. Não espere às cegas: leve ao stakeholder (formulário) — encerrar o processo (ele decide) e retomar a $($next.Id) por dev novo com o cartão (run.ps1 start), ou seguir esperando." }
+            Set-NextVerdict $Root 'esperar' $next.Id "comando: $($wN.Text)"
             exit 3
         }
         $dv = Join-Path $S "delivery/$($next.Id).md"

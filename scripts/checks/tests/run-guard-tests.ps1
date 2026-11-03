@@ -805,6 +805,25 @@ $cases = @(
        Setup = { $n = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
                  Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') ('[{"type":"team:task-runner","desde":"' + $n + '","session":"sessOutra","parent":"","agent_id":"runQ00002","work":"Q-S7","last":"x","at":"' + $n + '","host_pid":999999,"host_start":"2001-01-01 00:00:00"}]') -Encoding UTF8 }
        Payload = @{ hook_event_name = 'Stop'; session_id = 'sessA' } },
+    # ---------- v3.53.5 — G20 segue a decisão "esperar" do run.ps1 next (.next-verdict) e cita a Task em construção ----------
+    @{ Name = 'G20 (v3.53.5): o next mandou esperar há 2 min (.next-verdict) — libera o fim de turno'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.next-verdict') ('{"acao":"esperar","task":"Q-S7","motivo":"comando: reparo do alvo android","at":"' + (Get-Date).AddMinutes(-2).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw -Encoding UTF8) -like '*G20*Q-S7*liberado: o run.ps1 next mandou esperar (comando: reparo do alvo android)*' }
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessA' } },
+    @{ Name = 'G20 (v3.53.5): decisão de esperar com 45 min — vencida, barra (a sessão roda o next de novo)'; Script = 'stop.ps1'; Expect = 2; ExpectErr = 'Q-S7 está elegível'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.next-verdict') ('{"acao":"esperar","task":"Q-S7","motivo":"x","at":"' + (Get-Date).AddMinutes(-45).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessA' } },
+    @{ Name = 'G20 (v3.53.5): a Task em construção (.active-task) é a citada, não a primeira do quadro'; Script = 'stop.ps1'; Expect = 2; ExpectErr = 'T-5 está elegível'
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.next-verdict') -Force -ErrorAction SilentlyContinue
+                 New-Item -ItemType Directory -Force (Join-Path $proj '.team-project/sprints/8') | Out-Null
+                 [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/sprints/8/sprint-backlog.md'), "## História H-1 — x`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x1F7E6)) T-2 | b | — |`n| $([char]::ConvertFromUtf32(0x1F7E8)) T-5 | e | — |`n", (New-Object System.Text.UTF8Encoding($false)))
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "8", "desde": "2026-10-06 10:00" }' -Encoding UTF8
+                 $atp = Join-Path $proj '.team-project/.active-task'; if (Test-Path -LiteralPath $atp) { Copy-Item -LiteralPath $atp "$atp.bak" -Force }
+                 Set-Content -LiteralPath $atp '{ "trilha": "sprint", "id": "T-5", "plano": ".team-project/sprints/8/plan/T-5-x.md" }' -Encoding UTF8 }
+       Check = { $atp = Join-Path $proj '.team-project/.active-task'
+                 if (Test-Path -LiteralPath "$atp.bak") { Move-Item -LiteralPath "$atp.bak" $atp -Force } else { Remove-Item -LiteralPath $atp -Force -ErrorAction SilentlyContinue }
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "7", "desde": "2026-10-06 10:00" }' -Encoding UTF8; $true }
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessA' } },
     @{ Name = 'G23 dev acima do teto de contexto (120 mil ≥ 100 mil) roda comando no run: nega com a rota do ponto de retomada'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'teto de contexto desta instância do dev (120 mil, teto 100 mil'
        Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue
                  $sd = Join-Path $tmp 'transcripts/sessG23/subagents'; New-Item -ItemType Directory -Force $sd | Out-Null

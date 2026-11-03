@@ -1478,6 +1478,59 @@ Check 'v3.53.3 item 1: janela de erro do próprio app ao abrir → falha do app,
 $r = & $hr 'tap'
 Check 'v3.53.3 item 1: tag não encontrada diz a tela, os ids e os textos visíveis' $r 0 @('RESULT=tag não encontrada: tab-button-estufa \[tela: br\.x/br\.x\.MainActivity · ids: alertas\.titulo · textos: Alertas\]')
 
+# 16e. v3.53.5 — espera com sinal de vida (sprint 5 do garden: o reparo do alvo ficou 81 min parado em "adb emu kill", com
+# dono "target.ps1 android" na trava, que o next não via). O reparo segura a Task; parado = POSSÍVEL TRAVAMENTO; o next grava
+# a decisão de esperar (.next-verdict, lida pela G20); o /team-status mostra a Task em execução, o comando e a PARADA.
+$p = Join-Path $tmp 'espera-pulso'; New-Project $p
+Put $p '.team-project/sprints/1/plan/T-041a-x.md' "# Plano`n"
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') '[`plan/T-041a-x.md`](plan/)' '[`plan/T-041a-x.md`](plan/T-041a-x.md)'
+$slp = Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-Sleep 600' -PassThru -WindowStyle Hidden
+try {
+    $tlk = { param($min) Put $p '.team-project/.target-lock' ('{"target":"android","owner":"target.ps1 android","pid":' + $slp.Id + ',"desde":"' + (Get-Date).AddMinutes(-$min).ToString('yyyy-MM-dd HH:mm:ss') + '"}') }
+    & $tlk 25
+    $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+    $nvp = Join-Path $p '.team-project/.next-verdict'
+    Check 'v3.53.5: reparo do alvo (dono target.ps1) segura a Task — esperar com o sinal de vida e POSSÍVEL TRAVAMENTO; grava .next-verdict' @{ Code = $r.Code; Out = $r.Out + "`nverdict=" + $(if (Test-Path -LiteralPath $nvp) { [System.IO.File]::ReadAllText($nvp, $utf8) } else { 'ausente' }) } 3 @('esperar — a T-041 ainda tem reparo/conferência do alvo android \(target\.ps1 android\) \(pid \d+', 'há 25 min · CPU \d+ s', 'POSSÍVEL TRAVAMENTO', 'encerrar o processo \(ele decide\)', 'verdict=\{"acao":"esperar","task":"T-041"')
+    $r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
+    Check 'v3.53.5: start com o reparo do alvo vivo não dispara outro dev' $r 2 @('reparo/conferência\s+do\s+alvo\s+android', 'Não\s+dispare\s+outro\s+dev')
+    & $tlk 1
+    $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+    Check 'v3.53.5: reparo recente (1 min) → esperar, sem POSSÍVEL TRAVAMENTO' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'POSSÍVEL TRAVAMENTO') { "`nTRAVOU" } else { '' }) } 3 @('esperar — a T-041', 'há 1 min', '^(?![\s\S]*TRAVOU)')
+    & $tlk 25
+    Put $p '.team-project/.active-task' '{"trilha":"sprint","id":"T-041","plano":".team-project/sprints/1/plan/T-041-export.md"}'
+    $r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Root', $p)
+    Check 'v3.53.5: /team-status — Task em execução, há quanto tempo, último sinal de vida e o comando parado' $r 0 @('Em execução: T-041 · .* · há \d+ s \(start às', 'último sinal de vida há', 'comando: reparo/conferência do alvo android .*POSSÍVEL TRAVAMENTO')
+} finally { Stop-Process -Id $slp.Id -Force -ErrorAction SilentlyContinue }
+Remove-Item -LiteralPath (Join-Path $p '.team-project/.target-lock') -Force
+(Get-Item -LiteralPath (Join-Path $p '.team-project/.active-task')).LastWriteTime = (Get-Date).AddMinutes(-40)
+Put $p '.team-project/.active-run' '{ "trilha": "sprint", "id": "1", "desde": "2026-11-02 14:31" }'
+$r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Root', $p)
+Check 'v3.53.5: /team-status — run em andamento sem agente nem comando há 40 min → PARADA' $r 0 @('Em execução: T-041 .* há 40 min', 'PARADA: o run está em andamento, mas nenhum agente nem comando vivo para a T-041 há 40 min')
+Remove-Item -LiteralPath (Join-Path $p '.team-project/.active-run') -Force
+$r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Root', $p)
+Check 'v3.53.5: /team-status — run pausado não soa como PARADA' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'PARADA') { "`nALARME" } else { '' }) } 0 @('run pausado: nada roda para a T-041', '^(?![\s\S]*ALARME)')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.53.5: next sem espera apaga o .next-verdict' @{ Code = $r.Code; Out = $r.Out + "`nverdict=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.next-verdict')) } 0 @('verdict=False')
+
+# 16f. v3.53.5 — adaptador android: prazo no adb (o processo é encerrado) e a recusa de abrir um segundo emulador.
+$fakeSdk = Join-Path $tmp 'fake-sdk'; New-Item -ItemType Directory -Force (Join-Path $fakeSdk 'platform-tools') | Out-Null
+$hs2 = Join-Path $tmp 'android-timeout.ps1'
+[System.IO.File]::WriteAllText($hs2, @'
+param([string]$Adapter, [string]$Sdk)
+$ErrorActionPreference = 'Stop'
+$env:ANDROID_HOME = $Sdk
+. $Adapter
+$null = Initialize-Android ([pscustomobject]@{ package = 'br.x' })
+$script:Adb = (Get-Command powershell).Source
+$sw = [Diagnostics.Stopwatch]::StartNew()
+$o = AdbT 2 @('-NoProfile', '-Command', 'Start-Sleep 30')
+"TIMEOUT=[$($script:AdbTimeout)] em $([int]$sw.Elapsed.TotalSeconds) s"
+$o = AdbT 20 @('-NoProfile', '-Command', 'Write-Output "a b"; Write-Output $args.Count')
+"OK=[$($script:AdbTimeout)] SAIDA=$($o -join '|')"
+'@, $utf8)
+$r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $hs2 -Adapter (Join-Path $checks 'targets/android.ps1') -Sdk $fakeSdk 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
+Check 'v3.53.5: adb sem resposta é encerrado no prazo (2 s, não 30) e o comando vai em $script:AdbTimeout' $r 0 @('TIMEOUT=\[adb -NoProfile -Command Start-Sleep 30 sem resposta em 2 s\] em [2-5] s', 'OK=\[\] SAIDA=a b')
+
 # 17. v3.53.4 — plano externo (guards.json → "run": { "planner": "external" }): pacote por História, retorno conferido
 # pelo plan.ps1, correção, GAP em pacote e o piloto por lista de Tasks.
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
