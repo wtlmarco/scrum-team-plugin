@@ -148,6 +148,18 @@ Próximo sprint, contra o sprint 4: US$ do plano por Task construída (`consumpt
 
 **Instrução:** stakeholder, 02/11/2026: tirar do limite da conta Claude o trabalho que mais pesa, mantendo controles e scripts. **Medido:** sprint 5 do garden, Arquiteto US$ 66,77 de ~US$ 100 (planos 38,2 · retrabalho 28,6); dev US$ 3,13. **Mudou:** opção do projeto `guards.json` → `"run": { "planner": "external", "tasks": [] }`, desligada por padrão. O plano da Task com ficha sai num pacote por História (`sprints/<n>/pack/`) para um assistente de fora; o `run.ps1 next` só o aceita depois do `plan.ps1`, e o reprovado volta num pacote de correção. O 🔺 GAP dessa Task também vai num pacote. Na trilha fix, a mesma chave manda para fora os mini-planos do `/sm fix plan` (conferidos pelo `fix.ps1 -PlanOnly`; o modo retoma no passo 4) e o 🔺 GAP de uma Correção; a estrutura do fix não muda. Ficha, cenários, construção e fechamento seguem no Claude. Sem regra nova (34). **Indicador (piloto, 3 Tasks do sprint 6):** plano aprovado em até uma correção, GAPs de PLANO não acima dos do Opus, US$ de Arquiteto dessas Tasks perto de zero. **Evidência:** CHANGELOG v3.53.4.
 
+### Addendum v3.53.5 — espera com sinal de vida e um emulador só (SM + Dev) — 02/11/2026
+
+**Instrução:** stakeholder, 02/11/2026, no sprint 5 do garden: "acompanhar essas paradas longas pra saber se são travamentos" e mostrar no `/team-status` a Task em execução e há quanto tempo ela roda. **Medido:** o reparo do alvo (`target.ps1 -Repair`) ficou 81 min parado com 1 s de CPU, à espera de `adb emu kill`. A causa eram dois emuladores, um AVD local e um container Docker, nas mesmas portas 5554/5555. A trava do alvo tinha dono `target.ps1 android`, que o `next` não via, e a G20 barrou 43 fins de turno na T-042 enquanto o `next` mandava esperar a T-061. **Mudou:**
+- todo `adb` tem prazo, e o reparo recusa abrir um segundo emulador com as portas ocupadas;
+- `targets.android.serial` fixa o aparelho de trabalho;
+- o reparo do alvo também segura a Task;
+- cada espera do `next` traz o sinal de vida (tempo, CPU, processo, último arquivo) e `POSSÍVEL TRAVAMENTO`, que vai ao stakeholder em formulário;
+- a G20 segue a decisão "esperar" do `next` (`.next-verdict`, 30 min) e cita a Task em construção;
+- o `/team-status` ganhou "Em execução" com `PARADA`.
+
+Sem regra nova (34). **Indicador (sprint 6):** nenhuma espera acima de 15 min sem `POSSÍVEL TRAVAMENTO` ou resultado; bloqueios da G20 por dia abaixo de 5; zero reparo do alvo que passe de 10 min. **Evidência:** CHANGELOG v3.53.5.
+
 ---
 
 ## v3.52 — Orquestrador enxuto: sessão nova por ritual, `run` em sessões curtas, espera sem sondagem, registro de decisões e commit por Task (SM) — 23/10/2026

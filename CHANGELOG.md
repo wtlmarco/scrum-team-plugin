@@ -13,6 +13,55 @@
 
 ---
 
+## v3.53.5 — 2026-11-02
+
+**Branch:** `fix/v3.53.5` a partir de `develop` (com a v3.53.4 mesclada pelo PR #111) · **Processo:** addendum v3.53.5 (espera com sinal de vida)
+Pedido do stakeholder, no sprint 5 do garden: acompanhar as paradas longas para saber se são travamentos, e mostrar no `/team-status` a Task em execução e há quanto tempo ela roda. O que estava acontecendo, medido no projeto:
+- o reparo do alvo (`target.ps1 -Repair`, pid 2032) ficou **81 min parado, com 1 s de CPU**, à espera de `adb emu kill`;
+- a causa eram **dois emuladores nas mesmas portas 5554/5555**: o AVD local `horta-api35`, aberto por um reparo anterior, e o container `horta-emulador`;
+- a trava do alvo tinha dono `target.ps1 android`, que o `Get-TaskBusy` não via, então o `next` mandava disparar outro executor, cujo `accept` ficaria até 3 h barrado;
+- a G20 barrou **43 fins de turno num dia, todos na T-042** (a primeira elegível do quadro), enquanto o `next` mandava esperar a T-061.
+
+Mudanças:
+- **`adb` com prazo** (`targets/android.ps1`):
+  - toda chamada passa por `AdbT` com tempo máximo: 90 s por padrão, 30 s no `devices`, 20 s no `emu kill`, 600 s no `install`, 180 s para o aparelho voltar depois do reparo e 15 s por consulta do boot;
+  - ao estourar, o `adb` é encerrado e o comando fica em `$script:AdbTimeout`;
+  - a saída vem em UTF-8;
+  - no pré-voo, um `adb` que não responde vira "servidor do adb travado".
+- **Um emulador só:**
+  - no reparo pelo AVD local, se as portas 5554/5555 estão com outro processo (Docker), o plugin recusa abrir um segundo emulador e manda declarar `targets.android.repair` sem o `avd`;
+  - `targets.android.serial` (opcional) fixa o aparelho de trabalho;
+  - sem `serial` e com mais de um aparelho no `adb devices`, o pré-voo pede o `serial` em vez de falhar com "more than one device".
+- **Sinal de vida da espera** (`lib.ps1`):
+  - `Get-WaitPulse` lê, sem gravar nada, há quanto tempo o comando roda, a CPU da árvore de processos, o processo mais fundo (onde de fato espera) e a última gravação na pasta do job;
+  - 10 min ou mais sem CPU nem arquivo novo = `POSSÍVEL TRAVAMENTO`.
+- **`Get-TaskWait` / `Get-TaskBusy`:**
+  - além do `verify` e do `accept` da Task, o reparo do alvo também segura a Task: vale qualquer dono da trava, menos o `accept` de outra Task;
+  - o texto traz o sinal de vida;
+  - o `Enter-TargetLock` também traz o sinal de vida e, se o dono parece travado, diz como sair em vez de "espere" por até 3 h.
+- **`run.ps1`:**
+  - o `next` mostra o sinal de vida em cada espera e, com `POSSÍVEL TRAVAMENTO`, manda levar ao stakeholder: encerrar o processo (decisão dele) e retomar por dev novo, ou seguir esperando;
+  - a decisão de esperar vai em `.team-project/.next-verdict`, que cada `next` apaga ao começar;
+  - o `done` com `ESPERANDO` também grava a decisão.
+- **G20** (`hooks/stop.ps1`): segue a decisão "esperar" do `next` por 30 min. Mais velha que isso, barra de novo e a sessão roda o `next`. A Task citada é a do `.active-task` quando ela está elegível.
+- **`/team-status`** (`team-view.ps1`) ganhou a seção **Em execução**:
+  - a Task do `.active-task` e há quanto tempo roda desde o último `start`;
+  - o último sinal de vida (agente, `verify`, `accept`, relatório);
+  - o comando em espera, com o sinal de vida;
+  - `⚠ PARADA` quando o run está em andamento e nada roda para a Task há 20 min, ou `run pausado`;
+  - sem Task em construção, a última Task trabalhada.
+- **Documentos:**
+  - `how-to.md`: exemplo e leitura do "Em execução", um emulador só, `serial`, prazo do `adb`, e um exemplo de `repair` que não duplica o aparelho (o `adb connect localhost:5555` do exemplo anterior punha o mesmo emulador duas vezes no `adb devices`);
+  - `sprint-run.md` passo 5 da construção;
+  - `COVERAGE.md` (G20);
+  - addendum v3.53.5 no `process-changelog.md`.
+- **Testes:** conferências (blocos 16e e 16f: reparo do alvo segura a Task, `POSSÍVEL TRAVAMENTO` com 25 min e sem ele com 1 min, `.next-verdict` gravado e apagado, "Em execução", `PARADA` e run pausado, `adb` encerrado no prazo) e guardas (G20 com a decisão de 2 min e de 45 min, Task em construção citada).
+- **No garden, fora do plugin** (pedido do stakeholder):
+  - o AVD local `horta-api35` foi removido e o container `horta-emulador` ficou como o único emulador;
+  - `docker/emulator-repair.ps1` e `docker/emulator-fix.sh` corrigem três defeitos da imagem `budtmo/docker-android` que impediam o emulador de subir depois de um `docker restart`: o `sed '1d' /etc/passwd` que apaga o root, a trava `/tmp/.X0-lock` do Xvfb e as travas do AVD;
+  - medido: três partidas seguidas em 52 a 69 s.
+- **Não testado:** o `POSSÍVEL TRAVAMENTO` de um `verify` que trava depois de muita CPU, porque a média da CPU no período inteiro o esconde (o último arquivo gravado ainda aparece); e a sessão real levando o formulário ao stakeholder.
+
 ## v3.53.4 — 2026-11-02
 
 **Branch:** `fix/v3.53.4` a partir de `develop` (com a v3.53.3 mesclada pelo PR #109) · **Processo:** addendum v3.53.4 (plano externo)

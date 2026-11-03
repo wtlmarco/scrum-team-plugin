@@ -2,6 +2,8 @@
 # pelo celular (Remote Control) sem acionar o modelo. Dois modos, texto curto para tela estreita (sem tabela):
 #   -View status : onde cada Task está (do sprint-backlog.md), quem trabalha agora (.active-agents), run, limite de conta,
 #                  estimativa restante (Série), última transição (Registro) e pendências do stakeholder (README §7).
+#                  v3.53.5: "Em execução" — a Task do .active-task, há quanto tempo, o último sinal de vida, o comando que
+#                  ela espera (CPU, arquivo, POSSÍVEL TRAVAMENTO) e PARADA quando nada roda há 20 min.
 #   -View usage  : tokens, US$ e tempo das rodadas medidas pela G16 (usage.jsonl) do sprint, por Task (rateio igual entre as
 #                  Tasks citadas, como no kanban.ps1) e por papel e modelo. Só agentes: a sessão principal entra no close.
 # Chamado pelo hook prompt-submit.ps1 quando o stakeholder digita /team-status ou /team-usage: o hook devolve este texto
@@ -98,6 +100,43 @@ try {
                 if ($last.Length -gt 60) { $last = $last.Substring(0, 60) + '…' }
                 $o += "  $(Get-Role ([string]$a.type)) · $(if ($a.work) { $a.work } else { '—' }) · há $mins min · $last"
             }
+        }
+
+        # v3.53.5 (pedido do stakeholder, sprint 5 do garden): a Task em execução, há quanto tempo, o último sinal de vida e o
+        # comando que ela espera, com POSSÍVEL TRAVAMENTO ou PARADA — ver uma espera longa sem perguntar ao modelo.
+        $o += ''
+        $nowR = Get-Date
+        $atP = Join-Path $tp '.active-task'; $atk = Read-Json $atP
+        if ($atk -and $atk.id) {
+            $id = [string]$atk.id
+            $tk = @($tasks | Where-Object { $_.Id -eq $id }) | Select-Object -First 1
+            $ttl = if ($tk -and $tk.Title) { $x = ([string]$tk.Title -replace '\*\*|`', '' -replace '\s+', ' ').Trim(); ' · ' + $(if ($x.Length -gt 50) { $x.Substring(0, 50) + '…' } else { $x }) } else { '' }
+            $since = (Get-Item -LiteralPath $atP).LastWriteTime
+            $o += "Em execução: $id$ttl · há $(Format-Time ($nowR - $since).TotalSeconds) (start às $($since.ToString('dd/MM HH:mm')))"
+            # Último sinal de vida: o mais recente entre o agente da Task, a pasta do verify, a do accept e o relatório.
+            $sig = @(@{ t = $since; s = 'start' })
+            $live = @()
+            foreach ($a in @($agents | Where-Object { [string]$_.work -eq $id })) {
+                $at = try { [datetime]::Parse([string]$(if ($a.at) { $a.at } else { $a.desde })) } catch { $null }
+                if ($at) { $sig += @{ t = $at; s = "$(Get-Role ([string]$a.type))" }; if (($nowR - $at).TotalMinutes -lt 20) { $live += $a } }
+            }
+            $vd = Get-VerifyDir $Root $id
+            foreach ($d in @(@{ p = $vd; s = 'verify' }, @{ p = ($vd -replace '([\\/]\.team-project[\\/])verify([\\/])', '$1accept$2'); s = 'accept' })) {
+                if (Test-Path -LiteralPath $d.p) { $f = @(Get-ChildItem -LiteralPath $d.p -Recurse -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1); if ($f.Count) { $sig += @{ t = $f[0].LastWriteTime; s = $d.s } } }
+            }
+            $dv = Join-Path $S "delivery/$id.md"; if (Test-Path -LiteralPath $dv) { $sig += @{ t = (Get-Item -LiteralPath $dv).LastWriteTime; s = 'relatório' } }
+            $last = @($sig | Sort-Object { $_.t } -Descending)[0]
+            $quiet = ($nowR - $last.t).TotalMinutes
+            $o += "  último sinal de vida há $(Format-Time ($quiet * 60)) ($($last.s), $($last.t.ToString('HH:mm')))"
+            $w = Get-TaskWait $Root $id
+            if ($w) { $o += "  comando: $($w.Text)" }
+            if (-not $live.Count -and -not $w -and $quiet -ge 20) {
+                if ($run) { $o += "  $($E.Warn) PARADA: o run está em andamento, mas nenhum agente nem comando vivo para a $id há $(Format-Time ($quiet * 60)) — retome com /sm sprint run" }
+                else { $o += "  run pausado: nada roda para a $id; ela retoma com /sm sprint run" }
+            }
+        } else {
+            $dl = @(Get-ChildItem -LiteralPath (Join-Path $S 'delivery') -Filter '*.md' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
+            $o += 'Em execução: nenhuma Task' + $(if ($dl.Count) { " · última trabalhada: $($dl[0].BaseName) (relatório há $(Format-Time ($nowR - $dl[0].LastWriteTime).TotalSeconds))" } else { '' })
         }
 
         # Quadro, em andamento primeiro; fechadas por último.
