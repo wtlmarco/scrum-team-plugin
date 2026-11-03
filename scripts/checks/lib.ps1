@@ -322,7 +322,11 @@ function Enter-TargetLock([string]$Root, [string]$Target, [string]$Owner, [int]$
         if ($l -and [int]$l.pid -ne $PID) {
             $alive = [bool](Get-Process -Id ([int]$l.pid) -ErrorAction SilentlyContinue)
             $age = try { ((Get-Date) - [datetime]::ParseExact([string]$l.desde, 'yyyy-MM-dd HH:mm:ss', $null)).TotalHours } catch { 999 }
-            if ($alive -and $age -lt $StaleHours) { return "o alvo $([string]$l.target) está em uso por '$([string]$l.owner)' (PID $([int]$l.pid), desde $([string]$l.desde)): espere terminar — dois automatizadores no mesmo alvo quebram os dois" }
+            if ($alive -and $age -lt $StaleHours) {
+                # v3.53.5: com o sinal de vida — parado, diz como sair em vez de "espere" por até 3 h.
+                $pu = Get-WaitPulse ([int]$l.pid) ([string]$l.desde)
+                return "o alvo $([string]$l.target) está em uso por '$([string]$l.owner)' (PID $([int]$l.pid), desde $([string]$l.desde); $($pu.Text)): " + $(if ($pu.Stalled) { "o processo parece travado — encerre o PID $([int]$l.pid) (decisão do stakeholder) e rode target.ps1 -Target $([string]$l.target) -Unlock" } else { 'espere terminar — dois automatizadores no mesmo alvo quebram os dois' })
+            }
         }
     }
     New-Item -ItemType Directory -Force (Split-Path $lp) | Out-Null
@@ -333,24 +337,87 @@ function Enter-TargetLock([string]$Root, [string]$Target, [string]$Owner, [int]$
 # accept (trava do alvo com dono "accept <ID>", processo vivo). Comando que passa de ~3 min vai para segundo plano e o dev
 # encerra o turno esperando o aviso dele; para quem o disparou, o dev "voltou". O executor rodava done/start e punha outro
 # dev ao lado do primeiro (T-058: 3 devs; T-059: o accept da instância anterior prendeu o alvo e o run pausou). Texto ou $null.
-function Get-TaskBusy([string]$Root, [string]$Id) {
-    $lp = Join-Path (Get-VerifyDir $Root $Id) 'verify.lock'
+#
+# v3.53.5 (sprint 5 do garden): também o reparo do alvo (target.ps1 -Repair, ou qualquer dono que não seja o accept de OUTRA
+# Task) — o dev da T-061 rodou o reparo em segundo plano e encerrou o turno; a trava tinha dono "target.ps1 android", o next
+# não a via e mandava disparar outro executor, cujo accept ficaria até 3 h barrado pela trava. E cada espera traz o sinal de
+# vida (Get-WaitPulse): há quanto tempo, CPU, em que comando espera, último arquivo — e POSSÍVEL TRAVAMENTO.
+# Get-TaskWait devolve @{ Text; Pulse } ou $null; Get-TaskBusy, só o texto (com o sinal de vida).
+function Get-TaskWait([string]$Root, [string]$Id) {
+    $vd = Get-VerifyDir $Root $Id
+    $lp = Join-Path $vd 'verify.lock'
     if (Test-Path -LiteralPath $lp) {
         $l = $null; try { $l = Read-Text $lp | ConvertFrom-Json } catch { }
         if ($l -and $l.pid -and [int]$l.pid -ne $PID) {
             $p = Get-Process -Id ([int]$l.pid) -ErrorAction SilentlyContinue
-            if ($p -and (-not $l.started -or $p.StartTime.ToString('o') -eq [string]$l.started)) { return "verify $([string]$l.mode) (pid $([int]$l.pid), desde $([string]$l.at))" }
+            if ($p -and (-not $l.started -or $p.StartTime.ToString('o') -eq [string]$l.started)) {
+                $pu = Get-WaitPulse ([int]$l.pid) ([string]$l.at) $vd
+                return [pscustomobject]@{ Text = "verify $([string]$l.mode) (pid $([int]$l.pid), desde $([string]$l.at)) — $($pu.Text)"; Pulse = $pu }
+            }
         }
     }
     $tl = Join-Path $Root '.team-project/.target-lock'
     if (Test-Path -LiteralPath $tl) {
         $t = $null; try { $t = Read-Text $tl | ConvertFrom-Json } catch { }
-        if ($t -and [string]$t.owner -eq "accept $Id" -and [int]$t.pid -ne $PID -and (Get-Process -Id ([int]$t.pid) -ErrorAction SilentlyContinue)) {
+        $own = if ($t) { [string]$t.owner } else { '' }
+        if ($t -and ($own -eq "accept $Id" -or $own -notmatch '^accept ') -and [int]$t.pid -ne $PID -and (Get-Process -Id ([int]$t.pid) -ErrorAction SilentlyContinue)) {
             $age = try { ((Get-Date) - [datetime]::ParseExact([string]$t.desde, 'yyyy-MM-dd HH:mm:ss', $null)).TotalHours } catch { 999 }
-            if ($age -lt 3) { return "accept no alvo $([string]$t.target) (pid $([int]$t.pid), desde $([string]$t.desde))" }
+            if ($age -lt 3) {
+                $isAcc = $own -eq "accept $Id"
+                $pu = Get-WaitPulse ([int]$t.pid) ([string]$t.desde) $(if ($isAcc) { $vd -replace '([\\/]\.team-project[\\/])verify([\\/])', '$1accept$2' } else { '' })
+                $what = if ($isAcc) { "accept no alvo $([string]$t.target)" } else { "reparo/conferência do alvo $([string]$t.target) ($own)" }
+                return [pscustomobject]@{ Text = "$what (pid $([int]$t.pid), desde $([string]$t.desde)) — $($pu.Text)"; Pulse = $pu }
+            }
         }
     }
     return $null
+}
+function Get-TaskBusy([string]$Root, [string]$Id) { $w = Get-TaskWait $Root $Id; if ($w) { return $w.Text }; return $null }
+
+# v3.53.5: sinal de vida de um comando em espera (só lê): há quanto tempo roda, a CPU da árvore de processos (ele e os
+# filhos — a suíte roda em node/chrome filhos), o processo mais fundo da árvore (onde de fato espera) e a última gravação na
+# pasta do job. Parado = 10 min ou mais, nenhum arquivo novo há 10 min e CPU abaixo de 0,5 % de um núcleo no período todo
+# (o reparo do garden: 81 min, 1 s de CPU, à espera de "adb emu kill"). @{ Min; CpuS; Leaf; WriteMin; Stalled; Text }.
+function Get-WaitPulse([int]$ProcId, [string]$Desde = '', [string]$Dir = '') {
+    $now = Get-Date
+    $all = @(); try { $all = @(Get-CimInstance Win32_Process -ErrorAction Stop | Select-Object ProcessId, ParentProcessId, Name, CommandLine, CreationDate) } catch { }
+    $root = @($all | Where-Object { $_.ProcessId -eq $ProcId }) | Select-Object -First 1
+    $tree = @(); if ($root) { $tree = @($root) }
+    $front = @($ProcId)
+    for ($d = 0; $d -lt 8 -and $front.Count; $d++) {
+        $kids = @($all | Where-Object { $front -contains $_.ParentProcessId -and $_.ProcessId -ne $ProcId -and (-not $root -or -not $root.CreationDate -or $_.CreationDate -ge $root.CreationDate) })
+        $tree += $kids; $front = @($kids | ForEach-Object { $_.ProcessId })
+    }
+    $cpu = 0.0; foreach ($x in $tree) { $gp = Get-Process -Id ([int]$x.ProcessId) -ErrorAction SilentlyContinue; if ($gp) { try { $cpu += $gp.TotalProcessorTime.TotalSeconds } catch { } } }
+    $start = $null; try { if ($Desde) { $start = [datetime]::Parse($Desde) } } catch { }
+    if (-not $start -and $root -and $root.CreationDate) { $start = $root.CreationDate }
+    $min = if ($start) { [Math]::Max(0, ($now - $start).TotalMinutes) } else { 0 }
+    $leafP = @($tree | Where-Object { $_.Name -notmatch '^(?i)conhost\.exe$' } | Sort-Object CreationDate) | Select-Object -Last 1
+    $leaf = ''
+    if ($leafP -and $leafP.ProcessId -ne $ProcId) {
+        $cl = [string]$leafP.CommandLine
+        $argsOnly = ($cl -replace '^\s*("[^"]+"|\S+)\s*', '').Trim()
+        $leaf = ("$($leafP.Name) $argsOnly").Trim(); if ($leaf.Length -gt 70) { $leaf = $leaf.Substring(0, 70) + '…' }
+    }
+    $wmin = $null
+    if ($Dir -and (Test-Path -LiteralPath $Dir)) {
+        $lw = @(Get-ChildItem -LiteralPath $Dir -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'verify.lock' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
+        if ($lw.Count) { $wmin = [Math]::Max(0, ($now - $lw[0].LastWriteTime).TotalMinutes) }
+    }
+    $stalled = ($min -ge 10) -and ($null -eq $wmin -or $wmin -ge 10) -and ($cpu -lt [Math]::Max(5, $min * 60 * 0.005))
+    $fmt = { param($m) if ($m -lt 60) { "$([int][Math]::Floor($m)) min" } else { '{0}h{1:00}' -f [int][Math]::Floor($m / 60), [int][Math]::Floor($m % 60) } }
+    $txt = "há $(& $fmt $min) · CPU $([int][Math]::Round($cpu)) s" + $(if ($leaf) { " · esperando: $leaf" } else { '' }) + $(if ($null -ne $wmin) { " · último arquivo há $(& $fmt $wmin)" } elseif ($Dir) { ' · nenhum arquivo gravado' } else { '' })
+    if ($stalled) { $txt += " · $([char]0x26A0) POSSÍVEL TRAVAMENTO (sem CPU nem arquivo novo há 10 min ou mais)" }
+    return [pscustomobject]@{ Min = $min; CpuS = $cpu; Leaf = $leaf; WriteMin = $wmin; Stalled = $stalled; Text = $txt }
+}
+
+# v3.53.5 (sprint 5 do garden: 43 bloqueios da G20 num dia, todos na T-042, enquanto o next mandava esperar a T-061): o
+# run.ps1 next grava aqui a decisão de esperar e a G20 (hooks/stop.ps1) segue a mesma decisão por 30 min. Acao '' apaga.
+function Set-NextVerdict([string]$Root, [string]$Acao, [string]$Task = '', [string]$Motivo = '') {
+    $p = Join-Path $Root '.team-project/.next-verdict'
+    if (-not $Acao) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue; return }
+    if ($Motivo.Length -gt 300) { $Motivo = $Motivo.Substring(0, 300) + '…' }
+    [System.IO.File]::WriteAllText($p, ([ordered]@{ acao = $Acao; task = $Task; motivo = $Motivo; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
 }
 function Exit-TargetLock([string]$Root) {
     $lp = Join-Path $Root '.team-project/.target-lock'

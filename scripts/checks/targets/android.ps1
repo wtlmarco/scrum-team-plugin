@@ -3,9 +3,11 @@
 # Lições incorporadas do avaliador do benchmark: rolagem lenta e curta, esperar a animação parar antes de ler, coletar
 # listas virtualizadas rolando até não aparecer item novo, tela em branco = falha de ambiente (não do app).
 # Config (guards.json → targets.android): package, apk (opcional), avd (para o reparo), maxUptimeHours (padrão 24),
-# repair (v3.53.2, opcional: comando PowerShell de reparo do projeto — emulador em container; vence o avd).
+# repair (v3.53.2, opcional: comando PowerShell de reparo do projeto — emulador em container; vence o avd),
+# serial (v3.53.5, opcional: o aparelho de trabalho, ex. "emulator-5554" — com ele todo adb vai a esse aparelho).
 
 $script:AdCfg = $null; $script:Adb = $null; $script:Pkg = ''; $script:Nodes = @(); $script:IdCache = @{}; $script:EmptyDumps = 0
+$script:Serial = ''; $script:AdbTimeout = ''
 
 function Initialize-Android($Cfg) {
     $script:AdCfg = $Cfg
@@ -14,16 +16,58 @@ function Initialize-Android($Cfg) {
     $script:Adb = Join-Path $sdk 'platform-tools\adb.exe'
     if (-not (Test-Path -LiteralPath $script:Adb)) { $c = Get-Command adb -ErrorAction SilentlyContinue; if ($c) { $script:Adb = $c.Source } else { return "adb não encontrado (ANDROID_HOME ou PATH)" } }
     $script:Pkg = if ($Cfg -and $Cfg.package) { [string]$Cfg.package } else { '' }
+    $script:Serial = if ($Cfg -and $Cfg.PSObject.Properties['serial'] -and $Cfg.serial) { [string]$Cfg.serial } else { '' }
     return $null
 }
-function Adb { $ErrorActionPreference = 'Continue'; & $script:Adb @args 2>&1 | ForEach-Object { "$_" } }
+# v3.53.5 (sprint 5 do garden): toda chamada ao adb tem prazo. O "adb emu kill" do reparo ficou 81 min parado — dois
+# emuladores (o AVD local e o do container) disputavam as portas 5554/5555 e o console não respondia — segurando a trava do
+# alvo, e o run.ps1 next só mandava esperar. Estourou o prazo: o adb é encerrado, a saída parcial volta e $script:AdbTimeout
+# guarda o comando ('' quando respondeu). Saída em UTF-8 (a árvore do uiautomator tem acento).
+function Format-AdbArg([string]$A) { if ($A -eq '') { return '""' }; if ($A -notmatch '[\s"]') { return $A }; return '"' + ($A -replace '(\\*)"', '$1$1\"') + '"' }
+function AdbT([int]$Sec, [string[]]$A) {
+    $all = @(); if ($script:Serial) { $all += @('-s', $script:Serial) }; $all += @($A)
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $script:Adb; $psi.Arguments = (@($all | ForEach-Object { Format-AdbArg ([string]$_) }) -join ' ')
+    $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8; $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
+    $script:AdbTimeout = ''
+    $p = [System.Diagnostics.Process]::Start($psi)
+    $o = $p.StandardOutput.ReadToEndAsync(); $e = $p.StandardError.ReadToEndAsync()
+    if (-not $p.WaitForExit($Sec * 1000)) {
+        try { $p.Kill() } catch { }
+        $script:AdbTimeout = "adb $(@($A) -join ' ') sem resposta em $Sec s"
+        [Console]::Error.WriteLine("android: $($script:AdbTimeout) — encerrado")
+    }
+    [void]$p.WaitForExit(2000)
+    $txt = ''
+    try { if ($o.Wait(2000)) { $txt += $o.Result } } catch { }
+    try { if ($e.Wait(2000)) { $txt += $e.Result } } catch { }
+    $p.Dispose()
+    return @($txt -split "`r?`n" | Where-Object { $_ -ne '' })
+}
+function Adb { AdbT 90 @($args | ForEach-Object { [string]$_ }) }
 function Sh { Adb shell @args }
+# Quem escuta nas portas do emulador (5554 console, 5555 adb) sem ser emulador do SDK local: "com.docker.backend (pid 24048)".
+function Get-EmulatorPortOwner {
+    try {
+        $own = @(Get-NetTCPConnection -State Listen -LocalPort 5554, 5555 -ErrorAction Stop | Select-Object -ExpandProperty OwningProcess -Unique)
+        $ext = @($own | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue } | Where-Object { $_ -and $_.ProcessName -notmatch '^(qemu-system|emulator)' })
+        if ($ext.Count) { return (@($ext | ForEach-Object { "$($_.ProcessName) (pid $($_.Id))" }) -join ', ') }
+    } catch { }
+    return ''
+}
 
 # ---------- pré-voo e reparo ----------
 function Get-ScreenBytes { $n = ((Sh 'screencap -p | wc -c') -join '') -replace '\D', ''; if ($n) { [int64]$n } else { 0 } }
 function Test-AndroidHealth {
-    $dev = @(Adb devices | Where-Object { $_ -match '\tdevice$' })
+    $all = @(AdbT 30 @('devices'))
+    if ($script:AdbTimeout) { return "o adb não respondeu ($($script:AdbTimeout)): servidor do adb travado — adb kill-server e repita" }
+    $dev = @($all | Where-Object { $_ -match '\tdevice$' })
     if (-not $dev.Count) { return 'nenhum emulador ou aparelho conectado (adb devices)' }
+    # v3.53.5: o mesmo emulador aparece duas vezes (emulator-5554 e localhost:5555 depois de um adb connect) — sem serial,
+    # todo "adb shell" falha com "more than one device".
+    if (-not $script:Serial -and $dev.Count -gt 1) { return "há $($dev.Count) aparelhos no adb ($(@($dev | ForEach-Object { ($_ -split '\t')[0] }) -join ', ')): declare o de trabalho em targets.android.serial no guards.json" }
+    if ($script:Serial -and -not @($dev | Where-Object { ($_ -split '\t')[0] -eq $script:Serial }).Count) { return "o aparelho $($script:Serial) (targets.android.serial) não está no adb devices ($(@($dev | ForEach-Object { ($_ -split '\t')[0] }) -join ', '))" }
     if (((Sh getprop sys.boot_completed) -join '').Trim() -ne '1') { return 'o aparelho ainda não terminou de iniciar' }
     $bytes = Get-ScreenBytes
     if ($bytes -gt 0 -and $bytes -lt 12000) { return "a tela do aparelho está em branco (captura de $bytes bytes): o emulador não está desenhando" }
@@ -43,19 +87,25 @@ function Repair-Android {
         $ErrorActionPreference = 'Continue'
         $out = (& powershell -NoProfile -ExecutionPolicy Bypass -Command $cmd 2>&1 | ForEach-Object { "$_" }) -join ' '
         if ($LASTEXITCODE -ne 0) { return "o reparo declarado (targets.android.repair) saiu com $LASTEXITCODE`: $($out.Substring(0, [Math]::Min(200, $out.Length)))" }
-        Adb wait-for-device | Out-Null
+        AdbT 180 @('wait-for-device') | Out-Null
+        if ($script:AdbTimeout) { return "o aparelho não voltou ao adb em 180 s depois do reparo declarado (targets.android.repair)" }
     } else {
     $avd = if ($script:AdCfg -and $script:AdCfg.avd) { [string]$script:AdCfg.avd } else { '' }
     if (-not $avd) { return 'sem targets.android.avd nem targets.android.repair no guards.json: reinicie o emulador à mão' }
     $emu = Join-Path $script:Sdk 'emulator\emulator.exe'
     if (-not (Test-Path -LiteralPath $emu)) { return "emulador não encontrado em $emu (emulador em container? declare o comando em targets.android.repair)" }
-    Adb emu kill | Out-Null; Start-Sleep -Seconds 3
+    AdbT 20 @('emu', 'kill') | Out-Null; Start-Sleep -Seconds 3
     Get-Process qemu-system-* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    # v3.53.5 (sprint 5 do garden): porta do emulador ocupada por outro processo (container Docker) — abrir o AVD local
+    # punha dois emuladores nas mesmas portas: adb "offline" e o "emu kill" seguinte parado por 81 min.
+    Start-Sleep -Seconds 2
+    $other = Get-EmulatorPortOwner
+    if ($other) { return "as portas do emulador (5554/5555) estão com $other — há um emulador fora do SDK local (container Docker?). O plugin não abre um segundo emulador: declare o reparo dele em targets.android.repair e tire targets.android.avd do guards.json" }
     # Na pasta do SDK: o emulador vive mais que o executor e não pode prender a pasta do projeto (v3.51.1).
     Start-Process -FilePath $emu -ArgumentList @('-avd', $avd, '-no-snapshot', '-no-boot-anim', '-no-audio') -WorkingDirectory (Split-Path $emu) -WindowStyle Hidden | Out-Null
     }
     $t = Get-Date
-    do { Start-Sleep -Seconds 5; $ok = ((Sh getprop sys.boot_completed) -join '').Trim() -eq '1' } while (-not $ok -and ((Get-Date) - $t).TotalSeconds -lt 240)
+    do { Start-Sleep -Seconds 5; $ok = ((AdbT 15 @('shell', 'getprop', 'sys.boot_completed')) -join '').Trim() -eq '1' } while (-not $ok -and ((Get-Date) - $t).TotalSeconds -lt 240)
     if (-not $ok) { return "o emulador $(if ($cmd) { '(reparo declarado)' } else { $avd }) não terminou de iniciar em 240 s" }
     Start-Sleep -Seconds 25   # o launcher e os serviços do sistema ainda estão subindo depois do boot_completed
     return Test-AndroidHealth
@@ -87,7 +137,7 @@ function Install-AndroidApk([string]$Apk) {
     if (-not $Apk) { return $null }
     if (-not (Test-Path -LiteralPath $Apk)) { return "APK não existe: $Apk" }
     if ($script:Pkg) { Adb uninstall $script:Pkg | Out-Null }
-    $r = (Adb install -r $Apk) -join ' '
+    $r = (AdbT 600 @('install', '-r', $Apk)) -join ' '
     if ($r -notmatch 'Success') { return "instalação do APK falhou: $r" }
     return $null
 }
@@ -186,7 +236,7 @@ function Launch {
 }
 function SetClock([string]$At) {
     $when = [datetime]::ParseExact($At, 'yyyy-MM-dd HH:mm', [Globalization.CultureInfo]::InvariantCulture)
-    Adb root | Out-Null; Start-Sleep -Milliseconds 800; Adb wait-for-device | Out-Null
+    Adb root | Out-Null; Start-Sleep -Milliseconds 800; AdbT 60 @('wait-for-device') | Out-Null
     Sh settings put global auto_time 0 | Out-Null; Sh settings put global auto_time_zone 0 | Out-Null
     Sh ("date " + $when.ToString('MMddHHmmyyyy') + ".00") | Out-Null; Start-Sleep -Milliseconds 500
 }

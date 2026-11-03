@@ -176,6 +176,12 @@ Medido no fim do sprint 4 do garden (3.52.2 → 3.53.0): 6 instâncias de dev co
 | **G14** | git só de leitura: `cat-file`, `ls-tree`, `rev-list`, `show-ref`, `merge-base`, `describe`, `name-rev`, `worktree list`, `remote -v`, `tag -l/--list`, `config --get/--list`, `stash show` | `git worktree add/remove` e todo git que escreve; comandos do projeto (`docker compose run`, `node`, `aapt`) seguem em `runCommands` |
 | **G16** | `works` do dev e do executor = só a Task do disparo (outra citada no prompt é referência); campo `plugin` (versão do plugin) em cada linha do `usage.jsonl` | Arquiteto, QA e `operator` seguem rateando entre as Tasks citadas (plano por História, validação do sprint) |
 
+**v3.53.5 (sprint 5 do garden):** a G20 barrou 43 fins de turno num dia, todos na T-042 (a primeira elegível do quadro), enquanto o `run.ps1 next` mandava esperar a T-061, cujo reparo do alvo estava parado havia 81 min num `adb emu kill`. Casos em `run-guard-tests.ps1` (bloco v3.53.5) e `run-check-tests.ps1` (blocos 16e e 16f).
+
+| Guarda | O que mudou | O que **não** cobre |
+|---|---|---|
+| **G20** | segue a decisão "esperar" do `run.ps1 next` (`.team-project/.next-verdict`, gravada quando há agente vivo ou comando da Task rodando, apagada no começo de cada `next`) por 30 min; a Task citada é a do `.active-task` quando ela está elegível | decisão com mais de 30 min (barra de novo, e a sessão roda o `next`, que mostra o sinal de vida); espera que não passa pelo `next` (a sessão nunca o rodou) |
+
 **Scripts (v3.53.1):** `run.ps1` — `done -Result teto`, `start` recusa dev vivo da Task (exit 2), `next` espera executor ou dev vivo da Task (exit 3) e, com `.usage-limit`, mede pelo transcript o agente do `.active-agents` que parou no limite (a mesma sessão seguiu, sem `SessionStart`); `accept.ps1` — cenário sem `assert-*` é malformado (exit 2); `kanban.ps1` — empate de minuto no Registro pela ordem do arquivo; `consumption.ps1` — "plugin <versão>" na Nota.
 
 **Scripts (v3.52.3):** `verify.ps1` estima cada comando do full pela história da chave (o maior tempo das últimas 5 rodadas em `verify/**/result.json`; sem história, a regra antiga), trava a Task (`verify.lock`; outra rodada viva → **exit 5**) e avisa comando acima de 80 % do teto por comando; `run.ps1` põe o `accept.ps1` no cartão só com `targets`, grava a rota do 🔺 GAP e a queda de ambiente no `run-log.md` (`done -Result gap|env`) e manda o Arquiteto estender a decisão às Tasks abertas; `consumption.ps1` soma a coluna **US$** nos Totais.

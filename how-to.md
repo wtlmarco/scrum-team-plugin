@@ -251,8 +251,12 @@ Sem número, mostram o sprint corrente. Com um número, mostram outro: `/team-st
 ```text
 Sprint 5 · 16 Tasks · ✅ 1 · 🟪 0 · 🟨 0 · 🟦 13 · ⬜ 2 · 🔴 0
 Restante: 12 de 12,0 (estimativa)
-Run: parado
+Run: sprint 5 em andamento desde 2026-11-02 14:31
 Agora: nenhum agente em execução
+
+Em execução: T-061 · Novo Manejo (canteiros) · há 1h21 (start às 02/11 19:22)
+  último sinal de vida há 1h21 (start, 19:22)
+  comando: reparo/conferência do alvo android (target.ps1 android) (pid 2032, desde 2026-11-02 19:22:37) — há 1h21 · CPU 1 s · esperando: adb.exe emu kill · ⚠ POSSÍVEL TRAVAMENTO (sem CPU nem arquivo novo há 10 min ou mais)
 
 🟦 Plano: T-071 T-041 T-042 …
 ⬜ A fazer: T-065 T-066
@@ -267,6 +271,11 @@ Esperando você: 2 decisão(ões) em README §7
 - **1ª linha:** o placar. ✅ fechada · 🟪 em verificação · 🟨 em construção · 🟦 com plano · ⬜ a fazer · 🔴 bloqueada.
 - **Restante:** quanto falta do sprint, pela estimativa do burndown.
 - **Run e Agora:** se um `sprint run` está rodando e quais agentes trabalham neste momento, em qual Task e há quanto tempo.
+- **Em execução (v3.53.5):** a Task em construção e há quanto tempo, desde o último `start`. Também mostra o último sinal de vida dela, o mais recente entre o agente, a pasta do `verify`, a do `accept` e o relatório. Se a Task espera um comando (`verify`, `accept`, reparo do alvo), aparecem o tempo, a CPU, o processo em que ele espera e o último arquivo gravado. Use isto para ler uma espera longa:
+  - **⚠ POSSÍVEL TRAVAMENTO:** o comando roda há 10 min ou mais sem gastar CPU nem gravar arquivo. Esperar não adianta: o `run.ps1 next` leva a decisão a você (encerrar o processo ou seguir esperando).
+  - **⚠ PARADA:** o run está em andamento, mas nenhum agente nem comando roda para a Task há 20 min ou mais. Retome com `/sm sprint run`.
+  - **run pausado:** nada roda porque o run foi pausado de propósito.
+  - Sem Task em construção, aparece a última Task trabalhada e há quanto tempo o relatório dela foi gravado.
 - **As colunas:** em que etapa cada Task está.
 - **Esperando você:** as decisões suas que estão paradas (até 3 aparecem; o resto está em `.team-project/README.md` §7).
 
@@ -555,7 +564,7 @@ O time roda o app de verdade para provar que ele funciona: no emulador ou aparel
 ```json
 "verify": { "build": "...", "suite": "...", "timeoutMinutes": 9, "env": { "GRADLE_USER_HOME": "C:\\gradle-home" } },
 "targets": {
-  "android": { "package": "br.com.app", "apk": "app/build/outputs/apk/release/app-release.apk", "avd": "Pixel_API_34", "maxUptimeHours": 24 },
+  "android": { "package": "br.com.app", "apk": "app/build/outputs/apk/release/app-release.apk", "avd": "Pixel_API_34", "serial": "emulator-5554", "maxUptimeHours": 24 },
   "web": { "url": "http://localhost:4200", "start": "npm run start", "startTimeoutSec": 120 }
 }
 ```
@@ -567,7 +576,10 @@ O time roda o app de verdade para provar que ele funciona: no emulador ou aparel
 - **Comandos que não terminam:** o `verify` encerra cada comando em `timeoutMinutes` (padrão 9) e mata os processos que sobram (daemon do Gradle, nós do MSBuild). A higiene de cada ferramenta (Gradle sem daemon, `dotnet` sem reúso de nó, `CI=true` no Node) entra sozinha, de `scripts/checks/tool-hygiene.json`. Comando de teste em modo de observação (`ng test` sem `--watch=false`, `vitest` sem `run`) gera aviso.
 - **Perfil do Windows com acento** (`C:\Users\João…`): os testes do Gradle falham sem aviso. Crie uma junção ASCII (`cmd /c mklink /J C:\gradle-home "%USERPROFILE%\.gradle"`) e ponha `GRADLE_USER_HOME` em `verify.env`, como no exemplo. A abertura da sessão avisa quando falta.
 - **Emulador ligado por muito tempo para de desenhar a tela** (medido: depois de ~1 dia). O pré-voo confere o tempo ligado (`maxUptimeHours`) e reinicia o AVD no reparo.
-- **Emulador num container (Docker) ou fora do SDK local:** declare o conserto em `"repair"` dentro de `targets.android`, por exemplo `"repair": "docker restart horta-emulador; adb connect localhost:5555"`. Declarar o comando já é a sua autorização: o `-Repair` o roda sozinho, espera o aparelho iniciar e confere de novo, sem pedir licença a cada queda.
+- **Emulador num container (Docker) ou fora do SDK local:** declare o conserto em `"repair"` dentro de `targets.android`, por exemplo `"repair": "& ./docker/emulator-repair.ps1"` (um script do projeto que prepara e reinicia o container). Declarar o comando já é a sua autorização: o `-Repair` o roda sozinho, espera o aparelho iniciar e confere de novo, sem pedir licença a cada queda.
+- **Um emulador só (v3.53.5).** Dois emuladores nas mesmas portas (5554/5555), como um AVD local e um container, deixam o `adb` "offline" e travam o reparo. Com o emulador num container, tire `"avd"` do `targets.android` e deixe só o `"repair"`. Se o AVD local estiver declarado e as portas já estiverem ocupadas por outro processo, o reparo recusa abrir um segundo emulador e diz quem está nas portas.
+- **`"serial"` (v3.53.5):** o aparelho de trabalho, por exemplo `"serial": "emulator-5554"`. Com ele, todo `adb` vai a esse aparelho. Sem ele, se o `adb devices` lista mais de um aparelho (o mesmo emulador como `emulator-5554` e `localhost:5555`, depois de um `adb connect`), o pré-voo para e pede o `serial`, porque todo `adb shell` falharia com "more than one device".
+- **Todo `adb` tem prazo (v3.53.5):** 90 s por chamada, 600 s para instalar o APK e 180 s para o aparelho voltar depois do reparo. Comando que estoura o prazo é encerrado e vira falha de ambiente, em vez de prender a trava do alvo por horas.
 - **"OCUPADO" no `verify`:** uma verificação anterior da mesma Task ainda está rodando, em geral de uma instância que caiu. O dev roda o mesmo comando com `-WaitBusySeconds 540`, que espera a anterior acabar e segue, sem pausar o run.
 
 ### Problemas de instalação

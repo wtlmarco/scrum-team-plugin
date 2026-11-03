@@ -4,6 +4,7 @@
 # (.safe-point, Task recém-fechada) também libera, sem apagar o .active-run — a sessão curta por Task (R29). Esperar agente
 # também não é parada: a notificação reabre a sessão (.active-agents, gravado pela PreToolUse). v3.52.2 (note.md item 2): todo
 # agente é assíncrono — vale qualquer agente desta sessão, sem olhar "bg".
+# v3.53.5: a decisão "esperar" do run.ps1 next (.next-verdict, 30 min) também libera; a Task em construção é a citada.
 # Medido no piloto: 4 paradas fora do contrato e ~24,5 h de fila parada. Exit 2 devolve o motivo à sessão, que continua.
 # Qualquer exceção → exit 1 (falha aberta, D5). Cobertura e limites: hooks/COVERAGE.md.
 
@@ -57,6 +58,14 @@ try {
     # turno; o próximo next a apaga e lê pack/in/.
     $xp = Get-Marker $projectDir '.external-plan'
     if ($null -ne $xp) { Write-GuardLog $projectDir 'G20' $hookInput '' "liberado: esperando o plano externo ($((@($xp.pendente) | ForEach-Object { [string]$_ }) -join ', '))"; exit 0 }
+    # v3.53.5 (sprint 5 do garden: 43 bloqueios num dia, todos na T-042, com o next mandando esperar a T-061): a G20 segue a
+    # decisão do run.ps1 next (.next-verdict "esperar": agente vivo ou comando da Task rodando) por 30 min. Mais velha, barra
+    # de novo: a sessão roda o next, que regrava a decisão e mostra o sinal de vida da espera (POSSÍVEL TRAVAMENTO).
+    $nv = Get-Marker $projectDir '.next-verdict'
+    if ($null -ne $nv -and [string]$nv.acao -eq 'esperar') {
+        $nvAge = try { ((Get-Date) - [datetime]::ParseExact([string]$nv.at, 'yyyy-MM-dd HH:mm:ss', $null)).TotalMinutes } catch { 999 }
+        if ($nvAge -lt 30) { Write-GuardLog $projectDir 'G20' $hookInput ([string]$nv.task) "liberado: o run.ps1 next mandou esperar ($([string]$nv.motivo))"; exit 0 }
+    }
     if ($tr -and (Test-Path -LiteralPath $tr)) {
         $tail = @(Get-Content -LiteralPath $tr -Encoding UTF8 -Tail 40)
         $lastAsst = @($tail | Where-Object { $_ -match '"type":"assistant"' } | Select-Object -Last 1)
@@ -91,6 +100,10 @@ try {
     $eligible = @($rows | Where-Object { $c = $_.Cell; ($open | Where-Object { $c.Contains($_) }).Count -gt 0 -and @($_.Deps | Where-Object { $closed -notcontains $_ }).Count -eq 0 })
     if (-not $eligible.Count) { exit 0 }
     $t = $eligible[0]
+    # v3.53.5: a Task em construção (.active-task) vem antes, como no run.ps1 next — a G20 citava a T-042 (primeira do
+    # quadro) enquanto o next construía a T-061.
+    $atk = Get-Marker $projectDir '.active-task'
+    if ($null -ne $atk -and $atk.id) { $cur = @($eligible | Where-Object { $_.Id -eq [string]$atk.id }); if ($cur.Count) { $t = $cur[0] } }
     # v3.53.1 (plugin-report do sprint 4 do garden, item 3): a Task elegível já tem executor ou dev vivo de OUTRA sessão aberta
     # no mesmo projeto — o run.ps1 next manda esperar, e barrar o fim de turno levaria a redisparar (dois devs no mesmo alvo).
     if (@(Get-LiveAgents $projectDir $t.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -in 'task-runner', 'developer' -and (Test-AgentHostAlive $_) -eq $true }).Count) {
