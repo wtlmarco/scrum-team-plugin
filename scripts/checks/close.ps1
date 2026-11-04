@@ -2,7 +2,7 @@
 # Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/close.ps1" -Task T-041 [-Post] [-Root <projeto>]
 #   sem -Post: antes de o SM gravar o fechamento (R24 fica n-a); com -Post: depois da linha → ✅.
 # Saída: tabela regra · resultado (ok / falhou / n-a) · linha decisiva — é a evidência da conferência (R7).
-# Exit 1 só se R7, R7-verify (com guards.json → verify), R7-mutação, R7-aceite ou R12 falharem (o close não acontece) · exit 2 = erro de uso ou de leitura · senão 0.
+# Exit 1 só se R7, R7-verify (com guards.json → verify), R7-mutação, R7-margem (v3.54), R7-aceite ou R12 falharem (o close não acontece) · exit 2 = erro de uso ou de leitura · senão 0.
 # v3.51 (A3): sem evidence/<T-ID>.md do QA, a Task fecha pela evidência do DEV (delivery/<T-ID>.md + verify + mutação + accept
 # dos cenários da Task no alvo, R7-aceite); o QA é o portão do sprint. Com evidence/ do QA, vale a regra de antes.
 
@@ -216,6 +216,36 @@ try {
             if ($miss.Count -or $notOk.Count) { Add-Result 'R7-mutação' 'falhou' ((@($(if ($miss.Count) { 'sem execução: ' + ($miss -join ', ') }), $(if ($notOk.Count) { 'não pegas: ' + ($notOk -join ', ') })) | Where-Object { $_ }) -join '; ') }
             else { Add-Result 'R7-mutação' 'ok' ("$($planMuts.Count) mutação(ões) pegas pelo teste (" + ($planMuts -join ', ') + ") em $($vm2.at)") }
         }
+    }
+
+    # ---------- R7 · margem do dev (v3.54): o ajuste sem 🔺 GAP só vale com as travas automáticas ----------
+    # Defeito mecânico do próprio teste ou CSS cujo valor uma regra do projeto já define: o dev corrige e registra em
+    # "### Ajustes na margem". Travas: ajuste de teste só em teste que tem mutação no plano, e essa mutação pega na árvore do
+    # verify full (o teste ainda quebra sem a regra — não foi afrouxado); ajuste de CSS cita a regra que dá o valor. O
+    # "Deve falhar se…" mora no plano, que o dev não edita (G8).
+    $dvText = if (Test-Path -LiteralPath $dvPath) { Read-Text $dvPath } else { '' }
+    $adj = @(Get-MarginAdjustments $dvText)
+    if (-not $adj.Count) { Add-Result 'R7-margem' 'n-a' 'nenhum ajuste na margem no relatório do dev' }
+    else {
+        $iss = @(); $okA = @()
+        $tm = if ($plan) { @(Get-TaskMutations $Root $planPath $plan $Task) } else { @() }
+        $vmi = @{}; if ($hasVerify -and (Test-Path -LiteralPath $vr)) { try { foreach ($it in @((Read-Text $vr | ConvertFrom-Json).mutation.items)) { $vmi[[string]$it.id] = [string]$it.result } } catch { } }
+        $scopeA = if ($plan) { @(Get-PlanScope $plan) } else { @() }
+        foreach ($a in $adj) {
+            if ($a.Bad) { $iss += "linha fora do formato '- A<k> · teste|css · ``<arquivo>`` · <o que mudou>[ · regra: <onde>]': $($a.Bad)"; continue }
+            if ($scopeA.Count -and $scopeA -notcontains $a.File) { $iss += "$($a.Id): $($a.File) fora de **Arquivos tocados:** — não é margem, é 🔺 GAP"; continue }
+            if ($a.Kind -eq 'css') {
+                if (-not $a.Rule) { $iss += "$($a.Id): ajuste de CSS sem 'regra: <onde a regra do projeto diz o valor>' — sem regra que dê o valor, é 🔺 GAP"; continue }
+                $okA += "$($a.Id) css ($($a.Rule))"; continue
+            }
+            $mine = @($tm | Where-Object { (($_.Test -replace '\\', '/') -replace '^\./', '') -eq $a.File })
+            if (-not $mine.Count) { $iss += "$($a.Id): o teste $($a.File) não tem mutação no plano — sem prova de que ele ainda pega a regra, o ajuste é 🔺 GAP"; continue }
+            if (-not $hasVerify) { $okA += "$($a.Id) teste (sem verify: o QA confere a mutação)"; continue }
+            $bad = @($mine | Where-Object { -not $vmi.ContainsKey($_.Id) -or -not $vmi[$_.Id].StartsWith('ok') } | ForEach-Object { $_.Id })
+            if ($bad.Count) { $iss += "$($a.Id): a(s) mutação(ões) $($bad -join ', ') do teste $($a.File) não foram pegas na árvore final — o ajuste pode ter afrouxado o teste" }
+            else { $okA += "$($a.Id) teste ($((@($mine | ForEach-Object { $_.Id })) -join ', ') pegas)" }
+        }
+        if ($iss.Count) { Add-Result 'R7-margem' 'falhou' ($iss -join '; ') } else { Add-Result 'R7-margem' 'ok' ("$($okA.Count) ajuste(s) na margem com as travas: " + ($okA -join '; ') + ' — o QA confere cada um na frente 2') }
     }
 
     # ---------- R16 · standards citados com seção (informativo) ----------
@@ -479,7 +509,7 @@ try {
     foreach ($r in 'R2', 'R6', 'R9', 'R21', 'R32') { Add-Result $r 'n-a' $(if ($r -eq 'R21') { 'aceite é da Review — conferido por C2' } else { 'julgamento' }) }
 
     Write-Results "C1 · close $Task · sprint $n$(if ($Post) { ' · -Post' })"
-    $blocking = @($script:Results | Where-Object { $_.Regra -in 'R7', 'R7-verify', 'R7-mutação', 'R7-aceite', 'R12' -and $_.Resultado -eq 'falhou' })
+    $blocking = @($script:Results | Where-Object { $_.Regra -in 'R7', 'R7-verify', 'R7-mutação', 'R7-margem', 'R7-aceite', 'R12' -and $_.Resultado -eq 'falhou' })
     if ($blocking.Count) { [Console]::Out.WriteLine(''); [Console]::Out.WriteLine('**Não fecha:** ' + (($blocking | ForEach-Object { $_.Regra }) -join ' e ') + ' falhou.'); exit 1 }
     if ($Apply) {
         $utf8 = New-Object System.Text.UTF8Encoding($false)

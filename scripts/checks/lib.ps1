@@ -792,10 +792,61 @@ function Get-Mutations([string]$PlanText) {
         if ($line -match '^\*\*Muta[çc][õo]es:\*\*') { $in = $true; continue }
         if (-not $in) { continue }
         if ($line -match '^\s*#' -or $line -match '^\*\*[^*]+:\*\*') { $in = $false; continue }
+        # v3.54 (mutação escrita pelo dev): "- M<k> · teste `<t>` · `<produção>` · regra: <o que a mutação quebra>" — o plano
+        # diz o QUE quebrar; o trecho exato o dev escreve sobre o código real, no relatório de entrega (Get-TaskMutations).
+        # Vem antes da forma literal: a regra pode citar código entre crases.
+        $r = [regex]::Match($line, '^\s*-\s*(M\d+)\b[^`]*`([^`]+)`[^`]*`([^`]+)`\s*·\s*regra:\s*(.*)$')
+        if ($r.Success) { $list += @{ Id = $r.Groups[1].Value; Test = $r.Groups[2].Value.Trim(); File = $r.Groups[3].Value.Trim(); Find = $null; Replace = $null; Rule = $r.Groups[4].Value.Trim(); Source = 'plano'; Problem = '' }; continue }
         $m = [regex]::Match($line, '^\s*-\s*(M\d+)\b.*?`([^`]+)`.*?`([^`]+)`.*?`([^`]*)`\s*→\s*`([^`]*)`')
-        if ($m.Success) { $list += @{ Id = $m.Groups[1].Value; Test = $m.Groups[2].Value.Trim(); File = $m.Groups[3].Value.Trim(); Find = $m.Groups[4].Value; Replace = $m.Groups[5].Value } }
+        if ($m.Success) { $list += @{ Id = $m.Groups[1].Value; Test = $m.Groups[2].Value.Trim(); File = $m.Groups[3].Value.Trim(); Find = $m.Groups[4].Value; Replace = $m.Groups[5].Value; Rule = ''; Source = 'plano'; Problem = '' } }
     }
     return $list
+}
+
+# Relatório de entrega da Task (v3.54): sprint → sprints/<n>/delivery/<T-ID>.md; trilha fix → fixes/B-<nnn>/delivery.md,
+# só a seção "## F-<nnn>" da Correção. '' sem o arquivo. Deduz pelo caminho do plano (relativo à raiz ou absoluto).
+function Get-DeliveryText([string]$Root, [string]$PlanPath, [string]$Task) {
+    $pp = $PlanPath -replace '\\', '/'
+    $sm = [regex]::Match($pp, '(?:^|/)\.team-project/sprints/(\d+)/'); $fm = [regex]::Match($pp, '(?:^|/)\.team-project/fixes/(B-\d+)/')
+    $dp = if ($sm.Success) { Join-Path $Root ".team-project/sprints/$($sm.Groups[1].Value)/delivery/$Task.md" } elseif ($fm.Success) { Join-Path $Root ".team-project/fixes/$($fm.Groups[1].Value)/delivery.md" } else { $null }
+    if (-not $dp -or -not (Test-Path -LiteralPath $dp)) { return '' }
+    $t = Read-Text $dp
+    if ($fm.Success -and $Task -match '^F-\d+') { $s = [regex]::Match($t, '(?ms)^##\s+' + [regex]::Escape($Task) + '\b.*?(?=^##\s+F-\d|\z)'); return $(if ($s.Success) { $s.Value } else { '' }) }
+    return $t
+}
+# Mutações da Task (v3.54): as do plano; a declarada pela regra recebe o trecho e o mutante que o dev escreveu no bloco
+# **Mutações:** do relatório (a última linha com o mesmo M<k> vale — o relatório cresce por seção). Sem a linha do dev, ou
+# com outro teste/arquivo, a mutação fica com Problem (o verify a marca inconclusiva e o close não fecha).
+function Get-TaskMutations([string]$Root, [string]$PlanPath, [string]$PlanText, [string]$Task) {
+    $pm = @(Get-Mutations $PlanText)
+    if (-not @($pm | Where-Object { $null -eq $_.Find }).Count) { return $pm }
+    $dev = @(Get-Mutations (Get-DeliveryText $Root $PlanPath $Task) | Where-Object { $null -ne $_.Find })
+    $norm = { param($p) ($p -replace '\\', '/') -replace '^\./', '' }
+    return @($pm | ForEach-Object {
+        if ($null -ne $_.Find) { return $_ }
+        $id = $_.Id; $d = @($dev | Where-Object { $_.Id -eq $id }) | Select-Object -Last 1
+        $o = @{ Id = $_.Id; Test = $_.Test; File = $_.File; Find = ''; Replace = ''; Rule = $_.Rule; Source = 'dev'; Problem = '' }
+        if (-not $d) { $o.Problem = "declarada pela regra ($($_.Rule)) e sem o trecho do dev — o dev escreve '- $id · teste ``…`` · ``…`` · ``<trecho>`` → ``<mutante>``' no bloco **Mutações:** do relatório de entrega" }
+        elseif ((& $norm $d.Test) -ne (& $norm $_.Test) -or (& $norm $d.File) -ne (& $norm $_.File)) { $o.Problem = "a linha do dev usa outro teste ou arquivo que o plano ($($_.Test) · $($_.File))" }
+        else { $o.Find = $d.Find; $o.Replace = $d.Replace }
+        $o })
+}
+# Ajustes na margem do dev (v3.54): "### Ajustes na margem" do relatório, uma linha por ajuste —
+#   "- A<k> · teste · `<arquivo de teste>` · <o que mudou>"  (defeito mecânico do próprio teste: espera, referência de medida)
+#   "- A<k> · css · `<arquivo>` · <o que mudou> · regra: <onde a regra do projeto já diz o valor>"
+# Devolve @{ Id; Kind; File; What; Rule; Bad } por linha; Bad = a linha fora do formato.
+function Get-MarginAdjustments([string]$DeliveryText) {
+    $out = @()
+    foreach ($sec in [regex]::Matches($DeliveryText, '(?ms)^###\s+Ajustes na margem[^\r\n]*\r?\n(.*?)(?=^#{2,3}\s|\z)')) {
+        foreach ($l in ($sec.Groups[1].Value -split "`r?`n")) {
+            if ($l -notmatch '^\s*-\s*\S') { continue }
+            if ($l -match '^\s*-\s*(nenhum|nada)\b') { continue }
+            $m = [regex]::Match($l, '^\s*-\s*(A\d+)\s*·\s*(teste|css)\s*·\s*`([^`]+)`\s*·\s*(.+?)(?:\s*·\s*regra:\s*(.*))?$')
+            if (-not $m.Success) { $out += @{ Id = ''; Kind = ''; File = ''; What = ''; Rule = ''; Bad = $l.Trim() }; continue }
+            $out += @{ Id = $m.Groups[1].Value; Kind = $m.Groups[2].Value; File = (($m.Groups[3].Value -replace '\\', '/') -replace '^\./', ''); What = $m.Groups[4].Value.Trim(); Rule = $m.Groups[5].Value.Trim(); Bad = '' }
+        }
+    }
+    return $out
 }
 
 # Escopo do plano: **Arquivos tocados:**; no mini-plano do fix (v3.51.2), os caminhos de "- produção:" e "- teste:" de

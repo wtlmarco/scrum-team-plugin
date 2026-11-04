@@ -32,6 +32,8 @@ Ninguém carrega documentação inteira "por precaução". Cada papel lê a seç
 ### R4. Não antecipar escopo
 Implementa-se a Task, não o "enquanto isso". Sem refatoração oportunista, sem TODO especulativo, sem abstração para caso futuro, sem dependência nova fora do plano. No nível do lote, o Sprint Backlog fechado na Planning não cresce durante o sprint (§5e).
 
+**Margem do dev (v3.54).** Dois desvios não são escopo novo nem decisão de desenho, e o dev os corrige sem 🔺 GAP, registrando em `### Ajustes na margem` do relatório: o **defeito mecânico do próprio teste** (espera, referência de medida) e o **CSS cujo valor uma regra do projeto já define**. Vale só com as travas do `close` (R7-margem): teste ajustado com mutação no plano, pega na árvore final; CSS com a regra citada. O que o teste afirma ("Deve falhar se…") não muda. No sprint 5 do garden, 3 de 4 idas ao Arquiteto da maior Task eram desses dois tipos.
+
 **Evita:** scope creep silencioso — trabalho que ninguém pediu, ninguém revisou e ninguém sabe justificar depois.
 **SM verifica:** relatório do dev traz a seção "Não fiz (fora do plano)" preenchida; QA confere o diff contra a lista de arquivos do plano; entrada de escopo fora da Planning tem a linha "o que saiu para caber"; arquivo que ficou fora do plano e foi **aceito** traz na evidência `**Desvio aceito:**` com data, quem decidiu (Arquiteto, se técnico e incluído no plano; stakeholder por formulário, se muda escopo) e onde está a decisão — sem ela, o desvio continua achado. **Instrumento:** G9 — **nega** ao dev, no ato, arquivo de produto fora da lista do plano (`.team-project/.active-task`; Edit/Write e, por heurística, escrita pelo `PowerShell`) — e C1 — conferência (`git diff --name-only` × lista do plano), que pega o que escapar.
 
