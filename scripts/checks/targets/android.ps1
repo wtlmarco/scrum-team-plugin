@@ -4,7 +4,9 @@
 # listas virtualizadas rolando até não aparecer item novo, tela em branco = falha de ambiente (não do app).
 # Config (guards.json → targets.android): package, apk (opcional), avd (para o reparo), maxUptimeHours (padrão 24),
 # repair (v3.53.2, opcional: comando PowerShell de reparo do projeto — emulador em container; vence o avd),
-# serial (v3.53.5, opcional: o aparelho de trabalho, ex. "emulator-5554" — com ele todo adb vai a esse aparelho).
+# serial (v3.53.5, opcional: o aparelho de trabalho, ex. "emulator-5554" — com ele todo adb vai a esse aparelho),
+# memoryCmd + maxMemoryMB (v3.53.6, opcionais: memória do emulador acima do limite reprova o pré-voo e chama o reparo),
+# freshStart (v3.53.6, padrão true com repair: o primeiro accept de cada Task reinicia o emulador pelo repair).
 
 $script:AdCfg = $null; $script:Adb = $null; $script:Pkg = ''; $script:Nodes = @(); $script:IdCache = @{}; $script:EmptyDumps = 0
 $script:Serial = ''; $script:AdbTimeout = ''
@@ -76,7 +78,61 @@ function Test-AndroidHealth {
     $max = if ($script:AdCfg -and $script:AdCfg.maxUptimeHours) { [double]$script:AdCfg.maxUptimeHours } else { 24 }
     $up = (((Sh cat /proc/uptime) -join ' ') -split '\s+')[0] -as [double]
     if ($up -and $up / 3600 -gt $max) { return "o emulador está ligado há $([int]($up / 3600)) h (limite $max h): emulador ligado por muito tempo para de desenhar a tela" }
+    $mem = Test-AndroidMemory
+    if ($mem) { return $mem }
     return $null
+}
+# v3.53.6 (sprint 5 do garden, item 5): memória do emulador. O projeto declara em targets.android.memoryCmd um comando
+# PowerShell que imprime a memória do processo do emulador (ex.: docker stats --no-stream --format "{{.MemUsage}}"
+# horta-emulador → "2.31GiB / 7.6GiB") e em targets.android.maxMemoryMB o limite; acima dele o pré-voo reprova e o reparo
+# declarado roda. O primeiro número da saída vale, com a unidade (KiB/MiB/GiB, KB/MB/GB; sem unidade = MB).
+function ConvertTo-MemoryMB([string]$Text) {
+    $m = [regex]::Match([string]$Text, '(?i)(\d+(?:[.,]\d+)?)(?![\d.,])\s*(kib|mib|gib|tib|kb|mb|gb|tb|b)?(?![a-z])')
+    if (-not $m.Success) { return $null }
+    $v = [double]::Parse(($m.Groups[1].Value -replace ',', '.'), [Globalization.CultureInfo]::InvariantCulture)
+    switch ($m.Groups[2].Value.ToLower()) {
+        { $_ -in 'kib', 'kb' } { return $v / 1024 }
+        { $_ -in 'gib', 'gb' } { return $v * 1024 }
+        { $_ -in 'tib', 'tb' } { return $v * 1024 * 1024 }
+        'b' { return $v / 1048576 }
+        default { return $v }
+    }
+}
+# Comando do projeto num PowerShell filho com prazo; devolve a saída ('' quando estourou, com aviso).
+function Invoke-CmdT([int]$Sec, [string]$Cmd) {
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = 'powershell'; $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -EncodedCommand ' + [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($Cmd))
+    $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
+    $p = [System.Diagnostics.Process]::Start($psi)
+    $o = $p.StandardOutput.ReadToEndAsync(); $null = $p.StandardError.ReadToEndAsync()
+    if (-not $p.WaitForExit($Sec * 1000)) { try { $p.Kill() } catch { }; [Console]::Error.WriteLine("android: '$Cmd' sem resposta em $Sec s — encerrado"); $p.Dispose(); return '' }
+    $txt = ''; try { if ($o.Wait(2000)) { $txt = $o.Result } } catch { }
+    $p.Dispose()
+    return $txt.Trim()
+}
+function Test-AndroidMemory {
+    $c = $script:AdCfg
+    $cmd = if ($c -and $c.PSObject.Properties['memoryCmd'] -and $c.memoryCmd) { [string]$c.memoryCmd } else { '' }
+    $max = if ($c -and $c.PSObject.Properties['maxMemoryMB'] -and $c.maxMemoryMB) { [double]$c.maxMemoryMB } else { 0 }
+    if (-not $cmd -or $max -le 0) { return $null }
+    $out = Invoke-CmdT 60 $cmd
+    $mb = ConvertTo-MemoryMB $out
+    if ($null -eq $mb) { [Console]::Error.WriteLine("android: targets.android.memoryCmd não devolveu a memória ('$out') — conferência de memória pulada"); return $null }
+    if ($mb -gt $max) { return "o emulador está com $([int]$mb) MB de memória (limite $max MB em targets.android.maxMemoryMB; saída '$out'): emulador inchado fica lento e perde a tela — reinício pedido" }
+    return $null
+}
+# v3.53.6 (sprint 5 do garden, item 5, decisão do stakeholder): o emulador em container (targets.android.repair) é
+# reiniciado SÓ no primeiro accept de cada Task — as repetições da mesma Task reaproveitam o emulador. A marca é
+# fresh-start.json na pasta do accept da Task. targets.android.freshStart: false desliga; -NoRepair também.
+function Test-AndroidFreshStartDue($Cfg, [string]$Dir, [bool]$NoRepair) {
+    if ($NoRepair -or -not $Cfg) { return $false }
+    if (-not ($Cfg.PSObject.Properties['repair'] -and $Cfg.repair)) { return $false }
+    if ($Cfg.PSObject.Properties['freshStart'] -and $Cfg.freshStart -eq $false) { return $false }
+    return -not (Test-Path -LiteralPath (Join-Path $Dir 'fresh-start.json'))
+}
+function Set-AndroidFreshStartDone([string]$Dir, [string]$Task) {
+    New-Item -ItemType Directory -Force $Dir | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $Dir 'fresh-start.json'), ([ordered]@{ task = $Task; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); motivo = 'primeiro accept da Task: emulador reiniciado pelo reparo declarado' } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
 }
 function Repair-Android {
     # v3.53.2 (sprint 5 do garden): emulador fora do SDK local (em container Docker, por exemplo) — o reparo é o comando que
@@ -133,6 +189,34 @@ function Get-ApkPackage([string]$Apk) {
     return ''
 }
 function Set-AndroidPackage([string]$Pkg) { if ($Pkg) { $script:Pkg = $Pkg } }
+# v3.53.6 (sprint 5 do garden, item 7): o accept reinstala o APK mais novo do disco, mas o APK do disco estava MAIS VELHO que
+# o código (os ids de teste novos não tinham sido construídos) → "tag não encontrada" e um GAP perdido ao Arquiteto. Compara
+# o APK com o arquivo-fonte mais novo do módulo (<módulo>/build/outputs/apk/… → <módulo>/src/** .kt/.java, res/**,
+# AndroidManifest.xml, build.gradle(.kts); sem src/test e src/androidTest). @{ Stale; File; FileTime; ApkTime; Task; Note }.
+function Get-ApkStaleness([string]$Apk) {
+    $r = @{ Stale = $false; Note = '' }
+    if (-not $Apk -or -not (Test-Path -LiteralPath $Apk -PathType Leaf)) { return $r }
+    $full = (Resolve-Path -LiteralPath $Apk).Path
+    $m = [regex]::Match($full, '^(.*)[\\/]build[\\/]outputs[\\/]apk[\\/]')
+    if (-not $m.Success) { $r.Note = "idade do APK não conferida: o módulo não se infere de $Apk (esperado <módulo>/build/outputs/apk/…)"; return $r }
+    $mod = $m.Groups[1].Value; $apkTime = (Get-Item -LiteralPath $full).LastWriteTime
+    $cands = @()
+    foreach ($g in 'build.gradle', 'build.gradle.kts') { $p = Join-Path $mod $g; if (Test-Path -LiteralPath $p) { $cands += Get-Item -LiteralPath $p } }
+    $src = Join-Path $mod 'src'
+    if (Test-Path -LiteralPath $src) {
+        $cands += @(Get-ChildItem -LiteralPath $src -Recurse -File -ErrorAction SilentlyContinue | Where-Object {
+            $rel = $_.FullName.Substring($src.Length) -replace '\\', '/'
+            $rel -notmatch '^/(test|androidTest|testDebug\w*|testRelease\w*|sharedTest|testFixtures)/' -and ($_.Extension -in '.kt', '.java' -or $_.Name -eq 'AndroidManifest.xml' -or $rel -match '^/[^/]+/res/')
+        })
+    }
+    if (-not $cands.Count) { $r.Note = "idade do APK não conferida: nenhum código-fonte em $mod"; return $r }
+    $newest = $cands | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($newest.LastWriteTime -gt $apkTime.AddSeconds(2)) {
+        $r.Stale = $true; $r.File = $newest.FullName; $r.FileTime = $newest.LastWriteTime; $r.ApkTime = $apkTime
+        $r.Task = if ($full -match '[\\/]release[\\/]') { 'assembleRelease' } else { 'assembleDebug' }
+    }
+    return $r
+}
 function Install-AndroidApk([string]$Apk) {
     if (-not $Apk) { return $null }
     if (-not (Test-Path -LiteralPath $Apk)) { return "APK não existe: $Apk" }

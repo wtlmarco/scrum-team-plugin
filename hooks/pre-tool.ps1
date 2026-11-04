@@ -398,6 +398,22 @@ $script:runBase = @(
     'set-location', 'cd', 'push-location', 'pop-location', 'convertfrom-json', 'convertto-json', 'get-command', 'get-filehash',
     'get-member', 'get-winevent', 'get-process', 'get-ciminstance', 'get-wmiobject',
     'head', 'tail', 'wc', 'grep', 'rg', 'find', 'uniq', 'diff', 'which', 'stat', 'tree', 'true')
+# v3.53.6 (sprint 5 do garden, item 6): o reparo que o projeto declara em guards.json → targets.<alvo>.repair (ex.:
+# "docker restart horta-emulador; adb connect localhost:5555") entra na lista da G14 — cada trecho (separado por ;, && ou
+# ||) como prefixo, como as entradas de runCommands. Antes o dev rodava o reparo à mão e a G14 negava.
+function Get-RepairCommands {
+    $g = Join-Path $script:projectDir '.team-project/guards.json'
+    if (-not (Test-Path -LiteralPath $g)) { return @() }
+    try { $j = Get-Content -LiteralPath $g -Raw -Encoding UTF8 | ConvertFrom-Json } catch { return @() }
+    if (-not $j -or -not $j.PSObject.Properties['targets'] -or $null -eq $j.targets) { return @() }
+    $out = @()
+    foreach ($t in @($j.targets.PSObject.Properties)) {
+        $v = $t.Value
+        if ($null -eq $v -or $v -isnot [pscustomobject] -or -not $v.PSObject.Properties['repair'] -or -not [string]$v.repair) { continue }
+        foreach ($piece in ([string]$v.repair -split ';|&&|\|\||\r?\n')) { $x = $piece.Trim(); if ($x) { $out += $x } }
+    }
+    return $out
+}
 $script:runWriteVerbs = 'set-content', 'add-content', 'out-file', 'new-item', 'clear-content', 'remove-item', 'copy-item', 'move-item'
 
 function Test-UnderTemp([string]$Path) {
@@ -500,10 +516,14 @@ function Test-CmdWrapper([string]$Seg) {
 # v3.51.2: conferência do próprio plugin (scripts/checks/*.ps1) — sozinha ou como trecho de comando composto
 # (Set-Location …; $log = …; powershell -File …), com opção que leva valor (-ExecutionPolicy Bypass). Só vale o script
 # dentro da pasta do plugin: antes, qualquer caminho terminado em scripts/checks/*.ps1 passava, inclusive um do projeto.
+# v3.53.6 (sprint 5 do garden, item 6): também as formas "& <caminho>\x.ps1 …" e "<caminho>\x.ps1 …" (caminho absoluto ou
+# relativo começando por . / \ ou unidade) — o dev chamou "& …\target.ps1 -Target android -Repair" e caiu no Test-ScriptRun,
+# que só libera script do scratchpad ou de .team-project/. E $env:CLAUDE_PLUGIN_ROOT no começo do caminho se resolve.
 function Test-PluginCheck([string]$Seg) {
-    $m = [regex]::Match($Seg.Trim(), '^(?i)(?:&\s*)?(?:powershell|pwsh)(?:\.exe)?\s+(?:-(?!file\b)\w+(?:\s+(?!-)[\w.]+)?\s+)*-File\s+(?:"([^"]+)"|''([^'']+)''|(\S+))')
+    $m = [regex]::Match($Seg.Trim(), '^(?i)(?:(?:&\s*)?(?:powershell|pwsh)(?:\.exe)?\s+(?:-(?!file\b)\w+(?:\s+(?!-)[\w.]+)?\s+)*-File\s+|&\s*|(?=\.{0,2}[\\/]|[a-z]:[\\/]))(?:"([^"]+)"|''([^'']+)''|(\S+))')
     if (-not $m.Success) { return $false }
     $p = Expand-TempVar ($m.Groups[1].Value + $m.Groups[2].Value + $m.Groups[3].Value)
+    if ($env:CLAUDE_PLUGIN_ROOT) { $p = [regex]::Replace($p, '^(?i)\$\{?env:CLAUDE_PLUGIN_ROOT\}?', { param($x) $env:CLAUDE_PLUGIN_ROOT.TrimEnd('\', '/') }) }
     # v3.51.4: caminho numa variável do mesmo comando ($acc = '…/scripts/checks/accept.ps1'; powershell -File $acc …).
     if ($p -match '\$' -and $script:cmdVars) { $p = [regex]::Replace($p, '\$\{?(\w+)\}?', { param($x) $k = $x.Groups[1].Value.ToLowerInvariant(); if ($script:cmdVars.ContainsKey($k)) { $script:cmdVars[$k] } else { $x.Value } }) }
     if ($p -match '\$' -or $p -notmatch '(?i)\.ps1$') { return $false }
@@ -523,6 +543,9 @@ function Test-RunSegment([string]$Seg, [string[]]$Allowed) {
     }
     $cw = Test-CmdWrapper $Seg; if ($null -ne $cw) { return $cw }
     if (Test-ScriptRun $Seg) { return $true }
+    # v3.53.6 (item 6): "& <script .ps1 entre aspas>" que não é conferência do plugin nem script do papel não passa como
+    # "expressão" (o texto entre aspas virava "__q0__" e a regra de expressão o liberava).
+    if ((Restore-Quoted $Seg).Trim() -match '^(?i)&\s*(?:"[^"]+\.ps1"|''[^'']+\.ps1'')') { return $false }
     $s = $Seg.Trim()
     # v3.51.4: palavra-chave, atribuição e conversão em cadeia ($pct = if …, [xml]$x = Get-Content …, else) — antes só a
     # primeira de cada saía, e "$pct = if" ou "if" sozinho virava trecho recusado.
@@ -572,9 +595,11 @@ function Test-RunSegment([string]$Seg, [string[]]$Allowed) {
     # v3.51.4: o operator encerra o processo que ele mesmo deixou preso (accept.ps1 parado) — só pelo número do processo.
     if ($script:role -eq 'operator' -and $low -match '^stop-process\s+(-id\s+)?\d+(\s*,\s*\d+)*(\s+-force)?(\s+-erroraction\s+\w+)?$') { return $true }
     if ($script:runWriteVerbs -contains $verb) { return (Test-RunTargets $s) }
+    # v3.53.6 (item 6): a entrada com texto entre aspas (o reparo declarado, por exemplo) casa com o trecho de aspas devolvidas.
+    $lowR = (Restore-Quoted $s).ToLowerInvariant()
     foreach ($p in $Allowed) {
         $pl = ([string]$p).Trim().ToLowerInvariant()
-        if ($pl -and ($low -eq $pl -or $low.StartsWith($pl + ' ') -or $low.StartsWith($pl + "`t"))) {
+        if ($pl -and ($low -eq $pl -or $low.StartsWith($pl + ' ') -or $low.StartsWith($pl + "`t") -or $lowR -eq $pl -or $lowR.StartsWith($pl + ' '))) {
             if ($low -match '(^|\s)[\d*]?>{1,2}(?!&)\s*[^\s$]') { return (Test-RunTargets $s) }   # redirecionamento para arquivo
             return $true
         }
@@ -678,12 +703,13 @@ function Test-G14([object]$ToolInput) {
         $why = "construção que a G14 não libera (``$($fm.Value)``)$hint"
     }
     else {
-        $script:g14Allowed = @($script:runBase) + @($cfg.runCommands)
+        $script:g14Allowed = @($script:runBase) + @($cfg.runCommands) + @(Get-RepairCommands)
         $script:badSeg = ''
         if (Test-CommandText $cmd 0) { return $true }
         if (@($cfg.runCommands).Count -eq 0) { return $false }        # projeto sem runCommands: o harness decide, como antes
         $badSeg = [string]$script:badSeg
-        $plugCheck = $badSeg -match '^(?i)(&\s*)?(powershell|pwsh)(\.exe)?\s.*-File\s.*[\\/]scripts[\\/]checks[\\/]'   # antes do corte
+        # v3.53.6 (item 6): também nas formas "& <caminho>" e "<caminho>" direto.
+        $plugCheck = ($badSeg -match '(?i)[\\/]scripts[\\/]checks[\\/][\w-]+\.ps1') -and ($badSeg -match '^(?i)(&|powershell|pwsh|["'']?(\.{0,2}[\\/]|[a-z]:[\\/]))')   # antes do corte
         if ($badSeg.Length -gt 80) { $badSeg = $badSeg.Substring(0, 80) + '…' }
         # v3.52.3 (note.md item 3): a ferramenta move para segundo plano o comando que passa de 600 s, e o aviso de conclusão
         # CHEGA ao papel — negado o sono, o dev do garden passou a sondar o log (Get-Date + Get-Content a cada ~5 s, 51 chamadas).

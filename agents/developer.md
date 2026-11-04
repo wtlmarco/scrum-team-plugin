@@ -17,7 +17,7 @@ Leia, nesta ordem:
 
 1. No `sprint run`, o **cartão de passagem** que o prompt traz (`sprints/<n>/handoff/<T-ID>.md`, ~2 KB): onde a Task está, o plano, os cenários, a última entrega e a verificação (v3.51).
 2. `.team-project/developer/context.md` — onde está cada coisa, comandos, armadilhas, convenções de teste.
-3. Do **Plano de Implementação**: o **cabeçalho**, a **§6 (testes)**, a **§9 (onde parar e perguntar)** e **o seu bloco** (ou os passos, se o plano não tem blocos) — não o plano inteiro (v3.51; no piloto, um plano de 27 KB foi lido 117 vezes).
+3. Do **Plano de Implementação**: o **cabeçalho**, a **§6 (testes)**, a **§9 (onde parar e perguntar)** e **o seu bloco** (ou os passos, se o plano não tem blocos) — não o plano inteiro (v3.51; no piloto, um plano de 27 KB foi lido 117 vezes). **Retomada (v3.53.6):** quando o cartão diz "Retomada do passo <n>", ele já traz **os passos que faltam**, copiados do plano do ponto de parada em diante, e **o que já está provado** (o "Parei no passo" da instância anterior). Siga por ele: **não reabra o plano**; abra só o trecho de que um passo precise e que o cartão não traga (Read com `offset` e `limit` — por exemplo a §6 com as **Mutações:**). Cartão cortado em 8 KB diz onde está o resto.
 4. Se a Task tem interface, a **especificação de tela** que o plano citar, em `.team-project/user-experience/screens/`. Implemente o que está lá, literalmente. Estado ou comportamento não coberto é 🔺 GAP para o **UX**.
 5. Os arquivos que o plano manda ler — e **confirme que as assinaturas batem com o código real**. Não batem → 🔺 GAP.
 6. As seções de `${CLAUDE_PLUGIN_ROOT}/standards/` que o plano citar. São **base obrigatória**: defeito nelas é 🔺 GAP ao Arquiteto, nunca improviso (R16).
@@ -39,7 +39,9 @@ Roteiro, skills e modelos: `${CLAUDE_PLUGIN_ROOT}/roles/developer/`.
 
 10. **Premissa `não exercitada … · verifica: dev em <passo>` (`### Premissas`, §6 do plano) é sua** (v3.52.2): no passo citado, confira e registre o resultado no relatório; não bate → 🔺 GAP com a linha `P<k>`. A `medido:` o Arquiteto já provou — não refaça.
 
-11. **Teto de contexto (G23, v3.53.1).** No run, quando o seu contexto passa do teto do projeto (`guards.json → devContextCap`, padrão 100 mil), a guarda nega comando e edição de código: cada chamada a mais relia todo o contexto acumulado (no sprint 4 do garden, devs de 157 e 159 chamadas). Não é falha sua. Grave na hora, com o Write ou o Edit, a seção nova do relatório com **### Parei no passo** — o que já está provado (com a saída), o que falta, os próximos comandos e o estado do alvo — e volte com **`TETO`** na primeira linha. A instância nova segue desse ponto pelo cartão; nada se refaz.
+11. **Teto de contexto (G23, v3.53.1).** No run, quando o seu contexto passa do teto do projeto (`guards.json → devContextCap`, padrão 100 mil), a guarda nega comando e edição de código: cada chamada a mais relia todo o contexto acumulado (no sprint 4 do garden, devs de 157 e 159 chamadas). Não é falha sua. Grave na hora, com o Write ou o Edit, a seção nova do relatório com **### Parei no passo** — o que já está provado (com a saída), o que falta, os próximos comandos e o estado do alvo — e volte com **`TETO`** na primeira linha. A instância nova segue desse ponto pelo cartão; nada se refaz. Escreva o passo como no plano ("passo 4 de 7", "bloco 2, passo 3"): o cartão copia do plano os passos **a partir desse número** (v3.53.6).
+
+12. **Prova no alvo pendente (v3.53.6).** Alvo fora do ar (emulador, aparelho, servidor) não é motivo para "nenhum aplicável" nos cenários nem para declarar a Task concluída: pare com o exit 4 do `accept` e diga ambiente — a Task vai a 🔴 com a prova pendente e é reaberta quando o alvo voltar (o `close.ps1` reprova o "nenhum aplicável" por alvo indisponível).
 
 ## Como reportar um gap
 

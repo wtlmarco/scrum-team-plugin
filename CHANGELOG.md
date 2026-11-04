@@ -13,6 +13,35 @@
 
 ---
 
+## v3.53.6 — 2026-11-04
+
+**Branch:** `fix/v3.53.6` a partir de `develop` (com a v3.53.5 mesclada pelo PR #113) · **Processo:** addendum v3.53.6 (Task grande se divide, prova pendente bloqueia, cota em vez de US$)
+Origem: relatório do sprint 5 (parcial) do garden ao dono do plugin, 03/11, e as decisões do stakeholder de 04/11 sobre cada item. Do relatório, três itens não viraram mudança: o item 8 (executor devolvendo antes do dev) já estava corrigido na v3.53.3; o item 7 tinha a causa errada (o `accept` já reinstala o APK mais novo do disco — o APK em disco é que era mais velho que o código); o item 10 usou preços de outros modelos (Opus 5, Sonnet 4.6, Haiku 4.5) e o `consumption.ps1 -Session` já mede a sessão principal.
+
+Mudanças:
+- **Plano acima de 30 KB reprova e a Task se divide** (item 1; `plan.ps1`, `lib.ps1` `$PlanMaxKb`/`Get-PlanKb`, `run.ps1`, `external-plan.ps1`):
+  - desde a v3.53.2 o tamanho só avisava, e os 4 planos acima de 30 KB do sprint (60, 46, 34 e 33 KB) foram inteiros ao dev — os dois maiores tiveram 6 cortes da G23 e 3 GAPs;
+  - a regra 22 agora reprova acima de 30 KB, com a mensagem de **não cortar, não encurtar nem corrigir as outras linhas** (o corte da v3.53.2 custou metade do plano da T-042);
+  - o `run.ps1 next` leva a Task à mesma divisão da ficha grande (instância curta do Arquiteto, IDs com sufixo), com os blocos do plano grande como base: cada ficha nova leva `**Base:** \`<plano>\` — <blocos/passos>` e o Arquiteto da Task nova reaproveita esse trecho;
+  - no plano externo, o plano grande devolvido vai à divisão, não a um pacote de correção, e o plano de origem vai junto no pacote seguinte.
+- **Cartão da G23 com os passos que faltam** (item 2; `run.ps1` `Get-RemainingSteps`/`Write-Handoff`, `developer.md`, `task-runner.md`): com `### Parei no passo`, o cartão da instância nova traz o que já está provado (até 2 KB) e os passos do plano do ponto de parada até o fim do bloco (até 8 KB; acima, o ponteiro para o resto). O prompt manda seguir pelo cartão e não reabrir o plano.
+- **Ids de teste são padrão de código** (item 4; `verify.ps1`, `lib.ps1` `Get-TestIdFindings`, `standards/stacks/*/guide.md` e `quality.md`, README do QA). Pedido do stakeholder: "nunca mais termos problema durante as rotinas de QA". No fim do `verify -Mode full`, a chave `testids` reprova (exit 1) quando:
+  - (a) um id citado pelos cenários de tela da Task (sem `(teste)` e sem `# aguarda` de outra Task) não existe no código de produção — constante e prefixo de id dinâmico valem; a saída traz o id, o cenário e o `.scn:linha`;
+  - (b) um controle interativo dos arquivos da Task não tem id — Compose (`Button(`, `TextField(`, `Checkbox(`, `.clickable`, `items(` de lista…) sem `testTag(`, web (`<button`, `<input`, `<select`, `<textarea`, `<a` com ação) sem `data-testid`; a saída traz `arquivo:linha`;
+  - exceção explícita na linha ou na anterior: `// sem-testid: <motivo>` (ou `{/* … */}`, `<!-- … -->`), com motivo obrigatório.
+- **Emulador em container mais limpo** (item 5; `targets/android.ps1`, `accept.ps1`):
+  - `targets.android.memoryCmd` + `maxMemoryMB`: o pré-voo lê a memória do emulador por um comando do projeto (ex.: `docker stats`) e, acima do limite, o reparo roda — no sprint 5, o qemu chegou a 13,5 GB de RSS após 5h20;
+  - **reinício no primeiro `accept` de cada Task** (decisão do stakeholder): com `targets.android.repair` declarado, o primeiro `accept` da Task roda o reparo antes da rotina (marca `fresh-start.json` na pasta do accept da Task); `freshStart: false` ou `-NoRepair` desligam.
+- **G14 libera o alvo** (item 6; `hooks/pre-tool.ps1`): os scripts de conferência do plugin passam também nas formas `& <caminho>\x.ps1` e `<caminho>\x.ps1` (e com `$env:CLAUDE_PLUGIN_ROOT`), e cada trecho do comando declarado em `targets.<alvo>.repair` entra na lista operacional do run — no sprint 5, o operator fez o reparo à mão e a Task voltou sem prova.
+- **APK mais velho que o código reprova o `accept`** (item 7; `Get-ApkStaleness`): antes de instalar, o `accept` compara o APK com o fonte mais recente do módulo (`src/`, `res/`, manifesto, `build.gradle`); fonte mais novo → exit 2 "reconstrua (assembleDebug) antes do accept". Módulo que não se infere: só a nota.
+- **Prova no alvo pendente bloqueia a Task** (item 9; `close.ps1`, `mark.ps1 -Reason`, `lib.ps1` `Get-TargetPendingIds`, `run.ps1`): "nenhum aplicável" por alvo fora do ar reprova a R30 e a R7-aceite no `close`; o `done -Result env` com o accept parado por ambiente imprime `mark.ps1 -To blocked -Reason "prova no alvo pendente — <motivo>"`, que grava a linha em Bloqueios; a cada `next` sem Task em construção, o alvo é conferido e, de volta, a Task sai de 🔴 para 🟪 e o operator roda o accept pendente (a linha vira "prova no alvo retomada"). No sprint 5, 3 Tasks fecharam ✅ sem prova no aparelho.
+- **Consumo pela cota da assinatura, sem US$** (item 10; `scripts/statusline/quota-statusline.ps1`, `consumption.ps1`, `team-view.ps1`, `templates/consumption.md`):
+  - a status line do plugin mostra `<modelo> · 5h 37% (reinicia 14:20) · semana 12%` e grava cada mudança da cota em `%USERPROFILE%\.claude\quota-log.jsonl` (global: a cota é da conta). É o único lugar documentado do Claude Code que expõe a cota (`rate_limits` do JSON da status line); hooks, OTEL e CLI não a expõem;
+  - o `consumption.ps1` tira o US$ e rateia a subida da cota (5h e semanal) entre as rodadas ativas em cada intervalo, pelos tokens ponderados por modelo (pesos iniciais = razão de preço da API, só como aproximação; `.team-project/quota-weights.json` troca); saem a coluna Cota 5h / Cota semana nos Totais, a nota `cota 5h +x% · semana +y%` por rodada e a seção **Cota da assinatura** (por modelo, por Task, total da semana no sprint e a calibração % por milhão de tokens nos intervalos com um modelo só);
+  - o `/team-usage` mostra tokens, tempo, % dos tokens por papel e a cota atual com a subida da semanal desde a 1ª rodada do sprint.
+
+Conferências 307/0, guardas 282/0, C3 ok. **Não testado:** divisão por plano grande e cartão de retomada numa sessão real; reinício do container, memória e idade do APK num emulador real (só as funções puras); a status line numa sessão real (os campos de `rate_limits` vêm da documentação). **Riscos:** a detecção de controle sem id é por padrão de texto (componente que repassa o `modifier` do chamador e `@Preview` pedem a exceção; template inline do Angular não é lido); a cota rateada fora do close/retro inclui a sessão principal nas rodadas; uso da conta fora do plugin cai nos mesmos intervalos.
+
 ## v3.53.5 — 2026-11-02
 
 **Branch:** `fix/v3.53.5` a partir de `develop` (com a v3.53.4 mesclada pelo PR #111) · **Processo:** addendum v3.53.5 (espera com sinal de vida)

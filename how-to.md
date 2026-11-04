@@ -242,7 +242,7 @@ Dois comandos mostram como o sprint está andando. Quem responde é um script: o
 | Comando | Mostra | Use quando quiser saber |
 |---|---|---|
 | `/team-status` | O quadro do sprint e o que espera você | "Como está o sprint? Quem está trabalhando? Tem decisão minha parada?" |
-| `/team-usage` | Quanto o sprint gastou, por Task e por papel | "Quanto já custou? Qual Task ou papel gasta mais?" |
+| `/team-usage` | Quanto o sprint gastou, por Task e por papel, e quanto da cota da assinatura | "Quanto da minha cota já foi? Qual Task ou papel gasta mais?" |
 
 Sem número, mostram o sprint corrente. Com um número, mostram outro: `/team-status 4`, `/team-usage 4`.
 
@@ -282,25 +282,45 @@ Esperando você: 2 decisão(ões) em README §7
 **O que o `/team-usage` mostra:**
 
 ```text
-Consumo · Sprint 4 (fechado) · 185,40 mi tokens · US$ 49,39 · 13h24 de agente · 140 rodadas
+Consumo · Sprint 4 (fechado) · 185,40 mi tokens · 13h24 de agente · 140 rodadas
+Cota agora (04/11 10:12): 5h 37% · semana 41% · a semanal subiu 28,0 ponto(s) desde a 1ª rodada do sprint (agentes, sessão e uso fora do plugin juntos)
 
-Por Task (tokens · US$ · tempo):
-  T-053  57,38 mi · US$ 20,30 · 3h09
-  T-047  53,54 mi · US$ 17,91 · 2h35
+Por Task (tokens · tempo):
+  T-053  57,38 mi · 3h09
+  T-047  53,54 mi · 2h35
   …
 
-Por papel (tokens · US$ · % do custo · rodadas):
-  dev (haiku 5.5, sonnet 5.5)  112,94 mi · US$ 23,14 · 47% · 35
-  arc (opus 5.5)  45,81 mi · US$ 13,30 · 27% · 19
+Por papel (tokens · % dos tokens · rodadas):
+  dev (haiku 5.5, sonnet 5.5)  112,94 mi · 61% · 35
+  arc (opus 5.5)  45,81 mi · 25% · 19
   …
 
-Última rodada: 31/10 23:21 · po · T-054 · 181 mil · US$ 0,15
+Última rodada: 31/10 23:21 · po · T-054 · 181 mil
 ```
 
-- **1ª linha:** o total do sprint: tokens, custo em dólar, tempo somado dos agentes e quantas vezes um agente rodou ("rodadas").
+- **1ª linha:** o total do sprint: tokens, tempo somado dos agentes e quantas vezes um agente rodou ("rodadas").
+- **Cota (v3.53.6):** o uso atual da janela de 5 h e da semanal da sua assinatura, e quanto a semanal subiu desde a primeira rodada do sprint. Vem da status line do plugin (veja **Cota da assinatura**, abaixo). Sem ela ativa, a linha diz como ativar. Desde a v3.53.6 não há mais valor em dólar: o que importa num plano por assinatura é a cota.
 - **Por Task:** da que mais gastou para a que menos gastou.
-- **Por papel:** quanto cada papel do time gastou, com o modelo que usou e a sua parte no custo total.
-- **"sem preço":** rodadas antigas (antes da v3.52.3) ou de um modelo sem preço na tabela. Os tokens contam, o valor em dólar não.
+- **Por papel:** quanto cada papel do time gastou, com o modelo que usou e a sua parte nos tokens.
+- **Quanto da cota cada rodada, Task e modelo gastou** está no `consumption.md` do sprint, seção **Cota da assinatura**.
+
+### Cota da assinatura (v3.53.6)
+
+O Claude Code só mostra o uso da cota (janela de 5 h e semanal) num lugar: o JSON que ele passa à **status line**. O plugin traz uma status line que mostra a cota no rodapé e grava cada mudança num registro (`%USERPROFILE%\.claude\quota-log.jsonl`). Com esse registro, o `consumption.ps1` divide a subida da cota entre as rodadas de agente que rodavam em cada intervalo.
+
+**Ativar**, no `~/.claude/settings.json`:
+
+```json
+"statusLine": { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<pasta do usuário>/.claude/plugins/marketplaces/team/scripts/statusline/quota-statusline.ps1\"" }
+```
+
+O rodapé passa a mostrar algo como `Opus 5.5 · 5h 37% (reinicia 14:20) · semana 12%`. A cota só aparece depois da primeira resposta do modelo na sessão e só para assinatura Pro, Max ou Ultra.
+
+**Bom saber:**
+
+- **A divisão é uma estimativa.** A Anthropic não publica quanto cada modelo pesa na cota. Quando duas rodadas correm ao mesmo tempo, a subida é dividida pelos tokens de cada uma, com um peso por modelo (de início, a proporção de preço da API). O `consumption.md` traz a tabela de calibração (% da cota por milhão de tokens, medida nos intervalos em que só um modelo rodou). Para trocar os pesos, grave `.team-project/quota-weights.json`.
+- **Os números finais saem no fechamento e na retrospectiva** (`consumption.ps1 -Session`), que separam a sessão principal. Antes disso, a parte da sessão cai nas rodadas.
+- **Tudo o que usa a conta entra no registro**, inclusive o claude.ai e outros projetos abertos no mesmo intervalo.
 
 **Bom saber:**
 
@@ -580,6 +600,11 @@ O time roda o app de verdade para provar que ele funciona: no emulador ou aparel
 - **Um emulador só (v3.53.5).** Dois emuladores nas mesmas portas (5554/5555), como um AVD local e um container, deixam o `adb` "offline" e travam o reparo. Com o emulador num container, tire `"avd"` do `targets.android` e deixe só o `"repair"`. Se o AVD local estiver declarado e as portas já estiverem ocupadas por outro processo, o reparo recusa abrir um segundo emulador e diz quem está nas portas.
 - **`"serial"` (v3.53.5):** o aparelho de trabalho, por exemplo `"serial": "emulator-5554"`. Com ele, todo `adb` vai a esse aparelho. Sem ele, se o `adb devices` lista mais de um aparelho (o mesmo emulador como `emulator-5554` e `localhost:5555`, depois de um `adb connect`), o pré-voo para e pede o `serial`, porque todo `adb shell` falharia com "more than one device".
 - **Todo `adb` tem prazo (v3.53.5):** 90 s por chamada, 600 s para instalar o APK e 180 s para o aparelho voltar depois do reparo. Comando que estoura o prazo é encerrado e vira falha de ambiente, em vez de prender a trava do alvo por horas.
+- **Memória do emulador (v3.53.6):** `"memoryCmd"` é um comando do projeto que imprime a memória do emulador (por exemplo `docker stats --no-stream --format "{{.MemUsage}}" <container>`), e `"maxMemoryMB"` é o limite. Acima dele, o pré-voo reprova e o reparo roda. No garden, o emulador do container chegou a 13,5 GB depois de 5 h ligado.
+- **Container reiniciado no primeiro accept de cada Task (v3.53.6):** com `"repair"` declarado, o primeiro `accept` de cada Task roda o reparo antes dos cenários, para a prova começar de um emulador limpo (~2,5 min). As repetições na mesma Task reaproveitam o emulador. Desligue com `"freshStart": false`.
+- **APK velho (v3.53.6):** o `accept` instala o APK mais novo de `build/outputs/apk/`. Se o código do app mudou depois dele, o `accept` para com exit 2 e pede para reconstruir (`assembleDebug`): rodar os cenários num APK antigo acusa "tag não encontrada" sem defeito nenhum.
+- **Alvo fora do ar não fecha Task (v3.53.6):** se o `accept` para por ambiente e o reparo não resolve, a Task vai a 🔴 com "prova no alvo pendente" na tabela de Bloqueios. A fila segue com as outras Tasks. A cada `run.ps1 next`, o alvo é conferido: quando ele volta, a Task sai de 🔴 e o accept pendente roda. "Nenhum aplicável" por alvo indisponível é recusado no fechamento.
+- **Ids de teste são obrigatórios (v3.53.6):** todo controle interativo tem id de teste (`testTag` no Android, `data-testid` na web) e todo id que um cenário cita tem de existir no código. O `verify -Mode full` reprova o que faltar e diz o arquivo e a linha. Caso legítimo sem id: comentário `// sem-testid: <motivo>` na linha ou na anterior.
 - **"OCUPADO" no `verify`:** uma verificação anterior da mesma Task ainda está rodando, em geral de uma instância que caiu. O dev roda o mesmo comando com `-WaitBusySeconds 540`, que espera a anterior acabar e segue, sem pausar o run.
 
 ### Problemas de instalação

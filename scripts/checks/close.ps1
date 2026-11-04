@@ -432,7 +432,11 @@ try {
         # v3.53.2: "SC-nnn (teste)" se prova pelos testes do plano (o verify) — sem accept no alvo.
         $allIds = @(Get-ScenarioIds $cen)
         $ids = @(Get-ScenarioIds $cen -TargetOnly)
-        if ($cen -match '(?i)^nenhum aplic[áa]vel\s*[—-]\s*\S') { Add-Result 'R30' 'ok' "nenhum aplicável: $cen" }
+        # v3.53.6 (sprint 5 do garden, item 9): "nenhum aplicável" porque o alvo estava fora (emulador, aparelho, ambiente) não
+        # dispensa a prova — a Task fechava ✅ sem ela. Vai a 🔴 com a prova no alvo pendente, e o run.ps1 next a reabre.
+        $envNa = '(?i)fora do ar|indispon[íi]vel|offline|\bcaiu\b|travad|sem (o |um )?(alvo|emulador|aparelho|dispositivo|ambiente|acesso)\b|\b(alvo|emulador|aparelho|dispositivo|ambiente|adb|device)\b[^.;]{0,30}?\b(n[ãa]o (respond|sob|sub|lig|conect|abr|est)|parad|quebrad|ausente|falh|down)'
+        if ($cen -match '(?i)^nenhum aplic[áa]vel\s*[—-]\s*\S' -and $cen -match $envNa) { Add-Result 'R30' 'falhou' "nenhum aplicável por alvo indisponível ($cen): isso não dispensa a prova — bloqueie a Task: mark.ps1 -Task $Task -To blocked -Reason `"$($script:TargetPendingTag) — <motivo>`"; o run.ps1 next a reabre e roda o accept quando o alvo voltar"; Add-Result 'R7-aceite' 'falhou' "a prova no alvo não foi feita (alvo indisponível): a Task não fecha ✅ — vai a 🔴 com '$($script:TargetPendingTag)'" }
+        elseif ($cen -match '(?i)^nenhum aplic[áa]vel\s*[—-]\s*\S') { Add-Result 'R30' 'ok' "nenhum aplicável: $cen" }
         elseif ($allIds.Count -eq 0) { Add-Result 'R30' 'falhou' 'coluna Cenários vazia ou sem SC-nnn nem "nenhum aplicável — motivo"' }
         elseif ($devMode -and $ids.Count -eq 0) { Add-Result 'R30' 'ok' "todos provados por teste do plano: $($allIds -join ', ')"; Add-Result 'R7-aceite' 'n-a' 'nenhum cenário de tela na Task' }
         elseif ($devMode) {

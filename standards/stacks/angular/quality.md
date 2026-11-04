@@ -51,3 +51,15 @@ Com Karma no lugar do Jest: `"focused": "npx ng test --watch=false --browsers=Ch
 | V17 | Pipeline transversal | interceptadores HTTP |
 | V18–V21 | Desempenho | `budgets` do `angular.json` e Web Vitals p75; ambiente = build de produção |
 | V22 | Render | Playwright (Chromium headless, ou Edge/Chrome do sistema) |
+
+## NG-Q4 Ids de teste (v3.53.6, regra que reprova o verify)
+
+Pedido do stakeholder depois do sprint 5 do garden ("nunca mais termos problema durante as rotinas de QA"): o `data-testid` é padrão de código, conferido pela máquina.
+
+| O que reprova o `verify.ps1 -Mode full` (chave `testids`, exit 1) | Saída |
+|---|---|
+| id citado num cenário de tela da Task (`.scn` do QA, sem `(teste)` e sem `# aguarda` de outra Task) que não existe **literalmente** no código de produção — o atributo, uma constante, ou o prefixo de id dinâmico (`'destino.card.' + d.id`, `destino.card.{{ d.id }}`) | o id, o cenário e `arquivo.scn:linha` |
+| `<button`, `<input` (menos `type="hidden"`), `<select`, `<textarea` e `<a` com `href`/`(click)`/`routerLink` sem `data-testid` / `[attr.data-testid]` (ou o `targets.web.testIdAttribute`) nos templates `.html` da Task | `arquivo:linha` |
+
+- **Onde:** os arquivos de **Arquivos tocados:** do plano (sem plano, os mudados no git), fora de testes (`*.spec.ts`, `e2e/`), `dist/` e gerados. Template embutido no `.ts` (`template:`) não é lido — use `templateUrl`.
+- **Exceção explícita:** `<!-- sem-testid: <motivo> -->` na linha do elemento ou na anterior — sem motivo, continua reprovando.

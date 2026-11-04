@@ -33,6 +33,7 @@ Regra de lint que falha o build (Q1): `@nx/enforce-module-boundaries` em workspa
 ## NG-5 Interface, acessibilidade e identificadores de teste
 
 - **Todo controle interativo e todo item de lista tem `data-testid="<área>.<elemento>[.<id>]"`** (`[attr.data-testid]="'destino.card.' + d.id"` em lista) — usado pelo executor de cenários (`accept.ps1`, alvo web) e pelos testes. O contrato de teste do pedido manda nos nomes.
+- **Conferido pela máquina (v3.53.6, [`quality.md`](quality.md) NG-Q4):** o `verify.ps1 -Mode full` reprova id citado num `.scn` da Task que não existe no código (literal, constante ou prefixo de id dinâmico `'destino.card.' + d.id` / `destino.card.{{ d.id }}`) e `<button`, `<input`, `<select`, `<textarea` e `<a` com `href`/`(click)`/`routerLink` sem `data-testid` (ou `[attr.data-testid]`) nos templates `.html` da Task. Exceção só com `<!-- sem-testid: <motivo> -->` na linha ou na anterior. O id que o QA escreve no `.scn` o dev cria no template. (Template embutido no `.ts` não é lido: prefira `templateUrl`.)
 - **Acessibilidade:** Angular CDK a11y para foco e diálogos; rótulo em todo campo do formulário reativo; navegação por teclado; a tela não quebra com a fonte a 200 %.
 - **Texto da interface** em i18n (`$localize`/arquivos de tradução) ou num arquivo de mensagens.
 

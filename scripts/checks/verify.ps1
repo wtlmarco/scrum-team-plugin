@@ -45,6 +45,13 @@
 #   uma rodada por Task de cada vez (verify.lock na pasta da Task): a segunda chamada sai com exit 5 enquanto a primeira
 #     roda — o dev disparou um full sobre outro em segundo plano e o Karma caiu (Disconnected).
 #   comando que passa de 80 % do teto por comando sai com "atenção:" — estourar o teto é exit 4 sem defeito no código.
+# v3.53.6 (sprint 5 do garden, item 4): ids de teste como padrão de código. No fim do -Mode full, a chave "testids" (mais
+#   um comando no result.json) REPROVA (exit 1) quando (a) um id citado pelos cenários de tela da Task (coluna Cenários do
+#   quadro, sem "(teste)" e sem "# aguarda" de outra Task) não existe literalmente no código de produção — constante ou
+#   prefixo de id dinâmico valem — ou (b) um controle interativo dos arquivos da Task (**Arquivos tocados:** do plano; sem
+#   plano, os mudados no git) não tem id: Compose (Button(, TextField(, Checkbox(, Switch(, .clickable, items( de lista…
+#   sem testTag() e web (<button, <input, <select, <textarea, <a com ação sem data-testid). Saída com o id e o .scn, ou
+#   arquivo:linha. Exceção explícita: "// sem-testid: <motivo>" (ou {/* … */}, <!-- … -->) na linha ou na anterior.
 param(
     [Parameter(Mandatory = $true)][string]$Task,
     [ValidateSet('focused', 'full', 'check', 'mutation')][string]$Mode = 'full',
@@ -416,6 +423,23 @@ try {
         $r1 = Invoke-Logged $j.Key $j.Cmd.Replace('{tests}', (Format-Tests $Tests)) (Join-Path $dir "$Mode-$($j.Key).log")
         $results += $r1; $lastSec = $r1.seconds
     }
+    # v3.53.6 (sprint 5 do garden, item 4): ids de teste conferidos no fim do full — (a) todo id dos cenários de tela da Task
+    # existe no código de produção; (b) nenhum controle interativo sem id nos arquivos da Task. Entra como mais um comando
+    # (chave "testids"), então o check, o close.ps1 (R7-verify) e o QA o leem como os outros. Só quando há o que conferir.
+    $tidLines = @()
+    if ($Mode -eq 'full' -and -not $pendingJobs.Count) {
+        $tsw = [System.Diagnostics.Stopwatch]::StartNew()
+        $tid = Get-TestIdFindings $Root $Task
+        if ($tid.Applies) {
+            $tidLines = @(@($tid.Missing | ForEach-Object { "id ausente no código: $_" }) + @($tid.Untagged | ForEach-Object { "sem id de teste: $_" }))
+            $head = if ($tidLines.Count) { "ids de teste: $(@($tid.Missing).Count) id(s) dos cenários fora do código, $(@($tid.Untagged).Count) controle(s) sem id" } else { "ids de teste: $($tid.Ids) id(s) dos cenários no código, $($tid.Files) arquivo(s) de tela com todo controle identificado" }
+            $tlog = Join-Path $dir 'full-testids.log'
+            $body = @($head) + $tidLines + @($tid.Notes) + @('', "EXIT=$(if ($tidLines.Count) { 1 } else { 0 })")
+            [System.IO.File]::WriteAllText($tlog, ($body -join "`n") + "`n", $utf8)
+            $results += [ordered]@{ key = 'testids'; command = 'ids de teste dos cenários e dos controles (verify.ps1, v3.53.6)'; exit = $(if ($tidLines.Count) { 1 } else { 0 }); seconds = [int]$tsw.Elapsed.TotalSeconds
+                                    log = ($tlog.Substring($Root.Length + 1) -replace '\\', '/'); lines = $body.Count; decisive = @($head); environment = $null; hygiene = @() }
+        }
+    }
     # v3.52.3 (note.md item 5): comando perto do teto por comando — ao passar dele, vira exit 4 (ambiente) sem defeito no código.
     $ceil = [int]($script:timeoutMinutes * 60)
     $near = @($results | Where-Object { -not $_.environment -and [int]$_.seconds -ge 0.8 * $ceil } | ForEach-Object { "$($_.key) levou $($_.seconds) s, $([int](100 * [int]$_.seconds / $ceil)) % do teto por comando ($ceil s, verify.timeoutMinutes) — ao passar dele vira falha de ambiente (exit 4). Reporte a quem orquestra: o projeto divide o comando em guards.json → verify (lista: suite, suite2…); teto acima de 9 min passa dos 600 s da ferramenta" })
@@ -440,6 +464,10 @@ try {
     [Console]::Out.WriteLine("verify $Mode $Task · árvore $($tree.Substring(0, 12)) · " + $(if ($envBad.Count) { "FALHA DE AMBIENTE em $($envBad.Count) comando(s)" } elseif ($bad.Count) { "$($bad.Count) comando(s) com falha" } else { 'tudo exit 0' }) + " · $($resPath.Substring($Root.Length + 1) -replace '\\', '/')")
     foreach ($r in $results) { [Console]::Out.WriteLine("  $($r.key): exit $($r.exit) · $($r.seconds) s · $(@($r.decisive) | Select-Object -Last 1) · log $($r.log) ($($r.lines) linhas)") }
     foreach ($r in $envBad) { [Console]::Out.WriteLine("  ambiente ($($r.key)): $($r.environment)") }
+    # v3.53.6 (item 4): cada id ausente (com o cenário e o .scn) e cada controle sem id (arquivo:linha).
+    foreach ($l in @($tidLines | Select-Object -First 40)) { [Console]::Out.WriteLine("    $l") }
+    if ($tidLines.Count -gt 40) { [Console]::Out.WriteLine("    … e mais $($tidLines.Count - 40) no log testids") }
+    if ($tidLines.Count) { [Console]::Out.WriteLine('  ids de teste: o dev cria no código o id que o .scn cita (testTag / data-testid, standards/stacks/<tecnologia>/guide.md) e põe id em todo controle interativo; exceção só com "// sem-testid: <motivo>" na linha ou na anterior') }
     foreach ($w in @($script:hygieneWarnings) + $near) { [Console]::Out.WriteLine("  atenção: $w") }
     if ($after -ne $tree) { [Console]::Out.WriteLine("  atenção: os comandos alteraram a árvore (antes $($tree.Substring(0, 12)), depois $(([string]$after).Substring(0, [Math]::Min(12, ([string]$after).Length)))) — arquivo gerado fora do .gitignore; a evidência vale para a árvore de antes") }
     if ($envBad.Count) { [Console]::Out.WriteLine('  não é defeito do código: não depure; a sessão tenta o reparo do ambiente uma vez (target.ps1 -Repair) e, sem sucesso, bloqueio de ambiente'); exit 4 }
