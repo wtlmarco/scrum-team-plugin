@@ -478,6 +478,211 @@ function Get-DeferredScenarios([string]$Root) {
     return $map
 }
 
+# ---------- ids de teste como padrão de código (v3.53.6, sprint 5 do garden, item 4) ----------
+# Pedido do stakeholder: "nunca mais termos problema durante as rotinas de QA". No sprint 5 o QA escreveu .scn com ids que o
+# código não tinha e o dev não criou: "tag não encontrada" no accept, GAP ao Arquiteto e rodadas perdidas. O verify -Mode full
+# agora REPROVA (a) id citado nos cenários da Task que não existe literalmente no código de produção e (b) controle
+# interativo sem id de teste nos arquivos da Task. Exceção explícita: "// sem-testid: <motivo>" (ou {/* sem-testid: … */},
+# <!-- sem-testid: … -->) na mesma linha ou na anterior, com motivo.
+$script:ScnIdVerbs = @('tap', 'type', 'slider', 'assert-text', 'assert-contains', 'assert-exists', 'assert-absent', 'assert-checked', 'assert-count', 'assert-order')
+# Ids citados nos cenários pedidos, com cenário, arquivo e linha. assert-count/assert-order citam um PREFIXO.
+function Get-ScnTestIdRefs([string]$Root, [string[]]$Scenarios) {
+    $out = @()
+    $d = Join-Path $Root '.team-project/quality-assurance/scenarios'
+    foreach ($f in @(Get-ChildItem -Path $d -Filter '*.scn' -File -ErrorAction SilentlyContinue | Sort-Object FullName)) {
+        $rel = ($f.FullName.Substring($Root.Length).TrimStart('\', '/') -replace '\\', '/'); $n = 0; $cur = $null
+        foreach ($raw in ((Read-Text $f.FullName) -split "`r?`n")) {
+            $n++; $l = $raw.Trim(); if (-not $l -or $l.StartsWith('#')) { continue }
+            if ($l -match '^scenario\s+(\S+)') { $cur = $Matches[1]; continue }
+            if (-not $cur -or $Scenarios -notcontains $cur) { continue }
+            $parts = $l -split '\s+', 2; if ($parts.Count -lt 2 -or $script:ScnIdVerbs -notcontains $parts[0]) { continue }
+            $id = @((($parts[1] -split '=', 2)[0]).Trim() -split '\s+')[0]
+            if ($id) { $out += [pscustomobject]@{ Id = $id; Prefix = ($parts[0] -eq 'assert-count' -or $parts[0] -eq 'assert-order'); Scenario = $cur; File = $rel; Line = $n } }
+        }
+    }
+    return $out
+}
+# Caminho fora do código de produção: testes, build, gerados, dependências, processo.
+function Test-TestIdExcluded([string]$Rel) {
+    $r = '/' + ($Rel -replace '\\', '/').TrimStart('/')
+    return [bool]($r -match '/(\.team-project|docs|build|dist|generated|node_modules|\.gradle|coverage|e2e|__tests__|__mocks__|test|tests|androidTest|testDebug\w*|testRelease\w*|sharedTest|testFixtures)/' -or
+                   $r -match '\.(spec|test|stories)\.[jt]sx?$' -or $r -match '(Test|Tests|Spec)\.(kt|java)$')
+}
+# Arquivos de produção do projeto (git ls-files com os não rastreados, sem o .gitignore) onde um id pode morar.
+function Get-TestIdSourceFiles([string]$Root) {
+    $ErrorActionPreference = 'Continue'
+    $list = @(& git -C $Root ls-files -co --exclude-standard 2>$null)
+    if ($LASTEXITCODE -ne 0) { return @() }
+    return @($list | Where-Object { $_ -match '\.(kt|java|tsx?|jsx?|html?|vue)$' -and -not (Test-TestIdExcluded $_) })
+}
+# O id existe no código: literal entre aspas (constante vale) ou, para id dinâmico, o prefixo até um separador seguido de
+# interpolação ("lista.item.$id", `lista.item.${id}`, 'lista.item.' + id, "lista.item.{{ id }}"). Prefixo (assert-count) =
+# um literal que começa com ele.
+function Test-TestIdInSource([string]$Blob, [string]$Id, [bool]$Prefix) {
+    $q = '["''`]'
+    if ($Prefix) { if ([regex]::IsMatch($Blob, $q + [regex]::Escape($Id))) { return $true } }
+    elseif ([regex]::IsMatch($Blob, $q + [regex]::Escape($Id) + $q)) { return $true }
+    for ($k = $Id.Length - 1; $k -gt 0; $k--) {
+        if ('.-_:/'.IndexOf($Id[$k - 1]) -lt 0) { continue }
+        if ([regex]::IsMatch($Blob, $q + [regex]::Escape($Id.Substring(0, $k)) + '(\$|\{\{|' + $q + '\s*\+)')) { return $true }
+    }
+    return $false
+}
+# Fim do trecho balanceado que abre em $Open ('(' ou '{'), pulando strings e comentários; -1 sem fechamento.
+function Get-BalancedEnd([string]$T, [int]$Open) {
+    $o = $T[$Open]; $c = if ($o -eq '(') { [char]')' } else { [char]'}' }
+    $depth = 0; $i = $Open; $n = $T.Length
+    while ($i -lt $n) {
+        $ch = $T[$i]
+        if ($ch -eq [char]'"' -or $ch -eq [char]"'") { $qc = $ch; $i++; while ($i -lt $n -and $T[$i] -ne $qc) { if ($T[$i] -eq [char]'\') { $i++ }; $i++ } }
+        elseif ($ch -eq [char]'/' -and $i + 1 -lt $n -and $T[$i + 1] -eq [char]'/') { $nl = $T.IndexOf("`n", $i); if ($nl -lt 0) { return -1 }; $i = $nl }
+        elseif ($ch -eq [char]'/' -and $i + 1 -lt $n -and $T[$i + 1] -eq [char]'*') { $e = $T.IndexOf('*/', $i + 2); if ($e -lt 0) { return -1 }; $i = $e + 1 }
+        elseif ($ch -eq $o) { $depth++ }
+        elseif ($ch -eq $c) { $depth--; if ($depth -eq 0) { return $i } }
+        $i++
+    }
+    return -1
+}
+# Exceção declarada na linha ou na anterior: 'ok' (com motivo), 'vazia' (sem motivo) ou ''.
+function Get-NoTestIdException([string[]]$Lines, [int]$Line) {
+    foreach ($k in @($Line, ($Line - 1))) {
+        if ($k -lt 1 -or $k -gt $Lines.Count) { continue }
+        $m = [regex]::Match($Lines[$k - 1], 'sem-testid:(.*)$')
+        if ($m.Success) { $why = ($m.Groups[1].Value -replace '(\*/\s*\}?|-->)\s*$', '').Trim(); if ($why) { return 'ok' } else { return 'vazia' } }
+    }
+    return ''
+}
+# Controles interativos sem id de teste num arquivo (heurística por stack): "<arquivo>:<linha> — <o que falta>".
+# Kotlin/Compose: Button(, IconButton(, TextField(, Checkbox(, Switch(… precisam de testTag( nos argumentos da chamada;
+# .clickable/.toggleable/.selectable precisam de testTag( na mesma chamada que recebe o modifier; items( de LazyColumn/
+# LazyRow precisa de testTag( no item. Web (html, tsx, jsx, vue): <button, <input, <select, <textarea e <a com
+# href/onClick/(click)/routerLink precisam do atributo ($Attr, padrão data-testid).
+function Find-UntaggedUi([string]$Rel, [string]$Text, [string]$Attr = 'data-testid') {
+    $out = @(); if (-not $Text) { return $out }
+    $lines = $Text -split "`n"
+    $nl = @([regex]::Matches($Text, "`n") | ForEach-Object { $_.Index }); [int[]]$nla = $nl
+    $lineOf = { param($ix) $k = [Array]::BinarySearch($nla, [int]$ix); if ($k -lt 0) { $k = -bnot $k }; $k + 1 }
+    $flag = { param($ix, $what)
+        $ln = & $lineOf $ix; $ex = Get-NoTestIdException $lines $ln
+        if ($ex -eq 'ok') { return $null }
+        if ($ex -eq 'vazia') { return "${Rel}:$ln — $what (a exceção 'sem-testid:' está sem motivo)" }
+        return "${Rel}:$ln — $what" }
+    $inComment = { param($ix) $ls = $Text.LastIndexOf("`n", [Math]::Max(0, $ix - 1)) + 1; $pre = $Text.Substring($ls, $ix - $ls); return ($pre -match '//' -or $pre.TrimStart().StartsWith('*') -or $pre -match '^\s*import\s') }
+    if ($Rel -match '\.kt$') {
+        $wre = '(?<![\w.])(Button|IconButton|TextButton|OutlinedButton|ElevatedButton|FilledTonalButton|FilledIconButton|OutlinedIconButton|IconToggleButton|FloatingActionButton|SmallFloatingActionButton|LargeFloatingActionButton|ExtendedFloatingActionButton|TextField|OutlinedTextField|BasicTextField|Checkbox|TriStateCheckbox|Switch|RadioButton|Slider|RangeSlider|FilterChip|AssistChip|InputChip|SuggestionChip|NavigationBarItem|NavigationRailItem|Tab|DropdownMenuItem)\s*\('
+        foreach ($m in [regex]::Matches($Text, $wre)) {
+            if (& $inComment $m.Index) { continue }
+            $ls = $Text.LastIndexOf("`n", [Math]::Max(0, $m.Index - 1)) + 1
+            if ($Text.Substring($ls, $m.Index - $ls) -match '\bfun\s') { continue }   # declaração, não chamada
+            $open = $m.Index + $m.Length - 1; $end = Get-BalancedEnd $Text $open
+            $span = if ($end -gt $open) { $Text.Substring($open, $end - $open + 1) } else { $Text.Substring($open) }
+            if ($span -notmatch 'testTag\s*\(') { $f = & $flag $m.Index "$($m.Groups[1].Value)( sem testTag( no modifier"; if ($f) { $out += $f } }
+        }
+        foreach ($m in [regex]::Matches($Text, '\.(clickable|toggleable|selectable|combinedClickable)\b')) {
+            if (& $inComment $m.Index) { continue }
+            # A chamada que recebe a cadeia: o primeiro '(' sem par para trás; '{' sem par ou o começo = a cadeia solta (linhas com '.').
+            $depth = 0; $i = $m.Index - 1; $open = -1
+            while ($i -ge 0) {
+                $ch = $Text[$i]
+                if ($ch -eq [char]')' -or $ch -eq [char]'}') { $depth++ }
+                elseif ($ch -eq [char]'(') { if ($depth -eq 0) { $open = $i; break }; $depth-- }
+                elseif ($ch -eq [char]'{') { if ($depth -eq 0) { break }; $depth-- }
+                $i--
+            }
+            $span = ''
+            if ($open -ge 0) { $end = Get-BalancedEnd $Text $open; $span = if ($end -gt $open) { $Text.Substring($open, $end - $open + 1) } else { $Text.Substring($open) } }
+            else {
+                $ln = & $lineOf $m.Index; $a = $ln; $b = $ln
+                while ($a -gt 1 -and $lines[$a - 1].TrimStart().StartsWith('.')) { $a-- }
+                while ($b -lt $lines.Count -and $lines[$b].TrimStart().StartsWith('.')) { $b++ }
+                $span = ($lines[($a - 1)..($b - 1)] -join "`n")
+            }
+            if ($span -notmatch 'testTag\s*\(') { $f = & $flag $m.Index ".$($m.Groups[1].Value) sem testTag( na mesma cadeia de modifier"; if ($f) { $out += $f } }
+        }
+        if ($Text -match '\bLazy(Column|Row|VerticalGrid|HorizontalGrid|VerticalStaggeredGrid)\b') {
+            foreach ($m in [regex]::Matches($Text, '(?<![\w.])(items|itemsIndexed)\s*\(')) {
+                if (& $inComment $m.Index) { continue }
+                $ls = $Text.LastIndexOf("`n", [Math]::Max(0, $m.Index - 1)) + 1
+                if ($Text.Substring($ls, $m.Index - $ls) -match '\bfun\s') { continue }
+                $open = $m.Index + $m.Length - 1; $end = Get-BalancedEnd $Text $open; if ($end -lt 0) { continue }
+                $j = $end + 1; while ($j -lt $Text.Length -and [char]::IsWhiteSpace($Text[$j])) { $j++ }
+                if ($j -lt $Text.Length -and $Text[$j] -eq [char]'{') { $e2 = Get-BalancedEnd $Text $j; if ($e2 -gt $j) { $end = $e2 } }
+                if ($Text.Substring($open, $end - $open + 1) -notmatch 'testTag\s*\(') { $f = & $flag $m.Index "$($m.Groups[1].Value)( da lista sem testTag( no item"; if ($f) { $out += $f } }
+            }
+        }
+    } elseif ($Rel -match '\.(html?|tsx|jsx|vue)$') {
+        foreach ($m in [regex]::Matches($Text, '<(button|input|select|textarea|a)(?=[\s/>])')) {
+            $i = $m.Index + $m.Length; $depth = 0; $qc = $null
+            while ($i -lt $Text.Length) {
+                $ch = $Text[$i]
+                if ($qc) { if ($ch -eq $qc) { $qc = $null } }
+                elseif ($ch -eq [char]'"' -or $ch -eq [char]"'" -or $ch -eq [char]'`') { $qc = $ch }
+                elseif ($ch -eq [char]'{') { $depth++ }
+                elseif ($ch -eq [char]'}') { $depth-- }
+                elseif ($ch -eq [char]'>' -and $depth -le 0) { break }
+                $i++
+            }
+            $tag = $Text.Substring($m.Index, [Math]::Min($Text.Length, $i + 1) - $m.Index)
+            $name = $m.Groups[1].Value
+            if ($name -eq 'a' -and $tag -notmatch '\b(href|onClick|routerLink)\b|\(click\)') { continue }
+            if ($name -eq 'input' -and $tag -match 'type\s*=\s*["'']hidden["'']') { continue }
+            if ($tag.Contains($Attr)) { continue }
+            $f = & $flag $m.Index "<$name sem $Attr"; if ($f) { $out += $f }
+        }
+    }
+    return @($out | Select-Object -Unique)
+}
+# A conferência inteira de uma Task: (a) ids dos cenários de tela da Task (sem os que aguardam outra Task) presentes no
+# código; (b) controles sem id nos arquivos da Task (**Arquivos tocados:** do plano; sem plano, os mudados no git).
+# @{ Applies; Missing = "id — SC (arquivo.scn:linha)"; Untagged = "arquivo:linha — …"; Notes; Files }.
+function Get-TestIdFindings([string]$Root, [string]$Task) {
+    $res = [pscustomobject]@{ Applies = $false; Missing = @(); Untagged = @(); Notes = @(); Files = 0; Ids = 0 }
+    $tp = Join-Path $Root '.team-project'
+    $t = $null; $S = $null
+    $readme = Join-Path $tp 'README.md'
+    if ($Task -notmatch '^[FB]-\d+' -and (Test-Path -LiteralPath $readme)) {
+        $n = Get-CurrentSprint (Read-Text $readme)
+        if ($n) { $S = Join-Path $tp "sprints/$n"; if (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md')) { try { $t = @(Get-SprintTasks $S | Where-Object { $_.Id -eq $Task }) | Select-Object -First 1 } catch { } } }
+    }
+    $texts = @{}
+    # (a) ids dos cenários
+    if ($t -and @($t.Scenarios).Count) {
+        $defer = Get-DeferredScenarios $Root
+        $scs = @($t.Scenarios | Where-Object { -not $defer.ContainsKey($_) -or $defer[$_] -eq $Task })
+        $refs = @(Get-ScnTestIdRefs $Root $scs)
+        if ($refs.Count) {
+            $res.Applies = $true; $res.Ids = @($refs | ForEach-Object { $_.Id } | Select-Object -Unique).Count
+            $srcFiles = @(Get-TestIdSourceFiles $Root)
+            $blob = (@($srcFiles | ForEach-Object { $p = Join-Path $Root $_; if (Test-Path -LiteralPath $p -PathType Leaf) { $x = Read-Text $p; $texts[$_] = $x; $x } }) -join "`n")
+            foreach ($g in @($refs | Group-Object Id)) {
+                $isPre = @($g.Group | Where-Object { $_.Prefix }).Count -gt 0
+                if (Test-TestIdInSource $blob $g.Name $isPre) { continue }
+                $where = @($g.Group | ForEach-Object { "$($_.Scenario) ($($_.File):$($_.Line))" } | Select-Object -Unique) -join ', '
+                $res.Missing += "$($g.Name)$(if ($isPre) { ' (prefixo)' } else { '' }) — $where"
+            }
+        }
+    }
+    # (b) controles sem id nos arquivos da Task
+    $files = @()
+    $planPath = if ($t -and $t.Plan -and $t.Plan -notmatch '^plan/?$') { Join-Path $S $t.Plan } else { '' }
+    if ($planPath -and (Test-Path -LiteralPath $planPath -PathType Leaf)) { $files = @(Get-PlanScope (Read-Text $planPath)) }
+    if (-not $files.Count) {
+        $ErrorActionPreference = 'Continue'
+        $files = @(& git -C $Root status --porcelain -uall 2>$null | ForEach-Object { $s = ([string]$_).Substring([Math]::Min(3, ([string]$_).Length)); if ($s -match ' -> ') { $s = ($s -split ' -> ')[-1] }; $s.Trim('"') })
+        if ($files.Count) { $res.Notes += 'arquivos da Task pelo git (sem **Arquivos tocados:** de plano no quadro)' }
+    }
+    $attr = 'data-testid'
+    $tc = Get-TargetsConfig $Root
+    if ($tc -and $tc.PSObject.Properties['web'] -and $tc.web -and $tc.web.PSObject.Properties['testIdAttribute'] -and $tc.web.testIdAttribute) { $attr = [string]$tc.web.testIdAttribute }
+    foreach ($f in @($files | Where-Object { $_ -match '\.(kt|html?|tsx|jsx|vue)$' -and -not (Test-TestIdExcluded $_) } | Select-Object -Unique)) {
+        $p = Join-Path $Root $f; if (-not (Test-Path -LiteralPath $p -PathType Leaf)) { continue }
+        $res.Applies = $true; $res.Files++
+        $x = if ($texts.ContainsKey($f)) { $texts[$f] } else { Read-Text $p }
+        $res.Untagged += @(Find-UntaggedUi ($f -replace '\\', '/') ($x -replace "`r", '') $attr)
+    }
+    return $res
+}
+
 # Quadro do sprint (v3.51; run.ps1 e kanban.ps1): Histórias e Tasks (marcador, depende de, plano, cenários).
 # v3.51.4 (garden item 20): o cabeçalho "ID" vale só para a própria tabela (zera fora dela) e qualquer título "## " que não
 # é de História encerra a História — as tabelas de rastreabilidade e de trilha depois da última História viravam Tasks-
@@ -612,6 +817,31 @@ function Get-FichaMissing([string]$Root, $Ficha) {
 # Teto de arquivos previstos por Task com ficha (v3.53.2, plugin-report prévio do sprint 5 do garden): acima dele, o custo
 # do plano cresce mais rápido que a Task (6 arquivos ≈ US$ 2,5; 9 ≈ US$ 4,7; 12 ≈ US$ 8,7) — a Task se divide antes do Opus.
 $script:FichaMaxFiles = 6
+# Teto do plano (v3.53.6, sprint 5 do garden, item 1): acima dele o plan.ps1 reprova (regra 22) e o run.ps1 next divide a
+# Task com os blocos do plano como base — nunca se corta o plano (v3.53.2: cortar custou metade do plano da T-042). Em KB
+# arredondados a 0,1, como o plan.ps1 imprime.
+$script:PlanMaxKb = 30
+function Get-PlanKb([string]$Text) { return [Math]::Round(([System.Text.Encoding]::UTF8.GetByteCount($Text)) / 1024, 1) }
+
+# Prova no alvo pendente (v3.53.6, sprint 5 do garden, item 9): a Task cujo accept parou por ambiente e cujo reparo falhou vai
+# a 🔴 com esta etiqueta na linha de "Bloqueios e riscos abertos" (mark.ps1 -Reason) — antes ela fechava ✅ com "nenhum
+# aplicável — emulador fora do ar" na coluna Cenários, sem prova. O run.ps1 next lê as linhas e, com o alvo de volta, reabre.
+$script:TargetPendingTag = 'prova no alvo pendente'
+# IDs citados nas linhas de Bloqueios (kanban.md, burndown.md ou sprint-backlog.md) que levam a etiqueta; quem chama cruza
+# com o marcador 🔴 do quadro (linha antiga, de Task já reaberta, o mark.ps1 troca por "prova no alvo retomada").
+function Get-TargetPendingIds([string]$SprintDir) {
+    $ids = @()
+    foreach ($f in @('kanban.md', 'burndown.md', 'sprint-backlog.md')) {
+        $fp = Join-Path $SprintDir $f; if (-not (Test-Path -LiteralPath $fp)) { continue }
+        $sec = Get-Section (Read-Text $fp) '^#{2,3}\s+Bloqueios e riscos abertos'; if (-not $sec) { continue }
+        foreach ($l in ($sec -split "`r?`n")) {
+            if (-not $l.TrimStart().StartsWith('|') -or $l.IndexOf($script:TargetPendingTag, [StringComparison]::OrdinalIgnoreCase) -lt 0) { continue }
+            $c = @(Split-Row $l)
+            foreach ($m in [regex]::Matches((@($c | Select-Object -First 2) -join ' '), $script:TaskIdRe)) { $ids += $m.Value }
+        }
+    }
+    return @($ids | Select-Object -Unique)
+}
 
 # Resumo do plano de uma dependência (v3.53.2): o cabeçalho (até o primeiro "## ") e os títulos dos passos/blocos — o
 # Arquiteto da Task seguinte lê arquivos, nomes e convenções sem abrir o plano inteiro (no garden, 3 planos = ~60 mil

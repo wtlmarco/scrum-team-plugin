@@ -3,7 +3,7 @@
 # Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/plan.ps1" -Plan <caminho do plano> [-Root <projeto>]
 # Regras: implementation-plan.md "Regras do formato" 2 (blocos), 15 (lista legível, teste por arquivo), 16 (protegidos),
 # 17 (trecho literal ≤ 15 linhas ou validado), 18 (mutações), a variante leve e, desde a v3.51, 21 (render só com layout
-# novo), 22 (tamanho: só informa; desde a v3.53.2 sem corte — aviso de Task grande acima de 30 KB), 23 (cenários citados existem nos .scn do QA) e 24 (risco);
+# novo), 22 (tamanho: desde a v3.53.2 sem corte; desde a v3.53.6 acima de 30 KB reprova e a Task vai à divisão), 23 (cenários citados existem nos .scn do QA) e 24 (risco);
 # desde a v3.52.2, 26 (linhas "- Contagem:" recontadas e premissas "- P<k> ·" medidas ou com quem verifica) e 27 (layout
 # novo com a linha **Documentos vivos:**; documento de desenho fora de **Arquivos tocados:** — o Arquiteto o consolida);
 # desde a v3.53, 28 (Task com ficha no breakdown: **Li além da ficha:**, nomes comuns no plano, caminhos da ficha existem).
@@ -159,8 +159,11 @@ try {
     # e depois cortar em dezenas de edições, cada uma relendo a conversa toda — metade do custo do plano da T-042 (US$ 4,39 de
     # 8,70) e ~US$ 9 do sprint. Cortar não traz informação nova e pode tirar detalhe: o plano fica como saiu. O tamanho só
     # informa; acima de 30 KB o sinal é de Task grande (divida na quebra), nunca de cortar.
-    $kb = [Math]::Round(([System.Text.Encoding]::UTF8.GetByteCount($text)) / 1024, 1)
-    if ($kb -gt 30) { Add-Result 'tamanho' 'aviso' "$kb KB: Task grande — não corte o plano; a divisão de Tasks assim é na quebra (breakdown, **Arquivos previstos:**) (regra 22)" }
+    # v3.53.6 (sprint 5 do garden, item 1): acima do teto ($PlanMaxKb, lib.ps1) o plano REPROVA — o aviso deixava a Task grande
+    # ir ao dev. O remédio continua não sendo cortar: o run.ps1 next leva a Task à divisão, com os blocos deste plano como base,
+    # e cada Task nova ganha plano próprio.
+    $kb = Get-PlanKb $text
+    if ($kb -gt $script:PlanMaxKb) { Add-Result 'tamanho' 'falhou' "$kb KB, acima de $($script:PlanMaxKb) KB: Task grande — NÃO corte nem encurte o plano (cortar relê a conversa a cada edição e não traz informação nova). A Task vai à divisão: o run.ps1 next a divide com os blocos deste plano como base e cada Task nova ganha plano próprio (regra 22)" }
     else { Add-Result 'tamanho' 'ok' "$kb KB" }
 
     # ---------- 23 · cenários ao lado do plano (v3.51) ----------
@@ -297,6 +300,8 @@ try {
     } else { Add-Result 'leve' 'n-a' 'trilha plena' }
 
     Write-Results ("Plano · " + (Split-Path $path -Leaf))
+    # v3.53.6 (item 1): reprovado por tamanho, o plano não volta para correção (nem das outras linhas): a Task se divide.
+    if (@($script:Results | Where-Object { $_.Regra -eq 'tamanho' -and $_.Resultado -eq 'falhou' }).Count) { [Console]::Out.WriteLine(''); [Console]::Out.WriteLine("**Plano não vai ao dev — Task grande ($kb KB):** não corte, não encurte nem corrija as outras linhas; deixe o plano como está e volte dizendo 'tamanho'. O run.ps1 next divide a Task com os blocos deste plano como base."); exit 1 }
     if (@($script:Results | Where-Object { $_.Resultado -eq 'falhou' }).Count) { [Console]::Out.WriteLine(''); [Console]::Out.WriteLine('**Plano não vai ao dev:** volta ao Arquiteto com esta tabela.'); exit 1 }
     exit 0
 } catch {

@@ -160,6 +160,16 @@ Próximo sprint, contra o sprint 4: US$ do plano por Task construída (`consumpt
 
 Sem regra nova (34). **Indicador (sprint 6):** nenhuma espera acima de 15 min sem `POSSÍVEL TRAVAMENTO` ou resultado; bloqueios da G20 por dia abaixo de 5; zero reparo do alvo que passe de 10 min. **Evidência:** CHANGELOG v3.53.5.
 
+### Addendum v3.53.6 — Task grande se divide, prova pendente bloqueia (SM + Arq + Dev + QA) — 04/11/2026
+
+**Instrução:** stakeholder, 04/11, sobre o relatório do sprint 5 do garden. Muda:
+- plano acima de 30 KB reprova e a Task vai à divisão, com o plano como base; nunca se corta;
+- id de teste é padrão de código: id do `.scn` fora do código e controle sem id reprovam o `verify`;
+- Task sem prova no alvo por ambiente vai a 🔴 e volta quando o alvo responde; não fecha ✅;
+- consumo medido pela cota da assinatura, não por US$.
+
+Sem regra nova (34). **Indicador (sprint 6):** zero plano acima de 30 KB no dev; zero "tag não encontrada" no accept; zero ✅ sem prova no alvo; cota por Task no `consumption.md`. **Evidência:** CHANGELOG v3.53.6.
+
 ---
 
 ## v3.52 — Orquestrador enxuto: sessão nova por ritual, `run` em sessões curtas, espera sem sondagem, registro de decisões e commit por Task (SM) — 23/10/2026

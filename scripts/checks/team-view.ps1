@@ -4,8 +4,9 @@
 #                  estimativa restante (Série), última transição (Registro) e pendências do stakeholder (README §7).
 #                  v3.53.5: "Em execução" — a Task do .active-task, há quanto tempo, o último sinal de vida, o comando que
 #                  ela espera (CPU, arquivo, POSSÍVEL TRAVAMENTO) e PARADA quando nada roda há 20 min.
-#   -View usage  : tokens, US$ e tempo das rodadas medidas pela G16 (usage.jsonl) do sprint, por Task (rateio igual entre as
+#   -View usage  : tokens e tempo das rodadas medidas pela G16 (usage.jsonl) do sprint, por Task (rateio igual entre as
 #                  Tasks citadas, como no kanban.ps1) e por papel e modelo. Só agentes: a sessão principal entra no close.
+#                  v3.53.6: sem US$ — a cota da assinatura (5h e semanal) lida do quota-log.jsonl da status line do plugin.
 # Chamado pelo hook prompt-submit.ps1 quando o stakeholder digita /team-status ou /team-usage: o hook devolve este texto
 # com decision=block, e o prompt não chega ao modelo. Também roda à mão. Só lê; nunca escreve em disco.
 # Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/team-view.ps1" -View status|usage [-Sprint <n>] [-Root <projeto>]
@@ -38,7 +39,35 @@ function Format-Tok([double]$N) {
     if ($N -ge 1e3) { return ($N / 1e3).ToString('0', $pt) + ' mil' }
     return $N.ToString('0', $pt)
 }
-function Format-Usd([double]$V) { return 'US$ ' + $V.ToString('0.00', $pt) }
+# v3.53.6 (decisão do stakeholder, item 10): cota da assinatura pelo registro da status line do plugin (quota-log.jsonl,
+# global; TEAM_QUOTA_LOG troca o caminho no teste) — a cota agora e o quanto a semanal subiu desde $Since (a soma das subidas;
+# quando o reinício da janela muda, a subida conta do zero). Linha única; sem registro, diz como ativar.
+function Get-QuotaView([string]$Since) {
+    $log = if ($env:TEAM_QUOTA_LOG) { $env:TEAM_QUOTA_LOG } else { Join-Path $env:USERPROFILE '.claude\quota-log.jsonl' }
+    $snaps = @()
+    foreach ($f in @(([System.IO.Path]::Combine((Split-Path $log), [System.IO.Path]::GetFileNameWithoutExtension($log) + '.1.jsonl')), $log)) {
+        if (-not (Test-Path -LiteralPath $f)) { continue }
+        foreach ($line in [System.IO.File]::ReadAllLines($f)) { if ($line.Trim()) { try { $snaps += ($line | ConvertFrom-Json) } catch { } } }
+    }
+    if (-not $snaps.Count) { return 'Cota: sem registro — ative a status line do plugin (how-to.md, Cota da assinatura).' }
+    $snaps = @($snaps | Sort-Object { [string]$_.at })
+    $now = $snaps[-1]
+    $cur = @(); if ($null -ne $now.five) { $cur += "5h $([Math]::Round([double]$now.five))%" }; if ($null -ne $now.week) { $cur += "semana $([Math]::Round([double]$now.week))%" }
+    $from = $null; try { $from = [datetime]$Since } catch { }
+    $up = 0.0; $prev = $null
+    foreach ($s in $snaps) {
+        if ($null -eq $s.week) { continue }
+        $at = $null; try { $at = [datetime]$s.at } catch { }
+        if ($from -and $at -and $at -lt $from) { $prev = $s; continue }
+        if ($prev -and $null -ne $prev.week) {
+            if ([string]$prev.weekReset -eq [string]$s.weekReset -and [double]$s.week -ge [double]$prev.week) { $up += [double]$s.week - [double]$prev.week }
+            elseif ([string]$prev.weekReset -ne [string]$s.weekReset) { $up += [double]$s.week }
+        }
+        $prev = $s
+    }
+    $when = try { ([datetime]$now.at).ToString('dd/MM HH:mm') } catch { [string]$now.at }
+    return "Cota agora ($when): $($cur -join ' · ') · a semanal subiu $($up.ToString('0.0', $pt)) ponto(s) desde a 1ª rodada do sprint (agentes, sessão e uso fora do plugin juntos)"
+}
 # Segundos → "45 s", "12 min", "2h05".
 function Format-Time([double]$S) {
     $s = [int]$S
@@ -183,36 +212,35 @@ try {
     if (-not $rows.Count) { Out-View @("Consumo · $title", 'Nenhuma rodada de agente medida ainda neste sprint.'); exit 0 }
     $rows = @($rows | Sort-Object { [string]$_.start })
     $sum = { param($rs, $f) [double](@($rs) | ForEach-Object { if ($null -ne $_.$f) { [double]$_.$f } else { 0 } } | Measure-Object -Sum).Sum }
-    $tok = & $sum $rows 'processed'; $usd = & $sum $rows 'usd'; $dur = & $sum $rows 'duration_s'
-    $noPrice = @($rows | Where-Object { $null -eq $_.usd }).Count
-    $o = @("Consumo · $title · $(Format-Tok $tok) tokens · $(Format-Usd $usd) · $(Format-Time $dur) de agente · $($rows.Count) rodadas")
-    if ($noPrice) { $o += "($noPrice rodada(s) sem preço — anteriores à v3.52.3 ou modelo fora da tabela)" }
-    $o += 'Só agentes; a sessão principal é medida no fechamento da Task e na retrospectiva.'
+    # v3.53.6 (decisão do stakeholder, item 10): sem US$ — a medida é a cota da assinatura (status line → quota-log.jsonl).
+    $tok = & $sum $rows 'processed'; $dur = & $sum $rows 'duration_s'
+    $o = @("Consumo · $title · $(Format-Tok $tok) tokens · $(Format-Time $dur) de agente · $($rows.Count) rodadas")
+    $o += Get-QuotaView ([string]$rows[0].start)
+    $o += 'Só agentes; a sessão principal é medida no fechamento da Task e na retrospectiva. Cota por rodada, Task e modelo: consumption.md (seção Cota da assinatura).'
 
     # Por Task: rateio igual entre as Tasks citadas na rodada (works), como no kanban.ps1.
     $parts = @()
     foreach ($r in $rows) {
         $ws = @(@($r.works) | Where-Object { $_ }); if (-not $ws.Count) { $ws = @([string]$r.work) }
         $k = [double][Math]::Max(1, $ws.Count)
-        foreach ($w in $ws) { $parts += [pscustomobject]@{ work = $(if ($w) { $w } else { 'n/a' }); tok = [double]$r.processed / $k; usd = $(if ($null -ne $r.usd) { [double]$r.usd / $k } else { 0 }); priced = ($null -ne $r.usd); dur = [double]$r.duration_s / $k } }
+        foreach ($w in $ws) { $parts += [pscustomobject]@{ work = $(if ($w) { $w } else { 'n/a' }); tok = [double]$r.processed / $k; dur = [double]$r.duration_s / $k } }
     }
-    $o += ''; $o += 'Por Task (tokens · US$ · tempo):'
-    foreach ($g in @($parts | Group-Object work | ForEach-Object { [pscustomobject]@{ w = $_.Name; tok = ($_.Group | Measure-Object tok -Sum).Sum; usd = ($_.Group | Measure-Object usd -Sum).Sum; priced = @($_.Group | Where-Object { $_.priced }).Count; dur = ($_.Group | Measure-Object dur -Sum).Sum } } | Sort-Object tok -Descending)) {
-        $o += "  $($g.w)  $(Format-Tok $g.tok) · $(if ($g.priced) { Format-Usd $g.usd } else { 'sem preço' }) · $(Format-Time $g.dur)"
+    $o += ''; $o += 'Por Task (tokens · tempo):'
+    foreach ($g in @($parts | Group-Object work | ForEach-Object { [pscustomobject]@{ w = $_.Name; tok = ($_.Group | Measure-Object tok -Sum).Sum; dur = ($_.Group | Measure-Object dur -Sum).Sum } } | Sort-Object tok -Descending)) {
+        $o += "  $($g.w)  $(Format-Tok $g.tok) · $(Format-Time $g.dur)"
     }
 
-    # Por papel (modelos entre parênteses), com a fatia do custo.
-    $o += ''; $o += 'Por papel (tokens · US$ · % do custo · rodadas):'
+    # Por papel (modelos entre parênteses), com a fatia dos tokens.
+    $o += ''; $o += 'Por papel (tokens · % dos tokens · rodadas):'
     foreach ($g in @($rows | Group-Object { Get-Role ([string]$_.role) } | ForEach-Object {
-        $gu = & $sum $_.Group 'usd'
-        [pscustomobject]@{ r = $_.Name; m = ((@($_.Group | ForEach-Object { Get-ShortModel ([string]$_.model) }) | Select-Object -Unique) -join ', '); n = $_.Count; tok = (& $sum $_.Group 'processed'); usd = $gu; priced = @($_.Group | Where-Object { $null -ne $_.usd }).Count } } | Sort-Object usd, tok -Descending)) {
-        $pct = if ($usd -gt 0) { [Math]::Round(100 * $g.usd / $usd) } else { 0 }
-        $o += "  $($g.r) ($($g.m))  $(Format-Tok $g.tok) · $(if ($g.priced) { Format-Usd $g.usd } else { 'sem preço' }) · $pct% · $($g.n)"
+        [pscustomobject]@{ r = $_.Name; m = ((@($_.Group | ForEach-Object { Get-ShortModel ([string]$_.model) }) | Select-Object -Unique) -join ', '); n = $_.Count; tok = (& $sum $_.Group 'processed') } } | Sort-Object tok -Descending)) {
+        $pct = if ($tok -gt 0) { [Math]::Round(100 * $g.tok / $tok) } else { 0 }
+        $o += "  $($g.r) ($($g.m))  $(Format-Tok $g.tok) · $pct% · $($g.n)"
     }
 
     $lr = $rows[-1]
     $when = try { ([datetime]$lr.start).ToString('dd/MM HH:mm') } catch { [string]$lr.start }
-    $o += ''; $o += "Última rodada: $when · $(Get-Role ([string]$lr.role)) · $([string]$lr.work) · $(Format-Tok ([double]$lr.processed)) · $(if ($null -ne $lr.usd) { Format-Usd ([double]$lr.usd) } else { 'sem preço' })"
+    $o += ''; $o += "Última rodada: $when · $(Get-Role ([string]$lr.role)) · $([string]$lr.work) · $(Format-Tok ([double]$lr.processed))"
     Out-View $o
     exit 0
 } catch {

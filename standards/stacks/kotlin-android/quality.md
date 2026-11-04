@@ -32,6 +32,8 @@
 "targets": { "android": { "package": "<applicationId>", "apk": "app/build/outputs/apk/release/app-release.apk", "avd": "<nome do AVD>", "maxUptimeHours": 24 } }
 ```
 
+Emulador em container (v3.53.2 · v3.53.6): no lugar de `avd`, `"repair": "docker restart <container>; adb connect localhost:5555"`, `"serial": "localhost:5555"` e, opcionais, `"memoryCmd": "docker stats --no-stream --format '{{.MemUsage}}' <container>"` com `"maxMemoryMB": 3072` (acima do limite o pré-voo reprova e o repair roda) e `"freshStart": false` para não reiniciar o emulador no primeiro `accept` de cada Task (o padrão, com `repair`, é reiniciar).
+
 - O `verify.ps1` acrescenta sozinho a higiene do Gradle (sem daemon, compilador Kotlin em processo) e encerra a árvore de processos no fim (`scripts/checks/tool-hygiene.json`).
 - **`"daemon": true`** (v3.51.4, opcional): o daemon do Gradle **ligado só durante a chamada do `verify.ps1`** — o build, a suíte e cada mutação da mesma chamada o reaproveitam (sem a partida a frio de cada comando, a maior parte dos 7–10 min por chamada medidos no SunScape) e o script o encerra antes de devolver o controle. Sem a chave, vale o padrão de antes (sem daemon). Ligue num projeto e compare o tempo em `verify/<n>/<T-ID>/time.jsonl` (o `kanban.md` mostra a "Espera de comando").
 - **`"compile"`** (v3.51.4, opcional): o comando que só compila (código e testes); o `verify.ps1 -Mode mutation -Precheck` aplica cada mutante e confere que ele compila, antes da mutação de verdade.
@@ -59,3 +61,18 @@ Copie para o documento de arquitetura do produto (§2b ou equivalente) e ajuste 
 | V17 | Pipeline transversal | log e validação na aplicação; sem autenticação local, "não aplicável" |
 | V18–V21 | Desempenho | arranque a frio (`am start -W`, mediana de 3), tamanho do APK; ambiente = o AVD de referência |
 | V22 | Render | Compose UI Test com caixas medidas em 3 escalas de fonte (sem navegador: o próprio emulador é o render real) |
+
+## KA-Q4 Ids de teste (v3.53.6, regra que reprova o verify)
+
+Pedido do stakeholder depois do sprint 5 do garden ("nunca mais termos problema durante as rotinas de QA"): o identificador de teste é padrão de código, conferido pela máquina, não pela revisão.
+
+| O que reprova o `verify.ps1 -Mode full` (chave `testids`, exit 1) | Saída |
+|---|---|
+| id citado num cenário de tela da Task (`.scn` do QA, sem `(teste)` e sem `# aguarda` de outra Task) que não existe **literalmente** no código de produção — string do `testTag`, constante, ou prefixo de id dinâmico (`"lista.item.$id"`) | o id, o cenário e `arquivo.scn:linha` |
+| `Button(`, `IconButton(`, `TextButton(`, `OutlinedButton(`, `ElevatedButton(`, `FloatingActionButton(`, `TextField(`, `OutlinedTextField(`, `Checkbox(`, `Switch(`, `RadioButton(`, `Slider(`, chips, `NavigationBarItem(`, `Tab(`, `DropdownMenuItem(` sem `testTag(` nos argumentos da chamada | `arquivo:linha` |
+| `.clickable` / `.toggleable` / `.selectable` / `.combinedClickable` sem `testTag(` na chamada que recebe a cadeia de modifier | `arquivo:linha` |
+| `items(` / `itemsIndexed(` de `LazyColumn`/`LazyRow`/grade sem `testTag(` no item | `arquivo:linha` |
+
+- **Onde:** os arquivos `.kt` de **Arquivos tocados:** do plano (sem plano, os mudados no git), fora de `src/test`, `src/androidTest`, `build/` e gerados.
+- **Exceção explícita:** `// sem-testid: <motivo>` na linha da chamada ou na anterior — sem motivo, continua reprovando. Uso típico: componente próprio que repassa o `modifier` do chamador (o `testTag` vai na chamada do componente); `@Preview`.
+- **Antes do `accept`:** o APK do disco mais velho que o código do módulo sai com exit 2 ("reconstrua (assembleDebug) antes do accept") — o id criado só existe no app depois do build.

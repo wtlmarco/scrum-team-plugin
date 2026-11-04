@@ -182,6 +182,13 @@ Medido no fim do sprint 4 do garden (3.52.2 → 3.53.0): 6 instâncias de dev co
 |---|---|---|
 | **G20** | segue a decisão "esperar" do `run.ps1 next` (`.team-project/.next-verdict`, gravada quando há agente vivo ou comando da Task rodando, apagada no começo de cada `next`) por 30 min; a Task citada é a do `.active-task` quando ela está elegível | decisão com mais de 30 min (barra de novo, e a sessão roda o `next`, que mostra o sinal de vida); espera que não passa pelo `next` (a sessão nunca o rodou) |
 
+**v3.53.6 (sprint 5 do garden):** o operator fez o reparo do emulador passo a passo porque a G14 recusava o comando de `targets.android.repair` e o `target.ps1` chamado pelo caminho; a Task voltou sem prova. Casos em `run-guard-tests.ps1` (bloco v3.53.6).
+
+| Guarda | O que mudou | O que **não** cobre |
+|---|---|---|
+| **G14** | conferências do plugin também nas formas `& <caminho>\x.ps1` e `<caminho>\x.ps1` (com `$env:CLAUDE_PLUGIN_ROOT` resolvido); cada trecho de `targets.<alvo>.repair` (separado por `;`, `&&`, `\|\|`) entra na lista operacional como prefixo; `& "<script>.ps1"` que não é do plugin nem do papel não passa mais como expressão | script do projeto fora do `repair` declarado (segue em `runCommands`); o reparo escrito à mão com outro texto |
+| **G16** | sem mudança na gravação; o `usd` do `usage.jsonl` deixou de ser lido pelo `consumption.ps1` e pelo `/team-usage` (a medida é a cota da assinatura, pela status line do plugin) | a cota não passa por hook: sem a status line ativa, não há registro da cota |
+
 **Scripts (v3.53.1):** `run.ps1` — `done -Result teto`, `start` recusa dev vivo da Task (exit 2), `next` espera executor ou dev vivo da Task (exit 3) e, com `.usage-limit`, mede pelo transcript o agente do `.active-agents` que parou no limite (a mesma sessão seguiu, sem `SessionStart`); `accept.ps1` — cenário sem `assert-*` é malformado (exit 2); `kanban.ps1` — empate de minuto no Registro pela ordem do arquivo; `consumption.ps1` — "plugin <versão>" na Nota.
 
 **Scripts (v3.52.3):** `verify.ps1` estima cada comando do full pela história da chave (o maior tempo das últimas 5 rodadas em `verify/**/result.json`; sem história, a regra antiga), trava a Task (`verify.lock`; outra rodada viva → **exit 5**) e avisa comando acima de 80 % do teto por comando; `run.ps1` põe o `accept.ps1` no cartão só com `targets`, grava a rota do 🔺 GAP e a queda de ambiente no `run-log.md` (`done -Result gap|env`) e manda o Arquiteto estender a decisão às Tasks abertas; `consumption.ps1` soma a coluna **US$** nos Totais.
