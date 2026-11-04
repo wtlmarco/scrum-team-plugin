@@ -680,9 +680,9 @@ $p = Join-Path $tmp 'plano'; New-Project $p
 $pl = '.team-project/sprints/1/plan/T-050-x.md'; $fence = '```'
 $amb = "## 3. Ambiente medido`n`n| Pré-requisito | Comando de medição | Saída real |`n|---|---|---|`n| Node 20 | node --version | v20.11.0 |`n"
 $parar = "## 9. Onde parar`n- **Pré-requisito ausente** — 🔺 GAP`n"
-Put $p $pl ("# Plano`n**Cenários:** nenhum — só domínio, coberto por teste unitário`n**Risco:** regra de negócio`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n$amb`n## 4. Passos`n`n### Passo 1 — x`n- **Assinatura exata:**`n  $fence`n  export function a(): number`n  $fence`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · ``return 1`` → ``return 0```n`n$parar")
+Put $p $pl ("# Plano`n**Cenários:** nenhum — só domínio, coberto por teste unitário`n**Risco:** regra de negócio`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n$amb`n## 4. Passos`n`n### Passo 1 — x`n- **Assinatura exata:**`n  $fence`n  export function a(): number`n  $fence`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · regra: devolver outro valor que não 1`n`n$parar")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
-Check 'Plano em contrato: exit 0' $r 0 @('\| lista \| ok', '\| protegidos \| ok', '\| blocos \| n-a', '\| trecho \| ok', '\| mutação \| ok.*1 muta')
+Check 'Plano em contrato: exit 0 (v3.54: mutação de arquivo novo declarada pela regra)' $r 0 @('\| lista \| ok', '\| protegidos \| ok', '\| blocos \| n-a', '\| trecho \| ok', '\| mutação \| ok.*1 muta.*1 pela regra')
 $long = (1..20 | ForEach-Object { "  linha $_" }) -join "`n"
 Put $p $pl ("# Plano`n`n**Arquivos tocados:** " + ((1..9 | ForEach-Object { "``src/f$_.ts``" }) -join "`n") + "`n`n## 4. Passos`n`n### Passo 1 — x`n$fence`n$long`n$fence`n`n## 6. Testes`n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
@@ -1855,7 +1855,7 @@ Check 'v3.53.6 item 9c: alvo ainda fora → a Task segue 🔴 e a fila continua 
 $port = Get-Random -Minimum 41000 -Maximum 49000
 $srv = Start-Job -ArgumentList $port -ScriptBlock { param($port)
     $l = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $port); $l.Start()
-    try { for ($i = 0; $i -lt 20; $i++) { $c = $l.AcceptTcpClient(); $s = $c.GetStream(); $buf = New-Object byte[] 4096; $null = $s.Read($buf, 0, 4096)
+    try { for ($i = 0; $i -lt 20; $i++) { while (-not $l.Pending()) { Start-Sleep -Milliseconds 100 }; $c = $l.AcceptTcpClient(); $s = $c.GetStream(); $buf = New-Object byte[] 4096; $null = $s.Read($buf, 0, 4096)
         $b = [System.Text.Encoding]::ASCII.GetBytes("HTTP/1.1 200 OK`r`nContent-Length: 2`r`nConnection: close`r`n`r`nok"); $s.Write($b, 0, $b.Length); $s.Flush(); $c.Close() } } finally { $l.Stop() } }
 $sw = [Diagnostics.Stopwatch]::StartNew()
 while ($sw.Elapsed.TotalSeconds -lt 20) { try { $tc = New-Object System.Net.Sockets.TcpClient('127.0.0.1', $port); $tc.Close(); break } catch { Start-Sleep -Milliseconds 300 } }
@@ -1884,11 +1884,12 @@ Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x
 $r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Root', $p)
 Check 'v3.53.7: massa declarada e select com opção passam o -ParseOnly' $r 0 @('1 cenário\(s\) válidos', 'SC-001')
 # Invoke-TargetSeed: exit 0 carrega; exit ≠ 0 devolve o motivo com a saída; o ambiente leva o alvo e o nome.
-. (Join-Path $checks 'lib.ps1')
 $sc = '{ "seeds": { "ok": "if ($env:ACCEPT_TARGET -eq ''android'' -and $env:ACCEPT_SEED -eq ''ok'' -and $env:ACCEPT_PACKAGE -eq ''br.x'') { exit 0 } else { exit 9 }", "ruim": "Write-Output ''tabela canteiros nao existe''; exit 3" } }' | ConvertFrom-Json
-$s1 = Invoke-TargetSeed $p 'android' $sc 'ok' @{ ACCEPT_PACKAGE = 'br.x' }
-$s2 = Invoke-TargetSeed $p 'android' $sc 'ruim'
-$s3 = Invoke-TargetSeed $p 'android' $sc 'nenhuma'
+# o lib.ps1 grava $script:E (marcadores), que é o $e dos testes (o PowerShell não diferencia maiúsculas) mesmo
+# carregado num escopo filho — guarda e devolve o $e.
+$e0 = $e
+$sr = & { . (Join-Path $checks 'lib.ps1'); @{ s1 = (Invoke-TargetSeed $p 'android' $sc 'ok' @{ ACCEPT_PACKAGE = 'br.x' }); s2 = (Invoke-TargetSeed $p 'android' $sc 'ruim'); s3 = (Invoke-TargetSeed $p 'android' $sc 'nenhuma') } }
+$s1 = $sr.s1; $s2 = $sr.s2; $s3 = $sr.s3; $e = $e0
 Check 'v3.53.7: Invoke-TargetSeed — carregou (com o ambiente), falhou (exit e saída) e não declarada' @{ Code = 0; Out = "S1=[$s1]`nS2=[$s2]`nS3=[$s3]" } 0 @('S1=\[\]', "S2=\[massa de dados 'ruim' não carregou \(exit 3\): tabela canteiros nao existe\]", "S3=\[massa de dados 'nenhuma' não declarada")
 
 $p = Join-Path $tmp 'v3537-plano'; New-Project $p
@@ -1914,8 +1915,46 @@ Check 'v3.53.7: plano que só cita as decisões passa' $r 0 @('\| decisões \| o
 $r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
 $card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
 Check 'v3.53.7: cartão traz as decisões do sprint que valem para a Task, uma linha cada' @{ Code = $r.Code; Out = $(if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) } else { 'sem cartão' }) } 0 @('\*\*Decisões do sprint\*\* \(`architect/decisions/S1\.md`', '- D-1 — Emulador fora do ar: Com o alvo fora do ar', '^(?![\s\S]*D-2 — APK)')
-$dg = Get-DecisionsDigest $p '1'
+$dg = & { . (Join-Path $checks 'lib.ps1'); Get-DecisionsDigest $p '1' }; $e = $e0
 Check 'v3.53.7: recorte da ficha traz todas as decisões, com a quem valem, para o Arquiteto citar' @{ Code = 0; Out = $dg } 0 @('## Decisões do sprint', 'D-1 — Emulador fora do ar · vale para todas', 'D-2 — APK antes do accept · vale para T-080', 'cite, não copie')
+
+# v3.54 (decisões do stakeholder de 04/11): mutação declarada pela regra, com o trecho escrito pelo dev sobre o código real,
+# e a margem do dev (defeito do próprio teste, CSS da regra do projeto) com as travas conferidas no close.
+$p = Join-Path $tmp 'v354'; New-Project $p
+$ErrorActionPreference = 'Continue'
+& git -C $p init -q 2>$null; Put $p '.gitignore' ".team-project/`n"
+Put $p 'src/calc.ts' "export function soma(a, b) {`n  return a + b; // fim`n}`n"
+Put $p 'tests/check.ps1' 'param($t) if ((Get-Content src/calc.ts -Raw) -match "a \+ b") { "Tests: 1 passed" } else { "Tests: 1 failed"; exit 1 }'
+Put $p 'tests/other.ps1' '"Tests: 1 passed"'
+& git -C $p add -A 2>$null; & git -C $p -c user.email=t@t -c user.name=t commit -qm init 2>$null
+$ErrorActionPreference = 'Stop'
+Put $p '.team-project/guards.json' '{ "verify": { "focused": "powershell -NoProfile -File tests/check.ps1 {tests}", "suite": "powershell -NoProfile -File tests/check.ps1 all" } }'
+$pl = '.team-project/sprints/1/plan/T-041-export.md'
+Edit-File (Join-Path $p $pl) '## 3. Ambiente' ("**Arquivos tocados:** ``src/calc.ts```n``tests/check.ps1```n``tests/other.ps1```n`n**Mutações:**`n- M1 · teste ``tests/check.ps1`` · ``src/calc.ts`` · regra: somar deixa de ser soma (o resultado muda de operação)`n`n## 3. Ambiente")
+$dvp = Join-Path $p '.team-project/sprints/1/delivery/T-041.md'
+Put $p '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`n### Gaps levantados`nnenhum`n"
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+Check 'v3.54: mutação pela regra sem o trecho do dev: inconclusiva, com o que escrever' $r 1 @('M1 src/calc\.ts: inconclusivo — declarada pela regra \(somar deixa de ser soma.*sem o trecho do dev')
+[System.IO.File]::AppendAllText($dvp, "`n## Entrega — T-041 (fim)`n`n**Mutações:**`n- M1 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``a + b`` → ``a - b```n", $utf8)
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+Check 'v3.54: com o trecho do dev no relatório, a mutação roda, é pega e leva a regra ao registro' $r 0 @('M1 src/calc\.ts: ok.*regra: somar deixa de ser soma.*trecho do dev: `a \+ b` → `a - b`')
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.54: close — R7-mutação ok pela linha do dev; sem ajuste na margem, R7-margem n-a' $r 0 @('\| R7-mutação \| ok.*M1', '\| R7-margem \| n-a')
+[System.IO.File]::AppendAllText($dvp, "`n## Retomada`n`n**Mutações:**`n- M1 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``// fim`` → ``// x```n", $utf8)
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+Check 'v3.54: trecho do dev trocado na mesma árvore roda de novo (a última linha vale) — a decorativa não é pega' $r 1 @('M1 src/calc\.ts: falhou')
+[System.IO.File]::AppendAllText($dvp, "`n### Ajustes na margem`n- A1 · teste · ``tests/check.ps1`` · a espera passou a aguardar o elemento antes de medir`n- A2 · css · ``src/calc.ts`` · botão de 40 para 44 px`n- A3 · teste · ``tests/other.ps1`` · referência de medida trocada para a janela`n- A4 · teste · ``tests/fora.ps1`` · x`n- ajuste solto sem formato`n", $utf8)
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.54: margem sem as travas não fecha — teste com mutação não pega, CSS sem regra, teste sem mutação, fora da lista, linha solta' $r 1 @('\| R7-margem \| falhou.*A1: a\(s\) mutação\(ões\) M1 do teste tests/check\.ps1 não foram pegas.*A2: ajuste de CSS sem .regra:.*A3: o teste tests/other\.ps1 não tem mutação no plano.*A4: tests/fora\.ps1 fora de \*\*Arquivos tocados:\*\*', 'linha fora do formato', 'Não fecha')
+Put $p '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`n**Mutações:**`n- M1 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``a + b`` → ``a - b```n`n### Ajustes na margem`n- A1 · teste · ``tests/check.ps1`` · a espera passou a aguardar o elemento antes de medir`n- A2 · css · ``src/calc.ts`` · botão de 40 para 44 px · regra: standards/ui.md §3 (alvo de toque 44 px)`n"
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.54: margem com as travas fecha — teste ajustado com a mutação pega na árvore final, CSS com a regra citada' $r 0 @('\| R7-margem \| ok.*2 ajuste\(s\).*A1 teste \(M1 pegas\).*A2 css \(standards/ui\.md §3')
+# plan.ps1: o trecho literal só quando já existe no código; a regra diz o que quebra.
+Put $p $pl ("# Plano`n**Cenários:** nenhum — interno`n**Risco:** regra de negócio`n`n**Arquivos tocados:** ``src/calc.ts```n``src/novo.ts```n``tests/check.ps1```n`n**Arquivos protegidos:** nenhum`n`n## 3. Ambiente`n| Pré-requisito | Comando | Saída real |`n|---|---|---|`n| Node | node -v | v20 |`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``a * b`` → ``a / b```n- M2 · teste ``tests/check.ps1`` · ``src/novo.ts`` · ``x > 1`` → ``x >= 1```n- M3 · teste ``tests/check.ps1`` · ``src/novo.ts`` · regra: curta`n- M4 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``a + b`` → ``a - b```n`n## 9. Onde parar`n- Pré-requisito ausente`n")
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.54: plano com trecho adivinhado (inexistente no código ou em arquivo novo) e regra vazia reprova; trecho que já existe passa' $r 1 @('\| mutação \| falhou.*M1: o trecho ainda não existe em src/calc\.ts — declare pela regra.*M2: o trecho ainda não existe em src/novo\.ts.*M3: .regra:. vazia ou curta', '^(?![\s\S]*M4: o trecho)')
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output

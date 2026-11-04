@@ -122,21 +122,29 @@ try {
             $t = ($m.Test -replace '\\', '/'); $f = ($m.File -replace '\\', '/')
             if ($files -and $files -notcontains $f) { $iss += "$($m.Id): $f fora de **Arquivos tocados:**" }
             if ($files -and $files -notcontains $t) { $iss += "$($m.Id): teste $t fora de **Arquivos tocados:**" }
+            # v3.54: declarada pela regra — o dev escreve o trecho sobre o código real; aqui só a regra tem de dizer o que quebra.
+            if ($null -eq $m.Find) { if ($m.Rule.Length -lt 12) { $iss += "$($m.Id): 'regra:' vazia ou curta demais — diga o que a mutação quebra (ex.: 'aceitar valor igual ao limite')" }; continue }
             if ($m.Find -eq $m.Replace) { $iss += "$($m.Id): trecho e mutante iguais" }
             if ($m.Find -eq '') { $iss += "$($m.Id): trecho vazio (crase dupla ou trecho com crase — escolha um trecho sem crase)" }
             # v3.51.4 (garden item 27): o arquivo de produção já existe → o trecho tem de aparecer no máximo uma vez nele (a
             # mutação troca a ÚNICA ocorrência; duplicado vira inconclusivo depois de ~10 min de construção). Arquivo novo
             # ou trecho que a Task vai escrever: confere-se depois da construção, com verify.ps1 -Mode mutation -Precheck.
+            # v3.54 (mutação escrita pelo dev): trecho literal no plano só se ele JÁ existe no código, uma vez. O trecho que a
+            # Task vai escrever o Arquiteto adivinhava (19 no maior plano do sprint 5 do garden) e, escrito de outro jeito pelo
+            # dev, virava "inconclusivo" e 🔺 GAP ao Opus — esse se declara pela regra.
             $pf = Join-Path $Root $f
+            $guess = "o trecho ainda não existe em $f — declare pela regra: '- $($m.Id) · teste ``$t`` · ``$f`` · regra: <o que a mutação quebra>' (o dev escreve o trecho sobre o código real)"
             if ($m.Find -ne '' -and (Test-Path -LiteralPath $pf -PathType Leaf)) {
                 $src = Read-Text $pf; $hits = 0; $ix = $src.IndexOf($m.Find, [StringComparison]::Ordinal)
                 while ($ix -ge 0) { $hits++; $ix = $src.IndexOf($m.Find, $ix + [Math]::Max(1, $m.Find.Length), [StringComparison]::Ordinal) }
                 if ($hits -gt 1) { $iss += "$($m.Id): o trecho aparece $hits vezes em $f (a mutação precisa de uma ocorrência só — alongue o trecho)" }
-            }
+                elseif ($hits -eq 0) { $iss += "$($m.Id): $guess" }
+            } elseif ($m.Find -ne '') { $iss += "$($m.Id): $guess" }
         }
-        if ($iss.Count) { Add-Result 'mutação' 'falhou' ($iss -join '; ') } else { Add-Result 'mutação' 'ok' "$($muts.Count) mutação(ões) declaradas" }
+        $byRule = @($muts | Where-Object { $null -eq $_.Find }).Count
+        if ($iss.Count) { Add-Result 'mutação' 'falhou' ($iss -join '; ') } else { Add-Result 'mutação' 'ok' ("$($muts.Count) mutação(ões) declaradas" + $(if ($byRule) { " ($byRule pela regra — o trecho é do dev)" } else { '' })) }
     } elseif ($noProof) { Add-Result 'mutação' 'ok' "sem mutação, com 'sem prova: <motivo>'" }
-    elseif ($hasMutBlock) { Add-Result 'mutação' 'falhou' '**Mutações:** sem linha no formato "- M<k> · teste `…` · `<produção>` · `<trecho>` → `<mutante>`"' }
+    elseif ($hasMutBlock) { Add-Result 'mutação' 'falhou' '**Mutações:** sem linha no formato "- M<k> · teste `…` · `<produção>` · regra: <o que quebra>" (ou, com trecho que já existe no código, "· `<trecho>` → `<mutante>`")' }
     else { Add-Result 'mutação' 'falhou' "nenhuma **Mutações:** nem 'sem prova: <motivo>' na §6 (regra 18)" }
 
     # ---------- R26 · ambiente medido (v3.51.4, garden item 16): a mesma regra do close.ps1, cobrada no plano ----------

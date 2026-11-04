@@ -75,8 +75,9 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
 |---|---|---|---|
 
 **Mutações:**
-- M1 · teste `<arquivo de teste>` · `<arquivo de produção>` · `<trecho exato>` → `<trecho mutante>`
-*(regra 18; teste sem regra a remover: `sem prova: <arquivo> — <motivo>`)*
+- M1 · teste `<arquivo de teste>` · `<arquivo de produção>` · regra: <o que a mutação quebra — ex.: aceitar valor igual ao limite>
+- M2 · teste `<arquivo de teste>` · `<arquivo de produção>` · `<trecho que JÁ existe no código>` → `<trecho mutante>`
+*(regra 18 — pela regra é o padrão: o dev escreve o trecho sobre o código real; literal só com trecho que já existe uma vez no arquivo. Teste sem regra a remover: `sem prova: <arquivo> — <motivo>`)*
 
 **Render real** *(só com **Layout novo: sim** — regra 21)*:
 | Teste de render | Tela (largura × altura) | Fontes | Caixas medidas | Deve falhar se… |
@@ -152,7 +153,7 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
 15. ✓ **`**Arquivos tocados:**` é lido pela G9** (R4 · R8): lista **fechada e completa** — produção e teste, inclusive arquivo novo —, um caminho por linha, entre crases, relativo à raiz, com `/`, sem linha em branco no meio, sem diretório, curinga nem "e afins"; rótulo com outra grafia não é lido. Arquivo que um 🔺 GAP acrescentar entra aqui. **Todo arquivo de produção leva o seu teste na lista**, ou a linha `sem teste: <arquivo> — <motivo>` na §6.
 16. ✓ **Só arquivo do executor na lista.** Documento de `.team-project/` de outro papel (G8) sai — vai como pedido ao dono. Arquivo de gate (`guards.json` → `protectedPaths`; a G5 o nega a todo subagente) vai em `**Arquivos protegidos:** ver §12`, com o diff exato, **separado por linha em branco** de `**Arquivos tocados:**`; a sessão aplica antes do dev ([`sprint-run.md`](../../scrum-master/process/sprint-run.md) passo 3). Sem protegido: `**Arquivos protegidos:** nenhum`. Descoberto no meio da Task: 🔺 GAP e §12 nova.
 17. ✓ **Trecho literal até 15 linhas por bloco de código**, só onde a forma é a decisão (expressão regular, consulta, configuração, mensagem de erro). Acima disso, `**Validado em:** <scratchpad: caminho> | <job do operator>` no passo, ou encurte para contrato. Teste não vai escrito: vai a linha da §6.
-18. ✓ **Prova de falha** (pelo risco, regra 24). Cada teste com "Deve falhar se…" ganha `- M<k> · teste `<arquivo de teste>` · `<arquivo de produção>` · `<trecho exato>` → `<trecho mutante>`` em `**Mutações:**`. O trecho aparece **uma vez** no arquivo depois da implementação, não é vazio e não tem crase; o mutante **compila** — confiro antes de entregar, pelo `operator` ou, com `verify.compile`, por `verify.ps1 -Mode mutation -Plan <plano> -Precheck`; trecho que só nasce na Task sai premissa `não exercitada … · verifica: dev em verify -Precheck`. Os dois arquivos estão em `**Arquivos tocados:**`. Teste sem regra a remover: `sem prova: <arquivo de teste> — <motivo>`.
+18. ✓ **Prova de falha** (pelo risco, regra 24). Cada teste com "Deve falhar se…" ganha uma linha em `**Mutações:**`. **Pela regra (v3.54, o padrão):** `- M<k> · teste `<arquivo de teste>` · `<arquivo de produção>` · regra: <o que a mutação quebra>` — eu digo **o que** quebrar; o dev, com o código real escrito, põe o trecho e o mutante no bloco `**Mutações:**` do relatório de entrega, o `verify` roda a linha dele e o QA confere que ela ataca a regra declarada. **Literal** (`· `<trecho>` → `<mutante>``) só quando o trecho **já existe uma vez** no arquivo hoje (o `plan.ps1` reprova o trecho que ainda não existe — eu estaria adivinhando o código do dev); ele não é vazio, não tem crase e o mutante **compila** (confiro pelo `operator` ou por `verify.ps1 -Mode mutation -Plan <plano> -Precheck`). Os dois arquivos estão em `**Arquivos tocados:**`. Teste sem regra a remover: `sem prova: <arquivo de teste> — <motivo>`.
 19. **Conferência antes do dev:** `scripts/checks/plan.ps1 -Plan <caminho>`; reprovado, corrijo na mesma instância.
 20. **Plano escrito com outra Task em construção** (R1): `**Planejado durante:** <T-ID> em 🟨`, só para Task que não depende dela.
 21. ✓ **Layout novo se prova em render real.** Task com interface declara `**Layout novo:** sim | não`. Com **sim** (muda posição, tamanho ou fluxo visível), a §6 tem ao menos um **teste de render**: navegador headless, caixas dos elementos afetados medidas (posição, tamanho, sobreposição, transbordamento) em **3 tamanhos de fonte** (padrão, menor, maior suportados) × **cada tela relevante** da spec (sem lista: a menor e a maior); a tabela **Render real** declara a matriz e o "Deve falhar se…" descreve a geometria. Prova só por estrutura (CSSOM, seletor, snapshot) não basta (`implementation-principles.md` §5.1). Ao menos uma `M<k>` tem o teste de render e reverte a declaração de estilo ou marcação da Task — **tem de quebrar a medição**. Navegador headless é pré-requisito da §3: ausente, a linha sai "não", a §9 leva o GAP e a Task não entra em construção até a decisão do stakeholder. A Conferência do passo de teste diz que o render existe e mede a matriz.
@@ -187,6 +188,8 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
     ```
 
     O plano a cita em `**Decisões do sprint:** D-<k>` e não repete o texto; o `plan.ps1` reprova a citação de D que não existe e a linha da decisão copiada no plano. O cartão do dev traz cada decisão que vale para a Task em uma linha, e o recorte da ficha traz todas para eu citar. Decisão que só vale para esta Task continua no plano (R9).
+
+30. **Margem do dev (v3.54 · R4).** Sem 🔺 GAP, o dev corrige: (a) **defeito mecânico do próprio teste** — espera, referência de medida, leitura antes de renderizar — e (b) **CSS cujo valor uma regra do projeto já define** (standard, token, spec do UX). Registra cada ajuste em `### Ajustes na margem` do relatório; o `close.ps1` (R7-margem) só fecha com as travas: o teste ajustado tem mutação neste plano e ela é pega na árvore final; o CSS cita a regra. O "Deve falhar se…" é meu e não muda. Premissa errada que muda o desenho continua 🔺 GAP para mim; escopo, ao PO. Por isso **todo teste que o dev possa precisar ajustar tem mutação** — o de render, em layout novo, já tem (regra 21).
 
 ## Variante leve (R23)
 
@@ -242,12 +245,12 @@ sem teste: `Api/appsettings.json` — configuração; o comportamento é o de `S
 
 **Mutações:**
 - M1 · teste `Tests/Unit/UrlSignerTests.cs` · `Infrastructure/Storage/UrlSigner.cs` · `$"{path}|{expires}"` → `$"{expires}"`
-- M2 · teste `Tests/Unit/StorageOptionsTests.cs` · `Infrastructure/Storage/StorageOptions.cs` · `[Required, MinLength(32)]` → `[MinLength(0)]`
+- M2 · teste `Tests/Unit/StorageOptionsTests.cs` · `Infrastructure/Storage/StorageOptions.cs` · regra: a chave volta a aceitar valor vazio no start *(o atributo nasce no passo 1 — o dev escreve o trecho)*
 
 ### Premissas
 - Contagem: `SigningKey` em `Infrastructure/Storage/*.cs;Api/*.cs` → 4
 - P1 · `UrlSigner` é o único leitor de `SigningKey` · medido: `Grep SigningKey Infrastructure/` → 1 arquivo (`UrlSigner.cs:18`)
-- P2 · os dois mutantes compilam · não exercitada: o trecho novo nasce no passo 1 · verifica: dev em `verify.ps1 -Mode mutation -Precheck`
+- P2 · o mutante de M1 compila · medido: job `operator/<sprint>/T-042-plano/` → build da cópia mutada exit 0
 
 ## 11. Execução delegada
 | Operator job | Task/História |

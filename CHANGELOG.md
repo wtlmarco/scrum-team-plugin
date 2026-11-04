@@ -13,6 +13,23 @@
 
 ---
 
+## v3.54.0 — 2026-11-04
+
+**Branch:** `fix/v3.54.0` a partir de `develop` (com a v3.53.7 mesclada pelo PR #117) · **Processo:** v3.54 (mutação pela regra e margem do dev; R4 ganha a margem; bloco v3.51 arquivado)
+Origem: os dois pontos do relatório de encadeamento do sprint 5 do garden que ficaram para decisão na v3.53.7; o stakeholder decidiu em 04/11 seguir com os dois.
+
+Mudanças:
+- **Mutação pela regra, trecho do dev** (`lib.ps1` `Get-Mutations`/`Get-DeliveryText`/`Get-TaskMutations`, `verify.ps1`, `plan.ps1`, `fix.ps1`):
+  - o plano declara `- M<k> · teste `<t>` · `<produção>` · regra: <o que a mutação quebra>`; o dev escreve `- M<k> · … · `<trecho>` → `<mutante>`` no bloco `**Mutações:**` do relatório de entrega (sprint: `delivery/<T-ID>.md`; fix: a seção `## F-<nnn>`), e a última linha com o mesmo M<k> vale;
+  - `verify -Mode mutation` (e `-Precheck`) roda a linha do dev; sem ela, ou com outro teste/arquivo, a mutação sai `inconclusivo` dizendo o que escrever; trocado o trecho na mesma árvore, a mutação roda de novo; o registro guarda `rule`, `find` e `replace` para o QA;
+  - o `plan.ps1` reprova o trecho literal que ainda não existe no código (arquivo novo ou trecho que a Task vai escrever) — no maior plano do sprint 5 eram 19, adivinhados — e a `regra:` vazia; literal com trecho que já existe uma vez continua valendo.
+- **Margem do dev** (`close.ps1` R7-margem, bloqueante; `lib.ps1` `Get-MarginAdjustments`):
+  - o dev corrige sem 🔺 GAP o defeito mecânico do próprio teste e o CSS cujo valor uma regra do projeto já define, e registra em `### Ajustes na margem` (`- A<k> · teste · `<arquivo>` · <o que mudou>` / `- A<k> · css · `<arquivo>` · <o que mudou> · regra: <onde>`);
+  - o `close` só fecha com as travas: arquivo em **Arquivos tocados:**; teste ajustado com mutação no plano, pega na árvore do verify full; CSS com a regra citada; linha fora do formato reprova. Na maior Task do sprint 5, 3 das 4 decisões de GAP eram desses dois tipos.
+- **Documentos:** `implementation-plan.md` (§6, regras 18 e 30, exemplo), `plan-rules-why.md`, `fix-plan.md`, `external-plan.md`, `external-fix-plan.md`, `delivery-report.md`, `agents/developer.md` (regras 1 e 6), `working-rules.md` R4 e o índice, README do QA (frente 2), process-changelog v3.54 (v3.51 arquivada).
+
+Conferências 324/0 (+7), guardas 282/0, C3 ok. **Não testado:** o fluxo numa sessão real (dev escrevendo a linha da mutação e o ajuste na margem). **Riscos:** o QA é quem julga se a mutação do dev ataca a regra declarada — uma mutação "pega" que muda outra coisa passa pelo script; a margem de teste vale só em teste com mutação, então teste de `interface simples` sem mutação continua indo a 🔺 GAP.
+
 ## v3.53.7 — 2026-11-04
 
 **Branch:** `fix/v3.53.7` a partir de `develop` (com a v3.53.6 mesclada pelo PR #115) · **Processo:** addendum v3.53.7 (prova pela camada certa, premissa de layout medida, decisão do sprint num lugar só)

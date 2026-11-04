@@ -8,6 +8,126 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.51 — O sprint do benchmark: dev constrói e verifica sozinho, plano por História ao lado dos cenários, portão do QA no fim, orquestração por script, contexto e cache, ambiente em qualquer tecnologia (SM + Arquiteto + Dev + QA + PO) — 21/10/2026
+
+**Instrução** (stakeholder, 21/10/2026, a partir do benchmark P × N-forte × protótipo Coordenador–Operador; plano aprovado em `plano-plugin-p-plus.md`, decisões no §8 e em formulário): manter o processo e a documentação antes e depois da Sprint, mas chegar o mais perto possível do N-forte na construção — o plano e os cenários prontos antes do dev, o dev (Haiku) construindo, verificando e corrigindo sozinho, o QA como portão de validação do produto (qualidade de código e funcional, com prova no alvo real) uma vez no fim, a dúvida subindo ao Arquiteto só quando é dúvida; atacar a transferência de contexto e a perda de cache; scripts para qualquer tecnologia (Android e Web nesta versão; API e Windows desktop depois); toda decisão ao stakeholder com o problema simples, um exemplo e formulário; os itens do `note.md` e as propostas pendentes.
+**Classificação:** fluxo da Sprint e da trilha `fix` · formato de documento (plano, relatório de entrega, validação do sprint, Kanban) · comportamento de agente (os seis papéis) · guardas novas (G19, G20) e guarda alterada (G3) · scripts novos e alterados · standard (perfis de nível 2 por tecnologia). **Sem regra nova** (34): R7, R12, R22 e R30 ganham o parágrafo v3.51.
+
+### O que mudou
+
+- **Construção (A1–A6).** A Sprint abre com o **preparo da construção** por História: o QA escreve os cenários executáveis (`.scn`, linguagem do `accept.ps1`), depois **uma instância do Arquiteto** escreve os planos de todas as Tasks da História. O plano fica enxuto (regras 22 a 25: ~12 KB, cenários, risco, layout novo) e o `plan.ps1` confere tamanho, cenários, risco e render. O **dev** constrói, roda `verify` e os cenários da Task no alvo, e corrige sozinho; a Task fecha pela **evidência do dev** (`close.ps1`, R7-aceite). O **QA** é o portão do sprint (`/qa sprint <n>`, `validation.md`): mede pelo `operator` (`quality.ps1`, `accept.ps1`) e julga SOLID, clean code, aderência e segurança. Documentos vivos (R12) consolidados **uma vez** pelo Arquiteto (`docs-consolidation.md`). Teste pelo risco, freado pela cobertura medida no portão.
+- **Orquestração (B1, B2).** `scripts/checks/run.ps1` (`next`, `start`, `done`, `handoff`) devolve a próxima ação pronta; o `sprint-run.md` foi reescrito para esse fluxo (34 KB → ~14 KB).
+- **Contexto e cache (C1–C5).** Papel em Sonnet ou Opus parado há mais de 5 min abre **instância nova** com o **cartão de passagem** (~2 KB, `handoff/<T-ID>.md`); a **G19** nega o `SendMessage` fora disso. Comando longo só no dev, no `operator` ou em script. Os agentes leem só as seções do README do time que usam; o dev lê cabeçalho, §6, §9 e o próprio bloco do plano.
+- **Ambiente (D1–D4) em qualquer tecnologia.** `verify.ps1` com tempo limite próprio, árvore de processos encerrada e higiene por ferramenta (`tool-hygiene.json`: Gradle sem daemon, `dotnet` sem reúso de nó, `CI=true` no Node); **exit 4 = falha de ambiente**. `target.ps1` (pré-voo e reparo: emulador desenhando a tela, site no ar) e `accept.ps1` (cenários no alvo, Android por uiautomator, Web por Playwright com Edge/Chrome de reserva, captura por cenário), com a trava de dono único. `SessionStart` avisa perfil do Windows com acento.
+- **Trilha `fix` (§3a).** Defeito vira cenário `FX-<nnn>` (falha antes, passa depois, com captura); métricas só dos arquivos tocados; formulário dos ajustes no formato H1.
+- **Organização (G1–G4).** `kanban.md` no lugar do `burndown.md` (Kanban, Burndown e o controle das Tasks embaixo); `kanban.html` regravado a cada transição, sem token. `standards/stacks/<tecnologia>/` (.NET com `desktop.md`, Kotlin/Android, React, Angular) com ferramenta por regra Q, coluna "ecossistema restrito" e Ficha pré-preenchida; índice com identificadores.
+- **Comunicação (H1).** Modelo `templates/stakeholder-question.md`; a G3 nega formulário sem exemplo prático.
+- **Paradas (propostas a e b).** Hook `Stop` (**G20**): barra o fim de turno com Task elegível e `.active-run`; o `SessionStart` **retoma** o run em vez de só avisar. Proposta c (energia) no `how-to.md`; proposta d (render no `plan.ps1`) entrou ajustada pelo A6. O `proposals-pending.md` foi apagado (todas aplicadas).
+- **Medição (M1).** `transcript-metrics.js activity`: custo por atividade, igual para qualquer braço do benchmark.
+
+### Por quê
+
+Medido no P-r6 (Mente Ativa, v3.50.1, transcripts): Arquiteto 41 % do custo e 632 min de relógio; sessão principal 35 %, a 274 mil tokens por chamada; dev em Haiku 3 %. O plugin escreveu mais documento (planos de 42 KB em média) que código e 6× mais teste que o N-forte. Perda de cache: 15 % no P-r6, 30 % no protótipo, zero no N-forte. No protótipo, a vistoria repetida depois do construtor nunca achou defeito real, e 38 % do custo foram chamadas que só diagnosticaram ambiente quebrado.
+
+### Quem passa a ser cobrado de forma diferente
+
+- **Dev:** fecha a Task com a própria evidência, inclusive os cenários no alvo; corrige sem esperar o QA; exit 4 é parar e dizer.
+- **QA:** sai da verificação por Task; entra no portão do sprint e na escrita dos cenários executáveis; não roda comando longo.
+- **Arquiteto:** planeja por História, sem instância por Task; consolida R12 uma vez; não roda comando longo.
+- **Sessão / SM:** orquestra por `run.ps1`; não retoma papel caro depois de 5 min; formulários no formato H1.
+
+### Conflitos com o processo vigente
+
+O `/qa <ID>` continua para validação avulsa fora do `run`; a evidência do QA por Task (`evidence/`) continua aceita pelo `close.ps1` (regra anterior). Sprint aberto antes da v3.51 segue com o `burndown.md` e o controle no `sprint-backlog.md` — os scripts leem os dois lugares.
+
+### Como saberemos que funcionou
+
+Etapa 6a do benchmark (P+ no SunScape, contra N-forte e protótipo, mesmo oráculo): a construção do dev ≤ 1,5× o custo e ≤ 2× o relógio do N-forte; qualidade 15/15 e lote 4/4; documentação não abaixo do P-r6 na avaliação cega. Projeção registrada no plano: de US$ 59 para ~US$ 28 num projeto como o Mente Ativa.
+
+### Evidência (R19)
+
+Suítes: guardas e conferências (contagem na entrega), C3, `claude plugin validate`. Validação real: `accept.ps1` e `target.ps1 -Repair` no emulador do benchmark (3 cenários do SunScape com captura; reinício do AVD em 88 s) e num site local pelo Edge headless (deslizante, toque, contagem, ordem; servidor subido e encerrado pelo executor).
+
+### Pendente do stakeholder
+
+Autorização de custo da Etapa 6a (P+ no SunScape). API e Windows desktop no executor de cenários: próximo incremento.
+
+### Addendum v3.51.5 — Task habilitadora fica sob uma História (SM) — 23/10/2026
+
+**Decisão** (stakeholder, pendência da v3.51.4): R20 mantida. Planning passo 4 e `sprint-backlog.md`: a Task habilitadora fica sob a 1ª História que depende dela; as outras a citam em "Depende de". **Evidência:** C3 ok.
+
+### Addendum v3.51.4 — o run do SunScape e o sprint 2 do garden: G14 lendo o que os papéis escrevem, limite de uso legível, quadro que não perde linha (SM + Arquiteto + Dev + UX) — 23/10/2026
+
+**Instrução** (stakeholder, 23/10/2026, `note.md` itens 1–16 e `plugin-report-garden.md` itens 1–27, tudo numa entrega só; item 14 decidido em 23/10: reduzir a partida do Gradle sem tirar mutação nem verificação completa).
+**Classificação:** guardas (G8, G14, G16, G20) · fluxo do `run` (paradas, retomada, marcador) · formato (Kanban, plano) · instrumentos (`run`, `mark`, `close`, `kanban`, `plan`, `verify`, `dispatch`). **Regra nova: nenhuma.** Paradas legítimas ganham **(e)** pausa pedida pelo stakeholder no ponto seguro (o stakeholder pediu o ponto seguro no item 11).
+
+- `sprint-run.md`: 🟦 no preparo, sem `.scn` sem `targets`; `run.ps1 done` confere, marca 🟪 e fecha (GAP → 🟨); `verify` exit 3 = parcial; §Retomada após limite de uso; §Pausa segura; "## Agora"; marcador sob trava.
+- Modelos `kanban.md` e `sprint-backlog.md`; dev (exit 3, `target.ps1`, `-Precheck`, comando no topo do bloco); Arquiteto (`plan.ps1` cobra §3/§9 e trecho único); UX (a linha do protótipo no pacote é do SM); `kotlin-android/quality.md` (`verify.daemon`, `verify.compile`).
+- **Fora do plugin:** item 9 (driver do benchmark). **Sem mecanismo novo:** item 8 (custo da T-001 — voltas da G14 e replano; medir com a "Espera de comando"); item 7 (o UX não estava no run: G19 no SDD, G8 na Planning).
+- **Pendente do stakeholder:** Task habilitadora sem História (garden 20) contra a R20 — o close segue reprovando até a decisão.
+- **Indicador:** próximo braço P+ com ≤ 3 negações da G14 e nenhuma de leitura; zero R7/R24/R28 por formato; `.usage-limit` em toda parada por limite.
+- **Evidência (R19):** guardas 217/0 (+28), conferências 159/0 (+19), C3 ok.
+
+### Addendum v3.51.3 — kanban do bloco de fix marcado na entrada de cada fase (SM) — 22/10/2026
+
+**Instrução** (stakeholder, `note.md`): "o kanban do sprint e do fix devem ser atualizado a cada transição de fase de trabalho para verdadeiramente indicar o status da evolução das tarefas". No sprint o quadro já acompanha cada transição (`mark.ps1`, `close.ps1`, G16); no bloco de fix o estado da F-ID era deduzido de rodadas **concluídas**, então ficava em ⬜ durante a rodada do dev.
+**Classificação:** fluxo da trilha `fix` (roteiro SM) · formato de documento (`kanban.md`) · script alterado (`kanban.ps1`, aplicado pelo stakeholder). **Sem regra nova** (34).
+
+- `kanban.ps1 -Block B-<nnn> -Fid F-<n> -To plan|build|qa` marca a F-ID na **entrada** da fase (`fixes/B-<nnn>/.marks`) e regrava na hora; as rodadas (G16) só confirmam o estado e somam custo.
+- `fix-run.md`: **Marca de fase** no preâmbulo do §Run (antes de acionar dev, Arquiteto ou QA; QA uma chamada por F-ID), `-To plan` no passo 4 do §Plan, fechamento sem `-Fid`.
+- `templates/kanban.md`: variante do bloco marca na entrada de cada fase (fechamento e "Critério que caiu" seguem derivados); notas dizem "a cada transição e ao fim de cada rodada"; histórico de versão enxugado do cabeçalho.
+- **Indicador:** no próximo `fix run`, cada F-ID tem a marca de entrada (🟦/🟨/🟪) no `kanban.md` antes da primeira rodada da fase.
+- **Evidência (R19):** `release.ps1` (C3) ok, conferências 140/0, guardas 189/0; `-Fid F-1 -To build` em bloco de teste moveu a F-ID ⬜ → 🟨 com "marca na entrada da fase", e F-ID fora do plano foi recusada.
+
+### Addendum v3.51.2 — relato de uso do `fix` e um quadro só (SM + Arquiteto + Dev + QA + PO) — 22/10/2026
+
+**Instrução** (stakeholder, 21 e 22/10/2026, `note.md`, itens 1–10 e decisões em formulário): resolver, pela opção que **não aumenta o gasto**, o que a v3.51.1 mostrou na trilha `fix` (negações da G14 ao dev e ao Arquiteto, ficha negada pela G8, veredito reprovado pelo C4 por formato, `consumption.md` do bloco que não nasce, `verify -Mode mutation` que não rodou) e dar ao sprint e ao bloco **um quadro só**, em Markdown, com o gasto de cada rodada. Hooks, scripts, versão e CHANGELOG aplicados direto nesta rodada.
+**Classificação:** comportamento de agente (roteiros do dev, do Arquiteto e do QA) · formato de documento (`kanban.md`, `fix-plan.md`, `verdict.md`) · guarda alterada (G14, G16) · script novo (`kanban.ps1`, no lugar do `kanban-html.ps1`) e alterados · fluxo da trilha `fix`. **Sem regra nova** (34).
+
+#### O que mudou
+
+- **Item 1 (e 5, consequência).** `fix-run.md` §Run passo 2 cita o comando completo do `verify.ps1` (`-Mode full`, depois `-Mode mutation -Plan …`), um por chamada, sem `cmd /c`, `-ExecutionPolicy` nem `Tee`; o `developer/README.md` diz que teste do projeto é o prefixo de `runCommands` puro. **G14** (`hooks/pre-tool.ps1`): script de conferência liberado também como trecho de comando composto (`Set-Location …; $log = …; powershell -NoProfile -File "<plugin>/scripts/checks/x.ps1" … | Select-Object …`), **só com o caminho dentro de `${CLAUDE_PLUGIN_ROOT}/scripts/checks/` (antes passava qualquer `scripts/checks/*.ps1`, inclusive do projeto). Sem o item 1, o dev não escreveria evidência à mão em `verify/` (item 5).
+- **Item 2.** A negação de `cmd /c` diz "rode o comando direto, sem cmd /c".
+- **Item 3.** `$env:TEMP`/`$env:TMP` em variável ou no destino se resolve (criar pasta no scratchpad passa); **executar arquivo do scratchpad (`node` etc.) continua negado** — contornaria a G8 e a G9. No run (`sprint run`, `fix plan`, `fix run`) o Arquiteto valida lendo o código e escreve "não validado — o dev confirma no passo <n>"; scratchpad executável e `operator` ficam só no sprint fora do run (`architect/README.md`, `fix-run.md`).
+- **Item 4 (sem exceção na matriz).** `fix-run.md` §Promoção: o Arquiteto registra `**Critério que caiu:**` no mini-plano; dev e QA, no próprio relatório, e a sessão copia a linha para o mini-plano (sem invocar o Arquiteto só para isso); a sessão muda o estado e devolve ao PO, que grava `## Destino` na ficha (a linha que o C4 confere) **na invocação que a promoção já dispara**. A ficha continua só do PO.
+- **Item 6.** `quality-assurance/templates/verdict.md` (trilha fix): o formato que o C4 lê (R33/3) fica explícito — `> comando` em linha própria, saída em bloco nas linhas seguintes, `exit <n>` na linha do rótulo. O C4 **não foi flexibilizado**.
+- **Item 7.** `kanban.ps1 -Block B-<nnn> -Init` cria a pasta, o `consumption.md` e o `kanban.md` do bloco no passo 2 do `fix plan`; o hook G16 (`subagent-stop.ps1`) os cria na primeira rodada se faltarem (rede).
+- **Item 8.** `fix-plan.md` ganha `**Mutações:**` por F-ID no formato do `verify.ps1`; o `-Mode mutation` lê todos os blocos e, sem `**Arquivos tocados:**`, usa `- produção:`/`- teste:` como escopo; o dev o roda depois do `full` do bloco.
+- **Itens 9 e 10 — um quadro só.** `kanban.html` e `kanban-html.ps1` **saem do plugin**. O `kanban.ps1` regrava, ao fim de cada rodada (G16) e a cada transição (`mark.ps1`, `close.ps1`), o `## Kanban` e a nova `## Rodadas` do `sprints/<n>/kanban.md` — por tarefa e fase (Plano · Construção · Verificação · Outros), por papel e modelo, e rodada a rodada, **custo = tokens e tempo** — e o `fixes/B-<nnn>/kanban.md` **inteiro** (F-IDs nas colunas do sprint; promovida e devolvida como nota no Registro). `fix-run.md` §Fechamento roda `kanban.ps1 -Block` uma vez depois do `## Fechamento`. Documentos: `templates/kanban.md` (seção Rodadas e variante do bloco), `artifact-ownership.md` §1 (bloco), `project-context.md`, `how-to.md`, `rituals/team-init.md` sem o `kanban.html`.
+- **Roteiro mais curto.** `fix-run.md` §Run: 7 443 → 6 383 B (arquivo: 21 771 → 21 451 B), com as regras novas dentro.
+
+#### Por quê
+
+Cada negação custou uma invocação extra ou a sessão fazendo o trabalho do papel (o dev sem `verify`, o PO copiando uma linha, o QA reescrevendo um veredito); o quadro em dois formatos repetia a informação e o gasto da rodada só aparecia no `consumption.md`. As correções saem de roteiro, modelo e script — nada de papel novo nem instância a mais.
+
+#### Quem passa a ser cobrado de forma diferente
+
+- **Dev:** roda o `verify` com o comando completo e sem decoração; reporta a promoção no relatório.
+- **Arquiteto:** no run não executa nada — lê e marca "não validado"; escreve `**Mutações:**` e a promoção no mini-plano.
+- **QA:** escreve `Antes`/`Depois` no formato que o C4 lê. **PO:** grava `## Destino` na invocação da promoção. **SM/sessão:** `-Init` no `fix plan`, `kanban.ps1 -Block` no fechamento, e copia para o mini-plano a promoção que o dev ou o QA reportou.
+
+#### Conflitos com o processo vigente
+
+Nenhum. A G14 ficou **mais estreita** num ponto (só scripts do plugin) e mais larga noutro (trecho composto). A matriz de propriedade não mudou de dono; o `kanban.md` do bloco é do SM, escrito por script. O `kanban.html` da v3.51 (acima) é revertido por esta entrada.
+
+#### Como saberemos que funcionou
+
+No próximo `fix run`: zero negações G14 ao dev em `verify.ps1` e ao Arquiteto por executar arquivo do scratchpad; `verify mutation` com ok em cada F-ID não promovida; nenhuma F-ID reprovada pelo C4 R33/3 por formato; `consumption.md` e `kanban.md` do bloco existindo desde o `fix plan`; nenhum `Edit`/`Write` negado pela G8 na ficha.
+
+#### Evidência (R19)
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Substituição de padrão | `Grep "kanban\.html\|kanban-html"` em `RAIZ/`, fora de `CHANGELOG.md`, `plano-plugin-p-plus.md`, v3.51 arquivada e testes que afirmam a ausência | zero fora de `process-changelog.md` (v3.51 e este adendo, histórico), `kanban.ps1:1` e dos testes que afirmam a ausência (`run-check-tests.ps1`); `note.md` limpo | ✅ |
+| Extração/remoção | `Length` de `fix-run.md` e do §Run, antes (HEAD) × depois | 21 771 → 21 451 B; §Run 7 443 → 6 383 B | ✅ |
+| Entrega | `release.ps1` (C3) | R18 ok (3.51.2 nos três); R17 ok (bloco v3.51 com 13 658 B ≤ 17 920, 5 papéis, 3 entradas); ps1-5.1 ok; ownership ok (62 regras); órfãos ok (47 modelos) | ✅ |
+
+#### Pendente do stakeholder
+
+Reiniciar a sessão (comportamento de agente e guarda mudam). Versão, `CHANGELOG.md` e `note.md` da sessão.
+
+---
+
 ## v3.50 — Mudança de layout se prova em render real: navegador headless, 3 fontes × telas, mutação que quebra a medição; e as paradas do `run` fecham no texto (SM + Arquiteto + Dev + QA) — 16/10/2026
 
 **Instrução** (stakeholder, `/review note`, item 2, decisão "Render real" de 16/10/2026; item 4 movido da v3.49): Task que muda layout ou estilo visível exige, no plano, caixas medidas em navegador headless, 3 tamanhos de fonte × as telas relevantes; prova só por estrutura não basta; a mutação tem de quebrar a medição. **Causa medida:** layout (Ionic) provado por CSSOM/seletor passou no plano, no QA e na mutação e quebrou no aparelho (~15,5 M tokens de conserto no piloto).
