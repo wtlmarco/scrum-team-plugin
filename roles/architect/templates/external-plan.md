@@ -40,7 +40,7 @@ Confira cada item antes de devolver: plano recusado volta num pacote de correç�
 - A §3 (ambiente medido) vem **antes** da §4, com a tabela `| Pré-requisito | Comando de medição | Saída real | … |`: copie as linhas que valem de `context/environment.md`, com a fonte. **Nunca invente uma saída**: pré-requisito que não está lá vira premissa `- P<k> · não exercitada: <motivo> · verifica: dev no passo 1`.
 - A §9 tem a parada `Pré-requisito ausente`.
 - Trecho literal de código na §4: até 15 linhas por passo (é contrato; o dev escreve o corpo).
-- A §6 tem `**Mutações:**` com linhas `` - M<k> · teste `<teste>` · `<produção>` · `<trecho exato>` → `<mutante>` `` (num arquivo que já existe, o trecho aparece uma vez só) — ou `sem prova: <motivo>`. Risco `regra de negócio` ou `integração` exige mutação.
+- A §6 tem `**Mutações:**` com linhas `` - M<k> · teste `<teste>` · `<produção>` · regra: <o que a mutação quebra> `` (v3.54: o dev escreve o trecho sobre o código real) — ou, só com trecho que **já existe uma vez** num arquivo do projeto, `` · `<trecho exato>` → `<mutante>` `` (trecho que ainda não existe reprova) — ou `sem prova: <motivo>`. Risco `regra de negócio` ou `integração` exige mutação.
 - Sem linhas `- Contagem:` (a conferência reconta no repositório inteiro, que você não tem); use premissa.
 - Premissa só como `- P<k> · medido: <comando> → <resultado>` ou `- P<k> · não exercitada: <motivo> · verifica: <papel> em <passo>`; nada de "não validado" solto.
 

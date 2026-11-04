@@ -37,7 +37,7 @@ Cada ficha está em `fixes/<F-ID>.md` (tipo, sintoma, entrada da reprodução no
 - Critério com `✘` sem `**Critério que caiu:** C<n> — <motivo>` logo depois de "Onde parar e perguntar" — é a **promoção**: o resto da seção fica como insumo e `### Arquivos` vira `n/a — promovida`.
 - Sem promoção: `### Arquivos` sem `- produção:` ou sem `- teste:`, caminho entre crases e relativo à raiz; `- produção:` que não existe no projeto.
 - `### Teste de regressão` sem `**Comando (só este teste):**` entre crases ou sem `**Antes da correção, falha com:**` (a asserção, nunca erro de compilação).
-- Sem `**Mutações:**` no formato `` - M<k> · teste `<teste>` · `<produção>` · `<trecho novo, exato>` → `<trecho atual>` ``.
+- Sem `**Mutações:**` no formato `` - M<k> · teste `<teste>` · `<produção>` · regra: <a correção desfeita> `` (v3.54: o dev escreve o trecho) ou `` · `<trecho novo, exato>` → `<trecho atual>` ``.
 - `### Passos` com menos de 2 ou mais de 5 passos (teste → correção → teste passando, cada um com **Conferência**).
 - Sem `## Verificação do bloco`; bloco acima do teto.
 

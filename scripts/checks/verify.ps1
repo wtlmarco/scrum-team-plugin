@@ -9,6 +9,8 @@
 #   … -Mode mutation -Plan <plano>   prova de falha (v3.46): para cada linha de **Mutações:** do plano, troca o trecho no
 #                    arquivo de produção, roda o teste focado e ESPERA exit ≠ 0; restaura byte a byte; a árvore tem de voltar igual
 #                    (-Only M1,M3 roda só essas — amostragem do QA)
+#                    v3.54: a mutação declarada pela REGRA no plano ("· regra: <o que quebra>") roda com o trecho e o
+#                    mutante que o dev escreveu no bloco **Mutações:** do relatório de entrega (Get-TaskMutations, lib.ps1)
 #                    v3.47.1: antes das mutações, a LINHA DE BASE — o teste focado sem mutação tem de passar e executar
 #                    teste; mutação só conta como pega se o log não mostrar compilação quebrada, zero teste ou runner caído
 #                    (padrões embutidos + guards.json → verify.inconclusive; verify.caught, se houver, tem de aparecer).
@@ -287,11 +289,12 @@ try {
         if ($focusedCmd.Count -eq 0) { [Console]::Error.WriteLine('verify: guards.json → verify sem "focused" — a mutação roda o teste focado.'); exit 2 }
         if ($Precheck) {
             # v3.51.4 (garden item 27): conferência prévia, sem teste — trecho único no arquivo e, com verify.compile, mutante que compila.
-            $pt = Read-Text (Join-Path $Root $Plan); $pm = @(Get-Mutations $pt); if ($Only.Count) { $pm = @($pm | Where-Object { $Only -contains $_.Id }) }
+            $pt = Read-Text (Join-Path $Root $Plan); $pm = @(Get-TaskMutations $Root $Plan $pt $Task); if ($Only.Count) { $pm = @($pm | Where-Object { $Only -contains $_.Id }) }
             $compile = @(Get-Commands $verify 'compile') | Select-Object -First 1
             $probs = @(); $okIds = @()
             foreach ($mu in $pm) {
                 $rel = ($mu.File -replace '\\', '/') -replace '^\./', ''; $f2 = Join-Path $Root $rel
+                if ($mu.Problem) { $probs += "$($mu.Id): $($mu.Problem)"; continue }
                 if (-not (Test-Path -LiteralPath $f2)) { $probs += "$($mu.Id): $rel não existe"; continue }
                 if ($mu.Find -eq '') { $probs += "$($mu.Id): trecho vazio"; continue }
                 $bytes = [System.IO.File]::ReadAllBytes($f2); $bom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
@@ -316,13 +319,14 @@ try {
             }
             if ((Get-WorkTree $Root) -ne $tree) { [Console]::Error.WriteLine('verify: ERRO — a árvore não voltou igual depois da conferência prévia. Confira com git status/git diff.'); exit 2 }
             [Console]::Out.WriteLine("verify mutation -Precheck $Task · $($okIds.Count) de $($pm.Count) mutação(ões) prontas" + $(if ($compile) { ' (trecho único e mutante compila)' } else { ' (trecho único; sem verify.compile, a compilação se vê na mutação)' }))
-            foreach ($p in $probs) { [Console]::Out.WriteLine("  $p — o plano é do Arquiteto: 🔺 GAP com esta linha") }
+            # v3.54: a mutação declarada pela regra é do dev — o trecho dele se corrige no relatório, sem GAP.
+            foreach ($p in $probs) { $own = $p -match '^(M\d+):' -and @($pm | Where-Object { $_.Id -eq $Matches[1] -and $_.Source -eq 'dev' }).Count; [Console]::Out.WriteLine("  $p — " + $(if ($own) { 'a linha é sua (mutação pela regra): corrija o trecho no bloco **Mutações:** do relatório' } else { 'o plano é do Arquiteto: 🔺 GAP com esta linha' })) }
             if ($probs.Count) { exit 1 } else { exit 0 }
         }
         $full = if ($prev) { $prev.full } else { $null }
         if ($null -eq $full -or [string]$full.tree -ne $tree) { [Console]::Error.WriteLine("verify: a mutação roda sobre a árvore do último full — rode -Mode full antes (árvore agora $($tree.Substring(0, 12)))."); exit 2 }
         $planText = Read-Text (Join-Path $Root $Plan)
-        $planMuts = @(Get-Mutations $planText)
+        $planMuts = @(Get-TaskMutations $Root $Plan $planText $Task)   # v3.54: com o trecho do dev nas declaradas pela regra
         $muts = $planMuts
         if ($Only.Count) { $muts = @($muts | Where-Object { $Only -contains $_.Id }) }
         if ($muts.Count -eq 0) { [Console]::Error.WriteLine('verify: nenhuma linha "- M<k> · teste `…` · `…` · `trecho` → `mutante`" em **Mutações:** do plano' + $(if ($Only.Count) { ' com ' + ($Only -join ',') } else { '' }) + '.'); exit 2 }
@@ -330,8 +334,9 @@ try {
         # anterior parou no -MaxMinutes e esta continua de onde ela parou.
         $sameTree = $prev -and $prev.mutation -and [string]$prev.mutation.tree -eq $tree
         if (-not $Only.Count -and $sameTree) {
-            $done = @(@($prev.mutation.items) | Where-Object { ([string]$_.result) -match '^(ok|falhou)\b' } | ForEach-Object { [string]$_.id })
-            $muts = @($muts | Where-Object { $done -notcontains $_.Id })
+            $doneIt = @(@($prev.mutation.items) | Where-Object { ([string]$_.result) -match '^(ok|falhou)\b' })
+            # v3.54: o trecho do dev vive no relatório, fora da árvore — trocado o trecho, a mutação roda de novo.
+            $muts = @($muts | Where-Object { $id = $_.Id; $d = @($doneIt | Where-Object { [string]$_.id -eq $id }) | Select-Object -First 1; -not $d -or ($_.Source -eq 'dev' -and ([string]$d.find -ne [string]$_.Find -or [string]$d.replace -ne [string]$_.Replace)) })
         }
         $scope = @(Get-PlanScope $planText)
         New-Item -ItemType Directory -Force $dir | Out-Null
@@ -341,6 +346,9 @@ try {
         foreach ($mu in $muts) {
             $rel = ($mu.File -replace '\\', '/') -replace '^\./', ''
             $item = [ordered]@{ id = $mu.Id; test = $mu.Test; file = $rel; result = ''; exit = $null; decisive = @(); log = '' }
+            # v3.54: a declarada pela regra leva a regra e o trecho do dev ao registro — o QA confere que ela ataca a regra.
+            if ($mu.Source -eq 'dev') { $item.rule = $mu.Rule; $item.find = $mu.Find; $item.replace = $mu.Replace }
+            if ($mu.Problem) { $item.result = "inconclusivo — $($mu.Problem)"; $items += $item; continue }
             $full2 = Join-Path $Root $rel
             if ($scope -notcontains $rel) { $item.result = 'inconclusivo — arquivo fora de **Arquivos tocados:** do plano'; $items += $item; continue }
             if (-not (Test-Path -LiteralPath $full2)) { $item.result = 'inconclusivo — arquivo não existe'; $items += $item; continue }
@@ -391,7 +399,7 @@ try {
         $okN = @($mine | Where-Object { ([string]$_.result).StartsWith('ok') }).Count
         $badM = @($mine | Where-Object { -not ([string]$_.result).StartsWith('ok') })
         [Console]::Out.WriteLine("verify mutation $Task · árvore $($tree.Substring(0, 12)) (restaurada igual) · $okN de $($want.Count) mutação(ões) pegas pelo teste" + $(if ($pending.Count) { " · $($pending.Count) pendente(s)" } else { '' }) + " · $($resPath.Substring($Root.Length + 1) -replace '\\', '/')")
-        foreach ($it in $items) { [Console]::Out.WriteLine("  $($it.id) $($it.file): $($it.result)" + $(if ($null -ne $it.exit) { " · exit $($it.exit) · $(@($it.decisive) | Select-Object -Last 1)" } else { '' })) }
+        foreach ($it in $items) { [Console]::Out.WriteLine("  $($it.id) $($it.file): $($it.result)" + $(if ($null -ne $it.exit) { " · exit $($it.exit) · $(@($it.decisive) | Select-Object -Last 1)" } else { '' }) + $(if ($it.Contains('rule')) { " · regra: $($it.rule) · trecho do dev: ``$($it.find)`` → ``$($it.replace)``" } else { '' })) }
         foreach ($it in @($merged | Where-Object { $want -contains [string]$_.id })) { [Console]::Out.WriteLine("  $($it.id) $($it.file): $($it.result) (chamada anterior, mesma árvore)") }
         if ($pending.Count) { [Console]::Out.WriteLine("  parcial: $($pending -join ', ') não couberam em -MaxMinutes $MaxMinutes — rode o MESMO comando de novo; ele continua de onde parou."); exit 3 }
         if ($badM.Count) { exit 1 }

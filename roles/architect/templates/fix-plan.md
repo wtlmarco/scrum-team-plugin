@@ -33,7 +33,8 @@ Salvo em `.team-project/fixes/B-<nnn>/plan.md` — **um arquivo por bloco, um mi
 **Comando (só este teste):** `<comando de .team-project/developer/context.md, filtrado a este teste>`
 **Antes da correção, falha com:** <a asserção que deve falhar — nunca erro de compilação ou símbolo ausente>
 **Mutações:**
-- M<k> · teste `<caminho do teste>` · `<caminho de produção>` · `<trecho novo, exato>` → `<trecho atual>`
+- M<k> · teste `<caminho do teste>` · `<caminho de produção>` · regra: <a correção desfeita — o comportamento que volta ao defeito>
+*(v3.54: pela regra, o dev escreve o trecho novo → o atual no `**Mutações:**` da seção `## F-<nnn>` do relatório; literal `` `<trecho novo, exato>` → `<trecho atual>` `` só quando o trecho novo já existe no código)*
 ### Passos
 1. **CRIAR | ALTERAR** `<caminho do teste>` — <o teste acima, literal no essencial>; rodar o comando → exit ≠ 0 com a asserção acima
    **Conferência:** <o teste existe no arquivo, com o nome literal; a saída "antes" do relatório mostra a asserção esperada>
