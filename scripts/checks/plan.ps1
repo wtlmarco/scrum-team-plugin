@@ -6,7 +6,8 @@
 # novo), 22 (tamanho: desde a v3.53.2 sem corte; desde a v3.53.6 acima de 30 KB reprova e a Task vai à divisão), 23 (cenários citados existem nos .scn do QA) e 24 (risco);
 # desde a v3.52.2, 26 (linhas "- Contagem:" recontadas e premissas "- P<k> ·" medidas ou com quem verifica) e 27 (layout
 # novo com a linha **Documentos vivos:**; documento de desenho fora de **Arquivos tocados:** — o Arquiteto o consolida);
-# desde a v3.53, 28 (Task com ficha no breakdown: **Li além da ficha:**, nomes comuns no plano, caminhos da ficha existem).
+# desde a v3.53, 28 (Task com ficha no breakdown: **Li além da ficha:**, nomes comuns no plano, caminhos da ficha existem);
+# desde a v3.53.7, 26 também barra premissa de layout medida por leitura e 29 (decisões do sprint citadas, não copiadas).
 # As mensagens dizem o que corrigir: o Arquiteto não precisa abrir este script (note.md item 7).
 # Saída: tabela regra · resultado · linha decisiva. Exit 1 se alguma falhou · 2 = erro de uso.
 
@@ -252,6 +253,20 @@ try {
     foreach ($b in $pBad) { $iss += "premissa sem 'medido: <comando> → <resultado>' nem 'não exercitada: <motivo> · verifica: <papel> em <passo>': $b" }
     foreach ($b in $loose) { $iss += "'não validado' fora de linha P<k> (vira premissa não exercitada, com quem verifica): $(if ($b.Length -gt 100) { $b.Substring(0, 100) + '…' } else { $b })" }
     if ($layNew -and -not $measured) { $iss += '**Layout novo:** sim sem nenhuma premissa medido:' }
+    # v3.53.7 (encadeamento do sprint 5 do garden): no maior plano, 9 premissas de layout saíram da leitura do código do
+    # framework (node_modules) e as 4 decisões de 🔺 GAP da Task vieram do render real. Geometria não se lê no código: com
+    # **Layout novo:** sim, premissa sobre posição, tamanho, sobreposição ou rolagem é medida EXECUTANDO (sonda de render do
+    # operator, teste de render, verify) ou fica "não exercitada" com quem verifica no render.
+    if ($layNew) {
+        $geoRe = '(?i)\b(px|dp|rem|vh|vw|largura|altura|posi[çc][ãa]o|sobrep\w*|transbord\w*|margem|margin|padding|overlay|popover|modal|viewport|z-index|flexbox|grid|alinhad\w*|rolagem|scroll\w*|layout|geometria|font-size|quebra de linha)\b'
+        $rtNames = @([regex]::Matches($text, '(?ms)^\*\*Render real\*\*.*?(?=^\*\*Cobertura|^##\s|\z)') | ForEach-Object { [regex]::Matches($_.Value, '(?m)^\|\s*`([^`]+)`') } | ForEach-Object { [regex]::Escape((Split-Path ($_.Groups[1].Value -replace '\\', '/') -Leaf)) })
+        $runRe = '(?i)operator/|verify\.ps1|accept\.ps1|playwright|\bnpx\b|\bnpm\s+(run\s+)?test|\bng\s+test|vitest|jest|karma|gradlew' + $(if ($rtNames.Count) { '|' + ($rtNames -join '|') } else { '' })
+        foreach ($pp in $pl) {
+            $mm = [regex]::Match($pp, '^\s*-\s*(P\d+)\s*·\s*(.*?)\s*·\s*medido:\s*(.*)$')
+            if (-not $mm.Success -or $mm.Groups[2].Value -notmatch $geoRe -or $mm.Groups[3].Value -match $runRe) { continue }
+            $iss += "$($mm.Groups[1].Value) é premissa de layout medida por leitura (medido: $(($mm.Groups[3].Value -split '→')[0].Trim() -replace '`', '')): o código, inclusive o do framework, não diz a geometria — meça numa sonda de render pelo operator (job operator/<n>/<T-ID>-plano/, linha na §11) ou declare 'não exercitada: <motivo> · verifica: dev em <passo do teste de render>'"
+        }
+    }
     if ($iss.Count) { Add-Result 'premissa' 'falhou' (($iss -join '; ') + ' (regra 26)') }
     elseif (-not $pl.Count) { Add-Result 'premissa' 'n-a' 'nenhuma linha P<k> (### Premissas)' }
     else { Add-Result 'premissa' 'ok' "$($pl.Count) premissa(s): $measured medida(s), $($pl.Count - $measured) não exercitada(s) com quem verifica" }
@@ -288,6 +303,26 @@ try {
             $prev = if ($null -ne $ficha.Planned) { "; arquivos previstos $($ficha.Planned), no plano $(@($files).Count)" } else { '' }
             Add-Result 'ficha' 'ok' "$($ficha.Names.Count) nome(s) comum(ns) no plano; $(@($ficha.Read).Count + @($ficha.Sources).Count) caminho(s) da ficha existem; li além da ficha: $extra$prev"
         }
+    }
+
+    # ---------- 29 · decisões do sprint citadas, não copiadas (v3.53.7, encadeamento do sprint 5 do garden) ----------
+    # A mesma decisão de 🔺 GAP (emulador fora, teste instável) foi colada em 8 planos; os acréscimos chegaram a 57 % de um
+    # plano, relidos por cada instância nova do dev. A decisão que vale para mais de uma Task fica uma vez na ficha comum do
+    # sprint (architect/decisions/S<n>.md); o plano a cita em **Decisões do sprint:** e o cartão do dev a traz em uma linha.
+    $dsn = if ($sm.Success) { $sm.Groups[1].Value } else { '' }
+    $decs = @(if ($dsn) { Get-SprintDecisions $Root $dsn })
+    $refs = @(Get-PlanDecisionRefs $text)
+    if (-not $decs.Count -and -not $refs.Count) { Add-Result 'decisões' 'n-a' 'sem decisões do sprint (architect/decisions/S<n>.md) nem **Decisões do sprint:** no plano' }
+    else {
+        $iss = @()
+        $unk = @($refs | Where-Object { @($decs | ForEach-Object { $_.Id }) -notcontains $_ })
+        if ($unk.Count) { $iss += "cita $($unk -join ', ') que não existe(m) em architect/decisions/S$dsn.md" }
+        foreach ($d in $decs) {
+            $cp = @($d.Body -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_.Length -ge 40 -and $_ -notmatch '^\*\*(Vale para|Origem):\*\*' -and $text.Contains($_) })
+            if ($cp.Count) { $iss += "copia o texto da $($d.Id) ('$(if ($cp[0].Length -gt 60) { $cp[0].Substring(0, 60) + '…' } else { $cp[0] })') — cite ``$($d.Id)`` em **Decisões do sprint:**; o cartão do dev a traz" }
+        }
+        if ($iss.Count) { Add-Result 'decisões' 'falhou' (($iss -join '; ') + ' (regra 29)') }
+        else { Add-Result 'decisões' 'ok' "$(if ($refs.Count) { "cita $($refs -join ', ')" } else { 'nenhuma citada' }); $($decs.Count) decisão(ões) no sprint, nenhuma copiada" }
     }
 
     # ---------- variante leve ----------

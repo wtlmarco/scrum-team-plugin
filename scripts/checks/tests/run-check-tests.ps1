@@ -1296,7 +1296,7 @@ $p = Join-Path $tmp 'gap-log'; New-Project $p
 Put $p '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`n🔺 GAP: o plano manda rodar accept sem .scn`n"
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
 $rl = Join-Path $p '.team-project/sprints/1/run-log.md'
-Check 'item 10: rota do GAP no run-log.md (pelo done) e o pedido de estender a decisão às outras Tasks' @{ Code = $r.Code; Out = $r.Out + "`n" + $(if (Test-Path -LiteralPath $rl) { [System.IO.File]::ReadAllText($rl, $utf8) } else { 'sem run-log' }) } 0 @('outra Task ainda não fechada do sprint', '\| Quando \| Item \| Decisão \| Porquê \| Evidência \|', '\| T-041 \| 🔺 GAP → Arquiteto em instância nova .* \| 🔺 GAP: o plano manda rodar accept sem \.scn \| sprints/1/delivery/T-041\.md \|')
+Check 'item 10: rota do GAP no run-log.md (pelo done); v3.53.7: decisão comum uma vez em architect/decisions, citada nos planos' @{ Code = $r.Code; Out = $r.Out + "`n" + $(if (Test-Path -LiteralPath $rl) { [System.IO.File]::ReadAllText($rl, $utf8) } else { 'sem run-log' }) } 0 @('grave-a UMA vez como D-<k> em \.team-project/architect/decisions/S1\.md', 'não copie o texto em plano nenhum', '\| Quando \| Item \| Decisão \| Porquê \| Evidência \|', '\| T-041 \| 🔺 GAP → Arquiteto em instância nova .* \| 🔺 GAP: o plano manda rodar accept sem \.scn \| sprints/1/delivery/T-041\.md \|')
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
 Check 'item 10: queda de ambiente também vira linha do run-log.md' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText($rl, $utf8) } 0 @('\| T-041 \| queda de ambiente \(1 neste bloco\)')
 
@@ -1869,6 +1869,53 @@ Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x
 Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "nenhum emulador ou aparelho disponível" }'
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
 Check 'v3.53.6 item 9b: done -Result env com o accept parado por ambiente → sem reparo, mark -To blocked -Reason "prova no alvo pendente — …"' $r 0 @('target\.ps1 -Target android -Repair', 'mark\.ps1 -Task T-041 -To blocked -Reason "prova no alvo pendente — nenhum emulador ou aparelho disponível"', 'T-041 🔴 bloqueada: prova no alvo pendente')
+
+# v3.53.7 (encadeamento do sprint 5 do garden, decisões do stakeholder de 04/11): select e seed no accept, premissa de layout
+# medida executando, decisões do sprint citadas e não copiadas.
+$p = Join-Path $tmp 'v3537-accept'; New-Project $p
+Put $p '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-001 Registra em vários`nreset`nseed canteiros-3`nlaunch`nselect canteiro.tipo = Horta`nassert-count canteiro.card. = 3`n`nscenario SC-002 Ruim`nselect canteiro.tipo`nseed`nassert-exists x`n"
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Root', $p)
+Check 'v3.53.7: select sem "=" e seed sem nome reprovam o -ParseOnly' $r 2 @("'select' pede '<id> = <valor>'", "'seed' pede um nome só")
+Put $p '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-001 Registra em vários`nreset`nseed canteiros-3`nlaunch`nselect canteiro.tipo = Horta`nassert-count canteiro.card. = 3`n"
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Root', $p)
+Check 'v3.53.7: massa não declarada em targets.<alvo>.seeds reprova o -ParseOnly do QA, antes do aparelho' $r 2 @("cenário SC-001: massa de dados 'canteiros-3' não declarada em guards\.json → targets\.android\.seeds")
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x", "seeds": { "canteiros-3": "exit 0" } } } }'
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Root', $p)
+Check 'v3.53.7: massa declarada e select com opção passam o -ParseOnly' $r 0 @('1 cenário\(s\) válidos', 'SC-001')
+# Invoke-TargetSeed: exit 0 carrega; exit ≠ 0 devolve o motivo com a saída; o ambiente leva o alvo e o nome.
+. (Join-Path $checks 'lib.ps1')
+$sc = '{ "seeds": { "ok": "if ($env:ACCEPT_TARGET -eq ''android'' -and $env:ACCEPT_SEED -eq ''ok'' -and $env:ACCEPT_PACKAGE -eq ''br.x'') { exit 0 } else { exit 9 }", "ruim": "Write-Output ''tabela canteiros nao existe''; exit 3" } }' | ConvertFrom-Json
+$s1 = Invoke-TargetSeed $p 'android' $sc 'ok' @{ ACCEPT_PACKAGE = 'br.x' }
+$s2 = Invoke-TargetSeed $p 'android' $sc 'ruim'
+$s3 = Invoke-TargetSeed $p 'android' $sc 'nenhuma'
+Check 'v3.53.7: Invoke-TargetSeed — carregou (com o ambiente), falhou (exit e saída) e não declarada' @{ Code = 0; Out = "S1=[$s1]`nS2=[$s2]`nS3=[$s3]" } 0 @('S1=\[\]', "S2=\[massa de dados 'ruim' não carregou \(exit 3\): tabela canteiros nao existe\]", "S3=\[massa de dados 'nenhuma' não declarada")
+
+$p = Join-Path $tmp 'v3537-plano'; New-Project $p
+Put $p 'src/a.ts' "bar`nqux`n"
+$pl = '.team-project/sprints/1/plan/T-080-x.md'
+$h7 = "# Plano`n**Cenários:** nenhum — interno`n**Risco:** regra de negócio`n**Layout novo:** sim`n**Documentos vivos:** ``docs/sdd/03-architecture.md`` §4 — canteiros`n"
+$b7 = "**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 3. Ambiente`n| Pré-requisito | Comando | Saída real | Log | Atende? |`n|---|---|---|---|---|`n| Node | node -v | v20 | — | sim |`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · ``bar`` → ``baz```n`n"
+$f7 = "`n## 9. Onde parar`n- Pré-requisito ausente`n"
+Put $p $pl ($h7 + "`n" + $b7 + "### Premissas`n- P1 · o popover abre abaixo do campo, sem sobreposição · medido: ``Grep popover node_modules/@ionic/core/dist`` → placement bottom`n- P2 · src tem a.ts · medido: ``ls src`` → a.ts`n" + $f7)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.53.7: com layout novo, premissa de geometria medida por leitura (node_modules) reprova; premissa não geométrica lida passa' $r 1 @('\| premissa \| falhou.*P1 é premissa de layout medida por leitura \(medido: Grep popover node_modules/@ionic/core/dist\).*sonda de render pelo operator', '^(?![\s\S]*P2 é premissa de layout)')
+Put $p $pl ($h7 + "`n" + $b7 + "### Premissas`n- P1 · o popover abre abaixo do campo, sem sobreposição · medido: job ``operator/1/T-080-plano/`` → caixa do popover y=212, campo y2=200`n- P2 · a margem do card é 16 px · não exercitada: o card nasce no passo 2 · verifica: dev em passo 4 (teste de render)`n" + $f7)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.53.7: geometria medida pela sonda do operator, ou não exercitada com o dev no render, passa' $r 0 @('\| premissa \| ok.*2 premissa\(s\): 1 medida')
+Put $p '.team-project/architect/decisions/S1.md' "# Decisões do sprint 1`n`n## D-1 — Emulador fora do ar`n**Vale para:** todas · **Origem:** 🔺 GAP da T-041 · 2026-11-02`nCom o alvo fora do ar depois do reparo, a Task vai a bloqueada com prova no alvo pendente.`n`n## D-2 — APK antes do accept`n**Vale para:** T-080 · **Origem:** 🔺 GAP da T-041`nReconstruir o APK com assembleDebug antes de todo accept da Task de ids de teste.`n"
+Put $p $pl ($h7 + "**Decisões do sprint:** D-1, D-9`n`n" + $b7 + "Reconstruir o APK com assembleDebug antes de todo accept da Task de ids de teste.`n`n### Premissas`n- P1 · src tem a.ts · medido: ``ls src`` → a.ts`n- P2 · a margem é 16 px · não exercitada: nasce no passo 2 · verifica: dev em passo 4`n" + $f7)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.53.7: decisão do sprint inexistente citada e texto de decisão copiado no plano reprovam (regra 29)' $r 1 @('\| decisões \| falhou.*cita D-9 que não existe\(m\) em architect/decisions/S1\.md.*copia o texto da D-2')
+Put $p $pl ($h7 + "**Decisões do sprint:** D-1, D-2`n`n" + $b7 + "### Premissas`n- P1 · src tem a.ts · medido: ``ls src`` → a.ts`n- P2 · a margem é 16 px · não exercitada: nasce no passo 2 · verifica: dev em passo 4`n" + $f7)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.53.7: plano que só cita as decisões passa' $r 0 @('\| decisões \| ok.*cita D-1, D-2; 2 decisão\(ões\) no sprint, nenhuma copiada')
+# Cartão do dev: a decisão "todas" entra em uma linha; a que vale só para outra Task, não.
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
+Check 'v3.53.7: cartão traz as decisões do sprint que valem para a Task, uma linha cada' @{ Code = $r.Code; Out = $(if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) } else { 'sem cartão' }) } 0 @('\*\*Decisões do sprint\*\* \(`architect/decisions/S1\.md`', '- D-1 — Emulador fora do ar: Com o alvo fora do ar', '^(?![\s\S]*D-2 — APK)')
+$dg = Get-DecisionsDigest $p '1'
+Check 'v3.53.7: recorte da ficha traz todas as decisões, com a quem valem, para o Arquiteto citar' @{ Code = 0; Out = $dg } 0 @('## Decisões do sprint', 'D-1 — Emulador fora do ar · vale para todas', 'D-2 — APK antes do accept · vale para T-080', 'cite, não copie')
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output

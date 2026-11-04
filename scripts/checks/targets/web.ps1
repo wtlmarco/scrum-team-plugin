@@ -2,7 +2,8 @@
 # Pré-voo: o site responde na URL de saúde e o Node existe; reparo: sobe o servidor pelo comando configurado e espera.
 # Os cenários rodam no web-runner.js (Playwright, navegador headless) — Angular, React ou qualquer front-end com data-testid.
 # Config (guards.json → targets.web): url, health (padrão = url), start (ex.: "npm run start"), startTimeoutSec (120),
-# testIdAttribute ("data-testid"), viewport ({ "width": 1280, "height": 800 }).
+# testIdAttribute ("data-testid"), viewport ({ "width": 1280, "height": 800 }), seeds + seedTimeoutSec (v3.53.7: massa de
+# dados por nome, passo "seed"), selectConfirm (v3.53.7: botão de confirmação do seletor no passo "select").
 
 $script:WebCfg = $null; $script:WebRoot = $null
 
@@ -46,7 +47,11 @@ function Stop-WebServer {
 function Invoke-WebScenarios($Scenarios, [string]$ShotDir) {
     $tmpIn = [System.IO.Path]::GetTempFileName(); $tmpOut = [System.IO.Path]::GetTempFileName()
     $in = [ordered]@{ url = [string]$script:WebCfg.url; root = $script:WebRoot; testIdAttribute = $(if ($script:WebCfg.testIdAttribute) { [string]$script:WebCfg.testIdAttribute } else { 'data-testid' })
-                      viewport = $script:WebCfg.viewport; shotDir = $ShotDir; scenarios = @($Scenarios | ForEach-Object { [ordered]@{ id = $_.id; title = $_.title; steps = @($_.steps) } }) }
+                      viewport = $script:WebCfg.viewport; shotDir = $ShotDir
+                      # v3.53.7: massa de dados (passo "seed") e o botão de confirmação do seletor (passo "select").
+                      seeds = (Get-TargetSeeds $script:WebCfg); seedTimeoutSec = $(if ($script:WebCfg.PSObject.Properties['seedTimeoutSec'] -and $script:WebCfg.seedTimeoutSec) { [int]$script:WebCfg.seedTimeoutSec } else { 300 })
+                      selectConfirm = $(if ($script:WebCfg.PSObject.Properties['selectConfirm'] -and $script:WebCfg.selectConfirm) { [string]$script:WebCfg.selectConfirm } else { '^(OK|Ok|Confirmar|Concluir|Pronto|Aplicar|Done)$' })
+                      scenarios = @($Scenarios | ForEach-Object { [ordered]@{ id = $_.id; title = $_.title; steps = @($_.steps) } }) }
     [System.IO.File]::WriteAllText($tmpIn, ($in | ConvertTo-Json -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
     Push-Location $script:WebRoot
     try { $ErrorActionPreference = 'Continue'; & node (Join-Path $PSScriptRoot 'web-runner.js') $tmpIn $tmpOut 2>&1 | Out-Null } finally { Pop-Location }

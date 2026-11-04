@@ -21,6 +21,9 @@
 #    fica na frente em 3 aberturas é FALHA DE AMBIENTE, exit 4; a falha de passo traz [tela · ids · textos] visíveis)
 #   clock <aaaa-mm-dd hh:mm>           fixa o relógio              wait <segundos>        espera
 #   tap <id>                           toca ou clica               type <id> = <texto>    digita
+#   select <id> = <opção>              escolhe a opção (pelo texto visível) num combo, lista suspensa ou seletor (v3.53.7)
+#   seed <nome>                        carrega a massa de dados: o comando de guards.json → targets.<alvo>.seeds.<nome>
+#                                      (v3.53.7; depois do reset, antes do launch; falhou = FALHA DE AMBIENTE, exit 4)
 #   slider <id> <valor> <min> <max>    posiciona o deslizante      font-scale <fator>     escala da fonte
 #   assert-text <id> = <texto>         texto igual                 assert-contains <id> = <trecho>
 #   assert-exists <id> | assert-absent <id>                        assert-checked <id> = true|false
@@ -43,7 +46,7 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib.ps1')
 $utf8 = New-Object System.Text.UTF8Encoding($false)
-$verbs = 'reset', 'launch', 'open', 'restart', 'back', 'clock', 'wait', 'tap', 'type', 'slider', 'font-scale', 'shot',
+$verbs = 'reset', 'launch', 'open', 'restart', 'back', 'clock', 'wait', 'tap', 'type', 'select', 'seed', 'slider', 'font-scale', 'shot',
          'assert-text', 'assert-contains', 'assert-exists', 'assert-absent', 'assert-checked', 'assert-count', 'assert-order'
 
 # Lê os cenários dos arquivos; erro de sintaxe vem com arquivo:linha.
@@ -57,7 +60,8 @@ function Read-Scenarios([string[]]$Files) {
             if (-not $blocks.Count) { $errors += "${f}:$n passo antes do primeiro 'scenario'"; continue }
             $verb = ($l -split '\s+', 2)[0]
             if ($verbs -notcontains $verb) { $errors += "${f}:$n passo desconhecido '$verb'" }
-            elseif ($verb -match '^(type|assert-text|assert-contains|assert-count|assert-order|assert-checked)$' -and $l -notmatch '=') { $errors += "${f}:$n '$verb' pede '<id> = <valor>'" }
+            elseif ($verb -match '^(type|select|assert-text|assert-contains|assert-count|assert-order|assert-checked)$' -and $l -notmatch '=') { $errors += "${f}:$n '$verb' pede '<id> = <valor>'" }
+            elseif ($verb -eq 'seed' -and $l -notmatch '^seed\s+\S+\s*$') { $errors += "${f}:$n 'seed' pede um nome só: seed <nome> (o comando fica em guards.json → targets.<alvo>.seeds)" }
             $blocks[-1].steps += $l
         }
     }
@@ -169,6 +173,18 @@ try {
     $onlyList = @($Only -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
     $blocks = @($parsed.Blocks | Where-Object { -not $onlyList.Count -or $onlyList -contains $_.id })
     foreach ($o in $onlyList) { if (-not ($parsed.Blocks | Where-Object { $_.id -eq $o })) { $parsed.Errors += "cenário $o pedido em -Only não existe" } }
+    # v3.53.7 (encadeamento do sprint 5 do garden): a massa que o cenário pede existe ANTES de o alvo ser tocado — o -ParseOnly
+    # do QA barra a massa não declarada, em vez de o accept descobrir no aparelho (o reset zerava a base e o cenário falhava).
+    $seedUse = @($blocks | ForEach-Object { $b = $_; $b.steps | Where-Object { $_ -match '^seed\s+(\S+)\s*$' } | ForEach-Object { @{ Sc = $b.id; Name = ([regex]::Match($_, '^seed\s+(\S+)')).Groups[1].Value } } })
+    if ($seedUse.Count) {
+        $tcs = Get-TargetsConfig $Root
+        $tn = @(if ($tcs) { $tcs.PSObject.Properties | ForEach-Object { $_.Name } | Where-Object { $_ -in 'android', 'web' -and (-not $Target -or $_ -eq $Target) } })
+        foreach ($u in $seedUse) {
+            if (-not @($tn | Where-Object { (Get-TargetSeeds $tcs.$_).Contains($u.Name) }).Count) {
+                $parsed.Errors += "cenário $($u.Sc): massa de dados '$($u.Name)' não declarada em guards.json → targets.$(if ($tn.Count -eq 1) { $tn[0] } else { '<alvo>' }).seeds — a sessão declara o comando que a carrega (o script é do projeto, criado por uma Task) ou o cenário espera com '# aguarda <T-ID>'"
+            }
+        }
+    }
     if ($parsed.Errors.Count) { [Console]::Out.WriteLine("accept: $($parsed.Errors.Count) erro(s) nos cenários"); foreach ($e in $parsed.Errors) { [Console]::Out.WriteLine("  $e") }; exit 2 }
     if ($ParseOnly) { [Console]::Out.WriteLine("accept: $($blocks.Count) cenário(s) válidos em $($files.Count) arquivo(s): $(($blocks | ForEach-Object { $_.id }) -join ', ')"); exit 0 }
 

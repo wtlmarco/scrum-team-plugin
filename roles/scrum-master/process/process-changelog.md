@@ -170,6 +170,10 @@ Sem regra nova (34). **Indicador (sprint 6):** nenhuma espera acima de 15 min se
 
 Sem regra nova (34). **Indicador (sprint 6):** zero plano acima de 30 KB no dev; zero "tag não encontrada" no accept; zero ✅ sem prova no alvo; cota por Task no `consumption.md`. **Evidência:** CHANGELOG v3.53.6.
 
+### Addendum v3.53.7 — prova pela camada certa, decisão do sprint num lugar só (Arq + Dev + QA) — 04/11/2026
+
+**Instrução:** stakeholder, 04/11 (encadeamento do sprint 5 do garden). Muda: o QA prova cada critério na camada mais barata, e o cenário de aparelho declara a massa (`seed`); premissa de layout se mede executando; decisão de GAP comum fica uma vez em `architect/decisions/S<n>.md`, citada pelo plano. Sem regra nova (34). **Indicador (sprint 6):** zero decisão copiada entre planos; cenários tirados da prova por gesto ou massa perto de zero. **Evidência:** CHANGELOG v3.53.7.
+
 ---
 
 ## v3.52 — Orquestrador enxuto: sessão nova por ritual, `run` em sessões curtas, espera sem sondagem, registro de decisões e commit por Task (SM) — 23/10/2026

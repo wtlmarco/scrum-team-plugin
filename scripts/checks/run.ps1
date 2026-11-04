@@ -280,6 +280,8 @@ function Write-Handoff($T, [string]$S, [string]$n) {
     $ar = Join-Path ((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'; $atxt = 'sem accept'
     if (Test-Path -LiteralPath $ar) { try { $a = Read-Text $ar | ConvertFrom-Json; $atxt = if ($a.environment) { "falha de ambiente: $($a.environment)" } else { "$($a.passed) de $($a.total) em $($a.at)" } } catch { } }
     $rem = if ($pf -and $stop) { Get-RemainingSteps $pt $stop $Block } else { $null }
+    # v3.53.7: as decisões do sprint que valem para a Task (todas, as que a citam e as que o plano cita), uma linha cada.
+    $dl = @(Get-TaskDecisionLines $Root $n $T.Id $(if ($pf) { $pt } else { '' }))
     $md = @("# Cartão de passagem — $($T.Id) $($T.Title)", '', "**História:** $($T.Story) · **Marcador:** $($T.Mark) · **Depende de:** $(if ($T.Deps.Count) { $T.Deps -join ', ' } else { '—' })",
             ("**Plano:** ``$planRel`` · $files arquivo(s)" + $(if ($blocks.Count) { " · " + ($blocks -join ' · ') } else { '' })),
             # v3.52.3 (note.md item 1): o aceite só com alvo — sem guards.json → targets, o cartão mandava rodar o accept.ps1 e
@@ -288,6 +290,7 @@ function Write-Handoff($T, [string]$S, [string]$n) {
             ("**Última entrega:** $last" + $(if ($stop) { " · parou: $((($stop -split "`r?`n")[0]).Trim())" } else { '' })),
             "**Verificação:** $vtxt · **Cenários no alvo:** $atxt",
             "**GAPs:** $(if ($gaps.Count) { $gaps -join ' · ' } else { 'nenhum' })",
+            $(if ($dl.Count) { "**Decisões do sprint** (``architect/decisions/S$n.md`` — valem como o plano; não abra o arquivo):`n" + ($dl -join "`n") } else { $null }),
             # v3.53.3: o diagnóstico do operator sobre a falha da prova no alvo (run.ps1 done -Result gap).
             $(if (Test-Path -LiteralPath $dg) { "**Diagnóstico do alvo (operator):** ``$dgRel`` · $((@((Read-Text $dg) -split "`r?`n" | Where-Object { $_.Trim() }) | Select-Object -First 1))" } else { $null }), '',
             $(if ($rem) { "Retomada do passo $($rem.Num): os passos que faltam estão abaixo, copiados do plano, e o que já está provado também. Siga por este cartão — não reabra o plano inteiro; abra só o trecho de que um passo precise e que não esteja aqui (Read com offset e limit; a §6 com os testes e as **Mutações:**, se o passo as pedir)." } else { 'Leia: este cartão, o cabeçalho e a §6 do plano e o seu bloco. O resto só se o passo pedir.' }))
@@ -426,7 +429,7 @@ try {
             Add-RunLog $S $n $T.Id '🔺 GAP → Arquiteto em instância nova (/arc question); a decisão fica no plano (R9)' $(if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }) "sprints/$n/delivery/$($T.Id).md"
             Out "run: $($T.Id) com 🔺 GAP — Arquiteto em instância NOVA (o cache de 5 min do anterior já venceu; C1), modo /arc question (rota gravada no run-log.md):"
             Out "  $(Get-AgentLine 'architect')"
-            Out "  prompt: `"Decida o 🔺 GAP da $($T.Id): cartão .team-project/$card, plano .team-project/sprints/$n/$($T.Plan), relatório .team-project/sprints/$n/delivery/$($T.Id).md$(if ($diagV) { ", diagnóstico do operator $diagRel (veredito $diagV)" }). Registre a decisão no plano (R9). Se a mesma decisão vale para outra Task ainda não fechada do sprint, registre-a também no plano dela e cite as Tasks na volta. Não escreva código nem rode build. Volte em até 15 linhas.`""
+            Out "  prompt: `"Decida o 🔺 GAP da $($T.Id): cartão .team-project/$card, plano .team-project/sprints/$n/$($T.Plan), relatório .team-project/sprints/$n/delivery/$($T.Id).md$(if ($diagV) { ", diagnóstico do operator $diagRel (veredito $diagV)" }). Registre a decisão no plano (R9). Se ela vale para mais de uma Task do sprint (alvo, APK, teste instável, regra de processo), grave-a UMA vez como D-<k> em .team-project/architect/decisions/S$n.md (## D-<k> — <título>, **Vale para:** todas | T-…, a regra em até 5 linhas) e no plano só a referência em **Decisões do sprint:** — não copie o texto em plano nenhum: o cartão de cada Task a traz (regra 29). Decisão que já está lá: só a referência. Não escreva código nem rode build. Volte em até 15 linhas.`""
             Out "  depois: dev em instância NOVA com a decisão — run.ps1 start -Task $($T.Id) (o cartão regerado aponta o plano com a decisão) e rode run.ps1 done de novo"
             exit 0
         }
@@ -680,7 +683,7 @@ try {
             $depPlans = @($t.Deps | ForEach-Object { $d = $_; $dt = @($tasks | Where-Object { $_.Id -eq $d }) | Select-Object -First 1; if ($dt -and (Get-PlanFull $dt $S)) { ".team-project/sprints/$n/$($dt.Plan)" } })
             # v3.53.2: o resumo do plano da dependência vai no recorte; o plano inteiro só se abre no trecho que faltar.
             $depSum = @($depPlans | ForEach-Object { "## Plano da dependência — resumo de ``$_```n`n" + (Get-PlanSummary (Join-Path $Root $_)) })
-            $card = "# Ficha da $($t.Id) — recorte de ``$bdRel```n`n> Gerado pelo ``run.ps1 next`` para o Arquiteto do plano (v3.53). A fonte é o breakdown: não edite aqui.`n`n" + $(if ($pick.F.Common) { $pick.F.Common + "`n`n" } else { '' }) + $pick.F.Body + "`n" + $(if ($depSum.Count) { "`n" + ($depSum -join "`n`n") + "`n" } else { '' })
+            $card = "# Ficha da $($t.Id) — recorte de ``$bdRel```n`n> Gerado pelo ``run.ps1 next`` para o Arquiteto do plano (v3.53). A fonte é o breakdown: não edite aqui.`n`n" + $(if ($pick.F.Common) { $pick.F.Common + "`n`n" } else { '' }) + $pick.F.Body + "`n" + $(if ($depSum.Count) { "`n" + ($depSum -join "`n`n") + "`n" } else { '' }) + (Get-DecisionsDigest $Root $n)
             [System.IO.File]::WriteAllText((Join-Path $dir "$($t.Id)-ficha.md"), $card, $utf8)
             $depTxt = if ($depPlans.Count) { '. O resumo do plano da dependência (' + ($depPlans -join ', ') + ': arquivos, nomes, passos) está no fim da ficha: abra esse plano só no trecho que faltar, com offset e limit' } else { '' }
             $rest = @($noPlan | Where-Object { $_.Id -ne $t.Id } | ForEach-Object { $_.Id })
