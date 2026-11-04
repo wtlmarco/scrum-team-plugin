@@ -7,11 +7,15 @@
 #   -By: a coluna "Por quem" do Registro (padrão: o papel que assume — plan e build → dev, qa → QA, todo e blocked → SM);
 #        v3.51.4 (garden item 15): vai também ao Evento da Série ("T-041 🟦 → 🟨 · dev"), para ler quem produziu o ponto.
 #        v3.52.1: e a última rodada medida da Task (usage.jsonl): "T-041 🟦 → 🟨 · dev ← architect a1b2c3d4 14:05".
+#   -Reason (v3.53.6, sprint 5 do garden, item 9; só com -To blocked): grava a linha em "Bloqueios e riscos abertos" (kanban.md,
+#        ou o quadro antigo) com o motivo na Natureza e o degrau nomeado. "prova no alvo pendente — <motivo>" é a etiqueta que o
+#        run.ps1 next lê para reabrir a Task quando o alvo voltar; ao sair de 🔴, a linha vira "prova no alvo retomada em <data>".
 # Saída: uma linha. Exit 0 · 2 = erro de uso ou de leitura (nada é gravado).
 param(
     [Parameter(Mandatory = $true)][string]$Task,
     [Parameter(Mandatory = $true)][string]$To,
     [string]$By = '',
+    [string]$Reason = '',
     [string]$Root = (Get-Location).Path
 )
 
@@ -36,6 +40,7 @@ try {
     if ($t -eq $E.Done -or $t -ieq 'done') { [Console]::Error.WriteLine('mark: o ✅ é do close.ps1 -Apply (confere o fechamento e baixa a estimativa).'); exit 2 }
     $target = if ($byName.ContainsKey($t.ToLowerInvariant())) { $byName[$t.ToLowerInvariant()] } elseif ($marks -contains $t) { $t } else { $null }
     if (-not $target) { [Console]::Error.WriteLine("mark: -To '$To' desconhecido — use todo, plan, build, qa ou blocked."); exit 2 }
+    if ($Reason -and $target -ne $red) { [Console]::Error.WriteLine('mark: -Reason só vale com -To blocked (é a linha de Bloqueios da Task).'); exit 2 }
     if (-not $By) { $By = if ($target -in $E.Plan, $E.Build) { 'dev' } elseif ($target -eq $E.QA) { 'QA' } else { 'SM' } }
 
     $tp = Join-Path $Root '.team-project'
@@ -117,11 +122,44 @@ try {
         $bl.Insert($rb + 1, $regRow); $where = 'sprint-backlog.md (quadro anterior à v3.44.1)'
     }
 
+    # 4 · v3.53.6 (item 9): a linha de Bloqueios com o motivo (-Reason) e, ao sair de 🔴, a prova no alvo pendente retomada.
+    $blkTxt = ''
+    if ($Reason) {
+        $hdr = '^#{2,3}\s+Bloqueios e riscos abertos'
+        $tl = $null; $be = Get-TableEnd $lines $hdr; $bw = Split-Path $bdPath -Leaf
+        if ($be -ge 0) { $tl = $lines } else { $be = Get-TableEnd $bl $hdr; if ($be -ge 0) { $tl = $bl; $bw = 'sprint-backlog.md' } }
+        if ($tl) {
+            $hs = $be; while ($hs - 1 -ge 0 -and $tl[$hs - 1].TrimStart().StartsWith('|')) { $hs-- }
+            $hd = @(Split-Row $tl[$hs] | ForEach-Object { Clean-Cell $_ })
+            $k = 0; for ($i = $hs + 1; $i -le $be; $i++) { $c0 = Clean-Cell (Split-Row $tl[$i])[0]; if ($c0 -match '^\d+$' -and [int]$c0 -gt $k) { $k = [int]$c0 } }
+            $day = Get-Date -Format 'yyyy-MM-dd'; $why = (($Reason -replace '\|', '/') -replace '\s+', ' ').Trim()
+            $envy = $why -match '(?i)alvo|ambiente|emulador|aparelho'
+            $cells = @(foreach ($h in $hd) {
+                if ($h -eq '#') { "$($k + 1)" } elseif ($h -match '(?i)^Task') { $Task } elseif ($h -match '(?i)Natureza') { $why }
+                elseif ($h -match '(?i)Degrau') { if ($envy) { "escalado ao stakeholder em $day" } else { "par PO+Arquiteto desde $day" } }
+                elseif ($h -match '(?i)Quem') { if ($envy) { 'stakeholder (ambiente) — o run.ps1 next reabre quando o alvo responder' } else { 'PO + Arquiteto' } }
+                elseif ($h -match '(?i)Desde') { $day } else { '' } })
+            $tl.Insert($be + 1, '| ' + ($cells -join ' | ') + ' |')
+            $blkTxt = "; Bloqueios: linha $($k + 1) em $bw"
+        } else { $blkTxt = '; sem tabela "Bloqueios e riscos abertos" no kanban.md nem no quadro — grave a linha à mão' }
+    }
+    if ($from -eq $red -and $target -ne $red) {
+        $nr = 0
+        foreach ($ls in @($lines, $bl)) {
+            for ($i = 0; $i -lt $ls.Count; $i++) {
+                if ($ls[$i].TrimStart().StartsWith('|') -and $ls[$i] -match $idPat -and $ls[$i] -match ('(?i)' + [regex]::Escape($script:TargetPendingTag))) {
+                    $ls[$i] = [regex]::Replace($ls[$i], '(?i)' + [regex]::Escape($script:TargetPendingTag), "prova no alvo retomada em $now"); $nr++
+                }
+            }
+        }
+        if ($nr) { $blkTxt = "; Bloqueios: $nr linha(s) da prova no alvo marcada(s) retomada(s)" }
+    }
+
     # Tudo calculado: só agora grava, para não deixar o quadro trocado sem a linha no burndown.
     $utf8 = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($boardPath, ($bl -join $nl), $utf8)
     [System.IO.File]::WriteAllText($bdPath, ($lines -join $bnl), $utf8)
-    [Console]::Out.WriteLine("mark: $Task $from → $target · quadro, Série e Registro gravados (Registro em $where; por quem: $By)")
+    [Console]::Out.WriteLine("mark: $Task $from → $target · quadro, Série e Registro gravados (Registro em $where; por quem: $By)$blkTxt")
     }
     try { $null = & (Join-Path $PSScriptRoot 'kanban.ps1') -Root $Root 2>&1 } catch { }   # v3.51.2: o Kanban (Markdown) acompanha a transição
     exit 0

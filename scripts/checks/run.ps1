@@ -191,16 +191,87 @@ function Measure-CutAgent($Rc) {
     Out "  consumo: $(([string]$Rc.type) -replace '^.*:', '') $(if ($Rc.work) { [string]$Rc.work }) medido pelo transcript (parou sem SubagentStop)"
 }
 
+# v3.53.6 (sprint 5 do garden, item 1): plano da Task acima do teto (plan.ps1 regra 22 reprova) — o do quadro, o que o
+# Arquiteto deixou em plan/<ID>-*.md sem a sessão gravar a coluna Plano, ou o do plano externo devolvido (pack/review/). O
+# tamanho é o estado: sem marcador novo. @{ Path; Rel; Kb } ou $null.
+function Get-OversizedPlan($T) {
+    $c = @(); $pf = Get-PlanFull $T $S; if ($pf) { $c += $pf }
+    $c += @(Get-ChildItem -LiteralPath (Join-Path $S 'plan') -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match ('^' + [regex]::Escape($T.Id) + '-.*\.md$') } | ForEach-Object { $_.FullName })
+    $c += (Join-Path $S "pack/review/$($T.Id)-plan.md")
+    foreach ($f in @($c | Select-Object -Unique)) {
+        if (-not (Test-Path -LiteralPath $f -PathType Leaf)) { continue }
+        $kb = Get-PlanKb (Read-Text $f)
+        if ($kb -gt $script:PlanMaxKb) { $fn = $f -replace '\\', '/'; $ix = $fn.LastIndexOf('/.team-project/'); return @{ Path = $f; Rel = $(if ($ix -ge 0) { $fn.Substring($ix + 1) } else { $fn }); Kb = $kb } }
+    }
+    return $null
+}
+# Divisão da Task por uma instância curta do Arquiteto (v3.53.2: ficha com Arquivos previstos acima do teto; v3.53.6, item 1:
+# plano acima de 30 KB — os blocos do plano grande são a base da divisão, para o trabalho não se perder). $F = ficha ou $null.
+function Write-SplitAction($t, [string]$Story, $F, $Big) {
+    $bdRel = ".team-project/architect/breakdown/S$n.md"
+    # IDs novos: sufixo de uma letra (TaskIdRe), livres no quadro; a Task dividida não empresta o seu.
+    $base = $t.Id -replace '[a-z]$', ''; $taken = @($tasks | ForEach-Object { $_.Id }) + $t.Id
+    $newIds = @([char[]]'abcdefghijklmnopqrstuvwxyz' | ForEach-Object { "$base$_" } | Where-Object { $taken -notcontains $_ } | Select-Object -First 2)
+    $mx = $script:FichaMaxFiles
+    if (-not $Big) {
+        Out "PRÓXIMA AÇÃO: dividir a $($t.Id) antes do plano — a ficha prevê $($F.Planned) arquivos (máximo $mx) (Arquiteto, instância curta)"
+        Out "  $(Get-AgentLine 'architect')"
+        Out "  prompt: `"A ficha da $($t.Id) em $bdRel prevê $($F.Planned) arquivos; o máximo por Task é $mx. Divida-a em $($newIds -join ', ') (e a letra seguinte, se precisar de mais) no próprio $bdRel, dentro da História ${Story}: uma linha da tabela e uma ficha por Task nova, cada ficha com **Arquivos previstos:** até $mx, a dependência entre elas na coluna Depende de, e retire a ficha da $($t.Id). O escopo da História não muda (R2). Não escreva plano. Volte em até 8 linhas: as Tasks novas, o título, a estimativa de cada uma (somando a da $($t.Id)) e a dependência.`""
+        Out "  depois: a sessão troca a linha da $($t.Id) no Sprint Backlog pelas Tasks novas, transcritas do breakdown (mesma História), e roda run.ps1 next"
+        return
+    }
+    $where = if ($F) { "No próprio ${bdRel}, dentro da História ${Story}: uma linha da tabela e uma ficha por Task nova, cada ficha com **Arquivos previstos:** até $mx e a linha **Base:** ``$($Big.Rel)`` — <os blocos ou passos que ela herda>, a dependência entre elas na coluna Depende de; retire a ficha da $($t.Id)." } else { "A $($t.Id) não tem ficha no breakdown: volte com, por Task nova, o título, a estimativa (somando a da $($t.Id)), a dependência e os blocos ou passos do plano que ela herda." }
+    $plx = Get-RunPlanner $Root
+    Out "PRÓXIMA AÇÃO: dividir a $($t.Id) — o plano dela tem $($Big.Kb) KB (teto $($script:PlanMaxKb) KB, regra 22): Task grande; os blocos do plano são a base da divisão (Arquiteto, instância curta)"
+    Out "  $(Get-AgentLine 'architect')"
+    Out "  prompt: `"O plano da $($t.Id) (``$($Big.Rel)``, $($Big.Kb) KB) passou do teto de $($script:PlanMaxKb) KB e reprovou no plan.ps1 (regra 22): a Task é grande demais para uma construção. Divida-a em $($newIds -join ', ') (e a letra seguinte, se precisar de mais) usando os blocos — ou grupos de passos — desse plano como base: cada Task nova herda blocos inteiros, com os arquivos e os testes deles, e o que já está decidido no plano não se decide de novo. Do plano, leia o cabeçalho e os títulos dos blocos e passos (Grep '^#{2,4} '); não o reescreva nem o corte. $where O escopo da História não muda (R2). Não escreva plano: cada Task nova ganha o seu no run.ps1 next. Volte em até 8 linhas: as Tasks novas, o título, a estimativa de cada uma e a dependência.`""
+    Out "  depois: a sessão troca a linha da $($t.Id) no Sprint Backlog pelas Tasks novas$(if ($F) { ', transcritas do breakdown' }) (mesma História, coluna Plano sem link) e roda run.ps1 next; o plano grande fica no disco como base (não o apague)$(if ($plx -and @($plx.Tasks).Count -and (Test-ExternalTask $plx $t.Id)) { " · plano externo com a lista do piloto: as Tasks novas entram em guards.json → run.tasks (stakeholder)" })"
+}
+
+# v3.53.6 (sprint 5 do garden, item 2): os passos do plano que faltam, do ponto de retomada ("Parei no passo <n>") em diante —
+# até o fim do bloco do passo (o bloco seguinte é de outra instância) ou da §4. Com -Block (ou "bloco <k>" no ponto), procura
+# o passo dentro do bloco. Até $MaxBytes; acima, corta numa linha e aponta o resto no plano. @{ Num; Text; Cut } ou $null.
+function Get-RemainingSteps([string]$PlanText, [string]$Stop, [string]$Blk, [int]$MaxBytes = 8192) {
+    $sm = [regex]::Match($Stop, '(?i)\bpasso\s+(\d+(?:\.\d+)*)'); if (-not $sm.Success) { $sm = [regex]::Match($Stop, '^\s*(\d+(?:\.\d+)*)\b') }
+    if (-not $sm.Success) { return $null }
+    $num = $sm.Groups[1].Value
+    # "4 de 4 — repositório compila, todos os testes passam": entrega terminada, nada a retomar.
+    $dm = [regex]::Match($Stop, '(?i)\b(\d+)\s+de\s+(\d+)\b')
+    if ($dm.Success -and $dm.Groups[1].Value -eq $dm.Groups[2].Value -and $Stop -notmatch '(?i)\bfalt|pendente|n[ãa]o (rodou|passou|terminei)') { return $null }
+    $s4 = [regex]::Match($PlanText, '(?ms)^##\s+4\b[^\r\n]*\r?\n(.*?)(?=^##\s|\z)')
+    $scope = if ($s4.Success) { $s4.Groups[1].Value } else { $PlanText }
+    $bm = [regex]::Match($Stop, '(?i)\bbloco\s+(\d+)'); $bk = if ($Blk) { $Blk } elseif ($bm.Success) { $bm.Groups[1].Value } else { '' }
+    if ($bk) { $b = [regex]::Match($scope, '(?ms)^###\s+Bloco\s+' + [regex]::Escape($bk) + '\b.*?(?=^###\s+Bloco\s|\z)'); if ($b.Success) { $scope = $b.Value } }
+    $h = [regex]::Match($scope, '(?m)^#{3,4}\s+Passo\s+' + [regex]::Escape($num) + '(?![\w.])[^\r\n]*')
+    if (-not $h.Success) { return $null }
+    $rest = $scope.Substring($h.Index)
+    $nb = [regex]::Match($rest, '(?m)^###\s+Bloco\s'); if ($nb.Success -and $nb.Index -gt 0) { $rest = $rest.Substring(0, $nb.Index) }
+    $rest = $rest.TrimEnd(); $cut = ''
+    if ($utf8.GetByteCount($rest) -gt $MaxBytes) {
+        $keep = New-Object System.Collections.ArrayList; $size = 0; $lines = @($rest -split "`r?`n"); $i = 0
+        for (; $i -lt $lines.Count; $i++) { $sz = $utf8.GetByteCount($lines[$i]) + 1; if ($size + $sz -gt $MaxBytes) { break }; [void]$keep.Add($lines[$i]); $size += $sz }
+        $nx = @($lines | Select-Object -Skip $i | Where-Object { $_ -match '^#{3,4}\s+Passo\s' } | Select-Object -First 1)
+        $cut = if ($nx.Count) { "a partir de '$($nx[0].Trim('#', ' '))'" } else { 'do meio do último passo citado' }
+        $rest = ($keep -join "`n").TrimEnd()
+    }
+    return @{ Num = $num; Text = $rest; Cut = $cut; Block = $bk }
+}
+
 # Cartão de passagem (C2): o estado da Task em ~2 KB, para a instância nova não reler o plano inteiro nem o histórico.
+# v3.53.6 (item 2): com ponto de retomada, o cartão leva os passos que faltam e o que já está provado (até ~10 KB).
 function Write-Handoff($T, [string]$S, [string]$n) {
     $dir = Join-Path $S 'handoff'; New-Item -ItemType Directory -Force $dir | Out-Null
     $pf = Get-PlanFull $T $S; $planRel = if ($pf) { "sprints/$n/$($T.Plan)" } else { '(sem plano)' }
     $blocks = @(); $files = 0
     if ($pf) { $pt = Read-Text $pf; $blocks = @([regex]::Matches($pt, '(?m)^###\s+(Bloco\s+\d+.*)$') | ForEach-Object { $_.Groups[1].Value.Trim() }); $fm = [regex]::Match($pt, '(?s)\*\*Arquivos tocados:\*\*(.*?)(?:\r?\n[ \t]*\r?\n|\z)'); if ($fm.Success) { $files = @([regex]::Matches($fm.Groups[1].Value, '`[^`]+`')).Count } }
-    $dv = Join-Path $S "delivery/$($T.Id).md"; $last = '(nenhuma entrega ainda)'; $stop = ''; $gaps = @()
+    $dv = Join-Path $S "delivery/$($T.Id).md"; $last = '(nenhuma entrega ainda)'; $stop = ''; $stopSec = ''; $gaps = @()
     if (Test-Path -LiteralPath $dv) {
         $dt = Read-Text $dv; $secs = @([regex]::Matches($dt, '(?ms)^## .*?(?=^## |\z)'))
-        if ($secs.Count) { $ls = $secs[$secs.Count - 1].Value; $last = ($ls -split "`r?`n")[0].Trim(); $sm = [regex]::Match($ls, '(?ms)^###\s+Parei no passo\s*\r?\n(.+?)(\r?\n\r?\n|\z)'); if ($sm.Success) { $stop = $sm.Groups[1].Value.Trim() } }
+        if ($secs.Count) {
+            $ls = $secs[$secs.Count - 1].Value; $last = ($ls -split "`r?`n")[0].Trim(); $sm = [regex]::Match($ls, '(?ms)^###\s+Parei no passo\s*\r?\n(.+?)(\r?\n\r?\n|\z)'); if ($sm.Success) { $stop = $sm.Groups[1].Value.Trim() }
+            # v3.53.6 (item 2): a subseção inteira — o que já está provado, com a saída, o que falta, os comandos e o alvo (G23).
+            $ss = [regex]::Match($ls, '(?ms)^###\s+Parei no passo\s*\r?\n(.*?)(?=^#{2,3}\s|\z)'); if ($ss.Success) { $stopSec = $ss.Groups[1].Value.Trim() }
+        }
         $gaps = @([regex]::Matches($dt, '(?m)^.*🔺.*$') | ForEach-Object { $_.Value.Trim() } | Select-Object -Last 3)
     }
     $vr = Join-Path (Get-VerifyDir $Root $T.Id) 'result.json'; $vtxt = 'sem verify'
@@ -208,17 +279,27 @@ function Write-Handoff($T, [string]$S, [string]$n) {
     $dgRel = "operator/$n/$($T.Id)-alvo/diagnostico.md"; $dg = Join-Path $Root ".team-project/$dgRel"
     $ar = Join-Path ((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'; $atxt = 'sem accept'
     if (Test-Path -LiteralPath $ar) { try { $a = Read-Text $ar | ConvertFrom-Json; $atxt = if ($a.environment) { "falha de ambiente: $($a.environment)" } else { "$($a.passed) de $($a.total) em $($a.at)" } } catch { } }
+    $rem = if ($pf -and $stop) { Get-RemainingSteps $pt $stop $Block } else { $null }
     $md = @("# Cartão de passagem — $($T.Id) $($T.Title)", '', "**História:** $($T.Story) · **Marcador:** $($T.Mark) · **Depende de:** $(if ($T.Deps.Count) { $T.Deps -join ', ' } else { '—' })",
             ("**Plano:** ``$planRel`` · $files arquivo(s)" + $(if ($blocks.Count) { " · " + ($blocks -join ' · ') } else { '' })),
             # v3.52.3 (note.md item 1): o aceite só com alvo — sem guards.json → targets, o cartão mandava rodar o accept.ps1 e
             # 4 de 5 Tasks do sprint 4 do garden pararam no mesmo 🔺 GAP "accept sem .scn".
             ("**Cenários:** " + $(if (-not $T.Scenarios.Count) { 'nenhum no alvo' } elseif (Get-TargetsConfig $Root) { "$($T.Scenarios -join ', ') — ``accept.ps1 -Task $($T.Id) -Only $($T.Scenarios -join ',')``" } else { "$($T.Scenarios -join ', ') — sem alvo de execução: o accept não roda; os cenários se provam pelos testes do plano" }) + $(if ($T.TestScenarios.Count) { " · por teste do plano, sem accept: $($T.TestScenarios -join ', ')" } else { '' })),
-            ("**Última entrega:** $last" + $(if ($stop) { " · parou: $stop" } else { '' })),
+            ("**Última entrega:** $last" + $(if ($stop) { " · parou: $((($stop -split "`r?`n")[0]).Trim())" } else { '' })),
             "**Verificação:** $vtxt · **Cenários no alvo:** $atxt",
             "**GAPs:** $(if ($gaps.Count) { $gaps -join ' · ' } else { 'nenhum' })",
             # v3.53.3: o diagnóstico do operator sobre a falha da prova no alvo (run.ps1 done -Result gap).
             $(if (Test-Path -LiteralPath $dg) { "**Diagnóstico do alvo (operator):** ``$dgRel`` · $((@((Read-Text $dg) -split "`r?`n" | Where-Object { $_.Trim() }) | Select-Object -First 1))" } else { $null }), '',
-            'Leia: este cartão, o cabeçalho e a §6 do plano e o seu bloco. O resto só se o passo pedir.')
+            $(if ($rem) { "Retomada do passo $($rem.Num): os passos que faltam estão abaixo, copiados do plano, e o que já está provado também. Siga por este cartão — não reabra o plano inteiro; abra só o trecho de que um passo precise e que não esteja aqui (Read com offset e limit; a §6 com os testes e as **Mutações:**, se o passo as pedir)." } else { 'Leia: este cartão, o cabeçalho e a §6 do plano e o seu bloco. O resto só se o passo pedir.' }))
+    # v3.53.6 (sprint 5 do garden, item 2): a instância nova da G23 relia o cabeçalho, a §6 e o bloco inteiro para achar o
+    # ponto. Com "Parei no passo", o cartão traz o que já está provado (a subseção do delivery, até ~2 KB) e os passos do
+    # ponto em diante (até 8 KB; acima, o ponteiro para o resto no plano).
+    if ($rem) {
+        $proved = if ($stopSec.Length -gt 2000) { $stopSec.Substring(0, 2000).TrimEnd() + "`n… (o resto em sprints/$n/delivery/$($T.Id).md, ### Parei no passo)" } else { $stopSec }
+        $md += @('', '## Já provado — ponto de retomada (delivery)', '', $proved, '', "## Passos que faltam — do plano, passo $($rem.Num) em diante$(if ($rem.Block) { " (Bloco $($rem.Block))" })", '', $rem.Text)
+        if ($rem.Cut) { $md += @('', "… (cortado em 8 KB: o resto em ``$planRel`` §4$(if ($rem.Block) { ", Bloco $($rem.Block)" }), $($rem.Cut))") }
+    }
+    $script:CardResume = if ($rem) { $rem.Num } else { '' }
     $path = Join-Path $dir "$($T.Id).md"; [System.IO.File]::WriteAllText($path, (@($md | Where-Object { $null -ne $_ }) -join "`n") + "`n", $utf8)
     return "sprints/$n/handoff/$($T.Id).md"
 }
@@ -277,7 +358,9 @@ try {
         # v3.51.4: o formato que o close.ps1 lê (garden item 17), a retomada do verify parcial (exit 3, garden item 18) e o
         # alvo pelo target.ps1, sem adb nem espera à mão (note.md item 4).
         $tgt = if (Get-TargetsConfig $Root) { " Alvo: confira com target.ps1 -Target <alvo> (com -Repair ele reinicia e espera); não use adb nem Start-Sleep." } else { '' }
-        Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk Leia o cartão .team-project/$card, o cabeçalho e a §6 do plano $planRel e o seu bloco — não o plano inteiro. Rode verify.ps1 -Mode focused durante, -Mode full no fim, -Mode mutation se o plano tem **Mutações:**$acc. Exit 3 = parcial (o tempo da chamada acabou): rode o MESMO comando de novo, ele continua de onde parou. Comando que a ferramenta moveu para segundo plano ('moved to the background'): encerre o turno com a primeira linha ESPERANDO <comando> — o aviso de conclusão traz o resultado e você segue; não sonde o log nem dispare outro verify (exit 5 = outra rodada ainda roda). Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga.$tgt Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept — cada bloco de código começa com a linha do comando ('> verify.ps1 -Mode full …') e traz a saída embaixo — e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
+        # v3.53.6 (item 2): com ponto de retomada, o cartão traz os passos que faltam — o plano não se reabre.
+        $readTxt = if ($script:CardResume) { "Retome do passo $($script:CardResume): o cartão .team-project/$card traz os passos que faltam e o que já está provado — siga por ele e não reabra o plano $planRel, salvo o trecho de que um passo precise e que o cartão não traga (offset e limit)." } else { "Leia o cartão .team-project/$card, o cabeçalho e a §6 do plano $planRel e o seu bloco — não o plano inteiro." }
+        Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk $readTxt Rode verify.ps1 -Mode focused durante, -Mode full no fim, -Mode mutation se o plano tem **Mutações:**$acc. Exit 3 = parcial (o tempo da chamada acabou): rode o MESMO comando de novo, ele continua de onde parou. Comando que a ferramenta moveu para segundo plano ('moved to the background'): encerre o turno com a primeira linha ESPERANDO <comando> — o aviso de conclusão traz o resultado e você segue; não sonde o log nem dispare outro verify (exit 5 = outra rodada ainda roda). Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga.$tgt Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept — cada bloco de código começa com a linha do comando ('> verify.ps1 -Mode full …') e traz a saída embaixo — e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
         Out "  ao voltar: run.ps1 done -Task $($T.Id) -Result ok|gap|env|teto (teto = o dev voltou com TETO: a G23 o parou no teto de contexto)"
         exit 0
     }
@@ -354,7 +437,16 @@ try {
             Out "run: $($T.Id) parou por FALHA DE AMBIENTE (D4) — não é defeito do código; nenhum papel caro é chamado. Registrada ($($ec.env) neste bloco); não conta para o escalonamento do dev (R27)."
             foreach ($nm in $names) { Out "  1. $plugin/target.ps1 -Target $nm -Repair" }
             Out "  2. pronto → dev em instância NOVA: run.ps1 start -Task $($T.Id) (o relatório em delivery/ diz o que já foi feito; rode de novo o que falhou)"
-            Out "  3. sem reparo → mark.ps1 -Task $($T.Id) -To blocked e linha em Bloqueios (ambiente, com a ação para o stakeholder); a fila segue"
+            # v3.53.6 (sprint 5 do garden, item 9): o accept da Task parou por ambiente e o reparo falhou → 🔴 com "prova no alvo
+            # pendente" em Bloqueios (mark.ps1 -Reason), nunca ✅ com "nenhum aplicável — emulador fora do ar". O next reabre.
+            $aenv = ''; $arj = Join-Path ((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'
+            if (Test-Path -LiteralPath $arj) { try { $aenv = [string](Read-Text $arj | ConvertFrom-Json).environment } catch { } }
+            if ($aenv -and $names.Count) {
+                $aenv = (($aenv -replace '["|]', "'") -replace '\s+', ' ').Trim(); if ($aenv.Length -gt 100) { $aenv = $aenv.Substring(0, 100) + '…' }
+                Out "  3. sem reparo → $plugin/mark.ps1 -Task $($T.Id) -To blocked -Reason `"$($script:TargetPendingTag) — $aenv`" (grava a linha em Bloqueios; o run.ps1 next reabre a Task em 🟪 e manda rodar o accept quando o alvo voltar). Não feche a Task sem a prova. Devolva `"$($T.Id) 🔴 bloqueada: $($script:TargetPendingTag) · a fila segue`""
+            } else {
+                Out "  3. sem reparo → $plugin/mark.ps1 -Task $($T.Id) -To blocked -Reason `"ambiente: <motivo>`" (grava a linha em Bloqueios, com a ação para o stakeholder); a fila segue"
+            }
             exit 0
         }
         # v3.53.1 (plugin-report do sprint 4 do garden, item 15): a G23 parou o dev no teto de contexto e ele gravou o ponto de
@@ -477,6 +569,30 @@ try {
     $waiting = { param($sc) $deferred.ContainsKey($sc) -and $doneIds -notcontains $deferred[$sc] }
     $done = $doneIds
     $cur = @($open | Where-Object { ($_.Mark -eq $E.Build -or $_.Mark -eq $E.QA) -and $gapWait -notcontains $_.Id }) | Select-Object -First 1
+    # v3.53.6 (sprint 5 do garden, item 9): Task 🔴 com "prova no alvo pendente" em Bloqueios (o accept parou por ambiente e o
+    # reparo falhou). A cada next, sem Task em construção, confere o alvo (target.ps1 sem -Repair, só quando há uma assim): de
+    # volta → a Task sai de 🔴 para 🟪 e o operator roda o accept dela; ainda fora → a fila segue, sem esperar.
+    if (-not $cur -and $hasTargets) {
+        $tpIds = @(Get-TargetPendingIds $S)
+        $tpT = @($tasks | Where-Object { $_.Mark -eq $redMk -and $tpIds -contains $_.Id })
+        if ($tpT.Count) {
+            $tn = @((Get-TargetsConfig $Root).PSObject.Properties | ForEach-Object { $_.Name })[0]
+            $hc = Invoke-Child 'target.ps1' @('-Target', $tn, '-Root', $Root)
+            if ($hc.Code -eq 0) {
+                $rt = $tpT[0]
+                $mo = Set-Mark $rt.Id 'qa' 'sessão (run.ps1 next — alvo de volta)'; if ($mo) { Out "  $mo" }
+                Add-RunLog $S $n $rt.Id "alvo $tn de volta → sai de 🔴 ($($script:TargetPendingTag)) para 🟪; operator roda o accept" 'target.ps1 ok no run.ps1 next' "sprints/$n/kanban.md (Bloqueios)"
+                $only = if ($rt.Scenarios.Count) { " -Only $($rt.Scenarios -join ',')" } else { '' }
+                Out "PRÓXIMA AÇÃO: prova no alvo da $($rt.Id) — o alvo $tn voltou (target.ps1 ok): a Task sai de 🔴 para 🟪 e o operator roda o accept que ficou pendente"
+                Out "  $(Get-AgentLine 'operator')"
+                Out "  prompt: `"Rode na raiz: $plugin/accept.ps1 -Task $($rt.Id)$only (a prova no alvo que ficou pendente quando o alvo caiu). Exit 4 = ambiente: rode $plugin/target.ps1 -Target $tn -Repair uma vez e repita. Não altere código, cenário nem plano. Devolva o caminho do result.md e a linha de resumo.`""
+                Out "  depois: run.ps1 done -Task $($rt.Id) -Result ok (fecha pela evidência: o verify do dev e este accept) · accept com exit 4 de novo → run.ps1 done -Task $($rt.Id) -Result env (volta a 🔴 pela prova pendente) · cenário que falhou: o done ok manda dev em instância nova"
+                exit 0
+            }
+            $why = @(($hc.Out -split "`r?`n") | Where-Object { $_ -match 'FALHA DE AMBIENTE|erro' } | Select-Object -First 1)
+            Out "  alvo $tn ainda fora$(if ($why.Count) { " ($((($why[0] -replace '^\s*target[^:]*:\s*', '') -replace '\s+', ' ').Trim()))" }): $(($tpT | ForEach-Object { $_.Id }) -join ', ') segue(m) 🔴 com a $($script:TargetPendingTag) — a fila continua; o next confere o alvo de novo na próxima chamada"
+        }
+    }
     # v3.53.2: cenário que aguarda outra Task (# aguarda <T-ID> no .scn) segura a Task que o cita como uma dependência.
     $blockers = { param($t) @(@($t.Deps | Where-Object { $done -notcontains $_ }) + @($t.Scenarios | Where-Object { & $waiting $_ } | ForEach-Object { $deferred[$_] }) | Select-Object -Unique) }
     # 1 · preparo da construção: por História, cenários executáveis (QA) e depois os planos (Arquiteto), antes de qualquer dev.
@@ -504,6 +620,12 @@ try {
             Out "  depois: plan.ps1 -Plan <caminho> e run.ps1 next (o executor de Task conduz a correção)"
             exit 0
         }
+        # v3.53.6 (sprint 5 do garden, item 1): plano acima de 30 KB reprova no plan.ps1 e a Task vai à divisão (a mesma rota da
+        # ficha grande), com os blocos do plano como base — antes ele passava com aviso e ia inteiro ao dev. Só Task ainda no
+        # preparo; a que está em construção segue.
+        $big = $null
+        foreach ($bt in @($h.Group | Where-Object { $_.Mark -ne $E.Build -and $_.Mark -ne $E.QA })) { $bp = Get-OversizedPlan $bt; if ($bp) { $big = @{ T = $bt; P = $bp }; break } }
+        if ($big) { Write-SplitAction $big.T $h.Name (Get-Ficha $Root $n $big.T.Id) $big.P; exit 0 }
         # v3.53.2: cenário declarado "# aguarda <T-ID>" no .scn não é pedido enquanto a Task que cria os nomes não fecha.
         $missScn = if ($hasTargets) { @($h.Group | ForEach-Object { $_.Scenarios } | Where-Object { $defined -notcontains $_ -and -not (& $waiting $_) } | Select-Object -Unique) } else { @() }
         $noPlan = @($h.Group | Where-Object { -not (Get-PlanFull $_ $S) })
@@ -545,16 +667,7 @@ try {
             # grande se divide (o custo do plano cresce mais rápido que ela) e caminho que não existe se corrige numa instância
             # curta (no garden, só o plan.ps1 o via, com o plano já escrito e a conversa em ~280 mil tokens).
             $bdRel = ".team-project/architect/breakdown/S$n.md"
-            if ($null -ne $pick.F.Planned -and $pick.F.Planned -gt $script:FichaMaxFiles) {
-                # IDs novos: sufixo de uma letra (TaskIdRe), livres no quadro; a Task dividida não empresta o seu.
-                $base = $t.Id -replace '[a-z]$', ''; $taken = @($tasks | ForEach-Object { $_.Id }) + $t.Id
-                $newIds = @([char[]]'abcdefghijklmnopqrstuvwxyz' | ForEach-Object { "$base$_" } | Where-Object { $taken -notcontains $_ } | Select-Object -First 2)
-                Out "PRÓXIMA AÇÃO: dividir a $($t.Id) antes do plano — a ficha prevê $($pick.F.Planned) arquivos (máximo $($script:FichaMaxFiles)) (Arquiteto, instância curta)"
-                Out "  $(Get-AgentLine 'architect')"
-                Out "  prompt: `"A ficha da $($t.Id) em $bdRel prevê $($pick.F.Planned) arquivos; o máximo por Task é $($script:FichaMaxFiles). Divida-a em $($newIds -join ', ') (e a letra seguinte, se precisar de mais) no próprio $bdRel, dentro da História $($h.Name): uma linha da tabela e uma ficha por Task nova, cada ficha com **Arquivos previstos:** até $($script:FichaMaxFiles), a dependência entre elas na coluna Depende de, e retire a ficha da $($t.Id). O escopo da História não muda (R2). Não escreva plano. Volte em até 8 linhas: as Tasks novas, o título, a estimativa de cada uma (somando a da $($t.Id)) e a dependência.`""
-                Out "  depois: a sessão troca a linha da $($t.Id) no Sprint Backlog pelas Tasks novas, transcritas do breakdown (mesma História), e roda run.ps1 next"
-                exit 0
-            }
+            if ($null -ne $pick.F.Planned -and $pick.F.Planned -gt $script:FichaMaxFiles) { Write-SplitAction $t $h.Name $pick.F $null; exit 0 }
             $miss = Get-FichaMissing $Root $pick.F
             if ($miss.Count) {
                 Out "PRÓXIMA AÇÃO: corrigir a ficha da $($t.Id) antes do plano — caminho que não existe: $($miss -join ', ') (Arquiteto, instância curta)"
@@ -571,16 +684,19 @@ try {
             [System.IO.File]::WriteAllText((Join-Path $dir "$($t.Id)-ficha.md"), $card, $utf8)
             $depTxt = if ($depPlans.Count) { '. O resumo do plano da dependência (' + ($depPlans -join ', ') + ': arquivos, nomes, passos) está no fim da ficha: abra esse plano só no trecho que faltar, com offset e limit' } else { '' }
             $rest = @($noPlan | Where-Object { $_.Id -ne $t.Id } | ForEach-Object { $_.Id })
+            # v3.53.6 (item 1): Task que nasceu da divisão de um plano grande — a ficha aponta o plano de origem em **Base:**.
+            $bm0 = [regex]::Match($pick.F.Body, '\*\*Base:\*\*\s*`([^`]+)`')
+            if ($bm0.Success) { $depTxt += ". A ficha tem **Base:** ``$($bm0.Groups[1].Value)`` — o plano da Task dividida: reaproveite os blocos e passos que ela cita (abra só esse trecho, com offset e limit); o que muda é o recorte, não as decisões" }
             Out "PRÓXIMA AÇÃO: preparo da construção — plano da $($t.Id) (História $($h.Name)) pela ficha, um Arquiteto por Task (regra 25)"
             Out "  $(Get-AgentLine 'architect')"
-            Out "  prompt: `"Escreva o Plano de Implementação da $($t.Id) — $($t.Title) em .team-project/sprints/$n/plan/$($t.Id)-<slug>.md, no template enxuto. Abra só a ficha .team-project/sprints/$n/handoff/$($t.Id)-ficha.md, o template `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md e o .team-project/architect/context.md$depTxt. Do código e das fontes, leia o trecho que a ficha aponta (caminho:linha e §), não o arquivo inteiro. O plano fica como sair: não o corte por tamanho (regra 22). Ler além dela vale: cada arquivo vai na linha **Li além da ficha:** do cabeçalho. Use os nomes comuns da ficha literalmente. Não abra o plan.ps1 nem plano de outro sprint: rode plan.ps1 e corrija pelo que ele imprime. A sessão atualiza a coluna Plano do quadro. Volte em até 15 linhas.`""
+            Out "  prompt: `"Escreva o Plano de Implementação da $($t.Id) — $($t.Title) em .team-project/sprints/$n/plan/$($t.Id)-<slug>.md, no template enxuto. Abra só a ficha .team-project/sprints/$n/handoff/$($t.Id)-ficha.md, o template `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md e o .team-project/architect/context.md$depTxt. Do código e das fontes, leia o trecho que a ficha aponta (caminho:linha e §), não o arquivo inteiro. O plano fica como sair: não o corte por tamanho (regra 22) — acima de $($script:PlanMaxKb) KB o plan.ps1 reprova e a Task se divide; aí volte dizendo 'tamanho', sem corrigir. Ler além dela vale: cada arquivo vai na linha **Li além da ficha:** do cabeçalho. Use os nomes comuns da ficha literalmente. Não abra o plan.ps1 nem plano de outro sprint: rode plan.ps1 e corrija pelo que ele imprime. A sessão atualiza a coluna Plano do quadro. Volte em até 15 linhas.`""
             Out "  depois: plan.ps1 -Plan <caminho> (exit 1 volta à mesma instância se ela respondeu há menos de 5 min; senão instância nova) e run.ps1 next$(if ($rest.Count) { " — faltam $($rest -join ', ')" })"
             exit 0
         }
         if ($noPlan.Count) {
             Out "PRÓXIMA AÇÃO: preparo da construção — planos da História $($h.Name) numa instância do Arquiteto (regra 25)"
             Out "  $(Get-AgentLine 'architect')"
-            Out "  prompt: `"Escreva os Planos de Implementação de $(($noPlan | ForEach-Object { $_.Id }) -join ', ') (História $($h.Name)) em .team-project/sprints/$n/plan/<T-ID>-<slug>.md, no template enxuto (regras 22 a 25: cite em vez de copiar, sem cortar por tamanho, **Cenários:** com os da Task, **Risco:**, **Layout novo:**). Leia o SDD, os standards citados e o código uma vez para todas. Rode plan.ps1 em cada plano e corrija até passar; atualize a coluna Plano do quadro pela sessão. Volte em até 15 linhas.`""
+            Out "  prompt: `"Escreva os Planos de Implementação de $(($noPlan | ForEach-Object { $_.Id }) -join ', ') (História $($h.Name)) em .team-project/sprints/$n/plan/<T-ID>-<slug>.md, no template enxuto (regras 22 a 25: cite em vez de copiar, sem cortar por tamanho, **Cenários:** com os da Task, **Risco:**, **Layout novo:**). Leia o SDD, os standards citados e o código uma vez para todas. Rode plan.ps1 em cada plano e corrija até passar — menos o 'tamanho' (acima de $($script:PlanMaxKb) KB): esse plano fica como está e a Task se divide no run.ps1 next; atualize a coluna Plano do quadro pela sessão. Volte em até 15 linhas.`""
             Out "  depois: para cada plano, plan.ps1 -Plan <caminho> (exit 1 volta à mesma instância se ela respondeu há menos de 5 min; senão instância nova) e run.ps1 next"
             exit 0
         }

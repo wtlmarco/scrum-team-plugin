@@ -3,7 +3,10 @@
 # da espera dos devs; em dinheiro era ~5× todos os devs juntos (cache lido custa 0,1× a entrada; Opus custa 40× o Haiku).
 # Tabela da API (US$ por milhão de tokens de ENTRADA; cache gravado 1,25×, cache lido 0,1×, saída 5×), conferida em 2026-10.
 # Modelo fora da tabela: $null ("sem preço"), nunca 0. Preço mudou: atualize aqui — é a única cópia (hook G16 e consumption.ps1).
-# Lido por dot-source (hooks/subagent-stop.ps1, scripts/checks/consumption.ps1); não roda sozinho.
+# Lido por dot-source (hooks/subagent-stop.ps1); não roda sozinho.
+# v3.53.6 (decisão do stakeholder: medir pela cota da assinatura, não por US$): o consumption.ps1 deixou de ler esta tabela
+# (o registro mostra a parte da cota de 5 h e da semanal). Fica só para o campo "usd" que a G16 grava no usage.jsonl — o
+# /team-usage (team-view.ps1) ainda o lê. Sai daqui quando o /team-usage passar à cota.
 
 $script:PriceTable = @{
     'opus-5-5'   = @{ Input = 4.0 }

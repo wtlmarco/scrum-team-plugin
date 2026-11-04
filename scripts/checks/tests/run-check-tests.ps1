@@ -187,6 +187,9 @@ function Remove-Line([string]$Path, [string]$Line) {
 }
 
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('team-checks-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+# v3.53.6: o registro da cota (status line) é global, no perfil — os testes apontam para um caminho no temp que não existe;
+# quem testa a cota troca a variável no próprio caso. Nenhum teste grava em %USERPROFILE%\.claude.
+$env:TEAM_QUOTA_LOG = Join-Path $tmp 'sem-cota/quota-log.jsonl'
 $rows = @(); $fail = 0
 function Check([string]$Name, $Result, [int]$Code, [string[]]$Expect) {
     $ok = $Result.Code -eq $Code
@@ -719,7 +722,7 @@ $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.53.2: plano de 21 KB não reprova por tamanho (sem corte); sem **Cenários:** exit 1 (regra 23)' $r 1 @('\| tamanho \| ok', '\| cenários \| falhou.*sem \*\*Cenários')
 Put $p $pl ("# Plano`n**Cenários:** SC-001, SC-009`n**Risco:** interface simples`n**Layout novo:** não`n`n" + $head + ('x' * 32000))
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
-Check 'v3.53.2: plano acima de 30 KB passa com aviso de Task grande, nunca de corte (regra 22)' $r 0 @('\| tamanho \| aviso.*Task grande — não corte o plano')
+Check 'v3.53.6 item 1: plano acima de 30 KB reprova (exit 1) — Task grande à divisão, nunca corte nem correção (regra 22)' $r 1 @('\| tamanho \| falhou.*acima de 30 KB: Task grande — NÃO corte nem encurte', 'run\.ps1 next a divide com os blocos deste plano', "volte dizendo 'tamanho'", '^(?![\s\S]*volta ao Arquiteto com esta tabela)')
 
 # 5g. v3.48 — achados do primeiro sprint do piloto: revisão sem veredito acima da rodada, entrada aceita pelo stakeholder,
 # report gravado pelo hook com nome livre, pasta citada sem report, -Apply com o Registro no quadro antigo.
@@ -1314,7 +1317,10 @@ $p = Join-Path $tmp 'usd'; New-Project $p
 Put $p '.team-project/usage.jsonl' ('{"role":"architect","work":"T-041","model":"claude-opus-5-5","start":"2026-09-03T10:00:00","duration_s":120,"processed":500000,"usd":1.5,"dest":".team-project/sprints/1/consumption.md","agent_id":"ar1","round":1}' + "`n" + '{"role":"developer","work":"T-041","model":"claude-haiku-4-5","start":"2026-09-03T10:05:00","duration_s":60,"processed":100000,"dest":".team-project/sprints/1/consumption.md","agent_id":"dv1","round":1}' + "`n")
 [System.IO.File]::AppendAllText((Join-Path $p '.team-project/sprints/1/consumption.md'), "`n## Totais do sprint (derivado)`n| a | b |`n|---|---|`n", $utf8)
 $r = Invoke-Check 'consumption.ps1' @('-Root', $p)
-Check 'item 9: Totais com a coluna US$ — o Opus com preço, o modelo sem preço "—", o total soma o que tem preço' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/consumption.md'), $utf8) } 0 @('\| Σ notificação \| US\$ \(tabela 2026-10\) \|', '\| arc \| opus 5\.5 \| 500\.000 \| 1 \| 1 \| 02:00 \| 0 \| 1,50 \|', '\| dev \| haiku 4\.5 \| 100\.000 \| 1 \| 1 \| 01:00 \| 0 \| — \|', '\*\*Total do sprint\*\* .* \| \*\*1,50\*\* \|', 'medido: ar1#1.*; US\$ 1,50')
+# v3.53.6 (decisão do stakeholder): sai o US$ — Totais com Cota 5h e Cota semana; sem registro da cota, "—" e o aviso.
+$ct = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/consumption.md'), $utf8)
+Check 'v3.53.6: Totais sem US$, com Cota 5h e Cota semana "—" e o aviso sem registro da cota; a Nota sem US$' @{ Code = $r.Code; Out = $r.Out + $ct + $(if ($ct -match 'US\$') { "`nUSD=presente" } else { '' }) } 0 @('\| Σ notificação \| Cota 5h \| Cota semana \|', '\| arc \| opus 5\.5 \| 500\.000 \| 1 \| 1 \| 02:00 \| 0 \| — \| — \|', '\| dev \| haiku 4\.5 \| 100\.000 \| 1 \| 1 \| 01:00 \| 0 \| — \| — \|', '## Cota da assinatura \(derivado\)', 'sem registro da cota — ative a status line do plugin \(how-to\)', 'mantida\(s\); sem registro da cota\.')
+if ($ct -match 'US\$') { $fail++; Write-Output '---- consumo ainda escreve US$' }
 
 # 14. v3.53.1 — plugin-report do sprint 4 do garden (itens 1, 3, 8, 14, 15, 16).
 # 14a. item 15: o dev voltou com TETO (G23) — done -Result teto grava o run-log e manda instância nova, sem Arquiteto.
@@ -1369,6 +1375,70 @@ Put $p '.team-project/usage.jsonl' ('{"role":"developer","work":"T-041","model":
 $r = Invoke-Check 'consumption.ps1' @('-Root', $p)
 Check 'item 14: Nota com a versão do plugin da rodada' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/consumption.md'), $utf8) } 0 @('medido: dvv1#1.*; plugin 3\.53\.1')
 
+# 14g. v3.53.6 — cota da assinatura: a status line grava a leitura (só quando muda) e o consumption.ps1 rateia a subida.
+$statusScript = Join-Path (Split-Path $checks) 'statusline/quota-statusline.ps1'
+function Invoke-StatusLine([string]$Json, [string]$LogPath) {
+    $ErrorActionPreference = 'Continue'
+    $old = $env:TEAM_QUOTA_LOG; $env:TEAM_QUOTA_LOG = $LogPath
+    $oe = [Console]::OutputEncoding; [Console]::OutputEncoding = $utf8
+    try { $out = $Json | & powershell -NoProfile -ExecutionPolicy Bypass -File $statusScript 2>&1 | Out-String; $code = $LASTEXITCODE }
+    finally { [Console]::OutputEncoding = $oe; $env:TEAM_QUOTA_LOG = $old }
+    return @{ Code = $code; Out = $out }
+}
+$ql = Join-Path $tmp 'cota-sl/quota-log.jsonl'
+$rs5 = [DateTimeOffset]::Now.AddHours(1).ToUnixTimeSeconds(); $rsw = [DateTimeOffset]::Now.AddDays(3).ToUnixTimeSeconds()
+$js = '{"session_id":"s-1","cwd":"C:\\proj","model":{"id":"claude-opus-5-5","display_name":"Opus 5.5"},"rate_limits":{"five_hour":{"used_percentage":37.2,"resets_at":' + $rs5 + '},"seven_day":{"used_percentage":12,"resets_at":' + $rsw + '}}}'
+$r = Invoke-StatusLine $js $ql
+$r2 = Invoke-StatusLine $js $ql
+$qlt = if (Test-Path -LiteralPath $ql) { [System.IO.File]::ReadAllText($ql, $utf8) } else { 'sem registro' }
+Check 'status line: modelo, 5h com o reinício e a semana numa linha; a leitura vai ao registro com os campos' @{ Code = $r.Code + $r2.Code; Out = $r.Out + "`n" + $qlt } 0 @('^Opus 5\.5 · 5h 37% \(reinicia (\d\d/\d\d )?\d\d:\d\d\) · semana 12%', ('"five":37\.2,"fiveReset":' + $rs5 + ',"week":12\.0,"weekReset":' + $rsw + ',"session":"s-1","model":"claude-opus-5-5","cwd":"C:\\\\proj"'))
+Check 'status line: a mesma leitura duas vezes grava uma linha só (estado ao lado do registro)' @{ Code = 0; Out = "LINHAS=$(@($qlt -split "`n" | Where-Object { $_.Trim() }).Count)" } 0 @('LINHAS=1$')
+$r = Invoke-StatusLine ($js -replace '37\.2', '38') $ql
+$qlt = [System.IO.File]::ReadAllText($ql, $utf8)
+Check 'status line: percentual mudou — linha nova' @{ Code = $r.Code; Out = "LINHAS=$(@($qlt -split "`n" | Where-Object { $_.Trim() }).Count)`n$qlt" } 0 @('LINHAS=2', '"five":38\.0')
+$r = Invoke-StatusLine '{"model":{"id":"claude-haiku-5-5","display_name":"Haiku 5.5"},"session_id":"s-2"}' $ql
+$qlt = [System.IO.File]::ReadAllText($ql, $utf8)
+Check 'status line sem rate_limits (API ou antes da 1ª resposta): só o modelo, nada no registro' @{ Code = $r.Code; Out = $r.Out + "LINHAS=$(@($qlt -split "`n" | Where-Object { $_.Trim() }).Count)" } 0 @('^Haiku 5\.5\s*LINHAS=2$')
+$r = Invoke-StatusLine 'não é json' $ql
+Check 'status line com entrada ilegível: linha mínima, exit 0' $r 0 @('^cota: sem dado\s*$')
+
+# Rateio: arc (Opus) e dev (Haiku) juntos 10:00–10:10 dividem +10,5% pelo peso (Opus 1 × Haiku 0,025); 10:10–10:30 sobe 1%
+# sem rodada; às 11:10 a janela de 5 h reiniciou (passou do reset das 11:00) e o QA (Sonnet, sozinho) leva os 3% da janela
+# nova — e é o intervalo de calibração; o dev das 11:20 não tem leitura depois: "cota sem registro".
+$p = Join-Path $tmp 'cota'; New-Project $p
+$qd = Join-Path $tmp 'cota-log/quota-log.jsonl'
+$ep = { param($s) ([DateTimeOffset][datetime]::ParseExact($s, 'yyyy-MM-ddTHH:mm:ss', [Globalization.CultureInfo]::InvariantCulture)).ToUnixTimeSeconds() }
+$R1 = & $ep '2026-09-03T11:00:00'; $R2 = & $ep '2026-09-03T16:00:00'; $W1 = & $ep '2026-09-07T00:00:00'
+Put (Split-Path $qd) 'quota-log.jsonl' ((@(
+    ('{"at":"2026-09-03T09:55:00","five":10.0,"fiveReset":' + $R1 + ',"week":5.0,"weekReset":' + $W1 + ',"session":"x","model":"m","cwd":"c"}'),
+    ('{"at":"2026-09-03T10:10:00","five":20.5,"fiveReset":' + $R1 + ',"week":6.0,"weekReset":' + $W1 + ',"session":"x","model":"m","cwd":"c"}'),
+    ('{"at":"2026-09-03T10:30:00","five":21.5,"fiveReset":' + $R1 + ',"week":6.0,"weekReset":' + $W1 + ',"session":"x","model":"m","cwd":"c"}'),
+    ('{"at":"2026-09-03T11:10:00","five":3.0,"fiveReset":' + $R2 + ',"week":7.0,"weekReset":' + $W1 + ',"session":"x","model":"m","cwd":"c"}')
+) -join "`n") + "`n")
+$dq = '.team-project/sprints/1/consumption.md'
+$tok = '"input":0,"cache_write":0,"cache_read":0,"output":100000,"processed":100000'
+Put $p '.team-project/usage.jsonl' ((@(
+    ('{"agent_id":"a1","role":"architect","round":1,"work":"T-041","model":"claude-opus-5-5","start":"2026-09-03T10:00:00","duration_s":600,"paused_s":0,' + $tok + ',"dest":"' + $dq + '"}'),
+    ('{"agent_id":"d1","role":"developer","round":1,"work":"T-041","model":"claude-haiku-5-5","start":"2026-09-03T10:00:00","duration_s":600,"paused_s":0,' + $tok + ',"dest":"' + $dq + '"}'),
+    ('{"agent_id":"q1","role":"quality-assurance","round":1,"work":"T-041a","model":"claude-sonnet-5-5","start":"2026-09-03T11:00:00","duration_s":600,"paused_s":0,' + $tok + ',"dest":"' + $dq + '"}'),
+    ('{"agent_id":"d2","role":"developer","round":1,"work":"T-041a","model":"claude-haiku-5-5","start":"2026-09-03T11:20:00","duration_s":60,"paused_s":0,' + $tok + ',"dest":"' + $dq + '"}')
+) -join "`n") + "`n")
+Put $p $dq ((Get-Content -Raw -Encoding UTF8 (Join-Path $p $dq)) + "`n## Totais do sprint (derivado)`n| a | b |`n|---|---|`n")
+$r = Invoke-Check 'consumption.ps1' @('-Root', $p, '-QuotaLog', $qd)
+$r2 = Invoke-Check 'consumption.ps1' @('-Root', $p, '-QuotaLog', $qd)
+$ct = [System.IO.File]::ReadAllText((Join-Path $p $dq), $utf8)
+Check 'cota: sobreposição rateada pelo peso do modelo, reinício da janela conta do zero, rodada sem leitura depois "sem registro"' @{ Code = $r.Code + $r2.Code; Out = $r2.Out + $ct } 0 @(
+    'medido: a1#1.*; cota 5h \+10,2% · semana \+1,0% \|', 'medido: d1#1.*; cota 5h \+0,3% · semana \+<0,1% \|', 'medido: q1#1.*; cota 5h \+3,0% · semana \+1,0% \|', 'medido: d2#1.*; cota sem registro \|',
+    '\| arc \| opus 5\.5 \| 100\.000 \| 1 \| 1 \| 10:00 \| 0 \| \+10,2% \| \+1,0% \|', '\| qa \| sonnet 5\.5 \| 100\.000 \| 1 \| 1 \| 10:00 \| 0 \| \+3,0% \| \+1,0% \|', '\*\*Total do sprint\*\* .* \| \*\*\+13,5%\*\* \| \*\*\+2,0%\*\* \|',
+    '\| \*\*Total do sprint\*\* \(rodadas\) \| \*\*3\*\* \| \*\*\+13,5%\*\* \| \*\*\+2,0%\*\* \|', '\| sem rodada medida no intervalo .* \| — \| \+1,0% \| \+0,0% \|',
+    '\| T-041 \| 2 \| \+10,5% \| \+1,0% \|', '\| T-041a \| 1 \| \+3,0% \| \+1,0% \|', '\| sonnet 5\.5 \| 1 \| 0,50 \| 6,000 \| 2,000 \|', 'Sem `-Session`', 'mantida\(s\); cota 5h \+13,5% · semana \+2,0%\.')
+if (([regex]::Matches($ct, '## Cota da assinatura')).Count -ne 1) { $fail++; Write-Output '---- seção da cota duplicou na segunda execução' }
+# Sem o registro: tokens seguem, a cota diz por quê.
+$r = Invoke-Check 'consumption.ps1' @('-Root', $p, '-QuotaLog', (Join-Path $tmp 'cota-log/nao-existe.jsonl'))
+$ct = [System.IO.File]::ReadAllText((Join-Path $p $dq), $utf8)
+Check 'cota sem registro: aviso para ativar a status line, Totais com tokens e "—", Nota sem cota' @{ Code = $r.Code; Out = $ct + $(if ($ct -match 'cota 5h \+') { "`nCOTA=sobrou" } else { '' }) } 0 @('sem registro da cota — ative a status line do plugin \(how-to\)', '\| arc \| opus 5\.5 \| 100\.000 \| 1 \| 1 \| 10:00 \| 0 \| — \| — \|')
+if ($ct -match 'cota 5h \+') { $fail++; Write-Output '---- cota antiga ficou na Nota sem registro' }
+
 # 15. v3.53.2 — /team-status e /team-usage sem custo de token (team-view.ps1; o hook prompt-submit.ps1 o chama).
 $p = Join-Path $tmp 'view'; New-Project $p
 $r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Root', $p)
@@ -1381,8 +1451,14 @@ Check 'team-view status: run em andamento, agente vivo com "há 3 min" e a pend�
 $r = Invoke-Check 'team-view.ps1' @('-View', 'usage', '-Root', $p)
 Check 'team-view usage sem rodadas: diz que nada foi medido' $r 0 @('Nenhuma rodada de agente medida')
 Put $p '.team-project/usage.jsonl' ('{"role":"architect","work":"T-041","works":["T-041","T-041a"],"model":"claude-opus-5-5","start":"2026-09-01T11:00:00","duration_s":600,"processed":1000000,"usd":2.0,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"developer","work":"T-041","model":"claude-haiku-5-5","start":"2026-09-02T10:00:00","duration_s":300,"processed":50000,"usd":0.5,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"quality-assurance","work":"T-041a","model":"claude-sonnet-5-5","start":"2026-09-03T10:00:00","duration_s":30,"processed":8000,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"developer","work":"T-099","model":"claude-haiku-5-5","start":"2026-08-01T10:00:00","duration_s":30,"processed":7,"usd":9,"dest":".team-project/consumption.md"}' + "`n")
+# v3.53.6 (item 10): sem US$ — tokens, % dos tokens por papel e a cota da assinatura lida do registro da status line.
+$qlOld = $env:TEAM_QUOTA_LOG; $env:TEAM_QUOTA_LOG = Join-Path $tmp 'view-quota/quota-log.jsonl'
 $r = Invoke-Check 'team-view.ps1' @('-View', 'usage', '-Root', $p)
-Check 'team-view usage: só o sprint, total com US$, rateio entre as Tasks citadas, "sem preço" na Task sem preço, papel com % do custo' $r 0 @('Consumo · Sprint 1 · 1,06 mi tokens · US\$ 2,50 · 15 min de agente · 3 rodadas', '\(1 rodada\(s\) sem preço', 'T-041  550 mil · US\$ 1,50 · 10 min', 'T-041a  508 mil · US\$ 1,00 · 5 min', 'arc \(opus 5\.5\)  1,00 mi · US\$ 2,00 · 80% · 1', 'qa \(sonnet 5\.5\)  8 mil · sem preço · 0% · 1', 'Última rodada: 03/09 10:00 · qa · T-041a · 8 mil · sem preço')
+Check 'v3.53.6 team-view usage: só o sprint, sem US$, rateio entre as Tasks citadas, papel com % dos tokens; sem registro da cota, como ativar' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'US\$|sem preço') { "`nUSD=ainda" } else { '' }) } 0 @('Consumo · Sprint 1 · 1,06 mi tokens · 15 min de agente · 3 rodadas', 'Cota: sem registro — ative a status line do plugin', 'T-041  550 mil · 10 min', 'T-041a  508 mil · 5 min', 'arc \(opus 5\.5\)  1,00 mi · 95% · 1', 'qa \(sonnet 5\.5\)  8 mil · 1% · 1', 'Última rodada: 03/09 10:00 · qa · T-041a · 8 mil\r?$')
+Put $tmp 'view-quota/quota-log.jsonl' ('{"at":"2026-08-31T10:00:00","five":5.0,"fiveReset":1,"week":10.0,"weekReset":100,"session":"s","model":"m","cwd":"c"}' + "`n" + '{"at":"2026-09-01T12:00:00","five":20.0,"fiveReset":2,"week":15.0,"weekReset":100,"session":"s","model":"m","cwd":"c"}' + "`n" + '{"at":"2026-09-02T12:00:00","five":30.0,"fiveReset":3,"week":18.0,"weekReset":100,"session":"s","model":"m","cwd":"c"}' + "`n" + '{"at":"2026-09-03T11:00:00","five":40.0,"fiveReset":4,"week":2.0,"weekReset":200,"session":"s","model":"m","cwd":"c"}' + "`n")
+$r = Invoke-Check 'team-view.ps1' @('-View', 'usage', '-Root', $p)
+Check 'v3.53.6 team-view usage: cota agora e a subida da semanal desde a 1ª rodada (leitura anterior não conta; reinício da janela conta do zero)' $r 0 @('Cota agora \(03/09 11:00\): 5h 40% · semana 2% · a semanal subiu 10,0 ponto\(s\) desde a 1ª rodada do sprint')
+$env:TEAM_QUOTA_LOG = $qlOld
 $r = Invoke-Check 'team-view.ps1' @('-View', 'kanban', '-Root', $p)
 Check 'team-view -View inválido: exit 2' $r 2 @('inválido')
 
@@ -1624,6 +1700,175 @@ Check 'v3.53.4 fix.ps1 -PlanOnly: promoção com o critério que caiu passa e é
 Put $fx '.team-project/fixes/B-001/plan.md' ($fhead + (& $fxs 'F-001' 'src/Export.cs') + $fpromo.Replace("**Critério que caiu:** C5 — muda o contrato da API`n", '') + $ftail)
 $r = Invoke-Check 'fix.ps1' @('-Block', 'B-001', '-PlanOnly', '-Root', $fx)
 Check 'v3.53.4 fix.ps1 -PlanOnly: C5 ✘ sem o critério que caiu volta (exit 1)' $r 1 @('F-002: C5 ✘ sem \*\*Critério que caiu:\*\*', 'O plano do bloco volta')
+
+# 18. v3.53.6 parte B (sprint 5 do garden) — item 4: ids de teste conferidos no verify -Mode full (chave testids): id do .scn
+# da Task fora do código e controle interativo sem id reprovam, com o .scn ou arquivo:linha; exceção "sem-testid: <motivo>".
+$p = Join-Path $tmp 'testids'; New-Project $p
+$ErrorActionPreference = 'Continue'
+& git -C $p init -q 2>$null; Put $p '.gitignore' ".team-project/`nbuild/`n"; Put $p 'README.md' "x`n"
+& git -C $p add -A 2>$null; & git -C $p -c user.email=t@t -c user.name=t commit -qm init 2>$null
+$ErrorActionPreference = 'Stop'
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output \"Build succeeded\"" } }'
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') 'SC-014 (novo)' 'SC-014 (novo) · SC-015 · SC-016 (teste)'
+Edit-File (Join-Path $p '.team-project/sprints/1/plan/T-041-export.md') '## 3. Ambiente' ("**Arquivos tocados:** ``app/src/main/java/x/Tela.kt```n``web/src/Form.tsx```n``web/src/app/lista.html```n`n## 3. Ambiente")
+Put $p '.team-project/quality-assurance/scenarios/H-014.scn' "# aguarda T-099: SC-015`nscenario SC-014 Salva`nlaunch`ntap horta.salvar`nassert-text horta.titulo = Horta`nassert-count lista.item. = 2`nassert-exists lista.item.7`ntype form.nome = Ana`n`nscenario SC-015 Depois`nlaunch`nassert-exists outro.id`n`nscenario SC-016 Teste`nlaunch`nassert-exists so.no.teste`n"
+$kt = @'
+package x
+const val TITULO = "horta.titulo"
+@Composable
+fun Tela(itens: List<Item>, modifier: Modifier = Modifier) {
+    Button(onClick = { salvar() }, modifier = Modifier.testTag("horta.salvar")) { Text("Salvar (já)") }
+    LazyColumn {
+        items(itens, key = { it.id }) { Card(Modifier.fillMaxWidth().testTag("lista.item.${it.id}")) { Text(it.nome) } }
+    }
+    // sem-testid: o testTag vem no modifier do chamador
+    IconButton(onClick = {}, modifier = modifier) { Icon(Icons.Default.Add, null) }
+}
+'@
+Put $p 'app/src/main/java/x/Tela.kt' $kt
+Put $p 'web/src/Form.tsx' "export function Form() {`n  return (<form>`n    <input data-testid=`"form.nome`" onChange={(e) => set(e.target.value)} />`n    {/* sem-testid: link decorativo do rodapé */}`n    <a href=`"/sobre`">Sobre</a>`n    <input type=`"hidden`" name=`"t`" />`n  </form>)`n}`n"
+Put $p 'web/src/app/lista.html' "<button data-testid=`"lista.limpar`" (click)=`"limpar()`">Limpar</button>`n<a [attr.data-testid]=`"'lista.link.' + i.id`" [routerLink]=`"i.url`">ver</a>`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.53.6 item 4: ids do .scn no código (literal, constante, dinâmico) e todo controle com id → testids exit 0' $r 0 @('tudo exit 0', 'testids: exit 0 .*ids de teste: 5 id\(s\) dos cenários no código, 3 arquivo\(s\) de tela')
+$res = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/verify/1/T-041/result.json'), $utf8)
+Check 'v3.53.6 item 4: testids vai ao result.json como comando do full' @{ Code = 0; Out = $res } 0 @('"key":\s+"testids"')
+# Reprovação: id do .scn sem o código (só num teste), controles sem testTag, exceção sem motivo.
+Put $p 'app/src/androidTest/java/x/TelaTest.kt' "class TelaTest { val t = `"horta.salvar`" }`n"
+$kt2 = $kt.Replace('modifier = Modifier.testTag("horta.salvar")', 'modifier = Modifier.padding(4.dp)').Replace('.testTag("lista.item.${it.id}")', '.clickable { abrir(it) }').Replace('// sem-testid: o testTag vem no modifier do chamador', '// sem-testid:') + "`n@Composable`nfun Opcao() {`n    Switch(`n        checked = true,`n        onCheckedChange = {}`n    )`n    Text(`"x`", Modifier.clickable { }.padding(2.dp).testTag(`"opcao.texto`"))`n}`n"
+Put $p 'app/src/main/java/x/Tela.kt' $kt2
+Put $p 'web/src/app/lista.html' "<button (click)=`"limpar()`">Limpar</button>`n<!-- sem-testid: -->`n<select [(ngModel)]=`"x`"></select>`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.53.6 item 4: id do .scn fora do código (o do teste não conta) e controles sem id → exit 1 com .scn e arquivo:linha' $r 1 @(
+    'testids: exit 1', 'id ausente no código: horta\.salvar — SC-014 \(\.team-project/quality-assurance/scenarios/H-014\.scn:4\)',
+    'id ausente no código: lista\.item\. \(prefixo\) — SC-014', 'id ausente no código: lista\.item\.7 — SC-014',
+    'sem id de teste: app/src/main/java/x/Tela\.kt:5 — Button\( sem testTag\( no modifier', 'Tela\.kt:7 — \.clickable sem testTag\( na mesma cadeia',
+    'Tela\.kt:7 — items\( da lista sem testTag\( no item', 'Tela\.kt:10 — IconButton\( sem testTag\( no modifier \(a exceção .sem-testid:. está sem motivo\)',
+    'Tela\.kt:14 — Switch\( sem testTag', 'web/src/app/lista\.html:1 — <button sem data-testid', 'lista\.html:3 — <select sem data-testid \(a exceção',
+    '^(?![\s\S]*outro\.id)', '^(?![\s\S]*so\.no\.teste)', '^(?![\s\S]*Tela\.kt:18)', '^(?![\s\S]*Form\.tsx)', 'o dev cria no código o id que o \.scn cita')
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'check', '-Root', $p)
+Check 'v3.53.6 item 4: verify check vê o full com testids reprovado' $r 1 @('full com falha', 'testids: exit 1')
+
+# 18b. v3.53.6 parte B — itens 5 e 7 no adaptador android (sem adb): memória do emulador, reinício no primeiro accept da
+# Task e APK mais velho que o código do módulo.
+$hs3 = Join-Path $tmp 'android-b.ps1'
+[System.IO.File]::WriteAllText($hs3, @'
+param([string]$Adapter, [string]$Work)
+$ErrorActionPreference = 'Stop'
+. $Adapter
+"MB1=" + (ConvertTo-MemoryMB '2.5GiB / 7.6GiB'); "MB2=" + (ConvertTo-MemoryMB '1500'); "MB3=" + (ConvertTo-MemoryMB '512MiB'); "MB4=" + (ConvertTo-MemoryMB '800 MB'); "MB5=[" + (ConvertTo-MemoryMB 'sem número') + "]"
+$script:AdCfg = [pscustomobject]@{ memoryCmd = 'Write-Output "3.5GiB / 8GiB"'; maxMemoryMB = 3072 }
+"MEM1=" + (Test-AndroidMemory)
+$script:AdCfg = [pscustomobject]@{ memoryCmd = 'Write-Output "3.5GiB / 8GiB"'; maxMemoryMB = 4096 }
+"MEM2=[" + (Test-AndroidMemory) + "]"
+$script:AdCfg = [pscustomobject]@{ memoryCmd = 'Write-Output "nada"'; maxMemoryMB = 100 }
+"MEM3=[" + (Test-AndroidMemory) + "]"
+$d = Join-Path $Work 'accept/1/T-041'
+$rep = [pscustomobject]@{ repair = 'docker restart x' }
+"FS1=" + (Test-AndroidFreshStartDue $rep $d $false)
+"FS2=" + (Test-AndroidFreshStartDue $rep $d $true)
+"FS3=" + (Test-AndroidFreshStartDue ([pscustomobject]@{ repair = 'docker restart x'; freshStart = $false }) $d $false)
+"FS4=" + (Test-AndroidFreshStartDue ([pscustomobject]@{ avd = 'Pixel' }) $d $false)
+Set-AndroidFreshStartDone $d 'T-041'
+"FS5=" + (Test-AndroidFreshStartDue $rep $d $false)
+$apk = Join-Path $Work 'app/build/outputs/apk/debug/app-debug.apk'; $kt = Join-Path $Work 'app/src/main/java/x/A.kt'; $tst = Join-Path $Work 'app/src/test/java/x/ATest.kt'
+foreach ($f in $apk, $kt, $tst) { New-Item -ItemType Directory -Force (Split-Path $f) | Out-Null; Set-Content -LiteralPath $f 'x' }
+(Get-Item $apk).LastWriteTime = (Get-Date).AddMinutes(-30); (Get-Item $kt).LastWriteTime = (Get-Date).AddMinutes(-60); (Get-Item $tst).LastWriteTime = (Get-Date)
+$s = Get-ApkStaleness $apk; "AP1=$($s.Stale)|$($s.Note)"
+(Get-Item $kt).LastWriteTime = (Get-Date).AddMinutes(-5)
+$s = Get-ApkStaleness $apk; "AP2=$($s.Stale)|$(Split-Path $s.File -Leaf)|$($s.Task)"
+$out = Join-Path $Work 'solto.apk'; Set-Content -LiteralPath $out 'x'
+$s = Get-ApkStaleness $out; "AP3=$($s.Stale)|$($s.Note)"
+'@, $utf8)
+$wk = Join-Path $tmp 'android-b'; New-Item -ItemType Directory -Force $wk | Out-Null
+$r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $hs3 -Adapter (Join-Path $checks 'targets/android.ps1') -Work $wk 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
+Check 'v3.53.6 item 5a: memória lida com a unidade (GiB, MiB, MB, sem unidade = MB)' $r 0 @('MB1=2560\b', 'MB2=1500\b', 'MB3=512\b', 'MB4=800\b', 'MB5=\[\]')
+Check 'v3.53.6 item 5a: memória acima de maxMemoryMB reprova o pré-voo; abaixo passa; saída sem número não reprova' $r 0 @('MEM1=o emulador está com 3584 MB de memória \(limite 3072 MB', 'MEM2=\[\]', 'MEM3=\[\]', 'memoryCmd não devolveu a memória')
+Check 'v3.53.6 item 5b: reinício só no 1º accept da Task, com repair; freshStart false, -NoRepair e AVD local não reiniciam' $r 0 @('FS1=True', 'FS2=False', 'FS3=False', 'FS4=False', 'FS5=False')
+Check 'v3.53.6 item 7: APK mais velho que o código do módulo é recusado (o teste não conta); fora de build/outputs/apk, só a nota' $r 0 @('AP1=False\|\r?\n', 'AP2=True\|A\.kt\|assembleDebug', 'AP3=False\|idade do APK não conferida: o módulo não se infere')
+
+# 19. v3.53.6 (sprint 5 do garden) — plano grande vai à divisão, cartão com os passos que faltam, prova no alvo pendente.
+# 19a. item 1: plano acima de 30 KB no disco (a sessão nem gravou a coluna Plano) → o next divide a Task, com o plano de base.
+$p = Join-Path $tmp 'plano-grande'; New-Project $p
+$bigPlan = "# Plano de Implementação — T-041a Variante`n`n## 4. Passos`n`n### Bloco 1 — modelo`n`n### Passo 1 — x`n" + ('x' * 32000) + "`n`n### Bloco 2 — tela`n"
+Put $p '.team-project/sprints/1/plan/T-041a-x.md' $bigPlan
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.53.6 item 1: plano de 31 KB (sem ficha) → dividir a Task com os blocos do plano como base, sem plano novo nem corte' $r 0 @('dividir a T-041a — o plano dela tem 3\d[\d,.]* KB \(teto 30 KB, regra 22\)', '`\.team-project/sprints/1/plan/T-041a-x\.md`', 'blocos — ou grupos de passos — desse plano como base', 'não o reescreva nem o corte', 'Divida-a em T-041b, T-041c', 'não tem ficha no breakdown', 'troca a linha da T-041a no Sprint Backlog', 'o plano grande fica no disco como base')
+Put $p '.team-project/architect/breakdown/S1.md' $bdText
+Put $p 'src/a.ts' "export const a = 1`n"; Put $p 'docs/sdd/03-architecture.md' "# Arquitetura`n"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.53.6 item 1: com ficha, cada ficha nova leva **Base:** com o plano grande e os blocos que herda' $r 0 @('dividir a T-041a — o plano dela tem', 'No próprio \.team-project/architect/breakdown/S1\.md', '\*\*Base:\*\* `\.team-project/sprints/1/plan/T-041a-x\.md`')
+Put $p '.team-project/architect/breakdown/S1.md' (([System.IO.File]::ReadAllText((Join-Path $p '.team-project/architect/breakdown/S1.md'), $utf8)) -replace '(\*\*Arquivos previstos:\*\* 2)', "`$1`n**Base:** ``.team-project/sprints/1/plan/T-041a-x.md`` — Bloco 1")
+Remove-Item -LiteralPath (Join-Path $p '.team-project/sprints/1/plan/T-041a-x.md') -Force
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.53.6 item 1: Task nova com **Base:** na ficha → o Arquiteto do plano reaproveita o trecho do plano de origem' $r 0 @('plano da T-041a \(História H-014\) pela ficha', 'A ficha tem \*\*Base:\*\* `\.team-project/sprints/1/plan/T-041a-x\.md`', 'reaproveite os blocos e passos')
+# 18b. item 1, plano externo: o plano devolvido acima de 30 KB vai à divisão, não a um pacote de correção.
+$xg = Join-Path $tmp 'externo-grande'; New-Project $xg
+Put $xg '.team-project/architect/breakdown/S1.md' $bdText
+Put $xg 'src/a.ts' "export const a = 1`n"; Put $xg 'docs/sdd/03-architecture.md' "# Arquitetura`n"
+Put $xg '.team-project/guards.json' '{ "run": { "planner": "external", "tasks": [] } }'
+$null = Invoke-Check 'run.ps1' @('next', '-Root', $xg)
+Put $xg '.team-project/sprints/1/pack/in/T-041a-plan.md' ($xgood + "`n## 4. Passos`n`n### Bloco 1 — x`n" + ('y' * 32000))
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $xg)
+$xgpk = Join-Path $xg '.team-project/sprints/1/pack'
+Check 'v3.53.6 item 1: plano externo de 31 KB → reprovado por tamanho, sem pacote de correção; a Task vai à divisão com pack/review/ de base' @{ Code = $r.Code; Out = $r.Out + "`nfix1=" + (Test-Path -LiteralPath (Join-Path $xgpk 'out/H-014-fix1.zip')) } 0 @('T-041a reprovado por tamanho \(3\d[\d,.]* KB, teto 30 KB\) — não volta em pacote de correção', 'dividir a T-041a — o plano dela tem', '`\.team-project/sprints/1/pack/review/T-041a-plan\.md`', 'fix1=False')
+
+# 18c. item 2: cartão de retomada com os passos que faltam (do "Parei no passo" em diante) e o que já está provado.
+$p = Join-Path $tmp 'retomada'; New-Project $p
+$rpl = "# Plano de Implementação — T-041 Endpoint`n`n**Arquivos tocados:** ``src/a.ts```n`n## 4. Passos, em ordem de execução`n`n### Passo 1 — modelo`n- **Arquivo:** src/m.ts PASSO-UM`n`n### Passo 2 — serviço`n- **Arquivo:** src/s.ts PASSO-DOIS`n`n### Passo 3 — rota`n- **Arquivo:** src/r.ts PASSO-TRES`n`n## 6. Testes`n| a | b |`n"
+Put $p '.team-project/sprints/1/plan/T-041-export.md' $rpl
+Put $p '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041 — instância 1`n`n### Parei no passo`npasso 2 de 3 — falta o teste do serviço; emulador ligado`n- provado: verify focused verde (12 testes)`n`n### Documentos vivos (R12)`n**Estado:** a consolidar`n"
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
+$ct = if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) } else { 'sem cartão' }
+Check 'v3.53.6 item 2: cartão com os passos do ponto em diante, o já provado, e sem mandar reabrir o plano' @{ Code = $r.Code; Out = $ct + $(if ($ct -match 'PASSO-UM') { "`nPASSO1-VAZOU" } else { '' }) + $(if ($ct -match '## 6\.') { "`nSEC6-VAZOU" } else { '' }) } 0 @('Retomada do passo 2', 'não reabra o plano inteiro', '## Já provado — ponto de retomada', 'verify focused verde \(12 testes\)', '## Passos que faltam — do plano, passo 2 em diante', '### Passo 2 — serviço', 'PASSO-DOIS', '### Passo 3 — rota', '^(?![\s\S]*PASSO1-VAZOU)', '^(?![\s\S]*SEC6-VAZOU)')
+Put $p '.team-project/sprints/1/plan/T-041-export.md' ($rpl.Replace('PASSO-DOIS', ("linha longa do passo dois`n" * 600)))
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$ct = [System.IO.File]::ReadAllText($card, $utf8)
+Check 'v3.53.6 item 2: passos acima de 8 KB → cortados numa linha, com o ponteiro para o resto no plano' @{ Code = $r.Code; Out = $ct + "`nKB=" + [int]((Get-Item -LiteralPath $card).Length / 1024) } 0 @('cortado em 8 KB: o resto em `sprints/1/plan/T-041-export\.md` §4, a partir de .Passo 3 — rota.', 'KB=(8|9|10|11)\b')
+Put $p '.team-project/sprints/1/plan/T-041-export.md' "# Plano`n`n## 4. Passos`n`n### Bloco 1 — a`n`n#### Passo 1 — a1`nBLOCO-UM`n`n### Bloco 2 — b`n`n#### Passo 1 — b1`nBLOCO-DOIS-P1`n`n#### Passo 2 — b2`nBLOCO-DOIS-P2`n"
+Put $p '.team-project/sprints/1/delivery/T-041.md' "## Entrega`n`n### Parei no passo`nbloco 2, passo 1 de 2 — teto (G23)`n"
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$ct = [System.IO.File]::ReadAllText($card, $utf8)
+Check 'v3.53.6 item 2: plano em blocos — o passo é procurado no bloco do ponto de parada' @{ Code = $r.Code; Out = $ct + $(if ($ct -match 'BLOCO-UM') { "`nBLOCO1-VAZOU" } else { '' }) } 0 @('passo 1 em diante \(Bloco 2\)', 'BLOCO-DOIS-P1', 'BLOCO-DOIS-P2', '^(?![\s\S]*BLOCO1-VAZOU)')
+Put $p '.team-project/sprints/1/delivery/T-041.md' "## Entrega`n`n### Parei no passo`n2 de 2 — repositório compila, todos os testes passam`n"
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$ct = [System.IO.File]::ReadAllText($card, $utf8)
+Check 'v3.53.6 item 2: entrega terminada ("2 de 2") não vira retomada — o cartão segue o de sempre' @{ Code = $r.Code; Out = $ct } 0 @('Leia: este cartão, o cabeçalho e a §6', '^(?![\s\S]*Passos que faltam)')
+
+# 18d. item 9: "nenhum aplicável" por alvo fora do ar não fecha; a Task vai a 🔴 com a prova pendente e o next a reabre.
+$p = Join-Path $tmp 'prova-pendente'; New-Project $p
+$psb = Join-Path $p '.team-project/sprints/1/sprint-backlog.md'
+Edit-File $psb 'SC-014 (novo)' 'nenhum aplicável — emulador fora do ar no dia'
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.53.6 item 9a: "nenhum aplicável — emulador fora do ar" → R30 e R7-aceite falham, não fecha (exit 1), com a rota do bloqueio' $r 1 @('\| R30 \| falhou.*alvo indisponível.*mark\.ps1 -Task T-041 -To blocked -Reason', '\| R7-aceite \| falhou', 'Não fecha')
+Edit-File $psb 'nenhum aplicável — emulador fora do ar no dia' 'SC-014 (novo)'
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'qa', '-Reason', 'x', '-Root', $p)
+Check 'v3.53.6 item 9b: -Reason só com -To blocked (exit 2)' $r 2 @('só vale com -To blocked')
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'blocked', '-Reason', 'prova no alvo pendente — o site não responde', '-Root', $p)
+Check 'v3.53.6 item 9b: mark -To blocked -Reason grava a linha em Bloqueios, com degrau nomeado' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($psb, $utf8) } 0 @('T-041a ⬜ → 🔴', 'Bloqueios: linha 2 em sprint-backlog\.md', '\| 2 \| T-041a \| prova no alvo pendente — o site não responde \| escalado ao stakeholder em \d{4}-\d\d-\d\d \| stakeholder \(ambiente\)')
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.53.6 item 9b: a linha gravada tem o degrau que o R25 lê' $r 0 @('\| R25 \| ok')
+Edit-File $psb "| $($e.qa) T-041 |" "| $($e.ok) T-041 |"
+Put $p '.team-project/guards.json' '{ "targets": { "web": { "url": "http://127.0.0.1:9", "startTimeoutSec": 3 } } }'
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.53.6 item 9c: alvo ainda fora → a Task segue 🔴 e a fila continua (sem esperar)' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'team:operator.*accept\.ps1 -Task T-041a') { "`nREABRIU" } else { '' }) } 0 @('alvo web ainda fora \(.*não responde', 'T-041a segue\(m\) 🔴 com a prova no alvo pendente', 'PRÓXIMA AÇÃO: validação do sprint 1', '^(?![\s\S]*REABRIU)')
+$port = Get-Random -Minimum 41000 -Maximum 49000
+$srv = Start-Job -ArgumentList $port -ScriptBlock { param($port)
+    $l = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $port); $l.Start()
+    try { for ($i = 0; $i -lt 20; $i++) { $c = $l.AcceptTcpClient(); $s = $c.GetStream(); $buf = New-Object byte[] 4096; $null = $s.Read($buf, 0, 4096)
+        $b = [System.Text.Encoding]::ASCII.GetBytes("HTTP/1.1 200 OK`r`nContent-Length: 2`r`nConnection: close`r`n`r`nok"); $s.Write($b, 0, $b.Length); $s.Flush(); $c.Close() } } finally { $l.Stop() } }
+$sw = [Diagnostics.Stopwatch]::StartNew()
+while ($sw.Elapsed.TotalSeconds -lt 20) { try { $tc = New-Object System.Net.Sockets.TcpClient('127.0.0.1', $port); $tc.Close(); break } catch { Start-Sleep -Milliseconds 300 } }
+Put $p '.team-project/guards.json' ('{ "targets": { "web": { "url": "http://127.0.0.1:' + $port + '/", "startTimeoutSec": 3 } } }')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Stop-Job $srv -ErrorAction SilentlyContinue; Remove-Job $srv -Force -ErrorAction SilentlyContinue
+Check 'v3.53.6 item 9c: alvo de volta → a Task sai de 🔴 para 🟪, a linha vira "retomada" e o operator roda o accept' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($psb, $utf8) } 0 @('mark: T-041a 🔴 → 🟪', 'prova no alvo da T-041a — o alvo web voltou', 'team:operator', 'accept\.ps1 -Task T-041a', 'run\.ps1 done -Task T-041a -Result ok', 'prova no alvo retomada em \d{4}-\d\d-\d\d')
+# done -Result env com o accept parado por ambiente → a rota do bloqueio com a etiqueta.
+$p = Join-Path $tmp 'env-alvo'; New-Project $p
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "nenhum emulador ou aparelho disponível" }'
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
+Check 'v3.53.6 item 9b: done -Result env com o accept parado por ambiente → sem reparo, mark -To blocked -Reason "prova no alvo pendente — …"' $r 0 @('target\.ps1 -Target android -Repair', 'mark\.ps1 -Task T-041 -To blocked -Reason "prova no alvo pendente — nenhum emulador ou aparelho disponível"', 'T-041 🔴 bloqueada: prova no alvo pendente')
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output

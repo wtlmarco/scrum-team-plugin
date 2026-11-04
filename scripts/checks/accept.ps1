@@ -9,6 +9,10 @@
 # Exit 0 = todos passaram · 1 = algum falhou (o app) · 2 = erro de uso ou cenário malformado (v3.53.1: também o cenário
 # sem nenhum assert-*, que só provaria que o app abriu) · 4 = FALHA DE AMBIENTE
 # (alvo fora do ar, tela em branco, outro automatizador): não é defeito do app; o reparo já foi tentado uma vez.
+# v3.53.6 (sprint 5 do garden): android — APK mais velho que o código do módulo sai com exit 2 antes de instalar
+# ("reconstrua (assembleDebug) antes do accept"); com targets.android.repair (emulador em container), o PRIMEIRO accept
+# de cada Task reinicia o emulador pelo repair (marca fresh-start.json na pasta do accept; freshStart: false ou -NoRepair
+# desligam); a memória do emulador acima de targets.android.maxMemoryMB (medida por memoryCmd) reprova o pré-voo.
 #
 # Linguagem (uma instrução por linha; '#' comenta; texto com espaço vai depois do '='):
 #   scenario <ID> <título>             começa um cenário          reset                  apaga os dados do app (web: sessão nova)
@@ -90,19 +94,40 @@ function Invoke-Once($Block) {
 
 # Corpo com a trava já tomada. Devolve o código de saída.
 function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
-    # Pré-voo; com falha, o reparo é tentado UMA vez (D4) antes de desistir.
-    $h = & $Health
-    if ($h -and -not $NoRepair) { [Console]::Out.WriteLine("accept: pré-voo falhou ($h) — tentando o reparo uma vez"); $h = & $Repair }
-    if ($h) { [Console]::Out.WriteLine("accept: FALHA DE AMBIENTE ($script:Tgt) — $h. Não é defeito do app: reinicie o alvo e rode de novo."); return 4 }
+    $dir = (Get-VerifyDir $Root $Task) -replace '[\\/]verify[\\/]', '/accept/'
+    $fresh = $false
     if ($script:Tgt -eq 'android') {
         # v3.51.1: sem targets.android.package/apk, o executor descobre o APK construído e o applicationId dele.
         $appApk = Resolve-AndroidApk $Root $Apk
+        # v3.53.6 (sprint 5 do garden, item 7): APK mais velho que o código do módulo não é instalado — rodaria o app de antes
+        # da mudança ("tag não encontrada" para o id recém-criado). Nem ambiente nem defeito do app: exit 2, reconstruir.
+        $st = Get-ApkStaleness $appApk
+        if ($st.Stale) {
+            $fr = ([string]$st.File).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/'
+            [Console]::Out.WriteLine("accept: APK mais velho que o código ($fr alterado em $($st.FileTime.ToString('yyyy-MM-dd HH:mm:ss')); APK de $($st.ApkTime.ToString('yyyy-MM-dd HH:mm:ss'))): reconstrua ($($st.Task)) antes do accept. Não é falha de ambiente nem defeito do app — o APK do disco não tem a mudança.")
+            return 2
+        }
+        if ($st.Note) { [Console]::Out.WriteLine("accept: $($st.Note)") }
+        $fresh = Test-AndroidFreshStartDue $Cfg $dir ([bool]$NoRepair)
+    }
+    if ($fresh) {
+        # v3.53.6 (item 5, decisão do stakeholder): o primeiro accept de cada Task reinicia o emulador em container (repair).
+        [Console]::Out.WriteLine("accept: primeiro accept da $Task — reiniciando o emulador pelo reparo declarado (targets.android.repair) para começar com memória limpa; as repetições desta Task reaproveitam o emulador (targets.android.freshStart: false desliga)")
+        $fsw = [System.Diagnostics.Stopwatch]::StartNew()
+        $h = & $Repair
+        if (-not $h) { Set-AndroidFreshStartDone $dir $Task; [Console]::Out.WriteLine("accept: emulador reiniciado e pronto em $([int]$fsw.Elapsed.TotalSeconds) s") }
+    } else {
+        # Pré-voo; com falha, o reparo é tentado UMA vez (D4) antes de desistir.
+        $h = & $Health
+        if ($h -and -not $NoRepair) { [Console]::Out.WriteLine("accept: pré-voo falhou ($h) — tentando o reparo uma vez"); $h = & $Repair }
+    }
+    if ($h) { [Console]::Out.WriteLine("accept: FALHA DE AMBIENTE ($script:Tgt) — $h. Não é defeito do app: reinicie o alvo e rode de novo."); return 4 }
+    if ($script:Tgt -eq 'android') {
         if (-not ($Cfg -and $Cfg.package)) { Set-AndroidPackage (Get-ApkPackage $appApk) }
         if (-not $script:Pkg) { [Console]::Out.WriteLine('accept: sem o pacote do app — nenhum APK em <projeto>/**/build/outputs/apk/ e nada em targets.android.package; construa o app (assembleDebug ou assembleRelease) antes'); return 2 }
         if ($appApk) { $ie = Install-AndroidApk $appApk; if ($ie) { [Console]::Out.WriteLine("accept: $ie"); return 2 }; [Console]::Out.WriteLine("accept: $($script:Pkg) instalado de $($appApk.Replace($Root, '').TrimStart('\', '/'))") }
     }
 
-    $dir = (Get-VerifyDir $Root $Task) -replace '[\\/]verify[\\/]', '/accept/'
     $script:Shots = Join-Path $dir 'shots'; New-Item -ItemType Directory -Force $script:Shots | Out-Null
     $results = @(); $envFail = $null
     foreach ($b in $Blocks) {

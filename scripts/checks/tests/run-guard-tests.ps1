@@ -862,7 +862,28 @@ $cases = @(
        Payload = @{ hook_event_name = 'SessionStart'; source = 'clear' } },
     @{ Name = 'SessionStart com a G13 desligada: a forma da conversa sai mesmo assim (não é guarda)'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'Conversa com o stakeholder (R22)'
        Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ "disabled": ["G13"] }', (New-Object System.Text.UTF8Encoding($false))) }
-       Payload = @{ hook_event_name = 'SessionStart'; source = 'clear' } }
+       Payload = @{ hook_event_name = 'SessionStart'; source = 'clear' } },
+    # ---------- v3.53.6 (sprint 5 do garden, item 6) — G14: target.ps1 do plugin em qualquer forma e o reparo declarado ----------
+    @{ Name = 'G14 (v3.53.6): & "<plugin>\scripts\checks\target.ps1" -Target android -Repair liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "7", "desde": "2026-10-06 10:00" }' -Encoding UTF8
+                 [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ "runCommands": ["npm test"], "targets": { "android": { "package": "br.x", "repair": "docker restart horta-emulador; adb connect localhost:5555" }, "web": { "url": "http://x" } } }', (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "& `"$root\scripts\checks\target.ps1`" -Target android -Repair" } } },
+    @{ Name = 'G14 (v3.53.6): caminho direto do target.ps1 do plugin, sem & nem aspas, liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "$root\scripts\checks\target.ps1 -Target android" } } },
+    @{ Name = 'G14 (v3.53.6): pwsh -File do target.ps1 do plugin liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = "pwsh -NoProfile -File `"$root\scripts\checks\target.ps1`" -Target android" } } },
+    @{ Name = 'G14 (v3.53.6): & "$env:CLAUDE_PLUGIN_ROOT\scripts\checks\target.ps1" liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = '& "$env:CLAUDE_PLUGIN_ROOT\scripts\checks\target.ps1" -Target android' } } },
+    @{ Name = 'G14 (v3.53.6): & de um scripts\checks\target.ps1 fora da pasta do plugin: negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'fora da pasta do plugin'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "& `"$proj\scripts\checks\target.ps1`" -Target android" } } },
+    @{ Name = 'G14 (v3.53.6): & de um .ps1 qualquer entre aspas não passa mais como expressão'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "& `"$proj\tools\limpa.ps1`"" } } },
+    @{ Name = 'G14 (v3.53.6): o reparo declarado em targets.android.repair liberado, trecho a trecho'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'docker restart horta-emulador; adb connect localhost:5555' } } },
+    @{ Name = 'G14 (v3.53.6): docker fora do reparo declarado: negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'docker rm -f horta-emulador' } } },
+    @{ Name = 'G14 (v3.53.6): adb fora do reparo declarado segue negado com a rota do target.ps1'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'target.ps1'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'adb shell input keyevent 3' } } }
 )
 
 $rows = @(); $fail = 0

@@ -52,3 +52,15 @@
 | V17 | Pipeline transversal | interceptador do cliente HTTP (token, erro, log) |
 | V18–V21 | Desempenho | LCP/INP/CLS p75 e tamanho do bundle; ambiente = build de produção no preview |
 | V22 | Render | Playwright (Chromium headless, ou Edge/Chrome do sistema) |
+
+## RE-Q4 Ids de teste (v3.53.6, regra que reprova o verify)
+
+Pedido do stakeholder depois do sprint 5 do garden ("nunca mais termos problema durante as rotinas de QA"): o `data-testid` é padrão de código, conferido pela máquina.
+
+| O que reprova o `verify.ps1 -Mode full` (chave `testids`, exit 1) | Saída |
+|---|---|
+| id citado num cenário de tela da Task (`.scn` do QA, sem `(teste)` e sem `# aguarda` de outra Task) que não existe **literalmente** no código de produção — o atributo, uma constante, ou o prefixo de id dinâmico (`` `lista.item.${id}` ``, `'lista.item.' + id`) | o id, o cenário e `arquivo.scn:linha` |
+| `<button`, `<input` (menos `type="hidden"`), `<select`, `<textarea` e `<a` com `href`/`onClick` sem `data-testid` (ou o `targets.web.testIdAttribute`) nos `.tsx`/`.jsx`/`.html` da Task | `arquivo:linha` |
+
+- **Onde:** os arquivos de **Arquivos tocados:** do plano (sem plano, os mudados no git), fora de testes (`*.spec.*`, `*.test.*`, `__tests__/`, `e2e/`), `build/`, `dist/` e gerados.
+- **Exceção explícita:** `{/* sem-testid: <motivo> */}` (ou `// sem-testid: <motivo>`) na linha do elemento ou na anterior — sem motivo, continua reprovando. Uso típico: componente que repassa as props (`<button {...props}>`).

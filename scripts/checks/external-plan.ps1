@@ -137,6 +137,8 @@ function New-PlanPack([string]$Story, $Items, [int]$Round, [string]$Kind = 'stor
         $tf = Join-Path $dir "tasks/$($t.Id)-ficha.md"; New-Item -ItemType Directory -Force (Split-Path $tf) | Out-Null
         [System.IO.File]::WriteAllText($tf, $card, $utf8)
         if ($f) { foreach ($r in @(@($f.Read) + @($f.Sources) | Where-Object { $_ } | Select-Object -Unique)) { if (-not $copied.ContainsKey($r)) { $copied[$r] = Copy-PackFile $r $dir } } }
+        # v3.53.6 (item 1): Task nascida da divisão de um plano grande — o plano de origem (**Base:**) vai junto, em files/.
+        if ($f) { $bm = [regex]::Match($f.Body, '\*\*Base:\*\*\s*`([^`]+)`'); if ($bm.Success -and -not $copied.ContainsKey($bm.Groups[1].Value)) { $copied[$bm.Groups[1].Value] = Copy-PackFile $bm.Groups[1].Value $dir } }
         $scnIds += @($t.Scenarios) + @($t.TestScenarios)
     }
     $ctx = Join-Path $dir 'context'; New-Item -ItemType Directory -Force $ctx | Out-Null
@@ -308,6 +310,14 @@ function Import-OnePlan($It, $St, $Planner, [string]$Re) {
     if ($null -ne $before) { [System.IO.File]::WriteAllText($dest, $before, $utf8) } else { Remove-Item -LiteralPath $dest -Force -ErrorAction SilentlyContinue }
     $bad = @($r.Out -split "`r?`n" | Where-Object { $_ -match '^\|\s*([^|]+?)\s*\|\s*falhou\s*\|' } | ForEach-Object { [regex]::Match($_, '^\|\s*([^|]+?)\s*\|').Groups[1].Value })
     $why = if ($bad.Count) { $bad -join ', ' } elseif ($r.Code -eq 2) { 'erro de uso do plan.ps1' } else { 'plan.ps1 reprovou' }
+    # v3.53.6 (sprint 5 do garden, item 1): reprovado por tamanho (acima de 30 KB), o plano não volta num pacote de correção —
+    # a correção pediria corte. A cópia em pack/review/ fica como base e o run.ps1 next leva a Task à divisão.
+    if (-not $isGap -and $bad -contains 'tamanho') {
+        if ($St.packs.ContainsKey($T.Story)) { $St.packs[$T.Story].rejected = @($St.packs[$T.Story].rejected | Where-Object { $_ -ne $id }) }
+        $kb = Get-PlanKb $text
+        Add-RunLog $S $n $id "external plan de $kb KB (teto $($script:PlanMaxKb)) → divisão da Task, sem pacote de correção" 'regra 22: plano grande não se corta; os blocos dele são a base da divisão' "sprints/$n/pack/review/$id-plan.md"
+        return "  external plan: $id reprovado por tamanho ($kb KB, teto $($script:PlanMaxKb) KB) — não volta em pacote de correção: a Task se divide (run.ps1 next), com este plano como base (pack/review/$id-plan.md)"
+    }
     if ($isGap) { $St.gaps[$id].fix = $true }
     else {
         if (-not $St.packs.ContainsKey($T.Story)) { $St.packs[$T.Story] = @{ name = ''; round = 1; tasks = @($id); rejected = @(); at = '' } }

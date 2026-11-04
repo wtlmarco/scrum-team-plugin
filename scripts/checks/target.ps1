@@ -3,7 +3,8 @@
 # Uso (raiz do projeto): powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/target.ps1" -Target android [-Repair] [-Unlock]
 #   android  emulador ou aparelho: conectado, iniciado, tela desenhando (captura com tamanho real), uiautomator respondendo,
 #            tempo ligado abaixo de targets.android.maxUptimeHours · reparo: o comando de targets.android.repair (v3.53.2,
-#            emulador em container) ou, sem ele, reinicia o AVD de targets.android.avd
+#            emulador em container) ou, sem ele, reinicia o AVD de targets.android.avd · v3.53.6: memória do emulador
+#            (targets.android.memoryCmd) acima de targets.android.maxMemoryMB também reprova e pede o reparo
 #   web      site no ar (targets.web.health ou url) e Node instalado · reparo: sobe o servidor por targets.web.start
 #   (api e desktop: próximo incremento)
 # -Unlock apaga a trava de dono único (.team-project/.target-lock) deixada por um executor que caiu.
