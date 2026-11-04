@@ -39,7 +39,7 @@ Seu roteiro por modo — plano, gap, varredura do `prepare`, rodada de brainstor
 
 - **Meça o ambiente antes de escrever os passos** — comando e saída real, seus ou do `operator`, com o caminho do log; a parada cobre **ausência** do pré-requisito, não só versão fora da faixa (R26 · R28).
 - **Decida, documente e PROVE — não construa** (v3.52.2). O que o plano afirma você mede: contagem, busca e conferência de seletor contra o lint, **você mesmo**, com comando curto de leitura e a saída colada; o que depende de executar (app, teste, build, harness, contraste, compilar o mutante), peça ao `operator` e cole número + comando + saída. Você continua sem escrever código de produção.
-- **Ao responder um 🔺 GAP, decida e documente.** A decisão entra no plano (R9) — e, se afirma algo novo sobre o ambiente, também como premissa medida — e a execução volta ao dev por `/dev gap <resposta>`; você não reproduz passo, build, lint nem teste do dev (R9 · R7). Medir o que a *sua* decisão afirma é prova, não reprodução.
+- **Ao responder um 🔺 GAP, decida e documente.** A decisão entra no plano (R9) — e, se afirma algo novo sobre o ambiente, também como premissa medida; se vale para mais de uma Task do sprint, uma vez em `.team-project/architect/decisions/S<n>.md` (`## D-<k>`) e o plano só a cita em `**Decisões do sprint:**`, sem copiar (regra 29, v3.53.7) — e a execução volta ao dev por `/dev gap <resposta>`; você não reproduz passo, build, lint nem teste do dev (R9 · R7). Medir o que a *sua* decisão afirma é prova, não reprodução.
 
 ## Princípios inegociáveis
 

@@ -4,7 +4,7 @@
 // (padrão data-testid), viewport, pasta de capturas e os cenários já lidos ({ id, title, steps: ["tap x", …] }).
 // O Playwright vem do node_modules do projeto (ou do global). Sem ele, ou sem o navegador, a saída é FALHA DE AMBIENTE.
 'use strict';
-const fs = require('fs'), path = require('path');
+const fs = require('fs'), path = require('path'), cp = require('child_process');
 const [, , inFile, outFile] = process.argv;
 const input = JSON.parse(fs.readFileSync(inFile, 'utf8'));
 const write = (o) => fs.writeFileSync(outFile, JSON.stringify(o, null, 1));
@@ -50,6 +50,34 @@ async function step(ctx, verb, rest, shotBase) {
       await loc.click(); await page.waitForLoadState('networkidle').catch(() => {}); break;
     }
     case 'type': { const [k, v] = split(rest); await page.locator(sel(k)).first().fill(v); break; }
+    // v3.53.7: <select> nativo pelo rótulo; seletor do framework (ion-select, mat-select…): abre, toca a opção pelo texto
+    // visível e confirma se o diálogo pedir (botão que casa selectConfirm).
+    case 'select': {
+      const [k, v] = split(rest); const loc = page.locator(sel(k)).first();
+      await loc.waitFor({ state: 'visible', timeout: 6000 }).catch(() => { throw new Error(`tag não encontrada: ${k}`); });
+      if ((await loc.evaluate((e) => e.tagName.toLowerCase())) === 'select') { await loc.selectOption({ label: v }); break; }
+      await loc.click();
+      const opt = page.getByText(v, { exact: true }).last();
+      await opt.waitFor({ state: 'visible', timeout: 6000 }).catch(() => { throw new Error(`opção '${v}' não apareceu depois de tocar ${k}`); });
+      await opt.click();
+      const ok = page.getByRole('button', { name: new RegExp(input.selectConfirm || '^(OK|Ok|Confirmar)$') }).first();
+      if (await ok.isVisible().catch(() => false)) await ok.click();
+      await page.waitForLoadState('networkidle').catch(() => {}); break;
+    }
+    // v3.53.7: massa de dados — o comando do projeto (targets.web.seeds.<nome>) num PowerShell filho; falhou = ambiente.
+    case 'seed': {
+      const cmd = (input.seeds || {})[rest];
+      const envErr = (m) => { const e = new Error(m); e.environment = true; return e; };
+      if (!cmd) throw envErr(`massa de dados '${rest}' não declarada em guards.json → targets.web.seeds`);
+      const sec = input.seedTimeoutSec || 300;
+      const r = cp.spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', Buffer.from(cmd, 'utf16le').toString('base64')],
+        { cwd: input.root || process.cwd(), env: { ...process.env, ACCEPT_TARGET: 'web', ACCEPT_SEED: rest, ACCEPT_URL: input.url }, encoding: 'utf8', timeout: sec * 1000, windowsHide: true });
+      if (r.error || r.status !== 0) {
+        const tail = `${r.stdout || ''}${r.stderr || ''}`.split(/\r?\n/).filter((l) => l.trim()).slice(-2).join(' / ');
+        throw envErr(r.error ? `massa de dados '${rest}' sem resposta em ${sec} s (targets.web.seedTimeoutSec)` : `massa de dados '${rest}' não carregou (exit ${r.status})${tail ? ': ' + tail : ''}`);
+      }
+      break;
+    }
     case 'slider': {
       const [id, v] = rest.split(/\s+/);
       await page.locator(sel(id)).first().evaluate((e, val) => { e.value = val; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); }, v);
@@ -81,7 +109,7 @@ async function step(ctx, verb, rest, shotBase) {
   }
   if (!browser) { write({ environment: `o navegador headless não abriu (${String(firstErr.message).split('\n')[0]}): npx playwright install chromium` }); process.exit(4); }
   const vp = input.viewport || { width: 1280, height: 800 };
-  const results = [];
+  const results = []; let envFail = null;
   for (const sc of input.scenarios) {
     const ctx = { context: null, page: null };
     ctx.fresh = async () => { if (ctx.context) await ctx.context.close(); ctx.context = await browser.newContext({ viewport: vp }); ctx.page = await ctx.context.newPage(); };
@@ -91,13 +119,18 @@ async function step(ctx, verb, rest, shotBase) {
     for (const s of sc.steps) {
       const i = s.indexOf(' '); const verb = i < 0 ? s : s.slice(0, i); const rest = i < 0 ? '' : s.slice(i + 1).trim();
       try { await step(ctx, verb, rest, shotBase); }
-      catch (e) { status = 'FALHOU'; detail = `passo '${s}': ${String(e.message).split('\n')[0]}`; break; }
+      catch (e) {
+        if (e.environment) { envFail = String(e.message).split('\n')[0]; break; }
+        status = 'FALHOU'; detail = `passo '${s}': ${String(e.message).split('\n')[0]}`; break;
+      }
     }
+    if (envFail) { await ctx.context.close().catch(() => {}); break; }
     const shot = `${shotBase}-${status === 'PASSOU' ? 'final' : 'falha'}.png`;
     await ctx.page.screenshot({ path: shot, fullPage: true }).catch(() => {});
     results.push({ id: sc.id, title: sc.title, status, detail, shot });
     await ctx.context.close();
   }
   await browser.close();
+  if (envFail) { write({ environment: envFail }); process.exit(4); }
   write({ results });
 })().catch((e) => { write({ environment: `executor web caiu: ${String(e.message).split('\n')[0]}` }); process.exit(4); });

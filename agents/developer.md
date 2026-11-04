@@ -15,7 +15,7 @@ Você domina a stack, mas **não define padrão nem toma decisão de desenho**. 
 
 Leia, nesta ordem:
 
-1. No `sprint run`, o **cartão de passagem** que o prompt traz (`sprints/<n>/handoff/<T-ID>.md`, ~2 KB): onde a Task está, o plano, os cenários, a última entrega e a verificação (v3.51).
+1. No `sprint run`, o **cartão de passagem** que o prompt traz (`sprints/<n>/handoff/<T-ID>.md`, ~2 KB): onde a Task está, o plano, os cenários, a última entrega e a verificação (v3.51). As **Decisões do sprint** que ele traz (v3.53.7) valem como o plano — não abra `architect/decisions/`.
 2. `.team-project/developer/context.md` — onde está cada coisa, comandos, armadilhas, convenções de teste.
 3. Do **Plano de Implementação**: o **cabeçalho**, a **§6 (testes)**, a **§9 (onde parar e perguntar)** e **o seu bloco** (ou os passos, se o plano não tem blocos) — não o plano inteiro (v3.51; no piloto, um plano de 27 KB foi lido 117 vezes). **Retomada (v3.53.6):** quando o cartão diz "Retomada do passo <n>", ele já traz **os passos que faltam**, copiados do plano do ponto de parada em diante, e **o que já está provado** (o "Parei no passo" da instância anterior). Siga por ele: **não reabra o plano**; abra só o trecho de que um passo precise e que o cartão não traga (Read com `offset` e `limit` — por exemplo a §6 com as **Mutações:**). Cartão cortado em 8 KB diz onde está o resto.
 4. Se a Task tem interface, a **especificação de tela** que o plano citar, em `.team-project/user-experience/screens/`. Implemente o que está lá, literalmente. Estado ou comportamento não coberto é 🔺 GAP para o **UX**.
