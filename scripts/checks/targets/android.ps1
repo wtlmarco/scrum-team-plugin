@@ -6,7 +6,9 @@
 # repair (v3.53.2, opcional: comando PowerShell de reparo do projeto — emulador em container; vence o avd),
 # serial (v3.53.5, opcional: o aparelho de trabalho, ex. "emulator-5554" — com ele todo adb vai a esse aparelho),
 # memoryCmd + maxMemoryMB (v3.53.6, opcionais: memória do emulador acima do limite reprova o pré-voo e chama o reparo),
-# freshStart (v3.53.6, padrão true com repair: o primeiro accept de cada Task reinicia o emulador pelo repair).
+# freshStart (v3.53.6, padrão true com repair: o primeiro accept de cada Task reinicia o emulador pelo repair),
+# seeds + seedTimeoutSec (v3.53.7: massa de dados por nome, passo "seed"), selectConfirm (v3.53.7: botão de confirmação
+# do seletor no passo "select", expressão regular).
 
 $script:AdCfg = $null; $script:Adb = $null; $script:Pkg = ''; $script:Nodes = @(); $script:IdCache = @{}; $script:EmptyDumps = 0
 $script:Serial = ''; $script:AdbTimeout = ''
@@ -284,6 +286,23 @@ function CollectIds([string]$Prefix) {
     $script:IdCache[$Prefix] = @($seen)
     @($seen)
 }
+# v3.53.7 (encadeamento do sprint 5 do garden): o caso central da Task de canteiros não tinha cenário no aparelho porque a
+# linguagem não escolhia opção num combo. "select <id> = <opção>": toca o controle, espera a opção pelo texto visível (fora
+# do próprio controle, que pode mostrar o valor atual), rola a lista aberta se preciso e toca; se o seletor ficou aberto
+# com botão de confirmação (diálogo com OK), confirma. targets.android.selectConfirm troca a expressão do botão.
+function SelectOption([string]$Id, [string]$Opt) {
+    if (-not (Reach $Id 6)) { throw "tag não encontrada: $Id$(Get-ScreenHint)" }
+    Start-Sleep -Milliseconds 300; [void](Dump); $c = Find $Id; TapNode $c; Start-Sleep -Milliseconds 500
+    $outside = { param($n) -not ($n.X1 -ge $c.X1 -and $n.X2 -le $c.X2 -and $n.Y1 -ge $c.Y1 -and $n.Y2 -le $c.Y2) }
+    $pick = { [void](Dump); $script:Nodes | Where-Object { ($_.Text -eq $Opt -or $_.Desc -eq $Opt) -and (& $outside $_) } | Select-Object -First 1 }
+    $o = $null; $t = Get-Date
+    do { $o = & $pick; if ($o) { break }; Start-Sleep -Milliseconds 400 } while (((Get-Date) - $t).TotalSeconds -lt 6)
+    if (-not $o) { foreach ($i in 1..15) { Sh input swipe 360 1100 360 700 600 | Out-Null; Start-Sleep -Milliseconds 400; $o = & $pick; if ($o) { break } } }
+    if (-not $o) { throw "opção '$Opt' não apareceu depois de tocar $Id$(Get-ScreenHint)" }
+    TapNode $o
+    $cre = if ($script:AdCfg -and $script:AdCfg.PSObject.Properties['selectConfirm'] -and $script:AdCfg.selectConfirm) { [string]$script:AdCfg.selectConfirm } else { '^(OK|Ok|Confirmar|Concluir|Pronto|Aplicar|Done)$' }
+    if (& $pick) { $ok = $script:Nodes | Where-Object { $_.Text -match $cre -or $_.Desc -match $cre } | Select-Object -First 1; if ($ok) { TapNode $ok } }
+}
 function SetSlider([string]$Id, [double]$Value, [double]$Min, [double]$Max) {
     if (-not (Reach $Id 6)) { throw "controle deslizante não encontrado: $Id" }; $n = Find $Id
     # a trilha começa ~30 px para dentro do nó: tocar na borda não muda o valor
@@ -341,6 +360,9 @@ function Invoke-AndroidStep([string]$Verb, [string]$Rest, [string]$ShotBase) {
         'font-scale' { Sh settings put system font_scale ([double]$Rest) | Out-Null; Start-Sleep -Milliseconds 800 }
         'tap' { Tap $Rest }
         'type' { $k, $v = $Rest -split '\s*=\s*', 2; Tap $k; Sh input text ($v -replace ' ', '%s') | Out-Null; Start-Sleep -Milliseconds 400; Sh input keyevent 111 | Out-Null }
+        'select' { $k, $v = $Rest -split '\s*=\s*', 2; SelectOption $k.Trim() ([string]$v).Trim() }
+        # v3.53.7: massa de dados — o comando do projeto em targets.android.seeds.<nome>, com o aparelho e o pacote no ambiente.
+        'seed' { $e = Invoke-TargetSeed $(if ($Root) { $Root } else { (Get-Location).Path }) 'android' $script:AdCfg $Rest.Trim() @{ ACCEPT_SERIAL = $script:Serial; ACCEPT_PACKAGE = $script:Pkg }; if ($e) { throw "AMBIENTE: $e" } }
         'slider' { $p = $Rest -split '\s+'; SetSlider $p[0] ([double]$p[1]) ([double]$p[2]) ([double]$p[3]) }
         'shot' { Save-AndroidShot "$ShotBase-$Rest.png" }
         'assert-text' { $k, $v = $Rest -split '\s*=\s*', 2; $a = TextOf $k; if ($a -ne $v) { throw "esperado '$v', obtido '$a' em $k" } }

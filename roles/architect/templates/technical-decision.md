@@ -33,7 +33,7 @@ Resposta do Arquiteto quando o dev para e pergunta. Precisa ser **executável**:
 ## Regras
 
 - **Decidir, não devolver a pergunta** (R9). "Depende" não é resposta a um júnior parado.
-- **A decisão entra no Plano de Implementação**, não só nesta resposta (R9): corrigir o passo, ou acrescentar ali a linha que faltava. Resposta só em prosa é achado de processo — e a execução volta ao dev por `/dev gap <resposta>`, do passo em que ele parou.
+- **A decisão entra no Plano de Implementação**, não só nesta resposta (R9): corrigir o passo, ou acrescentar ali a linha que faltava. **Decisão que vale para mais de uma Task do sprint** (alvo, APK, teste instável, regra de processo — v3.53.7): vai **uma vez** em `.team-project/architect/decisions/S<n>.md` como `## D-<k>`, e cada plano só a cita em `**Decisões do sprint:**` ([`implementation-plan.md`](implementation-plan.md) regra 29) — nunca copiada plano a plano. Resposta só em prosa é achado de processo — e a execução volta ao dev por `/dev gap <resposta>`, do passo em que ele parou.
 - Ler o código citado antes de responder — o relato do dev pode estar certo pelo motivo errado. **Ler, e parar aí:** reproduzir o passo, rodar build/lint/teste ou replanejar a Task é assumir a execução dele; conferir afirmação verificável é do QA, no veredito (R7 · R9).
 - Classificar sempre: gap sem classificação vira decisão perdida (R6).
 - Gap do mesmo tipo pela segunda vez = ajustar o **formato** do plano, não só responder de novo.

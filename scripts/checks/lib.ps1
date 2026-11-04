@@ -296,6 +296,38 @@ function Get-TargetsConfig([string]$Root) {
     return $null
 }
 
+# Massa de dados do cenário (v3.53.7, encadeamento do sprint 5 do garden: o reset zera a base e o cenário rodava sem os
+# dados de que o critério precisa). guards.json → targets.<alvo>.seeds: { "<nome>": "<comando PowerShell>" }; o .scn pede
+# com "seed <nome>". Devolve @{ nome = comando } do alvo (vazio sem a chave).
+function Get-TargetSeeds($Cfg) {
+    $h = [ordered]@{}
+    if (-not $Cfg -or -not $Cfg.PSObject.Properties['seeds'] -or $null -eq $Cfg.seeds) { return $h }
+    foreach ($p in $Cfg.seeds.PSObject.Properties) { if ([string]$p.Value) { $h[$p.Name] = [string]$p.Value } }
+    return $h
+}
+# Roda o comando da massa num PowerShell filho, na raiz do projeto, com prazo (targets.<alvo>.seedTimeoutSec, padrão 300)
+# e as variáveis ACCEPT_TARGET, ACCEPT_SEED e as de $Env (ACCEPT_SERIAL, ACCEPT_PACKAGE, ACCEPT_URL). $null quando carregou
+# (exit 0); senão o motivo — quem chama trata como FALHA DE AMBIENTE: a pré-condição não existe, o app nem foi exercitado.
+function Invoke-TargetSeed([string]$Root, [string]$Target, $Cfg, [string]$Name, [hashtable]$Env = @{}) {
+    $seeds = Get-TargetSeeds $Cfg
+    if (-not $seeds.Contains($Name)) { return "massa de dados '$Name' não declarada em guards.json → targets.$Target.seeds" }
+    $sec = if ($Cfg.PSObject.Properties['seedTimeoutSec'] -and $Cfg.seedTimeoutSec) { [int]$Cfg.seedTimeoutSec } else { 300 }
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = 'powershell'; $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -EncodedCommand ' + [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("`$ProgressPreference = 'SilentlyContinue'; " + $seeds[$Name]))
+    $psi.WorkingDirectory = $Root; $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
+    $psi.EnvironmentVariables['ACCEPT_TARGET'] = $Target; $psi.EnvironmentVariables['ACCEPT_SEED'] = $Name
+    foreach ($k in $Env.Keys) { $psi.EnvironmentVariables[[string]$k] = [string]$Env[$k] }
+    $p = [System.Diagnostics.Process]::Start($psi)
+    $o = $p.StandardOutput.ReadToEndAsync(); $e = $p.StandardError.ReadToEndAsync()
+    if (-not $p.WaitForExit($sec * 1000)) { $null = Stop-ProcessTree $p.Id; $p.Dispose(); return "massa de dados '$Name' sem resposta em $sec s (targets.$Target.seedTimeoutSec)" }
+    $p.WaitForExit(); $code = $p.ExitCode
+    $txt = ''; try { if ($o.Wait(2000)) { $txt += $o.Result }; if ($e.Wait(2000)) { $txt += $e.Result } } catch { }
+    $p.Dispose()
+    if ($code -eq 0) { return $null }
+    $tail = @($txt -split "`r?`n" | Where-Object { $_.Trim() -and $_ -notmatch '^#< CLIXML|^<Objs\b' } | Select-Object -Last 2) -join ' / '
+    return "massa de dados '$Name' não carregou (exit $code)$(if ($tail) { ": $tail" })"
+}
+
 # Plano externo (v3.53.4): guards.json → "run": { "planner": "external", "tasks": [] }. $null sem a chave ou com outro
 # planner (o padrão é "claude": o Arquiteto Opus planeja); senão o objeto com Tasks = a lista do piloto (vazia = todas).
 function Get-RunPlanner([string]$Root) {
@@ -857,6 +889,49 @@ function Get-PlanSummary([string]$PlanPath) {
     $out = $head.TrimEnd()
     if ($steps.Count) { $out += "`n`n**Passos/blocos:**`n" + ($steps -join "`n") }
     return $out
+}
+
+# Decisões do sprint (v3.53.7, encadeamento do sprint 5 do garden: a mesma decisão de 🔺 GAP — emulador fora, teste instável,
+# APK antes do accept — foi colada em 8 planos, e cada instância nova do dev relia o acúmulo). Ficha comum do sprint:
+# .team-project/architect/decisions/S<n>.md, uma "## D-<k> — <título>" por decisão, com "**Vale para:** todas | T-…, T-…"
+# e a regra em poucas linhas. O plano cita em **Decisões do sprint:** D-<k>; o cartão do dev e o recorte da ficha a trazem.
+$script:DecisionIdRe = 'D-\d+'
+function Get-SprintDecisionsPath([string]$Root, [string]$Sprint) { return (Join-Path $Root ".team-project/architect/decisions/S$Sprint.md") }
+function Get-SprintDecisions([string]$Root, [string]$Sprint) {
+    $fp = Get-SprintDecisionsPath $Root $Sprint
+    if (-not (Test-Path -LiteralPath $fp)) { return @() }
+    $out = @()
+    foreach ($m in [regex]::Matches((Read-Text $fp), '(?ms)^##\s+(' + $script:DecisionIdRe + ')\s*[—–-]\s*([^\r\n]*)\r?\n(.*?)(?=^##\s|\z)')) {
+        $body = $m.Groups[3].Value
+        $vm = [regex]::Match($body, '(?m)^\*\*Vale para:\*\*\s*([^\r\n]*)$')
+        $scope = if ($vm.Success) { ($vm.Groups[1].Value -split '\s+·\s+')[0] } else { '' }
+        $all = $scope -match '(?i)^\s*todas'
+        $ids = @([regex]::Matches($scope, $script:TaskIdRe) | ForEach-Object { $_.Value })
+        $rule = (@($body -split "`r?`n" | Where-Object { $_.Trim() -and $_ -notmatch '^\*\*(Vale para|Origem):\*\*' } | ForEach-Object { $_.Trim() }) -join ' ').Trim()
+        $out += [pscustomobject]@{ Id = $m.Groups[1].Value; Title = $m.Groups[2].Value.Trim(); All = $all; Ids = $ids; Rule = $rule; Body = $body }
+    }
+    return $out
+}
+# Recorte das decisões do sprint para o Arquiteto do plano (ficha da Task, pacote externo): título, a quem vale e a regra
+# curta — ele cita em **Decisões do sprint:** em vez de decidir de novo ou copiar. '' sem decisões.
+function Get-DecisionsDigest([string]$Root, [string]$Sprint) {
+    $ds = @(Get-SprintDecisions $Root $Sprint)
+    if (-not $ds.Count) { return '' }
+    $ls = @($ds | ForEach-Object { $r = if ($_.Rule.Length -gt 200) { $_.Rule.Substring(0, 200).TrimEnd() + '…' } else { $_.Rule }; "- $($_.Id) — $($_.Title) · vale para $(if ($_.All) { 'todas' } elseif ($_.Ids.Count) { $_.Ids -join ', ' } else { '?' })$(if ($r) { ": $r" })" })
+    return "`n## Decisões do sprint — ``architect/decisions/S$Sprint.md```n`n> Já decididas: a que valer para esta Task vai em **Decisões do sprint:** D-<k> no cabeçalho do plano — cite, não copie o texto (regra 29).`n`n" + ($ls -join "`n") + "`n"
+}
+# IDs citados na linha **Decisões do sprint:** do plano.
+function Get-PlanDecisionRefs([string]$PlanText) {
+    $m = [regex]::Match($PlanText, '(?m)^\*\*Decis[õo]es do sprint:\*\*\s*([^\r\n]*)$')
+    if (-not $m.Success) { return @() }
+    return @([regex]::Matches($m.Groups[1].Value, $script:DecisionIdRe) | ForEach-Object { $_.Value } | Select-Object -Unique)
+}
+# As decisões que valem para a Task: "todas", as que a citam em **Vale para:** e as que o plano cita. Uma linha cada.
+function Get-TaskDecisionLines([string]$Root, [string]$Sprint, [string]$TaskId, [string]$PlanText = '', [int]$MaxChars = 300) {
+    $refs = Get-PlanDecisionRefs $PlanText
+    return @(Get-SprintDecisions $Root $Sprint | Where-Object { $_.All -or ($_.Ids -contains $TaskId) -or ($refs -contains $_.Id) } | ForEach-Object {
+        $r = if ($_.Rule.Length -gt $MaxChars) { $_.Rule.Substring(0, $MaxChars).TrimEnd() + '…' } else { $_.Rule }
+        "- $($_.Id) — $($_.Title)$(if ($r) { ": $r" })" })
 }
 
 # Medida curta da sessão principal (v3.52.2, note.md item 17): chamadas distintas (message.id, sem <synthetic>) e o contexto

@@ -11,6 +11,7 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
 **Estimativa:** <n> unidade(s) · **Trilha:** plena | leve *(a do Sprint Backlog; leve → "Variante leve")*
 **Planejado durante:** <T-ID> em 🟨 *(só quando outra Task estava em construção — regra 20)*
 **Li além da ficha:** nenhum | `<arquivo>` — <porquê> · `<arquivo>` — <porquê> *(só Task com ficha — regra 28)*
+**Decisões do sprint:** D-<k>, D-<k> *(só quando alguma de `architect/decisions/S<n>.md` vale para a Task — regra 29)*
 **Cenários:** SC-<nnn>, SC-<nnn> *(regra 23)* | nenhum — <motivo>
 **Risco:** regra de negócio | integração | interface simples | infraestrutura *(regra 24)*
 **Layout novo:** sim | não *(só Task com interface — regras 21, 26 e 27)*
@@ -173,8 +174,19 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
     - **Premissa:** `- P<k> · <afirmação> · medido: <comando ou job> → <resultado>` ou `- P<k> · <afirmação> · não exercitada: <motivo> · verifica: <papel> em <passo>`; "não validado" solto reprova.
     - **Quem mede:** leitura (contagem, busca, seletor contra o lint), eu, com comando curto e a saída colada; o que depende de executar (app, teste, build, contraste, compilar o mutante), o `operator`, job `operator/<n>/<T-ID>-plano/`, linha na §11.
     - Número de aceite da spec do UX entra como premissa **medida**. Com `**Layout novo:** sim`, ao menos uma `medido:`. A premissa substitui a prosa que afirmava o mesmo.
+    - ✓ **Geometria não se lê (v3.53.7).** Com `**Layout novo:** sim`, premissa sobre posição, tamanho, sobreposição, margem, rolagem ou o que um componente do framework faz na tela **não** se mede lendo código — nem o do framework em `node_modules`. Ou a sonda de render do `operator` mede (job `operator/<n>/<T-ID>-plano/`, minutos, linha na §11), ou a premissa sai `não exercitada … · verifica: dev em <passo do teste de render>`. O `plan.ps1` reprova a premissa de layout cujo `medido:` não executou nada.
 27. ✓ **Mudança visível aponta o documento de desenho.** Com `**Layout novo:** sim`, a linha `**Documentos vivos:**` traz o documento (`docs/sdd/…`) e a seção que muda; ele **não** entra em `**Arquivos tocados:**` — o dev anota no relatório e eu consolido uma vez no sprint (A5, `docs-consolidation.md`).
 28. ✓ **Plano pela ficha (v3.53).** Task com ficha: abro só a ficha (o recorte em `sprints/<n>/handoff/<T-ID>-ficha.md`, que traz no fim o **resumo do plano da dependência** — cabeçalho, arquivos e passos), este template e o `architect/context.md`; o plano da dependência eu abro só no trecho que faltar. Do código e das fontes, leio **o trecho** que a ficha aponta (`caminho:linha`, a §), não o arquivo inteiro (v3.53.2): tudo o que leio fica na conversa e é relido a cada chamada. Ler além dela vale — cada arquivo vai em `**Li além da ficha:**`, numa linha (`nenhum` quando não li): é a medida da qualidade da ficha. Os **nomes comuns** da ficha aparecem literalmente no plano. Não abro o `plan.ps1` nem plano de outro sprint. Formato da ficha: [`breakdown.md`](breakdown.md).
+
+29. ✓ **Decisão do sprint se cita, não se copia (v3.53.7).** Decisão que vale para mais de uma Task — alvo, APK, teste instável, regra de processo, nome — fica **uma vez** em `.team-project/architect/decisions/S<n>.md`:
+
+    ```markdown
+    ## D-<k> — <título curto>
+    **Vale para:** todas | T-<nnn>, T-<nnn> · **Origem:** 🔺 GAP da T-<nnn> · <data>
+    <a regra em até 5 linhas; seção do SDD ou do standard citada, não copiada>
+    ```
+
+    O plano a cita em `**Decisões do sprint:** D-<k>` e não repete o texto; o `plan.ps1` reprova a citação de D que não existe e a linha da decisão copiada no plano. O cartão do dev traz cada decisão que vale para a Task em uma linha, e o recorte da ficha traz todas para eu citar. Decisão que só vale para esta Task continua no plano (R9).
 
 ## Variante leve (R23)
 

@@ -13,6 +13,26 @@
 
 ---
 
+## v3.53.7 — 2026-11-04
+
+**Branch:** `fix/v3.53.7` a partir de `develop` (com a v3.53.6 mesclada pelo PR #115) · **Processo:** addendum v3.53.7 (prova pela camada certa, premissa de layout medida, decisão do sprint num lugar só)
+Origem: relatório "Encadeamento plano, construção e QA — sprint 5" do garden, 04/11, e as decisões do stakeholder de 04/11 (resolver: matriz de prova, premissa de layout lida, decisão colada em vários planos, checagem do alvo antes do accept; manter: teto do plano em 30 KB e a QA do fim como está). O contrato de ids "feito uma vez" já não tem voltas desde a v3.53.6 (o id do `.scn` é o pedido ao dev, e o `verify` reprova o que falta); a checagem do alvo já tinha memória, idade do APK, reinício no 1º accept e launch do zero — faltava a massa de dados.
+
+Mudanças:
+- **Escolher opção e carregar massa no cenário** (`accept.ps1`, `targets/android.ps1`, `targets/web.ps1`, `web-runner.js`, `lib.ps1` `Get-TargetSeeds`/`Invoke-TargetSeed`):
+  - `select <id> = <opção>`: toca o combo, a lista suspensa ou o seletor, escolhe pelo texto visível (fora do próprio controle; rola a lista aberta se preciso) e confirma se o seletor abriu um diálogo com botão (`targets.<alvo>.selectConfirm`, padrão `^(OK|Ok|Confirmar|Concluir|Pronto|Aplicar|Done)$`); na web, `<select>` nativo pelo rótulo. No sprint 5, o caso central da Task de canteiros ficou sem cenário porque a linguagem não escolhia opção;
+  - `seed <nome>`: roda o comando de `targets.<alvo>.seeds.<nome>` (PowerShell, na raiz, prazo `seedTimeoutSec` 300 s, com `ACCEPT_TARGET`, `ACCEPT_SEED` e `ACCEPT_SERIAL`/`ACCEPT_PACKAGE` ou `ACCEPT_URL`); falhou = FALHA DE AMBIENTE (exit 4), não defeito do app. O `reset` zerava a base e o cenário rodava sem os dados;
+  - pré-avaliação: o `accept -ParseOnly` do QA reprova `select` sem `=`, `seed` sem nome e **massa não declarada** no alvo — antes de qualquer aparelho.
+- **Prova pela camada mais barata** (README do QA): antes do cenário de aparelho, o QA decide a camada que prova o critério (unidade, serviço ou render vão `(teste)`); o que fica no aparelho diz o estado de partida e a massa (`reset`, `seed`, `launch`); gesto que a linguagem não tem desce para `(teste)` na hora.
+- **Premissa de layout medida executando** (`plan.ps1` regra 26, `implementation-plan.md`, `plan-rules-why.md`): com `**Layout novo:** sim`, premissa de geometria (posição, tamanho, sobreposição, margem, rolagem, popover…) cujo `medido:` não executou nada — `Grep`/leitura, inclusive de `node_modules` — reprova; a saída é a sonda de render do operator (`operator/<n>/<T-ID>-plano/`) ou `não exercitada … · verifica: dev em <passo do render>`. No maior plano do sprint 5, 9 premissas saíram da leitura do código do Ionic e as 4 decisões de GAP da Task vieram do render real.
+- **Decisão do sprint num lugar só** (`plan.ps1` regra 29, `lib.ps1` `Get-SprintDecisions`/`Get-TaskDecisionLines`/`Get-DecisionsDigest`, `run.ps1`, `external-plan.ps1`, `implementation-plan.md`, `technical-decision.md`, `architect.md`, `developer.md`):
+  - decisão de 🔺 GAP que vale para mais de uma Task vai **uma vez** em `.team-project/architect/decisions/S<n>.md` (`## D-<k> — <título>`, `**Vale para:** todas | T-…`); o plano a cita em `**Decisões do sprint:**`;
+  - o `plan.ps1` reprova citação de D inexistente e a linha da decisão copiada no plano;
+  - o cartão do dev traz as que valem para a Task (todas, as que a citam e as que o plano cita), uma linha cada; o recorte da ficha e o pacote do plano externo trazem todas ao Arquiteto, para citar;
+  - o prompt do GAP no `run.ps1 done` deixou de mandar "registrar também no plano" de cada Task afetada — era a origem das cópias: a mesma regra sobre emulador fora e teste instável estava em 8 planos.
+
+Conferências 317/0 (+10), guardas 282/0, C3 ok. **Não testado:** `select` e `seed` num emulador ou navegador real (só o -ParseOnly e a função da massa); a sonda de render do operator numa sessão real. **Riscos:** a premissa de layout é reconhecida por vocabulário (px, margem, sobreposição, popover…) — afirmação de geometria com outras palavras passa; o botão de confirmação do `select` é achado pelo texto, e um "OK" de outra parte da tela só é tocado se o seletor ainda estiver aberto.
+
 ## v3.53.6 — 2026-11-04
 
 **Branch:** `fix/v3.53.6` a partir de `develop` (com a v3.53.5 mesclada pelo PR #113) · **Processo:** addendum v3.53.6 (Task grande se divide, prova pendente bloqueia, cota em vez de US$)
