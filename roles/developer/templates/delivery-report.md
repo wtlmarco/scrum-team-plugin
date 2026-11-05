@@ -53,7 +53,8 @@ Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere c
 ### Ajustes na margem *(v3.54 — sem 🔺 GAP; sem ajuste: "- nenhum")*
 - A<k> · teste · `<arquivo de teste>` · <o defeito mecânico do teste e o que mudou: espera, referência de medida…>
 - A<k> · css · `<arquivo>` · <o que mudou> · regra: <onde a regra do projeto já diz o valor — standard §, token, spec do UX>
-*(o `close` confere: o teste ajustado tem mutação no plano, pega na árvore final; o CSS cita a regra. O "Deve falhar se…" do plano não muda.)*
+- A<k> · stub · `<teste que já existia, fora da lista>` · <a dependência nova do arquivo do plano que ele monta e o stub/provider acrescentado> *(v3.54.1)*
+*(o `close` confere: o teste ajustado tem mutação no plano, pega na árvore final; o CSS cita a regra; o stub é teste existente que cita um arquivo de **Arquivos tocados:** e todo teste assim alterado tem a linha. O "Deve falhar se…" do plano não muda.)*
 
 ### Aceite no alvo *(v3.51 — os cenários da Task, `accept.ps1`)*
 `.team-project/accept/<n>/<T-ID>/result.md` · <passaram> de <total> · alvo <android|web> · as linhas que o script imprimiu, coladas:

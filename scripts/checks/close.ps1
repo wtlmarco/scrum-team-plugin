@@ -18,6 +18,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib.ps1')
+. (Join-Path $PSScriptRoot '..\..\hooks\test-files.ps1')   # v3.54.1: Test-MountingSpec (margem stub), a mesma da G9
 
 try {
     $tp = Join-Path $Root '.team-project'
@@ -225,14 +226,32 @@ try {
     # "Deve falhar se…" mora no plano, que o dev não edita (G8).
     $dvText = if (Test-Path -LiteralPath $dvPath) { Read-Text $dvPath } else { '' }
     $adj = @(Get-MarginAdjustments $dvText)
-    if (-not $adj.Count) { Add-Result 'R7-margem' 'n-a' 'nenhum ajuste na margem no relatório do dev' }
+    $scopeA = if ($plan) { @(Get-PlanScope $plan) } else { @() }
+    # v3.54.1: teste fora da lista que monta um arquivo do plano (a G9 deixa o dev editar, margem stub) e foi alterado sem a
+    # linha na margem — sem ela, o commit o deixaria de fora e o ajuste não teria registro para o QA conferir.
+    $stubUndecl = @()
+    if ($scopeA.Count) {
+        $eapM = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        $chg = @(& git -C $Root status --porcelain -uall 2>$null | ForEach-Object { $gs = ([string]$_).Substring([Math]::Min(3, ([string]$_).Length)); if ($gs -match ' -> ') { $gs = ($gs -split ' -> ')[-1] }; $gs.Trim('"') })   # $gs, não $s: o ForEach-Object roda no escopo do script e $s é o $S do sprint
+        $ErrorActionPreference = $eapM
+        $declared = @($adj | Where-Object { $_.Kind -eq 'stub' } | ForEach-Object { $_.File })
+        $stubUndecl = @($chg | Where-Object { $_ -and $_ -notmatch '^\.team-project/' -and $scopeA -notcontains $_ -and $declared -notcontains $_ -and (Test-MountingSpec $Root $_ $scopeA) })
+    }
+    if (-not $adj.Count -and -not $stubUndecl.Count) { Add-Result 'R7-margem' 'n-a' 'nenhum ajuste na margem no relatório do dev' }
     else {
         $iss = @(); $okA = @()
+        foreach ($u in $stubUndecl) { $iss += "$u (teste fora da lista que monta $(Test-MountingSpec $Root $u $scopeA)) foi alterado sem linha '- A<k> · stub · ``$u`` · <a dependência nova>' em ### Ajustes na margem — registre ou desfaça" }
         $tm = if ($plan) { @(Get-TaskMutations $Root $planPath $plan $Task) } else { @() }
         $vmi = @{}; if ($hasVerify -and (Test-Path -LiteralPath $vr)) { try { foreach ($it in @((Read-Text $vr | ConvertFrom-Json).mutation.items)) { $vmi[[string]$it.id] = [string]$it.result } } catch { } }
-        $scopeA = if ($plan) { @(Get-PlanScope $plan) } else { @() }
         foreach ($a in $adj) {
-            if ($a.Bad) { $iss += "linha fora do formato '- A<k> · teste|css · ``<arquivo>`` · <o que mudou>[ · regra: <onde>]': $($a.Bad)"; continue }
+            if ($a.Bad) { $iss += "linha fora do formato '- A<k> · teste|css|stub · ``<arquivo>`` · <o que mudou>[ · regra: <onde>]': $($a.Bad)"; continue }
+            # v3.54.1: stub — o teste fica fora da lista por definição; vale se ele monta um arquivo do plano. O verify full
+            # verde (R7-verify) prova que ele passa; o QA confere na frente 2 que só o stub mudou.
+            if ($a.Kind -eq 'stub') {
+                $mt = Test-MountingSpec $Root $a.File $scopeA
+                if (-not $mt) { $iss += "$($a.Id): $($a.File) não é teste existente que cita um arquivo de **Arquivos tocados:** — não é margem stub, é 🔺 GAP"; continue }
+                $okA += "$($a.Id) stub ($($a.File) monta $mt)"; continue
+            }
             if ($scopeA.Count -and $scopeA -notcontains $a.File) { $iss += "$($a.Id): $($a.File) fora de **Arquivos tocados:** — não é margem, é 🔺 GAP"; continue }
             if ($a.Kind -eq 'css') {
                 if (-not $a.Rule) { $iss += "$($a.Id): ajuste de CSS sem 'regra: <onde a regra do projeto diz o valor>' — sem regra que dê o valor, é 🔺 GAP"; continue }

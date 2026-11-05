@@ -172,7 +172,7 @@ try {
     # ir ao dev. O remédio continua não sendo cortar: o run.ps1 next leva a Task à divisão, com os blocos deste plano como base,
     # e cada Task nova ganha plano próprio.
     $kb = Get-PlanKb $text
-    if ($kb -gt $script:PlanMaxKb) { Add-Result 'tamanho' 'falhou' "$kb KB, acima de $($script:PlanMaxKb) KB: Task grande — NÃO corte nem encurte o plano (cortar relê a conversa a cada edição e não traz informação nova). A Task vai à divisão: o run.ps1 next a divide com os blocos deste plano como base e cada Task nova ganha plano próprio (regra 22)" }
+    if ($kb -gt $script:PlanMaxKb) { Add-Result 'tamanho' 'falhou' "$kb KB, acima de $($script:PlanMaxKb) KB: Task grande — NÃO corte nem encurte o plano (cortar relê a conversa a cada edição e não traz informação nova). A Task vai à divisão: o run.ps1 next a divide com os blocos deste plano como base e cada Task nova ganha plano próprio (regra 22). Exceção (v3.54.1): Task já em construção que passou do teto com a decisão de um 🔺 GAP não se divide — a decisão substitui o texto que derrubou, não fica ao lado" }
     else { Add-Result 'tamanho' 'ok' "$kb KB" }
 
     # ---------- 23 · cenários ao lado do plano (v3.51) ----------
@@ -238,7 +238,7 @@ try {
         $tracked = @(& git -C $Root ls-files 2>$null); $isGit = ($LASTEXITCODE -eq 0)
         $ErrorActionPreference = 'Stop'
         if (-not $isGit) { $base = (Get-Item -LiteralPath $Root).FullName.TrimEnd('\', '/'); $tracked = @(Get-ChildItem -LiteralPath $base -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName.Substring($base.Length + 1) -replace '\\', '/' } | Where-Object { $_ -notmatch '^(\.git|\.team-project|node_modules)/' }) }
-        $okN = 0
+        $okN = 0; $okHead = 0; $changed = $null
         foreach ($c in $cnt) {
             $re = $c.Groups[1].Value; $globs = @($c.Groups[2].Value -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ }); $want = [int]$c.Groups[3].Value
             try { $rx = New-Object System.Text.RegularExpressions.Regex($re) } catch { $iss += "regex inválida ``$re``"; continue }
@@ -247,9 +247,30 @@ try {
                 $fp = Join-Path $Root $f; if (-not (Test-Path -LiteralPath $fp -PathType Leaf)) { continue }
                 foreach ($ln in [System.IO.File]::ReadAllLines($fp)) { if ($rx.IsMatch($ln)) { $got++ } }
             }
-            if ($got -ne $want) { $iss += "``$re`` em ``$($globs -join ';')``: o plano diz $want, a recontagem dá $got" } else { $okN++ }
+            if ($got -eq $want) { $okN++; continue }
+            # v3.54.1 (carta do sprint 5 do garden, item 2): plano reconferido com a construção no meio (decisão de 🔺 GAP) —
+            # o dev já mexeu na árvore e a contagem escrita antes dela divergia sempre. Vale também a do último commit (HEAD):
+            # a árvore de trabalho menos o que mudou nos arquivos alterados, mais o que eles tinham no HEAD.
+            if ($isGit) {
+                $ErrorActionPreference = 'Continue'
+                if ($null -eq $changed) { $changed = @(& git -C $Root -c core.quotepath=off diff --name-only HEAD 2>$null | Where-Object { $_ }); if ($LASTEXITCODE -ne 0) { $changed = @() } }
+                $hd = $got; $hdOk = $true
+                $prevEnc = [Console]::OutputEncoding
+                try {
+                    try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
+                    foreach ($f in @($changed | Where-Object { Test-GlobMatch (Normalize-PathText $_) $globs })) {
+                        $fp = Join-Path $Root $f
+                        if (Test-Path -LiteralPath $fp -PathType Leaf) { foreach ($ln in [System.IO.File]::ReadAllLines($fp)) { if ($rx.IsMatch($ln)) { $hd-- } } }
+                        $old = @(& git -C $Root show "HEAD:$f" 2>$null)
+                        if ($LASTEXITCODE -eq 0) { foreach ($ln in $old) { if ($rx.IsMatch([string]$ln)) { $hd++ } } }
+                    }
+                } catch { $hdOk = $false } finally { try { [Console]::OutputEncoding = $prevEnc } catch { } }
+                $ErrorActionPreference = 'Stop'
+                if ($hdOk -and $changed.Count -and $hd -eq $want) { $okN++; $okHead++; continue }
+            }
+            $iss += "``$re`` em ``$($globs -join ';')``: o plano diz $want, a recontagem dá $got"
         }
-        if ($iss.Count) { Add-Result 'contagem' 'falhou' (($iss -join '; ') + ' (regra 26)') } else { Add-Result 'contagem' 'ok' "$okN contagem(ns) recontada(s) e iguais$(if (-not $isGit) { ' (sem git: arquivos do disco)' })" }
+        if ($iss.Count) { Add-Result 'contagem' 'falhou' (($iss -join '; ') + ' (regra 26)') } else { Add-Result 'contagem' 'ok' "$okN contagem(ns) recontada(s) e iguais$(if ($okHead) { " ($okHead pelo último commit: a árvore de trabalho já tem a construção)" })$(if (-not $isGit) { ' (sem git: arquivos do disco)' })" }
     }
     # Premissas: as linhas "- P<k> · …" do arquivo todo (o modelo as põe em ### Premissas, no fim da §6).
     $pl = @([regex]::Matches($text, '(?m)^\s*-\s*P\d+\s*·.*$') | ForEach-Object { $_.Value.Trim() })

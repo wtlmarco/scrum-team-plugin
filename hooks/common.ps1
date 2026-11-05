@@ -82,6 +82,9 @@ function Normalize-PathText([string]$Path) {
     return ($Path -replace '\\', '/').TrimEnd('/').ToLowerInvariant()
 }
 
+# v3.54.1: Test-MountingSpec (margem stub do dev, G9 e close R7-margem) num arquivo sem efeito ao carregar.
+. (Join-Path $PSScriptRoot 'test-files.ps1')
+
 # Papel do agente: sufixo de agent_type ("team:developer" -> "developer", medido pela sonda em 2026-10-04).
 # Sem agent_type = sessao principal -> $null (as guardas por papel nao se aplicam a ela).
 function Get-AgentRole([object]$HookInput) {
