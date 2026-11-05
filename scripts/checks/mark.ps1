@@ -133,11 +133,12 @@ try {
             $hd = @(Split-Row $tl[$hs] | ForEach-Object { Clean-Cell $_ })
             $k = 0; for ($i = $hs + 1; $i -le $be; $i++) { $c0 = Clean-Cell (Split-Row $tl[$i])[0]; if ($c0 -match '^\d+$' -and [int]$c0 -gt $k) { $k = [int]$c0 } }
             $day = Get-Date -Format 'yyyy-MM-dd'; $why = (($Reason -replace '\|', '/') -replace '\s+', ' ').Trim()
-            $envy = $why -match '(?i)alvo|ambiente|emulador|aparelho'
+            $envy = $why -match '(?i)alvo|ambiente|emulador|aparelho|estado de partida'
+            $startSt = $why -match '(?i)estado de partida'   # v3.54.2: o next não reabre; o stakeholder decide
             $cells = @(foreach ($h in $hd) {
                 if ($h -eq '#') { "$($k + 1)" } elseif ($h -match '(?i)^Task') { $Task } elseif ($h -match '(?i)Natureza') { $why }
                 elseif ($h -match '(?i)Degrau') { if ($envy) { "escalado ao stakeholder em $day" } else { "par PO+Arquiteto desde $day" } }
-                elseif ($h -match '(?i)Quem') { if ($envy) { 'stakeholder (ambiente) — o run.ps1 next reabre quando o alvo responder' } else { 'PO + Arquiteto' } }
+                elseif ($h -match '(?i)Quem') { if ($startSt) { 'stakeholder (estado de partida do app: baseline ou cenário) — reabre com mark.ps1 -To qa' } elseif ($envy) { 'stakeholder (ambiente) — o run.ps1 next reabre quando o alvo responder' } else { 'PO + Arquiteto' } }
                 elseif ($h -match '(?i)Desde') { $day } else { '' } })
             $tl.Insert($be + 1, '| ' + ($cells -join ' | ') + ' |')
             $blkTxt = "; Bloqueios: linha $($k + 1) em $bw"

@@ -452,6 +452,21 @@ try {
         if ($Result -eq 'env') {
             $tg = Get-TargetsConfig $Root; $names = @(if ($tg) { $tg.PSObject.Properties | ForEach-Object { $_.Name } })
             $ec = Update-DevCounter $T $S 'env'   # v3.52.2 (item 14): queda de ambiente não conta para o escalonamento do dev
+            # v3.54.2 (carta do sprint 5 do garden, item 3): o accept parou no ESTADO DE PARTIDA (os 2 primeiros cenários na
+            # mesma tela, nenhum passou — startState no result.json). O reparo do emulador não muda a tela de partida e a
+            # reabertura automática repetiria o accept que não passa (T-063: 🔴 → 🟪 → 🔴 → 🟪 → 🔴, um operator em cada).
+            # Bloqueio sem a etiqueta da prova pendente; a decisão é do stakeholder.
+            $arjS = Join-Path ((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'
+            $ass = $null; if (Test-Path -LiteralPath $arjS) { try { $ass = Read-Text $arjS | ConvertFrom-Json } catch { } }
+            if ($ass -and $ass.PSObject.Properties['startState'] -and $ass.startState) {
+                $stS = (([string]$ass.startState -replace '["|]', "'") -replace '\s+', ' ').Trim(); if ($stS.Length -gt 90) { $stS = $stS.Substring(0, 90) + '…' }
+                $shS = @($ass.results | Where-Object { $_.shot } | ForEach-Object { [string]$_.shot }) | Select-Object -Last 1
+                Add-RunLog $S $n $T.Id "accept parado no estado de partida ($stS) → 🔴 sem reabertura automática; decisão do stakeholder" 'startState no result.json do accept (2 primeiros cenários na mesma tela, nenhum passou)' "accept/$n/$($T.Id)/result.md"
+                Out "run: $($T.Id) — o accept parou no ESTADO DE PARTIDA: $stS. Não é defeito do código nem queda do alvo: o reparo do emulador não muda a tela de partida e o dev não depura. Nenhum papel caro é chamado."
+                Out "  1. $plugin/mark.ps1 -Task $($T.Id) -To blocked -Reason `"estado de partida — $stS`" (sem a etiqueta da prova pendente: o run.ps1 next não a reabre sozinho)"
+                Out "  2. devolva `"$($T.Id) 🔴 bloqueada: estado de partida · a fila segue`". A sessão leva ao stakeholder num formulário (R22), com a captura $(if ($shS) { $shS } else { "de accept/$n/$($T.Id)/shots/" }): declarar o estado de partida (guards.json → targets.android.baseline = o nome de uma massa de targets.android.seeds) ou o QA ajustar o cenário; depois mark.ps1 -Task $($T.Id) -To qa e o accept pelo operator."
+                exit 0
+            }
             Add-RunLog $S $n $T.Id "queda de ambiente ($($ec.env) neste bloco) → reparo do alvo e dev em instância nova" 'o dev parou por ambiente (exit 4 do verify/accept, rede, energia); não conta para o escalonamento (R27)' "sprints/$n/delivery/$($T.Id).md"
             Out "run: $($T.Id) parou por FALHA DE AMBIENTE (D4) — não é defeito do código; nenhum papel caro é chamado. Registrada ($($ec.env) neste bloco); não conta para o escalonamento do dev (R27)."
             foreach ($nm in $names) { Out "  1. $plugin/target.ps1 -Target $nm -Repair" }
@@ -594,6 +609,16 @@ try {
     if (-not $cur -and $hasTargets) {
         $tpIds = @(Get-TargetPendingIds $S)
         $tpT = @($tasks | Where-Object { $_.Mark -eq $redMk -and $tpIds -contains $_.Id })
+        # v3.54.2 (carta do sprint 5 do garden, item 4): reabertura automática UMA vez por Task. A T-063 foi e voltou de 🔴 duas
+        # vezes, um operator por volta, com um accept que não tinha como passar; o alvo responder (target.ps1 ok) não prova que
+        # o cenário roda. Já reaberta (linha "prova no alvo retomada" em Bloqueios) e de volta a 🔴: fica, e vai ao stakeholder.
+        $blkL = Get-BlockLines $S
+        $heldT = @($tpT | Where-Object { (Get-TargetRetakeCount $blkL $_.Id) -ge 1 })
+        $tpT = @($tpT | Where-Object { (Get-TargetRetakeCount $blkL $_.Id) -lt 1 })
+        foreach ($ht in $heldT) {
+            $lf = Get-AcceptLastFailure $Root $ht.Id
+            Out "  $($ht.Id) 🔴: já reaberta pelo alvo de volta e caiu de novo na prova no alvo — o next não a reabre outra vez (vaivém). Leve ao stakeholder num formulário (R22)$(if ($lf) { " com a última falha: $lf" }): reabrir (mark.ps1 -Task $($ht.Id) -To qa e o accept pelo operator) depois de preparar o estado de partida ou o alvo, ou seguir bloqueada. A fila continua."
+        }
         if ($tpT.Count) {
             $tn = @((Get-TargetsConfig $Root).PSObject.Properties | ForEach-Object { $_.Name })[0]
             $hc = Invoke-Child 'target.ps1' @('-Target', $tn, '-Root', $Root)
@@ -741,7 +766,7 @@ try {
             Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) já tem $agTxt. Não dispare outro executor nem dev: seriam duas instâncias no mesmo alvo. Encerre o turno; o aviso de volta reabre a sessão (se ele é de outra sessão, a volta chega lá). Sem sinal de vida por 20 min, o registro deixa de valer e o next segue."
             # v3.53.5: o comando que o agente espera, com o sinal de vida (CPU, arquivo, POSSÍVEL TRAVAMENTO).
             $wA = Get-TaskWait $Root $next.Id
-            if ($wA) { Out "  espera: $($wA.Text)" }
+            if ($wA) { Out "  espera: $($wA.Text)"; if ($wA.PSObject.Properties['NoProgress'] -and $wA.NoProgress) { Out "  SEM AVANÇO: $($wA.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." } }
             Set-NextVerdict $Root 'esperar' $next.Id "agente: $agTxt"
             exit 3
         }
@@ -750,6 +775,7 @@ try {
         $wN = Get-TaskWait $Root $next.Id
         if ($wN) {
             Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) ainda tem $($wN.Text) rodando (um dev esperava por ele). Não dispare executor nem dev: seriam dois na mesma Task e no mesmo alvo. Encerre o turno; rode run.ps1 next quando o aviso de volta chegar."
+            if ($wN.PSObject.Properties['NoProgress'] -and $wN.NoProgress) { Out "  SEM AVANÇO: $($wN.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." }
             if ($wN.Pulse.Stalled) { Out "  POSSÍVEL TRAVAMENTO: o comando não gasta CPU nem grava arquivo há 10 min ou mais. Não espere às cegas: leve ao stakeholder (formulário) — encerrar o processo (ele decide) e retomar a $($next.Id) por dev novo com o cartão (run.ps1 start), ou seguir esperando." }
             Set-NextVerdict $Root 'esperar' $next.Id "comando: $($wN.Text)"
             exit 3

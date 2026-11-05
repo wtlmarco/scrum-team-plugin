@@ -398,13 +398,46 @@ function Get-TaskWait([string]$Root, [string]$Id) {
                 $isAcc = $own -eq "accept $Id"
                 $pu = Get-WaitPulse ([int]$t.pid) ([string]$t.desde) $(if ($isAcc) { $vd -replace '([\\/]\.team-project[\\/])verify([\\/])', '$1accept$2' } else { '' })
                 $what = if ($isAcc) { "accept no alvo $([string]$t.target)" } else { "reparo/conferência do alvo $([string]$t.target) ($own)" }
-                return [pscustomobject]@{ Text = "$what (pid $([int]$t.pid), desde $([string]$t.desde)) — $($pu.Text)"; Pulse = $pu }
+                # v3.54.2 (item 3): no accept, o avanço — cenários passados e falhados desta rodada (progress.json do mesmo
+                # processo). Nenhum passou em 15 min ou mais, com 2 ou mais falhas: SEM AVANÇO (a captura de falha gravada
+                # contava como sinal de vida e o next mandava esperar 50 min).
+                $prog = ''; $noProg = ''
+                if ($isAcc) {
+                    $g = Get-AcceptProgress $Root $Id
+                    if ($g -and $g.Pid -eq [int]$t.pid) {
+                        $prog = " · cenários: $($g.Passed) passaram, $($g.Failed) falharam de $($g.Total)$(if ($g.Streak -ge 2) { " ($($g.Streak) seguidos)" })$(if ($g.LastText) { "; último: $($g.LastText)" })"
+                        if ($pu.Min -ge 15 -and $g.Passed -eq 0 -and $g.Failed -ge 2) { $noProg = "$($g.Failed) cenário(s) falharam e nenhum passou em $([int]$pu.Min) min$(if ($g.LastText) { " — último: $($g.LastText)" })" }
+                    }
+                }
+                return [pscustomobject]@{ Text = "$what (pid $([int]$t.pid), desde $([string]$t.desde)) — $($pu.Text)$prog"; Pulse = $pu; NoProgress = $noProg }
             }
         }
     }
     return $null
 }
 function Get-TaskBusy([string]$Root, [string]$Id) { $w = Get-TaskWait $Root $Id; if ($w) { return $w.Text }; return $null }
+
+# v3.54.2 (carta do sprint 5 do garden, item 3): progresso do accept da Task (progress.json, gravado a cada cenário; sem
+# ele, o result.json do fim). @{ Pid; Total; Passed; Failed; Streak; Last; LastText } ou $null. LastText = "SC-117 — <detalhe>
+# (captura <caminho>)": a tela em texto, para a sessão não abrir a imagem.
+function Get-AcceptProgress([string]$Root, [string]$Id) {
+    $ad = (Get-VerifyDir $Root $Id) -replace '([\\/]\.team-project[\\/])verify([\\/])', '$1accept$2'
+    $p = $null
+    foreach ($f in 'progress.json', 'result.json') { $fp = Join-Path $ad $f; if (Test-Path -LiteralPath $fp) { try { $p = Read-Text $fp | ConvertFrom-Json; $src = $f; break } catch { } } }
+    if (-not $p) { return $null }
+    $last = $null
+    if ($src -eq 'progress.json') { $last = $p.last } else { $last = @($p.results | Where-Object { $_.status -ne 'PASSOU' }) | Select-Object -Last 1 }
+    $lt = ''
+    if ($last -and $last.status -ne 'PASSOU') {
+        $d = (([string]$last.detail) -replace '\s+', ' ').Trim(); if ($d.Length -gt 160) { $d = $d.Substring(0, 160) + '…' }
+        $lt = "$($last.id) — $d$(if ($last.shot) { " (captura $($last.shot))" })"
+    }
+    $passed = [int]$p.passed; $total = [int]$p.total
+    $failed = if ($p.PSObject.Properties['failed']) { [int]$p.failed } else { @($p.results).Count - $passed }
+    $streak = if ($p.PSObject.Properties['streak']) { [int]$p.streak } else { 0 }
+    return [pscustomobject]@{ Pid = $(if ($p.PSObject.Properties['pid']) { [int]$p.pid } else { 0 }); Total = $total; Passed = $passed; Failed = $failed; Streak = $streak; LastText = $lt }
+}
+function Get-AcceptLastFailure([string]$Root, [string]$Id) { $g = Get-AcceptProgress $Root $Id; if ($g -and $g.LastText) { return $g.LastText }; return '' }
 
 # v3.53.5: sinal de vida de um comando em espera (só lê): há quanto tempo roda, a CPU da árvore de processos (ele e os
 # filhos — a suíte roda em node/chrome filhos), o processo mais fundo da árvore (onde de fato espera) e a última gravação na
@@ -926,6 +959,29 @@ function Get-TargetPendingIds([string]$SprintDir) {
         }
     }
     return @($ids | Select-Object -Unique)
+}
+# v3.54.2 (carta do sprint 5 do garden, item 4): linhas de "Bloqueios e riscos abertos" por Task, na ordem do arquivo —
+# @{ <ID> = @(natureza, …) }. O kanban.ps1 mostra a última ao lado da Task na coluna 🔴; o run.ps1 next conta as "prova no
+# alvo retomada" (a Task já foi reaberta uma vez pelo alvo de volta) para não reabrir de novo em vaivém.
+function Get-BlockLines([string]$SprintDir) {
+    $out = @{}
+    foreach ($f in @('kanban.md', 'burndown.md', 'sprint-backlog.md')) {
+        $fp = Join-Path $SprintDir $f; if (-not (Test-Path -LiteralPath $fp)) { continue }
+        $sec = Get-Section (Read-Text $fp) '^#{2,3}\s+Bloqueios e riscos abertos'; if (-not $sec) { continue }
+        foreach ($t in @(Get-Tables $sec)) {
+            $ci = Find-Col $t 'Task'; $ni = Find-Col $t 'Natureza'
+            foreach ($r in $t.Rows) {
+                $key = if ($ci -ge 0) { Get-Cell $r $ci } else { (@($r | Select-Object -First 2) -join ' ') }
+                $why = Clean-Cell $(if ($ni -ge 0) { Get-Cell $r $ni } else { (@($r) -join ' ') })
+                foreach ($m in [regex]::Matches($key, $script:TaskIdRe)) { if (-not $out.ContainsKey($m.Value)) { $out[$m.Value] = @() }; $out[$m.Value] += $why }
+            }
+        }
+    }
+    return $out
+}
+function Get-TargetRetakeCount($BlockLines, [string]$Id) {
+    if (-not $BlockLines.ContainsKey($Id)) { return 0 }
+    return @($BlockLines[$Id] | Where-Object { $_ -match '(?i)prova no alvo retomada' }).Count
 }
 
 # Resumo do plano de uma dependência (v3.53.2): o cabeçalho (até o primeiro "## ") e os títulos dos passos/blocos — o
