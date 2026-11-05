@@ -182,7 +182,15 @@ try {
         $kb = Join-Path $S 'kanban.md'
         if (-not (Test-Path -LiteralPath $kb)) { [Console]::Out.WriteLine("kanban: sprints/$n/kanban.md não existe (sprint anterior à v3.51) — nada a regravar."); exit 0 }
         if (Test-Path -LiteralPath (Join-Path $S 'retrospective.md')) { [Console]::Out.WriteLine("kanban: sprint $n fechado — o kanban.md não muda mais."); exit 0 }
-        $tasks = @(); if (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md')) { $tasks = @(Get-SprintTasks $S | ForEach-Object { [pscustomobject]@{ Mark = $_.Mark; Label = $_.Id } }) }
+        # v3.54.2 (carta do sprint 5 do garden, item 4): Task sem marcador (recém-entrada no sprint-backlog — entrada fora da
+        # Planning, divisão) aparece em ⬜ A fazer, não some do quadro até a primeira transição; a 🔴 traz o motivo curto (a
+        # última linha dela em Bloqueios), para quem olha o quadro saber por quê sem descer à tabela.
+        $tdK = [char]::ConvertFromUtf32(0x2B1C); $rdK = [char]::ConvertFromUtf32(0x1F534)
+        $blkR = Get-BlockLines $S
+        $tasks = @(); if (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md')) { $tasks = @(Get-SprintTasks $S | ForEach-Object {
+            $mk = if ($_.Mark) { $_.Mark } else { $tdK }; $lb = $_.Id
+            if ($mk -eq $rdK -and $blkR.ContainsKey($_.Id)) { $w = (([string]@($blkR[$_.Id])[-1]) -replace '\|', '/' -replace '\s+', ' ').Trim(); if ($w.Length -gt 40) { $w = $w.Substring(0, 40).TrimEnd() + '…' }; if ($w) { $lb = "$($_.Id) · $w" } }
+            [pscustomobject]@{ Mark = $mk; Label = $lb } }) }
         $rounds = @(Get-Rounds $tp ".team-project/sprints/$n/consumption.md")
         # v3.51.4: ler, mudar e regravar sob a trava do kanban.md — a G16 e o mark.ps1 escrevem nele ao mesmo tempo (garden item 23).
         $null = Invoke-WithFileLock $kb {
