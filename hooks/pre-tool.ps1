@@ -388,35 +388,8 @@ function Test-G11([string]$Rel, [string]$Shown) {
 # G14 — run sem trava: com .team-project/.active-run (gravado pela sessão no sprint run e no fix run), o que já passou
 # pelas guardas e é operacional sai liberado — o harness não pergunta ao stakeholder no meio do run. Comando fora da
 # lista é negado com a rota (como a G9: pergunta no meio do run contraria R25), nunca deixado numa pergunta sem resposta.
-$script:runBase = @(
-    'git status', 'git diff', 'git log', 'git show', 'git grep', 'git blame', 'git add', 'git commit', 'git restore --staged',
-    'git rev-parse', 'git ls-files', 'git branch --show-current', 'git check-ignore', 'git stash list',
-    # v3.53.1 (plugin-report do sprint 4 do garden, item 7): git só de leitura — cada um virava parada e formulário no run.
-    'git cat-file', 'git ls-tree', 'git rev-list', 'git show-ref', 'git merge-base', 'git describe', 'git name-rev',
-    'git worktree list', 'git remote -v', 'git tag -l', 'git tag --list', 'git config --get', 'git config --list', 'git stash show',
-    'get-childitem', 'gci', 'ls', 'dir', 'get-content', 'gc', 'cat', 'type', 'get-item', 'gi', 'get-itemproperty', 'test-path',
-    'resolve-path', 'split-path', 'join-path', 'select-string', 'sls', 'select-object', 'select', 'where-object', 'where', '?',
-    'foreach-object', '%', 'sort-object', 'sort', 'group-object', 'measure-object', 'measure', 'compare-object', 'format-table',
-    'ft', 'format-list', 'fl', 'out-string', 'out-null', 'write-output', 'echo', 'write-host', 'get-date', 'get-location', 'pwd',
-    'set-location', 'cd', 'push-location', 'pop-location', 'convertfrom-json', 'convertto-json', 'get-command', 'get-filehash',
-    'get-member', 'get-winevent', 'get-process', 'get-ciminstance', 'get-wmiobject',
-    'head', 'tail', 'wc', 'grep', 'rg', 'find', 'uniq', 'diff', 'which', 'stat', 'tree', 'true')
-# v3.53.6 (sprint 5 do garden, item 6): o reparo que o projeto declara em guards.json → targets.<alvo>.repair (ex.:
-# "docker restart horta-emulador; adb connect localhost:5555") entra na lista da G14 — cada trecho (separado por ;, && ou
-# ||) como prefixo, como as entradas de runCommands. Antes o dev rodava o reparo à mão e a G14 negava.
-function Get-RepairCommands {
-    $g = Join-Path $script:projectDir '.team-project/guards.json'
-    if (-not (Test-Path -LiteralPath $g)) { return @() }
-    try { $j = Get-Content -LiteralPath $g -Raw -Encoding UTF8 | ConvertFrom-Json } catch { return @() }
-    if (-not $j -or -not $j.PSObject.Properties['targets'] -or $null -eq $j.targets) { return @() }
-    $out = @()
-    foreach ($t in @($j.targets.PSObject.Properties)) {
-        $v = $t.Value
-        if ($null -eq $v -or $v -isnot [pscustomobject] -or -not $v.PSObject.Properties['repair'] -or -not [string]$v.repair) { continue }
-        foreach ($piece in ([string]$v.repair -split ';|&&|\|\||\r?\n')) { $x = $piece.Trim(); if ($x) { $out += $x } }
-    }
-    return $out
-}
+# v3.55.0: a lista base ($script:runBase), o reparo declarado (Get-RepairCommands) e o casamento por prefixo
+# (Test-CommandPrefix) moraram aqui e agora vivem no common.ps1 — o plan.ps1 confere "### Comandos da Task" com os mesmos.
 $script:runWriteVerbs = 'set-content', 'add-content', 'out-file', 'new-item', 'clear-content', 'remove-item', 'copy-item', 'move-item'
 
 function Test-UnderTemp([string]$Path) {
@@ -601,8 +574,7 @@ function Test-RunSegment([string]$Seg, [string[]]$Allowed) {
     # v3.53.6 (item 6): a entrada com texto entre aspas (o reparo declarado, por exemplo) casa com o trecho de aspas devolvidas.
     $lowR = (Restore-Quoted $s).ToLowerInvariant()
     foreach ($p in $Allowed) {
-        $pl = ([string]$p).Trim().ToLowerInvariant()
-        if ($pl -and ($low -eq $pl -or $low.StartsWith($pl + ' ') -or $low.StartsWith($pl + "`t") -or $lowR -eq $pl -or $lowR.StartsWith($pl + ' '))) {
+        if (Test-CommandPrefix $low $lowR $p) {
             if ($low -match '(^|\s)[\d*]?>{1,2}(?!&)\s*[^\s$]') { return (Test-RunTargets $s) }   # redirecionamento para arquivo
             return $true
         }
@@ -706,7 +678,7 @@ function Test-G14([object]$ToolInput) {
         $why = "construção que a G14 não libera (``$($fm.Value)``)$hint"
     }
     else {
-        $script:g14Allowed = @($script:runBase) + @($cfg.runCommands) + @(Get-RepairCommands)
+        $script:g14Allowed = @($script:runBase) + @($cfg.runCommands) + @(Get-RepairCommands $script:projectDir)
         $script:badSeg = ''
         if (Test-CommandText $cmd 0) { return $true }
         if (@($cfg.runCommands).Count -eq 0) { return $false }        # projeto sem runCommands: o harness decide, como antes
@@ -726,7 +698,7 @@ function Test-G14([object]$ToolInput) {
         else { $why = "fora da lista operacional do run — o trecho recusado é ``$badSeg``" + $(if ($badSeg -ne $cmd.Trim()) { ' (os outros trechos do comando composto passaram; rode esse trecho sozinho ou troque a forma)' } else { '' }) }
     }
     $short = if ($cmd.Length -gt 120) { $cmd.Substring(0, 120) + '…' } else { $cmd }
-    Deny 'G14' $short "comando $why ($short). Durante o run, o harness não pode parar para perguntar ao stakeholder: rode comandos simples, um por chamada, da lista (hooks/COVERAGE.md G14 + guards.json → runCommands). Comando de build/teste/lint do projeto que falta na lista: reporte a quem orquestra, que o acrescenta em runCommands; dev → 🔺 GAP. Instalação, rede, push ou destrutivo não entram no run: bloqueio da Task (degrau 1)."
+    Deny 'G14' $short "comando $why ($short). Durante o run, o harness não pode parar para perguntar ao stakeholder: rode comandos simples, um por chamada, da lista (hooks/COVERAGE.md G14 + guards.json → runCommands). Comando de build/teste/lint do projeto que escapou da declaração do plano ('### Comandos da Task') e falta na lista: devolva à sessão a linha '<ID> 🔺 comando: <prefixo do comando>' — a sessão abre o mesmo formulário único do run.ps1 next (v3.55.0) e, liberado, o run.ps1 allow grava o prefixo em runCommands; dev → termine o turno com essa linha, sem 🔺 GAP de desenho. Instalação, rede, push ou destrutivo não entram no run: bloqueio da Task (degrau 1)."
 }
 
 try {

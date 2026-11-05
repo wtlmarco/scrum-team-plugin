@@ -21,6 +21,10 @@
 # v3.48.1: guards.json → verify.testItem — o molde de CADA teste no {tests}, para runner que não recebe caminho de arquivo:
 # {path} = o caminho (padrão) · {class} = o nome qualificado da classe (src/<conjunto>/java|kotlin/a/b/FooTest.kt → a.b.FooTest).
 # Gradle: "focused": "./gradlew testDebugUnitTest {tests}", "testItem": "--tests {class}" → --tests a.b.FooTest --tests a.b.BarTest.
+# v3.55.0 (B1): verify.focused também aceita LISTA DE OBJETOS { "command": "...{tests}...", "paths": ["source/scripts/alvo/**"],
+# "testRoot": "source/", "testItem": "..." } — o comando é escolhido pelo caminho do teste (primeiro objeto cujo glob casa; sem
+# casamento, o primeiro item sem "paths"; nenhum → exit 2). Vale no focused e na mutação (linha de base e mutantes usam o comando
+# do teste); testRoot e testItem do objeto valem sobre os globais. Sem "paths" em nenhum item, tudo se comporta como antes.
 # Saída: ~10 linhas (o log fica no disco). Exit 0 = tudo com código 0 (check: árvore igual e full verde) · 1 = algum
 # comando falhou, árvore diferente ou sem full · 2 = erro de uso (sem guards.json → verify, sem git) · 3 = mutação parcial ·
 # 4 = FALHA DE AMBIENTE (v3.51): tempo esgotado ou saída com assinatura conhecida de ambiente (tool-hygiene.json) — não é
@@ -68,6 +72,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '..\..\hooks\common.ps1')   # v3.55.0 (B1): Test-GlobMatch, o mesmo casamento de glob dos hooks (protectedPaths)
 . (Join-Path $PSScriptRoot 'lib.ps1')
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 
@@ -126,9 +131,42 @@ function Get-TestClass([string]$Path) {
     return [System.IO.Path]::GetFileNameWithoutExtension($Path)
 }
 
-function Format-Tests([string[]]$List) {
+# v3.55.0 (B1): verify.focused aceita string, lista de strings (como sempre) ou lista de objetos
+#   { "command": "...{tests}...", "paths": ["glob"], "testRoot": "...", "testItem": "..." }.
+# Sem nenhum objeto com "paths", vale o comportamento de sempre (todo comando roda com todos os testes). Com "paths", cada teste
+# vai ao primeiro objeto cujo glob casa o caminho; sem casamento, ao primeiro item sem "paths" (o padrão).
+function Get-FocusedItems {
+    $out = @()
+    if (-not $verify -or -not $verify.PSObject.Properties['focused'] -or $null -eq $verify.focused) { return @() }
+    foreach ($x in @($verify.focused)) {
+        if ($null -eq $x) { continue }
+        if ($x -is [string]) { if ($x.Trim()) { $out += [pscustomobject]@{ Command = $x; Paths = @(); TestRoot = $null; TestItem = $null } }; continue }
+        $c = if ($x.PSObject.Properties['command']) { [string]$x.command } else { '' }
+        if (-not $c.Trim()) { continue }
+        $out += [pscustomobject]@{
+            Command  = $c
+            Paths    = @(if ($x.PSObject.Properties['paths'] -and $x.paths) { @($x.paths) | Where-Object { $_ } | ForEach-Object { [string]$_ } })
+            TestRoot = $(if ($x.PSObject.Properties['testRoot'] -and $null -ne $x.testRoot) { [string]$x.testRoot } else { $null })
+            TestItem = $(if ($x.PSObject.Properties['testItem'] -and $x.testItem) { [string]$x.testItem } else { $null })
+        }
+    }
+    return $out
+}
+function Resolve-FocusedItem($Items, [string]$TestPath) {
+    $items2 = @($Items)
+    if (-not $items2.Count) { return $null }
+    if (-not @($items2 | Where-Object { $_.Paths.Count }).Count) { return $items2[0] }   # legado: o primeiro comando
+    $t = ($TestPath -replace '\\', '/') -replace '^\./', ''
+    foreach ($it in $items2) { if ($it.Paths.Count -and (Test-GlobMatch $t $it.Paths)) { return $it } }
+    foreach ($it in $items2) { if (-not $it.Paths.Count) { return $it } }
+    return $null
+}
+
+function Format-Tests([string[]]$List, $FItem = $null) {
     $pre = ''; if ($verify -and $verify.PSObject.Properties['testRoot']) { $pre = (([string]$verify.testRoot).Trim() -replace '\\', '/').TrimEnd('/') + '/' }
+    if ($FItem -and $null -ne $FItem.TestRoot) { $pre = if (([string]$FItem.TestRoot).Trim()) { (([string]$FItem.TestRoot).Trim() -replace '\\', '/').TrimEnd('/') + '/' } else { '' } }
     $item = '{path}'; if ($verify -and $verify.PSObject.Properties['testItem'] -and $verify.testItem) { $item = [string]$verify.testItem }
+    if ($FItem -and $FItem.TestItem) { $item = [string]$FItem.TestItem }
     return (($List | ForEach-Object {
         $t = ([string]$_ -replace '\\', '/') -replace '^\./', ''
         if ($pre -ne '/' -and $t.StartsWith($pre, [StringComparison]::OrdinalIgnoreCase)) { $t = $t.Substring($pre.Length) }
@@ -147,7 +185,9 @@ $script:inconclusiveBase = @(
     # sem a palavra "error" na frente (`src/x.ts:12:5 - TS18047: …`, `Error: … TS2339: …`); Jest, webpack e esbuild avisam que a
     # suíte nem rodou. Um teste que reprova por falha de compilação ou de transformação não provou nada.
     '\bTS\d{4,5}:', '(?i)\bTest suite failed to run\b', '(?i)\bModule build failed\b', '(?i)\bFailed to compile\b',
-    '(?i)\bTransform failed\b', '(?i)\bBuild failed with \d+ errors?\b', '(?i)\bTests:\s+0 total\b', '(?m)^\s*\S+\.java:\d+: error:')
+    '(?i)\bTransform failed\b', '(?i)\bBuild failed with \d+ errors?\b', '(?i)\bTests:\s+0 total\b', '(?m)^\s*\S+\.java:\d+: error:',
+    # v3.55.0 (B2): node:test sem teste executado ("ℹ tests 0" / "# tests 0") ou arquivo que o runner não achou.
+    '(?m)^\s*(#|ℹ)\s*tests 0\b', "(?i)\bCould not find '")
 
 function Get-Inconclusive([string]$Log) {
     $pats = @($script:inconclusiveBase)
@@ -281,7 +321,8 @@ try {
     }
 
     if ($null -eq $verify) { [Console]::Error.WriteLine('verify: guards.json sem a chave "verify" — o /team update (passo 7h) a preenche a partir do developer/context.md.'); exit 2 }
-    $focusedCmd = @(Get-Commands $verify 'focused')
+    $focusedItems = @(Get-FocusedItems)
+    $focusedCmd = @($focusedItems | ForEach-Object { $_.Command })
 
     if ($Mode -eq 'mutation') {
         # Prova de falha (v3.46): só sobre a árvore do último full verde — a mutação prova o teste daquele código.
@@ -356,9 +397,11 @@ try {
             # Orçamento: a próxima execução não cabe → fica pendente para a próxima chamada (a primeira sempre roda).
             if ($ranAny -and ($budget.Elapsed.TotalSeconds + $lastSec) -gt ($MaxMinutes * 60)) { $pending += $mu.Id; continue }
             $ranAny = $true
+            $fi = Resolve-FocusedItem $focusedItems $mu.Test
+            if (-not $fi) { [Console]::Error.WriteLine("verify: nenhum item de verify.focused casa o teste $($mu.Test) (paths) e não há item padrão sem paths."); exit 2 }
             if (-not $base.ContainsKey($mu.Test)) {
                 $bk = 'base-' + ($base.Count + 1)
-                $b = Invoke-Logged $bk $focusedCmd[0].Replace('{tests}', (Format-Tests @($mu.Test))) (Join-Path $dir "mutation-$bk.log")
+                $b = Invoke-Logged $bk $fi.Command.Replace('{tests}', (Format-Tests @($mu.Test) $fi)) (Join-Path $dir "mutation-$bk.log")
                 $bw = Get-Inconclusive (Join-Path $Root $b.log)
                 $base[$mu.Test] = if ([int]$b.exit -ne 0) { "o teste falha sem mutação (linha de base exit $($b.exit), $($b.log))" } elseif ($bw) { "a linha de base não executou teste: $bw" } else { $null }
                 $lastSec = $b.seconds
@@ -376,7 +419,7 @@ try {
             [System.IO.File]::WriteAllText((Join-Path $dir 'mutation-pending.json'), (@{ file = $rel; id = $mu.Id } | ConvertTo-Json -Compress), $utf8)
             try {
                 [System.IO.File]::WriteAllText($full2, $mutated, (New-Object System.Text.UTF8Encoding($bom)))
-                $r = Invoke-Logged $mu.Id $focusedCmd[0].Replace('{tests}', (Format-Tests @($mu.Test))) (Join-Path $dir "mutation-$($mu.Id).log")
+                $r = Invoke-Logged $mu.Id $fi.Command.Replace('{tests}', (Format-Tests @($mu.Test) $fi)) (Join-Path $dir "mutation-$($mu.Id).log")
             } finally {
                 [System.IO.File]::WriteAllBytes($full2, $bytes)
                 foreach ($tmpf in 'mutation-pending.json', 'mutation.bak') { $pth = Join-Path $dir $tmpf; if (Test-Path -LiteralPath $pth) { [System.IO.File]::Delete($pth) } }
@@ -408,9 +451,27 @@ try {
 
     $keys = if ($Mode -eq 'focused') { @('focused', 'lint') } else { @('build', 'lint', 'suite', 'coverage') }   # $plan seria o -Plan (string)
     $jobs = @()
-    foreach ($k in $keys) { $i = 0; foreach ($c in (Get-Commands $verify $k)) { $i++; $jobs += @{ Key = $(if ($i -gt 1) { "$k$i" } else { $k }); Cmd = $c } } }
+    foreach ($k in $keys) {
+        if ($k -eq 'focused') {
+            # v3.55.0 (B1): com "paths", os testes se agrupam pelo comando que o caminho escolhe; sem, todo comando leva todos os testes.
+            $routed = @($focusedItems | Where-Object { $_.Paths.Count }).Count -gt 0
+            if (-not $routed) { $i = 0; foreach ($fi0 in $focusedItems) { $i++; $jobs += @{ Key = $(if ($i -gt 1) { "focused$i" } else { 'focused' }); Cmd = $fi0.Command; FItem = $fi0 } }; continue }
+            $groups = [ordered]@{}
+            foreach ($tp in @(Split-List $Tests)) {
+                $fi1 = Resolve-FocusedItem $focusedItems $tp
+                if (-not $fi1) { [Console]::Error.WriteLine("verify: nenhum item de verify.focused casa o teste $tp (paths) e não há item padrão sem paths."); exit 2 }
+                $gk1 = 'k' + [array]::IndexOf(@($focusedItems), $fi1)   # chave de texto: o índice inteiro de um [ordered] é posicional
+                if (-not $groups.Contains($gk1)) { $groups[$gk1] = @() }
+                $groups[$gk1] += $tp
+            }
+            $i = 0
+            foreach ($gk in @($groups.Keys)) { $i++; $fi2 = @($focusedItems)[[int]$gk.Substring(1)]; $jobs += @{ Key = $(if ($i -gt 1) { "focused$i" } else { 'focused' }); Cmd = $fi2.Command; FItem = $fi2; Tests = @($groups[$gk]) } }
+            continue
+        }
+        $i = 0; foreach ($c in (Get-Commands $verify $k)) { $i++; $jobs += @{ Key = $(if ($i -gt 1) { "$k$i" } else { $k }); Cmd = $c } }
+    }
     if ($Mode -eq 'focused') {
-        if (-not ($jobs | Where-Object { $_.Key -like 'focused*' })) { [Console]::Error.WriteLine('verify: guards.json → verify sem "focused" (o comando do teste focado, com {tests}).'); exit 2 }
+        if (-not $focusedItems.Count) { [Console]::Error.WriteLine('verify: guards.json → verify sem "focused" (o comando do teste focado, com {tests}).'); exit 2 }
         if ($Tests.Count -eq 0) { [Console]::Error.WriteLine('verify: -Mode focused pede -Tests <arquivos de teste do bloco>.'); exit 2 }
     } elseif ($jobs.Count -eq 0) { [Console]::Error.WriteLine('verify: guards.json → verify sem build, lint, suite nem coverage.'); exit 2 }
 
@@ -428,7 +489,8 @@ try {
         $need = if ($estimates.ContainsKey($j.Key)) { [int]$estimates[$j.Key] } else { $lastSec }   # v3.52.3: a história da chave
         if ($Mode -eq 'full' -and $ranAny -and ($budget.Elapsed.TotalSeconds + $need) -gt ($MaxMinutes * 60)) { $pendingJobs += $j.Key; continue }
         $ranAny = $true
-        $r1 = Invoke-Logged $j.Key $j.Cmd.Replace('{tests}', (Format-Tests $Tests)) (Join-Path $dir "$Mode-$($j.Key).log")
+        $jt = if ($j.ContainsKey('Tests')) { $j.Tests } else { $Tests }
+        $r1 = Invoke-Logged $j.Key $j.Cmd.Replace('{tests}', (Format-Tests $jt $j.FItem)) (Join-Path $dir "$Mode-$($j.Key).log")
         $results += $r1; $lastSec = $r1.seconds
     }
     # v3.53.6 (sprint 5 do garden, item 4): ids de teste conferidos no fim do full — (a) todo id dos cenários de tela da Task

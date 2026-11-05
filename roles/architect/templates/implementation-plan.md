@@ -17,6 +17,7 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
 **Layout novo:** sim | não *(só Task com interface — regras 21, 26 e 27)*
 **Documentos vivos:** `<documento de desenho>` §<seção> — <o que muda> *(só com **Layout novo:** sim — regra 27)*
 **Retomada de:** `sprints/<n-1>/plan/<T-ID>-<slug>.md` — parou no passo <n> de <m>, repositório <estado> *(só Task de sprint anterior — regra 12)*
+**Corrige:** T-<nnn> *(só Task que corrige outra, ex.: T-072b → T-072 — v3.55.0, regra 31; pede `### Testes herdados` na §6)*
 **Arquivos tocados:** `<caminho relativo à raiz do repositório>`
 `<um por linha, entre crases — produção e teste>`
 
@@ -91,9 +92,20 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
 - Contagem: `<regex>` em `<glob>` → <n>
 - P1 · <afirmação> · medido: `<comando ou job do operator>` → <resultado literal>
 - P2 · <afirmação> · não exercitada: <motivo> · verifica: <papel> em <passo>
+- P3 · <o elemento de tela de fora do app — seletor de arquivos do Android, outro aplicativo — existe com este `resource-id`/`text`/`content-desc`> · medido: dump `<.team-project/operator/…/dump.xml>` → <o nó literal> *(v3.55.0: a fixture do teste dessa tela sai do dump real; elemento do próprio app não entra aqui — é citado por id)*
+
+### Testes herdados *(só com **Corrige:** — regra 31)*
+- `<teste da Task original>` · <o que muda nele: fixture, premissa ou asserção que depende do que esta Task corrige>
+- nenhum — <por que nenhum teste da Task original depende do que se corrige>
+
+**Ids de tela (v3.55.0):** elemento do próprio app que o plano cita (cenário, teste, passo) é citado **pelo id**, conforme `.team-project/architect/ids-map.md` (gerado do código por `ids.ps1 -Map`) e a gramática de `${CLAUDE_PLUGIN_ROOT}/standards/test-ids.md` §3 — nunca por texto, `content-desc` ou `aria-label`. Id novo que a Task cria entra no plano com o nome já na gramática.
 
 ## 7. Comandos de verificação
 <Com `verify` no `.team-project/guards.json`: os testes do Pronto de cada bloco e "`verify.ps1 -Mode full` no fim" — os comandos vivem no `guards.json`. Sem `verify`: os do `.team-project/developer/context.md`, validados na §3. **Sempre** o gate de cobertura da unidade tocada; sem comando de cobertura, é gap de configuração na §9.>
+
+### Comandos da Task *(v3.55.0 — regra 32)*
+- `<comando de build, teste, lint ou leitura>` · <para que a construção ou a verificação o roda>
+- nenhum além da lista base
 
 ## 8. Critérios de aceite técnicos
 - [ ] <checklist binário, verificável>
@@ -190,6 +202,10 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
     O plano a cita em `**Decisões do sprint:** D-<k>` e não repete o texto; o `plan.ps1` reprova a citação de D que não existe e a linha da decisão copiada no plano. O cartão do dev traz cada decisão que vale para a Task em uma linha, e o recorte da ficha traz todas para eu citar. Decisão que só vale para esta Task continua no plano (R9).
 
 30. **Margem do dev (v3.54 · R4).** Sem 🔺 GAP, o dev corrige: (a) **defeito mecânico do próprio teste** — espera, referência de medida, leitura antes de renderizar — e (b) **CSS cujo valor uma regra do projeto já define** (standard, token, spec do UX) e (c, v3.54.1) **o stub da dependência nova** num teste que já existe, fora da lista, e monta um arquivo do plano. Mesmo assim, dependência nova (`inject()`, argumento de construtor) em componente ou página pede a `- Contagem:` dos testes que o montam (`<nome do arquivo>` em `<glob dos specs>`) e esses testes em **Arquivos tocados:** — a margem é a rede, não o plano. Registra cada ajuste em `### Ajustes na margem` do relatório; o `close.ps1` (R7-margem) só fecha com as travas: o teste ajustado tem mutação neste plano e ela é pega na árvore final; o CSS cita a regra; o stub é teste existente que cita um arquivo de **Arquivos tocados:**. O "Deve falhar se…" é meu e não muda. Premissa errada que muda o desenho continua 🔺 GAP para mim; escopo, ao PO. Por isso **todo teste que o dev possa precisar ajustar tem mutação** — o de render, em layout novo, já tem (regra 21).
+
+31. ✓ **Task que corrige outra lista os testes herdados (v3.55.0 · carta 2 do sprint 5 do garden).** O cabeçalho leva `**Corrige:** T-<nnn>` e a §6 traz `### Testes herdados`: cada teste da Task original cuja fixture ou premissa depende do que esta Task corrige, com o que muda nele — ou `- nenhum — <motivo>`. O `plan.ps1` reprova plano com `**Corrige:**` sem a seção; plano comum não é afetado. A mudança de entrada de uma regra testada deixa de aparecer só no fechamento.
+
+32. ✓ **O plano declara os comandos da Task (v3.55.0 · F1, decisão do stakeholder de 05/11).** A §7 traz `### Comandos da Task`: cada comando de build, teste, lint ou leitura que a construção e a verificação vão rodar **além da lista base da G14** (`hooks/common.ps1`, `runBase`), um por linha entre crases, ou `- nenhum além da lista base`. O `plan.ps1` confere cada trecho contra a lista base + `guards.json → runCommands` + o reparo declarado (o mesmo casamento por prefixo da G14): o que falta o `run.ps1` pede ao stakeholder **uma vez**, num formulário, antes da construção, e grava em `runCommands` por script; comando de instalação, rede, push ou destrutivo **reprova o plano** (bloqueio da Task, degrau 1). Não se edita o guard padrão do plugin: `docker compose run`, `aapt` e afins são do projeto.
 
 ## Variante leve (R23)
 

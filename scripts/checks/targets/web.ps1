@@ -46,7 +46,7 @@ function Stop-WebServer {
 }
 function Invoke-WebScenarios($Scenarios, [string]$ShotDir) {
     $tmpIn = [System.IO.Path]::GetTempFileName(); $tmpOut = [System.IO.Path]::GetTempFileName()
-    $in = [ordered]@{ url = [string]$script:WebCfg.url; root = $script:WebRoot; testIdAttribute = $(if ($script:WebCfg.testIdAttribute) { [string]$script:WebCfg.testIdAttribute } else { 'data-testid' })
+    $in = [ordered]@{ url = [string]$script:WebCfg.url; root = $script:WebRoot; testIdAttribute = (Get-TestIdAttribute $script:WebRoot)   # v3.55.0 (C2): testIds.attribute → targets.web.testIdAttribute → data-testid
                       viewport = $script:WebCfg.viewport; shotDir = $ShotDir
                       # v3.53.7: massa de dados (passo "seed") e o botão de confirmação do seletor (passo "select").
                       seeds = (Get-TargetSeeds $script:WebCfg); seedTimeoutSec = $(if ($script:WebCfg.PSObject.Properties['seedTimeoutSec'] -and $script:WebCfg.seedTimeoutSec) { [int]$script:WebCfg.seedTimeoutSec } else { 300 })

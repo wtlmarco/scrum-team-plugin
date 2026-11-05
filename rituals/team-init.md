@@ -53,6 +53,8 @@ Com os comandos reais de build/teste/lint do passo 3, siga os **passos 7f e 7h d
 
 **Medição do portão e da mutação (v3.52.2).** Com os mesmos comandos, siga o **passo 7k de `${CLAUDE_PLUGIN_ROOT}/rituals/team-update.md`** — no **mesmo formulário**, **proponha** a seção `quality` (`coverage` com limiar, `lint`, `format`, `architecture`, `metrics`, `duplication`, `sourceRoots`: o `quality.ps1` mede as regras do nível 1 do `/qa sprint <n>`) e `verify.compile` (o comando que só compila, para o `verify.ps1 -Mode mutation -Precheck` acusar mutante que não compila). Exemplo: `"quality": { "coverage": "npm run test:cov", "coverageThreshold": 80, "lint": "npm run lint" }` e `"verify": { …, "compile": "npx tsc --noEmit" }`. **Sem elas, diga ao stakeholder o que deixa de ser medido:** o `quality.ps1` mede só Q9 e Q17 (2 das 8 regras) e o resto vai ao julgamento do QA; o `-Precheck` confere só o trecho único, sem compilar o mutante. Sem resposta, não aplique e registre a pendência no `README.md` §7.
 
+**Atributo do id de teste (v3.55.0).** No **mesmo formulário**, proponha `testIds.attribute` pela stack do passo 3 — app híbrido (Capacitor/Cordova/Ionic) `id`; Compose `testTag`; web pura `data-testid` (convenção única de nomes em `${CLAUDE_PLUGIN_ROOT}/standards/test-ids.md`; o `ids.ps1 -Audit` do passo 7l de `team-update.md` detecta pela stack). Projeto novo não tem retrofit: o formulário 2 do 7l não se aplica.
+
 ## 5. Aponte o próximo passo
 
 Conforme a resposta do passo 3:

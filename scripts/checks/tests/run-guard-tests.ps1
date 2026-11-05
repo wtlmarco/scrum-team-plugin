@@ -230,6 +230,9 @@ $cases = @(
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'npm test -- relogio *> test.log' } } },
     @{ Name = 'G14 comando fora da lista: nega com a rota'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'runCommands'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'npm install lodash' } } },
+    @{ Name = 'G14 v3.55.0 (F3): a negação aponta o formulário único (run.ps1 allow), não "reporte a quem orquestra"'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'formulário único*run.ps1 allow'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "runCommands": ["npm test"] }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'docker compose run --rm app npm test' } } },
     @{ Name = 'G14 Env: da sessão liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "Set-Content Env:MIG02_PROVA '1'; npm test; Remove-Item Env:MIG02_PROVA" } } },
     @{ Name = 'G14 escrita no registro negada'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'

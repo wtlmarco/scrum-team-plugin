@@ -59,7 +59,10 @@ Pedido do stakeholder depois do sprint 5 do garden ("nunca mais termos problema 
 | O que reprova o `verify.ps1 -Mode full` (chave `testids`, exit 1) | Saída |
 |---|---|
 | id citado num cenário de tela da Task (`.scn` do QA, sem `(teste)` e sem `# aguarda` de outra Task) que não existe **literalmente** no código de produção — o atributo, uma constante, ou o prefixo de id dinâmico (`'destino.card.' + d.id`, `destino.card.{{ d.id }}`) | o id, o cenário e `arquivo.scn:linha` |
-| `<button`, `<input` (menos `type="hidden"`), `<select`, `<textarea` e `<a` com `href`/`(click)`/`routerLink` sem `data-testid` / `[attr.data-testid]` (ou o `targets.web.testIdAttribute`) nos templates `.html` da Task | `arquivo:linha` |
+| `<button`, `<input` (menos `type="hidden"`), `<select`, `<textarea` e `<a` com `href`/`(click)`/`routerLink` sem `data-testid` / `[attr.data-testid]` (ou o atributo de `testIds.attribute`, depois `targets.web.testIdAttribute`) nos templates `.html` da Task | `arquivo:linha` |
+| **v3.55.0 · Ionic:** `ion-button`, `ion-input`, `ion-textarea`, `ion-select`, `ion-checkbox`, `ion-toggle`, `ion-radio`, `ion-segment-button`, `ion-searchbar`, `ion-datetime`, `ion-range`, `ion-fab-button`, `ion-menu-button`, `ion-back-button` e `ion-item` com `button`/`(click)`/`routerLink` sem o atributo (`id`/`[id]`/`[attr.id]` com `testIds.attribute = "id"`); `ion-tab-button` é isento | `arquivo:linha` |
+| **v3.55.0 · lista:** `ion-item`, `li` ou `tr` repetido por `*ngFor`/`@for` sem o atributo no item (limite: só esses três elementos; lista de `div`/card fica ao QA) | `arquivo:linha` |
+| **v3.55.0 · raiz da tela:** `*.page.html` sem o atributo no elemento raiz nem no `ion-content` (só `*.page.html`; React e Compose ficam ao QA) | `arquivo:linha — raiz da tela` |
 
 - **Onde:** os arquivos de **Arquivos tocados:** do plano (sem plano, os mudados no git), fora de testes (`*.spec.ts`, `e2e/`), `dist/` e gerados. Template embutido no `.ts` (`template:`) não é lido — use `templateUrl`.
 - **Exceção explícita:** `<!-- sem-testid: <motivo> -->` na linha do elemento ou na anterior — sem motivo, continua reprovando.

@@ -36,6 +36,7 @@ Guias normativos **agnósticos de produto**: regras, princípios e contratos reu
 | Arquivo | Nível | Conteúdo |
 |---|---|---|
 | [`implementation-principles.md`](implementation-principles.md) | **1** | Clean Architecture (quatro anéis e regra de dependência verificada por teste), CQRS, Clean Code (limites numéricos e regras verificáveis), testes e **gate de cobertura de 80%**, **desempenho (§5.6)**, Ficha de Vinculação de Stack (§6), **quadro de verificação (§7, regras Q1–Q23)** e adoção em projeto existente |
+| [`test-ids.md`](test-ids.md) | **1** | **Padrão de ids de teste** (v3.55.0): quais elementos levam id, gramática única, atributo por alvo (web `data-testid`, híbrido `id`, Compose `testTag`), quem consome, prova em app híbrido |
 | [`implementation-security-lgpd-copyright.md`](implementation-security-lgpd-copyright.md) | transversal | Segurança, Privacidade (LGPD) e Direitos Autorais |
 | [`stacks/dotnet/guide.md`](stacks/dotnet/guide.md) · [`quality.md`](stacks/dotnet/quality.md) · [`desktop.md`](stacks/dotnet/desktop.md) | 2 — .NET | API e workers (estrutura, CQRS, portas, logging, configuração, carga) · analisadores, cobertura, métricas e pipeline · **desktop WPF, WinForms, WinUI** (MVVM, `AutomationId`) |
 | [`stacks/kotlin-android/guide.md`](stacks/kotlin-android/guide.md) · [`quality.md`](stacks/kotlin-android/quality.md) | 2 — Kotlin/Android | anéis em pacotes, estado com `StateFlow`, Compose, `testTag`, testes por nível · detekt, ktlint, Lint, JaCoCo/Kover, Ficha pré-preenchida |
