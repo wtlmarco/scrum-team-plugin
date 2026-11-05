@@ -60,7 +60,7 @@ Pedido do stakeholder depois do sprint 5 do garden ("nunca mais termos problema 
 | O que reprova o `verify.ps1 -Mode full` (chave `testids`, exit 1) | Saída |
 |---|---|
 | id citado num cenário de tela da Task (`.scn` do QA, sem `(teste)` e sem `# aguarda` de outra Task) que não existe **literalmente** no código de produção — o atributo, uma constante, ou o prefixo de id dinâmico (`` `lista.item.${id}` ``, `'lista.item.' + id`) | o id, o cenário e `arquivo.scn:linha` |
-| `<button`, `<input` (menos `type="hidden"`), `<select`, `<textarea` e `<a` com `href`/`onClick` sem `data-testid` (ou o `targets.web.testIdAttribute`) nos `.tsx`/`.jsx`/`.html` da Task | `arquivo:linha` |
+| `<button`, `<input` (menos `type="hidden"`), `<select`, `<textarea` e `<a` com `href`/`onClick` sem `data-testid` (ou o atributo de `testIds.attribute`, depois `targets.web.testIdAttribute` — v3.55.0; em app híbrido, `id`) nos `.tsx`/`.jsx`/`.html` da Task | `arquivo:linha` |
 
 - **Onde:** os arquivos de **Arquivos tocados:** do plano (sem plano, os mudados no git), fora de testes (`*.spec.*`, `*.test.*`, `__tests__/`, `e2e/`), `build/`, `dist/` e gerados.
 - **Exceção explícita:** `{/* sem-testid: <motivo> */}` (ou `// sem-testid: <motivo>`) na linha do elemento ou na anterior — sem motivo, continua reprovando. Uso típico: componente que repassa as props (`<button {...props}>`).

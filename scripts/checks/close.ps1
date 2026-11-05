@@ -244,7 +244,10 @@ try {
         $tm = if ($plan) { @(Get-TaskMutations $Root $planPath $plan $Task) } else { @() }
         $vmi = @{}; if ($hasVerify -and (Test-Path -LiteralPath $vr)) { try { foreach ($it in @((Read-Text $vr | ConvertFrom-Json).mutation.items)) { $vmi[[string]$it.id] = [string]$it.result } } catch { } }
         foreach ($a in $adj) {
-            if ($a.Bad) { $iss += "linha fora do formato '- A<k> · teste|css|stub · ``<arquivo>`` · <o que mudou>[ · regra: <onde>]': $($a.Bad)"; continue }
+            if ($a.Bad) {
+                $iss += "linha fora do formato '- A<k> · teste|css|stub|fixture · ``<arquivo>`` · <o que mudou>[ · regra: <onde>]': $($a.Bad)"
+                if (-not $a.Id) { continue }   # v3.55.0 (A1): lida pela leitura tolerante, segue com as travas do ajuste
+            }
             # v3.54.1: stub — o teste fica fora da lista por definição; vale se ele monta um arquivo do plano. O verify full
             # verde (R7-verify) prova que ele passa; o QA confere na frente 2 que só o stub mudou.
             if ($a.Kind -eq 'stub') {
@@ -257,7 +260,17 @@ try {
                 if (-not $a.Rule) { $iss += "$($a.Id): ajuste de CSS sem 'regra: <onde a regra do projeto diz o valor>' — sem regra que dê o valor, é 🔺 GAP"; continue }
                 $okA += "$($a.Id) css ($($a.Rule))"; continue
             }
+            # v3.55.0 (A3): fixture — o arquivo está em **Arquivos tocados:** (conferido acima, senão é GAP); a regra é obrigatória
+            # (standards/… § do padrão de ids, ou o dump real) e o dump citado (.xml) tem de existir. Vale mesmo com o plano em "sem prova".
+            if ($a.Kind -eq 'fixture') {
+                if (-not $a.Rule) { $iss += "$($a.Id): ajuste de fixture sem 'regra: <standards/… § do padrão de ids | dump real em .team-project/operator/…>' — sem regra nem dump que deem o valor, é 🔺 GAP"; continue }
+                $dumps = @([regex]::Matches($a.Rule, '[^\s`''"()]+\.xml\b') | ForEach-Object { $_.Value })
+                $gone = @($dumps | Where-Object { -not (Test-Path -LiteralPath (Join-Path $Root $_)) })
+                if ($gone.Count) { $iss += "$($a.Id): o dump citado na regra não existe: $($gone -join ', ') — a fixture copia o dump REAL (medido pelo operator), não se inventa"; continue }
+                $okA += "$($a.Id) fixture ($($a.Rule))"; continue
+            }
             $mine = @($tm | Where-Object { (($_.Test -replace '\\', '/') -replace '^\./', '') -eq $a.File })
+            if ($plan -and $plan -match '(?m)sem prova:\s*\S') { $iss += "$($a.Id): o plano declara 'sem prova: …' — ajuste de teste nesta Task não passa pela margem; abra 🔺 GAP com esta linha, sem nova rodada de ``done``"; continue }   # v3.55.0 (A2)
             if (-not $mine.Count) { $iss += "$($a.Id): o teste $($a.File) não tem mutação no plano — sem prova de que ele ainda pega a regra, o ajuste é 🔺 GAP"; continue }
             if (-not $hasVerify) { $okA += "$($a.Id) teste (sem verify: o QA confere a mutação)"; continue }
             $bad = @($mine | Where-Object { -not $vmi.ContainsKey($_.Id) -or -not $vmi[$_.Id].StartsWith('ok') } | ForEach-Object { $_.Id })

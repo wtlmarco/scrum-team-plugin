@@ -2,12 +2,15 @@
 # relendo o roteiro: pergunta a este script, que lê o quadro e o disco e devolve a PRÓXIMA AÇÃO pronta — o papel, o modelo,
 # o prompt curto com os caminhos e o comando de volta. No piloto, a sessão principal foi 35 % do custo, a 274 mil tokens
 # de contexto por chamada; no protótipo do benchmark com a orquestração em script, o coordenador custou 6 %.
-# Uso (raiz do projeto): powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/run.ps1" <next|start|done|handoff> [-Task T-041] [-Result ok|gap|env|teto] [-Block k]
+# Uso (raiz do projeto): powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/run.ps1" <next|start|done|handoff|allow> [-Task T-041] [-Result ok|gap|env|teto] [-Block k] [-Commands "a;b"] [-Deny "c"] [-By quem]
 #   next      a próxima ação do sprint corrente (preparo → construção → validação → consolidação → Review)
 #   start     dispara a construção da Task: escopo e marcador (dispatch.ps1), cartão de passagem e o prompt do dev
 #   done      o dev voltou: ok → close.ps1 -Apply (fecha pela evidência do dev) · gap → rota ao Arquiteto · env → reparo
 #             · teto → a G23 parou o dev no teto de contexto: instância nova pelo ponto de retomada (v3.53.1)
 #   handoff   (re)gera o cartão de passagem da Task: sprints/<n>/handoff/<T-ID>.md, até ~2 KB (C2)
+#   allow     (v3.55.0, F2) grava a decisão do formulário único dos comandos dos planos: -Commands = prefixos liberados (vão para guards.json →
+#             runCommands, resto do arquivo intacto), -Deny = negados (a Task volta ao Arquiteto), -By = quem autorizou (run-log.md). O next/start
+#             param uma vez com os comandos de '### Comandos da Task' que a G14 ainda não libera, de todos os planos da História.
 # Ordem do sprint (sprint-run.md): 1 preparo da construção por História (QA escreve os .scn; o Arquiteto planeja as Tasks
 # da História numa instância; v3.53.3: uma História por vez, a próxima a construir) · 2 construção, Task a Task (o dev constrói, verifica, roda os cenários e corrige; o close
 # fecha pela evidência) · 3 validação do sprint (o operator mede: quality + todos os cenários; o QA julga e escreve
@@ -23,10 +26,13 @@
 # num pacote (done -Result gap). Funções em external-plan.ps1.
 
 param(
-    [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff')][string]$Action,
+    [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff', 'allow')][string]$Action,
     [string]$Task = '',
     [ValidateSet('', 'ok', 'gap', 'env', 'teto')][string]$Result = '',
     [string]$Block = '',
+    [string]$Commands = '',   # v3.55.0 (F2) · allow: prefixos liberados, separados por ;
+    [string]$Deny = '',       # v3.55.0 (F2) · allow: prefixos negados (a Task volta ao Arquiteto)
+    [string]$By = 'stakeholder',
     [string]$Root = (Get-Location).Path
 )
 
@@ -310,6 +316,65 @@ function Write-Handoff($T, [string]$S, [string]$n) {
     return "sprints/$n/handoff/$($T.Id).md"
 }
 
+# ---------- v3.55.0 (F2) · os comandos da Task, uma parada antes da construção ----------
+# O plano declara os comandos ("### Comandos da Task", regra 32). O que a G14 ainda não libera (lista base + runCommands + reparo)
+# o run.ps1 junta de TODOS os planos da História, e a sessão pergunta UMA vez ao stakeholder (AskUserQuestion, R22). O liberado
+# é gravado em guards.json → runCommands por este script (run.ps1 allow), nunca à mão, com quem autorizou e quando no run-log.md.
+# O que já foi perguntado fica em sprints/<n>/commands-asked.json: não pergunta de novo para o mesmo comando em Task seguinte.
+function Get-AskedCommands([string]$S) {
+    $r = @{ allowed = @(); denied = @() }
+    $p = Join-Path $S 'commands-asked.json'
+    if (Test-Path -LiteralPath $p) { try { $j = Read-Text $p | ConvertFrom-Json; $r.allowed = @($j.allowed | Where-Object { $_ }); $r.denied = @($j.denied | Where-Object { $_ }) } catch { } }
+    return $r
+}
+# @{ Pending = prefixo → [Task-IDs] ainda não perguntados (planos da História da Task); DeniedForT = negados que a Task usa }
+function Get-CommandStop($T, $Tasks, [string]$S) {
+    $asked = Get-AskedCommands $S
+    $pending = [ordered]@{}; $denied = @()
+    $batch = @($Tasks | Where-Object { $_.Story -eq $T.Story -and $_.Mark -ne $E.Done -and (Get-PlanFull $_ $S) })
+    foreach ($t in $batch) {
+        $g = Get-PlanCommandGaps $Root (Read-Text (Get-PlanFull $t $S))
+        foreach ($m in @($g.Missing)) {
+            if (@($asked.denied) -contains $m) { if ($t.Id -eq $T.Id -and $denied -notcontains $m) { $denied += $m }; continue }
+            if (@($asked.allowed) -contains $m) { continue }
+            if (-not $pending.Contains($m)) { $pending[$m] = @() }
+            $pending[$m] += $t.Id
+        }
+    }
+    return [pscustomobject]@{ Pending = $pending; DeniedForT = $denied }
+}
+function Format-CommandStop($Cs, $T) {
+    $l = @("PARADA ÚNICA — comandos que os planos de $($T.Story) declaram e a G14 ainda não libera (guards.json → runCommands):")
+    foreach ($k in $Cs.Pending.Keys) { $l += "  - $k   ($((@($Cs.Pending[$k]) | Select-Object -Unique) -join ', '))" }
+    $all = ($Cs.Pending.Keys -join ';')
+    $l += "  A sessão abre UM formulário (AskUserQuestion, R22, `"pedir mais contexto`" por último): liberar todos · liberar alguns · negar e voltar ao Arquiteto · pedir mais contexto."
+    $l += "  liberar todos:   run.ps1 allow -Commands `"$all`" -By <quem autorizou>"
+    $l += "  liberar alguns:  run.ps1 allow -Commands `"<os liberados>`" -Deny `"<os negados>`" -By <quem autorizou>"
+    $l += "  negar:           run.ps1 allow -Deny `"$all`" — o Arquiteto troca o comando no plano de cada Task citada (/arc question) e o plan.ps1 reconfere"
+    $l += "  O script grava em runCommands (nunca à mão) e registra no run-log.md quem autorizou e quando; o mesmo comando não é perguntado de novo. Instalação, rede, push e destrutivo não passam por aqui."
+    return ($l -join "`n")
+}
+# Acrescenta prefixos a guards.json → runCommands editando só o trecho da lista (o resto do arquivo fica byte a byte). Devolve os
+# que entraram (os já cobertos por uma entrada existente ficam de fora).
+function Add-RunCommands([string]$Root, [string[]]$Cmds) {
+    $gp = Join-Path $Root '.team-project/guards.json'
+    if (-not (Test-Path -LiteralPath $gp)) { throw 'sem .team-project/guards.json' }
+    $bom = [System.IO.File]::ReadAllBytes($gp)[0] -eq 0xEF
+    $t = Read-Text $gp; $j = $t | ConvertFrom-Json
+    $have = @(); if ($j.PSObject.Properties['runCommands'] -and $j.runCommands) { $have = @($j.runCommands | ForEach-Object { [string]$_ }) }
+    $new = @($Cmds | Where-Object { $c = $_.ToLowerInvariant(); -not @($have | Where-Object { Test-CommandPrefix $c $c $_ }).Count } | Select-Object -Unique)
+    if (-not $new.Count) { return @() }
+    $items = @($have + $new | ForEach-Object { '"' + (($_ -replace '\\', '\\') -replace '"', '\"') + '"' })
+    $arr = '[' + ($items -join ', ') + ']'
+    $rx = [regex]'"runCommands"\s*:\s*\[[^\]]*\]'
+    $t2 = if ($rx.IsMatch($t)) { $rx.Replace($t, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) '"runCommands": ' + $arr }, 1) }
+          else { ([regex]'^\s*\{').Replace($t, "{`n  `"runCommands`": $arr,", 1) }
+    $chk = $t2 | ConvertFrom-Json   # o JSON tem de continuar válido e com exatamente a lista esperada
+    if ((@($chk.runCommands | ForEach-Object { [string]$_ }) -join "`n") -ne (@($have + $new) -join "`n")) { throw 'guards.json: a lista runCommands não ficou como esperado — nada foi gravado' }
+    [System.IO.File]::WriteAllText($gp, $t2, (New-Object System.Text.UTF8Encoding($bom)))
+    return $new
+}
+
 try {
     $tp = Join-Path $Root '.team-project'
     $readmePath = Join-Path $tp 'README.md'
@@ -323,6 +388,24 @@ try {
     if ($Task -and -not $T) { [Console]::Error.WriteLine("run: $Task não está no quadro do sprint $n."); exit 2 }
 
     if ($Action -eq 'handoff') { if (-not $T) { [Console]::Error.WriteLine('run handoff pede -Task.'); exit 2 }; Out "run: cartão $(Write-Handoff $T $S $n)"; exit 0 }
+
+    # v3.55.0 (F2): grava a decisão do formulário único — liberados em guards.json → runCommands, negados no registro.
+    if ($Action -eq 'allow') {
+        $al = @($Commands -split ';' | ForEach-Object { ($_.Trim() -replace '\s+', ' ') } | Where-Object { $_ })
+        $dn = @($Deny -split ';' | ForEach-Object { ($_.Trim() -replace '\s+', ' ') } | Where-Object { $_ })
+        if (-not $al.Count -and -not $dn.Count) { [Console]::Error.WriteLine('run allow pede -Commands "<prefixo>;<prefixo>" (liberar) e/ou -Deny "<prefixo>" (negar) — a decisão do formulário único.'); exit 2 }
+        $bad = @($al | Where-Object { Get-ForbiddenCommandReason $_ })
+        if ($bad.Count) { [Console]::Error.WriteLine("run allow: instalação, rede, push e destrutivo não entram no run (G14) — $($bad -join '; ') não vai a runCommands; a Task vai a bloqueio (degrau 1)."); exit 2 }
+        $added = @(Add-RunCommands $Root $al)
+        $asked = Get-AskedCommands $S
+        $ap = Join-Path $S 'commands-asked.json'
+        $doc = [ordered]@{ allowed = @(@($asked.allowed) + $al | Select-Object -Unique); denied = @(@($asked.denied) + $dn | Select-Object -Unique) }
+        [System.IO.File]::WriteAllText($ap, ($doc | ConvertTo-Json -Compress), $utf8)
+        if ($al.Count) { Add-RunLog $S $n 'comandos do run' "liberou: $($al -join '; ')" "autorizado por $By no formulário único antes da construção (F2); gravado pelo run.ps1 allow em runCommands — o script grava em nome da autorização do stakeholder, dono do guards.json" "guards.json → runCommands$(if ($added.Count) { ' (+' + $added.Count + ')' })" }
+        if ($dn.Count) { Add-RunLog $S $n 'comandos do run' "negou: $($dn -join '; ')" "decisão de $By no formulário único (F2); a Task volta ao Arquiteto para trocar o comando no plano" 'commands-asked.json' }
+        Out "run allow: $($al.Count) liberado(s)$(if ($al.Count) { ' (' + ($al -join '; ') + ')' }) → guards.json runCommands$(if ($added.Count -ne $al.Count) { " (já cobertos: $($al.Count - $added.Count))" }); $($dn.Count) negado(s)$(if ($dn.Count) { ' (' + ($dn -join '; ') + ') — Arquiteto troca o comando no plano de cada Task que o cita (/arc question) e plan.ps1 reconfere' }). Registrado em sprints/$n/run-log.md."
+        exit 0
+    }
 
     if ($Action -eq 'start') {
         if (-not $T) { [Console]::Error.WriteLine('run start pede -Task.'); exit 2 }
@@ -342,6 +425,19 @@ try {
         }
         # v3.53.1 (plugin-report do sprint 4 do garden, item 3): dev desta Task ainda vivo (processo hospedeiro vivo e sinal de
         # vida há menos de 20 min) — outra instância poria dois devs no mesmo alvo físico.
+        # v3.55.0 (F2): comando do plano que a G14 não libera → a parada única (formulário) vem antes do primeiro dev; negado
+        # volta ao Arquiteto. O executor de Task não abre formulário: devolve a linha à sessão.
+        if (-not $Block) {
+            $csS = Get-CommandStop $T $tasks $S
+            if ($csS.DeniedForT.Count) {
+                [Console]::Error.WriteLine("run start: o plano da $($T.Id) declara comando que o stakeholder negou ($($csS.DeniedForT -join '; ')) — o dev não começa com ele. Arquiteto em instância curta (/arc question): trocar o comando no plano (### Comandos da Task) e rodar plan.ps1; depois run.ps1 start de novo.")
+                exit 2
+            }
+            if ($csS.Pending.Count) {
+                [Console]::Error.WriteLine("run start: comandos dos planos de $($T.Story) que a G14 ainda não libera — nenhum dev começa antes da decisão do stakeholder. Executor: não dispare o dev; devolva à sessão a linha `"$($T.Id) 🔺 comandos → formulário`".`n" + (Format-CommandStop $csS $T))
+                exit 2
+            }
+        }
         $liveDev = @(Get-LiveAgents $Root $T.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -eq 'developer' })
         if ($liveDev.Count) {
             $a = $liveDev[0]; $idle = [int]((Get-AgentIdleHours $a) * 60)
@@ -778,6 +874,18 @@ try {
             if ($wN.PSObject.Properties['NoProgress'] -and $wN.NoProgress) { Out "  SEM AVANÇO: $($wN.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." }
             if ($wN.Pulse.Stalled) { Out "  POSSÍVEL TRAVAMENTO: o comando não gasta CPU nem grava arquivo há 10 min ou mais. Não espere às cegas: leve ao stakeholder (formulário) — encerrar o processo (ele decide) e retomar a $($next.Id) por dev novo com o cartão (run.ps1 start), ou seguir esperando." }
             Set-NextVerdict $Root 'esperar' $next.Id "comando: $($wN.Text)"
+            exit 3
+        }
+        # v3.55.0 (F2): a parada única dos comandos dos planos da História, antes do primeiro dev. Dispara a sessão, não o executor.
+        $csN = Get-CommandStop $next $tasks $S
+        if ($csN.DeniedForT.Count) {
+            Out "PRÓXIMA AÇÃO: a $($next.Id) declara comando negado pelo stakeholder ($($csN.DeniedForT -join '; ')) — Arquiteto em instância curta (/arc question) troca o comando no plano (### Comandos da Task), plan.ps1 reconfere e run.ps1 next de novo. Não dispare executor nem dev."
+            exit 3
+        }
+        if ($csN.Pending.Count) {
+            Out "PRÓXIMA AÇÃO: formulário de comandos (uma vez) antes de construir $($next.Id) — não dispare executor nem dev."
+            Out (Format-CommandStop $csN $next)
+            Out "  ao voltar: run.ps1 next"
             exit 3
         }
         $dv = Join-Path $S "delivery/$($next.Id).md"

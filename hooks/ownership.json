@@ -460,6 +460,17 @@
                     },
                     {
                         "paths":  [
+                                      ".team-project/architect/ids-map.md",
+                                      ".team-project/architect/ids-audit.md"
+                                  ],
+                        "writers":  [
+                                        "architect"
+                                    ],
+                        "matriz":  "Mapa e auditoria de ids de teste (`.team-project/architect/ids-map.md`, `ids-audit.md`)",
+                        "dono":  "Arquiteto"
+                    },
+                    {
+                        "paths":  [
                                       ".team-project/architect/calibration/**"
                                   ],
                         "writers":  [

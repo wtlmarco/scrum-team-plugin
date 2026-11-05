@@ -131,6 +131,46 @@ function Test-GlobMatch([string]$RelPath, [object[]]$Globs) {
     return $false
 }
 
+# G14 (run sem trava) — lista base, reparo declarado e casamento por prefixo. v3.55.0: moraram no pre-tool.ps1; o plan.ps1
+# (regra 32, "### Comandos da Task") confere os comandos do plano com os MESMOS, sem um segundo casamento.
+$script:runBase = @(
+    'git status', 'git diff', 'git log', 'git show', 'git grep', 'git blame', 'git add', 'git commit', 'git restore --staged',
+    'git rev-parse', 'git ls-files', 'git branch --show-current', 'git check-ignore', 'git stash list',
+    # v3.53.1 (plugin-report do sprint 4 do garden, item 7): git só de leitura — cada um virava parada e formulário no run.
+    'git cat-file', 'git ls-tree', 'git rev-list', 'git show-ref', 'git merge-base', 'git describe', 'git name-rev',
+    'git worktree list', 'git remote -v', 'git tag -l', 'git tag --list', 'git config --get', 'git config --list', 'git stash show',
+    'get-childitem', 'gci', 'ls', 'dir', 'get-content', 'gc', 'cat', 'type', 'get-item', 'gi', 'get-itemproperty', 'test-path',
+    'resolve-path', 'split-path', 'join-path', 'select-string', 'sls', 'select-object', 'select', 'where-object', 'where', '?',
+    'foreach-object', '%', 'sort-object', 'sort', 'group-object', 'measure-object', 'measure', 'compare-object', 'format-table',
+    'ft', 'format-list', 'fl', 'out-string', 'out-null', 'write-output', 'echo', 'write-host', 'get-date', 'get-location', 'pwd',
+    'set-location', 'cd', 'push-location', 'pop-location', 'convertfrom-json', 'convertto-json', 'get-command', 'get-filehash',
+    'get-member', 'get-winevent', 'get-process', 'get-ciminstance', 'get-wmiobject',
+    'head', 'tail', 'wc', 'grep', 'rg', 'find', 'uniq', 'diff', 'which', 'stat', 'tree', 'true')
+
+# v3.53.6 (sprint 5 do garden, item 6): o reparo que o projeto declara em guards.json → targets.<alvo>.repair (ex.:
+# "docker restart horta-emulador; adb connect localhost:5555") entra na lista da G14 — cada trecho (separado por ;, && ou
+# ||) como prefixo, como as entradas de runCommands. Antes o dev rodava o reparo à mão e a G14 negava.
+function Get-RepairCommands([string]$ProjectDir) {
+    $g = Join-Path $ProjectDir '.team-project/guards.json'
+    if (-not (Test-Path -LiteralPath $g)) { return @() }
+    try { $j = Get-Content -LiteralPath $g -Raw -Encoding UTF8 | ConvertFrom-Json } catch { return @() }
+    if (-not $j -or -not $j.PSObject.Properties['targets'] -or $null -eq $j.targets) { return @() }
+    $out = @()
+    foreach ($t in @($j.targets.PSObject.Properties)) {
+        $v = $t.Value
+        if ($null -eq $v -or $v -isnot [pscustomobject] -or -not $v.PSObject.Properties['repair'] -or -not [string]$v.repair) { continue }
+        foreach ($piece in ([string]$v.repair -split ';|&&|\|\||\r?\n')) { $x = $piece.Trim(); if ($x) { $out += $x } }
+    }
+    return $out
+}
+
+# O casamento por prefixo da lista da G14: o trecho (minúsculo, e a forma com as aspas devolvidas) é igual à entrada ou começa
+# por ela seguida de espaço/tabulação.
+function Test-CommandPrefix([string]$Low, [string]$LowRestored, [string]$Prefix) {
+    $pl = ([string]$Prefix).Trim().ToLowerInvariant()
+    return [bool]($pl -and ($Low -eq $pl -or $Low.StartsWith($pl + ' ') -or $Low.StartsWith($pl + "`t") -or $LowRestored -eq $pl -or $LowRestored.StartsWith($pl + ' ')))
+}
+
 # Marcadores gravados pela sessao (dono SM): .active-run (sprint run / fix run em andamento, G14)
 # e .active-spike (spike ou pedido do stakeholder declarado, G8). Ausente ou invalido -> $null.
 # Agentes em voo (v3.51, G20; v3.51.4; v3.52.2): .team-project/.active-agents, lista JSON de

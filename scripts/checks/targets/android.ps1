@@ -1,5 +1,7 @@
 ﻿# Adaptador Android do executor de cenários (v3.51, F1) e do pré-voo do alvo (D3). Dot-source: . targets\android.ps1
 # Lê a árvore de acessibilidade (testTag exposto como resource-id) por uiautomator e age por adb. Sem nada de produto.
+# v3.55.0 (C2): em app híbrido (WebView) o atributo HTML `id` chega como resource-id puro (sem "pacote:id/") — o -replace do
+# Id abaixo o deixa como está, e o cenário localiza pelo mesmo id do Compose (testIds.attribute = "id"; standards/test-ids.md).
 # Lições incorporadas do avaliador do benchmark: rolagem lenta e curta, esperar a animação parar antes de ler, coletar
 # listas virtualizadas rolando até não aparecer item novo, tela em branco = falha de ambiente (não do app).
 # Config (guards.json → targets.android): package, apk (opcional), avd (para o reparo), maxUptimeHours (padrão 24),
