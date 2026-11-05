@@ -1863,12 +1863,54 @@ Put $p '.team-project/guards.json' ('{ "targets": { "web": { "url": "http://127.
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Stop-Job $srv -ErrorAction SilentlyContinue; Remove-Job $srv -Force -ErrorAction SilentlyContinue
 Check 'v3.53.6 item 9c: alvo de volta → a Task sai de 🔴 para 🟪, a linha vira "retomada" e o operator roda o accept' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($psb, $utf8) } 0 @('mark: T-041a 🔴 → 🟪', 'prova no alvo da T-041a — o alvo web voltou', 'team:operator', 'accept\.ps1 -Task T-041a', 'run\.ps1 done -Task T-041a -Result ok', 'prova no alvo retomada em \d{4}-\d\d-\d\d')
+# v3.54.2 (carta do sprint 5 do garden, item 4): reaberta uma vez e de volta a 🔴 pela prova no alvo → o next não reabre de
+# novo (a T-063 foi e voltou duas vezes, um operator em cada); vai ao stakeholder com a última falha do accept.
+$null = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'blocked', '-Reason', 'prova no alvo pendente — o accept caiu de novo', '-Root', $p)
+Put $p '.team-project/accept/1/T-041a/result.json' '{ "environment": "x", "passed": 0, "total": 2, "results": [ { "id": "SC-014", "status": "FALHOU", "detail": "tag não encontrada: tab [tela: br.x/.Intro · ids: nenhum · textos: Bem-vindo]", "shot": ".team-project/accept/1/T-041a/shots/SC-014-falha.png" } ] }'
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.54.2: Task já reaberta uma vez e de volta a 🔴 → o next não reabre; formulário com a última falha' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'team:operator.*accept\.ps1 -Task T-041a') { "`nREABRIU" } else { '' }) } 0 @('T-041a 🔴: já reaberta pelo alvo de volta', 'última falha: SC-014 — tag não encontrada: tab \[tela: br\.x/\.Intro', 'captura \.team-project/accept/1/T-041a/shots/SC-014-falha\.png', '^(?![\s\S]*REABRIU)')
 # done -Result env com o accept parado por ambiente → a rota do bloqueio com a etiqueta.
 $p = Join-Path $tmp 'env-alvo'; New-Project $p
 Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
 Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "nenhum emulador ou aparelho disponível" }'
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
 Check 'v3.53.6 item 9b: done -Result env com o accept parado por ambiente → sem reparo, mark -To blocked -Reason "prova no alvo pendente — …"' $r 0 @('target\.ps1 -Target android -Repair', 'mark\.ps1 -Task T-041 -To blocked -Reason "prova no alvo pendente — nenhum emulador ou aparelho disponível"', 'T-041 🔴 bloqueada: prova no alvo pendente')
+# v3.54.2 (item 3): accept parado no estado de partida → sem reparo do emulador nem etiqueta da prova pendente; stakeholder.
+Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "ESTADO DE PARTIDA: …", "startState": "br.x/.IntroActivity · textos: Bem-vindo(a) à Horta", "results": [ { "id": "SC-117", "status": "FALHOU", "shot": ".team-project/accept/1/T-041/shots/SC-117-falha.png" } ] }'
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
+Check 'v3.54.2: done -Result env com startState → sem reparo, bloqueio "estado de partida" (sem a etiqueta), formulário com baseline' $r 0 @('ESTADO DE PARTIDA: br\.x/\.IntroActivity', 'mark\.ps1 -Task T-041 -To blocked -Reason "estado de partida — br\.x/\.IntroActivity', 'T-041 🔴 bloqueada: estado de partida', 'targets\.android\.baseline', 'SC-117-falha\.png', '^(?![\s\S]*-Repair)', '^(?![\s\S]*prova no alvo pendente)')
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'blocked', '-Reason', 'estado de partida — br.x/.IntroActivity', '-Root', $p)
+Check 'v3.54.2: bloqueio por estado de partida vai ao stakeholder e não diz que o next reabre' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/sprint-backlog.md'), $utf8) } 0 @('T-041 \| estado de partida — br\.x/\.IntroActivity \| escalado ao stakeholder.*reabre com mark\.ps1 -To qa')
+
+# v3.54.2 (item 3): o accept para cedo quando os 2 primeiros cenários falham na mesma tela, grava progress.json a cada
+# cenário e o startState no result.json (as funções do accept.ps1 com Invoke-Once falso — sem aparelho).
+$hs5 = Join-Path $tmp 'accept-partida.ps1'
+[System.IO.File]::WriteAllText($hs5, @'
+param([string]$Accept, [string]$Lib, [string]$Root, [string]$Case)
+$ErrorActionPreference = 'Stop'
+. $Lib
+$utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'T-041'; $NoRetry = $true; $NoRepair = $true; $Apk = ''
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Get-FailScreen', 'Write-AcceptProgress', 'Invoke-AcceptBaseline') { . ([scriptblock]::Create($f.Extent.Text)) } }
+$script:Tgt = 'web'; $script:ran = 0
+function Stop-WebServer { }
+function Invoke-Once($Block) {
+    $script:ran++
+    $tela = if ($Case -eq 'mesma') { 'br.x/.IntroActivity' } else { "br.x/.Tela$($script:ran)" }
+    return @{ status = 'FALHOU'; detail = "passo 'tap tab-button-estufa': tag não encontrada: tab-button-estufa [tela: $tela · ids: intro.pular · textos: Bem-vindo(a) à Horta]"; shot = (Join-Path $Root ".team-project/accept/1/T-041/shots/$($Block.id)-falha.png") }
+}
+$blocks = @(1..5 | ForEach-Object { @{ id = "SC-10$_"; title = "c$_"; steps = @() } })
+$code = Invoke-Accept $blocks $null { $null } { $null }
+"CODE=$code RAN=$($script:ran)"
+$d = Join-Path $Root '.team-project/accept/1/T-041'
+'RESULT=' + ([System.IO.File]::ReadAllText((Join-Path $d 'result.json')) -replace '\s+', ' ')
+'PROGRESS=' + ([System.IO.File]::ReadAllText((Join-Path $d 'progress.json')) -replace '\s+', ' ')
+'@, (New-Object System.Text.UTF8Encoding($true)))   # com BOM: o 5.1 lê o "·" do detalhe como o accept.ps1 o escreve
+$ha = { param($case) $pp = Join-Path $tmp "partida-$case"; New-Project $pp; $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $hs5 -Accept (Join-Path $checks 'accept.ps1') -Lib (Join-Path $checks 'lib.ps1') -Root $pp -Case $case 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
+$r = & $ha 'mesma'
+Check 'v3.54.2: 2 primeiros cenários na mesma tela, nenhum passou → para (exit 4) com ESTADO DE PARTIDA e startState; 3 não rodam' $r 0 @('CODE=4 RAN=2', 'ESTADO DE PARTIDA: os 2 primeiros cenários \(SC-101, SC-102\) pararam na mesma tela — br\.x/\.IntroActivity · textos: Bem-vindo\(a\) à Horta', '3 cenário\(s\) não rodaram', '"startState":\s*"br\.x/\.IntroActivity · textos: Bem-vindo\(a\) à Horta"', 'PROGRESS=.*"passed":\s*0.*"failed":\s*2.*"streak":\s*2')
+$r = & $ha 'diferente'
+Check 'v3.54.2: falhas em telas diferentes → o accept roda todos (exit 1), sem startState' $r 0 @('CODE=1 RAN=5', '"startState":\s*null', '"failed":\s*5')
 
 # v3.53.7 (encadeamento do sprint 5 do garden, decisões do stakeholder de 04/11): select e seed no accept, premissa de layout
 # medida executando, decisões do sprint citadas e não copiadas.
@@ -2030,6 +2072,41 @@ $r = & $hn 'local'
 Check 'v3.54.1: serial local (emulator-5554) sem aparelho → sem adb connect, mensagem de antes' $r 0 @('HEALTH=\[nenhum emulador ou aparelho conectado', '^(?![\s\S]*connect localhost)')
 $r = & $hn 'reparo'
 Check 'v3.54.1: reparo de serial de rede religa em laço até o aparelho voltar (não wait-for-device)' $r 0 @('WAIT=\[\] TRIES=3', '^(?![\s\S]*wait-for-device)')
+
+# v3.54.2 (carta do sprint 5 do garden, item 4): Task sem marcador (recém-entrada no Sprint Backlog) aparece em ⬜ A fazer;
+# a 🔴 traz o motivo curto ao lado.
+$p = Join-Path $tmp 'v3542-quadro'; New-Project $p
+Put $p '.team-project/sprints/1/kanban.md' ("# Kanban — Sprint 1`n`n## Kanban`n`n| x |`n|---|`n`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/burndown.md'), $utf8).Replace('# Burndown — Sprint 1', ''))
+Remove-Item -LiteralPath (Join-Path $p '.team-project/sprints/1/burndown.md') -Force
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') "$($e.todo) T-041a" 'T-041a'
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'blocked', '-Reason', 'prova no alvo pendente — emulador fora', '-Root', $p)
+Check 'v3.54.2: quadro — Task sem marcador em ⬜ A fazer; 🔴 com o motivo curto ao lado' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/kanban.md'), $utf8) } 0 @('(?m)^\| T-041a \|.*\| T-041 · prova no alvo pendente — emulador fora \|\s*$')
+
+# v3.54.2 (item 3): espera de um accept que só falha — o next mostra o avanço (progress.json do mesmo processo) e, sem nenhum
+# cenário passando em 15 min, SEM AVANÇO (a captura de falha contava como sinal de vida: T-063, 50 min esperando).
+$p = Join-Path $tmp 'v3542-avanco'; New-Project $p
+Put $p '.team-project/sprints/1/plan/T-041a-x.md' "# Plano`n"
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') '[`plan/T-041a-x.md`](plan/)' '[`plan/T-041a-x.md`](plan/T-041a-x.md)'
+$slp = Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-Sleep 600' -PassThru -WindowStyle Hidden
+try {
+    Put $p '.team-project/.target-lock' ('{"target":"android","owner":"accept T-041","pid":' + $slp.Id + ',"desde":"' + (Get-Date).AddMinutes(-25).ToString('yyyy-MM-dd HH:mm:ss') + '"}')
+    Put $p '.team-project/accept/1/T-041/progress.json' ('{ "task": "T-041", "pid": ' + $slp.Id + ', "total": 7, "passed": 0, "failed": 3, "streak": 3, "last": { "id": "SC-117", "status": "FALHOU", "detail": "tag não encontrada: tab-button-estufa [tela: br.x/.IntroActivity · ids: intro.pular · textos: Bem-vindo(a) à Horta]", "shot": ".team-project/accept/1/T-041/shots/SC-117-falha.png" } }')
+    $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+    Check 'v3.54.2: espera de accept mostra cenários passados/falhados e SEM AVANÇO com a tela da última falha' $r 3 @('cenários: 0 passaram, 3 falharam de 7 \(3 seguidos\); último: SC-117 — tag não encontrada', 'SEM AVANÇO: 3 cenário\(s\) falharam e nenhum passou em 2\d min', 'textos: Bem-vindo\(a\) à Horta')
+    Put $p '.team-project/accept/1/T-041/progress.json' ('{ "task": "T-041", "pid": ' + $slp.Id + ', "total": 7, "passed": 2, "failed": 1, "streak": 1, "last": { "id": "SC-118", "status": "FALHOU", "detail": "x", "shot": "" } }')
+    $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+    Check 'v3.54.2: accept com cenário passando não é SEM AVANÇO' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'SEM AVANÇO') { "`nSEMAVANCO" } else { '' }) } 3 @('cenários: 2 passaram, 1 falharam de 7', '^(?![\s\S]*SEMAVANCO)')
+} finally { Stop-Process -Id $slp.Id -Force -ErrorAction SilentlyContinue }
+
+# v3.54.2 (item 3): o estado de partida é uma massa declarada — o -ParseOnly do QA reprova baseline fora de seeds.
+$p = Join-Path $tmp 'v3542-baseline'; New-Project $p
+Put $p '.team-project/quality-assurance/scenarios/H-014.scn' "scenario SC-014 x`nlaunch`nassert-exists a.b`n"
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x", "baseline": "sem-intro", "seeds": { "outra": "exit 0" } } } }'
+$r = Invoke-Check 'accept.ps1' @('-ParseOnly', '-Root', $p)
+Check 'v3.54.2: baseline que não é massa de seeds reprova o -ParseOnly' $r 2 @("targets\.android\.baseline 'sem-intro' não é uma massa de targets\.android\.seeds")
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x", "baseline": "sem-intro", "seeds": { "sem-intro": "exit 0" } } } }'
+$r = Invoke-Check 'accept.ps1' @('-ParseOnly', '-Root', $p)
+Check 'v3.54.2: baseline declarada passa no -ParseOnly' $r 0 @('1 cenário\(s\) válidos')
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output

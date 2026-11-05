@@ -127,6 +127,10 @@ Sprint 6: zero mutação `inconclusivo` por trecho; 🔺 GAPs ao Arquiteto por T
 
 **Instrução:** stakeholder, 05/11 (carta da sessão do sprint 5 do garden; "pode seguir" com A, B e C). Muda: o pré-voo religa o emulador de rede antes de dizer "fora" e a sessão cita a causa dele no formulário de bloqueio; a margem do dev ganha o **stub** da dependência nova em teste que já existe e monta um arquivo do plano; decisão de 🔺 GAP com a construção começada **substitui** o trecho que derrubou (sem divisão), a contagem vale também pelo último commit e o `start` recusa plano acima do teto. Recusados: campo `reconnect` no `guards.json`, comandos de diagnóstico liberados à sessão e regra do `plan.ps1` que adivinha `inject()`. Sem regra nova (34). **Indicador (sprint 6):** zero bloqueio de ambiente com o emulador no ar; zero 🔺 GAP por stub de teste; zero dev começando com plano reprovado. **Evidência:** CHANGELOG v3.54.1.
 
+### Addendum v3.54.2 — accept que para no estado de partida, progresso visível, quadro em dia (SM + Dev + QA) — 05/11/2026
+
+**Instrução:** stakeholder, 05/11 (pontos 3 e 4 da mesma carta; "pode fazer" com D, E, F e G). Muda: os 2 primeiros cenários na mesma tela param o accept como **estado de partida**, sem reparo e sem reabertura automática, e com decisão do stakeholder; o estado de partida se declara em `targets.android.baseline`, que o QA aponta; a espera de um accept mostra o avanço e **SEM AVANÇO**; o quadro mostra a Task nova em ⬜ e o motivo da 🔴, e reabre pelo alvo de volta uma vez só. Recusados: tipos de bloqueio e a sessão abrir a captura. Sem regra nova (34). **Indicador (sprint 6):** nenhum accept acima de 15 min sem cenário passando; nenhuma Task reaberta duas vezes pelo alvo; nenhuma Task do Sprint Backlog fora do quadro. **Evidência:** CHANGELOG v3.54.2.
+
 ---
 
 ## v3.53 — Plano pela ficha: a quebra em Tasks traz a ficha de cada Task, um Arquiteto por Task e o template do plano só com o operativo (SM + Arquiteto + Dev + QA) — 28/10/2026

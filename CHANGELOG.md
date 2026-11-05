@@ -13,6 +13,28 @@
 
 ---
 
+## v3.54.2 — 2026-11-05
+
+**Branch:** `fix/v3.54.2` empilhada sobre `fix/v3.54.1` (ainda não mesclada) · **Processo:** addendum v3.54.2 (accept que para no estado de partida, progresso visível, quadro em dia)
+Origem: pontos 3 e 4 da carta da sessão do sprint 5 do garden (T-063 e o quadro, 05/11); o stakeholder aprovou D, E, F e G em 05/11.
+
+Mudanças:
+- **D · accept para no estado de partida** (`accept.ps1`, `run.ps1 done`, `mark.ps1`):
+  - os 2 primeiros cenários falham na mesma tela (tela e textos do `[tela: …]`) e nenhum passa: o accept para com exit 4, "ESTADO DE PARTIDA" e `startState` no `result.json`; o resto não roda. Na T-063, 7 cenários × ~7 min falharam na introdução;
+  - o `done -Result env` lê o `startState`: sem reparo do emulador e com bloqueio "estado de partida — <tela>", sem a etiqueta da prova pendente, então o `next` não o reabre; o formulário ao stakeholder traz a captura e oferece o `baseline` ou o ajuste do cenário.
+- **E · progresso durante o accept** (`accept.ps1` `progress.json`, `lib.ps1` `Get-AcceptProgress`/`Get-TaskWait`, `run.ps1 next`):
+  - a cada cenário, o accept grava quantos passaram, quantos falharam seguidos e o último (detalhe com a tela em texto e a captura);
+  - a espera no `next` e no `/team-status` mostra isso. Nenhum passou em 15 min, com 2 falhas ou mais: **SEM AVANÇO**, com o mesmo tratamento do POSSÍVEL TRAVAMENTO. Antes, a captura de falha contava como sinal de vida.
+- **F · estado de partida declarável** (`targets.android.baseline`): o nome de uma massa de `seeds`, aplicada depois de instalar o APK e depois de cada `reset`; o `-ParseOnly` reprova baseline que não é massa declarada.
+- **G · quadro em dia** (`kanban.ps1`, `lib.ps1` `Get-BlockLines`/`Get-TargetRetakeCount`, `run.ps1 next`):
+  - Task sem marcador (entrada fora da Planning, divisão) aparece em ⬜ A fazer; antes, sumia até a primeira transição;
+  - a 🔴 mostra o motivo curto ao lado (a última linha dela em Bloqueios);
+  - reabertura automática pelo alvo de volta **uma vez**: a Task já reaberta (linha "prova no alvo retomada") que cai de novo fica 🔴 e vai ao stakeholder com a última falha do accept. A T-063 foi e voltou duas vezes, um operator em cada.
+- **Documentos:** `how-to.md` (serial de rede, baseline, accept que para cedo, reabertura uma vez), `sprint-run.md`, `agents/task-runner.md`, README do QA, addendum no process-changelog.
+- **Recusados:** tipos de bloqueio (a dependência vai na coluna "Depende de") e a sessão abrir a captura (a tela vai em texto no `next`).
+
+Conferências 347/0 (+10), guardas 286/0, C3 ok. **Não testado:** o accept num emulador real. O teste extrai as funções do `accept.ps1` e simula os cenários; o `baseline` aplicado de fato e o `progress.json` foram vistos só por esse teste. **Riscos:** um defeito real do app que deixe a tela inicial sem o id esperado também cai em "estado de partida", e vai ao stakeholder com a captura em vez de ir ao dev. A tela em texto (`[tela: …]`) só existe nas falhas do Android que procuram um id: `assert-text` e o alvo web não acionam a parada cedo.
+
 ## v3.54.1 — 2026-11-05
 
 **Branch:** `fix/v3.54.1` a partir de `develop` (com a v3.54.0 mesclada pelo PR #119) · **Processo:** addendum v3.54.1 (alvo que se religa, margem stub, plano reconferido no meio da construção)
