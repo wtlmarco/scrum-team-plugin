@@ -100,6 +100,9 @@ function Save-TaskCommit($T, [string]$S) {
     if ($LASTEXITCODE -ne 0) { return @{ Line = "  commit: projeto sem git — checkpoint por cópia dos arquivos da $($T.Id) (sprint-run.md, fechamento da Task)"; Sha = '' } }
     $pf = Get-PlanFull $T $S; $scope = @()
     if ($pf) { $pt = Read-Text $pf; $scope = @(Get-PlanScope $pt) + @(Get-Mutations $pt | ForEach-Object { ($_.Test -replace '\\', '/') -replace '^\./', '' }) }
+    # v3.54.1: os testes da margem stub (fora da lista, conferidos pelo close R7-margem) entram no commit da Task.
+    $dvp = Join-Path $S "delivery/$($T.Id).md"
+    if ($scope.Count -and (Test-Path -LiteralPath $dvp)) { $scope += @(Get-MarginAdjustments (Read-Text $dvp) | Where-Object { $_.Kind -eq 'stub' } | ForEach-Object { $_.File }) }
     $scope = @($scope | Where-Object { $_ -and $_ -notmatch '^\.team-project(/|$)' -and $_ -notmatch '[<>*?]' } | Select-Object -Unique)
     if (-not $scope.Count) { return @{ Line = "  commit: o plano da $($T.Id) sem **Arquivos tocados:** — nada versionado; o código segue no disco (commit à mão, só os arquivos da Task)"; Sha = '' } }
     foreach ($f in $scope) { $null = & git -C $Root add -A -- ":(literal)$f" 2>$null }
@@ -324,6 +327,19 @@ try {
     if ($Action -eq 'start') {
         if (-not $T) { [Console]::Error.WriteLine('run start pede -Task.'); exit 2 }
         $pf = Get-PlanFull $T $S; if (-not $pf) { [Console]::Error.WriteLine("run: $($T.Id) sem plano — o preparo da construção vem antes (run.ps1 next)."); exit 2 }
+        # v3.54.1 (carta do sprint 5 do garden, item 2): plano acima do teto não vai ao dev. Na T-063 a decisão do 🔺 GAP levou o
+        # plano a 30,1 KB e o dev seguiu com o plan.ps1 reprovado — a divisão (regra 22) só olhava Task antes da construção.
+        # Com construção começada (relatório em delivery/), a Task não se divide: o código dela está no meio; o Arquiteto troca
+        # o trecho que a decisão derrubou. Antes da construção, a divisão do run.ps1 next.
+        $bigS = Get-OversizedPlan $T
+        if ($bigS) {
+            if (Test-Path -LiteralPath (Join-Path $S "delivery/$($T.Id).md")) {
+                [Console]::Error.WriteLine("run start: o plano da $($T.Id) tem $($bigS.Kb) KB (teto $($script:PlanMaxKb) KB, regra 22) — o dev não começa com o plano reprovado. A construção já começou, então a Task não se divide: Arquiteto em instância curta (/arc question) com o prompt `"O plano $($bigS.Rel) passou do teto com a decisão do 🔺 GAP. Substitua no plano o texto que a decisão derrubou (passo, premissa, teste ou arquivo superado) pela decisão — não a acrescente ao lado e não corte o que segue valendo. Rode plan.ps1 -Plan <plano> até tamanho ok. Volte em até 5 linhas.`"; depois run.ps1 start -Task $($T.Id) de novo.")
+            } else {
+                [Console]::Error.WriteLine("run start: o plano da $($T.Id) tem $($bigS.Kb) KB (teto $($script:PlanMaxKb) KB, regra 22): Task grande — vai à divisão antes do dev. Rode run.ps1 next (ele dá o prompt do Arquiteto).")
+            }
+            exit 2
+        }
         # v3.53.1 (plugin-report do sprint 4 do garden, item 3): dev desta Task ainda vivo (processo hospedeiro vivo e sinal de
         # vida há menos de 20 min) — outra instância poria dois devs no mesmo alvo físico.
         $liveDev = @(Get-LiveAgents $Root $T.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -eq 'developer' })
@@ -429,7 +445,7 @@ try {
             Add-RunLog $S $n $T.Id '🔺 GAP → Arquiteto em instância nova (/arc question); a decisão fica no plano (R9)' $(if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }) "sprints/$n/delivery/$($T.Id).md"
             Out "run: $($T.Id) com 🔺 GAP — Arquiteto em instância NOVA (o cache de 5 min do anterior já venceu; C1), modo /arc question (rota gravada no run-log.md):"
             Out "  $(Get-AgentLine 'architect')"
-            Out "  prompt: `"Decida o 🔺 GAP da $($T.Id): cartão .team-project/$card, plano .team-project/sprints/$n/$($T.Plan), relatório .team-project/sprints/$n/delivery/$($T.Id).md$(if ($diagV) { ", diagnóstico do operator $diagRel (veredito $diagV)" }). Registre a decisão no plano (R9). Se ela vale para mais de uma Task do sprint (alvo, APK, teste instável, regra de processo), grave-a UMA vez como D-<k> em .team-project/architect/decisions/S$n.md (## D-<k> — <título>, **Vale para:** todas | T-…, a regra em até 5 linhas) e no plano só a referência em **Decisões do sprint:** — não copie o texto em plano nenhum: o cartão de cada Task a traz (regra 29). Decisão que já está lá: só a referência. Não escreva código nem rode build. Volte em até 15 linhas.`""
+            Out "  prompt: `"Decida o 🔺 GAP da $($T.Id): cartão .team-project/$card, plano .team-project/sprints/$n/$($T.Plan), relatório .team-project/sprints/$n/delivery/$($T.Id).md$(if ($diagV) { ", diagnóstico do operator $diagRel (veredito $diagV)" }). Registre a decisão no plano (R9) no lugar do texto que ela derruba (passo, premissa, teste ou arquivo superado) — não ao lado: o plano tem teto de $($script:PlanMaxKb) KB e o run.ps1 start recusa o plano acima dele. Rode plan.ps1 -Plan .team-project/sprints/$n/$($T.Plan) antes de voltar. Se ela vale para mais de uma Task do sprint (alvo, APK, teste instável, regra de processo), grave-a UMA vez como D-<k> em .team-project/architect/decisions/S$n.md (## D-<k> — <título>, **Vale para:** todas | T-…, a regra em até 5 linhas) e no plano só a referência em **Decisões do sprint:** — não copie o texto em plano nenhum: o cartão de cada Task a traz (regra 29). Decisão que já está lá: só a referência. Não escreva código nem rode build. Volte em até 15 linhas.`""
             Out "  depois: dev em instância NOVA com a decisão — run.ps1 start -Task $($T.Id) (o cartão regerado aponta o plano com a decisão) e rode run.ps1 done de novo"
             exit 0
         }

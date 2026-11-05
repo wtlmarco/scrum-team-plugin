@@ -123,6 +123,10 @@ Sprint 6: zero mutação `inconclusivo` por trecho; 🔺 GAPs ao Arquiteto por T
 ### Parte mecânica (implementada pela sessão principal, citada aqui)
 `lib.ps1` `Get-Mutations` (forma pela regra), `Get-DeliveryText`, `Get-TaskMutations`, `Get-MarginAdjustments`; `verify.ps1 -Mode mutation` roda a linha do dev (e de novo quando ela muda); `close.ps1` R7-margem (bloqueante); `plan.ps1` regra 18; `fix.ps1` aceita a forma pela regra.
 
+### Addendum v3.54.1 — alvo que se religa, margem stub, plano reconferido no meio da construção (SM + Arq + Dev + QA) — 05/11/2026
+
+**Instrução:** stakeholder, 05/11 (carta da sessão do sprint 5 do garden; "pode seguir" com A, B e C). Muda: o pré-voo religa o emulador de rede antes de dizer "fora" e a sessão cita a causa dele no formulário de bloqueio; a margem do dev ganha o **stub** da dependência nova em teste que já existe e monta um arquivo do plano; decisão de 🔺 GAP com a construção começada **substitui** o trecho que derrubou (sem divisão), a contagem vale também pelo último commit e o `start` recusa plano acima do teto. Recusados: campo `reconnect` no `guards.json`, comandos de diagnóstico liberados à sessão e regra do `plan.ps1` que adivinha `inject()`. Sem regra nova (34). **Indicador (sprint 6):** zero bloqueio de ambiente com o emulador no ar; zero 🔺 GAP por stub de teste; zero dev começando com plano reprovado. **Evidência:** CHANGELOG v3.54.1.
+
 ---
 
 ## v3.53 — Plano pela ficha: a quebra em Tasks traz a ficha de cada Task, um Arquiteto por Task e o template do plano só com o operativo (SM + Arquiteto + Dev + QA) — 28/10/2026

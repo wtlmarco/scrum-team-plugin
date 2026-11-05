@@ -13,6 +13,26 @@
 
 ---
 
+## v3.54.1 — 2026-11-05
+
+**Branch:** `fix/v3.54.1` empilhada sobre `fix/v3.54.0` (ainda não mesclada) · **Processo:** addendum v3.54.1 (alvo que se religa, margem stub, plano reconferido no meio da construção)
+Origem: carta da sessão do sprint 5 do garden ao dono do plugin (T-063, 04–05/11); o stakeholder aprovou os itens A, B e C em 05/11.
+
+Mudanças:
+- **A · emulador de rede se religa** (`targets/android.ps1`; `sprint-run.md`):
+  - serial `host:porta` fora do `adb devices`: o pré-voo roda `adb connect` antes de reprovar. Porta recusada → "o emulador (ou o container dele) está fora"; conexão aceita com o aparelho `offline` → "iniciando ou travado"; religado → segue a conferência (tempo ligado, memória). Na T-063, o container estava no ar havia 9 h e só a conexão do `adb` tinha caído;
+  - o reparo declarado espera com um laço de `adb connect`, porque o `wait-for-device` não religa serial de rede (era o "não voltou em 180 s"); a espera do boot religa se a conexão cair;
+  - antes do formulário de bloqueio de ambiente, a sessão roda `target.ps1 -Target <alvo>` e cita a linha dele.
+- **B · plano reconferido no meio da construção** (`plan.ps1`, `run.ps1`):
+  - a `- Contagem:` vale pela árvore de trabalho **ou** pelo último commit (HEAD). Antes, reconferir o plano com o código no meio reprovava sempre;
+  - `run.ps1 start` recusa plano acima de 30 KB. Com a construção começada, o Arquiteto substitui o trecho que a decisão derrubou e a Task não se divide; antes dela, divisão pelo `next`. O prompt do GAP manda substituir, não acrescentar, e rodar o `plan.ps1`.
+- **C · margem stub** (`hooks/test-files.ps1` `Test-MountingSpec`, G9, `close.ps1` R7-margem, `lib.ps1` `Get-MarginAdjustments`, commit da Task):
+  - teste que já existe, fora da lista, que cita um arquivo de produção do plano: a G9 libera a edição; o dev acrescenta o stub da dependência nova e registra `- A<k> · stub · `<teste>` · <a dependência>`;
+  - o `close` reprova teste assim alterado sem a linha e o stub em teste que não monta nada do plano; o commit da Task inclui os testes da margem stub; o QA confere que só o stub mudou. Na T-063, 29 casos em dois specs foram ao Arquiteto por isso.
+- **Documentos:** `implementation-plan.md` (regras 22 e 30: substituir no GAP; `- Contagem:` dos testes que montam o componente com dependência nova), `agents/developer.md` (regra 1), `delivery-report.md`, `working-rules.md` R4, README do QA, `sprint-run.md`, addendum no process-changelog.
+
+Conferências 337/0 (+13), guardas 286/0 (+4), C3 ok. **Não testado:** `adb connect` contra um emulador real em container (o teste usa adb falso), o fluxo de stub numa sessão real. **Riscos:** a G9 reconhece "teste que monta" pelo nome do arquivo de produção citado no teste; import por barril (`'../pages'`) não é reconhecido e continua indo a 🔺 GAP. O teste do garden que passava sozinho e falhava na suíte (152 × 160 px) sugere estado vazando entre testes; isso é do projeto, não do plugin.
+
 ## v3.54.0 — 2026-11-04
 
 **Branch:** `fix/v3.54.0` a partir de `develop` (com a v3.53.7 mesclada pelo PR #117) · **Processo:** v3.54 (mutação pela regra e margem do dev; R4 ganha a margem; bloco v3.51 arquivado)

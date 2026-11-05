@@ -108,6 +108,21 @@ $cases = @(
        Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); content = 'x' } } },
     @{ Name = 'G9 dev fora do plano'; Script = 'pre-tool.ps1'; Expect = 2
        Payload = @{ tool_name = 'Edit'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/b.cs'); old_string = 'a'; new_string = 'b' } } },
+    # v3.54.1 (carta do sprint 5 do garden, item 2): margem stub — teste que já existe e monta um arquivo do plano.
+    @{ Name = 'G9 (v3.54.1) margem stub: spec existente que monta arquivo do plano liberado'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = {
+           Set-Content -LiteralPath (Join-Path $proj '.team-project/sprints/1/plan/T-001-x.md') "# Plano — T-001`n**História:** H-001`n**Arquivos tocados:** ``src/a.cs``,`n``tests/ATests.cs``, ``src/pages/plantio.page.ts```n`n## 1. Objetivo`n" -Encoding UTF8
+           New-Item -ItemType Directory -Force (Join-Path $proj 'src/pages') | Out-Null
+           Set-Content -LiteralPath (Join-Path $proj 'src/pages/filtro.render.spec.ts') "import { PlantioPage } from './plantio.page';`ndescribe('x', () => {});" -Encoding UTF8
+           Set-Content -LiteralPath (Join-Path $proj 'src/pages/outro.spec.ts') "import { Outra } from './outra.page';" -Encoding UTF8 }
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/pages/filtro.render.spec.ts'); old_string = 'x'; new_string = 'y' } } },
+    @{ Name = 'G9 (v3.54.1) margem stub: spec que não monta arquivo do plano negado'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/pages/outro.spec.ts'); old_string = 'x'; new_string = 'y' } } },
+    @{ Name = 'G9 (v3.54.1) margem stub: spec novo (não existe) negado'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/pages/novo.spec.ts'); content = "import { PlantioPage } from './plantio.page';" } } },
+    @{ Name = 'G9 (v3.54.1) margem stub: arquivo de produção que cita o do plano segue negado'; Script = 'pre-tool.ps1'; Expect = 2
+       Setup = { Set-Content -LiteralPath (Join-Path $proj 'src/pages/menu.page.ts') "import { PlantioPage } from './plantio.page';" -Encoding UTF8 }
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/pages/menu.page.ts'); old_string = 'x'; new_string = 'y' } } },
     @{ Name = 'G9 dev Set-Content fora do plano'; Script = 'pre-tool.ps1'; Expect = 2
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "Set-Content -Path src/b.cs -Value 'x'" } } },
     @{ Name = 'G9 dev log redirecionado (R28)'; Script = 'pre-tool.ps1'; Expect = 0
