@@ -296,6 +296,21 @@ function Get-TargetsConfig([string]$Root) {
     return $null
 }
 
+# Atributo que carrega o id de teste (v3.55.0, C2): guards.json → testIds.attribute ("id" | "data-testid" | "testTag" | outro),
+# depois targets.web.testIdAttribute (compatibilidade) e, sem nenhum, "data-testid".
+function Get-TestIdAttribute([string]$Root) {
+    $g = Join-Path $Root '.team-project/guards.json'
+    if (Test-Path -LiteralPath $g) {
+        try {
+            $j = Read-Text $g | ConvertFrom-Json
+            if ($j.PSObject.Properties['testIds'] -and $j.testIds -and $j.testIds.PSObject.Properties['attribute'] -and ([string]$j.testIds.attribute).Trim()) { return ([string]$j.testIds.attribute).Trim() }
+        } catch { }
+    }
+    $tc = Get-TargetsConfig $Root
+    if ($tc -and $tc.PSObject.Properties['web'] -and $tc.web -and $tc.web.PSObject.Properties['testIdAttribute'] -and $tc.web.testIdAttribute) { return [string]$tc.web.testIdAttribute }
+    return 'data-testid'
+}
+
 # Massa de dados do cenário (v3.53.7, encadeamento do sprint 5 do garden: o reset zera a base e o cenário rodava sem os
 # dados de que o critério precisa). guards.json → targets.<alvo>.seeds: { "<nome>": "<comando PowerShell>" }; o .scn pede
 # com "seed <nome>". Devolve @{ nome = comando } do alvo (vazio sem a chave).
@@ -676,8 +691,9 @@ function Find-UntaggedUi([string]$Rel, [string]$Text, [string]$Attr = 'data-test
             }
         }
     } elseif ($Rel -match '\.(html?|tsx|jsx|vue)$') {
-        foreach ($m in [regex]::Matches($Text, '<(button|input|select|textarea|a)(?=[\s/>])')) {
-            $i = $m.Index + $m.Length; $depth = 0; $qc = $null
+        # v3.55.0 (C3): o texto da tag de abertura que começa em $ix (aspas e chaves de binding respeitadas).
+        $tagAt = { param($ix, $len)
+            $i = $ix + $len; $depth = 0; $qc = $null
             while ($i -lt $Text.Length) {
                 $ch = $Text[$i]
                 if ($qc) { if ($ch -eq $qc) { $qc = $null } }
@@ -687,12 +703,50 @@ function Find-UntaggedUi([string]$Rel, [string]$Text, [string]$Attr = 'data-test
                 elseif ($ch -eq [char]'>' -and $depth -le 0) { break }
                 $i++
             }
-            $tag = $Text.Substring($m.Index, [Math]::Min($Text.Length, $i + 1) - $m.Index)
+            return $Text.Substring($ix, [Math]::Min($Text.Length, $i + 1) - $ix) }
+        # O atributo do id aparece na tag: id=, [id]=, [attr.id]=, :id= (vue), data-testid=, [attr.data-testid]=… Para "id", o
+        # nome precisa estar sozinho (não "data-id", "hidden", "width"); para os outros (data-testid, testTag) basta o nome.
+        $hasAttr = { param($tag)
+            if ($Attr -eq 'id') { return ($tag -match '(?<![\w.\-])(?:\[attr\.|\[|:|v-bind:)?id\]?\s*=') }
+            return $tag.Contains($Attr) }
+        # Controles do Ionic (v3.55.0): cada um pede id; ion-tab-button fica isento (o Ionic gera tab-button-<tab>).
+        $ionCtl = 'ion-button|ion-input|ion-textarea|ion-select|ion-checkbox|ion-toggle|ion-radio|ion-segment-button|ion-searchbar|ion-datetime|ion-range|ion-fab-button|ion-menu-button|ion-back-button'
+        $flagged = @{}
+        foreach ($m in [regex]::Matches($Text, "<(button|input|select|textarea|a|$ionCtl|ion-item)(?=[\s/>])")) {
+            $tag = & $tagAt $m.Index $m.Length
             $name = $m.Groups[1].Value
             if ($name -eq 'a' -and $tag -notmatch '\b(href|onClick|routerLink)\b|\(click\)') { continue }
+            if ($name -eq 'ion-item' -and $tag -notmatch '\bbutton\b|\(click\)|\bonClick\b|\brouterLink\b') { continue }
             if ($name -eq 'input' -and $tag -match 'type\s*=\s*["'']hidden["'']') { continue }
-            if ($tag.Contains($Attr)) { continue }
+            if (& $hasAttr $tag) { continue }
+            $flagged[$m.Index] = $true
             $f = & $flag $m.Index "<$name sem $Attr"; if ($f) { $out += $f }
+        }
+        # Item de lista (v3.55.0): ion-item/li/tr repetido por *ngFor ou @for pede id no item (a chave da entidade, nunca o
+        # índice). Limite: só esses três elementos; lista de outro elemento (div, card) fica ao QA.
+        foreach ($m in [regex]::Matches($Text, '<(ion-item|li|tr)(?=[\s/>])')) {
+            if ($flagged.ContainsKey($m.Index)) { continue }
+            $tag = & $tagAt $m.Index $m.Length
+            $before = $Text.Substring(0, $m.Index)
+            $inFor = ($tag -match '\*ngFor\b') -or ($before -match '@for\s*\([^)]*\)\s*\{\s*$')
+            if (-not $inFor) { continue }
+            if (& $hasAttr $tag) { continue }
+            $f = & $flag $m.Index "<$($m.Groups[1].Value) de lista sem $Attr"; if ($f) { $out += $f }
+        }
+        # Raiz da tela (v3.55.0): template de página do Ionic/Angular (*.page.html) leva id no elemento raiz ou no ion-content.
+        # React e Compose não são conferidos por heurística: ficam ao QA.
+        if ($Rel -match '\.page\.html$') {
+            $clean = [regex]::Replace($Text, '(?s)<!--.*?-->', [System.Text.RegularExpressions.MatchEvaluator]{ param($mm) $mm.Value -replace '[^\r\n]', ' ' })
+            $rm = [regex]::Match($clean, '<([a-zA-Z][\w-]*)(?=[\s/>])')
+            if ($rm.Success) {
+                $okRoot = $false
+                # $clean tem o mesmo tamanho de $Text (comentário vira espaço): os índices valem para o $tagAt.
+                if (& $hasAttr (& $tagAt $rm.Index $rm.Length)) { $okRoot = $true }
+                else {
+                    foreach ($cm in [regex]::Matches($clean, '<ion-content(?=[\s/>])')) { if (& $hasAttr (& $tagAt $cm.Index $cm.Length)) { $okRoot = $true; break } }
+                }
+                if (-not $okRoot) { $f = & $flag $rm.Index "raiz da tela (<$($rm.Groups[1].Value)>) sem $Attr no elemento raiz nem no ion-content"; if ($f) { $out += $f } }
+            }
         }
     }
     return @($out | Select-Object -Unique)
@@ -736,9 +790,7 @@ function Get-TestIdFindings([string]$Root, [string]$Task) {
         $files = @(& git -C $Root status --porcelain -uall 2>$null | ForEach-Object { $s = ([string]$_).Substring([Math]::Min(3, ([string]$_).Length)); if ($s -match ' -> ') { $s = ($s -split ' -> ')[-1] }; $s.Trim('"') })
         if ($files.Count) { $res.Notes += 'arquivos da Task pelo git (sem **Arquivos tocados:** de plano no quadro)' }
     }
-    $attr = 'data-testid'
-    $tc = Get-TargetsConfig $Root
-    if ($tc -and $tc.PSObject.Properties['web'] -and $tc.web -and $tc.web.PSObject.Properties['testIdAttribute'] -and $tc.web.testIdAttribute) { $attr = [string]$tc.web.testIdAttribute }
+    $attr = Get-TestIdAttribute $Root   # v3.55.0 (C2): testIds.attribute → targets.web.testIdAttribute → data-testid
     foreach ($f in @($files | Where-Object { $_ -match '\.(kt|html?|tsx|jsx|vue)$' -and -not (Test-TestIdExcluded $_) } | Select-Object -Unique)) {
         $p = Join-Path $Root $f; if (-not (Test-Path -LiteralPath $p -PathType Leaf)) { continue }
         $res.Applies = $true; $res.Files++
@@ -869,6 +921,8 @@ function Get-TaskMutations([string]$Root, [string]$PlanPath, [string]$PlanText, 
 #   "- A<k> · css · `<arquivo>` · <o que mudou> · regra: <onde a regra do projeto já diz o valor>"
 #   "- A<k> · stub · `<teste que já existia>` · <a dependência nova que o stub ganhou>" (v3.54.1: teste fora da lista que
 #   monta um arquivo do plano — Test-MountingSpec, hooks/common.ps1)
+#   "- A<k> · fixture · `<arquivo de teste>` · <o que mudou> · regra: <standards/… § do padrão de ids | caminho de dump real .xml>"
+#   (v3.55.0: a fixture do teste passa a seguir o que a regra ou o dump dizem; o "Deve falhar se…" do plano não muda)
 # Devolve @{ Id; Kind; File; What; Rule; Bad } por linha; Bad = a linha fora do formato.
 function Get-MarginAdjustments([string]$DeliveryText) {
     $out = @()
@@ -876,12 +930,78 @@ function Get-MarginAdjustments([string]$DeliveryText) {
         foreach ($l in ($sec.Groups[1].Value -split "`r?`n")) {
             if ($l -notmatch '^\s*-\s*\S') { continue }
             if ($l -match '^\s*-\s*(nenhum|nada)\b') { continue }
-            $m = [regex]::Match($l, '^\s*-\s*(A\d+)\s*·\s*(teste|css|stub)\s*·\s*`([^`]+)`\s*·\s*(.+?)(?:\s*·\s*regra:\s*(.*))?$')
-            if (-not $m.Success) { $out += @{ Id = ''; Kind = ''; File = ''; What = ''; Rule = ''; Bad = $l.Trim() }; continue }
+            $m = [regex]::Match($l, '^\s*-\s*(A\d+)\s*·\s*(teste|css|stub|fixture)\s*·\s*`([^`]+)`\s*·\s*(.+?)(?:\s*·\s*regra:\s*(.*))?$')
+            if (-not $m.Success) {
+                # v3.55.0 (A1): leitura tolerante (sem crases, espaços variados) — devolve o item com Bad E os campos lidos, para o
+                # close seguir com as travas daquele ajuste e juntar tudo numa única saída.
+                $t = [regex]::Match($l, '^\s*-\s*(A\d+)\s*·\s*(teste|css|stub|fixture)\s*·\s*`?([^`·\s][^`·]*?)`?\s*·\s*(.+?)(?:\s*·\s*regra:\s*(.*))?$')
+                if ($t.Success) { $out += @{ Id = $t.Groups[1].Value; Kind = $t.Groups[2].Value; File = (($t.Groups[3].Value.Trim() -replace '\\', '/') -replace '^\./', ''); What = $t.Groups[4].Value.Trim(); Rule = $t.Groups[5].Value.Trim(); Bad = $l.Trim() } }
+                else { $out += @{ Id = ''; Kind = ''; File = ''; What = ''; Rule = ''; Bad = $l.Trim() } }
+                continue
+            }
             $out += @{ Id = $m.Groups[1].Value; Kind = $m.Groups[2].Value; File = (($m.Groups[3].Value -replace '\\', '/') -replace '^\./', ''); What = $m.Groups[4].Value.Trim(); Rule = $m.Groups[5].Value.Trim(); Bad = '' }
         }
     }
     return $out
+}
+
+# ---------- Comandos da Task (v3.55.0, F1 — regra 32) ----------
+# O plano declara em "### Comandos da Task" os comandos de build, teste, lint ou leitura que a construção e a verificação vão
+# rodar, além dos da lista base da G14 — "- `<comando>` · <para quê>" ou "- nenhum além da lista base". O plan.ps1 e o
+# run.ps1 conferem cada comando contra a MESMA lista da G14 (hooks/common.ps1: $script:runBase + guards.json → runCommands +
+# o reparo declarado, e o mesmo Test-CommandPrefix). Quem chama carrega o common.ps1.
+function Get-PlanCommandList([string]$PlanText) {
+    $m = [regex]::Match($PlanText, '(?ms)^###\s+Comandos da Task[^\r\n]*\r?\n(.*?)(?=^#{1,3}\s|\z)')
+    if (-not $m.Success) { return $null }
+    $cmds = @(); $none = $false; $lines = 0
+    foreach ($l in ($m.Groups[1].Value -split "`r?`n")) {
+        if ($l -notmatch '^\s*-\s*\S') { continue }
+        $lines++
+        if ($l -match '^\s*-\s*nenhum\s+al[ée]m\s+da\s+lista\s+base') { $none = $true; continue }
+        $c = [regex]::Match($l, '`([^`]+)`'); if ($c.Success) { $cmds += $c.Groups[1].Value.Trim() }
+    }
+    return [pscustomobject]@{ Commands = $cmds; None = $none; Lines = $lines }
+}
+# Trechos do comando como a G14 os parte (; && || | e quebra de linha).
+function Split-CommandSegments([string]$Cmd) {
+    return @($Cmd -split ';|&&|\|\||\||\r?\n' | ForEach-Object { ($_.Trim() -replace '\s+', ' ') } | Where-Object { $_ })
+}
+# Instalação, rede, push e destrutivo não entram no run (G14): '' quando o trecho não é nenhum deles.
+function Get-ForbiddenCommandReason([string]$Seg) {
+    $low = (($Seg.ToLowerInvariant() -replace '^(npm|npx)\s+--prefix(?:\s+|=)\S+\s+', '$1 ') -replace '^git\s+(-c\s+\S+\s+)+', 'git ')
+    if ($low -match '^(npm|pnpm|yarn)\s+(install|i|ci|add)\b|^pip3?\s+install\b|^dotnet\s+(add|tool\s+install)\b|^(choco|winget|scoop|apt|apt-get|brew)\b|^gem\s+install\b|^install-(module|package)\b') { return 'instalação' }
+    if ($low -match '^(curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod|ssh|scp|sftp|ftp|telnet)\b') { return 'rede' }
+    if ($low -match '^git\s+push\b') { return 'push' }
+    if ($low -match '^rm\s+-\w*r|^remove-item\b.*-recurse|^git\s+(reset\s+--hard|clean\b|checkout\s+--)|^(del|rd|rmdir)\s+/s|^docker\s+(system\s+prune|volume\s+(rm|prune))') { return 'destrutivo' }
+    return ''
+}
+# O prefixo que se grava em runCommands para um trecho: o comando e até duas palavras seguintes que parecem subcomando
+# (docker compose run · npm run test:alvo · aapt dump badging), parando em opção, caminho ou arquivo.
+function Get-CommandPrefixSuggestion([string]$Seg) {
+    $tok = @($Seg.Trim() -split '\s+'); $out = @($tok[0])
+    foreach ($t in @($tok | Select-Object -Skip 1)) {
+        if ($out.Count -ge 3 -or $t -notmatch '^[A-Za-z][\w:]*$') { break }
+        $out += $t
+    }
+    return ($out -join ' ')
+}
+# @{ Has; None; Missing (prefixos a liberar); Forbidden ("comando (motivo)") } — Missing e Forbidden vazios = o plano cabe na G14.
+function Get-PlanCommandGaps([string]$Root, [string]$PlanText) {
+    $r = [pscustomobject]@{ Has = $false; None = $false; Missing = @(); Forbidden = @() }
+    $list = Get-PlanCommandList $PlanText
+    if ($null -eq $list) { return $r }
+    $r.Has = $true; $r.None = $list.None
+    $allowed = @($script:runBase) + @((Get-GuardConfig $Root).runCommands) + @(Get-RepairCommands $Root)
+    foreach ($c in $list.Commands) {
+        foreach ($seg in (Split-CommandSegments $c)) {
+            $why = Get-ForbiddenCommandReason $seg
+            if ($why) { $r.Forbidden += "$c ($why)"; break }
+            $low = (($seg.ToLowerInvariant() -replace '^(npm|npx)\s+--prefix(?:\s+|=)\S+\s+', '$1 ') -replace '^git\s+(-C\s+\S+\s+|--no-pager\s+)+', 'git ')
+            $hit = @($allowed | Where-Object { Test-CommandPrefix $low $low $_ }).Count
+            if (-not $hit) { $sg = Get-CommandPrefixSuggestion $seg; if ($r.Missing -notcontains $sg) { $r.Missing += $sg } }
+        }
+    }
+    return $r
 }
 
 # Escopo do plano: **Arquivos tocados:**; no mini-plano do fix (v3.51.2), os caminhos de "- produção:" e "- teste:" de

@@ -13,6 +13,36 @@
 
 ---
 
+## v3.55.0 — 2026-11-05
+
+**Branch:** `feat/v3.55.0` a partir de `develop` · **Processo:** v3.55 (fechamento da margem, verificador por caminho, padrão de ids de teste, comandos do run declarados antes da construção)
+Origem: carta 2 da sessão do sprint 5 do garden (fechamento R7-margem) e padrão de ids decidido pelo stakeholder em 05/11; itens 10 e 11 da fila do `/review`.
+
+Mudanças:
+- **A · fechamento e margem do dev** (`lib.ps1` `Get-MarginAdjustments`, `close.ps1`, `agents/developer.md`, `delivery-report.md`):
+  - **A1:** linha de ajuste fora do formato (sem crases, espaços diferentes) tem leitura tolerante; o `close` registra o formato **e segue** com as travas do ajuste, numa única saída `R7-margem falhou`. O `run.ps1 done` já repassava todas as linhas `R7*`.
+  - **A2:** plano com `sem prova:` + ajuste de teste → mensagem "abra 🔺 GAP com esta linha, sem nova rodada de `done`".
+  - **A3:** margem `- A<k> · fixture · <arquivo de teste> · … · regra: <standards/… § do padrão de ids | dump .xml>`: arquivo em **Arquivos tocados:**, regra obrigatória, dump citado existente; vale com o plano em `sem prova`.
+  - **A4:** campo `**Corrige:** T-nnn` e `### Testes herdados` na §6 (regra 31 do plano); o `plan.ps1` reprova plano de correção sem a seção, aceita `nenhum — <motivo>`; plano comum não é afetado.
+- **B · verificador** (`verify.ps1`, `guards.json` modelo, `team-update.md` 7h):
+  - **B1:** `verify.focused` aceita lista de objetos `{ command, paths, testRoot, testItem }`; o comando sai do caminho do teste (casamento de glob dos hooks), no focused e na mutação (linha de base e mutantes). `guards.json` antigo (texto ou lista de textos) se comporta como antes.
+  - **B2:** `tests 0` do `node:test` (TAP e `ℹ`) e `Could not find '…'` são inconclusivo.
+- **C · padrão de ids** (`standards/test-ids.md` novo, perfis Angular, React e Kotlin/Android, `lib.ps1`, `web.ps1`, `android.ps1`, `ids.ps1` novo):
+  - **C1:** gramática única (kebab-case com `.`, `primeiro`/chave, nunca índice, nenhum id de linha prefixo de outro), tabela de padrões, quais elementos levam id; o atributo muda por alvo (`id` no híbrido, `data-testid` na web, `testTag` no Compose).
+  - **C2:** `guards.json → testIds.attribute` (precedência: ele, `targets.web.testIdAttribute`, `data-testid`); o alvo web o usa; o android já localiza pelo `resource-id` puro do WebView.
+  - **C3:** `Find-UntaggedUi` enxerga os controles do Ionic (`ion-tab-button` isento), `ion-item`/`li`/`tr` de lista (`*ngFor`/`@for`) e a raiz de `*.page.html`; reconhece `id=`, `[id]=`, `[attr.id]=`. React e Compose: raiz fica ao QA.
+  - **C4:** plano (P3 `medido: dump`, ids pelo mapa) e README do QA (cenário por id, texto só em tela de fora).
+  - **C5:** `ids.ps1 -Map` grava `.team-project/architect/ids-map.md` (gerado do código; dono Arquiteto em `ownership.json` e `artifact-ownership.md` §1).
+- **D · cliente:** `ids.ps1 -Audit` (só leitura, sempre exit 0; seis seções) e `team-update.md` 7l (resume em até 6 linhas, dois formulários: atributo e retrofit como Habilitadora; não edita código, plano aprovado nem `.scn`); `team-init.md` 4a escolhe o atributo.
+- **F · comandos do run** (`plan.ps1`, `run.ps1`, `lib.ps1`, `hooks/common.ps1`, `pre-tool.ps1`):
+  - **F1:** `### Comandos da Task` na §7 (regra 32); `plan.ps1` confere cada trecho contra a lista base da G14 + `runCommands` + reparo (o mesmo casamento por prefixo, que passou do `pre-tool.ps1` para o `common.ps1`); instalação, rede, push e destrutivo reprovam.
+  - **F2:** `run.ps1 next`/`start` param **uma vez** com os faltantes de todos os planos da História; `run.ps1 allow -Commands … [-Deny …] -By …` grava em `runCommands` (resto do arquivo intacto) e no `run-log.md`; o decidido não é perguntado de novo; negado volta ao Arquiteto.
+  - **F3:** a mensagem da G14 aponta o formulário único (`<ID> 🔺 comando: <prefixo>`). A lista da G14 não muda.
+- **G · app híbrido em emulador de container:** caminho documentado (serial de rede, `id`, `baseline`) em `standards/test-ids.md` §6, README do QA e `how-to.md`; limite: WebView sem `id` no dump fica `[PARCIAL]`, sem `adb input` livre. Sem driver por CDP.
+- **Documentos:** `working-rules.md` R4, `sprint-run.md`, `fix-run.md`, `task-runner.md`, `how-to.md`, `hooks/COVERAGE.md`, `implementation-plan.md` (regras 31 e 32, P3), `plan-rules-why.md`, entrada v3.55 no process-changelog (a v3.52 foi arquivada, R17).
+- **Recusados (decisão do stakeholder):** mutação manual do dev como evidência de R7-margem; dispensar a trava para teste da própria Task. A ida da T-072b ao Arquiteto foi correta pelo processo.
+
+Conferências 380/0 (+33), guardas 287/0 (+1), C3 ok. **Não testado:** o `accept` num emulador real com `testIds.attribute = "id"` (o item G só fecha na fila quando essa prova rodar); o `ids.ps1 -Audit` no garden real (os testes usam uma árvore de teste); o formulário único do `run.ps1` numa sessão real (os testes cobrem `start` e `allow`). **Riscos:** a heurística de lista web limita-se a `ion-item`/`li`/`tr` com `*ngFor`/`@for` (card em `div` fica ao QA); a raiz da tela só é conferida em `*.page.html`; o prefixo que o `run.ps1` sugere para `runCommands` (até 3 palavras) pode ser mais largo que o desejado (`node`) e o stakeholder o ajusta no formulário; o `marketplace.json` não traz versão, então só `plugin.json`, CHANGELOG e README foram atualizados.
 ## v3.54.2 — 2026-11-05
 
 **Branch:** `fix/v3.54.2` empilhada sobre `fix/v3.54.1` (ainda não mesclada) · **Processo:** addendum v3.54.2 (accept que para no estado de partida, progresso visível, quadro em dia)

@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.52`](process-changelog-archive.md) | Orquestrador enxuto: sessão nova por ritual, `run` em sessões curtas, espera sem sondagem, registro de decisões e commit por Task (SM) — 23/10/2026 |
 | [`v3.51`](process-changelog-archive.md) | O sprint do benchmark: dev constrói e verifica sozinho, plano por História ao lado dos cenários, portão do QA no fim, orquestração por script, contexto e cache, ambiente em qualquer tecnologia (SM + Arquiteto + Dev + QA + PO) — 21/10/2026 |
 | [`v3.50`](process-changelog-archive.md) | Mudança de layout se prova em render real: navegador headless, 3 fontes × telas, mutação que quebra a medição; addendum: as paradas do `run` fecham no texto (SM + Arquiteto + Dev + QA) — 16/10/2026 |
 | [`v3.49`](process-changelog-archive.md) | Custo medido nos transcripts: retorno curto à sessão com o relatório do dev em arquivo, Arquiteto novo quando o cache venceu, toque de cache da sessão, gravação por etapa e dev por F-ID no `fix` (SM + Arquiteto + Dev + QA) — 16/10/2026 |
@@ -93,6 +94,37 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.55 — Fechamento da margem, verificador por caminho e padrão de ids de teste: a fixture com regra na margem, o comando de teste escolhido pelo caminho, um nome de id para todo o sistema e os comandos do run declarados antes da construção (SM + Arquiteto + Dev + QA) — 05/11/2026
+
+**Instrução** (stakeholder, 05/11/2026, carta 2 da sessão do sprint 5 do garden — fechamento da R7-margem — e itens 10 e 11 da fila do `/review`; análise com o stakeholder e `plano-v3.55.0.md`). Recusados: aceitar mutação manual do dev como evidência de R7-margem e dispensar a trava para teste da própria Task. Decidido: padrão de ids para **todo** o sistema (todo elemento que um teste ou cenário lê ou toca); o `/team update` **audita e propõe, nunca corrige**.
+**Medido (sprint 5 do garden):** a T-072b trocou `content-desc` por `text` na fixture de um teste `node:test`; o `close` recusou duas vezes em série (formato, depois R7-margem) e o 🔺 GAP custou horas em 🟨 — a ida ao Arquiteto foi correta pelo processo (a troca mudou a entrada da regra testada), o caminho é que era caro. O `verify -Mode mutation` usava só `focused[0]` (Karma): teste `node:test` nunca entrou na prova. O `uiautomator` do app híbrido lê o `id` HTML como `resource-id` (o `data-testid` não chega); 237 `<ion-button>`/`<button>` em 53 templates passavam sem id, e o contrato de ids feito à mão numa Task cobria 12 das 53 telas. ≈ 25 formulários de comando negado pela G14 em 4 Histórias (≈ 3× o sprint 4).
+**Classificação:** formato (`- A<k> · fixture`; `**Corrige:**` + `### Testes herdados`; `### Comandos da Task`; `verify.focused` por objeto) · regra (R4: quarto desvio, a fixture; regras 31 e 32 do plano; padrão de ids) · instrumento (`close.ps1`, `verify.ps1`, `plan.ps1`, `run.ps1 allow`, `ids.ps1`, G14 só na mensagem) · ritual (`/team update` 7l; `/team init` 4a).
+
+### O que mudou
+- **Arquiteto** (`implementation-plan.md` regras 31 e 32, premissa P3 `medido: dump`, ids pelo mapa; `plan-rules-why.md`; **`standards/test-ids.md`** novo; perfis Angular, React e Kotlin/Android): plano de Task que corrige outra traz `### Testes herdados`; todo plano traz `### Comandos da Task`; elemento do próprio app é citado pelo id do mapa gerado do código, elemento de tela de fora pelo dump real. Gramática única de ids; o atributo muda por alvo (`id` no híbrido, `data-testid` na web, `testTag` no Compose).
+- **Dev** (`agents/developer.md` regra 1, `delivery-report.md`): linha fora do formato não esconde as outras travas; plano em `sem prova` manda ajuste de teste direto ao 🔺 GAP; `- A<k> · fixture · … · regra: <standards § | dump .xml>` ajusta a fixture ao que a regra ou o dump dizem (arquivo em **Arquivos tocados:**, regra obrigatória, dump existente); comando que escapou da declaração volta como `<ID> 🔺 comando: <prefixo>`.
+- **SM** (`working-rules.md` R4, `sprint-run.md`, `fix-run.md`, `how-to.md`, `artifact-ownership.md` §1, `team-update.md` 7l, `team-init.md` 4a): a parada única dos comandos (`run.ps1 next`/`start` → um formulário → `run.ps1 allow` grava em `runCommands` e no `run-log.md`); mapa e auditoria de ids com dono Arquiteto; o 7l roda `ids.ps1 -Map`/`-Audit` e abre dois formulários (atributo; retrofit como Habilitadora), sem editar código, plano aprovado nem `.scn`.
+- **QA** (README, frente 2): o cenário localiza por id (texto só em tela de fora, com dump); a fixture nova é conferida contra o padrão ou o `.xml` citado; prova de app híbrido em emulador de container (serial de rede, `id`, `baseline`), com o limite do WebView sem id em `[PARCIAL]`.
+
+### Por quê
+O processo perdia horas em dois caminhos baratos de evitar: a recusa em série escondia a segunda trava atrás da primeira, e o verificador nem via o runner do teste ajustado. O padrão de ids resolve na origem o que o garden remendou à mão: um nome só, gerado do código, no atributo que o alvo enxerga. Os comandos do run são conhecidos no plano; perguntar uma vez antes custa um formulário, perguntar a cada negação custou 25.
+
+### Conflitos com o processo vigente
+A R4 (margem do dev) ganha o quarto desvio nomeado, a fixture, com instrumento; o "Deve falhar se…" continua do plano. A G14 não muda a lista — o comando liberado mora no `runCommands` do projeto, nunca no padrão do plugin. O `data-testid` do NG-5 passa a valer só para web pura.
+
+### Como saberemos que funcionou
+Sprint 6 do garden: zero GAP por ajuste de teste em `sem prova`; zero recusa em série no `done`; formulários de comando negado pela G14 ≤ 1/3 do sprint 5 (alvo: perto de zero); cenários `[PARCIAL]` "por falta de id" caindo a cada sprint; cenários de WebView provados pelo `accept` sem desvio de `adb input`.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.52 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.55, v3.54, v3.53 | ✅ |
+| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.55.0 | ✅ |
+
+### Parte mecânica (implementada pela sessão principal, citada aqui)
+`lib.ps1` (`Get-MarginAdjustments` com leitura tolerante e `fixture`; `Get-TestIdAttribute`; `Find-UntaggedUi` com Ionic, item de lista e raiz da tela; `Get-PlanCommandGaps` e auxiliares); `close.ps1` (R7-margem: tolerante, `sem prova`, fixture); `verify.ps1` (`focused` por objeto, `Resolve-FocusedItem`, `tests 0` do `node:test`); `plan.ps1` (regras 31 e 32); `run.ps1` (`allow`, `Get-CommandStop`, `Add-RunCommands`); `ids.ps1` novo; `hooks/common.ps1` (`runBase`, `Get-RepairCommands`, `Test-CommandPrefix`, movidos do `pre-tool.ps1`); `ownership.json`.
+
+---
 ## v3.54 — Mutação pela regra e margem do dev: o Arquiteto diz o que provar, o dev escreve o trecho e corrige o defeito do próprio teste, com travas no fechamento (SM + Arquiteto + Dev + QA) — 04/11/2026
 
 **Instrução** (stakeholder, 04/11/2026, relatório de encadeamento do sprint 5 do garden: "vamos seguir com as duas", depois da explicação do problema, da proposta e do ganho de cada uma).
@@ -214,59 +246,5 @@ Sem regra nova (34). **Indicador (sprint 6):** zero plano acima de 30 KB no dev;
 ### Addendum v3.53.7 — prova pela camada certa, decisão do sprint num lugar só (Arq + Dev + QA) — 04/11/2026
 
 **Instrução:** stakeholder, 04/11 (encadeamento do sprint 5 do garden). Muda: o QA prova cada critério na camada mais barata, e o cenário de aparelho declara a massa (`seed`); premissa de layout se mede executando; decisão de GAP comum fica uma vez em `architect/decisions/S<n>.md`, citada pelo plano. Sem regra nova (34). **Indicador (sprint 6):** zero decisão copiada entre planos; cenários tirados da prova por gesto ou massa perto de zero. **Evidência:** CHANGELOG v3.53.7.
-
----
-
-## v3.52 — Orquestrador enxuto: sessão nova por ritual, `run` em sessões curtas, espera sem sondagem, registro de decisões e commit por Task (SM) — 23/10/2026
-
-**Instrução** (stakeholder, 23/10/2026, `note.md` itens 1 a 9 e decisões em formulário): reduzir o custo da sessão que orquestra, medido no benchmark `sunscape-P-r1` (plugin v3.51.3). Decisões: (1) o fim de cada Task é **parada permitida** (`.team-project/.safe-point`); (2) **ampliar a R29**, sem regra nova; (3) o brief do brainstorm é gravado ao **fechar**, em `scrum-master/context.md` §"SDD em elaboração"; (4) hooks e scripts a sessão principal implementa.
-**Medido (itens 1 a 4):** passo `run` de 504 min, US$ 14,20; a sessão que orquestra gastou 67 % (US$ 10,76 em 113 chamadas, mediana de 376 mil tokens, máximo de 438 mil), quase tudo releitura do próprio contexto; leitura de documentos pesou ~6 %, a construção ~US$ 6,3 e o dev em Haiku menos de US$ 1. O contexto já chegava a ~200 mil quando o `run` começava (init a plan na mesma sessão). **48 chamadas de `Start-Sleep`** (60 a 598 s) custaram US$ 3,68. A trilha `fix` começaria com ~440 mil tokens.
-**Causa confirmada da espera (item 3):** o disparo em primeiro plano bloqueia normalmente (62 disparos, até 3.824 s) — a hipótese do vigia de 600 s caiu. Vem de **(a)** retomada por `SendMessage`, assíncrona, com a sessão sondando o disco, e **(b)** a sessão rodando ela mesma comando longo em segundo plano (aceite, lotes com `adb`) e sondando por horas — trabalho do `operator` (R28).
-**Classificação:** fluxo (`run`, `fix`, rituais) · regra ampliada (R29; R15 e R27 com exceção) · formato (modelo novo `run-log.md`) · propriedade (`run-log.md`, `.safe-point`). **Sem regra nova** (34). **Papéis movidos (R17):** 1 — SM.
-
-### O que mudou
-- **R29 ampliada** (`working-rules.md`, índice): troca de ritual, fronteira sprint → fix e cada Task do `run`; tudo o que o ritual decide fica em disco antes de fechar. **R15:** o brainstorm não escreve durante as fases, mas **ao fechar** grava o brief (≤ 15 linhas, fronteira de escopo, confirmação) em `context.md` §"SDD em elaboração". **R27:** no `run` a retomada é sempre instância nova em primeiro plano.
-- **Cada ritual** (`workflow-ritos.md` onboarding e brainstorm, `workflow-sdd.md`, `workflow-sprint.md` prepare/plan/review/close, `sprint-run.md`, `fix-run.md` note → fix plan → fix run): lista fixa de leitura na abertura e fecho "em sessão nova (`/clear` e o comando)".
-- **`sprint-run.md`:** sessão curta, uma Task por sessão; commit `T-<nnn>: <título>` no fechamento (nunca `.team-project/`, R31; sem git, cópia como o `fix run`); parada **(f)** e `.safe-point`; §Disparo e espera (primeiro plano, sem `Start-Sleep`, comando longo só pelo `operator`); §Retomada sem `SendMessage` — **inclusive Haiku** (assíncrono, e o ganho de reaproveitar o contexto dele é de centavos); **toque de cache retirado** (não dispara durante a chamada bloqueante, e a sessão curta regrava barato); preparo de História independente vira passo sequencial do `next` (exceção da R1 retirada); §Registro de decisões.
-- **`templates/run-log.md`** (novo): quando · item · decisão · porquê · evidência; `sprints/<n>/` e `fixes/B-<nnn>/`; lido só em retomada, bloqueio e Review; diz o que fica no `kanban.md`, `handoff/`, `guards.log`, `.usage-limit` e `.safe-point`. `artifact-ownership.md`: linhas do `run-log.md` e do `.safe-point`.
-
-### Por quê
-Quase todo o custo da sessão era reler contexto longo; sessão curta (50 a 80 mil), espera dentro da chamada bloqueante e passagem pelo disco o tiram sem retirar verificação alguma. Estimativa (não medição): a releitura do `run` do P-r1 (US$ 14,5) cairia para ~US$ 3 e a espera (US$ 3,7) para perto de zero; cada sessão nova regrava ~US$ 0,15 a 0,20.
-
-### Conflitos com o processo vigente
-O "Fim de Task não é parada" do `sprint-run.md` e a G20 ganham a exceção do `.safe-point`. A v3.49 mandava retomar Haiku por `SendMessage` e criar o toque de cache: esta entrada reverte as duas. A G19 hoje só nega papel caro depois de 5 min.
-
-### Quem passa a ser cobrado de forma diferente
-**Sessão/SM:** abre cada ritual lendo só a lista fixa, para em sessão nova, não sonda o disco nem roda comando longo, anota o `run-log.md`. **Dev:** o commit da Task é do script. **Demais papéis:** sem mudança de roteiro.
-
-### Como saberemos que funcionou
-P-r2 (SunScape, mesma regra de comparação): contexto mediano da sessão ≤ 80 mil tokens e máximo ≤ 150 mil; zero chamada de `Start-Sleep` da sessão no `run`; releitura da sessão ≤ US$ 4; cada Task ✅ com um commit `T-<nnn>:`; nenhum ritual iniciado na sessão que já rodou outro sem aviso.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Arquivamento de entrada | bloco v3.49 que saiu do vivo × arquivo (`.Contains`) | True; vivo termina em `---`, arquivo tem v3.49 antes da v3.48 | ✅ |
-| Substituição de padrão | `Grep` de `SendMessage`/`segundo plano`/`CronCreate`/toque em `roles/scrum-master/` | restam só `consumption.md` (histórico de rodada) e `artifact-ownership.md` (`.active-agents`), lidos no contexto; o resto reescrito e lido | ✅ |
-| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | C3 exit 1 só por R18 (v3.52 ainda sem CHANGELOG/bump, a sessão escreve); R17 ok (bloco 5,8 KB, 1 papel), ownership 62 ok, órfãos ok; conferências 161/0; guardas 227/0 | ✅ (R18 esperado) |
-
-### Parte mecânica (implementada pela sessão principal, citada aqui)
-`run.ps1 done` grava `.team-project/.safe-point` (JSON `task`, `sprint`, `desde`; só no `sprint run`) e faz o commit `T-<nnn>: <título>` (sem `.team-project/`; sem git, checkpoint por cópia); `next` mostra RETOMADA e apaga o marcador (o `start` também). **G20** libera com `.safe-point`; **G21** (`hooks/prompt-submit.ps1`) avisa ritual aberto em sessão que já rodou outro; **G22** (`pre-tool`) nega à sessão principal `Start-Sleep` e comando em segundo plano durante o `run`. **Ainda proposta ao stakeholder:** G19 negar `SendMessage` a qualquer papel com `.active-run`; retirar o `CronCreate` do toque de cache onde `SessionStart`/`commands` o mencionem; `ownership.json` para o `run-log.md`; driver do benchmark sem `--resume`.
-
-### Addendum v3.52.2 — executor de Task, agente assíncrono, retomada após queda, plano que prova, Q-S<n> e Review adiada (SM + Arquiteto + Dev + QA + UX) — 26/10/2026
-
-**Instrução** (stakeholder, 26/10/2026, `note.md` itens 1–17, avaliação do sprint 3 do piloto em v3.52.0; tudo numa entrega). **Decisões:** opção A — executor de Task (spike aprovado: subagente espera o filho encerrando o turno, três níveis, um aviso só à sessão); correção do portão = Task `Q-S<n>`; Review adiável por caminho formal; o SDD de mudança visível o Arquiteto consolida (o dev não edita).
-**Medido:** sessão por `message.id` 207 → 228 mi (+10 %; a análise somava por linha, ~1,8×); 87/87 rodadas assíncronas; 195 bloqueios G20 (~230 respostas "aguardando", ~100 mi); 27 de 29 GAPs nascidos no plano.
-**Classificação:** fluxo (`run`, `fix run`, Review) · regra ampliada (R21, R25, R27, R28, R29, R33) · formato (plano: Contagem, Premissas, Documentos vivos; `sprint-validation`; `sprint-review` adiada; seção Q-S) · propriedade (`run-log.md` com o executor; `.interrupted`) · agente novo (`task-runner`). **Sem regra nova** (34). Este bloco é a reversão parcial da v3.52 no que supunha agente em primeiro plano e `/clear` por Task.
-
-- **SM:** `sprint-run.md` (§Disparo e espera, §Executor de Task, §Retomada após queda, §Validação com Q-S<n> e Decisão do PO, escalonamento por falha de papel); `fix-run.md` (executor por F-ID); `working-rules(-index).md`; `artifact-ownership.md`; `workflow-sprint.md` §5e; modelos `sprint-review`, `sprint-backlog`, `kanban`, `run-log`, `consumption` (sessão por `message.id`), `retrospective`, `plugin-report`; `commands/sm.md`, `dev.md`, `po.md`; `agents/task-runner.md`.
-- **Arquiteto:** "decida, documente e prove — não construa"; regras 26 (Premissas) e 27 (Documentos vivos) do plano; mutante que compila; contagem pelo próprio Arquiteto, execução pelo `operator`. **Dev:** volta ao executor; cita `report.md` e o chamador do `operator` (R28).
-- **QA:** veredito `**Veredito (rodada N):**` e `**Decisão do PO:**` (só ⚠️); achado do portão vira Q-S<n>. **UX:** `/ux prototype` com abertura e fecho (R29). **Rituais:** init/update §7k propõem `quality` e `verify.compile`.
-- **Instrumentos (stakeholder, aplicados nesta entrega):** G20 sem filtro `bg`; `.active-agents` com `session`/`parent`; SessionStart → `.interrupted`; G7/G8 do executor; `run.ps1` (executor, retomada, commit `-F`, veredito, Q-S, `SESSÃO:`), `plan.ps1` (Contagem, Premissas, Documentos vivos), `lib.ps1` (`Get-Mutations`, `Get-PlanScope`, `targets: {}`, árvore sem `docs/`), `close`/`kanban`/`project`/`consumption`.
-- **Indicador:** próximo sprint com zero G20 por espera, linha `SESSÃO:` ≤ 150 mil, orquestração por Task ≤ 5 mi, GAPs de origem no plano ≤ 10 de cada 29, toda correção do portão como Q-S<n>.
-- **Evidência (R19):** guardas 249/0 (+20), conferências 190/0 (+27), C3 ok; `grep` de `run_in_background`/"primeiro plano"/"2º plano" nos documentos de processo: só histórico, lido no contexto.
-
-### Addendum v3.52.3 — espera da verificação, aceite sem alvo, GAP no registro, consumo em US$ (SM + Dev) — 27/10/2026
-
-**Instrução:** stakeholder, 27/10/2026, `/review` dos itens 1–5, 9 e 10 do `note.md` (sprint 4 do garden). Sem regra nova (34), sem conflito. **Mudou:** dev — comando movido para segundo plano: encerre o turno e espere o aviso; exit 5 (`agents/developer.md` regra 6, `roles/developer/README.md`); modelos `run-log.md` (o `done` grava GAP e ambiente) e `consumption.md` (coluna US$). Instrumentos: CHANGELOG v3.52.3. **Indicador:** zero "moved to the background" e zero espera por sondagem no próximo sprint. **Evidência:** conferências 200/0, guardas 252/0, C3 ok.
 
 ---

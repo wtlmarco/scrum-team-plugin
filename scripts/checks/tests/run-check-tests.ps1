@@ -172,7 +172,20 @@ function Close-T041([string]$Dir) {
     Edit-File $bd "| 2 | 2026-09-03 15:00 | T-041 $($e.build) → $($e.qa) | 2 | 2 |" ("| 2 | 2026-09-03 15:00 | T-041 $($e.build) → $($e.qa) | 2 | 2 |`n| 3 | 2026-09-04 | T-041 $($e.qa) → $($e.ok) | 1 | 1 |")
 }
 
+$script:autoCmds = $true
 function Invoke-Check([string]$Script, [string[]]$Arguments) {
+    # v3.55.0 (regra 32): os planos dos casos antigos não têm "### Comandos da Task". Sem mudar cada um, o plano que o caso grava
+    # ganha a seção "nenhum além da lista base" antes do plan.ps1 — os casos novos da regra 32 desligam isso ($script:autoCmds).
+    if ($script:autoCmds -and $Script -eq 'plan.ps1') {
+        $pi = [array]::IndexOf($Arguments, '-Plan'); $ri = [array]::IndexOf($Arguments, '-Root')
+        if ($pi -ge 0 -and $ri -ge 0) {
+            $pf = $Arguments[$pi + 1]; if (-not [System.IO.Path]::IsPathRooted($pf)) { $pf = Join-Path $Arguments[$ri + 1] $pf }
+            if (Test-Path -LiteralPath $pf -PathType Leaf) {
+                $pt = [System.IO.File]::ReadAllText($pf, $utf8)
+                if ($pt -notmatch '(?m)^###\s+Comandos da Task') { [System.IO.File]::WriteAllText($pf, $pt.TrimEnd() + "`n`n### Comandos da Task`n- nenhum além da lista base`n", $utf8) }
+            }
+        }
+    }
     $ErrorActionPreference = 'Continue'   # no 5.1, stderr de processo filho com 2>&1 viraria exceção
     $out = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $checks $Script) @Arguments 2>&1 | Out-String
     return @{ Code = $LASTEXITCODE; Out = $out }
@@ -494,6 +507,29 @@ Check 'verify focused com testItem "--tests {class}": um --tests por classe qual
 Put $p '.team-project/guards.json' '{ "verify": { "focused": "Write-Output \"Tests: 1 passed [{tests}]\"", "testItem": "{path}::{class}" } }'
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'focused', '-Tests', 'tests/test_calc.py', '-Root', $p)
 Check 'verify testItem fora de src/<conjunto>/: {class} é o nome do arquivo' $r 0 @('Tests: 1 passed \[tests/test_calc\.py::test_calc\]')
+# v3.55.0 (B1): verify.focused com objetos — o comando sai do caminho do teste; sem casamento, o item padrão (sem paths).
+Put $p '.team-project/guards.json' '{ "verify": { "focused": [ { "command": "Write-Output \"Tests: 1 passed [NODE {tests}]\"", "paths": ["a/**"], "testRoot": "a/" }, "Write-Output \"Tests: 1 passed [PADRAO {tests}]\"" ] } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'focused', '-Tests', 'a/x.test.mjs,src/y.spec.ts', '-Root', $p)
+Check 'v3.55.0 B1: focused por caminho — a/x.test.mjs vai ao comando do paths (testRoot do objeto), src/y.spec.ts ao padrão' $r 0 @('Tests: 1 passed \[NODE x\.test\.mjs\]', 'Tests: 1 passed \[PADRAO src/y\.spec\.ts\]')
+Put $p '.team-project/guards.json' '{ "verify": { "focused": [ { "command": "Write-Output \"Tests: 1 passed [NODE {tests}]\"", "paths": ["a/**"] } ] } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'focused', '-Tests', 'src/y.spec.ts', '-Root', $p)
+Check 'v3.55.0 B1: nenhum item casa e não há padrão — erro de uso (exit 2)' $r 2 @('nenhum item de verify\.focused casa o teste src/y\.spec\.ts')
+Put $p '.team-project/guards.json' '{ "verify": { "focused": [ "Write-Output \"Tests: 1 passed [UM {tests}]\"", "Write-Output \"Tests: 1 passed [DOIS {tests}]\"" ] } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'focused', '-Tests', 'a/x.test.mjs,src/y.spec.ts', '-Root', $p)
+Check 'v3.55.0 B1: lista de strings (guards.json antigo) segue igual — todo comando leva todos os testes' $r 0 @('Tests: 1 passed \[UM a/x\.test\.mjs src/y\.spec\.ts\]', 'Tests: 1 passed \[DOIS a/x\.test\.mjs src/y\.spec\.ts\]')
+# B1 na mutação: a linha de base e o mutante de um teste node:test rodam o comando dele, não o do Karma.
+Put $p 'tests/node/n.ps1' 'if ((Get-Content src/calc.ts -Raw) -match "a \+ b") { "Tests: 1 passed" } else { "NODE-RAN Tests: 1 failed"; exit 1 }'
+Put $p '.team-project/guards.json' '{ "verify": { "focused": [ { "command": "powershell -NoProfile -File {tests}", "paths": ["tests/node/**"] }, "Write-Output \"KARMA-RAN Tests: 1 passed\"" ], "suite": "Write-Output \"Tests: 1 passed\"" } }'
+Put $p $pl ("# Plano`n**Arquivos tocados:** ``src/calc.ts```n``tests/node/n.ps1```n`n**Mutações:**`n- M1 · teste ``tests/node/n.ps1`` · ``src/calc.ts`` · ``a + b`` → ``a - b```n`n## 3. Ambiente`n")
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+Check 'v3.55.0 B1: mutação de teste node:test roda o comando do paths (e não o padrão)' $r 0 @('M1 src/calc\.ts: ok.*NODE-RAN', '1 de 1 mutação')
+# B2: "tests 0" do node:test (formato TAP) e arquivo que o runner não achou são inconclusivos.
+Put $p 'tests/node/zero.ps1' '"# tests 0"; "# pass 0"'
+Put $p $pl ("# Plano`n**Arquivos tocados:** ``src/calc.ts```n``tests/node/zero.ps1```n`n**Mutações:**`n- M1 · teste ``tests/node/zero.ps1`` · ``src/calc.ts`` · ``a + b`` → ``a - b```n`n## 3. Ambiente`n")
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+Check 'v3.55.0 B2: node:test com "tests 0" na linha de base é inconclusivo, não ok' $r 1 @('M1 src/calc\.ts: inconclusivo.*tests 0')
 # v3.51 (D1/D2/D4): tempo limite próprio, árvore de processos encerrada, higiene por ferramenta e falha de ambiente (exit 4).
 Put $p '.team-project/guards.json' '{ "verify": { "build": "Start-Process powershell -ArgumentList ''-NoProfile'',''-Command'',''Start-Sleep 90'' -WindowStyle Hidden; Write-Output ''Build succeeded''", "suite": "Start-Sleep 60", "timeoutMinutes": 0.08 } }'
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -1625,8 +1661,8 @@ Check 'v3.53.4: o zip leva o roteiro, a ficha (com o resumo da dependência), o 
 Edit-File $xsb "| $($e.qa) T-041 | Endpoint" "| $($e.ok) T-041 | Endpoint"
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $xp)
 Check 'v3.53.4: sem Task em construção, o run espera o stakeholder (exit 3) e diz onde pegar e onde devolver; a marca libera a G20' @{ Code = $r.Code; Out = $r.Out + "`nmarca=" + (Test-Path -LiteralPath (Join-Path $xp '.team-project/.external-plan')) } 3 @('aguardando o retorno de T-041a \(pacote H-014\)', 'PRÓXIMA AÇÃO: external plan — com o stakeholder', 'pack/out/H-014\.zip \(chat na web\)', 'pack/out/H-014/ \(app do Codex\)', 'devolva o H-014-return\.zip .* em \.team-project/sprints/1/pack/in/', 'marca=True')
-$xbase = "**Cenários:** nenhum — interno`n**Risco:** infraestrutura`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`nUsa a tabela export_job.`n`n## 3. Ambiente`n`n| Pré-requisito | Comando de medição | Saída real |`n|---|---|---|`n| Node 20 | node --version | v20.11.0 |`n`n## 6. Testes`nsem prova: x`n`n## 9. Onde parar`n- **Pré-requisito ausente** — 🔺 GAP`n"
-$xbad = "# Plano de Implementação — T-041a Variante`n" + $xbase
+$xbase = "**Cenários:** nenhum — interno`n**Risco:** infraestrutura`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`nUsa a tabela export_job.`n`n## 3. Ambiente`n`n| Pré-requisito | Comando de medição | Saída real |`n|---|---|---|`n| Node 20 | node --version | v20.11.0 |`n`n## 6. Testes`nsem prova: x`n`n## 9. Onde parar`n- **Pré-requisito ausente** — 🔺 GAP`n`n### Comandos da Task`n- nenhum além da lista base`n"
+$xbad ="# Plano de Implementação — T-041a Variante`n" + $xbase
 $xgood = "# Plano de Implementação — T-041a Variante`n**Li além da ficha:** nenhum`n" + $xbase
 New-Item -ItemType Directory -Force (Join-Path $xpk 'in') | Out-Null
 & $zipMake (Join-Path $xpk 'in/H-014-return.zip') @{ 'T-041a-plan.md' = $xbad; 'src/hack.ts' = 'x' }
@@ -1747,6 +1783,70 @@ Check 'v3.53.6 item 4: id do .scn fora do código (o do teste não conta) e cont
     '^(?![\s\S]*outro\.id)', '^(?![\s\S]*so\.no\.teste)', '^(?![\s\S]*Tela\.kt:18)', '^(?![\s\S]*Form\.tsx)', 'o dev cria no código o id que o \.scn cita')
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'check', '-Root', $p)
 Check 'v3.53.6 item 4: verify check vê o full com testids reprovado' $r 1 @('full com falha', 'testids: exit 1')
+
+# v3.55.0 (C2/C3): atributo configurável (testIds.attribute), controles do Ionic, item de lista e raiz da tela.
+$pa = Join-Path $tmp 'v355-attr'; New-Item -ItemType Directory -Force $pa | Out-Null
+$e0b = $e   # o lib.ps1 dentro de & { } define $script:E, que é o mesmo $e do teste (PowerShell não distingue maiúsculas): guarda e devolve
+$ui = & {
+    . (Join-Path $checks 'lib.ps1')
+    $o = @()
+    $n = { param($rel, $txt, $attr) "{0}" -f @(Find-UntaggedUi $rel $txt $attr).Count }
+    $o += 'ION-SEM-ID=' + (& $n 'a.html' "<ion-button>Salvar</ion-button>`n" 'id') + ' ' + (@(Find-UntaggedUi 'a.html' "<ion-button>Salvar</ion-button>`n" 'id') -join '|')
+    $o += 'ION-COM-ATTR=' + (& $n 'a.html' "<ion-button [attr.id]=`"'a.b'`">Salvar</ion-button>`n" 'id')
+    $o += 'ION-TAB=' + (& $n 'a.html' "<ion-tab-button tab=`"estufa`"><ion-label>Estufa</ion-label></ion-tab-button>`n" 'id')
+    $o += 'ION-ITEM-SIMPLES=' + (& $n 'a.html' "<ion-item><ion-label>x</ion-label></ion-item>`n" 'id')
+    $o += 'ION-ITEM-CLICK=' + (& $n 'a.html' "<ion-item button (click)=`"abrir()`">x</ion-item>`n" 'id')
+    $o += 'PAGINA-SEM-ID=' + (& $n 'x/home.page.html' "<ion-header></ion-header>`n<ion-content></ion-content>`n" 'id') + ' ' + (@(Find-UntaggedUi 'x/home.page.html' "<ion-header></ion-header>`n<ion-content></ion-content>`n" 'id') -join '|')
+    $o += 'PAGINA-CONTENT-ID=' + (& $n 'x/home.page.html' "<ion-header></ion-header>`n<ion-content id=`"home.lista`"></ion-content>`n" 'id')
+    $o += 'PAGINA-RAIZ-ID=' + (& $n 'x/home.page.html' "<!-- comentario -->`n<div id=`"home`"><ion-content></ion-content></div>`n" 'id')
+    $o += 'COMPONENTE-SEM-RAIZ=' + (& $n 'x/card.component.html' "<div></div>`n" 'id')
+    $o += 'LISTA-NGFOR=' + (& $n 'a.html' "<ion-item *ngFor=`"let h of hortas`"><ion-label>x</ion-label></ion-item>`n" 'id')
+    $o += 'LISTA-NGFOR-ID=' + (& $n 'a.html' "<ion-item *ngFor=`"let h of hortas`" [attr.id]=`"'horta.item.' + h.id`"><ion-label>x</ion-label></ion-item>`n" 'id')
+    $o += 'LISTA-AT-FOR=' + (& $n 'a.html' "@for (h of hortas; track h.id) {`n  <li>{{ h.nome }}</li>`n}`n" 'id')
+    $o += 'ID-REPROVA-TESTID=' + (& $n 'a.html' "<button data-testid=`"x.salvar`">ok</button>`n" 'id')
+    $o += 'ID-PASSA-ID=' + (& $n 'a.html' "<button id=`"x.salvar`">ok</button>`n" 'id')
+    $o += 'ID-NAO-E-DATA-ID=' + (& $n 'a.html' "<button data-id=`"3`" class=`"hidden`">ok</button>`n" 'id')
+    $o += 'TESTID-PASSA=' + (& $n 'a.html' "<button data-testid=`"x.salvar`">ok</button>`n" 'data-testid')
+    $o += 'TESTID-REPROVA-ID=' + (& $n 'a.html' "<button id=`"x.salvar`">ok</button>`n" 'data-testid')
+    Put $pa '.team-project/guards.json' '{ "testIds": { "attribute": "id" }, "targets": { "web": { "testIdAttribute": "data-testid" } } }'
+    $o += 'ATTR-GUARDS=' + (Get-TestIdAttribute $pa)
+    Put $pa '.team-project/guards.json' '{ "targets": { "web": { "testIdAttribute": "data-qa" } } }'
+    $o += 'ATTR-TARGETS=' + (Get-TestIdAttribute $pa)
+    Put $pa '.team-project/guards.json' '{ "targets": {} }'
+    $o += 'ATTR-PADRAO=' + (Get-TestIdAttribute $pa)
+    $o -join "`n"
+}
+$e = $e0b
+Check 'v3.55.0 C3: ion-button sem id reprova; com [attr.id] passa; ion-tab-button e ion-item simples são isentos; ion-item com button pede id' @{ Code = 0; Out = $ui } 0 @('ION-SEM-ID=1 a\.html:1 — <ion-button sem id', 'ION-COM-ATTR=0', 'ION-TAB=0', 'ION-ITEM-SIMPLES=0', 'ION-ITEM-CLICK=1')
+Check 'v3.55.0 C3: página sem id na raiz nem no ion-content reprova; id no ion-content ou na raiz passa; componente fora de *.page.html não é conferido' @{ Code = 0; Out = $ui } 0 @('PAGINA-SEM-ID=1 x/home\.page\.html:1 — raiz da tela', 'PAGINA-CONTENT-ID=0', 'PAGINA-RAIZ-ID=0', 'COMPONENTE-SEM-RAIZ=0')
+Check 'v3.55.0 C3: item de lista (*ngFor e @for) em ion-item/li pede id' @{ Code = 0; Out = $ui } 0 @('LISTA-NGFOR=1', 'LISTA-NGFOR-ID=0', 'LISTA-AT-FOR=1')
+Check 'v3.55.0 C2: com o atributo "id", <button id> passa e <button data-testid> reprova; "data-id" não vale como id; sem a chave o comportamento atual se mantém' @{ Code = 0; Out = $ui } 0 @('ID-REPROVA-TESTID=1', 'ID-PASSA-ID=0', 'ID-NAO-E-DATA-ID=1', 'TESTID-PASSA=0', 'TESTID-REPROVA-ID=1')
+Check 'v3.55.0 C2: precedência testIds.attribute → targets.web.testIdAttribute → data-testid' @{ Code = 0; Out = $ui } 0 @('ATTR-GUARDS=id', 'ATTR-TARGETS=data-qa', 'ATTR-PADRAO=data-testid')
+
+# v3.55.0 (C5/D1): ids.ps1 -Map gera o mapa do código (literais e prefixos); -Audit grava as seis seções e sai sempre com 0.
+$pi = Join-Path $tmp 'v355-ids'; New-Project $pi
+$ErrorActionPreference = 'Continue'
+& git -C $pi init -q 2>$null
+$ErrorActionPreference = 'Stop'
+Put $pi '.team-project/guards.json' '{ "testIds": { "attribute": "id" } }'
+Put $pi 'capacitor.config.ts' "export default { appId: 'br.x' };`n"
+Put $pi 'src/app/horta/horta.page.html' "<ion-content id=`"horta.lista`">`n  <ion-item *ngFor=`"let h of hortas`" [attr.id]=`"'horta.lista.item.' + h.id`"><ion-label>x</ion-label></ion-item>`n  <ion-button id=`"horta.lista.novo`">Novo</ion-button>`n</ion-content>`n"
+Put $pi 'src/app/manejo/manejo.page.html' "<div id=`"manejo.form`">`n  <ion-input id=`"manejo.form.nome`"></ion-input>`n  <ion-button>sem id</ion-button>`n  <span id=`"Manejo_Ruim`">x</span>`n  <p id=`"manejo.linha.{{ m.id }}`">y</p>`n</div>`n"
+Put $pi 'src/app/onb/onb.page.html' "<ion-content id=`"onboarding`"><ion-button id=`"onboarding.pular`">Pular</ion-button></ion-content>`n"
+Put $pi 'scripts/capturar.mjs' "await tocarTexto('Pular');`n"
+Put $pi '.team-project/quality-assurance/scenarios/H-001.scn' "scenario SC-001 Lista`nlaunch`ntap horta.lista.novo`ntap horta.inexistente`nassert-count horta.lista.item. = 2`n"
+$r = Invoke-Check 'ids.ps1' @('-Map', '-Root', $pi)
+$mapTxt = [System.IO.File]::ReadAllText((Join-Path $pi '.team-project/architect/ids-map.md'), $utf8)
+Check 'v3.55.0 C5: -Map grava o mapa com as duas telas, ids literais e prefixos dinâmicos' @{ Code = $r.Code; Out = $r.Out + "`n" + $mapTxt } 0 @('gerado por ids\.ps1 — não editar', '## src/app/horta/horta\.page\.html', '`horta\.lista\.novo`', '`horta\.lista\.item\.<…>`', '## src/app/manejo/manejo\.page\.html', '`manejo\.form\.nome`', '`manejo\.linha\.<…>`')
+$r = Invoke-Check 'ids.ps1' @('-Audit', '-Root', $pi)
+$audTxt = [System.IO.File]::ReadAllText((Join-Path $pi '.team-project/architect/ids-audit.md'), $utf8)
+Check 'v3.55.0 D1: -Audit grava as seis seções (atributo, sem id, gramática, .scn, texto, planos) e sai com 0' @{ Code = $r.Code; Out = $audTxt } 0 @(
+    '## 1\. Atributo do id', 'Detectado pela stack: `id` — app híbrido \(capacitor\.config\.ts\)', 'Coincidem', '## 2\. Telas e controles sem id', 'manejo\.page\.html',
+    '## 3\. Ids fora da gramática', '`Manejo_Ruim`', '## 4\. Ids dos cenários \(\.scn\) que não existem no código', '`horta\.inexistente`', '^(?![\s\S]*`horta\.lista\.novo` em `\.team-project)',
+    '## 5\. Seletores por texto', 'scripts/capturar\.mjs:1', 'já existe o id `onboarding\.pular`', '## 6\. Planos do sprint aberto')
+Check 'v3.55.0 D1: -Audit só lê — o código não muda e o resumo sai em uma linha' @{ Code = $r.Code; Out = $r.Out } 0 @('ids -Audit: atributo id \(detectado id\)', 'fora da gramática: 1', '\.scn sem id no código: 1', 'por texto: 1')
+$r = Invoke-Check 'ids.ps1' @('-Root', $pi)
+Check 'v3.55.0 C5: sem -Map nem -Audit é erro de uso (exit 2)' $r 2 @('use -Map')
 
 # 18b. v3.53.6 parte B — itens 5 e 7 no adaptador android (sem adb): memória do emulador, reinício no primeiro accept da
 # Task e APK mais velho que o código do módulo.
@@ -1952,7 +2052,44 @@ $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.53.7: decisão do sprint inexistente citada e texto de decisão copiado no plano reprovam (regra 29)' $r 1 @('\| decisões \| falhou.*cita D-9 que não existe\(m\) em architect/decisions/S1\.md.*copia o texto da D-2')
 Put $p $pl ($h7 + "**Decisões do sprint:** D-1, D-2`n`n" + $b7 + "### Premissas`n- P1 · src tem a.ts · medido: ``ls src`` → a.ts`n- P2 · a margem é 16 px · não exercitada: nasce no passo 2 · verifica: dev em passo 4`n" + $f7)
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
-Check 'v3.53.7: plano que só cita as decisões passa' $r 0 @('\| decisões \| ok.*cita D-1, D-2; 2 decisão\(ões\) no sprint, nenhuma copiada')
+Check 'v3.53.7: plano que só cita as decisões passa' $r 0 @('\| decisões \| ok.*cita D-1, D-2; 2 decisão\(ões\) no sprint, nenhuma copiada', '\| herdados \| n-a')
+# v3.55.0 (A4): plano que corrige outra Task traz "### Testes herdados"; plano comum não é afetado.
+$prem = "### Premissas`n- P1 · src tem a.ts · medido: ``ls src`` → a.ts`n- P2 · a margem é 16 px · não exercitada: nasce no passo 2 · verifica: dev em passo 4`n"
+Put $p $pl ($h7 + "**Corrige:** T-040`n`n" + $b7 + $prem + $f7)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.55.0 A4: plano com **Corrige:** sem ### Testes herdados reprova' $r 1 @('\| herdados \| falhou.*corrige T-040 e não tem .### Testes herdados.')
+Put $p $pl ($h7 + "**Corrige:** T-040`n`n" + $b7 + $prem + "`n### Testes herdados`n- ``tests/t040.spec.ts`` · a fixture troca content-desc por text`n" + $f7)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.55.0 A4: com a seção e uma linha passa' $r 0 @('\| herdados \| ok.*1 linha\(s\) em ### Testes herdados \(T-040\)')
+Put $p $pl ($h7 + "**Corrige:** T-040`n`n" + $b7 + $prem + "`n### Testes herdados`n- nenhum — a Task original não tem teste sobre a regra corrigida`n" + $f7)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.55.0 A4: "nenhum — motivo" passa' $r 0 @('\| herdados \| ok')
+Put $p $pl ($h7 + "**Corrige:** T-040`n`n" + $b7 + $prem + "`n### Testes herdados`n- nenhum`n" + $f7)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.55.0 A4: "nenhum" sem motivo reprova' $r 1 @('\| herdados \| falhou.*nenhum. sem motivo')
+# v3.55.0 (F1, regra 32): "### Comandos da Task" conferida contra a lista da G14 + runCommands (o mesmo casamento por prefixo).
+$script:autoCmds = $false
+$gjPath = Join-Path $p '.team-project/guards.json'
+$gjBefore = if (Test-Path -LiteralPath $gjPath) { [System.IO.File]::ReadAllText($gjPath, $utf8) } else { $null }
+Put $p '.team-project/guards.json' '{ "runCommands": ["npm run test:alvo"], "verify": { "focused": "powershell -NoProfile -File tests/check.ps1 {tests}" } }'
+$planCmd = { param($cmds) Put $p $pl ($h7 + "`n" + $b7 + $prem + "`n### Comandos da Task`n" + $cmds + $f7) }
+& $planCmd "- ``npm run test:alvo`` · testes node:test do alvo`n- ``git status`` · estado`n"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.55.0 F1: comando que o runCommands cobre por prefixo e o da lista base passam' $r 0 @('\| comandos \| ok.*todos os comandos da Task já estão na lista base ou em runCommands')
+& $planCmd "- ``docker compose run --rm app npm test`` · testes em container`n- ``npm run test:alvo`` · alvo`n"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.55.0 F1: comando ausente de runCommands é listado como faltante (o prefixo a liberar), sem reprovar o plano' $r 0 @('\| comandos \| ok.*faltam em guards\.json → runCommands: docker compose run — o run\.ps1 pede', '^(?![\s\S]*faltam[^\n]*npm run test:alvo)')
+& $planCmd "- nenhum além da lista base`n"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.55.0 F1: "nenhum além da lista base" passa' $r 0 @('\| comandos \| ok.*nenhum além da lista base')
+& $planCmd "- ``npm install left-pad`` · dependência`n"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.55.0 F1: comando de instalação reprova o plano (bloqueio da Task, degrau 1)' $r 1 @('\| comandos \| falhou.*npm install left-pad \(instalação\).*degrau 1')
+Put $p $pl ($h7 + "`n" + $b7 + $prem + $f7)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.55.0 F1: plano sem ### Comandos da Task reprova' $r 1 @("\| comandos \| falhou.*plano sem '### Comandos da Task'")
+if ($null -ne $gjBefore) { Put $p '.team-project/guards.json' $gjBefore } else { Remove-Item -LiteralPath $gjPath -Force -ErrorAction SilentlyContinue }
+$script:autoCmds = $true
 # Cartão do dev: a decisão "todas" entra em uma linha; a que vale só para outra Task, não.
 $r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
 $card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
@@ -2010,6 +2147,28 @@ Check 'v3.54.1: stub de teste que não monta arquivo do plano é GAP; o declarad
 Edit-File $dvp "- A4 · stub · ``tests/other.ps1`` · x`n" ''
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'v3.54.1: margem stub com a linha fecha' $r 0 @('\| R7-margem \| ok.*3 ajuste\(s\).*A3 stub \(tests/calc\.render\.spec\.ts monta src/calc\.ts\)')
+# v3.55.0 (A3): margem fixture — fecha com a regra do padrão de ids; sem regra e com dump inexistente não fecha.
+[System.IO.File]::AppendAllText($dvp, "- A7 · fixture · ``tests/check.ps1`` · content-desc trocado por text na fixture · regra: standards/test-ids.md §4 (id é o seletor)`n", $utf8)
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.55.0 A3: fixture com a regra do padrão de ids fecha' $r 0 @('\| R7-margem \| ok.*A7 fixture \(standards/test-ids\.md')
+Edit-File $dvp "- A7 · fixture · ``tests/check.ps1`` · content-desc trocado por text na fixture · regra: standards/test-ids.md §4 (id é o seletor)`n" "- A7 · fixture · ``tests/check.ps1`` · content-desc trocado por text na fixture`n"
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.55.0 A3: fixture sem regra não fecha' $r 1 @('\| R7-margem \| falhou.*A7: ajuste de fixture sem .regra:')
+Edit-File $dvp "content-desc trocado por text na fixture`n" "content-desc trocado por text na fixture · regra: dump .team-project/operator/5/T-071/dump-que-nao-existe.xml`n"
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.55.0 A3: fixture com dump inexistente não fecha' $r 1 @('\| R7-margem \| falhou.*A7: o dump citado na regra não existe: \.team-project/operator/5/T-071/dump-que-nao-existe\.xml')
+Edit-File $dvp "- A7 · fixture · ``tests/check.ps1`` · content-desc trocado por text na fixture · regra: dump .team-project/operator/5/T-071/dump-que-nao-existe.xml`n" ''
+# v3.55.0 (A1): linha fora do formato (sem crases) não esconde as outras travas — a saída traz o formato E a falta de mutação.
+[System.IO.File]::AppendAllText($dvp, "- A5 · teste · tests/other.ps1 · mudou a referência`n", $utf8)
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.55.0: A1 — linha sem crases devolve o formato e a falta de mutação numa única saída' $r 1 @('\| R7-margem \| falhou.*linha fora do formato.*tests/other\.ps1.*A5: o teste tests/other\.ps1 não tem mutação no plano')
+Edit-File $dvp "- A5 · teste · tests/other.ps1 · mudou a referência`n" ''
+# v3.55.0 (A2): plano com "sem prova:" — ajuste de teste vai direto ao GAP, com a mensagem que diz isso.
+Edit-File (Join-Path $p $pl) '## 3. Ambiente' "sem prova: teste node:test fora do verificador`n`n## 3. Ambiente"
+[System.IO.File]::AppendAllText($dvp, "- A6 · teste · ``tests/check.ps1`` · fixture trocada`n", $utf8)
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.55.0: A2 — plano em sem prova: ajuste de teste não passa pela margem, abre GAP' $r 1 @('\| R7-margem \| falhou.*A6: o plano declara .sem prova: .*GAP com esta linha')
+Edit-File $dvp "- A6 · teste · ``tests/check.ps1`` · fixture trocada`n" ''
 # plan.ps1: o trecho literal só quando já existe no código; a regra diz o que quebra.
 Put $p $pl ("# Plano`n**Cenários:** nenhum — interno`n**Risco:** regra de negócio`n`n**Arquivos tocados:** ``src/calc.ts```n``src/novo.ts```n``tests/check.ps1```n`n**Arquivos protegidos:** nenhum`n`n## 3. Ambiente`n| Pré-requisito | Comando | Saída real |`n|---|---|---|`n| Node | node -v | v20 |`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``a * b`` → ``a / b```n- M2 · teste ``tests/check.ps1`` · ``src/novo.ts`` · ``x > 1`` → ``x >= 1```n- M3 · teste ``tests/check.ps1`` · ``src/novo.ts`` · regra: curta`n- M4 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``a + b`` → ``a - b```n`n## 9. Onde parar`n- Pré-requisito ausente`n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
@@ -2034,6 +2193,28 @@ Check 'v3.54.1: start com plano acima do teto e construção começada → Arqui
 Remove-Item -LiteralPath $dvp -Force
 $r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
 Check 'v3.54.1: start com plano acima do teto antes da construção → divisão pelo next' $r 2 @('vai\s+à\s+divisão\s+antes\s+do\s+dev')
+
+# v3.55.0 (F2): comandos dos planos — o start para uma vez com os faltantes; o allow grava em runCommands (resto do guards.json
+# intacto) e no run-log; o mesmo comando não é perguntado de novo; negado volta ao Arquiteto; instalação não passa.
+$p = Join-Path $tmp 'cmds'; New-Project $p
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') "| $($e.qa) T-041 |" "| $($e.build) T-041 |"
+Put $p '.team-project/guards.json' "{`n  `"verify`": { `"suite`": `"x`" }`n}`n"
+$plF = Join-Path $p '.team-project/sprints/1/plan/T-041-export.md'
+$planBase = [System.IO.File]::ReadAllText($plF, $utf8)
+[System.IO.File]::WriteAllText($plF, $planBase.TrimEnd() + "`n`n### Comandos da Task`n- ``docker compose run --rm app npm test`` · testes em container`n- ``aapt dump badging app.apk`` · leitura do apk`n- ``git status`` · estado`n", $utf8)
+$r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
+Check 'v3.55.0 F2: start com comandos que a G14 não libera para antes do dev e lista os prefixos faltantes de todos os planos da História' $r 2 @('PARADA ÚNICA', 'docker compose run\s+\(T-041', 'aapt dump badging\s+\(T-041', 'UM formulário', 'run\.ps1 allow -Commands', '^(?![\s\S]*dispatch: developer)')
+$r = Invoke-Check 'run.ps1' @('allow', '-Commands', 'npm install left-pad', '-Root', $p)
+Check 'v3.55.0 F2: allow recusa comando de instalação (não entra no run)' $r 2 @('instalação, rede, push e destrutivo não entram no run')
+$r = Invoke-Check 'run.ps1' @('allow', '-Commands', 'docker compose run', '-Deny', 'aapt dump badging', '-By', 'Marco', '-Root', $p)
+$gjAfter = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/guards.json'), $utf8)
+$rlAfter = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/run-log.md'), $utf8)
+Check 'v3.55.0 F2: allow grava o liberado em runCommands (verify intacto), registra quem autorizou e nega o resto' @{ Code = $r.Code; Out = $r.Out + "`n" + $gjAfter + "`n" + $rlAfter } 0 @('1 liberado\(s\)', '1 negado\(s\)', '"runCommands": \["docker compose run"\]', '"verify": \{ "suite": "x" \}', 'liberou: docker compose run.*autorizado por Marco', 'negou: aapt dump badging')
+$r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
+Check 'v3.55.0 F2: comando negado volta ao Arquiteto — o start não dispara o dev e não pergunta de novo o que já foi decidido' $r 2 @('stakeholder negou \(aapt dump badging\)', 'Arquiteto', '^(?![\s\S]*PARADA ÚNICA)')
+[System.IO.File]::WriteAllText($plF, $planBase.TrimEnd() + "`n`n### Comandos da Task`n- ``docker compose run --rm app npm test`` · testes em container`n- ``git status`` · estado`n", $utf8)
+$r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
+Check 'v3.55.0 F2: com o comando liberado e o negado fora do plano, o start segue sem nova parada' $r 0 @('dispatch: developer · T-041', 'prompt do dev')
 
 # v3.54.1 (carta do sprint 5 do garden, item 1): serial de rede — o pré-voo religa (adb connect) antes de reprovar e separa
 # porta recusada, aparelho offline e tempo ligado; o reparo religa em laço em vez do wait-for-device (adb falso).

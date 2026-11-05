@@ -7,7 +7,9 @@
 # desde a v3.52.2, 26 (linhas "- Contagem:" recontadas e premissas "- P<k> ·" medidas ou com quem verifica) e 27 (layout
 # novo com a linha **Documentos vivos:**; documento de desenho fora de **Arquivos tocados:** — o Arquiteto o consolida);
 # desde a v3.53, 28 (Task com ficha no breakdown: **Li além da ficha:**, nomes comuns no plano, caminhos da ficha existem);
-# desde a v3.53.7, 26 também barra premissa de layout medida por leitura e 29 (decisões do sprint citadas, não copiadas).
+# desde a v3.53.7, 26 também barra premissa de layout medida por leitura e 29 (decisões do sprint citadas, não copiadas);
+# desde a v3.55.0, 31 (plano com **Corrige:** T-<nnn> traz "### Testes herdados" na §6) e 32 ("### Comandos da Task" na §7:
+# os comandos da Task conferidos contra a lista da G14 + runCommands; instalação, rede, push e destrutivo reprovam).
 # As mensagens dizem o que corrigir: o Arquiteto não precisa abrir este script (note.md item 7).
 # Saída: tabela regra · resultado · linha decisiva. Exit 1 se alguma falhou · 2 = erro de uso.
 
@@ -162,6 +164,32 @@ try {
         if (-not $s9 -or $s9 -notmatch 'Pré-requisito ausente') { $iss += '§9 sem "Pré-requisito ausente"' }
         if ($iss.Count) { Add-Result 'ambiente' 'falhou' (($iss -join '; ') + ' (R26)') } else { Add-Result 'ambiente' 'ok' '§3 com pré-requisito medido; §9 com a parada por pré-requisito ausente' }
     }
+
+    # ---------- 31 · testes herdados (v3.55.0, A4) ----------
+    # Task que corrige outra (campo **Corrige:** T-<nnn> no cabeçalho) lista os testes da Task original cuja fixture ou premissa
+    # depende do que se corrige, e o que muda em cada um — ou "- nenhum — <motivo>". No sprint 5 do garden, a T-072b mudou a
+    # entrada de uma regra testada e o teste herdado só apareceu no fechamento, como GAP. Plano comum não é afetado.
+    $corrige = [regex]::Match($text, '(?m)^\*\*Corrige:\*\*\s*(\S.*)$')
+    if (-not $corrige.Success) { Add-Result 'herdados' 'n-a' 'a Task não corrige outra (sem **Corrige:** no cabeçalho)' }
+    else {
+        $hm = [regex]::Match($text, '(?ms)^###\s+Testes herdados[^\r\n]*\r?\n(.*?)(?=^#{1,3}\s|\z)')
+        $hl = if ($hm.Success) { @($hm.Groups[1].Value -split "`r?`n" | Where-Object { $_ -match '^\s*-\s*\S' } | ForEach-Object { $_.Trim() }) } else { @() }
+        if (-not $hm.Success) { Add-Result 'herdados' 'falhou' "o plano corrige $($corrige.Groups[1].Value.Trim()) e não tem '### Testes herdados' na §6 — liste cada teste da Task original cuja fixture ou premissa depende do que se corrige e o que muda nele, ou '- nenhum — <motivo>' (regra 31)" }
+        elseif (-not $hl.Count) { Add-Result 'herdados' 'falhou' "'### Testes herdados' sem linha — '- `<teste>` · <o que muda>' ou '- nenhum — <motivo>' (regra 31)" }
+        elseif (@($hl | Where-Object { $_ -match '^-\s*nenhum\b' -and $_ -notmatch '^-\s*nenhum\s*[—–-]\s*\S' }).Count) { Add-Result 'herdados' 'falhou' "'- nenhum' sem motivo — escreva '- nenhum — <por que nenhum teste da Task original depende do que se corrige>' (regra 31)" }
+        else { Add-Result 'herdados' 'ok' "$($hl.Count) linha(s) em ### Testes herdados ($($corrige.Groups[1].Value.Trim()))" }
+    }
+
+    # ---------- 32 · comandos da Task (v3.55.0, F1) ----------
+    # Comando legítimo do projeto (docker compose run, node, aapt) só era descoberto quando a G14 o negava no meio do run: cada
+    # um virava parada e formulário (≈ 25 para 4 Histórias no sprint 5 do garden). O plano declara os comandos da Task; o que
+    # falta em runCommands o run.ps1 pede UMA vez ao stakeholder antes da construção (F2). Instalação, rede, push e destrutivo
+    # não entram no run: reprovam aqui (bloqueio da Task, degrau 1).
+    $cg = Get-PlanCommandGaps $Root $text
+    if (-not $cg.Has) { Add-Result 'comandos' 'falhou' "plano sem '### Comandos da Task' (regra 32) — liste os comandos de build, teste, lint ou leitura que a construção e a verificação vão rodar além da lista base da G14 (hooks/common.ps1), ou '- nenhum além da lista base'" }
+    elseif ($cg.Forbidden.Count) { Add-Result 'comandos' 'falhou' ("comando que o run nunca libera (G14): " + ($cg.Forbidden -join '; ') + " — instalação, rede, push e destrutivo não entram no run: a Task vai a bloqueio (degrau 1); tire do plano ou divida a Task") }
+    elseif ($cg.Missing.Count) { Add-Result 'comandos' 'ok' ("faltam em guards.json → runCommands: " + ($cg.Missing -join '; ') + " — o run.ps1 pede a liberação ao stakeholder uma vez, antes da construção (F2)") }
+    else { Add-Result 'comandos' 'ok' $(if ($cg.None) { 'nenhum além da lista base' } else { 'todos os comandos da Task já estão na lista base ou em runCommands' }) }
 
     # ---------- 22 · plano enxuto (v3.51; sem corte por tamanho desde a v3.53.2) ----------
     # v3.53.2 (plugin-report prévio do sprint 5 do garden, decisão do stakeholder): o teto de 20 KB fazia o Arquiteto escrever

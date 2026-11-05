@@ -54,6 +54,8 @@ Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere c
 - A<k> · teste · `<arquivo de teste>` · <o defeito mecânico do teste e o que mudou: espera, referência de medida…>
 - A<k> · css · `<arquivo>` · <o que mudou> · regra: <onde a regra do projeto já diz o valor — standard §, token, spec do UX>
 - A<k> · stub · `<teste que já existia, fora da lista>` · <a dependência nova do arquivo do plano que ele monta e o stub/provider acrescentado> *(v3.54.1)*
+- A<k> · fixture · `<arquivo de teste da Task>` · <o que mudou na fixture> · regra: <standards/… § do padrão de ids | caminho do dump real em .team-project/operator/…> *(v3.55.0: a fixture só vai para o que a regra ou o dump dizem)*
+*(plano com `sem prova:` → ajuste de teste não entra aqui: é 🔺 GAP direto, v3.55.0. Linha fora do formato não esconde as outras travas: o `close` devolve tudo numa saída só.)*
 *(o `close` confere: o teste ajustado tem mutação no plano, pega na árvore final; o CSS cita a regra; o stub é teste existente que cita um arquivo de **Arquivos tocados:** e todo teste assim alterado tem a linha. O "Deve falhar se…" do plano não muda.)*
 
 ### Aceite no alvo *(v3.51 — os cenários da Task, `accept.ps1`)*
