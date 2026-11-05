@@ -370,6 +370,9 @@ function Test-G9([string]$Rel, [string]$Shown) {
         Deny 'G9' $Shown "o plano de $($scope.Id) ($($scope.Plano)) não tem lista de arquivos legível (caminhos entre crases em **Arquivos tocados:** ou em - produção:/- teste:). $gap (R8)."
     }
     if ($scope.Files -contains $Rel) { return }
+    # v3.54.1: margem "stub" — teste que já existe e monta um arquivo do plano (o stub da dependência nova). O close exige a
+    # linha "- A<k> · stub · `<teste>` · <o que mudou>" em ### Ajustes na margem; sem ela, R7-margem não fecha.
+    if (Test-MountingSpec $script:projectDir $Rel $scope.Files) { return }
     Deny 'G9' $Shown "arquivo fora do plano: $Rel não está na lista de $($scope.Id) ($($scope.Plano)). $gap antes de editar (R4 · R8) — quem orquestra resolve com o Arquiteto, não com o stakeholder (R25)."
 }
 

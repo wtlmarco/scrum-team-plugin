@@ -4,7 +4,8 @@
 # listas virtualizadas rolando até não aparecer item novo, tela em branco = falha de ambiente (não do app).
 # Config (guards.json → targets.android): package, apk (opcional), avd (para o reparo), maxUptimeHours (padrão 24),
 # repair (v3.53.2, opcional: comando PowerShell de reparo do projeto — emulador em container; vence o avd),
-# serial (v3.53.5, opcional: o aparelho de trabalho, ex. "emulator-5554" — com ele todo adb vai a esse aparelho),
+# serial (v3.53.5, opcional: o aparelho de trabalho, ex. "emulator-5554" — com ele todo adb vai a esse aparelho; v3.54.1:
+# serial de rede "host:porta" é religado com adb connect no pré-voo e no reparo),
 # memoryCmd + maxMemoryMB (v3.53.6, opcionais: memória do emulador acima do limite reprova o pré-voo e chama o reparo),
 # freshStart (v3.53.6, padrão true com repair: o primeiro accept de cada Task reinicia o emulador pelo repair),
 # seeds + seedTimeoutSec (v3.53.7: massa de dados por nome, passo "seed"), selectConfirm (v3.53.7: botão de confirmação
@@ -61,12 +62,50 @@ function Get-EmulatorPortOwner {
     return ''
 }
 
+# ---------- conexão de rede (v3.54.1) ----------
+# Carta do sprint 5 do garden, item 1: serial de rede (host:porta, emulador em container) só existe enquanto o servidor do
+# adb mantém a conexão — reiniciar o adb, suspender a máquina ou recriar o container a derruba sem aviso. O emulador segue no
+# ar, o "adb devices" fica vazio e o pré-voo dizia "nenhum emulador"; o "wait-for-device" do reparo não religa serial de rede
+# (180 s e "o aparelho não voltou"). A T-063 foi a 🔴 assim, com o container no ar havia 9 h. Agora o adaptador religa
+# (adb connect) antes de reprovar e separa: porta recusada (emulador ou container fora) · conexão aceita com o aparelho
+# offline (iniciando ou travado) · conexão perdida e religada (segue a conferência: tempo ligado, memória…).
+function Test-NetworkSerial { return [bool]($script:Serial -match '^[^\s:]+:\d+$') }
+function Connect-AndroidSerial {
+    $keep = $script:Serial; $script:Serial = ''   # "adb connect" é do servidor: sem -s
+    try { $o = ((@(AdbT 20 @('connect', $keep)) -join ' ') -replace '\s+', ' ').Trim() } finally { $script:Serial = $keep }
+    if ($script:AdbTimeout) { return @{ Ok = $false; Out = $script:AdbTimeout } }
+    return @{ Ok = ($o -match '(?i)\bconnected to\b' -and $o -notmatch '(?i)fail|cannot|unable|refused'); Out = $o }
+}
+# Estado do serial no "adb devices" ('device', 'offline', 'unauthorized'…; '' = ausente) e a lista dos que estão em 'device'.
+function Get-SerialState {
+    $all = @(AdbT 30 @('devices'))
+    $st = @($all | Where-Object { ($_ -split '\t')[0] -eq $script:Serial } | ForEach-Object { ([string]($_ -split '\t')[1]).Trim() })
+    return @{ All = $all; Dev = @($all | Where-Object { $_ -match '\tdevice$' }); State = $(if ($st.Count) { $st[0] } else { '' }) }
+}
+# Religa o serial de rede até ele ficar em 'device' ou o prazo acabar; $null = pronto, senão o último motivo.
+function Wait-AndroidSerial([int]$Sec) {
+    $t = Get-Date; $why = ''
+    do {
+        $c = Connect-AndroidSerial
+        if ($c.Ok) { $s = Get-SerialState; if ($s.State -eq 'device') { return $null }; $why = "conexão aceita, aparelho '$(if ($s.State) { $s.State } else { 'ausente' })'" } else { $why = "adb connect: $($c.Out)" }
+        Start-Sleep -Seconds 5
+    } while (((Get-Date) - $t).TotalSeconds -lt $Sec)
+    return $why
+}
+
 # ---------- pré-voo e reparo ----------
 function Get-ScreenBytes { $n = ((Sh 'screencap -p | wc -c') -join '') -replace '\D', ''; if ($n) { [int64]$n } else { 0 } }
 function Test-AndroidHealth {
     $all = @(AdbT 30 @('devices'))
     if ($script:AdbTimeout) { return "o adb não respondeu ($($script:AdbTimeout)): servidor do adb travado — adb kill-server e repita" }
     $dev = @($all | Where-Object { $_ -match '\tdevice$' })
+    if ((Test-NetworkSerial) -and -not @($dev | Where-Object { ($_ -split '\t')[0] -eq $script:Serial }).Count) {
+        $c = Connect-AndroidSerial
+        if (-not $c.Ok) { return "o emulador (ou o container dele) está fora: a porta $($script:Serial) recusou o adb connect ($($c.Out))" }
+        $s = Get-SerialState; $dev = $s.Dev
+        if ($s.State -ne 'device') { return "a conexão do adb com $($script:Serial) foi aceita, mas o aparelho está '$(if ($s.State) { $s.State } else { 'ausente' })' no adb devices: emulador ainda iniciando ou travado" }
+        [Console]::Out.WriteLine("android: a conexão do adb com $($script:Serial) tinha caído (emulador no ar, adb devices sem ele) — religada com adb connect")
+    }
     if (-not $dev.Count) { return 'nenhum emulador ou aparelho conectado (adb devices)' }
     # v3.53.5: o mesmo emulador aparece duas vezes (emulator-5554 e localhost:5555 depois de um adb connect) — sem serial,
     # todo "adb shell" falha com "more than one device".
@@ -145,8 +184,14 @@ function Repair-Android {
         $ErrorActionPreference = 'Continue'
         $out = (& powershell -NoProfile -ExecutionPolicy Bypass -Command $cmd 2>&1 | ForEach-Object { "$_" }) -join ' '
         if ($LASTEXITCODE -ne 0) { return "o reparo declarado (targets.android.repair) saiu com $LASTEXITCODE`: $($out.Substring(0, [Math]::Min(200, $out.Length)))" }
-        AdbT 180 @('wait-for-device') | Out-Null
-        if ($script:AdbTimeout) { return "o aparelho não voltou ao adb em 180 s depois do reparo declarado (targets.android.repair)" }
+        # v3.54.1: serial de rede — o wait-for-device não religa; o laço de adb connect, sim.
+        if (Test-NetworkSerial) {
+            $w = Wait-AndroidSerial 180
+            if ($w) { return "o aparelho $($script:Serial) não voltou ao adb em 180 s depois do reparo declarado (targets.android.repair; último estado: $w)" }
+        } else {
+            AdbT 180 @('wait-for-device') | Out-Null
+            if ($script:AdbTimeout) { return "o aparelho não voltou ao adb em 180 s depois do reparo declarado (targets.android.repair)" }
+        }
     } else {
     $avd = if ($script:AdCfg -and $script:AdCfg.avd) { [string]$script:AdCfg.avd } else { '' }
     if (-not $avd) { return 'sem targets.android.avd nem targets.android.repair no guards.json: reinicie o emulador à mão' }
@@ -163,7 +208,7 @@ function Repair-Android {
     Start-Process -FilePath $emu -ArgumentList @('-avd', $avd, '-no-snapshot', '-no-boot-anim', '-no-audio') -WorkingDirectory (Split-Path $emu) -WindowStyle Hidden | Out-Null
     }
     $t = Get-Date
-    do { Start-Sleep -Seconds 5; $ok = ((AdbT 15 @('shell', 'getprop', 'sys.boot_completed')) -join '').Trim() -eq '1' } while (-not $ok -and ((Get-Date) - $t).TotalSeconds -lt 240)
+    do { Start-Sleep -Seconds 5; $ok = ((AdbT 15 @('shell', 'getprop', 'sys.boot_completed')) -join '').Trim() -eq '1'; if (-not $ok -and (Test-NetworkSerial)) { $null = Connect-AndroidSerial } } while (-not $ok -and ((Get-Date) - $t).TotalSeconds -lt 240)
     if (-not $ok) { return "o emulador $(if ($cmd) { '(reparo declarado)' } else { $avd }) não terminou de iniciar em 240 s" }
     Start-Sleep -Seconds 25   # o launcher e os serviços do sistema ainda estão subindo depois do boot_completed
     return Test-AndroidHealth

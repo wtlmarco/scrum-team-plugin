@@ -1951,10 +1951,85 @@ Put $p '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`n**Mu
 $null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'v3.54: margem com as travas fecha — teste ajustado com a mutação pega na árvore final, CSS com a regra citada' $r 0 @('\| R7-margem \| ok.*2 ajuste\(s\).*A1 teste \(M1 pegas\).*A2 css \(standards/ui\.md §3')
+# v3.54.1 (carta do sprint 5 do garden, item 2): margem stub — spec que já existia, fora da lista, que monta um arquivo do
+# plano e ganhou o stub da dependência nova. Alterado sem a linha, não fecha; com ela, fecha; o que não monta nada é GAP.
+$ErrorActionPreference = 'Continue'
+Put $p 'tests/calc.render.spec.ts' "import { soma } from '../src/calc';`n// casos`n"
+& git -C $p add -A 2>$null; & git -C $p -c user.email=t@t -c user.name=t commit -qm spec 2>$null
+$ErrorActionPreference = 'Stop'
+Put $p 'tests/calc.render.spec.ts' "import { soma } from '../src/calc';`n// stub do FornecedorService`n// casos`n"
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.54.1: spec fora da lista que monta arquivo do plano, alterado sem a linha stub → R7-margem não fecha' $r 1 @('\| R7-margem \| falhou.*tests/calc\.render\.spec\.ts \(teste fora da lista que monta src/calc\.ts\) foi alterado sem linha')
+[System.IO.File]::AppendAllText($dvp, "- A3 · stub · ``tests/calc.render.spec.ts`` · stub do FornecedorService (inject novo em src/calc.ts)`n- A4 · stub · ``tests/other.ps1`` · x`n", $utf8)
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.54.1: stub de teste que não monta arquivo do plano é GAP; o declarado deixa de ser cobrado' $r 1 @('\| R7-margem \| falhou.*A4: tests/other\.ps1 não é teste existente que cita um arquivo', '^(?![\s\S]*foi alterado sem linha)')
+Edit-File $dvp "- A4 · stub · ``tests/other.ps1`` · x`n" ''
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.54.1: margem stub com a linha fecha' $r 0 @('\| R7-margem \| ok.*3 ajuste\(s\).*A3 stub \(tests/calc\.render\.spec\.ts monta src/calc\.ts\)')
 # plan.ps1: o trecho literal só quando já existe no código; a regra diz o que quebra.
 Put $p $pl ("# Plano`n**Cenários:** nenhum — interno`n**Risco:** regra de negócio`n`n**Arquivos tocados:** ``src/calc.ts```n``src/novo.ts```n``tests/check.ps1```n`n**Arquivos protegidos:** nenhum`n`n## 3. Ambiente`n| Pré-requisito | Comando | Saída real |`n|---|---|---|`n| Node | node -v | v20 |`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``a * b`` → ``a / b```n- M2 · teste ``tests/check.ps1`` · ``src/novo.ts`` · ``x > 1`` → ``x >= 1```n- M3 · teste ``tests/check.ps1`` · ``src/novo.ts`` · regra: curta`n- M4 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``a + b`` → ``a - b```n`n## 9. Onde parar`n- Pré-requisito ausente`n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.54: plano com trecho adivinhado (inexistente no código ou em arquivo novo) e regra vazia reprova; trecho que já existe passa' $r 1 @('\| mutação \| falhou.*M1: o trecho ainda não existe em src/calc\.ts — declare pela regra.*M2: o trecho ainda não existe em src/novo\.ts.*M3: .regra:. vazia ou curta', '^(?![\s\S]*M4: o trecho)')
+
+# v3.54.1 (carta do sprint 5 do garden, item 2): plano reconferido com a construção no meio — a contagem escrita antes dela
+# vale também pelo último commit; número que não bate em nenhum dos dois segue reprovando.
+$plc = '.team-project/sprints/1/plan/T-099-contagem.md'
+$calc0 = [System.IO.File]::ReadAllText((Join-Path $p 'src/calc.ts'), $utf8)
+Put $p 'src/calc.ts' ($calc0 + "export const soma2 = soma;`n")
+Put $p $plc "# Plano`n**Cenários:** nenhum — interno`n**Risco:** interface simples`n`n**Arquivos tocados:** ``src/calc.ts```n`n## 6. Testes`n`n### Premissas`n- Contagem: ``soma`` em ``src/*.ts`` → 1`n`n## 9. Onde parar`n- x`n"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plc, '-Root', $p)
+Check 'v3.54.1: contagem que bate no último commit (a árvore já tem a construção) passa' @{ Code = 0; Out = $r.Out } 0 @('\| contagem \| ok.*1 pelo último commit')
+Edit-File (Join-Path $p $plc) '→ 1' '→ 3'
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plc, '-Root', $p)
+Check 'v3.54.1: contagem que não bate nem na árvore nem no último commit reprova' @{ Code = 0; Out = $r.Out } 0 @('\| contagem \| falhou.*o plano diz 3, a recontagem dá 2')
+Put $p 'src/calc.ts' $calc0
+# run.ps1 start: plano acima do teto não vai ao dev; com a construção começada, troca do trecho superado (sem divisão).
+Put $p $pl ("# Plano`n**Arquivos tocados:** ``src/calc.ts```n" + ('x' * 32000))
+$r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
+Check 'v3.54.1: start com plano acima do teto e construção começada → Arquiteto troca o trecho superado, sem divisão' $r 2 @('tem\s+[\d.,]+\s+KB', 'Task\s+não\s+se\s+divide', 'Substitua\s+no\s+plano\s+o\s+texto')
+Remove-Item -LiteralPath $dvp -Force
+$r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
+Check 'v3.54.1: start com plano acima do teto antes da construção → divisão pelo next' $r 2 @('vai\s+à\s+divisão\s+antes\s+do\s+dev')
+
+# v3.54.1 (carta do sprint 5 do garden, item 1): serial de rede — o pré-voo religa (adb connect) antes de reprovar e separa
+# porta recusada, aparelho offline e tempo ligado; o reparo religa em laço em vez do wait-for-device (adb falso).
+$hs4 = Join-Path $tmp 'android-rede.ps1'
+[System.IO.File]::WriteAllText($hs4, @'
+param([string]$Adapter, [string]$Case)
+$ErrorActionPreference = 'Stop'
+. $Adapter
+$script:Serial = if ($Case -eq 'local') { 'emulator-5554' } else { 'localhost:5555' }
+$script:AdCfg = [pscustomobject]@{ package = 'br.x'; maxUptimeHours = 3 }
+function Start-Sleep { }
+$script:conn = $false; $script:tries = 0; $script:log = New-Object Collections.Generic.List[string]
+function AdbT([int]$Sec, [string[]]$A) {
+    $script:AdbTimeout = ''; $k = @($A) -join ' '; $script:log.Add($k)
+    if ($k -eq 'devices') { if ($script:conn) { return @('List of devices attached', "localhost:5555`t$(if ($Case -eq 'offline') { 'offline' } else { 'device' })") }; return @('List of devices attached') }
+    if ($k -like 'connect *') { $script:tries++; if ($Case -eq 'recusa' -or ($Case -eq 'reparo' -and $script:tries -lt 3)) { return @("failed to connect to 'localhost:5555': Connection refused") }; $script:conn = $true; return @('connected to localhost:5555') }
+    if ($k -eq 'shell getprop sys.boot_completed') { return @('1') }
+    if ($k -eq 'shell screencap -p | wc -c') { return @('50000') }
+    if ($k -eq 'exec-out cat /sdcard/ui.xml') { return @('<?xml version="1.0"?><hierarchy></hierarchy>') }
+    if ($k -eq 'shell cat /proc/uptime') { if ($Case -eq 'uptime') { return @('21600.5 100') }; return @('100.5 100') }
+    return @()
+}
+if ($Case -eq 'reparo') { $w = Wait-AndroidSerial 180; "WAIT=[$w] TRIES=$($script:tries)" } else { $h = Test-AndroidHealth; "HEALTH=[$h]" }
+'LOG=' + ($script:log -join ' | ')
+'@, $utf8)
+$hn = { param($case) $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $hs4 -Adapter (Join-Path $checks 'targets/android.ps1') -Case $case 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
+$r = & $hn 'perdida'
+Check 'v3.54.1: conexão do adb perdida com o emulador no ar → religada no pré-voo, alvo pronto' $r 0 @('religada com adb connect', 'HEALTH=\[\]', 'LOG=devices \| connect localhost:5555 \| devices')
+$r = & $hn 'recusa'
+Check 'v3.54.1: porta recusada → emulador ou container fora (não "nenhum aparelho")' $r 0 @("HEALTH=\[o emulador \(ou o container dele\) está fora: a porta localhost:5555 recusou o adb connect \(failed to connect")
+$r = & $hn 'offline'
+Check 'v3.54.1: conexão aceita com o aparelho offline → iniciando ou travado' $r 0 @("HEALTH=\[a conexão do adb com localhost:5555 foi aceita, mas o aparelho está 'offline'")
+$r = & $hn 'uptime'
+Check 'v3.54.1: religado e ligado acima do limite → a causa real (tempo ligado), não "fora"' $r 0 @('religada', 'HEALTH=\[o emulador está ligado há 6 h \(limite 3 h\)')
+$r = & $hn 'local'
+Check 'v3.54.1: serial local (emulator-5554) sem aparelho → sem adb connect, mensagem de antes' $r 0 @('HEALTH=\[nenhum emulador ou aparelho conectado', '^(?![\s\S]*connect localhost)')
+$r = & $hn 'reparo'
+Check 'v3.54.1: reparo de serial de rede religa em laço até o aparelho voltar (não wait-for-device)' $r 0 @('WAIT=\[\] TRIES=3', '^(?![\s\S]*wait-for-device)')
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output

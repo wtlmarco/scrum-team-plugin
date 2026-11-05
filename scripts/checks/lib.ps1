@@ -834,6 +834,8 @@ function Get-TaskMutations([string]$Root, [string]$PlanPath, [string]$PlanText, 
 # Ajustes na margem do dev (v3.54): "### Ajustes na margem" do relatório, uma linha por ajuste —
 #   "- A<k> · teste · `<arquivo de teste>` · <o que mudou>"  (defeito mecânico do próprio teste: espera, referência de medida)
 #   "- A<k> · css · `<arquivo>` · <o que mudou> · regra: <onde a regra do projeto já diz o valor>"
+#   "- A<k> · stub · `<teste que já existia>` · <a dependência nova que o stub ganhou>" (v3.54.1: teste fora da lista que
+#   monta um arquivo do plano — Test-MountingSpec, hooks/common.ps1)
 # Devolve @{ Id; Kind; File; What; Rule; Bad } por linha; Bad = a linha fora do formato.
 function Get-MarginAdjustments([string]$DeliveryText) {
     $out = @()
@@ -841,7 +843,7 @@ function Get-MarginAdjustments([string]$DeliveryText) {
         foreach ($l in ($sec.Groups[1].Value -split "`r?`n")) {
             if ($l -notmatch '^\s*-\s*\S') { continue }
             if ($l -match '^\s*-\s*(nenhum|nada)\b') { continue }
-            $m = [regex]::Match($l, '^\s*-\s*(A\d+)\s*·\s*(teste|css)\s*·\s*`([^`]+)`\s*·\s*(.+?)(?:\s*·\s*regra:\s*(.*))?$')
+            $m = [regex]::Match($l, '^\s*-\s*(A\d+)\s*·\s*(teste|css|stub)\s*·\s*`([^`]+)`\s*·\s*(.+?)(?:\s*·\s*regra:\s*(.*))?$')
             if (-not $m.Success) { $out += @{ Id = ''; Kind = ''; File = ''; What = ''; Rule = ''; Bad = $l.Trim() }; continue }
             $out += @{ Id = $m.Groups[1].Value; Kind = $m.Groups[2].Value; File = (($m.Groups[3].Value -replace '\\', '/') -replace '^\./', ''); What = $m.Groups[4].Value.Trim(); Rule = $m.Groups[5].Value.Trim(); Bad = '' }
         }
