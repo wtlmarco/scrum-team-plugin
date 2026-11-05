@@ -15,7 +15,7 @@
 
 ## v3.54.1 — 2026-11-05
 
-**Branch:** `fix/v3.54.1` empilhada sobre `fix/v3.54.0` (ainda não mesclada) · **Processo:** addendum v3.54.1 (alvo que se religa, margem stub, plano reconferido no meio da construção)
+**Branch:** `fix/v3.54.1` a partir de `develop` (com a v3.54.0 mesclada pelo PR #119) · **Processo:** addendum v3.54.1 (alvo que se religa, margem stub, plano reconferido no meio da construção)
 Origem: carta da sessão do sprint 5 do garden ao dono do plugin (T-063, 04–05/11); o stakeholder aprovou os itens A, B e C em 05/11.
 
 Mudanças:
