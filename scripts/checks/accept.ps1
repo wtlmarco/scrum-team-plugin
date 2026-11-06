@@ -54,29 +54,40 @@ $verbs = 'reset', 'launch', 'open', 'restart', 'back', 'clock', 'wait', 'tap', '
          'assert-text', 'assert-contains', 'assert-exists', 'assert-absent', 'assert-checked', 'assert-count', 'assert-order'
 
 # Lê os cenários dos arquivos; erro de sintaxe vem com arquivo:linha.
+# v3.56.0 (H1, sprint 5 do garden #32): cada erro leva o id do cenário (Sc; '' = erro do arquivo) — com -Only, só contam
+# os erros dos cenários pedidos e os do arquivo; um cenário de outra Task sem assert não reprova mais esta.
 function Read-Scenarios([string[]]$Files) {
     $blocks = @(); $errors = @()
     foreach ($f in $Files) {
-        $n = 0
+        $n = 0; $first = $blocks.Count   # v3.56.0: o "antes do primeiro scenario" é por arquivo (não cai no último cenário do anterior)
         foreach ($raw in [System.IO.File]::ReadAllLines($f, $utf8)) {
             $n++; $l = $raw.Trim(); if (-not $l -or $l.StartsWith('#')) { continue }
             if ($l -match '^scenario\s+(\S+)\s*(.*)$') { $blocks += , @{ id = $Matches[1]; title = $Matches[2]; steps = @(); file = $f }; continue }
-            if (-not $blocks.Count) { $errors += "${f}:$n passo antes do primeiro 'scenario'"; continue }
-            $verb = ($l -split '\s+', 2)[0]
-            if ($verbs -notcontains $verb) { $errors += "${f}:$n passo desconhecido '$verb'" }
-            elseif ($verb -match '^(type|select|assert-text|assert-contains|assert-count|assert-order|assert-checked)$' -and $l -notmatch '=') { $errors += "${f}:$n '$verb' pede '<id> = <valor>'" }
-            elseif ($verb -eq 'seed' -and $l -notmatch '^seed\s+\S+\s*$') { $errors += "${f}:$n 'seed' pede um nome só: seed <nome> (o comando fica em guards.json → targets.<alvo>.seeds)" }
+            if ($blocks.Count -eq $first) { $errors += , @{ Sc = ''; Msg = "${f}:$n passo antes do primeiro 'scenario'" }; continue }
+            $verb = ($l -split '\s+', 2)[0]; $sid = [string]$blocks[-1].id
+            if ($verbs -notcontains $verb) { $errors += , @{ Sc = $sid; Msg = "${f}:$n passo desconhecido '$verb'" } }
+            elseif ($verb -match '^(type|select|assert-text|assert-contains|assert-count|assert-order|assert-checked)$' -and $l -notmatch '=') { $errors += , @{ Sc = $sid; Msg = "${f}:$n '$verb' pede '<id> = <valor>'" } }
+            elseif ($verb -eq 'seed' -and $l -notmatch '^seed\s+\S+\s*$') { $errors += , @{ Sc = $sid; Msg = "${f}:$n 'seed' pede um nome só: seed <nome> (o comando fica em guards.json → targets.<alvo>.seeds)" } }
             $blocks[-1].steps += $l
         }
     }
-    foreach ($d in @($blocks | Group-Object { $_.id } | Where-Object { $_.Count -gt 1 } | ForEach-Object { $_.Name })) { $errors += "cenário $d definido mais de uma vez" }
-    foreach ($b in $blocks) { if (-not $b.steps.Count) { $errors += "cenário $($b.id) sem passos" } }
+    foreach ($d in @($blocks | Group-Object { $_.id } | Where-Object { $_.Count -gt 1 } | ForEach-Object { $_.Name })) { $errors += , @{ Sc = [string]$d; Msg = "cenário $d definido mais de uma vez" } }
+    foreach ($b in $blocks) { if (-not $b.steps.Count) { $errors += , @{ Sc = [string]$b.id; Msg = "cenário $($b.id) sem passos" } } }
     # v3.53.1 (plugin-report do sprint 4 do garden, item 1): cenário sem nenhum assert passa só por instalar e abrir o app — o
     # accept saiu "18 de 18" numa aplicação híbrida (WebView) opaca ao automatizador, sem provar critério nenhum.
     foreach ($b in @($blocks | Where-Object { $_.steps.Count -and -not @($_.steps | Where-Object { $_ -match '^assert-' }).Count })) {
-        $errors += "cenário $($b.id) sem nenhum assert-* — não prova o critério, só que o app abriu; sem identificador de teste no alvo, o cenário não serve: 🔺 GAP ao Arquiteto (outro modo de prova)"
+        $errors += , @{ Sc = [string]$b.id; Msg = "cenário $($b.id) sem nenhum assert-* — não prova o critério, só que o app abriu; sem identificador de teste no alvo, o cenário não serve: 🔺 GAP ao Arquiteto (outro modo de prova)" }
     }
     return @{ Blocks = $blocks; Errors = $errors }
+}
+
+# v3.56.0 (H1): os erros que contam — sem -Only, todos; com -Only, os dos cenários pedidos e os do arquivo (Sc ''). Devolve
+# Count (fora do -Only, só aviso) e as mensagens que reprovam.
+function Select-ScenarioErrors($Errors, [string[]]$OnlyList) {
+    $all = @($Errors | Where-Object { $_ })
+    if (-not @($OnlyList).Count) { return @{ Msgs = @($all | ForEach-Object { [string]$_.Msg }); Outside = 0 } }
+    $keep = @($all | Where-Object { -not $_.Sc -or $OnlyList -contains $_.Sc })
+    return @{ Msgs = @($keep | ForEach-Object { [string]$_.Msg }); Outside = $all.Count - $keep.Count }
 }
 
 # v3.54.2 (carta do sprint 5 do garden, item 3): estado de partida do app. targets.android.baseline = o nome de uma massa
@@ -225,6 +236,9 @@ try {
     $parsed = Read-Scenarios $files
     $onlyList = @($Only -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
     $blocks = @($parsed.Blocks | Where-Object { -not $onlyList.Count -or $onlyList -contains $_.id })
+    $sel = Select-ScenarioErrors $parsed.Errors $onlyList
+    $parsed.Errors = @($sel.Msgs)
+    if ($sel.Outside) { [Console]::Out.WriteLine("accept: aviso — $($sel.Outside) erro(s) em cenários fora do -Only (não reprovam esta execução; rode o -ParseOnly sem -Only para vê-los)") }
     foreach ($o in $onlyList) { if (-not ($parsed.Blocks | Where-Object { $_.id -eq $o })) { $parsed.Errors += "cenário $o pedido em -Only não existe" } }
     # v3.53.7 (encadeamento do sprint 5 do garden): a massa que o cenário pede existe ANTES de o alvo ser tocado — o -ParseOnly
     # do QA barra a massa não declarada, em vez de o accept descobrir no aparelho (o reset zerava a base e o cenário falhava).

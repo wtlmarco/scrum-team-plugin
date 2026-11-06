@@ -550,7 +550,7 @@ $p = Join-Path $tmp 'accept'; New-Project $p
 Put $p '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-001 Abre`nreset`nlaunch`nassert-text texto.raio = 150 km`n`nscenario SC-002 Conta`nlaunch`nassert-count destino.card. = 12`n"
 $r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Root', $p)
 Check 'accept -ParseOnly: cenários do QA lidos do lugar padrão' $r 0 @('2 cenário\(s\) válidos em 1 arquivo', 'SC-001, SC-002')
-Put $p '.team-project/quality-assurance/scenarios/b.scn' "tap antes\nscenario SC-003 Ruim`npular muro`nassert-text texto.raio`n`nscenario SC-001 Repetido`nlaunch`n"
+Put $p '.team-project/quality-assurance/scenarios/b.scn' "tap antes`nscenario SC-003 Ruim`npular muro`nassert-text texto.raio`n`nscenario SC-001 Repetido`nlaunch`n"
 $r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Root', $p)
 Check 'accept: cenário malformado sai com arquivo:linha (passo desconhecido, sem "=", id repetido): exit 2' $r 2 @("passo desconhecido 'pular'", "'assert-text' pede '<id> = <valor>'", 'SC-001 definido mais de uma vez')
 Remove-Item -LiteralPath (Join-Path $p '.team-project/quality-assurance/scenarios/b.scn') -Force
@@ -615,7 +615,7 @@ $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'run next: preparo completo, a Task em andamento vai ao executor de Task (C3), sem run_in_background (C1)' $r 0 @('construir T-041 — .*\(executor de Task\)', 'subagent_type "team:task-runner".*dispare e encerre o turno', 'run\.ps1 start -Task T-041', 'ao voltar: run\.ps1 next')
 $r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
 $card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
-Check 'run handoff: cartão de passagem curto com plano, cenários e o comando do accept' @{ Code = $r.Code; Out = $(if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) + "`nKB=" + [int]((Get-Item -LiteralPath $card).Length / 1024) } else { 'sem cartão' }) } 0 @('Cartão de passagem — T-041', 'accept\.ps1 -Task T-041 -Only SC-014', 'KB=[0-2]\b')
+Check 'run handoff: cartão de passagem curto com plano, cenários e o comando do accept' @{ Code = $r.Code; Out = $(if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) + "`nKB=" + [int]((Get-Item -LiteralPath $card).Length / 1024) } else { 'sem cartão' }) } 0 @('Cartão de passagem — T-041', 'accept\.ps1 -Task T-041 -Scenarios \.team-project/quality-assurance/scenarios/H-014\.scn -Only SC-014', 'KB=[0-2]\b')
 
 # 5d1b. v3.53.2 (sprint 5 do garden): cenário provado por teste "(teste)" não pede .scn nem accept; cenário que aguarda a
 # Task que cria os nomes de teste ("# aguarda T-041: SC-016" no .scn) não trava o preparo e segura só a Task que o cita.
@@ -629,7 +629,7 @@ $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'v3.53.2: (teste) e "aguarda" não travam o preparo — segue aos planos sem pedir .scn' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'cenários executáveis') { "`nPEDIU-SCN" } else { '' }) } 0 @('planos da História H-014 numa instância do Arquiteto', '^(?![\s\S]*PEDIU-SCN)')
 $r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
 $card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
-Check 'v3.53.2: cartão — accept só do cenário de tela; o (teste) aparece como prova pelo plano' @{ Code = $r.Code; Out = $(if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) } else { 'sem cartão' }) } 0 @('accept\.ps1 -Task T-041 -Only SC-014`', 'por teste do plano, sem accept: SC-015')
+Check 'v3.53.2: cartão — accept só do cenário de tela; o (teste) aparece como prova pelo plano' @{ Code = $r.Code; Out = $(if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) } else { 'sem cartão' }) } 0 @('accept\.ps1 -Task T-041 -Scenarios \.team-project/quality-assurance/scenarios/H-014\.scn -Only SC-014`', 'por teste do plano, sem accept: SC-015')
 Put $p '.team-project/sprints/1/plan/T-041a-x.md' "# Plano`n"
 Edit-File $sb '[`plan/T-041a-x.md`](plan/)' '[`plan/T-041a-x.md`](plan/T-041a-x.md)'
 Edit-File $sb "| $($e.qa) T-041 | Endpoint de exportação | 1 | dev | — |" "| $($e.todo) T-041 | Endpoint de exportação | 1 | dev | T-041a |"
@@ -2052,7 +2052,7 @@ $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.53.7: decisão do sprint inexistente citada e texto de decisão copiado no plano reprovam (regra 29)' $r 1 @('\| decisões \| falhou.*cita D-9 que não existe\(m\) em architect/decisions/S1\.md.*copia o texto da D-2')
 Put $p $pl ($h7 + "**Decisões do sprint:** D-1, D-2`n`n" + $b7 + "### Premissas`n- P1 · src tem a.ts · medido: ``ls src`` → a.ts`n- P2 · a margem é 16 px · não exercitada: nasce no passo 2 · verifica: dev em passo 4`n" + $f7)
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
-Check 'v3.53.7: plano que só cita as decisões passa' $r 0 @('\| decisões \| ok.*cita D-1, D-2; 2 decisão\(ões\) no sprint, nenhuma copiada', '\| herdados \| n-a')
+Check 'v3.53.7: plano que só cita as decisões passa' $r 0 @('\| decisões \| ok.*cita D-1, D-2; 2 decisão\(ões\) no sprint, 0 K no projeto, nenhuma copiada', '\| herdados \| n-a')
 # v3.55.0 (A4): plano que corrige outra Task traz "### Testes herdados"; plano comum não é afetado.
 $prem = "### Premissas`n- P1 · src tem a.ts · medido: ``ls src`` → a.ts`n- P2 · a margem é 16 px · não exercitada: nasce no passo 2 · verifica: dev em passo 4`n"
 Put $p $pl ($h7 + "**Corrige:** T-040`n`n" + $b7 + $prem + $f7)
@@ -2288,6 +2288,127 @@ Check 'v3.54.2: baseline que não é massa de seeds reprova o -ParseOnly' $r 2 @
 Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x", "baseline": "sem-intro", "seeds": { "sem-intro": "exit 0" } } } }'
 $r = Invoke-Check 'accept.ps1' @('-ParseOnly', '-Root', $p)
 Check 'v3.54.2: baseline declarada passa no -ParseOnly' $r 0 @('1 cenário\(s\) válidos')
+
+# v3.56.0 H1 (sprint 5 do garden #32): -Only valida só os cenários pedidos (e os erros do arquivo).
+$p = Join-Path $tmp 'v3560-only'; New-Project $p
+Put $p '.team-project/quality-assurance/scenarios/H-014.scn' "scenario SC-1 válido`nlaunch`nassert-exists a.b`n`nscenario SC-2 sem assert`nlaunch`n"
+$r = Invoke-Check 'accept.ps1' @('-ParseOnly', '-Only', 'SC-1', '-Root', $p)
+Check 'v3.56.0 H1: -Only SC-1 passa com SC-2 inválido no mesmo arquivo (aviso de uma linha)' $r 0 @('1 erro\(s\) em cenários fora do -Only', '1 cenário\(s\) válidos.*SC-1')
+$r = Invoke-Check 'accept.ps1' @('-ParseOnly', '-Only', 'SC-2', '-Root', $p)
+Check 'v3.56.0 H1: -Only SC-2 reprova pelo próprio erro' $r 2 @('cenário SC-2 sem nenhum assert')
+Put $p '.team-project/quality-assurance/scenarios/H-015.scn' "tap antes`nscenario SC-3 x`nlaunch`nassert-exists a.b`n"
+$r = Invoke-Check 'accept.ps1' @('-ParseOnly', '-Only', 'SC-1', '-Root', $p)
+Check 'v3.56.0 H1: erro do arquivo (passo antes do primeiro scenario) continua reprovando com -Only' $r 2 @("passo antes do primeiro 'scenario'")
+
+# v3.56.0 H2 (sprint 5 do garden #28, #33, #38…): o cartão e o despacho seguem os cenários do plano, não os do backlog.
+$p = Join-Path $tmp 'v3560-cenarios-plano'; New-Project $p
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') 'SC-014 (novo)' 'SC-014 (novo) · SC-016'
+Put $p '.team-project/quality-assurance/scenarios/H-014.scn' "scenario SC-014 Exporta`nlaunch`nassert-exists a.b`n`nscenario SC-016 Outro`nlaunch`nassert-exists a.c`n"
+Put $p '.team-project/quality-assurance/scenarios/H-099.scn' "scenario SC-900 Outra história`nlaunch`n"
+$plT = Join-Path $p '.team-project/sprints/1/plan/T-041-export.md'
+[System.IO.File]::WriteAllText($plT, ("# Plano`n**Cenários:** SC-014`n" + [System.IO.File]::ReadAllText($plT, $utf8).Substring(1)), $utf8)
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
+$ct = if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) } else { 'sem cartão' }
+Check 'v3.56.0 H2: backlog SC-014 e SC-016, plano SC-014 → cartão só com SC-014 e -Scenarios do .scn da História' @{ Code = $r.Code; Out = $ct + $(if ($ct -match 'SC-016') { "`nTEM-016" }) } 0 @('\*\*Cenários \(do plano\):\*\* SC-014 — `accept\.ps1 -Task T-041 -Scenarios \.team-project/quality-assurance/scenarios/H-014\.scn -Only SC-014`', '^(?![\s\S]*TEM-016)', '^(?![\s\S]*H-099)')
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') "| $($e.qa) T-041 |" "| $($e.build) T-041 |"
+$r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
+$rl = Join-Path $p '.team-project/sprints/1/run-log.md'
+Check 'v3.56.0 H2: start manda o accept do plano, diz que o plano manda e registra a divergência no run-log (sem formulário)' @{ Code = $r.Code; Out = $r.Out + "`n" + $(if (Test-Path -LiteralPath $rl) { [System.IO.File]::ReadAllText($rl, $utf8) } else { '' }) } 0 @('accept\.ps1 -Task T-041 -Scenarios \S+H-014\.scn -Only SC-014 no alvo', 'o plano manda — ordem do cartão que contradiga o plano é 🔺 GAP de processo', '\| T-041 \| cenários: o plano manda \(SC-014\) \| backlog: SC-014, SC-016')
+$r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
+Check 'v3.56.0 H2: a divergência entra uma vez só no run-log' @{ Code = 0; Out = "N=" + ([regex]::Matches([System.IO.File]::ReadAllText($rl, $utf8), 'cenários: o plano manda')).Count } 0 @('N=1$')
+[System.IO.File]::WriteAllText($plT, [System.IO.File]::ReadAllText($plT, $utf8).Replace('**Cenários:** SC-014', '**Cenários:** nenhum — o GAP tirou a prova de tela'), $utf8)
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$ct = [System.IO.File]::ReadAllText($card, $utf8)
+Check 'v3.56.0 H2: plano com "nenhum — motivo" → cartão sem linha de accept' @{ Code = $r.Code; Out = $ct + $(if ($ct -match 'accept\.ps1 -Task') { "`nTEM-ACCEPT" }) } 0 @('\*\*Cenários \(do plano\):\*\* nenhum no alvo', '^(?![\s\S]*TEM-ACCEPT)')
+
+# v3.56.0 A (regra 29 ampliada): toda decisão de GAP declara Origem e Lição; K citada inexistente ou copiada reprova (B).
+$p = Join-Path $tmp 'v3560-licao'; New-Project $p
+Put $p 'src/a.ts' "bar`nqux`n"
+$pl = '.team-project/sprints/1/plan/T-080-x.md'
+$hA = "# Plano`n**Cenários:** nenhum — interno`n**Risco:** regra de negócio`n**Layout novo:** não`n"
+$bA = "**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 3. Ambiente`n| Pré-requisito | Comando | Saída real | Log | Atende? |`n|---|---|---|---|---|`n| Node | node -v | v20 | — | sim |`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · ``bar`` → ``baz```n`n### Premissas`n- P1 · src tem a.ts · medido: ``ls src`` → a.ts`n"
+$fA = "`n## 9. Onde parar`n- Pré-requisito ausente`n"
+$kHead = "# Conhecimento do projeto`n> DOCUMENTO VIVO · Dono: Arquiteto`n`n**Classificação desde:** S1`n`n"
+Put $p '.team-project/architect/knowledge.md' ($kHead + "## K-1 — Limiar relativo à caixa`n**Vale para:** ``src/**/*.ts`` · **Origem:** 🔺 GAP 2 da T-063 (S5) · **Desde:** S5`nO limiar de toque se mede contra a caixa do componente, nunca contra 160 px fixos do viewport.`n`n## K-2 — Só para documentos`n**Vale para:** ``docs/**`` · **Origem:** 🔺 GAP 1 da T-050 (S4) · **Desde:** S4`nO SDD cita a seção, não copia.`n")
+Put $p '.team-project/architect/decisions/S1.md' "# Decisões do sprint 1`n`n## D-1 — Emulador fora do ar`n**Vale para:** todas · **Do GAP:** T-041 · 2026-11-02`nCom o alvo fora do ar depois do reparo, a Task vai a bloqueada com prova no alvo pendente.`n"
+Put $p $pl ($hA + "**Decisões:** D-1`n`n" + $bA + $fA)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.56.0 A: D-<k> que vale para a Task sem Origem/Lição reprova (sprint com classificação obrigatória)' $r 1 @('\| decisões \| falhou.*D-1 sem \*\*Origem:\*\* e \*\*Lição:\*\*')
+Put $p '.team-project/architect/decisions/S1.md' "# Decisões do sprint 1`n`n## D-1 — Emulador fora do ar`n**Vale para:** todas · **Do GAP:** T-041 · 2026-11-02`n**Origem:** palpite`n**Lição:** projeto`nCom o alvo fora do ar depois do reparo, a Task vai a bloqueada com prova no alvo pendente.`n"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.56.0 A: Origem fora da lista reprova' $r 1 @("\| decisões \| falhou.*D-1: \*\*Origem:\*\* 'palpite' fora da lista")
+Put $p '.team-project/architect/decisions/S1.md' "# Decisões do sprint 1`n`n## D-1 — Emulador fora do ar`n**Vale para:** todas · **Do GAP:** T-041 · 2026-11-02`n**Origem:** ambiente`n**Lição:** plugin`nCom o alvo fora do ar depois do reparo, a Task vai a bloqueada com prova no alvo pendente.`n"
+Put $p $pl ($hA + "**Decisões:** D-1`n`n**Decisão do GAP T-080 (06/11/2026):** a lista vazia mostra o aviso padrão.`n`n" + $bA + $fA)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.56.0 A: decisão de GAP no plano sem as duas linhas reprova' $r 1 @("\| decisões \| falhou.*'\*\*Decisão do GAP T-080 \(06/11/2026\):\*\*.*sem \*\*Origem:\*\* e \*\*Lição:\*\*")
+Put $p $pl ($hA + "**Decisões:** D-1, K-1`n`n**Decisão do GAP T-080 (06/11/2026):** a lista vazia mostra o aviso padrão.`n**Origem:** requisito`n**Lição:** stack:ionic-capacitor`n`n" + $bA + $fA)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.56.0 A/B: decisões classificadas e **Decisões:** D-1, K-1 passam' $r 0 @('\| decisões \| ok.*cita D-1, K-1; 1 decisão\(ões\) no sprint, 2 K no projeto, nenhuma copiada')
+Put $p $pl ($hA + "**Decisões:** D-1, K-9`n`n" + $bA + "O limiar de toque se mede contra a caixa do componente, nunca contra 160 px fixos do viewport.`n" + $fA)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.56.0 B: K citada que não existe e texto de K copiado reprovam' $r 1 @('\| decisões \| falhou.*cita K-9 que não existe\(m\) em architect/knowledge\.md.*copia o texto da K-1')
+Remove-Item -LiteralPath (Join-Path $p '.team-project/architect/knowledge.md') -Force
+Put $p '.team-project/architect/decisions/S1.md' "# Decisões do sprint 1`n`n## D-1 — Emulador fora do ar`n**Vale para:** todas · **Origem:** 🔺 GAP da T-041 · 2026-11-02`nCom o alvo fora do ar depois do reparo, a Task vai a bloqueada com prova no alvo pendente.`n"
+Put $p $pl ($hA + "**Decisões do sprint:** D-1`n`n" + $bA + $fA)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.56.0 A: projeto sem knowledge.md (antes do update) — D sem classificação só avisa; o rótulo antigo vale' $r 0 @('\| decisões \| ok.*cita D-1.*D-1 sem classificação \(anterior à 3\.56\.0: só aviso\)')
+
+# v3.56.0 B e C: o cartão traz a K e a armadilha da stack que casam por glob com os arquivos da Task; não traz as outras.
+$p = Join-Path $tmp 'v3560-cartao'; New-Project $p
+Put $p '.team-project/architect/knowledge.md' ($kHead + "## K-1 — Limiar relativo à caixa`n**Vale para:** ``src/app/**/*.render.spec.ts`` · **Origem:** 🔺 GAP 2 da T-063 (S5) · **Desde:** S5`nO limiar de toque se mede contra a caixa do componente.`n`n## K-2 — Só para documentos`n**Vale para:** ``docs/**`` · **Origem:** 🔺 GAP 1 da T-050 (S4) · **Desde:** S4`nO SDD cita a seção, não copia.`n`n## K-3 — Remédio do plugin`n**Vale para:** T-041 · **Origem:** 🔺 GAP 3 da T-060 (S5) · **Desde:** S5 · **Até:** a mutação rodar node:test`nRode o node:test pelo operator.`n")
+Put $p '.team-project/guards.json' '{ "stacks": ["testex"] }'
+Put $p '.team-project/standards/stacks/testex/pitfalls.md' "# Armadilhas locais — testex`n`n## TESTEX-L1 — Margem do botão`n**Vale para:** ``src/app/**``, ``src/theme/**```n**Sintoma:** régua de 8 px vira 16`n**Fato:** o botão soma 4 px por lado ao clamp`n**Como testar:** medir a caixa do botão interno`n`n## TESTEX-L2 — Já no plugin`n**Vale para:** ``src/**```n**Fato:** promovida`n**Promovida:** TESTEX-P9`n`n## TESTEX-L3 — Outra pasta`n**Vale para:** ``android/**```n**Fato:** só do Gradle`n"
+$plT = Join-Path $p '.team-project/sprints/1/plan/T-041-export.md'
+[System.IO.File]::WriteAllText($plT, "# Plano — T-041`n**Cenários:** nenhum — interno`n**Decisões:** K-2`n`n**Arquivos tocados:** ``src/app/home/home.render.spec.ts```n``src/app/home/home.page.ts```n`n## 6. Testes`n", $utf8)
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
+$ct = if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) } else { 'sem cartão' }
+Check 'v3.56.0 B: cartão traz a K que casa por glob, a citada no plano e a do T-ID (com o Até); não traz a que não casa' @{ Code = $r.Code; Out = $ct } 0 @('\*\*Conhecimento do projeto\*\* \(`architect/knowledge\.md`', '- K-1 — Limiar relativo à caixa: O limiar de toque', '- K-2 — Só para documentos', '- K-3 — Remédio do plugin: Rode o node:test pelo operator\. \(até: a mutação rodar node:test\)')
+[System.IO.File]::WriteAllText($plT, "# Plano — T-041`n**Cenários:** nenhum — interno`n`n**Arquivos tocados:** ``src/app/home/home.render.spec.ts```n`n## 6. Testes`n", $utf8)
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$ct = [System.IO.File]::ReadAllText($card, $utf8)
+Check 'v3.56.0 B/C: sem citar, a K de docs/** fica fora; a armadilha local que casa entra, a promovida e a de outra pasta não' @{ Code = $r.Code; Out = $ct + $(if ($ct -match 'K-2') { "`nTEM-K2" }) + $(if ($ct -match 'TESTEX-L2|TESTEX-L3') { "`nTEM-L2L3" }) } 0 @('\*\*Armadilhas da stack\*\*', '- TESTEX-L1 — Margem do botão: o botão soma 4 px por lado ao clamp · teste: medir a caixa do botão interno', '^(?![\s\S]*TEM-K2)', '^(?![\s\S]*TEM-L2L3)')
+
+# v3.56.0 E: knowledge.ps1 — no fechamento, cada lição vai ao destino (cópia mecânica), com a tabela origem × destino.
+$kHead = "# Conhecimento do projeto`n> DOCUMENTO VIVO · Dono: Arquiteto`n`n**Classificação desde:** S1`n`n"
+$p = Join-Path $tmp 'v3560-knowledge'; New-Project $p
+Put $p '.team-project/architect/knowledge.md' ($kHead + "## K-1 — Limiar relativo à caixa`n**Vale para:** ``src/legacy/**`` · **Origem:** 🔺 GAP 2 da T-063 (S5) · **Desde:** S1`nO limiar de toque se mede contra a caixa do componente.`n")
+Put $p '.team-project/sprints/1/plan/T-041-export.md' "# Plano — T-041`n**Cenários:** nenhum — interno`n`n**Arquivos tocados:** ``src/app/home.page.ts```n`n**Decisão do GAP T-041 (06/11/2026):** a lista vazia mostra o aviso padrão do app.`n**Origem:** requisito`n**Lição:** projeto`n`n## 6. Testes`n"
+Put $p '.team-project/architect/decisions/S1.md' ("# Decisões do sprint 1`n`n## D-1 — Limiar de novo`n**Vale para:** ``src/app/**/*.render.spec.ts`` · **Do GAP:** T-041 · 2026-11-06`n**Origem:** conhecimento`n**Lição:** projeto`nO limiar de toque é relativo à caixa (repete K-1).`n`n" +
+    "## D-2 — Margem do botão`n**Vale para:** ``src/app/**/*.scss`` · **Do GAP:** T-041`n**Origem:** previsão`n**Lição:** stack:testex`nO botão soma 4 px por lado ao clamp.`n`n" +
+    "## D-3 — Mutação sem node:test`n**Vale para:** todas · **Do GAP:** T-041`n**Origem:** processo`n**Lição:** plugin`n**Até:** a mutação rodar node:test`nRode o node:test pelo operator e cole a saída.`n`n" +
+    "## D-4 — Só esta vez`n**Vale para:** T-041 · **Do GAP:** T-041`n**Origem:** previsão`n**Lição:** nenhuma`nA lista tinha 3 itens, não 2.`n")
+$r = Invoke-Check 'knowledge.ps1' @('-Sprint', '1', '-Root', $p)
+Check 'v3.56.0 E: -Check só lê — conta promoções, plugin e a repetição com registro, sem gravar' @{ Code = $r.Code; Out = $r.Out + $(if (Test-Path -LiteralPath (Join-Path $p '.team-project/sprints/1/lessons.md')) { "`nGRAVOU" }) } 0 @('knowledge S1 -Check: 5 decisão\(ões\) · promoções 4 · plugin 1 · repetições com registro 1 · achados 0', '^(?![\s\S]*GRAVOU)')
+$r = Invoke-Check 'knowledge.ps1' @('-Sprint', '1', '-Apply', '-Root', $p)
+$kt = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/architect/knowledge.md'), $utf8)
+$lt = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/standards/stacks/testex/pitfalls.md'), $utf8)
+$ls = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/lessons.md'), $utf8)
+Check 'v3.56.0 E: -Apply promove D → K (com o Até do remédio) e D → L da stack, cópia literal' @{ Code = $r.Code; Out = $kt + "`n=====`n" + $lt } 0 @('## K-2 — Limiar de novo\r?\n\*\*Vale para:\*\* `src/app/\*\*/\*\.render\.spec\.ts` · \*\*Origem:\*\* 🔺 GAP · D-1 do S1 \(T-041\) · \*\*Desde:\*\* S1\r?\nO limiar de toque é relativo à caixa \(repete K-1\)\.', '## K-3 — Mutação sem node:test\r?\n.*\*\*Até:\*\* a mutação rodar node:test', '## K-4 — a lista vazia mostra o aviso padrão do app\.', '## TESTEX-L1 — Margem do botão\r?\n\*\*Vale para:\*\* `src/app/\*\*/\*\.scss`\r?\n\*\*Fato:\*\* O botão soma 4 px por lado ao clamp\.', '^(?![\s\S]*Só esta vez)')
+Check 'v3.56.0 E: lessons.md — tabela origem × destino, ocorrência de plugin (iii) e a repetição que não chegou à Task' @{ Code = 0; Out = $ls } 0 @('\| conhecimento \| 1 \| 0 \| 0 \| 0 \| 1 \|', '\| previsão \| 0 \| 1 \| 0 \| 1 \| 2 \|', '\| \*\*Total\*\* \| 2 \| 1 \| 1 \| 1 \| 5 \|', '## Ocorrências de plugin \(iii\)[\s\S]*D-3 do S1 \(T-041\) — Mutação sem node:test', 'D-1 do S1 \(T-041\) repete K-1 — o registro existia e NÃO chegou à Task', 'declarar "stacks" no guards\.json')
+$r = Invoke-Check 'knowledge.ps1' @('-Sprint', '1', '-Apply', '-Root', $p)
+$kt2 = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/architect/knowledge.md'), $utf8)
+Check 'v3.56.0 E: -Apply de novo não duplica (idempotente)' @{ Code = $r.Code; Out = "K=" + ([regex]::Matches($kt2, '(?m)^## K-')).Count + " L=" + ([regex]::Matches([System.IO.File]::ReadAllText((Join-Path $p '.team-project/standards/stacks/testex/pitfalls.md'), $utf8), '(?m)^## TESTEX-L')).Count } 0 @('K=4 L=1')
+Put $p '.team-project/architect/decisions/S1.md' "# Decisões do sprint 1`n`n## D-1 — Sem lição`n**Vale para:** todas`nA regra.`n"
+Put $p '.team-project/architect/knowledge.md' ($kHead + "## K-1 — Grande`n**Vale para:** todas`n" + ('x' * 16000) + "`n")
+$r = Invoke-Check 'knowledge.ps1' @('-Sprint', '1', '-Apply', '-Root', $p)
+Check 'v3.56.0 E: decisão sem Lição em sprint de classificação obrigatória é achado bloqueante (exit 1); acima de 15 KB abre a consolidação' @{ Code = $r.Code; Out = $r.Out + $(if (Test-Path -LiteralPath (Join-Path $p '.team-project/architect/consolidation.md')) { "`nCONSOLIDA" }) } 1 @('ACHADO: D-1 do S1 sem \*\*Origem:\*\* e \*\*Lição:\*\*', 'TETO: consolidação no próximo prepare', 'CONSOLIDA')
+
+# v3.56.0 F: -Migrate sobre um decisions/S<n>.md como o do garden S5 (três D anteriores à 3.56.0, sem classificação).
+$p = Join-Path $tmp 'v3560-migrate'; New-Project $p
+Put $p '.team-project/architect/decisions/S1.md' "# Decisões do sprint 1`n`n## D-1 — Limiar relativo à caixa`n**Vale para:** todas · **Origem:** 🔺 GAP da T-063 · 2026-11-03`nO limiar de toque se mede contra a caixa do componente.`n`n## D-2 — Injetar o caminho do artefato`n**Vale para:** todas · **Origem:** 🔺 GAP da T-056`nO teste recebe o caminho do APK por parâmetro em vez de apagar o arquivo.`n`n## D-3 — node:test fora do verify`n**Vale para:** todas · **Origem:** 🔺 GAP da T-072`nRode o node:test pelo operator e cole a saída.`n"
+$r = Invoke-Check 'knowledge.ps1' @('-Migrate', '-Root', $p)
+Check 'v3.56.0 F: -Migrate lista o que o update cria e as D sem classificação (promoção só no close)' @{ Code = $r.Code; Out = $r.Out + $(if (Test-Path -LiteralPath (Join-Path $p '.team-project/architect/knowledge.md')) { "`nCRIOU" }) } 0 @('criar architect/knowledge\.md vazio, com \*\*Classificação desde:\*\* S2', 'D-1 do S1 — Limiar relativo à caixa: sem classificação → no close do S1 entra como Lição: projeto', 'D-3 do S1', '^(?![\s\S]*CRIOU)')
+$r = Invoke-Check 'knowledge.ps1' @('-Migrate', '-Apply', '-Classify', 'D-1=conhecimento:projeto;D-2=previsão:projeto;D-3=processo:plugin@a mutação rodar node:test', '-Root', $p)
+$dt = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/architect/decisions/S1.md'), $utf8)
+Check 'v3.56.0 F: -Migrate -Apply cria o knowledge.md e grava a classificação do formulário nas D' @{ Code = $r.Code; Out = $dt + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/architect/knowledge.md'), $utf8) } 0 @('## D-3 — node:test fora do verify\r?\n\*\*Vale para:\*\*[^\n]*\r?\n\*\*Origem:\*\* processo\r?\n\*\*Lição:\*\* plugin\r?\n\*\*Até:\*\* a mutação rodar node:test', '\*\*Classificação desde:\*\* S2')
+$r = Invoke-Check 'knowledge.ps1' @('-Sprint', '1', '-Apply', '-Root', $p)
+$kt = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/architect/knowledge.md'), $utf8)
+Check 'v3.56.0 F: close do sprint migrado — D-1 → K-1, D-2 → K-2 sem Até, D-3 → K-3 com Até e ocorrência de plugin' @{ Code = $r.Code; Out = $r.Out + "`n" + $kt } 0 @('## K-1 — Limiar relativo à caixa', '## K-2 — Injetar o caminho do artefato\r?\n\*\*Vale para:\*\* todas · \*\*Origem:\*\* 🔺 GAP · D-2 do S1 \(T-056\) · \*\*Desde:\*\* S1\r?\n', '## K-3 — node:test fora do verify\r?\n[^\n]*\*\*Até:\*\* a mutação rodar node:test', 'plugin \(iii\): D-3 do S1')
+$r = Invoke-Check 'knowledge.ps1' @('-Migrate', '-Apply', '-Retire', 'K-3', '-Root', $p)
+Check 'v3.56.0 F: o update retira a K cujo Até chegou' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/architect/knowledge.md'), $utf8) } 0 @('K-3 — node:test fora do verify: retirada', '^(?![\s\S]*## K-3)', '## K-2')
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output

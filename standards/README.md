@@ -42,9 +42,17 @@ Guias normativos **agnósticos de produto**: regras, princípios e contratos reu
 | [`stacks/kotlin-android/guide.md`](stacks/kotlin-android/guide.md) · [`quality.md`](stacks/kotlin-android/quality.md) | 2 — Kotlin/Android | anéis em pacotes, estado com `StateFlow`, Compose, `testTag`, testes por nível · detekt, ktlint, Lint, JaCoCo/Kover, Ficha pré-preenchida |
 | [`stacks/react/guide.md`](stacks/react/guide.md) · [`quality.md`](stacks/react/quality.md) | 2 — React | anéis em pastas, estado do servidor × de tela, `data-testid`, testes por nível · ESLint, Prettier, Vitest, fronteira de import, Ficha pré-preenchida |
 | [`stacks/angular/guide.md`](stacks/angular/guide.md) · [`quality.md`](stacks/angular/quality.md) | 2 — Angular | portas como `InjectionToken`, signals, `data-testid` · `angular-eslint`, Jest/Karma, Ficha pré-preenchida |
+| [`stacks/ionic-capacitor/guide.md`](stacks/ionic-capacitor/guide.md) · [`pitfalls.md`](stacks/ionic-capacitor/pitfalls.md) | 2 — Ionic + Capacitor | soma ao perfil Angular: `id` como identificador de teste, harness do Karma com overlay e `.ion-page`, WebView/CDP só leitura, APK novo · 18 armadilhas do garden (v3.56.0, confirmar em segundo projeto) |
 
 **Um diretório por tecnologia** (v3.51), sempre com o mesmo par: `guide.md` (como se escreve) e `quality.md` (com qual ferramenta, o comando do `guards.json`, a coluna **ecossistema restrito** — o substituto aceito quando o projeto proíbe ferramenta de terceiros — e a **Ficha de Vinculação pré-preenchida**, que o Arquiteto copia e ajusta em vez de escrever as 22 linhas do zero). Stack sem perfil segue o nível 1 e preenche a Ficha.
 
+### Armadilhas da stack — `pitfalls.md` (v3.56.0)
+
+Cada stack tem, ao lado do `guide.md`, um **`pitfalls.md`**: o comportamento real do framework que já derrubou plano ou teste (`## <STACK>-P<n>`, com **Vale para** em glob, **Sintoma**, **Fato** e **Como testar**). Ninguém lê o arquivo inteiro: o cartão do dev e a ficha do Arquiteto trazem só as entradas cujo **Vale para** casa com os arquivos da Task, até 6 por Task.
+
+- **As stacks do projeto** ficam em `guards.json` → `"stacks": ["angular", "ionic-capacitor"]`. Sem a chave, o plugin infere pelo `package.json`, `build.gradle` ou `*.csproj` da raiz e das pastas do primeiro nível, e o SessionStart (G13) avisa.
+- **Extensão sem mexer no plugin:** o projeto tem a própria camada em `.team-project/standards/stacks/<stack>/pitfalls.md` (`## <STACK>-L<n>`), que **soma** à do plugin. Uma entrada local com `**Promovida:** <ID do plugin>` deixa de ser lida. Stack nova: uma pasta nova aqui, pelo `/review`, ou só a camada local no projeto até o `/review` promover.
+- **Quem grava:** aqui, só o `/review` (R16). Na camada local, o Arquiteto e o SM — este só pela promoção mecânica do fechamento (`knowledge.ps1 -Apply`, a `D-<k>` com `Lição: stack:<nome>`).
 ### Identificadores — leia a seção, não o arquivo
 
 Cada regra verificável tem um identificador estável. **O plano e o veredito citam o identificador; o dev e o QA leem só a seção citada.** No benchmark, `implementation-principles.md` sozinho foi relido 7 vezes num sprint (2,6 milhões de tokens).
@@ -57,6 +65,8 @@ Cada regra verificável tem um identificador estável. **O plano e o veredito ci
 | `RE-<n>` · `RE-Q<n>` | `stacks/react/` | `RE-3` estado e efeitos |
 | `NG-<n>` · `NG-Q<n>` | `stacks/angular/` | `NG-Q2` `guards.json` de referência |
 | `NET-D<n>` · seção do `guide.md`/`quality.md` .NET | `stacks/dotnet/` | `NET-D4` `AutomationId` |
+| `IONIC-<n>` · `IONIC-P<n>` | `stacks/ionic-capacitor/` | `IONIC-P4` margem do `ion-button` |
+| `<STACK>-P<n>` · `<STACK>-L<n>` | `stacks/<stack>/pitfalls.md` do plugin · `.team-project/standards/stacks/<stack>/pitfalls.md` do projeto | `NG-P1`, `IONIC-L2` |
 ## Documentos relacionados (fora deste diretório)
 
 | Documento | Conteúdo |

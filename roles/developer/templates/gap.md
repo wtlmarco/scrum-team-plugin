@@ -6,6 +6,7 @@ Levantado pelo dev quando o plano — ou a seção de standard que ele citou —
 🔺 GAP — <ID da Task | F-<nnn> na trilha fix> — passo <n> do plano
 
 **Tipo:** plano | standard
+**Origem (sugestão):** previsão | conhecimento | requisito | ambiente | processo   (o Arquiteto confirma)
 **O que o plano diz:** <trecho literal>
 **O que encontrei no código:** <arquivo:linha> — <o fato observado>
 **Por que não consigo seguir:** <1-2 frases>
@@ -20,6 +21,16 @@ Levantado pelo dev quando o plano — ou a seção de standard que ele citou —
 **Standard citado:** `${CLAUDE_PLUGIN_ROOT}/standards/<arquivo>.md` §<n> — <a obrigação, literal>
 **Defeito:** contradição (com `<arquivo> §<m>` / com o passo <n>) | lacuna | regra sem forma de verificação
 ```
+
+**A origem (v3.56.0)** diz de onde o GAP nasceu — eu sugiro, o Arquiteto confirma na decisão, e ela decide para onde vai a lição:
+
+| Origem | Quando | Exemplo curto |
+|---|---|---|
+| `previsão` | o plano previu algo que o código ou o render real desmentiu, só nesta Task | o passo assumia 2 itens na lista e o render mostra 3 |
+| `conhecimento` | um fato do próprio app, da stack ou do ambiente que já se sabia (ou devia se saber) e não chegou ao plano | o limiar de 160 px que já tinha reprovado num sprint anterior |
+| `requisito` | o critério de aceite ou a regra de negócio não diz | o que mostrar quando a lista está vazia |
+| `ambiente` | o ambiente real (emulador, APK, servidor, rede) se comporta diferente do que o plano mediu | o emulador sobe sem a WebView atualizada |
+| `processo` | a regra, a guarda ou o script do plugin mandou o que o plano proíbe | o cartão mandou rodar um cenário que o plano tirou |
 
 ## Quando levantar (sempre)
 

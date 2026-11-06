@@ -46,6 +46,17 @@ Roda **depois da Sprint Review**, com o resultado dela à vista, e encerra o spr
 - **Guardas:** deny legítimo <n> · falso positivo <n> · desligadas (`guards.json` → `disabled`) <IDs | nenhuma> · latência <média s por disparo>. **Falso positivo** = deny que o stakeholder ou o papel contestou com razão — vira ajuste de guarda no `/review`, nunca desligamento silencioso.
 - **`project.ps1` (C2):** <tabela colada — R14, R15, R21, R31> · falhas: <IDs | nenhuma>.
 
+### Lições do sprint
+
+> Fonte: `sprints/<n>/lessons.md`, gerado por `${CLAUDE_PLUGIN_ROOT}/scripts/checks/knowledge.ps1 -Sprint <n> -Apply` **antes** do fechamento da pasta (v3.56.0). O SM copia os números e a decisão; não reescreve o conteúdo técnico (é do Arquiteto). Sem decisão de 🔺 GAP no sprint: "nenhuma decisão de GAP".
+
+- **Origem × destino:** <a tabela do `lessons.md` — previsão · conhecimento · requisito · ambiente · processo × projeto · stack · plugin · nenhuma> · sem classificação: <n> (decisões anteriores à 3.56.0).
+- **Promoções feitas:** <D-<k> → K-<n> · D-<k> → <STACK>-L<n> | nenhuma>.
+- **Repetições com registro:** <n> — <qual registro existia e por que não chegou à Task (o Vale para não casava, ou chegou e não foi seguido) · a ação: alargar o Vale para, citar na ficha | nenhuma>. Alvo: zero.
+- **Ocorrências de plugin (iii):** <n> — entraram no formulário único investigar × ignorar (Review, ou este `close` com a Review adiada).
+- **Propostas de configuração e a decisão:** <proposta → aprovada e gravada · recusada | nenhuma>. Vão no **mesmo** formulário do fechamento (R25); o SM só grava o aprovado.
+- **Teto:** `knowledge.md` com <n> KB · <n> entradas locais de stack · <dentro do teto | consolidação aberta em `architect/consolidation.md` — primeiro item do próximo `prepare`>.
+
 ### Consumo real do sprint (tokens e duração)
 
 > Lê [`consumption.md`](consumption.md) da **mesma pasta do sprint**, e só existe quando o projeto registra consumo — sem o arquivo, escreva `n/a` e siga. **Não é footprint** e **não se soma** às duas linhas de KB acima: aquelas medem a pegada estática do processo, esta mede o gasto real do trabalho dos papéis ([`../process/workflow-processo.md` §5c](../process/workflow-processo.md)).

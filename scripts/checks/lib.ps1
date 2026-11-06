@@ -544,6 +544,27 @@ function Get-ScenarioIds([string]$Cell, [switch]$TargetOnly) {
     $re = if ($TargetOnly) { '\b[A-Z]{2,}-\d+\b(?!\s*\((?i:teste)\))' } else { '\b[A-Z]{2,}-\d+\b' }
     return @([regex]::Matches($Cell, $re) | ForEach-Object { $_.Value } | Where-Object { $_ -match '^SC-' } | Select-Object -Unique)
 }
+# v3.56.0 (H2): os cenários que o plano declara na linha **Cenários:** — @{ None; Target; Test } ou $null sem a linha legível
+# (aí vale o backlog). "nenhum — <motivo>" = nenhum cenário (o cartão não manda rodar o accept).
+function Get-PlanScenarios([string]$PlanText) {
+    $cm = [regex]::Match([string]$PlanText, '(?m)^\*\*Cen[áa]rios:\*\*\s*(.+)$')
+    if (-not $cm.Success) { return $null }
+    $v = $cm.Groups[1].Value
+    if ($v -match '^\s*nenhum\s*[—-]\s*(\S.*)$') { return @{ None = $true; Target = @(); Test = @(); Reason = $Matches[1].Trim() } }
+    $tg = @(Get-ScenarioIds $v -TargetOnly); $all = @(Get-ScenarioIds $v)
+    if (-not $all.Count) { return $null }
+    return @{ None = $false; Target = $tg; Test = @($all | Where-Object { $tg -notcontains $_ }) }
+}
+# v3.56.0 (H2): os arquivos .scn que definem os cenários pedidos (caminho relativo à raiz, '/'), para o -Scenarios do accept
+# em vez da máscara de todos os arquivos — um cenário inválido de outra História não entra na leitura.
+function Get-ScenarioFiles([string]$Root, [string[]]$Ids) {
+    $d = Join-Path $Root '.team-project/quality-assurance/scenarios'; $out = @()
+    foreach ($f in @(Get-ChildItem -Path $d -Filter '*.scn' -File -ErrorAction SilentlyContinue | Sort-Object Name)) {
+        $def = @([regex]::Matches((Read-Text $f.FullName), '(?m)^\s*scenario\s+(\S+)') | ForEach-Object { $_.Groups[1].Value })
+        if (@($Ids | Where-Object { $def -contains $_ }).Count) { $out += ".team-project/quality-assurance/scenarios/$($f.Name)" }
+    }
+    return $out
+}
 # Cenário que aguarda uma Task (v3.53.2): o QA declara no .scn "# aguarda T-071: SC-143, SC-144" quando os nomes de teste
 # que o cenário usa nascem numa Task do sprint. Até ela fechar, o next não pede o cenário nem constrói a Task que o cita;
 # depois, pede. Antes, o next exigia o .scn antes da Task que criava os nomes (o run do garden travou e a sessão pulou a ordem).
@@ -839,7 +860,19 @@ function Get-SprintTasks([string]$S) {
         $cenCell = & $col 'Cenários'
         $scn = @(Get-ScenarioIds $cenCell -TargetOnly)
         $tst = @(Get-ScenarioIds $cenCell | Where-Object { $scn -notcontains $_ })
-        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn; TestScenarios = $tst }
+        # v3.56.0 (H2, sprint 5 do garden #28, #33, #38, #41, #44, #50, #54): com plano legível, os cenários da Task são os do
+        # plano (**Cenários:**, que o plan.ps1 confere — regra 23); o backlog vale só antes de haver plano. O cartão, o start e
+        # o next mandavam rodar o accept com a lista antiga do backlog depois que o GAP tirou um cenário do plano.
+        $bScn = $scn; $bTst = $tst; $from = 'backlog'
+        if ($pp -and $pp -notmatch '^plan/?$') {
+            $pf = Join-Path $S $pp
+            if (Test-Path -LiteralPath $pf -PathType Leaf) {
+                $ps = Get-PlanScenarios (Read-Text $pf)
+                if ($ps) { $scn = @($ps.Target); $tst = @($ps.Test); $from = 'plano' }
+            }
+        }
+        $div = ($from -eq 'plano') -and ((@($bScn | Sort-Object) -join ',') -ne (@($scn | Sort-Object) -join ',') -or (@($bTst | Sort-Object) -join ',') -ne (@($tst | Sort-Object) -join ','))
+        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn; TestScenarios = $tst; ScenariosFrom = $from; BacklogScenarios = @($bScn + $bTst); ScenariosDiverge = [bool]$div }
     }
     return $tasks
 }
@@ -1136,8 +1169,8 @@ function Get-SprintDecisions([string]$Root, [string]$Sprint) {
         $scope = if ($vm.Success) { ($vm.Groups[1].Value -split '\s+·\s+')[0] } else { '' }
         $all = $scope -match '(?i)^\s*todas'
         $ids = @([regex]::Matches($scope, $script:TaskIdRe) | ForEach-Object { $_.Value })
-        $rule = (@($body -split "`r?`n" | Where-Object { $_.Trim() -and $_ -notmatch '^\*\*(Vale para|Origem):\*\*' } | ForEach-Object { $_.Trim() }) -join ' ').Trim()
-        $out += [pscustomobject]@{ Id = $m.Groups[1].Value; Title = $m.Groups[2].Value.Trim(); All = $all; Ids = $ids; Rule = $rule; Body = $body }
+        $rule = (@($body -split "`r?`n" | Where-Object { $_.Trim() -and $_ -notmatch $script:EntryMetaRe } | ForEach-Object { $_.Trim() }) -join ' ').Trim()
+        $out += [pscustomobject]@{ Id = $m.Groups[1].Value; Title = $m.Groups[2].Value.Trim(); All = $all; Ids = $ids; Rule = $rule; Body = $body; Class = (Get-LessonClass $body) }
     }
     return $out
 }
@@ -1150,10 +1183,193 @@ function Get-DecisionsDigest([string]$Root, [string]$Sprint) {
     return "`n## Decisões do sprint — ``architect/decisions/S$Sprint.md```n`n> Já decididas: a que valer para esta Task vai em **Decisões do sprint:** D-<k> no cabeçalho do plano — cite, não copie o texto (regra 29).`n`n" + ($ls -join "`n") + "`n"
 }
 # IDs citados na linha **Decisões do sprint:** do plano.
+# v3.56.0 (B): a linha passa a **Decisões:** D-<k>, K-<n> (o rótulo antigo continua aceito); aqui só as D.
+function Get-PlanDecisionLine([string]$PlanText) {
+    $m = [regex]::Match([string]$PlanText, '(?m)^\*\*Decis[õo]es(?: do sprint)?:\*\*\s*([^\r\n]*)$')
+    if ($m.Success) { return $m.Groups[1].Value }
+    return ''
+}
 function Get-PlanDecisionRefs([string]$PlanText) {
-    $m = [regex]::Match($PlanText, '(?m)^\*\*Decis[õo]es do sprint:\*\*\s*([^\r\n]*)$')
-    if (-not $m.Success) { return @() }
-    return @([regex]::Matches($m.Groups[1].Value, $script:DecisionIdRe) | ForEach-Object { $_.Value } | Select-Object -Unique)
+    return @([regex]::Matches((Get-PlanDecisionLine $PlanText), $script:DecisionIdRe) | ForEach-Object { $_.Value } | Select-Object -Unique)
+}
+# v3.56.0 (B): as K do conhecimento do projeto citadas na mesma linha.
+function Get-PlanKnowledgeRefs([string]$PlanText) {
+    return @([regex]::Matches((Get-PlanDecisionLine $PlanText), $script:KnowledgeIdRe) | ForEach-Object { $_.Value } | Select-Object -Unique)
+}
+
+# ---------- v3.56.0 (A) · a lição de cada GAP: origem e destino ----------
+# Classificação dos 117 GAPs do garden (sprints 1–5): 40 eram do plugin, 40 do projeto, 7 da stack e 30 só apareciam
+# executando — e o plugin não separava os destinos. A decisão de GAP (no plano e em cada ## D-<k>) declara:
+#   **Origem:** previsão | conhecimento | requisito | ambiente | processo
+#   **Lição:** projeto | stack:<nome> | plugin | nenhuma
+# A entrada é "classificada" quando tem a linha **Lição:** (a linha **Origem:** no começo da linha; o "· **Origem:** 🔺 GAP da
+# T-…" antigo, no meio da linha do Vale para, não conta). Sem **Lição:**, é "sem classificação".
+$script:GapOrigins = @('previsão', 'conhecimento', 'requisito', 'ambiente', 'processo')
+$script:LessonRe = '^(projeto|plugin|nenhuma|stack:[a-z0-9][a-z0-9.-]*)$'
+function Get-LessonClass([string]$Text) {
+    $o = [regex]::Match([string]$Text, '(?m)^\*\*Origem:\*\*\s*([^\s·|,;]+)')
+    $l = [regex]::Match([string]$Text, '(?m)^\*\*Li[çc][ãa]o:\*\*\s*([^\s·|,;]+)')
+    $ov = if ($o.Success) { ($o.Groups[1].Value.ToLowerInvariant() -replace '^previsao$', 'previsão') } else { '' }
+    $lv = if ($l.Success) { $l.Groups[1].Value.ToLowerInvariant() } else { '' }
+    $iss = @()
+    if ($l.Success) {
+        if (-not $o.Success) { $iss += 'sem a linha **Origem:**' }
+        elseif ($script:GapOrigins -notcontains $ov) { $iss += "**Origem:** '$ov' fora da lista (previsão | conhecimento | requisito | ambiente | processo)" }
+        if ($lv -notmatch $script:LessonRe) { $iss += "**Lição:** '$lv' fora da lista (projeto | stack:<nome> | plugin | nenhuma)" }
+    }
+    return [pscustomobject]@{ Classified = $l.Success; Origin = $ov; Lesson = $lv; Stack = $(if ($lv -like 'stack:*') { $lv.Substring(6) } else { '' }); Issues = $iss }
+}
+# Desde qual sprint a classificação é obrigatória: "**Classificação desde:** S<n>" no architect/knowledge.md (o /team update
+# grava o sprint seguinte ao aberto; o /team init, S1). 0 = sem o arquivo ou sem a linha — projeto ainda não atualizado: a
+# decisão sem classificação só avisa. Sprint anterior ao "desde" (o aberto no update): só avisa, para não reprovar as D
+# escritas antes da 3.56.0.
+function Get-KnowledgeSince([string]$Root) {
+    $kp = Get-KnowledgePath $Root
+    if (-not (Test-Path -LiteralPath $kp)) { return 0 }
+    $m = [regex]::Match((Read-Text $kp), '(?m)^\*\*Classifica[çc][ãa]o desde:\*\*\s*S?(\d+)')
+    if ($m.Success) { return [int]$m.Groups[1].Value }
+    return 0
+}
+function Test-LessonStrict([string]$Root, [string]$Sprint) {
+    $since = Get-KnowledgeSince $Root
+    if (-not $since -or -not ($Sprint -match '^\d+$')) { return $false }
+    return ([int]$Sprint -ge $since)
+}
+# Decisões de GAP gravadas no plano: o bloco que começa em "**Decisão do GAP …:**" (ou "**Decisão do 🔺 GAP …:**") e vai até a
+# linha em branco, o próximo título ou a próxima decisão. Text = o bloco; Head = a primeira linha.
+function Get-PlanGapDecisions([string]$PlanText) {
+    $out = @(); $cur = $null
+    foreach ($line in ([string]$PlanText -split "`r?`n")) {
+        if ($line -match '^\*\*Decis[ãa]o do (?:🔺\s*)?GAP\b[^*]*:\*\*') { if ($cur) { $out += $cur }; $cur = [pscustomobject]@{ Head = $line.Trim(); Text = $line }; continue }
+        if (-not $cur) { continue }
+        if (-not $line.Trim() -or $line -match '^#') { $out += $cur; $cur = $null; continue }
+        $cur.Text += "`n" + $line
+    }
+    if ($cur) { $out += $cur }
+    return $out
+}
+
+# ---------- v3.56.0 (B) · conhecimento do projeto que atravessa sprints ----------
+# .team-project/architect/knowledge.md, uma "## K-<n> — <título>" por entrada, a primeira linha
+#   **Vale para:** todas | <glob>, <glob> | T-… · **Origem:** 🔺 GAP <id> da T-… (S<n>) · **Desde:** S<n>
+# e a regra em até 5 linhas. **Até:** <correção no plugin> marca o remédio temporário (o /team update o retira). O limiar de
+# 160 px reprovou na T-052 do S4 e de novo na T-063 do S5: o que o sprint aprendeu sobre o sistema não chegava ao seguinte.
+$script:KnowledgeIdRe = 'K-\d+'
+$script:KnowledgeMaxKb = 15
+function Get-KnowledgePath([string]$Root) { return (Join-Path $Root '.team-project/architect/knowledge.md') }
+# "Vale para" de K, D e armadilha de stack: todas, T-IDs e globs de caminho, separados por vírgula (crases opcionais).
+function Read-AppliesTo([string]$Body) {
+    $vm = [regex]::Match([string]$Body, '(?m)^\*\*Vale para:\*\*\s*([^\r\n]*)$')
+    $scope = if ($vm.Success) { ($vm.Groups[1].Value -split '\s+·\s+')[0] } else { '' }
+    $all = $scope -match '(?i)^\s*todas\b'
+    $ids = @(); $globs = @()
+    foreach ($it in @($scope -split '[,;]' | ForEach-Object { ($_ -replace '`', '').Trim() } | Where-Object { $_ })) {
+        if ($it -match '(?i)^todas$') { continue }
+        if ($it -match ('^' + $script:TaskIdRe + '$')) { $ids += $it } else { $globs += ($it -replace '\\', '/') }
+    }
+    return [pscustomobject]@{ All = [bool]$all; Ids = $ids; Globs = $globs }
+}
+$script:EntryMetaRe = '^\*\*(Vale para|Origem|Li[çc][ãa]o|Desde|At[ée]|Promovida|Sintoma|Fato|Como testar):\*\*'
+function Get-ProjectKnowledge([string]$Root) {
+    $kp = Get-KnowledgePath $Root
+    if (-not (Test-Path -LiteralPath $kp)) { return @() }
+    $out = @()
+    foreach ($m in [regex]::Matches((Read-Text $kp), '(?ms)^##\s+(' + $script:KnowledgeIdRe + ')\s*[—–-]\s*([^\r\n]*)\r?\n(.*?)(?=^##\s|\z)')) {
+        $body = $m.Groups[3].Value; $ap = Read-AppliesTo $body
+        $um = [regex]::Match($body, '\*\*At[ée]:\*\*\s*([^\r\n·]*)')
+        $sm = [regex]::Match($body, '\*\*Desde:\*\*\s*S?(\d+)')
+        $rule = (@($body -split "`r?`n" | Where-Object { $_.Trim() -and $_ -notmatch $script:EntryMetaRe } | ForEach-Object { $_.Trim() }) -join ' ').Trim()
+        $out += [pscustomobject]@{ Id = $m.Groups[1].Value; Title = $m.Groups[2].Value.Trim(); All = $ap.All; Ids = $ap.Ids; Globs = $ap.Globs; Rule = $rule; Body = $body
+                                   Until = $(if ($um.Success) { $um.Groups[1].Value.Trim() } else { '' }); Since = $(if ($sm.Success) { [int]$sm.Groups[1].Value } else { 0 }) }
+    }
+    return $out
+}
+# Os arquivos da Task para o casamento por glob: os de **Código a ler:**/**Fontes:** da ficha (o **Arquivos previstos:** da
+# ficha é uma contagem) e os de **Arquivos tocados:** do plano. Relativos à raiz, com '/'.
+function Get-TaskFiles([string]$Root, [string]$Sprint, [string]$TaskId, [string]$PlanText = '') {
+    $fs = @()
+    $fc = Get-Ficha $Root $Sprint $TaskId
+    if ($fc) { $fs += @($fc.Read) + @($fc.Sources) }
+    if ($PlanText) {
+        $am = [regex]::Match($PlanText, '(?s)\*\*Arquivos tocados:\*\*(.*?)(?:\r?\n[ \t]*\r?\n|\r?\n#|\z)')
+        if ($am.Success) { $fs += @([regex]::Matches($am.Groups[1].Value, '`([^`]+)`') | ForEach-Object { ($_.Groups[1].Value.Trim() -replace '\\', '/') -replace '^\./', '' }) }
+    }
+    return @($fs | Where-Object { $_ } | Select-Object -Unique)
+}
+function Test-EntryApplies($Entry, [string]$TaskId, [string[]]$Files, [string[]]$Refs) {
+    if ($Entry.All -or (@($Entry.Ids) -contains $TaskId) -or (@($Refs) -contains $Entry.Id)) { return $true }
+    if (-not @($Entry.Globs).Count -or -not @($Files).Count) { return $false }
+    foreach ($f in @($Files)) { if (Test-GlobMatch (Normalize-PathText $f) @($Entry.Globs)) { return $true } }
+    return $false
+}
+# As K que valem para a Task (todas, as que a citam, as que o plano cita e as cujo glob casa com um arquivo dela). Uma linha
+# cada, até $MaxChars. O cartão do dev traz estas linhas — ninguém abre o knowledge.md inteiro.
+function Get-TaskKnowledgeLines([string]$Root, [string]$Sprint, [string]$TaskId, [string]$PlanText = '', [int]$MaxChars = 300) {
+    $ks = @(Get-ProjectKnowledge $Root); if (-not $ks.Count) { return @() }
+    $files = @(Get-TaskFiles $Root $Sprint $TaskId $PlanText); $refs = @(Get-PlanKnowledgeRefs $PlanText)
+    return @($ks | Where-Object { Test-EntryApplies $_ $TaskId $files $refs } | ForEach-Object {
+        $r = if ($_.Rule.Length -gt $MaxChars) { $_.Rule.Substring(0, $MaxChars).TrimEnd() + '…' } else { $_.Rule }
+        "- $($_.Id) — $($_.Title)$(if ($r) { ": $r" })$(if ($_.Until) { " (até: $($_.Until))" })" })
+}
+# Recorte para o Arquiteto do plano (ficha, pacote externo): as K com a quem valem e a regra curta. '' sem conhecimento.
+function Get-KnowledgeDigest([string]$Root) {
+    $ks = @(Get-ProjectKnowledge $Root)
+    if (-not $ks.Count) { return '' }
+    $ls = @($ks | ForEach-Object {
+        $r = if ($_.Rule.Length -gt 200) { $_.Rule.Substring(0, 200).TrimEnd() + '…' } else { $_.Rule }
+        $who = @($(if ($_.All) { 'todas' }) + @($_.Ids) + @($_.Globs) | Where-Object { $_ }) -join ', '
+        "- $($_.Id) — $($_.Title) · vale para $(if ($who) { $who } else { '?' })$(if ($r) { ": $r" })" })
+    return "`n## Conhecimento do projeto — ``architect/knowledge.md```n`n> O que sprints anteriores ensinaram sobre este sistema. A que valer para esta Task vai em **Decisões:** K-<n> no cabeçalho do plano — cite, não copie (regra 29).`n`n" + ($ls -join "`n") + "`n"
+}
+
+# ---------- v3.56.0 (C) · armadilhas da stack: plugin + camada local do projeto ----------
+# ${CLAUDE_PLUGIN_ROOT}/standards/stacks/<stack>/pitfalls.md (## <STACK>-P<n>, só o /review grava) e
+# .team-project/standards/stacks/<stack>/pitfalls.md (## <STACK>-L<n>, Arquiteto e SM no fechamento). A local soma à do
+# plugin; local com **Promovida:** <ID do plugin> deixa de ser lida. As stacks: guards.json → "stacks", ou a inferência.
+function Get-PluginRoot { return (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path }
+# Get-InferredStacks mora no hooks/common.ps1 (v3.56.0): o SessionStart (G13) avisa com a mesma inferência.
+# @{ Stacks; Declared } — Declared = a chave "stacks" do guards.json (a inferência só vale sem ela).
+function Get-Stacks([string]$Root) {
+    $gp = Join-Path $Root '.team-project/guards.json'
+    if (Test-Path -LiteralPath $gp) {
+        try { $gj = Read-Text $gp | ConvertFrom-Json; if ($gj.PSObject.Properties['stacks'] -and $null -ne $gj.stacks) { return [pscustomobject]@{ Stacks = @($gj.stacks | ForEach-Object { ([string]$_).Trim().ToLowerInvariant() } | Where-Object { $_ }); Declared = $true } } } catch { }
+    }
+    return [pscustomobject]@{ Stacks = @(Get-InferredStacks $Root); Declared = $false }
+}
+function Read-PitfallFile([string]$Path, [string]$Layer) {
+    if (-not (Test-Path -LiteralPath $Path)) { return @() }
+    $out = @()
+    foreach ($m in [regex]::Matches((Read-Text $Path), '(?ms)^##\s+([A-Z][A-Z0-9-]*-[PL]\d+)\s*[—–-]\s*([^\r\n]*)\r?\n(.*?)(?=^##\s|\z)')) {
+        $body = $m.Groups[3].Value; $ap = Read-AppliesTo $body
+        $fact = [regex]::Match($body, '(?m)^\*\*Fato:\*\*\s*([^\r\n]*)'); $test = [regex]::Match($body, '(?m)^\*\*Como testar:\*\*\s*([^\r\n]*)')
+        $prom = [regex]::Match($body, '(?m)^\*\*Promovida:\*\*\s*(\S+)')
+        $rule = (@($(if ($fact.Success) { $fact.Groups[1].Value.Trim() }), $(if ($test.Success) { 'teste: ' + $test.Groups[1].Value.Trim() })) | Where-Object { $_ }) -join ' · '
+        $out += [pscustomobject]@{ Id = $m.Groups[1].Value; Title = $m.Groups[2].Value.Trim(); All = $ap.All; Ids = $ap.Ids; Globs = $ap.Globs; Rule = $rule; Body = $body; Layer = $Layer; Promoted = $(if ($prom.Success) { $prom.Groups[1].Value } else { '' }) }
+    }
+    return $out
+}
+# Todas as armadilhas das stacks do projeto: as do plugin e as locais ainda não promovidas.
+function Get-StackPitfalls([string]$Root) {
+    $plug = Get-PluginRoot; $out = @()
+    foreach ($s in @((Get-Stacks $Root).Stacks)) {
+        $out += @(Read-PitfallFile (Join-Path $plug "standards/stacks/$s/pitfalls.md") 'plugin')
+        $out += @(Read-PitfallFile (Join-Path $Root ".team-project/standards/stacks/$s/pitfalls.md") 'local' | Where-Object { -not $_.Promoted })
+    }
+    return $out
+}
+# Recorte para o Arquiteto do plano: as armadilhas que casam com a Task (pela ficha). '' sem nenhuma.
+function Get-StackPitfallDigest([string]$Root, [string]$Sprint, [string]$TaskId) {
+    $ls = @(Get-StackPitfallLines $Root $Sprint $TaskId '')
+    if (-not $ls.Count) { return '' }
+    return "`n## Armadilhas da stack que casam com esta Task`n`n> Comportamento do framework já conhecido (plugin e camada local do projeto). O plano evita ou testa — não redescubra.`n`n" + ($ls -join "`n") + "`n"
+}
+# As que casam com a Task (glob dos arquivos dela, T-ID ou "todas"), até $Max linhas.
+function Get-StackPitfallLines([string]$Root, [string]$Sprint, [string]$TaskId, [string]$PlanText = '', [int]$Max = 6, [int]$MaxChars = 240) {
+    $ps = @(Get-StackPitfalls $Root); if (-not $ps.Count) { return @() }
+    $files = @(Get-TaskFiles $Root $Sprint $TaskId $PlanText)
+    return @($ps | Where-Object { Test-EntryApplies $_ $TaskId $files @() } | Select-Object -First $Max | ForEach-Object {
+        $r = if ($_.Rule.Length -gt $MaxChars) { $_.Rule.Substring(0, $MaxChars).TrimEnd() + '…' } else { $_.Rule }
+        "- $($_.Id) — $($_.Title)$(if ($r) { ": $r" })" })
 }
 # As decisões que valem para a Task: "todas", as que a citam em **Vale para:** e as que o plano cita. Uma linha cada.
 function Get-TaskDecisionLines([string]$Root, [string]$Sprint, [string]$TaskId, [string]$PlanText = '', [int]$MaxChars = 300) {

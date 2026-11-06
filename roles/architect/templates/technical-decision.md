@@ -7,6 +7,8 @@ Resposta do Arquiteto quando o dev para e pergunta. Precisa ser **executável**:
 
 **Gap:** <o que o dev relatou, em uma linha>
 **Verifiquei em:** <arquivo:linha — o código real, não a interpretação do relato>
+**Origem:** previsão | conhecimento | requisito | ambiente | processo
+**Lição:** projeto | stack:<nome> | plugin | nenhuma
 
 ### Decisão
 <Uma frase afirmativa: o que fazer, com o nome e a assinatura concretos.>
@@ -29,6 +31,18 @@ Resposta do Arquiteto quando o dev para e pergunta. Precisa ser **executável**:
 1. <ação concreta>
 2. <retomar do passo n>
 ```
+
+## Origem e Lição (v3.56.0)
+
+Toda decisão de 🔺 GAP — a que entra no plano (`**Decisão do GAP <T-ID> (<data>):** …`, seguida das duas linhas) e cada `## D-<k>` de `architect/decisions/S<n>.md` — declara de onde o GAP nasceu e para onde vai a lição. O `plan.ps1` (regra 29) reprova a decisão sem as duas linhas ou com valor fora da lista; no fechamento do sprint, o `knowledge.ps1` do SM leva cada lição ao destino.
+
+- **Origem** — confirmo a sugestão do dev ([`gap.md`](../../developer/templates/gap.md)) depois de ler o código.
+- **Lição** — onde o próximo sprint precisa achar isto:
+  - **`projeto`** — fato **deste** sistema que vai se repetir (limiar, regra de tela, convenção do app, comportamento da base): no fechamento vira `K-<n>` em `architect/knowledge.md`, e o cartão de toda Task cujos arquivos casam com o **Vale para** o traz;
+  - **`stack:<nome>`** — comportamento do framework, da biblioteca ou da ferramenta que vale para **qualquer** projeto com a mesma tecnologia (Ionic move o `aria-label`, o Jasmine 5.1 quebra `new` com arrow): vira `<STACK>-L<n>` na camada local `.team-project/standards/stacks/<nome>/pitfalls.md`, até o `/review` promover ao plugin;
+  - **`plugin`** — defeito ou regra do próprio plugin (guarda que nega o legítimo, script que manda o contrário do plano): vira ocorrência de plugin no fechamento, sem contexto do projeto. Se a decisão é um remédio até a correção, ela também vira `K-<n>` com `**Até:** correção no plugin (<descrição>)`;
+  - **`nenhuma`** — a previsão única que não se repete (o comportamento de uma Task só).
+- Na dúvida entre `projeto` e `stack`: se outro projeto com a mesma stack tropeçaria igual, é `stack`.
 
 ## Regras
 

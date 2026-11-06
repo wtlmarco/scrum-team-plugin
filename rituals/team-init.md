@@ -55,6 +55,8 @@ Com os comandos reais de build/teste/lint do passo 3, siga os **passos 7f e 7h d
 
 **Atributo do id de teste (v3.55.0).** No **mesmo formulário**, proponha `testIds.attribute` pela stack do passo 3 — app híbrido (Capacitor/Cordova/Ionic) `id`; Compose `testTag`; web pura `data-testid` (convenção única de nomes em `${CLAUDE_PLUGIN_ROOT}/standards/test-ids.md`; o `ids.ps1 -Audit` do passo 7l de `team-update.md` detecta pela stack). Projeto novo não tem retrofit: o formulário 2 do 7l não se aplica.
 
+**Stacks e conhecimento do projeto (v3.56.0).** No **mesmo formulário**, proponha `"stacks"` no `guards.json` pela stack do passo 3 (as pastas de `${CLAUDE_PLUGIN_ROOT}/standards/stacks/`: `angular`, `ionic-capacitor`, `react`, `kotlin-android`, `dotnet`, ou uma nova só com a camada local) — é o que decide quais armadilhas da stack o cartão do dev traz. Crie `.team-project/architect/knowledge.md` a partir de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/knowledge.md`, com `**Classificação desde:** S1` (toda decisão de 🔺 GAP declara Origem e Lição desde o primeiro sprint), e a pasta vazia `.team-project/standards/stacks/`. O mesmo que o `knowledge.ps1 -Migrate -Apply` do passo 7m de `team-update.md` faz, sem decisões a classificar.
+
 ## 5. Aponte o próximo passo
 
 Conforme a resposta do passo 3:

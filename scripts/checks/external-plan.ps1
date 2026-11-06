@@ -133,7 +133,7 @@ function New-PlanPack([string]$Story, $Items, [int]$Round, [string]$Kind = 'stor
     foreach ($t in $order) {
         $f = Get-Ficha $Root $n $t.Id
         $depSum = @($t.Deps | Where-Object { $ids -notcontains $_ } | ForEach-Object { $d = $_; $dt = @($tasks | Where-Object { $_.Id -eq $d }) | Select-Object -First 1; if ($dt) { $pf = Get-PlanFull $dt $S; if ($pf) { "## Plano da dependência — resumo de ``sprints/$n/$($dt.Plan)```n`n" + (Get-PlanSummary $pf) } } })
-        $card = "# Ficha da $($t.Id) — $($t.Title)`n`n> Recorte de ``$bdRel`` (a quebra da Planning).`n`n" + $(if ($f -and $f.Common) { $f.Common + "`n`n" } else { '' }) + $(if ($f) { $f.Body } else { '(sem ficha)' }) + "`n" + $(if ($depSum.Count) { "`n" + ($depSum -join "`n`n") + "`n" } else { '' }) + (Get-DecisionsDigest $Root $n)   # v3.53.7: decisões do sprint
+        $card = "# Ficha da $($t.Id) — $($t.Title)`n`n> Recorte de ``$bdRel`` (a quebra da Planning).`n`n" + $(if ($f -and $f.Common) { $f.Common + "`n`n" } else { '' }) + $(if ($f) { $f.Body } else { '(sem ficha)' }) + "`n" + $(if ($depSum.Count) { "`n" + ($depSum -join "`n`n") + "`n" } else { '' }) + (Get-DecisionsDigest $Root $n) + (Get-KnowledgeDigest $Root) + (Get-StackPitfallDigest $Root $n $t.Id)   # v3.53.7: decisões do sprint · v3.56.0: conhecimento do projeto e armadilhas da stack
         $tf = Join-Path $dir "tasks/$($t.Id)-ficha.md"; New-Item -ItemType Directory -Force (Split-Path $tf) | Out-Null
         [System.IO.File]::WriteAllText($tf, $card, $utf8)
         if ($f) { foreach ($r in @(@($f.Read) + @($f.Sources) | Where-Object { $_ } | Select-Object -Unique)) { if (-not $copied.ContainsKey($r)) { $copied[$r] = Copy-PackFile $r $dir } } }
