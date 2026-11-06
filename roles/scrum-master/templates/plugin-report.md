@@ -42,6 +42,13 @@ O projeto **não edita o plugin**. Este relatório é o canal de volta: tira da 
 |---|---|---|---|---|
 | 1 | <fato> | <R<n> · §<x>> | <par PO+Arquiteto · stakeholder · estratégico> | <n> |
 
+### GAPs de processo — as lições de plugin (iii) do sprint (v3.56.0)
+> Fonte: `sprints/<n>/lessons.md` §"Ocorrências de plugin (iii)" (`knowledge.ps1`). **Sem contexto do projeto:** nada de nome de tela, arquivo, ID de Task ou dado — o tipo, o sintoma genérico e a regra ou guarda.
+
+| # | Tipo | Sintoma (genérico) | Regra · guarda · script envolvido | Remédio no projeto (`**Até:**`)? |
+|---|---|---|---|---|
+| 1 | <guarda nega o legítimo · script contradiz o plano · conferência que reprova o certo · falta de caminho oficial> | <ex.: a guarda de escopo nega saída de build ignorada pelo git> | <G9 · run.ps1 next · plan.ps1 regra 29> | <sim — <o remédio>, até <a correção> · não> |
+
 ## 4. Sintomas para o `note.md` do plugin
 > **Sintoma, não solução** — é o formato da fila do `/review`. Cada linha de 1–3 que merece mudança vira uma linha aqui.
 

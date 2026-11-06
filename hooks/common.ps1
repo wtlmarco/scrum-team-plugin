@@ -126,6 +126,24 @@ function Convert-GlobToRegex([string]$Glob) {
     return '^' + $sb.ToString() + '$'
 }
 
+# v3.56.0 (C): stacks do projeto pela inferencia, sem a chave guards.json -> "stacks" - a raiz e as pastas do primeiro nivel
+# (package.json, build.gradle, *.csproj). Usada pelo lib.ps1 (Get-Stacks) e pelo SessionStart (G13, aviso).
+function Get-InferredStacks([string]$Root) {
+    # Só a raiz e as pastas do primeiro nível (source/, app/…), sem node_modules, .git e .team-project — varrer fundo custa.
+    $dirs = @($Root) + @(Get-ChildItem -LiteralPath $Root -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '^(node_modules|\.git|\.team-project|dist|build|bin|obj)$' } | ForEach-Object { $_.FullName })
+    $st = @(); $pkg = ''; $grad = ''; $net = $false
+    foreach ($d in $dirs) {
+        $p = Join-Path $d 'package.json'; if (Test-Path -LiteralPath $p -PathType Leaf) { $pkg += "`n" + [System.IO.File]::ReadAllText($p) }
+        foreach ($g in @('build.gradle', 'build.gradle.kts', 'app/build.gradle', 'app/build.gradle.kts')) { $gp = Join-Path $d $g; if (Test-Path -LiteralPath $gp -PathType Leaf) { $grad += "`n" + [System.IO.File]::ReadAllText($gp) } }
+        if (@(Get-ChildItem -LiteralPath $d -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in '.csproj', '.sln' }).Count) { $net = $true }
+    }
+    if ($pkg -match '"@angular/core"') { $st += 'angular' }
+    if ($pkg -match '"@ionic/(angular|core|react|vue)"|"@capacitor/core"') { $st += 'ionic-capacitor' }
+    if ($pkg -match '"react"\s*:' -and $st -notcontains 'ionic-capacitor') { $st += 'react' }
+    if ($grad -match '(?i)kotlin' -and $st -notcontains 'ionic-capacitor') { $st += 'kotlin-android' }
+    if ($net) { $st += 'dotnet' }
+    return @($st | Select-Object -Unique)
+}
 function Test-GlobMatch([string]$RelPath, [object[]]$Globs) {
     foreach ($g in @($Globs)) { if ($RelPath -match (Convert-GlobToRegex ([string]$g))) { return $true } }
     return $false

@@ -460,6 +460,28 @@
                     },
                     {
                         "paths":  [
+                                      ".team-project/architect/knowledge.md"
+                                  ],
+                        "writers":  [
+                                        "architect",
+                                        "scrum-master"
+                                    ],
+                        "matriz":  "Conhecimento do projeto (`.team-project/architect/knowledge.md`)",
+                        "dono":  "Arquiteto"
+                    },
+                    {
+                        "paths":  [
+                                      ".team-project/standards/stacks/**"
+                                  ],
+                        "writers":  [
+                                        "architect",
+                                        "scrum-master"
+                                    ],
+                        "matriz":  "Camada local de stack (`.team-project/standards/stacks/<stack>/pitfalls.md`)",
+                        "dono":  "Arquiteto"
+                    },
+                    {
+                        "paths":  [
                                       ".team-project/architect/ids-map.md",
                                       ".team-project/architect/ids-audit.md"
                                   ],

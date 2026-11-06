@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.53`](process-changelog-archive.md) | Plano pela ficha: a quebra em Tasks traz a ficha de cada Task, um Arquiteto por Task e o template do plano só com o operativo (SM + Arquiteto + Dev + QA) — 28/10/2026 · *com addenda v3.53.1 a v3.53.7* |
 | [`v3.52`](process-changelog-archive.md) | Orquestrador enxuto: sessão nova por ritual, `run` em sessões curtas, espera sem sondagem, registro de decisões e commit por Task (SM) — 23/10/2026 |
 | [`v3.51`](process-changelog-archive.md) | O sprint do benchmark: dev constrói e verifica sozinho, plano por História ao lado dos cenários, portão do QA no fim, orquestração por script, contexto e cache, ambiente em qualquer tecnologia (SM + Arquiteto + Dev + QA + PO) — 21/10/2026 |
 | [`v3.50`](process-changelog-archive.md) | Mudança de layout se prova em render real: navegador headless, 3 fontes × telas, mutação que quebra a medição; addendum: as paradas do `run` fecham no texto (SM + Arquiteto + Dev + QA) — 16/10/2026 |
@@ -94,6 +95,38 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.56 — A lição de cada GAP no lugar certo: origem e destino na decisão, conhecimento do projeto que atravessa sprints, armadilhas da stack e o SM atualizando o lado do projeto no fechamento (SM + Arquiteto + Dev + QA) — 06/11/2026
+
+**Instrução** (stakeholder, 06/11/2026, `melhorias/plano-v3.56.0.md` aprovado com as recomendações do §9: SM mecânico no fechamento, teto de 15 KB, P-r2 do benchmark com a 3.56.0, os três defeitos abertos do plugin nesta versão). Implementar antes de retomar o garden no sprint 6.
+**Medido (garden, sprints 1 a 5, 117 GAPs classificados):** 40 lições ficam no plugin (31 defeitos, 9 com conferência mecânica que já existia), 40 vão ao projeto (25 conhecimento do app, 10 ambiente, 5 requisito), 7 à stack, 30 só aparecem executando. O template do GAP só distinguia `plano` de `standard`; o `decisions/S<n>.md` morria com o sprint e misturava níveis (no S5, a D-1 era lição de stack, a D-2 e a D-3 remendavam o plugin). O limiar de 160 px reprovou na T-052 do S4 e de novo na T-063 do S5. Dos 31 defeitos do plugin, 21 já estavam tratados e 10 abertos em 3 defeitos (o `-Only` do accept, os cenários do backlog contra os do plano, a G9 com saída de build).
+**Classificação:** formato (`**Origem:**` e `**Lição:**` na decisão; `**Decisões:** D-<k>, K-<n>`; `knowledge.md`; `pitfalls.md`) · regra (R6 a decisão tem destino; R16 a camada local de stack; R25 o formulário segue único; regra 29 ampliada) · instrumento (`knowledge.ps1` novo; `plan.ps1`, `run.ps1`, `accept.ps1`, `close.ps1`, G9, G13) · ritual (`/sm sprint close` e `prepare`; `/team update` 7m; `/team init` 4a).
+
+### O que mudou
+- **Arquiteto** (`technical-decision.md` §Origem e Lição, `implementation-plan.md` regra 29, `plan-rules-why.md`, `knowledge.md` novo, `agents/architect.md`): toda decisão de 🔺 GAP declara **Origem** (previsão · conhecimento · requisito · ambiente · processo) e **Lição** (projeto · stack:<nome> · plugin · nenhuma); grava D quando vale para mais de uma Task **ou** a lição é de projeto ou de stack. Cita K em `**Decisões:**`. Consolida o `knowledge.md` quando o teto estoura (primeiro item do `prepare`).
+- **Dev** (`gap.md`, `agents/developer.md`): sugere a Origem; o cartão traz **Conhecimento do projeto** e **Armadilhas da stack** que casam por glob com os arquivos da Task — não abre os arquivos. O plano manda nos cenários; ordem do cartão que o contradiga é GAP de processo.
+- **SM** (`workflow-sprint.md` §Retrospective e §Preparação, `retrospective.md` §Lições do sprint, `plugin-report.md` §GAPs de processo, `working-rules.md` R6/R16/R25, `artifact-ownership.md` §1, `sm.md`, `team-update.md` 7m, `team-init.md`): no `close`, `knowledge.ps1 -Sprint <n> -Apply` antes de fechar a pasta — tabela origem × destino, D → K e D → L por cópia, lição de plugin como ocorrência (iii) no formulário único, repetição com registro, propostas de configuração; escritor do `knowledge.md` e da camada local **só** por essa promoção.
+- **QA** (README): o `accept -Only` valida só os cenários pedidos; o `-ParseOnly` sem `-Only` segue sendo a conferência do arquivo.
+
+### Por quê
+O que o sprint ensinava sobre o sistema não voltava a nenhum lugar que o seguinte lesse, e lição de plugin virava remendo de projeto. Com o destino declarado na decisão e a promoção mecânica no fechamento, o conhecimento atravessa sprints sem ninguém reler arquivos inteiros: o cartão traz só as entradas que casam com a Task.
+
+### Conflitos com o processo vigente
+A regra 29 é ampliada, não substituída: o rótulo `**Decisões do sprint:**` continua aceito. Decisão anterior à 3.56.0 só avisa (sprint antes do `**Classificação desde:**`). A ocorrência de plugin ganha o critério (iii) sem limiar, no mesmo formulário de (i) e (ii). A G9 passa a liberar saída ignorada pelo git; a G5 continua antes.
+
+### Como saberemos que funcionou
+Sprint 6 do garden (`validacoes-sprint-6.md` item 20): tabela origem × destino contra a linha de base do S5 (previsão 11, processo 15, conhecimento 2, ambiente 10, requisito 1); **repetição com registro = 0**; conhecimento ≤ 2 e caindo; linhas de K e de stack por cartão (média e máximo); tamanho do `knowledge.md`; propostas de configuração aprovadas.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.53 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.56, v3.55, v3.54 | ✅ |
+| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.56.0 | ✅ |
+
+### Parte mecânica (implementada pela sessão principal, citada aqui)
+`lib.ps1` (`Get-LessonClass`, `Get-KnowledgeSince`, `Get-PlanGapDecisions`, `Get-ProjectKnowledge`, `Get-TaskKnowledgeLines`, `Get-KnowledgeDigest`, `Get-Stacks`, `Get-StackPitfallLines`, `Get-PlanScenarios`, `Get-ScenarioFiles`; os cenários da Task pelo plano em `Get-SprintTasks`); `knowledge.ps1` novo; `plan.ps1` (regra 29); `run.ps1` (cartão, recorte, prompts, `Get-AcceptArgs`); `accept.ps1` (`-Only`); `close.ps1` (R30 pelo plano); `hooks/pre-tool.ps1` (G9 × `git check-ignore`), `session-start.ps1` (G13 sem `stacks`), `common.ps1` (`Get-InferredStacks`); `ownership.json`; `standards/stacks/ionic-capacitor/` e `pitfalls.md` das stacks.
+
+---
+
 ## v3.55 — Fechamento da margem, verificador por caminho e padrão de ids de teste: a fixture com regra na margem, o comando de teste escolhido pelo caminho, um nome de id para todo o sistema e os comandos do run declarados antes da construção (SM + Arquiteto + Dev + QA) — 05/11/2026
 
 **Instrução** (stakeholder, 05/11/2026, carta 2 da sessão do sprint 5 do garden — fechamento da R7-margem — e itens 10 e 11 da fila do `/review`; análise com o stakeholder e `plano-v3.55.0.md`). Recusados: aceitar mutação manual do dev como evidência de R7-margem e dispensar a trava para teste da própria Task. Decidido: padrão de ids para **todo** o sistema (todo elemento que um teste ou cenário lê ou toca); o `/team update` **audita e propõe, nunca corrige**.
@@ -162,89 +195,3 @@ Sprint 6: zero mutação `inconclusivo` por trecho; 🔺 GAPs ao Arquiteto por T
 ### Addendum v3.54.2 — accept que para no estado de partida, progresso visível, quadro em dia (SM + Dev + QA) — 05/11/2026
 
 **Instrução:** stakeholder, 05/11 (pontos 3 e 4 da mesma carta; "pode fazer" com D, E, F e G). Muda: os 2 primeiros cenários na mesma tela param o accept como **estado de partida**, sem reparo e sem reabertura automática, e com decisão do stakeholder; o estado de partida se declara em `targets.android.baseline`, que o QA aponta; a espera de um accept mostra o avanço e **SEM AVANÇO**; o quadro mostra a Task nova em ⬜ e o motivo da 🔴, e reabre pelo alvo de volta uma vez só. Recusados: tipos de bloqueio e a sessão abrir a captura. Sem regra nova (34). **Indicador (sprint 6):** nenhum accept acima de 15 min sem cenário passando; nenhuma Task reaberta duas vezes pelo alvo; nenhuma Task do Sprint Backlog fora do quadro. **Evidência:** CHANGELOG v3.54.2.
-
----
-
-## v3.53 — Plano pela ficha: a quebra em Tasks traz a ficha de cada Task, um Arquiteto por Task e o template do plano só com o operativo (SM + Arquiteto + Dev + QA) — 28/10/2026
-
-**Instrução** (stakeholder, 28/10/2026, `note.md` itens 7 e 8, "pode então fazer" depois da explicação de como um item pesa no outro). **Decisão:** a primeira opção do piloto do item 8, ficha por Task na Planning + um Arquiteto por Task; os itens 7 e 8 numa entrega só, porque um sem o outro rende pouco. Os lotes por dependência ficam como segunda opção.
-**Medido (sprint 4 do garden, plugin 3.52.2, transcripts da sessão `3af98c37…`):** a instância "Planos da H-K1" (8 planos, 100 chamadas, contexto de 19 → 434 mil) custou ≈ US$ 16,3, 63 % dos subagentes, 97 % disso em cache lido. A abertura chegava a ~117 mil antes da pesquisa: README 10,6 mil, `breakdown/S4.md` 19,1 mil, `sprint-backlog.md` 9,0 mil, template 15,6 mil, `plan.ps1` 11,9 mil; a listagem de `sprints/3/plan` (8,9 mil) não foi usada. A seção "Regras do formato" era 16,5 KB dos 34,9 KB do template.
-**Causa:** cada chamada do modelo reenvia a conversa inteira acumulada, então o custo é a abertura somada à pesquisa e aos planos já escritos, reprocessados a cada passo. **Estimativa (não medição):** por Task com a abertura de hoje, −14 %; só o item 7, −9 %; com a abertura enxuta, −34 %; com a ficha, abertura ~35 mil e ≈ US$ 6 a 7 na H-K1 (≈ −55 %).
-**Classificação:** fluxo (preparo do `sprint run`) · formato (template do plano: regras só operativas e regra 28; modelo novo `breakdown.md`) · comportamento de agente (abertura do Arquiteto pela ficha; não abrir o `plan.ps1`). **Sem regra nova** (34): a regra 25 do template muda de "uma instância por História" para "por Task com ficha; por História sem ela". **Papéis movidos (R17):** 2 — SM, Arquiteto.
-
-### O que mudou
-- **Planning, passo 4** (`workflow-sprint.md`, `roles/architect/README.md` §Quebra em Tasks, `templates/breakdown.md` novo): na seção de cada História do `breakdown/S<n>.md`, as **decisões comuns** (nomes que mais de uma Task usa, com a grafia final) e uma **ficha por Task** — `**Código a ler:**` (caminho, linha e porquê), `**Fontes:**` (SDD, standards, tela) e `**Nomes comuns:**`. A ficha só aponta; até ~25 linhas.
-- **`sprint-run.md` etapa 1, "Por que assim" e §Como o SM verifica; `commands/sm.md`:** Task com ficha → um Arquiteto por Task, que abre o recorte da ficha, o template, o plano da dependência e o `architect/context.md`; primeiro a Task cujas dependências já têm plano, uma por vez (R1). Task sem ficha → a História numa instância, como na v3.51. Indicador do piloto no "Como o SM verifica".
-- **Template do plano:** regras só com o operativo, numeração mantida (1–27), ✓ nas que o `plan.ps1` confere e "não abra o script"; o texto até a v3.52.3, íntegro, foi **relocado** para `roles/architect/plan-rules-why.md` (não é leitura do plano). Cabeçalho com `**Li além da ficha:**`; **regra 28** (plano pela ficha). 33,6 → 22,7 KB.
-- **`agents/architect.md`:** leitura de abertura do plano pela ficha; o código do `plan.ps1` não é leitura. **`roles/architect/README.md`** §Preparo e a tabela de documentos; `deliverables/team-project/README.md` (linha do `breakdown/`).
-
-### Por quê
-O plano por História (v3.51) tirou a releitura por Task do P-r6, mas a instância longa passou a reprocessar a própria pesquisa e os planos já escritos a cada chamada. Dividir por Task só rende com a abertura pequena, e a abertura só fica pequena se alguém já tiver separado o que cada Task precisa ler: é o Arquiteto da Planning, que já tem a História e o código abertos para quebrar em Tasks. O template enxuto vale nas duas formas, mas pesa mais por Task: cada instância paga a abertura e grava o cache dela de novo.
-
-### Conflitos com o processo vigente
-A regra 25 e o "Por que assim" da v3.51 (plano por História) passam a valer só para Task sem ficha. O P-r6 mostrou o plano por Task custando 41 % — aquele era por Task **sem ficha**, relendo o projeto inteiro; o risco é medido no piloto.
-
-### Quem passa a ser cobrado de forma diferente
-**Arquiteto:** escreve a ficha e as decisões comuns na Planning; no plano pela ficha, declara o que leu além dela e usa os nomes comuns literalmente; não abre o `plan.ps1`. **SM/sessão:** confere no "Como o SM verifica" um Arquiteto por Task com ficha e o indicador do piloto. **Demais papéis:** sem mudança.
-
-### Como saberemos que funcionou
-Próximo sprint, contra o sprint 4: US$ do plano por Task construída (`consumption.md`) ao menos 40 % menor; 🔺 GAPs de plano por Task construída sem subir (sprint 4: um por Task); arquivos em `**Li além da ficha:**` por plano — ficha com muitos é ficha incompleta. Custo que não cai, ou GAP que sobe, devolve ao `/review` com os lotes por dependência como segunda opção.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Arquivamento de entrada | bloco v3.50 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.53, v3.52, v3.51 | ✅ |
-| Extração/remoção | "Regras do formato" do template no HEAD (regras 1 a 27) × `plan-rules-why.md` (`.Contains`); `Length` do template | True; 33 628 → 22 693 B | ✅ |
-| Substituição de padrão | `Grep` de "regra 25"/"planos de todas as Tasks"/"uma instância do Arquiteto" fora dos changelogs | só o fallback sem ficha (`run.ps1`, testes, comentário do G16), lido no contexto | ✅ |
-| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | C3 exit 0 (R18 3.53.0 nos três; R17 bloco v3.53 ≤ 10 240, 2 papéis, 3 entradas; ownership 63; órfãos 49 ok); conferências 206/0 (+6); guardas 253/0 (+1) | ✅ |
-
-### Parte mecânica (implementada pela sessão principal, citada aqui)
-`lib.ps1` `Get-Ficha`/`Resolve-FichaPath`; `run.ps1 next` grava `sprints/<n>/handoff/<T-ID>-ficha.md` e dispara o Arquiteto da Task; `plan.ps1` regra 28 (`**Li além da ficha:**`, nomes comuns no plano, caminhos da ficha existem); G16 (`subagent-stop.ps1`) não conta como trabalho da rodada o ID dentro de caminho (o plano da dependência citado no prompt rateava a rodada entre as duas Tasks).
-
-### Addendum v3.53.1 — teto de contexto do dev, agente vivo de outra sessão, aceite sem assert (SM + Dev + QA) — 01/11/2026
-
-**Instrução:** stakeholder, 31/10/2026, avaliação do `plugin-report.md` do fim do sprint 4 do garden ("pode executar" sobre os defeitos e a medição). Sem regra nova (34), sem conflito; o piloto da ficha (v3.53) não foi medido, porque o sprint foi planejado na 3.52.2. **Medido:** 6 instâncias de dev com 61 a 159 chamadas, pico até 242 mil e 34 % do US$ dos subagentes (na de 157, cache lido ≈ 71 % do custo da rodada); dois devs no mesmo emulador depois de abrir uma segunda sessão; `accept` "18 de 18" sem nenhum assert. **Mudou:** dev — teto de contexto (G23, `guards.json → devContextCap`, padrão 100 mil): grava `### Parei no passo` e volta com `TETO` (`agents/developer.md` regra 11); executor — `done -Result teto` e o `start` que recusa outro dev vivo (`agents/task-runner.md`); QA — cada cenário com ao menos um `assert-*` (README §preparo); SM — `sprint-run.md` §Retomada após queda (segunda sessão aberta, limite na mesma sessão) e `team-remote.md` §1a (troca de sessão). Instrumentos: CHANGELOG v3.53.1. **Estimativa, não medição:** −35 a −45 % do cache lido nas instâncias longas do dev; custo novo de uma carga fixa (≈ 18 mil) e do ponto de retomada por corte. **Indicador:** próximo sprint com zero dev acima de 100 mil de contexto, Σ US$ das instâncias longas abaixo dos 34 %, 🔺 GAP por Task ≤ 1,7 e nenhum redisparo com agente vivo. **Evidência:** conferências 214/0, guardas 264/0, C3 ok.
-
-### Addendum v3.53.2 — toda pergunta ao stakeholder em formulário (SM) — 01/11/2026
-
-**Instrução:** stakeholder, 01/11/2026: "sempre vir como modo formulário", com uma opção para digitar e outra para pedir mais esclarecimento, de maneira simples. Também pediu que o problema fosse corrigido na origem, sem uma volta a mais. **Mudou:** R22 vale para **toda** pergunta da sessão ao stakeholder, não só para a decisão. Isso inclui dado, confirmação e próximo passo. Na pergunta aberta, as respostas prováveis viram opções e o campo "Outro" do formulário serve para digitar. "Pedir mais contexto" traz a explicação curta e repete o formulário na mesma resposta. A linguagem é simples, com termo técnico só quando é indispensável, e isso é orientação, não bloqueio. A forma entra no contexto de toda sessão pelo `SessionStart`. Uma guarda no `Stop` foi descartada porque custaria uma volta do modelo, e o stakeholder pediu que não houvesse. Sem regra nova (34). **Indicador:** nenhuma pergunta em texto corrido ao stakeholder no próximo sprint, contada na retrospectiva. **Evidência:** CHANGELOG v3.53.2.
-
-**Plano do Arquiteto (Arquiteto · SM):** decisão do stakeholder sobre o relatório prévio do sprint 5 do garden, em que o Arquiteto gastou 84% e cortar planos custou ~US$ 9. O plano não se corta por tamanho; acima de ~30 KB só se avisa Task grande. A ficha ganha **Arquivos previstos** (até 6, acima disso a Task se divide). O `run.ps1 next` confere a ficha antes do Opus e põe nela o resumo do plano da dependência. A leitura é por trecho. Sem regra nova. **Indicador:** o Arquiteto gasta 35–40% menos por plano no próximo sprint, sem mais GAPs de plano.
-
-**Bloqueios do run (QA · SM · Dev):** 11 de 19 decisões do sprint 5 vieram de nomes de teste. Cenário diz o modo de prova (`(teste)` sem `.scn`); nomes que faltam viram Task na Planning; `# aguarda <T-ID>` no `.scn` adia o cenário; `verify -WaitBusySeconds`; reparo do emulador em `targets.android.repair`. Sem regra nova. **Indicador:** zero formulário de mapeamento no run.
-
-### Addendum v3.53.3 — construção e prova sem retrabalho (SM + Dev + QA) — 02/11/2026
-
-**Instrução:** stakeholder, 02/11/2026, avaliação do meio do sprint 5 do garden (itens 1 a 5 aceitos). O título do bloco passou a declarar Dev e QA, que os addenda v3.53.1 e v3.53.2 já tocavam. **Medido:** ~US$ 100 com 4 de 16 Tasks fechadas, sendo o Arquiteto 84 % dos subagentes. O contrato de nomes de teste cresceu 3× (~US$ 19 de Opus): os `.scn` de quatro Histórias foram escritos antes da Task que cria os nomes. As capturas da falha do aceite mostravam a tela inicial do Android ou a página do cenário anterior, e o time leu "APK sem os ids". A T-058 teve 3 devs, porque o dev que esperava um comando em segundo plano parecia ter voltado. **Mudou:** o preparo é de uma História por vez, e a que depende de outra vem depois (`sprint-run.md` passo 1). O GAP da prova no alvo vai ao operator, pelas capturas, antes do Arquiteto. O dev que espera comando volta com `ESPERANDO`, e `done`, `start` e `next` não redisparam enquanto o verify ou o accept da Task roda. Sem regra nova (34). **Indicador (sprint 6):** zero dev duplicado; zero GAP de alvo no Opus sem veredito do operator; nenhum plano refeito por contrato que mudou depois; Arquiteto em retrabalho bem abaixo dos US$ 28,6. **Evidência:** CHANGELOG v3.53.3.
-
-### Addendum v3.53.4 — plano externo (SM + Arquiteto) — 02/11/2026
-
-**Instrução:** stakeholder, 02/11/2026: tirar do limite da conta Claude o trabalho que mais pesa, mantendo controles e scripts. **Medido:** sprint 5 do garden, Arquiteto US$ 66,77 de ~US$ 100 (planos 38,2 · retrabalho 28,6); dev US$ 3,13. **Mudou:** opção do projeto `guards.json` → `"run": { "planner": "external", "tasks": [] }`, desligada por padrão. O plano da Task com ficha sai num pacote por História (`sprints/<n>/pack/`) para um assistente de fora; o `run.ps1 next` só o aceita depois do `plan.ps1`, e o reprovado volta num pacote de correção. O 🔺 GAP dessa Task também vai num pacote. Na trilha fix, a mesma chave manda para fora os mini-planos do `/sm fix plan` (conferidos pelo `fix.ps1 -PlanOnly`; o modo retoma no passo 4) e o 🔺 GAP de uma Correção; a estrutura do fix não muda. Ficha, cenários, construção e fechamento seguem no Claude. Sem regra nova (34). **Indicador (piloto, 3 Tasks do sprint 6):** plano aprovado em até uma correção, GAPs de PLANO não acima dos do Opus, US$ de Arquiteto dessas Tasks perto de zero. **Evidência:** CHANGELOG v3.53.4.
-
-### Addendum v3.53.5 — espera com sinal de vida e um emulador só (SM + Dev) — 02/11/2026
-
-**Instrução:** stakeholder, 02/11/2026, no sprint 5 do garden: "acompanhar essas paradas longas pra saber se são travamentos" e mostrar no `/team-status` a Task em execução e há quanto tempo ela roda. **Medido:** o reparo do alvo (`target.ps1 -Repair`) ficou 81 min parado com 1 s de CPU, à espera de `adb emu kill`. A causa eram dois emuladores, um AVD local e um container Docker, nas mesmas portas 5554/5555. A trava do alvo tinha dono `target.ps1 android`, que o `next` não via, e a G20 barrou 43 fins de turno na T-042 enquanto o `next` mandava esperar a T-061. **Mudou:**
-- todo `adb` tem prazo, e o reparo recusa abrir um segundo emulador com as portas ocupadas;
-- `targets.android.serial` fixa o aparelho de trabalho;
-- o reparo do alvo também segura a Task;
-- cada espera do `next` traz o sinal de vida (tempo, CPU, processo, último arquivo) e `POSSÍVEL TRAVAMENTO`, que vai ao stakeholder em formulário;
-- a G20 segue a decisão "esperar" do `next` (`.next-verdict`, 30 min) e cita a Task em construção;
-- o `/team-status` ganhou "Em execução" com `PARADA`.
-
-Sem regra nova (34). **Indicador (sprint 6):** nenhuma espera acima de 15 min sem `POSSÍVEL TRAVAMENTO` ou resultado; bloqueios da G20 por dia abaixo de 5; zero reparo do alvo que passe de 10 min. **Evidência:** CHANGELOG v3.53.5.
-
-### Addendum v3.53.6 — Task grande se divide, prova pendente bloqueia (SM + Arq + Dev + QA) — 04/11/2026
-
-**Instrução:** stakeholder, 04/11, sobre o relatório do sprint 5 do garden. Muda:
-- plano acima de 30 KB reprova e a Task vai à divisão, com o plano como base; nunca se corta;
-- id de teste é padrão de código: id do `.scn` fora do código e controle sem id reprovam o `verify`;
-- Task sem prova no alvo por ambiente vai a 🔴 e volta quando o alvo responde; não fecha ✅;
-- consumo medido pela cota da assinatura, não por US$.
-
-Sem regra nova (34). **Indicador (sprint 6):** zero plano acima de 30 KB no dev; zero "tag não encontrada" no accept; zero ✅ sem prova no alvo; cota por Task no `consumption.md`. **Evidência:** CHANGELOG v3.53.6.
-
-### Addendum v3.53.7 — prova pela camada certa, decisão do sprint num lugar só (Arq + Dev + QA) — 04/11/2026
-
-**Instrução:** stakeholder, 04/11 (encadeamento do sprint 5 do garden). Muda: o QA prova cada critério na camada mais barata, e o cenário de aparelho declara a massa (`seed`); premissa de layout se mede executando; decisão de GAP comum fica uma vez em `architect/decisions/S<n>.md`, citada pelo plano. Sem regra nova (34). **Indicador (sprint 6):** zero decisão copiada entre planos; cenários tirados da prova por gesto ou massa perto de zero. **Evidência:** CHANGELOG v3.53.7.
-
----

@@ -55,6 +55,24 @@ function Get-PlanFull($T, [string]$S) {
     if (-not $T.Plan -or $T.Plan -match '^plan/?$') { return $null }
     $f = Join-Path $S $T.Plan; if ((Test-Path -LiteralPath $f -PathType Leaf)) { return $f }; return $null
 }
+# v3.56.0 (H2): os argumentos do accept da Task — os .scn que definem os cenários dela (-Scenarios) e a lista (-Only), que é a
+# do plano quando ele existe (Get-SprintTasks). Antes ia a máscara de todos os .scn: um cenário inválido de outra História
+# reprovava a Task.
+function Get-AcceptArgs($T) {
+    $fs = @(Get-ScenarioFiles $Root @($T.Scenarios))
+    return "$(if ($fs.Count) { " -Scenarios $($fs -join ',')" }) -Only $(@($T.Scenarios) -join ',')"
+}
+# v3.56.0 (H2): divergência entre a coluna Cenários do backlog e a linha **Cenários:** do plano — uma linha no run-log.md, uma
+# vez por Task e por lista, sem formulário. O plano manda.
+function Write-ScenarioDivergence($T, [string]$S, [string]$n) {
+    if (-not $T.ScenariosDiverge) { return }
+    $now = @(@($T.Scenarios) + @($T.TestScenarios | ForEach-Object { "$_ (teste)" }))
+    $nowTxt = if ($now.Count) { $now -join ', ' } else { 'nenhum' }
+    $rl = Join-Path $S 'run-log.md'
+    $mark = "cenários: o plano manda ($nowTxt)"
+    if ((Test-Path -LiteralPath $rl) -and (Read-Text $rl).Contains("| $($T.Id) | $mark")) { return }
+    Add-RunLog $S $n $T.Id $mark "backlog: $(if (@($T.BacklogScenarios).Count) { @($T.BacklogScenarios) -join ', ' } else { 'nenhum' }) · o cartão, o start e o accept seguem a linha **Cenários:** do plano" "sprints/$n/$($T.Plan)"
+}
 function Get-AgentLine([string]$Role) {
     $mc = Get-ModelsConfig $Root
     $dm = Get-AgentDefaultModel $Role; if (-not $dm) { $dm = "agents/$Role.md" }
@@ -291,15 +309,22 @@ function Write-Handoff($T, [string]$S, [string]$n) {
     $rem = if ($pf -and $stop) { Get-RemainingSteps $pt $stop $Block } else { $null }
     # v3.53.7: as decisões do sprint que valem para a Task (todas, as que a citam e as que o plano cita), uma linha cada.
     $dl = @(Get-TaskDecisionLines $Root $n $T.Id $(if ($pf) { $pt } else { '' }))
+    # v3.56.0 (B, C): o conhecimento do projeto e as armadilhas da stack que casam com os arquivos da Task (glob), o T-ID ou o
+    # plano — uma linha cada; ninguém abre o knowledge.md nem o pitfalls.md inteiros.
+    $kl = @(Get-TaskKnowledgeLines $Root $n $T.Id $(if ($pf) { $pt } else { '' }))
+    $sl = @(Get-StackPitfallLines $Root $n $T.Id $(if ($pf) { $pt } else { '' }))
     $md = @("# Cartão de passagem — $($T.Id) $($T.Title)", '', "**História:** $($T.Story) · **Marcador:** $($T.Mark) · **Depende de:** $(if ($T.Deps.Count) { $T.Deps -join ', ' } else { '—' })",
             ("**Plano:** ``$planRel`` · $files arquivo(s)" + $(if ($blocks.Count) { " · " + ($blocks -join ' · ') } else { '' })),
             # v3.52.3 (note.md item 1): o aceite só com alvo — sem guards.json → targets, o cartão mandava rodar o accept.ps1 e
             # 4 de 5 Tasks do sprint 4 do garden pararam no mesmo 🔺 GAP "accept sem .scn".
-            ("**Cenários:** " + $(if (-not $T.Scenarios.Count) { 'nenhum no alvo' } elseif (Get-TargetsConfig $Root) { "$($T.Scenarios -join ', ') — ``accept.ps1 -Task $($T.Id) -Only $($T.Scenarios -join ',')``" } else { "$($T.Scenarios -join ', ') — sem alvo de execução: o accept não roda; os cenários se provam pelos testes do plano" }) + $(if ($T.TestScenarios.Count) { " · por teste do plano, sem accept: $($T.TestScenarios -join ', ')" } else { '' })),
+            # v3.56.0 (H2): a lista é a do plano quando ele existe (o backlog só antes dele) e o -Scenarios aponta o .scn da História.
+            ("**Cenários$(if ($T.ScenariosFrom -eq 'plano') { ' (do plano)' }):** " + $(if (-not $T.Scenarios.Count) { 'nenhum no alvo' } elseif (Get-TargetsConfig $Root) { "$($T.Scenarios -join ', ') — ``accept.ps1 -Task $($T.Id)$(Get-AcceptArgs $T)``" } else { "$($T.Scenarios -join ', ') — sem alvo de execução: o accept não roda; os cenários se provam pelos testes do plano" }) + $(if ($T.TestScenarios.Count) { " · por teste do plano, sem accept: $($T.TestScenarios -join ', ')" } else { '' })),
             ("**Última entrega:** $last" + $(if ($stop) { " · parou: $((($stop -split "`r?`n")[0]).Trim())" } else { '' })),
             "**Verificação:** $vtxt · **Cenários no alvo:** $atxt",
             "**GAPs:** $(if ($gaps.Count) { $gaps -join ' · ' } else { 'nenhum' })",
             $(if ($dl.Count) { "**Decisões do sprint** (``architect/decisions/S$n.md`` — valem como o plano; não abra o arquivo):`n" + ($dl -join "`n") } else { $null }),
+            $(if ($kl.Count) { "**Conhecimento do projeto** (``architect/knowledge.md`` — o que sprints anteriores ensinaram sobre os arquivos desta Task; vale como o plano; não abra o arquivo):`n" + ($kl -join "`n") } else { $null }),
+            $(if ($sl.Count) { "**Armadilhas da stack** (``standards/stacks/<stack>/pitfalls.md`` do plugin e do projeto — comportamento do framework que pega quem não sabe; não abra o arquivo):`n" + ($sl -join "`n") } else { $null }),
             # v3.53.3: o diagnóstico do operator sobre a falha da prova no alvo (run.ps1 done -Result gap).
             $(if (Test-Path -LiteralPath $dg) { "**Diagnóstico do alvo (operator):** ``$dgRel`` · $((@((Read-Text $dg) -split "`r?`n" | Where-Object { $_.Trim() }) | Select-Object -First 1))" } else { $null }), '',
             $(if ($rem) { "Retomada do passo $($rem.Num): os passos que faltam estão abaixo, copiados do plano, e o que já está provado também. Siga por este cartão — não reabra o plano inteiro; abra só o trecho de que um passo precise e que não esteja aqui (Read com offset e limit; a §6 com os testes e as **Mutações:**, se o passo as pedir)." } else { 'Leia: este cartão, o cabeçalho e a §6 do plano e o seu bloco. O resto só se o passo pedir.' }))
@@ -466,7 +491,10 @@ try {
         if ($dr.Code -ne 0) { [Console]::Error.WriteLine("run start: dispatch falhou — $($d.Trim())"); exit 2 }
         Remove-Item -LiteralPath (Join-Path $tp '.safe-point') -Force -ErrorAction SilentlyContinue   # v3.52: Task em voo não é ponto seguro
         $card = Write-Handoff $T $S $n
-        $acc = if ($T.Scenarios.Count -and (Get-TargetsConfig $Root)) { " e accept.ps1 -Task $($T.Id) -Only $($T.Scenarios -join ',') no alvo" } else { '' }
+        Write-ScenarioDivergence $T $S $n
+        $acc = if ($T.Scenarios.Count -and (Get-TargetsConfig $Root)) { " e accept.ps1 -Task $($T.Id)$(Get-AcceptArgs $T) no alvo" } else { '' }
+        # v3.56.0 (H2): o plano manda nos cenários; a ordem do cartão que o contradiga é GAP de processo, não do plano.
+        $acc += ". Cenários: o plano manda — ordem do cartão que contradiga o plano é 🔺 GAP de processo (diga 'processo' no GAP), não do plano"
         $blk = if ($Block) { " Bloco $Block." } else { '' }
         Out ($d.Trim())
         Out "  cartão: $card"
@@ -541,7 +569,7 @@ try {
             Add-RunLog $S $n $T.Id '🔺 GAP → Arquiteto em instância nova (/arc question); a decisão fica no plano (R9)' $(if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }) "sprints/$n/delivery/$($T.Id).md"
             Out "run: $($T.Id) com 🔺 GAP — Arquiteto em instância NOVA (o cache de 5 min do anterior já venceu; C1), modo /arc question (rota gravada no run-log.md):"
             Out "  $(Get-AgentLine 'architect')"
-            Out "  prompt: `"Decida o 🔺 GAP da $($T.Id): cartão .team-project/$card, plano .team-project/sprints/$n/$($T.Plan), relatório .team-project/sprints/$n/delivery/$($T.Id).md$(if ($diagV) { ", diagnóstico do operator $diagRel (veredito $diagV)" }). Registre a decisão no plano (R9) no lugar do texto que ela derruba (passo, premissa, teste ou arquivo superado) — não ao lado: o plano tem teto de $($script:PlanMaxKb) KB e o run.ps1 start recusa o plano acima dele. Rode plan.ps1 -Plan .team-project/sprints/$n/$($T.Plan) antes de voltar. Se ela vale para mais de uma Task do sprint (alvo, APK, teste instável, regra de processo), grave-a UMA vez como D-<k> em .team-project/architect/decisions/S$n.md (## D-<k> — <título>, **Vale para:** todas | T-…, a regra em até 5 linhas) e no plano só a referência em **Decisões do sprint:** — não copie o texto em plano nenhum: o cartão de cada Task a traz (regra 29). Decisão que já está lá: só a referência. Não escreva código nem rode build. Volte em até 15 linhas.`""
+            Out "  prompt: `"Decida o 🔺 GAP da $($T.Id): cartão .team-project/$card, plano .team-project/sprints/$n/$($T.Plan), relatório .team-project/sprints/$n/delivery/$($T.Id).md$(if ($diagV) { ", diagnóstico do operator $diagRel (veredito $diagV)" }). Registre a decisão no plano (R9) no lugar do texto que ela derruba (passo, premissa, teste ou arquivo superado) — não ao lado: o plano tem teto de $($script:PlanMaxKb) KB e o run.ps1 start recusa o plano acima dele. Toda decisão declara duas linhas (v3.56.0, regra 29): **Origem:** previsão | conhecimento | requisito | ambiente | processo (confirme a sugestão do dev) e **Lição:** projeto (fato deste sistema que vai se repetir → K no knowledge.md no fechamento) | stack:<nome> (comportamento do framework, vale para qualquer projeto com a mesma stack → armadilha da camada local) | plugin (defeito ou regra do plugin → ocorrência de plugin, sem contexto do projeto) | nenhuma (previsão única). No plano: **Decisão do GAP $($T.Id) (<data>):** <a decisão>, com as duas linhas embaixo. Grave-a UMA vez como D-<k> em .team-project/architect/decisions/S$n.md (## D-<k> — <título>, **Vale para:** todas | T-… | <glob>, as duas linhas, a regra em até 5 linhas) quando ela vale para mais de uma Task do sprint (alvo, APK, teste instável, regra de processo) OU a Lição é projeto ou stack — e no plano só a referência em **Decisões:** D-<k> — não copie o texto em plano nenhum: o cartão de cada Task a traz. Decisão ou K que já está lá: só a referência. Rode plan.ps1 -Plan .team-project/sprints/$n/$($T.Plan) antes de voltar. Não escreva código nem rode build. Volte em até 15 linhas.`""
             Out "  depois: dev em instância NOVA com a decisão — run.ps1 start -Task $($T.Id) (o cartão regerado aponta o plano com a decisão) e rode run.ps1 done de novo"
             exit 0
         }
@@ -722,7 +750,8 @@ try {
                 $rt = $tpT[0]
                 $mo = Set-Mark $rt.Id 'qa' 'sessão (run.ps1 next — alvo de volta)'; if ($mo) { Out "  $mo" }
                 Add-RunLog $S $n $rt.Id "alvo $tn de volta → sai de 🔴 ($($script:TargetPendingTag)) para 🟪; operator roda o accept" 'target.ps1 ok no run.ps1 next' "sprints/$n/kanban.md (Bloqueios)"
-                $only = if ($rt.Scenarios.Count) { " -Only $($rt.Scenarios -join ',')" } else { '' }
+                Write-ScenarioDivergence $rt $S $n
+                $only = if ($rt.Scenarios.Count) { Get-AcceptArgs $rt } else { '' }   # v3.56.0 (H2): os do plano, com o .scn da História
                 Out "PRÓXIMA AÇÃO: prova no alvo da $($rt.Id) — o alvo $tn voltou (target.ps1 ok): a Task sai de 🔴 para 🟪 e o operator roda o accept que ficou pendente"
                 Out "  $(Get-AgentLine 'operator')"
                 Out "  prompt: `"Rode na raiz: $plugin/accept.ps1 -Task $($rt.Id)$only (a prova no alvo que ficou pendente quando o alvo caiu). Exit 4 = ambiente: rode $plugin/target.ps1 -Target $tn -Repair uma vez e repita. Não altere código, cenário nem plano. Devolva o caminho do result.md e a linha de resumo.`""
@@ -820,7 +849,7 @@ try {
             $depPlans = @($t.Deps | ForEach-Object { $d = $_; $dt = @($tasks | Where-Object { $_.Id -eq $d }) | Select-Object -First 1; if ($dt -and (Get-PlanFull $dt $S)) { ".team-project/sprints/$n/$($dt.Plan)" } })
             # v3.53.2: o resumo do plano da dependência vai no recorte; o plano inteiro só se abre no trecho que faltar.
             $depSum = @($depPlans | ForEach-Object { "## Plano da dependência — resumo de ``$_```n`n" + (Get-PlanSummary (Join-Path $Root $_)) })
-            $card = "# Ficha da $($t.Id) — recorte de ``$bdRel```n`n> Gerado pelo ``run.ps1 next`` para o Arquiteto do plano (v3.53). A fonte é o breakdown: não edite aqui.`n`n" + $(if ($pick.F.Common) { $pick.F.Common + "`n`n" } else { '' }) + $pick.F.Body + "`n" + $(if ($depSum.Count) { "`n" + ($depSum -join "`n`n") + "`n" } else { '' }) + (Get-DecisionsDigest $Root $n)
+            $card = "# Ficha da $($t.Id) — recorte de ``$bdRel```n`n> Gerado pelo ``run.ps1 next`` para o Arquiteto do plano (v3.53). A fonte é o breakdown: não edite aqui.`n`n" + $(if ($pick.F.Common) { $pick.F.Common + "`n`n" } else { '' }) + $pick.F.Body + "`n" + $(if ($depSum.Count) { "`n" + ($depSum -join "`n`n") + "`n" } else { '' }) + (Get-DecisionsDigest $Root $n) + (Get-KnowledgeDigest $Root) + (Get-StackPitfallDigest $Root $n $t.Id)   # v3.56.0 (B, C)
             [System.IO.File]::WriteAllText((Join-Path $dir "$($t.Id)-ficha.md"), $card, $utf8)
             $depTxt = if ($depPlans.Count) { '. O resumo do plano da dependência (' + ($depPlans -join ', ') + ': arquivos, nomes, passos) está no fim da ficha: abra esse plano só no trecho que faltar, com offset e limit' } else { '' }
             $rest = @($noPlan | Where-Object { $_.Id -ne $t.Id } | ForEach-Object { $_.Id })

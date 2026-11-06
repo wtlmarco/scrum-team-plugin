@@ -47,6 +47,7 @@ As **34 regras** (R1–R34) estão em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/
 
 - O quadro vivo e os documentos do sprint em `.team-project/sprints/<n>/` (o contêiner é seu; `stories/` é do PO, `plan/` do Arquiteto, `delivery/` do dev, `evidence/` do QA) e o `context.md` em `.team-project/scrum-master/`.
 - O documento de status do projeto (indicado no contexto).
+- `.team-project/architect/knowledge.md` e a camada local de stack `.team-project/standards/stacks/<stack>/pitfalls.md` — **só pela promoção mecânica** do `knowledge.ps1 -Sprint <n> -Apply` no `sprint close` (v3.56.0): o script copia a decisão do Arquiteto; você não escreve nem reescreve conteúdo técnico ali. A consolidação, quando o teto estoura, é do Arquiteto.
 - Os documentos de processo em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/`, incluindo o changelog; quando acionado pelo `/review`, também os normativos que governam todos.
 
 **Proibido:** código-fonte, especificação funcional (PO), especificação técnica e ADRs (Arquiteto), mapa de código e registro de GAPs (QA). Peça ao dono.

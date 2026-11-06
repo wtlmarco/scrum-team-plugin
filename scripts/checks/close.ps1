@@ -494,6 +494,11 @@ try {
         # v3.53.2: "SC-nnn (teste)" se prova pelos testes do plano (o verify) — sem accept no alvo.
         $allIds = @(Get-ScenarioIds $cen)
         $ids = @(Get-ScenarioIds $cen -TargetOnly)
+        # v3.56.0 (H2): na entrega do dev, o plano manda nos cenários — a lista é a do **Cenários:** do plano, que o run mandou
+        # rodar; o backlog só vale sem a linha legível no plano.
+        $psc = if ($devMode -and $plan) { Get-PlanScenarios $plan } else { $null }
+        if ($psc -and $psc.None) { $cen = "nenhum aplicável — $($psc.Reason) (plano)"; $allIds = @(); $ids = @() }
+        elseif ($psc) { $allIds = @(@($psc.Target) + @($psc.Test)); $ids = @($psc.Target) }
         # v3.53.6 (sprint 5 do garden, item 9): "nenhum aplicável" porque o alvo estava fora (emulador, aparelho, ambiente) não
         # dispensa a prova — a Task fechava ✅ sem ela. Vai a 🔴 com a prova no alvo pendente, e o run.ps1 next a reabre.
         $envNa = '(?i)fora do ar|indispon[íi]vel|offline|\bcaiu\b|travad|sem (o |um )?(alvo|emulador|aparelho|dispositivo|ambiente|acesso)\b|\b(alvo|emulador|aparelho|dispositivo|ambiente|adb|device)\b[^.;]{0,30}?\b(n[ãa]o (respond|sob|sub|lig|conect|abr|est)|parad|quebrad|ausente|falh|down)'

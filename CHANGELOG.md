@@ -13,6 +13,60 @@
 
 ---
 
+## v3.56.0 — 2026-11-06
+
+**Branch:** `feat/v3.56.0` a partir de `develop` (`b4d8f8d`, v3.55.0 mesclada) · **Processo:** v3.56 (a lição de cada GAP no lugar certo; o SM atualiza o lado do projeto no fechamento)
+Origem: `melhorias/plano-v3.56.0.md`, aprovado pelo stakeholder em 06/11 com as recomendações do §9. Base: a classificação dos 117 GAPs do garden, sprints 1 a 5 (`melhorias/gaps-garden-s1-s5.md`).
+
+Mudanças:
+- **H · os três defeitos do plugin ainda abertos (10 dos 31 GAPs de defeito):**
+  - **H1** (`accept.ps1`): cada erro do `Read-Scenarios` leva o id do cenário. Com `-Only`, contam só os erros dos cenários pedidos e os do arquivo; os outros saem num aviso de uma linha. De quebra: o "passo antes do primeiro `scenario`" passou a valer por arquivo; antes, caía no último cenário do arquivo anterior.
+  - **H2** (`lib.ps1` `Get-SprintTasks`/`Get-PlanScenarios`/`Get-ScenarioFiles`, `run.ps1`, `close.ps1`): com plano legível, os cenários da Task são os da linha `**Cenários:**` do plano, ou nenhum com "nenhum — motivo". O backlog só vale antes do plano. O cartão, o `start` e o `next` dão `accept.ps1 -Scenarios <.scn da História> -Only <os do plano>`. A divergência com o backlog vira uma linha `cenários: o plano manda` no `run-log.md`, uma vez, sem formulário. O prompt do dev diz que ordem do cartão contra o plano é GAP de processo. O `close.ps1` (R30) também confere a lista do plano.
+  - **H3** (`hooks/pre-tool.ps1` G9): um caminho que o `git check-ignore -q` diz estar ignorado (saída de build) é liberado, com a linha `G9 liberado (ignorado pelo git)` no `guards.log`. A G5 roda antes, então um segredo ignorado e protegido continua negado. Sem git, nada muda.
+- **A · o GAP declara origem e destino** (`gap.md`, `technical-decision.md` §Origem e Lição, `implementation-plan.md` e `plan-rules-why.md` regra 29, prompt do GAP no `run.ps1`, `plan.ps1`):
+  - toda decisão de 🔺 GAP tem as linhas `**Origem:**` (previsão · conhecimento · requisito · ambiente · processo) e `**Lição:**` (projeto · stack:<nome> · plugin · nenhuma). No plano, a decisão é escrita como `**Decisão do GAP <T-ID> (<data>):**`;
+  - a regra 29 foi ampliada: reprova a decisão sem as duas linhas e o valor fora da lista. Num sprint anterior ao `**Classificação desde:**` do `knowledge.md`, ou sem o arquivo, a falta das linhas só gera aviso. Assim, as D antigas do garden S5 não travam o fim do sprint;
+  - a D passa a ser gravada quando vale para mais de uma Task **ou** quando a lição é de projeto ou de stack.
+- **B · conhecimento do projeto que atravessa sprints** (`roles/architect/templates/knowledge.md` novo, `lib.ps1`, `run.ps1`, `external-plan.ps1`, `plan.ps1`, `ownership.json`, `artifact-ownership.md` §1, manifesto do `.team-project`, `agents/developer.md`, `agents/architect.md`):
+  - `architect/knowledge.md` guarda entradas `## K-<n>`. O **Vale para** aceita `todas`, T-ID ou glob de caminho. A entrada traz **Origem**, **Desde** e, quando é remédio temporário, **Até**. O teto é 15 KB;
+  - o cartão do dev traz o bloco **Conhecimento do projeto**. O recorte da ficha e o pacote externo trazem o resumo das entradas (`Get-KnowledgeDigest`);
+  - a linha do plano passou a `**Decisões:** D-<k>, K-<n>`. Citar uma K que não existe, ou copiar o texto de uma K, reprova;
+  - o casamento usa os arquivos de `**Código a ler:**`/`**Fontes:**` da ficha e os de `**Arquivos tocados:**` do plano. O `**Arquivos previstos:**` da ficha é uma contagem, não uma lista;
+  - dono: Arquiteto. O SM também escreve, mas só pela promoção do fechamento (G8).
+- **C · camada de stack extensível** (`standards/stacks/ionic-capacitor/{guide,pitfalls}.md` novos, com 18 armadilhas do garden marcadas "confirmar em segundo projeto"; `pitfalls.md` vazio, com o formato, nas outras quatro stacks; `standards/README.md`; `lib.ps1` `Get-Stacks`/`Get-StackPitfallLines`; `common.ps1` `Get-InferredStacks`; G13):
+  - o projeto declara as stacks em `guards.json` → `"stacks"`. Sem a chave, o plugin infere pelos arquivos da raiz e do primeiro nível, e o SessionStart avisa;
+  - a camada local `.team-project/standards/stacks/<stack>/pitfalls.md` (`<STACK>-L<n>`) soma à do plugin. Uma entrada com `**Promovida:**` deixa de ser lida;
+  - o cartão traz até 6 armadilhas que casam com a Task.
+- **E · o SM atualiza o lado do projeto no fechamento** (`scripts/checks/knowledge.ps1` novo, `sm.md`, `workflow-sprint.md`, `retrospective.md` §Lições do sprint, `agents/scrum-master.md`, R6 e R16 com o índice):
+  - `knowledge.ps1 -Sprint <n> -Check|-Apply` monta a tabela origem × destino em `sprints/<n>/lessons.md` e faz a promoção por cópia: D → K e D → `<STACK>-L`. Rodar de novo não duplica;
+  - a lição de plugin vira ocorrência (iii). Um remédio com `**Até:**` também vira K;
+  - o script aponta a **repetição com registro**: um GAP de conhecimento cuja decisão cita uma K, D ou armadilha que já existia, e diz se o registro chegou à Task ou não;
+  - o script aponta como achado a decisão sem Lição (exit 1) e o teto estourado (`architect/consolidation.md`, primeiro item do próximo `prepare`);
+  - o script levanta propostas de configuração: `stacks`, comandos liberados, reparos e GAPs de ambiente.
+- **D · lição de plugin** (`workflow-sprint.md` critério iii, `plugin-report.md` §GAPs de processo, R25): entra no mesmo formulário investigar × ignorar e vai ao relatório sem o contexto do projeto.
+- **F · migração** (`team-update.md` 7m, `team-init.md` 4a, `knowledge.ps1 -Migrate [-Apply] [-Classify] [-Retire]`):
+  - o update cria o `knowledge.md` com `**Classificação desde:**` igual ao sprint seguinte ao aberto e cria a pasta local de stacks;
+  - pergunta as stacks e o destino de cada D sem classificação. Para o garden S5, as respostas de 06/11 ficam escritas no ritual;
+  - grava as linhas nas D e retira uma K quando a correção prevista no **Até** chegou;
+  - não promove nada do sprint aberto: isso acontece no close dele. A semente das 25 lições do garden fica para o primeiro `prepare`.
+- **Documentos:** `how-to.md` (seção Conhecimento do projeto), `sprint-run.md`, README do QA, `hooks/COVERAGE.md` (G9), entrada v3.56 no process-changelog (a v3.53 foi arquivada, R17).
+
+Conferências 404/0 (+24), guardas 297/0 (+10), C3 ok.
+
+**Não testado:**
+- a escolha da Lição por um Arquiteto real;
+- o casamento por glob em Tasks reais do garden (os testes usam árvores pequenas);
+- o formulário do fechamento numa sessão real (lições de plugin e propostas de configuração no formulário único);
+- a H2 numa Task do garden com o plano diferente do backlog;
+- o `-Migrate` no `decisions/S5.md` real (o teste usa um arquivo com a mesma forma);
+- a G9 com o `.gitignore` de uma subpasta (`source/.gitignore`) num repositório real.
+
+**Riscos:**
+- a repetição com registro só aparece quando a decisão cita o ID que já existia (K-, D-, `<STACK>-P/L`). Se o Arquiteto não citar, a repetição passa sem aviso;
+- a inferência de stacks só olha a raiz e o primeiro nível;
+- a G9 chama o `git` uma vez por escrita fora do plano;
+- as 18 armadilhas do Ionic vêm de um projeto só.
+
 ## v3.55.0 — 2026-11-05
 
 **Branch:** `feat/v3.55.0` a partir de `develop` · **Processo:** v3.55 (fechamento da margem, verificador por caminho, padrão de ids de teste, comandos do run declarados antes da construção)
