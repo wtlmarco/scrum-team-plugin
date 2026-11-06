@@ -366,20 +366,43 @@ try {
     # A mesma decisão de 🔺 GAP (emulador fora, teste instável) foi colada em 8 planos; os acréscimos chegaram a 57 % de um
     # plano, relidos por cada instância nova do dev. A decisão que vale para mais de uma Task fica uma vez na ficha comum do
     # sprint (architect/decisions/S<n>.md); o plano a cita em **Decisões do sprint:** e o cartão do dev a traz em uma linha.
+    # v3.56.0 (A e B): a mesma regra, ampliada — (1) a linha passa a **Decisões:** D-<k>, K-<n> (o rótulo antigo vale) e cita
+    # também o conhecimento do projeto (architect/knowledge.md): K que não existe reprova, texto de K copiado reprova; (2) toda
+    # decisão de 🔺 GAP — no plano ("**Decisão do GAP …:**") e cada D-<k> que vale para esta Task — declara **Origem:** e
+    # **Lição:**; valor fora da lista reprova. Sprint anterior ao "**Classificação desde:**" do knowledge.md (as D escritas
+    # antes da 3.56.0) ou projeto sem knowledge.md: a decisão sem as linhas só avisa.
     $dsn = if ($sm.Success) { $sm.Groups[1].Value } else { '' }
     $decs = @(if ($dsn) { Get-SprintDecisions $Root $dsn })
     $refs = @(Get-PlanDecisionRefs $text)
-    if (-not $decs.Count -and -not $refs.Count) { Add-Result 'decisões' 'n-a' 'sem decisões do sprint (architect/decisions/S<n>.md) nem **Decisões do sprint:** no plano' }
+    $kns = @(Get-ProjectKnowledge $Root)
+    $krefs = @(Get-PlanKnowledgeRefs $text)
+    $pgd = @(Get-PlanGapDecisions $text)
+    if (-not $decs.Count -and -not $refs.Count -and -not $krefs.Count -and -not $pgd.Count) { Add-Result 'decisões' 'n-a' 'sem decisões do sprint (architect/decisions/S<n>.md), sem K citada e sem decisão de GAP no plano' }
     else {
-        $iss = @()
+        $iss = @(); $warn = @()
+        $strict = Test-LessonStrict $Root $dsn
         $unk = @($refs | Where-Object { @($decs | ForEach-Object { $_.Id }) -notcontains $_ })
         if ($unk.Count) { $iss += "cita $($unk -join ', ') que não existe(m) em architect/decisions/S$dsn.md" }
-        foreach ($d in $decs) {
-            $cp = @($d.Body -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_.Length -ge 40 -and $_ -notmatch '^\*\*(Vale para|Origem):\*\*' -and $text.Contains($_) })
-            if ($cp.Count) { $iss += "copia o texto da $($d.Id) ('$(if ($cp[0].Length -gt 60) { $cp[0].Substring(0, 60) + '…' } else { $cp[0] })') — cite ``$($d.Id)`` em **Decisões do sprint:**; o cartão do dev a traz" }
+        $kunk = @($krefs | Where-Object { @($kns | ForEach-Object { $_.Id }) -notcontains $_ })
+        if ($kunk.Count) { $iss += "cita $($kunk -join ', ') que não existe(m) em architect/knowledge.md" }
+        foreach ($d in @(@($decs) + @($kns))) {
+            $cp = @($d.Body -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_.Length -ge 40 -and $_ -notmatch $script:EntryMetaRe -and $text.Contains($_) })
+            if ($cp.Count) { $iss += "copia o texto da $($d.Id) ('$(if ($cp[0].Length -gt 60) { $cp[0].Substring(0, 60) + '…' } else { $cp[0] })') — cite ``$($d.Id)`` em **Decisões:**; o cartão do dev a traz" }
         }
+        # Origem e Lição: as D que chegam a esta Task (todas, as que a citam e as citadas) e as decisões de GAP do plano.
+        $tid = $fid   # o T-ID do nome do arquivo (plan/<T-ID>-<slug>.md)
+        $mine = @($decs | Where-Object { $_.All -or ($tid -and @($_.Ids) -contains $tid) -or ($refs -contains $_.Id) })
+        $cls = @(@($mine | ForEach-Object { [pscustomobject]@{ Who = $_.Id; C = $_.Class } }) + @($pgd | ForEach-Object { $h = $_.Head; [pscustomobject]@{ Who = "'$(if ($h.Length -gt 40) { $h.Substring(0, 40) + '…' } else { $h })'"; C = (Get-LessonClass $_.Text) } }))
+        foreach ($c in $cls) {
+            if ($c.C.Issues.Count) { $iss += "$($c.Who): $($c.C.Issues -join ', ')" }
+            elseif (-not $c.C.Classified) {
+                $msg = "$($c.Who) sem **Origem:** e **Lição:** (decisão de GAP declara a origem — previsão | conhecimento | requisito | ambiente | processo — e o destino da lição — projeto | stack:<nome> | plugin | nenhuma)"
+                if ($strict) { $iss += $msg } else { $warn += "$($c.Who) sem classificação (anterior à 3.56.0: só aviso)" }
+            }
+        }
+        $cites = @(@($refs) + @($krefs))
         if ($iss.Count) { Add-Result 'decisões' 'falhou' (($iss -join '; ') + ' (regra 29)') }
-        else { Add-Result 'decisões' 'ok' "$(if ($refs.Count) { "cita $($refs -join ', ')" } else { 'nenhuma citada' }); $($decs.Count) decisão(ões) no sprint, nenhuma copiada" }
+        else { Add-Result 'decisões' 'ok' ("$(if ($cites.Count) { "cita $($cites -join ', ')" } else { 'nenhuma citada' }); $($decs.Count) decisão(ões) no sprint, $($kns.Count) K no projeto, nenhuma copiada" + $(if ($warn.Count) { '; ' + ($warn -join '; ') } else { '' })) }
     }
 
     # ---------- variante leve ----------

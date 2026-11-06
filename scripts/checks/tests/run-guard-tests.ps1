@@ -108,6 +108,18 @@ $cases = @(
        Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); content = 'x' } } },
     @{ Name = 'G9 dev fora do plano'; Script = 'pre-tool.ps1'; Expect = 2
        Payload = @{ tool_name = 'Edit'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/b.cs'); old_string = 'a'; new_string = 'b' } } },
+    # v3.56.0 H3 (sprint 5 do garden #26, #58): saída de build ignorada pelo git não é produto — a G9 libera e registra.
+    @{ Name = 'G9 (v3.56.0) saída ignorada pelo git (dist/) fora do plano: liberada e registrada'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.gitignore') "/dist`n" -Encoding ASCII; New-Item -ItemType Directory -Force (Join-Path $proj 'dist') | Out-Null; Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.log') -Force -ErrorAction SilentlyContinue }
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'dist/x.apk'); content = 'x' } }
+       Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw -Encoding UTF8) -like '*G9 liberado (ignorado pelo git)*dist/x.apk*' } },
+    @{ Name = 'G9 (v3.56.0) Remove-Item de saída ignorada (renomear/apagar o APK): liberado'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'Remove-Item -Force dist/app-debug.apk' } } },
+    @{ Name = 'G9 (v3.56.0) com .gitignore, src/ fora do plano continua negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G9'
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/x.ts'); content = 'x' } } },
+    @{ Name = 'G9 (v3.56.0) ignorado e em protectedPaths: a G5 nega antes'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G5'
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'dist/.editorconfig'); content = 'x' } }
+       Check = { Remove-Item -LiteralPath (Join-Path $proj '.gitignore') -Force -ErrorAction SilentlyContinue; $true } },
     # v3.54.1 (carta do sprint 5 do garden, item 2): margem stub — teste que já existe e monta um arquivo do plano.
     @{ Name = 'G9 (v3.54.1) margem stub: spec existente que monta arquivo do plano liberado'; Script = 'pre-tool.ps1'; Expect = 0
        Setup = {
@@ -459,6 +471,23 @@ $cases = @(
     @{ Name = 'G13 avisa models.json ilegível'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'models.json ilegível'
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ nao-e-json' -Encoding UTF8 }
        Payload = @{ hook_event_name = 'SessionStart' } },
+    # v3.56.0 (B, E): o SM escreve no knowledge.md e na camada local da stack (promoção mecânica do fechamento); o dev não.
+    @{ Name = 'G8 (v3.56.0) SM grava architect/knowledge.md'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:scrum-master'; tool_input = @{ file_path = (Join-Path $proj '.team-project/architect/knowledge.md'); content = 'x' } } },
+    @{ Name = 'G8 (v3.56.0) SM grava a camada local da stack'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:scrum-master'; tool_input = @{ file_path = (Join-Path $proj '.team-project/standards/stacks/ionic-capacitor/pitfalls.md'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G8 (v3.56.0) SM segue sem escrever o resto de architect/'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G8'
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:scrum-master'; tool_input = @{ file_path = (Join-Path $proj '.team-project/architect/breakdown/S1.md'); content = 'x' } } },
+    @{ Name = 'G8 (v3.56.0) dev não grava o knowledge.md'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G8'
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj '.team-project/architect/knowledge.md'); content = 'x' } } },
+    # v3.56.0 (C): sem guards.json → "stacks", o SessionStart avisa e mostra a inferência (package.json da raiz e do 1º nível).
+    @{ Name = 'G13 (v3.56.0) sem "stacks": avisa com as stacks inferidas'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = '*guards.json sem "stacks"*(angular, ionic-capacitor)*'
+       Setup = { New-Item -ItemType Directory -Force (Join-Path $proj 'source') | Out-Null; Set-Content -LiteralPath (Join-Path $proj 'source/package.json') '{ "dependencies": { "@angular/core": "17", "@ionic/angular": "8", "@capacitor/core": "6" } }' -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'SessionStart' } },
+    @{ Name = 'G13 (v3.56.0) com "stacks" declarada: sem o aviso'; Script = 'session-start.ps1'; Expect = 0; NotOut = 'sem "stacks"'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "stacks": ["angular", "ionic-capacitor"] }' -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'SessionStart' }
+       Check = { Remove-Item -LiteralPath (Join-Path $proj 'source') -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.json') -Force -ErrorAction SilentlyContinue; $true } },
     @{ Name = 'G17 limpeza: sem models.json volta ao livre'; Script = 'pre-tool.ps1'; Expect = 0
        Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/models.json') -Force -ErrorAction SilentlyContinue }
        Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; model = 'haiku'; prompt = 'x' } } },

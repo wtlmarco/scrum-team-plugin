@@ -354,6 +354,23 @@ function Get-ActiveScope {
     return $scope
 }
 
+# v3.56.0 (H3): o caminho está ignorado pelo git (git check-ignore -q, a partir da pasta existente mais funda — o repositório
+# pode ser uma subpasta do projeto). Arquivo rastreado não conta como ignorado. Sem git, fora de repositório ou erro: $false.
+function Test-GitIgnored([string]$ProjectDir, [string]$Rel) {
+    if (-not $Rel -or $Rel.StartsWith('.team-project/')) { return $false }
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return $false }
+    $full = Join-Path $ProjectDir ($Rel -replace '/', '\')
+    $dir = Split-Path $full -Parent
+    while ($dir -and -not (Test-Path -LiteralPath $dir -PathType Container)) { $dir = Split-Path $dir -Parent }
+    if (-not $dir) { return $false }
+    try {
+        $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        & git -C $dir check-ignore -q -- $full 2>$null | Out-Null
+        $code = $LASTEXITCODE; $ErrorActionPreference = $prev
+        return ($code -eq 0)
+    } catch { return $false }
+}
+
 # G9 — R4 · R8: o dev só escreve no produto o que o escopo ativo lista. Sem escopo ativo, nenhum arquivo de produto.
 function Test-G9([string]$Rel, [string]$Shown) {
     if (-not (Test-CodeWriter) -or -not $Rel -or -not $script:teamProject) { return }
@@ -373,6 +390,13 @@ function Test-G9([string]$Rel, [string]$Shown) {
     # v3.54.1: margem "stub" — teste que já existe e monta um arquivo do plano (o stub da dependência nova). O close exige a
     # linha "- A<k> · stub · `<teste>` · <o que mudou>" em ### Ajustes na margem; sem ela, R7-margem não fecha.
     if (Test-MountingSpec $script:projectDir $Rel $scope.Files) { return }
+    # v3.56.0 (H3, sprint 5 do garden #26, #58): saída de build ignorada pelo git (source/dist no .gitignore) não é produto
+    # versionado — o dev não podia apagar o APK para forçar o build nem renomear o zip para provar a falha. A G5 (protectedPaths)
+    # já rodou antes: segredo ignorado e protegido segue negado. Sem git no projeto, a regra fica como está.
+    if (Test-GitIgnored $script:projectDir $Rel) {
+        Write-GuardLog $script:projectDir 'G9' $script:hookInput $Shown "G9 liberado (ignorado pelo git): $Rel fora do plano de $($scope.Id), mas é saída não versionada"
+        return
+    }
     Deny 'G9' $Shown "arquivo fora do plano: $Rel não está na lista de $($scope.Id) ($($scope.Plano)). $gap antes de editar (R4 · R8) — quem orquestra resolve com o Arquiteto, não com o stakeholder (R25)."
 }
 

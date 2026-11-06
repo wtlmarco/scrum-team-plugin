@@ -11,7 +11,7 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
 **Estimativa:** <n> unidade(s) · **Trilha:** plena | leve *(a do Sprint Backlog; leve → "Variante leve")*
 **Planejado durante:** <T-ID> em 🟨 *(só quando outra Task estava em construção — regra 20)*
 **Li além da ficha:** nenhum | `<arquivo>` — <porquê> · `<arquivo>` — <porquê> *(só Task com ficha — regra 28)*
-**Decisões do sprint:** D-<k>, D-<k> *(só quando alguma de `architect/decisions/S<n>.md` vale para a Task — regra 29)*
+**Decisões:** D-<k>, K-<n> *(só quando alguma decisão do sprint — `architect/decisions/S<n>.md` — ou do conhecimento do projeto — `architect/knowledge.md` — vale para a Task; regra 29. O rótulo antigo `**Decisões do sprint:**` continua aceito)*
 **Cenários:** SC-<nnn>, SC-<nnn> *(regra 23)* | nenhum — <motivo>
 **Risco:** regra de negócio | integração | interface simples | infraestrutura *(regra 24)*
 **Layout novo:** sim | não *(só Task com interface — regras 21, 26 e 27)*
@@ -195,11 +195,15 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
 
     ```markdown
     ## D-<k> — <título curto>
-    **Vale para:** todas | T-<nnn>, T-<nnn> · **Origem:** 🔺 GAP da T-<nnn> · <data>
+    **Vale para:** todas | T-<nnn>, T-<nnn> · **Do GAP:** T-<nnn> · <data>
+    **Origem:** previsão | conhecimento | requisito | ambiente | processo
+    **Lição:** projeto | stack:<nome> | plugin | nenhuma
     <a regra em até 5 linhas; seção do SDD ou do standard citada, não copiada>
     ```
 
-    O plano a cita em `**Decisões do sprint:** D-<k>` e não repete o texto; o `plan.ps1` reprova a citação de D que não existe e a linha da decisão copiada no plano. O cartão do dev traz cada decisão que vale para a Task em uma linha, e o recorte da ficha traz todas para eu citar. Decisão que só vale para esta Task continua no plano (R9).
+    O plano a cita em `**Decisões:** D-<k>` e não repete o texto; o `plan.ps1` reprova a citação de D que não existe e a linha da decisão copiada no plano. O cartão do dev traz cada decisão que vale para a Task em uma linha, e o recorte da ficha traz todas para eu citar. Decisão que só vale para esta Task continua no plano (R9), como `**Decisão do GAP <T-ID> (<data>):** <a decisão>` seguida das mesmas duas linhas **Origem:** e **Lição:**.
+
+    **v3.56.0 — a lição de cada GAP tem destino** ([`technical-decision.md`](technical-decision.md) §Origem e Lição). Toda decisão de 🔺 GAP, no plano ou como D-<k>, declara **Origem** e **Lição**; o `plan.ps1` reprova a decisão sem as duas linhas (a partir do sprint que o `architect/knowledge.md` dá em `**Classificação desde:**`) e o valor fora da lista. **Conhecimento do projeto:** o que sprints anteriores ensinaram sobre este sistema fica em `architect/knowledge.md` (`## K-<n>`, **Vale para** com glob de caminho). O recorte da ficha traz as K; a que vale para a Task vai em `**Decisões:** K-<n>` — citar K que não existe ou copiar o texto dela reprova, igual à D. O cartão do dev traz as K e as armadilhas da stack que casam com os arquivos da Task.
 
 30. **Margem do dev (v3.54 · R4).** Sem 🔺 GAP, o dev corrige: (a) **defeito mecânico do próprio teste** — espera, referência de medida, leitura antes de renderizar — e (b) **CSS cujo valor uma regra do projeto já define** (standard, token, spec do UX) e (c, v3.54.1) **o stub da dependência nova** num teste que já existe, fora da lista, e monta um arquivo do plano. Mesmo assim, dependência nova (`inject()`, argumento de construtor) em componente ou página pede a `- Contagem:` dos testes que o montam (`<nome do arquivo>` em `<glob dos specs>`) e esses testes em **Arquivos tocados:** — a margem é a rede, não o plano. Registra cada ajuste em `### Ajustes na margem` do relatório; o `close.ps1` (R7-margem) só fecha com as travas: o teste ajustado tem mutação neste plano e ela é pega na árvore final; o CSS cita a regra; o stub é teste existente que cita um arquivo de **Arquivos tocados:**. O "Deve falhar se…" é meu e não muda. Premissa errada que muda o desenho continua 🔺 GAP para mim; escopo, ao PO. Por isso **todo teste que o dev possa precisar ajustar tem mutação** — o de render, em layout novo, já tem (regra 21).
 

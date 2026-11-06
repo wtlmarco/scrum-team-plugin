@@ -328,6 +328,27 @@ O rodapé passa a mostrar algo como `Opus 5.5 · 5h 37% (reinicia 14:20) · sema
 - **Logo depois de atualizar o plugin** (`/team update`), feche e abra a sessão para os comandos funcionarem sem token.
 - **Se aparecer uma resposta do modelo em vez da tela acima**, o atalho sem token não funcionou nessa sessão. O resultado é o mesmo, mas gasta um pouco de token. Feche e abra a sessão. Se continuar, avise o dono do plugin.
 
+## Conhecimento do projeto: o que o sprint ensinou volta para o próximo (v3.56.0)
+
+Todo 🔺 GAP ensina alguma coisa. Até a v3.55, essa lição ficava no plano da Task ou na ficha do sprint e morria com ele: o mesmo limiar de 160 px reprovou numa Task do sprint 4 e de novo numa do sprint 5. Agora cada lição tem um destino, e o sprint seguinte a recebe sem ninguém reler arquivo inteiro.
+
+**Como funciona:**
+
+1. **Na decisão do GAP**, o Arquiteto escreve duas linhas: de onde o GAP veio (**Origem**: previsão, conhecimento, requisito, ambiente ou processo) e para onde vai a lição (**Lição**):
+   - `projeto`: um fato deste sistema que vai se repetir. Vai para `.team-project/architect/knowledge.md`;
+   - `stack:<nome>`: um comportamento do framework que pegaria qualquer projeto com a mesma tecnologia. Vai para a camada da stack do projeto (`.team-project/standards/stacks/<nome>/pitfalls.md`);
+   - `plugin`: um defeito ou uma regra do próprio plugin. Vira ocorrência de plugin;
+   - `nenhuma`: algo que só aconteceu nessa Task.
+2. **No fechamento do sprint** (`/sm sprint close`), o SM roda o `knowledge.ps1` e copia cada lição para o destino dela, sem reescrever. Você recebe a tabela "de onde vieram × para onde foram" na retrospectiva. As lições de plugin e as **propostas de configuração** entram no mesmo formulário de "investigar ou ignorar". Uma proposta de configuração é, por exemplo, "declarar as stacks" ou "aumentar o tempo da massa de dados". Você aprova, e o SM grava só o que você aprovou.
+3. **No sprint seguinte**, o cartão de cada Task traz as entradas cujo **Vale para** casa com os arquivos dela, por exemplo `src/app/**/*.render.spec.ts`, e as armadilhas da stack (até 6). Nem o dev nem o Arquiteto abrem os arquivos inteiros.
+
+**O que você decide:**
+- **As stacks do projeto** ficam em `guards.json`, na chave `"stacks": ["angular", "ionic-capacitor"]`. Sem ela, o plugin adivinha pelo `package.json` e avisa quando a sessão abre.
+- **O teto:** acima de 15 KB de conhecimento, o próximo `/sm sprint prepare` começa com o Arquiteto consolidando: junta as entradas parecidas e apaga as superadas.
+- **Repetição com registro** é o indicador a olhar na retrospectiva. Ele aparece quando um GAP repete algo que já estava registrado e o registro não chegou à Task. O alvo é zero.
+
+**Ao atualizar para a 3.56.0** (`/team update`, passo 7m): o update cria o `knowledge.md` e pergunta as stacks e o destino das decisões do sprint aberto. As decisões antigas não são reescritas: as do sprint aberto vão para o conhecimento no fechamento dele.
+
 ## Plano externo: planejar fora do Claude (v3.53.4)
 
 O plano de cada Task (o Arquiteto, no modelo Opus) é o que mais pesa no limite da conta: no sprint 5 do garden, foi cerca de 2/3 do gasto. Com o plano externo, esse trabalho vai para um assistente de fora (o app do Codex, um chat na web), e o Claude só constrói. As conferências não mudam: o plano que volta passa pelo `plan.ps1` antes de entrar no quadro, e a construção segue com `verify`, `accept` e `close`.

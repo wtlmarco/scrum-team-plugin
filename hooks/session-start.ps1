@@ -103,6 +103,15 @@ try {
             $line += " Ambiente: o caminho do perfil do Windows ($prof) tem acento. Medido: os testes do Gradle falham sem aviso (ClassNotFoundException do GradleWorkerMain) — se o projeto usa Gradle, crie uma junção ASCII (cmd /c mklink /J C:\gradle-home `"$prof\.gradle`") e ponha `"env`": { `"GRADLE_USER_HOME`": `"C:\\gradle-home`" } em guards.json → verify (how-to.md §Ambiente). A conferir, se aparecer erro estranho de cache: NuGet (NUGET_PACKAGES) e npm (npm_config_cache)."
         }
     }
+    # v3.56.0 (C): sem guards.json → "stacks", as armadilhas da stack seguem a inferência — avisa e mostra o que inferiu.
+    if (Test-Path -LiteralPath (Join-Path $projectDir '.team-project')) {
+        $hasSt = $false
+        try { $gjs = Get-Content -LiteralPath (Join-Path $projectDir '.team-project/guards.json') -Raw -Encoding UTF8 | ConvertFrom-Json; $hasSt = [bool]($gjs.PSObject.Properties['stacks']) } catch { }
+        if (-not $hasSt) {
+            $inf = @(Get-InferredStacks $projectDir)
+            $line += " Stacks: guards.json sem ""stacks"" — o cartão do dev traz as armadilhas das stacks inferidas ($(if ($inf.Count) { $inf -join ', ' } else { 'nenhuma inferida' })); declare a chave (""stacks"": [""<stack>"", …]) para fixar — o /team update propõe."
+        }
+    }
     [Console]::Out.Write($line + $talk + $resume)
     exit 0
 } catch {
