@@ -642,6 +642,8 @@ $cases = @(
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'Get-ChildItem *.xml | ForEach-Object { "tests=$($_.Name) node: $($_.Length) brotas" }' } } },
     @{ Name = 'G14 contagem e Select-String com "$($_.LineNumber): …" (Arquiteto)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:architect'; tool_input = @{ command = '$f=''plano.md''; (Get-Content $f).Count; Select-String -Path $f -Pattern ''Passo'' | ForEach-Object { "$($_.LineNumber): $($_.Line)" }' } } },
+    @{ Name = 'G14 (v3.57.0): -ExecutionPolicy Bypass num script fora do plugin é negado com a rota (sem a opção, ou o script do plugin que já usa Bypass por dentro)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'não repita a opção'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'powershell -NoProfile -ExecutionPolicy Bypass -File .\runjob.ps1' } } },
     @{ Name = 'G14 propriedade com os argumentos do comando de fora: Get-Content (gci x).FullName -Encoding UTF8'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = 'foreach($n in 19..25){ Get-Content (Get-ChildItem "SC-0$n*.md").FullName -Encoding UTF8 }' } } },
     @{ Name = 'G14 [xml]$x = …; $pct = if (…) {…} else {…} (operator medindo cobertura)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
