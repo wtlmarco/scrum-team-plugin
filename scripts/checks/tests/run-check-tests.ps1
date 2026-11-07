@@ -1814,6 +1814,29 @@ Check 'v3.53.6 item 4: id do .scn fora do código (o do teste não conta) e cont
     '^(?![\s\S]*outro\.id)', '^(?![\s\S]*so\.no\.teste)', '^(?![\s\S]*Tela\.kt:18)', '^(?![\s\S]*Form\.tsx)', 'o dev cria no código o id que o \.scn cita')
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'check', '-Root', $p)
 Check 'v3.53.6 item 4: verify check vê o full com testids reprovado' $r 1 @('full com falha', 'testids: exit 1')
+# v3.57.0 (item 7): id que só existe em tempo de execução, declarado dinâmico — pelo guards.json ou por comentário no código —
+# não reprova (fica listado como não conferido); o que não foi declarado continua reprovando.
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output \"Build succeeded\"" }, "testIds": { "dynamic": ["lista.item.*"] } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.57.0 item 7: testIds.dynamic ["lista.item.*"] → lista.item. e lista.item.7 não reprovam (listados como não conferidos); horta.salvar e os controles seguem reprovando' $r 1 @('ids de teste: id dinâmico declarado \(lista\.item\.\*\), não conferido estaticamente: lista\.item\.7 — SC-014', 'ids de teste: id dinâmico declarado \(lista\.item\.\*\), não conferido estaticamente: lista\.item\. — SC-014', 'id ausente no código: horta\.salvar', '^(?![\s\S]*id ausente no código: lista\.item)')
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output \"Build succeeded\"" } }'
+Put $p 'app/src/main/java/x/Tela.kt' ($kt2 + "`n// testid-dinamico: lista.item.* — montado pelo LazyColumn a partir da chave da entidade`n")
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.57.0 item 7: "// testid-dinamico: lista.item.* — <motivo>" no código vale como a declaração do guards.json' $r 1 @('id dinâmico declarado \(lista\.item\.\*\), não conferido estaticamente: lista\.item\.7', '^(?![\s\S]*id ausente no código: lista\.item)', 'id ausente no código: horta\.salvar')
+# v3.57.0 (item 7): controles com "id" e o atributo não declarado — o gate assumia data-testid e reprovava sem dizer por quê.
+$pi = Join-Path $tmp 'v3570-attr'; New-Project $pi
+$ErrorActionPreference = 'Continue'
+& git -C $pi init -q 2>$null; Put $pi '.gitignore' ".team-project/`nbuild/`n"; Put $pi 'README.md' "x`n"
+& git -C $pi add -A 2>$null; & git -C $pi -c user.email=t@t -c user.name=t commit -qm init 2>$null
+$ErrorActionPreference = 'Stop'
+Put $pi '.team-project/guards.json' '{ "verify": { "build": "Write-Output \"Build succeeded\"" } }'
+Edit-File (Join-Path $pi '.team-project/sprints/1/plan/T-041-export.md') '## 3. Ambiente' ("**Arquivos tocados:** ``web/src/app/lista.html```n`n## 3. Ambiente")
+Put $pi 'web/src/app/lista.html' "<button id=`"limpar`" (click)=`"limpar()`">Limpar</button>`n<input id=`"nome`" />`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pi)
+Check 'v3.57.0 item 7: controles com id e atributo não declarado → reprova, mas diz que o gate assumiu data-testid e que o stakeholder declara testIds.attribute' $r 1 @('testids: exit 1', 'ids de teste: atributo de teste não declarado: o gate assumiu data-testid, mas 2 dos 2 controle\(s\) sem data-testid têm id', 'testIds\.attribute: "id"')
+Put $pi '.team-project/guards.json' '{ "verify": { "build": "Write-Output \"Build succeeded\"" }, "testIds": { "attribute": "id" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pi)
+Check 'v3.57.0 item 7: com testIds.attribute "id" declarado, os mesmos controles passam e não há aviso' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'atributo de teste não declarado') { "`nAVISOU" }) } 0 @('tudo exit 0', '^(?![\s\S]*AVISOU)')
 
 # v3.55.0 (C2/C3): atributo configurável (testIds.attribute), controles do Ionic, item de lista e raiz da tela.
 $pa = Join-Path $tmp 'v355-attr'; New-Item -ItemType Directory -Force $pa | Out-Null

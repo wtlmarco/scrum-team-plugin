@@ -570,6 +570,8 @@ try {
     # v3.53.6 (item 4): cada id ausente (com o cenário e o .scn) e cada controle sem id (arquivo:linha).
     foreach ($l in @($tidLines | Select-Object -First 40)) { [Console]::Out.WriteLine("    $l") }
     if ($tidLines.Count -gt 40) { [Console]::Out.WriteLine("    … e mais $($tidLines.Count - 40) no log testids") }
+    # v3.57.0 (item 7): o aviso de atributo divergente e os ids dinâmicos declarados (não conferidos) saem no console, não só no log.
+    if ($Mode -eq 'full' -and $tid) { foreach ($nt in @($tid.Notes | Where-Object { $_ -match '^(atributo de teste|id dinâmico)' })) { [Console]::Out.WriteLine("  ids de teste: $nt") } }
     if ($tidLines.Count) { [Console]::Out.WriteLine('  ids de teste: o dev cria no código o id que o .scn cita (testTag / data-testid, standards/stacks/<tecnologia>/guide.md) e põe id em todo controle interativo; exceção só com "// sem-testid: <motivo>" na linha ou na anterior') }
     foreach ($w in @($script:hygieneWarnings) + $near) { [Console]::Out.WriteLine("  atenção: $w") }
     # v3.57.0 (plugin-report do sprint 5 do garden, item 14): o APK mais velho que o código só aparecia no accept (exit 2, "reconstrua"),

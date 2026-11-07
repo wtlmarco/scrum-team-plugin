@@ -442,6 +442,35 @@ function Get-TestIdAttribute([string]$Root) {
     return 'data-testid'
 }
 
+# v3.57.0 (plugin-report do sprint 5 do garden, item 7): o gate de ids de teste assume data-testid sem avisar e reprova id que
+# só existe em tempo de execução (montado por função, template ou componente). Duas peças, as duas do stakeholder:
+# (1) o atributo foi declarado? (guards.json testIds.attribute ou targets.web.testIdAttribute) — sem declaração, vale o padrão
+#     data-testid, e o gate agora diz quando os controles têm outro atributo (id);
+# (2) ids dinâmicos declarados: guards.json → testIds.dynamic ["lista.item.*", …] ou, no código, "// testid-dinamico: lista.item.*
+#     — <motivo>". O gate não reprova esses ids (o verificador estático não os enxerga): lista-os como "não conferidos".
+function Test-TestIdAttributeDeclared([string]$Root) {
+    $g = Join-Path $Root '.team-project/guards.json'
+    if (-not (Test-Path -LiteralPath $g)) { return $false }
+    try {
+        $j = Read-Text $g | ConvertFrom-Json
+        if ($j.PSObject.Properties['testIds'] -and $j.testIds -and $j.testIds.PSObject.Properties['attribute'] -and ([string]$j.testIds.attribute).Trim()) { return $true }
+        if ($j.PSObject.Properties['targets'] -and $j.targets -and $j.targets.PSObject.Properties['web'] -and $j.targets.web -and $j.targets.web.PSObject.Properties['testIdAttribute'] -and $j.targets.web.testIdAttribute) { return $true }
+    } catch { }
+    return $false
+}
+function Get-TestIdDynamicPatterns([string]$Root, [string]$Blob) {
+    $pats = @()
+    $g = Join-Path $Root '.team-project/guards.json'
+    if (Test-Path -LiteralPath $g) { try { $j = Read-Text $g | ConvertFrom-Json; if ($j.PSObject.Properties['testIds'] -and $j.testIds -and $j.testIds.PSObject.Properties['dynamic']) { $pats += @($j.testIds.dynamic | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ }) } } catch { } }
+    foreach ($m in [regex]::Matches([string]$Blob, '(?i)testid-din[aâ]mico\s*:\s*([A-Za-z0-9_.:/*-]+)')) { $pats += $m.Groups[1].Value }
+    return @($pats | Select-Object -Unique)
+}
+# O padrão (com * como curinga) que cobre o id, ou '' — "lista.item.*" cobre "lista.item.7" e o prefixo "lista.item.".
+function Find-TestIdDynamicMatch([string[]]$Patterns, [string]$Id) {
+    foreach ($p in @($Patterns)) { if ($Id -like $p -or ($p.EndsWith('*') -and $Id -like ($p.TrimEnd('*') + '*'))) { return $p } }
+    return ''
+}
+
 # Massa de dados do cenário (v3.53.7, encadeamento do sprint 5 do garden: o reset zera a base e o cenário rodava sem os
 # dados de que o critério precisa). guards.json → targets.<alvo>.seeds: { "<nome>": "<comando PowerShell>" }; o .scn pede
 # com "seed <nome>". Devolve @{ nome = comando } do alvo (vazio sem a chave).
@@ -952,10 +981,14 @@ function Get-TestIdFindings([string]$Root, [string]$Task) {
             $res.Applies = $true; $res.Ids = @($refs | ForEach-Object { $_.Id } | Select-Object -Unique).Count
             $srcFiles = @(Get-TestIdSourceFiles $Root)
             $blob = (@($srcFiles | ForEach-Object { $p = Join-Path $Root $_; if (Test-Path -LiteralPath $p -PathType Leaf) { $x = Read-Text $p; $texts[$_] = $x; $x } }) -join "`n")
+            $dynPats = @(Get-TestIdDynamicPatterns $Root $blob)
             foreach ($g in @($refs | Group-Object Id)) {
                 $isPre = @($g.Group | Where-Object { $_.Prefix }).Count -gt 0
                 if (Test-TestIdInSource $blob $g.Name $isPre) { continue }
                 $where = @($g.Group | ForEach-Object { "$($_.Scenario) ($($_.File):$($_.Line))" } | Select-Object -Unique) -join ', '
+                # v3.57.0 (item 7): id declarado dinâmico — não reprova; fica listado como não conferido estaticamente.
+                $dm = Find-TestIdDynamicMatch $dynPats $g.Name
+                if ($dm) { $res.Notes += "id dinâmico declarado ($dm), não conferido estaticamente: $($g.Name) — $where"; continue }
                 $res.Missing += "$($g.Name)$(if ($isPre) { ' (prefixo)' } else { '' }) — $where"
             }
         }
@@ -970,11 +1003,19 @@ function Get-TestIdFindings([string]$Root, [string]$Task) {
         if ($files.Count) { $res.Notes += 'arquivos da Task pelo git (sem **Arquivos tocados:** de plano no quadro)' }
     }
     $attr = Get-TestIdAttribute $Root   # v3.55.0 (C2): testIds.attribute → targets.web.testIdAttribute → data-testid
+    $altCount = 0; $altChecked = $false
     foreach ($f in @($files | Where-Object { $_ -match '\.(kt|html?|tsx|jsx|vue)$' -and -not (Test-TestIdExcluded $_) } | Select-Object -Unique)) {
         $p = Join-Path $Root $f; if (-not (Test-Path -LiteralPath $p -PathType Leaf)) { continue }
         $res.Applies = $true; $res.Files++
         $x = if ($texts.ContainsKey($f)) { $texts[$f] } else { Read-Text $p }
-        $res.Untagged += @(Find-UntaggedUi ($f -replace '\\', '/') ($x -replace "`r", '') $attr)
+        $xc = ($x -replace "`r", '')
+        $found = @(Find-UntaggedUi ($f -replace '\\', '/') $xc $attr)
+        $res.Untagged += $found
+        # v3.57.0 (item 7): atributo não declarado (vale o padrão data-testid) e os controles têm "id": o gate reprovava sem dizer.
+        if ($found.Count -and $attr -eq 'data-testid') { $altChecked = $true; $altCount += @(Find-UntaggedUi ($f -replace '\\', '/') $xc 'id').Count }
+    }
+    if ($altChecked -and $res.Untagged.Count -and $altCount -lt $res.Untagged.Count -and -not (Test-TestIdAttributeDeclared $Root)) {
+        $res.Notes += "atributo de teste não declarado: o gate assumiu data-testid, mas $($res.Untagged.Count - $altCount) dos $($res.Untagged.Count) controle(s) sem data-testid têm id — se o projeto usa id, o stakeholder declara em guards.json → testIds.attribute: ""id"" (standards/test-ids.md); o dev não troca o atributo por conta própria"
     }
     return $res
 }
