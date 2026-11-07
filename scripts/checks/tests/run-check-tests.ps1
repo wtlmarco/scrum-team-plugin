@@ -635,7 +635,7 @@ Edit-File $sb '[`plan/T-041a-x.md`](plan/)' '[`plan/T-041a-x.md`](plan/T-041a-x.
 Edit-File $sb "| $($e.qa) T-041 | Endpoint de exportação | 1 | dev | — |" "| $($e.todo) T-041 | Endpoint de exportação | 1 | dev | T-041a |"
 Edit-File $sb "| T-041 | [``plan/T-041a-x.md``]" "| — | [``plan/T-041a-x.md``]"
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
-Check 'v3.53.2: Task cujo cenário aguarda outra Task não é construída antes dela (o bloqueio aparece)' $r 3 @('nenhuma Task elegível — .*T-041a espera T-041')
+Check 'v3.53.2: Task cujo cenário aguarda outra Task não é construída antes dela (o bloqueio aparece; v3.57.0: o ciclo T-041 ↔ T-041a é dito e a Task não espera por si mesma)' $r 3 @('nenhuma Task elegível — .*T-041a espera T-041', 'CICLO de espera: (T-041 → T-041a → T-041|T-041a → T-041 → T-041a)', '^(?![\s\S]*T-041 espera T-041a,T-041)')
 Edit-File $sb "| $($e.todo) T-041 | Endpoint de exportação | 1 | dev | T-041a |" "| $($e.ok) T-041 | Endpoint de exportação | 1 | dev | — |"
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'v3.53.2: fechada a Task que cria os nomes, o next pede o cenário que aguardava (QA)' $r 0 @('cenários executáveis da História H-014', 'SC-016', "aguarda <T-ID>")
@@ -2322,6 +2322,13 @@ Check 'v3.56.0 H2: a divergência entra uma vez só no run-log' @{ Code = 0; Out
 $r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
 $ct = [System.IO.File]::ReadAllText($card, $utf8)
 Check 'v3.56.0 H2: plano com "nenhum — motivo" → cartão sem linha de accept' @{ Code = $r.Code; Out = $ct + $(if ($ct -match 'accept\.ps1 -Task') { "`nTEM-ACCEPT" }) } 0 @('\*\*Cenários \(do plano\):\*\* nenhum no alvo', '^(?![\s\S]*TEM-ACCEPT)')
+# v3.57.0 (plugin-report do sprint 5 do garden, item 5): o plano que DECLARA que o aceite não roda vale mais que a lista de cenários.
+[System.IO.File]::WriteAllText($plT, [System.IO.File]::ReadAllText($plT, $utf8).Replace('**Cenários:** nenhum — o GAP tirou a prova de tela', "**Cenários:** SC-014`n**Aceite:** não roda — emulador indisponível neste sprint (D-3)"), $utf8)
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$ct = [System.IO.File]::ReadAllText($card, $utf8)
+Check 'v3.57.0 item 5: plano com "**Aceite:** não roda — motivo" (e Cenários ainda com SC-014) → cartão sem comando de accept, com o motivo do plano e SC-014 por teste' @{ Code = $r.Code; Out = $ct + $(if ($ct -match 'accept\.ps1 -Task') { "`nTEM-ACCEPT" }) } 0 @('\*\*Cenários \(do plano\):\*\* o accept não roda nesta Task — o plano declara: Aceite: não roda — emulador indisponível neste sprint \(D-3\); os cenários se provam pelos testes do plano \(não rode o accept\.ps1\)', 'por teste do plano, sem accept: SC-014', '^(?![\s\S]*TEM-ACCEPT)')
+$r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
+Check 'v3.57.0 item 5: start com o aceite declarado como não rodando não manda o accept' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'accept\.ps1 -Task T-041') { "`nTEM-ACCEPT" }) } 0 @('o plano manda — ordem do cartão que contradiga o plano', '^(?![\s\S]*TEM-ACCEPT)')
 
 # v3.56.0 A (regra 29 ampliada): toda decisão de GAP declara Origem e Lição; K citada inexistente ou copiada reprova (B).
 $p = Join-Path $tmp 'v3560-licao'; New-Project $p
@@ -2446,6 +2453,21 @@ $r = Invoke-Bounded $Root 'Write-Error "falhou aqui"; exit 5' 20
 '@, $utf8)
 $bo = (& powershell -NoProfile -ExecutionPolicy Bypass -File $bt -Lib (Join-Path $checks 'lib.ps1') -Root $tmp 2>&1 | ForEach-Object { "$_" }) -join "`n"
 Check 'v3.57.0 protocolo: Invoke-Bounded — filho com saída herdada não prende (sobrevive só com -KeepDescendants), prazo vira 124, exit/env/stdin passam, erro aparece' @{ Code = 0; Out = $bo } 0 @('A filho-herdado-sobrevive: rapido=True exit=0 timedOut=False kept=True out=pronto', 'B sem-keep-filho-morre: rapido=True kept=0', 'C prazo: exit=124 timedOut=True rapido=True', 'D exit-env-stdin: exit=7 out=v=abc\|in=ola', 'E erro-visivel: exit=5 msg=True')
+
+# v3.57.0 (item 6) — Find-WaitCycle: ciclo de 2 e de 3 Tasks, ciclo com cauda, e fila sem ciclo (espera por Task fora do quadro não é ciclo).
+$wc = Join-Path $tmp 'waitcycle-test.ps1'
+[System.IO.File]::WriteAllText($wc, @'
+param([string]$Lib)
+. $Lib
+function T([hashtable]$e) { return (@(Find-WaitCycle $e) -join '>') }
+"1 sem=" + (T @{ 'T-1' = @('T-2'); 'T-2' = @() })
+"2 dois=" + (T @{ 'T-1' = @('T-2'); 'T-2' = @('T-1') })
+"3 tres=" + (T @{ 'T-1' = @('T-2'); 'T-2' = @('T-3'); 'T-3' = @('T-1') })
+"4 cauda=" + (T @{ 'T-0' = @('T-1'); 'T-1' = @('T-2'); 'T-2' = @('T-1') })
+"5 fantasma=" + (T @{ 'T-1' = @('T-99') })
+'@, $utf8)
+$wco = (& powershell -NoProfile -ExecutionPolicy Bypass -File $wc -Lib (Join-Path $checks 'lib.ps1') 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.57.0 item 6: Find-WaitCycle acha ciclo de 2, de 3 e com cauda; fila sem ciclo e espera por Task fora do quadro não são ciclo' @{ Code = 0; Out = $wco } 0 @('1 sem=\r?\n', '2 dois=T-1>T-2>T-1', '3 tres=T-1>T-2>T-3>T-1', '4 cauda=T-1>T-2>T-1', '5 fantasma=\s*$')
 
 # v3.57.0 — run.ps1 wait (a sonda só de leitura do vigia): terminou (0) · vivo (3) · POSSÍVEL TRAVAMENTO (5), e nada gravado.
 $wt = Join-Path $tmp 'wait-test.ps1'

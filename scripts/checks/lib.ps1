@@ -634,6 +634,16 @@ function Get-PlanScenarios([string]$PlanText) {
     if ($v -match '^\s*nenhum\s*[—-]\s*(\S.*)$') { return @{ None = $true; Target = @(); Test = @(); Reason = $Matches[1].Trim() } }
     $tg = @(Get-ScenarioIds $v -TargetOnly); $all = @(Get-ScenarioIds $v)
     if (-not $all.Count) { return $null }
+    # v3.57.0 (plugin-report do sprint 5 do garden, item 5): o plano que DECLARA que o aceite não roda — "**Aceite:** não roda —
+    # <motivo>" ou uma linha de Aceite/Decisão que diga "o aceite não roda" — vale mais que a lista de cenários no alvo: o
+    # cartão, o start e o next mandavam rodar o accept numa Task cujo plano dizia o contrário, e o dev abria GAP de processo.
+    # Os cenários passam a ser provados pelos testes do plano (lista Test); o motivo vai ao cartão.
+    $wv = [regex]::Match([string]$PlanText, '(?im)^[ \t]*(?:[-*][ \t]+)?(?:\*\*)?(?:Aceite|Accept)\b[^\r\n:]*:[^\r\n]*?n[ãa]o[ \t]+roda\b[^\r\n]*$')
+    if (-not $wv.Success) { $wv = [regex]::Match([string]$PlanText, '(?im)^[ \t]*(?:[-*][ \t]+)?(?:\*\*)?Decis[ãa]o\b[^\r\n]*\b(?:accept|aceite)\b[^\r\n]*n[ãa]o[ \t]+roda\b[^\r\n]*$') }
+    if ($wv.Success) {
+        $why = ($wv.Value.Trim() -replace '\*\*', '' -replace '\s+', ' '); if ($why.Length -gt 160) { $why = $why.Substring(0, 160) + '…' }
+        return @{ None = $false; Target = @(); Test = $all; Waived = $true; Reason = $why }
+    }
     return @{ None = $false; Target = $tg; Test = @($all | Where-Object { $tg -notcontains $_ }) }
 }
 # v3.56.0 (H2): os arquivos .scn que definem os cenários pedidos (caminho relativo à raiz, '/'), para o -Scenarios do accept
@@ -658,6 +668,28 @@ function Get-DeferredScenarios([string]$Root) {
         }
     }
     return $map
+}
+
+# Ciclo na fila de espera (v3.57.0, plugin-report do sprint 5 do garden, item 6): Edges = @{ 'T-a' = @('T-b', …) } — quem espera
+# quem (dependência do quadro ou "# aguarda" do .scn). Devolve o primeiro ciclo achado como lista fechada (T-a, T-b, T-a) ou
+# @() sem ciclo. A fila ficava "sem Task elegível" e só o Arquiteto, relendo o .scn e os planos, via que duas Tasks se esperavam.
+function Find-WaitCycle([hashtable]$Edges) {
+    $state = @{}; $stack = New-Object System.Collections.ArrayList; $script:wcFound = @()
+    $visit = $null
+    $visit = {
+        param($id)
+        if ($script:wcFound.Count) { return }
+        $state[$id] = 1; [void]$stack.Add($id)
+        foreach ($b in @($Edges[$id])) {
+            if ($script:wcFound.Count) { break }
+            if (-not $Edges.ContainsKey($b)) { continue }
+            if ($state[$b] -eq 1) { $i = $stack.IndexOf($b); $script:wcFound = @($stack.GetRange($i, $stack.Count - $i)) + @($b); break }
+            if (-not $state.ContainsKey($b)) { & $visit $b }
+        }
+        $stack.RemoveAt($stack.Count - 1); $state[$id] = 2
+    }
+    foreach ($k in @($Edges.Keys | Sort-Object)) { if (-not $state.ContainsKey($k)) { & $visit $k } }
+    return @($script:wcFound)
 }
 
 # ---------- ids de teste como padrão de código (v3.53.6, sprint 5 do garden, item 4) ----------
@@ -944,16 +976,16 @@ function Get-SprintTasks([string]$S) {
         # v3.56.0 (H2, sprint 5 do garden #28, #33, #38, #41, #44, #50, #54): com plano legível, os cenários da Task são os do
         # plano (**Cenários:**, que o plan.ps1 confere — regra 23); o backlog vale só antes de haver plano. O cartão, o start e
         # o next mandavam rodar o accept com a lista antiga do backlog depois que o GAP tirou um cenário do plano.
-        $bScn = $scn; $bTst = $tst; $from = 'backlog'
+        $bScn = $scn; $bTst = $tst; $from = 'backlog'; $waiver = ''
         if ($pp -and $pp -notmatch '^plan/?$') {
             $pf = Join-Path $S $pp
             if (Test-Path -LiteralPath $pf -PathType Leaf) {
                 $ps = Get-PlanScenarios (Read-Text $pf)
-                if ($ps) { $scn = @($ps.Target); $tst = @($ps.Test); $from = 'plano' }
+                if ($ps) { $scn = @($ps.Target); $tst = @($ps.Test); $from = 'plano'; if ($ps.Waived) { $waiver = [string]$ps.Reason } }
             }
         }
         $div = ($from -eq 'plano') -and ((@($bScn | Sort-Object) -join ',') -ne (@($scn | Sort-Object) -join ',') -or (@($bTst | Sort-Object) -join ',') -ne (@($tst | Sort-Object) -join ','))
-        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn; TestScenarios = $tst; ScenariosFrom = $from; BacklogScenarios = @($bScn + $bTst); ScenariosDiverge = [bool]$div }
+        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn; TestScenarios = $tst; ScenariosFrom = $from; BacklogScenarios = @($bScn + $bTst); ScenariosDiverge = [bool]$div; AcceptWaiver = $waiver }
     }
     return $tasks
 }

@@ -13,6 +13,7 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
 **Li além da ficha:** nenhum | `<arquivo>` — <porquê> · `<arquivo>` — <porquê> *(só Task com ficha — regra 28)*
 **Decisões:** D-<k>, K-<n> *(só quando alguma decisão do sprint — `architect/decisions/S<n>.md` — ou do conhecimento do projeto — `architect/knowledge.md` — vale para a Task; regra 29. O rótulo antigo `**Decisões do sprint:**` continua aceito)*
 **Cenários:** SC-<nnn>, SC-<nnn> *(regra 23)* | nenhum — <motivo>
+**Aceite:** não roda — <motivo> *(só quando o accept não roda nesta Task, por decisão registrada — v3.57.0: o cartão, o start e o next não mandam rodar o `accept.ps1` e os cenários da linha **Cenários:** se provam pelos testes do plano; sem esta linha, vale a lista de **Cenários:** acima)*
 **Risco:** regra de negócio | integração | interface simples | infraestrutura *(regra 24)*
 **Layout novo:** sim | não *(só Task com interface — regras 21, 26 e 27)*
 **Documentos vivos:** `<documento de desenho>` §<seção> — <o que muda> *(só com **Layout novo:** sim — regra 27)*

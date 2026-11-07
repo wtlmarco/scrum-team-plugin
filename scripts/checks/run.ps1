@@ -337,7 +337,7 @@ function Write-Handoff($T, [string]$S, [string]$n) {
             # v3.52.3 (note.md item 1): o aceite só com alvo — sem guards.json → targets, o cartão mandava rodar o accept.ps1 e
             # 4 de 5 Tasks do sprint 4 do garden pararam no mesmo 🔺 GAP "accept sem .scn".
             # v3.56.0 (H2): a lista é a do plano quando ele existe (o backlog só antes dele) e o -Scenarios aponta o .scn da História.
-            ("**Cenários$(if ($T.ScenariosFrom -eq 'plano') { ' (do plano)' }):** " + $(if (-not $T.Scenarios.Count) { 'nenhum no alvo' } elseif (Get-TargetsConfig $Root) { "$($T.Scenarios -join ', ') — ``accept.ps1 -Task $($T.Id)$(Get-AcceptArgs $T)``" } else { "$($T.Scenarios -join ', ') — sem alvo de execução: o accept não roda; os cenários se provam pelos testes do plano" }) + $(if ($T.TestScenarios.Count) { " · por teste do plano, sem accept: $($T.TestScenarios -join ', ')" } else { '' })),
+            ("**Cenários$(if ($T.ScenariosFrom -eq 'plano') { ' (do plano)' }):** " + $(if (-not $T.Scenarios.Count) { if ($T.AcceptWaiver) { "o accept não roda nesta Task — o plano declara: $($T.AcceptWaiver); os cenários se provam pelos testes do plano (não rode o accept.ps1)" } else { 'nenhum no alvo' } } elseif (Get-TargetsConfig $Root) { "$($T.Scenarios -join ', ') — ``accept.ps1 -Task $($T.Id)$(Get-AcceptArgs $T)``" } else { "$($T.Scenarios -join ', ') — sem alvo de execução: o accept não roda; os cenários se provam pelos testes do plano" }) + $(if ($T.TestScenarios.Count) { " · por teste do plano, sem accept: $($T.TestScenarios -join ', ')" } else { '' })),
             ("**Última entrega:** $last" + $(if ($stop) { " · parou: $((($stop -split "`r?`n")[0]).Trim())" } else { '' })),
             "**Verificação:** $vtxt · **Cenários no alvo:** $atxt",
             "**GAPs:** $(if ($gaps.Count) { $gaps -join ' · ' } else { 'nenhum' })",
@@ -782,7 +782,8 @@ try {
         }
     }
     # v3.53.2: cenário que aguarda outra Task (# aguarda <T-ID> no .scn) segura a Task que o cita como uma dependência.
-    $blockers = { param($t) @(@($t.Deps | Where-Object { $done -notcontains $_ }) + @($t.Scenarios | Where-Object { & $waiting $_ } | ForEach-Object { $deferred[$_] }) | Select-Object -Unique) }
+    # v3.57.0 (item 6): a Task que CRIA os nomes de teste do próprio cenário não espera por si mesma (a Task cria e prova os ids).
+    $blockers = { param($t) @(@($t.Deps | Where-Object { $done -notcontains $_ }) + @($t.Scenarios | Where-Object { & $waiting $_ } | ForEach-Object { $deferred[$_] } | Where-Object { $_ -ne $t.Id }) | Select-Object -Unique) }
     # 1 · preparo da construção: por História, cenários executáveis (QA) e depois os planos (Arquiteto), antes de qualquer dev.
     # v3.51.4: sem alvo de execução (guards.json sem "targets") não há .scn a escrever — o accept não roda e os cenários
     # ficam rastreados nos planos e provados por teste (garden item 4). As Tasks da História entram em 🟦 no preparo (item 2).
@@ -947,7 +948,18 @@ try {
         exit 0
     }
     if ($gapWait.Count -or @(Get-ExternalPending).Count) { Write-ExternalWait }
-    if ($open.Count) { Out "PRÓXIMA AÇÃO: nenhuma Task elegível — $(($open | ForEach-Object { "$($_.Id) espera $((& $blockers $_) -join ',')" }) -join '; '). Bloqueio sobe pelo degrau 1 (R22)."; exit 3 }
+    if ($open.Count) {
+        Out "PRÓXIMA AÇÃO: nenhuma Task elegível — $(($open | ForEach-Object { "$($_.Id) espera $((& $blockers $_) -join ',')" }) -join '; '). Bloqueio sobe pelo degrau 1 (R22)."
+        # v3.57.0 (item 6): diz por que — ciclo de espera (a Task espera a que a espera) e espera por Task que não está no quadro
+        # (a mãe dividida em A/B, que nunca fecha) — em vez de deixar o Arquiteto descobrir relendo o .scn e os planos.
+        $edgesW = @{}; foreach ($ot in $open) { $edgesW[[string]$ot.Id] = @(& $blockers $ot) }
+        $cycW = @(Find-WaitCycle $edgesW)
+        if ($cycW.Count) { Out "  CICLO de espera: $($cycW -join ' → ') — nenhuma delas pode começar. Quem desfaz é o par PO + Arquiteto: o '# aguarda' do .scn aponta para a Task que CRIA os nomes de teste (não para uma que também espera), ou a dependência sai do plano." }
+        $openIds = @($open | ForEach-Object { [string]$_.Id })
+        $ghostW = @($edgesW.Values | ForEach-Object { $_ } | Select-Object -Unique | Where-Object { $openIds -notcontains $_ -and $done -notcontains $_ })
+        if ($ghostW.Count) { Out "  espera por Task fora do quadro: $($ghostW -join ', ') não está em aberto nem fechada — Task-mãe dividida em A/B? O '# aguarda' deve apontar para a parte que cria os nomes de teste." }
+        exit 3
+    }
 
     # 3 · validação do sprint: o operator mede (quality + todos os cenários), o QA julga.
     $sid = "S$n"
