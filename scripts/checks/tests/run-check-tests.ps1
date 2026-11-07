@@ -1095,6 +1095,21 @@ Check 'run next depois do ponto seguro: RETOMADA pelo marcador e o marcador sai 
 $p = Join-Path $tmp 'gap'; New-Project $p
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
 Check 'run done gap com a Task em 🟪: volta a 🟨 (garden 22)' $r 0 @("mark: T-041 $($e.qa) → $($e.build)", 'GAP')
+# v3.57.0 (item 9): a natureza que o dev marcou no GAP decide quem responde.
+$dgp = Join-Path $p '.team-project/sprints/1/delivery/T-041.md'
+function Put-Gap([string]$Nat) { Put $p '.team-project/sprints/1/delivery/T-041.md' ("## Entrega — T-041`n`n🔺 GAP — T-041 — passo 2 do plano`n`n**Tipo:** plano`n" + $(if ($Nat) { "**Natureza:** $Nat`n" } else { '' }) + "**O que encontrei no código:** a.ts:3 — x`n") }
+Put-Gap 'aparência'
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.57.0 item 9: GAP natureza aparência → parecer curto do Arquiteto (prompt com PARECER CURTO, até 8 linhas)' $r 0 @('GAP de natureza APARÊNCIA — parecer curto do Arquiteto', 'prompt: "PARECER CURTO \(GAP de aparência ou marcação\)', 'em até 8 linhas', 'Arquiteto em instância NOVA')
+Put-Gap 'produto'
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.57.0 item 9: GAP natureza produto → decisão do STAKEHOLDER (formulário), sem disparar o Arquiteto' $r 0 @('GAP de natureza PRODUTO — a decisão é do STAKEHOLDER', 'não dispare Arquiteto nem start', '^(?![\s\S]*prompt:)', '^(?![\s\S]*Arquiteto em instância NOVA)')
+Put-Gap 'desenho'
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.57.0 item 9: GAP natureza desenho → ciclo completo do Arquiteto, sem parecer curto' $r 0 @('Arquiteto em instância NOVA', 'prompt: "Decida o 🔺 GAP da T-041', '^(?![\s\S]*PARECER CURTO)')
+Put-Gap ''
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.57.0 item 9: GAP sem **Natureza:** → tratado como desenho, e o aviso diz que o dev marca a natureza' $r 0 @('GAP sem \*\*Natureza:\*\* — tratado como desenho', 'Arquiteto em instância NOVA', '^(?![\s\S]*PARECER CURTO)')
 
 # 11d. run.ps1 next com o sinal de limite de uso e a estimativa do que falta (note.md 2 e 11).
 $p = Join-Path $tmp 'limite'; New-Project $p
@@ -2100,6 +2115,15 @@ Check 'v3.53.7: com layout novo, premissa de geometria medida por leitura (node_
 Put $p $pl ($h7 + "`n" + $b7 + "### Premissas`n- P1 · o popover abre abaixo do campo, sem sobreposição · medido: job ``operator/1/T-080-plano/`` → caixa do popover y=212, campo y2=200`n- P2 · a margem do card é 16 px · não exercitada: o card nasce no passo 2 · verifica: dev em passo 4 (teste de render)`n" + $f7)
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.53.7: geometria medida pela sonda do operator, ou não exercitada com o dev no render, passa' $r 0 @('\| premissa \| ok.*2 premissa\(s\): 1 medida')
+# v3.57.0 (item 9, regra 33): com Layout novo: sim, o plano traz o envelope de decisão das medidas — o aviso não reprova.
+Check 'v3.57.0 item 9: Layout novo: sim sem **Envelope de medidas** → aviso da regra 33 (exit 0, não reprova)' $r 0 @('\| envelope \| ok.*AVISO \(regra 33\): \*\*Layout novo:\*\* sim sem \*\*Envelope de medidas\*\*')
+$env7 = "**Envelope de medidas**:`n- E1 · espaçamento entre os dois botões · sonda: ``operator/1/T-080-plano/medida.ps1`` · (a) se medir 0 px → aplique gap de 8 px · (b) se medir 8 px → nada · fora disso → 🔺 GAP ``aparência```n`n"
+Put $p $pl ($h7 + "`n" + $b7 + $env7 + "### Premissas`n- P1 · o popover abre abaixo do campo, sem sobreposição · medido: job ``operator/1/T-080-plano/`` → caixa do popover y=212, campo y2=200`n- P2 · a margem do card é 16 px · não exercitada: o card nasce no passo 2 · verifica: dev em passo 4 (teste de render)`n" + $f7)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.57.0 item 9: envelope com sonda e os casos (a)/(b) → ok, 1 medida' $r 0 @('\| envelope \| ok.*1 medida\(s\) com sonda e árvore de decisão', '^(?![\s\S]*AVISO \(regra 33\))')
+Put $p $pl ($h7 + "`n" + $b7 + "**Envelope de medidas**:`n- E1 · espaçamento entre os botões · (a) se medir 0 px → aplique gap de 8 px`n`n### Premissas`n- P1 · o popover abre abaixo do campo, sem sobreposição · medido: job ``operator/1/T-080-plano/`` → caixa do popover y=212, campo y2=200`n- P2 · a margem do card é 16 px · não exercitada: o card nasce no passo 2 · verifica: dev em passo 4 (teste de render)`n" + $f7)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.57.0 item 9: linha do envelope sem sonda e sem o caso (b) → aviso que nomeia a linha (E1)' $r 0 @('\| envelope \| ok.*AVISO \(regra 33\): 1 linha\(s\) do envelope sem sonda: `<comando>` ou sem os casos \(a\) e \(b\) "se medir …": E1')
 Put $p '.team-project/architect/decisions/S1.md' "# Decisões do sprint 1`n`n## D-1 — Emulador fora do ar`n**Vale para:** todas · **Origem:** 🔺 GAP da T-041 · 2026-11-02`nCom o alvo fora do ar depois do reparo, a Task vai a bloqueada com prova no alvo pendente.`n`n## D-2 — APK antes do accept`n**Vale para:** T-080 · **Origem:** 🔺 GAP da T-041`nReconstruir o APK com assembleDebug antes de todo accept da Task de ids de teste.`n"
 Put $p $pl ($h7 + "**Decisões do sprint:** D-1, D-9`n`n" + $b7 + "Reconstruir o APK com assembleDebug antes de todo accept da Task de ids de teste.`n`n### Premissas`n- P1 · src tem a.ts · medido: ``ls src`` → a.ts`n- P2 · a margem é 16 px · não exercitada: nasce no passo 2 · verifica: dev em passo 4`n" + $f7)
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
@@ -2376,6 +2400,11 @@ Check 'v3.56.0 H2: a divergência entra uma vez só no run-log' @{ Code = 0; Out
 $r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
 $ct = [System.IO.File]::ReadAllText($card, $utf8)
 Check 'v3.56.0 H2: plano com "nenhum — motivo" → cartão sem linha de accept' @{ Code = $r.Code; Out = $ct + $(if ($ct -match 'accept\.ps1 -Task') { "`nTEM-ACCEPT" }) } 0 @('\*\*Cenários \(do plano\):\*\* nenhum no alvo', '^(?![\s\S]*TEM-ACCEPT)')
+# v3.57.0 (item 9): o envelope de medidas do plano vai ao cartão, com a regra de um GAP por Task.
+[System.IO.File]::WriteAllText($plT, [System.IO.File]::ReadAllText($plT, $utf8) + "`n**Envelope de medidas**:`n- E1 · espaçamento entre os botões · sonda: ``operator/1/T-041-plano/medida.ps1`` · (a) se medir 0 px → gap de 8 px · (b) se medir 8 px → nada · fora disso → 🔺 GAP ``aparência```n", $utf8)
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$ct = [System.IO.File]::ReadAllText($card, $utf8)
+Check 'v3.57.0 item 9: o cartão traz o envelope do plano (a sonda e os casos) e a regra de medir tudo antes de abrir um único GAP' @{ Code = $r.Code; Out = $ct } 0 @('\*\*Envelope de medidas\*\* \(do plano — meça com a sonda e aplique o caso medido', 'um GAP por Task', '- E1 · espaçamento entre os botões · sonda: `operator/1/T-041-plano/medida\.ps1`')
 # v3.57.0 (plugin-report do sprint 5 do garden, item 5): o plano que DECLARA que o aceite não roda vale mais que a lista de cenários.
 [System.IO.File]::WriteAllText($plT, [System.IO.File]::ReadAllText($plT, $utf8).Replace('**Cenários:** nenhum — o GAP tirou a prova de tela', "**Cenários:** SC-014`n**Aceite:** não roda — emulador indisponível neste sprint (D-3)"), $utf8)
 $r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
