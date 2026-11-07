@@ -3,6 +3,7 @@
 # o prompt curto com os caminhos e o comando de volta. No piloto, a sessão principal foi 35 % do custo, a 274 mil tokens
 # de contexto por chamada; no protótipo do benchmark com a orquestração em script, o coordenador custou 6 %.
 # Uso (raiz do projeto): powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/run.ps1" <next|start|done|handoff|allow> [-Task T-041] [-Result ok|gap|env|teto] [-Block k] [-Commands "a;b"] [-Deny "c"] [-By quem]
+#   wait      (v3.57.0) sonda SÓ DE LEITURA da espera registrada pelo next: terminou (0) · vivo (3) · POSSÍVEL TRAVAMENTO (5) — é o que o vigia roda
 #   next      a próxima ação do sprint corrente (preparo → construção → validação → consolidação → Review)
 #   start     dispara a construção da Task: escopo e marcador (dispatch.ps1), cartão de passagem e o prompt do dev
 #   done      o dev voltou: ok → close.ps1 -Apply (fecha pela evidência do dev) · gap → rota ao Arquiteto · env → reparo
@@ -26,7 +27,7 @@
 # num pacote (done -Result gap). Funções em external-plan.ps1.
 
 param(
-    [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff', 'allow')][string]$Action,
+    [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff', 'allow', 'wait')][string]$Action,
     [string]$Task = '',
     [ValidateSet('', 'ok', 'gap', 'env', 'teto')][string]$Result = '',
     [string]$Block = '',
@@ -46,6 +47,30 @@ $todoMk = [char]::ConvertFromUtf32(0x2B1C); $redMk = [char]::ConvertFromUtf32(0x
 $plugin = '${CLAUDE_PLUGIN_ROOT}/scripts/checks'
 
 function Out([string]$s) { [Console]::Out.WriteLine($s) }
+
+# A linha que o next imprime quando manda esperar (protocolo de espera, regra 6): a conferência por tempo é do vigia.
+# O disparo NÃO cita ID de Task (o registro de agentes lê ID na descrição e no prompt e trataria o vigia como agente da Task).
+function Get-VigiaLine {
+    return "  conferência por tempo (protocolo de espera): dispare o vigia — Agent(subagent_type 'team:vigia', model 'haiku', description 'Vigia da espera', prompt 'Rode a sonda do seu roteiro e devolva a linha.'), sem ID de Task — e encerre o turno. Ele confere por até 10 min e o aviso dele reabre a sessão: 'vivo' = encerre o turno e espere; 'travado' = leve ao stakeholder (formulário: encerrar com target.ps1 -Kill, retomar por dev novo com o cartão, ou seguir esperando); 'terminou' = run.ps1 next. O primeiro aviso pode ser parcial."
+}
+
+# wait (v3.57.0, protocolo de espera regras 1 e 6): a sonda do VIGIA (agents/vigia.md), SÓ DE LEITURA — não grava o
+# .next-verdict, não dispara nada, não decide. Usa a espera que o último next registrou (.next-verdict) e as mesmas funções
+# dele (Get-LiveAgents, Get-TaskWait). Exit 0 = terminou (nada em espera; a sessão roda o next) · 3 = vivo · 5 = POSSÍVEL
+# TRAVAMENTO (10 min ou mais sem CPU nem arquivo novo; a decisão é da sessão e do stakeholder).
+if ($Action -eq 'wait') {
+    $nv = Get-Marker $Root '.next-verdict'
+    $tk = if ($nv) { [string]$nv.task } else { '' }
+    if (-not $tk) { Out 'wait: terminou — nenhuma espera registrada pelo next (.next-verdict); a sessão roda run.ps1 next'; exit 0 }
+    $liveW = @(Get-LiveAgents $Root $tk | Where-Object { ([string]$_.type -replace '^.*:', '') -in 'task-runner', 'developer' })
+    $cmdW = Get-TaskWait $Root $tk
+    if (-not $liveW.Count -and -not $cmdW) { Out "wait: terminou — a $tk não tem agente nem comando em espera; a sessão roda run.ps1 next"; exit 0 }
+    $partes = @()
+    if ($liveW.Count) { $a = @($liveW | Sort-Object { [string]$_.at } -Descending)[0]; $partes += "$(([string]$a.type) -replace '^.*:', '') vivo (última ação $(if ($a.last) { $a.last } else { 'disparado' }) há $([int]((Get-AgentIdleHours $a) * 60)) min)" }
+    if ($cmdW) { $partes += [string]$cmdW.Text }
+    if ($cmdW -and $cmdW.Pulse.Stalled) { Out "wait: POSSÍVEL TRAVAMENTO — $tk · $($partes -join ' · ')"; exit 5 }
+    Out "wait: vivo — $tk · $($partes -join ' · ')"; exit 3
+}
 
 function Get-Defined([string]$Root) {
     $d = Join-Path $Root '.team-project/quality-assurance/scenarios'
@@ -886,6 +911,7 @@ try {
             # v3.53.5: o comando que o agente espera, com o sinal de vida (CPU, arquivo, POSSÍVEL TRAVAMENTO).
             $wA = Get-TaskWait $Root $next.Id
             if ($wA) { Out "  espera: $($wA.Text)"; if ($wA.PSObject.Properties['NoProgress'] -and $wA.NoProgress) { Out "  SEM AVANÇO: $($wA.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." } }
+            Out (Get-VigiaLine)
             Set-NextVerdict $Root 'esperar' $next.Id "agente: $agTxt"
             exit 3
         }
@@ -896,6 +922,7 @@ try {
             Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) ainda tem $($wN.Text) rodando (um dev esperava por ele). Não dispare executor nem dev: seriam dois na mesma Task e no mesmo alvo. Encerre o turno; rode run.ps1 next quando o aviso de volta chegar."
             if ($wN.PSObject.Properties['NoProgress'] -and $wN.NoProgress) { Out "  SEM AVANÇO: $($wN.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." }
             if ($wN.Pulse.Stalled) { Out "  POSSÍVEL TRAVAMENTO: o comando não gasta CPU nem grava arquivo há 10 min ou mais. Não espere às cegas: leve ao stakeholder (formulário) — encerrar o processo (ele decide) e retomar a $($next.Id) por dev novo com o cartão (run.ps1 start), ou seguir esperando." }
+            Out (Get-VigiaLine)
             Set-NextVerdict $Root 'esperar' $next.Id "comando: $($wN.Text)"
             exit 3
         }

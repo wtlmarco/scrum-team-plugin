@@ -1373,7 +1373,7 @@ Put $p '.team-project/.active-agents' ('[{"type":"team:developer","description":
 $r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
 Check 'item 3: start com dev vivo da Task (processo hospedeiro vivo): exit 2, não dispara outro' $r 2 @('já tem um dev vivo \(agent_id devviv1', 'duas instâncias no mesmo alvo')
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
-Check 'item 3: next com dev vivo da Task em 🟨: esperar, exit 3' $r 3 @('PRÓXIMA AÇÃO: esperar — a T-041 já tem developer vivo')
+Check 'item 3: next com dev vivo da Task em 🟨: esperar, exit 3 (v3.57.0: e a linha do vigia, sem ID de Task no disparo)' $r 3 @('PRÓXIMA AÇÃO: esperar — a T-041 já tem developer vivo', "conferência por tempo \(protocolo de espera\): dispare o vigia — Agent\(subagent_type 'team:vigia', model 'haiku', description 'Vigia da espera', prompt 'Rode a sonda do seu roteiro e devolva a linha\.'\), sem ID de Task")
 Put $p '.team-project/.active-agents' ('[{"type":"team:developer","desde":"' + $n0 + '","session":"sOutra","parent":"","agent_id":"devmor1","work":"T-041","last":"x","at":"' + $n0 + '","host_pid":999999,"host_start":"2001-01-01 00:00:00"}]')
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'item 3: processo hospedeiro encerrado: o next segue com o executor' $r 0 @('PRÓXIMA AÇÃO: construir T-041')
@@ -2446,6 +2446,36 @@ $r = Invoke-Bounded $Root 'Write-Error "falhou aqui"; exit 5' 20
 '@, $utf8)
 $bo = (& powershell -NoProfile -ExecutionPolicy Bypass -File $bt -Lib (Join-Path $checks 'lib.ps1') -Root $tmp 2>&1 | ForEach-Object { "$_" }) -join "`n"
 Check 'v3.57.0 protocolo: Invoke-Bounded — filho com saída herdada não prende (sobrevive só com -KeepDescendants), prazo vira 124, exit/env/stdin passam, erro aparece' @{ Code = 0; Out = $bo } 0 @('A filho-herdado-sobrevive: rapido=True exit=0 timedOut=False kept=True out=pronto', 'B sem-keep-filho-morre: rapido=True kept=0', 'C prazo: exit=124 timedOut=True rapido=True', 'D exit-env-stdin: exit=7 out=v=abc\|in=ola', 'E erro-visivel: exit=5 msg=True')
+
+# v3.57.0 — run.ps1 wait (a sonda só de leitura do vigia): terminou (0) · vivo (3) · POSSÍVEL TRAVAMENTO (5), e nada gravado.
+$wt = Join-Path $tmp 'wait-test.ps1'
+[System.IO.File]::WriteAllText($wt, @'
+param([string]$Run, [string]$Proj)
+$u8 = New-Object System.Text.UTF8Encoding($false)
+$tp = Join-Path $Proj '.team-project'
+New-Item -ItemType Directory -Force (Join-Path $tp 'verify\7\T-2') | Out-Null
+$dash = [string][char]0x2014
+[System.IO.File]::WriteAllText((Join-Path $tp 'README.md'), "# Contexto`n`n## 2. Situacao atual`n`n| | |`n|---|---|`n| **Sprint corrente** | **7** $dash teste |`n", $u8)
+function W { $o = (& powershell -NoProfile -ExecutionPolicy Bypass -File $Run wait -Root $Proj 2>&1 | ForEach-Object { "$_" }) -join ' '; return "exit=$LASTEXITCODE $o" }
+$now = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+"1 " + (W)
+[System.IO.File]::WriteAllText((Join-Path $tp '.next-verdict'), ('{"acao":"esperar","task":"T-2","motivo":"x","at":"' + $now + '"}'), $u8)
+"2 " + (W)
+[System.IO.File]::WriteAllText((Join-Path $tp '.active-agents'), ('[{"type":"team:developer","description":"Dev T-2","desde":"' + $now + '","session":"s","parent":"","agent_id":"a1","work":"T-2","last":"Bash","at":"' + $now + '"}]'), $u8)
+"3 " + (W)
+Remove-Item (Join-Path $tp '.active-agents') -Force
+$sl = Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-Sleep 90' -PassThru -WindowStyle Hidden
+Start-Sleep 2
+$lk = Join-Path $tp 'verify\7\T-2\verify.lock'
+[System.IO.File]::WriteAllText($lk, ([ordered]@{ pid = $sl.Id; started = $sl.StartTime.ToString('o'); at = (Get-Date).AddMinutes(-15).ToString('yyyy-MM-dd HH:mm:ss'); mode = 'full' } | ConvertTo-Json -Compress), $u8)
+"4 " + (W)
+[System.IO.File]::WriteAllText($lk, ([ordered]@{ pid = $sl.Id; started = $sl.StartTime.ToString('o'); at = (Get-Date).AddMinutes(-1).ToString('yyyy-MM-dd HH:mm:ss'); mode = 'full' } | ConvertTo-Json -Compress), $u8)
+"5 " + (W)
+"6 verdict-intacto=" + ((Get-Content (Join-Path $tp '.next-verdict') -Raw) -match '"motivo":"x"')
+try { Stop-Process -Id $sl.Id -Force } catch { }
+'@, $utf8)
+$wo = (& powershell -NoProfile -ExecutionPolicy Bypass -File $wt -Run (Join-Path $checks 'run.ps1') -Proj (Join-Path $tmp 'wait-proj') 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.57.0 protocolo: run.ps1 wait — nada registrado/nada em espera = 0, dev vivo = 3, comando 15 min sem CPU nem arquivo = 5 (POSSÍVEL TRAVAMENTO), o mesmo com 1 min = 3, e o .next-verdict fica intacto' @{ Code = 0; Out = $wo } 0 @('1 exit=0 wait: terminou — nenhuma espera registrada', '2 exit=0 wait: terminou — a T-2 não tem agente nem comando', '3 exit=3 wait: vivo — T-2 · developer vivo', '4 exit=5 wait: POSSÍVEL TRAVAMENTO — T-2 · verify full', '5 exit=3 wait: vivo — T-2 · verify full', '6 verdict-intacto=True')
 
 # v3.57.0 — modo desprendido e target.ps1 -Kill: só o que o run registrou é encerrado; o de fora e o PID reaproveitado, não.
 $kt = Join-Path $tmp 'kill-test.ps1'

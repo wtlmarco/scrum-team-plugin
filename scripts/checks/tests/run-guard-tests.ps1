@@ -602,6 +602,28 @@ $cases = @(
        Setup = { $null = Invoke-Hook 'subagent-stop.ps1' @{ hook_event_name = 'SubagentStop'; agent_id = 'semtranscript'; agent_type = 'team:developer' } }
        Check = { -not (Test-Path -LiteralPath (Join-Path $proj '.team-project/.active-agents')) }
        Payload = @{ hook_event_name = 'Stop' } },
+    # ---------- v3.57.0 — o vigia da espera (agents/vigia.md, protocolo de espera): só a sessão o dispara, entra em .active-agents, a G20 o respeita ----------
+    @{ Name = 'v3.57.0 vigia: a sessão dispara team:vigia — registrado em .active-agents, sem work (o disparo não cita ID de Task)'; Script = 'pre-tool.ps1'; Expect = 0
+       Check = { $a = Get-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Raw -Encoding UTF8; $a -match '"type":"team:vigia"' -and $a -match '"work":""' }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:vigia'; model = 'haiku'; description = 'Vigia da espera'; prompt = 'Rode a sonda do seu roteiro e devolva a linha.' } } },
+    @{ Name = 'v3.57.0 vigia em voo + Task elegível: a G20 libera o fim de turno (o controle sem agente é o caso anterior, que barra)'; Script = 'stop.ps1'; Expect = 0
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'v3.57.0 vigia: o executor de Task não o dispara (G7)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G7'
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'tr0000001'; tool_input = @{ subagent_type = 'team:vigia'; description = 'Vigia da espera'; prompt = 'x' } } },
+    @{ Name = 'v3.57.0 vigia: o dev não o dispara (G7: só o operator)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G7'
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:developer'; agent_id = 'dv0000001'; tool_input = @{ subagent_type = 'team:vigia'; description = 'Vigia da espera'; prompt = 'x' } } },
+    @{ Name = 'v3.57.0 vigia: SubagentStop mede a rodada (role vigia, Haiku) e o tira da lista'; Script = 'subagent-stop.ps1'; Expect = 0
+       Setup = { $sd = Join-Path $tmp 'transcripts/vig/subagents'; New-Item -ItemType Directory -Force $sd | Out-Null
+                 Set-Content -LiteralPath (Join-Path $tmp 'transcripts/vig.jsonl') '{}' -Encoding UTF8
+                 $v1 = '{"type":"user","timestamp":"2026-10-06T09:59:59Z","message":{"role":"user","content":"Rode a sonda do seu roteiro e devolva a linha."}}'
+                 $v2 = '{"type":"assistant","timestamp":"2026-10-06T10:00:00Z","message":{"id":"vg1","model":"claude-haiku-5-5","usage":{"input_tokens":10,"cache_creation_input_tokens":800,"cache_read_input_tokens":0,"output_tokens":40}}}'
+                 [System.IO.File]::WriteAllLines((Join-Path $sd 'agent-vig0000001.jsonl'), [string[]]@($v1, $v2), (New-Object System.Text.UTF8Encoding($false))) }
+       Check = { $u = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8 | Where-Object { $_ -match 'vig0000001' } | ConvertFrom-Json)[0]
+                 $u -and $u.role -eq 'vigia' -and $u.model -eq 'claude-haiku-5-5' -and $u.processed -eq 850 -and -not (Test-Path -LiteralPath (Join-Path $proj '.team-project/.active-agents')) }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'vig0000001'; agent_type = 'team:vigia'; transcript_path = (Join-Path $tmp 'transcripts/vig.jsonl') } },
+    @{ Name = 'v3.57.0 vigia: ID de Task na descrição vira work (por isso o disparo do vigia não cita nenhum); limpeza'; Script = 'pre-tool.ps1'; Expect = 0
+       Check = { $a = Get-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Raw -Encoding UTF8; Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Force; $a -match '"work":"T-2"' }
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:vigia'; description = 'Vigia da espera da T-2'; prompt = 'x' } } },
     @{ Name = 'G20 laço: depois de 3 bloqueios em 10 min, libera'; Script = 'stop.ps1'; Expect = 0
        Setup = { foreach ($i in 1..3) { Add-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') ("$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') | G20 | sessao |  | T-2 | bloqueio: fim de turno com Task elegível") -Encoding UTF8 } }
        Payload = @{ hook_event_name = 'Stop'; stop_hook_active = $true } },
