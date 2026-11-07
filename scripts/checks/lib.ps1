@@ -332,6 +332,45 @@ function Invoke-Bounded([string]$Root, [string]$Cmd, [int]$TimeoutSec, [hashtabl
     return [pscustomobject]@{ exit = $code; timedOut = $timedOut; seconds = [int]$sw.Elapsed.TotalSeconds; out = $txt.Trim(); kept = $kept }
 }
 
+# Modo desprendido (v3.57.0, protocolo de espera): o processo que DEVE sobreviver ao script (emulador, servidor web, filho que o
+# reparo declarado deixa vivo) é registrado em .team-project/.target-<alvo>.json — pid, procs[{pid, created}], start, desde.
+# "created" é a hora de criação do processo: PID reaproveitado pelo Windows não é confundido com o nosso. É o único registro
+# que o target.ps1 -Kill encerra: processo que o run não iniciou nunca é tocado. Sem a pasta .team-project (fora de projeto,
+# ou teste), não grava nada e não cria a pasta.
+function Get-ProcessCreated([int]$ProcId) {
+    try { $c = Get-CimInstance Win32_Process -Filter "ProcessId=$ProcId" -ErrorAction Stop; if ($c -and $c.CreationDate) { return $c.CreationDate.ToString('o') } } catch { }
+    return ''
+}
+function Register-Detached([string]$Root, [string]$Target, [int[]]$ProcIds, [string]$Cmd) {
+    $ids = @($ProcIds | Where-Object { $_ -gt 0 })
+    $dir = Join-Path $Root '.team-project'
+    if (-not $ids.Count -or -not (Test-Path -LiteralPath $dir -PathType Container)) { return $false }
+    $procs = @($ids | ForEach-Object { [ordered]@{ pid = [int]$_; created = (Get-ProcessCreated $_) } })
+    $j = [ordered]@{ pid = $ids[0]; procs = $procs; start = $Cmd; desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') }
+    [System.IO.File]::WriteAllText((Join-Path $dir ".target-$Target.json"), ($j | ConvertTo-Json -Depth 4 -Compress), (New-Object System.Text.UTF8Encoding($false)))
+    return $true
+}
+# Encerra (árvore inteira) só o que o registro do alvo guarda e apaga o registro. Devolve stopped (encerrados), gone (já tinham
+# saído) e reused (o PID agora é de outro processo — não tocado).
+function Stop-Detached([string]$Root, [string]$Target) {
+    $res = [ordered]@{ stopped = 0; gone = 0; reused = 0; registered = $false }
+    $f = Join-Path $Root ".team-project/.target-$Target.json"
+    if (-not (Test-Path -LiteralPath $f)) { return [pscustomobject]$res }
+    $res.registered = $true
+    try {
+        $j = [System.IO.File]::ReadAllText($f, [System.Text.Encoding]::UTF8).TrimStart([char]0xFEFF) | ConvertFrom-Json
+        $list = if ($j.PSObject.Properties['procs'] -and $j.procs) { @($j.procs) } else { @([pscustomobject]@{ pid = $j.pid; created = '' }) }   # web da v3.57.0 anterior: só pid
+        foreach ($pr in $list) {
+            $cur = Get-ProcessCreated ([int]$pr.pid)
+            if (-not $cur) { $res.gone++ }
+            elseif ($pr.created -and [string]$pr.created -ne $cur) { $res.reused++ }
+            else { $null = Stop-ProcessTree ([int]$pr.pid); $res.stopped++ }
+        }
+    } catch { }
+    Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue
+    return [pscustomobject]$res
+}
+
 # Alvos de execução (v3.51, D3): guards.json → targets ({ "android": {…}, "web": {…} }). $null sem a chave.
 # v3.52.2 (note.md item 8): "targets": {} (o modelo do guards.json) também é $null — o objeto vazio é verdadeiro no
 # PowerShell, e o next pedia .scn em laço, o plan.ps1 reprovava o cabeçalho de cenário e o close.ps1 o R7-aceite.

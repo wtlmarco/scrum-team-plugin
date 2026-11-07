@@ -190,6 +190,8 @@ function Repair-Android {
         $rt = if ($script:AdCfg.PSObject.Properties['repairTimeoutSec'] -and [int]$script:AdCfg.repairTimeoutSec -gt 0) { [int]$script:AdCfg.repairTimeoutSec } else { 600 }
         $r = Invoke-Bounded '' $cmd $rt -KeepDescendants
         if ($r.timedOut) { return "o reparo declarado (targets.android.repair) passou de $rt s e o shell dele foi encerrado (ambiente; ajuste targets.android.repairTimeoutSec ou confira se o comando termina)" }
+        # Os filhos que o comando deixou vivos (emulador, adb) entram no registro: o -Kill os encerra, e só eles.
+        if (@($r.kept).Count) { $null = Register-Detached (Get-Location).Path 'android' @($r.kept) $cmd }
         if ($r.exit -ne 0) { return "o reparo declarado (targets.android.repair) saiu com $($r.exit)`: $($r.out.Substring(0, [Math]::Min(200, $r.out.Length)))" }
         # v3.54.1: serial de rede — o wait-for-device não religa; o laço de adb connect, sim.
         if (Test-NetworkSerial) {
@@ -213,7 +215,8 @@ function Repair-Android {
     if ($other) { return "as portas do emulador (5554/5555) estão com $other — há um emulador fora do SDK local (container Docker?). O plugin não abre um segundo emulador: declare o reparo dele em targets.android.repair e tire targets.android.avd do guards.json" }
     # Na pasta do SDK: o emulador vive mais que o executor e não pode prender a pasta do projeto (v3.51.1).
     # protocolo: desprendido — o emulador deve sobreviver ao script; a prontidão é esperada logo abaixo, com prazo (240 s).
-    Start-Process -FilePath $emu -ArgumentList @('-avd', $avd, '-no-snapshot', '-no-boot-anim', '-no-audio') -WorkingDirectory (Split-Path $emu) -WindowStyle Hidden | Out-Null
+    $ep = Start-Process -FilePath $emu -ArgumentList @('-avd', $avd, '-no-snapshot', '-no-boot-anim', '-no-audio') -WorkingDirectory (Split-Path $emu) -WindowStyle Hidden -PassThru
+    $null = Register-Detached (Get-Location).Path 'android' @($ep.Id) "emulator -avd $avd"   # o target.ps1 -Kill encerra só este
     }
     $t = Get-Date
     do { Start-Sleep -Seconds 5; $ok = ((AdbT 15 @('shell', 'getprop', 'sys.boot_completed')) -join '').Trim() -eq '1'; if (-not $ok -and (Test-NetworkSerial)) { $null = Connect-AndroidSerial } } while (-not $ok -and ((Get-Date) - $t).TotalSeconds -lt 240)

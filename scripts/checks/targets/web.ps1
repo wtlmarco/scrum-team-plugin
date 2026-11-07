@@ -31,7 +31,7 @@ function Repair-Web {
     $enc = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("`$env:CI = 'true'; $start"))
     # protocolo: desprendido — o servidor deve sobreviver ao script; o PID vai para .target-web.json e a prontidão tem prazo (abaixo).
     $p = Start-Process -FilePath 'powershell' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $enc) -WorkingDirectory $script:WebRoot -WindowStyle Hidden -PassThru
-    [System.IO.File]::WriteAllText((Join-Path $script:WebRoot '.team-project/.target-web.json'), (@{ pid = $p.Id; start = $start; desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+    $null = Register-Detached $script:WebRoot 'web' @($p.Id) $start
     $limit = if ($script:WebCfg.startTimeoutSec) { [int]$script:WebCfg.startTimeoutSec } else { 120 }
     $t = Get-Date
     do { Start-Sleep -Seconds 3; $h = Test-WebHealth } while ($h -and ((Get-Date) - $t).TotalSeconds -lt $limit)
@@ -39,12 +39,7 @@ function Repair-Web {
     return $null
 }
 # Encerra o servidor que o próprio executor subiu (e só ele).
-function Stop-WebServer {
-    $f = Join-Path $script:WebRoot '.team-project/.target-web.json'
-    if (-not (Test-Path -LiteralPath $f)) { return }
-    try { $j = Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json; $null = Stop-ProcessTree ([int]$j.pid) } catch { }
-    Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue
-}
+function Stop-WebServer { $null = Stop-Detached $script:WebRoot 'web' }
 function Invoke-WebScenarios($Scenarios, [string]$ShotDir) {
     $tmpIn = [System.IO.Path]::GetTempFileName(); $tmpOut = [System.IO.Path]::GetTempFileName()
     $in = [ordered]@{ url = [string]$script:WebCfg.url; root = $script:WebRoot; testIdAttribute = (Get-TestIdAttribute $script:WebRoot)   # v3.55.0 (C2): testIds.attribute → targets.web.testIdAttribute → data-testid

@@ -14,6 +14,7 @@ param(
     [Parameter(Mandatory = $true)][ValidateSet('android', 'web')][string]$Target,
     [switch]$Repair,
     [switch]$Unlock,
+    [switch]$Kill,
     [string]$Root = (Get-Location).Path
 )
 
@@ -21,6 +22,18 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib.ps1')
 
 try {
+    # -Kill (v3.57.0, protocolo de espera): encerra os processos do alvo que o PRÓPRIO run iniciou e registrou em
+    # .team-project/.target-<alvo>.json (emulador pelo AVD, filhos que o reparo declarado deixa vivos, servidor web). Não precisa
+    # de autorização do stakeholder: nada fora do registro é tocado (PID reaproveitado é reconhecido e pulado). Com a trava
+    # de dono único ativa, avisa quem a segura — encerrar o alvo no meio de um accept derruba o cenário dele.
+    if ($Kill) {
+        $lp = Join-Path $Root '.team-project/.target-lock'
+        $held = if (Test-Path -LiteralPath $lp) { (Get-Content -LiteralPath $lp -Raw -ErrorAction SilentlyContinue) } else { '' }
+        $k = Stop-Detached $Root $Target
+        if (-not $k.registered) { [Console]::Out.WriteLine("target ${Target}: nada registrado — o run não iniciou nenhum processo deste alvo (processo de fora não é tocado)"); exit 0 }
+        [Console]::Out.WriteLine("target ${Target}: -Kill — $($k.stopped) encerrado(s), $($k.gone) já tinha(m) saído, $($k.reused) com PID reaproveitado (não tocado)" + $(if ($held) { "; ATENÇÃO: a trava do alvo estava com outro executor (.target-lock)" } else { '' }))
+        exit 0
+    }
     if ($Unlock) { $lp = Join-Path $Root '.team-project/.target-lock'; if (Test-Path -LiteralPath $lp) { Remove-Item -LiteralPath $lp -Force; [Console]::Out.WriteLine('target: trava removida') } }
     $targets = Get-TargetsConfig $Root
     $cfg = if ($targets -and $targets.PSObject.Properties[$Target]) { $targets.$Target } else { $null }

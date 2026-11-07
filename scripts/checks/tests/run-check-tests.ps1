@@ -2447,6 +2447,31 @@ $r = Invoke-Bounded $Root 'Write-Error "falhou aqui"; exit 5' 20
 $bo = (& powershell -NoProfile -ExecutionPolicy Bypass -File $bt -Lib (Join-Path $checks 'lib.ps1') -Root $tmp 2>&1 | ForEach-Object { "$_" }) -join "`n"
 Check 'v3.57.0 protocolo: Invoke-Bounded — filho com saída herdada não prende (sobrevive só com -KeepDescendants), prazo vira 124, exit/env/stdin passam, erro aparece' @{ Code = 0; Out = $bo } 0 @('A filho-herdado-sobrevive: rapido=True exit=0 timedOut=False kept=True out=pronto', 'B sem-keep-filho-morre: rapido=True kept=0', 'C prazo: exit=124 timedOut=True rapido=True', 'D exit-env-stdin: exit=7 out=v=abc\|in=ola', 'E erro-visivel: exit=5 msg=True')
 
+# v3.57.0 — modo desprendido e target.ps1 -Kill: só o que o run registrou é encerrado; o de fora e o PID reaproveitado, não.
+$kt = Join-Path $tmp 'kill-test.ps1'
+[System.IO.File]::WriteAllText($kt, @'
+param([string]$Checks, [string]$Proj)
+. (Join-Path $Checks 'lib.ps1')
+New-Item -ItemType Directory (Join-Path $Proj '.team-project') -Force | Out-Null
+$mk = { Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-Sleep 90' -PassThru -WindowStyle Hidden }
+$a = & $mk; $b = & $mk; $c = & $mk
+Start-Sleep 2
+$null = Register-Detached $Proj 'android' @($a.Id) 'teste'
+$f = Join-Path $Proj '.team-project/.target-android.json'
+$j = [System.IO.File]::ReadAllText($f) | ConvertFrom-Json
+$j.procs = @($j.procs) + @([pscustomobject]@{ pid = $c.Id; created = '2001-01-01T00:00:00.0000000+00:00' })
+[System.IO.File]::WriteAllText($f, ($j | ConvertTo-Json -Depth 4 -Compress))
+$o = (& powershell -NoProfile -File (Join-Path $Checks 'target.ps1') -Target android -Kill -Root $Proj 2>&1 | ForEach-Object { "$_" }) -join ' '
+Start-Sleep 2; $a.Refresh(); $b.Refresh(); $c.Refresh()
+"1 saida: $o"
+"2 registrado-morreu=$($a.HasExited) fora-do-registro-vivo=$(-not $b.HasExited) pid-reaproveitado-vivo=$(-not $c.HasExited) registro-apagado=$(-not (Test-Path $f))"
+$o2 = (& powershell -NoProfile -File (Join-Path $Checks 'target.ps1') -Target android -Kill -Root $Proj 2>&1 | ForEach-Object { "$_" }) -join ' '
+"3 de-novo: $o2"
+foreach ($x in @($b, $c)) { try { Stop-Process -Id $x.Id -Force -ErrorAction SilentlyContinue } catch { } }
+'@, $utf8)
+$ko = (& powershell -NoProfile -ExecutionPolicy Bypass -File $kt -Checks $checks -Proj (Join-Path $tmp 'kill-proj') 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.57.0 protocolo: target.ps1 -Kill encerra só o processo registrado pelo run (o de fora e o PID reaproveitado ficam; o registro some; de novo = nada registrado)' @{ Code = 0; Out = $ko } 0 @('1 saida: target android: -Kill — 1 encerrado\(s\), 0 já tinha\(m\) saído, 1 com PID reaproveitado', '2 registrado-morreu=True fora-do-registro-vivo=True pid-reaproveitado-vivo=True registro-apagado=True', '3 de-novo: target android: nada registrado')
+
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
 Write-Output ("{0} casos · {1} falharam" -f $rows.Count, $fail)
