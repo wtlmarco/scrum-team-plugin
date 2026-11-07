@@ -285,6 +285,53 @@ function Stop-ProcessTree([int]$RootPid, [switch]$ChildrenOnly) {
     return $ids.Count
 }
 
+# Executor único com prazo (v3.57.0, protocolo de espera): TODO comando de terceiros (do projeto ou do guards.json) passa por aqui.
+# Saída em ARQUIVO, nunca em pipe: um filho de longa duração que herda a saída não prende a leitura (o reparo do alvo ficou ~2 h
+# assim). Espera pelo processo (WaitForExit com prazo), nunca pelo fim do pipe. Prazo é obrigatório (>= 1 s; sem padrão infinito).
+# Estourou: exit 124 e timedOut. Morte: a árvore inteira — ou, com -KeepDescendants (o comando deixa de propósito um filho vivo,
+# como o emulador), só o processo raiz, e os sobreviventes voltam em kept. Devolve exit, timedOut, seconds, out (saída, UTF-8)
+# e kept; quem chama decide se vira falha de ambiente (exit 4).
+function Invoke-Bounded([string]$Root, [string]$Cmd, [int]$TimeoutSec, [hashtable]$Env = @{}, [string]$InputText = '', [switch]$KeepDescendants, [string]$Log = '') {
+    $u8 = New-Object System.Text.UTF8Encoding($false)
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $tmp = if ($Log) { $Log } else { Join-Path ([System.IO.Path]::GetTempPath()) ('bounded-' + [guid]::NewGuid().ToString('N') + '.log') }
+    $pre = "`$ProgressPreference = 'SilentlyContinue'; " + ((@($Env.Keys) | ForEach-Object { "`$env:$_ = '$(([string]$Env[$_]) -replace "'", "''")'; " }) -join '')
+    $wrapped = $pre + '$global:LASTEXITCODE = 0; ' + $Cmd + '; if (-not $?) { if ($LASTEXITCODE) { exit $LASTEXITCODE } else { exit 1 } }; exit $LASTEXITCODE'
+    $enc = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($wrapped))
+    $sp = @{ FilePath = 'powershell'; ArgumentList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $enc); RedirectStandardOutput = $tmp; RedirectStandardError = "$tmp.err"; NoNewWindow = $true; PassThru = $true }
+    if ($Root) { $sp.WorkingDirectory = $Root }
+    if ($InputText) { [System.IO.File]::WriteAllText("$tmp.in", $InputText, $u8); $sp.RedirectStandardInput = "$tmp.in" }
+    $p = Start-Process @sp
+    $null = $p.Handle   # sem o handle aberto, o ExitCode volta vazio no 5.1
+    $timedOut = -not $p.WaitForExit([int]([Math]::Max(1, $TimeoutSec) * 1000))
+    $kept = @()
+    if ($timedOut) {
+        if ($KeepDescendants) { $kept = @(Get-DescendantIds $p.Id); Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } else { $null = Stop-ProcessTree $p.Id }
+        $p.WaitForExit(5000) | Out-Null; $code = 124
+    } else {
+        $code = $p.ExitCode
+        if ($KeepDescendants) { $kept = @(Get-DescendantIds $p.Id) } else { $null = Stop-ProcessTree $p.Id -ChildrenOnly }
+    }
+    Start-Sleep -Milliseconds 200   # o arquivo de saída fica livre depois que os descendentes saem
+    $txt = ''
+    # FileShare.ReadWrite: o filho que sobrevive (kept) segue com o arquivo aberto para escrita e o ReadAllText falharia.
+    foreach ($f in @($tmp, "$tmp.err")) {
+        if (-not (Test-Path -LiteralPath $f)) { continue }
+        try {
+            $fs = New-Object System.IO.FileStream($f, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+            try { $t = (New-Object System.IO.StreamReader($fs, $u8)).ReadToEnd() } finally { $fs.Dispose() }
+            if ($t -match '^#< CLIXML') {   # erro do PowerShell em CLIXML: guarda só o texto das mensagens de erro
+                $t = (([regex]::Matches($t, '<S S="Error">(.*?)</S>') | ForEach-Object { $_.Groups[1].Value }) -join '') -replace '_x000D__x000A_', "`n" -replace '_x000D_', '' -replace '&lt;', '<' -replace '&gt;', '>' -replace '&amp;', '&'
+            }
+            if ($t) { $txt += $t + "`n" }
+        } catch { }
+    }
+    if (-not $Log) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+    foreach ($f in @("$tmp.err", "$tmp.in")) { Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue }
+    $p.Dispose()
+    return [pscustomobject]@{ exit = $code; timedOut = $timedOut; seconds = [int]$sw.Elapsed.TotalSeconds; out = $txt.Trim(); kept = $kept }
+}
+
 # Alvos de execução (v3.51, D3): guards.json → targets ({ "android": {…}, "web": {…} }). $null sem a chave.
 # v3.52.2 (note.md item 8): "targets": {} (o modelo do guards.json) também é $null — o objeto vazio é verdadeiro no
 # PowerShell, e o next pedia .scn em laço, o plan.ps1 reprovava o cabeçalho de cenário e o close.ps1 o R7-aceite.
@@ -327,20 +374,15 @@ function Invoke-TargetSeed([string]$Root, [string]$Target, $Cfg, [string]$Name, 
     $seeds = Get-TargetSeeds $Cfg
     if (-not $seeds.Contains($Name)) { return "massa de dados '$Name' não declarada em guards.json → targets.$Target.seeds" }
     $sec = if ($Cfg.PSObject.Properties['seedTimeoutSec'] -and $Cfg.seedTimeoutSec) { [int]$Cfg.seedTimeoutSec } else { 300 }
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = 'powershell'; $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -EncodedCommand ' + [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("`$ProgressPreference = 'SilentlyContinue'; " + $seeds[$Name]))
-    $psi.WorkingDirectory = $Root; $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
-    $psi.EnvironmentVariables['ACCEPT_TARGET'] = $Target; $psi.EnvironmentVariables['ACCEPT_SEED'] = $Name
-    foreach ($k in $Env.Keys) { $psi.EnvironmentVariables[[string]$k] = [string]$Env[$k] }
-    $p = [System.Diagnostics.Process]::Start($psi)
-    $o = $p.StandardOutput.ReadToEndAsync(); $e = $p.StandardError.ReadToEndAsync()
-    if (-not $p.WaitForExit($sec * 1000)) { $null = Stop-ProcessTree $p.Id; $p.Dispose(); return "massa de dados '$Name' sem resposta em $sec s (targets.$Target.seedTimeoutSec)" }
-    $p.WaitForExit(); $code = $p.ExitCode
-    $txt = ''; try { if ($o.Wait(2000)) { $txt += $o.Result }; if ($e.Wait(2000)) { $txt += $e.Result } } catch { }
-    $p.Dispose()
-    if ($code -eq 0) { return $null }
-    $tail = @($txt -split "`r?`n" | Where-Object { $_.Trim() -and $_ -notmatch '^#< CLIXML|^<Objs\b' } | Select-Object -Last 2) -join ' / '
-    return "massa de dados '$Name' não carregou (exit $code)$(if ($tail) { ": $tail" })"
+    # Protocolo de espera (v3.57.0): Invoke-Bounded — saída em arquivo e espera pelo processo. Antes, o WaitForExit() sem prazo
+    # depois do prazo esperava o fim do pipe, e um filho que herdasse a saída prendia a massa de dados para sempre.
+    $envAll = @{ ACCEPT_TARGET = $Target; ACCEPT_SEED = $Name }
+    foreach ($k in $Env.Keys) { $envAll[[string]$k] = [string]$Env[$k] }
+    $r = Invoke-Bounded $Root $seeds[$Name] $sec -Env $envAll
+    if ($r.timedOut) { return "massa de dados '$Name' sem resposta em $sec s (targets.$Target.seedTimeoutSec)" }
+    if ($r.exit -eq 0) { return $null }
+    $tail = @($r.out -split "`r?`n" | Where-Object { $_.Trim() -and $_ -notmatch '^#< CLIXML|^<Objs\b' } | Select-Object -Last 2) -join ' / '
+    return "massa de dados '$Name' não carregou (exit $($r.exit))$(if ($tail) { ": $tail" })"
 }
 
 # Plano externo (v3.53.4): guards.json → "run": { "planner": "external", "tasks": [] }. $null sem a chave ou com outro

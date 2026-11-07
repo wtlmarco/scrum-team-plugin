@@ -13,6 +13,10 @@
 # seeds + seedTimeoutSec (v3.53.7: massa de dados por nome, passo "seed"), selectConfirm (v3.53.7: botão de confirmação
 # do seletor no passo "select", expressão regular).
 
+# v3.57.0 (protocolo de espera): todo comando de terceiros (reparo, memoryCmd) passa pelo Invoke-Bounded do lib.ps1. O adaptador
+# declara a dependência em vez de supor que quem o carrega já carregou o lib.ps1.
+if (-not (Get-Command Invoke-Bounded -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '..\lib.ps1') }
+
 $script:AdCfg = $null; $script:Adb = $null; $script:Pkg = ''; $script:Nodes = @(); $script:IdCache = @{}; $script:EmptyDumps = 0
 $script:Serial = ''; $script:AdbTimeout = ''
 
@@ -38,6 +42,7 @@ function AdbT([int]$Sec, [string[]]$A) {
     $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
     $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8; $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
     $script:AdbTimeout = ''
+    # protocolo: adb — prazo próprio (WaitForExit com limite), UTF-8, e só o processo do adb morre: o servidor do adb sobrevive.
     $p = [System.Diagnostics.Process]::Start($psi)
     $o = $p.StandardOutput.ReadToEndAsync(); $e = $p.StandardError.ReadToEndAsync()
     if (-not $p.WaitForExit($Sec * 1000)) {
@@ -141,17 +146,12 @@ function ConvertTo-MemoryMB([string]$Text) {
         default { return $v }
     }
 }
-# Comando do projeto num PowerShell filho com prazo; devolve a saída ('' quando estourou, com aviso).
+# Comando do projeto num PowerShell filho com prazo (Invoke-Bounded, lib.ps1: saída em arquivo, prazo obrigatório); devolve a saída
+# ('' quando estourou, com aviso). O memoryCmd é de terceiros: nunca por pipe.
 function Invoke-CmdT([int]$Sec, [string]$Cmd) {
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = 'powershell'; $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -EncodedCommand ' + [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($Cmd))
-    $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
-    $p = [System.Diagnostics.Process]::Start($psi)
-    $o = $p.StandardOutput.ReadToEndAsync(); $null = $p.StandardError.ReadToEndAsync()
-    if (-not $p.WaitForExit($Sec * 1000)) { try { $p.Kill() } catch { }; [Console]::Error.WriteLine("android: '$Cmd' sem resposta em $Sec s — encerrado"); $p.Dispose(); return '' }
-    $txt = ''; try { if ($o.Wait(2000)) { $txt = $o.Result } } catch { }
-    $p.Dispose()
-    return $txt.Trim()
+    $r = Invoke-Bounded '' $Cmd $Sec
+    if ($r.timedOut) { [Console]::Error.WriteLine("android: '$Cmd' sem resposta em $Sec s — encerrado"); return '' }
+    return $r.out
 }
 function Test-AndroidMemory {
     $c = $script:AdCfg
@@ -184,8 +184,13 @@ function Repair-Android {
     $cmd = if ($script:AdCfg -and $script:AdCfg.PSObject.Properties['repair'] -and $script:AdCfg.repair) { [string]$script:AdCfg.repair } else { '' }
     if ($cmd) {
         $ErrorActionPreference = 'Continue'
-        $out = (& powershell -NoProfile -ExecutionPolicy Bypass -Command $cmd 2>&1 | ForEach-Object { "$_" }) -join ' '
-        if ($LASTEXITCODE -ne 0) { return "o reparo declarado (targets.android.repair) saiu com $LASTEXITCODE`: $($out.Substring(0, [Math]::Min(200, $out.Length)))" }
+        # Protocolo de espera (v3.57.0): o comando declarado é de terceiros, então passa pelo Invoke-Bounded (lib.ps1) — saída em
+        # arquivo, prazo (targets.android.repairTimeoutSec, padrão 600 s) e espera pelo processo, não pelo pipe. -KeepDescendants:
+        # o emulador e o daemon do adb que o comando deixa vivos de propósito não morrem com ele.
+        $rt = if ($script:AdCfg.PSObject.Properties['repairTimeoutSec'] -and [int]$script:AdCfg.repairTimeoutSec -gt 0) { [int]$script:AdCfg.repairTimeoutSec } else { 600 }
+        $r = Invoke-Bounded '' $cmd $rt -KeepDescendants
+        if ($r.timedOut) { return "o reparo declarado (targets.android.repair) passou de $rt s e o shell dele foi encerrado (ambiente; ajuste targets.android.repairTimeoutSec ou confira se o comando termina)" }
+        if ($r.exit -ne 0) { return "o reparo declarado (targets.android.repair) saiu com $($r.exit)`: $($r.out.Substring(0, [Math]::Min(200, $r.out.Length)))" }
         # v3.54.1: serial de rede — o wait-for-device não religa; o laço de adb connect, sim.
         if (Test-NetworkSerial) {
             $w = Wait-AndroidSerial 180
@@ -207,6 +212,7 @@ function Repair-Android {
     $other = Get-EmulatorPortOwner
     if ($other) { return "as portas do emulador (5554/5555) estão com $other — há um emulador fora do SDK local (container Docker?). O plugin não abre um segundo emulador: declare o reparo dele em targets.android.repair e tire targets.android.avd do guards.json" }
     # Na pasta do SDK: o emulador vive mais que o executor e não pode prender a pasta do projeto (v3.51.1).
+    # protocolo: desprendido — o emulador deve sobreviver ao script; a prontidão é esperada logo abaixo, com prazo (240 s).
     Start-Process -FilePath $emu -ArgumentList @('-avd', $avd, '-no-snapshot', '-no-boot-anim', '-no-audio') -WorkingDirectory (Split-Path $emu) -WindowStyle Hidden | Out-Null
     }
     $t = Get-Date

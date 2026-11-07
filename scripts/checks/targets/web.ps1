@@ -29,6 +29,7 @@ function Repair-Web {
     $start = [string]$script:WebCfg.start
     if (-not $start) { return 'sem targets.web.start no guards.json: suba o servidor à mão' }
     $enc = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("`$env:CI = 'true'; $start"))
+    # protocolo: desprendido — o servidor deve sobreviver ao script; o PID vai para .target-web.json e a prontidão tem prazo (abaixo).
     $p = Start-Process -FilePath 'powershell' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $enc) -WorkingDirectory $script:WebRoot -WindowStyle Hidden -PassThru
     [System.IO.File]::WriteAllText((Join-Path $script:WebRoot '.team-project/.target-web.json'), (@{ pid = $p.Id; start = $start; desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
     $limit = if ($script:WebCfg.startTimeoutSec) { [int]$script:WebCfg.startTimeoutSec } else { 120 }

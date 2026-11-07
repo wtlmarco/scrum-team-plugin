@@ -206,15 +206,9 @@ function Add-RunLog([string]$S, [string]$n, [string]$Item, [string]$Decision, [s
 function Measure-CutAgent($Rc) {
     $hook = Join-Path $PSScriptRoot '..\..\hooks\subagent-stop.ps1'
     $hin = [ordered]@{ hook_event_name = 'SubagentStop'; agent_id = [string]$Rc.agent_id; agent_type = [string]$Rc.type; agent_transcript_path = [string]$Rc.transcript; transcript_path = [string]$Rc.session_transcript; cwd = $Root } | ConvertTo-Json -Compress
-    try {
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = 'powershell'; $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$hook`""
-        $psi.UseShellExecute = $false; $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
-        $psi.EnvironmentVariables['CLAUDE_PROJECT_DIR'] = $Root
-        $hp = [System.Diagnostics.Process]::Start($psi)
-        $hb = $utf8.GetBytes($hin); $hp.StandardInput.BaseStream.Write($hb, 0, $hb.Length); $hp.StandardInput.Close()
-        $null = $hp.StandardOutput.ReadToEnd(); $null = $hp.StandardError.ReadToEnd(); $hp.WaitForExit(60000) | Out-Null
-    } catch { }
+    # Protocolo de espera (v3.57.0): Invoke-Bounded (lib.ps1). Antes, o ReadToEnd() vinha antes do WaitForExit(60000) e o prazo
+    # nunca valia: hook travado prendia o run.ps1 para sempre.
+    try { $null = Invoke-Bounded $Root "& '$($hook -replace "'", "''")'" 60 -Env @{ CLAUDE_PROJECT_DIR = $Root } -InputText $hin } catch { }
     Out "  consumo: $(([string]$Rc.type) -replace '^.*:', '') $(if ($Rc.work) { [string]$Rc.work }) medido pelo transcript (parou sem SubagentStop)"
 }
 

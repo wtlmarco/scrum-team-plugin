@@ -2410,6 +2410,43 @@ Check 'v3.56.0 F: close do sprint migrado — D-1 → K-1, D-2 → K-2 sem Até,
 $r = Invoke-Check 'knowledge.ps1' @('-Migrate', '-Apply', '-Retire', 'K-3', '-Root', $p)
 Check 'v3.56.0 F: o update retira a K cujo Até chegou' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/architect/knowledge.md'), $utf8) } 0 @('K-3 — node:test fora do verify: retirada', '^(?![\s\S]*## K-3)', '## K-2')
 
+# v3.57.0 — protocolo de espera: guarda de processo solto e casos do Invoke-Bounded (lib.ps1).
+# Guarda: todo Start-Process / Process]::Start fora do lib.ps1 (e dos testes) leva "# protocolo: adb" ou "# protocolo: desprendido"
+# na linha ou na anterior — o comando de terceiros passa pelo Invoke-Bounded; só o adb (prazo próprio) e o processo que deve
+# sobreviver (emulador, servidor web) ficam de fora, com a marca. StandardOutput.ReadToEnd é proibido: lê pipe sem prazo.
+$loose = @()
+foreach ($sf in @(Get-ChildItem -LiteralPath (Resolve-Path (Join-Path $checks '..')).Path -Recurse -Filter '*.ps1' | Where-Object { $_.FullName -notmatch '[\\/]tests[\\/]' -and $_.Name -ne 'lib.ps1' })) {
+    $ln = [System.IO.File]::ReadAllLines($sf.FullName, $utf8)
+    for ($i = 0; $i -lt $ln.Count; $i++) {
+        if ($ln[$i].TrimStart().StartsWith('#')) { continue }
+        if ($ln[$i] -match 'StandardOutput\.ReadToEnd\(\)|StandardError\.ReadToEnd\(\)') { $loose += "$($sf.Name):$($i + 1) leitura de pipe sem prazo (ReadToEnd)"; continue }
+        if ($ln[$i] -match 'Start-Process|Process\]::Start') {
+            $mark = ($ln[$i] -match '#\s*protocolo:\s*(adb|desprendido)') -or ($i -gt 0 -and $ln[$i - 1] -match '#\s*protocolo:\s*(adb|desprendido)')
+            if (-not $mark) { $loose += "$($sf.Name):$($i + 1) processo disparado fora do Invoke-Bounded e sem marca de protocolo" }
+        }
+    }
+}
+Check 'v3.57.0 protocolo: nenhum processo solto — Start-Process/Process::Start fora do lib.ps1 só com "# protocolo: adb|desprendido"' @{ Code = [int]($loose.Count -gt 0); Out = $(if ($loose.Count) { $loose -join "`n" } else { 'sem processo solto' }) } 0 @('sem processo solto')
+
+$bt = Join-Path $tmp 'bounded-test.ps1'
+[System.IO.File]::WriteAllText($bt, @'
+param([string]$Lib, [string]$Root)
+. $Lib
+$kid = 'Start-Process powershell -ArgumentList ''-NoProfile'',''-Command'',''Start-Sleep 12'' -NoNewWindow; "pronto"'
+$r = Invoke-Bounded $Root $kid 60 -KeepDescendants
+"A filho-herdado-sobrevive: rapido=$($r.seconds -lt 10) exit=$($r.exit) timedOut=$($r.timedOut) kept=$(@($r.kept).Count -ge 1) out=$($r.out)"
+$r = Invoke-Bounded $Root $kid 60
+"B sem-keep-filho-morre: rapido=$($r.seconds -lt 10) kept=$(@($r.kept).Count)"
+$r = Invoke-Bounded $Root 'Start-Sleep 30' 2
+"C prazo: exit=$($r.exit) timedOut=$($r.timedOut) rapido=$($r.seconds -lt 15)"
+$r = Invoke-Bounded $Root '"v=$env:XPTO"; $l = [Console]::In.ReadLine(); "in=$l"; exit 7' 20 -Env @{ XPTO = 'abc' } -InputText "ola`n"
+"D exit-env-stdin: exit=$($r.exit) out=$(($r.out -replace '\r?\n', '|'))"
+$r = Invoke-Bounded $Root 'Write-Error "falhou aqui"; exit 5' 20
+"E erro-visivel: exit=$($r.exit) msg=$($r.out -match 'falhou aqui')"
+'@, $utf8)
+$bo = (& powershell -NoProfile -ExecutionPolicy Bypass -File $bt -Lib (Join-Path $checks 'lib.ps1') -Root $tmp 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.57.0 protocolo: Invoke-Bounded — filho com saída herdada não prende (sobrevive só com -KeepDescendants), prazo vira 124, exit/env/stdin passam, erro aparece' @{ Code = 0; Out = $bo } 0 @('A filho-herdado-sobrevive: rapido=True exit=0 timedOut=False kept=True out=pronto', 'B sem-keep-filho-morre: rapido=True kept=0', 'C prazo: exit=124 timedOut=True rapido=True', 'D exit-env-stdin: exit=7 out=v=abc\|in=ola', 'E erro-visivel: exit=5 msg=True')
+
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
 Write-Output ("{0} casos · {1} falharam" -f $rows.Count, $fail)
