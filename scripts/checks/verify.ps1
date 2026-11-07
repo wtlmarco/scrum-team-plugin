@@ -94,7 +94,18 @@ function Invoke-Logged([string]$Key, [string]$Cmd, [string]$Log) {
     if ($verify -and $verify.PSObject.Properties['env'] -and $verify.env) { foreach ($p in $verify.env.PSObject.Properties) { $extra[$p.Name] = [string]$p.Value } }
     $daemon = $verify -and $verify.PSObject.Properties['daemon'] -and $verify.daemon -eq $true
     if ($daemon -and -not $extra.Contains('GRADLE_OPTS')) { $extra['GRADLE_OPTS'] = (([string]$env:GRADLE_OPTS -replace '-Dorg\.gradle\.daemon=\w+', '').Trim() + ' -Dorg.gradle.daemon=true').Trim() }
-    $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $script:timeoutMinutes ([pscustomobject]$extra) -KeepDescendants:$daemon
+    # v3.57.0 (item 8): TEAM_TEST_CLOCK_SKEW_MIN_ONCE só existe nos testes — simula o salto de relógio da suspensão na 1ª rodada.
+    $skew = 0.0; if ($env:TEAM_TEST_CLOCK_SKEW_MIN_ONCE -and -not $script:skewUsed) { $skew = [double]$env:TEAM_TEST_CLOCK_SKEW_MIN_ONCE; $script:skewUsed = $true }
+    $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $script:timeoutMinutes ([pscustomobject]$extra) -KeepDescendants:$daemon -ClockSkewMin $skew
+    # Suspensão do sistema no meio do comando: a rodada não vale como prova — repete UMA vez (protocolo de espera, regra 5) e
+    # registra a suspensão. Suspensa de novo, fica como falha de ambiente (exit 4): não é defeito do código.
+    if ($r.suspended) {
+        $first = [string]$r.environment
+        if ($r.Contains('kept')) { $script:daemonPids += @($r.kept) }
+        $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $script:timeoutMinutes ([pscustomobject]$extra) -KeepDescendants:$daemon
+        if (-not $r.suspended) { $r.warnings = @($r.warnings) + @("$Key`: $first — rodada repetida e válida") }
+    }
+    $r.Remove('suspended')
     foreach ($w in @($r.warnings)) { if ($w -and $script:hygieneWarnings -notcontains $w) { $script:hygieneWarnings += $w } }
     $r.Remove('warnings')
     if ($r.Contains('kept')) { $script:daemonPids += @($r.kept); $r.Remove('kept') }
@@ -328,7 +339,19 @@ try {
         # Prova de falha (v3.46): só sobre a árvore do último full verde — a mutação prova o teste daquele código.
         if (-not $Plan -or -not (Test-Path -LiteralPath (Join-Path $Root $Plan))) { [Console]::Error.WriteLine('verify: -Mode mutation pede -Plan <caminho do plano, relativo à raiz>.'); exit 2 }
         if ($focusedCmd.Count -eq 0) { [Console]::Error.WriteLine('verify: guards.json → verify sem "focused" — a mutação roda o teste focado.'); exit 2 }
-        if ($Precheck) {
+        # v3.57.0 (plugin-report do sprint 5 do garden, item A6): mutante do plano que não compila só aparecia depois de ~20 min de
+        # mutação. Com verify.compile declarado, a mutação roda o Precheck SOZINHA antes — se não há um verde registrado para esta
+        # árvore (precheck.json) — e para cedo, com a lista; nunca depende de alguém lembrar. Sem verify.compile a compilação dos
+        # mutantes não tem como ser conferida de antemão: o aviso é alto, porque o erro só vai aparecer dentro da mutação.
+        $compileDecl = @(Get-Commands $verify 'compile') | Select-Object -First 1
+        $autoPre = $false
+        if (-not $Precheck -and $compileDecl) {
+            $pjf = Join-Path $dir 'precheck.json'; $green = $false
+            if (Test-Path -LiteralPath $pjf) { try { $pr = Read-Text $pjf | ConvertFrom-Json; $green = ([string]$pr.tree -eq $tree) -and ([int]$pr.problems -eq 0) -and ($pr.compile -eq $true) } catch { } }
+            $autoPre = -not $green
+        }
+        if (-not $Precheck -and -not $compileDecl) { [Console]::Out.WriteLine('  ATENÇÃO: o projeto não declara verify.compile em guards.json — a compilação dos mutantes NÃO foi conferida de antemão; um mutante que não compila só aparece dentro da mutação (minutos por mutante). Declare verify.compile (comando que só compila, sem rodar teste) e rode -Mode mutation -Precheck.') }
+        if ($Precheck -or $autoPre) {
             # v3.51.4 (garden item 27): conferência prévia, sem teste — trecho único no arquivo e, com verify.compile, mutante que compila.
             $pt = Read-Text (Join-Path $Root $Plan); $pm = @(Get-TaskMutations $Root $Plan $pt $Task); if ($Only.Count) { $pm = @($pm | Where-Object { $Only -contains $_.Id }) }
             $compile = @(Get-Commands $verify 'compile') | Select-Object -First 1
@@ -359,10 +382,11 @@ try {
                 $okIds += $mu.Id
             }
             if ((Get-WorkTree $Root) -ne $tree) { [Console]::Error.WriteLine('verify: ERRO — a árvore não voltou igual depois da conferência prévia. Confira com git status/git diff.'); exit 2 }
-            [Console]::Out.WriteLine("verify mutation -Precheck $Task · $($okIds.Count) de $($pm.Count) mutação(ões) prontas" + $(if ($compile) { ' (trecho único e mutante compila)' } else { ' (trecho único; sem verify.compile, a compilação se vê na mutação)' }))
+            [Console]::Out.WriteLine("verify mutation -Precheck$(if ($autoPre) { ' (automático, antes da mutação)' }) $Task · $($okIds.Count) de $($pm.Count) mutação(ões) prontas" + $(if ($compile) { ' (trecho único e mutante compila)' } else { ' (trecho único; ATENÇÃO: sem verify.compile a compilação dos mutantes NÃO foi conferida — só aparece na mutação)' }))
+            try { New-Item -ItemType Directory -Force $dir | Out-Null; [System.IO.File]::WriteAllText((Join-Path $dir 'precheck.json'), ([ordered]@{ tree = $tree; at = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss'); compile = [bool]$compile; ok = @($okIds); problems = $probs.Count } | ConvertTo-Json -Compress), $utf8) } catch { }
             # v3.54: a mutação declarada pela regra é do dev — o trecho dele se corrige no relatório, sem GAP.
             foreach ($p in $probs) { $own = $p -match '^(M\d+):' -and @($pm | Where-Object { $_.Id -eq $Matches[1] -and $_.Source -eq 'dev' }).Count; [Console]::Out.WriteLine("  $p — " + $(if ($own) { 'a linha é sua (mutação pela regra): corrija o trecho no bloco **Mutações:** do relatório' } else { 'o plano é do Arquiteto: 🔺 GAP com esta linha' })) }
-            if ($probs.Count) { exit 1 } else { exit 0 }
+            if ($probs.Count) { exit 1 } elseif ($Precheck) { exit 0 }
         }
         $full = if ($prev) { $prev.full } else { $null }
         if ($null -eq $full -or [string]$full.tree -ne $tree) { [Console]::Error.WriteLine("verify: a mutação roda sobre a árvore do último full — rode -Mode full antes (árvore agora $($tree.Substring(0, 12)))."); exit 2 }

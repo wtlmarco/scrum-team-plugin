@@ -433,6 +433,12 @@ $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
 Check 'verify full com suíte reprovada: exit 1 e o código real' $r 1 @('suite: exit 4')
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'C1 R7-verify falhou com verify vermelho' $r 1 @('\| R7-verify \| falhou.*suite exit 4')
+# v3.57.0 (item 8): suspensão do sistema no meio do comando — o relógio andou horas contra o prazo; a rodada é repetida uma vez.
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output \"Build succeeded. 0 Warning(s)\"", "suite": "Write-Output \"Tests: 12 passed\"; New-Item -ItemType Directory -Force coverage | Out-Null; Set-Content coverage/l.info x" } }'
+$env:TEAM_TEST_CLOCK_SKEW_MIN_ONCE = '540'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Remove-Item Env:\TEAM_TEST_CLOCK_SKEW_MIN_ONCE -ErrorAction SilentlyContinue
+Check 'v3.57.0 item 8: suspensão do sistema na 1ª rodada → o verify repete, passa (exit 0) e registra a suspensão, sem reprovar a suíte' $r 0 @('tudo exit 0', 'atenção: build: suspensão do sistema detectada: o relógio andou 5\d\d min contra o prazo de 9 min .* rodada repetida e válida')
 
 # 5d2. verify.ps1 -Mode mutation e C1 R7-mutação (v3.46): a prova de falha declarada no plano, executada e restaurada.
 $p = Join-Path $tmp 'mutacao'; New-Project $p
@@ -449,7 +455,7 @@ $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'C1 R7-mutação sem execução: não fecha' $r 1 @('\| R7-verify \| falhou', '\| R7-mutação \| falhou.*M1 e nenhuma execução')
 $null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
-Check 'verify mutation: M1 pega, árvore restaurada igual' $r 0 @('restaurada igual', 'M1 src/calc.ts: ok')
+Check 'verify mutation: M1 pega, árvore restaurada igual (v3.57.0: sem verify.compile, o aviso alto de que a compilação dos mutantes não foi conferida)' $r 0 @('restaurada igual', 'M1 src/calc.ts: ok', 'ATENÇÃO: o projeto não declara verify\.compile em guards\.json')
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'C1 R7-mutação ok' $r 0 @('\| R7-verify \| ok', '\| R7-mutação \| ok.*1 mutação')
 Edit-File (Join-Path $p $pl) '- M1 · teste' "- M2 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``// fim`` → ``// x```n- M1 · teste"
@@ -1123,6 +1129,13 @@ $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan',
 Check 'verify mutation -Precheck: M1 pronta, M2 não compila, M3 sem trecho; árvore igual; exit 1' $r 1 @('1 de 3 mutação', 'M2: o mutante não compila', 'M3: o trecho aparece 0 vez')
 $ErrorActionPreference = 'Continue'; $st = (& git -C $p status --porcelain 2>$null) -join ' '; $ErrorActionPreference = 'Stop'
 Check 'verify -Precheck devolve o arquivo igual' @{ Code = $(if ($st -notmatch 'calc\.ts') { 0 } else { 1 }); Out = $st } 0 @()
+# v3.57.0 (item A6): com verify.compile declarado, a mutação roda o Precheck sozinha antes e para cedo com a lista (nada de ~20 min
+# até descobrir um mutante que não compila); com um Precheck verde registrado para a árvore, não repete.
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+Check 'v3.57.0 A6: mutação sem -Precheck e com verify.compile → Precheck automático, para cedo no mutante que não compila (exit 1)' $r 1 @('Precheck \(automático, antes da mutação\)', 'M2: o mutante não compila', 'M3: o trecho aparece 0 vez')
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Precheck', '-Only', 'M1', '-Root', $p)
+$r2 = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Only', 'M1', '-Root', $p)
+Check 'v3.57.0 A6: Precheck verde registrado para a árvore → a mutação seguinte não o repete' @{ Code = 0; Out = "pre=$($r.Code) " + $r2.Out + $(if ($r2.Out -match 'automático') { "`nREPETIU" }) } 0 @('pre=0', '^(?![\s\S]*REPETIU)')
 
 # 12. v3.52.2 — note.md itens 2 a 17 (sprint 3 do piloto) e os contratos C1 a C8 da spec.
 # 12a. item 8: "targets": {} (o modelo do guards.json) não é alvo configurado.

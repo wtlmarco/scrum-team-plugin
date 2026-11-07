@@ -221,9 +221,10 @@ function Get-Decisive([string]$Log) {
 # encerrados ao fim (daemon), higiene da ferramenta e $EnvExtra como variáveis do filho, falha de ambiente por assinatura.
 # v3.51.4 (-KeepDescendants, verify.daemon): os descendentes que sobram (o daemon) ficam vivos e voltam em "kept" — o
 # verify.ps1 os reaproveita no comando seguinte e os encerra no fim da chamada (Stop-ProcessTree), antes de devolver o controle.
-function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [string]$Log, [double]$TimeoutMinutes, $EnvExtra, [switch]$KeepDescendants) {
+function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [string]$Log, [double]$TimeoutMinutes, $EnvExtra, [switch]$KeepDescendants, [double]$ClockSkewMin = 0) {
     $u8 = New-Object System.Text.UTF8Encoding($false)
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $t0 = Get-Date   # v3.57.0 (item 8): relógio de parede, para perceber a suspensão do sistema (o WaitForExit não conta o tempo dormindo)
     $hy = Get-ToolHygiene $Cmd $EnvExtra
     $envPrefix = (@($hy.Env.Keys) | ForEach-Object { "[Environment]::SetEnvironmentVariable('$($_ -replace "'", "''")', '$(([string]$hy.Env[$_]) -replace "'", "''")', 'Process'); " }) -join ''
     # Código de saída real: o do último comando nativo; cmdlet que falha sem código = 1 (contrato do operator, item 2).
@@ -239,13 +240,19 @@ function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [strin
     elseif ($KeepDescendants) { $p.WaitForExit(); $code = $p.ExitCode; $kept = @(Get-DescendantIds $p.Id) }
     else { $p.WaitForExit(); $code = $p.ExitCode; $null = Stop-ProcessTree $p.Id -ChildrenOnly }
     Start-Sleep -Milliseconds 200   # o arquivo de saída fica livre depois que os descendentes saem
+    # v3.57.0 (plugin-report do sprint 5 do garden, item 8): o notebook suspendeu ~9 h no meio da suíte; o relógio de parede
+    # andou horas contra um prazo de minutos, o Karma perdeu a conexão e a rodada reprovou sem defeito no código. Relógio muito
+    # além do prazo = suspensão do sistema: o resultado não vale como prova e quem chama repete a rodada (uma vez).
+    $wallMin = ((Get-Date) - $t0).TotalMinutes + $ClockSkewMin
+    $suspended = $wallMin -gt ($limit * 1.5 + 1)
     if (Test-Path -LiteralPath "$Log.err") { $err = [System.IO.File]::ReadAllText("$Log.err", $u8); if ($err) { [System.IO.File]::AppendAllText($Log, $err, $u8) }; Remove-Item -LiteralPath "$Log.err" -Force }
     if ($timedOut) { [System.IO.File]::AppendAllText($Log, "`nTEMPO ESGOTADO: $limit min — árvore do processo encerrada`n", $u8) }
     [System.IO.File]::AppendAllText($Log, "`nEXIT=$code`n", $u8)
     $d = Get-Decisive $Log
-    $envFail = if ($timedOut) { "tempo esgotado ($limit min): o comando não devolveu o controle — confira modo de observação ou processo que não termina (tool-hygiene.json)" }
+    $envFail = if ($suspended) { "suspensão do sistema detectada: o relógio andou $([int]$wallMin) min contra o prazo de $limit min — a rodada não vale como prova (o runner pode ter perdido a conexão); repita" }
+               elseif ($timedOut) { "tempo esgotado ($limit min): o comando não devolveu o controle — confira modo de observação ou processo que não termina (tool-hygiene.json)" }
                elseif ($code -ne 0) { Get-EnvFailure ([System.IO.File]::ReadAllText($Log, $u8)) } else { $null }
-    $r = [ordered]@{ key = $Key; command = $Cmd; exit = $code; seconds = [int]$sw.Elapsed.TotalSeconds; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive; environment = $envFail; hygiene = @($hy.Tools); warnings = @($hy.Warnings) }
+    $r = [ordered]@{ key = $Key; command = $Cmd; exit = $code; seconds = [int]$sw.Elapsed.TotalSeconds; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive; environment = $envFail; hygiene = @($hy.Tools); warnings = @($hy.Warnings); suspended = $suspended }
     if ($KeepDescendants) { $r.kept = $kept }
     return $r
 }
