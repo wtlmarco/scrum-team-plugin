@@ -204,11 +204,15 @@ $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('team-checks-' + [guid]::New
 # quem testa a cota troca a variável no próprio caso. Nenhum teste grava em %USERPROFILE%\.claude.
 $env:TEAM_QUOTA_LOG = Join-Path $tmp 'sem-cota/quota-log.jsonl'
 $rows = @(); $fail = 0
+# v3.57.0: o tempo de cada caso (do Check anterior a este) entra na linha, e os mais lentos saem no fim — a suíte passou de ~570 s
+# para ~1000 s sem que nenhum caso falhasse, e sem o tempo por caso não havia como achar de onde veio.
+$script:lastT = [datetime]::UtcNow
 function Check([string]$Name, $Result, [int]$Code, [string[]]$Expect) {
+    $nowT = [datetime]::UtcNow; $seg = [int]($nowT - $script:lastT).TotalSeconds; $script:lastT = $nowT
     $ok = $Result.Code -eq $Code
     foreach ($x in $Expect) { if ($Result.Out -notmatch $x) { $ok = $false } }
     if (-not $ok) { $script:fail++; Write-Output "---- $Name (exit $($Result.Code))"; Write-Output $Result.Out }
-    $script:rows += [pscustomobject]@{ Caso = $Name; Exit = $Result.Code; Ok = $(if ($ok) { 'ok' } else { 'FALHOU' }) }
+    $script:rows += [pscustomobject]@{ Caso = $Name; Exit = $Result.Code; Ok = $(if ($ok) { 'ok' } else { 'FALHOU' }); Seg = $seg }
 }
 
 # 1. Caminho feliz: nada falha.
@@ -439,6 +443,20 @@ $env:TEAM_TEST_CLOCK_SKEW_MIN_ONCE = '540'
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
 Remove-Item Env:\TEAM_TEST_CLOCK_SKEW_MIN_ONCE -ErrorAction SilentlyContinue
 Check 'v3.57.0 item 8: suspensão do sistema na 1ª rodada → o verify repete, passa (exit 0) e registra a suspensão, sem reprovar a suíte' $r 0 @('tudo exit 0', 'atenção: build: suspensão do sistema detectada: o relógio andou 5\d\d min contra o prazo de 9 min .* rodada repetida e válida')
+# v3.57.0 (item 12): o build tem prazo próprio (verify.buildTimeoutMinutes); a suíte segue o verify.timeoutMinutes.
+Put $p '.team-project/guards.json' '{ "verify": { "buildTimeoutMinutes": 0.05, "build": "Start-Sleep 8; Write-Output ok", "suite": "Write-Output \"Tests: 12 passed\"; New-Item -ItemType Directory -Force coverage | Out-Null; Set-Content coverage/l.info x" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.57.0 item 12: build acima do verify.buildTimeoutMinutes → exit 124, falha de ambiente (exit 4); a suíte, com o teto dela, passa' $r 4 @('build: exit 124', 'ambiente \(build\): tempo esgotado \(0\.05 min\)', 'suite: exit 0')
+# v3.57.0 (item 14): APK mais velho que o código ao fim de um full verde, com alvo android → aviso já no verify (antes só o accept recusava).
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } }, "verify": { "build": "Write-Output \"Build succeeded. 0 Warning(s)\"", "suite": "Write-Output \"Tests: 12 passed\"; New-Item -ItemType Directory -Force coverage | Out-Null; Set-Content coverage/l.info x" } }'
+Put $p 'app/build/outputs/apk/debug/app-debug.apk' 'apk'
+(Get-Item -LiteralPath (Join-Path $p 'app/build/outputs/apk/debug/app-debug.apk')).LastWriteTime = (Get-Date).AddHours(-1)
+Put $p 'app/src/main/java/A.kt' "class A`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.57.0 item 14: full verde com APK mais velho que o código → "atenção: o APK … não regerou o APK — rode assembleDebug" (exit 0)' $r 0 @('tudo exit 0', 'atenção: o APK app[\\/]build[\\/]outputs[\\/]apk[\\/]debug[\\/]app-debug\.apk é de .* e app[\\/]src[\\/]main[\\/]java[\\/]A\.kt mudou em .*o comando ''build'' não regerou o APK — rode assembleDebug')
+(Get-Item -LiteralPath (Join-Path $p 'app/build/outputs/apk/debug/app-debug.apk')).LastWriteTime = (Get-Date).AddMinutes(5)
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.57.0 item 14: APK mais novo que o código → sem aviso' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'não regerou o APK') { "`nAVISOU" }) } 0 @('tudo exit 0', '^(?![\s\S]*AVISOU)')
 
 # 5d2. verify.ps1 -Mode mutation e C1 R7-mutação (v3.46): a prova de falha declarada no plano, executada e restaurada.
 $p = Join-Path $tmp 'mutacao'; New-Project $p
@@ -2539,6 +2557,8 @@ Check 'v3.57.0 protocolo: target.ps1 -Kill encerra só o processo registrado pel
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
+foreach ($sl in @($rows | Sort-Object Seg -Descending | Select-Object -First 12)) { $sn = [string]$sl.Caso; Write-Output ("lento: {0,5} s  {1}" -f $sl.Seg, $(if ($sn.Length -gt 120) { $sn.Substring(0, 120) } else { $sn })) }
+Write-Output ("soma dos casos: {0} s" -f (($rows | Measure-Object Seg -Sum).Sum))
 Write-Output ("{0} casos · {1} falharam" -f $rows.Count, $fail)
 if ($fail -gt 0) { exit 1 }
 exit 0

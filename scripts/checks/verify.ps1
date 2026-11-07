@@ -32,6 +32,8 @@
 # 5 = OCUPADO (v3.52.3): outra rodada desta Task ainda roda — não dispare outra. v3.53.2: -WaitBusySeconds <n> espera
 #     ela acabar dentro da mesma chamada (até n s; 540 cabe no vigia de 600 s) e segue com a rodada desta chamada.
 # v3.51: -TimeoutMinutes (ou guards.json → verify.timeoutMinutes, padrão 9) por comando; verify.env = variáveis do filho
+# v3.57.0: verify.buildTimeoutMinutes = teto próprio dos comandos "build…" (o APK do Gradle leva mais que a suíte); o resto
+# segue o timeoutMinutes. full verde com alvo android e APK mais velho que o código sai com "atenção: … não regerou o APK".
 # (ex.: GRADLE_USER_HOME numa junção ASCII); a higiene da ferramenta (Gradle sem daemon, dotnet sem reúso de nó, CI=true no
 # node) entra sozinha, de scripts/checks/tool-hygiene.json.
 
@@ -89,6 +91,13 @@ function Get-Commands($Verify, [string]$Key) {
 # ambiente do filho; saída que casa assinatura conhecida de ambiente marca o comando como falha de ambiente.
 $script:hygieneWarnings = @()
 $script:daemonPids = @(); $script:cmdSeconds = 0; $script:cmdRuns = 0
+# v3.57.0 (plugin-report do sprint 5 do garden, item 12): o build do APK (Gradle, assembleDebug) leva mais que a suíte e não tem
+# por que dividir o teto dela. guards.json → verify.buildTimeoutMinutes vale só para os comandos "build…"; o resto segue o
+# verify.timeoutMinutes. Estourou: exit 124, árvore encerrada (o daemon do Gradle, se verify.daemon, fica), falha de ambiente.
+function Get-CommandTimeout([string]$Key) {
+    if ($Key -match '^build' -and $verify -and $verify.PSObject.Properties['buildTimeoutMinutes'] -and [double]$verify.buildTimeoutMinutes -gt 0) { return [double]$verify.buildTimeoutMinutes }
+    return $script:timeoutMinutes
+}
 function Invoke-Logged([string]$Key, [string]$Cmd, [string]$Log) {
     $extra = [ordered]@{}
     if ($verify -and $verify.PSObject.Properties['env'] -and $verify.env) { foreach ($p in $verify.env.PSObject.Properties) { $extra[$p.Name] = [string]$p.Value } }
@@ -96,13 +105,14 @@ function Invoke-Logged([string]$Key, [string]$Cmd, [string]$Log) {
     if ($daemon -and -not $extra.Contains('GRADLE_OPTS')) { $extra['GRADLE_OPTS'] = (([string]$env:GRADLE_OPTS -replace '-Dorg\.gradle\.daemon=\w+', '').Trim() + ' -Dorg.gradle.daemon=true').Trim() }
     # v3.57.0 (item 8): TEAM_TEST_CLOCK_SKEW_MIN_ONCE só existe nos testes — simula o salto de relógio da suspensão na 1ª rodada.
     $skew = 0.0; if ($env:TEAM_TEST_CLOCK_SKEW_MIN_ONCE -and -not $script:skewUsed) { $skew = [double]$env:TEAM_TEST_CLOCK_SKEW_MIN_ONCE; $script:skewUsed = $true }
-    $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $script:timeoutMinutes ([pscustomobject]$extra) -KeepDescendants:$daemon -ClockSkewMin $skew
+    $tmo = Get-CommandTimeout $Key
+    $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon -ClockSkewMin $skew
     # Suspensão do sistema no meio do comando: a rodada não vale como prova — repete UMA vez (protocolo de espera, regra 5) e
     # registra a suspensão. Suspensa de novo, fica como falha de ambiente (exit 4): não é defeito do código.
     if ($r.suspended) {
         $first = [string]$r.environment
         if ($r.Contains('kept')) { $script:daemonPids += @($r.kept) }
-        $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $script:timeoutMinutes ([pscustomobject]$extra) -KeepDescendants:$daemon
+        $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon
         if (-not $r.suspended) { $r.warnings = @($r.warnings) + @("$Key`: $first — rodada repetida e válida") }
     }
     $r.Remove('suspended')
@@ -535,8 +545,7 @@ try {
         }
     }
     # v3.52.3 (note.md item 5): comando perto do teto por comando — ao passar dele, vira exit 4 (ambiente) sem defeito no código.
-    $ceil = [int]($script:timeoutMinutes * 60)
-    $near = @($results | Where-Object { -not $_.environment -and [int]$_.seconds -ge 0.8 * $ceil } | ForEach-Object { "$($_.key) levou $($_.seconds) s, $([int](100 * [int]$_.seconds / $ceil)) % do teto por comando ($ceil s, verify.timeoutMinutes) — ao passar dele vira falha de ambiente (exit 4). Reporte a quem orquestra: o projeto divide o comando em guards.json → verify (lista: suite, suite2…); teto acima de 9 min passa dos 600 s da ferramenta" })
+    $near = @($results | Where-Object { $cl = [int]((Get-CommandTimeout ([string]$_.key)) * 60); -not $_.environment -and [int]$_.seconds -ge 0.8 * $cl } | ForEach-Object { $ceil = [int]((Get-CommandTimeout ([string]$_.key)) * 60); "$($_.key) levou $($_.seconds) s, $([int](100 * [int]$_.seconds / $ceil)) % do teto por comando ($ceil s, verify.timeoutMinutes$(if ($_.key -match '^build' -and $verify.PSObject.Properties['buildTimeoutMinutes']) { ' / buildTimeoutMinutes' })) — ao passar dele vira falha de ambiente (exit 4). Reporte a quem orquestra: o projeto divide o comando em guards.json → verify (lista: suite, suite2…); teto acima de 9 min passa dos 600 s da ferramenta" })
     $after = Get-WorkTree $Root
     $run = [ordered]@{ at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = $tree; tree_after = $after; tests = $Tests; commands = $results }
 
@@ -563,6 +572,15 @@ try {
     if ($tidLines.Count -gt 40) { [Console]::Out.WriteLine("    … e mais $($tidLines.Count - 40) no log testids") }
     if ($tidLines.Count) { [Console]::Out.WriteLine('  ids de teste: o dev cria no código o id que o .scn cita (testTag / data-testid, standards/stacks/<tecnologia>/guide.md) e põe id em todo controle interativo; exceção só com "// sem-testid: <motivo>" na linha ou na anterior') }
     foreach ($w in @($script:hygieneWarnings) + $near) { [Console]::Out.WriteLine("  atenção: $w") }
+    # v3.57.0 (plugin-report do sprint 5 do garden, item 14): o APK mais velho que o código só aparecia no accept (exit 2, "reconstrua"),
+    # depois do dev e do QA. Ao fim de um full verde, num projeto com alvo android, o aviso vem já aqui: o build não regerou o APK.
+    if ($Mode -eq 'full' -and -not $envBad.Count -and -not $bad.Count) {
+        $tcA = Get-TargetsConfig $Root
+        if ($tcA -and $tcA.PSObject.Properties['android']) {
+            $apkA = Get-LatestApk $Root
+            if ($apkA) { $stA = Get-ApkStaleness $apkA; if ($stA.Stale) { $modN = Split-Path $stA.Module -Leaf; [Console]::Out.WriteLine("  atenção: o APK $modN$($stA.ApkFull.Substring($stA.Module.Length)) é de $($stA.ApkTime.ToString('yyyy-MM-dd HH:mm:ss')) e $modN$($stA.File.Substring($stA.Module.Length)) mudou em $($stA.FileTime.ToString('yyyy-MM-dd HH:mm:ss')): o comando 'build' não regerou o APK — rode $($stA.Task) (ou ponha no verify.build do guards.json) antes do accept, que recusa APK velho (exit 2)") } }
+        }
+    }
     if ($after -ne $tree) { [Console]::Out.WriteLine("  atenção: os comandos alteraram a árvore (antes $($tree.Substring(0, 12)), depois $(([string]$after).Substring(0, [Math]::Min(12, ([string]$after).Length)))) — arquivo gerado fora do .gitignore; a evidência vale para a árvore de antes") }
     if ($envBad.Count) { [Console]::Out.WriteLine('  não é defeito do código: não depure; a sessão tenta o reparo do ambiente uma vez (target.ps1 -Repair) e, sem sucesso, bloqueio de ambiente'); exit 4 }
     if ($bad.Count) { exit 1 }

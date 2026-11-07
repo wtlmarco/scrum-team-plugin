@@ -229,11 +229,7 @@ function Repair-Android {
 function Resolve-AndroidApk([string]$Root, [string]$Explicit) {
     if ($Explicit) { return $Explicit }
     if ($script:AdCfg -and $script:AdCfg.apk) { $p = Join-Path $Root ([string]$script:AdCfg.apk); if (Test-Path -LiteralPath $p) { return $p } }
-    $c = Get-ChildItem -Path $Root -Recurse -Filter '*.apk' -File -ErrorAction SilentlyContinue |
-         Where-Object { $_.FullName -match '[\\/]build[\\/]outputs[\\/]apk[\\/](release|debug)[\\/]' -and $_.FullName -notmatch '[\\/](\.team-project|node_modules)[\\/]' -and $_.Name -notmatch 'androidTest' } |
-         Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if ($c) { return $c.FullName }
-    return ''
+    return (Get-LatestApk $Root)   # v3.57.0: a busca vive no lib.ps1 (o verify confere o APK sem carregar o adaptador)
 }
 # applicationId do APK (v3.51.1): aapt2 (build-tools mais novo) ou, sem ele, aapt dump badging.
 function Get-ApkPackage([string]$Apk) {
@@ -247,34 +243,6 @@ function Get-ApkPackage([string]$Apk) {
     return ''
 }
 function Set-AndroidPackage([string]$Pkg) { if ($Pkg) { $script:Pkg = $Pkg } }
-# v3.53.6 (sprint 5 do garden, item 7): o accept reinstala o APK mais novo do disco, mas o APK do disco estava MAIS VELHO que
-# o código (os ids de teste novos não tinham sido construídos) → "tag não encontrada" e um GAP perdido ao Arquiteto. Compara
-# o APK com o arquivo-fonte mais novo do módulo (<módulo>/build/outputs/apk/… → <módulo>/src/** .kt/.java, res/**,
-# AndroidManifest.xml, build.gradle(.kts); sem src/test e src/androidTest). @{ Stale; File; FileTime; ApkTime; Task; Note }.
-function Get-ApkStaleness([string]$Apk) {
-    $r = @{ Stale = $false; Note = '' }
-    if (-not $Apk -or -not (Test-Path -LiteralPath $Apk -PathType Leaf)) { return $r }
-    $full = (Resolve-Path -LiteralPath $Apk).Path
-    $m = [regex]::Match($full, '^(.*)[\\/]build[\\/]outputs[\\/]apk[\\/]')
-    if (-not $m.Success) { $r.Note = "idade do APK não conferida: o módulo não se infere de $Apk (esperado <módulo>/build/outputs/apk/…)"; return $r }
-    $mod = $m.Groups[1].Value; $apkTime = (Get-Item -LiteralPath $full).LastWriteTime
-    $cands = @()
-    foreach ($g in 'build.gradle', 'build.gradle.kts') { $p = Join-Path $mod $g; if (Test-Path -LiteralPath $p) { $cands += Get-Item -LiteralPath $p } }
-    $src = Join-Path $mod 'src'
-    if (Test-Path -LiteralPath $src) {
-        $cands += @(Get-ChildItem -LiteralPath $src -Recurse -File -ErrorAction SilentlyContinue | Where-Object {
-            $rel = $_.FullName.Substring($src.Length) -replace '\\', '/'
-            $rel -notmatch '^/(test|androidTest|testDebug\w*|testRelease\w*|sharedTest|testFixtures)/' -and ($_.Extension -in '.kt', '.java' -or $_.Name -eq 'AndroidManifest.xml' -or $rel -match '^/[^/]+/res/')
-        })
-    }
-    if (-not $cands.Count) { $r.Note = "idade do APK não conferida: nenhum código-fonte em $mod"; return $r }
-    $newest = $cands | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if ($newest.LastWriteTime -gt $apkTime.AddSeconds(2)) {
-        $r.Stale = $true; $r.File = $newest.FullName; $r.FileTime = $newest.LastWriteTime; $r.ApkTime = $apkTime
-        $r.Task = if ($full -match '[\\/]release[\\/]') { 'assembleRelease' } else { 'assembleDebug' }
-    }
-    return $r
-}
 function Install-AndroidApk([string]$Apk) {
     if (-not $Apk) { return $null }
     if (-not (Test-Path -LiteralPath $Apk)) { return "APK não existe: $Apk" }

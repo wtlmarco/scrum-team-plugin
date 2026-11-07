@@ -378,6 +378,44 @@ function Stop-Detached([string]$Root, [string]$Target) {
     return [pscustomobject]$res
 }
 
+# APK mais recente de <projeto>/**/build/outputs/apk/{release,debug}/ (v3.57.0: no lib.ps1; era a busca do Resolve-AndroidApk).
+function Get-LatestApk([string]$Root) {
+    $c = Get-ChildItem -Path $Root -Recurse -Filter '*.apk' -File -ErrorAction SilentlyContinue |
+         Where-Object { $_.FullName -match '[\\/]build[\\/]outputs[\\/]apk[\\/](release|debug)[\\/]' -and $_.FullName -notmatch '[\\/](\.team-project|node_modules)[\\/]' -and $_.Name -notmatch 'androidTest' } |
+         Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($c) { return $c.FullName }
+    return ''
+}
+# (movido do targets/android.ps1 na v3.57.0: o verify full também confere o APK ao fim do build)
+# v3.53.6 (sprint 5 do garden, item 7): o accept reinstala o APK mais novo do disco, mas o APK do disco estava MAIS VELHO que
+# o código (os ids de teste novos não tinham sido construídos) → "tag não encontrada" e um GAP perdido ao Arquiteto. Compara
+# o APK com o arquivo-fonte mais novo do módulo (<módulo>/build/outputs/apk/… → <módulo>/src/** .kt/.java, res/**,
+# AndroidManifest.xml, build.gradle(.kts); sem src/test e src/androidTest). @{ Stale; File; FileTime; ApkTime; Task; Note }.
+function Get-ApkStaleness([string]$Apk) {
+    $r = @{ Stale = $false; Note = '' }
+    if (-not $Apk -or -not (Test-Path -LiteralPath $Apk -PathType Leaf)) { return $r }
+    $full = (Resolve-Path -LiteralPath $Apk).Path
+    $m = [regex]::Match($full, '^(.*)[\\/]build[\\/]outputs[\\/]apk[\\/]')
+    if (-not $m.Success) { $r.Note = "idade do APK não conferida: o módulo não se infere de $Apk (esperado <módulo>/build/outputs/apk/…)"; return $r }
+    $mod = $m.Groups[1].Value; $apkTime = (Get-Item -LiteralPath $full).LastWriteTime
+    $cands = @()
+    foreach ($g in 'build.gradle', 'build.gradle.kts') { $p = Join-Path $mod $g; if (Test-Path -LiteralPath $p) { $cands += Get-Item -LiteralPath $p } }
+    $src = Join-Path $mod 'src'
+    if (Test-Path -LiteralPath $src) {
+        $cands += @(Get-ChildItem -LiteralPath $src -Recurse -File -ErrorAction SilentlyContinue | Where-Object {
+            $rel = $_.FullName.Substring($src.Length) -replace '\\', '/'
+            $rel -notmatch '^/(test|androidTest|testDebug\w*|testRelease\w*|sharedTest|testFixtures)/' -and ($_.Extension -in '.kt', '.java' -or $_.Name -eq 'AndroidManifest.xml' -or $rel -match '^/[^/]+/res/')
+        })
+    }
+    if (-not $cands.Count) { $r.Note = "idade do APK não conferida: nenhum código-fonte em $mod"; return $r }
+    $newest = $cands | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($newest.LastWriteTime -gt $apkTime.AddSeconds(2)) {
+        $r.Stale = $true; $r.File = $newest.FullName; $r.FileTime = $newest.LastWriteTime; $r.ApkTime = $apkTime; $r.Module = $mod; $r.ApkFull = $full
+        $r.Task = if ($full -match '[\\/]release[\\/]') { 'assembleRelease' } else { 'assembleDebug' }
+    }
+    return $r
+}
+
 # Alvos de execução (v3.51, D3): guards.json → targets ({ "android": {…}, "web": {…} }). $null sem a chave.
 # v3.52.2 (note.md item 8): "targets": {} (o modelo do guards.json) também é $null — o objeto vazio é verdadeiro no
 # PowerShell, e o next pedia .scn em laço, o plan.ps1 reprovava o cabeçalho de cenário e o close.ps1 o R7-aceite.
