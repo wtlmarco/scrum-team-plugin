@@ -204,11 +204,15 @@ $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('team-checks-' + [guid]::New
 # quem testa a cota troca a variável no próprio caso. Nenhum teste grava em %USERPROFILE%\.claude.
 $env:TEAM_QUOTA_LOG = Join-Path $tmp 'sem-cota/quota-log.jsonl'
 $rows = @(); $fail = 0
+# v3.57.0: o tempo de cada caso (do Check anterior a este) entra na linha, e os mais lentos saem no fim — a suíte passou de ~570 s
+# para ~1000 s sem que nenhum caso falhasse, e sem o tempo por caso não havia como achar de onde veio.
+$script:lastT = [datetime]::UtcNow
 function Check([string]$Name, $Result, [int]$Code, [string[]]$Expect) {
+    $nowT = [datetime]::UtcNow; $seg = [int]($nowT - $script:lastT).TotalSeconds; $script:lastT = $nowT
     $ok = $Result.Code -eq $Code
     foreach ($x in $Expect) { if ($Result.Out -notmatch $x) { $ok = $false } }
     if (-not $ok) { $script:fail++; Write-Output "---- $Name (exit $($Result.Code))"; Write-Output $Result.Out }
-    $script:rows += [pscustomobject]@{ Caso = $Name; Exit = $Result.Code; Ok = $(if ($ok) { 'ok' } else { 'FALHOU' }) }
+    $script:rows += [pscustomobject]@{ Caso = $Name; Exit = $Result.Code; Ok = $(if ($ok) { 'ok' } else { 'FALHOU' }); Seg = $seg }
 }
 
 # 1. Caminho feliz: nada falha.
@@ -433,6 +437,26 @@ $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
 Check 'verify full com suíte reprovada: exit 1 e o código real' $r 1 @('suite: exit 4')
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'C1 R7-verify falhou com verify vermelho' $r 1 @('\| R7-verify \| falhou.*suite exit 4')
+# v3.57.0 (item 8): suspensão do sistema no meio do comando — o relógio andou horas contra o prazo; a rodada é repetida uma vez.
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output \"Build succeeded. 0 Warning(s)\"", "suite": "Write-Output \"Tests: 12 passed\"; New-Item -ItemType Directory -Force coverage | Out-Null; Set-Content coverage/l.info x" } }'
+$env:TEAM_TEST_CLOCK_SKEW_MIN_ONCE = '540'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Remove-Item Env:\TEAM_TEST_CLOCK_SKEW_MIN_ONCE -ErrorAction SilentlyContinue
+Check 'v3.57.0 item 8: suspensão do sistema na 1ª rodada → o verify repete, passa (exit 0) e registra a suspensão, sem reprovar a suíte' $r 0 @('tudo exit 0', 'atenção: build: suspensão do sistema detectada: o relógio andou 5\d\d min contra o prazo de 9 min .* rodada repetida e válida')
+# v3.57.0 (item 12): o build tem prazo próprio (verify.buildTimeoutMinutes); a suíte segue o verify.timeoutMinutes.
+Put $p '.team-project/guards.json' '{ "verify": { "buildTimeoutMinutes": 0.05, "build": "Start-Sleep 8; Write-Output ok", "suite": "Write-Output \"Tests: 12 passed\"; New-Item -ItemType Directory -Force coverage | Out-Null; Set-Content coverage/l.info x" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.57.0 item 12: build acima do verify.buildTimeoutMinutes → exit 124, falha de ambiente (exit 4); a suíte, com o teto dela, passa' $r 4 @('build: exit 124', 'ambiente \(build\): tempo esgotado \(0\.05 min\)', 'suite: exit 0')
+# v3.57.0 (item 14): APK mais velho que o código ao fim de um full verde, com alvo android → aviso já no verify (antes só o accept recusava).
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } }, "verify": { "build": "Write-Output \"Build succeeded. 0 Warning(s)\"", "suite": "Write-Output \"Tests: 12 passed\"; New-Item -ItemType Directory -Force coverage | Out-Null; Set-Content coverage/l.info x" } }'
+Put $p 'app/build/outputs/apk/debug/app-debug.apk' 'apk'
+(Get-Item -LiteralPath (Join-Path $p 'app/build/outputs/apk/debug/app-debug.apk')).LastWriteTime = (Get-Date).AddHours(-1)
+Put $p 'app/src/main/java/A.kt' "class A`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.57.0 item 14: full verde com APK mais velho que o código → "atenção: o APK … não regerou o APK — rode assembleDebug" (exit 0)' $r 0 @('tudo exit 0', 'atenção: o APK app[\\/]build[\\/]outputs[\\/]apk[\\/]debug[\\/]app-debug\.apk é de .* e app[\\/]src[\\/]main[\\/]java[\\/]A\.kt mudou em .*o comando ''build'' não regerou o APK — rode assembleDebug')
+(Get-Item -LiteralPath (Join-Path $p 'app/build/outputs/apk/debug/app-debug.apk')).LastWriteTime = (Get-Date).AddMinutes(5)
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.57.0 item 14: APK mais novo que o código → sem aviso' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'não regerou o APK') { "`nAVISOU" }) } 0 @('tudo exit 0', '^(?![\s\S]*AVISOU)')
 
 # 5d2. verify.ps1 -Mode mutation e C1 R7-mutação (v3.46): a prova de falha declarada no plano, executada e restaurada.
 $p = Join-Path $tmp 'mutacao'; New-Project $p
@@ -449,7 +473,7 @@ $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'C1 R7-mutação sem execução: não fecha' $r 1 @('\| R7-verify \| falhou', '\| R7-mutação \| falhou.*M1 e nenhuma execução')
 $null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
-Check 'verify mutation: M1 pega, árvore restaurada igual' $r 0 @('restaurada igual', 'M1 src/calc.ts: ok')
+Check 'verify mutation: M1 pega, árvore restaurada igual (v3.57.0: sem verify.compile, o aviso alto de que a compilação dos mutantes não foi conferida)' $r 0 @('restaurada igual', 'M1 src/calc.ts: ok', 'ATENÇÃO: o projeto não declara verify\.compile em guards\.json')
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'C1 R7-mutação ok' $r 0 @('\| R7-verify \| ok', '\| R7-mutação \| ok.*1 mutação')
 Edit-File (Join-Path $p $pl) '- M1 · teste' "- M2 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``// fim`` → ``// x```n- M1 · teste"
@@ -635,7 +659,7 @@ Edit-File $sb '[`plan/T-041a-x.md`](plan/)' '[`plan/T-041a-x.md`](plan/T-041a-x.
 Edit-File $sb "| $($e.qa) T-041 | Endpoint de exportação | 1 | dev | — |" "| $($e.todo) T-041 | Endpoint de exportação | 1 | dev | T-041a |"
 Edit-File $sb "| T-041 | [``plan/T-041a-x.md``]" "| — | [``plan/T-041a-x.md``]"
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
-Check 'v3.53.2: Task cujo cenário aguarda outra Task não é construída antes dela (o bloqueio aparece)' $r 3 @('nenhuma Task elegível — .*T-041a espera T-041')
+Check 'v3.53.2: Task cujo cenário aguarda outra Task não é construída antes dela (o bloqueio aparece; v3.57.0: o ciclo T-041 ↔ T-041a é dito e a Task não espera por si mesma)' $r 3 @('nenhuma Task elegível — .*T-041a espera T-041', 'CICLO de espera: (T-041 → T-041a → T-041|T-041a → T-041 → T-041a)', '^(?![\s\S]*T-041 espera T-041a,T-041)')
 Edit-File $sb "| $($e.todo) T-041 | Endpoint de exportação | 1 | dev | T-041a |" "| $($e.ok) T-041 | Endpoint de exportação | 1 | dev | — |"
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'v3.53.2: fechada a Task que cria os nomes, o next pede o cenário que aguardava (QA)' $r 0 @('cenários executáveis da História H-014', 'SC-016', "aguarda <T-ID>")
@@ -1071,6 +1095,21 @@ Check 'run next depois do ponto seguro: RETOMADA pelo marcador e o marcador sai 
 $p = Join-Path $tmp 'gap'; New-Project $p
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
 Check 'run done gap com a Task em 🟪: volta a 🟨 (garden 22)' $r 0 @("mark: T-041 $($e.qa) → $($e.build)", 'GAP')
+# v3.57.0 (item 9): a natureza que o dev marcou no GAP decide quem responde.
+$dgp = Join-Path $p '.team-project/sprints/1/delivery/T-041.md'
+function Put-Gap([string]$Nat) { Put $p '.team-project/sprints/1/delivery/T-041.md' ("## Entrega — T-041`n`n🔺 GAP — T-041 — passo 2 do plano`n`n**Tipo:** plano`n" + $(if ($Nat) { "**Natureza:** $Nat`n" } else { '' }) + "**O que encontrei no código:** a.ts:3 — x`n") }
+Put-Gap 'aparência'
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.57.0 item 9: GAP natureza aparência → parecer curto do Arquiteto (prompt com PARECER CURTO, até 8 linhas)' $r 0 @('GAP de natureza APARÊNCIA — parecer curto do Arquiteto', 'prompt: "PARECER CURTO \(GAP de aparência ou marcação\)', 'em até 8 linhas', 'Arquiteto em instância NOVA')
+Put-Gap 'produto'
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.57.0 item 9: GAP natureza produto → decisão do STAKEHOLDER (formulário), sem disparar o Arquiteto' $r 0 @('GAP de natureza PRODUTO — a decisão é do STAKEHOLDER', 'não dispare Arquiteto nem start', '^(?![\s\S]*prompt:)', '^(?![\s\S]*Arquiteto em instância NOVA)')
+Put-Gap 'desenho'
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.57.0 item 9: GAP natureza desenho → ciclo completo do Arquiteto, sem parecer curto' $r 0 @('Arquiteto em instância NOVA', 'prompt: "Decida o 🔺 GAP da T-041', '^(?![\s\S]*PARECER CURTO)')
+Put-Gap ''
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.57.0 item 9: GAP sem **Natureza:** → tratado como desenho, e o aviso diz que o dev marca a natureza' $r 0 @('GAP sem \*\*Natureza:\*\* — tratado como desenho', 'Arquiteto em instância NOVA', '^(?![\s\S]*PARECER CURTO)')
 
 # 11d. run.ps1 next com o sinal de limite de uso e a estimativa do que falta (note.md 2 e 11).
 $p = Join-Path $tmp 'limite'; New-Project $p
@@ -1123,6 +1162,13 @@ $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan',
 Check 'verify mutation -Precheck: M1 pronta, M2 não compila, M3 sem trecho; árvore igual; exit 1' $r 1 @('1 de 3 mutação', 'M2: o mutante não compila', 'M3: o trecho aparece 0 vez')
 $ErrorActionPreference = 'Continue'; $st = (& git -C $p status --porcelain 2>$null) -join ' '; $ErrorActionPreference = 'Stop'
 Check 'verify -Precheck devolve o arquivo igual' @{ Code = $(if ($st -notmatch 'calc\.ts') { 0 } else { 1 }); Out = $st } 0 @()
+# v3.57.0 (item A6): com verify.compile declarado, a mutação roda o Precheck sozinha antes e para cedo com a lista (nada de ~20 min
+# até descobrir um mutante que não compila); com um Precheck verde registrado para a árvore, não repete.
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+Check 'v3.57.0 A6: mutação sem -Precheck e com verify.compile → Precheck automático, para cedo no mutante que não compila (exit 1)' $r 1 @('Precheck \(automático, antes da mutação\)', 'M2: o mutante não compila', 'M3: o trecho aparece 0 vez')
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Precheck', '-Only', 'M1', '-Root', $p)
+$r2 = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Only', 'M1', '-Root', $p)
+Check 'v3.57.0 A6: Precheck verde registrado para a árvore → a mutação seguinte não o repete' @{ Code = 0; Out = "pre=$($r.Code) " + $r2.Out + $(if ($r2.Out -match 'automático') { "`nREPETIU" }) } 0 @('pre=0', '^(?![\s\S]*REPETIU)')
 
 # 12. v3.52.2 — note.md itens 2 a 17 (sprint 3 do piloto) e os contratos C1 a C8 da spec.
 # 12a. item 8: "targets": {} (o modelo do guards.json) não é alvo configurado.
@@ -1373,7 +1419,7 @@ Put $p '.team-project/.active-agents' ('[{"type":"team:developer","description":
 $r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
 Check 'item 3: start com dev vivo da Task (processo hospedeiro vivo): exit 2, não dispara outro' $r 2 @('já tem um dev vivo \(agent_id devviv1', 'duas instâncias no mesmo alvo')
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
-Check 'item 3: next com dev vivo da Task em 🟨: esperar, exit 3' $r 3 @('PRÓXIMA AÇÃO: esperar — a T-041 já tem developer vivo')
+Check 'item 3: next com dev vivo da Task em 🟨: esperar, exit 3 (v3.57.0: e a linha do vigia, sem ID de Task no disparo)' $r 3 @('PRÓXIMA AÇÃO: esperar — a T-041 já tem developer vivo', "conferência por tempo \(protocolo de espera\): dispare o vigia — Agent\(subagent_type 'team:vigia', model 'haiku', description 'Vigia da espera', prompt 'Rode a sonda do seu roteiro e devolva a linha\.'\), sem ID de Task")
 Put $p '.team-project/.active-agents' ('[{"type":"team:developer","desde":"' + $n0 + '","session":"sOutra","parent":"","agent_id":"devmor1","work":"T-041","last":"x","at":"' + $n0 + '","host_pid":999999,"host_start":"2001-01-01 00:00:00"}]')
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'item 3: processo hospedeiro encerrado: o next segue com o executor' $r 0 @('PRÓXIMA AÇÃO: construir T-041')
@@ -1783,6 +1829,29 @@ Check 'v3.53.6 item 4: id do .scn fora do código (o do teste não conta) e cont
     '^(?![\s\S]*outro\.id)', '^(?![\s\S]*so\.no\.teste)', '^(?![\s\S]*Tela\.kt:18)', '^(?![\s\S]*Form\.tsx)', 'o dev cria no código o id que o \.scn cita')
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'check', '-Root', $p)
 Check 'v3.53.6 item 4: verify check vê o full com testids reprovado' $r 1 @('full com falha', 'testids: exit 1')
+# v3.57.0 (item 7): id que só existe em tempo de execução, declarado dinâmico — pelo guards.json ou por comentário no código —
+# não reprova (fica listado como não conferido); o que não foi declarado continua reprovando.
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output \"Build succeeded\"" }, "testIds": { "dynamic": ["lista.item.*"] } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.57.0 item 7: testIds.dynamic ["lista.item.*"] → lista.item. e lista.item.7 não reprovam (listados como não conferidos); horta.salvar e os controles seguem reprovando' $r 1 @('ids de teste: id dinâmico declarado \(lista\.item\.\*\), não conferido estaticamente: lista\.item\.7 — SC-014', 'ids de teste: id dinâmico declarado \(lista\.item\.\*\), não conferido estaticamente: lista\.item\. — SC-014', 'id ausente no código: horta\.salvar', '^(?![\s\S]*id ausente no código: lista\.item)')
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output \"Build succeeded\"" } }'
+Put $p 'app/src/main/java/x/Tela.kt' ($kt2 + "`n// testid-dinamico: lista.item.* — montado pelo LazyColumn a partir da chave da entidade`n")
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.57.0 item 7: "// testid-dinamico: lista.item.* — <motivo>" no código vale como a declaração do guards.json' $r 1 @('id dinâmico declarado \(lista\.item\.\*\), não conferido estaticamente: lista\.item\.7', '^(?![\s\S]*id ausente no código: lista\.item)', 'id ausente no código: horta\.salvar')
+# v3.57.0 (item 7): controles com "id" e o atributo não declarado — o gate assumia data-testid e reprovava sem dizer por quê.
+$pi = Join-Path $tmp 'v3570-attr'; New-Project $pi
+$ErrorActionPreference = 'Continue'
+& git -C $pi init -q 2>$null; Put $pi '.gitignore' ".team-project/`nbuild/`n"; Put $pi 'README.md' "x`n"
+& git -C $pi add -A 2>$null; & git -C $pi -c user.email=t@t -c user.name=t commit -qm init 2>$null
+$ErrorActionPreference = 'Stop'
+Put $pi '.team-project/guards.json' '{ "verify": { "build": "Write-Output \"Build succeeded\"" } }'
+Edit-File (Join-Path $pi '.team-project/sprints/1/plan/T-041-export.md') '## 3. Ambiente' ("**Arquivos tocados:** ``web/src/app/lista.html```n`n## 3. Ambiente")
+Put $pi 'web/src/app/lista.html' "<button id=`"limpar`" (click)=`"limpar()`">Limpar</button>`n<input id=`"nome`" />`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pi)
+Check 'v3.57.0 item 7: controles com id e atributo não declarado → reprova, mas diz que o gate assumiu data-testid e que o stakeholder declara testIds.attribute' $r 1 @('testids: exit 1', 'ids de teste: atributo de teste não declarado: o gate assumiu data-testid, mas 2 dos 2 controle\(s\) sem data-testid têm id', 'testIds\.attribute: "id"')
+Put $pi '.team-project/guards.json' '{ "verify": { "build": "Write-Output \"Build succeeded\"" }, "testIds": { "attribute": "id" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pi)
+Check 'v3.57.0 item 7: com testIds.attribute "id" declarado, os mesmos controles passam e não há aviso' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'atributo de teste não declarado') { "`nAVISOU" }) } 0 @('tudo exit 0', '^(?![\s\S]*AVISOU)')
 
 # v3.55.0 (C2/C3): atributo configurável (testIds.attribute), controles do Ionic, item de lista e raiz da tela.
 $pa = Join-Path $tmp 'v355-attr'; New-Item -ItemType Directory -Force $pa | Out-Null
@@ -2046,6 +2115,15 @@ Check 'v3.53.7: com layout novo, premissa de geometria medida por leitura (node_
 Put $p $pl ($h7 + "`n" + $b7 + "### Premissas`n- P1 · o popover abre abaixo do campo, sem sobreposição · medido: job ``operator/1/T-080-plano/`` → caixa do popover y=212, campo y2=200`n- P2 · a margem do card é 16 px · não exercitada: o card nasce no passo 2 · verifica: dev em passo 4 (teste de render)`n" + $f7)
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.53.7: geometria medida pela sonda do operator, ou não exercitada com o dev no render, passa' $r 0 @('\| premissa \| ok.*2 premissa\(s\): 1 medida')
+# v3.57.0 (item 9, regra 33): com Layout novo: sim, o plano traz o envelope de decisão das medidas — o aviso não reprova.
+Check 'v3.57.0 item 9: Layout novo: sim sem **Envelope de medidas** → aviso da regra 33 (exit 0, não reprova)' $r 0 @('\| envelope \| ok.*AVISO \(regra 33\): \*\*Layout novo:\*\* sim sem \*\*Envelope de medidas\*\*')
+$env7 = "**Envelope de medidas**:`n- E1 · espaçamento entre os dois botões · sonda: ``operator/1/T-080-plano/medida.ps1`` · (a) se medir 0 px → aplique gap de 8 px · (b) se medir 8 px → nada · fora disso → 🔺 GAP ``aparência```n`n"
+Put $p $pl ($h7 + "`n" + $b7 + $env7 + "### Premissas`n- P1 · o popover abre abaixo do campo, sem sobreposição · medido: job ``operator/1/T-080-plano/`` → caixa do popover y=212, campo y2=200`n- P2 · a margem do card é 16 px · não exercitada: o card nasce no passo 2 · verifica: dev em passo 4 (teste de render)`n" + $f7)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.57.0 item 9: envelope com sonda e os casos (a)/(b) → ok, 1 medida' $r 0 @('\| envelope \| ok.*1 medida\(s\) com sonda e árvore de decisão', '^(?![\s\S]*AVISO \(regra 33\))')
+Put $p $pl ($h7 + "`n" + $b7 + "**Envelope de medidas**:`n- E1 · espaçamento entre os botões · (a) se medir 0 px → aplique gap de 8 px`n`n### Premissas`n- P1 · o popover abre abaixo do campo, sem sobreposição · medido: job ``operator/1/T-080-plano/`` → caixa do popover y=212, campo y2=200`n- P2 · a margem do card é 16 px · não exercitada: o card nasce no passo 2 · verifica: dev em passo 4 (teste de render)`n" + $f7)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.57.0 item 9: linha do envelope sem sonda e sem o caso (b) → aviso que nomeia a linha (E1)' $r 0 @('\| envelope \| ok.*AVISO \(regra 33\): 1 linha\(s\) do envelope sem sonda: `<comando>` ou sem os casos \(a\) e \(b\) "se medir …": E1')
 Put $p '.team-project/architect/decisions/S1.md' "# Decisões do sprint 1`n`n## D-1 — Emulador fora do ar`n**Vale para:** todas · **Origem:** 🔺 GAP da T-041 · 2026-11-02`nCom o alvo fora do ar depois do reparo, a Task vai a bloqueada com prova no alvo pendente.`n`n## D-2 — APK antes do accept`n**Vale para:** T-080 · **Origem:** 🔺 GAP da T-041`nReconstruir o APK com assembleDebug antes de todo accept da Task de ids de teste.`n"
 Put $p $pl ($h7 + "**Decisões do sprint:** D-1, D-9`n`n" + $b7 + "Reconstruir o APK com assembleDebug antes de todo accept da Task de ids de teste.`n`n### Premissas`n- P1 · src tem a.ts · medido: ``ls src`` → a.ts`n- P2 · a margem é 16 px · não exercitada: nasce no passo 2 · verifica: dev em passo 4`n" + $f7)
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
@@ -2322,6 +2400,18 @@ Check 'v3.56.0 H2: a divergência entra uma vez só no run-log' @{ Code = 0; Out
 $r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
 $ct = [System.IO.File]::ReadAllText($card, $utf8)
 Check 'v3.56.0 H2: plano com "nenhum — motivo" → cartão sem linha de accept' @{ Code = $r.Code; Out = $ct + $(if ($ct -match 'accept\.ps1 -Task') { "`nTEM-ACCEPT" }) } 0 @('\*\*Cenários \(do plano\):\*\* nenhum no alvo', '^(?![\s\S]*TEM-ACCEPT)')
+# v3.57.0 (item 9): o envelope de medidas do plano vai ao cartão, com a regra de um GAP por Task.
+[System.IO.File]::WriteAllText($plT, [System.IO.File]::ReadAllText($plT, $utf8) + "`n**Envelope de medidas**:`n- E1 · espaçamento entre os botões · sonda: ``operator/1/T-041-plano/medida.ps1`` · (a) se medir 0 px → gap de 8 px · (b) se medir 8 px → nada · fora disso → 🔺 GAP ``aparência```n", $utf8)
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$ct = [System.IO.File]::ReadAllText($card, $utf8)
+Check 'v3.57.0 item 9: o cartão traz o envelope do plano (a sonda e os casos) e a regra de medir tudo antes de abrir um único GAP' @{ Code = $r.Code; Out = $ct } 0 @('\*\*Envelope de medidas\*\* \(do plano — meça com a sonda e aplique o caso medido', 'um GAP por Task', '- E1 · espaçamento entre os botões · sonda: `operator/1/T-041-plano/medida\.ps1`')
+# v3.57.0 (plugin-report do sprint 5 do garden, item 5): o plano que DECLARA que o aceite não roda vale mais que a lista de cenários.
+[System.IO.File]::WriteAllText($plT, [System.IO.File]::ReadAllText($plT, $utf8).Replace('**Cenários:** nenhum — o GAP tirou a prova de tela', "**Cenários:** SC-014`n**Aceite:** não roda — emulador indisponível neste sprint (D-3)"), $utf8)
+$r = Invoke-Check 'run.ps1' @('handoff', '-Task', 'T-041', '-Root', $p)
+$ct = [System.IO.File]::ReadAllText($card, $utf8)
+Check 'v3.57.0 item 5: plano com "**Aceite:** não roda — motivo" (e Cenários ainda com SC-014) → cartão sem comando de accept, com o motivo do plano e SC-014 por teste' @{ Code = $r.Code; Out = $ct + $(if ($ct -match 'accept\.ps1 -Task') { "`nTEM-ACCEPT" }) } 0 @('\*\*Cenários \(do plano\):\*\* o accept não roda nesta Task — o plano declara: Aceite: não roda — emulador indisponível neste sprint \(D-3\); os cenários se provam pelos testes do plano \(não rode o accept\.ps1\)', 'por teste do plano, sem accept: SC-014', '^(?![\s\S]*TEM-ACCEPT)')
+$r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
+Check 'v3.57.0 item 5: start com o aceite declarado como não rodando não manda o accept' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'accept\.ps1 -Task T-041') { "`nTEM-ACCEPT" }) } 0 @('o plano manda — ordem do cartão que contradiga o plano', '^(?![\s\S]*TEM-ACCEPT)')
 
 # v3.56.0 A (regra 29 ampliada): toda decisão de GAP declara Origem e Lição; K citada inexistente ou copiada reprova (B).
 $p = Join-Path $tmp 'v3560-licao'; New-Project $p
@@ -2410,8 +2500,117 @@ Check 'v3.56.0 F: close do sprint migrado — D-1 → K-1, D-2 → K-2 sem Até,
 $r = Invoke-Check 'knowledge.ps1' @('-Migrate', '-Apply', '-Retire', 'K-3', '-Root', $p)
 Check 'v3.56.0 F: o update retira a K cujo Até chegou' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/architect/knowledge.md'), $utf8) } 0 @('K-3 — node:test fora do verify: retirada', '^(?![\s\S]*## K-3)', '## K-2')
 
+# v3.57.0 — protocolo de espera: guarda de processo solto e casos do Invoke-Bounded (lib.ps1).
+# Guarda: todo Start-Process / Process]::Start fora do lib.ps1 (e dos testes) leva "# protocolo: adb" ou "# protocolo: desprendido"
+# na linha ou na anterior — o comando de terceiros passa pelo Invoke-Bounded; só o adb (prazo próprio) e o processo que deve
+# sobreviver (emulador, servidor web) ficam de fora, com a marca. StandardOutput.ReadToEnd é proibido: lê pipe sem prazo.
+$loose = @()
+foreach ($sf in @(Get-ChildItem -LiteralPath (Resolve-Path (Join-Path $checks '..')).Path -Recurse -Filter '*.ps1' | Where-Object { $_.FullName -notmatch '[\\/]tests[\\/]' -and $_.Name -ne 'lib.ps1' })) {
+    $ln = [System.IO.File]::ReadAllLines($sf.FullName, $utf8)
+    for ($i = 0; $i -lt $ln.Count; $i++) {
+        if ($ln[$i].TrimStart().StartsWith('#')) { continue }
+        if ($ln[$i] -match 'StandardOutput\.ReadToEnd\(\)|StandardError\.ReadToEnd\(\)') { $loose += "$($sf.Name):$($i + 1) leitura de pipe sem prazo (ReadToEnd)"; continue }
+        if ($ln[$i] -match 'Start-Process|Process\]::Start') {
+            $mark = ($ln[$i] -match '#\s*protocolo:\s*(adb|desprendido)') -or ($i -gt 0 -and $ln[$i - 1] -match '#\s*protocolo:\s*(adb|desprendido)')
+            if (-not $mark) { $loose += "$($sf.Name):$($i + 1) processo disparado fora do Invoke-Bounded e sem marca de protocolo" }
+        }
+    }
+}
+Check 'v3.57.0 protocolo: nenhum processo solto — Start-Process/Process::Start fora do lib.ps1 só com "# protocolo: adb|desprendido"' @{ Code = [int]($loose.Count -gt 0); Out = $(if ($loose.Count) { $loose -join "`n" } else { 'sem processo solto' }) } 0 @('sem processo solto')
+
+$bt = Join-Path $tmp 'bounded-test.ps1'
+[System.IO.File]::WriteAllText($bt, @'
+param([string]$Lib, [string]$Root)
+. $Lib
+$kid = 'Start-Process powershell -ArgumentList ''-NoProfile'',''-Command'',''Start-Sleep 12'' -NoNewWindow; "pronto"'
+$r = Invoke-Bounded $Root $kid 60 -KeepDescendants
+"A filho-herdado-sobrevive: rapido=$($r.seconds -lt 10) exit=$($r.exit) timedOut=$($r.timedOut) kept=$(@($r.kept).Count -ge 1) out=$($r.out)"
+$r = Invoke-Bounded $Root $kid 60
+"B sem-keep-filho-morre: rapido=$($r.seconds -lt 10) kept=$(@($r.kept).Count)"
+$r = Invoke-Bounded $Root 'Start-Sleep 30' 2
+"C prazo: exit=$($r.exit) timedOut=$($r.timedOut) rapido=$($r.seconds -lt 15)"
+$r = Invoke-Bounded $Root '"v=$env:XPTO"; $l = [Console]::In.ReadLine(); "in=$l"; exit 7' 20 -Env @{ XPTO = 'abc' } -InputText "ola`n"
+"D exit-env-stdin: exit=$($r.exit) out=$(($r.out -replace '\r?\n', '|'))"
+$r = Invoke-Bounded $Root 'Write-Error "falhou aqui"; exit 5' 20
+"E erro-visivel: exit=$($r.exit) msg=$($r.out -match 'falhou aqui')"
+'@, $utf8)
+$bo = (& powershell -NoProfile -ExecutionPolicy Bypass -File $bt -Lib (Join-Path $checks 'lib.ps1') -Root $tmp 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.57.0 protocolo: Invoke-Bounded — filho com saída herdada não prende (sobrevive só com -KeepDescendants), prazo vira 124, exit/env/stdin passam, erro aparece' @{ Code = 0; Out = $bo } 0 @('A filho-herdado-sobrevive: rapido=True exit=0 timedOut=False kept=True out=pronto', 'B sem-keep-filho-morre: rapido=True kept=0', 'C prazo: exit=124 timedOut=True rapido=True', 'D exit-env-stdin: exit=7 out=v=abc\|in=ola', 'E erro-visivel: exit=5 msg=True')
+
+# v3.57.0 (item 6) — Find-WaitCycle: ciclo de 2 e de 3 Tasks, ciclo com cauda, e fila sem ciclo (espera por Task fora do quadro não é ciclo).
+$wc = Join-Path $tmp 'waitcycle-test.ps1'
+[System.IO.File]::WriteAllText($wc, @'
+param([string]$Lib)
+. $Lib
+function T([hashtable]$e) { return (@(Find-WaitCycle $e) -join '>') }
+"1 sem=" + (T @{ 'T-1' = @('T-2'); 'T-2' = @() })
+"2 dois=" + (T @{ 'T-1' = @('T-2'); 'T-2' = @('T-1') })
+"3 tres=" + (T @{ 'T-1' = @('T-2'); 'T-2' = @('T-3'); 'T-3' = @('T-1') })
+"4 cauda=" + (T @{ 'T-0' = @('T-1'); 'T-1' = @('T-2'); 'T-2' = @('T-1') })
+"5 fantasma=" + (T @{ 'T-1' = @('T-99') })
+'@, $utf8)
+$wco = (& powershell -NoProfile -ExecutionPolicy Bypass -File $wc -Lib (Join-Path $checks 'lib.ps1') 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.57.0 item 6: Find-WaitCycle acha ciclo de 2, de 3 e com cauda; fila sem ciclo e espera por Task fora do quadro não são ciclo' @{ Code = 0; Out = $wco } 0 @('1 sem=\r?\n', '2 dois=T-1>T-2>T-1', '3 tres=T-1>T-2>T-3>T-1', '4 cauda=T-1>T-2>T-1', '5 fantasma=\s*$')
+
+# v3.57.0 — run.ps1 wait (a sonda só de leitura do vigia): terminou (0) · vivo (3) · POSSÍVEL TRAVAMENTO (5), e nada gravado.
+$wt = Join-Path $tmp 'wait-test.ps1'
+[System.IO.File]::WriteAllText($wt, @'
+param([string]$Run, [string]$Proj)
+$u8 = New-Object System.Text.UTF8Encoding($false)
+$tp = Join-Path $Proj '.team-project'
+New-Item -ItemType Directory -Force (Join-Path $tp 'verify\7\T-2') | Out-Null
+$dash = [string][char]0x2014
+[System.IO.File]::WriteAllText((Join-Path $tp 'README.md'), "# Contexto`n`n## 2. Situacao atual`n`n| | |`n|---|---|`n| **Sprint corrente** | **7** $dash teste |`n", $u8)
+function W { $o = (& powershell -NoProfile -ExecutionPolicy Bypass -File $Run wait -Root $Proj 2>&1 | ForEach-Object { "$_" }) -join ' '; return "exit=$LASTEXITCODE $o" }
+$now = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+"1 " + (W)
+[System.IO.File]::WriteAllText((Join-Path $tp '.next-verdict'), ('{"acao":"esperar","task":"T-2","motivo":"x","at":"' + $now + '"}'), $u8)
+"2 " + (W)
+[System.IO.File]::WriteAllText((Join-Path $tp '.active-agents'), ('[{"type":"team:developer","description":"Dev T-2","desde":"' + $now + '","session":"s","parent":"","agent_id":"a1","work":"T-2","last":"Bash","at":"' + $now + '"}]'), $u8)
+"3 " + (W)
+Remove-Item (Join-Path $tp '.active-agents') -Force
+$sl = Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-Sleep 90' -PassThru -WindowStyle Hidden
+Start-Sleep 2
+$lk = Join-Path $tp 'verify\7\T-2\verify.lock'
+[System.IO.File]::WriteAllText($lk, ([ordered]@{ pid = $sl.Id; started = $sl.StartTime.ToString('o'); at = (Get-Date).AddMinutes(-15).ToString('yyyy-MM-dd HH:mm:ss'); mode = 'full' } | ConvertTo-Json -Compress), $u8)
+"4 " + (W)
+[System.IO.File]::WriteAllText($lk, ([ordered]@{ pid = $sl.Id; started = $sl.StartTime.ToString('o'); at = (Get-Date).AddMinutes(-1).ToString('yyyy-MM-dd HH:mm:ss'); mode = 'full' } | ConvertTo-Json -Compress), $u8)
+"5 " + (W)
+"6 verdict-intacto=" + ((Get-Content (Join-Path $tp '.next-verdict') -Raw) -match '"motivo":"x"')
+try { Stop-Process -Id $sl.Id -Force } catch { }
+'@, $utf8)
+$wo = (& powershell -NoProfile -ExecutionPolicy Bypass -File $wt -Run (Join-Path $checks 'run.ps1') -Proj (Join-Path $tmp 'wait-proj') 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.57.0 protocolo: run.ps1 wait — nada registrado/nada em espera = 0, dev vivo = 3, comando 15 min sem CPU nem arquivo = 5 (POSSÍVEL TRAVAMENTO), o mesmo com 1 min = 3, e o .next-verdict fica intacto' @{ Code = 0; Out = $wo } 0 @('1 exit=0 wait: terminou — nenhuma espera registrada', '2 exit=0 wait: terminou — a T-2 não tem agente nem comando', '3 exit=3 wait: vivo — T-2 · developer vivo', '4 exit=5 wait: POSSÍVEL TRAVAMENTO — T-2 · verify full', '5 exit=3 wait: vivo — T-2 · verify full', '6 verdict-intacto=True')
+
+# v3.57.0 — modo desprendido e target.ps1 -Kill: só o que o run registrou é encerrado; o de fora e o PID reaproveitado, não.
+$kt = Join-Path $tmp 'kill-test.ps1'
+[System.IO.File]::WriteAllText($kt, @'
+param([string]$Checks, [string]$Proj)
+. (Join-Path $Checks 'lib.ps1')
+New-Item -ItemType Directory (Join-Path $Proj '.team-project') -Force | Out-Null
+$mk = { Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-Sleep 90' -PassThru -WindowStyle Hidden }
+$a = & $mk; $b = & $mk; $c = & $mk
+Start-Sleep 2
+$null = Register-Detached $Proj 'android' @($a.Id) 'teste'
+$f = Join-Path $Proj '.team-project/.target-android.json'
+$j = [System.IO.File]::ReadAllText($f) | ConvertFrom-Json
+$j.procs = @($j.procs) + @([pscustomobject]@{ pid = $c.Id; created = '2001-01-01T00:00:00.0000000+00:00' })
+[System.IO.File]::WriteAllText($f, ($j | ConvertTo-Json -Depth 4 -Compress))
+$o = (& powershell -NoProfile -File (Join-Path $Checks 'target.ps1') -Target android -Kill -Root $Proj 2>&1 | ForEach-Object { "$_" }) -join ' '
+Start-Sleep 2; $a.Refresh(); $b.Refresh(); $c.Refresh()
+"1 saida: $o"
+"2 registrado-morreu=$($a.HasExited) fora-do-registro-vivo=$(-not $b.HasExited) pid-reaproveitado-vivo=$(-not $c.HasExited) registro-apagado=$(-not (Test-Path $f))"
+$o2 = (& powershell -NoProfile -File (Join-Path $Checks 'target.ps1') -Target android -Kill -Root $Proj 2>&1 | ForEach-Object { "$_" }) -join ' '
+"3 de-novo: $o2"
+foreach ($x in @($b, $c)) { try { Stop-Process -Id $x.Id -Force -ErrorAction SilentlyContinue } catch { } }
+'@, $utf8)
+$ko = (& powershell -NoProfile -ExecutionPolicy Bypass -File $kt -Checks $checks -Proj (Join-Path $tmp 'kill-proj') 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.57.0 protocolo: target.ps1 -Kill encerra só o processo registrado pelo run (o de fora e o PID reaproveitado ficam; o registro some; de novo = nada registrado)' @{ Code = 0; Out = $ko } 0 @('1 saida: target android: -Kill — 1 encerrado\(s\), 0 já tinha\(m\) saído, 1 com PID reaproveitado', '2 registrado-morreu=True fora-do-registro-vivo=True pid-reaproveitado-vivo=True registro-apagado=True', '3 de-novo: target android: nada registrado')
+
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
+foreach ($sl in @($rows | Sort-Object Seg -Descending | Select-Object -First 12)) { $sn = [string]$sl.Caso; Write-Output ("lento: {0,5} s  {1}" -f $sl.Seg, $(if ($sn.Length -gt 120) { $sn.Substring(0, 120) } else { $sn })) }
+Write-Output ("soma dos casos: {0} s" -f (($rows | Measure-Object Seg -Sum).Sum))
 Write-Output ("{0} casos · {1} falharam" -f $rows.Count, $fail)
 if ($fail -gt 0) { exit 1 }
 exit 0

@@ -13,6 +13,7 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
 **Li além da ficha:** nenhum | `<arquivo>` — <porquê> · `<arquivo>` — <porquê> *(só Task com ficha — regra 28)*
 **Decisões:** D-<k>, K-<n> *(só quando alguma decisão do sprint — `architect/decisions/S<n>.md` — ou do conhecimento do projeto — `architect/knowledge.md` — vale para a Task; regra 29. O rótulo antigo `**Decisões do sprint:**` continua aceito)*
 **Cenários:** SC-<nnn>, SC-<nnn> *(regra 23)* | nenhum — <motivo>
+**Aceite:** não roda — <motivo> *(só quando o accept não roda nesta Task, por decisão registrada — v3.57.0: o cartão, o start e o next não mandam rodar o `accept.ps1` e os cenários da linha **Cenários:** se provam pelos testes do plano; sem esta linha, vale a lista de **Cenários:** acima)*
 **Risco:** regra de negócio | integração | interface simples | infraestrutura *(regra 24)*
 **Layout novo:** sim | não *(só Task com interface — regras 21, 26 e 27)*
 **Documentos vivos:** `<documento de desenho>` §<seção> — <o que muda> *(só com **Layout novo:** sim — regra 27)*
@@ -84,6 +85,10 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
 | Teste de render | Tela (largura × altura) | Fontes | Caixas medidas | Deve falhar se… |
 |---|---|---|---|---|
 | `<arquivo de teste>` | `<cada tamanho relevante da spec de tela>` | `<padrão · menor · maior>` | `<elementos: posição, tamanho, sobreposição, transbordamento>` | `<a geometria que quebra>` |
+
+**Envelope de medidas** *(só com **Layout novo: sim** — regra 33, v3.57.0)*:
+- E1 · <medida: espaçamento | alinhamento | quebra de linha | tamanho | rótulo acessível — o elemento> · sonda: `<comando que mede>` · (a) se medir <X> → aplique <Y> · (b) se medir <Z> → aplique <W> · fora disso → 🔺 GAP `aparência`
+*(o dev mede, aplica o caso medido e registra a medida e a escolha no relatório — R9. GAP só fora do envelope ou se a decisão mexer em regra de produto)*
 
 **Cobertura:** 80 % mínimo por módulo na unidade implantável tocada (back-end, worker ou front-end); o dev leva ao relatório o código de saída, o pior módulo × limiar e o `report` do job (R28 · `${CLAUDE_PLUGIN_ROOT}/standards/implementation-principles.md` §5.4 e §5.5).
 
@@ -210,6 +215,8 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
 31. ✓ **Task que corrige outra lista os testes herdados (v3.55.0 · carta 2 do sprint 5 do garden).** O cabeçalho leva `**Corrige:** T-<nnn>` e a §6 traz `### Testes herdados`: cada teste da Task original cuja fixture ou premissa depende do que esta Task corrige, com o que muda nele — ou `- nenhum — <motivo>`. O `plan.ps1` reprova plano com `**Corrige:**` sem a seção; plano comum não é afetado. A mudança de entrada de uma regra testada deixa de aparecer só no fechamento.
 
 32. ✓ **O plano declara os comandos da Task (v3.55.0 · F1, decisão do stakeholder de 05/11).** A §7 traz `### Comandos da Task`: cada comando de build, teste, lint ou leitura que a construção e a verificação vão rodar **além da lista base da G14** (`hooks/common.ps1`, `runBase`), um por linha entre crases, ou `- nenhum além da lista base`. O `plan.ps1` confere cada trecho contra a lista base + `guards.json → runCommands` + o reparo declarado (o mesmo casamento por prefixo da G14): o que falta o `run.ps1` pede ao stakeholder **uma vez**, num formulário, antes da construção, e grava em `runCommands` por script; comando de instalação, rede, push ou destrutivo **reprova o plano** (bloqueio da Task, degrau 1). Não se edita o guard padrão do plugin: `docker compose run`, `aapt` e afins são do projeto.
+
+33. ✓ **Task de interface traz o envelope de decisão das medidas visuais (v3.57.0 · plugin-report do sprint 5 do garden).** Com `**Layout novo:** sim`, o `**Envelope de medidas**` (§6, ao lado do **Render real**) declara, por medida que a tela depende de (espaçamento, alinhamento, quebra de linha, tamanho, rótulo acessível), a sonda que mede e a árvore de decisão com limites — "se medir X, aplique Y; se medir Z, aplique W; fora disso, 🔺 GAP `aparência`". O dev decide **dentro** do envelope e registra a medida e a escolha (R9); o cartão traz o envelope e a regra de medir todos os casos antes de abrir um único GAP. Decisão de produto (empilhar botões, esconder controle, texto de tela) **não** entra no envelope: é do stakeholder. O `plan.ps1` avisa (não reprova, nesta versão) o plano com `**Layout novo:** sim` sem o envelope. No sprint 5 do garden, 4 de 5 GAPs de uma Task de interface eram medida ou marcação que o plano já delimitava ou podia delimitar, e cada um custou um Arquiteto novo e um dev novo.
 
 ## Variante leve (R23)
 

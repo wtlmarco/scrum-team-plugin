@@ -295,12 +295,13 @@
                         "paths":  [
                                       ".team-project/.target-lock",
                                       ".team-project/.active-agents",
-                                      ".team-project/.target-web.json"
+                                      ".team-project/.target-web.json",
+                                      ".team-project/.target-android.json"
                                   ],
                         "writers":  [
 
                                     ],
-                        "matriz":  "Trava do alvo e agentes em voo (`.team-project/.target-lock`, `.team-project/.active-agents`, `.team-project/.target-web.json`)",
+                        "matriz":  "Trava do alvo e agentes em voo (`.team-project/.target-lock`, `.team-project/.active-agents`, `.team-project/.target-web.json`, `.team-project/.target-android.json`)",
                         "dono":  "SM"
                     },
                     {

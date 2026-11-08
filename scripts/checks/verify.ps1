@@ -32,6 +32,8 @@
 # 5 = OCUPADO (v3.52.3): outra rodada desta Task ainda roda — não dispare outra. v3.53.2: -WaitBusySeconds <n> espera
 #     ela acabar dentro da mesma chamada (até n s; 540 cabe no vigia de 600 s) e segue com a rodada desta chamada.
 # v3.51: -TimeoutMinutes (ou guards.json → verify.timeoutMinutes, padrão 9) por comando; verify.env = variáveis do filho
+# v3.57.0: verify.buildTimeoutMinutes = teto próprio dos comandos "build…" (o APK do Gradle leva mais que a suíte); o resto
+# segue o timeoutMinutes. full verde com alvo android e APK mais velho que o código sai com "atenção: … não regerou o APK".
 # (ex.: GRADLE_USER_HOME numa junção ASCII); a higiene da ferramenta (Gradle sem daemon, dotnet sem reúso de nó, CI=true no
 # node) entra sozinha, de scripts/checks/tool-hygiene.json.
 
@@ -89,12 +91,31 @@ function Get-Commands($Verify, [string]$Key) {
 # ambiente do filho; saída que casa assinatura conhecida de ambiente marca o comando como falha de ambiente.
 $script:hygieneWarnings = @()
 $script:daemonPids = @(); $script:cmdSeconds = 0; $script:cmdRuns = 0
+# v3.57.0 (plugin-report do sprint 5 do garden, item 12): o build do APK (Gradle, assembleDebug) leva mais que a suíte e não tem
+# por que dividir o teto dela. guards.json → verify.buildTimeoutMinutes vale só para os comandos "build…"; o resto segue o
+# verify.timeoutMinutes. Estourou: exit 124, árvore encerrada (o daemon do Gradle, se verify.daemon, fica), falha de ambiente.
+function Get-CommandTimeout([string]$Key) {
+    if ($Key -match '^build' -and $verify -and $verify.PSObject.Properties['buildTimeoutMinutes'] -and [double]$verify.buildTimeoutMinutes -gt 0) { return [double]$verify.buildTimeoutMinutes }
+    return $script:timeoutMinutes
+}
 function Invoke-Logged([string]$Key, [string]$Cmd, [string]$Log) {
     $extra = [ordered]@{}
     if ($verify -and $verify.PSObject.Properties['env'] -and $verify.env) { foreach ($p in $verify.env.PSObject.Properties) { $extra[$p.Name] = [string]$p.Value } }
     $daemon = $verify -and $verify.PSObject.Properties['daemon'] -and $verify.daemon -eq $true
     if ($daemon -and -not $extra.Contains('GRADLE_OPTS')) { $extra['GRADLE_OPTS'] = (([string]$env:GRADLE_OPTS -replace '-Dorg\.gradle\.daemon=\w+', '').Trim() + ' -Dorg.gradle.daemon=true').Trim() }
-    $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $script:timeoutMinutes ([pscustomobject]$extra) -KeepDescendants:$daemon
+    # v3.57.0 (item 8): TEAM_TEST_CLOCK_SKEW_MIN_ONCE só existe nos testes — simula o salto de relógio da suspensão na 1ª rodada.
+    $skew = 0.0; if ($env:TEAM_TEST_CLOCK_SKEW_MIN_ONCE -and -not $script:skewUsed) { $skew = [double]$env:TEAM_TEST_CLOCK_SKEW_MIN_ONCE; $script:skewUsed = $true }
+    $tmo = Get-CommandTimeout $Key
+    $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon -ClockSkewMin $skew
+    # Suspensão do sistema no meio do comando: a rodada não vale como prova — repete UMA vez (protocolo de espera, regra 5) e
+    # registra a suspensão. Suspensa de novo, fica como falha de ambiente (exit 4): não é defeito do código.
+    if ($r.suspended) {
+        $first = [string]$r.environment
+        if ($r.Contains('kept')) { $script:daemonPids += @($r.kept) }
+        $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon
+        if (-not $r.suspended) { $r.warnings = @($r.warnings) + @("$Key`: $first — rodada repetida e válida") }
+    }
+    $r.Remove('suspended')
     foreach ($w in @($r.warnings)) { if ($w -and $script:hygieneWarnings -notcontains $w) { $script:hygieneWarnings += $w } }
     $r.Remove('warnings')
     if ($r.Contains('kept')) { $script:daemonPids += @($r.kept); $r.Remove('kept') }
@@ -328,7 +349,19 @@ try {
         # Prova de falha (v3.46): só sobre a árvore do último full verde — a mutação prova o teste daquele código.
         if (-not $Plan -or -not (Test-Path -LiteralPath (Join-Path $Root $Plan))) { [Console]::Error.WriteLine('verify: -Mode mutation pede -Plan <caminho do plano, relativo à raiz>.'); exit 2 }
         if ($focusedCmd.Count -eq 0) { [Console]::Error.WriteLine('verify: guards.json → verify sem "focused" — a mutação roda o teste focado.'); exit 2 }
-        if ($Precheck) {
+        # v3.57.0 (plugin-report do sprint 5 do garden, item A6): mutante do plano que não compila só aparecia depois de ~20 min de
+        # mutação. Com verify.compile declarado, a mutação roda o Precheck SOZINHA antes — se não há um verde registrado para esta
+        # árvore (precheck.json) — e para cedo, com a lista; nunca depende de alguém lembrar. Sem verify.compile a compilação dos
+        # mutantes não tem como ser conferida de antemão: o aviso é alto, porque o erro só vai aparecer dentro da mutação.
+        $compileDecl = @(Get-Commands $verify 'compile') | Select-Object -First 1
+        $autoPre = $false
+        if (-not $Precheck -and $compileDecl) {
+            $pjf = Join-Path $dir 'precheck.json'; $green = $false
+            if (Test-Path -LiteralPath $pjf) { try { $pr = Read-Text $pjf | ConvertFrom-Json; $green = ([string]$pr.tree -eq $tree) -and ([int]$pr.problems -eq 0) -and ($pr.compile -eq $true) } catch { } }
+            $autoPre = -not $green
+        }
+        if (-not $Precheck -and -not $compileDecl) { [Console]::Out.WriteLine('  ATENÇÃO: o projeto não declara verify.compile em guards.json — a compilação dos mutantes NÃO foi conferida de antemão; um mutante que não compila só aparece dentro da mutação (minutos por mutante). Declare verify.compile (comando que só compila, sem rodar teste) e rode -Mode mutation -Precheck.') }
+        if ($Precheck -or $autoPre) {
             # v3.51.4 (garden item 27): conferência prévia, sem teste — trecho único no arquivo e, com verify.compile, mutante que compila.
             $pt = Read-Text (Join-Path $Root $Plan); $pm = @(Get-TaskMutations $Root $Plan $pt $Task); if ($Only.Count) { $pm = @($pm | Where-Object { $Only -contains $_.Id }) }
             $compile = @(Get-Commands $verify 'compile') | Select-Object -First 1
@@ -359,10 +392,11 @@ try {
                 $okIds += $mu.Id
             }
             if ((Get-WorkTree $Root) -ne $tree) { [Console]::Error.WriteLine('verify: ERRO — a árvore não voltou igual depois da conferência prévia. Confira com git status/git diff.'); exit 2 }
-            [Console]::Out.WriteLine("verify mutation -Precheck $Task · $($okIds.Count) de $($pm.Count) mutação(ões) prontas" + $(if ($compile) { ' (trecho único e mutante compila)' } else { ' (trecho único; sem verify.compile, a compilação se vê na mutação)' }))
+            [Console]::Out.WriteLine("verify mutation -Precheck$(if ($autoPre) { ' (automático, antes da mutação)' }) $Task · $($okIds.Count) de $($pm.Count) mutação(ões) prontas" + $(if ($compile) { ' (trecho único e mutante compila)' } else { ' (trecho único; ATENÇÃO: sem verify.compile a compilação dos mutantes NÃO foi conferida — só aparece na mutação)' }))
+            try { New-Item -ItemType Directory -Force $dir | Out-Null; [System.IO.File]::WriteAllText((Join-Path $dir 'precheck.json'), ([ordered]@{ tree = $tree; at = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss'); compile = [bool]$compile; ok = @($okIds); problems = $probs.Count } | ConvertTo-Json -Compress), $utf8) } catch { }
             # v3.54: a mutação declarada pela regra é do dev — o trecho dele se corrige no relatório, sem GAP.
             foreach ($p in $probs) { $own = $p -match '^(M\d+):' -and @($pm | Where-Object { $_.Id -eq $Matches[1] -and $_.Source -eq 'dev' }).Count; [Console]::Out.WriteLine("  $p — " + $(if ($own) { 'a linha é sua (mutação pela regra): corrija o trecho no bloco **Mutações:** do relatório' } else { 'o plano é do Arquiteto: 🔺 GAP com esta linha' })) }
-            if ($probs.Count) { exit 1 } else { exit 0 }
+            if ($probs.Count) { exit 1 } elseif ($Precheck) { exit 0 }
         }
         $full = if ($prev) { $prev.full } else { $null }
         if ($null -eq $full -or [string]$full.tree -ne $tree) { [Console]::Error.WriteLine("verify: a mutação roda sobre a árvore do último full — rode -Mode full antes (árvore agora $($tree.Substring(0, 12)))."); exit 2 }
@@ -511,8 +545,7 @@ try {
         }
     }
     # v3.52.3 (note.md item 5): comando perto do teto por comando — ao passar dele, vira exit 4 (ambiente) sem defeito no código.
-    $ceil = [int]($script:timeoutMinutes * 60)
-    $near = @($results | Where-Object { -not $_.environment -and [int]$_.seconds -ge 0.8 * $ceil } | ForEach-Object { "$($_.key) levou $($_.seconds) s, $([int](100 * [int]$_.seconds / $ceil)) % do teto por comando ($ceil s, verify.timeoutMinutes) — ao passar dele vira falha de ambiente (exit 4). Reporte a quem orquestra: o projeto divide o comando em guards.json → verify (lista: suite, suite2…); teto acima de 9 min passa dos 600 s da ferramenta" })
+    $near = @($results | Where-Object { $cl = [int]((Get-CommandTimeout ([string]$_.key)) * 60); -not $_.environment -and [int]$_.seconds -ge 0.8 * $cl } | ForEach-Object { $ceil = [int]((Get-CommandTimeout ([string]$_.key)) * 60); "$($_.key) levou $($_.seconds) s, $([int](100 * [int]$_.seconds / $ceil)) % do teto por comando ($ceil s, verify.timeoutMinutes$(if ($_.key -match '^build' -and $verify.PSObject.Properties['buildTimeoutMinutes']) { ' / buildTimeoutMinutes' })) — ao passar dele vira falha de ambiente (exit 4). Reporte a quem orquestra: o projeto divide o comando em guards.json → verify (lista: suite, suite2…); teto acima de 9 min passa dos 600 s da ferramenta" })
     $after = Get-WorkTree $Root
     $run = [ordered]@{ at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = $tree; tree_after = $after; tests = $Tests; commands = $results }
 
@@ -537,8 +570,19 @@ try {
     # v3.53.6 (item 4): cada id ausente (com o cenário e o .scn) e cada controle sem id (arquivo:linha).
     foreach ($l in @($tidLines | Select-Object -First 40)) { [Console]::Out.WriteLine("    $l") }
     if ($tidLines.Count -gt 40) { [Console]::Out.WriteLine("    … e mais $($tidLines.Count - 40) no log testids") }
+    # v3.57.0 (item 7): o aviso de atributo divergente e os ids dinâmicos declarados (não conferidos) saem no console, não só no log.
+    if ($Mode -eq 'full' -and $tid) { foreach ($nt in @($tid.Notes | Where-Object { $_ -match '^(atributo de teste|id dinâmico)' })) { [Console]::Out.WriteLine("  ids de teste: $nt") } }
     if ($tidLines.Count) { [Console]::Out.WriteLine('  ids de teste: o dev cria no código o id que o .scn cita (testTag / data-testid, standards/stacks/<tecnologia>/guide.md) e põe id em todo controle interativo; exceção só com "// sem-testid: <motivo>" na linha ou na anterior') }
     foreach ($w in @($script:hygieneWarnings) + $near) { [Console]::Out.WriteLine("  atenção: $w") }
+    # v3.57.0 (plugin-report do sprint 5 do garden, item 14): o APK mais velho que o código só aparecia no accept (exit 2, "reconstrua"),
+    # depois do dev e do QA. Ao fim de um full verde, num projeto com alvo android, o aviso vem já aqui: o build não regerou o APK.
+    if ($Mode -eq 'full' -and -not $envBad.Count -and -not $bad.Count) {
+        $tcA = Get-TargetsConfig $Root
+        if ($tcA -and $tcA.PSObject.Properties['android']) {
+            $apkA = Get-LatestApk $Root
+            if ($apkA) { $stA = Get-ApkStaleness $apkA; if ($stA.Stale) { $modN = Split-Path $stA.Module -Leaf; [Console]::Out.WriteLine("  atenção: o APK $modN$($stA.ApkFull.Substring($stA.Module.Length)) é de $($stA.ApkTime.ToString('yyyy-MM-dd HH:mm:ss')) e $modN$($stA.File.Substring($stA.Module.Length)) mudou em $($stA.FileTime.ToString('yyyy-MM-dd HH:mm:ss')): o comando 'build' não regerou o APK — rode $($stA.Task) (ou ponha no verify.build do guards.json) antes do accept, que recusa APK velho (exit 2)") } }
+        }
+    }
     if ($after -ne $tree) { [Console]::Out.WriteLine("  atenção: os comandos alteraram a árvore (antes $($tree.Substring(0, 12)), depois $(([string]$after).Substring(0, [Math]::Min(12, ([string]$after).Length)))) — arquivo gerado fora do .gitignore; a evidência vale para a árvore de antes") }
     if ($envBad.Count) { [Console]::Out.WriteLine('  não é defeito do código: não depure; a sessão tenta o reparo do ambiente uma vez (target.ps1 -Repair) e, sem sucesso, bloqueio de ambiente'); exit 4 }
     if ($bad.Count) { exit 1 }

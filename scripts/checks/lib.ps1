@@ -221,9 +221,10 @@ function Get-Decisive([string]$Log) {
 # encerrados ao fim (daemon), higiene da ferramenta e $EnvExtra como variáveis do filho, falha de ambiente por assinatura.
 # v3.51.4 (-KeepDescendants, verify.daemon): os descendentes que sobram (o daemon) ficam vivos e voltam em "kept" — o
 # verify.ps1 os reaproveita no comando seguinte e os encerra no fim da chamada (Stop-ProcessTree), antes de devolver o controle.
-function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [string]$Log, [double]$TimeoutMinutes, $EnvExtra, [switch]$KeepDescendants) {
+function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [string]$Log, [double]$TimeoutMinutes, $EnvExtra, [switch]$KeepDescendants, [double]$ClockSkewMin = 0) {
     $u8 = New-Object System.Text.UTF8Encoding($false)
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $t0 = Get-Date   # v3.57.0 (item 8): relógio de parede, para perceber a suspensão do sistema (o WaitForExit não conta o tempo dormindo)
     $hy = Get-ToolHygiene $Cmd $EnvExtra
     $envPrefix = (@($hy.Env.Keys) | ForEach-Object { "[Environment]::SetEnvironmentVariable('$($_ -replace "'", "''")', '$(([string]$hy.Env[$_]) -replace "'", "''")', 'Process'); " }) -join ''
     # Código de saída real: o do último comando nativo; cmdlet que falha sem código = 1 (contrato do operator, item 2).
@@ -239,13 +240,19 @@ function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [strin
     elseif ($KeepDescendants) { $p.WaitForExit(); $code = $p.ExitCode; $kept = @(Get-DescendantIds $p.Id) }
     else { $p.WaitForExit(); $code = $p.ExitCode; $null = Stop-ProcessTree $p.Id -ChildrenOnly }
     Start-Sleep -Milliseconds 200   # o arquivo de saída fica livre depois que os descendentes saem
+    # v3.57.0 (plugin-report do sprint 5 do garden, item 8): o notebook suspendeu ~9 h no meio da suíte; o relógio de parede
+    # andou horas contra um prazo de minutos, o Karma perdeu a conexão e a rodada reprovou sem defeito no código. Relógio muito
+    # além do prazo = suspensão do sistema: o resultado não vale como prova e quem chama repete a rodada (uma vez).
+    $wallMin = ((Get-Date) - $t0).TotalMinutes + $ClockSkewMin
+    $suspended = $wallMin -gt ($limit * 1.5 + 1)
     if (Test-Path -LiteralPath "$Log.err") { $err = [System.IO.File]::ReadAllText("$Log.err", $u8); if ($err) { [System.IO.File]::AppendAllText($Log, $err, $u8) }; Remove-Item -LiteralPath "$Log.err" -Force }
     if ($timedOut) { [System.IO.File]::AppendAllText($Log, "`nTEMPO ESGOTADO: $limit min — árvore do processo encerrada`n", $u8) }
     [System.IO.File]::AppendAllText($Log, "`nEXIT=$code`n", $u8)
     $d = Get-Decisive $Log
-    $envFail = if ($timedOut) { "tempo esgotado ($limit min): o comando não devolveu o controle — confira modo de observação ou processo que não termina (tool-hygiene.json)" }
+    $envFail = if ($suspended) { "suspensão do sistema detectada: o relógio andou $([int]$wallMin) min contra o prazo de $limit min — a rodada não vale como prova (o runner pode ter perdido a conexão); repita" }
+               elseif ($timedOut) { "tempo esgotado ($limit min): o comando não devolveu o controle — confira modo de observação ou processo que não termina (tool-hygiene.json)" }
                elseif ($code -ne 0) { Get-EnvFailure ([System.IO.File]::ReadAllText($Log, $u8)) } else { $null }
-    $r = [ordered]@{ key = $Key; command = $Cmd; exit = $code; seconds = [int]$sw.Elapsed.TotalSeconds; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive; environment = $envFail; hygiene = @($hy.Tools); warnings = @($hy.Warnings) }
+    $r = [ordered]@{ key = $Key; command = $Cmd; exit = $code; seconds = [int]$sw.Elapsed.TotalSeconds; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive; environment = $envFail; hygiene = @($hy.Tools); warnings = @($hy.Warnings); suspended = $suspended }
     if ($KeepDescendants) { $r.kept = $kept }
     return $r
 }
@@ -285,6 +292,130 @@ function Stop-ProcessTree([int]$RootPid, [switch]$ChildrenOnly) {
     return $ids.Count
 }
 
+# Executor único com prazo (v3.57.0, protocolo de espera): TODO comando de terceiros (do projeto ou do guards.json) passa por aqui.
+# Saída em ARQUIVO, nunca em pipe: um filho de longa duração que herda a saída não prende a leitura (o reparo do alvo ficou ~2 h
+# assim). Espera pelo processo (WaitForExit com prazo), nunca pelo fim do pipe. Prazo é obrigatório (>= 1 s; sem padrão infinito).
+# Estourou: exit 124 e timedOut. Morte: a árvore inteira — ou, com -KeepDescendants (o comando deixa de propósito um filho vivo,
+# como o emulador), só o processo raiz, e os sobreviventes voltam em kept. Devolve exit, timedOut, seconds, out (saída, UTF-8)
+# e kept; quem chama decide se vira falha de ambiente (exit 4).
+function Invoke-Bounded([string]$Root, [string]$Cmd, [int]$TimeoutSec, [hashtable]$Env = @{}, [string]$InputText = '', [switch]$KeepDescendants, [string]$Log = '') {
+    $u8 = New-Object System.Text.UTF8Encoding($false)
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $tmp = if ($Log) { $Log } else { Join-Path ([System.IO.Path]::GetTempPath()) ('bounded-' + [guid]::NewGuid().ToString('N') + '.log') }
+    $pre = "`$ProgressPreference = 'SilentlyContinue'; " + ((@($Env.Keys) | ForEach-Object { "`$env:$_ = '$(([string]$Env[$_]) -replace "'", "''")'; " }) -join '')
+    $wrapped = $pre + '$global:LASTEXITCODE = 0; ' + $Cmd + '; if (-not $?) { if ($LASTEXITCODE) { exit $LASTEXITCODE } else { exit 1 } }; exit $LASTEXITCODE'
+    $enc = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($wrapped))
+    $sp = @{ FilePath = 'powershell'; ArgumentList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $enc); RedirectStandardOutput = $tmp; RedirectStandardError = "$tmp.err"; NoNewWindow = $true; PassThru = $true }
+    if ($Root) { $sp.WorkingDirectory = $Root }
+    if ($InputText) { [System.IO.File]::WriteAllText("$tmp.in", $InputText, $u8); $sp.RedirectStandardInput = "$tmp.in" }
+    $p = Start-Process @sp
+    $null = $p.Handle   # sem o handle aberto, o ExitCode volta vazio no 5.1
+    $timedOut = -not $p.WaitForExit([int]([Math]::Max(1, $TimeoutSec) * 1000))
+    $kept = @()
+    if ($timedOut) {
+        if ($KeepDescendants) { $kept = @(Get-DescendantIds $p.Id); Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } else { $null = Stop-ProcessTree $p.Id }
+        $p.WaitForExit(5000) | Out-Null; $code = 124
+    } else {
+        $code = $p.ExitCode
+        if ($KeepDescendants) { $kept = @(Get-DescendantIds $p.Id) } else { $null = Stop-ProcessTree $p.Id -ChildrenOnly }
+    }
+    Start-Sleep -Milliseconds 200   # o arquivo de saída fica livre depois que os descendentes saem
+    $txt = ''
+    # FileShare.ReadWrite: o filho que sobrevive (kept) segue com o arquivo aberto para escrita e o ReadAllText falharia.
+    foreach ($f in @($tmp, "$tmp.err")) {
+        if (-not (Test-Path -LiteralPath $f)) { continue }
+        try {
+            $fs = New-Object System.IO.FileStream($f, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+            try { $t = (New-Object System.IO.StreamReader($fs, $u8)).ReadToEnd() } finally { $fs.Dispose() }
+            if ($t -match '^#< CLIXML') {   # erro do PowerShell em CLIXML: guarda só o texto das mensagens de erro
+                $t = (([regex]::Matches($t, '<S S="Error">(.*?)</S>') | ForEach-Object { $_.Groups[1].Value }) -join '') -replace '_x000D__x000A_', "`n" -replace '_x000D_', '' -replace '&lt;', '<' -replace '&gt;', '>' -replace '&amp;', '&'
+            }
+            if ($t) { $txt += $t + "`n" }
+        } catch { }
+    }
+    if (-not $Log) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+    foreach ($f in @("$tmp.err", "$tmp.in")) { Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue }
+    $p.Dispose()
+    return [pscustomobject]@{ exit = $code; timedOut = $timedOut; seconds = [int]$sw.Elapsed.TotalSeconds; out = $txt.Trim(); kept = $kept }
+}
+
+# Modo desprendido (v3.57.0, protocolo de espera): o processo que DEVE sobreviver ao script (emulador, servidor web, filho que o
+# reparo declarado deixa vivo) é registrado em .team-project/.target-<alvo>.json — pid, procs[{pid, created}], start, desde.
+# "created" é a hora de criação do processo: PID reaproveitado pelo Windows não é confundido com o nosso. É o único registro
+# que o target.ps1 -Kill encerra: processo que o run não iniciou nunca é tocado. Sem a pasta .team-project (fora de projeto,
+# ou teste), não grava nada e não cria a pasta.
+function Get-ProcessCreated([int]$ProcId) {
+    try { $c = Get-CimInstance Win32_Process -Filter "ProcessId=$ProcId" -ErrorAction Stop; if ($c -and $c.CreationDate) { return $c.CreationDate.ToString('o') } } catch { }
+    return ''
+}
+function Register-Detached([string]$Root, [string]$Target, [int[]]$ProcIds, [string]$Cmd) {
+    $ids = @($ProcIds | Where-Object { $_ -gt 0 })
+    $dir = Join-Path $Root '.team-project'
+    if (-not $ids.Count -or -not (Test-Path -LiteralPath $dir -PathType Container)) { return $false }
+    $procs = @($ids | ForEach-Object { [ordered]@{ pid = [int]$_; created = (Get-ProcessCreated $_) } })
+    $j = [ordered]@{ pid = $ids[0]; procs = $procs; start = $Cmd; desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') }
+    [System.IO.File]::WriteAllText((Join-Path $dir ".target-$Target.json"), ($j | ConvertTo-Json -Depth 4 -Compress), (New-Object System.Text.UTF8Encoding($false)))
+    return $true
+}
+# Encerra (árvore inteira) só o que o registro do alvo guarda e apaga o registro. Devolve stopped (encerrados), gone (já tinham
+# saído) e reused (o PID agora é de outro processo — não tocado).
+function Stop-Detached([string]$Root, [string]$Target) {
+    $res = [ordered]@{ stopped = 0; gone = 0; reused = 0; registered = $false }
+    $f = Join-Path $Root ".team-project/.target-$Target.json"
+    if (-not (Test-Path -LiteralPath $f)) { return [pscustomobject]$res }
+    $res.registered = $true
+    try {
+        $j = [System.IO.File]::ReadAllText($f, [System.Text.Encoding]::UTF8).TrimStart([char]0xFEFF) | ConvertFrom-Json
+        $list = if ($j.PSObject.Properties['procs'] -and $j.procs) { @($j.procs) } else { @([pscustomobject]@{ pid = $j.pid; created = '' }) }   # web da v3.57.0 anterior: só pid
+        foreach ($pr in $list) {
+            $cur = Get-ProcessCreated ([int]$pr.pid)
+            if (-not $cur) { $res.gone++ }
+            elseif ($pr.created -and [string]$pr.created -ne $cur) { $res.reused++ }
+            else { $null = Stop-ProcessTree ([int]$pr.pid); $res.stopped++ }
+        }
+    } catch { }
+    Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue
+    return [pscustomobject]$res
+}
+
+# APK mais recente de <projeto>/**/build/outputs/apk/{release,debug}/ (v3.57.0: no lib.ps1; era a busca do Resolve-AndroidApk).
+function Get-LatestApk([string]$Root) {
+    $c = Get-ChildItem -Path $Root -Recurse -Filter '*.apk' -File -ErrorAction SilentlyContinue |
+         Where-Object { $_.FullName -match '[\\/]build[\\/]outputs[\\/]apk[\\/](release|debug)[\\/]' -and $_.FullName -notmatch '[\\/](\.team-project|node_modules)[\\/]' -and $_.Name -notmatch 'androidTest' } |
+         Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($c) { return $c.FullName }
+    return ''
+}
+# (movido do targets/android.ps1 na v3.57.0: o verify full também confere o APK ao fim do build)
+# v3.53.6 (sprint 5 do garden, item 7): o accept reinstala o APK mais novo do disco, mas o APK do disco estava MAIS VELHO que
+# o código (os ids de teste novos não tinham sido construídos) → "tag não encontrada" e um GAP perdido ao Arquiteto. Compara
+# o APK com o arquivo-fonte mais novo do módulo (<módulo>/build/outputs/apk/… → <módulo>/src/** .kt/.java, res/**,
+# AndroidManifest.xml, build.gradle(.kts); sem src/test e src/androidTest). @{ Stale; File; FileTime; ApkTime; Task; Note }.
+function Get-ApkStaleness([string]$Apk) {
+    $r = @{ Stale = $false; Note = '' }
+    if (-not $Apk -or -not (Test-Path -LiteralPath $Apk -PathType Leaf)) { return $r }
+    $full = (Resolve-Path -LiteralPath $Apk).Path
+    $m = [regex]::Match($full, '^(.*)[\\/]build[\\/]outputs[\\/]apk[\\/]')
+    if (-not $m.Success) { $r.Note = "idade do APK não conferida: o módulo não se infere de $Apk (esperado <módulo>/build/outputs/apk/…)"; return $r }
+    $mod = $m.Groups[1].Value; $apkTime = (Get-Item -LiteralPath $full).LastWriteTime
+    $cands = @()
+    foreach ($g in 'build.gradle', 'build.gradle.kts') { $p = Join-Path $mod $g; if (Test-Path -LiteralPath $p) { $cands += Get-Item -LiteralPath $p } }
+    $src = Join-Path $mod 'src'
+    if (Test-Path -LiteralPath $src) {
+        $cands += @(Get-ChildItem -LiteralPath $src -Recurse -File -ErrorAction SilentlyContinue | Where-Object {
+            $rel = $_.FullName.Substring($src.Length) -replace '\\', '/'
+            $rel -notmatch '^/(test|androidTest|testDebug\w*|testRelease\w*|sharedTest|testFixtures)/' -and ($_.Extension -in '.kt', '.java' -or $_.Name -eq 'AndroidManifest.xml' -or $rel -match '^/[^/]+/res/')
+        })
+    }
+    if (-not $cands.Count) { $r.Note = "idade do APK não conferida: nenhum código-fonte em $mod"; return $r }
+    $newest = $cands | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($newest.LastWriteTime -gt $apkTime.AddSeconds(2)) {
+        $r.Stale = $true; $r.File = $newest.FullName; $r.FileTime = $newest.LastWriteTime; $r.ApkTime = $apkTime; $r.Module = $mod; $r.ApkFull = $full
+        $r.Task = if ($full -match '[\\/]release[\\/]') { 'assembleRelease' } else { 'assembleDebug' }
+    }
+    return $r
+}
+
 # Alvos de execução (v3.51, D3): guards.json → targets ({ "android": {…}, "web": {…} }). $null sem a chave.
 # v3.52.2 (note.md item 8): "targets": {} (o modelo do guards.json) também é $null — o objeto vazio é verdadeiro no
 # PowerShell, e o next pedia .scn em laço, o plan.ps1 reprovava o cabeçalho de cenário e o close.ps1 o R7-aceite.
@@ -311,6 +442,35 @@ function Get-TestIdAttribute([string]$Root) {
     return 'data-testid'
 }
 
+# v3.57.0 (plugin-report do sprint 5 do garden, item 7): o gate de ids de teste assume data-testid sem avisar e reprova id que
+# só existe em tempo de execução (montado por função, template ou componente). Duas peças, as duas do stakeholder:
+# (1) o atributo foi declarado? (guards.json testIds.attribute ou targets.web.testIdAttribute) — sem declaração, vale o padrão
+#     data-testid, e o gate agora diz quando os controles têm outro atributo (id);
+# (2) ids dinâmicos declarados: guards.json → testIds.dynamic ["lista.item.*", …] ou, no código, "// testid-dinamico: lista.item.*
+#     — <motivo>". O gate não reprova esses ids (o verificador estático não os enxerga): lista-os como "não conferidos".
+function Test-TestIdAttributeDeclared([string]$Root) {
+    $g = Join-Path $Root '.team-project/guards.json'
+    if (-not (Test-Path -LiteralPath $g)) { return $false }
+    try {
+        $j = Read-Text $g | ConvertFrom-Json
+        if ($j.PSObject.Properties['testIds'] -and $j.testIds -and $j.testIds.PSObject.Properties['attribute'] -and ([string]$j.testIds.attribute).Trim()) { return $true }
+        if ($j.PSObject.Properties['targets'] -and $j.targets -and $j.targets.PSObject.Properties['web'] -and $j.targets.web -and $j.targets.web.PSObject.Properties['testIdAttribute'] -and $j.targets.web.testIdAttribute) { return $true }
+    } catch { }
+    return $false
+}
+function Get-TestIdDynamicPatterns([string]$Root, [string]$Blob) {
+    $pats = @()
+    $g = Join-Path $Root '.team-project/guards.json'
+    if (Test-Path -LiteralPath $g) { try { $j = Read-Text $g | ConvertFrom-Json; if ($j.PSObject.Properties['testIds'] -and $j.testIds -and $j.testIds.PSObject.Properties['dynamic']) { $pats += @($j.testIds.dynamic | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ }) } } catch { } }
+    foreach ($m in [regex]::Matches([string]$Blob, '(?i)testid-din[aâ]mico\s*:\s*([A-Za-z0-9_.:/*-]+)')) { $pats += $m.Groups[1].Value }
+    return @($pats | Select-Object -Unique)
+}
+# O padrão (com * como curinga) que cobre o id, ou '' — "lista.item.*" cobre "lista.item.7" e o prefixo "lista.item.".
+function Find-TestIdDynamicMatch([string[]]$Patterns, [string]$Id) {
+    foreach ($p in @($Patterns)) { if ($Id -like $p -or ($p.EndsWith('*') -and $Id -like ($p.TrimEnd('*') + '*'))) { return $p } }
+    return ''
+}
+
 # Massa de dados do cenário (v3.53.7, encadeamento do sprint 5 do garden: o reset zera a base e o cenário rodava sem os
 # dados de que o critério precisa). guards.json → targets.<alvo>.seeds: { "<nome>": "<comando PowerShell>" }; o .scn pede
 # com "seed <nome>". Devolve @{ nome = comando } do alvo (vazio sem a chave).
@@ -327,20 +487,15 @@ function Invoke-TargetSeed([string]$Root, [string]$Target, $Cfg, [string]$Name, 
     $seeds = Get-TargetSeeds $Cfg
     if (-not $seeds.Contains($Name)) { return "massa de dados '$Name' não declarada em guards.json → targets.$Target.seeds" }
     $sec = if ($Cfg.PSObject.Properties['seedTimeoutSec'] -and $Cfg.seedTimeoutSec) { [int]$Cfg.seedTimeoutSec } else { 300 }
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = 'powershell'; $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -EncodedCommand ' + [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("`$ProgressPreference = 'SilentlyContinue'; " + $seeds[$Name]))
-    $psi.WorkingDirectory = $Root; $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
-    $psi.EnvironmentVariables['ACCEPT_TARGET'] = $Target; $psi.EnvironmentVariables['ACCEPT_SEED'] = $Name
-    foreach ($k in $Env.Keys) { $psi.EnvironmentVariables[[string]$k] = [string]$Env[$k] }
-    $p = [System.Diagnostics.Process]::Start($psi)
-    $o = $p.StandardOutput.ReadToEndAsync(); $e = $p.StandardError.ReadToEndAsync()
-    if (-not $p.WaitForExit($sec * 1000)) { $null = Stop-ProcessTree $p.Id; $p.Dispose(); return "massa de dados '$Name' sem resposta em $sec s (targets.$Target.seedTimeoutSec)" }
-    $p.WaitForExit(); $code = $p.ExitCode
-    $txt = ''; try { if ($o.Wait(2000)) { $txt += $o.Result }; if ($e.Wait(2000)) { $txt += $e.Result } } catch { }
-    $p.Dispose()
-    if ($code -eq 0) { return $null }
-    $tail = @($txt -split "`r?`n" | Where-Object { $_.Trim() -and $_ -notmatch '^#< CLIXML|^<Objs\b' } | Select-Object -Last 2) -join ' / '
-    return "massa de dados '$Name' não carregou (exit $code)$(if ($tail) { ": $tail" })"
+    # Protocolo de espera (v3.57.0): Invoke-Bounded — saída em arquivo e espera pelo processo. Antes, o WaitForExit() sem prazo
+    # depois do prazo esperava o fim do pipe, e um filho que herdasse a saída prendia a massa de dados para sempre.
+    $envAll = @{ ACCEPT_TARGET = $Target; ACCEPT_SEED = $Name }
+    foreach ($k in $Env.Keys) { $envAll[[string]$k] = [string]$Env[$k] }
+    $r = Invoke-Bounded $Root $seeds[$Name] $sec -Env $envAll
+    if ($r.timedOut) { return "massa de dados '$Name' sem resposta em $sec s (targets.$Target.seedTimeoutSec)" }
+    if ($r.exit -eq 0) { return $null }
+    $tail = @($r.out -split "`r?`n" | Where-Object { $_.Trim() -and $_ -notmatch '^#< CLIXML|^<Objs\b' } | Select-Object -Last 2) -join ' / '
+    return "massa de dados '$Name' não carregou (exit $($r.exit))$(if ($tail) { ": $tail" })"
 }
 
 # Plano externo (v3.53.4): guards.json → "run": { "planner": "external", "tasks": [] }. $null sem a chave ou com outro
@@ -553,6 +708,16 @@ function Get-PlanScenarios([string]$PlanText) {
     if ($v -match '^\s*nenhum\s*[—-]\s*(\S.*)$') { return @{ None = $true; Target = @(); Test = @(); Reason = $Matches[1].Trim() } }
     $tg = @(Get-ScenarioIds $v -TargetOnly); $all = @(Get-ScenarioIds $v)
     if (-not $all.Count) { return $null }
+    # v3.57.0 (plugin-report do sprint 5 do garden, item 5): o plano que DECLARA que o aceite não roda — "**Aceite:** não roda —
+    # <motivo>" ou uma linha de Aceite/Decisão que diga "o aceite não roda" — vale mais que a lista de cenários no alvo: o
+    # cartão, o start e o next mandavam rodar o accept numa Task cujo plano dizia o contrário, e o dev abria GAP de processo.
+    # Os cenários passam a ser provados pelos testes do plano (lista Test); o motivo vai ao cartão.
+    $wv = [regex]::Match([string]$PlanText, '(?im)^[ \t]*(?:[-*][ \t]+)?(?:\*\*)?(?:Aceite|Accept)\b[^\r\n:]*:[^\r\n]*?n[ãa]o[ \t]+roda\b[^\r\n]*$')
+    if (-not $wv.Success) { $wv = [regex]::Match([string]$PlanText, '(?im)^[ \t]*(?:[-*][ \t]+)?(?:\*\*)?Decis[ãa]o\b[^\r\n]*\b(?:accept|aceite)\b[^\r\n]*n[ãa]o[ \t]+roda\b[^\r\n]*$') }
+    if ($wv.Success) {
+        $why = ($wv.Value.Trim() -replace '\*\*', '' -replace '\s+', ' '); if ($why.Length -gt 160) { $why = $why.Substring(0, 160) + '…' }
+        return @{ None = $false; Target = @(); Test = $all; Waived = $true; Reason = $why }
+    }
     return @{ None = $false; Target = $tg; Test = @($all | Where-Object { $tg -notcontains $_ }) }
 }
 # v3.56.0 (H2): os arquivos .scn que definem os cenários pedidos (caminho relativo à raiz, '/'), para o -Scenarios do accept
@@ -577,6 +742,28 @@ function Get-DeferredScenarios([string]$Root) {
         }
     }
     return $map
+}
+
+# Ciclo na fila de espera (v3.57.0, plugin-report do sprint 5 do garden, item 6): Edges = @{ 'T-a' = @('T-b', …) } — quem espera
+# quem (dependência do quadro ou "# aguarda" do .scn). Devolve o primeiro ciclo achado como lista fechada (T-a, T-b, T-a) ou
+# @() sem ciclo. A fila ficava "sem Task elegível" e só o Arquiteto, relendo o .scn e os planos, via que duas Tasks se esperavam.
+function Find-WaitCycle([hashtable]$Edges) {
+    $state = @{}; $stack = New-Object System.Collections.ArrayList; $script:wcFound = @()
+    $visit = $null
+    $visit = {
+        param($id)
+        if ($script:wcFound.Count) { return }
+        $state[$id] = 1; [void]$stack.Add($id)
+        foreach ($b in @($Edges[$id])) {
+            if ($script:wcFound.Count) { break }
+            if (-not $Edges.ContainsKey($b)) { continue }
+            if ($state[$b] -eq 1) { $i = $stack.IndexOf($b); $script:wcFound = @($stack.GetRange($i, $stack.Count - $i)) + @($b); break }
+            if (-not $state.ContainsKey($b)) { & $visit $b }
+        }
+        $stack.RemoveAt($stack.Count - 1); $state[$id] = 2
+    }
+    foreach ($k in @($Edges.Keys | Sort-Object)) { if (-not $state.ContainsKey($k)) { & $visit $k } }
+    return @($script:wcFound)
 }
 
 # ---------- ids de teste como padrão de código (v3.53.6, sprint 5 do garden, item 4) ----------
@@ -794,10 +981,14 @@ function Get-TestIdFindings([string]$Root, [string]$Task) {
             $res.Applies = $true; $res.Ids = @($refs | ForEach-Object { $_.Id } | Select-Object -Unique).Count
             $srcFiles = @(Get-TestIdSourceFiles $Root)
             $blob = (@($srcFiles | ForEach-Object { $p = Join-Path $Root $_; if (Test-Path -LiteralPath $p -PathType Leaf) { $x = Read-Text $p; $texts[$_] = $x; $x } }) -join "`n")
+            $dynPats = @(Get-TestIdDynamicPatterns $Root $blob)
             foreach ($g in @($refs | Group-Object Id)) {
                 $isPre = @($g.Group | Where-Object { $_.Prefix }).Count -gt 0
                 if (Test-TestIdInSource $blob $g.Name $isPre) { continue }
                 $where = @($g.Group | ForEach-Object { "$($_.Scenario) ($($_.File):$($_.Line))" } | Select-Object -Unique) -join ', '
+                # v3.57.0 (item 7): id declarado dinâmico — não reprova; fica listado como não conferido estaticamente.
+                $dm = Find-TestIdDynamicMatch $dynPats $g.Name
+                if ($dm) { $res.Notes += "id dinâmico declarado ($dm), não conferido estaticamente: $($g.Name) — $where"; continue }
                 $res.Missing += "$($g.Name)$(if ($isPre) { ' (prefixo)' } else { '' }) — $where"
             }
         }
@@ -812,11 +1003,19 @@ function Get-TestIdFindings([string]$Root, [string]$Task) {
         if ($files.Count) { $res.Notes += 'arquivos da Task pelo git (sem **Arquivos tocados:** de plano no quadro)' }
     }
     $attr = Get-TestIdAttribute $Root   # v3.55.0 (C2): testIds.attribute → targets.web.testIdAttribute → data-testid
+    $altCount = 0; $altChecked = $false
     foreach ($f in @($files | Where-Object { $_ -match '\.(kt|html?|tsx|jsx|vue)$' -and -not (Test-TestIdExcluded $_) } | Select-Object -Unique)) {
         $p = Join-Path $Root $f; if (-not (Test-Path -LiteralPath $p -PathType Leaf)) { continue }
         $res.Applies = $true; $res.Files++
         $x = if ($texts.ContainsKey($f)) { $texts[$f] } else { Read-Text $p }
-        $res.Untagged += @(Find-UntaggedUi ($f -replace '\\', '/') ($x -replace "`r", '') $attr)
+        $xc = ($x -replace "`r", '')
+        $found = @(Find-UntaggedUi ($f -replace '\\', '/') $xc $attr)
+        $res.Untagged += $found
+        # v3.57.0 (item 7): atributo não declarado (vale o padrão data-testid) e os controles têm "id": o gate reprovava sem dizer.
+        if ($found.Count -and $attr -eq 'data-testid') { $altChecked = $true; $altCount += @(Find-UntaggedUi ($f -replace '\\', '/') $xc 'id').Count }
+    }
+    if ($altChecked -and $res.Untagged.Count -and $altCount -lt $res.Untagged.Count -and -not (Test-TestIdAttributeDeclared $Root)) {
+        $res.Notes += "atributo de teste não declarado: o gate assumiu data-testid, mas $($res.Untagged.Count - $altCount) dos $($res.Untagged.Count) controle(s) sem data-testid têm id — se o projeto usa id, o stakeholder declara em guards.json → testIds.attribute: ""id"" (standards/test-ids.md); o dev não troca o atributo por conta própria"
     }
     return $res
 }
@@ -863,16 +1062,16 @@ function Get-SprintTasks([string]$S) {
         # v3.56.0 (H2, sprint 5 do garden #28, #33, #38, #41, #44, #50, #54): com plano legível, os cenários da Task são os do
         # plano (**Cenários:**, que o plan.ps1 confere — regra 23); o backlog vale só antes de haver plano. O cartão, o start e
         # o next mandavam rodar o accept com a lista antiga do backlog depois que o GAP tirou um cenário do plano.
-        $bScn = $scn; $bTst = $tst; $from = 'backlog'
+        $bScn = $scn; $bTst = $tst; $from = 'backlog'; $waiver = ''
         if ($pp -and $pp -notmatch '^plan/?$') {
             $pf = Join-Path $S $pp
             if (Test-Path -LiteralPath $pf -PathType Leaf) {
                 $ps = Get-PlanScenarios (Read-Text $pf)
-                if ($ps) { $scn = @($ps.Target); $tst = @($ps.Test); $from = 'plano' }
+                if ($ps) { $scn = @($ps.Target); $tst = @($ps.Test); $from = 'plano'; if ($ps.Waived) { $waiver = [string]$ps.Reason } }
             }
         }
         $div = ($from -eq 'plano') -and ((@($bScn | Sort-Object) -join ',') -ne (@($scn | Sort-Object) -join ',') -or (@($bTst | Sort-Object) -join ',') -ne (@($tst | Sort-Object) -join ','))
-        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn; TestScenarios = $tst; ScenariosFrom = $from; BacklogScenarios = @($bScn + $bTst); ScenariosDiverge = [bool]$div }
+        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn; TestScenarios = $tst; ScenariosFrom = $from; BacklogScenarios = @($bScn + $bTst); ScenariosDiverge = [bool]$div; AcceptWaiver = $waiver }
     }
     return $tasks
 }
