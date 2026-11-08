@@ -6,6 +6,7 @@ Levantado pelo dev quando o plano — ou a seção de standard que ele citou —
 🔺 GAP — <ID da Task | F-<nnn> na trilha fix> — passo <n> do plano
 
 **Tipo:** plano | standard
+**Natureza:** aparência | desenho | produto   *(v3.57.0 — o que decide quem responde; abaixo)*
 **Origem (sugestão):** previsão | conhecimento | requisito | ambiente | processo   (o Arquiteto confirma)
 **O que o plano diz:** <trecho literal>
 **O que encontrei no código:** <arquivo:linha> — <o fato observado>
@@ -31,6 +32,20 @@ Levantado pelo dev quando o plano — ou a seção de standard que ele citou —
 | `requisito` | o critério de aceite ou a regra de negócio não diz | o que mostrar quando a lista está vazia |
 | `ambiente` | o ambiente real (emulador, APK, servidor, rede) se comporta diferente do que o plano mediu | o emulador sobe sem a WebView atualizada |
 | `processo` | a regra, a guarda ou o script do plugin mandou o que o plano proíbe | o cartão mandou rodar um cenário que o plano tirou |
+
+## A natureza do GAP — quem responde (v3.57.0)
+
+No sprint 5 do garden, 4 de 5 GAPs de uma Task de interface eram decisões pequenas de medida ou de marcação, e cada um custou um Arquiteto novo mais um dev novo. A natureza que **você** marca decide a rota; na dúvida entre duas, marque a mais pesada.
+
+| Natureza | Quando | Quem responde |
+|---|---|---|
+| `aparência` | uma **medida** (espaçamento, alinhamento, quebra de linha, tamanho) que cai fora do envelope do plano, ou uma **marcação** simples (rótulo acessível, identificador) — a decisão é uma regra de estilo ou um atributo | o Arquiteto, em **parecer curto** (até 8 linhas, sem reescrever o plano) |
+| `desenho` | estrutura, fluxo, contrato, arquivo fora da lista, teste que não faz sentido — o resto dos GAPs | o Arquiteto, ciclo completo (como hoje) |
+| `produto` | muda o que o usuário vê ou faz: regra de produto, texto de tela, empilhar ou esconder um controle | o **stakeholder** (formulário); o Arquiteto só registra depois |
+
+**Com envelope no plano** (`**Envelope de medidas**`, que o cartão traz): meça o caso, aplique o caso medido e registre a medida e a escolha no relatório (R9) — isso **não é GAP**. GAP de aparência só quando a medida cai **fora** do envelope.
+
+**Um GAP de aparência por Task.** Antes de parar, meça **todos** os casos do envelope e do que a tela mostra; o GAP lista cada medida fora do envelope, uma linha cada (`<medida> · <o que mediu> · <opções>`). A1 e A2 do garden foram dois ciclos separados a 10 min um do outro por falta disso.
 
 ## Quando levantar (sempre)
 

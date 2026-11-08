@@ -3,6 +3,7 @@
 # o prompt curto com os caminhos e o comando de volta. No piloto, a sessão principal foi 35 % do custo, a 274 mil tokens
 # de contexto por chamada; no protótipo do benchmark com a orquestração em script, o coordenador custou 6 %.
 # Uso (raiz do projeto): powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/run.ps1" <next|start|done|handoff|allow> [-Task T-041] [-Result ok|gap|env|teto] [-Block k] [-Commands "a;b"] [-Deny "c"] [-By quem]
+#   wait      (v3.57.0) sonda SÓ DE LEITURA da espera registrada pelo next: terminou (0) · vivo (3) · POSSÍVEL TRAVAMENTO (5) — é o que o vigia roda
 #   next      a próxima ação do sprint corrente (preparo → construção → validação → consolidação → Review)
 #   start     dispara a construção da Task: escopo e marcador (dispatch.ps1), cartão de passagem e o prompt do dev
 #   done      o dev voltou: ok → close.ps1 -Apply (fecha pela evidência do dev) · gap → rota ao Arquiteto · env → reparo
@@ -26,7 +27,7 @@
 # num pacote (done -Result gap). Funções em external-plan.ps1.
 
 param(
-    [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff', 'allow')][string]$Action,
+    [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff', 'allow', 'wait')][string]$Action,
     [string]$Task = '',
     [ValidateSet('', 'ok', 'gap', 'env', 'teto')][string]$Result = '',
     [string]$Block = '',
@@ -46,6 +47,30 @@ $todoMk = [char]::ConvertFromUtf32(0x2B1C); $redMk = [char]::ConvertFromUtf32(0x
 $plugin = '${CLAUDE_PLUGIN_ROOT}/scripts/checks'
 
 function Out([string]$s) { [Console]::Out.WriteLine($s) }
+
+# A linha que o next imprime quando manda esperar (protocolo de espera, regra 6): a conferência por tempo é do vigia.
+# O disparo NÃO cita ID de Task (o registro de agentes lê ID na descrição e no prompt e trataria o vigia como agente da Task).
+function Get-VigiaLine {
+    return "  conferência por tempo (protocolo de espera): dispare o vigia — Agent(subagent_type 'team:vigia', model 'haiku', description 'Vigia da espera', prompt 'Rode a sonda do seu roteiro e devolva a linha.'), sem ID de Task — e encerre o turno. Ele confere por até 10 min e o aviso dele reabre a sessão: 'vivo' = encerre o turno e espere; 'travado' = leve ao stakeholder (formulário: encerrar com target.ps1 -Kill, retomar por dev novo com o cartão, ou seguir esperando); 'terminou' = run.ps1 next. O primeiro aviso pode ser parcial."
+}
+
+# wait (v3.57.0, protocolo de espera regras 1 e 6): a sonda do VIGIA (agents/vigia.md), SÓ DE LEITURA — não grava o
+# .next-verdict, não dispara nada, não decide. Usa a espera que o último next registrou (.next-verdict) e as mesmas funções
+# dele (Get-LiveAgents, Get-TaskWait). Exit 0 = terminou (nada em espera; a sessão roda o next) · 3 = vivo · 5 = POSSÍVEL
+# TRAVAMENTO (10 min ou mais sem CPU nem arquivo novo; a decisão é da sessão e do stakeholder).
+if ($Action -eq 'wait') {
+    $nv = Get-Marker $Root '.next-verdict'
+    $tk = if ($nv) { [string]$nv.task } else { '' }
+    if (-not $tk) { Out 'wait: terminou — nenhuma espera registrada pelo next (.next-verdict); a sessão roda run.ps1 next'; exit 0 }
+    $liveW = @(Get-LiveAgents $Root $tk | Where-Object { ([string]$_.type -replace '^.*:', '') -in 'task-runner', 'developer' })
+    $cmdW = Get-TaskWait $Root $tk
+    if (-not $liveW.Count -and -not $cmdW) { Out "wait: terminou — a $tk não tem agente nem comando em espera; a sessão roda run.ps1 next"; exit 0 }
+    $partes = @()
+    if ($liveW.Count) { $a = @($liveW | Sort-Object { [string]$_.at } -Descending)[0]; $partes += "$(([string]$a.type) -replace '^.*:', '') vivo (última ação $(if ($a.last) { $a.last } else { 'disparado' }) há $([int]((Get-AgentIdleHours $a) * 60)) min)" }
+    if ($cmdW) { $partes += [string]$cmdW.Text }
+    if ($cmdW -and $cmdW.Pulse.Stalled) { Out "wait: POSSÍVEL TRAVAMENTO — $tk · $($partes -join ' · ')"; exit 5 }
+    Out "wait: vivo — $tk · $($partes -join ' · ')"; exit 3
+}
 
 function Get-Defined([string]$Root) {
     $d = Join-Path $Root '.team-project/quality-assurance/scenarios'
@@ -206,15 +231,9 @@ function Add-RunLog([string]$S, [string]$n, [string]$Item, [string]$Decision, [s
 function Measure-CutAgent($Rc) {
     $hook = Join-Path $PSScriptRoot '..\..\hooks\subagent-stop.ps1'
     $hin = [ordered]@{ hook_event_name = 'SubagentStop'; agent_id = [string]$Rc.agent_id; agent_type = [string]$Rc.type; agent_transcript_path = [string]$Rc.transcript; transcript_path = [string]$Rc.session_transcript; cwd = $Root } | ConvertTo-Json -Compress
-    try {
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = 'powershell'; $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$hook`""
-        $psi.UseShellExecute = $false; $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
-        $psi.EnvironmentVariables['CLAUDE_PROJECT_DIR'] = $Root
-        $hp = [System.Diagnostics.Process]::Start($psi)
-        $hb = $utf8.GetBytes($hin); $hp.StandardInput.BaseStream.Write($hb, 0, $hb.Length); $hp.StandardInput.Close()
-        $null = $hp.StandardOutput.ReadToEnd(); $null = $hp.StandardError.ReadToEnd(); $hp.WaitForExit(60000) | Out-Null
-    } catch { }
+    # Protocolo de espera (v3.57.0): Invoke-Bounded (lib.ps1). Antes, o ReadToEnd() vinha antes do WaitForExit(60000) e o prazo
+    # nunca valia: hook travado prendia o run.ps1 para sempre.
+    try { $null = Invoke-Bounded $Root "& '$($hook -replace "'", "''")'" 60 -Env @{ CLAUDE_PROJECT_DIR = $Root } -InputText $hin } catch { }
     Out "  consumo: $(([string]$Rc.type) -replace '^.*:', '') $(if ($Rc.work) { [string]$Rc.work }) medido pelo transcript (parou sem SubagentStop)"
 }
 
@@ -313,18 +332,26 @@ function Write-Handoff($T, [string]$S, [string]$n) {
     # plano — uma linha cada; ninguém abre o knowledge.md nem o pitfalls.md inteiros.
     $kl = @(Get-TaskKnowledgeLines $Root $n $T.Id $(if ($pf) { $pt } else { '' }))
     $sl = @(Get-StackPitfallLines $Root $n $T.Id $(if ($pf) { $pt } else { '' }))
+    # v3.57.0 (plugin-report do sprint 5 do garden, item 9): o envelope de decisão das medidas visuais do plano vai ao cartão — o dev
+    # mede com a sonda, aplica o caso medido e só abre GAP fora do envelope (um GAP por Task, com todas as medidas fora dele).
+    $envT = ''
+    if ($pf) {
+        $em = [regex]::Match($pt, '(?ms)^\*\*Envelope de medidas\*\*.*?(?=^\*\*[A-Z]|^##\s|\z)')
+        if ($em.Success) { $el = @([regex]::Matches($em.Value, '(?m)^\s*-\s*E\d+\s*·.*$') | ForEach-Object { $_.Value.Trim() }); if ($el.Count) { $envT = ($el -join "`n"); if ($envT.Length -gt 2000) { $envT = $envT.Substring(0, 2000).TrimEnd() + "`n… (o resto no plano, §6)" } } }
+    }
     $md = @("# Cartão de passagem — $($T.Id) $($T.Title)", '', "**História:** $($T.Story) · **Marcador:** $($T.Mark) · **Depende de:** $(if ($T.Deps.Count) { $T.Deps -join ', ' } else { '—' })",
             ("**Plano:** ``$planRel`` · $files arquivo(s)" + $(if ($blocks.Count) { " · " + ($blocks -join ' · ') } else { '' })),
             # v3.52.3 (note.md item 1): o aceite só com alvo — sem guards.json → targets, o cartão mandava rodar o accept.ps1 e
             # 4 de 5 Tasks do sprint 4 do garden pararam no mesmo 🔺 GAP "accept sem .scn".
             # v3.56.0 (H2): a lista é a do plano quando ele existe (o backlog só antes dele) e o -Scenarios aponta o .scn da História.
-            ("**Cenários$(if ($T.ScenariosFrom -eq 'plano') { ' (do plano)' }):** " + $(if (-not $T.Scenarios.Count) { 'nenhum no alvo' } elseif (Get-TargetsConfig $Root) { "$($T.Scenarios -join ', ') — ``accept.ps1 -Task $($T.Id)$(Get-AcceptArgs $T)``" } else { "$($T.Scenarios -join ', ') — sem alvo de execução: o accept não roda; os cenários se provam pelos testes do plano" }) + $(if ($T.TestScenarios.Count) { " · por teste do plano, sem accept: $($T.TestScenarios -join ', ')" } else { '' })),
+            ("**Cenários$(if ($T.ScenariosFrom -eq 'plano') { ' (do plano)' }):** " + $(if (-not $T.Scenarios.Count) { if ($T.AcceptWaiver) { "o accept não roda nesta Task — o plano declara: $($T.AcceptWaiver); os cenários se provam pelos testes do plano (não rode o accept.ps1)" } else { 'nenhum no alvo' } } elseif (Get-TargetsConfig $Root) { "$($T.Scenarios -join ', ') — ``accept.ps1 -Task $($T.Id)$(Get-AcceptArgs $T)``" } else { "$($T.Scenarios -join ', ') — sem alvo de execução: o accept não roda; os cenários se provam pelos testes do plano" }) + $(if ($T.TestScenarios.Count) { " · por teste do plano, sem accept: $($T.TestScenarios -join ', ')" } else { '' })),
             ("**Última entrega:** $last" + $(if ($stop) { " · parou: $((($stop -split "`r?`n")[0]).Trim())" } else { '' })),
             "**Verificação:** $vtxt · **Cenários no alvo:** $atxt",
             "**GAPs:** $(if ($gaps.Count) { $gaps -join ' · ' } else { 'nenhum' })",
             $(if ($dl.Count) { "**Decisões do sprint** (``architect/decisions/S$n.md`` — valem como o plano; não abra o arquivo):`n" + ($dl -join "`n") } else { $null }),
             $(if ($kl.Count) { "**Conhecimento do projeto** (``architect/knowledge.md`` — o que sprints anteriores ensinaram sobre os arquivos desta Task; vale como o plano; não abra o arquivo):`n" + ($kl -join "`n") } else { $null }),
             $(if ($sl.Count) { "**Armadilhas da stack** (``standards/stacks/<stack>/pitfalls.md`` do plugin e do projeto — comportamento do framework que pega quem não sabe; não abra o arquivo):`n" + ($sl -join "`n") } else { $null }),
+            $(if ($envT) { "**Envelope de medidas** (do plano — meça com a sonda e aplique o caso medido; registre a medida e a escolha no relatório, R9; 🔺 GAP ``aparência`` só quando a medida cai FORA dele, e **um GAP por Task** com todas as medidas fora do envelope, uma linha cada — ``roles/developer/templates/gap.md``):`n$envT" } else { $null }),
             # v3.53.3: o diagnóstico do operator sobre a falha da prova no alvo (run.ps1 done -Result gap).
             $(if (Test-Path -LiteralPath $dg) { "**Diagnóstico do alvo (operator):** ``$dgRel`` · $((@((Read-Text $dg) -split "`r?`n" | Where-Object { $_.Trim() }) | Select-Object -First 1))" } else { $null }), '',
             $(if ($rem) { "Retomada do passo $($rem.Num): os passos que faltam estão abaixo, copiados do plano, e o que já está provado também. Siga por este cartão — não reabra o plano inteiro; abra só o trecho de que um passo precise e que não esteja aqui (Read com offset e limit; a §6 com os testes e as **Mutações:**, se o passo as pedir)." } else { 'Leia: este cartão, o cabeçalho e a §6 do plano e o seu bloco. O resto só se o passo pedir.' }))
@@ -566,10 +593,25 @@ try {
                 Out "  executor: não dispare Arquiteto nem start. Devolva à sessão a linha `"$($T.Id) 🔺 GAP → external plan $($gp.Name)`" — o run.ps1 next mostra o pacote ao stakeholder e só reconstrói a Task quando a decisão voltar (plan.ps1 ok)."
                 exit 0
             }
+            # v3.57.0 (plugin-report do sprint 5 do garden, item 9): a natureza que o dev marcou no GAP (**Natureza:** aparência |
+            # desenho | produto — gap.md) decide quem responde. produto = decisão do stakeholder (o ciclo do Arquiteto não a
+            # resolve: A3 do garden); aparência = parecer curto do Arquiteto; desenho ou sem marca = ciclo completo, como antes.
+            $natM = $null; if (Test-Path -LiteralPath $dvp) { $natM = @([regex]::Matches((Read-Text $dvp), '(?im)^\*\*Natureza:\*\*\s*(apar[êe]ncia|desenho|produto)') | Select-Object -Last 1) | Select-Object -First 1 }
+            $nat = if ($natM) { $x = $natM.Groups[1].Value.ToLowerInvariant(); if ($x -like 'apar*') { 'aparência' } else { $x } } else { '' }
+            if ($nat -eq 'produto') {
+                Add-RunLog $S $n $T.Id '🔺 GAP [produto] → stakeholder (formulário); o Arquiteto só registra a decisão depois' $(if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }) "sprints/$n/delivery/$($T.Id).md"
+                Out "run: $($T.Id) com 🔺 GAP de natureza PRODUTO — a decisão é do STAKEHOLDER, não do Arquiteto (mexe no que o usuário vê ou faz):"
+                Out "  sessão: leve ao stakeholder num formulário (com exemplo prático — G3) a pergunta e as opções do GAP em .team-project/sprints/$n/delivery/$($T.Id).md; decidido, o Arquiteto só registra no plano (/arc question, parecer curto) e o dev volta por run.ps1 start -Task $($T.Id)."
+                Out "  executor: não dispare Arquiteto nem start. Devolva à sessão a linha `"$($T.Id) 🔺 GAP produto → stakeholder`"."
+                exit 0
+            }
+            $gapPre = if ($nat -eq 'aparência') { 'PARECER CURTO (GAP de aparência ou marcação): responda só a medida ou a marcação, aplicando o envelope do plano quando houver, em até 8 linhas, e registre no plano apenas o trecho que a decisão muda; se ao ler for decisão de produto, diga "produto" e pare. ' } else { '' }
+            if ($nat -eq 'aparência') { Out "run: GAP de natureza APARÊNCIA — parecer curto do Arquiteto (até 8 linhas), não o ciclo completo." }
+            elseif (-not $nat) { Out "run: GAP sem **Natureza:** — tratado como desenho (ciclo completo); o dev marca aparência | desenho | produto (roles/developer/templates/gap.md)." }
             Add-RunLog $S $n $T.Id '🔺 GAP → Arquiteto em instância nova (/arc question); a decisão fica no plano (R9)' $(if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }) "sprints/$n/delivery/$($T.Id).md"
             Out "run: $($T.Id) com 🔺 GAP — Arquiteto em instância NOVA (o cache de 5 min do anterior já venceu; C1), modo /arc question (rota gravada no run-log.md):"
             Out "  $(Get-AgentLine 'architect')"
-            Out "  prompt: `"Decida o 🔺 GAP da $($T.Id): cartão .team-project/$card, plano .team-project/sprints/$n/$($T.Plan), relatório .team-project/sprints/$n/delivery/$($T.Id).md$(if ($diagV) { ", diagnóstico do operator $diagRel (veredito $diagV)" }). Registre a decisão no plano (R9) no lugar do texto que ela derruba (passo, premissa, teste ou arquivo superado) — não ao lado: o plano tem teto de $($script:PlanMaxKb) KB e o run.ps1 start recusa o plano acima dele. Toda decisão declara duas linhas (v3.56.0, regra 29): **Origem:** previsão | conhecimento | requisito | ambiente | processo (confirme a sugestão do dev) e **Lição:** projeto (fato deste sistema que vai se repetir → K no knowledge.md no fechamento) | stack:<nome> (comportamento do framework, vale para qualquer projeto com a mesma stack → armadilha da camada local) | plugin (defeito ou regra do plugin → ocorrência de plugin, sem contexto do projeto) | nenhuma (previsão única). No plano: **Decisão do GAP $($T.Id) (<data>):** <a decisão>, com as duas linhas embaixo. Grave-a UMA vez como D-<k> em .team-project/architect/decisions/S$n.md (## D-<k> — <título>, **Vale para:** todas | T-… | <glob>, as duas linhas, a regra em até 5 linhas) quando ela vale para mais de uma Task do sprint (alvo, APK, teste instável, regra de processo) OU a Lição é projeto ou stack — e no plano só a referência em **Decisões:** D-<k> — não copie o texto em plano nenhum: o cartão de cada Task a traz. Decisão ou K que já está lá: só a referência. Rode plan.ps1 -Plan .team-project/sprints/$n/$($T.Plan) antes de voltar. Não escreva código nem rode build. Volte em até 15 linhas.`""
+            Out "  prompt: `"$($gapPre)Decida o 🔺 GAP da $($T.Id): cartão .team-project/$card, plano .team-project/sprints/$n/$($T.Plan), relatório .team-project/sprints/$n/delivery/$($T.Id).md$(if ($diagV) { ", diagnóstico do operator $diagRel (veredito $diagV)" }). Registre a decisão no plano (R9) no lugar do texto que ela derruba (passo, premissa, teste ou arquivo superado) — não ao lado: o plano tem teto de $($script:PlanMaxKb) KB e o run.ps1 start recusa o plano acima dele. Toda decisão declara duas linhas (v3.56.0, regra 29): **Origem:** previsão | conhecimento | requisito | ambiente | processo (confirme a sugestão do dev) e **Lição:** projeto (fato deste sistema que vai se repetir → K no knowledge.md no fechamento) | stack:<nome> (comportamento do framework, vale para qualquer projeto com a mesma stack → armadilha da camada local) | plugin (defeito ou regra do plugin → ocorrência de plugin, sem contexto do projeto) | nenhuma (previsão única). No plano: **Decisão do GAP $($T.Id) (<data>):** <a decisão>, com as duas linhas embaixo. Grave-a UMA vez como D-<k> em .team-project/architect/decisions/S$n.md (## D-<k> — <título>, **Vale para:** todas | T-… | <glob>, as duas linhas, a regra em até 5 linhas) quando ela vale para mais de uma Task do sprint (alvo, APK, teste instável, regra de processo) OU a Lição é projeto ou stack — e no plano só a referência em **Decisões:** D-<k> — não copie o texto em plano nenhum: o cartão de cada Task a traz. Decisão ou K que já está lá: só a referência. Rode plan.ps1 -Plan .team-project/sprints/$n/$($T.Plan) antes de voltar. Não escreva código nem rode build. Volte em até 15 linhas.`""
             Out "  depois: dev em instância NOVA com a decisão — run.ps1 start -Task $($T.Id) (o cartão regerado aponta o plano com a decisão) e rode run.ps1 done de novo"
             exit 0
         }
@@ -763,7 +805,8 @@ try {
         }
     }
     # v3.53.2: cenário que aguarda outra Task (# aguarda <T-ID> no .scn) segura a Task que o cita como uma dependência.
-    $blockers = { param($t) @(@($t.Deps | Where-Object { $done -notcontains $_ }) + @($t.Scenarios | Where-Object { & $waiting $_ } | ForEach-Object { $deferred[$_] }) | Select-Object -Unique) }
+    # v3.57.0 (item 6): a Task que CRIA os nomes de teste do próprio cenário não espera por si mesma (a Task cria e prova os ids).
+    $blockers = { param($t) @(@($t.Deps | Where-Object { $done -notcontains $_ }) + @($t.Scenarios | Where-Object { & $waiting $_ } | ForEach-Object { $deferred[$_] } | Where-Object { $_ -ne $t.Id }) | Select-Object -Unique) }
     # 1 · preparo da construção: por História, cenários executáveis (QA) e depois os planos (Arquiteto), antes de qualquer dev.
     # v3.51.4: sem alvo de execução (guards.json sem "targets") não há .scn a escrever — o accept não roda e os cenários
     # ficam rastreados nos planos e provados por teste (garden item 4). As Tasks da História entram em 🟦 no preparo (item 2).
@@ -892,6 +935,7 @@ try {
             # v3.53.5: o comando que o agente espera, com o sinal de vida (CPU, arquivo, POSSÍVEL TRAVAMENTO).
             $wA = Get-TaskWait $Root $next.Id
             if ($wA) { Out "  espera: $($wA.Text)"; if ($wA.PSObject.Properties['NoProgress'] -and $wA.NoProgress) { Out "  SEM AVANÇO: $($wA.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." } }
+            Out (Get-VigiaLine)
             Set-NextVerdict $Root 'esperar' $next.Id "agente: $agTxt"
             exit 3
         }
@@ -902,6 +946,7 @@ try {
             Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) ainda tem $($wN.Text) rodando (um dev esperava por ele). Não dispare executor nem dev: seriam dois na mesma Task e no mesmo alvo. Encerre o turno; rode run.ps1 next quando o aviso de volta chegar."
             if ($wN.PSObject.Properties['NoProgress'] -and $wN.NoProgress) { Out "  SEM AVANÇO: $($wN.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." }
             if ($wN.Pulse.Stalled) { Out "  POSSÍVEL TRAVAMENTO: o comando não gasta CPU nem grava arquivo há 10 min ou mais. Não espere às cegas: leve ao stakeholder (formulário) — encerrar o processo (ele decide) e retomar a $($next.Id) por dev novo com o cartão (run.ps1 start), ou seguir esperando." }
+            Out (Get-VigiaLine)
             Set-NextVerdict $Root 'esperar' $next.Id "comando: $($wN.Text)"
             exit 3
         }
@@ -926,7 +971,18 @@ try {
         exit 0
     }
     if ($gapWait.Count -or @(Get-ExternalPending).Count) { Write-ExternalWait }
-    if ($open.Count) { Out "PRÓXIMA AÇÃO: nenhuma Task elegível — $(($open | ForEach-Object { "$($_.Id) espera $((& $blockers $_) -join ',')" }) -join '; '). Bloqueio sobe pelo degrau 1 (R22)."; exit 3 }
+    if ($open.Count) {
+        Out "PRÓXIMA AÇÃO: nenhuma Task elegível — $(($open | ForEach-Object { "$($_.Id) espera $((& $blockers $_) -join ',')" }) -join '; '). Bloqueio sobe pelo degrau 1 (R22)."
+        # v3.57.0 (item 6): diz por que — ciclo de espera (a Task espera a que a espera) e espera por Task que não está no quadro
+        # (a mãe dividida em A/B, que nunca fecha) — em vez de deixar o Arquiteto descobrir relendo o .scn e os planos.
+        $edgesW = @{}; foreach ($ot in $open) { $edgesW[[string]$ot.Id] = @(& $blockers $ot) }
+        $cycW = @(Find-WaitCycle $edgesW)
+        if ($cycW.Count) { Out "  CICLO de espera: $($cycW -join ' → ') — nenhuma delas pode começar. Quem desfaz é o par PO + Arquiteto: o '# aguarda' do .scn aponta para a Task que CRIA os nomes de teste (não para uma que também espera), ou a dependência sai do plano." }
+        $openIds = @($open | ForEach-Object { [string]$_.Id })
+        $ghostW = @($edgesW.Values | ForEach-Object { $_ } | Select-Object -Unique | Where-Object { $openIds -notcontains $_ -and $done -notcontains $_ })
+        if ($ghostW.Count) { Out "  espera por Task fora do quadro: $($ghostW -join ', ') não está em aberto nem fechada — Task-mãe dividida em A/B? O '# aguarda' deve apontar para a parte que cria os nomes de teste." }
+        exit 3
+    }
 
     # 3 · validação do sprint: o operator mede (quality + todos os cenários), o QA julga.
     $sid = "S$n"

@@ -337,6 +337,18 @@ try {
     if ($iss.Count) { Add-Result 'desenho' 'falhou' (($iss -join '; ') + ' (regra 27)') }
     elseif ($layNew) { Add-Result 'desenho' 'ok' "Documentos vivos: $($dvm.Groups[1].Value) (consolidado pelo Arquiteto)" }
     else { Add-Result 'desenho' 'n-a' 'sem **Layout novo:** sim e sem documento de desenho na lista' }
+    # ---------- 33 · envelope de decisão das medidas visuais (v3.57.0, plugin-report do sprint 5 do garden) ----------
+    # 4 de 5 GAPs de uma Task de interface eram medida ou marcação que o plano já delimitava ou podia delimitar, e cada um custou
+    # um Arquiteto novo e um dev novo. Com **Layout novo:** sim, o plano declara por medida a sonda e a árvore "se medir X → aplique
+    # Y; se medir Z → aplique W". Aviso (não reprova) nesta versão: o cartão leva o envelope ao dev; vira regra com o uso real.
+    if ($layNew) {
+        $envM = [regex]::Match($text, '(?ms)^\*\*Envelope de medidas\*\*.*?(?=^\*\*[A-Z]|^##\s|\z)')
+        $envL = if ($envM.Success) { @([regex]::Matches($envM.Value, '(?m)^\s*-\s*E\d+\s*·.*$') | ForEach-Object { $_.Value }) } else { @() }
+        $envBad = @($envL | Where-Object { $_ -notmatch 'sonda:\s*`[^`]+`' -or $_ -notmatch '\(a\)\s*se\s+medir' -or $_ -notmatch '\(b\)\s*se\s+medir' })
+        if (-not $envL.Count) { Add-Result 'envelope' 'ok' 'AVISO (regra 33): **Layout novo:** sim sem **Envelope de medidas** — o dev abrirá 🔺 GAP para cada medida que o plano não delimitou; declare, por medida visual, a sonda e "se medir X → aplique Y; se medir Z → aplique W"' }
+        elseif ($envBad.Count) { Add-Result 'envelope' 'ok' ('AVISO (regra 33): ' + $envBad.Count + ' linha(s) do envelope sem sonda: `<comando>` ou sem os casos (a) e (b) "se medir …": ' + (($envBad | ForEach-Object { (($_ -split '·')[0] -replace '^\s*-\s*', '').Trim() }) -join ', ')) }
+        else { Add-Result 'envelope' 'ok' "$($envL.Count) medida(s) com sonda e árvore de decisão" }
+    } else { Add-Result 'envelope' 'n-a' 'sem **Layout novo:** sim' }
 
     # ---------- 28 · plano pela ficha (v3.53, note.md item 8) ----------
     # Task com "### Ficha <ID>" no architect/breakdown/S<n>.md: o plano declara o que leu além dela (é a medida da ficha), usa
