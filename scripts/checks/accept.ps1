@@ -101,6 +101,16 @@ function Invoke-AcceptBaseline {
     if ($e) { return "estado de partida (targets.android.baseline): $e" }
     return $null
 }
+# v3.57.1 (note.md item 13): a falha foi "tag ausente" e os ids do dump são só do Android (janela, barra, conteúdo) — nenhum id
+# do app chegou à árvore de acessibilidade. Em app híbrido, é a WebView que não publica o id HTML (não o estado de partida).
+function Test-IdsHidden([string]$Detail) {
+    if ([string]$Detail -notmatch 'tag ausente') { return $false }
+    $m = [regex]::Match([string]$Detail, '\[tela: [^\]]*? · ids: ([^\]]*?) · textos:')
+    if (-not $m.Success) { return $false }
+    $ids = @($m.Groups[1].Value -split ',\s*' | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -ne 'nenhum' })
+    $framework = 'action_bar_root', 'content', 'statusBarBackground', 'navigationBarBackground', 'decor_content_parent', 'action_bar_container', 'action_bar', 'action_context_bar', 'parentPanel', 'action_mode_bar_stub'
+    return -not @($ids | Where-Object { $framework -notcontains $_ }).Count
+}
 # A tela em que o passo falhou, do "[tela: … · ids: … · textos: …]" do adaptador android ('' sem ela).
 function Get-FailScreen([string]$Detail) {
     $m = [regex]::Match([string]$Detail, '\[tela: ([^\]]*?) · ids: [^\]]*? · textos: ([^\]]*)\]')
@@ -150,10 +160,11 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
         $appApk = Resolve-AndroidApk $Root $Apk
         # v3.53.6 (sprint 5 do garden, item 7): APK mais velho que o código do módulo não é instalado — rodaria o app de antes
         # da mudança ("tag não encontrada" para o id recém-criado). Nem ambiente nem defeito do app: exit 2, reconstruir.
-        $st = Get-ApkStaleness $appApk
+        $st = Get-ApkStaleness $appApk $Root   # v3.57.1: com $Root, vale targets.android.apkSources (app híbrido)
         if ($st.Stale) {
             $fr = ([string]$st.File).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/'
-            [Console]::Out.WriteLine("accept: APK mais velho que o código ($fr alterado em $($st.FileTime.ToString('yyyy-MM-dd HH:mm:ss')); APK de $($st.ApkTime.ToString('yyyy-MM-dd HH:mm:ss'))): reconstrua ($($st.Task)) antes do accept. Não é falha de ambiente nem defeito do app — o APK do disco não tem a mudança.")
+            $ar = ([string]$st.ApkFull).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/'
+            [Console]::Out.WriteLine("accept: APK mais velho que o código ($fr alterado em $($st.FileTime.ToString('yyyy-MM-dd HH:mm:ss')); $ar de $($st.ApkTime.ToString('yyyy-MM-dd HH:mm:ss'))): reconstrua ($($st.Task)) antes do accept. Não é falha de ambiente nem defeito do app — o APK do disco não tem a mudança.")
             return 2
         }
         if ($st.Note) { [Console]::Out.WriteLine("accept: $($st.Note)") }
@@ -207,7 +218,14 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
             $sc1 = Get-FailScreen $results[0].detail
             if ($sc1 -and $sc1 -eq (Get-FailScreen $results[1].detail)) {
                 $startState = $sc1
-                $envFail = "ESTADO DE PARTIDA: os 2 primeiros cenários ($($results[0].id), $($results[1].id)) pararam na mesma tela — $sc1 — e nenhum chegou ao critério; $($Blocks.Count - 2) cenário(s) não rodaram. Não é defeito do código nem queda do emulador: o app não está na tela de partida dos cenários (declare targets.android.baseline ou ajuste o cenário). Captura: $($results[1].shot)"
+                # v3.57.1 (note.md item 13): no garden o app ESTAVA na tela de partida (a captura mostra a aba Geral com a barra
+                # de abas) e o diagnóstico mandava declarar baseline — que o projeto já tinha (reset, seed base, launch). As duas
+                # falhas eram "tag ausente" com o dump trazendo só ids do próprio Android: a WebView não publica o id HTML.
+                if ((Test-IdsHidden $results[0].detail) -and (Test-IdsHidden $results[1].detail)) {
+                    $envFail = "IDS NÃO PUBLICADOS: os 2 primeiros cenários ($($results[0].id), $($results[1].id)) não acharam o id na tela — $sc1 — e o dump não traz nenhum id do app, só os do Android; $($Blocks.Count - 2) cenário(s) não rodaram. Não é o estado de partida (declarar baseline não resolve) nem defeito do código: em app híbrido, a WebView desta versão do Android não publica o id HTML como resource-id. O accept também procura o id no nome acessível (content-desc, v3.57.1): o app espelha o id no aria-label no build de prova; sem isso, a prova no alvo vai por outro executor, com desvio registrado. Captura: $($results[1].shot)"
+                } else {
+                    $envFail = "ESTADO DE PARTIDA: os 2 primeiros cenários ($($results[0].id), $($results[1].id)) pararam na mesma tela — $sc1 — e nenhum chegou ao critério; $($Blocks.Count - 2) cenário(s) não rodaram. Não é defeito do código nem queda do emulador: o app não está na tela de partida dos cenários (declare targets.android.baseline ou ajuste o cenário). Captura: $($results[1].shot)"
+                }
                 break
             }
         }

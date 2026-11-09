@@ -6,7 +6,7 @@ Levantado pelo dev quando o plano — ou a seção de standard que ele citou —
 🔺 GAP — <ID da Task | F-<nnn> na trilha fix> — passo <n> do plano
 
 **Tipo:** plano | standard
-**Natureza:** aparência | desenho | produto   *(v3.57.0 — o que decide quem responde; abaixo)*
+**Natureza:** aparência | desenho | produto | processo | ambiente   *(v3.57.0; v3.57.1: obrigatória, e processo e ambiente entram — o que decide quem responde; abaixo)*
 **Origem (sugestão):** previsão | conhecimento | requisito | ambiente | processo   (o Arquiteto confirma)
 **O que o plano diz:** <trecho literal>
 **O que encontrei no código:** <arquivo:linha> — <o fato observado>
@@ -42,6 +42,10 @@ No sprint 5 do garden, 4 de 5 GAPs de uma Task de interface eram decisões peque
 | `aparência` | uma **medida** (espaçamento, alinhamento, quebra de linha, tamanho) que cai fora do envelope do plano, ou uma **marcação** simples (rótulo acessível, identificador) — a decisão é uma regra de estilo ou um atributo | o Arquiteto, em **parecer curto** (até 8 linhas, sem reescrever o plano) |
 | `desenho` | estrutura, fluxo, contrato, arquivo fora da lista, teste que não faz sentido — o resto dos GAPs | o Arquiteto, ciclo completo (como hoje) |
 | `produto` | muda o que o usuário vê ou faz: regra de produto, texto de tela, empilhar ou esconder um controle | o **stakeholder** (formulário); o Arquiteto só registra depois |
+| `processo` | regra do time ou do plugin em conflito: o cartão manda o que o plano proíbe, comando negado pela guarda, ordem do `verify`, gate que reprova o que não devia | o Arquiteto, ciclo completo |
+| `ambiente` | alvo, emulador, prazo de comando, ferramenta ou massa de dados se comportam diferente do que o plano mediu | o Arquiteto, ciclo completo |
+
+**A linha é obrigatória (v3.57.1).** No sprint 5 do garden ela veio em 2 de 22 GAPs — a lista não tinha `processo` nem `ambiente`, que eram a maioria — e sem ela não se mede quantos GAPs são de aparência (a decisão de mandá-los a um modelo mais barato depende disso). Sem a linha nem a palavra na linha do 🔺, o `run.ps1 done -Result gap` recusa e o executor da Task classifica pelo seu texto.
 
 **Com envelope no plano** (`**Envelope de medidas**`, que o cartão traz): meça o caso, aplique o caso medido e registre a medida e a escolha no relatório (R9) — isso **não é GAP**. GAP de aparência só quando a medida cai **fora** do envelope.
 

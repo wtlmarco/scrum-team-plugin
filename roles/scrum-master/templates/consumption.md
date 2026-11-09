@@ -38,7 +38,7 @@ Registra o que cada subagente consumiu — papel, `operator` incluído — **med
 ## Totais do bloco (derivado)
 | Papel | Modelo | Σ tokens processados | Instâncias | Rodadas | Duração total | Σ notificação | Cota 5h | Cota semana |
 |---|---|---|---|---|---|---|---|---|
-| sm · po · arc · ux · qa · dev · task-runner *(uma linha por papel e modelo)* | <modelo servido com versão> | <n \| não medido — só notificação> | <n> | <n> | <mm:ss> | <n> | <+x,x% \| —> | <+y,y% \| —> |
+| sm · po · arc · ux · qa · dev · task-runner · watcher *(uma linha por papel e modelo)* | <modelo servido com versão> | <n \| não medido — só notificação> | <n> | <n> | <mm:ss> | <n> | <+x,x% \| —> | <+y,y% \| —> |
 | operator ← <arc\|qa\|dev\|ux\|task-runner> | <modelo do `operator`> | <n> | <n> | <n chamadas> | <mm:ss> | <n> | <+x,x%> | <+y,y%> |
 | **Total do bloco** | — | **<n>** | **<n>** | **<n>** | **<mm:ss>** | **<n>** | **<+x,x%>** | **<+y,y%>** |
 
@@ -98,7 +98,7 @@ Toda vez que um subagente (papel ou `operator`) para, o hook **G16** soma, no tr
 
 | Papel | Modelo | Σ tokens processados | Instâncias | Rodadas | Duração total | Σ notificação | Cota 5h | Cota semana |
 |---|---|---|---|---|---|---|---|---|
-| sm · po · arc · ux · qa · dev · task-runner *(uma linha por papel e modelo)* | <modelo servido com versão> | <n \| não medido — só notificação> | <n> | <n> | <mm:ss> | <n> | <+x,x% \| —> | <+y,y% \| —> |
+| sm · po · arc · ux · qa · dev · task-runner · watcher *(uma linha por papel e modelo)* | <modelo servido com versão> | <n \| não medido — só notificação> | <n> | <n> | <mm:ss> | <n> | <+x,x% \| —> | <+y,y% \| —> |
 | operator ← <arc\|qa\|dev\|ux\|task-runner> *(uma linha por chamador e modelo)* | <modelo do `operator`> | <n> | <n> | <n chamadas> | <mm:ss> | <n> | <+x,x%> | <+y,y%> |
 | sessão principal *(com `-Session`, por `message.id`)* | <modelo servido com versão> | <n> | <n sessões> | <n> | <mm:ss> | — | <+x,x% \| — sem -Session> | <+y,y%> |
 | **Total do sprint** (papéis + `operator` + sessão medida) | — | **<n>** | **<n>** | **<n>** | **<mm:ss>** | **<n>** | **<+x,x%>** | **<+y,y%>** |
@@ -135,6 +135,7 @@ Detalhe e justificativa de cada regra: `## Regras`, logo abaixo.
 - **Toda rodada vira linha.** Qualquer subagente que para é uma linha — inclusive agente fora do time (`claude-code-guide`, `Explore`), com o papel como o harness o nomeia. Filtrar depois é mais barato que reconstruir.
 - **Quem escreve:** o hook (medido) e o script (a tabela). A sessão roda o script e grava só a linha de sessão. Um escritor por linha; o registro continua do SM.
 - **Executor de Task (v3.52.2).** Papel `task-runner`, uma linha por rodada como qualquer subagente; os papéis que ele dispara saem em linhas próprias, ligados a ele pelo `agentId` (o texto de lançamento assíncrono traz `agentId: <hex>`). O executor **não inclui** o consumo dos filhos (transcript próprio): as linhas se somam, como a do `operator`.
+- **Watcher da espera (v3.57.1; até a v3.57.0, `vigia`).** Papel `watcher`, categoria `cerimônia` (conduz a espera, não produz): uma linha por disparo, Haiku, segundos de duração; o que pesa é a `Σ notificação` que o aviso dele custa à sessão. Linhas antigas ficam com o papel `vigia`.
 - **Linha do `operator`.** Papel `operator`; modelo servido; Task/História do prompt dele (o chamador põe o ID **e a pasta do job** no pedido — `agents/operator.md`; sem os dois, não há `report.md` nem chamador: sprint 3 do piloto, 1 `report.md` para 6 linhas, 4 sem chamador, 3º sprint seguido — R28); Nota `chamado por <papel>`. Quando a linha do pai não traz o filho (pai sem medida, ou o resultado do `Agent` sem o `agentId`), o chamador é a rodada de outro papel, na mesma Task, cujo intervalo contém o início do `operator`, e a Nota diz `chamado por <papel> (pelo horário)` (v3.49). A seção "Execução delegada" dos relatórios continua como **índice dos jobs** (caminho e Task) — os números dela deixam de ser fonte.
 - **Identificação do job (R28).** O job de uma Task vive em `operator/<n>/<T-ID>[-<slug>]/`; o hook G16 grava ali a resposta de cada chamada — `report.md`, e `report-<agente>-r<rodada>.md` a partir da segunda (v3.48). O C1 conta, **por Task**, os `report*.md` dessas pastas e das pastas citadas no plano e na evidência × as linhas `operator` daquela Task (v3.45 — antes era o sprint inteiro, e uma divergência reprovava todo fechamento seguinte).
 - **Jobs `pre-sprint/` (R28).** Job de `.team-project/operator/pre-sprint/<job>/` roda sem sprint aberto: a linha vai para `.team-project/consumption.md` (destino 3), Nota `pre-sprint;`.

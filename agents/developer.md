@@ -45,7 +45,7 @@ Roteiro, skills e modelos: `${CLAUDE_PLUGIN_ROOT}/roles/developer/`.
 
 ## Como reportar um gap
 
-Use `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/gap.md` e **pare de codificar**. Sempre viram pergunta: assinatura diferente; classe/método que não existe; ambiguidade de nome; regra de negócio não especificada; autorização não indicada em Task sensível; arquivo fora da lista; identidade/tenant vindo do request; **comando ou gate que não existe, não resolve ou reprova; pré-requisito de ambiente ausente; gate não exercitado**.
+Use `${CLAUDE_PLUGIN_ROOT}/roles/developer/templates/gap.md` e **pare de codificar**. Todo GAP leva a linha `**Natureza:** aparência | desenho | produto | processo | ambiente` (v3.57.1) — ela decide quem responde. Sempre viram pergunta: assinatura diferente; classe/método que não existe; ambiguidade de nome; regra de negócio não especificada; autorização não indicada em Task sensível; arquivo fora da lista; identidade/tenant vindo do request; **comando ou gate que não existe, não resolve ou reprova; pré-requisito de ambiente ausente; gate não exercitado**.
 
 **Não escolha uma das opções** — listar é ajudar, escolher é decidir.
 

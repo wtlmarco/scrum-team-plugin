@@ -10,6 +10,8 @@
 # desde a v3.53.7, 26 também barra premissa de layout medida por leitura e 29 (decisões do sprint citadas, não copiadas);
 # desde a v3.55.0, 31 (plano com **Corrige:** T-<nnn> traz "### Testes herdados" na §6) e 32 ("### Comandos da Task" na §7:
 # os comandos da Task conferidos contra a lista da G14 + runCommands; instalação, rede, push e destrutivo reprovam).
+# v3.57.1: 33 (Layout novo sim sem **Envelope de medidas** reprova; saída "**Envelope de medidas:** nenhum — <motivo>") e 34 (o plano que
+# dispensa o aceite em qualquer frase declara a linha **Aceite:**, a única que o cartão lê).
 # As mensagens dizem o que corrigir: o Arquiteto não precisa abrir este script (note.md item 7).
 # Saída: tabela regra · resultado · linha decisiva. Exit 1 se alguma falhou · 2 = erro de uso.
 
@@ -340,15 +342,37 @@ try {
     # ---------- 33 · envelope de decisão das medidas visuais (v3.57.0, plugin-report do sprint 5 do garden) ----------
     # 4 de 5 GAPs de uma Task de interface eram medida ou marcação que o plano já delimitava ou podia delimitar, e cada um custou
     # um Arquiteto novo e um dev novo. Com **Layout novo:** sim, o plano declara por medida a sonda e a árvore "se medir X → aplique
-    # Y; se medir Z → aplique W". Aviso (não reprova) nesta versão: o cartão leva o envelope ao dev; vira regra com o uso real.
+    # Y; se medir Z → aplique W". v3.57.0: aviso (o cartão leva o envelope ao dev; viraria regra com o uso real).
+    # v3.57.1 (note.md item 7): REPROVA. Uso real (sprint 5 do garden): 7 planos com Layout novo sim, nenhum com envelope, 5 deles
+    # revisados depois da v3.57.0 — o aviso não mudou nenhum. Para não travar o plano antigo que volta num GAP nem a tela sem
+    # medida a decidir, a saída é declarada: "**Envelope de medidas:** nenhum — <motivo>" (como "**Cenários:** nenhum — …").
     if ($layNew) {
+        $envNone = [regex]::Match($text, '(?m)^\*\*Envelope de medidas:\*\*\s*nenhum\s*[—-]\s*(\S.*)$')
         $envM = [regex]::Match($text, '(?ms)^\*\*Envelope de medidas\*\*.*?(?=^\*\*[A-Z]|^##\s|\z)')
         $envL = if ($envM.Success) { @([regex]::Matches($envM.Value, '(?m)^\s*-\s*E\d+\s*·.*$') | ForEach-Object { $_.Value }) } else { @() }
         $envBad = @($envL | Where-Object { $_ -notmatch 'sonda:\s*`[^`]+`' -or $_ -notmatch '\(a\)\s*se\s+medir' -or $_ -notmatch '\(b\)\s*se\s+medir' })
-        if (-not $envL.Count) { Add-Result 'envelope' 'ok' 'AVISO (regra 33): **Layout novo:** sim sem **Envelope de medidas** — o dev abrirá 🔺 GAP para cada medida que o plano não delimitou; declare, por medida visual, a sonda e "se medir X → aplique Y; se medir Z → aplique W"' }
-        elseif ($envBad.Count) { Add-Result 'envelope' 'ok' ('AVISO (regra 33): ' + $envBad.Count + ' linha(s) do envelope sem sonda: `<comando>` ou sem os casos (a) e (b) "se medir …": ' + (($envBad | ForEach-Object { (($_ -split '·')[0] -replace '^\s*-\s*', '').Trim() }) -join ', ')) }
+        if ($envNone.Success -and -not $envL.Count) { Add-Result 'envelope' 'ok' "nenhuma medida visual a decidir — $($envNone.Groups[1].Value.Trim())" }
+        elseif (-not $envL.Count) { Add-Result 'envelope' 'falhou' '**Layout novo:** sim sem **Envelope de medidas** — o dev abriria 🔺 GAP para cada medida que o plano não delimitou; declare, por medida visual, a sonda e "se medir X → aplique Y; se medir Z → aplique W", ou "**Envelope de medidas:** nenhum — <motivo>" (regra 33)' }
+        elseif ($envBad.Count) { Add-Result 'envelope' 'falhou' ($envBad.Count.ToString() + ' linha(s) do envelope sem sonda: `<comando>` ou sem os casos (a) e (b) "se medir …": ' + (($envBad | ForEach-Object { (($_ -split '·')[0] -replace '^\s*-\s*', '').Trim() }) -join ', ') + ' (regra 33)') }
         else { Add-Result 'envelope' 'ok' "$($envL.Count) medida(s) com sonda e árvore de decisão" }
     } else { Add-Result 'envelope' 'n-a' 'sem **Layout novo:** sim' }
+
+    # ---------- 34 · a dispensa do aceite num lugar só (v3.57.1, note.md item 5) ----------
+    # O cartão, o start e o next só deixam de mandar o accept.ps1 quando entendem que o plano o dispensa. No sprint 5 do garden,
+    # 16 planos dispensaram o aceite e a leitura da v3.57.0 reconheceu 7: os outros escreviam "**`accept.ps1`: não rodar**",
+    # "o dev não roda `accept.ps1`", "`accept.ps1` dispensado" — e o cartão contradizia o plano. Em vez de perseguir a redação,
+    # o plano que fala em não rodar o aceite declara a linha **Aceite:** (a que o cartão lê). Com "**Cenários:** nenhum" não há o
+    # que dispensar.
+    $acLine = [regex]::Match($text, '(?im)^\*\*(?:Aceite|Accept):\*\*[^\r\n]*')   # a linha do cabeçalho, não "- **Aceite de D-8:**"
+    $scnNone = [regex]::Match($text, '(?im)^\*\*Cen[áa]rios:\*\*\s*nenhum\b').Success
+    $acRe = '(?:\baccept(?:\.ps1)?\b|\baceite\b)'
+    $waive = @(($text -split "`r?`n") | Where-Object { ($_ -match "(?i)$acRe.*\bn[ãa]o\s+rod(a|ar|ado|e)\b" -or $_ -match "(?i)\bn[ãa]o\s+rod(a|ar)\b.*$acRe" -or $_ -match "(?i)$acRe[``*:\s]*dispensad[oa]\b") -and $_ -notmatch '(?i)^\*\*(?:Aceite|Accept):\*\*' })
+    if ($acLine.Success) { $av = ($acLine.Value -replace '\*\*', '' -replace '\s+', ' ').Trim(); if ($av.Length -gt 90) { $av = $av.Substring(0, 90) + '…' }; Add-Result 'aceite' 'ok' "linha do cabeçalho: $av" }
+    elseif ($scnNone -or -not $waive.Count) { Add-Result 'aceite' 'n-a' $(if ($scnNone) { '**Cenários:** nenhum' } else { 'o plano não dispensa o aceite' }) }
+    else {
+        $w0 = ($waive[0].Trim() -replace '\s+', ' '); if ($w0.Length -gt 100) { $w0 = $w0.Substring(0, 100) + '…' }
+        Add-Result 'aceite' 'falhou' "o plano dispensa o aceite fora da linha **Aceite:** ($($waive.Count) linha(s), ex.: ""$w0"") — declare ``**Aceite:** não roda — <motivo>`` no cabeçalho (ou ``**Aceite:** roda — <quem roda>``, se o aceite roda e a frase fala de outra coisa): é a única linha que o cartão, o start e o next leem (regra 34)"
+    }
 
     # ---------- 28 · plano pela ficha (v3.53, note.md item 8) ----------
     # Task com "### Ficha <ID>" no architect/breakdown/S<n>.md: o plano declara o que leu além dela (é a medida da ficha), usa

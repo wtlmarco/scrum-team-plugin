@@ -3,16 +3,15 @@
 > **Dono:** stakeholder. Só no repositório-fonte do plugin. Escreva cada item como **sintoma**, não como solução.
 >
 > As medições que dependem de construir o sprint 6 estão em `/melhorias/validacoes-sprint-6.md` (itens 6, 8, 9 e 12 a 17).
-> Os itens 10 e 11 foram para o plano `/melhorias/plano-v3.55.0.md` (seções G e F).
+> Os itens 10 e 11 da numeração antiga (não os de hoje) foram para o plano `/melhorias/plano-v3.55.0.md` (seções G e F).
 > Os 11 sintomas do relatório intermediário do sprint 5 do garden (`/melhorias/plugin-report.md`) foram tratados na **v3.57.0**; as escolhas estão em `/melhorias/decisoes-plugin-report.md`.
+>
+> **Análise de 09/11 (sprint 5 do garden, plugin 3.57.0 em uso desde 07/11 16:33):** cada item traz a **Resposta** medida no `garden-management/.team-project`. Os itens 1, 3, 4, 5, 6, 7, 9, 11, 12 e 13 foram tratados na **v3.57.1** e o 10 fechou sem mudança (o consumo do vigia já era medido; só ganhou categoria) — o que entrou está no `CHANGELOG.md`. Ficam: 2 (parado com motivo) e 8 (provas em sessão real).
 
 ## Abertas
 
-1. **A sonda de progresso do build para o vigia** não existe: o vigia só vê "passou o tempo" e a sonda `run.ps1 wait` olha CPU, arquivo e agente, não o log do build nem a pasta do APK. Depende do comando de build do projeto (Gradle puro, Ionic/Capacitor ou outro), ainda não informado. (Item 13 do relatório.)
 2. **O accept confirmar o id dinâmico em tempo de execução**: a terceira parte do item 7, que o stakeholder escolheu e eu recomendei deixar para depois — liga o `verify` ao aceite no emulador e só se prova em sessão real. Hoje a saída é declarar o id em `testIds.dynamic` ou em `// testid-dinamico:`.
-3. **Cobertura "não medido" com a suíte verde** (uma rodada do sprint 5 do garden): a suspeita é o gate ler o resumo antes de a suíte gravá-lo; **não verificada**, ficou fora da v3.57.0 por falta de causa.
-4. **O aviso de APK velho não cobre o código web de app híbrido**: a conferência olha `.kt`, `.java`, `res/`, o manifesto e `build.gradle`; o Capacitor copia o código web para `src/main/assets/public`, que não entra. Fecha junto com o item 1.
-5. **A redação real do plano que declara "o aceite não roda"** não foi vista: a v3.57.0 cobre a linha `**Aceite:** não roda — <motivo>` e duas frases (`Aceite:`/`Decisão:` com "o aceite não roda"). Se o plano do garden disse de outro jeito, o cartão ainda contradiz o plano.
-6. **Parecer curto de GAP de aparência por modelo mais barato**: hoje é por tamanho de resposta; o modelo do Arquiteto é o de `models.json` (G17, do stakeholder).
-7. **Promover a regra 33 de aviso a reprovação**: o `plan.ps1` só avisa quando falta o `**Envelope de medidas**` num plano com `**Layout novo:** sim`; vira reprovação depois de uma rodada de uso real.
-8. **Sem prova em sessão real** (só simulados): o `SubagentStop` real do vigia, a linha `vigia` na tabela do `consumption.md`, o `next` completo com um vigia em voo, o `target.ps1 -Kill` com o emulador real, o `Repair-Android` com o `repair` do container Docker pelo `Invoke-Bounded`.
+   - **Resposta — parado:** no sprint 5 o `accept` não chegou ao critério em nenhuma das 8 rodadas; a prova no alvo do garden é o executor CDP do projeto (`prova-cdp.mjs`, D-5 e D-13 de `architect/decisions/S5.md`). A v3.57.1 fez o `accept` achar o id pelo `content-desc`; volta quando o garden espelhar o id no `aria-label` do build de prova e o `accept` passar a chegar ao critério lá.
+8. **Sem prova em sessão real** (só simulados).
+   - **Resposta:** provados no garden — o `SubagentStop` real do vigia (5 rodadas medidas em 08/11) e o `Repair-Android` pelo `Invoke-Bounded` (voltou pronto na T-057 e voltou no prazo com o boot falho na T-042, 08/11 00:45, sem pendurar como em 07/11). **Falhou:** o `next` completo com um vigia em voo (item 12, corrigido na v3.57.1). **Nunca usado:** `target.ps1 -Kill` (0 ocorrências).
+   - **Falta provar em sessão real (v3.57.1):** o watcher conferindo uma espera com `run.ps1 wait -For 150`; o `waitSignals` com o build do APK no container; a idade do APK com `apkSources` no garden (pede `"apk": "source/dist/garden-management-*-debug.apk"` e `"apkSources": ["source/src", "source/capacitor.config.ts"]` no `guards.json`, que é do stakeholder); o "## Agora" novo lido por quem acompanha; a natureza do GAP chegando em todos os GAPs do sprint (a contagem para decidir o modelo do parecer de aparência, antigo item 6); o `accept` achando o id pelo `content-desc` no `horta-api35` depois que o app espelhar o id no `aria-label` do build de prova (antigo item 13).
