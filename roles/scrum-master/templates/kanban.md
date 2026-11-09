@@ -10,11 +10,11 @@
 # Kanban — Sprint <n>
 
 ## Agora
-*(Regravado pelos hooks a cada disparo, ação e volta de agente — não editar à mão. "Há" = desde a última ação. Todo agente é assíncrono (v3.52.2): uma linha por agente em voo — o executor de Task e os papéis que ele disparou.)*
+*(Atualizado às <hh:mm> pelos hooks, a cada ação de agente — não editar à mão. Os horários são fixos: compare com o relógio. Para o detalhe técnico e o tempo corrido, `/team-status`.)* — uma linha por agente em voo (o executor de Task e os papéis que ele chamou), em linguagem de funcionalidade (v3.57.1): quem, a Task com o título do backlog, o que está fazendo numa frase simples.
 
-| Papel | Item | Última ação | Há | Desde |
+| Quem | Task | O que está fazendo | Última ação às | Começou às |
 |---|---|---|---|---|
-| <papel> *(de <papel que disparou>, se aninhado)* | T-<nnn> | `<último comando ou arquivo>` | <n> min | <hh:mm> |
+| <Dev · Executor da Task · Arquiteto · QA · Operador · Watcher (espera)> *(chamado pelo <papel>, se aninhado)* | T-<nnn> · <título curto do backlog> | <rodando os testes · conferindo tudo: compilação, testes e cobertura · gerando o APK do app · testando os cenários no app rodando · alterando o arquivo <x> · …> | <hh:mm> | <hh:mm> |
 
 ## Kanban
 *(Regravado pelo `kanban.ps1` a cada transição e ao fim de cada rodada — não editar à mão.)*

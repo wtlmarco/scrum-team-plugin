@@ -39,7 +39,8 @@ $script:QuotaWeights = @{ input = 1.0; cache_write = 1.25; cache_read = 0.1; out
 
 $short = @{ 'scrum-master' = 'sm'; 'product-owner' = 'po'; 'architect' = 'arc'; 'user-experience' = 'ux'; 'quality-assurance' = 'qa'; 'developer' = 'dev'; 'operator' = 'operator' }
 # v3.52.2 (C3): o executor de Task (task-runner) é papel próprio nas tabelas — conduz a Task, não a produz: cerimônia.
-$baseCat = @{ arc = 'produção'; dev = 'produção'; qa = 'verificação'; operator = 'verificação'; sm = 'cerimônia'; po = 'especificação'; ux = 'especificação'; 'task-runner' = 'cerimônia' }
+# v3.57.1: o watcher da espera (antes "vigia", nome que fica nas linhas antigas) também conduz, não produz: cerimônia.
+$baseCat = @{ arc = 'produção'; dev = 'produção'; qa = 'verificação'; operator = 'verificação'; sm = 'cerimônia'; po = 'especificação'; ux = 'especificação'; 'task-runner' = 'cerimônia'; watcher = 'cerimônia'; vigia = 'cerimônia' }
 
 # Modelo servido com a versão (v3.49): "claude-haiku-4-5-20251001" → "haiku 4.5". Sem a versão, Haiku 4.5 e 5.5 viravam
 # "haiku" na mesma linha dos Totais, com preço por token ~10× diferente entre eles.

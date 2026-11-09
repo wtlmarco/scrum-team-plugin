@@ -386,18 +386,66 @@ function Get-LatestApk([string]$Root) {
     if ($c) { return $c.FullName }
     return ''
 }
+# v3.57.1 (note.md item 4, sprint 5 do garden): o APK do projeto — targets.android.apk (caminho relativo à raiz; aceita máscara
+# no NOME do arquivo, e vale o mais novo que casa) e, sem ele ou sem arquivo que case, o mais novo de build/outputs/apk/. No
+# garden o build roda num container com android/app/build em volume do Docker: build/outputs não existe no Windows e o APK vai
+# a source/dist/garden-management-<T-ID>-debug.apk — a conferência de APK velho nunca rodou.
+function Find-ConfiguredApk([string]$Root, [string]$Pattern) {
+    if (-not $Pattern) { return '' }
+    $full = Join-Path $Root $Pattern
+    if ($Pattern -notmatch '[*?]') { if (Test-Path -LiteralPath $full -PathType Leaf) { return (Resolve-Path -LiteralPath $full).Path }; return '' }
+    $dir = Split-Path $full -Parent; $leaf = Split-Path $full -Leaf
+    if ($dir -match '[*?]' -or -not (Test-Path -LiteralPath $dir -PathType Container)) { return '' }
+    $c = Get-ChildItem -LiteralPath $dir -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like $leaf } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($c) { return $c.FullName }
+    return ''
+}
+function Get-AndroidTargetValue([string]$Root, [string]$Key) {
+    $tc = Get-TargetsConfig $Root
+    if ($tc -and $tc.PSObject.Properties['android'] -and $tc.android -and $tc.android.PSObject.Properties[$Key]) { return $tc.android.$Key }
+    return $null
+}
+function Get-ProjectApk([string]$Root) {
+    $cfg = [string](Get-AndroidTargetValue $Root 'apk')
+    if ($cfg) { $f = Find-ConfiguredApk $Root $cfg; if ($f) { return $f } }
+    return (Get-LatestApk $Root)
+}
 # (movido do targets/android.ps1 na v3.57.0: o verify full também confere o APK ao fim do build)
 # v3.53.6 (sprint 5 do garden, item 7): o accept reinstala o APK mais novo do disco, mas o APK do disco estava MAIS VELHO que
 # o código (os ids de teste novos não tinham sido construídos) → "tag não encontrada" e um GAP perdido ao Arquiteto. Compara
 # o APK com o arquivo-fonte mais novo do módulo (<módulo>/build/outputs/apk/… → <módulo>/src/** .kt/.java, res/**,
 # AndroidManifest.xml, build.gradle(.kts); sem src/test e src/androidTest). @{ Stale; File; FileTime; ApkTime; Task; Note }.
-function Get-ApkStaleness([string]$Apk) {
+# v3.57.1 (note.md item 4): com targets.android.apkSources (pastas e arquivos relativos à raiz — no app híbrido, o código web:
+# "source/src", "source/capacitor.config.ts"), a comparação é com essas fontes, sem inferir o módulo; teste (*.spec.*, *.test.*,
+# pastas test/__tests__/e2e) e node_modules não entram. Sem a chave, o APK fora de build/outputs dá Note pedindo a declaração.
+function Get-ApkStaleness([string]$Apk, [string]$Root = '') {
     $r = @{ Stale = $false; Note = '' }
     if (-not $Apk -or -not (Test-Path -LiteralPath $Apk -PathType Leaf)) { return $r }
     $full = (Resolve-Path -LiteralPath $Apk).Path
+    $apkTime = (Get-Item -LiteralPath $full).LastWriteTime
+    $srcCfg = if ($Root) { @(Get-AndroidTargetValue $Root 'apkSources' | Where-Object { $_ }) } else { @() }
+    if ($srcCfg.Count) {
+        $cands = @()
+        foreach ($s in $srcCfg) {
+            $sp = Join-Path $Root ([string]$s)
+            if (Test-Path -LiteralPath $sp -PathType Leaf) { $cands += Get-Item -LiteralPath $sp; continue }
+            if (-not (Test-Path -LiteralPath $sp -PathType Container)) { continue }
+            $cands += @(Get-ChildItem -LiteralPath $sp -Recurse -File -ErrorAction SilentlyContinue | Where-Object {
+                $rel = $_.FullName.Substring($sp.Length) -replace '\\', '/'
+                $rel -notmatch '/(node_modules|test|tests|__tests__|e2e)/' -and $_.Name -notmatch '\.(spec|test)\.[^.]+$'
+            })
+        }
+        if (-not $cands.Count) { $r.Note = "idade do APK não conferida: nenhum arquivo em targets.android.apkSources ($($srcCfg -join ', '))"; return $r }
+        $newest = $cands | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if ($newest.LastWriteTime -gt $apkTime.AddSeconds(2)) {
+            $r.Stale = $true; $r.File = $newest.FullName; $r.FileTime = $newest.LastWriteTime; $r.ApkTime = $apkTime; $r.Module = $Root; $r.ApkFull = $full
+            $r.Task = 'o build que gera o APK'
+        }
+        return $r
+    }
     $m = [regex]::Match($full, '^(.*)[\\/]build[\\/]outputs[\\/]apk[\\/]')
-    if (-not $m.Success) { $r.Note = "idade do APK não conferida: o módulo não se infere de $Apk (esperado <módulo>/build/outputs/apk/…)"; return $r }
-    $mod = $m.Groups[1].Value; $apkTime = (Get-Item -LiteralPath $full).LastWriteTime
+    if (-not $m.Success) { $r.Note = "idade do APK não conferida: o módulo não se infere de $Apk (esperado <módulo>/build/outputs/apk/…) — declare em targets.android.apkSources as fontes que entram no APK (no app híbrido, o código web)"; return $r }
+    $mod = $m.Groups[1].Value
     $cands = @()
     foreach ($g in 'build.gradle', 'build.gradle.kts') { $p = Join-Path $mod $g; if (Test-Path -LiteralPath $p) { $cands += Get-Item -LiteralPath $p } }
     $src = Join-Path $mod 'src'
@@ -644,6 +692,44 @@ function Get-WaitPulse([int]$ProcId, [string]$Desde = '', [string]$Dir = '') {
     $txt = "há $(& $fmt $min) · CPU $([int][Math]::Round($cpu)) s" + $(if ($leaf) { " · esperando: $leaf" } else { '' }) + $(if ($null -ne $wmin) { " · último arquivo há $(& $fmt $wmin)" } elseif ($Dir) { ' · nenhum arquivo gravado' } else { '' })
     if ($stalled) { $txt += " · $([char]0x26A0) POSSÍVEL TRAVAMENTO (sem CPU nem arquivo novo há 10 min ou mais)" }
     return [pscustomobject]@{ Min = $min; CpuS = $cpu; Leaf = $leaf; WriteMin = $wmin; Stalled = $stalled; Text = $txt }
+}
+
+# v3.57.1 (note.md item 1, sprint 5 do garden): sinal de vida DECLARADO PELO PROJETO para a espera que o plugin não mede. O
+# Get-WaitPulse vê o verify e o accept (as travas deles); o build do APK do garden (npm run alvo:apk → docker compose run builder
+# → gradlew no container, com android/app/build em volume do Docker) roda como comando do dev: o wait só via "developer vivo há
+# N min", sem saber se o build anda — a CPU é do container e as gravações caem num volume que o Windows não enxerga. O projeto
+# declara em guards.json → "waitSignals": [{ "when": "<trecho do comando>", "paths": [pastas ou arquivos que o trabalho grava],
+# "alive": "<comando que imprime algo enquanto o trabalho roda>" }]. Casou com a última ação do agente: o texto diz o último
+# arquivo e o alive; parado = 10 min ou mais sem ação do agente, sem arquivo novo nas pastas e alive sem saída. Só lê; o alive
+# roda pelo Invoke-Bounded com 20 s. @{ Text; Stalled } ou $null.
+function Get-ProjectWaitSignal([string]$Root, [string]$Last, [double]$IdleMin) {
+    if (-not $Last) { return $null }
+    $g = Join-Path $Root '.team-project/guards.json'
+    if (-not (Test-Path -LiteralPath $g)) { return $null }
+    $cfg = $null; try { $cfg = Read-Text $g | ConvertFrom-Json } catch { return $null }
+    if (-not $cfg -or -not $cfg.PSObject.Properties['waitSignals']) { return $null }
+    foreach ($s in @($cfg.waitSignals)) {
+        if (-not $s -or -not $s.PSObject.Properties['when'] -or -not [string]$s.when) { continue }
+        if ($Last.IndexOf([string]$s.when, [StringComparison]::OrdinalIgnoreCase) -lt 0) { continue }
+        $now = Get-Date; $wmin = $null; $wpath = ''
+        foreach ($p in @($s.paths | Where-Object { $_ })) {
+            $fp = Join-Path $Root ([string]$p)
+            if (-not (Test-Path -LiteralPath $fp)) { continue }
+            $it = if (Test-Path -LiteralPath $fp -PathType Leaf) { Get-Item -LiteralPath $fp } else { Get-ChildItem -LiteralPath $fp -Recurse -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1 }
+            if ($it) { $m = [Math]::Max(0, ($now - $it.LastWriteTime).TotalMinutes); if ($null -eq $wmin -or $m -lt $wmin) { $wmin = $m; $wpath = [string]$p } }
+        }
+        $alive = $null
+        if ($s.PSObject.Properties['alive'] -and [string]$s.alive) {
+            $r = Invoke-Bounded $Root ([string]$s.alive) 20
+            $alive = ([int]$r.exit -eq 0) -and ([string]$r.out).Trim().Length -gt 0
+        }
+        $parts = @("sinal do projeto ($([string]$s.when))")
+        if ($null -ne $wmin) { $parts += "último arquivo em $wpath há $([int][Math]::Floor($wmin)) min" } elseif (@($s.paths).Count) { $parts += 'nenhum arquivo nas pastas declaradas' }
+        if ($null -ne $alive) { $parts += $(if ($alive) { 'alive: rodando' } else { 'alive: sem saída' }) }
+        $stalled = ($IdleMin -ge 10) -and ($null -eq $wmin -or $wmin -ge 10) -and ($alive -ne $true)
+        return [pscustomobject]@{ Text = ($parts -join ' · '); Stalled = $stalled }
+    }
+    return $null
 }
 
 # v3.53.5 (sprint 5 do garden: 43 bloqueios da G20 num dia, todos na T-042, enquanto o next mandava esperar a T-061): o
