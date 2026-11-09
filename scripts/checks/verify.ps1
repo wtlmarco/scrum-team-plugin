@@ -520,8 +520,15 @@ try {
     $budget = [System.Diagnostics.Stopwatch]::StartNew(); $lastSec = 0; $ranAny = $false
     $estimates = if ($Mode -eq 'full') { Get-CommandEstimates $Root } else { @{} }
     foreach ($j in $jobs) {
+        # v3.57.1 (note.md item 3, sprint 5 do garden): a cobertura lê o resumo que a suíte grava. Com a suíte pendente (não
+        # coube na chamada), a cobertura rodava ANTES dela e lia o resumo da rodada anterior — "não medido" sem resumo, ou verde
+        # com o dado velho. No garden era todo full: suíte de 540-820 s, sempre na chamada seguinte. Agora a cobertura espera a
+        # suíte; e, curta pela história (≤ 60 s), roda logo depois dela mesmo fora do orçamento, em vez de custar outra chamada.
+        $isCov = $j.Key -match '^coverage\d*$'
+        if ($Mode -eq 'full' -and $isCov -and @($pendingJobs | Where-Object { $_ -match '^suite\d*$' }).Count) { $pendingJobs += $j.Key; continue }
         $need = if ($estimates.ContainsKey($j.Key)) { [int]$estimates[$j.Key] } else { $lastSec }   # v3.52.3: a história da chave
-        if ($Mode -eq 'full' -and $ranAny -and ($budget.Elapsed.TotalSeconds + $need) -gt ($MaxMinutes * 60)) { $pendingJobs += $j.Key; continue }
+        $shortCov = $isCov -and $estimates.ContainsKey($j.Key) -and [int]$estimates[$j.Key] -le 60
+        if ($Mode -eq 'full' -and $ranAny -and -not $shortCov -and ($budget.Elapsed.TotalSeconds + $need) -gt ($MaxMinutes * 60)) { $pendingJobs += $j.Key; continue }
         $ranAny = $true
         $jt = if ($j.ContainsKey('Tests')) { $j.Tests } else { $Tests }
         $r1 = Invoke-Logged $j.Key $j.Cmd.Replace('{tests}', (Format-Tests $jt $j.FItem)) (Join-Path $dir "$Mode-$($j.Key).log")
@@ -579,8 +586,14 @@ try {
     if ($Mode -eq 'full' -and -not $envBad.Count -and -not $bad.Count) {
         $tcA = Get-TargetsConfig $Root
         if ($tcA -and $tcA.PSObject.Properties['android']) {
-            $apkA = Get-LatestApk $Root
-            if ($apkA) { $stA = Get-ApkStaleness $apkA; if ($stA.Stale) { $modN = Split-Path $stA.Module -Leaf; [Console]::Out.WriteLine("  atenção: o APK $modN$($stA.ApkFull.Substring($stA.Module.Length)) é de $($stA.ApkTime.ToString('yyyy-MM-dd HH:mm:ss')) e $modN$($stA.File.Substring($stA.Module.Length)) mudou em $($stA.FileTime.ToString('yyyy-MM-dd HH:mm:ss')): o comando 'build' não regerou o APK — rode $($stA.Task) (ou ponha no verify.build do guards.json) antes do accept, que recusa APK velho (exit 2)") } }
+            # v3.57.1 (note.md item 4): o mesmo APK que o accept instala (targets.android.apk, com máscara) e as fontes declaradas.
+            $apkA = Get-ProjectApk $Root
+            if ($apkA) {
+                $stA = Get-ApkStaleness $apkA $Root
+                $relA = { param($x) ([string]$x).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/' }
+                if ($stA.Stale) { [Console]::Out.WriteLine("  atenção: o APK $(& $relA $stA.ApkFull) é de $($stA.ApkTime.ToString('yyyy-MM-dd HH:mm:ss')) e $(& $relA $stA.File) mudou em $($stA.FileTime.ToString('yyyy-MM-dd HH:mm:ss')): o comando 'build' não regerou o APK — rode $($stA.Task) (ou ponha no verify.build do guards.json) antes do accept, que recusa APK velho (exit 2)") }
+                elseif ($stA.Note) { [Console]::Out.WriteLine("  atenção: $($stA.Note)") }
+            }
         }
     }
     if ($after -ne $tree) { [Console]::Out.WriteLine("  atenção: os comandos alteraram a árvore (antes $($tree.Substring(0, 12)), depois $(([string]$after).Substring(0, [Math]::Min(12, ([string]$after).Length)))) — arquivo gerado fora do .gitignore; a evidência vale para a árvore de antes") }

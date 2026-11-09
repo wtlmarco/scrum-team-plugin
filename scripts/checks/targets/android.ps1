@@ -4,7 +4,8 @@
 # Id abaixo o deixa como está, e o cenário localiza pelo mesmo id do Compose (testIds.attribute = "id"; standards/test-ids.md).
 # Lições incorporadas do avaliador do benchmark: rolagem lenta e curta, esperar a animação parar antes de ler, coletar
 # listas virtualizadas rolando até não aparecer item novo, tela em branco = falha de ambiente (não do app).
-# Config (guards.json → targets.android): package, apk (opcional), avd (para o reparo), maxUptimeHours (padrão 24),
+# Config (guards.json → targets.android): package, apk (opcional; v3.57.1: máscara no nome, vale o mais novo), apkSources
+# (opcional, v3.57.1: fontes que entram no APK — no app híbrido, o código web — para a idade do APK), avd (para o reparo), maxUptimeHours (padrão 24),
 # repair (v3.53.2, opcional: comando PowerShell de reparo do projeto — emulador em container; vence o avd),
 # serial (v3.53.5, opcional: o aparelho de trabalho, ex. "emulator-5554" — com ele todo adb vai a esse aparelho; v3.54.1:
 # serial de rede "host:porta" é religado com adb connect no pré-voo e no reparo),
@@ -228,7 +229,8 @@ function Repair-Android {
 # O pedido nem sempre fixa o applicationId e o guards.json é do stakeholder: o executor descobre o que o time construiu.
 function Resolve-AndroidApk([string]$Root, [string]$Explicit) {
     if ($Explicit) { return $Explicit }
-    if ($script:AdCfg -and $script:AdCfg.apk) { $p = Join-Path $Root ([string]$script:AdCfg.apk); if (Test-Path -LiteralPath $p) { return $p } }
+    # v3.57.1 (note.md item 4): targets.android.apk aceita máscara no nome (o mais novo que casa) — Find-ConfiguredApk no lib.ps1.
+    if ($script:AdCfg -and $script:AdCfg.apk) { $p = Find-ConfiguredApk $Root ([string]$script:AdCfg.apk); if ($p) { return $p } }
     return (Get-LatestApk $Root)   # v3.57.0: a busca vive no lib.ps1 (o verify confere o APK sem carregar o adaptador)
 }
 # applicationId do APK (v3.51.1): aapt2 (build-tools mais novo) ou, sem ele, aapt dump badging.
@@ -274,7 +276,16 @@ function Dump {
     if ($script:EmptyDumps -ge 3) { $b = Get-ScreenBytes; if ($b -gt 0 -and $b -lt 12000) { throw 'AMBIENTE: a tela do aparelho está em branco e o uiautomator não devolve a árvore' } }
     return $script:Nodes
 }
-function Find([string]$Id) { $script:Nodes | Where-Object { $_.Id -eq $Id } | Select-Object -First 1 }
+# v3.57.1 (note.md item 13, decisão do stakeholder de 08/11 no garden — README §7 itens 77-79): o id também pelo nome acessível.
+# No emulador horta-api35 (Android 15, WebView 124) o uiautomator não publica o id HTML como resource-id — a aba aparece como
+# View clicável com text='Estufa', rid='' (operator/5/T-074-ids-webview) — e o accept, que só achava por resource-id, não
+# chegou a nenhum critério no sprint 5. O app espelha o id no aria-label (que chega como content-desc) no build de prova;
+# o resource-id continua valendo primeiro.
+function Find([string]$Id) {
+    $n = $script:Nodes | Where-Object { $_.Id -eq $Id } | Select-Object -First 1
+    if ($n) { return $n }
+    return ($script:Nodes | Where-Object { $_.Desc -eq $Id } | Select-Object -First 1)
+}
 function Has([string]$Id) { [void](Dump); [bool](Find $Id) }
 function NodeText($n) {
     if (-not $n) { return $null }; if ($n.Text) { return $n.Text }

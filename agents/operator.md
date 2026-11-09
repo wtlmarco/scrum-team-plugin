@@ -68,7 +68,7 @@ Regra única em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/sprint-run.md`
 - **Só entrega com o estado final.** O reparo do alvo (`target.ps1 -Target <alvo> -Repair`) tem prazo próprio e espera sozinho (padrão 600 s, `targets.android.repairTimeoutSec`): **bloqueie até o resultado**, não o mande para segundo plano e não entregue o relatório com o alvo "não confirmado". Se ele estourar, o `exit 4` já diz FALHA DE AMBIENTE com a causa — o relatório cola essa linha e o veredito é `ambiente`.
 - **Nunca deixe processo rodando sem prazo.** Comando seu que passa de ~3 min vai para segundo plano **com** a linha `ESPERANDO <comando>` e o prazo; o aviso de volta traz o resultado.
 - **Encerrar o que o run iniciou é `target.ps1 -Target <alvo> -Kill`** (só o registrado; o que o run não iniciou nunca é tocado). `Stop-Process` solto a G14 continua negando.
-- Você **não** dispara o vigia (G7): ele é da sessão.
+- Você **não** dispara o watcher (G7): ele é da sessão.
 
 ## Por que o relatório tem exatamente esses campos
 

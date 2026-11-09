@@ -57,7 +57,7 @@ Usada pelo `/sm fix plan` (passo 1) e, avulsa, por `/po note` e `/po bug`. **O s
 5. **C4 completo:** `... fix.ps1 -Block B-<nnn>` **antes** de gravar estado final. **Exit 1 = só as F-IDs em "Não fecham" não fecham** (D6): a sessão devolve cada uma a um executor de Task novo (⚠️/❌ ou item faltando) ou a promove (§Promoção) e roda o C4 de novo. Avisos (consumo fora de `fixes/`, sobreposição com Task em 🟨, revalidação ausente) vão ao resultado e à retrospectiva; não bloqueiam.
 6. **Fechamento (§Fechamento).**
 
-**Espera (v3.57.0).** O `fix run` espera como o `sprint run`: cada disparo encerra o turno e o aviso traz a volta, e todo ponto que espera segue o **protocolo de espera** de `sprint-run.md` §Protocolo de espera (prazo no comando, `target.ps1 -Kill`, o vigia quando a espera for longa) — não há regra própria aqui. "O fix run espera (R1)" a Task em construção continua valendo e **não tem prazo próprio**: a conferência por tempo é a do vigia.
+**Espera (v3.57.0).** O `fix run` espera como o `sprint run`: cada disparo encerra o turno e o aviso traz a volta, e todo ponto que espera segue o **protocolo de espera** de `sprint-run.md` §Protocolo de espera (prazo no comando, `target.ps1 -Kill`, o watcher quando a espera for longa) — não há regra própria aqui. "O fix run espera (R1)" a Task em construção continua valendo e **não tem prazo próprio**: a conferência por tempo é a do watcher.
 
 ## §Promoção — individual e obrigatória
 
