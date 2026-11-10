@@ -185,7 +185,7 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
     if ($script:Tgt -eq 'android') {
         if (-not ($Cfg -and $Cfg.package)) { Set-AndroidPackage (Get-ApkPackage $appApk) }
         if (-not $script:Pkg) { [Console]::Out.WriteLine('accept: sem o pacote do app — nenhum APK em <projeto>/**/build/outputs/apk/ e nada em targets.android.package; construa o app (assembleDebug ou assembleRelease) antes'); return 2 }
-        if ($appApk) { $ie = Install-AndroidApk $appApk; if ($ie) { [Console]::Out.WriteLine("accept: $ie"); return 2 }; [Console]::Out.WriteLine("accept: $($script:Pkg) instalado de $($appApk.Replace($Root, '').TrimStart('\', '/'))") }
+        if ($appApk) { $ie = Install-AndroidApk $appApk; if ($ie) { [Console]::Out.WriteLine("accept: $ie"); return 2 }; [Console]::Out.WriteLine("accept: $($script:Pkg) instalado de $($appApk.Replace($Root, '').TrimStart('\', '/'))" + $(if ($script:InstallNote) { " — atenção: $($script:InstallNote)" } else { ' (por cima: dados do app mantidos)' })) }
         # v3.54.2: o estado de partida declarado, depois da instalação.
         $be = Invoke-AcceptBaseline
         if ($be) { [Console]::Out.WriteLine("accept: FALHA DE AMBIENTE ($script:Tgt) — $be. Não é defeito do app."); return 4 }

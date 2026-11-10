@@ -679,10 +679,49 @@ function Test-G23([object]$ToolInput) {
     Deny 'G23' "$k mil" "teto de contexto desta instância do dev ($k mil, teto $cap mil — guards.json → devContextCap): cada chamada a mais relê todo o contexto acumulado. Não rode mais comando nem edite código nesta instância. Grave AGORA, com o Write ou o Edit, a seção nova no fim do seu delivery/<T-ID>.md (no fix, o relatório do bloco) com ### Parei no passo — o que já está provado (com a saída), o que falta, os próximos comandos e o estado do alvo — e volte com 'TETO' na primeira linha. O executor abre instância nova (run.ps1 done -Result teto), que segue desse ponto pelo cartão."
 }
 
+# v3.57.2 (note.md item 20, ocorrências 1, 11 e 15 do sprint 5 do garden): o "núcleo" de cada comando de suíte e de cobertura
+# declarado em guards.json (verify.suite, verify.coverage, quality.coverage): os primeiros tokens de cada trecho, sem o
+# Set-Location e sem argumentos — "npm run test:cobertura:suite", "npm run gate:cobertura". Um núcleo igual ao do
+# verify.focused não entra (não daria para separar o teste focado da suíte). @( @('npm','run','x'), … ).
+function Get-SuiteCores([string]$ProjectDir) {
+    $g = Join-Path $ProjectDir '.team-project/guards.json'
+    if (-not (Test-Path -LiteralPath $g)) { return @() }
+    $j = $null; try { $j = [System.IO.File]::ReadAllText($g) | ConvertFrom-Json } catch { return @() }
+    $coreOf = { param([string]$c) @(($c -split ';|&&') | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -notmatch '^(?i)(Set-Location|cd|pushd|\$env:|\[Environment\])\b' } | ForEach-Object {
+        $tk = @(($_ -split '\s+') | Where-Object { $_ }); $o = @(); foreach ($x in $tk) { if ($x -like '-*' -or $x -match '[{}"'']' -or $o.Count -ge 3) { break }; $o += $x.ToLowerInvariant() }; ,$o }) }
+    $vals = { param($v) @(foreach ($x in @($v)) { if ($x -is [string]) { $x } elseif ($x -and $x.PSObject.Properties['command']) { [string]$x.command } }) }
+    $src = @(); $foc = @()
+    if ($j.PSObject.Properties['verify'] -and $j.verify) {
+        foreach ($k in 'suite', 'coverage') { if ($j.verify.PSObject.Properties[$k]) { $src += & $vals $j.verify.$k } }
+        if ($j.verify.PSObject.Properties['focused']) { $foc += & $vals $j.verify.focused }
+    }
+    if ($j.PSObject.Properties['quality'] -and $j.quality -and $j.quality.PSObject.Properties['coverage']) { $src += & $vals $j.quality.coverage }
+    $focK = @($foc | ForEach-Object { & $coreOf $_ } | ForEach-Object { $_ -join ' ' })
+    return ,@($src | ForEach-Object { & $coreOf $_ } | Where-Object { $_.Count -ge 2 -and $focK -notcontains ($_ -join ' ') })
+}
+# O trecho do comando que começa por um núcleo de suíte/cobertura ($null se nenhum).
+function Find-SuiteSegment([string]$Cmd, $Cores) {
+    foreach ($seg in @(($Cmd -split ';|&&|\|\|') | ForEach-Object { $_.Trim() } | Where-Object { $_ })) {
+        $tk = @(($seg -replace '^&\s*', '' -split '\s+') | Where-Object { $_ } | ForEach-Object { $_.ToLowerInvariant() })
+        foreach ($c in @($Cores)) { if ($tk.Count -ge $c.Count -and (($tk[0..($c.Count - 1)]) -join ' ') -eq ($c -join ' ')) { return $seg } }
+    }
+    return $null
+}
+
 function Test-G14([object]$ToolInput) {
     if ($null -eq (Get-Marker $script:projectDir '.active-run')) { return $false }
     if ($script:tool -match '^(Edit|Write)$') {
         $path = [string]$ToolInput.file_path
+        # v3.57.2 (note.md item 23, decisão do stakeholder de 09/11: contexto enxuto): plano que já existe muda por delta. No sprint
+        # 5 do garden o Arquiteto (Opus) foi 69 % do custo dos subagentes, e planos foram refeitos inteiros (T-071 ×5, T-074 ×3,
+        # T-077 ×3) — cada Write regrava e relê o plano todo. Durante o run, o Arquiteto edita o trecho que a decisão muda (Edit);
+        # o Write fica para o plano novo (ou o pequeno, até 2 KB).
+        if ($script:tool -eq 'Write' -and $script:role -eq 'architect') {
+            $relP = Get-RelativePath $script:projectDir $path
+            if ($relP -and $relP -match '^\.team-project/sprints/[^/]+/plan/[^/]+\.md$' -and (Test-Path -LiteralPath $path -PathType Leaf) -and (Get-Item -LiteralPath $path).Length -gt 2048) {
+                Deny 'G14' $relP "plano que já existe regravado inteiro ($relP): durante o run, a mudança no plano é por delta — use o Edit no trecho que a decisão muda (o passo, a premissa, o teste ou o arquivo superado), sem reescrever o resto. No sprint 5 do garden, planos refeitos inteiros (T-071 cinco vezes) estavam entre os maiores custos do Arquiteto."
+            }
+        }
         if ((Get-RelativePath $script:projectDir $path) -or (Test-UnderTemp $path)) { return $true }
         Deny 'G14' $path "escrita fora do projeto durante o run ($path). Rascunho vai no scratchpad da sessão; o resto, reporte a quem orquestra."
     }
@@ -695,6 +734,17 @@ function Test-G14([object]$ToolInput) {
     # Conferências C1–C4 (scripts/checks/*.ps1); v3.48: com 2>&1, *> arquivo ou | Out-String no fim (a regex excluía "&").
     # v3.51.2: só o script dentro da pasta do plugin (Test-PluginCheck); composto com ele passa pelos trechos, abaixo.
     if ($cmd -match '^\s*(?i)(powershell|pwsh)(\.exe)?\s+(-\w+\s+)*-File\s+"?[^";|&]*[\\/]scripts[\\/]checks[\\/][\w-]+\.ps1"?([^;|&]|[*\d]?>&1)*(\|\s*Out-String\s*)?$' -and (Test-PluginCheck $cmd)) { return $true }
+    # v3.57.2 (note.md item 20): a suíte e a cobertura do projeto só pelo verify.ps1 para o dev e o executor. No sprint 5 do
+    # garden o dev rodou "npm run test:cobertura:suite" direto (liberado pelo runCommands): sem verify.lock, o done, o start e o
+    # next não viram a espera — 3 devs e 3 suítes completas ao mesmo tempo na Q-S5b, Chrome órfão, resumo de cobertura
+    # sobrescrito, 391 rodadas vazias do executor. O verify tem trava única por Task, retoma do ponto e é o que a espera enxerga.
+    if ($script:role -in 'developer', 'task-runner') {
+        $sseg = Find-SuiteSegment $cmd (Get-SuiteCores $script:projectDir)
+        if ($sseg) {
+            $sshow = if ($sseg.Length -gt 80) { $sseg.Substring(0, 80) + '…' } else { $sseg }
+            Deny 'G14' $sshow "suíte ou cobertura do projeto fora do verify.ps1 (``$sshow``): rodada assim, o next, o start e o done não veem a espera e disparam outro dev — no sprint 5 do garden foram 3 suítes completas ao mesmo tempo na mesma Task. Rode ``powershell -NoProfile -File `"`${CLAUDE_PLUGIN_ROOT}/scripts/checks/verify.ps1`" -Task <ID> -Mode full`` (trava única, retoma do ponto, a espera enxerga) — ou ``-Mode focused -Tests <arquivos>`` para os testes do bloco. Passou de ~3 min: encerre o turno, o aviso traz a volta."
+        }
+    }
     $why = 'fora da lista operacional do run'
     $fm = [regex]::Match($cmd, $script:g14Forbidden)
     if ($fm.Success) {

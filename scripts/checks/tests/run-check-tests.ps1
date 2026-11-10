@@ -596,10 +596,10 @@ Put $p 'src/app.ts' "export const a = 1 // TODO melhorar`n// eslint-disable-next
 Put $p '.team-project/guards.json' '{ "quality": { "coverage": "Write-Output ''All files | 72.5 % |''", "lint": "Write-Output ''0 problems''", "architecture": "Write-Output ''erro de dependencia''; exit 1" } }'
 $r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $p)
 Check 'quality: cobertura abaixo do limiar, regra de dependência quebrada, TODO sem ID e supressão sem motivo: exit 1' $r 1 @('Q11 falhou.*72\.5 % medido × limiar 80', 'Q7 ok', 'Q1 falhou', 'Q6 não configurado', 'Q9 falhou.*src/app\.ts:1', 'Q17 falhou.*src/app\.ts:2', 'quality/1/S1/result\.md')
-Put $p 'src/app.ts' "export const a = 1 // TODO T-050 melhorar`n// eslint-disable-next-line no-console -- log de diagnóstico exigido pela regra R12`n"
+Put $p 'src/app.ts' "export const a = 1 // TODO T-050 melhorar`n// eslint-disable-next-line no-console -- log de diagnóstico exigido pela regra R12`n// todo o card cabe na linha; Todos os campos vêm do serviço`n"   # v3.57.2 (item 16): "todo" em português não é TODO
 Put $p '.team-project/guards.json' '{ "quality": { "coverage": "Write-Output ''Total coverage: 86%''", "coverageThreshold": 85 } }'
 $r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $p)
-Check 'quality: cobertura acima do limiar configurado, padrões com ID e justificativa: exit 0' $r 0 @('Q11 ok.*86 % medido × limiar 85', 'Q9 ok', 'Q17 ok', 'regras configuradas ok')
+Check 'quality: cobertura acima do limiar configurado, padrões com ID e justificativa, "todo" em português não é TODO (v3.57.2): exit 0' $r 0 @('Q11 ok.*86 % medido × limiar 85', 'Q9 ok', 'Q17 ok', 'regras configuradas ok')
 # v3.51 (G1, G2): kanban.md no lugar do burndown.md (o controle das Tasks embaixo) e o kanban.html regravado a cada transição.
 $p = Join-Path $tmp 'kanban'; New-Project $p
 $bd = Join-Path $p '.team-project/sprints/1/burndown.md'
@@ -1084,9 +1084,13 @@ Put $p '.team-project/sprints/1/delivery/T-041.md' ("## Entrega — T-041`n`n###
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'ok', '-Root', $p)
 $r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/sprints/1/sprint-backlog.md'))
 Check 'run done sem evidência: não fecha, não marca 🟪, volta ao dev' $r 0 @('ainda não fecha', 'R7 \| falhou', "\| $($e.build) T-041 \|")
+# v3.57.2 (note.md item 22): o que falta vai ao cartão do dev novo com a ordem de só completar a evidência, e a rota ao run-log.
+$hc = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'; $rlg = Join-Path $p '.team-project/sprints/1/run-log.md'
+Check 'v3.57.2 item 22: done reprovado por evidência → cartão com "Só completar a evidência" (sem mudar código), arquivo do que falta e a rota no run-log' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($hc, $utf8) + "`n" + [System.IO.File]::ReadAllText($rlg, $utf8) + "`nEVF=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/sprints/1/handoff/T-041-evidencia.md')) } 0 @('falta EVIDÊNCIA, não código', 'dev em instância NOVA só para a evidência', '\*\*Só completar a evidência\*\* \(o done reprovou; não mude código.*R7 \| falhou', 'evidência incompleta → dev em instância nova SÓ para completar a evidência', 'EVF=True')
 Put $p '.team-project/sprints/1/delivery/T-041.md' ("## Entrega — T-041`n`n### Verificação`n```````n> verify.ps1 -Mode full`nverify full T-041 · tudo exit 0`n```````n`n### Documentos vivos (R12)`n**Estado:** a consolidar`n")
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'ok', '-Root', $p)
 Check 'run done ok: 🟨 → 🟪 pelo mark, depois -Apply com -Post R24 ok (garden 19)' $r 0 @("mark: T-041 $($e.build) → $($e.qa)", 'fechada pela evidência do dev', 'PONTO SEGURO')
+Check 'v3.57.2 item 22: a Task fechada apaga o arquivo do que faltava na evidência' @{ Code = 0; Out = "EVF=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/sprints/1/handoff/T-041-evidencia.md')) } 0 @('EVF=False')
 # v3.52: Task fechada grava .safe-point (a G20 libera o fim de turno) e diz o commit; sem git, o checkpoint é por cópia.
 $sp = Join-Path $p '.team-project/.safe-point'
 Check 'run done ok: grava .safe-point e informa o commit (v3.52)' @{ Code = $r.Code; Out = $r.Out + "`nSP=" + $(if (Test-Path -LiteralPath $sp) { (Get-Content -LiteralPath $sp -Raw -Encoding UTF8) } else { 'ausente' }) } 0 @('  commit: ', 'SP=\{"task":"T-041","sprint":"1"')
@@ -1107,6 +1111,8 @@ Check 'v3.57.0 item 9: GAP natureza produto → decisão do STAKEHOLDER (formul�
 Put-Gap 'desenho'
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
 Check 'v3.57.0 item 9: GAP natureza desenho → ciclo completo do Arquiteto, sem parecer curto' $r 0 @('Arquiteto em instância NOVA', 'prompt: "Decida o 🔺 GAP da T-041', '^(?![\s\S]*PARECER CURTO)')
+$gcf = Join-Path $p '.team-project/sprints/1/handoff/T-041-gap.md'
+Check 'v3.57.2 item 23: o Arquiteto decide pelo recorte (o GAP, o cabeçalho e os passos citados) e muda o plano por delta (Edit)' @{ Code = $r.Code; Out = $r.Out + "`n" + $(if (Test-Path -LiteralPath $gcf) { [System.IO.File]::ReadAllText($gcf, $utf8) } else { 'sem recorte' }) } 0 @('pelo RECORTE \.team-project/sprints/1/handoff/T-041-gap\.md', 'Abra o plano inteiro .* só se o recorte não bastar', 'com o Edit, no lugar do texto que ela derruba', '## O GAP \(relatório do dev\)', '🔺 GAP — T-041 — passo 2 do plano', '## Cabeçalho do plano')
 Put-Gap ''
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
 Check 'v3.57.1 item 6: GAP sem natureza (nem **Natureza:** nem a palavra na linha do 🔺) → recusa antes de qualquer efeito (exit 2) e o executor classifica com -Nature' $r 2 @('veio sem natureza', 'done -Task T-041 -Result gap -Nature <aparencia \| desenho \| produto \| processo \| ambiente>', 'processo = regra do time', '^(?![\s\S]*Arquiteto em instância NOVA)')
@@ -1279,6 +1285,12 @@ Put $p '.team-project/usage.jsonl' ('{"role":"developer","work":"T-041","model":
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'C2: .interrupted — RETOMADA por Task com os tipos, a última ação e o Parei no passo; o arquivo sai' @{ Code = $r.Code; Out = $r.Out + "`nINT=" + $(if (Test-Path -LiteralPath (Join-Path $p '.team-project/.interrupted')) { 'presente' } else { 'apagado' }) } 0 @('RETOMADA: a sessão anterior caiu com T-041 em andamento \(team:task-runner, team:developer\), última ação Edit src/a\.ts às 10:42 · parei no passo: passo 3 de 5', 'INT=apagado')
 Check 'item 17: SESSÃO com chamadas por message.id (sem <synthetic>) e o contexto da última; aviso acima de 150 mil' $r 0 @('SESSÃO: 2 chamada\(s\) · contexto da última 170 mil tokens', 'aviso: acima de 150 mil')
+# v3.57.2 (note.md item 21): acima do teto e sem agente em voo, a próxima ação é reiniciar a sessão (o veredito libera a G20); teto 0 desliga.
+Check 'v3.57.2 item 21: sessão acima do teto (150 mil) sem agente em voo → PRÓXIMA AÇÃO: reiniciar a sessão (/clear e /sm sprint run) e o veredito "reiniciar"' @{ Code = $r.Code; Out = $r.Out + "`nNV=" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/.next-verdict')) } 0 @('PRÓXIMA AÇÃO: reiniciar a sessão — contexto da última chamada 170 mil', '/clear e depois /sm sprint run', 'NV=.*"acao":"reiniciar"')
+Put $p '.team-project/guards.json' '{ "run": { "sessionContextCap": 0 } }'
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.57.2 item 21: run.sessionContextCap 0 desliga o reinício (o aviso fica)' $r $r.Code @('aviso: acima de 150 mil', '^(?![\s\S]*reiniciar a sessão)')
+Remove-Item -LiteralPath (Join-Path $p '.team-project/guards.json') -Force -ErrorAction SilentlyContinue
 
 # 12h. C5 (item 15) e C6 (item 11): veredito da última rodada, aceite com dívida do PO e a correção do portão como Q-S<n>.
 $p = Join-Path $tmp 'portao'; New-Project $p
@@ -1441,6 +1453,16 @@ Check 'item 3: next com dev vivo da Task em 🟨: esperar, exit 3 (v3.57.0: e a 
 Put $p '.team-project/.active-agents' ('[{"type":"team:developer","desde":"' + $n0 + '","session":"sOutra","parent":"","agent_id":"devmor1","work":"T-041","last":"x","at":"' + $n0 + '","host_pid":999999,"host_start":"2001-01-01 00:00:00"}]')
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'item 3: processo hospedeiro encerrado: o next segue com o executor' $r 0 @('PRÓXIMA AÇÃO: construir T-041')
+# v3.57.2 (note.md item 14, ocorrência 8 do sprint 5 do garden): duas Tasks em 🟨, a primeira do quadro depende da segunda —
+# o next constrói a dependência, não a que espera por ela (antes saía "construir Q-S5" com a Q-S5b em construção).
+$p = Join-Path $tmp 'dep-cur'; New-Project $p
+$sbp = Join-Path $p '.team-project/sprints/1/sprint-backlog.md'; $sbl = [System.IO.File]::ReadAllLines($sbp, $utf8)
+$iA = [array]::FindIndex($sbl, [Predicate[string]]{ param($x) $x -like '*T-041a |*' }); $i0 = [array]::FindIndex($sbl, [Predicate[string]]{ param($x) $x -like "| $($e.qa) T-041 |*" })
+$rA = $sbl[$iA].Replace("| $($e.todo) T-041a |", "| $($e.build) T-041a |").Replace('[`plan/T-041a-x.md`](plan/)', '[`plan/T-041a-x.md`](plan/T-041a-x.md)'); $r0 = $sbl[$i0].Replace("| $($e.qa) T-041 |", "| $($e.build) T-041 |")
+$sbl[$i0] = $rA; $sbl[$iA] = $r0; [System.IO.File]::WriteAllLines($sbp, $sbl, $utf8)
+Put $p '.team-project/sprints/1/plan/T-041a-x.md' "# Plano T-041a`n**Cenários:** nenhum — refatoração interna`n"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.57.2 item 14: com duas Tasks em 🟨, o next constrói a dependência (T-041), não a que depende dela (T-041a, primeira do quadro)' $r 0 @('PRÓXIMA AÇÃO: construir T-041 —', '^(?![\s\S]*construir T-041a)')
 # 14c. item 8: a mesma sessão seguiu depois do limite — o agente do .active-agents que parou no limite é medido pelo next.
 $p = Join-Path $tmp 'limite-mesma'; New-Project $p
 $sd = Join-Path $tmp 'tr-lim/sessL/subagents'; New-Item -ItemType Directory -Force $sd | Out-Null
@@ -1981,6 +2003,11 @@ $s = Get-ApkStaleness $pa $Work; "AP8=$($s.Stale)|$($s.Note)"
 # v3.57.1 (item 13): o id também pelo content-desc (aria-label da WebView); o resource-id vale primeiro
 $script:Nodes = @([pscustomobject]@{ Id = ''; Text = 'Estufa'; Desc = 'tab-button-estufa'; X1 = 1; Y1 = 1; X2 = 9; Y2 = 9 }, [pscustomobject]@{ Id = 'geral.card'; Text = 'B9'; Desc = ''; X1 = 1; Y1 = 1; X2 = 9; Y2 = 9 }, [pscustomobject]@{ Id = 'geral.card'; Text = 'outro'; Desc = ''; X1 = 1; Y1 = 1; X2 = 9; Y2 = 9 })
 "FD1=$((Find 'tab-button-estufa').Text)|FD2=$((Find 'geral.card').Text)|FD3=[$((Find 'inexistente').Text)]"
+# v3.57.2 (item 19): o accept instala por cima (mantém a base); só desinstala quando o Android recusa a atualização
+$script:Pkg = 'br.x'; $script:calls = @(); $script:mode = 'ok'
+function AdbT([int]$Sec, [string[]]$A) { $script:calls += ($A -join ' '); if ($script:mode -eq 'ok' -or ($A[0] -eq 'install' -and @($script:calls | Where-Object { $_ -like 'uninstall*' }).Count)) { 'Success' } elseif ($A[0] -eq 'install') { 'Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: Package br.x signatures do not match]' } else { 'Success' } }
+$ie = Install-AndroidApk $a2; "IN1=[$ie]|$(@($script:calls | ForEach-Object { ($_ -split ' ')[0..1] -join ' ' }) -join ';')|NOTE=[$($script:InstallNote)]"
+$script:calls = @(); $script:mode = 'assinatura'; $ie = Install-AndroidApk $a2; "IN2=[$ie]|$(@($script:calls | ForEach-Object { ($_ -split ' ')[0..1] -join ' ' }) -join ';')|NOTE=[$($script:InstallNote)]"
 '@, $utf8)
 $wk = Join-Path $tmp 'android-b'; New-Item -ItemType Directory -Force $wk | Out-Null
 $r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $hs3 -Adapter (Join-Path $checks 'targets/android.ps1') -Work $wk 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
@@ -1990,6 +2017,7 @@ Check 'v3.53.6 item 5b: reinício só no 1º accept da Task, com repair; freshSt
 Check 'v3.53.6 item 7: APK mais velho que o código do módulo é recusado (o teste não conta); fora de build/outputs/apk, só a nota' $r 0 @('AP1=False\|\r?\n', 'AP2=True\|A\.kt\|assembleDebug', 'AP3=False\|idade do APK não conferida: o módulo não se infere')
 Check 'v3.57.1 item 4: app híbrido — targets.android.apk com máscara acha o APK mais novo de source/dist (verify e accept); apkSources compara com o código web, sem o .spec; sem apkSources, a nota pede a declaração' $r 0 @('AP4=app-T-002-debug\.apk', 'AP5=False\|\r?\n', 'AP6=True\|tela\.ts\|o build que gera o APK', 'AP7=app-T-002-debug\.apk', 'AP8=False\|.*declare em targets\.android\.apkSources')
 Check 'v3.57.1 item 13: o accept acha o id pelo content-desc quando a WebView não o publica como resource-id (o resource-id vale primeiro)' $r 0 @('FD1=Estufa\|FD2=B9\|FD3=\[\]')
+Check 'v3.57.2 item 19: o accept instala por cima sem desinstalar (a base fica); com assinatura diferente, desinstala, reinstala e avisa que a base foi apagada' $r 0 @('IN1=\[\]\|install -r\|NOTE=\[\]', 'IN2=\[\]\|install -r;uninstall br\.x;install -r\|NOTE=\[o APK não instalava por cima \(INSTALL_FAILED_UPDATE_INCOMPATIBLE\).*base do app no aparelho foi apagada\]')
 
 # 19. v3.53.6 (sprint 5 do garden) — plano grande vai à divisão, cartão com os passos que faltam, prova no alvo pendente.
 # 19a. item 1: plano acima de 30 KB no disco (a sessão nem gravou a coluna Plano) → o next divide a Task, com o plano de base.
@@ -2234,6 +2262,12 @@ $card = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'
 Check 'v3.53.7: cartão traz as decisões do sprint que valem para a Task, uma linha cada' @{ Code = $r.Code; Out = $(if (Test-Path -LiteralPath $card) { [System.IO.File]::ReadAllText($card, $utf8) } else { 'sem cartão' }) } 0 @('\*\*Decisões do sprint\*\* \(`architect/decisions/S1\.md`', '- D-1 — Emulador fora do ar: Com o alvo fora do ar', '^(?![\s\S]*D-2 — APK)')
 $dg = & { . (Join-Path $checks 'lib.ps1'); Get-DecisionsDigest $p '1' }; $e = $e0
 Check 'v3.53.7: recorte da ficha traz todas as decisões, com a quem valem, para o Arquiteto citar' @{ Code = 0; Out = $dg } 0 @('## Decisões do sprint', 'D-1 — Emulador fora do ar · vale para todas', 'D-2 — APK antes do accept · vale para T-080', 'cite, não copie')
+# v3.57.2 (note.md item 15, ocorrência 7): "nenhum aplicável — motivo" na linha **Cenários:** vale como "nenhum — motivo".
+$nap = & { . (Join-Path $checks 'lib.ps1'); $a = Get-PlanScenarios "# P`n**Cenários:** nenhum aplicável — refatoração interna`n"; $b = Get-PlanScenarios "# P`n**Cenários:** nenhum — interno`n"; "A=$($a.None)|$($a.Reason) B=$($b.None)|$($b.Reason)" }; $e = $e0
+Check 'v3.57.2 item 15: "nenhum aplicável — motivo" e "nenhum — motivo" na linha **Cenários:** do plano valem igual' @{ Code = 0; Out = $nap } 0 @('A=True\|refatoração interna B=True\|interno')
+# v3.57.2 (note.md item 18, ocorrência 5): ChromeHeadless que não sobe por pasta temporária (Chrome órfão) não é "navegador não instalado".
+$ef = & { . (Join-Path $checks 'lib.ps1'); 'T=' + (Get-EnvFailure "ERROR [launcher]: Cannot start ChromeHeadless`n[ERROR:file_util.cc] Failed to create a temp dir") + ' | N=' + (Get-EnvFailure 'ERROR [launcher]: No binary for ChromeHeadless browser') }; $e = $e0
+Check 'v3.57.2 item 18: Chrome órfão (pasta temporária) tem mensagem própria; navegador ausente segue com a de instalar' @{ Code = 0; Out = $ef } 0 @('T=o ChromeHeadless não subiu por resto de rodada anterior.*Chrome órfão', 'N=o navegador headless não está instalado')
 
 # v3.54 (decisões do stakeholder de 04/11): mutação declarada pela regra, com o trecho escrito pelo dev sobre o código real,
 # e a margem do dev (defeito do próprio teste, CSS da regra do projeto) com as travas conferidas no close.

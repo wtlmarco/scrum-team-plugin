@@ -248,10 +248,20 @@ function Set-AndroidPackage([string]$Pkg) { if ($Pkg) { $script:Pkg = $Pkg } }
 function Install-AndroidApk([string]$Apk) {
     if (-not $Apk) { return $null }
     if (-not (Test-Path -LiteralPath $Apk)) { return "APK não existe: $Apk" }
-    if ($script:Pkg) { Adb uninstall $script:Pkg | Out-Null }
+    # v3.57.2 (note.md item 19, ocorrência 3 do sprint 5 do garden — D-5): o accept desinstalava o app antes de instalar, e cada
+    # accept apagava a base do app; o projeto proibiu o accept nas Tasks por isso. Agora instala POR CIMA (install -r mantém os
+    # dados) e só desinstala quando o Android recusa a atualização — assinatura diferente ou versão menor —, avisando que a
+    # base foi apagada. Os cenários que precisam de base limpa já têm o verbo reset (pm clear).
+    $script:InstallNote = ''
     $r = (AdbT 600 @('install', '-r', $Apk)) -join ' '
-    if ($r -notmatch 'Success') { return "instalação do APK falhou: $r" }
-    return $null
+    if ($r -match 'Success') { return $null }
+    if ($script:Pkg -and $r -match 'INSTALL_FAILED_UPDATE_INCOMPATIBLE|INSTALL_FAILED_VERSION_DOWNGRADE|signatures do not match') {
+        $why = ([regex]::Match($r, 'INSTALL_FAILED_\w+|signatures do not match')).Value
+        Adb uninstall $script:Pkg | Out-Null
+        $r = (AdbT 600 @('install', '-r', $Apk)) -join ' '
+        if ($r -match 'Success') { $script:InstallNote = "o APK não instalava por cima ($why): o app foi desinstalado e reinstalado — a base do app no aparelho foi apagada"; return $null }
+    }
+    return "instalação do APK falhou: $r"
 }
 
 # ---------- árvore da tela ----------

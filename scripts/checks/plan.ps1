@@ -208,7 +208,8 @@ try {
     # ---------- 23 · cenários ao lado do plano (v3.51) ----------
     $cm = [regex]::Match($text, '(?m)^\*\*Cen[áa]rios:\*\*\s*(.+)$')
     if (-not $cm.Success) { Add-Result 'cenários' 'falhou' "cabeçalho sem **Cenários:** SC-… | nenhum — <motivo> (regra 23)" }
-    elseif ($cm.Groups[1].Value -match '^\s*nenhum\s*[—-]\s*\S') { Add-Result 'cenários' 'ok' ($cm.Groups[1].Value.Trim()) }
+    # v3.57.2 (note.md item 15): "nenhum aplicável —" também vale.
+    elseif ($cm.Groups[1].Value -match '^\s*nenhum(?:\s+aplic[áa]vel)?\s*[—–-]\s*\S') { Add-Result 'cenários' 'ok' ($cm.Groups[1].Value.Trim()) }
     else {
         # v3.53.2: "SC-nnn (teste)" se prova pelos testes do plano, sem .scn; "# aguarda <T-ID>: SC-…" no .scn vale como declarado.
         $allIds = @([regex]::Matches($cm.Groups[1].Value, '\b[A-Z]{2,}-\d+\b') | ForEach-Object { $_.Value } | Select-Object -Unique)

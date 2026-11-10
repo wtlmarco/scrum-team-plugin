@@ -331,6 +331,43 @@ function Get-RemainingSteps([string]$PlanText, [string]$Stop, [string]$Blk, [int
 
 # Cartão de passagem (C2): o estado da Task em ~2 KB, para a instância nova não reler o plano inteiro nem o histórico.
 # v3.53.6 (item 2): com ponto de retomada, o cartão leva os passos que faltam e o que já está provado (até ~10 KB).
+# v3.57.2 (note.md item 23): recorte do 🔺 GAP para o Arquiteto — o último bloco de GAP do relatório do dev, o cabeçalho do
+# plano (até o primeiro "## ") e cada "Passo N" que o GAP cita (#### Passo N … até o próximo título). Grava
+# sprints/<n>/handoff/<ID>-gap.md e devolve o caminho relativo a .team-project/.
+function Write-GapCut($T, [string]$S, [string]$n) {
+    $dir = Join-Path $S 'handoff'; New-Item -ItemType Directory -Force $dir | Out-Null
+    $dv = Join-Path $S "delivery/$($T.Id).md"; $gap = '(o relatório do dev não tem bloco de 🔺 GAP)'
+    if (Test-Path -LiteralPath $dv) {
+        $dl = @([System.IO.File]::ReadAllLines($dv))
+        $gi = -1; for ($i = $dl.Count - 1; $i -ge 0; $i--) { if ($dl[$i] -match '🔺') { $gi = $i; break } }
+        if ($gi -ge 0) {
+            # sobe até o título do bloco (o 🔺 pode estar numa linha de corpo) e desce até o próximo título do mesmo nível ou acima
+            $hi = $gi; while ($hi -gt 0 -and $dl[$hi] -notmatch '^#{2,4}\s') { $hi--; if ($gi - $hi -gt 40) { $hi = $gi; break } }
+            $lvl = if ($dl[$hi] -match '^(#{2,4})\s') { $Matches[1].Length } else { 3 }
+            $end = $dl.Count - 1; for ($i = $hi + 1; $i -lt $dl.Count; $i++) { if ($dl[$i] -match '^(#{1,4})\s' -and $Matches[1].Length -le $lvl) { $end = $i - 1; break } }
+            $gap = ($dl[$hi..$end] -join "`n").Trim(); if ($gap.Length -gt 6000) { $gap = $gap.Substring(0, 6000) + "`n… (cortado em 6 KB)" }
+        }
+    }
+    $pf = Get-PlanFull $T $S; $head = '(sem plano)'; $steps = @()
+    if ($pf) {
+        $pt = Read-Text $pf
+        $fh = [regex]::Match($pt, '(?m)^##\s'); $head = if ($fh.Success) { $pt.Substring(0, $fh.Index).Trim() } else { $pt.Substring(0, [Math]::Min(3000, $pt.Length)).Trim() }
+        if ($head.Length -gt 4000) { $head = $head.Substring(0, 4000) + "`n… (cortado)" }
+        $nums = @([regex]::Matches($gap, '(?i)\bpasso\s+(\d+)') | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
+        foreach ($k in $nums) {
+            $sm = [regex]::Match($pt, "(?ms)^(#{2,5})\s+Passo\s+$k\b.*?(?=^#{2,5}\s|\z)")
+            if ($sm.Success) { $sv = $sm.Value.Trim(); if ($sv.Length -gt 4000) { $sv = $sv.Substring(0, 4000) + "`n… (cortado)" }; $steps += $sv }
+        }
+    }
+    $md = @("# Recorte do 🔺 GAP — $($T.Id) (para o Arquiteto; v3.57.2)", '', '> O GAP, o cabeçalho do plano e os passos que ele cita. O plano inteiro só se isto não bastar — e diga no retorno o que faltou.', '',
+            '## O GAP (relatório do dev)', '', $gap, '', '## Cabeçalho do plano', '', $head, '')
+    if ($steps.Count) { $md += @('## Passos citados no GAP', '') + @($steps | ForEach-Object { $_; '' }) }
+    else { $md += @('## Passos citados no GAP', '', '(o GAP não cita "passo N" que exista no plano — abra só a seção que ele descreve)', '') }
+    $p = Join-Path $dir "$($T.Id)-gap.md"
+    [System.IO.File]::WriteAllText($p, ($md -join "`n") + "`n", $utf8)
+    return "sprints/$n/handoff/$($T.Id)-gap.md"
+}
+
 function Write-Handoff($T, [string]$S, [string]$n) {
     $dir = Join-Path $S 'handoff'; New-Item -ItemType Directory -Force $dir | Out-Null
     $pf = Get-PlanFull $T $S; $planRel = if ($pf) { "sprints/$n/$($T.Plan)" } else { '(sem plano)' }
@@ -372,6 +409,8 @@ function Write-Handoff($T, [string]$S, [string]$n) {
             # v3.56.0 (H2): a lista é a do plano quando ele existe (o backlog só antes dele) e o -Scenarios aponta o .scn da História.
             ("**Cenários$(if ($T.ScenariosFrom -eq 'plano') { ' (do plano)' }):** " + $(if (-not $T.Scenarios.Count) { if ($T.AcceptWaiver) { "o accept não roda nesta Task — o plano declara: $($T.AcceptWaiver); os cenários se provam pelos testes do plano (não rode o accept.ps1)" } else { 'nenhum no alvo' } } elseif (Get-TargetsConfig $Root) { "$($T.Scenarios -join ', ') — ``accept.ps1 -Task $($T.Id)$(Get-AcceptArgs $T)``" } else { "$($T.Scenarios -join ', ') — sem alvo de execução: o accept não roda; os cenários se provam pelos testes do plano" }) + $(if ($T.TestScenarios.Count) { " · por teste do plano, sem accept: $($T.TestScenarios -join ', ')" } else { '' })),
             ("**Última entrega:** $last" + $(if ($stop) { " · parou: $((($stop -split "`r?`n")[0]).Trim())" } else { '' })),
+            # v3.57.2 (note.md item 22): o done reprovou por evidência — a ordem desta instância é só completar a evidência.
+            $(if (Test-Path -LiteralPath (Join-Path $dir "$($T.Id)-evidencia.md")) { "**Só completar a evidência** (o done reprovou; não mude código — rode os comandos de prova que faltam e cole a saída no relatório): " + ((@([System.IO.File]::ReadAllLines((Join-Path $dir "$($T.Id)-evidencia.md")) | Where-Object { $_ -match '^- ' }) | ForEach-Object { $_.Substring(2) }) -join ' · ') } else { $null }),
             "**Verificação:** $vtxt · **Cenários no alvo:** $atxt",
             "**GAPs:** $(if ($gaps.Count) { $gaps -join ' · ' } else { 'nenhum' })",
             $(if ($dl.Count) { "**Decisões do sprint** (``architect/decisions/S$n.md`` — valem como o plano; não abra o arquivo):`n" + ($dl -join "`n") } else { $null }),
@@ -653,7 +692,11 @@ try {
             Add-RunLog $S $n $T.Id "🔺 GAP [$nat · $natSrc] → Arquiteto em instância nova (/arc question); a decisão fica no plano (R9)" $(if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }) "sprints/$n/delivery/$($T.Id).md"
             Out "run: $($T.Id) com 🔺 GAP — Arquiteto em instância NOVA (o cache de 5 min do anterior já venceu; C1), modo /arc question (rota gravada no run-log.md):"
             Out "  $(Get-AgentLine 'architect')"
-            Out "  prompt: `"$($gapPre)Decida o 🔺 GAP da $($T.Id): cartão .team-project/$card, plano .team-project/sprints/$n/$($T.Plan), relatório .team-project/sprints/$n/delivery/$($T.Id).md$(if ($diagV) { ", diagnóstico do operator $diagRel (veredito $diagV)" }). Registre a decisão no plano (R9) no lugar do texto que ela derruba (passo, premissa, teste ou arquivo superado) — não ao lado: o plano tem teto de $($script:PlanMaxKb) KB e o run.ps1 start recusa o plano acima dele. Toda decisão declara duas linhas (v3.56.0, regra 29): **Origem:** previsão | conhecimento | requisito | ambiente | processo (confirme a sugestão do dev) e **Lição:** projeto (fato deste sistema que vai se repetir → K no knowledge.md no fechamento) | stack:<nome> (comportamento do framework, vale para qualquer projeto com a mesma stack → armadilha da camada local) | plugin (defeito ou regra do plugin → ocorrência de plugin, sem contexto do projeto) | nenhuma (previsão única). No plano: **Decisão do GAP $($T.Id) (<data>):** <a decisão>, com as duas linhas embaixo. Grave-a UMA vez como D-<k> em .team-project/architect/decisions/S$n.md (## D-<k> — <título>, **Vale para:** todas | T-… | <glob>, as duas linhas, a regra em até 5 linhas) quando ela vale para mais de uma Task do sprint (alvo, APK, teste instável, regra de processo) OU a Lição é projeto ou stack — e no plano só a referência em **Decisões:** D-<k> — não copie o texto em plano nenhum: o cartão de cada Task a traz. Decisão ou K que já está lá: só a referência. Rode plan.ps1 -Plan .team-project/sprints/$n/$($T.Plan) antes de voltar. Não escreva código nem rode build. Volte em até 15 linhas.`""
+            # v3.57.2 (note.md item 23, decisão do stakeholder de 09/11: contexto enxuto): o Arquiteto decide pelo recorte — o GAP,
+            # o cabeçalho do plano e os passos que o GAP cita —, não pelo plano inteiro (30 KB na T-042; 43 decisões de GAP no
+            # sprint 5, 69 % do custo dos subagentes no Arquiteto em Opus). O plano inteiro só se o recorte não bastar.
+            $cut = Write-GapCut $T $S $n
+            Out "  prompt: `"$($gapPre)Decida o 🔺 GAP da $($T.Id) pelo RECORTE .team-project/$cut (o GAP, o cabeçalho do plano e os passos que ele cita) e o cartão .team-project/$card$(if ($diagV) { ", diagnóstico do operator $diagRel (veredito $diagV)" }). Abra o plano inteiro (.team-project/sprints/$n/$($T.Plan)) ou o relatório (.team-project/sprints/$n/delivery/$($T.Id).md) só se o recorte não bastar, e diga no retorno o que faltou nele. Registre a decisão no plano (R9) com o Edit, no lugar do texto que ela derruba (passo, premissa, teste ou arquivo superado) — delta, não o plano reescrito (o Write de plano existente é negado no run) e não ao lado: o plano tem teto de $($script:PlanMaxKb) KB e o run.ps1 start recusa o plano acima dele. Toda decisão declara duas linhas (v3.56.0, regra 29): **Origem:** previsão | conhecimento | requisito | ambiente | processo (confirme a sugestão do dev) e **Lição:** projeto (fato deste sistema que vai se repetir → K no knowledge.md no fechamento) | stack:<nome> (comportamento do framework, vale para qualquer projeto com a mesma stack → armadilha da camada local) | plugin (defeito ou regra do plugin → ocorrência de plugin, sem contexto do projeto) | nenhuma (previsão única). No plano: **Decisão do GAP $($T.Id) (<data>):** <a decisão>, com as duas linhas embaixo. Grave-a UMA vez como D-<k> em .team-project/architect/decisions/S$n.md (## D-<k> — <título>, **Vale para:** todas | T-… | <glob>, as duas linhas, a regra em até 5 linhas) quando ela vale para mais de uma Task do sprint (alvo, APK, teste instável, regra de processo) OU a Lição é projeto ou stack — e no plano só a referência em **Decisões:** D-<k> — não copie o texto em plano nenhum: o cartão de cada Task a traz. Decisão ou K que já está lá: só a referência. Rode plan.ps1 -Plan .team-project/sprints/$n/$($T.Plan) antes de voltar. Não escreva código nem rode build. Volte em até 15 linhas.`""
             Out "  depois: dev em instância NOVA com a decisão — run.ps1 start -Task $($T.Id) (o cartão regerado aponta o plano com a decisão) e rode run.ps1 done de novo"
             exit 0
         }
@@ -716,15 +759,30 @@ try {
         if ($pr.Code -ne 0) {
             $null = Update-DevCounter $T $S 'fail'   # v3.52.2 (item 14): evidência reprovada é falha de papel
             $bad = @($pre -split "`r?`n" | Where-Object { $_ -match '\|\s*(R7[\w-]*|R12)\s*\|\s*falhou' } | ForEach-Object { ($_ -replace '\s+', ' ').Trim() })
-            Out "run: $($T.Id) ainda não fecha — dev em instância NOVA (run.ps1 start -Task $($T.Id)) com o que falta (a Task segue em 🟨):"
+            if (-not $bad.Count) { $bad = @(($pre -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 2) -join ' ') }
+            # v3.57.2 (note.md item 22, ocorrência 12 do sprint 5 do garden): o executor recebia só "dev novo com o que falta" — o
+            # dev novo reabria o trabalho, e a nota ficava no retorno do executor, não no run-log. Agora o que falta vai a um
+            # arquivo que o cartão traz com a ordem exclusiva (completar a evidência, sem mudar código) e a rota fica no run-log.
+            $evf = Join-Path $S "handoff/$($T.Id)-evidencia.md"
+            New-Item -ItemType Directory -Force (Split-Path $evf) | Out-Null
+            [System.IO.File]::WriteAllText($evf, (@("# O que falta na evidência da $($T.Id) — o done reprovou em $(Get-Date -Format 'yyyy-MM-dd HH:mm')", '') + @($bad | ForEach-Object { "- $_" })) -join "`n", $utf8)
+            Add-RunLog $S $n $T.Id 'evidência incompleta → dev em instância nova SÓ para completar a evidência (sem mudar código)' (($bad | Select-Object -First 2) -join ' · ') "sprints/$n/handoff/$($T.Id)-evidencia.md"
+            $card = Write-Handoff $T $S $n
+            Out "run: $($T.Id) ainda não fecha — falta EVIDÊNCIA, não código (a Task segue em 🟨):"
             foreach ($b in $bad) { Out "  $b" }
-            if (-not $bad.Count) { Out "  $(($pre -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 2) -join ' ')" }
+            Out "  dev em instância NOVA só para a evidência: run.ps1 start -Task $($T.Id) — o cartão .team-project/$card traz o que falta e a ordem: rodar os comandos de prova que faltam e colar a saída no relatório, sem mudar código. Depois, run.ps1 done de novo."
             exit 0
         }
         if ($T.Mark -ne $E.QA) { $mo = Set-Mark $T.Id 'qa' 'sessão (run.ps1 done)'; if ($mo) { Out "  $mo" } }
         $cr = Invoke-Child 'close.ps1' @('-Task', $T.Id, '-Apply', '-Root', $Root); $c = $cr.Out
         $code = $cr.Code
         if ($code -eq 0) {
+            Remove-Item -LiteralPath (Join-Path $S "handoff/$($T.Id)-evidencia.md") -Force -ErrorAction SilentlyContinue   # v3.57.2 (item 22)
+            # v3.57.2 (note.md item 21): a sessão principal entra no consumo a cada Task fechada, não só no close do sprint — o
+            # consumption.ps1 -Session existia, mas nenhum script o chamava, e o sprint 5 do garden ficou com ≈ 1/3 do custo fora
+            # da conta. Script, sem token; falha não impede o fechamento.
+            $sesR = Invoke-Child 'consumption.ps1' @('-Root', $Root, '-File', ".team-project/sprints/$n/consumption.md", '-Session')
+            if ($sesR.Code -ne 0) { Out "  aviso: a medida da sessão principal não gravou (consumption.ps1 -Session saiu com $($sesR.Code)); rode-o no close" }
             Out "run: $($T.Id) fechada pela evidência do dev (close.ps1 -Apply)."; Out (($c -split "`r?`n" | Where-Object { $_ -match '^\s*-\s|\*\*|Status' } | Select-Object -Last 6) -join "`n")
             $cm = Save-TaskCommit $T $S; Out $cm.Line
             Set-SafePoint $T $n
@@ -798,6 +856,21 @@ try {
             $kk = [int][Math]::Round($sg.LastContext / 1000)
             Out "SESSÃO: $($sg.Calls) chamada(s) · contexto da última $kk mil tokens"
             if ($sg.LastContext -gt 150000) { Out "  aviso: acima de 150 mil — a sessão está conduzindo trabalho que é do executor? (o executor de Task conduz start, dev e done; a sessão dispara e lê a linha de volta)" }
+            # v3.57.2 (note.md item 21, ocorrência 13 do sprint 5 do garden): a sessão que orquestra nunca reiniciava — a maior do
+            # sprint foi de 56 mil a 409 mil de contexto em 238 chamadas, e 56,1 M dos 57,3 M processados foram releitura do
+            # mesmo histórico (≈ 1/3 do custo do sprint, fora da conta). Acima do teto (guards.json → run.sessionContextCap,
+            # padrão 150 mil; 0 desliga) e sem agente em voo, a próxima ação é reiniciar: o run retoma do quadro e do .active-run.
+            $capS = 150000
+            $gjS = Join-Path $tp 'guards.json'
+            if (Test-Path -LiteralPath $gjS) { try { $gS = Read-Text $gjS | ConvertFrom-Json; if ($gS.PSObject.Properties['run'] -and $gS.run -and $gS.run.PSObject.Properties['sessionContextCap']) { $capS = [int]$gS.run.sessionContextCap } } catch { } }
+            $flying = @(Get-ActiveAgents $Root | Where-Object { (Get-AgentIdleHours $_) * 60 -lt 30 -and (Test-AgentHostAlive $_) -ne $false })
+            if ($capS -gt 0 -and $sg.LastContext -gt $capS -and -not $flying.Count) {
+                Set-NextVerdict $Root 'reiniciar' '' "sessão com $kk mil de contexto (teto $([int]($capS / 1000)) mil)"
+                Out "PRÓXIMA AÇÃO: reiniciar a sessão — contexto da última chamada $kk mil, acima do teto de $([int]($capS / 1000)) mil (guards.json → run.sessionContextCap), e nenhum agente em voo."
+                Out "  cada chamada desta sessão relê o histórico inteiro; reiniciada, ela parte de ~56 mil. Nada se perde: o quadro, o run-log, os cartões e o .active-run estão no disco."
+                Out "  sessão: diga ao stakeholder, em uma linha, para digitar /clear e depois /sm sprint run (o run retoma de onde está) — e encerre o turno (a G20 libera)."
+                exit 0
+            }
         }
     }
     # v3.53.4: plano externo — o retorno em pack/in/ se lê antes de decidir a próxima ação; cada plano passa pelo plan.ps1.
@@ -819,7 +892,10 @@ try {
     $deferred = Get-DeferredScenarios $Root
     $waiting = { param($sc) $deferred.ContainsKey($sc) -and $doneIds -notcontains $deferred[$sc] }
     $done = $doneIds
-    $cur = @($open | Where-Object { ($_.Mark -eq $E.Build -or $_.Mark -eq $E.QA) -and $gapWait -notcontains $_.Id }) | Select-Object -First 1
+    # v3.57.2 (note.md item 14, ocorrência 8 do sprint 5 do garden): a Task em curso respeita o "Depende de" — a Q-S5 (primeira
+    # do quadro em 🟨) saía em quatro next seguidos enquanto a Q-S5b, de que ela depende, estava em construção. Em curso com
+    # dependência aberta espera; a dependência em 🟨/🟪 é a Task em curso.
+    $cur = @($open | Where-Object { ($_.Mark -eq $E.Build -or $_.Mark -eq $E.QA) -and $gapWait -notcontains $_.Id -and -not @($_.Deps | Where-Object { $done -notcontains $_ }).Count }) | Select-Object -First 1
     # v3.53.6 (sprint 5 do garden, item 9): Task 🔴 com "prova no alvo pendente" em Bloqueios (o accept parou por ambiente e o
     # reparo falhou). A cada next, sem Task em construção, confere o alvo (target.ps1 sem -Repair, só quando há uma assim): de
     # volta → a Task sai de 🔴 para 🟪 e o operator roda o accept dela; ainda fora → a fila segue, sem esperar.
