@@ -50,6 +50,12 @@
     },
     {
       "tool": "node",
+      "_v3.57.2": "note.md item 18 (ocorrência 5 do sprint 5 do garden): antes da assinatura de navegador ausente — o 'Cannot start ChromeHeadless' também sai quando o Chrome não cria a pasta temporária ou o perfil, por um Chrome órfão de suíte que caiu",
+      "pattern": "(?i)Failed to create a temp dir|Cannot create (a )?temp(orary)? dir|user data directory is already in use|SingletonLock",
+      "message": "o ChromeHeadless não subiu por resto de rodada anterior (pasta temporária ou perfil em uso — Chrome órfão de uma suíte que caiu), não por navegador ausente: encerre os chrome.exe que a suíte anterior deixou (o operator pela pasta do job) e rode de novo"
+    },
+    {
+      "tool": "node",
       "pattern": "(?i)browserType\\.launch: Executable doesn't exist|Cannot start ChromeHeadless|No binary for ChromeHeadless",
       "message": "o navegador headless não está instalado: rode npx playwright install chromium (ou configure CHROME_BIN para o Karma)"
     },

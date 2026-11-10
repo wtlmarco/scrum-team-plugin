@@ -62,9 +62,11 @@ try {
     # decisão do run.ps1 next (.next-verdict "esperar": agente vivo ou comando da Task rodando) por 30 min. Mais velha, barra
     # de novo: a sessão roda o next, que regrava a decisão e mostra o sinal de vida da espera (POSSÍVEL TRAVAMENTO).
     $nv = Get-Marker $projectDir '.next-verdict'
-    if ($null -ne $nv -and [string]$nv.acao -eq 'esperar') {
+    # v3.57.2 (note.md item 21): "reiniciar" — a sessão passou do teto de contexto sem agente em voo; o fim do turno é o
+    # caminho para o stakeholder rodar /clear e /sm sprint run (o run retoma do quadro e do .active-run).
+    if ($null -ne $nv -and [string]$nv.acao -in 'esperar', 'reiniciar') {
         $nvAge = try { ((Get-Date) - [datetime]::ParseExact([string]$nv.at, 'yyyy-MM-dd HH:mm:ss', $null)).TotalMinutes } catch { 999 }
-        if ($nvAge -lt 30) { Write-GuardLog $projectDir 'G20' $hookInput ([string]$nv.task) "liberado: o run.ps1 next mandou esperar ($([string]$nv.motivo))"; exit 0 }
+        if ($nvAge -lt 30) { Write-GuardLog $projectDir 'G20' $hookInput ([string]$nv.task) "liberado: o run.ps1 next mandou $([string]$nv.acao) ($([string]$nv.motivo))"; exit 0 }
     }
     if ($tr -and (Test-Path -LiteralPath $tr)) {
         $tail = @(Get-Content -LiteralPath $tr -Encoding UTF8 -Tail 40)
