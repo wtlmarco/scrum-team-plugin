@@ -95,7 +95,7 @@ $cases = @(
     @{ Name = 'G7 dev dispara outro papel'; Script = 'pre-tool.ps1'; Expect = 2
        Payload = @{ tool_name = 'Agent'; agent_type = 'team:developer'; tool_input = @{ subagent_type = 'team:architect'; prompt = 'x' } } },
     @{ Name = 'G7 QA dispara o operator'; Script = 'pre-tool.ps1'; Expect = 0
-       Payload = @{ tool_name = 'Agent'; agent_type = 'team:quality-assurance'; tool_input = @{ subagent_type = 'team:operator'; prompt = 'x' } } },
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:quality-assurance'; tool_input = @{ subagent_type = 'team:operator'; prompt = "Chamador: qa T-041`nx" } } },
     @{ Name = 'G7 sessão principal dispara o dev'; Script = 'pre-tool.ps1'; Expect = 0
        Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; prompt = 'x' } } },
     @{ Name = 'G9 dev sem .active-task'; Script = 'pre-tool.ps1'; Expect = 2
@@ -430,12 +430,12 @@ $cases = @(
        Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:architect'; model = 'sonnet'; prompt = 'x' } } },
     @{ Name = 'G17 chave igual ao modelo do agente dispensa o model (operator haiku)'; Script = 'pre-tool.ps1'; Expect = 0
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "operator": "haiku" }' -Encoding UTF8 }
-       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:operator'; prompt = 'x' } } },
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:operator'; prompt = "Chamador: sessão S1`nx" } } },
     @{ Name = 'G17 vale para o operator disparado pelo QA'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'sonnet'
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "operator": "sonnet" }' -Encoding UTF8 }
-       Payload = @{ tool_name = 'Agent'; agent_type = 'team:quality-assurance'; tool_input = @{ subagent_type = 'team:operator'; prompt = 'x' } } },
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:quality-assurance'; tool_input = @{ subagent_type = 'team:operator'; prompt = "Chamador: qa T-041`nx" } } },
     @{ Name = 'G17 operator disparado pelo Arquiteto com o model certo'; Script = 'pre-tool.ps1'; Expect = 0
-       Payload = @{ tool_name = 'Agent'; agent_type = 'team:architect'; tool_input = @{ subagent_type = 'team:operator'; model = 'sonnet'; prompt = 'x' } } },
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:architect'; tool_input = @{ subagent_type = 'team:operator'; model = 'sonnet'; prompt = "Chamador: arc T-041`nx" } } },
     @{ Name = 'G17 todos os papéis: PO, QA, SM, UX e Arquiteto configurados'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'opus'
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/models.json') '{ "product-owner": "haiku", "quality-assurance": "opus", "scrum-master": "opus", "user-experience": "haiku", "architect": "sonnet" }' -Encoding UTF8 }
        Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:quality-assurance'; prompt = 'x' } } },
@@ -985,7 +985,37 @@ $cases = @(
     @{ Name = 'G14 (v3.53.6): docker fora do reparo declarado: negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'docker rm -f horta-emulador' } } },
     @{ Name = 'G14 (v3.53.6): adb fora do reparo declarado segue negado com a rota do target.ps1'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'target.ps1'
-       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'adb shell input keyevent 3' } } }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'adb shell input keyevent 3' } } },
+    # ---------- v3.57.3 — G7: o pedido ao operator diz quem chama; G14: Set-Location dentro do projeto ----------
+    @{ Name = 'G7 (v3.57.3): pedido ao operator sem a linha Chamador: negado, com a linha certa'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'Chamador: qa T-041'
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/models.json') -Force -ErrorAction SilentlyContinue }
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:quality-assurance'; tool_input = @{ subagent_type = 'team:operator'; prompt = 'Rode a suíte da T-041; job .team-project/operator/1/T-041-suite/' } } },
+    @{ Name = 'G7 (v3.57.3): Chamador que não é quem dispara: negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'quem dispara o operator é dev'
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:developer'; tool_input = @{ subagent_type = 'team:operator'; prompt = "Chamador: qa T-041`nRode a suíte" } } },
+    @{ Name = 'G7 (v3.57.3): sessão com "Chamador: sessão S5" passa'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:operator'; prompt = 'Chamador: sessão S5 — Rode na raiz: quality.ps1 -Id S5' } } },
+    @{ Name = 'G7 (v3.57.3): executor com "Chamador: executor T-041" passa (vale como task-runner)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; tool_input = @{ subagent_type = 'team:operator'; prompt = 'Chamador: executor T-041 — Diagnostique a falha' } } },
+    @{ Name = 'G7 (v3.57.3): Agent a outro papel não pede Chamador'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; tool_input = @{ subagent_type = 'team:developer'; prompt = 'Construa a T-041' } } },
+    @{ Name = 'G16 (v3.57.3): a linha Chamador do pedido vai ao usage.jsonl (caller)'; Script = 'subagent-stop.ps1'; Expect = 0
+       Setup = { $sd = Join-Path $tmp 'transcripts/sess9/subagents'; New-Item -ItemType Directory -Force $sd | Out-Null
+                 $p = '{"type":"user","timestamp":"2026-10-06T12:00:00Z","message":{"role":"user","content":"Chamador: sessão S1 — Rode a medição; job .team-project/operator/1/S1-medida/"}}'
+                 $a = '{"type":"assistant","timestamp":"2026-10-06T12:01:00Z","message":{"id":"oc1","model":"claude-haiku-4-5","content":[{"type":"text","text":"Veredito: ok · log: .team-project/operator/1/S1-medida/output.log"}],"usage":{"input_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":0,"output_tokens":10}}}'
+                 [System.IO.File]::WriteAllLines((Join-Path $sd 'agent-opcall1234.jsonl'), [string[]]@($p, $a), (New-Object System.Text.UTF8Encoding($false))) }
+       Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8 | Select-Object -Last 1) -match '"agent_id":"opcall1234".*"caller":"sessão"' }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'opcall1234'; agent_type = 'team:operator'; transcript_path = (Join-Path $tmp 'transcripts/sess9.jsonl') } },
+    @{ Name = 'G14 (v3.57.3): Set-Location para pasta do projeto + o script do runCommands escrito a partir dela: liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "5", "desde": "2026-10-06 10:00" }' -Encoding UTF8
+                 New-Item -ItemType Directory -Force (Join-Path $proj 'source/scripts/alvo') | Out-Null
+                 [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ "runCommands": ["node source/scripts/alvo/prova-cdp.mjs"] }', (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'Set-Location source; node scripts/alvo/prova-cdp.mjs --task S5' } } },
+    @{ Name = 'G14 (v3.57.3): o mesmo comando sem o Set-Location (caminho de dentro da pasta, a partir da raiz): negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'node scripts/alvo/prova-cdp.mjs --task S5' } } },
+    @{ Name = 'G14 (v3.57.3): Set-Location para fora do projeto não reescreve o caminho: negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'Set-Location ..; node scripts/alvo/prova-cdp.mjs --task S5' } } },
+    @{ Name = 'G14 (v3.57.3): Set-Location com aspas e -Path também vale'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'Set-Location -Path "source"; node scripts/alvo/prova-cdp.mjs' } } }
 )
 
 $rows = @(); $fail = 0

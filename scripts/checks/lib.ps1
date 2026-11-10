@@ -221,7 +221,11 @@ function Get-Decisive([string]$Log) {
 # encerrados ao fim (daemon), higiene da ferramenta e $EnvExtra como variáveis do filho, falha de ambiente por assinatura.
 # v3.51.4 (-KeepDescendants, verify.daemon): os descendentes que sobram (o daemon) ficam vivos e voltam em "kept" — o
 # verify.ps1 os reaproveita no comando seguinte e os encerra no fim da chamada (Stop-ProcessTree), antes de devolver o controle.
-function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [string]$Log, [double]$TimeoutMinutes, $EnvExtra, [switch]$KeepDescendants, [double]$ClockSkewMin = 0) {
+# v3.57.3 (plugin-report do sprint 5 do garden, §3 item 10 e §4 item 16; decisão do stakeholder de 10/11): -PidFile registra o
+# processo do comando (pid, hora de criação, chave, quem o iniciou) enquanto ele roda e apaga o registro no fim. Se quem chamou
+# morre no meio (o verify encerrado pela ferramenta, o dev que caiu), o registro fica: é o que o verify.ps1 -Kill e a rodada
+# seguinte encerram — só esses processos, nunca um de fora (no sprint 5 sobraram suítes e Chrome que só saíram com taskkill à mão).
+function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [string]$Log, [double]$TimeoutMinutes, $EnvExtra, [switch]$KeepDescendants, [double]$ClockSkewMin = 0, [string]$PidFile = '') {
     $u8 = New-Object System.Text.UTF8Encoding($false)
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $t0 = Get-Date   # v3.57.0 (item 8): relógio de parede, para perceber a suspensão do sistema (o WaitForExit não conta o tempo dormindo)
@@ -233,12 +237,14 @@ function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [strin
     # Sem -Wait: no 5.1 ele espera também os descendentes, e o daemon do build é descendente (nota 4).
     $p = Start-Process -FilePath 'powershell' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $enc) -WorkingDirectory $Root -RedirectStandardOutput $Log -RedirectStandardError "$Log.err" -NoNewWindow -PassThru
     $null = $p.Handle   # sem o handle aberto, o ExitCode volta vazio no 5.1
+    if ($PidFile) { try { [System.IO.File]::WriteAllText($PidFile, ([ordered]@{ pid = $p.Id; created = (Get-ProcessCreated $p.Id); key = $Key; owner = $PID; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), $u8) } catch { } }
     $limit = if ($TimeoutMinutes -gt 0) { [Math]::Max(0.05, $TimeoutMinutes) } else { 9 }
     $timedOut = -not $p.WaitForExit([int]($limit * 60000))
     $kept = @()
     if ($timedOut) { $null = Stop-ProcessTree $p.Id; $p.WaitForExit(5000) | Out-Null; $code = 124 }
     elseif ($KeepDescendants) { $p.WaitForExit(); $code = $p.ExitCode; $kept = @(Get-DescendantIds $p.Id) }
     else { $p.WaitForExit(); $code = $p.ExitCode; $null = Stop-ProcessTree $p.Id -ChildrenOnly }
+    if ($PidFile) { Remove-Item -LiteralPath $PidFile -Force -ErrorAction SilentlyContinue }
     Start-Sleep -Milliseconds 200   # o arquivo de saída fica livre depois que os descendentes saem
     # v3.57.0 (plugin-report do sprint 5 do garden, item 8): o notebook suspendeu ~9 h no meio da suíte; o relógio de parede
     # andou horas contra um prazo de minutos, o Karma perdeu a conexão e a rodada reprovou sem defeito no código. Relógio muito
@@ -808,6 +814,22 @@ function Get-PlanScenarios([string]$PlanText) {
     }
     return @{ None = $false; Target = $tg; Test = @($all | Where-Object { $tg -notcontains $_ }) }
 }
+# v3.57.3 (plugin-report do sprint 5 do garden, lições de GAP 1, 5, 8/9 e 11; decisão do stakeholder de 10/11): a linha
+# **Verificação:** do cabeçalho do plano diz como a Task se verifica quando o verify full padrão não serve.
+#   "dispensada — <motivo>"   Task de laudo, Task que só mexe em configuração de teste: o close.ps1 dá R7-verify n-a e o QA
+#                             revisa a dispensa no portão.
+#   "comando — `<comando>`"   Task cuja prova é um comando fora do framework principal (runner nativo do Node, script): o
+#                             verify.ps1 o roda como mais um passo ("plano") no focused e no full — com a trava, a árvore e o
+#                             result.json de sempre.
+# Sem a linha: $null (verify full padrão). Linha fora dos dois formatos: Mode 'inválida'.
+function Get-PlanVerification([string]$PlanText) {
+    $m = [regex]::Match([string]$PlanText, '(?im)^\*\*Verifica[çc][ãa]o:\*\*[ \t]*([^\r\n]*)$')
+    if (-not $m.Success) { return $null }
+    $v = $m.Groups[1].Value.Trim()
+    if ($v -match '^(?i)dispensad[ao]\s*[—–-]\s*(\S.*)$') { return [pscustomobject]@{ Mode = 'dispensada'; Reason = $Matches[1].Trim(); Command = ''; Raw = $v } }
+    if ($v -match '^(?i)comando\s*[—–-]\s*`([^`]+)`(.*)$') { return [pscustomobject]@{ Mode = 'comando'; Command = $Matches[1].Trim(); Reason = ($Matches[2] -replace '^\s*[—–-]\s*', '').Trim(); Raw = $v } }
+    return [pscustomobject]@{ Mode = 'inválida'; Reason = ''; Command = ''; Raw = $v }
+}
 # v3.56.0 (H2): os arquivos .scn que definem os cenários pedidos (caminho relativo à raiz, '/'), para o -Scenarios do accept
 # em vez da máscara de todos os arquivos — um cenário inválido de outra História não entra na leitura.
 function Get-ScenarioFiles([string]$Root, [string[]]$Ids) {
@@ -1150,18 +1172,67 @@ function Get-SprintTasks([string]$S) {
         # v3.56.0 (H2, sprint 5 do garden #28, #33, #38, #41, #44, #50, #54): com plano legível, os cenários da Task são os do
         # plano (**Cenários:**, que o plan.ps1 confere — regra 23); o backlog vale só antes de haver plano. O cartão, o start e
         # o next mandavam rodar o accept com a lista antiga do backlog depois que o GAP tirou um cenário do plano.
-        $bScn = $scn; $bTst = $tst; $from = 'backlog'; $waiver = ''
+        $bScn = $scn; $bTst = $tst; $from = 'backlog'; $waiver = ''; $pver = $null
         if ($pp -and $pp -notmatch '^plan/?$') {
             $pf = Join-Path $S $pp
             if (Test-Path -LiteralPath $pf -PathType Leaf) {
-                $ps = Get-PlanScenarios (Read-Text $pf)
+                $ptx = Read-Text $pf
+                $ps = Get-PlanScenarios $ptx
                 if ($ps) { $scn = @($ps.Target); $tst = @($ps.Test); $from = 'plano'; if ($ps.Waived) { $waiver = [string]$ps.Reason } }
+                $pver = Get-PlanVerification $ptx   # v3.57.3: o cartão diz como a Task se verifica
             }
         }
         $div = ($from -eq 'plano') -and ((@($bScn | Sort-Object) -join ',') -ne (@($scn | Sort-Object) -join ',') -or (@($bTst | Sort-Object) -join ',') -ne (@($tst | Sort-Object) -join ','))
-        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn; TestScenarios = $tst; ScenariosFrom = $from; BacklogScenarios = @($bScn + $bTst); ScenariosDiverge = [bool]$div; AcceptWaiver = $waiver }
+        # v3.57.3 (capacidade): a estimativa da coluna Est., em número (vírgula ou ponto); sem número, $null.
+        $em = [regex]::Match((Clean-Cell (& $col 'Est')), '\d+(?:[.,]\d+)?'); $est = if ($em.Success) { [double]($em.Value -replace ',', '.') } else { $null }
+        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn; TestScenarios = $tst; ScenariosFrom = $from; BacklogScenarios = @($bScn + $bTst); ScenariosDiverge = [bool]$div; AcceptWaiver = $waiver; Verification = $pver; Est = $est }
     }
     return $tasks
+}
+# v3.57.3: o plano da Task do sprint corrente — a coluna Plano do quadro; sem ela, sprints/<n>/plan/<T-ID>-*.md. '' sem plano.
+function Get-TaskPlanPath([string]$Root, [string]$Task) {
+    $tp = Join-Path $Root '.team-project'; $readme = Join-Path $tp 'README.md'
+    if (-not $Task -or -not (Test-Path -LiteralPath $readme)) { return '' }
+    $n = Get-CurrentSprint (Read-Text $readme); if (-not $n) { return '' }
+    $S = Join-Path $tp "sprints/$n"
+    if (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md')) {
+        $t = @(Get-SprintTasks $S | Where-Object { $_.Id -eq $Task }) | Select-Object -First 1
+        if ($t -and $t.Plan -and $t.Plan -notmatch '^plan/?$') { $pf = Join-Path $S $t.Plan; if (Test-Path -LiteralPath $pf -PathType Leaf) { return $pf } }
+    }
+    $g = @(Get-ChildItem -LiteralPath (Join-Path $S 'plan') -Filter "$Task-*.md" -File -ErrorAction SilentlyContinue)
+    if ($g.Count) { return $g[0].FullName }
+    return ''
+}
+# v3.57.3 (plugin-report do sprint 5 do garden, §3 item 13; decisão do stakeholder de 10/11): a conta da capacidade para a
+# decisão de uma entrada fora da Planning. No sprint 5 entraram 11 Tasks depois da Planning (16,0 d contra 11,83 d, +35 %),
+# todas com "nada saiu para caber" — a conta não estava na frente de quem decidia. Capacidade: a linha **Capacidade** do
+# quadro (sprint-backlog.md); sem ela, **Capacidade do sprint** do README. Planejado: **Somatório planejado**. No quadro: a
+# soma da coluna Est. das Tasks vivas, sem a correção do portão (Q-S<n>, que não cresce o escopo). $null sem capacidade.
+function Get-SprintCapacity([string]$Root, [string]$S, [double]$Add = 0) {
+    $num = { param($v) $m = [regex]::Match([string]$v, '\d+(?:[.,]\d+)?'); if ($m.Success) { [double]($m.Value -replace ',', '.') } else { $null } }
+    $bp = Join-Path $S 'sprint-backlog.md'
+    if (-not (Test-Path -LiteralPath $bp)) { return $null }
+    $board = Read-Text $bp
+    $readme = Join-Path $Root '.team-project/README.md'; $rt = if (Test-Path -LiteralPath $readme) { Read-Text $readme } else { '' }
+    $cap = & $num (Get-LabelValue $board 'Capacidade')
+    if ($null -eq $cap -and $rt) { $cap = & $num (Get-LabelValue $rt 'Capacidade do sprint') }
+    if ($null -eq $cap -or $cap -le 0) { return $null }
+    $planned = & $num (Get-LabelValue $board 'Somatório planejado')
+    $unit = if ($rt) { [string](Get-LabelValue $rt 'Unidade de estimativa') } else { '' }
+    $unit = if ($unit -match '(?i)\bdias?\b') { 'd' } elseif ($unit -match '(?i)ponto') { 'pt' } elseif ($unit -match '(?i)sess') { 'sessões' } else { '' }
+    $live = @(Get-SprintTasks $S | Where-Object { $_.Id -notmatch '^Q-S' -and $null -ne $_.Est })
+    $sum = [double](($live | Measure-Object Est -Sum).Sum)
+    $with = $sum + $Add
+    $pct = { param($x) [int][Math]::Round(100 * ($x - $cap) / $cap) }
+    return [pscustomobject]@{ Capacity = $cap; Planned = $planned; Board = $sum; With = $with; Add = $Add; Over = ($with -gt $cap); BoardPct = (& $pct $sum); WithPct = (& $pct $with); Unit = $unit; Tasks = $live.Count }
+}
+# A linha da conta, para o formulário ao stakeholder e para o R4 do close.ps1.
+function Format-SprintCapacity($C) {
+    $f = { param($x) $x.ToString('0.##', [System.Globalization.CultureInfo]::GetCultureInfo('pt-BR')) + $(if ($C.Unit) { " $($C.Unit)" } else { '' }) }
+    $sg = { param($p) if ($p -gt 0) { "+$p %" } elseif ($p -lt 0) { "$p %" } else { '0 %' } }
+    $s = "capacidade $(& $f $C.Capacity)" + $(if ($null -ne $C.Planned) { " · planejado na Planning $(& $f $C.Planned)" } else { '' }) + " · no quadro $(& $f $C.Board) ($(& $sg $C.BoardPct))"
+    if ($C.Add -gt 0) { $s += " · com a entrada (+$(& $f $C.Add)): $(& $f $C.With) ($(& $sg $C.WithPct))" }
+    return $s
 }
 # Arquivo do sprint com o Kanban, a Série, o Registro de transições e o controle (v3.51, G1): kanban.md; sprint aberto
 # antes da v3.51 tem burndown.md (o mesmo conteúdo, sem o Kanban). Devolve o que existe, o kanban.md primeiro.

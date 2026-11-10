@@ -270,6 +270,8 @@ try {
     # Chamador de cada subagente aninhado (o operator do dev, do QA, do Arquiteto): a linha do pai lista os filhos.
     $caller = @{}
     foreach ($u in $usage) { foreach ($c in @($u.children)) { if ($c) { $caller[[string]$c] = $(if ($short.ContainsKey([string]$u.role)) { $short[[string]$u.role] } else { [string]$u.role }) } } }
+    # v3.57.3: a linha "Chamador:" do pedido ao operator, gravada pela G16 (caller) — declarada e conferida pela G7, vale primeiro.
+    foreach ($u in $usage) { if ([string]$u.role -eq 'operator' -and $u.PSObject.Properties['caller'] -and [string]$u.caller) { $caller[[string]$u.agent_id] = [string]$u.caller } }
     # Sem o filho na linha do pai (pai sem medida, ou o resultado do Agent sem o agentId): o chamador é a rodada de outro
     # papel, na mesma Task, cujo intervalo contém o início do operator (v3.49). A Nota diz que foi pelo horário.
     $inferred = @{}

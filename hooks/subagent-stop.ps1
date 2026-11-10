@@ -254,6 +254,13 @@ try {
         # v3.53.1 (plugin-report, item 14): a versão do plugin na rodada — a fronteira de uma atualização no meio do run.
         plugin        = Get-PluginVersion
     }
+    # v3.57.3 (plugin-report do sprint 5 do garden, §4 item 15; decisão do stakeholder de 10/11): o operator sabe quem o chamou
+    # pela linha "Chamador: <papel> <ID>" do pedido, que a G7 confere ao disparar — 27 % das instâncias ficavam com "?" quando o
+    # pai não tinha linha medida (a sessão principal) ou o resultado do Agent não trazia o agentId.
+    if ($role -eq 'operator' -and $firstPrompt) {
+        $cm2 = [regex]::Match([string]$firstPrompt, '(?im)^[ \t>*_-]*Chamador:\**[ \t]*(\S+)')
+        if ($cm2.Success) { $ck = Get-CallerToken $cm2.Groups[1].Value; if ($ck) { $row.caller = $ck } }
+    }
     $json = $row | ConvertTo-Json -Compress
     [System.IO.File]::AppendAllText($usagePath, $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
 
