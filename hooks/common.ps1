@@ -149,6 +149,24 @@ function Test-GlobMatch([string]$RelPath, [object[]]$Globs) {
     return $false
 }
 
+# v3.57.3 (G7, chamador do operator): o papel escrito na linha "Chamador: <papel> <ID>" no nome curto do consumo — dev, arc,
+# qa, ux, sm, po, task-runner (aceita "executor") e sessão. '' quando não é papel conhecido.
+$script:CallerByRole = @{ 'developer' = 'dev'; 'architect' = 'arc'; 'quality-assurance' = 'qa'; 'user-experience' = 'ux'; 'scrum-master' = 'sm'; 'product-owner' = 'po'; 'task-runner' = 'task-runner' }
+function Get-CallerToken([string]$Text) {
+    $x = ([string]$Text).Trim().Trim('`', '*', '.', ',', ':', ';', '"', "'").ToLowerInvariant() -replace 'ã', 'a'
+    switch -Regex ($x) {
+        '^(dev|developer|desenvolvedor)$' { return 'dev' }
+        '^(arc|arquiteto|architect)$' { return 'arc' }
+        '^(qa|quality-assurance)$' { return 'qa' }
+        '^(ux|user-experience)$' { return 'ux' }
+        '^(sm|scrum-master)$' { return 'sm' }
+        '^(po|product-owner)$' { return 'po' }
+        '^(executor|task-runner)$' { return 'task-runner' }
+        '^(sessao|session)$' { return 'sessão' }
+    }
+    return ''
+}
+
 # G14 (run sem trava) — lista base, reparo declarado e casamento por prefixo. v3.55.0: moraram no pre-tool.ps1; o plan.ps1
 # (regra 32, "### Comandos da Task") confere os comandos do plano com os MESMOS, sem um segundo casamento.
 $script:runBase = @(

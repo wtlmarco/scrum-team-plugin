@@ -89,6 +89,8 @@ try {
     # por aviso. Quem dispara encerra o turno; o aviso o acorda (sem Start-Sleep, sem sondar o disco).
     $lines += "  Agent: subagent_type `"team:$effective`" · $modelText — dispare e encerre o turno; o aviso traz a volta"
     $lines += '  prompt: o caminho do plano (e o bloco), nunca o conteúdo colado; pedir o retorno curto de R28'
+    # v3.57.3 (G7): o pedido ao operator começa pela linha do chamador — a G7 nega sem ela e a G16 a grava no consumo.
+    if ($effective -eq 'operator') { $lines += "  primeira linha do prompt: Chamador: <papel de quem dispara — sessão, task-runner, dev, arc, qa, ux> $(if ($Id) { $Id } else { '<ID>' })" }
     [Console]::Out.WriteLine(($lines -join "`n"))
     exit 0
 } catch {

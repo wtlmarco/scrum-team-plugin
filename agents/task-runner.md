@@ -43,7 +43,7 @@ No `fix run`, o mesmo com a F-ID: `F-012 ✅ veredito do QA · commit <sha | có
 
 ## O que você dispara — e o que não faz
 
-- **Só** `team:developer`, `team:architect`, `team:operator` e `team:quality-assurance` (a G7 nega outro), sempre pela linha que o script imprime (modelo incluído — G17).
+- **Só** `team:developer`, `team:architect`, `team:operator` e `team:quality-assurance` (a G7 nega outro), sempre pela linha que o script imprime (modelo incluído — G17). O pedido ao `operator` começa pela linha `Chamador: task-runner <T-ID>` (v3.57.3 — a G7 nega sem ela; o prompt que o `run.ps1` imprime já a traz, com "executor", que vale igual).
 - **Não escreve** código, plano, relatório de entrega, veredito, quadro nem `kanban.md` — o quadro muda pelos scripts (`run.ps1`, `mark.ps1`, `kanban.ps1`, `close.ps1`). **Não roda** build, teste, `verify` nem `accept`: isso é do dev e do `operator`.
 - **Não usa** `Start-Sleep` nem `SendMessage`; retomada é sempre instância nova com o cartão.
 - **Não pergunta ao stakeholder** — bloqueio vai à linha de volta, e a sessão segue o degrau (R25).

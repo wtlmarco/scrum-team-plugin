@@ -60,9 +60,17 @@
 #   plano, os mudados no git) não tem id: Compose (Button(, TextField(, Checkbox(, Switch(, .clickable, items( de lista…
 #   sem testTag() e web (<button, <input, <select, <textarea, <a com ação sem data-testid). Saída com o id e o .scn, ou
 #   arquivo:linha. Exceção explícita: "// sem-testid: <motivo>" (ou {/* … */}, <!-- … -->) na linha ou na anterior.
+# v3.57.3 (plugin-report do sprint 5 do garden; decisões do stakeholder de 10/11):
+#   cada comando roda registrado em verify/<seg>/<ID>/running.json (pid e hora de criação). -Kill encerra a rodada desta Task
+#     — o verify vivo da trava e os filhos dele (suíte, node, navegador) — e o órfão de uma rodada que morreu; restaura a
+#     mutação interrompida e tira a trava. Só toca processo que o verify iniciou. A rodada nova encerra sozinha o órfão
+#     registrado pela anterior que caiu (o Chrome órfão que dava "Failed to create a temp dir").
+#   **Verificação:** comando — `<comando>` no plano: o comando roda como o passo "plano" no focused (sem -Tests, só ele e o
+#     lint) e no full. **Verificação:** dispensada — <motivo>: o close.ps1 não exige o full (o QA revisa a dispensa).
 param(
     [Parameter(Mandatory = $true)][string]$Task,
     [ValidateSet('focused', 'full', 'check', 'mutation')][string]$Mode = 'full',
+    [switch]$Kill,
     [string[]]$Tests = @(),
     [string]$Plan = '',
     [string[]]$Only = @(),
@@ -106,13 +114,14 @@ function Invoke-Logged([string]$Key, [string]$Cmd, [string]$Log) {
     # v3.57.0 (item 8): TEAM_TEST_CLOCK_SKEW_MIN_ONCE só existe nos testes — simula o salto de relógio da suspensão na 1ª rodada.
     $skew = 0.0; if ($env:TEAM_TEST_CLOCK_SKEW_MIN_ONCE -and -not $script:skewUsed) { $skew = [double]$env:TEAM_TEST_CLOCK_SKEW_MIN_ONCE; $script:skewUsed = $true }
     $tmo = Get-CommandTimeout $Key
-    $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon -ClockSkewMin $skew
+    $pidFile = Join-Path $dir 'running.json'   # v3.57.3: o registro que o -Kill e a rodada seguinte leem
+    $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon -ClockSkewMin $skew -PidFile $pidFile
     # Suspensão do sistema no meio do comando: a rodada não vale como prova — repete UMA vez (protocolo de espera, regra 5) e
     # registra a suspensão. Suspensa de novo, fica como falha de ambiente (exit 4): não é defeito do código.
     if ($r.suspended) {
         $first = [string]$r.environment
         if ($r.Contains('kept')) { $script:daemonPids += @($r.kept) }
-        $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon
+        $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon -PidFile $pidFile
         if (-not $r.suspended) { $r.warnings = @($r.warnings) + @("$Key`: $first — rodada repetida e válida") }
     }
     $r.Remove('suspended')
@@ -283,6 +292,24 @@ function Enter-VerifyLock([string]$Dir) {
     return $null
 }
 
+# v3.57.3: o processo registrado em running.json por uma rodada que morreu no meio (a trava já não é dela). Encerra a árvore
+# dele quando o PID ainda é o mesmo processo (hora de criação igual) e apaga o registro. $null sem registro.
+function Stop-VerifyOrphan([string]$Dir) {
+    $f = Join-Path $Dir 'running.json'
+    if (-not (Test-Path -LiteralPath $f)) { return $null }
+    $res = [ordered]@{ key = ''; pid = 0; state = 'gone'; killed = 0 }
+    try {
+        $j = Read-Text $f | ConvertFrom-Json
+        $res.key = [string]$j.key; $res.pid = [int]$j.pid
+        $cur = Get-ProcessCreated $res.pid
+        if (-not $cur) { $res.state = 'gone' }
+        elseif ($j.created -and [string]$j.created -ne $cur) { $res.state = 'reused' }
+        else { $res.killed = 1 + [int](Stop-ProcessTree $res.pid); $res.state = 'stopped' }
+    } catch { }
+    Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue
+    return [pscustomobject]$res
+}
+
 # Mutações do plano e escopo do plano: Get-Mutations e Get-PlanScope vivem no lib.ps1 desde a v3.52.2 (note.md itens 7 e 10)
 # — um leitor só para o plan.ps1, o verify.ps1, o close.ps1 e o commit da Task (run.ps1).
 
@@ -308,6 +335,29 @@ try {
     $dir = Get-VerifyDir $Root $Task
     $resPath = Join-Path $dir 'result.json'
     $prev = $null
+    # v3.57.3 (plugin-report do sprint 5 do garden, §3 item 10; decisão do stakeholder de 10/11): o stakeholder mandou encerrar
+    # as suítes duplicadas e o classificador de permissões negou o taskkill duas vezes. -Kill encerra só o que o verify desta
+    # Task iniciou: a rodada viva da trava (o verify e os filhos dele) e o órfão registrado de uma rodada que morreu.
+    if ($Kill) {
+        $said = @()
+        $lp = Join-Path $dir 'verify.lock'
+        if (Test-Path -LiteralPath $lp) {
+            $o = $null; try { $o = Read-Text $lp | ConvertFrom-Json } catch { }
+            $op = if ($o -and $o.pid) { Get-Process -Id ([int]$o.pid) -ErrorAction SilentlyContinue } else { $null }
+            if ($op -and $o.started -and $op.StartTime.ToString('o') -eq [string]$o.started) {
+                $kids = Stop-ProcessTree ([int]$o.pid)
+                $said += "rodada $([string]$o.mode) encerrada (verify pid $($o.pid), desde $($o.at)) com $kids processo(s) filho(s)"
+            } else { $said += 'a trava era de uma rodada que já tinha saído' }
+            Remove-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue
+        }
+        Start-Sleep -Milliseconds 300
+        $orph = Stop-VerifyOrphan $dir
+        if ($orph) { $said += $(switch ($orph.state) { 'stopped' { "órfão do passo $($orph.key) encerrado (pid $($orph.pid), $($orph.killed) processo(s))" } 'reused' { "o PID $($orph.pid) registrado agora é de outro processo — não tocado" } default { "o passo $($orph.key) registrado já tinha saído" } }) }
+        $rest = Restore-Pending $dir
+        if ($rest) { $said += "$rest restaurado de uma mutação interrompida" }
+        [Console]::Out.WriteLine("verify -Kill $Task`: " + $(if ($said.Count) { $said -join '; ' } else { 'nada a encerrar (nenhuma rodada viva nem processo registrado)' }))
+        exit 0
+    }
     if ($Mode -ne 'check') {
         # Antes do Restore-Pending: a mutação de uma rodada viva NÃO é resto de interrupção.
         $busy = Enter-VerifyLock $dir
@@ -325,6 +375,11 @@ try {
         }
     }
     if (Test-Path -LiteralPath $resPath) { try { $prev = Read-Text $resPath | ConvertFrom-Json } catch { } }
+    # v3.57.3: com a trava nesta chamada, um running.json é de uma rodada que morreu — o processo dela (suíte, navegador) sai.
+    if ($Mode -ne 'check') {
+        $orph = Stop-VerifyOrphan $dir
+        if ($orph -and $orph.state -eq 'stopped') { [Console]::Out.WriteLine("verify: encerrado o processo órfão da rodada anterior que caiu (passo $($orph.key), pid $($orph.pid), $($orph.killed) processo(s) com os filhos).") }
+    }
 
     $restored = Restore-Pending $dir   # mutação interrompida: o arquivo volta antes de qualquer medida
     if ($restored) { [Console]::Out.WriteLine("verify: $restored restaurado de uma mutação interrompida.") }
@@ -483,7 +538,11 @@ try {
         exit 0
     }
 
-    $keys = if ($Mode -eq 'focused') { @('focused', 'lint') } else { @('build', 'lint', 'suite', 'coverage') }   # $plan seria o -Plan (string)
+    # v3.57.3: a linha **Verificação:** do plano (lib.ps1 Get-PlanVerification) — "comando" vira o passo "plano".
+    $planFile = if ($Plan) { Join-Path $Root $Plan } else { Get-TaskPlanPath $Root $Task }
+    $pver = if ($planFile -and (Test-Path -LiteralPath $planFile -PathType Leaf)) { Get-PlanVerification (Read-Text $planFile) } else { $null }
+    $planCmd = if ($pver -and $pver.Mode -eq 'comando') { [string]$pver.Command } else { '' }
+    $keys = if ($Mode -eq 'focused') { if ($planCmd -and -not $Tests.Count) { @('lint') } else { @('focused', 'lint') } } else { @('build', 'lint', 'suite', 'coverage') }   # $plan seria o -Plan (string)
     $jobs = @()
     foreach ($k in $keys) {
         if ($k -eq 'focused') {
@@ -504,10 +563,12 @@ try {
         }
         $i = 0; foreach ($c in (Get-Commands $verify $k)) { $i++; $jobs += @{ Key = $(if ($i -gt 1) { "$k$i" } else { $k }); Cmd = $c } }
     }
-    if ($Mode -eq 'focused') {
+    if ($planCmd) { $jobs += @{ Key = 'plano'; Cmd = $planCmd } }
+    if ($Mode -eq 'focused' -and -not $planCmd) {
         if (-not $focusedItems.Count) { [Console]::Error.WriteLine('verify: guards.json → verify sem "focused" (o comando do teste focado, com {tests}).'); exit 2 }
-        if ($Tests.Count -eq 0) { [Console]::Error.WriteLine('verify: -Mode focused pede -Tests <arquivos de teste do bloco>.'); exit 2 }
-    } elseif ($jobs.Count -eq 0) { [Console]::Error.WriteLine('verify: guards.json → verify sem build, lint, suite nem coverage.'); exit 2 }
+        if ($Tests.Count -eq 0) { [Console]::Error.WriteLine('verify: -Mode focused pede -Tests <arquivos de teste do bloco> (ou o plano declara **Verificação:** comando — `<comando>`).'); exit 2 }
+    } elseif ($Mode -eq 'focused' -and $Tests.Count -and -not $focusedItems.Count) { [Console]::Error.WriteLine('verify: guards.json → verify sem "focused" (o comando do teste focado, com {tests}).'); exit 2 }
+    elseif ($jobs.Count -eq 0) { [Console]::Error.WriteLine('verify: guards.json → verify sem build, lint, suite nem coverage.'); exit 2 }
 
     New-Item -ItemType Directory -Force $dir | Out-Null
     $results = @(); $pendingJobs = @()
@@ -581,6 +642,8 @@ try {
     if ($Mode -eq 'full' -and $tid) { foreach ($nt in @($tid.Notes | Where-Object { $_ -match '^(atributo de teste|id dinâmico)' })) { [Console]::Out.WriteLine("  ids de teste: $nt") } }
     if ($tidLines.Count) { [Console]::Out.WriteLine('  ids de teste: o dev cria no código o id que o .scn cita (testTag / data-testid, standards/stacks/<tecnologia>/guide.md) e põe id em todo controle interativo; exceção só com "// sem-testid: <motivo>" na linha ou na anterior') }
     foreach ($w in @($script:hygieneWarnings) + $near) { [Console]::Out.WriteLine("  atenção: $w") }
+    if ($Mode -eq 'full' -and $pver -and $pver.Mode -eq 'dispensada') { [Console]::Out.WriteLine("  o plano dispensa o verify full (**Verificação:** dispensada — $($pver.Reason)): o close.ps1 não o exige e o QA revisa a dispensa no portão; esta rodada fica como evidência a mais") }
+    if ($planCmd) { [Console]::Out.WriteLine("  plano: o comando de **Verificação:** do plano rodou como o passo 'plano' (``$planCmd``)") }
     # v3.57.0 (plugin-report do sprint 5 do garden, item 14): o APK mais velho que o código só aparecia no accept (exit 2, "reconstrua"),
     # depois do dev e do QA. Ao fim de um full verde, num projeto com alvo android, o aviso vem já aqui: o build não regerou o APK.
     if ($Mode -eq 'full' -and -not $envBad.Count -and -not $bad.Count) {

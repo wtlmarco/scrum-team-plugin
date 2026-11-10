@@ -10,6 +10,11 @@
 #   "duplication" (Q8) · "sourceRoots" (pastas de produção para Q9 e Q17; padrão: guards.json → sourceRoots ou src/)
 # Saída: tabela regra · resultado · número/linha decisiva; .team-project/quality/<sprint|B-nnn>/<Id>/result.md e .json.
 # Exit 0 = todas as regras configuradas passaram · 1 = alguma falhou · 2 = erro de uso · 4 = falha de ambiente.
+# v3.57.3 (plugin-report do sprint 5 do garden, §3 item 8; decisão do stakeholder de 10/11): a Q11 reaproveita a cobertura
+# do último verify full verde ou não, de qualquer Task, feito sobre a MESMA árvore (verify/<seg>/<ID>/result.json, chaves
+# coverage…) — uma fonte só, sem rodar a suíte outra vez. Sem ele, roda quality.coverage; saída que não mediu nada
+# ("Unknown%", "( 0/0 )" — o comando apontava para outro gate) vira "não medido", com a causa, e não reprova o portão: o QA
+# julga, como a regra não configurada.
 
 param(
     [Parameter(Mandatory = $true)][string]$Id,
@@ -41,14 +46,29 @@ try {
     $dir = (Get-VerifyDir $Root $Id) -replace '[\\/]verify[\\/]', '/quality/'
     New-Item -ItemType Directory -Force $dir | Out-Null
     $rows = @(); $envFail = @()
+    $treeNow = Get-WorkTree $Root
+    # v3.57.3: a cobertura do verify full mais recente sobre a mesma árvore (as chaves coverage, coverage2… dele), ou nada.
+    $fromVerify = @()
+    if ($treeNow) {
+        $best = $null
+        foreach ($f in @(Get-ChildItem -LiteralPath (Join-Path $Root '.team-project/verify') -Recurse -Filter 'result.json' -File -ErrorAction SilentlyContinue)) {
+            try { $j = Read-Text $f.FullName | ConvertFrom-Json } catch { continue }
+            if (-not $j.full -or [string]$j.full.tree -ne $treeNow) { continue }
+            $cv = @(@($j.full.commands) | Where-Object { [string]$_.key -match '^coverage\d*$' -and $_.log -and (Test-Path -LiteralPath (Join-Path $Root ([string]$_.log))) })
+            if (-not $cv.Count) { continue }
+            if (-not $best -or [string]$j.full.at -gt [string]$best.At) { $best = [pscustomobject]@{ Task = $f.Directory.Name; At = [string]$j.full.at; Cmds = $cv } }
+        }
+        if ($best) { $fromVerify = @($best.Cmds | ForEach-Object { [pscustomobject]@{ key = [string]$_.key; exit = [int]$_.exit; log = [string]$_.log; environment = $_.environment; decisive = @($_.decisive); from = "reaproveitada do verify full da $($best.Task) ($($best.At), mesma árvore)" } }) }
+    }
 
     foreach ($k in $rules.Keys) {
         $cmds = if ($q -and $q.PSObject.Properties[$k] -and $q.$k) { @(@($q.$k) | Where-Object { $_ }) } else { @() }
+        if ($k -eq 'coverage' -and $fromVerify.Count) { $cmds = @($fromVerify) }
         if (-not $cmds.Count) { $rows += [ordered]@{ regra = $rules[$k].Q; nome = $rules[$k].Name; resultado = 'não configurado'; linha = "guards.json → quality.$k vazio: a regra fica com o julgamento do QA (Ficha de Vinculação)"; log = '' }; continue }
         $i = 0
         foreach ($c in $cmds) {
             $i++; $key = if ($i -gt 1) { "$k$i" } else { $k }
-            $r = Invoke-ProjectCommand $Root $key ([string]$c) (Join-Path $dir "$key.log") $limitMin $envExtra
+            $r = if ($c -is [string]) { Invoke-ProjectCommand $Root $key ([string]$c) (Join-Path $dir "$key.log") $limitMin $envExtra } else { $c }
             $res = if ($r.environment) { 'ambiente' } elseif ([int]$r.exit -eq 0) { 'ok' } else { 'falhou' }
             $line = "exit $($r.exit) · $(@($r.decisive) | Select-Object -Last 1)"
             if ($k -eq 'coverage') {
@@ -56,11 +76,15 @@ try {
                 $txt = [System.IO.File]::ReadAllText((Join-Path $Root $r.log), $utf8)
                 $m = [regex]::Match($txt, $pat)
                 $thr = if ($q.coverageThreshold) { [double]$q.coverageThreshold } else { 80 }
-                if ($m.Success) {
-                    $pct = [double]($m.Groups[1].Value -replace ',', '.')
+                $pct = if ($m.Success) { [double]($m.Groups[1].Value -replace ',', '.') } else { $null }
+                # Nada medido: o resumo do Istanbul com "Unknown%" e "( 0/0 )" (a suíte não rodou ou o gate lia outro resumo).
+                $empty = -not $r.environment -and ($txt -match '(?i)\bUnknown\s*%' -or $txt -match '\(\s*0\s*/\s*0\s*\)') -and ($null -eq $pct -or $pct -eq 0)
+                if ($empty) { $res = 'não medido'; $line = "a cobertura não mediu nada (Unknown% / 0 de 0, exit $($r.exit)) — o comando não gerou o resumo da suíte: confira guards.json → quality.coverage (ou rode o verify full, que a Q11 reaproveita); o QA julga, não é reprovação por código" }
+                elseif ($null -ne $pct) {
                     $line = "$pct % medido × limiar $thr % · exit $($r.exit)"
                     if ($res -eq 'ok' -and $pct -lt $thr) { $res = 'falhou'; $line += ' (abaixo do limiar)' }
                 } elseif ($res -eq 'ok') { $line += ' · percentual não lido da saída (ajuste quality.coveragePattern); vale o exit do gate' }
+                if ($c -isnot [string]) { $line = "$($c.from) · $line" }
             }
             if ($r.environment) { $envFail += "$key`: $($r.environment)"; $line = $r.environment }
             $rows += [ordered]@{ regra = $rules[$k].Q; nome = $rules[$k].Name; resultado = $res; linha = $line; log = $r.log }
@@ -88,10 +112,11 @@ try {
     $md = "# Qualidade · $Id · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n| Regra | O que | Resultado | Número / linha decisiva | Log |`n|---|---|---|---|---|`n"
     foreach ($r in $rows) { $md += "| $($r.regra) | $($r.nome) | $($r.resultado) | $(([string]$r.linha) -replace '\|', '/') | $($r.log) |`n" }
     [System.IO.File]::WriteAllText((Join-Path $dir 'result.md'), $md, $utf8)
-    [System.IO.File]::WriteAllText((Join-Path $dir 'result.json'), ([ordered]@{ id = $Id; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); rows = $rows } | ConvertTo-Json -Depth 5), $utf8)
+    [System.IO.File]::WriteAllText((Join-Path $dir 'result.json'), ([ordered]@{ id = $Id; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = $treeNow; rows = $rows } | ConvertTo-Json -Depth 5), $utf8)
     $rel = $dir.Substring($Root.Length + 1) -replace '\\', '/'
     $bad = @($rows | Where-Object { $_.resultado -eq 'falhou' })
-    [Console]::Out.WriteLine("quality $Id · " + $(if ($envFail.Count) { 'FALHA DE AMBIENTE' } elseif ($bad.Count) { "$($bad.Count) regra(s) falharam" } else { 'regras configuradas ok' }) + " · $rel/result.md")
+    $unm = @($rows | Where-Object { $_.resultado -eq 'não medido' })
+    [Console]::Out.WriteLine("quality $Id · " + $(if ($envFail.Count) { 'FALHA DE AMBIENTE' } elseif ($bad.Count) { "$($bad.Count) regra(s) falharam" } else { 'regras configuradas ok' }) + $(if ($unm.Count) { " · ATENÇÃO: $(@($unm | ForEach-Object { $_.regra }) -join ', ') não medida(s) — o QA julga" } else { '' }) + " · $rel/result.md")
     foreach ($r in $rows) { [Console]::Out.WriteLine("  $($r.regra) $($r.resultado): $($r.nome) — $($r.linha)") }
     if ($envFail.Count) { exit 4 }
     if ($bad.Count) { exit 1 }

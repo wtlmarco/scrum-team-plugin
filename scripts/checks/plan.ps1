@@ -12,6 +12,8 @@
 # os comandos da Task conferidos contra a lista da G14 + runCommands; instalação, rede, push e destrutivo reprovam).
 # v3.57.1: 33 (Layout novo sim sem **Envelope de medidas** reprova; saída "**Envelope de medidas:** nenhum — <motivo>") e 34 (o plano que
 # dispensa o aceite em qualquer frase declara a linha **Aceite:**, a única que o cartão lê).
+# v3.57.3: 35 (**Verificação:** dispensada — <motivo> | comando — `<comando>`; fora do formato, dispensa com mutação ou comando
+# proibido reprovam).
 # As mensagens dizem o que corrigir: o Arquiteto não precisa abrir este script (note.md item 7).
 # Saída: tabela regra · resultado · linha decisiva. Exit 1 se alguma falhou · 2 = erro de uso.
 
@@ -373,6 +375,26 @@ try {
     else {
         $w0 = ($waive[0].Trim() -replace '\s+', ' '); if ($w0.Length -gt 100) { $w0 = $w0.Substring(0, 100) + '…' }
         Add-Result 'aceite' 'falhou' "o plano dispensa o aceite fora da linha **Aceite:** ($($waive.Count) linha(s), ex.: ""$w0"") — declare ``**Aceite:** não roda — <motivo>`` no cabeçalho (ou ``**Aceite:** roda — <quem roda>``, se o aceite roda e a frase fala de outra coisa): é a única linha que o cartão, o start e o next leem (regra 34)"
+    }
+
+    # ---------- 35 · como a Task se verifica (v3.57.3, decisão do stakeholder de 10/11) ----------
+    # No sprint 5 do garden, 6 das 11 lições de GAP de plugin eram Tasks sem caminho no verify/close: laudo sem código, Task sem
+    # teste do framework principal, Task que só mexe em configuração de teste, teste no runner nativo do Node. A linha
+    # **Verificação:** do cabeçalho declara o caminho: "dispensada — <motivo>" (o close não exige o full; o QA revisa no portão)
+    # ou "comando — `<comando>`" (o verify.ps1 o roda como o passo "plano"). Sem a linha, vale o verify full de sempre.
+    $pv = Get-PlanVerification $text
+    if (-not $pv) { Add-Result 'verificação' 'n-a' 'sem **Verificação:** — vale o verify full padrão' }
+    elseif ($pv.Mode -eq 'inválida') { Add-Result 'verificação' 'falhou' "**Verificação:** fora do formato (""$($pv.Raw)"") — use ``**Verificação:** dispensada — <motivo>`` ou ``**Verificação:** comando — ``<comando>```` (regra 35)" }
+    elseif ($pv.Mode -eq 'dispensada') {
+        if ($muts.Count) { Add-Result 'verificação' 'falhou' "**Verificação:** dispensada com **Mutações:** — a mutação roda sobre a árvore do verify full; sem o full, declare 'sem prova: <motivo>' na §6 ou tire a dispensa (regra 35)" }
+        else {
+            $prodN = if ($files) { @($files | Where-Object { $_ -notmatch $testRe }).Count } else { 0 }
+            Add-Result 'verificação' 'ok' ("dispensada — $($pv.Reason)" + $(if ($prodN) { " · ATENÇÃO: $prodN arquivo(s) de produção na lista — o QA confere a dispensa no portão" } else { ' · o QA revisa a dispensa no portão' }))
+        }
+    } else {
+        $bad = @(Split-CommandSegments $pv.Command | ForEach-Object { $w = Get-ForbiddenCommandReason $_; if ($w) { "$_ ($w)" } })
+        if ($bad.Count) { Add-Result 'verificação' 'falhou' ("**Verificação:** comando que o run nunca roda: " + ($bad -join '; ') + " — instalação, rede, push e destrutivo ficam fora (regra 35)") }
+        else { Add-Result 'verificação' 'ok' "comando ``$($pv.Command)`` — o verify.ps1 o roda como o passo 'plano' no focused e no full" }
     }
 
     # ---------- 28 · plano pela ficha (v3.53, note.md item 8) ----------

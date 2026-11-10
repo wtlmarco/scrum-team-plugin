@@ -56,7 +56,7 @@
 
 ### Entradas fora da Planning
 
-> O Sprint Backlog **não cresce** durante o sprint (R4). A única exceção é o GAP que bloqueia uma História já no sprint. Toda entrada declara **o que saiu para caber** — ou a **Decisão do stakeholder** com data e onde ela está. Sem uma das duas, o C1 reprova a R4.
+> O Sprint Backlog **não cresce** durante o sprint (R4). A única exceção é o GAP que bloqueia uma História já no sprint. Toda entrada declara **o que saiu para caber** — ou a **Decisão do stakeholder** com data e onde ela está. Sem uma das duas, o C1 reprova a R4. O formulário da entrada traz a conta da capacidade (`kanban.ps1 -Capacity -Add <estimativa>`, v3.57.3).
 
 | Task | História | Por que entrou fora da Planning | O que saiu para caber | Data | Decisão do stakeholder |
 |---|---|---|---|---|---|

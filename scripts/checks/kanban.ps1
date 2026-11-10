@@ -8,9 +8,12 @@
 # depois só confirmam o estado e somam custo.
 # Chamado pelo hook G16 ao fim de cada rodada, pelo mark.ps1 e pelo close.ps1 -Apply. É script: não custa token.
 # Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/kanban.ps1" [-Block B-<nnn> [-Init] [-Fid F-<n> -To plan|build|qa]] [-Root <projeto>]
+# v3.57.3: -Capacity [-Add <estimativa>] não regrava nada — imprime a conta da capacidade do sprint corrente (capacidade,
+# planejado na Planning, soma do quadro e, com -Add, a soma com a entrada nova), a linha que o formulário de uma entrada fora
+# da Planning traz ao stakeholder (workflow-sprint.md §5e "Durante o sprint").
 # Saída: uma linha. Exit 0 · 2 = erro de uso ou de leitura. Nunca falha quem o chamou.
 
-param([string]$Block = '', [switch]$Init, [string]$Fid = '', [string]$To = '', [string]$Root = (Get-Location).Path)
+param([string]$Block = '', [switch]$Init, [string]$Fid = '', [string]$To = '', [switch]$Capacity, [double]$Add = 0, [string]$Root = (Get-Location).Path)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib.ps1')
@@ -172,6 +175,13 @@ try {
         $m = if (Test-Path -LiteralPath $readme) { [regex]::Match((Read-Text $readme), $script:SprintLineRe) } else { $null }
         if (-not $m -or -not $m.Success) { [Console]::Error.WriteLine('kanban: README §2 sem "Sprint corrente" — esperado: ' + $script:SprintLineHelp); exit 2 }
         $n = $m.Groups[1].Value; $S = Join-Path $tp "sprints/$n"
+        if ($Capacity) {
+            $c = Get-SprintCapacity $Root $S $Add
+            if (-not $c) { [Console]::Out.WriteLine("kanban -Capacity: sprint $n sem capacidade declarada (linha **Capacidade** do sprint-backlog.md ou **Capacidade do sprint** do README) — sem conta para o formulário."); exit 0 }
+            $tail = if ($c.Over) { " — ACIMA da capacidade: o formulário traz esta conta e pede o que sai para caber (o PO escolhe a Task; o stakeholder confirma) ou a confirmação do estouro" } else { ' — cabe na capacidade' }
+            [Console]::Out.WriteLine("kanban -Capacity sprint ${n}: $(Format-SprintCapacity $c)$tail")
+            exit 0
+        }
         # v3.51.4 (garden item 1): -Init cria o consumption.md do sprint se faltar (G16 e run.ps1 next o chamam no sprint run).
         $consS = Join-Path $S 'consumption.md'
         if ($Init -and (Test-Path -LiteralPath $S) -and -not (Test-Path -LiteralPath $consS) -and -not (Test-Path -LiteralPath (Join-Path $S 'retrospective.md'))) {

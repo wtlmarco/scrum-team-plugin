@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.54`](process-changelog-archive.md) | Mutação pela regra e margem do dev: o Arquiteto diz o que provar, o dev escreve o trecho e corrige o defeito do próprio teste, com travas no fechamento (SM + Arquiteto + Dev + QA) — 04/11/2026 · *com addenda v3.54.1 e v3.54.2* |
 | [`v3.53`](process-changelog-archive.md) | Plano pela ficha: a quebra em Tasks traz a ficha de cada Task, um Arquiteto por Task e o template do plano só com o operativo (SM + Arquiteto + Dev + QA) — 28/10/2026 · *com addenda v3.53.1 a v3.53.7* |
 | [`v3.52`](process-changelog-archive.md) | Orquestrador enxuto: sessão nova por ritual, `run` em sessões curtas, espera sem sondagem, registro de decisões e commit por Task (SM) — 23/10/2026 |
 | [`v3.51`](process-changelog-archive.md) | O sprint do benchmark: dev constrói e verifica sozinho, plano por História ao lado dos cenários, portão do QA no fim, orquestração por script, contexto e cache, ambiente em qualquer tecnologia (SM + Arquiteto + Dev + QA + PO) — 21/10/2026 |
@@ -95,6 +96,37 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.57 — O sprint real: protocolo de espera, sessão medida e reiniciada pelo teto, suíte só pelo verify, Arquiteto com contexto enxuto e o que o sprint 5 do garden não tinha onde pôr (SM + Arquiteto + Dev + QA) — 07/11/2026 · *com addenda v3.57.1 a v3.57.3*
+
+**Instrução** (stakeholder, 07/11 a 10/11/2026: relatório intermediário do sprint 5 do garden e `decisoes-plugin-report.md` → v3.57.0; `note.md` itens 1 a 13 → v3.57.1; ocorrências do sprint 5, itens 14 a 24, com as decisões de 09/11 por formulário → v3.57.2; o `plugin-report.md` final do sprint 5 conferido contra a 3.57.2, com as decisões de 10/11 por formulário → v3.57.3, "podemos já fazer todos").
+**Medido (sprint 5 do garden, plugin 3.57.0):** sessão principal 364 M tokens (46,7 % do total, 8,5× o sprint anterior), 56 mil → 409 mil de contexto numa sessão; executor de Task com 83 % das rodadas em ≤ 3 chamadas; Arquiteto em Opus 37,6 % de papéis + `operator`, planos refeitos inteiros; 3 suítes completas ao mesmo tempo numa Task; 11 entradas fora da Planning (+35 % da capacidade); 6 das 11 lições de GAP de plugin eram Tasks sem caminho no `verify`/`close`; `operator` sem chamador em 27 %.
+**Classificação:** regra (G14 da suíte; G7 do chamador; regras 33, 34 e 35 do plano; teto da sessão) · formato (`**Aceite:**`, `**Verificação:**`, `Chamador:`) · instrumento (`run.ps1`, `verify.ps1`, `quality.ps1`, `kanban.ps1`, `close.ps1`, `plan.ps1`, `accept.ps1`, hooks) · ritual (o formulário da entrada fora da Planning traz a conta).
+
+### O que mudou
+- **Espera** (v3.57.0–v3.57.1): seis regras em `sprint-run.md` §Protocolo de espera; comando de terceiros com prazo (`Invoke-Bounded`); o watcher confere por `run.ps1 wait -For`.
+- **Sessão** (v3.57.2): medida a cada Task fechada (`consumption.ps1 -Session`); acima de `run.sessionContextCap` sem agente em voo, o `next` manda reiniciar e a G20 aceita o veredito.
+- **Dev e executor** (v3.57.2): suíte e cobertura só pelo `verify.ps1` (G14); evidência que falta vai ao cartão. **v3.57.3:** `verify.ps1 -Kill` encerra o que o verify da Task iniciou; a rodada nova encerra o órfão da anterior.
+- **Arquiteto** (v3.57.1–v3.57.3): envelope de medidas (33) e linha `**Aceite:**` (34) reprovam; GAP decidido pelo recorte e plano mudado por delta; **regra 35** — `**Verificação:** dispensada — <motivo>` (o `close` não exige o full; o QA revisa no portão) ou ``comando — `<comando>` `` (o `verify` o roda como o passo `plano`).
+- **QA** (v3.57.3): a Q11 reaproveita a cobertura do verify full da mesma árvore; "Unknown% / 0 de 0" é "não medido", não reprovação.
+- **SM** (v3.57.3): a entrada fora da Planning leva ao formulário a linha de `kanban.ps1 -Capacity -Add <est>`; o R4 repete a conta. Todo pedido ao `operator` começa por `Chamador: <papel> <ID>` (G7), gravado no consumo.
+
+### Por quê
+O plugin foi escrito para o caminho em que tudo dá certo; o sprint real teve emulador lento, processo que não termina, notebook que dorme, plano que muda no meio e Tasks que não cabiam em nenhum caminho oficial. Cada mudança dá um caminho declarado ao que antes virava GAP de processo, parada ou custo escondido.
+
+### Conflitos com o processo vigente
+A regra 18 continua: com `**Verificação:** dispensada`, a mutação sai por `sem prova: <motivo>`. A G14 não libera comando novo com o `Set-Location`: só lê o caminho a partir da pasta. O estouro de capacidade continua decisão do stakeholder; a conta só fica visível.
+
+### Como saberemos que funcionou
+Sprint 6 do garden (`validacoes-sprint-6.md`): sessão principal abaixo de 1/3 do total; nenhuma suíte duplicada nem `taskkill` à mão; Arquiteto abaixo de 25 % de papéis + `operator`; nenhum GAP de processo por Task sem caminho no `verify`; `operator` com chamador em 100 %; entradas fora da Planning com a conta no formulário.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.54 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.57, v3.56, v3.55 | ✅ |
+| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.57.0 a v3.57.3 | ✅ |
+
+---
+
 ## v3.56 — A lição de cada GAP no lugar certo: origem e destino na decisão, conhecimento do projeto que atravessa sprints, armadilhas da stack e o SM atualizando o lado do projeto no fechamento (SM + Arquiteto + Dev + QA) — 06/11/2026
 
 **Instrução** (stakeholder, 06/11/2026, `melhorias/plano-v3.56.0.md` aprovado com as recomendações do §9: SM mecânico no fechamento, teto de 15 KB, P-r2 do benchmark com a 3.56.0, os três defeitos abertos do plugin nesta versão). Implementar antes de retomar o garden no sprint 6.
@@ -156,42 +188,3 @@ Sprint 6 do garden: zero GAP por ajuste de teste em `sem prova`; zero recusa em 
 
 ### Parte mecânica (implementada pela sessão principal, citada aqui)
 `lib.ps1` (`Get-MarginAdjustments` com leitura tolerante e `fixture`; `Get-TestIdAttribute`; `Find-UntaggedUi` com Ionic, item de lista e raiz da tela; `Get-PlanCommandGaps` e auxiliares); `close.ps1` (R7-margem: tolerante, `sem prova`, fixture); `verify.ps1` (`focused` por objeto, `Resolve-FocusedItem`, `tests 0` do `node:test`); `plan.ps1` (regras 31 e 32); `run.ps1` (`allow`, `Get-CommandStop`, `Add-RunCommands`); `ids.ps1` novo; `hooks/common.ps1` (`runBase`, `Get-RepairCommands`, `Test-CommandPrefix`, movidos do `pre-tool.ps1`); `ownership.json`.
-
----
-## v3.54 — Mutação pela regra e margem do dev: o Arquiteto diz o que provar, o dev escreve o trecho e corrige o defeito do próprio teste, com travas no fechamento (SM + Arquiteto + Dev + QA) — 04/11/2026
-
-**Instrução** (stakeholder, 04/11/2026, relatório de encadeamento do sprint 5 do garden: "vamos seguir com as duas", depois da explicação do problema, da proposta e do ganho de cada uma).
-**Medido (sprint 5 do garden):** o maior plano trazia 19 mutações com a linha de código original, escritas antes de o código existir; mutação com trecho escrito de outro jeito pelo dev sai `inconclusivo` e vira 🔺 GAP ao Opus. Das 4 decisões de GAP dessa Task, 2 eram defeito do próprio teste (medida contra a raiz de 360 px; popover lido antes de renderizar) e 1 era CSS que a regra do projeto já definia (44 px); só 1 era desenho.
-**Classificação:** formato (plano: mutação pela regra, regra 18; regra 30; relatório: `**Mutações:**` e `### Ajustes na margem`) · regra (R4 ganha a margem do dev) · instrumento (`plan.ps1`, `verify.ps1`, `close.ps1` R7-margem). **Sem regra nova** (34). **Papéis movidos (R17):** 4 — SM, Arquiteto, Dev, QA.
-
-### O que mudou
-- **Arquiteto** (`implementation-plan.md` regras 18 e 30, `fix-plan.md`, modelos do plano externo): a mutação se declara **pela regra** (`· regra: <o que quebra>`); literal só com trecho que já existe uma vez no código — o `plan.ps1` reprova o adivinhado.
-- **Dev** (`agents/developer.md` regras 1 e 6, `delivery-report.md`): escreve o trecho e o mutante das mutações pela regra no relatório; corrige sem GAP o defeito mecânico do próprio teste e o CSS que a regra do projeto define, registrando em `### Ajustes na margem`.
-- **SM** (`working-rules.md` R4 e o índice): a margem é a exceção explícita do "não antecipar escopo", com as travas do `close`.
-- **QA** (README, frente 2): confere que a mutação do dev ataca a regra declarada e que cada ajuste é mesmo da margem.
-
-### Por quê
-O modelo mais caro escrevia código que ainda não existia, e cada diferença de grafia custava uma volta ao Opus e uma instância nova do dev. Defeito do teste e valor de CSS já definido não são decisão de desenho. A prova não afrouxa: a mutação continua obrigatória e rodada, e o ajuste no teste só fecha se a mutação dele for pega na árvore final.
-
-### Conflitos com o processo vigente
-R4 e o template diziam "o que não está no plano vira GAP, nunca improviso": a margem é exceção nomeada, com instrumento. A regra 18 (v3.46) pedia o trecho exato no plano: passa a valer só para trecho que já existe.
-
-### Como saberemos que funcionou
-Sprint 6: zero mutação `inconclusivo` por trecho; 🔺 GAPs ao Arquiteto por Task construída abaixo do sprint 5; ajustes na margem por Task e quantos o QA julgou divergentes (alvo zero).
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Arquivamento de entrada | bloco v3.51 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.54, v3.53, v3.52 | ✅ |
-| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.54.0 | ✅ |
-
-### Parte mecânica (implementada pela sessão principal, citada aqui)
-`lib.ps1` `Get-Mutations` (forma pela regra), `Get-DeliveryText`, `Get-TaskMutations`, `Get-MarginAdjustments`; `verify.ps1 -Mode mutation` roda a linha do dev (e de novo quando ela muda); `close.ps1` R7-margem (bloqueante); `plan.ps1` regra 18; `fix.ps1` aceita a forma pela regra.
-
-### Addendum v3.54.1 — alvo que se religa, margem stub, plano reconferido no meio da construção (SM + Arq + Dev + QA) — 05/11/2026
-
-**Instrução:** stakeholder, 05/11 (carta da sessão do sprint 5 do garden; "pode seguir" com A, B e C). Muda: o pré-voo religa o emulador de rede antes de dizer "fora" e a sessão cita a causa dele no formulário de bloqueio; a margem do dev ganha o **stub** da dependência nova em teste que já existe e monta um arquivo do plano; decisão de 🔺 GAP com a construção começada **substitui** o trecho que derrubou (sem divisão), a contagem vale também pelo último commit e o `start` recusa plano acima do teto. Recusados: campo `reconnect` no `guards.json`, comandos de diagnóstico liberados à sessão e regra do `plan.ps1` que adivinha `inject()`. Sem regra nova (34). **Indicador (sprint 6):** zero bloqueio de ambiente com o emulador no ar; zero 🔺 GAP por stub de teste; zero dev começando com plano reprovado. **Evidência:** CHANGELOG v3.54.1.
-
-### Addendum v3.54.2 — accept que para no estado de partida, progresso visível, quadro em dia (SM + Dev + QA) — 05/11/2026
-
-**Instrução:** stakeholder, 05/11 (pontos 3 e 4 da mesma carta; "pode fazer" com D, E, F e G). Muda: os 2 primeiros cenários na mesma tela param o accept como **estado de partida**, sem reparo e sem reabertura automática, e com decisão do stakeholder; o estado de partida se declara em `targets.android.baseline`, que o QA aponta; a espera de um accept mostra o avanço e **SEM AVANÇO**; o quadro mostra a Task nova em ⬜ e o motivo da 🔴, e reabre pelo alvo de volta uma vez só. Recusados: tipos de bloqueio e a sessão abrir a captura. Sem regra nova (34). **Indicador (sprint 6):** nenhum accept acima de 15 min sem cenário passando; nenhuma Task reaberta duas vezes pelo alvo; nenhuma Task do Sprint Backlog fora do quadro. **Evidência:** CHANGELOG v3.54.2.
