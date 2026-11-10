@@ -633,7 +633,29 @@ $cases = @(
                  Set-Content -LiteralPath $g '{ "runCommands": ["npm test"] }' -Encoding UTF8 }
        Check = { $g = Join-Path $proj '.team-project/guards.json'; $b = Join-Path $tmp 'guards-antes-watcher.json'
                  if (Test-Path -LiteralPath $b) { Move-Item -LiteralPath $b $g -Force } else { Remove-Item -LiteralPath $g -Force }; $true }
-       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:watcher'; agent_id = 'wt0000001'; tool_input = @{ command = "`$t = Get-Date; do { Start-Sleep -Seconds 30; `$o = (& powershell -NoProfile -File `"$root/scripts/checks/run.ps1`" wait 2>&1 | ForEach-Object { `"`$_`" }) -join ' '; `$c = `$LASTEXITCODE } while (`$c -eq 3 -and ((Get-Date) - `$t).TotalSeconds -lt 150); `"`$c `$o`"" } } },    @{ Name = 'G20 laço: depois de 3 bloqueios em 10 min, libera'; Script = 'stop.ps1'; Expect = 0
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:watcher'; agent_id = 'wt0000001'; tool_input = @{ command = "`$t = Get-Date; do { Start-Sleep -Seconds 30; `$o = (& powershell -NoProfile -File `"$root/scripts/checks/run.ps1`" wait 2>&1 | ForEach-Object { `"`$_`" }) -join ' '; `$c = `$LASTEXITCODE } while (`$c -eq 3 -and ((Get-Date) - `$t).TotalSeconds -lt 150); `"`$c `$o`"" } } },    # ---------- v3.57.2 (note.md item 20) — a suíte e a cobertura do projeto só pelo verify.ps1 para o dev e o executor ----------
+    @{ Name = 'v3.57.2 G14: o dev rodando a suíte do guards.json direto (fora do verify.ps1) é negado — o next/start/done não veriam a espera'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'suíte ou cobertura do projeto fora do verify.ps1'
+       Setup = { $g = Join-Path $proj '.team-project/guards.json'; Copy-Item -LiteralPath $g (Join-Path $tmp 'guards-antes-suite.json') -Force -ErrorAction SilentlyContinue
+                 Set-Content -LiteralPath $g '{ "runCommands": ["Set-Location source", "npm run test:cobertura", "npm run test:cobertura:suite"], "verify": { "suite": "Set-Location source; npm run test:cobertura:suite -- --browsers=ChromeHeadless", "coverage": "Set-Location source; npm run gate:cobertura", "focused": "Set-Location source; npx ng test --watch=false --include {tests}" } }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; agent_id = 'dv0000002'; tool_input = @{ command = 'Set-Location source; npm run test:cobertura:suite -- --browsers=ChromeHeadless' } } },
+    @{ Name = 'v3.57.2 G14: o operator roda a mesma suíte (execução longa é dele, R28)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; agent_id = 'op0000002'; tool_input = @{ command = 'Set-Location source; npm run test:cobertura:suite -- --browsers=ChromeHeadless' } } },
+    @{ Name = 'v3.57.2 G14: o verify.ps1 do dev segue liberado (é o caminho da suíte)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Check = { $g = Join-Path $proj '.team-project/guards.json'; $b = Join-Path $tmp 'guards-antes-suite.json'
+                 if (Test-Path -LiteralPath $b) { Move-Item -LiteralPath $b $g -Force } else { Remove-Item -LiteralPath $g -Force }; $true }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; agent_id = 'dv0000002'; tool_input = @{ command = "powershell -NoProfile -File `"$root/scripts/checks/verify.ps1`" -Task T-2 -Mode full" } } },
+    @{ Name = 'v3.57.2 G20: o veredito "reiniciar" do run.ps1 next (sessão acima do teto, sem agente em voo) libera o fim de turno'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.next-verdict') ('{"acao":"reiniciar","task":"","motivo":"sessão com 170 mil","at":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Check = { $ok = (Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw -Encoding UTF8) -like '*G20*liberado: o run.ps1 next mandou reiniciar*'; Remove-Item -LiteralPath (Join-Path $proj '.team-project/.next-verdict') -Force; $ok }
+       Payload = @{ hook_event_name = 'Stop' } },
+    # ---------- v3.57.2 (note.md item 23, decisão de 09/11: contexto enxuto) — plano existente muda por delta (Edit) ----------
+    @{ Name = 'v3.57.2 G14: o Arquiteto regravando inteiro um plano que já existe (Write) é negado — delta pelo Edit'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'plano que já existe regravado inteiro'
+       Setup = { New-Item -ItemType Directory -Force (Join-Path $proj '.team-project/sprints/7/plan') | Out-Null; Set-Content -LiteralPath (Join-Path $proj '.team-project/sprints/7/plan/T-2-x.md') ('# Plano T-2' + "`n" + ('linha do plano ' * 300)) -Encoding UTF8 }
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; agent_id = 'ar0000001'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/7/plan/T-2-x.md'); content = '# Plano T-2 reescrito' } } },
+    @{ Name = 'v3.57.2 G14: o Write de um plano novo segue liberado ao Arquiteto'; Script = 'pre-tool.ps1'; Expect = 0
+       Check = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/sprints/7/plan') -Recurse -Force; $true }
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; agent_id = 'ar0000001'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/7/plan/T-3-novo.md'); content = '# Plano T-3' } } },
+    @{ Name = 'G20 laço: depois de 3 bloqueios em 10 min, libera'; Script = 'stop.ps1'; Expect = 0
        Setup = { foreach ($i in 1..3) { Add-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') ("$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') | G20 | sessao |  | T-2 | bloqueio: fim de turno com Task elegível") -Encoding UTF8 } }
        Payload = @{ hook_event_name = 'Stop'; stop_hook_active = $true } },
     @{ Name = 'G20 trilha fix: fora do escopo da v1'; Script = 'stop.ps1'; Expect = 0

@@ -791,7 +791,9 @@ function Get-PlanScenarios([string]$PlanText) {
     $cm = [regex]::Match([string]$PlanText, '(?m)^\*\*Cen[áa]rios:\*\*\s*(.+)$')
     if (-not $cm.Success) { return $null }
     $v = $cm.Groups[1].Value
-    if ($v -match '^\s*nenhum\s*[—-]\s*(\S.*)$') { return @{ None = $true; Target = @(); Test = @(); Reason = $Matches[1].Trim() } }
+    # v3.57.2 (note.md item 15, ocorrência 7): "nenhum aplicável — motivo" vale como "nenhum — motivo" (a forma da coluna do quadro;
+    # o close.ps1 já a aceitava ali e a T-046 do garden reprovou no R7-aceite até trocar o texto do plano).
+    if ($v -match '^\s*nenhum(?:\s+aplic[áa]vel)?\s*[—–-]\s*(\S.*)$') { return @{ None = $true; Target = @(); Test = @(); Reason = $Matches[1].Trim() } }
     $tg = @(Get-ScenarioIds $v -TargetOnly); $all = @(Get-ScenarioIds $v)
     if (-not $all.Count) { return $null }
     # v3.57.0 (plugin-report do sprint 5 do garden, item 5): o plano que DECLARA que o aceite não roda — "**Aceite:** não roda —

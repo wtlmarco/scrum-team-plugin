@@ -76,7 +76,9 @@ try {
         $n = 0; $rel = $f.Substring($Root.Length + 1) -replace '\\', '/'
         foreach ($ln in [System.IO.File]::ReadAllLines($f, $utf8)) {
             $n++
-            if ($ln -match '\b(TODO|FIXME)\b' -and $ln -notmatch '\b(TODO|FIXME)\b[^\r\n]*\b([A-Z]-\d+|[A-Z]{2,}-\d+)\b') { $todo += "${rel}:$n" }
+            # v3.57.2 (note.md item 16, ocorrência 9): só em maiúsculas — o -match ignora caixa e casava a palavra portuguesa "todo"
+            # ("todo o card"): 59 achados falsos no portão do sprint 5 do garden.
+            if ($ln -cmatch '\b(TODO|FIXME)\b' -and $ln -notmatch '\b(TODO|FIXME)\b[^\r\n]*\b([A-Z]-\d+|[A-Z]{2,}-\d+)\b') { $todo += "${rel}:$n" }
             if ($ln -match '(@Suppress(Warnings)?\(|eslint-disable|#pragma warning disable|// ?NOSONAR|@SuppressLint\(|noqa)' -and $ln -notmatch '(--|—|:|porque|motivo|because|reason)\s*\S{3,}') { $supp += "${rel}:$n" }
         }
     }
