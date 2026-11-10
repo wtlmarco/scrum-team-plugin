@@ -10,6 +10,8 @@
 # registrado em .active-agents para o hook Stop (G20). v3.52.2: todo Agent (sessão e papel), com session e parent; a G7
 # deixa o executor de Task (task-runner) disparar dev, Arquiteto, operator e QA.
 # v3.53.1: G23 teto de contexto por instância do dev (guards.json → devContextCap); o registro do Agent leva o processo hospedeiro.
+# v3.57.3: a G7 cobra "Chamador: <papel> <ID>" no pedido ao operator (da sessão também); a G14 lê o caminho relativo a partir
+# do Set-Location para uma pasta dentro do projeto.
 # v3.48 (primeiro sprint do piloto): .active-task ilegível nega (antes derrubava o hook); texto entre aspas não é destino;
 # destino em variável do mesmo comando se resolve; G14 sem os falsos negados medidos; G11 só no segmento canônico.
 # Devolve a PRIMEIRA negação: exit 2 com o motivo no stderr; "allow" (G14) sai em JSON com exit 0. Nenhuma guarda pergunta.
@@ -263,6 +265,22 @@ function Test-G7([object]$ToolInput) {
     if ($target -ne 'operator') {
         Deny 'G7' $shown "a ferramenta Agent serve só ao operator (R28) — disparar outro papel ($shown) atropela a propriedade dos artefatos. Delegue a execução pesada ao operator; o resto, reporte a quem orquestra."
     }
+}
+
+# G7 (v3.57.3, plugin-report do sprint 5 do garden §4 item 15; decisão do stakeholder de 10/11) — o pedido ao operator começa
+# com "Chamador: <papel> <ID>", e o papel é quem dispara de fato (a sessão inclusive). A G16 grava esse chamador no
+# usage.jsonl; antes, 27 % das instâncias do operator saíam com chamador "?" pelo 5º sprint seguido e não dava para saber se
+# delegar ao operator economiza.
+function Test-G7Caller([object]$ToolInput) {
+    if ((([string]$ToolInput.subagent_type) -replace '^.*:', '').ToLowerInvariant() -ne 'operator') { return }
+    $me = if ($script:role) { if ($script:CallerByRole.ContainsKey($script:role)) { $script:CallerByRole[$script:role] } else { $script:role } } else { 'sessão' }
+    $pr = [string]$ToolInput.prompt
+    $idm = [regex]::Match($pr, '(?<![\w/\\-])(Q-S\d+[a-z]?|T-\d+[a-z]?|F-\d+|B-\d+|S\d+)(?![\w])')
+    $want = "Chamador: $me " + $(if ($idm.Success) { $idm.Value } else { '<ID da Task ou do sprint>' })
+    $m = [regex]::Match($pr, '(?im)^[ \t>*_-]*Chamador:\**[ \t]*(\S+)')
+    if (-not $m.Success) { Deny 'G7' 'operator' "o pedido ao operator começa com a linha ``$want`` (v3.57.3): é ela que diz no consumo quem chamou o operator — no sprint 5 do garden 27 % das instâncias ficaram com chamador '?'. Refaça o Agent com essa linha no início do prompt." }
+    $got = Get-CallerToken $m.Groups[1].Value
+    if ($got -ne $me) { Deny 'G7' 'operator' "a linha Chamador: do pedido diz '$($m.Groups[1].Value)', mas quem dispara o operator é $me — comece o prompt com ``$want`` (o consumo atribui o operator a quem o chamou)." }
 }
 
 # G18 — v3.47 (M3), modo benchmark: guards.json "bench". O experimento roda sem o stakeholder.
@@ -603,16 +621,63 @@ function Test-RunSegment([string]$Seg, [string[]]$Allowed) {
             return $true
         }
     }
+    # v3.57.3 (plugin-report do sprint 5 do garden, §3 item 9; decisão do stakeholder de 10/11): depois de um Set-Location para
+    # uma pasta DENTRO do projeto, o caminho relativo do trecho vale a partir dela — "Set-Location source; node scripts/x.mjs"
+    # é o "node source/scripts/x.mjs" que o runCommands libera. O diretório não persiste entre chamadas da ferramenta, então o
+    # script do projeto só rodava com o rótulo da raiz. Nada novo é liberado: só o mesmo comando escrito a partir da pasta.
+    if ($script:cwdRel) {
+        $alt = ConvertTo-ProjectRooted $lowR $script:cwdRel
+        if ($alt -and $alt -ne $lowR) {
+            foreach ($p in $Allowed) {
+                if (Test-CommandPrefix $alt $alt $p) {
+                    if ($low -match '(^|\s)[\d*]?>{1,2}(?!&)\s*[^\s$]') { return (Test-RunTargets $s) }
+                    return $true
+                }
+            }
+        }
+    }
     return $false
+}
+
+# v3.57.3: a pasta (relativa à raiz do projeto) em que o trecho deixa o comando composto — Set-Location/cd/Push-Location para
+# uma pasta dentro do projeto; fora dele, na raiz ou sem resolver (variável), $null; Pop-Location volta a $null.
+function Get-SegmentLocation([string]$Seg, $Cur) {
+    $s = (Restore-Quoted $Seg).Trim()
+    if ($s -match '^(?i)(pop-location|popd)\s*$') { return $null }
+    $m = [regex]::Match($s, '^(?i)(?:set-location|cd|sl|chdir|push-location|pushd)\s+(?:-(?:literal)?path\s+)?["'']?([^"'';|&]+?)["'']?\s*$')
+    if (-not $m.Success) { return $Cur }
+    $d = $m.Groups[1].Value.Trim()
+    if ($d -match '[$%]') { return $null }
+    $base = if ($Cur) { Join-Path $script:projectDir $Cur } else { $script:projectDir }
+    $full = if ([System.IO.Path]::IsPathRooted($d)) { $d } else { Join-Path $base $d }
+    $rel = Get-RelativePath $script:projectDir $full
+    if ($rel) { return $rel.Trim('/') }
+    return $null
+}
+# O trecho (minúsculo) com os caminhos relativos reescritos a partir da raiz: "node scripts/x.mjs" em source → "node source/scripts/x.mjs".
+# Só o que parece caminho: com / ou \ (sem unidade nem raiz), ou nome de arquivo com extensão depois do primeiro token.
+function ConvertTo-ProjectRooted([string]$Low, [string]$Rel) {
+    $pre = ($Rel -replace '\\', '/').Trim('/').ToLowerInvariant() + '/'
+    $tk = @($Low -split '\s+' | Where-Object { $_ -ne '' })
+    for ($i = 0; $i -lt $tk.Count; $i++) {
+        $t = $tk[$i]; $q = ''
+        if ($t -match '^(["''])(.*)\1$') { $q = $Matches[1]; $t = $Matches[2] }
+        if ($t -match '^[a-z]:|^[\\/]|^-|^\$|^~') { continue }
+        $isPath = ($t -match '^[^<>|]+[\\/][^<>|]+$') -or ($i -ge 1 -and $t -match '^[\w.@-]+\.[a-z0-9]{1,5}$')
+        if (-not $isPath) { continue }
+        $tk[$i] = $q + $pre + (($t -replace '\\', '/') -replace '^\./', '') + $q
+    }
+    return ($tk -join ' ')
 }
 
 # Confere um texto de comando (o da ferramenta ou o de um script do papel) trecho a trecho. Devolve $true/$false e deixa o
 # trecho recusado em $script:badSeg. v3.51.4: texto entre aspas duplas com $( … ) vira "__q<k>__" e cada subexpressão um
 # trecho próprio — antes o texto inteiro voltava ao comando e "tests=", ":", "brotas" ou "node:" viravam trechos recusados.
 function Test-CommandText([string]$Cmd, [int]$Depth = 0) {
-    $saved = @{ vars = $script:cmdVars; qmap = $script:qmap; fn = $script:fnNames; net = $script:netWriteOk; depth = $script:g14Depth }
+    $saved = @{ vars = $script:cmdVars; qmap = $script:qmap; fn = $script:fnNames; net = $script:netWriteOk; depth = $script:g14Depth; cwd = $script:cwdRel }
     try {
         $script:g14Depth = $Depth
+        $script:cwdRel = $null   # v3.57.3: a pasta do Set-Location dentro do projeto, trecho a trecho
         $script:cmdVars = Get-CommandVars $Cmd
         $script:fnNames = @([regex]::Matches($Cmd, '(?im)\bfunction\s+([\w-]+)') | ForEach-Object { $_.Groups[1].Value.ToLowerInvariant() })
         $script:netWriteOk = Test-NetWrites $Cmd
@@ -633,10 +698,11 @@ function Test-CommandText([string]$Cmd, [int]$Depth = 0) {
         $flat = [regex]::Replace($flat, '\)\s*\.\s*([A-Za-z_]\w*)\s*\(', { param($m) ') ; __metodo_' + $m.Groups[1].Value + ' (' })
         foreach ($seg in ($flat -split '\$\(|;|&&|\|\||\||\r?\n|[{}()]')) {
             if (-not (Test-RunSegment $seg $script:g14Allowed)) { $script:badSeg = (Restore-Quoted $seg).Trim(); return $false }
+            $script:cwdRel = Get-SegmentLocation $seg $script:cwdRel
         }
         return $true
     } finally {
-        $script:cmdVars = $saved.vars; $script:qmap = $saved.qmap; $script:fnNames = $saved.fn; $script:netWriteOk = $saved.net; $script:g14Depth = $saved.depth
+        $script:cmdVars = $saved.vars; $script:qmap = $saved.qmap; $script:fnNames = $saved.fn; $script:netWriteOk = $saved.net; $script:g14Depth = $saved.depth; $script:cwdRel = $saved.cwd
     }
 }
 
@@ -828,6 +894,7 @@ try {
         '^Agent$'               {
             if ($script:teamProject -and (Test-GuardEnabled $cfg 'G18')) { Test-G18Agent $ti }
             if ($phase2 -and (Test-GuardEnabled $cfg 'G7')) { Test-G7 $ti }
+            if ($script:teamProject -and (Test-GuardEnabled $cfg 'G7')) { Test-G7Caller $ti }   # v3.57.3: a sessão também
             if ($script:teamProject -and (Test-GuardEnabled $cfg 'G17')) { Test-G17 $ti }   # vale também para a sessão principal
             # v3.51 (G20): agente disparado fica registrado até voltar, sem depender do .active-run (gravado na mesma resposta,
             # chegava depois — garden item 5). O kanban.md mostra todos em "## Agora". v3.52.2 (note.md itens 2-4): TODO Agent em

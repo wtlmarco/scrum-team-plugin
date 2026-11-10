@@ -2736,6 +2736,107 @@ foreach ($x in @($b, $c)) { try { Stop-Process -Id $x.Id -Force -ErrorAction Sil
 $ko = (& powershell -NoProfile -ExecutionPolicy Bypass -File $kt -Checks $checks -Proj (Join-Path $tmp 'kill-proj') 2>&1 | ForEach-Object { "$_" }) -join "`n"
 Check 'v3.57.0 protocolo: target.ps1 -Kill encerra só o processo registrado pelo run (o de fora e o PID reaproveitado ficam; o registro some; de novo = nada registrado)' @{ Code = 0; Out = $ko } 0 @('1 saida: target android: -Kill — 1 encerrado\(s\), 0 já tinha\(m\) saído, 1 com PID reaproveitado', '2 registrado-morreu=True fora-do-registro-vivo=True pid-reaproveitado-vivo=True registro-apagado=True', '3 de-novo: target android: nada registrado')
 
+# ---------- v3.57.3 (plugin-report do sprint 5 do garden; decisões do stakeholder de 10/11) ----------
+$p = Join-Path $tmp 'v3573'; New-Project $p
+$ErrorActionPreference = 'Continue'
+& git -C $p init -q 2>$null; Put $p 'src/a.ts' "x`n"; Put $p '.gitignore' "coverage/`n.team-project/`n"
+& git -C $p add -A 2>$null; & git -C $p -c user.email=t@t -c user.name=t commit -qm init 2>$null
+$ErrorActionPreference = 'Stop'
+$plv = Join-Path $p '.team-project/sprints/1/plan/T-041-export.md'
+$plv0 = [System.IO.File]::ReadAllText($plv, $utf8)
+# Leitor da linha **Verificação:** (regra 35).
+$gv = & { . (Join-Path $checks 'lib.ps1')
+    $a = Get-PlanVerification "# P`n**Verificação:** dispensada — laudo sem código`n"
+    $b = Get-PlanVerification "# P`n**Verificação:** comando — ``node --test scripts/x.test.mjs`` — runner nativo`n"
+    $c = Get-PlanVerification "# P`n**Verificação:** talvez`n"
+    $d = Get-PlanVerification "# P`n**Cenários:** nenhum — x`n"
+    "A=$($a.Mode)|$($a.Reason) B=$($b.Mode)|$($b.Command)|$($b.Reason) C=$($c.Mode) D=$($null -eq $d)" }; $e = $e0
+Check 'v3.57.3 regra 35: **Verificação:** dispensada / comando / fora do formato / ausente' @{ Code = 0; Out = $gv } 0 @('A=dispensada\|laudo sem código', 'B=comando\|node --test scripts/x\.test\.mjs\|runner nativo', 'C=inválida', 'D=True')
+# plan.ps1: a linha da regra 35 (só a linha "verificação" importa aqui).
+$cases35 = @(
+    @('**Verificação:** dispensada — laudo sem código', '\| verificação \| ok \| dispensada — laudo sem código'),
+    @("**Verificação:** comando — ``node --test scripts/x.test.mjs``", "\| verificação \| ok \| comando ``node --test scripts/x\.test\.mjs``"),
+    @("**Verificação:** comando — ``npm install x``", '\| verificação \| falhou \| \*\*Verificação:\*\* comando que o run nunca roda: npm install x \(instalação\)'),
+    @('**Verificação:** depois a gente vê', '\| verificação \| falhou \| \*\*Verificação:\*\* fora do formato'))
+foreach ($c35 in $cases35) {
+    [System.IO.File]::WriteAllText($plv, $plv0.Replace('## 3. Ambiente', "$($c35[0])`n`n## 3. Ambiente"), $utf8)
+    $r = Invoke-Check 'plan.ps1' @('-Plan', $plv, '-Root', $p)
+    Check "v3.57.3 regra 35 no plan.ps1: $($c35[0])" @{ Code = 0; Out = $r.Out } 0 @($c35[1])
+}
+[System.IO.File]::WriteAllText($plv, $plv0.Replace('## 3. Ambiente', "**Verificação:** dispensada — laudo`n`n**Mutações:**`n- M1 · teste ``tests/a.test.ts`` · ``src/a.ts`` · regra: aceitar valor igual ao limite`n`n## 3. Ambiente"), $utf8)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plv, '-Root', $p)
+Check 'v3.57.3 regra 35: dispensa do full com **Mutações:** reprova' @{ Code = 0; Out = $r.Out } 0 @('\| verificação \| falhou \| \*\*Verificação:\*\* dispensada com \*\*Mutações:\*\*')
+# verify.ps1: o comando do plano vira o passo "plano" no focused (sem -Tests) e no full.
+Put $p '.team-project/guards.json' '{ "verify": { "focused": "Write-Output \"Tests: 2 passed {tests}\"", "build": "Write-Output \"Build succeeded. 0 Warning(s)\"", "suite": "Write-Output \"Tests: 12 passed\"" } }'
+[System.IO.File]::WriteAllText($plv, $plv0.Replace('## 3. Ambiente', "**Verificação:** comando — ``Write-Output 'node: tests 3 pass 3'`` — runner nativo`n`n## 3. Ambiente"), $utf8)
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'focused', '-Root', $p)
+Check 'v3.57.3 regra 35: verify focused sem -Tests roda o comando do plano (passo "plano")' $r 0 @('verify focused T-041', 'plano: exit 0 .*tests 3 pass 3', 'o comando de \*\*Verificação:\*\* do plano rodou')
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.57.3 regra 35: verify full roda build, suíte e o passo "plano"' $r 0 @('build: exit 0', 'suite: exit 0', 'plano: exit 0')
+# close.ps1: com a dispensa, o R7-verify é n-a mesmo sem verify full.
+[System.IO.File]::WriteAllText($plv, $plv0.Replace('## 3. Ambiente', "**Verificação:** dispensada — laudo sem código`n`n## 3. Ambiente"), $utf8)
+$vdir = Join-Path $p '.team-project/verify'
+if (Test-Path -LiteralPath $vdir) { Get-ChildItem -LiteralPath $vdir -Recurse -Filter 'result.json' -File | ForEach-Object { [System.IO.File]::Delete($_.FullName) } }
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.57.3 regra 35: close com **Verificação:** dispensada → R7-verify n-a, o QA revisa' @{ Code = 0; Out = $r.Out } 0 @('\| R7-verify \| n-a \| o plano dispensa o verify full .*laudo sem código.*o QA revisa a dispensa')
+[System.IO.File]::WriteAllText($plv, $plv0, $utf8)
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.57.3 regra 35: sem a linha, o R7-verify segue exigindo o full' @{ Code = 0; Out = $r.Out } 0 @('\| R7-verify \| falhou \| sem verify full')
+
+# verify.ps1 -Kill: a rodada viva da trava e o órfão registrado; e a rodada nova encerra o órfão da anterior que caiu.
+$vk = Join-Path $tmp 'verify-kill.ps1'
+[System.IO.File]::WriteAllText($vk, @'
+param([string]$Checks, [string]$Proj)
+. (Join-Path $Checks 'lib.ps1')
+$u8 = New-Object System.Text.UTF8Encoding($false)
+$d = Join-Path $Proj '.team-project/verify/1/T-041'; New-Item -ItemType Directory -Force $d | Out-Null
+$mk = { Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-Sleep 90' -PassThru -WindowStyle Hidden }
+$owner = & $mk; $orph = & $mk; $out = & $mk
+Start-Sleep 2
+[System.IO.File]::WriteAllText((Join-Path $d 'verify.lock'), ([ordered]@{ pid = $owner.Id; started = $owner.StartTime.ToString('o'); mode = 'full'; at = 'agora' } | ConvertTo-Json -Compress), $u8)
+[System.IO.File]::WriteAllText((Join-Path $d 'running.json'), ([ordered]@{ pid = $orph.Id; created = (Get-ProcessCreated $orph.Id); key = 'suite'; owner = 1; at = 'agora' } | ConvertTo-Json -Compress), $u8)
+$o = (& powershell -NoProfile -File (Join-Path $Checks 'verify.ps1') -Task T-041 -Kill -Root $Proj 2>&1 | ForEach-Object { "$_" }) -join ' '
+Start-Sleep 1; $owner.Refresh(); $orph.Refresh(); $out.Refresh()
+"1 saida: $o"
+"2 dono-morreu=$($owner.HasExited) orfao-morreu=$($orph.HasExited) de-fora-vivo=$(-not $out.HasExited) trava-saiu=$(-not (Test-Path (Join-Path $d 'verify.lock'))) registro-saiu=$(-not (Test-Path (Join-Path $d 'running.json')))"
+$o2 = (& powershell -NoProfile -File (Join-Path $Checks 'verify.ps1') -Task T-041 -Kill -Root $Proj 2>&1 | ForEach-Object { "$_" }) -join ' '
+"3 de-novo: $o2"
+$orph2 = & $mk; Start-Sleep 2
+[System.IO.File]::WriteAllText((Join-Path $d 'running.json'), ([ordered]@{ pid = $orph2.Id; created = (Get-ProcessCreated $orph2.Id); key = 'suite'; owner = 1; at = 'agora' } | ConvertTo-Json -Compress), $u8)
+$o3 = (& powershell -NoProfile -File (Join-Path $Checks 'verify.ps1') -Task T-041 -Mode full -Root $Proj 2>&1 | ForEach-Object { "$_" }) -join ' '
+Start-Sleep 1; $orph2.Refresh()
+"4 rodada-nova: orfao-morreu=$($orph2.HasExited) $o3"
+"5 running-depois-do-full=$(Test-Path (Join-Path $d 'running.json'))"
+foreach ($x in @($out, $orph2)) { try { Stop-Process -Id $x.Id -Force -ErrorAction SilentlyContinue } catch { } }
+'@, $utf8)
+$ko = (& powershell -NoProfile -ExecutionPolicy Bypass -File $vk -Checks $checks -Proj $p 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.57.3 item 1: verify -Kill encerra a rodada viva da trava e o órfão registrado (o de fora fica); de novo = nada; a rodada nova encerra o órfão da anterior e não deixa registro' @{ Code = 0; Out = $ko } 0 @('1 saida: verify -Kill T-041: rodada full encerrada \(verify pid \d+, desde agora\).*órfão do passo suite encerrado', '2 dono-morreu=True orfao-morreu=True de-fora-vivo=True trava-saiu=True registro-saiu=True', '3 de-novo: verify -Kill T-041: nada a encerrar', '4 rodada-nova: orfao-morreu=True verify: encerrado o processo órfão da rodada anterior que caiu \(passo suite', '5 running-depois-do-full=False')
+
+# quality.ps1 Q11: reaproveita a cobertura do verify full da mesma árvore; 0/0 vira "não medido".
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output ok", "suite": "Write-Output \"Tests: 12 passed\"", "coverage": "Write-Output \"All files  |  91.5 %\"" }, "quality": { "coverage": "Write-Output \"Statements   : Unknown% ( 0/0 )\"; exit 1" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $p)
+Check 'v3.57.3 item 2: Q11 com o verify full da mesma árvore — reaproveitada (91.5 %), sem rodar o quality.coverage' $r 0 @('Q11 ok: .*reaproveitada do verify full da T-041 .*mesma árvore.*91\.5 % medido')
+Put $p 'src/b.ts' "nova`n"   # árvore mudou: o full antigo não vale; o quality.coverage roda e não mede nada
+$r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $p)
+Check 'v3.57.3 item 2: Q11 "Unknown% ( 0/0 )" → não medido, com a causa; não reprova o portão' $r 0 @('ATENÇÃO: Q11 não medida', 'Q11 não medido: .*a cobertura não mediu nada \(Unknown% / 0 de 0, exit 1\).*quality\.coverage')
+Put $p '.team-project/guards.json' '{ "quality": { "coverage": "Write-Output \"Total coverage 42 %\"" } }'
+$r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $p)
+Check 'v3.57.3 item 2: Q11 medida abaixo do limiar segue reprovando' $r 1 @('Q11 falhou: .*42 % medido × limiar 80 % .*abaixo do limiar')
+
+# Capacidade (kanban.ps1 -Capacity e o R4 do close).
+$sbv = Join-Path $p '.team-project/sprints/1/sprint-backlog.md'
+Edit-File $sbv '| **Aprovado por** | Stakeholder |' "| **Aprovado por** | Stakeholder |`n| **Capacidade** | 1,5 · média entregue nos 3 sprints anteriores: 1,5 |`n| **Somatório planejado** | 1 — dentro da capacidade |"
+$r = Invoke-Check 'kanban.ps1' @('-Capacity', '-Add', '0.5', '-Root', $p)
+Check 'v3.57.3 item 4: kanban -Capacity -Add traz a conta (capacidade, planejado, quadro, com a entrada) e diz ACIMA' $r 0 @('capacidade 1,5 d · planejado na Planning 1 d · no quadro 2 d \(\+33 %\) · com a entrada \(\+0,5 d\): 2,5 d \(\+67 %\) — ACIMA da capacidade')
+Edit-File $sbv '| **Capacidade** | 1,5 ·' '| **Capacidade** | 5 ·'
+$r = Invoke-Check 'kanban.ps1' @('-Capacity', '-Add', '1', '-Root', $p)
+Check 'v3.57.3 item 4: dentro da capacidade, "cabe"' $r 0 @('capacidade 5 d .*com a entrada \(\+1 d\): 3 d \(-40 %\) — cabe na capacidade')
+Edit-File $sbv '| **Capacidade** | 5 ·' '| **Capacidade** | 1,5 ·'
+[System.IO.File]::WriteAllText($sbv, [regex]::Replace([System.IO.File]::ReadAllText($sbv, $utf8), '(\| O que saiu para caber \| Data \|\r?\n\|---\|---\|---\|---\|---\|)', "`$1`n| T-041 | H-014 | GAP que bloqueia a H-014 | T-099 | 2026-09-02 |"), $utf8)
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.57.3 item 4: R4 com entrada fora da Planning traz a conta quando o quadro passa da capacidade (informa, não reprova)' @{ Code = 0; Out = $r.Out } 0 @('\| R4 \| ok \| .*entrada fora da Planning declarada; o quadro passa da capacidade: capacidade 1,5 d .*no quadro 2 d \(\+33 %\)')
+
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
 foreach ($sl in @($rows | Sort-Object Seg -Descending | Select-Object -First 12)) { $sn = [string]$sl.Caso; Write-Output ("lento: {0,5} s  {1}" -f $sl.Seg, $(if ($sn.Length -gt 120) { $sn.Substring(0, 120) } else { $sn })) }

@@ -100,14 +100,34 @@ try {
         else                    { Add-Result 'R7' 'ok' ("Veredito:" + $v.Trim() + "; " + $blocks.Count + " bloco(s) de comando" + $(if ($evSkipped) { "; $evSkipped bloco(s) mais novo(s) sem veredito (nota/revisão) — vale a última rodada com veredito" } else { '' })) }
     }
 
+    # O plano da Task: a coluna Plano do quadro; sem ela, plan/<T-ID>-*.md.
+    $planPath = $null
+    if ($taskRow -and $taskTable) {
+        $pc = Get-Cell $taskRow (Find-Col $taskTable 'Plano')
+        $lm = [regex]::Match($pc, '\]\(([^)]+)\)'); if (-not $lm.Success) { $lm = [regex]::Match($pc, '`([^`]+\.md)`') }
+        if ($lm.Success -and $lm.Groups[1].Value -notmatch '<') {
+            $cand = Join-Path $S $lm.Groups[1].Value
+            if (Test-Path -LiteralPath $cand -PathType Leaf) { $planPath = $cand }
+        }
+    }
+    if (-not $planPath) {
+        $g = @(Get-ChildItem -LiteralPath (Join-Path $S 'plan') -Filter "$Task-*.md" -ErrorAction SilentlyContinue)
+        if ($g.Count -ge 1) { $planPath = $g[0].FullName }
+    }
+    $pver = if ($planPath) { Get-PlanVerification (Read-Text $planPath) } else { $null }
+
     # ---------- R7 · evidência mecânica (v3.45.1): verify full verde e da árvore que está no disco ----------
     $gj = $null; $gp = Join-Path $tp 'guards.json'
     if (Test-Path -LiteralPath $gp) { try { $gj = Read-Text $gp | ConvertFrom-Json } catch { } }
     $hasVerify = $null -ne $gj -and $null -ne $gj.verify -and @($gj.verify.PSObject.Properties | Where-Object { $_.Value }).Count -gt 0
+    $vr = Join-Path (Get-VerifyDir $Root $Task) 'result.json'; $vfull = $null
     if (-not $hasVerify) { Add-Result 'R7-verify' 'n-a' 'guards.json sem comandos em "verify" — evidência só pelo veredito e pelo operator' }
+    # v3.57.3 (lições de GAP 8, 9 e 11 do sprint 5 do garden; decisão do stakeholder de 10/11): Task de laudo ou que só mexe em
+    # configuração de teste declara no plano a dispensa do full — antes toda Task com verify configurado rodava a suíte inteira
+    # (12 min no garden) ou abria GAP de processo. O QA revisa a dispensa no portão.
+    elseif ($pver -and $pver.Mode -eq 'dispensada') { Add-Result 'R7-verify' 'n-a' "o plano dispensa o verify full (**Verificação:** dispensada — $($pver.Reason)); o QA revisa a dispensa no portão" }
     else {
-        $vr = Join-Path (Get-VerifyDir $Root $Task) 'result.json'
-        $vfull = $null; if (Test-Path -LiteralPath $vr) { try { $vfull = (Read-Text $vr | ConvertFrom-Json).full } catch { } }
+        if (Test-Path -LiteralPath $vr) { try { $vfull = (Read-Text $vr | ConvertFrom-Json).full } catch { } }
         $now = Get-WorkTree $Root
         $vrel = $vr.Substring($Root.Length + 1) -replace '\\', '/'
         if ($null -eq $vfull) { Add-Result 'R7-verify' 'falhou' "sem verify full em $vrel — o dev roda verify.ps1 -Mode full no fim da Task" }
@@ -161,6 +181,12 @@ try {
             }
         }
     }
+    # v3.57.3 (§3 item 13 do plugin-report do sprint 5 do garden): com entrada fora da Planning, a conta da capacidade vai junto
+    # — informa, não reprova (o estouro aceito pelo stakeholder vale; a conta é para a retrospectiva enxergar).
+    if (@($r4 | Where-Object { $_ -match 'entrada fora da Planning (aceita|declarada)' }).Count) {
+        $capR = $null; try { $capR = Get-SprintCapacity $Root $S } catch { }
+        if ($capR -and $capR.Board -gt $capR.Capacity) { $r4 += "o quadro passa da capacidade: $(Format-SprintCapacity $capR)" }
+    }
     $esc = if ($evBlock) { Get-Section $evBlock '^###\s+Escopo' } else { $null }
     if ($null -eq $esc -and $devMode) { $r4 += 'escopo do dev: "Não fiz (fora do plano)" no relatório; o diff × plano é do portão do QA' }
     elseif ($null -eq $esc) { $r4 += 'falhou: evidência sem "### Escopo"' }
@@ -182,20 +208,7 @@ try {
 
     Add-Result 'R5' 'n-a' 'formato não mecânico: "Parei no passo" vive no relatório do dev, na conversa'
 
-    # ---------- R8 · plano existe ----------
-    $planPath = $null
-    if ($taskRow -and $taskTable) {
-        $pc = Get-Cell $taskRow (Find-Col $taskTable 'Plano')
-        $lm = [regex]::Match($pc, '\]\(([^)]+)\)'); if (-not $lm.Success) { $lm = [regex]::Match($pc, '`([^`]+\.md)`') }
-        if ($lm.Success -and $lm.Groups[1].Value -notmatch '<') {
-            $cand = Join-Path $S $lm.Groups[1].Value
-            if (Test-Path -LiteralPath $cand -PathType Leaf) { $planPath = $cand }
-        }
-    }
-    if (-not $planPath) {
-        $g = @(Get-ChildItem -LiteralPath (Join-Path $S 'plan') -Filter "$Task-*.md" -ErrorAction SilentlyContinue)
-        if ($g.Count -ge 1) { $planPath = $g[0].FullName }
-    }
+    # ---------- R8 · plano existe (o caminho é achado antes do R7-verify, que lê a linha **Verificação:**) ----------
     $plan = $null
     if ($planPath -and (Get-Item -LiteralPath $planPath).Length -gt 0) {
         $plan = Read-Text $planPath

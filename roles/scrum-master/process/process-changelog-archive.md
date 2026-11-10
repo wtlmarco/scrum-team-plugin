@@ -8,6 +8,46 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.54 — Mutação pela regra e margem do dev: o Arquiteto diz o que provar, o dev escreve o trecho e corrige o defeito do próprio teste, com travas no fechamento (SM + Arquiteto + Dev + QA) — 04/11/2026
+
+**Instrução** (stakeholder, 04/11/2026, relatório de encadeamento do sprint 5 do garden: "vamos seguir com as duas", depois da explicação do problema, da proposta e do ganho de cada uma).
+**Medido (sprint 5 do garden):** o maior plano trazia 19 mutações com a linha de código original, escritas antes de o código existir; mutação com trecho escrito de outro jeito pelo dev sai `inconclusivo` e vira 🔺 GAP ao Opus. Das 4 decisões de GAP dessa Task, 2 eram defeito do próprio teste (medida contra a raiz de 360 px; popover lido antes de renderizar) e 1 era CSS que a regra do projeto já definia (44 px); só 1 era desenho.
+**Classificação:** formato (plano: mutação pela regra, regra 18; regra 30; relatório: `**Mutações:**` e `### Ajustes na margem`) · regra (R4 ganha a margem do dev) · instrumento (`plan.ps1`, `verify.ps1`, `close.ps1` R7-margem). **Sem regra nova** (34). **Papéis movidos (R17):** 4 — SM, Arquiteto, Dev, QA.
+
+### O que mudou
+- **Arquiteto** (`implementation-plan.md` regras 18 e 30, `fix-plan.md`, modelos do plano externo): a mutação se declara **pela regra** (`· regra: <o que quebra>`); literal só com trecho que já existe uma vez no código — o `plan.ps1` reprova o adivinhado.
+- **Dev** (`agents/developer.md` regras 1 e 6, `delivery-report.md`): escreve o trecho e o mutante das mutações pela regra no relatório; corrige sem GAP o defeito mecânico do próprio teste e o CSS que a regra do projeto define, registrando em `### Ajustes na margem`.
+- **SM** (`working-rules.md` R4 e o índice): a margem é a exceção explícita do "não antecipar escopo", com as travas do `close`.
+- **QA** (README, frente 2): confere que a mutação do dev ataca a regra declarada e que cada ajuste é mesmo da margem.
+
+### Por quê
+O modelo mais caro escrevia código que ainda não existia, e cada diferença de grafia custava uma volta ao Opus e uma instância nova do dev. Defeito do teste e valor de CSS já definido não são decisão de desenho. A prova não afrouxa: a mutação continua obrigatória e rodada, e o ajuste no teste só fecha se a mutação dele for pega na árvore final.
+
+### Conflitos com o processo vigente
+R4 e o template diziam "o que não está no plano vira GAP, nunca improviso": a margem é exceção nomeada, com instrumento. A regra 18 (v3.46) pedia o trecho exato no plano: passa a valer só para trecho que já existe.
+
+### Como saberemos que funcionou
+Sprint 6: zero mutação `inconclusivo` por trecho; 🔺 GAPs ao Arquiteto por Task construída abaixo do sprint 5; ajustes na margem por Task e quantos o QA julgou divergentes (alvo zero).
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.51 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.54, v3.53, v3.52 | ✅ |
+| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.54.0 | ✅ |
+
+### Parte mecânica (implementada pela sessão principal, citada aqui)
+`lib.ps1` `Get-Mutations` (forma pela regra), `Get-DeliveryText`, `Get-TaskMutations`, `Get-MarginAdjustments`; `verify.ps1 -Mode mutation` roda a linha do dev (e de novo quando ela muda); `close.ps1` R7-margem (bloqueante); `plan.ps1` regra 18; `fix.ps1` aceita a forma pela regra.
+
+### Addendum v3.54.1 — alvo que se religa, margem stub, plano reconferido no meio da construção (SM + Arq + Dev + QA) — 05/11/2026
+
+**Instrução:** stakeholder, 05/11 (carta da sessão do sprint 5 do garden; "pode seguir" com A, B e C). Muda: o pré-voo religa o emulador de rede antes de dizer "fora" e a sessão cita a causa dele no formulário de bloqueio; a margem do dev ganha o **stub** da dependência nova em teste que já existe e monta um arquivo do plano; decisão de 🔺 GAP com a construção começada **substitui** o trecho que derrubou (sem divisão), a contagem vale também pelo último commit e o `start` recusa plano acima do teto. Recusados: campo `reconnect` no `guards.json`, comandos de diagnóstico liberados à sessão e regra do `plan.ps1` que adivinha `inject()`. Sem regra nova (34). **Indicador (sprint 6):** zero bloqueio de ambiente com o emulador no ar; zero 🔺 GAP por stub de teste; zero dev começando com plano reprovado. **Evidência:** CHANGELOG v3.54.1.
+
+### Addendum v3.54.2 — accept que para no estado de partida, progresso visível, quadro em dia (SM + Dev + QA) — 05/11/2026
+
+**Instrução:** stakeholder, 05/11 (pontos 3 e 4 da mesma carta; "pode fazer" com D, E, F e G). Muda: os 2 primeiros cenários na mesma tela param o accept como **estado de partida**, sem reparo e sem reabertura automática, e com decisão do stakeholder; o estado de partida se declara em `targets.android.baseline`, que o QA aponta; a espera de um accept mostra o avanço e **SEM AVANÇO**; o quadro mostra a Task nova em ⬜ e o motivo da 🔴, e reabre pelo alvo de volta uma vez só. Recusados: tipos de bloqueio e a sessão abrir a captura. Sem regra nova (34). **Indicador (sprint 6):** nenhum accept acima de 15 min sem cenário passando; nenhuma Task reaberta duas vezes pelo alvo; nenhuma Task do Sprint Backlog fora do quadro. **Evidência:** CHANGELOG v3.54.2.
+
+---
+
 ## v3.53 — Plano pela ficha: a quebra em Tasks traz a ficha de cada Task, um Arquiteto por Task e o template do plano só com o operativo (SM + Arquiteto + Dev + QA) — 28/10/2026
 
 **Instrução** (stakeholder, 28/10/2026, `note.md` itens 7 e 8, "pode então fazer" depois da explicação de como um item pesa no outro). **Decisão:** a primeira opção do piloto do item 8, ficha por Task na Planning + um Arquiteto por Task; os itens 7 e 8 numa entrega só, porque um sem o outro rende pouco. Os lotes por dependência ficam como segunda opção.

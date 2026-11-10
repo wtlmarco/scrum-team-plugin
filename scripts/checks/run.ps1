@@ -588,6 +588,12 @@ try {
         # v3.56.0 (H2): o plano manda nos cenários; a ordem do cartão que o contradiga é GAP de processo, não do plano.
         $acc += ". Cenários: o plano manda — ordem do cartão que contradiga o plano é 🔺 GAP de processo (diga 'processo' no GAP), não do plano"
         $blk = if ($Block) { " Bloco $Block." } else { '' }
+        # v3.57.3 (regra 35): a linha **Verificação:** do plano muda o que o dev roda no fim.
+        $vrfTxt = switch ([string]$(if ($T.Verification) { $T.Verification.Mode })) {
+            'dispensada' { "O plano dispensa o verify full (**Verificação:** dispensada — $($T.Verification.Reason)): cole no relatório a saída do comando que prova a Task; o QA revisa a dispensa no portão" }
+            'comando' { "Rode verify.ps1 -Mode focused durante (sem -Tests ele roda só o comando do plano, ``$($T.Verification.Command)``), -Mode full no fim (o comando do plano entra como o passo 'plano'), -Mode mutation se o plano tem **Mutações:**" }
+            default { 'Rode verify.ps1 -Mode focused durante, -Mode full no fim, -Mode mutation se o plano tem **Mutações:**' }
+        }
         Out ($d.Trim())
         Out "  cartão: $card"
         # v3.51.4: o formato que o close.ps1 lê (garden item 17), a retomada do verify parcial (exit 3, garden item 18) e o
@@ -595,7 +601,7 @@ try {
         $tgt = if (Get-TargetsConfig $Root) { " Alvo: confira com target.ps1 -Target <alvo> (com -Repair ele reinicia e espera); não use adb nem Start-Sleep." } else { '' }
         # v3.53.6 (item 2): com ponto de retomada, o cartão traz os passos que faltam — o plano não se reabre.
         $readTxt = if ($script:CardResume) { "Retome do passo $($script:CardResume): o cartão .team-project/$card traz os passos que faltam e o que já está provado — siga por ele e não reabra o plano $planRel, salvo o trecho de que um passo precise e que o cartão não traga (offset e limit)." } else { "Leia o cartão .team-project/$card, o cabeçalho e a §6 do plano $planRel e o seu bloco — não o plano inteiro." }
-        Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk $readTxt Rode verify.ps1 -Mode focused durante, -Mode full no fim, -Mode mutation se o plano tem **Mutações:**$acc. Exit 3 = parcial (o tempo da chamada acabou): rode o MESMO comando de novo, ele continua de onde parou. Comando que a ferramenta moveu para segundo plano ('moved to the background'): encerre o turno com a primeira linha ESPERANDO <comando> — o aviso de conclusão traz o resultado e você segue; não sonde o log nem dispare outro verify (exit 5 = outra rodada ainda roda). Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga.$tgt Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept — cada bloco de código começa com a linha do comando ('> verify.ps1 -Mode full …') e traz a saída embaixo — e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
+        Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk $readTxt $vrfTxt$acc. Exit 3 = parcial (o tempo da chamada acabou): rode o MESMO comando de novo, ele continua de onde parou. Comando que a ferramenta moveu para segundo plano ('moved to the background'): encerre o turno com a primeira linha ESPERANDO <comando> — o aviso de conclusão traz o resultado e você segue; não sonde o log nem dispare outro verify (exit 5 = outra rodada ainda roda). Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga.$tgt Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept — cada bloco de código começa com a linha do comando ('> verify.ps1 -Mode full …') e traz a saída embaixo — e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
         Out "  ao voltar: run.ps1 done -Task $($T.Id) -Result ok|gap|env|teto (teto = o dev voltou com TETO: a G23 o parou no teto de contexto)"
         exit 0
     }
@@ -627,7 +633,7 @@ try {
                     Add-RunLog $S $n $T.Id '🔺 GAP da prova no alvo → operator diagnostica pelas capturas antes do Arquiteto' ($g0[0] -replace '^[#>*\-\s]+', '') $diagRel
                     Out "run: $($T.Id) com 🔺 GAP na prova no alvo — antes do Arquiteto, o operator olha as capturas da falha (centavos; o Opus só entra se for plano):"
                     Out "  $(Get-AgentLine 'operator')"
-                    Out "  prompt: `"Diagnostique a falha da prova no alvo da $($T.Id). Leia $accRel/result.md e abra com Read as capturas *-falha.png que ele cita; rode $plugin/target.ps1 -Target $tn (só a conferência, sem -Repair). Grave $diagRel com a primeira linha 'Veredito: AMBIENTE', 'Veredito: APP' ou 'Veredito: PLANO' e até 5 linhas do que viu nas capturas e no detalhe [tela · ids · textos] da falha. AMBIENTE = o app não estava aberto ou estava noutra tela (tela inicial do Android, página deixada por outro cenário), diálogo do sistema, alvo travado ou ocupado. APP = a tela certa estava aberta e o elemento, o texto ou o valor do cenário não estava lá. PLANO = o cenário ou o contrato de ids pede o que nenhuma Task cria, ou o cenário não prova o critério; não deu para ver, PLANO dizendo o que faltou. Não altere código, cenário nem plano; não rode accept nem verify. Volte com a linha do veredito.`""
+                    Out "  prompt: `"Chamador: executor $($T.Id) — Diagnostique a falha da prova no alvo da $($T.Id). Leia $accRel/result.md e abra com Read as capturas *-falha.png que ele cita; rode $plugin/target.ps1 -Target $tn (só a conferência, sem -Repair). Grave $diagRel com a primeira linha 'Veredito: AMBIENTE', 'Veredito: APP' ou 'Veredito: PLANO' e até 5 linhas do que viu nas capturas e no detalhe [tela · ids · textos] da falha. AMBIENTE = o app não estava aberto ou estava noutra tela (tela inicial do Android, página deixada por outro cenário), diálogo do sistema, alvo travado ou ocupado. APP = a tela certa estava aberta e o elemento, o texto ou o valor do cenário não estava lá. PLANO = o cenário ou o contrato de ids pede o que nenhuma Task cria, ou o cenário não prova o critério; não deu para ver, PLANO dizendo o que faltou. Não altere código, cenário nem plano; não rode accept nem verify. Volte com a linha do veredito.`""
                     Out "  depois: run.ps1 done -Task $($T.Id) -Result gap de novo — o done lê o veredito: AMBIENTE → reparo e dev novo · APP → dev novo com o diagnóstico · PLANO → Arquiteto"
                     exit 0
                 }
@@ -923,7 +929,7 @@ try {
                 $only = if ($rt.Scenarios.Count) { Get-AcceptArgs $rt } else { '' }   # v3.56.0 (H2): os do plano, com o .scn da História
                 Out "PRÓXIMA AÇÃO: prova no alvo da $($rt.Id) — o alvo $tn voltou (target.ps1 ok): a Task sai de 🔴 para 🟪 e o operator roda o accept que ficou pendente"
                 Out "  $(Get-AgentLine 'operator')"
-                Out "  prompt: `"Rode na raiz: $plugin/accept.ps1 -Task $($rt.Id)$only (a prova no alvo que ficou pendente quando o alvo caiu). Exit 4 = ambiente: rode $plugin/target.ps1 -Target $tn -Repair uma vez e repita. Não altere código, cenário nem plano. Devolva o caminho do result.md e a linha de resumo.`""
+                Out "  prompt: `"Chamador: sessão $($rt.Id) — Rode na raiz: $plugin/accept.ps1 -Task $($rt.Id)$only (a prova no alvo que ficou pendente quando o alvo caiu). Exit 4 = ambiente: rode $plugin/target.ps1 -Target $tn -Repair uma vez e repita. Não altere código, cenário nem plano. Devolva o caminho do result.md e a linha de resumo.`""
                 Out "  depois: run.ps1 done -Task $($rt.Id) -Result ok (fecha pela evidência: o verify do dev e este accept) · accept com exit 4 de novo → run.ps1 done -Task $($rt.Id) -Result env (volta a 🔴 pela prova pendente) · cenário que falhou: o done ok manda dev em instância nova"
                 exit 0
             }
@@ -1124,7 +1130,7 @@ try {
         if (-not (& $fresh $qr) -or ((Get-TargetsConfig $Root) -and -not (& $fresh $ar))) {
             Out "PRÓXIMA AÇÃO: validação do sprint $n — medir (operator, comandos longos fora das instâncias caras; C3)"
             Out "  $(Get-AgentLine 'operator')"
-            Out ("  prompt: `"Rode na raiz: $plugin/quality.ps1 -Id $sid" + $(if (Get-TargetsConfig $Root) { " e $plugin/accept.ps1 -Task $sid (todos os cenários)" } else { '' }) + ". Exit 4 = ambiente: rode target.ps1 -Repair uma vez e repita. Devolva os caminhos dos result.md e as linhas de resumo.`"")
+            Out ("  prompt: `"Chamador: sessão $sid — Rode na raiz: $plugin/quality.ps1 -Id $sid" + $(if (Get-TargetsConfig $Root) { " e $plugin/accept.ps1 -Task $sid (todos os cenários)" } else { '' }) + ". Exit 4 = ambiente: rode target.ps1 -Repair uma vez e repita. Devolva os caminhos dos result.md e as linhas de resumo.`"")
             Out "  depois: run.ps1 next"
             exit 0
         }
