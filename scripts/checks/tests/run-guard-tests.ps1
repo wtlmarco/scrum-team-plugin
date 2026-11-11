@@ -792,6 +792,9 @@ $cases = @(
        Payload = @{ prompt = '/team:sm fix plan'; transcript_path = (Join-Path $tmp 'transcripts/g21p.jsonl') } },
     @{ Name = 'G21 comando que não é ritual: silêncio'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
        Payload = @{ prompt = '/po status'; transcript_path = (Join-Path $tmp 'transcripts/g21.jsonl') } },
+    @{ Name = 'v3.57.4 primeiro prompt da sessão nova (transcript ainda sem arquivo): grava o .session-transcript dela'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
+       Check = { $f = Join-Path $proj '.team-project/.session-transcript'; $ok = (Test-Path -LiteralPath $f) -and ((Get-Content -LiteralPath $f -Raw -Encoding UTF8).Trim() -eq (Join-Path $tmp 'transcripts/pos-clear.jsonl')); Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue; $ok }
+       Payload = @{ prompt = '/sm sprint run'; transcript_path = (Join-Path $tmp 'transcripts/pos-clear.jsonl') } },
     @{ Name = 'G19 SendMessage da sessão durante o run, até ao dev (Haiku): nega com a rota da instância nova (v3.52)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'instância NOVA'
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "7", "desde": "2026-10-06 10:00" }' -Encoding UTF8 }
        Payload = @{ tool_name = 'SendMessage'; tool_input = @{ to = 'dev19old'; message = 'x' } } },

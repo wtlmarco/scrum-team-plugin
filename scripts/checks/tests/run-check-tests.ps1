@@ -1291,6 +1291,16 @@ Put $p '.team-project/guards.json' '{ "run": { "sessionContextCap": 0 } }'
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'v3.57.2 item 21: run.sessionContextCap 0 desliga o reinício (o aviso fica)' $r $r.Code @('aviso: acima de 150 mil', '^(?![\s\S]*reiniciar a sessão)')
 Remove-Item -LiteralPath (Join-Path $p '.team-project/guards.json') -Force -ErrorAction SilentlyContinue
+# v3.57.4: depois do /clear o usage.jsonl ainda cita a sessão antiga (170 mil); a SESSÃO mede a corrente (.session-transcript).
+$trN = (Join-Path $p 'nova.jsonl') -replace '\\', '/'
+Put $p 'nova.jsonl' ('{"type":"assistant","uuid":"n1","message":{"model":"claude-opus-5-5","id":"msg_n1","type":"message","usage":{"input_tokens":5,"cache_creation_input_tokens":30000,"cache_read_input_tokens":20000,"output_tokens":50}}}' + "`n")
+Put $p '.team-project/.session-transcript' $trN
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.57.4: sessão nova pelo .session-transcript (50 mil) — usage.jsonl antigo acima do teto não manda reiniciar' $r $r.Code @('SESSÃO: 1 chamada\(s\) · contexto da última 50 mil tokens', '^(?![\s\S]*reiniciar a sessão)', '^(?![\s\S]*170 mil)')
+Put $p '.team-project/.session-transcript' ((Join-Path $p 'ainda-nao-existe.jsonl') -replace '\\', '/')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.57.4: transcript da sessão nova ainda sem arquivo — SESSÃO cala, sem cair no usage.jsonl antigo' $r $r.Code @('^(?![\s\S]*SESSÃO:)', '^(?![\s\S]*reiniciar a sessão)')
+Remove-Item -LiteralPath (Join-Path $p '.team-project/.session-transcript') -Force -ErrorAction SilentlyContinue
 
 # 12h. C5 (item 15) e C6 (item 11): veredito da última rodada, aceite com dívida do PO e a correção do portão como Q-S<n>.
 $p = Join-Path $tmp 'portao'; New-Project $p
