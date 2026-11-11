@@ -13,6 +13,17 @@
 
 ---
 
+## v3.57.5 — 2026-11-11
+
+**Branch:** `fix/v3.57.5` a partir de `develop` (`fdef17f`, v3.57.4 mesclada) · **Processo:** nenhum (as regras 29 e 35 já existiam; muda só o texto do pacote)
+Origem: sprint 6 do projeto. O plano externo da T-079 voltou reprovado pela regra 29 porque a decisão do 🔺 GAP veio sem as linhas `**Origem:**` e `**Lição:**`. O assistente de fora seguiu a lista "O que a conferência recusa" do `INSTRUCTIONS.md`, e essa lista não citava a exigência.
+
+Mudanças:
+- **A lista do pacote externo cobre as regras 29 e 35** (`roles/architect/templates/external-plan.md`). A lista passa a dizer três coisas. As decisões D-<k> e K-<n> se citam em `**Decisões:**` e não se copiam. Toda `**Decisão do GAP …:**` traz, logo abaixo e sem linha em branco no meio, `**Origem:**` e `**Lição:**` com os valores da lista, porque o `Get-PlanGapDecisions` encerra o bloco na primeira linha em branco. A linha `**Verificação:**` da regra 35 é opcional e tem formato fixo. O cabeçalho do modelo passa a citar a v3.57.5.
+- **Não muda:** o pacote já gerado com o modelo antigo, como o `T-079-gap2` do sprint 6. Ele só recebe a lista nova quando o `run.ps1 next` gerar o pacote de novo.
+
+---
+
 ## v3.57.4 — 2026-11-11
 
 **Branch:** `fix/v3.57.4` a partir de `develop` (`5ca1b30`, v3.57.3 mesclada) · **Processo:** nenhum
