@@ -1,6 +1,6 @@
 # Pacote de plano externo — {{TITLE}}
 
-> Gerado pelo `run.ps1 next` do plugin team (v3.53.4) a partir deste modelo (`roles/architect/templates/external-plan.md`). Quem recebe: um assistente de IA fora do Claude Code (o app do Codex, um chat na web) que escreve os planos. Quem confere: o `plan.ps1`, quando o retorno volta ao projeto em `.team-project/sprints/{{SPRINT}}/pack/in/`.
+> Gerado pelo `run.ps1 next` do plugin team (v3.57.5) a partir deste modelo (`roles/architect/templates/external-plan.md`). Quem recebe: um assistente de IA fora do Claude Code (o app do Codex, um chat na web) que escreve os planos. Quem confere: o `plan.ps1`, quando o retorno volta ao projeto em `.team-project/sprints/{{SPRINT}}/pack/in/`.
 
 ## Seu papel
 
@@ -43,5 +43,11 @@ Confira cada item antes de devolver: plano recusado volta num pacote de correç�
 - A §6 tem `**Mutações:**` com linhas `` - M<k> · teste `<teste>` · `<produção>` · regra: <o que a mutação quebra> `` (v3.54: o dev escreve o trecho sobre o código real) — ou, só com trecho que **já existe uma vez** num arquivo do projeto, `` · `<trecho exato>` → `<mutante>` `` (trecho que ainda não existe reprova) — ou `sem prova: <motivo>`. Risco `regra de negócio` ou `integração` exige mutação.
 - Sem linhas `- Contagem:` (a conferência reconta no repositório inteiro, que você não tem); use premissa.
 - Premissa só como `- P<k> · medido: <comando> → <resultado>` ou `- P<k> · não exercitada: <motivo> · verifica: <papel> em <passo>`; nada de "não validado" solto.
+- **Decisões (regra 29):** decisão do sprint (`D-<k>`) ou do projeto (`K-<n>`) que a ficha traz se **cita** em `**Decisões:** D-<k>, K-<n>`, nunca se copia; citar uma que não existe reprova.
+- **Decisão de 🔺 GAP (regra 29):** toda `**Decisão do GAP <T-ID> (<data>):** <a decisão>` no plano vem seguida, **logo abaixo e sem linha em branco no meio**, de duas linhas no começo da linha:
+  `**Origem:** previsão | conhecimento | requisito | ambiente | processo`
+  `**Lição:** projeto | stack:<nome> | plugin | nenhuma`
+  Sem elas, ou com valor fora da lista, o plano volta.
+- **Verificação (regra 35, opcional):** só quando o verify full padrão não serve — `**Verificação:** dispensada — <motivo>` (sem `**Mutações:**`) ou `` **Verificação:** comando — `<comando>` `` (sem instalação, rede, push ou comando destrutivo).
 
-Falta informação para decidir? Não invente: escreva `🔺 GAP: <o que falta>` na §9 do plano e siga com o resto.
+Falta informação para decidir? Não invente: escreva `🔺 GAP: <o que falta>` na §9 do plano e siga com o resto. Se você mesmo decide um GAP no plano, use o formato `**Decisão do GAP …:**` acima, com **Origem:** e **Lição:**.
