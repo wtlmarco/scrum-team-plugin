@@ -13,6 +13,17 @@
 
 ---
 
+## v3.57.4 — 2026-11-11
+
+**Branch:** `fix/v3.57.4` a partir de `develop` (`5ca1b30`, v3.57.3 mesclada) · **Processo:** nenhum
+Origem: relato do stakeholder em 11/11. Depois de `/clear` e `/sm sprint run`, o `run.ps1 next` respondia sempre "A sessão está com 151 mil de contexto, acima do teto de 150 mil", e o laço não saía.
+
+Mudanças:
+- **A linha `SESSÃO:` e o teto da v3.57.2 medem a sessão em curso** (`hooks/prompt-submit.ps1`, `run.ps1`). Antes, o transcript medido vinha da última linha do `usage.jsonl`, que aponta para a sessão que disparou o último agente terminado. Depois do `/clear` ainda era a sessão antiga. A sessão nova recebia "reiniciar" antes de disparar qualquer agente, então o registro nunca mudava. Agora o `UserPromptSubmit` grava a cada prompt o `transcript_path` da sessão em `.team-project/.session-transcript`, antes da G21 e mesmo que o arquivo ainda não exista. O `next` mede esse caminho, e a sessão nova sem transcript em disco fica sem a linha `SESSÃO:`, sem cair no registro antigo. O `usage.jsonl` só vale sem o marcador (hook anterior à 3.57.4).
+- **Testes:** `run-check-tests.ps1` 12g cobre o `usage.jsonl` antigo com 170 mil e o `.session-transcript` com 50 mil (mede 50 e não reinicia), e o transcript novo ainda sem arquivo (cala). `run-guard-tests.ps1` cobre o primeiro prompt da sessão nova, que grava o marcador.
+
+---
+
 ## v3.57.3 — 2026-11-10
 
 **Branch:** `feat/v3.57.3` a partir de `develop` (`6284017`, v3.57.2 mesclada) · **Processo:** regra 35 do plano (`**Verificação:**`); a G7 cobra a linha `Chamador:` no pedido ao `operator`; o formulário da entrada fora da Planning traz a conta da capacidade; bloco `## v3.57` no `process-changelog.md` (a v3.54 foi para o arquivo)

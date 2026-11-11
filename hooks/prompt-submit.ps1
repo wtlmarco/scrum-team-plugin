@@ -43,6 +43,13 @@ try {
         exit 0
     }
     if (-not (Test-Path -LiteralPath (Join-Path $projectDir '.team-project'))) { exit 0 }
+    # v3.57.4: o transcript da sessão em curso, para a linha SESSÃO: do run.ps1 next. Antes ele lia o da última linha do
+    # usage.jsonl — a sessão que disparou o último agente terminado; depois do /clear a sessão nova recebia "reiniciar" pelo
+    # contexto da antiga antes de disparar agente nenhum, e o laço /clear → /sm sprint run → reiniciar não saía. Grava a cada
+    # prompt e antes da G21 (desligada ou não), mesmo que o arquivo do transcript ainda não exista (primeiro prompt da sessão).
+    if ($hookInput.transcript_path) {
+        try { [System.IO.File]::WriteAllText((Join-Path $projectDir '.team-project/.session-transcript'), [string]$hookInput.transcript_path, (New-Object System.Text.UTF8Encoding($false))) } catch { }
+    }
     $cfg = Get-GuardConfig $projectDir
     if (-not (Test-GuardEnabled $cfg 'G21')) { exit 0 }
     $m = [regex]::Match([string]$hookInput.prompt, '^\s*(/[\w:-]+)\s*(.*)$', 'Singleline')
