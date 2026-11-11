@@ -851,12 +851,18 @@ try {
     $null = Invoke-Child 'kanban.ps1' @('-Init', '-Root', $Root)   # consumption.md do sprint, se a Planning não o criou (garden item 1)
     $est = Get-RunEstimate
     if ($est) { Out $est }
-    # v3.52.2 (note.md item 17): o consumo da sessão principal, pelo transcript citado na última linha do usage.jsonl — a
-    # estimativa acima é "sem a sessão". Sem transcript, cala.
-    $up = Join-Path $tp 'usage.jsonl'
-    if (Test-Path -LiteralPath $up) {
+    # v3.52.2 (note.md item 17): o consumo da sessão principal — a estimativa acima é "sem a sessão". Sem transcript, cala.
+    # v3.57.4: o transcript é o da sessão em curso (.session-transcript, gravado pelo UserPromptSubmit a cada prompt). A
+    # última linha do usage.jsonl é a sessão do último agente terminado: depois do /clear ela ainda é a antiga, e o teto
+    # mandava reiniciar de novo sem fim. Ela só vale sem o marcador (hook antigo, run fora do Claude Code).
+    $up = Join-Path $tp 'usage.jsonl'; $cur = Join-Path $tp '.session-transcript'
+    $stp = $null
+    if (Test-Path -LiteralPath $cur) { try { $stp = ([System.IO.File]::ReadAllText($cur, $utf8)).Trim() } catch { $stp = '' } }
+    elseif (Test-Path -LiteralPath $up) {
         $lastU = @([System.IO.File]::ReadAllLines($up, $utf8) | Where-Object { $_.Trim() } | Select-Object -Last 1)
         $stp = ''; if ($lastU.Count) { try { $stp = [string]($lastU[0] | ConvertFrom-Json).session_transcript } catch { } }
+    }
+    if ($null -ne $stp) {
         $sg = Get-SessionGauge $stp
         if ($sg) {
             $kk = [int][Math]::Round($sg.LastContext / 1000)
