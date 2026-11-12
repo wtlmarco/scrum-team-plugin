@@ -103,13 +103,131 @@ function Copy-PackFile([string]$Rel, [string]$Dir) {
     return $dst
 }
 
-# Ambiente medido neste sprint: a §3 do plano mais recente que a tem com tabela (o assistente de fora não roda comando).
+# Ambiente de referência: a §3 do plano mais recente que a tem com tabela (o assistente de fora não roda comando).
+# v3.57.7 (sprint 6 do garden, T-067): só de plano escrito no Claude. O plano que veio de fora não mediu nada — a §3 dele é a
+# do pacote anterior, recopiada (T-080 → T-081 → T-067, todas as linhas "sem medição") — e servia de fonte ao pacote seguinte.
 function Get-SprintEnv {
+    $st = Get-PackState
+    $ext = @(@($st.packs.Values | ForEach-Object { @($_.tasks) }) + @($st.gaps.Keys) | Where-Object { $_ } | Select-Object -Unique)
     foreach ($f in @(Get-ChildItem -LiteralPath (Join-Path $S 'plan') -Filter '*.md' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)) {
+        $fid = [regex]::Match($f.Name, '^' + $script:TaskIdRe)
+        if ($fid.Success -and $ext -contains $fid.Value) { continue }
         $s3 = Get-Section (Read-Text $f.FullName) '^##\s+3\.'
         if ($s3 -and $s3 -match '(?i)Sa[íi]da real') { return @{ Src = "sprints/$n/plan/$($f.Name)"; Text = $s3.Trim() } }
     }
     return $null
+}
+
+# v3.57.7 (sprint 6 do garden, T-067): o run mede o ambiente ao montar o pacote. Com o plano externo, ninguém rodava comando:
+# o Arquiteto do Claude, que media a §3, saiu do caminho, e o assistente de fora não executa nada. Com **Layout novo:** sim, a
+# conferência exige o navegador headless medido na §3 (regra 21) e ao menos uma premissa medido: (regra 26) — impossível de
+# cumprir com o environment.md recopiado, e o pacote de correção voltaria reprovado nas mesmas linhas. Sondas curtas, com
+# prazo (Invoke-Bounded), sem instalar nada: runtime pela pasta do front-end (package.json), navegador headless (CHROME_BIN,
+# senão o Chrome instalado, senão o Chromium do Playwright) aberto de verdade, adb com alvo android, dotnet e python pelo
+# arquivo de projeto. Devolve as linhas da tabela e a saída bruta.
+function Find-FrontDir {
+    if (Test-Path -LiteralPath (Join-Path $Root 'package.json')) { return '.' }
+    foreach ($d in @(Get-ChildItem -LiteralPath $Root -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '^(\.|node_modules$)' } | Sort-Object Name)) {
+        if (Test-Path -LiteralPath (Join-Path $d.FullName 'package.json')) { return $d.Name }
+    }
+    return $null
+}
+function Find-HeadlessBrowser {
+    if ($env:CHROME_BIN) { return @{ Path = $env:CHROME_BIN; Src = 'CHROME_BIN'; Exists = (Test-Path -LiteralPath $env:CHROME_BIN -PathType Leaf) } }
+    foreach ($p in @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe", "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe")) {
+        if ($p -and (Test-Path -LiteralPath $p -PathType Leaf)) { return @{ Path = $p; Src = 'Chrome instalado'; Exists = $true } }
+    }
+    $pw = Join-Path ([string]$env:LOCALAPPDATA) 'ms-playwright'
+    foreach ($d in @(Get-ChildItem -LiteralPath $pw -Directory -Filter 'chromium-*' -ErrorAction SilentlyContinue | Sort-Object Name -Descending)) {
+        $exe = Join-Path $d.FullName 'chrome-win\chrome.exe'
+        if (Test-Path -LiteralPath $exe -PathType Leaf) { return @{ Path = $exe; Src = 'Chromium do Playwright (o Karma só o usa com CHROME_BIN)'; Exists = $true } }
+    }
+    return $null
+}
+function ConvertTo-EnvCell([string]$Text) {
+    $l = @(([string]$Text) -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ }) | Select-Object -First 1
+    $l = ([string]$l -replace '[<>|`]', ' ' -replace '\s+', ' ').Trim()
+    if ($l.Length -gt 120) { $l = $l.Substring(0, 120) + '…' }
+    return $l
+}
+function Measure-PackEnv {
+    $rows = @()
+    $probe = {
+        param([string]$Need, [string]$Show, [string]$Cmd, [int]$Sec, [scriptblock]$Summary)
+        $r = Invoke-Bounded $Root $Cmd $Sec
+        $rawTxt = "### $Need`n> $Show`n" + [string]$r.out + "`n(exit $($r.exit)$(if ($r.timedOut) { ", sem resposta em $Sec s" }))`n"
+        $ok = [bool]((-not $r.timedOut) -and $r.exit -eq 0 -and ([string]$r.out).Trim())
+        $out = if ($r.timedOut) { "sem resposta em $Sec s" } elseif ($Summary -and $ok) { & $Summary ([string]$r.out) } elseif ($ok) { ConvertTo-EnvCell $r.out } else { $c = ConvertTo-EnvCell $r.out; if ($c) { "$c (exit $($r.exit))" } else { "sem saída (exit $($r.exit))" } }
+        return @{ Need = $Need; Show = $Show; Out = $out; Ok = $ok; Raw = $rawTxt }
+    }
+    $front = Find-FrontDir
+    $tg = Get-TargetsConfig $Root
+    if ($front) {
+        $fp = if ($front -eq '.') { '' } else { "$front/" }
+        $rows += & $probe 'Node.js' 'node --version' 'node --version' 20 $null
+        $rows += & $probe 'npm' 'npm --version' 'npm --version' 30 $null
+        $nm = "${fp}node_modules"
+        $rows += & $probe "Dependências instaladas em $(if ($front -eq '.') { 'a raiz' } else { $front })" "Test-Path $nm" "if (Test-Path -LiteralPath '$nm') { 'True' } else { 'False'; exit 1 }" 10 $null
+        if (Test-Path -LiteralPath (Join-Path $Root "${fp}angular.json")) {
+            $core = "${fp}node_modules/@angular/core/package.json"
+            $rows += & $probe 'Angular (@angular/core instalado)' "(ConvertFrom-Json (Get-Content $core -Raw)).version" "(ConvertFrom-Json (Get-Content -LiteralPath '$core' -Raw)).version" 15 $null
+        }
+        $webish = (Test-Path -LiteralPath (Join-Path $Root "${fp}angular.json")) -or @(Get-ChildItem -LiteralPath (Join-Path $Root ($(if ($front -eq '.') { '.' } else { $front }))) -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(karma\.conf|playwright\.config|vitest\.config)' }).Count -or ($tg -and $tg.PSObject.Properties['web'])
+        if ($webish) {
+            $b = Find-HeadlessBrowser
+            if (-not $b) { $rows += @{ Need = 'Navegador headless do teste de render'; Show = 'CHROME_BIN; Chrome instalado; Chromium do Playwright'; Out = 'nenhum encontrado'; Ok = $false } }
+            elseif (-not $b.Exists) { $rows += @{ Need = 'Navegador headless do teste de render'; Show = "Test-Path `$env:CHROME_BIN"; Out = "CHROME_BIN aponta para arquivo que não existe: $(ConvertTo-EnvCell $b.Path)"; Ok = $false } }
+            else {
+                $ud = Join-Path ([System.IO.Path]::GetTempPath()) ('team-headless-' + [guid]::NewGuid().ToString('N'))
+                $ver = try { [string](Get-Item -LiteralPath $b.Path).VersionInfo.ProductVersion } catch { '' }
+                $sum = [scriptblock]::Create("param(`$o) 'abriu headless e devolveu o DOM (exit 0)$(if ($ver) { " · versão $ver" }) · $($b.Src)'")
+                $rows += & $probe 'Navegador headless do teste de render' "& '$($b.Path)' --headless=new --dump-dom about:blank" "& '$($b.Path)' --headless=new --disable-gpu --no-first-run --user-data-dir='$ud' --dump-dom about:blank" 40 $sum
+                Remove-Item -LiteralPath $ud -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+    if ($tg -and $tg.PSObject.Properties['android']) {
+        $adb = $null
+        $gc = Get-Command adb -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($gc) { $adb = $gc.Source } else { foreach ($h in @($env:ANDROID_HOME, $env:ANDROID_SDK_ROOT)) { if ($h -and (Test-Path -LiteralPath (Join-Path $h 'platform-tools\adb.exe'))) { $adb = Join-Path $h 'platform-tools\adb.exe'; break } } }
+        if (-not $adb) { $rows += @{ Need = 'adb (alvo android)'; Show = 'Get-Command adb; ANDROID_HOME'; Out = 'adb não encontrado no PATH nem no ANDROID_HOME'; Ok = $false } }
+        else {
+            $rows += & $probe 'adb (alvo android)' 'adb version' "& '$adb' version" 15 $null
+            $dev = { param($o) $ls = @($o -split "`r?`n" | Where-Object { $_ -match '^\S+\s+device\b' } | ForEach-Object { ($_ -split '\s+')[0] }); if ($ls.Count) { "$($ls.Count) aparelho(s): $($ls -join ', ')" } else { 'nenhum aparelho conectado — o alvo sobe pelo target.ps1 -Repair' } }
+            $dr = & $probe 'Aparelho ou emulador android' 'adb devices' "& '$adb' devices" 15 $dev
+            if ($dr.Out -match '^nenhum aparelho') { $dr.Ok = $false }
+            $rows += $dr
+        }
+    }
+    $top = @(Get-ChildItem -LiteralPath $Root -File -ErrorAction SilentlyContinue) + @(Get-ChildItem -LiteralPath $Root -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '^(\.|node_modules$)' } | ForEach-Object { Get-ChildItem -LiteralPath $_.FullName -File -ErrorAction SilentlyContinue })
+    if (@($top | Where-Object { $_.Extension -in '.sln', '.csproj' }).Count) { $rows += & $probe '.NET SDK' 'dotnet --version' 'dotnet --version' 30 $null }
+    if (@($top | Where-Object { $_.Name -in 'pyproject.toml', 'requirements.txt' }).Count) { $rows += & $probe 'Python' 'python --version' 'python --version' 15 $null }
+    return @{ Rows = $rows; Raw = (@($rows | ForEach-Object { $_.Raw } | Where-Object { $_ }) -join "`n") }
+}
+# O environment.md do pacote: o que o run mediu agora (tabela no formato da §3 e premissas prontas) e, de referência, a §3 do
+# último plano escrito no Claude.
+function Write-PackEnv([string]$Ctx) {
+    $m = Measure-PackEnv; $ref = Get-SprintEnv
+    $when = Get-Date -Format 'dd/MM/yyyy HH:mm'
+    $logRel = ".team-project/sprints/$n/pack/environment.log"
+    if ($m.Raw) { New-Item -ItemType Directory -Force (Get-PackDir) | Out-Null; [System.IO.File]::WriteAllText((Join-Path (Get-PackDir) 'environment.log'), "# Saída bruta das sondas do run.ps1 · $when`n`n" + $m.Raw, $utf8) }
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.Append("# Ambiente medido neste sprint`n`n")
+    if ($m.Rows.Count) {
+        [void]$sb.Append("> Medido pelo ``run.ps1`` do plugin ao montar este pacote, em $when, na máquina onde o dev vai construir. Copie para a §3 do plano as linhas que valem para a Task, **como estão**, com a fonte ``context/environment.md (run.ps1, $when)``. Pré-requisito que não está aqui: premissa ``- P<k> · não exercitada: <motivo> · verifica: dev no passo 1`` — nunca uma saída inventada.`n`n")
+        [void]$sb.Append("| Pré-requisito | Comando de medição | Saída real (recortada) | Log bruto | Atende ao plano? |`n|---|---|---|---|---|`n")
+        foreach ($r in $m.Rows) { [void]$sb.Append("| $($r.Need) | ``$($r.Show)`` | $($r.Out) | ``$logRel`` | $(if ($r.Ok) { '**sim**' } else { '**não** — medir de novo antes do passo 1; ausente, é 🔺 GAP (§9)' }) |`n") }
+        $okRows = @($m.Rows | Where-Object { $_.Ok })
+        if ($okRows.Count) {
+            [void]$sb.Append("`n## Premissas prontas`n`nPara a ``### Premissas`` da §6. Com ``**Layout novo:** sim``, a conferência exige ao menos uma ``medido:``; estas valem como estão (renumere o P):`n`n")
+            $k = 0; foreach ($r in $okRows) { $k++; [void]$sb.Append("- P$k · ambiente: $($r.Need) · medido: ``$($r.Show)`` → $($r.Out)`n") }
+            [void]$sb.Append("`nGeometria (posição, tamanho, sobreposição, rolagem) não é ambiente: não se mede lendo código — vai no envelope de medidas, com a sonda que o dev roda.`n")
+        }
+    } else {
+        [void]$sb.Append("> O ``run.ps1`` não achou o que medir neste projeto (sem ``package.json``, alvo android, ``.sln``/``.csproj`` nem ``pyproject.toml``). Pré-requisito do plano: premissa ``- P<k> · não exercitada: <motivo> · verifica: dev no passo 1`` — nunca uma saída inventada.`n")
+    }
+    if ($ref) { [void]$sb.Append("`n## Referência: §3 do último plano escrito no Claude`n`n> Fonte: ``$($ref.Src)``. Medido em outra data; quando falar do mesmo pré-requisito que a tabela acima, vale a de cima.`n`n$($ref.Text)`n") }
+    [System.IO.File]::WriteAllText((Join-Path $Ctx 'environment.md'), $sb.ToString(), $utf8)
 }
 
 # Monta o pacote: Kind 'story' (planos da História; Round > 1 = correção) ou 'gap' (decisão do 🔺 GAP de uma Task).
@@ -144,8 +262,7 @@ function New-PlanPack([string]$Story, $Items, [int]$Round, [string]$Kind = 'stor
     $ctx = Join-Path $dir 'context'; New-Item -ItemType Directory -Force $ctx | Out-Null
     Copy-Item -LiteralPath (Join-Path $plug 'roles/architect/templates/implementation-plan.md') -Destination (Join-Path $ctx 'implementation-plan.md') -Force
     $ac = Join-Path $Root '.team-project/architect/context.md'; if (Test-Path -LiteralPath $ac) { Copy-Item -LiteralPath $ac -Destination (Join-Path $ctx 'architect-context.md') -Force }
-    $envSec = Get-SprintEnv
-    if ($envSec) { [System.IO.File]::WriteAllText((Join-Path $ctx 'environment.md'), "# Ambiente medido neste sprint`n`n> Fonte: a §3 de ``$($envSec.Src)``. Copie para a §3 do plano as linhas que valem para a Task, com a fonte. Pré-requisito que não está aqui: premissa ``- P<k> · não exercitada: <motivo> · verifica: dev no passo 1`` — nunca uma saída inventada.`n`n$($envSec.Text)`n", $utf8) }
+    Write-PackEnv $ctx   # v3.57.7: medido pelo run ao montar o pacote (antes: a §3 do plano mais recente, recopiada)
     $scnDir = Join-Path $Root '.team-project/quality-assurance/scenarios'
     foreach ($sf in @(Get-ChildItem -Path $scnDir -Filter '*.scn' -File -ErrorAction SilentlyContinue)) {
         $scnText = Read-Text $sf.FullName

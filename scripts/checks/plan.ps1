@@ -233,14 +233,21 @@ try {
         elseif (-not $scn.Count -and -not (Get-TargetsConfig $Root)) { Add-Result 'cenários' 'n-a' "sem alvo de execução (guards.json sem ""targets""): $($ids -join ', ') rastreados no plano e provados por teste, sem .scn (v3.51.4)" }
         elseif (-not $scn.Count) { Add-Result 'cenários' 'falhou' "nenhum arquivo .scn em .team-project/quality-assurance/scenarios/ — o QA escreve os cenários executáveis antes do dev (regra 23)" }
         else {
-            $defined = @($scn | ForEach-Object { [regex]::Matches((Read-Text $_.FullName), '(?m)^\s*scenario\s+(\S+)') } | ForEach-Object { $_.Groups[1].Value })
+            $scnTexts = @($scn | ForEach-Object { Read-Text $_.FullName })
+            $defined = @($scnTexts | ForEach-Object { [regex]::Matches($_, '(?m)^\s*scenario\s+(\S+)') } | ForEach-Object { $_.Groups[1].Value })
+            # v3.57.7 (sprint 6 do garden, T-067): o plano externo citou "SC-224, SC-225…" sem o "(teste)" do quadro, e o .scn
+            # os declara "# SC-224 (teste) …" em comentário. É a mesma declaração, feita pelo QA: o ID sem sufixo vale como teste.
+            $scnTest = @($scnTexts | ForEach-Object { [regex]::Matches($_, '(?m)^\s*#.*?\b([A-Z]{2,}-\d+)\s*\((?i:teste)\)') } | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
+            $byScn = @($ids | Where-Object { $defined -notcontains $_ -and $scnTest -contains $_ })
+            $ids = @($ids | Where-Object { $byScn -notcontains $_ })
             $defer = Get-DeferredScenarios $Root
             $miss = @($ids | Where-Object { $defined -notcontains $_ -and -not $defer.ContainsKey($_) })
             $wait = @($ids | Where-Object { $defined -notcontains $_ -and $defer.ContainsKey($_) } | ForEach-Object { "$_ (aguarda $($defer[$_]))" })
             $tst = @($allIds | Where-Object { $ids -notcontains $_ })
             $tail = $(if ($wait.Count) { "; " + ($wait -join ', ') } else { '' }) + $(if ($tst.Count) { "; por teste: " + ($tst -join ', ') } else { '' })
             if ($miss.Count) { Add-Result 'cenários' 'falhou' ("cenário(s) citado(s) sem definição nos .scn: " + ($miss -join ', ')) }
-            else { Add-Result 'cenários' 'ok' "$($ids.Count) cenário(s) da Task nos arquivos .scn: $($ids -join ', ')$tail" }
+            elseif (-not $ids.Count) { Add-Result 'cenários' 'ok' "todos provados por teste do plano: $($allIds -join ', ')$(if ($byScn.Count) { " ($($byScn -join ', ') sem o sufixo (teste) no plano; o .scn os declara (teste))" })" }
+            else { Add-Result 'cenários' 'ok' "$($ids.Count) cenário(s) da Task nos arquivos .scn: $($ids -join ', ')$tail$(if ($byScn.Count) { " ($($byScn -join ', ') declarados (teste) no .scn)" })" }
         }
     }
 
@@ -363,10 +370,12 @@ try {
         $envNone = [regex]::Match($text, '(?m)^\*\*Envelope de medidas:\*\*\s*nenhum\s*[—-]\s*(\S.*)$')
         $envM = [regex]::Match($text, '(?ms)^\*\*Envelope de medidas\*\*.*?(?=^\*\*[A-Z]|^##\s|\z)')
         $envL = if ($envM.Success) { @([regex]::Matches($envM.Value, '(?m)^\s*-\s*E\d+\s*·.*$') | ForEach-Object { $_.Value }) } else { @() }
-        $envBad = @($envL | Where-Object { $_ -notmatch 'sonda:\s*`[^`]+`' -or $_ -notmatch '\(a\)\s*se\s+medir' -or $_ -notmatch '\(b\)\s*se\s+medir' })
+        # v3.57.7 (sprint 6 do garden, T-067): "(a) se `scrollWidth ≤ clientWidth` …" é a mesma árvore que "(a) se medir …" —
+        # o que a regra pede é o caso condicionado à sonda, não a palavra "medir".
+        $envBad = @($envL | Where-Object { $_ -notmatch 'sonda:\s*`[^`]+`' -or $_ -notmatch '\(a\)\s*se\b' -or $_ -notmatch '\(b\)\s*se\b' })
         if ($envNone.Success -and -not $envL.Count) { Add-Result 'envelope' 'ok' "nenhuma medida visual a decidir — $($envNone.Groups[1].Value.Trim())" }
         elseif (-not $envL.Count) { Add-Result 'envelope' 'falhou' '**Layout novo:** sim sem **Envelope de medidas** — o dev abriria 🔺 GAP para cada medida que o plano não delimitou; declare, por medida visual, a sonda e "se medir X → aplique Y; se medir Z → aplique W", ou "**Envelope de medidas:** nenhum — <motivo>" (regra 33)' }
-        elseif ($envBad.Count) { Add-Result 'envelope' 'falhou' ($envBad.Count.ToString() + ' linha(s) do envelope sem sonda: `<comando>` ou sem os casos (a) e (b) "se medir …": ' + (($envBad | ForEach-Object { (($_ -split '·')[0] -replace '^\s*-\s*', '').Trim() }) -join ', ') + ' (regra 33)') }
+        elseif ($envBad.Count) { Add-Result 'envelope' 'falhou' ($envBad.Count.ToString() + ' linha(s) do envelope sem sonda: `<comando>` ou sem os casos "(a) se …" e "(b) se …": ' + (($envBad | ForEach-Object { (($_ -split '·')[0] -replace '^\s*-\s*', '').Trim() }) -join ', ') + ' (regra 33)') }
         else { Add-Result 'envelope' 'ok' "$($envL.Count) medida(s) com sonda e árvore de decisão" }
     } else { Add-Result 'envelope' 'n-a' 'sem **Layout novo:** sim' }
 
