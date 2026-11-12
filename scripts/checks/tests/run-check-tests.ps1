@@ -2751,10 +2751,30 @@ $old = (Get-Date).AddMinutes(-15).ToString('yyyy-MM-dd HH:mm:ss')
 New-Item -ItemType Directory -Force (Join-Path $Proj 'out/www') | Out-Null; [System.IO.File]::WriteAllText((Join-Path $Proj 'out/www/main.js'), 'x', $u8)
 "11 " + (W)
 Remove-Item (Join-Path $tp '.active-agents'), (Join-Path $tp 'guards.json') -Force
+# v3.58.1: build feito de filhos curtos — a CPU viva da árvore é baixa (o filho que terminou levou a dele), mas um filho
+# nasceu agora: vivo, não POSSÍVEL TRAVAMENTO (antes: 15 min e CPU < 5 s = travado falso).
+$pa = Start-Process powershell -ArgumentList '-NoProfile', '-Command', '& powershell -NoProfile -Command ''Start-Sleep 60''' -PassThru -WindowStyle Hidden
+Start-Sleep 3
+[System.IO.File]::WriteAllText($lk, ([ordered]@{ pid = $pa.Id; started = $pa.StartTime.ToString('o'); at = (Get-Date).AddMinutes(-15).ToString('yyyy-MM-dd HH:mm:ss'); mode = 'full' } | ConvertTo-Json -Compress), $u8)
+"12 " + (W)
+Remove-Item $lk -Force
+Get-CimInstance Win32_Process -Filter "ParentProcessId=$($pa.Id)" | ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force } catch { } }
+try { Stop-Process -Id $pa.Id -Force } catch { }
 try { Stop-Process -Id $sl.Id -Force } catch { }
 '@, $utf8)
 $wo = (& powershell -NoProfile -ExecutionPolicy Bypass -File $wt -Run (Join-Path $checks 'run.ps1') -Proj (Join-Path $tmp 'wait-proj') 2>&1 | ForEach-Object { "$_" }) -join "`n"
-Check 'v3.57.0 protocolo: run.ps1 wait — nada registrado/nada em espera = 0, dev vivo = 3, comando 15 min sem CPU nem arquivo = 5 (POSSÍVEL TRAVAMENTO), o mesmo com 1 min = 3, e o .next-verdict fica intacto; v3.57.1: -For espera dentro do script (vivo o prazo todo = 3 com várias conferências; terminou no meio = 0 e para cedo); waitSignals do projeto: build no container com alive = vivo, sem arquivo nem alive há 15 min = 5, arquivo novo = vivo' @{ Code = 0; Out = $wo } 0 @('1 exit=0 wait: terminou — nenhuma espera registrada', '2 exit=0 wait: terminou — a T-2 não tem agente nem comando', '3 exit=3 wait: vivo — T-2 · developer vivo', '4 exit=5 wait: POSSÍVEL TRAVAMENTO — T-2 · verify full', '5 exit=3 wait: vivo — T-2 · verify full', '6 verdict-intacto=True', '7 exit=3 wait: vivo — T-2 · verify full.*\(conferido [2-4] vez\(es\) em [2-6] s\)', '8 exit=0 wait: terminou — a T-2 não tem agente nem comando.*\(conferido \d vez\(es\) em [1-6] s\)', '9 exit=3 wait: vivo — T-2 · developer vivo \(última ação .*alvo:apk.* há 1[56] min\) · sinal do projeto \(alvo:apk\) · nenhum arquivo nas pastas declaradas · alive: rodando', '10 exit=5 wait: POSSÍVEL TRAVAMENTO — T-2 .*alive: sem saída \(sem ação do agente, sem arquivo novo e sem o alive há 10 min ou mais\)', '11 exit=3 wait: vivo — T-2 .*último arquivo em out/www há 0 min · alive: sem saída')
+Check 'v3.57.0 protocolo: run.ps1 wait — nada registrado/nada em espera = 0, dev vivo = 3, comando 15 min sem CPU nem arquivo = 5 (POSSÍVEL TRAVAMENTO), o mesmo com 1 min = 3, e o .next-verdict fica intacto; v3.57.1: -For espera dentro do script (vivo o prazo todo = 3 com várias conferências; terminou no meio = 0 e para cedo); waitSignals do projeto: build no container com alive = vivo, sem arquivo nem alive há 15 min = 5, arquivo novo = vivo' @{ Code = 0; Out = $wo } 0 @('1 exit=0 wait: terminou — nenhuma espera registrada', '2 exit=0 wait: terminou — a T-2 não tem agente nem comando', '3 exit=3 wait: vivo — T-2 · developer vivo', '4 exit=5 wait: POSSÍVEL TRAVAMENTO — T-2 · verify full', '5 exit=3 wait: vivo — T-2 · verify full', '6 verdict-intacto=True', '7 exit=3 wait: vivo — T-2 · verify full.*\(conferido [2-4] vez\(es\) em [2-6] s\)', '8 exit=0 wait: terminou — a T-2 não tem agente nem comando.*\(conferido \d vez\(es\) em [1-6] s\)', '9 exit=3 wait: vivo — T-2 · developer vivo \(última ação .*alvo:apk.* há 1[56] min\) · sinal do projeto \(alvo:apk\) · nenhum arquivo nas pastas declaradas · alive: rodando', '10 exit=5 wait: POSSÍVEL TRAVAMENTO — T-2 .*alive: sem saída \(sem ação do agente, sem arquivo novo e sem o alive há 10 min ou mais\)', '11 exit=3 wait: vivo — T-2 .*último arquivo em out/www há 0 min · alive: sem saída', '12 exit=3 wait: vivo — T-2 · verify full .*há 1[56] min · CPU \d s .*processo filho novo há 0 min')
+# v3.58.1: o comando do watcher cabe no limite da ferramenta — o -For do roteiro não passa do teto do run.ps1 (90 s), a
+# chamada leva timeout explícito, e o roteiro do SM cita o mesmo comando (a v3.57.1 escolheu 150 s contra um limite de 180 s
+# que não existia: toda chamada passava dos 120 s e ia para segundo plano, às vezes com a saída vazia).
+$wmd = Get-Content -LiteralPath (Join-Path $checks '../../agents/watcher.md') -Raw -Encoding UTF8
+$srm = Get-Content -LiteralPath (Join-Path $checks '../../roles/scrum-master/process/sprint-run.md') -Raw -Encoding UTF8
+$rps = Get-Content -LiteralPath (Join-Path $checks 'run.ps1') -Raw -Encoding UTF8
+$wFor = if ($wmd -match 'run\.ps1" wait -For (\d+)') { [int]$Matches[1] } else { -1 }
+$wCap = if ($rps -match '\$script:waitMaxFor = (\d+)') { [int]$Matches[1] } else { -1 }
+$wRot = $srm.Contains('wait -For ' + $wFor + '`')
+$wOut = "for=$wFor cap=$wCap cabe=$($wFor -gt 0 -and $wFor -le $wCap -and $wCap -le 100) timeout=$($wmd -match 'timeout: 300000') roteiro=$wRot vazia=$($wmd -match 'Saída vazia')"
+Check 'v3.58.1: o watcher roda wait -For <= teto do run.ps1 (<= 100 s, abaixo dos 120 s da ferramenta), com timeout explícito, o roteiro cita o mesmo -For e a saída vazia tem regra' @{ Code = 0; Out = $wOut } 0 @('cabe=True', 'timeout=True', 'roteiro=True', 'vazia=True')
 
 # v3.57.1 (note.md item 11) — "## Agora" para quem acompanha: papel com nome de gente, título da Task (a linha com marcador,
 # não a tabela de Histórias; a frase em negrito vira o nome), o que faz numa frase simples e horários fixos (sem "Há N min").
