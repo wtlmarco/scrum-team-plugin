@@ -13,6 +13,20 @@
 
 ---
 
+## v3.57.6 — 2026-11-12
+
+**Branch:** `fix/v3.57.6` a partir de `develop` (`7792f59`, v3.57.5 mesclada) · **Processo:** nenhum (a regra 18 já pedia o caminho; muda a mensagem da conferência e o texto dos modelos)
+Origem: sprint 6 do projeto. O plano externo da T-081 voltou duas vezes pelo mesmo motivo. As linhas M1 e M2 traziam `` teste `…/filtro-pilulas.component.spec.ts::FiltroEstado_…` ``, com o nome do teste grudado no caminho. O `plan.ps1` compara esse campo inteiro com **Arquivos tocados:**, que só tem o caminho, e respondia apenas "teste … fora de **Arquivos tocados:**". Os dois arquivos estavam na lista. O pacote de correção só repassa a tabela, então o chat externo não tinha como ver o motivo. O modelo, que dizia `` teste `<teste>` ``, deixava entender que o nome do teste também servia.
+
+Mudanças:
+- **A conferência diz o motivo** (`scripts/checks/plan.ps1`, §18). Quando o campo teste traz `::`, a linha diz que ali vai só o caminho do arquivo, que o nome do teste vai no texto da regra e se o caminho está em **Arquivos tocados:**. Ela continua recusando: o `verify.ps1` usa esse campo como caminho para casar com `verify.focused` e para passar ao runner, e com o `::` a mutação não roda. Depois disso, a comparação com a lista segue só com o caminho, e a mensagem vaga não aparece mais.
+- **O mini-plano do fix também confere** (`scripts/checks/fix.ps1 -PlanOnly`). A mesma recusa, com o mesmo motivo, vale para as linhas `**Mutações:**` de cada F-ID.
+- **Os modelos dizem o formato** (`roles/architect/templates/external-plan.md`, `external-fix-plan.md`, `implementation-plan.md`, `fix-plan.md`). Depois de "teste" vai só o caminho do arquivo, igual ao de **Arquivos tocados:**, nunca `<arquivo>::<NomeDoTeste>`. O nome do teste vai no texto da regra. Os cabeçalhos dos dois modelos externos passam a citar a v3.57.6.
+- **Testes:** dois casos em `run-check-tests.ps1`, um para o `plan.ps1` e um para o `fix.ps1 -PlanOnly`.
+- **Não muda:** o pacote já gerado, como o `H-W2-fix2` do sprint 6, que só recebe o texto novo quando o pacote for gerado de novo.
+
+---
+
 ## v3.57.5 — 2026-11-11
 
 **Branch:** `fix/v3.57.5` a partir de `develop` (`fdef17f`, v3.57.4 mesclada) · **Processo:** nenhum (as regras 29 e 35 já existiam; muda só o texto do pacote)
