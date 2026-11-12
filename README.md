@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.57.7** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.58.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -24,7 +24,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 │   ├── plugin.json                  manifesto do plugin
 │   └── marketplace.json             manifesto do marketplace (permite instalar por caminho)
 ├── agents/      scrum-master · product-owner · architect · user-experience · developer · quality-assurance · operator · task-runner (executor de Task, v3.52.2)
-├── commands/    sm · po · arc · ux · dev · qa · team · review · team-status · team-usage   definições dos 10 comandos (os dois últimos respondidos pelo hook, sem token)
+├── commands/    sm · po · arc · ux · dev · qa · sec · team · review · team-status · team-usage   definições dos 11 comandos (os dois últimos respondidos pelo hook, sem token)
 ├── hooks/                           guardas do harness (fase 1: G1 R31 · G2 cópia instalada · G3 R22 · G4 R28 · G13 autoteste; fase 2, por papel: G5 gate · G6 teste ignorado · G7 R28 · G8 matriz de propriedade · G9 R4/R8 · G11 operator; v3.44: G14 run sem trava · G15 pedido de permissão no log; v3.45: G16 consumo medido) — hooks.json, despachantes PowerShell, ownership.json (derivado da matriz) e COVERAGE.md (o que cada uma NÃO cobre)
 ├── scripts/checks/                  conferências: close.ps1 (C1, /sm close) · project.ps1 (C2, retrospectiva e onboarding) · release.ps1 (C3, antes do PR) · fix.ps1 (C4, /sm fix run) · tests/; e as escritas mecânicas da sessão no run: mark.ps1 (marcador) · dispatch.ps1 (preparo do disparo) · consumption.ps1 (registro de consumo); e team-view.ps1 (/team-status e /team-usage, só leitura)
 ├── scripts/metrics/                 medição de custo pelos transcripts (mantenedor e benchmark, Node)
@@ -99,6 +99,7 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 | UX Designer | [`roles/user-experience/`](roles/user-experience/README.md) | `user-experience` | Sonnet | `/ux` |
 | Desenvolvedor(a) júnior | [`roles/developer/`](roles/developer/README.md) | `developer` | Haiku | `/dev` |
 | QA | [`roles/quality-assurance/`](roles/quality-assurance/README.md) | `quality-assurance` | Sonnet | `/qa` |
+| Security Engineer *(sob demanda)* | [`roles/security-engineer/`](roles/security-engineer/README.md) | `security-engineer` | Sonnet | `/sec` |
 | **O time inteiro** | — | os seis, orquestrados pela sessão nos modos do `/sm` que reúnem papéis (`onboarding`, `brainstorm`, `sdd`, `sprint prepare`, `plan`, `run`, `review`) | — | `/team` só instala e atualiza (`init` · `update` · `version`) |
 | Stakeholder | você | — | — | conversa direta com qualquer papel |
 
@@ -111,13 +112,14 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 /ux     prototype | prototype sprint <n> | prototype screen <tela> | journey <fluxo> | screen <nome> | review-ui <tela>
 /dev    <T-ID> | resume <T-ID> | gap <resposta do arquiteto>
 /qa     <T-ID> | baseline | audit | security <T-ID> | bug <relato> | scenarios create | scenarios run <SC-nnn|grupo|all>
+/sec    blackbox [escopo] | graybox [escopo] | whitebox [escopo]            (sob demanda, fora do sprint)
 /team   init | update | version
 /review <instrução> | note | metrics | audit | history            (só no repositório-fonte do plugin)
 ```
 
 **`<H-ID>` opera sobre valor, `<T-ID>` sobre trabalho.** A História é a unidade de valor (dona: PO, conteúdo só funcional); a Task é a unidade de trabalho (no Sprint Backlog do SM, com o Plano de Implementação do Arquiteto dentro). Toda Task pertence a exatamente uma História (R20).
 
-Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. Três nomes se parecem e não são a mesma coisa: **`/ux review-ui`** (usabilidade de uma tela) é trabalho no produto — e a aderência do código ao plano é da frente 2 do `/qa`, em toda Task, sem modo próprio; **`/sm sprint review`** (antes `/sm review`, ainda alias) é a **Sprint Review**, também no produto; e **`/review`** evolui o processo do time e roda só no repositório-fonte do plugin.
+Os nomes dos seis primeiros comandos são a abreviação do papel; os **modos são em inglês**, como o resto do plugin. Três nomes se parecem e não são a mesma coisa: **`/ux review-ui`** (usabilidade de uma tela) é trabalho no produto — e a aderência do código ao plano é da frente 2 do `/qa`, em toda Task, sem modo próprio; **`/sm sprint review`** (antes `/sm review`, ainda alias) é a **Sprint Review**, também no produto; e **`/review`** evolui o processo do time e roda só no repositório-fonte do plugin. Dois mais, do eixo segurança: **`/qa security <ID>`** é a frente 3 do QA — checagem leve de segurança **por Task**, no portão; **`/sec`** é o Security Engineer — engajamento de segurança **profundo e sob demanda** (pentest e secure code review do sistema), fora da cadência do sprint.
 
 ### Com quem o stakeholder fala
 

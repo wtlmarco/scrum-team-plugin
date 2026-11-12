@@ -98,6 +98,10 @@ $cases = @(
        Payload = @{ tool_name = 'Agent'; agent_type = 'team:quality-assurance'; tool_input = @{ subagent_type = 'team:operator'; prompt = "Chamador: qa T-041`nx" } } },
     @{ Name = 'G7 sessão principal dispara o dev'; Script = 'pre-tool.ps1'; Expect = 0
        Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; prompt = 'x' } } },
+    @{ Name = 'G7 Security Engineer dispara o operator (v3.58)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:security-engineer'; tool_input = @{ subagent_type = 'team:operator'; prompt = "Chamador: sec blackbox`nx" } } },
+    @{ Name = 'G7 Security Engineer dispara outro papel: nega'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:security-engineer'; tool_input = @{ subagent_type = 'team:developer'; prompt = 'x' } } },
     @{ Name = 'G9 dev sem .active-task'; Script = 'pre-tool.ps1'; Expect = 2
        Payload = @{ tool_name = 'Write'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); content = 'x' } } },
     @{ Name = 'G9 dev em arquivo do plano'; Script = 'pre-tool.ps1'; Expect = 0
@@ -193,6 +197,12 @@ $cases = @(
        Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj '.team-project/architect/breakdown/S1.md'); content = 'x' } } },
     @{ Name = 'G8 PO acrescenta Aceite em review.md'; Script = 'pre-tool.ps1'; Expect = 0
        Payload = @{ tool_name = 'Edit'; agent_type = 'team:product-owner'; tool_input = @{ file_path = (Join-Path $proj '.team-project/sprints/1/review.md'); old_string = 'a'; new_string = 'b' } } },
+    @{ Name = 'G8 Security Engineer grava o relatório (v3.58)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:security-engineer'; tool_input = @{ file_path = (Join-Path $proj '.team-project/security/2026-11-12/FINDINGS.md'); content = 'x' } } },
+    @{ Name = 'G8 QA no relatório de segurança do Security Engineer'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Write'; agent_type = 'team:quality-assurance'; tool_input = @{ file_path = (Join-Path $proj '.team-project/security/2026-11-12/FINDINGS.md'); content = 'x' } } },
+    @{ Name = 'G8 Security Engineer em código-fonte: nega (reporta, não corrige)'; Script = 'pre-tool.ps1'; Expect = 2
+       Payload = @{ tool_name = 'Edit'; agent_type = 'team:security-engineer'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); old_string = 'a'; new_string = 'b' } } },
     @{ Name = 'G8 SM em arquivo sem linha na matriz'; Script = 'pre-tool.ps1'; Expect = 2
        Payload = @{ tool_name = 'Write'; agent_type = 'team:scrum-master'; tool_input = @{ file_path = (Join-Path $proj '.team-project/rascunho.md'); content = 'x' } } },
     @{ Name = 'G8 QA escreve código-fonte'; Script = 'pre-tool.ps1'; Expect = 2

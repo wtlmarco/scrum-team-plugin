@@ -8,6 +8,36 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.55 — Fechamento da margem, verificador por caminho e padrão de ids de teste: a fixture com regra na margem, o comando de teste escolhido pelo caminho, um nome de id para todo o sistema e os comandos do run declarados antes da construção (SM + Arquiteto + Dev + QA) — 05/11/2026
+
+**Instrução** (stakeholder, 05/11/2026, carta 2 da sessão do sprint 5 do garden — fechamento da R7-margem — e itens 10 e 11 da fila do `/review`; análise com o stakeholder e `plano-v3.55.0.md`). Recusados: aceitar mutação manual do dev como evidência de R7-margem e dispensar a trava para teste da própria Task. Decidido: padrão de ids para **todo** o sistema (todo elemento que um teste ou cenário lê ou toca); o `/team update` **audita e propõe, nunca corrige**.
+**Medido (sprint 5 do garden):** a T-072b trocou `content-desc` por `text` na fixture de um teste `node:test`; o `close` recusou duas vezes em série (formato, depois R7-margem) e o 🔺 GAP custou horas em 🟨 — a ida ao Arquiteto foi correta pelo processo (a troca mudou a entrada da regra testada), o caminho é que era caro. O `verify -Mode mutation` usava só `focused[0]` (Karma): teste `node:test` nunca entrou na prova. O `uiautomator` do app híbrido lê o `id` HTML como `resource-id` (o `data-testid` não chega); 237 `<ion-button>`/`<button>` em 53 templates passavam sem id, e o contrato de ids feito à mão numa Task cobria 12 das 53 telas. ≈ 25 formulários de comando negado pela G14 em 4 Histórias (≈ 3× o sprint 4).
+**Classificação:** formato (`- A<k> · fixture`; `**Corrige:**` + `### Testes herdados`; `### Comandos da Task`; `verify.focused` por objeto) · regra (R4: quarto desvio, a fixture; regras 31 e 32 do plano; padrão de ids) · instrumento (`close.ps1`, `verify.ps1`, `plan.ps1`, `run.ps1 allow`, `ids.ps1`, G14 só na mensagem) · ritual (`/team update` 7l; `/team init` 4a).
+
+### O que mudou
+- **Arquiteto** (`implementation-plan.md` regras 31 e 32, premissa P3 `medido: dump`, ids pelo mapa; `plan-rules-why.md`; **`standards/test-ids.md`** novo; perfis Angular, React e Kotlin/Android): plano de Task que corrige outra traz `### Testes herdados`; todo plano traz `### Comandos da Task`; elemento do próprio app é citado pelo id do mapa gerado do código, elemento de tela de fora pelo dump real. Gramática única de ids; o atributo muda por alvo (`id` no híbrido, `data-testid` na web, `testTag` no Compose).
+- **Dev** (`agents/developer.md` regra 1, `delivery-report.md`): linha fora do formato não esconde as outras travas; plano em `sem prova` manda ajuste de teste direto ao 🔺 GAP; `- A<k> · fixture · … · regra: <standards § | dump .xml>` ajusta a fixture ao que a regra ou o dump dizem (arquivo em **Arquivos tocados:**, regra obrigatória, dump existente); comando que escapou da declaração volta como `<ID> 🔺 comando: <prefixo>`.
+- **SM** (`working-rules.md` R4, `sprint-run.md`, `fix-run.md`, `how-to.md`, `artifact-ownership.md` §1, `team-update.md` 7l, `team-init.md` 4a): a parada única dos comandos (`run.ps1 next`/`start` → um formulário → `run.ps1 allow` grava em `runCommands` e no `run-log.md`); mapa e auditoria de ids com dono Arquiteto; o 7l roda `ids.ps1 -Map`/`-Audit` e abre dois formulários (atributo; retrofit como Habilitadora), sem editar código, plano aprovado nem `.scn`.
+- **QA** (README, frente 2): o cenário localiza por id (texto só em tela de fora, com dump); a fixture nova é conferida contra o padrão ou o `.xml` citado; prova de app híbrido em emulador de container (serial de rede, `id`, `baseline`), com o limite do WebView sem id em `[PARCIAL]`.
+
+### Por quê
+O processo perdia horas em dois caminhos baratos de evitar: a recusa em série escondia a segunda trava atrás da primeira, e o verificador nem via o runner do teste ajustado. O padrão de ids resolve na origem o que o garden remendou à mão: um nome só, gerado do código, no atributo que o alvo enxerga. Os comandos do run são conhecidos no plano; perguntar uma vez antes custa um formulário, perguntar a cada negação custou 25.
+
+### Conflitos com o processo vigente
+A R4 (margem do dev) ganha o quarto desvio nomeado, a fixture, com instrumento; o "Deve falhar se…" continua do plano. A G14 não muda a lista — o comando liberado mora no `runCommands` do projeto, nunca no padrão do plugin. O `data-testid` do NG-5 passa a valer só para web pura.
+
+### Como saberemos que funcionou
+Sprint 6 do garden: zero GAP por ajuste de teste em `sem prova`; zero recusa em série no `done`; formulários de comando negado pela G14 ≤ 1/3 do sprint 5 (alvo: perto de zero); cenários `[PARCIAL]` "por falta de id" caindo a cada sprint; cenários de WebView provados pelo `accept` sem desvio de `adb input`.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.52 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.55, v3.54, v3.53 | ✅ |
+| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.55.0 | ✅ |
+
+### Parte mecânica (implementada pela sessão principal, citada aqui)
+`lib.ps1` (`Get-MarginAdjustments` com leitura tolerante e `fixture`; `Get-TestIdAttribute`; `Find-UntaggedUi` com Ionic, item de lista e raiz da tela; `Get-PlanCommandGaps` e auxiliares); `close.ps1` (R7-margem: tolerante, `sem prova`, fixture); `verify.ps1` (`focused` por objeto, `Resolve-FocusedItem`, `tests 0` do `node:test`); `plan.ps1` (regras 31 e 32); `run.ps1` (`allow`, `Get-CommandStop`, `Add-RunCommands`); `ids.ps1` novo; `hooks/common.ps1` (`runBase`, `Get-RepairCommands`, `Test-CommandPrefix`, movidos do `pre-tool.ps1`); `ownership.json`.
+
 ## v3.54 — Mutação pela regra e margem do dev: o Arquiteto diz o que provar, o dev escreve o trecho e corrige o defeito do próprio teste, com travas no fechamento (SM + Arquiteto + Dev + QA) — 04/11/2026
 
 **Instrução** (stakeholder, 04/11/2026, relatório de encadeamento do sprint 5 do garden: "vamos seguir com as duas", depois da explicação do problema, da proposta e do ganho de cada uma).
