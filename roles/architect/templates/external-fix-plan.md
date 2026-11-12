@@ -1,6 +1,6 @@
 # Pacote de plano externo (trilha fix) — {{TITLE}}
 
-> Gerado pelo `fix-pack.ps1` do plugin team (v3.53.4) a partir deste modelo (`roles/architect/templates/external-fix-plan.md`). Quem recebe: um assistente de IA fora do Claude Code (o app do Codex, um chat na web) que escreve os mini-planos. Quem confere: o `fix.ps1 -PlanOnly`, quando o retorno volta ao projeto em `.team-project/fixes/{{BLOCK}}/pack/in/`.
+> Gerado pelo `fix-pack.ps1` do plugin team (v3.57.6) a partir deste modelo (`roles/architect/templates/external-fix-plan.md`). Quem recebe: um assistente de IA fora do Claude Code (o app do Codex, um chat na web) que escreve os mini-planos. Quem confere: o `fix.ps1 -PlanOnly`, quando o retorno volta ao projeto em `.team-project/fixes/{{BLOCK}}/pack/in/`.
 
 ## Seu papel
 
@@ -37,7 +37,7 @@ Cada ficha está em `fixes/<F-ID>.md` (tipo, sintoma, entrada da reprodução no
 - Critério com `✘` sem `**Critério que caiu:** C<n> — <motivo>` logo depois de "Onde parar e perguntar" — é a **promoção**: o resto da seção fica como insumo e `### Arquivos` vira `n/a — promovida`.
 - Sem promoção: `### Arquivos` sem `- produção:` ou sem `- teste:`, caminho entre crases e relativo à raiz; `- produção:` que não existe no projeto.
 - `### Teste de regressão` sem `**Comando (só este teste):**` entre crases ou sem `**Antes da correção, falha com:**` (a asserção, nunca erro de compilação).
-- Sem `**Mutações:**` no formato `` - M<k> · teste `<teste>` · `<produção>` · regra: <a correção desfeita> `` (v3.54: o dev escreve o trecho) ou `` · `<trecho novo, exato>` → `<trecho atual>` ``.
+- Sem `**Mutações:**` no formato `` - M<k> · teste `<caminho do arquivo de teste>` · `<produção>` · regra: <a correção desfeita> `` (v3.54: o dev escreve o trecho) ou `` · `<trecho novo, exato>` → `<trecho atual>` ``. Depois de "teste" vai **só o caminho do arquivo**, nunca `` `<arquivo>::<NomeDoTeste>` ``; o nome do teste vai no texto da regra.
 - `### Passos` com menos de 2 ou mais de 5 passos (teste → correção → teste passando, cada um com **Conferência**).
 - Sem `## Verificação do bloco`; bloco acima do teto.
 

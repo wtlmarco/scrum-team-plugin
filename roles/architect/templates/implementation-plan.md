@@ -80,7 +80,7 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
 **Mutações:**
 - M1 · teste `<arquivo de teste>` · `<arquivo de produção>` · regra: <o que a mutação quebra — ex.: aceitar valor igual ao limite>
 - M2 · teste `<arquivo de teste>` · `<arquivo de produção>` · `<trecho que JÁ existe no código>` → `<trecho mutante>`
-*(regra 18 — pela regra é o padrão: o dev escreve o trecho sobre o código real; literal só com trecho que já existe uma vez no arquivo. Teste sem regra a remover: `sem prova: <arquivo> — <motivo>`)*
+*(regra 18 — pela regra é o padrão: o dev escreve o trecho sobre o código real; literal só com trecho que já existe uma vez no arquivo. Depois de "teste", só o caminho do arquivo, como em **Arquivos tocados:** — nunca `<arquivo>::<NomeDoTeste>`; o nome do teste vai no texto da regra. Teste sem regra a remover: `sem prova: <arquivo> — <motivo>`)*
 
 **Render real** *(só com **Layout novo: sim** — regra 21)*:
 | Teste de render | Tela (largura × altura) | Fontes | Caixas medidas | Deve falhar se… |
