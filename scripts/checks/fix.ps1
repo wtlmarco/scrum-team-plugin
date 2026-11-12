@@ -147,7 +147,10 @@ try {
             $tr = Get-FSection $ps '^###\s+Teste de regress[ãa]o'
             if (-not $tr -or $tr -notmatch '\*\*Comando \(s[óo] este teste\):\*\*\s*`[^`]+`') { $iss += "${F}: Teste de regressão sem **Comando (só este teste):** entre crases (regra 6)" }
             if (-not $tr -or $tr -notmatch '\*\*Antes da corre[çc][ãa]o, falha com:\*\*\s*\S') { $iss += "${F}: Teste de regressão sem **Antes da correção, falha com:** (regra 6)" }
-            if (-not @(Get-Mutations $ps).Count) { $iss += "${F}: sem **Mutações:** no formato - M<k> · teste ``…`` · ``<produção>`` · regra: <o que quebra> (ou ``<trecho>`` → ``<mutante>`` com trecho que já existe) (regra 6)" }
+            $fm = @(Get-Mutations $ps)
+            if (-not $fm.Count) { $iss += "${F}: sem **Mutações:** no formato - M<k> · teste ``…`` · ``<produção>`` · regra: <o que quebra> (ou ``<trecho>`` → ``<mutante>`` com trecho que já existe) (regra 6)" }
+            # v3.57.6: o campo teste é o caminho que o verify.ps1 passa ao runner — "<arquivo>::<NomeDoTeste>" não roda
+            foreach ($mu in @($fm | Where-Object { $_.Test -match '::' })) { $iss += "${F}: $($mu.Id): o campo teste traz o nome do teste (``$($mu.Test)``) — escreva só o caminho do arquivo, sem ::<NomeDoTeste>; o nome do teste vai no texto da regra (regra 6)" }
             $pa = Get-FSection $ps '^###\s+Passos'
             $np = if ($pa) { @([regex]::Matches($pa, '(?m)^\s*\d+\.\s')).Count } else { 0 }
             if ($np -lt 2 -or $np -gt 5) { $iss += "${F}: $np passo(s) (regra 7: de 2 a 5)" }

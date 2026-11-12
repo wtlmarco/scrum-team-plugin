@@ -127,6 +127,16 @@ try {
         foreach ($m in $muts) {
             $t = ($m.Test -replace '\\', '/'); $f = ($m.File -replace '\\', '/')
             if ($files -and $files -notcontains $f) { $iss += "$($m.Id): $f fora de **Arquivos tocados:**" }
+            # v3.57.6 (sprint 6 do garden, T-081): "teste `<arquivo>::<NomeDoTeste>`" — o campo é o caminho que o verify.ps1
+            # casa com verify.focused e passa ao runner; com o nome grudado, a mensagem era só "fora de Arquivos tocados" e o
+            # plano externo voltou duas vezes pelo mesmo motivo. Diz o motivo e segue com o caminho.
+            $sel = [regex]::Match($t, '^(.+?)::(.+)$')
+            if ($sel.Success) {
+                $tp = $sel.Groups[1].Value.Trim()
+                $inList = if ($files -and $files -contains $tp) { " ($tp está em **Arquivos tocados:**)" } else { '' }
+                $iss += "$($m.Id): o campo teste traz o nome do teste (``$t``) — escreva só o caminho do arquivo, ``$tp``, sem ::$($sel.Groups[2].Value.Trim()); o nome do teste vai no texto da regra$inList"
+                $t = $tp
+            }
             if ($files -and $files -notcontains $t) { $iss += "$($m.Id): teste $t fora de **Arquivos tocados:**" }
             # v3.54: declarada pela regra — o dev escreve o trecho sobre o código real; aqui só a regra tem de dizer o que quebra.
             if ($null -eq $m.Find) { if ($m.Rule.Length -lt 12) { $iss += "$($m.Id): 'regra:' vazia ou curta demais — diga o que a mutação quebra (ex.: 'aceitar valor igual ao limite')" }; continue }

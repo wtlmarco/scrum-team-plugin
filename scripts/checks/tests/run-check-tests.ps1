@@ -753,6 +753,9 @@ Check 'Plano leve com 6 arquivos: volta à plena' $r 1 @('\| leve \| falhou.*6 a
 Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts`` · ``src/a.ts`` · ```` → ``x```n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'Plano com trecho de mutação vazio (crase dupla): exit 1 (v3.47.1)' $r 1 @('\| mutação \| falhou.*M1: trecho vazio')
+Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`n`n**Mutações:**`n- M1 · teste ``tests/a.spec.ts::Soma_DoisValores_DevolveTotal`` · ``src/a.ts`` · regra: devolver outro valor que não a soma`n")
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.57.6: teste da mutação com ::NomeDoTeste → diz o motivo, não "fora de Arquivos tocados" (T-081 do garden)' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'teste \S+ fora de') { "`nMSG-VAGA" } else { '' }) } 1 @('\| mutação \| falhou.*M1: o campo teste traz o nome do teste .*só o caminho do arquivo, `tests/a\.spec\.ts`, sem ::Soma_DoisValores_DevolveTotal; o nome do teste vai no texto da regra \(tests/a\.spec\.ts está em \*\*Arquivos tocados:\*\*\)', '^(?![\s\S]*MSG-VAGA)')
 Put $p $pl ("# Plano`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n``.team-project/scrum-master/context.md```n``.github/workflows/ci.yml```n`n**Arquivos protegidos:** nenhum`n`n## 6. Testes`nsem prova: x`n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'Plano com documento de outro papel e arquivo de gate na lista: exit 1 (v3.48)' $r 1 @('\| dono \| falhou.*scrum-master/context\.md é de SM.*ci\.yml é arquivo de gate')
@@ -1832,6 +1835,9 @@ Check 'v3.53.4 fix.ps1 -PlanOnly: promoção com o critério que caiu passa e é
 Put $fx '.team-project/fixes/B-001/plan.md' ($fhead + (& $fxs 'F-001' 'src/Export.cs') + $fpromo.Replace("**Critério que caiu:** C5 — muda o contrato da API`n", '') + $ftail)
 $r = Invoke-Check 'fix.ps1' @('-Block', 'B-001', '-PlanOnly', '-Root', $fx)
 Check 'v3.53.4 fix.ps1 -PlanOnly: C5 ✘ sem o critério que caiu volta (exit 1)' $r 1 @('F-002: C5 ✘ sem \*\*Critério que caiu:\*\*', 'O plano do bloco volta')
+Put $fx '.team-project/fixes/B-001/plan.md' ($fhead + (& $fxs 'F-001' 'src/Export.cs').Replace('teste `tests/F-001Tests.cs` ·', 'teste `tests/F-001Tests.cs::UltimaLinha` ·') + $fpromo + $ftail)
+$r = Invoke-Check 'fix.ps1' @('-Block', 'B-001', '-PlanOnly', '-Root', $fx)
+Check 'v3.57.6 fix.ps1 -PlanOnly: teste da mutação com ::NomeDoTeste volta, com o motivo' $r 1 @('F-001: M1: o campo teste traz o nome do teste \(`tests/F-001Tests\.cs::UltimaLinha`\) — escreva só o caminho do arquivo')
 
 # 18. v3.53.6 parte B (sprint 5 do garden) — item 4: ids de teste conferidos no verify -Mode full (chave testids): id do .scn
 # da Task fora do código e controle interativo sem id reprovam, com o .scn ou arquivo:linha; exceção "sem-testid: <motivo>".
