@@ -261,7 +261,7 @@ function Test-G7([object]$ToolInput) {
         if ($target -in 'developer', 'architect', 'operator', 'quality-assurance') { return }
         Deny 'G7' $shown "o executor de Task dispara só developer, architect, operator e quality-assurance (agents/task-runner.md) — $shown fica com a sessão que orquestra. Pare e devolva a linha à sessão (ex.: T-041 🔴 bloqueada: <motivo>)."
     }
-    if ($script:role -notin 'architect', 'developer', 'quality-assurance', 'user-experience') { return }
+    if ($script:role -notin 'architect', 'developer', 'quality-assurance', 'user-experience', 'security-engineer') { return }
     if ($target -ne 'operator') {
         Deny 'G7' $shown "a ferramenta Agent serve só ao operator (R28) — disparar outro papel ($shown) atropela a propriedade dos artefatos. Delegue a execução pesada ao operator; o resto, reporte a quem orquestra."
     }

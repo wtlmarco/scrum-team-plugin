@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.55`](process-changelog-archive.md) | Fechamento da margem, verificador por caminho e padrão de ids de teste (SM + Arquiteto + Dev + QA) — 05/11/2026 |
 | [`v3.54`](process-changelog-archive.md) | Mutação pela regra e margem do dev: o Arquiteto diz o que provar, o dev escreve o trecho e corrige o defeito do próprio teste, com travas no fechamento (SM + Arquiteto + Dev + QA) — 04/11/2026 · *com addenda v3.54.1 e v3.54.2* |
 | [`v3.53`](process-changelog-archive.md) | Plano pela ficha: a quebra em Tasks traz a ficha de cada Task, um Arquiteto por Task e o template do plano só com o operativo (SM + Arquiteto + Dev + QA) — 28/10/2026 · *com addenda v3.53.1 a v3.53.7* |
 | [`v3.52`](process-changelog-archive.md) | Orquestrador enxuto: sessão nova por ritual, `run` em sessões curtas, espera sem sondagem, registro de decisões e commit por Task (SM) — 23/10/2026 |
@@ -96,6 +97,51 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.58 — Security Engineer: pentest e secure code review sob demanda, com o laço que leva o achado ao standard do Arquiteto (SM + Arquiteto + Security Engineer) — 2026-11-12
+
+**Instrução:** (stakeholder, 11–12/11/2026) "criaremos uma nova role como analista de segurança … para avaliar o sistema"; e "uma revisão de práticas de segurança que direcione aos standards do Arquiteto a base para escrita de planos de código e arquitetura que já atenda aos princípios de segurança que esses testes irão validar".
+**Classificação:** escopo de papel · comportamento de agente · propriedade · formato de documento
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `agents/security-engineer.md`, `commands/sec.md` | novos | Papel **sob demanda** (fora dos seis dos rituais), Sonnet, três modos: `blackbox`, `graybox`, `whitebox` |
+| `roles/security-engineer/` | novo | README, skills, `playbooks/{black,gray,white}-box.md` (generalizados do marcador-next), `templates/{context,security-report}.md` |
+| `standards/implementation-appsec-web-api.md` | novo (transversal) | Superfície web/API: validação, injeção, saída/XSS, mass assignment, token na borda, CORS, cabeçalhos/HSTS, rate limiting, SSRF, erros, SCA — o eixo que o `security-lgpd` não cobre |
+| `standards/README.md` | índice | linha do appsec |
+| `hooks/common.ps1` | CallerByRole, Get-CallerToken, Get-PlainRole, ModelRoles/Aliases | `sec` / `security-engineer` |
+| `hooks/pre-tool.ps1` | G7 | o papel dispara o `operator` (R28) |
+| `hooks/ownership.json` + `artifact-ownership.md` §1 | G8 | `roles`; `.team-project/security-engineer/context.md`, `security/**`, `roles/security-engineer/**`, process-changelog; linha nova em §1 (relatórios de segurança) |
+| `deliverables/team-project/{README.md,models.json}`, `rituals/review-contract.md`, `README.md`, `how-to.md`, `.claude-plugin/*` | registros | seeds sob demanda, chave de modelo, alcance do `/review`, tabelas e contagens de comando/agente |
+
+### Por quê
+A checagem de segurança do QA (frente 3) é **por Task, no portão** — rasa para um pentest ou uma revisão de segurança de código do **sistema**. Faltava um papel dono de um engajamento profundo, sob demanda, com relatório. E faltava o **laço**: o que o pentest acha no fim, o standard deve exigir no começo — por isso o achado cuja causa-raiz é standard ausente/fraco vai ao Arquiteto complementar `standards/`, como o QA já faz com defeito de standard (R16). A análise de lacuna mostrou identidade/autorização/LGPD já cobertas; a superfície web/API dinâmica (injeção, CORS, cabeçalhos, rate limiting, token na borda, SCA) não — virou o `implementation-appsec-web-api.md`.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| Security Engineer (novo) | Dono do engajamento sob demanda; reporta, não corrige; roteia achado de código ao PO/QA e de causa sistêmica ao `/review` |
+| Arquiteto | Dono editorial do novo standard appsec; recebe o achado de causa sistêmica pelo `/review` |
+| QA | Mantém a frente 3 (checagem por Task); não se sobrepõe ao `/sec` |
+| SM | Matriz §1 e manifesto ganham o papel; mantém a coerência do `context.md` |
+
+### Conflitos com o processo vigente
+Nenhum: o papel é sob demanda, fora dos seis dos rituais; não entra em onboarding/sdd/sprint. O homônimo `/qa security` × `/sec` é distinguido no README e no `how-to` (§1b).
+
+### Como saberemos que funcionou
+Um engajamento `/sec` produz relatório em `.team-project/security/<data>/` com achados roteados; um achado de causa sistêmica vira entrada de `/review` que complementa `standards/`. Indicador: planos de Task que tocam borda HTTP passam a citar `implementation-appsec-web-api.md`.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| substituição de padrão (playbooks sem marcador-next) | `Select-String roles/security-engineer/playbooks/*.md -Pattern 'marcador-next\|eyeclinic\|X-Authorization\|localhost:3000'` | 0 ocorrências | ✅ |
+| Entrega | `release.ps1` (C3) · `run-guard-tests.ps1` · `run-check-tests.ps1` | ver CHANGELOG v3.58.0 | ✅ |
+
+### Pendente do stakeholder
+`agents/security-engineer.md`, `commands/sec.md` e `.claude-plugin/*` são do stakeholder — propostos nesta entrega, aplicados com a aprovação do PR.
+
+---
+
 ## v3.57 — O sprint real: protocolo de espera, sessão medida e reiniciada pelo teto, suíte só pelo verify, Arquiteto com contexto enxuto e o que o sprint 5 do garden não tinha onde pôr (SM + Arquiteto + Dev + QA) — 07/11/2026 · *com addenda v3.57.1 a v3.57.3*
 
 **Instrução** (stakeholder, 07/11 a 10/11/2026: relatório intermediário do sprint 5 do garden e `decisoes-plugin-report.md` → v3.57.0; `note.md` itens 1 a 13 → v3.57.1; ocorrências do sprint 5, itens 14 a 24, com as decisões de 09/11 por formulário → v3.57.2; o `plugin-report.md` final do sprint 5 conferido contra a 3.57.2, com as decisões de 10/11 por formulário → v3.57.3, "podemos já fazer todos").
@@ -156,35 +202,3 @@ Sprint 6 do garden (`validacoes-sprint-6.md` item 20): tabela origem × destino 
 
 ### Parte mecânica (implementada pela sessão principal, citada aqui)
 `lib.ps1` (`Get-LessonClass`, `Get-KnowledgeSince`, `Get-PlanGapDecisions`, `Get-ProjectKnowledge`, `Get-TaskKnowledgeLines`, `Get-KnowledgeDigest`, `Get-Stacks`, `Get-StackPitfallLines`, `Get-PlanScenarios`, `Get-ScenarioFiles`; os cenários da Task pelo plano em `Get-SprintTasks`); `knowledge.ps1` novo; `plan.ps1` (regra 29); `run.ps1` (cartão, recorte, prompts, `Get-AcceptArgs`); `accept.ps1` (`-Only`); `close.ps1` (R30 pelo plano); `hooks/pre-tool.ps1` (G9 × `git check-ignore`), `session-start.ps1` (G13 sem `stacks`), `common.ps1` (`Get-InferredStacks`); `ownership.json`; `standards/stacks/ionic-capacitor/` e `pitfalls.md` das stacks.
-
----
-
-## v3.55 — Fechamento da margem, verificador por caminho e padrão de ids de teste: a fixture com regra na margem, o comando de teste escolhido pelo caminho, um nome de id para todo o sistema e os comandos do run declarados antes da construção (SM + Arquiteto + Dev + QA) — 05/11/2026
-
-**Instrução** (stakeholder, 05/11/2026, carta 2 da sessão do sprint 5 do garden — fechamento da R7-margem — e itens 10 e 11 da fila do `/review`; análise com o stakeholder e `plano-v3.55.0.md`). Recusados: aceitar mutação manual do dev como evidência de R7-margem e dispensar a trava para teste da própria Task. Decidido: padrão de ids para **todo** o sistema (todo elemento que um teste ou cenário lê ou toca); o `/team update` **audita e propõe, nunca corrige**.
-**Medido (sprint 5 do garden):** a T-072b trocou `content-desc` por `text` na fixture de um teste `node:test`; o `close` recusou duas vezes em série (formato, depois R7-margem) e o 🔺 GAP custou horas em 🟨 — a ida ao Arquiteto foi correta pelo processo (a troca mudou a entrada da regra testada), o caminho é que era caro. O `verify -Mode mutation` usava só `focused[0]` (Karma): teste `node:test` nunca entrou na prova. O `uiautomator` do app híbrido lê o `id` HTML como `resource-id` (o `data-testid` não chega); 237 `<ion-button>`/`<button>` em 53 templates passavam sem id, e o contrato de ids feito à mão numa Task cobria 12 das 53 telas. ≈ 25 formulários de comando negado pela G14 em 4 Histórias (≈ 3× o sprint 4).
-**Classificação:** formato (`- A<k> · fixture`; `**Corrige:**` + `### Testes herdados`; `### Comandos da Task`; `verify.focused` por objeto) · regra (R4: quarto desvio, a fixture; regras 31 e 32 do plano; padrão de ids) · instrumento (`close.ps1`, `verify.ps1`, `plan.ps1`, `run.ps1 allow`, `ids.ps1`, G14 só na mensagem) · ritual (`/team update` 7l; `/team init` 4a).
-
-### O que mudou
-- **Arquiteto** (`implementation-plan.md` regras 31 e 32, premissa P3 `medido: dump`, ids pelo mapa; `plan-rules-why.md`; **`standards/test-ids.md`** novo; perfis Angular, React e Kotlin/Android): plano de Task que corrige outra traz `### Testes herdados`; todo plano traz `### Comandos da Task`; elemento do próprio app é citado pelo id do mapa gerado do código, elemento de tela de fora pelo dump real. Gramática única de ids; o atributo muda por alvo (`id` no híbrido, `data-testid` na web, `testTag` no Compose).
-- **Dev** (`agents/developer.md` regra 1, `delivery-report.md`): linha fora do formato não esconde as outras travas; plano em `sem prova` manda ajuste de teste direto ao 🔺 GAP; `- A<k> · fixture · … · regra: <standards § | dump .xml>` ajusta a fixture ao que a regra ou o dump dizem (arquivo em **Arquivos tocados:**, regra obrigatória, dump existente); comando que escapou da declaração volta como `<ID> 🔺 comando: <prefixo>`.
-- **SM** (`working-rules.md` R4, `sprint-run.md`, `fix-run.md`, `how-to.md`, `artifact-ownership.md` §1, `team-update.md` 7l, `team-init.md` 4a): a parada única dos comandos (`run.ps1 next`/`start` → um formulário → `run.ps1 allow` grava em `runCommands` e no `run-log.md`); mapa e auditoria de ids com dono Arquiteto; o 7l roda `ids.ps1 -Map`/`-Audit` e abre dois formulários (atributo; retrofit como Habilitadora), sem editar código, plano aprovado nem `.scn`.
-- **QA** (README, frente 2): o cenário localiza por id (texto só em tela de fora, com dump); a fixture nova é conferida contra o padrão ou o `.xml` citado; prova de app híbrido em emulador de container (serial de rede, `id`, `baseline`), com o limite do WebView sem id em `[PARCIAL]`.
-
-### Por quê
-O processo perdia horas em dois caminhos baratos de evitar: a recusa em série escondia a segunda trava atrás da primeira, e o verificador nem via o runner do teste ajustado. O padrão de ids resolve na origem o que o garden remendou à mão: um nome só, gerado do código, no atributo que o alvo enxerga. Os comandos do run são conhecidos no plano; perguntar uma vez antes custa um formulário, perguntar a cada negação custou 25.
-
-### Conflitos com o processo vigente
-A R4 (margem do dev) ganha o quarto desvio nomeado, a fixture, com instrumento; o "Deve falhar se…" continua do plano. A G14 não muda a lista — o comando liberado mora no `runCommands` do projeto, nunca no padrão do plugin. O `data-testid` do NG-5 passa a valer só para web pura.
-
-### Como saberemos que funcionou
-Sprint 6 do garden: zero GAP por ajuste de teste em `sem prova`; zero recusa em série no `done`; formulários de comando negado pela G14 ≤ 1/3 do sprint 5 (alvo: perto de zero); cenários `[PARCIAL]` "por falta de id" caindo a cada sprint; cenários de WebView provados pelo `accept` sem desvio de `adb input`.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Arquivamento de entrada | bloco v3.52 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.55, v3.54, v3.53 | ✅ |
-| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.55.0 | ✅ |
-
-### Parte mecânica (implementada pela sessão principal, citada aqui)
-`lib.ps1` (`Get-MarginAdjustments` com leitura tolerante e `fixture`; `Get-TestIdAttribute`; `Find-UntaggedUi` com Ionic, item de lista e raiz da tela; `Get-PlanCommandGaps` e auxiliares); `close.ps1` (R7-margem: tolerante, `sem prova`, fixture); `verify.ps1` (`focused` por objeto, `Resolve-FocusedItem`, `tests 0` do `node:test`); `plan.ps1` (regras 31 e 32); `run.ps1` (`allow`, `Get-CommandStop`, `Add-RunCommands`); `ids.ps1` novo; `hooks/common.ps1` (`runBase`, `Get-RepairCommands`, `Test-CommandPrefix`, movidos do `pre-tool.ps1`); `ownership.json`.

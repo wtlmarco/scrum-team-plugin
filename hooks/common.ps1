@@ -151,7 +151,7 @@ function Test-GlobMatch([string]$RelPath, [object[]]$Globs) {
 
 # v3.57.3 (G7, chamador do operator): o papel escrito na linha "Chamador: <papel> <ID>" no nome curto do consumo — dev, arc,
 # qa, ux, sm, po, task-runner (aceita "executor") e sessão. '' quando não é papel conhecido.
-$script:CallerByRole = @{ 'developer' = 'dev'; 'architect' = 'arc'; 'quality-assurance' = 'qa'; 'user-experience' = 'ux'; 'scrum-master' = 'sm'; 'product-owner' = 'po'; 'task-runner' = 'task-runner' }
+$script:CallerByRole = @{ 'developer' = 'dev'; 'architect' = 'arc'; 'quality-assurance' = 'qa'; 'user-experience' = 'ux'; 'scrum-master' = 'sm'; 'product-owner' = 'po'; 'security-engineer' = 'sec'; 'task-runner' = 'task-runner' }
 function Get-CallerToken([string]$Text) {
     $x = ([string]$Text).Trim().Trim('`', '*', '.', ',', ':', ';', '"', "'").ToLowerInvariant() -replace 'ã', 'a'
     switch -Regex ($x) {
@@ -161,6 +161,7 @@ function Get-CallerToken([string]$Text) {
         '^(ux|user-experience)$' { return 'ux' }
         '^(sm|scrum-master)$' { return 'sm' }
         '^(po|product-owner)$' { return 'po' }
+        '^(sec|security-engineer)$' { return 'sec' }
         '^(executor|task-runner)$' { return 'task-runner' }
         '^(sessao|session)$' { return 'sessão' }
     }
@@ -327,7 +328,7 @@ function Get-SprintNumber([string]$ProjectDir) {
 # /team-status, que calcula na leitura).
 function Get-PlainRole([string]$Type) {
     $r = $Type -replace '^.*:', ''
-    switch ($r) { 'developer' { 'Dev' } 'task-runner' { 'Executor da Task' } 'architect' { 'Arquiteto' } 'quality-assurance' { 'QA' } 'operator' { 'Operador' } 'product-owner' { 'PO' } 'scrum-master' { 'SM' } 'user-experience' { 'UX' } 'watcher' { 'Watcher (espera)' } default { $r } }
+    switch ($r) { 'developer' { 'Dev' } 'task-runner' { 'Executor da Task' } 'architect' { 'Arquiteto' } 'quality-assurance' { 'QA' } 'operator' { 'Operador' } 'product-owner' { 'PO' } 'scrum-master' { 'SM' } 'user-experience' { 'UX' } 'security-engineer' { 'Security Engineer' } 'watcher' { 'Watcher (espera)' } default { $r } }
 }
 function Get-PlainAction([string]$Last) {
     $l = [string]$Last
@@ -498,8 +499,8 @@ function Get-Marker([string]$ProjectDir, [string]$Name) {
 # Chave que falta = o modelo do proprio agente (agents/<papel>.md) e as excecoes do processo. Chave ligada VENCE tudo.
 # Chave que comeca com "_" e comentario. Valor ou chave invalida e ignorado e listado em Problems; arquivo
 # ilegivel = como ausente (falha aberta, D5).
-$script:ModelRoles   = @('architect', 'developer', 'operator', 'product-owner', 'quality-assurance', 'scrum-master', 'user-experience')
-$script:ModelAliases = @{ arc = 'architect'; dev = 'developer'; po = 'product-owner'; qa = 'quality-assurance'; sm = 'scrum-master'; ux = 'user-experience' }
+$script:ModelRoles   = @('architect', 'developer', 'operator', 'product-owner', 'quality-assurance', 'scrum-master', 'security-engineer', 'user-experience')
+$script:ModelAliases = @{ arc = 'architect'; dev = 'developer'; po = 'product-owner'; qa = 'quality-assurance'; sm = 'scrum-master'; sec = 'security-engineer'; ux = 'user-experience' }
 $script:ModelValues  = @('opus', 'sonnet', 'haiku', 'fable')
 
 function Get-ModelsConfig([string]$ProjectDir) {

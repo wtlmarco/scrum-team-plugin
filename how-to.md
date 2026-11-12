@@ -456,6 +456,7 @@ Depois disso, basta `claude --remote-control "ACME · <produto>"`. Duas coisas p
 | `/ux` | `prototype` · `prototype sprint <n>` · `prototype screen <tela>` · `journey <fluxo>` · `screen <nome>` · `review-ui <tela>` | UX — protótipos, jornadas, telas, usabilidade, acessibilidade |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` | Desenvolvedor — executa o plano, não improvisa |
 | `/qa` | `<ID>` · `baseline` · `audit` · `security <ID>` · `bug <descrição\|lista>` *(acionado pelo PO ou pelo `fix plan`)* · `scenarios create` · `scenarios run <SC-nnn\|grupo\|all>` | QA — o veredito de qualidade que responde a você |
+| `/sec` | `blackbox [escopo]` · `graybox [escopo]` · `whitebox [escopo]` | Security Engineer — engajamento de segurança **profundo e sob demanda** (pentest e secure code review do sistema), fora da cadência do sprint; reporta, não corrige. A checagem leve por Task é a frente 3 do `/qa` |
 | `/team` | `init` · `update` · `version` · `remote` | Instala, atualiza e informa a versão — não dispara agente |
 | `/review` | `<instrução>` · `note` · `metrics` · `audit` · `history` | Evolução do processo do time — **só no repositório-fonte do plugin** |
 | `/team-status` · `/team-usage` | `[<n do sprint>]` (sem número: o sprint corrente) | Consulta **sem token**: um script responde e o modelo não é acionado. `/team-status` mostra o quadro, quem trabalha agora, o run e o que espera você; `/team-usage` mostra tokens, US$ e tempo dos agentes, por Task e por papel |
@@ -555,7 +556,7 @@ O `.claude/settings.json` do projeto deve ficar assim:
 claude plugin install team@team --scope project -y
 ```
 
-Depois de reiniciar, `/plugin` mostra `team@team` como **enabled** e `/help` lista os **8 comandos** (`/sm /po /arc /ux /dev /qa /team /review`) e os **8 agentes** (os seis papéis, o `operator` e o executor de Task `task-runner`). Se não listar, veja *Problemas de instalação*.
+Depois de reiniciar, `/plugin` mostra `team@team` como **enabled** e `/help` lista os **9 comandos** (`/sm /po /arc /ux /dev /qa /sec /team /review`) e os **9 agentes** (os seis papéis dos rituais, o Security Engineer sob demanda, o `operator` e o executor de Task `task-runner`). Se não listar, veja *Problemas de instalação*.
 
 **3. `/team init`** — cria o `.team-project/` e conduz o preenchimento. Sem ele, todo papel para e pede que seja criado.
 
