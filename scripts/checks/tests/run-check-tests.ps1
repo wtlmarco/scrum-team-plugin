@@ -667,6 +667,15 @@ $pl = '.team-project/sprints/1/plan/T-041a-x.md'
 Put $p $pl ("# Plano`n**Cenários:** SC-014, SC-016, SC-015 (teste)`n**Risco:** infraestrutura`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 3. Ambiente`n`n| Pré-requisito | Comando de medição | Saída real |`n|---|---|---|`n| Node 20 | node --version | v20.11.0 |`n`n## 6. Testes`nsem prova: x`n`n## 9. Onde parar`n- **Pré-requisito ausente** — 🔺 GAP`n")
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.53.2 regra 23: cenário que aguarda conta como declarado; (teste) fica fora do .scn' $r 0 @('\| cenários \| ok.*SC-014.*SC-016 \(aguarda T-041\); por teste: SC-015')
+# v3.57.7 (sprint 6 do garden, T-067): o plano cita o ID sem o "(teste)" e o .scn o declara "# SC-015 (teste) …" → vale; ID
+# sem definição e sem a declaração (SC-099) continua reprovando.
+Put $p '.team-project/quality-assurance/scenarios/H-014.scn' "# aguarda T-041: SC-016`n# SC-015 (teste) total do export: export.spec.ts`nscenario SC-014 Exporta`nlaunch`nassert-exists x`n"
+Put $p $pl ([System.IO.File]::ReadAllText((Join-Path $p $pl), $utf8).Replace('SC-015 (teste)', 'SC-015'))
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.57.7 regra 23: ID sem "(teste)" no plano, declarado "(teste)" no .scn → ok, e a linha diz o porquê' $r 0 @('\| cenários \| ok.*SC-014.*por teste: SC-015 \(SC-015 declarados \(teste\) no \.scn\)')
+Put $p $pl ([System.IO.File]::ReadAllText((Join-Path $p $pl), $utf8).Replace('SC-014, SC-016, SC-015', 'SC-014, SC-016, SC-015, SC-099'))
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.57.7 regra 23: ID sem definição nem declaração (teste) no .scn continua reprovando' $r 1 @('\| cenários \| falhou.*sem definição nos \.scn: SC-099 \|')
 
 # 5d2. v3.53 (note.md itens 7 e 8): Task com ficha no breakdown → um Arquiteto por Task, que abre só o recorte da ficha.
 $p = Join-Path $tmp 'ficha'; New-Project $p
@@ -1747,6 +1756,14 @@ Check 'v3.53.5: adb sem resposta é encerrado no prazo (2 s, não 30) e o comand
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 $zipList = { param($z) $za = [System.IO.Compression.ZipFile]::OpenRead($z); try { ($za.Entries | ForEach-Object { $_.FullName }) -join "`n" } finally { $za.Dispose() } }
 $zipMake = { param($z, $entries) $fs = [System.IO.File]::Open($z, [System.IO.FileMode]::Create); try { $za = New-Object System.IO.Compression.ZipArchive($fs, [System.IO.Compression.ZipArchiveMode]::Create); try { foreach ($k in $entries.Keys) { $w = New-Object System.IO.StreamWriter($za.CreateEntry($k).Open(), $utf8); try { $w.Write($entries[$k]) } finally { $w.Dispose() } } } finally { $za.Dispose() } } finally { $fs.Dispose() } }
+# v3.57.7 (sprint 6 do garden): a lista "O que a conferência recusa" do roteiro externo ficou atrás do plan.ps1 três entregas
+# seguidas (v3.57.5, v3.57.6, e as regras 21/23/26/33 na T-067). Toda regra que o plan.ps1 pode reprovar tem a instrução no
+# roteiro, marcada com o nome da linha da tabela entre colchetes: regra nova sem instrução quebra aqui, não no sprint.
+$planSrc = [System.IO.File]::ReadAllText((Join-Path $checks 'plan.ps1'), $utf8)
+$xtpl = [System.IO.File]::ReadAllText((Join-Path $checks '..\..\roles\architect\templates\external-plan.md'), $utf8)
+$xrules = @([regex]::Matches($planSrc, "Add-Result '([^']+)' 'falhou'") | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
+$xmiss = @($xrules | Where-Object { $xtpl -notmatch ('`\[' + [regex]::Escape($_) + '\]`') })
+Check 'v3.57.7: toda regra que o plan.ps1 reprova tem instrução no roteiro do pacote externo ([<regra>])' @{ Code = 0; Out = "regras=$($xrules.Count) faltam=[$($xmiss -join ', ')]" } 0 @('regras=(1[5-9]|[2-9]\d)', 'faltam=\[\]')
 $xp = Join-Path $tmp 'externo'; New-Project $xp
 Put $xp '.team-project/architect/breakdown/S1.md' $bdText
 Put $xp 'src/a.ts' "export const a = 1`n"; Put $xp 'docs/sdd/03-architecture.md' "# Arquitetura`n"
@@ -1838,6 +1855,36 @@ Check 'v3.53.4 fix.ps1 -PlanOnly: C5 ✘ sem o critério que caiu volta (exit 1)
 Put $fx '.team-project/fixes/B-001/plan.md' ($fhead + (& $fxs 'F-001' 'src/Export.cs').Replace('teste `tests/F-001Tests.cs` ·', 'teste `tests/F-001Tests.cs::UltimaLinha` ·') + $fpromo + $ftail)
 $r = Invoke-Check 'fix.ps1' @('-Block', 'B-001', '-PlanOnly', '-Root', $fx)
 Check 'v3.57.6 fix.ps1 -PlanOnly: teste da mutação com ::NomeDoTeste volta, com o motivo' $r 1 @('F-001: M1: o campo teste traz o nome do teste \(`tests/F-001Tests\.cs::UltimaLinha`\) — escreva só o caminho do arquivo')
+
+# 17b. v3.57.7 (sprint 6 do garden, T-067): o environment.md do pacote é medido pelo run ao montar o pacote, e a referência
+# só vem de plano escrito no Claude — o plano externo (Task no state.json) recopiava a §3 "sem medição" do pacote anterior.
+$ev = Join-Path $tmp 'env-medido'; New-Item -ItemType Directory -Force $ev | Out-Null
+Put $ev 'front/package.json' '{ "name": "x" }'; Put $ev 'front/angular.json' '{}'
+Put $ev 'front/node_modules/@angular/core/package.json' '{ "version": "20.3.1" }'
+Put $ev '.team-project/sprints/1/pack/state.json' '{ "packs": { "H-1": { "name": "H-1", "round": 1, "tasks": ["T-050"], "rejected": [], "at": "" } }, "gaps": {} }'
+Put $ev '.team-project/sprints/1/plan/T-041-y.md' "# Plano`n`n## 3. Ambiente`n`n| Pré-requisito | Comando de medição | Saída real |`n|---|---|---|`n| Node | node --version | v20.11.0 |`n`n## 4. Passos`n"
+Put $ev '.team-project/sprints/1/plan/T-050-x.md' "# Plano`n`n## 3. Ambiente`n`n| Pré-requisito | Comando de medição | Saída real |`n|---|---|---|`n| Node | node --version | sem medição no pacote |`n`n## 4. Passos`n"
+(Get-Item -LiteralPath (Join-Path $ev '.team-project/sprints/1/plan/T-041-y.md')).LastWriteTime = (Get-Date).AddHours(-2)
+$fakeChrome = Join-Path $tmp 'fake-chrome.cmd'; [System.IO.File]::WriteAllText($fakeChrome, "@echo ^<html^>^<body^>^</body^>^</html^>`r`n", [System.Text.Encoding]::ASCII)
+$hs3 = Join-Path $tmp 'pack-env.ps1'
+[System.IO.File]::WriteAllText($hs3, @'
+param([string]$Checks, [string]$Root, [string]$Chrome)
+$ErrorActionPreference = 'Stop'
+. (Join-Path $Checks 'lib.ps1')
+$n = '1'; $S = Join-Path $Root '.team-project/sprints/1'; $utf8 = New-Object System.Text.UTF8Encoding($false); $tasks = @()
+. (Join-Path $Checks 'external-plan.ps1')
+$env:CHROME_BIN = $Chrome
+$ctx = Join-Path $Root 'ctx'; New-Item -ItemType Directory -Force $ctx | Out-Null
+Write-PackEnv $ctx
+[System.IO.File]::ReadAllText((Join-Path $ctx 'environment.md'), $utf8)
+"LOG=" + (Test-Path -LiteralPath (Join-Path $S 'pack/environment.log'))
+'@, $utf8)
+$runEnv = { param($c) & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $hs3 -Checks $checks -Root $ev -Chrome $c 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } } }
+$r = & $runEnv $fakeChrome
+Check 'v3.57.7: environment.md medido ao montar o pacote — tabela no formato da §3, headless aberto (sim), Angular lido do node_modules, premissas prontas e a saída bruta em pack/' $r 0 @('Medido pelo `run\.ps1` do plugin ao montar este pacote', '\| Node\.js \| `node --version` \| ', '\| Angular \(@angular/core instalado\) \| `[^`|]+` \| 20\.3\.1 \| .* \| \*\*sim\*\* \|', '\| Navegador headless do teste de render \| `[^`]+` \| abriu headless e devolveu o DOM \(exit 0\) · CHROME_BIN \| .* \| \*\*sim\*\* \|', '(?m)^- P\d+ · ambiente: Navegador headless do teste de render · medido: `[^`]+` → abriu headless', 'LOG=True')
+Check 'v3.57.7: a referência vem do plano escrito no Claude (T-041), nunca do plano externo (T-050, no state.json do pacote)' $r 0 @('Fonte: `sprints/1/plan/T-041-y\.md`', '^(?![\s\S]*T-050-x\.md)')
+$r = & $runEnv (Join-Path $tmp 'nao-existe\chrome.exe')
+Check 'v3.57.7: CHROME_BIN apontando para arquivo que não existe → headless **não**, sem premissa pronta dele' $r 0 @('\| Navegador headless do teste de render \| .*CHROME_BIN aponta para arquivo que não existe.*\| \*\*não\*\* — ', '^(?![\s\S]*ambiente: Navegador headless)')
 
 # 18. v3.53.6 parte B (sprint 5 do garden) — item 4: ids de teste conferidos no verify -Mode full (chave testids): id do .scn
 # da Task fora do código e controle interativo sem id reprovam, com o .scn ou arquivo:linha; exceção "sem-testid: <motivo>".
@@ -2213,7 +2260,11 @@ $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.57.0 item 9: envelope com sonda e os casos (a)/(b) → ok, 1 medida' $r 0 @('\| envelope \| ok.*1 medida\(s\) com sonda e árvore de decisão', '^(?![\s\S]*AVISO \(regra 33\))')
 Put $p $pl ($h7 + "`n" + $b7 + "**Envelope de medidas**:`n- E1 · espaçamento entre os botões · (a) se medir 0 px → aplique gap de 8 px`n`n### Premissas`n- P1 · o popover abre abaixo do campo, sem sobreposição · medido: job ``operator/1/T-080-plano/`` → caixa do popover y=212, campo y2=200`n- P2 · a margem do card é 16 px · não exercitada: o card nasce no passo 2 · verifica: dev em passo 4 (teste de render)`n" + $f7)
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
-Check 'v3.57.1 item 7: linha do envelope sem sonda e sem o caso (b) → reprova e nomeia a linha (E1)' $r 1 @('\| envelope \| falhou.*1 linha\(s\) do envelope sem sonda: `<comando>` ou sem os casos \(a\) e \(b\) "se medir …": E1 \(regra 33\)')
+Check 'v3.57.1 item 7: linha do envelope sem sonda e sem o caso (b) → reprova e nomeia a linha (E1)' $r 1 @('\| envelope \| falhou.*1 linha\(s\) do envelope sem sonda: `<comando>` ou sem os casos "\(a\) se …" e "\(b\) se …": E1 \(regra 33\)')
+# v3.57.7 (sprint 6 do garden, T-067): "(a) se `scrollWidth ≤ clientWidth` …" sem a palavra "medir" é a mesma árvore.
+Put $p $pl ($h7 + "`n" + $b7 + "**Envelope de medidas**:`n- E1 · quebra do ion-title · sonda: ``getBoundingClientRect`` + ``scrollWidth/clientWidth`` · (a) se ``scrollWidth ≤ clientWidth`` e até 2 linhas, manter · (b) se ficar em 3 linhas sem corte, deixar a toolbar crescer; fora disso → 🔺 GAP ``aparência```n`n### Premissas`n- P1 · o popover abre abaixo do campo, sem sobreposição · medido: job ``operator/1/T-080-plano/`` → caixa do popover y=212, campo y2=200`n" + $f7)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.57.7: envelope com "(a) se …" e "(b) se …" sem a palavra medir → ok (T-067 do garden)' $r 0 @('\| envelope \| ok.*1 medida\(s\) com sonda e árvore de decisão')
 # v3.57.1 (note.md item 5, regra 34): a dispensa do aceite num lugar só — a frase solta reprova sem a linha **Aceite:** do
 # cabeçalho (16 planos do garden dispensaram, a leitura da v3.57.0 reconheceu 7); "- **Aceite de D-8:**" não é a linha;
 # com **Cenários:** nenhum não há o que dispensar. Só a linha "aceite" importa aqui (o resto do plano é mínimo).
