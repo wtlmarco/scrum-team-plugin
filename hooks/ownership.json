@@ -7,6 +7,7 @@
                   "quality-assurance":  "QA",
                   "scrum-master":  "SM",
                   "developer":  "dev",
+                  "security-engineer":  "Security Engineer",
                   "operator":  "operator",
                   "task-runner":  "executor de Task"
               },
@@ -410,6 +411,36 @@
                     },
                     {
                         "paths":  [
+                                      ".team-project/security-engineer/context.md"
+                                  ],
+                        "writers":  [
+                                        "security-engineer",
+                                        "scrum-master"
+                                    ],
+                        "matriz":  "Contexto do projeto (`.team-project/**/context.md`)",
+                        "dono":  "SM"
+                    },
+                    {
+                        "paths":  [
+                                      ".team-project/security/**"
+                                  ],
+                        "writers":  [
+                                        "security-engineer"
+                                    ],
+                        "matriz":  "Relatórios de segurança (`.team-project/security/",
+                        "dono":  "Security Engineer"
+                    },
+                    {
+                        "paths":  [
+                                      ".team-project/security-engineer/**"
+                                  ],
+                        "writers":  [
+                                        "security-engineer"
+                                    ],
+                        "nota":  "pasta do papel (manifesto deliverables/team-project/README.md)"
+                    },
+                    {
+                        "paths":  [
                                       ".team-project/developer/context.md"
                                   ],
                         "writers":  [
@@ -609,7 +640,8 @@
                                              "architect",
                                              "user-experience",
                                              "quality-assurance",
-                                             "developer"
+                                             "developer",
+                                             "security-engineer"
                                          ],
                              "matriz":  "`${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/process-changelog.md`",
                              "dono":  "curador"
@@ -682,6 +714,16 @@
                                              "quality-assurance"
                                          ],
                              "matriz":  "`${CLAUDE_PLUGIN_ROOT}/roles/\u003cpapel\u003e/README.md`, `skills.md`, `templates/`",
+                             "dono":  "o próprio papel"
+                         },
+                         {
+                             "paths":  [
+                                           "roles/security-engineer/**"
+                                       ],
+                             "writers":  [
+                                             "security-engineer"
+                                         ],
+                             "matriz":  "`${CLAUDE_PLUGIN_ROOT}/roles/<papel>/README.md`, `skills.md`, `templates/`",
                              "dono":  "o próprio papel"
                          },
                          {

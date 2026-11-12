@@ -13,6 +13,25 @@
 
 ---
 
+## v3.58.0 — 2026-11-12
+
+**Branch:** `feat/v3.58.0` a partir de `develop` (`4ca7a1a`, v3.57.7 mesclada) · **Processo:** v3.58 (SM + Arquiteto + Security Engineer)
+
+Papel novo **Security Engineer** (`/sec`), **sob demanda** — fora da cadência do sprint, não é um dos seis dos rituais. Três modos de engajamento, cada um com seu playbook em `roles/security-engineer/playbooks/`: `blackbox` (pentest externo), `graybox` (pentest dinâmico com contas de teste) e `whitebox` (secure code review). Dono do escopo autorizado, das fases e do relatório; **reporta, não corrige**. A checagem leve de segurança por Task continua no QA (frente 3); os dois não se sobrepõem.
+
+Os playbooks saíram de `melhorias/PromptPenTest*.md`, **generalizados**: o que era cravado no `marcador-next` (URLs, header de auth, stack, LGPD-saúde) virou referência a `.team-project/security-engineer/context.md`, que o papel lê antes de tudo — **sem a autorização por escrito (§1), o papel para e pede ao stakeholder**.
+
+**Laço shift-left.** O que o pentest valida no fim, o standard passa a exigir no começo: achado cujo causa-raiz é standard ausente/fraco vira achado de processo ao `/review` → Arquiteto complementa `standards/`, como o QA já faz (R16). A análise de lacuna mostrou identidade/autorização/LGPD já cobertas pelo `implementation-security-lgpd-copyright.md`; a superfície web/API dinâmica não — virou o novo standard transversal **`implementation-appsec-web-api.md`** (validação, injeção, saída/XSS, mass assignment, token na borda, CORS, cabeçalhos/HSTS, rate limiting, SSRF, erros, SCA).
+
+Mudanças:
+- **Agente e comando:** `agents/security-engineer.md` (Sonnet), `commands/sec.md`.
+- **Papel:** `roles/security-engineer/` — README, skills, 3 playbooks, templates de `context.md` e de relatório.
+- **Standard:** `standards/implementation-appsec-web-api.md` (novo) + linha no `standards/README.md`.
+- **Hooks:** `common.ps1` (chamador, modelo, nome do papel), `pre-tool.ps1` (G7 — o papel dispara o `operator`), `ownership.json` (G8 — propriedade dos relatórios e da pasta do papel).
+- **Matriz e manifesto:** `artifact-ownership.md` §1 (linha dos relatórios de segurança), `deliverables/team-project/README.md` e `models.json`, `rituals/review-contract.md`, `README.md`, `how-to.md`, `.claude-plugin/*`.
+
+Os `agents/*`, `commands/*` e `.claude-plugin/*` são do stakeholder: propostos aqui, aplicados com a aprovação do PR.
+
 ## v3.57.7 — 2026-11-12
 
 **Branch:** `fix/v3.57.7` a partir de `develop` (`72ab30c`, v3.57.6 mesclada) · **Processo:** nenhum (as regras 21, 23, 26 e 33 continuam as mesmas; muda quem mede o ambiente do pacote, o texto do roteiro e duas leituras da conferência)
