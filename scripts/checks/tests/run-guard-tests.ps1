@@ -636,8 +636,8 @@ $cases = @(
        Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:watcher'; description = 'Watcher da espera da T-2'; prompt = 'x' } } },
     # v3.57.1: o comando do roteiro do watcher passa pela G14 (é conferência do plugin); o laço antigo com Start-Sleep, não —
     # no sprint 5 do garden os 5 disparos reais foram negados assim e voltaram em ~8 s sem conferir nada.
-    @{ Name = 'v3.57.1 watcher: o comando exato do roteiro (run.ps1 wait -For 150) é liberado pela G14 durante o run'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
-       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:watcher'; agent_id = 'wt0000001'; tool_input = @{ command = "powershell -NoProfile -File `"$root/scripts/checks/run.ps1`" wait -For 150" } } },
+    @{ Name = 'v3.57.1 watcher: o comando exato do roteiro (v3.58.1: run.ps1 wait -For 90, com timeout explícito) é liberado pela G14 durante o run'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:watcher'; agent_id = 'wt0000001'; tool_input = @{ command = "powershell -NoProfile -File `"$root/scripts/checks/run.ps1`" wait -For 90"; timeout = 300000 } } },
     @{ Name = 'v3.57.1 watcher: o laço da v3.57.0 (Start-Sleep no comando) continua negado pela G14 com runCommands, como no garden — por isso a espera foi para dentro do script'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'espera com Start-Sleep'
        Setup = { $g = Join-Path $proj '.team-project/guards.json'; Copy-Item -LiteralPath $g (Join-Path $tmp 'guards-antes-watcher.json') -Force -ErrorAction SilentlyContinue
                  Set-Content -LiteralPath $g '{ "runCommands": ["npm test"] }' -Encoding UTF8 }

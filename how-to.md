@@ -256,7 +256,7 @@ Agora: nenhum agente em execução
 
 Em execução: T-061 · Novo Manejo (canteiros) · há 1h21 (start às 02/11 19:22)
   último sinal de vida há 1h21 (start, 19:22)
-  comando: reparo/conferência do alvo android (target.ps1 android) (pid 2032, desde 2026-11-02 19:22:37) — há 1h21 · CPU 1 s · esperando: adb.exe emu kill · ⚠ POSSÍVEL TRAVAMENTO (sem CPU nem arquivo novo há 10 min ou mais)
+  comando: reparo/conferência do alvo android (target.ps1 android) (pid 2032, desde 2026-11-02 19:22:37) — há 1h21 · CPU 1 s · esperando: adb.exe emu kill · ⚠ POSSÍVEL TRAVAMENTO (sem CPU, processo filho nem arquivo novo há 10 min ou mais)
 
 🟦 Plano: T-071 T-041 T-042 …
 ⬜ A fazer: T-065 T-066

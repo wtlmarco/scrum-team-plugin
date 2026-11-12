@@ -693,11 +693,18 @@ function Get-WaitPulse([int]$ProcId, [string]$Desde = '', [string]$Dir = '') {
         $lw = @(Get-ChildItem -LiteralPath $Dir -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'verify.lock' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
         if ($lw.Count) { $wmin = [Math]::Max(0, ($now - $lw[0].LastWriteTime).TotalMinutes) }
     }
-    $stalled = ($min -ge 10) -and ($null -eq $wmin -or $wmin -ge 10) -and ($cpu -lt [Math]::Max(5, $min * 60 * 0.005))
+    # v3.58.1: a CPU acima é a dos processos VIVOS da árvore — não é cumulativa: o filho que termina leva a CPU dele junto
+    # (medido: 6 filhos de 3 s de CPU cada, a soma oscilou 0,7 → 3,5 → 0,9 → 4,0 s e nunca passou de 4 s dos ~18 s gastos).
+    # Um build feito de filhos curtos (node, gradle, tsc) parecia "sem CPU" e caía em POSSÍVEL TRAVAMENTO falso. Sinal de
+    # vida sem estado (a sonda continua só de leitura): descendente criado há menos de 10 min = a árvore anda. O travamento
+    # real do garden (um adb emu kill parado 81 min) não tem filho novo e segue acusado.
+    $kidsT = @($tree | Where-Object { $_.ProcessId -ne $ProcId -and $_.CreationDate -and $_.Name -notmatch '^(?i)conhost\.exe$' })
+    $spawnMin = $null; if ($kidsT.Count) { $spawnMin = [Math]::Max(0, ($now - (@($kidsT | Sort-Object CreationDate)[-1]).CreationDate).TotalMinutes) }
+    $stalled = ($min -ge 10) -and ($null -eq $wmin -or $wmin -ge 10) -and ($null -eq $spawnMin -or $spawnMin -ge 10) -and ($cpu -lt [Math]::Max(5, $min * 60 * 0.005))
     $fmt = { param($m) if ($m -lt 60) { "$([int][Math]::Floor($m)) min" } else { '{0}h{1:00}' -f [int][Math]::Floor($m / 60), [int][Math]::Floor($m % 60) } }
-    $txt = "há $(& $fmt $min) · CPU $([int][Math]::Round($cpu)) s" + $(if ($leaf) { " · esperando: $leaf" } else { '' }) + $(if ($null -ne $wmin) { " · último arquivo há $(& $fmt $wmin)" } elseif ($Dir) { ' · nenhum arquivo gravado' } else { '' })
-    if ($stalled) { $txt += " · $([char]0x26A0) POSSÍVEL TRAVAMENTO (sem CPU nem arquivo novo há 10 min ou mais)" }
-    return [pscustomobject]@{ Min = $min; CpuS = $cpu; Leaf = $leaf; WriteMin = $wmin; Stalled = $stalled; Text = $txt }
+    $txt = "há $(& $fmt $min) · CPU $([int][Math]::Round($cpu)) s" + $(if ($leaf) { " · esperando: $leaf" } else { '' }) + $(if ($null -ne $spawnMin -and $spawnMin -lt 10) { " · processo filho novo há $(& $fmt $spawnMin)" } else { '' }) + $(if ($null -ne $wmin) { " · último arquivo há $(& $fmt $wmin)" } elseif ($Dir) { ' · nenhum arquivo gravado' } else { '' })
+    if ($stalled) { $txt += " · $([char]0x26A0) POSSÍVEL TRAVAMENTO (sem CPU, processo filho nem arquivo novo há 10 min ou mais)" }
+    return [pscustomobject]@{ Min = $min; CpuS = $cpu; Leaf = $leaf; WriteMin = $wmin; SpawnMin = $spawnMin; Stalled = $stalled; Text = $txt }
 }
 
 # v3.57.1 (note.md item 1, sprint 5 do garden): sinal de vida DECLARADO PELO PROJETO para a espera que o plugin não mede. O
