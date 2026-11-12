@@ -13,6 +13,37 @@
 
 ---
 
+## v3.57.7 — 2026-11-12
+
+**Branch:** `fix/v3.57.7` a partir de `develop` (`72ab30c`, v3.57.6 mesclada) · **Processo:** nenhum (as regras 21, 23, 26 e 33 continuam as mesmas; muda quem mede o ambiente do pacote, o texto do roteiro e duas leituras da conferência)
+Origem: sprint 6 do projeto. O plano externo da T-067 (História H-Y, layout novo) voltou reprovado em cenários, render, premissa e envelope. Dessas, render e premissa não tinham como passar. O `environment.md` do pacote era a §3 do plano mais recente, e esse plano também tinha vindo de fora, sem medição: T-080 → T-081 → T-067, todas as linhas "sem medição no pacote". Com **Layout novo:** sim, a conferência exige o navegador headless medido e ao menos uma premissa `medido:`. O assistente de fora não roda comando e, corretamente, não inventou saída. O pacote de correção H-Y-fix1 voltaria reprovado nas mesmas duas linhas. As outras duas falhas vieram do roteiro: a lista "O que a conferência recusa" não falava das regras 21, 26 (com layout novo) e 33, e não dizia para manter o sufixo `(teste)` dos cenários. É a terceira entrega seguida em que essa lista fica atrás do `plan.ps1` (v3.57.5, v3.57.6).
+
+Mudanças:
+- **O run mede o ambiente ao montar o pacote** (`scripts/checks/external-plan.ps1`, `Write-PackEnv`). Sondas curtas com prazo (`Invoke-Bounded`), sem instalar nada:
+  - Node, npm, as dependências e o Angular, pela pasta do `package.json` (a raiz ou a primeira subpasta);
+  - o navegador headless, aberto de verdade (`--headless=new --dump-dom about:blank`), com esta ordem: `CHROME_BIN`, senão o Chrome instalado, senão o Chromium do Playwright;
+  - `adb version` e `adb devices`, com alvo android;
+  - `dotnet` e `python`, pelo arquivo de projeto.
+
+  O `environment.md` traz a tabela no formato da §3 (**sim**/**não**) e as **Premissas prontas** (`- P<k> · ambiente: … · medido: `…` → …`), e a saída bruta vai a `pack/environment.log`. No garden, as 7 sondas levam ~14 s. Vale também para o pacote da decisão de 🔺 GAP.
+- **A referência não vem mais de plano externo** (`Get-SprintEnv`). A §3 de plano de Task que está no `state.json` do pacote é ignorada. O que sobra, a §3 do último plano escrito no Claude, entra como referência, abaixo da medição.
+- **O roteiro cobre todas as regras** (`roles/architect/templates/external-plan.md`). Cada item leva o nome da linha da tabela do `plan.ps1` entre colchetes (`[cenários]`, `[render]`, `[envelope]` …), para o assistente casar o `falhou` do `check.txt` com a instrução. Entraram:
+  - o bloco **Com Layout novo: sim**: headless na §3, tabela **Render real** com mutação sobre o teste de render, uma premissa `medido:` das prontas, geometria não se mede lendo código, formato do envelope e **Documentos vivos:**;
+  - o `(teste)` copiado literalmente;
+  - `[tamanho]`, `[comandos]`, `[aceite]`, `[herdados]` e `[leve]`.
+- **Cenários** (`plan.ps1`, regra 23). O ID citado sem `(teste)` vale como provado por teste quando o `.scn` o declara num comentário `# SC-224 (teste) …`, que é a declaração do QA. A linha diz isso. O ID sem definição e sem a declaração continua reprovando. O modelo do plano (regra 23) diz o mesmo.
+- **Envelope** (`plan.ps1`, regra 33). `(a) se …` e `(b) se …` valem sem a palavra "medir": "(a) se `scrollWidth ≤ clientWidth` …" é a mesma árvore. Continua exigindo a `sonda:` entre crases, e por isso E3 e E4 da T-067 seguem reprovando: a sonda delas é prosa.
+- **Testes** (`run-check-tests.ps1`):
+  - toda regra que o `plan.ps1` pode reprovar (`Add-Result '<regra>' 'falhou'`) tem `[<regra>]` no roteiro externo: regra nova sem instrução quebra o teste, não o sprint;
+  - o `environment.md` medido, com headless **sim**, Angular lido do `node_modules`, premissa pronta e log;
+  - `CHROME_BIN` inexistente dá **não**;
+  - a referência vem do plano do Claude, não do externo;
+  - o ID sem `(teste)` declarado no `.scn` passa, e o ID sem nada reprova;
+  - o envelope com `(a) se` passa.
+- **Não muda:** o pacote já gerado, como o `H-Y-fix1` do sprint 6. Ele só recebe a medição e o roteiro novos quando o pacote for gerado de novo.
+
+---
+
 ## v3.57.6 — 2026-11-12
 
 **Branch:** `fix/v3.57.6` a partir de `develop` (`7792f59`, v3.57.5 mesclada) · **Processo:** nenhum (a regra 18 já pedia o caminho; muda a mensagem da conferência e o texto dos modelos)
