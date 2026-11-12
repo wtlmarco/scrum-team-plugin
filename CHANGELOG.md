@@ -13,6 +13,23 @@
 
 ---
 
+## v3.58.1 — 2026-11-12
+
+**Branch:** `fix/v3.58.1` a partir de `develop` (`e3d3528`, v3.58.0 mesclada) · **Processo:** nenhum (as seis regras do protocolo de espera continuam as mesmas; mudam a constante medida errada, o comando do watcher e o sinal de vida da sonda)
+
+Origem: sprint 6 do projeto. A espera do watcher não esperava. O `run.ps1 wait -For 150` conferia a cada 30 s até 150 s, mais ~0,5–1 s por conferência (`Get-CimInstance`) e a partida do `powershell`: cada chamada durava ~155–170 s. A ferramenta de comando corta em **120 s** sem `timeout` explícito e move a chamada para segundo plano. O roteiro dizia **180 s** ("medido no teste do watcher, 07/11"), e o `-For 150` foi escolhido para caber nesse limite que não existia. Toda chamada estourou, nas três rodadas (`aa041…`, `ab6d…`, `af84…`), e em duas a notificação voltou com `exit code 3` e a saída vazia. O exit 3 só sai da última linha do `wait` (vivo), então o estado era conhecido e só o texto se perdeu; mas o watcher não tinha regra para saída vazia, e a sessão redisparou o watcher em vez de parar.
+
+Junto, a CPU "inconsistente para o mesmo pid" foi medida: o `Get-WaitPulse` soma a CPU dos processos **vivos** da árvore, e o filho que termina leva a dele. No experimento (pai com 6 filhos de ~3 s de CPU cada), a soma oscilou 0,7 → 3,5 → 2,3 → 0,9 → 3,2 → 4,0 s e nunca passou de 4 s dos ~18 s gastos. Um build de filhos curtos (node, gradle, tsc) com 15 min e sem arquivo novo caía em POSSÍVEL TRAVAMENTO falso.
+
+Mudanças:
+- **`run.ps1 wait`:** `-For` acima de 90 é cortado para 90 (`$script:waitMaxFor`), e a saída é descarregada antes do `exit`. O exit code é o veredito (0 · 3 · 5).
+- **`agents/watcher.md`:** `wait -For 90` com `timeout: 300000`, até 6 chamadas (~9 min, como antes), regra para saída vazia (o exit code decide; outro código = `falha da sonda`), e nunca uma segunda chamada enquanto a anterior está em segundo plano.
+- **`sprint-run.md` §Protocolo de espera:** a constante passa a 120 s (e 90 s, o teto do `-For`), o contrato do watcher ganha a linha `falha da sonda` (a sessão redispara uma vez; na segunda seguida, leva ao stakeholder), e o item 5 e o `operator.md` passam de "~3 min" para "~2 min".
+- **`lib.ps1` → `Get-WaitPulse`:** um descendente criado há menos de 10 min é sinal de vida (o texto mostra `processo filho novo há N min`). Sem estado: a sonda continua só de leitura. O travamento real do garden (um `adb emu kill` parado 81 min, sem filho novo) segue acusado. Limite: um laço que recria o mesmo filho para sempre nunca cai em travamento, mas ele gasta CPU e anda, e por isso não é a espera parada que a regra caça.
+- **Testes:** `run-check-tests` com o caso 12 do `wait` (filho recém-criado, 15 min, CPU baixa = vivo) e uma checagem que amarra o `-For` do watcher ao teto do script, o `timeout` e o roteiro. O `run-guard-tests` libera o comando novo pela G14.
+
+Os `agents/*` são do stakeholder: propostos aqui, aplicados com a aprovação do PR.
+
 ## v3.58.0 — 2026-11-12
 
 **Branch:** `feat/v3.58.0` a partir de `develop` (`4ca7a1a`, v3.57.7 mesclada) · **Processo:** v3.58 (SM + Arquiteto + Security Engineer)

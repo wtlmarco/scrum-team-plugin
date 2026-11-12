@@ -63,7 +63,7 @@ function Get-WatcherLine {
 # wait (v3.57.0, protocolo de espera regras 1 e 6): a sonda do WATCHER (agents/watcher.md), SÓ DE LEITURA — não grava o
 # .next-verdict, não dispara nada, não decide. Usa a espera que o último next registrou (.next-verdict) e as mesmas funções
 # dele (Get-LiveAgents, Get-TaskWait). Exit 0 = terminou (nada em espera; a sessão roda o next) · 3 = vivo · 5 = POSSÍVEL
-# TRAVAMENTO (10 min ou mais sem CPU nem arquivo novo; a decisão é da sessão e do stakeholder).
+# TRAVAMENTO (10 min ou mais sem CPU, processo filho nem arquivo novo; a decisão é da sessão e do stakeholder).
 # v3.57.1: com -For, a espera é DESTE script (Start-Sleep aqui dentro não passa pela G14, que lê o texto do comando): confere,
 # dorme -Every, confere de novo, e para no primeiro "terminou" ou "travado" ou quando a próxima espera passaria de -For.
 function Get-WaitState {
@@ -86,7 +86,13 @@ function Get-WaitState {
     if (-not $cmdW -and $sig -and $sig.Stalled) { return @{ Code = 5; Text = "wait: POSSÍVEL TRAVAMENTO — $tk · $($partes -join ' · ') (sem ação do agente, sem arquivo novo e sem o alive há 10 min ou mais)" } }
     return @{ Code = 3; Text = "wait: vivo — $tk · $($partes -join ' · ')" }
 }
+# v3.58.1: a chamada inteira tem de caber no limite da ferramenta de comando (120 s sem `timeout` explícito; passou disso,
+# o ambiente a move para segundo plano e a saída pode voltar vazia). -For acima de 90 é cortado para 90: com conferências
+# de ~0,5–1 s (Get-CimInstance) e a partida do powershell, a chamada fica abaixo de ~100 s. Exit code É o veredito
+# (0 · 3 · 5); a linha é o detalhe — o watcher lê o código quando a saída vem vazia.
+$script:waitMaxFor = 90
 if ($Action -eq 'wait') {
+    if ($For -gt $script:waitMaxFor) { $For = $script:waitMaxFor }
     $every = [Math]::Max(1, $Every)
     $sw = [System.Diagnostics.Stopwatch]::StartNew(); $checks = 0
     while ($true) {
@@ -95,7 +101,7 @@ if ($Action -eq 'wait') {
         Start-Sleep -Seconds $every
     }
     $tail = if ($For -gt 0) { " (conferido $checks vez(es) em $([int]$sw.Elapsed.TotalSeconds) s)" } else { '' }
-    Out "$($st.Text)$tail"; exit $st.Code
+    Out "$($st.Text)$tail"; [Console]::Out.Flush(); exit $st.Code
 }
 
 function Get-Defined([string]$Root) {
