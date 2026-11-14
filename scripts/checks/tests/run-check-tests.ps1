@@ -1559,6 +1559,24 @@ Check 'item 3: next com dev vivo da Task em 🟨: esperar, exit 3 (v3.57.0: e a 
 Put $p '.team-project/.active-agents' ('[{"type":"team:developer","desde":"' + $n0 + '","session":"sOutra","parent":"","agent_id":"devmor1","work":"T-041","last":"x","at":"' + $n0 + '","host_pid":999999,"host_start":"2001-01-01 00:00:00"}]')
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'item 3: processo hospedeiro encerrado: o next segue com o executor' $r 0 @('PRÓXIMA AÇÃO: construir T-041')
+# v3.59.1 (sprint 6 do garden, T-069b 19:27–19:47): executor "aguardando filho" de um dev que já parou há mais de 3 min — o
+# next mandava esperar os 20 min do prazo de sinal de vida; agora segue. Com o filho parado há menos de 3 min, espera (o aviso
+# do filho está acordando o executor).
+$hs = (Get-Process -Id $PID).StartTime.ToString('yyyy-MM-dd HH:mm:ss'); $tA = (Get-Date).AddMinutes(-8).ToString('yyyy-MM-dd HH:mm:ss'); $tB = (Get-Date).AddMinutes(-6).ToString('yyyy-MM-dd HH:mm:ss')
+$ua = Join-Path $p '.team-project/usage.jsonl'; $uaOld = if (Test-Path -LiteralPath $ua) { [System.IO.File]::ReadAllText($ua, $utf8) } else { $null }
+$wrU = { param([string]$devTs, [string]$extra = '') [System.IO.File]::WriteAllText($ua, ('{"ts":"' + $tA.Replace(' ', 'T') + '","agent_id":"run591","role":"task-runner","description":"Executor T-041","children":["dev591"]}' + "`n" + '{"ts":"' + $devTs + '","agent_id":"dev591","role":"developer","description":"Dev T-041","children":[]' + $extra + '}' + "`n"), $utf8) }
+& $wrU $tB.Replace(' ', 'T')
+Put $p '.team-project/.active-agents' ('[{"type":"team:task-runner","description":"Executor T-041","desde":"' + $tA + '","session":"s1","parent":"","agent_id":"run591","work":"T-041","last":"aguardando filho","at":"' + (Get-Date).AddMinutes(-2).ToString('yyyy-MM-dd HH:mm:ss') + '","host_pid":' + $PID + ',"host_start":"' + $hs + '"},{"type":"team:developer","description":"Dev T-041","desde":"' + $tA + '","session":"s1","parent":"run591","agent_id":"dev591","work":"T-041","last":"Add-Content","at":"' + $tA + '","host_pid":' + $PID + ',"host_start":"' + $hs + '"}]')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.59.1 item 1: executor aguardando filho de dev que parou há 6 min (e o registro do dev, resto) → o next segue' $r 0 @('PRÓXIMA AÇÃO: construir T-041')
+& $wrU (Get-Date).AddMinutes(-1).ToString('yyyy-MM-ddTHH:mm:ss')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.59.1 item 1: dev parou há 1 min → o executor está sendo acordado: esperar' $r 3 @('PRÓXIMA AÇÃO: esperar — a T-041 já tem task-runner vivo')
+& $wrU $tB.Replace(' ', 'T') ',"waiting":true'
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.59.1 item 1: dev parou há 6 min com ESPERANDO (comando em segundo plano que o plugin não mede) → esperar, como antes' $r 3 @('PRÓXIMA AÇÃO: esperar — a T-041 já tem task-runner vivo')
+if ($null -ne $uaOld) { [System.IO.File]::WriteAllText($ua, $uaOld, $utf8) } else { Remove-Item -LiteralPath $ua -Force }
+Remove-Item -LiteralPath (Join-Path $p '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue
 # v3.57.2 (note.md item 14, ocorrência 8 do sprint 5 do garden): duas Tasks em 🟨, a primeira do quadro depende da segunda —
 # o next constrói a dependência, não a que espera por ela (antes saía "construir Q-S5" com a Q-S5b em construção).
 $p = Join-Path $tmp 'dep-cur'; New-Project $p
@@ -3071,6 +3089,35 @@ Edit-File $sbv '| **Capacidade** | 5 ·' '| **Capacidade** | 1,5 ·'
 [System.IO.File]::WriteAllText($sbv, [regex]::Replace([System.IO.File]::ReadAllText($sbv, $utf8), '(\| O que saiu para caber \| Data \|\r?\n\|---\|---\|---\|---\|---\|)', "`$1`n| T-041 | H-014 | GAP que bloqueia a H-014 | T-099 | 2026-09-02 |"), $utf8)
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'v3.57.3 item 4: R4 com entrada fora da Planning traz a conta quando o quadro passa da capacidade (informa, não reprova)' @{ Code = 0; Out = $r.Out } 0 @('\| R4 \| ok \| .*entrada fora da Planning declarada; o quadro passa da capacidade: capacidade 1,5 d .*no quadro 2 d \(\+33 %\)')
+
+# v3.59.1 (sprint 6 do garden: suíte de 10–25 min, 35 rodadas em 13 Tasks) — full: comando curto que falha poupa a suíte;
+# full de novo na mesma árvore roda só o que não saiu verde (mesmo comando); -Fresh roda tudo.
+$pf = Join-Path $tmp 'v3591-full'; New-Project $pf
+$ErrorActionPreference = 'Continue'
+& git -C $pf init -q 2>$null; Put $pf '.gitignore' ".team-project/`n"; Put $pf 'README.md' "x`n"
+& git -C $pf add -A 2>$null; & git -C $pf -c user.email=t@t -c user.name=t commit -qm init 2>$null
+$ErrorActionPreference = 'Stop'
+$ran = (Join-Path $pf '.team-project/ran.txt') -replace '\\', '/'
+$mk = { param([string]$lint) '{ "verify": { "build": "Add-Content -LiteralPath ''' + $ran + ''' build; Write-Output ok", "lint": "' + $lint + '", "suite": "Add-Content -LiteralPath ''' + $ran + ''' suite; Write-Output \"Tests: 3 passed\"", "coverage": "Add-Content -LiteralPath ''' + $ran + ''' coverage; Write-Output \"All files | 90 %\"" } }' }
+Put $pf '.team-project/guards.json' (& $mk ('Add-Content -LiteralPath ''' + $ran + ''' lint; Write-Output erro; exit 1'))
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pf)
+$log = (Get-Content -LiteralPath $ran -Encoding UTF8) -join ','
+Check 'v3.59.1 item 3: lint reprovado → suíte e cobertura não rodam (o full já está vermelho)' @{ Code = $r.Code; Out = "$($r.Out) ran=$log" } 1 @('lint: exit 1', 'não rodou: suite, coverage — lint falhou antes', 'ran=build,lint$')
+Put $pf '.team-project/guards.json' (& $mk ('Add-Content -LiteralPath ''' + $ran + ''' lint2; Write-Output ok'))
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pf)
+$log = (Get-Content -LiteralPath $ran -Encoding UTF8) -join ','
+Check 'v3.59.1 item 3: mesma árvore, lint corrigido → build reaproveitado (mesmo comando), lint, suíte e cobertura rodam' @{ Code = $r.Code; Out = "$($r.Out) ran=$log" } 0 @('tudo exit 0', 'build: exit 0 .*reaproveitado da rodada de', 'mesma árvore do full de .*: build reaproveitado', 'ran=build,lint,lint2,suite,coverage$')
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pf)
+$log = (Get-Content -LiteralPath $ran -Encoding UTF8) -join ','
+Check 'v3.59.1 item 3: full de novo na mesma árvore, tudo verde → nada roda de novo' @{ Code = $r.Code; Out = "$($r.Out) ran=$log" } 0 @('tudo exit 0', 'build, lint, suite, coverage reaproveitado', 'ran=build,lint,lint2,suite,coverage$')
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'check', '-Root', $pf)
+Check 'v3.59.1 item 3: o check aceita o full reaproveitado' $r 0 @()
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Fresh', '-Root', $pf)
+$log = (Get-Content -LiteralPath $ran -Encoding UTF8) -join ','
+Check 'v3.59.1 item 3: -Fresh roda tudo' @{ Code = $r.Code; Out = "$($r.Out) ran=$log" } 0 @('tudo exit 0', 'ran=build,lint,lint2,suite,coverage,build,lint2,suite,coverage$', '^(?![\s\S]*reaproveitado)')
+Put $pf 'src/novo.ts' "x`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pf)
+Check 'v3.59.1 item 3: árvore mudou → roda tudo, sem reaproveitar' $r 0 @('tudo exit 0', '^(?![\s\S]*reaproveitado)')
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output

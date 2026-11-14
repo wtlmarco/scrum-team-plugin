@@ -87,6 +87,7 @@ param(
     [double]$TimeoutMinutes = 0,
     [switch]$Precheck,
     [int]$WaitBusySeconds = 0,
+    [switch]$Fresh,
     [string]$Root = (Get-Location).Path
 )
 
@@ -722,6 +723,9 @@ try {
         $i = 0; foreach ($c in (Get-Commands $verify $k)) { $i++; $jobs += @{ Key = $(if ($i -gt 1) { "$k$i" } else { $k }); Cmd = $c } }
     }
     if ($planCmd) { $jobs += @{ Key = 'plano'; Cmd = $planCmd } }
+    # v3.59.1 (sprint 6 do garden: suíte de 2935 testes, 10–25 min por rodada, 35 rodadas em 13 Tasks): no full, os comandos
+    # curtos (build, lint, plano) vêm antes da suíte e da cobertura — falhou um deles, a suíte não roda (abaixo).
+    if ($Mode -eq 'full') { $jobs = @($jobs | Where-Object { $_.Key -notmatch '^(suite|coverage)\d*$' }) + @($jobs | Where-Object { $_.Key -match '^suite\d*$' }) + @($jobs | Where-Object { $_.Key -match '^coverage\d*$' }) }
     if ($Mode -eq 'focused' -and -not $planCmd) {
         if (-not $focusedItems.Count) { [Console]::Error.WriteLine('verify: guards.json → verify sem "focused" (o comando do teste focado, com {tests}).'); exit 2 }
         if ($Tests.Count -eq 0) { [Console]::Error.WriteLine('verify: -Mode focused pede -Tests <arquivos de teste do bloco> (ou o plano declara **Verificação:** comando — `<comando>`).'); exit 2 }
@@ -736,13 +740,54 @@ try {
         $doneKeys = @($results | ForEach-Object { [string]$_.key })
         $jobs = @($jobs | Where-Object { $doneKeys -notcontains $_.Key })
     }
+    # v3.59.1: full de novo na MESMA árvore (dev em instância nova só para a evidência, K-12 depois de suíte instável, retomada)
+    # reaproveita os comandos que já saíram verdes nessa árvore — mesma impressão = mesmo código — e roda só os que falharam.
+    # Suíte que roda de novo leva a cobertura junto (ela lê o resumo da suíte). -Fresh roda tudo.
+    $reused = @()
+    if ($Mode -eq 'full' -and -not $Fresh -and $prev -and $prev.PSObject.Properties['full'] -and $prev.full -and [string]$prev.full.tree -eq $tree) {
+        $okPrev = @{}
+        foreach ($pc in @($prev.full.commands)) { if ($pc -and [int]$pc.exit -eq 0 -and -not $pc.environment -and [string]$pc.key -ne 'testids') { $okPrev[[string]$pc.key] = $pc } }
+        $keepJobs = @()
+        # Só o mesmo comando: guards.json → verify trocado depois da rodada roda de novo.
+        foreach ($j in @($jobs)) { if ($okPrev.ContainsKey($j.Key) -and [string]$okPrev[$j.Key].command -ne [string]$j.Cmd) { $okPrev.Remove($j.Key) } }
+        $suiteAgain = @($jobs | Where-Object { $_.Key -match '^suite\d*$' -and -not $okPrev.ContainsKey($_.Key) }).Count -gt 0
+        foreach ($j in $jobs) {
+            if ($okPrev.ContainsKey($j.Key) -and -not ($suiteAgain -and $j.Key -match '^coverage\d*$')) {
+                $h = [ordered]@{}; foreach ($pp in $okPrev[$j.Key].PSObject.Properties) { $h[$pp.Name] = $pp.Value }
+                $h['reused'] = [string]$prev.full.at
+                $results += $h; $reused += $j.Key
+            } else { $keepJobs += $j }
+        }
+        $jobs = $keepJobs
+    }
+    # v3.59.1: os ids de teste (estáticos, ~2 s) conferidos ANTES da suíte — na T-081 a suíte de 620 s rodou e o full reprovou
+    # só pelo testids; corrigido o id, outra suíte inteira.
+    $tidLines = @(); $tid = $null
+    if ($Mode -eq 'full') {
+        $results = @($results | Where-Object { [string]$_.key -ne 'testids' })
+        $tsw = [System.Diagnostics.Stopwatch]::StartNew()
+        $tid = Get-TestIdFindings $Root $Task
+        if ($tid.Applies) {
+            $tidLines = @(@($tid.Missing | ForEach-Object { "id ausente no código: $_" }) + @($tid.Untagged | ForEach-Object { "sem id de teste: $_" }))
+            $head = if ($tidLines.Count) { "ids de teste: $(@($tid.Missing).Count) id(s) dos cenários fora do código, $(@($tid.Untagged).Count) controle(s) sem id" } else { "ids de teste: $($tid.Ids) id(s) dos cenários no código, $($tid.Files) arquivo(s) de tela com todo controle identificado" }
+            $tlog = Join-Path $dir 'full-testids.log'
+            $body = @($head) + $tidLines + @($tid.Notes) + @('', "EXIT=$(if ($tidLines.Count) { 1 } else { 0 })")
+            [System.IO.File]::WriteAllText($tlog, ($body -join "`n") + "`n", $utf8)
+            $results += [ordered]@{ key = 'testids'; command = 'ids de teste dos cenários e dos controles (verify.ps1, v3.53.6)'; exit = $(if ($tidLines.Count) { 1 } else { 0 }); seconds = [int]$tsw.Elapsed.TotalSeconds
+                                    log = ($tlog.Substring($Root.Length + 1) -replace '\\', '/'); lines = $body.Count; decisive = @($head); environment = $null; hygiene = @() }
+        }
+    }
+    # v3.59.1: comando curto que falhou (build, lint, plano, testids) — a suíte e a cobertura não rodam: o full já está
+    # vermelho e o dev roda outro depois de corrigir; a suíte rodada assim era descartada inteira.
+    $shortFailed = { @($results | Where-Object { [int]$_.exit -ne 0 -and [string]$_.key -notmatch '^(suite|coverage)\d*$' } | ForEach-Object { [string]$_.key }) }
+    $skipped = @()
     # v3.58.4 (sprint 6 do garden, T-081): memória livre antes da suíte. O Claude Code encerrou o full no teste 2925 de 2926
     # ("the system is running low on memory") com o emulador ligado desde o accept (4,1 GB) e a VM do Docker do build do APK
     # (até 4,8 GB) ao lado da suíte do Karma (pico medido de 6,6 GB) — 10 min perdidos e a Task parada. Abaixo de
     # verify.minFreeMB (padrão 6144; 0 desliga), o emulador local que a suíte não usa é desligado (target.ps1 -Release: nunca no
     # meio de um accept); ainda abaixo, a suíte segue com o aviso e os maiores consumidores — fechar o resto é do stakeholder.
     $memNotes = @()
-    if ($Mode -eq 'full' -and @($jobs | Where-Object { $_.Key -match '^suite\d*$' }).Count) {
+    if ($Mode -eq 'full' -and @($jobs | Where-Object { $_.Key -match '^suite\d*$' }).Count -and -not @(& $shortFailed).Count) {
         $minFree = if ($verify.PSObject.Properties['minFreeMB'] -and $null -ne $verify.minFreeMB) { [int]$verify.minFreeMB } else { 6144 }
         $free = Get-FreeMemoryMB
         if ($minFree -gt 0 -and $free -ge 0 -and $free -lt $minFree) {
@@ -765,6 +810,7 @@ try {
         # com o dado velho. No garden era todo full: suíte de 540-820 s, sempre na chamada seguinte. Agora a cobertura espera a
         # suíte; e, curta pela história (≤ 60 s), roda logo depois dela mesmo fora do orçamento, em vez de custar outra chamada.
         $isCov = $j.Key -match '^coverage\d*$'
+        if ($Mode -eq 'full' -and $j.Key -match '^(suite|coverage)\d*$' -and @(& $shortFailed).Count) { $skipped += $j.Key; continue }
         if ($Mode -eq 'full' -and $isCov -and @($pendingJobs | Where-Object { $_ -match '^suite\d*$' }).Count) { $pendingJobs += $j.Key; continue }
         $need = if ($estimates.ContainsKey($j.Key)) { [int]$estimates[$j.Key] } else { $lastSec }   # v3.52.3: a história da chave
         $shortCov = $isCov -and $estimates.ContainsKey($j.Key) -and [int]$estimates[$j.Key] -le 60
@@ -774,27 +820,15 @@ try {
         $r1 = Invoke-Logged $j.Key $j.Cmd.Replace('{tests}', (Format-Tests $jt $j.FItem)) (Join-Path $dir "$Mode-$($j.Key).log")
         $results += $r1; $lastSec = $r1.seconds
     }
-    # v3.53.6 (sprint 5 do garden, item 4): ids de teste conferidos no fim do full — (a) todo id dos cenários de tela da Task
-    # existe no código de produção; (b) nenhum controle interativo sem id nos arquivos da Task. Entra como mais um comando
-    # (chave "testids"), então o check, o close.ps1 (R7-verify) e o QA o leem como os outros. Só quando há o que conferir.
-    $tidLines = @()
-    if ($Mode -eq 'full' -and -not $pendingJobs.Count) {
-        $tsw = [System.Diagnostics.Stopwatch]::StartNew()
-        $tid = Get-TestIdFindings $Root $Task
-        if ($tid.Applies) {
-            $tidLines = @(@($tid.Missing | ForEach-Object { "id ausente no código: $_" }) + @($tid.Untagged | ForEach-Object { "sem id de teste: $_" }))
-            $head = if ($tidLines.Count) { "ids de teste: $(@($tid.Missing).Count) id(s) dos cenários fora do código, $(@($tid.Untagged).Count) controle(s) sem id" } else { "ids de teste: $($tid.Ids) id(s) dos cenários no código, $($tid.Files) arquivo(s) de tela com todo controle identificado" }
-            $tlog = Join-Path $dir 'full-testids.log'
-            $body = @($head) + $tidLines + @($tid.Notes) + @('', "EXIT=$(if ($tidLines.Count) { 1 } else { 0 })")
-            [System.IO.File]::WriteAllText($tlog, ($body -join "`n") + "`n", $utf8)
-            $results += [ordered]@{ key = 'testids'; command = 'ids de teste dos cenários e dos controles (verify.ps1, v3.53.6)'; exit = $(if ($tidLines.Count) { 1 } else { 0 }); seconds = [int]$tsw.Elapsed.TotalSeconds
-                                    log = ($tlog.Substring($Root.Length + 1) -replace '\\', '/'); lines = $body.Count; decisive = @($head); environment = $null; hygiene = @() }
-        }
-    }
+    # v3.53.6 (sprint 5 do garden, item 4): ids de teste — (a) todo id dos cenários de tela da Task existe no código de
+    # produção; (b) nenhum controle interativo sem id nos arquivos da Task. Entra como mais um comando (chave "testids"), então
+    # o check, o close.ps1 (R7-verify) e o QA o leem como os outros. v3.59.1: conferido antes da suíte (acima).
     # v3.52.3 (note.md item 5): comando perto do teto por comando — ao passar dele, vira exit 4 (ambiente) sem defeito no código.
     $near = @($results | Where-Object { $cl = [int]((Get-CommandTimeout ([string]$_.key)) * 60); -not $_.environment -and [int]$_.seconds -ge 0.8 * $cl } | ForEach-Object { $ceil = [int]((Get-CommandTimeout ([string]$_.key)) * 60); "$($_.key) levou $($_.seconds) s, $([int](100 * [int]$_.seconds / $ceil)) % do teto por comando ($ceil s, verify.timeoutMinutes$(if ($_.key -match '^build' -and $verify.PSObject.Properties['buildTimeoutMinutes']) { ' / buildTimeoutMinutes' })) — ao passar dele vira falha de ambiente (exit 4). Reporte a quem orquestra: o projeto divide o comando em guards.json → verify (lista: suite, suite2…); teto acima de 9 min passa dos 600 s da ferramenta" })
     $after = Get-WorkTree $Root
     $run = [ordered]@{ at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = $tree; tree_after = $after; tests = $Tests; commands = $results }
+    if ($skipped.Count) { $run['skipped'] = $skipped }
+    if ($reused.Count) { $run['reused'] = $reused; $run['reused_from'] = [string]$prev.full.at }
 
     $res = [ordered]@{ task = $Task; full = $null; focused = $null; mutation = $null; full_partial = $null }
     if ($prev) { foreach ($k in 'full', 'focused', 'mutation') { if ($prev.PSObject.Properties[$k]) { $res[$k] = $prev.$k } } }
@@ -812,7 +846,9 @@ try {
     $bad = @($results | Where-Object { [int]$_.exit -ne 0 })
     $envBad = @($results | Where-Object { $_.environment })
     [Console]::Out.WriteLine("verify $Mode $Task · árvore $($tree.Substring(0, 12)) · " + $(if ($envBad.Count) { "FALHA DE AMBIENTE em $($envBad.Count) comando(s)" } elseif ($bad.Count) { "$($bad.Count) comando(s) com falha" } else { 'tudo exit 0' }) + " · $($resPath.Substring($Root.Length + 1) -replace '\\', '/')")
-    foreach ($r in $results) { [Console]::Out.WriteLine("  $($r.key): exit $($r.exit) · $($r.seconds) s · $(@($r.decisive) | Select-Object -Last 1) · log $($r.log) ($($r.lines) linhas)") }
+    foreach ($r in $results) { [Console]::Out.WriteLine("  $($r.key): exit $($r.exit) · $($r.seconds) s · $(@($r.decisive) | Select-Object -Last 1) · log $($r.log) ($($r.lines) linhas)$(if ($r.Contains('reused')) { " · reaproveitado da rodada de $($r['reused']) (mesma árvore)" })") }
+    if ($skipped.Count) { [Console]::Out.WriteLine("  não rodou: $($skipped -join ', ') — $((& $shortFailed) -join ', ') falhou antes; a suíte rodada assim seria descartada. Corrija e rode o full de novo.") }
+    if ($reused.Count) { [Console]::Out.WriteLine("  mesma árvore do full de $([string]$prev.full.at): $($reused -join ', ') reaproveitado(s), sem rodar de novo (-Fresh roda tudo)") }
     foreach ($r in $envBad) { [Console]::Out.WriteLine("  ambiente ($($r.key)): $($r.environment)") }
     # v3.53.6 (item 4): cada id ausente (com o cenário e o .scn) e cada controle sem id (arquivo:linha).
     foreach ($l in @($tidLines | Select-Object -First 40)) { [Console]::Out.WriteLine("    $l") }
