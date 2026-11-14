@@ -617,6 +617,24 @@ try {
         $dr = Invoke-Child 'dispatch.ps1' $dargs; $d = $dr.Out
         if ($dr.Code -ne 0) { [Console]::Error.WriteLine("run start: dispatch falhou — $($d.Trim())"); exit 2 }
         Remove-Item -LiteralPath (Join-Path $tp '.safe-point') -Force -ErrorAction SilentlyContinue   # v3.52: Task em voo não é ponto seguro
+        # v3.58.4 (sprint 6 do garden, T-081): o emulador que sobrou da Task anterior sai antes da construção. O primeiro accept
+        # da Task o reinicia de qualquer jeito (freshStart) — ligado até lá, ele só ocupa memória ao lado do focused, do full
+        # e da mutação (no garden, 4,1 GB das 11:55 às 14:01, quando o Claude Code encerrou o full por memória baixa). Não
+        # libera quando a Task já fez o primeiro accept (retomada depois de GAP: o emulador é dela) nem com
+        # targets.android.releaseBetweenTasks: false. A ida e a volta: target.ps1 -Release · -Repair (ou o próprio accept).
+        $relNote = ''
+        $tgA = Get-TargetsConfig $Root
+        $anA = if ($tgA -and $tgA.PSObject.Properties['android']) { $tgA.android } else { $null }
+        $relOn = [bool]($anA -and -not ($anA.PSObject.Properties['releaseBetweenTasks'] -and $anA.releaseBetweenTasks -eq $false))
+        if ($relOn) {
+            $accD = (Get-VerifyDir $Root $T.Id) -replace '([\\/]\.team-project[\\/])verify([\\/])', '$1accept$2'
+            $fsOn = ($anA.PSObject.Properties['repair'] -and $anA.repair) -and -not ($anA.PSObject.Properties['freshStart'] -and $anA.freshStart -eq $false)
+            $fsPending = $fsOn -and -not (Test-Path -LiteralPath (Join-Path $accD 'fresh-start.json'))
+            if ($fsPending -or -not $T.Scenarios.Count) {
+                $rl = Invoke-TargetRelease $Root
+                if ($rl.Freed) { $relNote = $rl.Text } elseif ($rl.Text -match 'em uso') { $relNote = "emulador mantido — $($rl.Text)" }
+            }
+        }
         Set-AskRoute $Root ''   # v3.58.3 (G24): dev em voo — a rota ao stakeholder que havia já foi decidida ou superada
         $card = Write-Handoff $T $S $n
         Write-ScenarioDivergence $T $S $n
@@ -632,12 +650,15 @@ try {
         }
         Out ($d.Trim())
         Out "  cartão: $card"
+        if ($relNote) { Out "  alvo: $relNote" }
         # v3.51.4: o formato que o close.ps1 lê (garden item 17), a retomada do verify parcial (exit 3, garden item 18) e o
         # alvo pelo target.ps1, sem adb nem espera à mão (note.md item 4).
         $tgt = if (Get-TargetsConfig $Root) { " Alvo: confira com target.ps1 -Target <alvo> (com -Repair ele reinicia e espera); não use adb nem Start-Sleep." } else { '' }
+        # v3.58.4: o emulador fica fora durante a construção; o dev o sobe só para o comando do projeto que precisa do aparelho.
+        if ($relOn) { $tgt += " O emulador fica desligado durante a construção (memória): suba-o com target.ps1 -Target android -Repair só quando um comando do projeto precisar do aparelho (instalar o APK) — o accept o religa sozinho." }
         # v3.53.6 (item 2): com ponto de retomada, o cartão traz os passos que faltam — o plano não se reabre.
         $readTxt = if ($script:CardResume) { "Retome do passo $($script:CardResume): o cartão .team-project/$card traz os passos que faltam e o que já está provado — siga por ele e não reabra o plano $planRel, salvo o trecho de que um passo precise e que o cartão não traga (offset e limit)." } else { "Leia o cartão .team-project/$card, o cabeçalho e a §6 do plano $planRel e o seu bloco — não o plano inteiro." }
-        Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk $readTxt $vrfTxt$acc. Exit 3 = parcial (o tempo da chamada acabou): rode o MESMO comando de novo, ele continua de onde parou. Comando que a ferramenta moveu para segundo plano ('moved to the background'): encerre o turno com a primeira linha ESPERANDO <comando> — o aviso de conclusão traz o resultado e você segue; não sonde o log nem dispare outro verify (exit 5 = outra rodada ainda roda). Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga.$tgt Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept — cada bloco de código começa com a linha do comando ('> verify.ps1 -Mode full …') e traz a saída embaixo — e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
+        Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk $readTxt $vrfTxt$acc. Exit 3 = parcial (o tempo da chamada acabou): rode o MESMO comando de novo, ele continua de onde parou. Comando que a ferramenta moveu para segundo plano ('moved to the background'): encerre o turno com a primeira linha ESPERANDO <comando> — o aviso de conclusão traz o resultado e você segue; não sonde o log nem dispare outro verify (exit 5 = outra rodada ainda roda). Comando encerrado pelo Claude Code por memória baixa ('stopped because the system is running low on memory'): não é defeito — o stakeholder autoriza rodar o MESMO comando UMA vez de novo (o verify full desliga o emulador que a suíte não usa e continua do parcial); encerrado de novo, pare como exit 4 (ambiente: memória). Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga.$tgt Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept — cada bloco de código começa com a linha do comando ('> verify.ps1 -Mode full …') e traz a saída embaixo — e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
         Out "  ao voltar: run.ps1 done -Task $($T.Id) -Result ok|gap|env|teto (teto = o dev voltou com TETO: a G23 o parou no teto de contexto)"
         exit 0
     }
