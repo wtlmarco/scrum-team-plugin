@@ -261,6 +261,9 @@ try {
         $cm2 = [regex]::Match([string]$firstPrompt, '(?im)^[ \t>*_-]*Chamador:\**[ \t]*(\S+)')
         if ($cm2.Success) { $ck = Get-CallerToken $cm2.Groups[1].Value; if ($ck) { $row.caller = $ck } }
     }
+    # v3.59.1: a rodada que encerrou com "ESPERANDO <comando>" (developer.md, passo 6) não terminou o trabalho — o agente volta
+    # sozinho com o fim do comando. O registro de agentes (Get-LiveAgents) mantém o pai "aguardando filho" vivo nesse caso.
+    if ($lastText -and $lastText -match '^\s*[*_`>]*\s*ESPERANDO\b') { $row | Add-Member -NotePropertyName waiting -NotePropertyValue $true }
     $json = $row | ConvertTo-Json -Compress
     [System.IO.File]::AppendAllText($usagePath, $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
 

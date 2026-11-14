@@ -13,6 +13,31 @@
 
 ---
 
+## v3.59.1 — 2026-11-14
+
+**Branch:** `fix/v3.59.1` a partir de `develop` (`dc583d0`, v3.59.0 mesclada) · **Processo:** sem mudança de regra (correção do registro de agentes e do `verify` full)
+
+Origem: análise do stakeholder em 14/11/2026 sobre "a Task demora muito para fechar", medida no sprint 6 do garden. A T-069b levou 77 min para 3 arquivos. Dois defeitos do registro de agentes custaram 32 min nela, e o `verify` full repetia a suíte de 10 a 25 min sem necessidade.
+
+- **Executor "aguardando filho" de um dev que já tinha parado** (T-069b, 19:27–19:47: 20 min parados, 4 watchers seguidos). O `.active-agents` era lido, alterado e regravado por vários hooks ao mesmo tempo, sem trava. Às 19:25:26, a SubagentStop do dev e a PreToolUse do executor rodaram no mesmo segundo, e o dev voltou ao registro. O executor, ao parar de vez, ficou "aguardando filho", e o `run.ps1 next` esperou os 20 min do prazo. Depois, às 19:56, a parada de outro executor casou o velho pelo tipo e o remarcou com hora nova. Correção em `hooks/common.ps1`:
+  - mutex nomeado por projeto em toda leitura-e-gravação do registro;
+  - a remoção pelo tipo só toca registro ainda sem `agent_id`;
+  - filho cuja última linha do `usage.jsonl` é posterior ao último sinal dele já parou: não segura o pai e sai junto;
+  - no `Get-LiveAgents`, "aguardando filho" sem filho de rodada aberta vale só nos 3 min depois do fim do último filho. A exceção é o filho que parou com `ESPERANDO <comando>`: a SubagentStop grava `waiting: true` na linha dele, e o pai segue vivo como antes, porque o comando em segundo plano ainda acorda o filho.
+- **Dois executores na mesma Task** (T-069b, 19:15–19:27). O dev encerrou o turno esperando o verify em segundo plano e saiu do registro. Acordado pelo fim do comando, voltou a agir fora do registro. O executor parou sem filho, o `run.ps1 next` não viu ninguém e mandou um segundo executor; os dois abriram GAPs em paralelo. Agora a primeira ação de um `agent_id` que já tem rodada no `usage.jsonl` o devolve ao registro, com a descrição, o item e o pai (`Update-ActiveAgent`, a PreToolUse passa o `session_id`).
+- **`verify -Mode full` sem repetir a suíte à toa.** No garden, a suíte executa 2.935 testes em ~10 min (execução, não compilação). O sprint 6 teve 35 rodadas em 13 Tasks, ~950 min de verify. Mudanças em `scripts/checks/verify.ps1`:
+  - build, lint, comando do plano e **ids de teste** rodam antes da suíte. Um deles reprovado, a suíte e a cobertura não rodam ("não rodou: …"). Na T-081, a suíte de 620 s rodou e o full reprovou só pelo testids;
+  - full de novo na **mesma árvore e com o mesmo comando** reaproveita os comandos que saíram verdes e roda só os que falharam; a suíte que roda de novo leva a cobertura junto. Isso cobre o dev em instância nova só para a evidência e a segunda rodada do K-12, que antes refazia build e lint;
+  - `-Fresh` roda tudo; o `result.json` grava `reused`, `reused_from` e `skipped`.
+- Testes: guardas +5 (registro), conferências +9 (next com o filho parado há 6 min, há 1 min e com `ESPERANDO`; full com falha curta, reaproveitamento, check, `-Fresh`, árvore nova).
+- Medido no sprint 6, o que a entrega teria poupado:
+  - reaproveitamento na mesma árvore: a T-069a rodou 5 suítes sobre a mesma árvore (69 min), a T-079 3 verdes (41 min), e a T-081, a T-089, a T-092 e a T-067 também repetiram full verde. Estimativa de 130 a 150 min dos ~950 de verify;
+  - registro de agentes: 20 a 40 min de espera parada (T-069b, T-089) e o único executor duplicado do sprint.
+
+Não muda: o tempo de cada rodada da suíte (é do projeto) nem a instabilidade dos specs de Manejo que reprovavam em rodadas diferentes (K-12).
+
+---
+
 ## v3.59.0 — 2026-11-14
 
 **Branch:** `feat/v3.59.0` a partir de `develop` (`3d84ae5`, v3.58.4 mesclada) · **Processo:** v3.59 (a fala da sessão no `sprint run`, a ordem do `kanban.md`, a coluna **Para o stakeholder** na Planning)

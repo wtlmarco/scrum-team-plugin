@@ -961,7 +961,7 @@ try {
     # v3.51.4: a última ação do subagente vai ao .active-agents e ao "## Agora" do kanban.md (sinal de vida, note.md item 15).
     if ($script:role -and $script:teamProject) {
         $act = switch -Regex ($tool) { '^(PowerShell|Bash)$' { [string]$ti.command } '^(Edit|Write)$' { "$tool $(Split-Path ([string]$ti.file_path) -Leaf)" } default { $tool } }
-        try { Update-ActiveAgent $script:projectDir ([string]$script:hookInput.agent_id) ([string]$script:hookInput.agent_type) $act } catch { }
+        try { Update-ActiveAgent $script:projectDir ([string]$script:hookInput.agent_id) ([string]$script:hookInput.agent_type) $act ([string]$script:hookInput.session_id) } catch { }
     }
     if ($allow) { Write-Allow 'operação do run, já conferida pelas guardas (.team-project/.active-run)' }
     exit 0

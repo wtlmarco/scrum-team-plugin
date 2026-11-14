@@ -1067,7 +1067,33 @@ $cases = @(
     @{ Name = 'SessionStart (v3.58.3): a retomada vale para o comando do run; outro comando diz em uma linha, sem formulário'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'G23, G24;*Retome agora, sem esperar o stakeholder: /sm sprint run*se ele pediu outro comando*sem formulário*formulário só quando o run.ps1 manda levar ao stakeholder (G24'
        Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ }', (New-Object System.Text.UTF8Encoding($false))) }
        Check = { foreach ($f in '.active-run', '.run-session', '.ask-route') { Remove-Item -LiteralPath (Join-Path $proj ".team-project/$f") -Force -ErrorAction SilentlyContinue }; $true }
-       Payload = @{ hook_event_name = 'SessionStart'; source = 'startup' } }
+       Payload = @{ hook_event_name = 'SessionStart'; source = 'startup' } },
+    # ---------- v3.59.1 — registro de agentes (sprint 6 do garden, T-069b): filho encerrado não segura o pai; agente acordado de novo volta ao registro; remoção só pelo agent_id ----------
+    @{ Name = 'v3.59.1 item 1: SubagentStop do executor com filho que JÁ parou (linha no usage.jsonl depois do último sinal) → os dois saem do registro'; Script = 'subagent-stop.ps1'; Expect = 0
+       Setup = { $u = Join-Path $proj '.team-project/usage.jsonl'; $t0 = (Get-Date).AddMinutes(-3).ToString('yyyy-MM-dd HH:mm:ss'); $t1 = (Get-Date).AddMinutes(-2).ToString('yyyy-MM-ddTHH:mm:ss')
+                 Add-Content -LiteralPath $u ('{"ts":"' + $t1 + '","agent_id":"dev359a","role":"developer","description":"Dev T-069b","children":[]}') -Encoding UTF8
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') ('[{"type":"team:task-runner","description":"Executor T-069b","desde":"' + $t0 + '","session":"sessA","parent":"","agent_id":"run359a","work":"T-069b","last":"aguardando filho","at":"' + $t0 + '"},{"type":"team:developer","description":"Dev T-069b","desde":"' + $t0 + '","session":"sessA","parent":"run359a","agent_id":"dev359a","work":"T-069b","last":"Add-Content","at":"' + $t0 + '"}]') -Encoding UTF8 }
+       Check = { -not (Test-Path -LiteralPath (Join-Path $proj '.team-project/.active-agents')) }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'run359a'; agent_type = 'team:task-runner' } },
+    @{ Name = 'v3.59.1 item 1: filho com rodada aberta (sinal depois da última linha) mantém o executor aguardando filho'; Script = 'subagent-stop.ps1'; Expect = 0
+       Setup = { $n = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') ('[{"type":"team:task-runner","description":"Executor T-069b","desde":"' + $n + '","session":"sessA","parent":"","agent_id":"run359a","work":"T-069b","last":"run.ps1","at":"' + $n + '"},{"type":"team:developer","description":"Dev T-069b","desde":"' + $n + '","session":"sessA","parent":"run359a","agent_id":"dev359a","work":"T-069b","last":"verify.ps1","at":"' + $n + '"}]') -Encoding UTF8 }
+       Check = { $a = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Raw -Encoding UTF8 | ConvertFrom-Json | ForEach-Object { $_ }); $a.Count -eq 2 -and @($a | Where-Object { $_.agent_id -eq 'run359a' -and $_.last -eq 'aguardando filho' }).Count -eq 1 }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'run359a'; agent_type = 'team:task-runner' } },
+    @{ Name = 'v3.59.1 item 1: SubagentStop de agent_id fora do registro não mexe no executor de outro agent_id (antes casava pelo tipo)'; Script = 'subagent-stop.ps1'; Expect = 0
+       Check = { $a = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Raw -Encoding UTF8 | ConvertFrom-Json | ForEach-Object { $_ }); $a.Count -eq 2 -and @($a | Where-Object { $_.agent_id -eq 'run359a' -and $_.last -eq 'aguardando filho' }).Count -eq 1 }
+       Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'run359zz'; agent_type = 'team:task-runner' } },
+    @{ Name = 'v3.59.1 item 2: agente acordado de novo (fora do registro, já com rodada no usage.jsonl) volta ao registro com o item e o pai'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue
+                 $u = Join-Path $proj '.team-project/usage.jsonl'; $t1 = (Get-Date).AddMinutes(-1).ToString('yyyy-MM-ddTHH:mm:ss')
+                 Add-Content -LiteralPath $u ('{"ts":"' + $t1 + '","agent_id":"run359b","role":"task-runner","description":"Executor conduz T-069b","children":["dev359b"]}') -Encoding UTF8
+                 Add-Content -LiteralPath $u ('{"ts":"' + $t1 + '","agent_id":"dev359b","role":"developer","description":"Dev T-069b pós-GAP","children":[]}') -Encoding UTF8 }
+       Check = { $a = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Raw -Encoding UTF8 | ConvertFrom-Json | ForEach-Object { $_ }); $a.Count -eq 1 -and $a[0].agent_id -eq 'dev359b' -and $a[0].work -eq 'T-069b' -and $a[0].parent -eq 'run359b' -and $a[0].session -eq 'sessA' -and $a[0].last -like 'git status*' }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; agent_id = 'dev359b'; session_id = 'sessA'; tool_input = @{ command = 'git status' } } },
+    @{ Name = 'v3.59.1 item 2: agente sem rodada no usage.jsonl e fora do registro não é inventado'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue }
+       Check = { -not (Test-Path -LiteralPath (Join-Path $proj '.team-project/.active-agents')) }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; agent_id = 'dev359nunca'; session_id = 'sessA'; tool_input = @{ command = 'git status' } } }
 )
 
 $rows = @(); $fail = 0
