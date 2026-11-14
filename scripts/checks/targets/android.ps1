@@ -11,6 +11,8 @@
 # serial de rede "host:porta" é religado com adb connect no pré-voo e no reparo),
 # memoryCmd + maxMemoryMB (v3.53.6, opcionais: memória do emulador acima do limite reprova o pré-voo e chama o reparo),
 # freshStart (v3.53.6, padrão true com repair: o primeiro accept de cada Task reinicia o emulador pelo repair),
+# freshStartMinutes (v3.58.4, padrão 30: emulador ligado há menos que isso já conta como reiniciado — sem segundo boot),
+# releaseBetweenTasks (v3.58.4, padrão true: o run.ps1 start desliga o emulador local que sobrou da Task anterior),
 # seeds + seedTimeoutSec (v3.53.7: massa de dados por nome, passo "seed"), selectConfirm (v3.53.7: botão de confirmação
 # do seletor no passo "select", expressão regular).
 
@@ -174,9 +176,61 @@ function Test-AndroidFreshStartDue($Cfg, [string]$Dir, [bool]$NoRepair) {
     if ($Cfg.PSObject.Properties['freshStart'] -and $Cfg.freshStart -eq $false) { return $false }
     return -not (Test-Path -LiteralPath (Join-Path $Dir 'fresh-start.json'))
 }
-function Set-AndroidFreshStartDone([string]$Dir, [string]$Task) {
+# v3.58.4 (sprint 6 do garden, falta de memória da T-081): emulador religado há pouco já começa limpo. Com a liberação entre
+# Tasks (Stop-AndroidEmulator), o dev sobe o emulador (target.ps1 -Repair) para instalar o APK pelo comando do projeto antes do
+# primeiro accept; reiniciá-lo de novo ali seria um segundo boot (~2 min) sem ganho de memória. Minutos ligado, ou $null.
+function Get-AndroidUptimeMin {
+    $up = (((Sh cat /proc/uptime) -join ' ') -split '\s+')[0] -as [double]
+    if ($script:AdbTimeout -or -not $up) { return $null }
+    return [int][Math]::Floor($up / 60)
+}
+function Get-AndroidFreshMinutes($Cfg) {
+    if ($Cfg -and $Cfg.PSObject.Properties['freshStartMinutes'] -and $null -ne $Cfg.freshStartMinutes) { return [int]$Cfg.freshStartMinutes }
+    return 30
+}
+# v3.58.4: liberar o emulador quando a construção não precisa dele. No sprint 6 do garden, o emulador ficou ligado das 11:55
+# às 14:01 sem accept nenhum (4,1 GB reservados), ao lado da suíte do Karma (pico medido de 6,6 GB) e da VM do Docker do
+# build do APK; o Claude Code encerrou o verify full da T-081 por memória baixa no teste 2925 de 2926. O primeiro accept de
+# cada Task já reinicia o emulador (freshStart): o que fica ligado entre uma Task e outra é jogado fora sem ter servido.
+# Só o emulador LOCAL do serial (o dono da porta do console: emulator-5554 → 5554), e só com reparo declarado (repair ou avd):
+# o plugin precisa saber religá-lo. Serial de rede (container) não se libera daqui — o container é do projeto.
+function Get-AndroidReleaseBlock($Cfg) {
+    if (Test-NetworkSerial) { return "emulador em container (serial de rede $($script:Serial)): o plugin não o desliga — o container é do projeto" }
+    $hasRepair = $Cfg -and $Cfg.PSObject.Properties['repair'] -and $Cfg.repair
+    $hasAvd = $Cfg -and $Cfg.PSObject.Properties['avd'] -and $Cfg.avd
+    if (-not ($hasRepair -or $hasAvd)) { return 'sem targets.android.repair nem avd no guards.json: o plugin não saberia religar o emulador, então não o desliga' }
+    return $null
+}
+function Get-AndroidConsolePort { if ($script:Serial -match '^emulator-(\d+)$') { return [int]$Matches[1] }; return 5554 }
+# Processos do emulador local: o dono da porta do console (qemu-system ou emulator) e o emulator.exe pai dele.
+function Get-LocalEmulatorProcs {
+    $port = Get-AndroidConsolePort
+    $ids = @()
+    try { $ids = @(Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction Stop | Select-Object -ExpandProperty OwningProcess -Unique) } catch { }
+    $out = @()
+    foreach ($id in $ids) {
+        $c = Get-CimInstance Win32_Process -Filter "ProcessId=$id" -ErrorAction SilentlyContinue
+        if (-not $c -or $c.Name -notmatch '^(qemu-system|emulator)') { continue }
+        $out += $c
+        $par = Get-CimInstance Win32_Process -Filter "ProcessId=$([int]$c.ParentProcessId)" -ErrorAction SilentlyContinue
+        if ($par -and $par.Name -match '^emulator') { $out += $par }
+    }
+    return @($out | Sort-Object ProcessId -Unique)
+}
+# Desliga o emulador local: "adb emu kill" (20 s) e, se ele não sair em 20 s, encerra a árvore. @{ Stopped; MB; Text }.
+function Stop-AndroidEmulator {
+    $procs = @(Get-LocalEmulatorProcs)
+    if (-not $procs.Count) { return @{ Stopped = $false; MB = 0; Text = "nenhum emulador local na porta $(Get-AndroidConsolePort)" } }
+    $mb = [int]((($procs | Measure-Object PrivatePageCount -Sum).Sum) / 1MB)
+    $null = AdbT 20 @('emu', 'kill')
+    $t = Get-Date
+    do { Start-Sleep -Seconds 2; $alive = @($procs | Where-Object { Get-Process -Id ([int]$_.ProcessId) -ErrorAction SilentlyContinue }) } while ($alive.Count -and ((Get-Date) - $t).TotalSeconds -lt 20)
+    foreach ($a in $alive) { $null = Stop-ProcessTree ([int]$a.ProcessId) }
+    return @{ Stopped = $true; MB = $mb; Text = "emulador da porta $(Get-AndroidConsolePort) desligado ($mb MB)$(if ($alive.Count) { ' — não saiu pelo adb emu kill em 20 s, encerrado' })" }
+}
+function Set-AndroidFreshStartDone([string]$Dir, [string]$Task, [string]$Why = 'primeiro accept da Task: emulador reiniciado pelo reparo declarado') {
     New-Item -ItemType Directory -Force $Dir | Out-Null
-    [System.IO.File]::WriteAllText((Join-Path $Dir 'fresh-start.json'), ([ordered]@{ task = $Task; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); motivo = 'primeiro accept da Task: emulador reiniciado pelo reparo declarado' } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+    [System.IO.File]::WriteAllText((Join-Path $Dir 'fresh-start.json'), ([ordered]@{ task = $Task; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); motivo = $Why } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
 }
 function Repair-Android {
     # v3.53.2 (sprint 5 do garden): emulador fora do SDK local (em container Docker, por exemplo) — o reparo é o comando que

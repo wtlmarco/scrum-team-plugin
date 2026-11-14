@@ -736,6 +736,27 @@ try {
         $doneKeys = @($results | ForEach-Object { [string]$_.key })
         $jobs = @($jobs | Where-Object { $doneKeys -notcontains $_.Key })
     }
+    # v3.58.4 (sprint 6 do garden, T-081): memória livre antes da suíte. O Claude Code encerrou o full no teste 2925 de 2926
+    # ("the system is running low on memory") com o emulador ligado desde o accept (4,1 GB) e a VM do Docker do build do APK
+    # (até 4,8 GB) ao lado da suíte do Karma (pico medido de 6,6 GB) — 10 min perdidos e a Task parada. Abaixo de
+    # verify.minFreeMB (padrão 6144; 0 desliga), o emulador local que a suíte não usa é desligado (target.ps1 -Release: nunca no
+    # meio de um accept); ainda abaixo, a suíte segue com o aviso e os maiores consumidores — fechar o resto é do stakeholder.
+    $memNotes = @()
+    if ($Mode -eq 'full' -and @($jobs | Where-Object { $_.Key -match '^suite\d*$' }).Count) {
+        $minFree = if ($verify.PSObject.Properties['minFreeMB'] -and $null -ne $verify.minFreeMB) { [int]$verify.minFreeMB } else { 6144 }
+        $free = Get-FreeMemoryMB
+        if ($minFree -gt 0 -and $free -ge 0 -and $free -lt $minFree) {
+            $rel = Invoke-TargetRelease $Root
+            if ($rel.Ran) { [Console]::Out.WriteLine("verify: memória livre $free MB, abaixo de $minFree MB (verify.minFreeMB) antes da suíte — alvo: $($rel.Text)") }
+            if ($rel.Freed) { Start-Sleep -Seconds 3 }
+            $free2 = Get-FreeMemoryMB
+            if ($free2 -ge 0 -and $free2 -lt $minFree) {
+                $top = Get-TopMemoryText 5
+                $memNotes += "memória livre $free2 MB antes da suíte (verify.minFreeMB $minFree)$(if ($top) { "; maiores consumidores: $top" }). A suíte rodou assim; com pouca memória o Claude Code encerra comando em segundo plano — o stakeholder fecha o que não é da construção (VM do Docker depois do build do APK, sessões e janelas paradas)"
+                [Console]::Out.WriteLine("  atenção: $($memNotes[-1])")
+            } elseif ($rel.Freed) { [Console]::Out.WriteLine("verify: memória livre agora $free2 MB — a suíte segue") }
+        }
+    }
     $budget = [System.Diagnostics.Stopwatch]::StartNew(); $lastSec = 0; $ranAny = $false
     $estimates = if ($Mode -eq 'full') { Get-CommandEstimates $Root } else { @{} }
     foreach ($j in $jobs) {
@@ -783,7 +804,7 @@ try {
     if ($pendingJobs.Count) {
         [Console]::Out.WriteLine("verify full $Task · árvore $($tree.Substring(0, 12)) · PARCIAL: $(@($results).Count) comando(s) rodado(s), pendente(s): $($pendingJobs -join ', ')")
         foreach ($r in $results) { [Console]::Out.WriteLine("  $($r.key): exit $($r.exit) · $($r.seconds) s · $(@($r.decisive) | Select-Object -Last 1)") }
-        foreach ($w in $near) { [Console]::Out.WriteLine("  atenção: $w") }
+        foreach ($w in @($near) + $memNotes) { [Console]::Out.WriteLine("  atenção: $w") }
         [Console]::Out.WriteLine("  parcial: rode o MESMO comando de novo — ele continua de onde parou (exit 3); a árvore não pode mudar entre as chamadas.")
         exit 3
     }
@@ -799,7 +820,7 @@ try {
     # v3.57.0 (item 7): o aviso de atributo divergente e os ids dinâmicos declarados (não conferidos) saem no console, não só no log.
     if ($Mode -eq 'full' -and $tid) { foreach ($nt in @($tid.Notes | Where-Object { $_ -match '^(atributo de teste|id dinâmico)' })) { [Console]::Out.WriteLine("  ids de teste: $nt") } }
     if ($tidLines.Count) { [Console]::Out.WriteLine('  ids de teste: o dev cria no código o id que o .scn cita (testTag / data-testid, standards/stacks/<tecnologia>/guide.md) e põe id em todo controle interativo; exceção só com "// sem-testid: <motivo>" na linha ou na anterior') }
-    foreach ($w in @($script:hygieneWarnings) + $near) { [Console]::Out.WriteLine("  atenção: $w") }
+    foreach ($w in @($script:hygieneWarnings) + $near + $memNotes) { [Console]::Out.WriteLine("  atenção: $w") }
     if ($Mode -eq 'full' -and $pver -and $pver.Mode -eq 'dispensada') { [Console]::Out.WriteLine("  o plano dispensa o verify full (**Verificação:** dispensada — $($pver.Reason)): o close.ps1 não o exige e o QA revisa a dispensa no portão; esta rodada fica como evidência a mais") }
     if ($planCmd) { [Console]::Out.WriteLine("  plano: o comando de **Verificação:** do plano rodou como o passo 'plano' (``$planCmd``)") }
     # v3.57.0 (plugin-report do sprint 5 do garden, item 14): o APK mais velho que o código só aparecia no accept (exit 2, "reconstrua"),

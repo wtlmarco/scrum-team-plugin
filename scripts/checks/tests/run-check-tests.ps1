@@ -457,6 +457,33 @@ Check 'v3.57.0 item 14: full verde com APK mais velho que o código → "atenç�
 (Get-Item -LiteralPath (Join-Path $p 'app/build/outputs/apk/debug/app-debug.apk')).LastWriteTime = (Get-Date).AddMinutes(5)
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
 Check 'v3.57.0 item 14: APK mais novo que o código → sem aviso' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'não regerou o APK') { "`nAVISOU" }) } 0 @('tudo exit 0', '^(?![\s\S]*AVISOU)')
+# v3.58.4 (sprint 6 do garden, T-081): memória livre antes da suíte. Abaixo de verify.minFreeMB, o verify tenta desligar o
+# emulador local (target.ps1 -Release) e, ainda abaixo, segue com o aviso e os maiores consumidores. Serial de rede: o
+# -Release recusa sem tocar em processo nenhum (o teste nunca desliga o emulador da máquina).
+$suiteOk = '"suite": "Write-Output \"Tests: 12 passed\"; New-Item -ItemType Directory -Force coverage | Out-Null; Set-Content coverage/l.info x"'
+Put $p '.team-project/guards.json' ('{ "targets": { "android": { "package": "br.x", "serial": "localhost:5555", "repair": "Write-Output x" } }, "verify": { "build": "Write-Output ok", ' + $suiteOk + ' } }')
+Put $p 'src/mem.ts' "m`n"
+$env:TEAM_TEST_FREE_MB = '1000'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.58.4: memória abaixo de verify.minFreeMB antes da suíte → tenta liberar o emulador (container: recusa), avisa com os maiores consumidores e a suíte roda (exit 0)' $r 0 @('verify: memória livre 1000 MB, abaixo de 6144 MB \(verify\.minFreeMB\) antes da suíte — alvo: não liberado — emulador em container', 'atenção: memória livre 1000 MB antes da suíte \(verify\.minFreeMB 6144\); maiores consumidores: \S', 'suite: exit 0', 'tudo exit 0')
+Put $p '.team-project/guards.json' ('{ "verify": { "minFreeMB": 0, "build": "Write-Output ok", ' + $suiteOk + ' } }')
+Put $p 'src/mem.ts' "m2`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.58.4: verify.minFreeMB 0 desliga a conferência de memória' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'memória livre') { "`nCONFERIU" }) } 0 @('tudo exit 0', '^(?![\s\S]*CONFERIU)')
+Put $p '.team-project/guards.json' ('{ "verify": { "build": "Write-Output ok", ' + $suiteOk + ' } }')
+Put $p 'src/mem.ts' "m3`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.58.4: sem alvo android, só o aviso (nenhuma liberação tentada)' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'alvo:') { "`nLIBEROU" }) } 0 @('atenção: memória livre 1000 MB antes da suíte', 'tudo exit 0', '^(?![\s\S]*LIBEROU)')
+Remove-Item Env:\TEAM_TEST_FREE_MB -ErrorAction SilentlyContinue
+# target.ps1 -Release: recusa sem reparo declarado e com serial de rede; alvo web não tem o que liberar.
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+$r = Invoke-Check 'target.ps1' @('-Target', 'android', '-Release', '-Root', $p)
+Check 'v3.58.4: target.ps1 -Release sem targets.android.repair nem avd → não liberado (exit 4): o plugin não saberia religar' $r 4 @('target android: não liberado — (sem targets\.android\.repair nem avd|adb não encontrado)')
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x", "serial": "10.0.0.5:5555", "repair": "Write-Output x" } } }'
+$r = Invoke-Check 'target.ps1' @('-Target', 'android', '-Release', '-Root', $p)
+Check 'v3.58.4: target.ps1 -Release com serial de rede → não liberado (exit 4): o container é do projeto' $r 4 @('target android: não liberado — (emulador em container \(serial de rede 10\.0\.0\.5:5555\)|adb não encontrado)')
+$r = Invoke-Check 'target.ps1' @('-Target', 'web', '-Release', '-Root', $p)
+Check 'v3.58.4: target.ps1 -Release no alvo web → nada a liberar (exit 0)' $r 0 @('target web: -Release só desliga emulador android — nada a liberar')
 
 # 5d2. verify.ps1 -Mode mutation e C1 R7-mutação (v3.46): a prova de falha declarada no plano, executada e restaurada.
 $p = Join-Path $tmp 'mutacao'; New-Project $p
@@ -2133,6 +2160,18 @@ $script:Pkg = 'br.x'; $script:calls = @(); $script:mode = 'ok'
 function AdbT([int]$Sec, [string[]]$A) { $script:calls += ($A -join ' '); if ($script:mode -eq 'ok' -or ($A[0] -eq 'install' -and @($script:calls | Where-Object { $_ -like 'uninstall*' }).Count)) { 'Success' } elseif ($A[0] -eq 'install') { 'Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: Package br.x signatures do not match]' } else { 'Success' } }
 $ie = Install-AndroidApk $a2; "IN1=[$ie]|$(@($script:calls | ForEach-Object { ($_ -split ' ')[0..1] -join ' ' }) -join ';')|NOTE=[$($script:InstallNote)]"
 $script:calls = @(); $script:mode = 'assinatura'; $ie = Install-AndroidApk $a2; "IN2=[$ie]|$(@($script:calls | ForEach-Object { ($_ -split ' ')[0..1] -join ' ' }) -join ';')|NOTE=[$($script:InstallNote)]"
+# v3.58.4: liberar o emulador entre Tasks — quem pode ser desligado, por qual porta, e o emulador recém-ligado que já conta como limpo
+$script:Serial = 'localhost:5555'; "RB1=" + (Get-AndroidReleaseBlock ([pscustomobject]@{ repair = 'x' }))
+$script:Serial = 'emulator-5556'; "RB2=" + (Get-AndroidReleaseBlock ([pscustomobject]@{ package = 'br.x' })); "RB3=[" + (Get-AndroidReleaseBlock ([pscustomobject]@{ repair = 'x' })) + "]"; "RB4=[" + (Get-AndroidReleaseBlock ([pscustomobject]@{ avd = 'Pixel' })) + "]"
+"PT1=" + (Get-AndroidConsolePort); $script:Serial = ''; "PT2=" + (Get-AndroidConsolePort)
+"FM1=" + (Get-AndroidFreshMinutes ([pscustomobject]@{ repair = 'x' })) + "|FM2=" + (Get-AndroidFreshMinutes ([pscustomobject]@{ freshStartMinutes = 10 }))
+function AdbT([int]$Sec, [string[]]$A) { $script:AdbTimeout = ''; if ($A -contains '/proc/uptime') { '754.32 1500.10' } else { '' } }
+"UP1=" + (Get-AndroidUptimeMin)
+function AdbT([int]$Sec, [string[]]$A) { $script:AdbTimeout = 'adb shell sem resposta'; '' }
+"UP2=[" + (Get-AndroidUptimeMin) + "]"
+function Get-LocalEmulatorProcs { @() }
+$st = Stop-AndroidEmulator; "SE1=$($st.Stopped)|$($st.Text)"
+$fd = Join-Path $Work 'accept/1/T-050'; Set-AndroidFreshStartDone $fd 'T-050' 'ligado há 5 min'; "FS6=" + ([System.IO.File]::ReadAllText((Join-Path $fd 'fresh-start.json'), [System.Text.Encoding]::UTF8) -match 'ligado há 5 min')
 '@, $utf8)
 $wk = Join-Path $tmp 'android-b'; New-Item -ItemType Directory -Force $wk | Out-Null
 $r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $hs3 -Adapter (Join-Path $checks 'targets/android.ps1') -Work $wk 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
@@ -2142,6 +2181,8 @@ Check 'v3.53.6 item 5b: reinício só no 1º accept da Task, com repair; freshSt
 Check 'v3.53.6 item 7: APK mais velho que o código do módulo é recusado (o teste não conta); fora de build/outputs/apk, só a nota' $r 0 @('AP1=False\|\r?\n', 'AP2=True\|A\.kt\|assembleDebug', 'AP3=False\|idade do APK não conferida: o módulo não se infere')
 Check 'v3.57.1 item 4: app híbrido — targets.android.apk com máscara acha o APK mais novo de source/dist (verify e accept); apkSources compara com o código web, sem o .spec; sem apkSources, a nota pede a declaração' $r 0 @('AP4=app-T-002-debug\.apk', 'AP5=False\|\r?\n', 'AP6=True\|tela\.ts\|o build que gera o APK', 'AP7=app-T-002-debug\.apk', 'AP8=False\|.*declare em targets\.android\.apkSources')
 Check 'v3.57.1 item 13: o accept acha o id pelo content-desc quando a WebView não o publica como resource-id (o resource-id vale primeiro)' $r 0 @('FD1=Estufa\|FD2=B9\|FD3=\[\]')
+Check 'v3.58.4: liberação do emulador — serial de rede e projeto sem reparo declarado não se liberam; repair ou avd, sim; a porta do console vem do serial (padrão 5554)' $r 0 @('RB1=emulador em container \(serial de rede localhost:5555\)', 'RB2=sem targets\.android\.repair nem avd', 'RB3=\[\]', 'RB4=\[\]', 'PT1=5556', 'PT2=5554')
+Check 'v3.58.4: emulador ligado há menos de freshStartMinutes (padrão 30) conta como reiniciado; uptime pelo /proc/uptime, sem resposta = desconhecido; nada na porta = nada desligado' $r 0 @('FM1=30\|FM2=10', 'UP1=12\b', 'UP2=\[\]', 'SE1=False\|nenhum emulador local na porta 5554', 'FS6=True')
 Check 'v3.57.2 item 19: o accept instala por cima sem desinstalar (a base fica); com assinatura diferente, desinstala, reinstala e avisa que a base foi apagada' $r 0 @('IN1=\[\]\|install -r\|NOTE=\[\]', 'IN2=\[\]\|install -r;uninstall br\.x;install -r\|NOTE=\[o APK não instalava por cima \(INSTALL_FAILED_UPDATE_INCOMPATIBLE\).*base do app no aparelho foi apagada\]')
 
 # 19. v3.53.6 (sprint 5 do garden) — plano grande vai à divisão, cartão com os passos que faltam, prova no alvo pendente.

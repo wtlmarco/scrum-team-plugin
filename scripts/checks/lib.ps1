@@ -398,6 +398,32 @@ function Stop-Detached([string]$Root, [string]$Target) {
     return [pscustomobject]$res
 }
 
+# v3.58.4 (sprint 6 do garden): memória física livre, em MB. O Claude Code encerra o comando em segundo plano quando ela
+# acaba (com a sessão ociosa) — no garden, o verify full da T-081 no teste 2925 de 2926, com o Windows longe do limite de
+# alocação. TEAM_TEST_FREE_MB substitui a leitura (testes).
+function Get-FreeMemoryMB {
+    if ($env:TEAM_TEST_FREE_MB) { return [int]$env:TEAM_TEST_FREE_MB }
+    try { return [int]((Get-CimInstance Win32_OperatingSystem -Property FreePhysicalMemory -ErrorAction Stop).FreePhysicalMemory / 1KB) } catch { return -1 }
+}
+# Os maiores consumidores de memória da máquina, somados por nome: "qemu-system-x86_64 4,2 GB · Code (19) 3,1 GB · …".
+function Get-TopMemoryText([int]$Top = 5) {
+    try {
+        return (@(Get-Process -ErrorAction Stop | Group-Object ProcessName | ForEach-Object { [pscustomobject]@{ N = $_.Name; C = $_.Count; B = ($_.Group | Measure-Object WorkingSet64 -Sum).Sum } } |
+            Sort-Object B -Descending | Select-Object -First $Top | ForEach-Object { "$($_.N)$(if ($_.C -gt 1) { " ($($_.C))" }) $(([double]$_.B / 1GB).ToString('0.0', [Globalization.CultureInfo]::GetCultureInfo('pt-BR'))) GB" }) -join ' · ')
+    } catch { return '' }
+}
+# Desliga o emulador local que a construção não usa (target.ps1 -Release, num PowerShell filho com prazo: o adaptador android
+# não é carregado no processo de quem chama). Só com targets.android declarado. @{ Ran; Freed; Text }.
+function Invoke-TargetRelease([string]$Root) {
+    $tg = Get-TargetsConfig $Root
+    if (-not ($tg -and $tg.PSObject.Properties['android'])) { return @{ Ran = $false; Freed = $false; Text = 'sem alvo android no guards.json' } }
+    $ts = Join-Path $PSScriptRoot 'target.ps1'
+    $r = Invoke-Bounded $Root "& '$($ts -replace "'", "''")' -Target android -Release -Root '$($Root -replace "'", "''")'" 120
+    $txt = (($r.out -split "`r?`n" | Where-Object { $_ -match '^target android:' }) | Select-Object -Last 1)
+    if (-not $txt) { $txt = if ($r.timedOut) { 'target.ps1 -Release passou de 120 s' } else { "target.ps1 -Release saiu com $($r.exit)" } }
+    return @{ Ran = $true; Freed = ($r.exit -eq 0 -and $txt -match 'liberado —'); Text = ($txt -replace '^target android:\s*', '') }
+}
+
 # APK mais recente de <projeto>/**/build/outputs/apk/{release,debug}/ (v3.57.0: no lib.ps1; era a busca do Resolve-AndroidApk).
 function Get-LatestApk([string]$Root) {
     $c = Get-ChildItem -Path $Root -Recurse -Filter '*.apk' -File -ErrorAction SilentlyContinue |
