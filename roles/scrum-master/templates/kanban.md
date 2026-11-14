@@ -1,56 +1,41 @@
 # Template — Kanban do Sprint (Kanban · Burndown · Controle)
 
 > **Dono:** SM · Vive em `.team-project/sprints/<n>/kanban.md` (sprint aberto antes da v3.51 continua com `burndown.md`, e os scripts leem os dois).
-> **Um arquivo para acompanhar o sprint** (pedido do stakeholder, 2026-10-21): primeiro **onde cada Task está** (o Kanban), depois **quanto falta** (o Burndown: Série e Registro de transições) e, embaixo, **o controle** — o que entrou fora da Planning, o que está bloqueado e o que espera o stakeholder. O `sprint-backlog.md` fica só com as Histórias e as Tasks.
+> **Um arquivo para acompanhar o sprint** (pedido do stakeholder, 2026-10-21), **na ordem de quem acompanha** (v3.59.0, pedido do stakeholder em 14/11/2026: "frases simples e diretas, que alguém de negócio entenda; o técnico, só quando pedir"): primeiro o **Resumo** em palavras simples, **quem trabalha agora**, **onde cada parte está** (o Kanban, com o nome de negócio de cada parte) e **o controle** — o que entrou fora da Planning, o que está bloqueado e o que espera o stakeholder; depois, sob **Detalhe técnico**, a linha de base, o Burndown (Série e Registro de transições) e as Rodadas. O `sprint-backlog.md` fica só com as Histórias e as Tasks.
 > Nasce no `/sm sprint plan` (linha de abertura, dia 0 — **a data da aprovação do pacote de abertura**, não a do fechamento da Planning · R25), ganha **uma linha na Série e uma no Registro a cada transição de marcador** — no `sprint run`, gravadas pelo `mark.ps1` e pelo `close.ps1 -Apply` no momento da passagem ([`sprint-run.md`](../process/sprint-run.md) §Marcador); fora dele, no `/sm board` e no `/sm close <T-ID>` (R24) —, e **fecha** — sem mais edição — no `/sm sprint close`.
-> **Só Markdown:** não há página HTML. `scripts/checks/kanban.ps1` regrava o `## Kanban` e a `## Rodadas` **a cada transição** (`mark.ps1`, `close.ps1`) **e ao fim de cada rodada de agente** (hook G16, que confirma o estado e soma o custo). É script: **não custa token**.
+> **Só Markdown:** não há página HTML. `scripts/checks/kanban.ps1` regrava o `## Resumo`, o `## Kanban` e a `## Rodadas` **a cada transição** (`mark.ps1`, `close.ps1`) **e ao fim de cada rodada de agente** (hook G16, que confirma o estado e soma o custo), e põe as seções na ordem acima (v3.59.0: só move seções inteiras; os scripts acham cada uma pelo título). É script: **não custa token**. O nome de cada parte vem de `scripts/checks/plain.ps1` — a coluna **Para o stakeholder** do Sprint Backlog ou, sem ela, o título da História com "parte k de m".
 > **Bloco de fix:** `fixes/<B-nnn>/kanban.md`, gerado **inteiro** por `kanban.ps1 -Block B-<nnn>` (`-Init` no `fix plan`) — ver a variante no fim.
 
 ```markdown
 # Kanban — Sprint <n>
 
-## Agora
-*(Atualizado às <hh:mm> pelos hooks, a cada ação de agente — não editar à mão. Os horários são fixos: compare com o relógio. Para o detalhe técnico e o tempo corrido, `/team-status`.)* — uma linha por agente em voo (o executor de Task e os papéis que ele chamou), em linguagem de funcionalidade (v3.57.1): quem, a Task com o título do backlog, o que está fazendo numa frase simples.
+## Resumo
+*(Para quem acompanha, em palavras simples. Gerado às <hh:mm> a cada mudança de etapa e a cada rodada do time — não editar à mão. Agora mesmo: `/team-status`; detalhe técnico: `/team-status detalhe` e o fim deste arquivo.)*
 
-| Quem | Task | O que está fazendo | Última ação às | Começou às |
+- **Objetivo:** <o objetivo do sprint, do Sprint Backlog>
+- **Andamento:** <k> de <n> partes prontas (cerca de <p>% do trabalho estimado)
+- **Em andamento:** <nome da parte> (T-<nnn>) — <em construção | em teste> · ou: nenhuma parte em construção neste momento; a última pronta foi <nome> (T-<nnn>) às <hh:mm>.
+- **Parado:** <nome> (T-<nnn>) — <motivo em frase simples> *(só se houver parte 🔴)*
+- **Precisa de você:** <responder a pergunta aberta na conversa do sprint · <k> decisões na lista de pendências (README §7); a mais recente: "…" · nada agora.>
+- **A seguir:** <nome> (T-<nnn>); depois, <nome> (T-<nnn>)
+
+## Agora
+*(Quem do time está trabalhando neste momento. Atualizado às <hh:mm>, a cada ação — os horários são fixos: compare com o relógio. Detalhe técnico: `/team-status detalhe`.)* — uma linha por membro do time em ação (o coordenador da tarefa e quem ele chamou), em linguagem de funcionalidade (v3.57.1; nomes de negócio na v3.59.0).
+
+| Quem | Em quê | O que está fazendo | Última ação às | Começou às |
 |---|---|---|---|---|
-| <Dev · Executor da Task · Arquiteto · QA · Operador · Watcher (espera)> *(chamado pelo <papel>, se aninhado)* | T-<nnn> · <título curto do backlog> | <rodando os testes · conferindo tudo: compilação, testes e cobertura · gerando o APK do app · testando os cenários no app rodando · alterando o arquivo <x> · …> | <hh:mm> | <hh:mm> |
+| <Desenvolvedor · Coordenador da tarefa · Arquiteto · Qualidade (QA) · Operador de testes · Vigia (só acompanha a espera)> *(chamado pelo <papel>, se aninhado)* | <nome da parte> (T-<nnn>) | <rodando os testes do que mudou · conferindo tudo: compilação, testes e cobertura · gerando o aplicativo para o celular · testando no app rodando · alterando o arquivo <x> · …> | <hh:mm> | <hh:mm> |
 
 ## Kanban
-*(Regravado pelo `kanban.ps1` a cada transição e ao fim de cada rodada — não editar à mão.)*
+*(Onde está cada parte do sprint. Regravado a cada mudança de etapa e a cada rodada do time — não editar à mão.)*
 
-| ⬜ A fazer | 🟦 Plano | 🟨 Construção | 🟪 Verificação | ✅ Fechada | 🔴 Bloqueada |
-|---|---|---|---|---|---|
-| T-<nnn> | | | | | |
+**🟨 Em construção (<k>)**
+- <nome da parte> (T-<nnn>)
 
-## Rodadas
-*(Regravada pelo `kanban.ps1` ao fim de cada rodada — não editar à mão. Custo = tokens e tempo, sem valor em dinheiro.)*
+**🔴 Paradas (<k>)**
+- <nome da parte> (T-<nnn>) — <motivo em frase simples>
 
-- **Por tarefa e fase:** Plano e preparo · Construção · Verificação · Outros (PO, SM, UX) — `tokens · tempo`, a coluna **Pausa** e a linha Consolidado. v3.51.4: a fase é a do **marcador da Task no início da rodada** (⬜/🟦 → Plano · 🟨 → Construção · 🟪 → Verificação; sem Registro, pelo papel); rodada que cita várias Tasks (plano por História) entra **rateada** em cada uma; lacuna acima de 20 min (limite de conta, máquina parada) fica fora do tempo, na coluna Pausa.
-- **Por papel e modelo:** uma linha por par, com o Total.
-- **Rodada a rodada:** uma linha por rodada (data e hora, Task ou F-ID, papel, modelo, tokens, tempo), a mais nova primeiro.
-- **Espera de comando** (v3.51.4): por Task, o tempo que o `verify.ps1` passou rodando build, teste, lint e mutação (focused · full · mutation) — quanto do relógio foi espera, não raciocínio.
-
-## Linha de base
-
-| | |
-|---|---|
-| **Sprint** | <n> |
-| **Janela** | <início> → <fim> |
-| **Estimativa total planejada** | <n> <unidade> — soma de todas as Tasks na abertura |
-
-## Série
-
-| Dia | Data | Evento | Est. restante | Tasks restantes | ⬜ | 🟦 | 🟨 | 🟪 | ✅ | 🔴 |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 0 | <data> | Abertura do sprint — **pacote aprovado** | <n> | <n> | <n> | 0 | 0 | 0 | 0 | 0 |
-| 0 | <aaaa-mm-dd hh:mm> | T-<nnn> ⬜ → 🟦 | <n> | <n> | <n> | 1 | 0 | 0 | 0 | 0 |
-
-## Registro de transições (R24)
-
-| Task | De → Para | Quando | Por quem |
-|---|---|---|---|
-| T-<nnn> | ⬜ → 🟦 | <aaaa-mm-dd hh:mm> | Arquiteto |
+**🟦 Sendo planejadas (<k>)** · **⬜ Na fila (<k>)** · **✅ Prontas (<k>)** — *(a mesma forma; a ordem é 🟨 · 🟪 Em teste · 🔴 · 🟦 · ⬜ · ✅, e etapa vazia não aparece)*
 
 ## Controle
 
@@ -79,6 +64,39 @@
 ## Fechamento *(preenchido só no `/sm sprint close`)*
 - **Estimativa restante final:** <n> — <zero, se o sprint fechou todas as Tasks | o que ficou, e para onde foi (Product Backlog, com a História — R5)>
 - **Objetivo do sprint atingido?** <ver Sprint Review — não é este documento que decide>
+
+## Detalhe técnico
+*(Daqui para baixo, o registro técnico do sprint: linha de base, série do burndown, cada passagem de etapa e o custo de cada rodada do time. Quem acompanha não precisa ler.)*
+
+## Linha de base
+
+| | |
+|---|---|
+| **Sprint** | <n> |
+| **Janela** | <início> → <fim> |
+| **Estimativa total planejada** | <n> <unidade> — soma de todas as Tasks na abertura |
+
+## Série
+
+| Dia | Data | Evento | Est. restante | Tasks restantes | ⬜ | 🟦 | 🟨 | 🟪 | ✅ | 🔴 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | <data> | Abertura do sprint — **pacote aprovado** | <n> | <n> | <n> | 0 | 0 | 0 | 0 | 0 |
+| 0 | <aaaa-mm-dd hh:mm> | T-<nnn> ⬜ → 🟦 | <n> | <n> | <n> | 1 | 0 | 0 | 0 | 0 |
+
+## Registro de transições (R24)
+
+| Task | De → Para | Quando | Por quem |
+|---|---|---|---|
+| T-<nnn> | ⬜ → 🟦 | <aaaa-mm-dd hh:mm> | Arquiteto |
+
+## Rodadas
+*(Regravada pelo `kanban.ps1` ao fim de cada rodada — não editar à mão. Custo = tokens e tempo, sem valor em dinheiro.)*
+
+- **Por tarefa e fase:** Plano e preparo · Construção · Verificação · Outros (PO, SM, UX) — `tokens · tempo`, a coluna **Pausa** e a linha Consolidado. v3.51.4: a fase é a do **marcador da Task no início da rodada** (⬜/🟦 → Plano · 🟨 → Construção · 🟪 → Verificação; sem Registro, pelo papel); rodada que cita várias Tasks (plano por História) entra **rateada** em cada uma; lacuna acima de 20 min (limite de conta, máquina parada) fica fora do tempo, na coluna Pausa.
+- **Por papel e modelo:** uma linha por par, com o Total.
+- **Rodada a rodada:** uma linha por rodada (data e hora, Task ou F-ID, papel, modelo, tokens, tempo), a mais nova primeiro.
+- **Espera de comando** (v3.51.4): por Task, o tempo que o `verify.ps1` passou rodando build, teste, lint e mutação (focused · full · mutation) — quanto do relógio foi espera, não raciocínio.
+
 ```
 
 ## Como preencher
@@ -87,7 +105,8 @@
 - **Uma transição = uma linha no Registro + uma linha na Série, no mesmo arquivo e no mesmo momento.** O **Evento** da Série cita a Task e a passagem (`T-041 🟦 → 🟨`). Sprint sem eventos num dia não gera linha vazia — o burndown é por evento.
 - **Est. restante só cai quando uma Task fecha (✅).** Passar a 🟦/🟨/🟪 não reduz o restante — muda a composição das colunas de estado.
 - **O dia 0 é a aprovação do pacote, não o fim da Planning** (R25 · [`../process/workflow-sprint.md` §5f](../process/workflow-sprint.md)).
-- **O Kanban e as Rodadas são gerados** — editar à mão é perder a edição na próxima rodada ou transição. O controle (Entradas, Bloqueios, Decisões) é do SM, escrito à mão.
+- **O Resumo, o Kanban e as Rodadas são gerados** — editar à mão é perder a edição na próxima rodada ou transição. O controle (Entradas, Bloqueios, Decisões) é do SM, escrito à mão. **Natureza do bloqueio em frase que o stakeholder entenda** (v3.59.0): o Resumo e o quadro traduzem as naturezas conhecidas (dependência, ambiente, estado de partida, prova no alvo pendente, capacidade, lacuna funcional, risco técnico) e, fora delas, mostram o começo da célula — escreva-o sem caminho de arquivo nem nome de regra.
+- **Linguagem de quem acompanha** (v3.59.0): o Resumo, o Agora e o Kanban não usam sigla, nome de regra nem caminho de arquivo; o código da parte (`T-081`) vai no fim, entre parênteses, para quem quiser pedir o detalhe. O detalhe técnico fica sob **Detalhe técnico** e no `/team-status detalhe`.
 - **Fechado no `/sm sprint close`.** A última linha da Série é a foto final; nenhuma edição depois.
 - **Conferido no `close`.** O `close.ps1 -Post` (C1) exige a linha → ✅ no Registro, as passagens da Task e, na Série, uma linha para cada transição dela. Sprint aberto antes da v3.44.1, com o Registro no Sprint Backlog, é lido de lá; antes da v3.51, do `kanban.md`.
 
@@ -97,4 +116,4 @@ Este artefato **reaproveita** o que já acontece: no `sprint run`, os scripts gr
 
 ## Variante — bloco de fix (`fixes/B-<nnn>/kanban.md`)
 
-Gerado **inteiro** pelo `kanban.ps1 -Block B-<nnn>` (`-Init` no `fix plan`, junto com o `consumption.md` do bloco; a G16 cria os dois na primeira rodada se faltarem). Seções: **Kanban** das F-IDs, com as **mesmas colunas do sprint**; **Registro de transições**, marcado **na entrada de cada fase** (`-Fid F-<n> -To plan|build|qa`, chamado pela sessão antes de acionar o papel: Arquiteto → 🟦, dev → 🟨, QA → 🟪; marcas em `fixes/B-<nnn>/.marks`); fechamento do `verdict.md` (→ ✅, com "(promovida)" ou "(devolvida)" como nota) e "Critério que caiu" (→ 🔴 "(promoção)") seguem derivados; **Rodadas**, como acima, só confirmam o estado e somam o custo. Sem Série, burndown nem Controle. Com `**Fechado em:**` no `verdict.md`, o script não regrava mais (a pasta é imutável).
+Gerado **inteiro** pelo `kanban.ps1 -Block B-<nnn>` (`-Init` no `fix plan`, junto com o `consumption.md` do bloco; a G16 cria os dois na primeira rodada se faltarem). Seções: **Kanban** das F-IDs, numa tabela com as **etapas do sprint** (Na fila · Sendo planejadas · Em construção · Em teste · Prontas · Paradas — v3.59.0); **Registro de transições**, marcado **na entrada de cada fase** (`-Fid F-<n> -To plan|build|qa`, chamado pela sessão antes de acionar o papel: Arquiteto → 🟦, dev → 🟨, QA → 🟪; marcas em `fixes/B-<nnn>/.marks`); fechamento do `verdict.md` (→ ✅, com "(promovida)" ou "(devolvida)" como nota) e "Critério que caiu" (→ 🔴 "(promoção)") seguem derivados; **Rodadas**, como acima, só confirmam o estado e somam o custo. Sem Série, burndown nem Controle. Com `**Fechado em:**` no `verdict.md`, o script não regrava mais (a pasta é imutável).

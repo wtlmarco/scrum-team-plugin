@@ -33,10 +33,12 @@ try {
     # texto sai do scripts/checks/team-view.ps1 e volta com decision=block: o harness mostra o reason ao stakeholder e o
     # prompt não chega ao modelo nem entra no contexto. Vale no console, na extensão e no Remote Control. Falha aqui → exit 1
     # (falha aberta): o prompt segue e o commands/team-status.md (ou team-usage.md) roda o mesmo script pelo modelo.
-    $vm = [regex]::Match([string]$hookInput.prompt, '^\s*/(?:team:)?team-(status|usage)(?:\s+(\d+))?\s*$')
+    # v3.59.0: /team-status abre em palavras simples; "detalhe" (ou "técnico") traz a visão técnica — em qualquer ordem com o número.
+    $vm = [regex]::Match([string]$hookInput.prompt, '^\s*/(?:team:)?team-(status|usage)((?:\s+(?:\d+|detalhes?|t[ée]cnico|detail))*)\s*$', 'IgnoreCase')
     if ($vm.Success) {
-        $va = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot '..\scripts\checks\team-view.ps1'), '-View', $vm.Groups[1].Value, '-Root', $projectDir)
-        if ($vm.Groups[2].Success) { $va += @('-Sprint', $vm.Groups[2].Value) }
+        $va = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot '..\scripts\checks\team-view.ps1'), '-View', $vm.Groups[1].Value.ToLowerInvariant(), '-Root', $projectDir)
+        $vn = [regex]::Match($vm.Groups[2].Value, '\d+'); if ($vn.Success) { $va += @('-Sprint', $vn.Value) }
+        if ($vm.Groups[2].Value -match '(?i)detal|t[ée]cnico|detail') { $va += '-Detail' }
         $text = ((& powershell @va 2>&1 | ForEach-Object { [string]$_ }) -join "`n").TrimEnd()
         if (-not $text) { $text = "team-view: sem saída (exit $LASTEXITCODE)." }
         [Console]::Out.Write((@{ decision = 'block'; reason = $text } | ConvertTo-Json -Compress))

@@ -56,6 +56,47 @@ $plugin = '${CLAUDE_PLUGIN_ROOT}/scripts/checks'
 
 function Out([string]$s) { [Console]::Out.WriteLine($s) }
 
+# v3.59.0 (pedido do stakeholder, 14/11/2026: frases simples e diretas, sem termo técnico): cada PRÓXIMA AÇÃO do next vem
+# com a linha PARA O STAKEHOLDER: — o que está acontecendo, em palavras de negócio, com o nome da parte (plain.ps1) e o
+# código no fim. É ela, copiada, a fala da sessão ao stakeholder no fim do turno (sprint-run.md §Fala ao stakeholder); o
+# resto do que o next imprime é instrução para a sessão. A primeira linha do next traz também o que ficou pronto ou parou
+# desde o next anterior (Get-RunNews), uma vez cada.
+$script:RunNames = $null; $script:RunNews = ''
+function Get-RunLabel([string]$Id) { if ($null -eq $script:RunNames) { $script:RunNames = Get-PlainNames $Root $n }; return (Get-PlainLabel $script:RunNames $Id) }
+function Get-RunStory([string]$Story) {
+    if ($Story -eq $script:GateStory) { return 'os ajustes pedidos na revisão final' }
+    $t0 = @($tasks | Where-Object { $_.Story -eq $Story }) | Select-Object -First 1
+    if (-not $t0) { return $Story }
+    if ($null -eq $script:RunNames) { $script:RunNames = Get-PlainNames $Root $n }
+    $nm = if ($script:RunNames.ContainsKey($t0.Id)) { $script:RunNames[$t0.Id] -replace ' — parte \d+ de \d+$', '' } else { '' }
+    if ($nm -and $nm -ne $t0.Id) { return "$nm ($Story)" }
+    return $Story
+}
+function Say([string]$Text) { Out "PARA O STAKEHOLDER: $($script:RunNews)$Text"; $script:RunNews = '' }
+# O que passou a ✅ ou a 🔴 no Registro de transições desde o next anterior (.team-project/.stakeholder-seen guarda quantas
+# linhas já foram ditas). Na primeira vez, só marca — não despeja o sprint inteiro.
+function Get-RunNews {
+    $seenF = Join-Path $tp '.stakeholder-seen'
+    $chart = Get-ChartPath $S; if (-not (Test-Path -LiteralPath $chart)) { return '' }
+    $reg = Get-Section (Read-Text $chart) '^##\s+Registro de transi'; if (-not $reg) { return '' }
+    $t = @(Get-Tables $reg)[0]; if (-not $t) { return '' }
+    $rows = @($t.Rows); $seen = -1
+    if (Test-Path -LiteralPath $seenF) { try { $seen = [int]([System.IO.File]::ReadAllText($seenF, $utf8).Trim()) } catch { $seen = -1 } }
+    try { [System.IO.File]::WriteAllText($seenF, "$($rows.Count)", $utf8) } catch { }
+    if ($seen -lt 0 -or $seen -ge $rows.Count) { return '' }
+    $ok = @(); $stop = @(); $blk = $null
+    foreach ($r in $rows[$seen..($rows.Count - 1)]) {
+        $id = ([regex]::Match((Get-Cell $r 0), $script:TaskIdRe)).Value; if (-not $id) { continue }
+        $to = ((Get-Cell $r 1) -split '→')[-1].Trim()
+        if ($to.Contains($E.Done)) { $ok += (Get-RunLabel $id) }
+        elseif ($to.Contains($redMk)) { if ($null -eq $blk) { $blk = Get-BlockLines $S }; $stop += "$(Get-RunLabel $id) — $(if ($blk.ContainsKey($id)) { Get-PlainReason ([string]@($blk[$id])[-1]) } else { 'parada' })" }
+    }
+    $txt = ''
+    if ($ok.Count) { $txt += "Pronto: $(@($ok | Select-Object -Unique) -join '; '). " }
+    if ($stop.Count) { $txt += "Parou: $(@($stop | Select-Object -Unique) -join '; '). " }
+    return $txt
+}
+
 # A linha que o next imprime quando manda esperar (protocolo de espera, regra 6): a conferência por tempo é do watcher.
 # O disparo NÃO cita ID de Task (o registro de agentes lê ID na descrição e no prompt e trataria o watcher como agente da Task).
 # v3.57.1: o papel se chamava "vigia" (team:vigia); renomeado para o padrão em inglês dos outros agentes.
@@ -172,6 +213,7 @@ function Write-StallAction($T, [string]$S, [string]$n, $W) {
         Set-NextVerdict $Root ''
         Add-RunLog $S $n $T.Id 'POSSÍVEL TRAVAMENTO → encerrado e retomado sem formulário (protocolo de espera, regra 5: 1ª vez na Task)' $W.Text "sprints/$n/handoff/$($T.Id).json"
         Out "PRÓXIMA AÇÃO: encerrar e retomar — POSSÍVEL TRAVAMENTO na $($T.Id): $($W.Text)"
+        Say "Um teste de $(Get-RunLabel $T.Id) travou; o time vai encerrá-lo e recomeçar sozinho, sem precisar de você."
         Out "  primeira vez nesta Task: sem formulário (protocolo de espera, regra 5 — uma tentativa automática por causa; a segunda vai ao stakeholder)."
         Out "  1. encerre só o que o run iniciou: $plugin/$($W.Kill)"
         Out "  2. encerre o turno: o dev que esperava esse comando recebe o aviso do fim dele e refaz a rodada; sem agente da Task no registro, rode run.ps1 next (ele manda construir a $($T.Id) de novo, dev novo pelo cartão)."
@@ -179,6 +221,7 @@ function Write-StallAction($T, [string]$S, [string]$n, $W) {
     }
     Set-AskRoute $Root 'travamento' $T.Id $W.Text
     Out "PRÓXIMA AÇÃO: esperar — POSSÍVEL TRAVAMENTO na $($T.Id) de novo: $($W.Text)"
+    Say "Um teste de $(Get-RunLabel $T.Id) travou pela segunda vez. Preciso de uma decisão sua: encerrar e recomeçar essa parte, ou esperar mais."
     Out "  já houve um encerramento automático nesta Task (regra 5): leve ao stakeholder num formulário (R22) — encerrar o processo ($plugin/$($W.Kill)) e retomar a $($T.Id) por dev novo com o cartão (run.ps1 start), ou seguir esperando."
     Set-NextVerdict $Root 'esperar' $T.Id "comando: $($W.Text)"
     return 3
@@ -321,6 +364,7 @@ function Write-SplitAction($t, [string]$Story, $F, $Big) {
     $mx = $script:FichaMaxFiles
     if (-not $Big) {
         Out "PRÓXIMA AÇÃO: dividir a $($t.Id) antes do plano — a ficha prevê $($F.Planned) arquivos (máximo $mx) (Arquiteto, instância curta)"
+        Say "$(Get-RunLabel $t.Id) é grande demais para uma entrega só; o arquiteto vai dividi-la em partes menores, sem mudar o que foi combinado."
         Out "  $(Get-AgentLine 'architect')"
         Out "  prompt: `"A ficha da $($t.Id) em $bdRel prevê $($F.Planned) arquivos; o máximo por Task é $mx. Divida-a em $($newIds -join ', ') (e a letra seguinte, se precisar de mais) no próprio $bdRel, dentro da História ${Story}: uma linha da tabela e uma ficha por Task nova, cada ficha com **Arquivos previstos:** até $mx, a dependência entre elas na coluna Depende de, e retire a ficha da $($t.Id). O escopo da História não muda (R2). Não escreva plano. Volte em até 8 linhas: as Tasks novas, o título, a estimativa de cada uma (somando a da $($t.Id)) e a dependência.`""
         Out "  depois: a sessão troca a linha da $($t.Id) no Sprint Backlog pelas Tasks novas, transcritas do breakdown (mesma História), e roda run.ps1 next"
@@ -329,6 +373,7 @@ function Write-SplitAction($t, [string]$Story, $F, $Big) {
     $where = if ($F) { "No próprio ${bdRel}, dentro da História ${Story}: uma linha da tabela e uma ficha por Task nova, cada ficha com **Arquivos previstos:** até $mx e a linha **Base:** ``$($Big.Rel)`` — <os blocos ou passos que ela herda>, a dependência entre elas na coluna Depende de; retire a ficha da $($t.Id)." } else { "A $($t.Id) não tem ficha no breakdown: volte com, por Task nova, o título, a estimativa (somando a da $($t.Id)), a dependência e os blocos ou passos do plano que ela herda." }
     $plx = Get-RunPlanner $Root
     Out "PRÓXIMA AÇÃO: dividir a $($t.Id) — o plano dela tem $($Big.Kb) KB (teto $($script:PlanMaxKb) KB, regra 22): Task grande; os blocos do plano são a base da divisão (Arquiteto, instância curta)"
+    Say "$(Get-RunLabel $t.Id) é grande demais para uma entrega só; o arquiteto vai dividi-la em partes menores, sem mudar o que foi combinado."
     Out "  $(Get-AgentLine 'architect')"
     Out "  prompt: `"O plano da $($t.Id) (``$($Big.Rel)``, $($Big.Kb) KB) passou do teto de $($script:PlanMaxKb) KB e reprovou no plan.ps1 (regra 22): a Task é grande demais para uma construção. Divida-a em $($newIds -join ', ') (e a letra seguinte, se precisar de mais) usando os blocos — ou grupos de passos — desse plano como base: cada Task nova herda blocos inteiros, com os arquivos e os testes deles, e o que já está decidido no plano não se decide de novo. Do plano, leia o cabeçalho e os títulos dos blocos e passos (Grep '^#{2,4} '); não o reescreva nem o corte. $where O escopo da História não muda (R2). Não escreva plano: cada Task nova ganha o seu no run.ps1 next. Volte em até 8 linhas: as Tasks novas, o título, a estimativa de cada uma e a dependência.`""
     Out "  depois: a sessão troca a linha da $($t.Id) no Sprint Backlog pelas Tasks novas$(if ($F) { ', transcritas do breakdown' }) (mesma História, coluna Plano sem link) e roda run.ps1 next; o plano grande fica no disco como base (não o apague)$(if ($plx -and @($plx.Tasks).Count -and (Test-ExternalTask $plx $t.Id)) { " · plano externo com a lista do piloto: as Tasks novas entram em guards.json → run.tasks (stakeholder)" })"
@@ -853,9 +898,13 @@ try {
             Out "run: $($T.Id) fechada pela evidência do dev (close.ps1 -Apply)."; Out (($c -split "`r?`n" | Where-Object { $_ -match '^\s*-\s|\*\*|Status' } | Select-Object -Last 6) -join "`n")
             $cm = Save-TaskCommit $T $S; Out $cm.Line
             Set-SafePoint $T $n
+            # v3.59.0: o próprio done apaga o .active-task e o .active-executor (passo 8 do roteiro) — dependia do executor rodar o
+            # dispatch -Clear, e no sprint 6 do garden o registro da T-069a sobrou: o /team-status a mostrava "em execução",
+            # PARADA e "Fechada" na mesma tela.
+            $null = Invoke-Child 'dispatch.ps1' @('-Clear', '-Root', $Root)
             # v3.52.2 (C3): quem lê isto é o executor de Task — ele devolve UMA linha à sessão, que segue com run.ps1 next.
             $k = 0; foreach ($v in (Get-DevCounter $T $S).Values) { $k += $v.starts }
-            Out "  dispatch.ps1 -Clear; PONTO SEGURO gravado (.team-project/.safe-point). Devolva a linha à sessão: `"$($T.Id) ✅ fechada · commit $(if ($cm.Sha) { $cm.Sha } else { '—' }) · $([Math]::Max(1, $k)) rodadas`" — a sessão segue com run.ps1 next."
+            Out "  escopo da Task apagado (dispatch.ps1 -Clear); PONTO SEGURO gravado (.team-project/.safe-point). Devolva a linha à sessão: `"$($T.Id) ✅ fechada · commit $(if ($cm.Sha) { $cm.Sha } else { '—' }) · $([Math]::Max(1, $k)) rodadas`" — a sessão segue com run.ps1 next."
             exit 0
         }
         Out "run: $($T.Id) — o -Apply gravou o fechamento, mas o -Post não confirmou (R24); não feche de novo (baixaria a estimativa duas vezes):"
@@ -867,6 +916,7 @@ try {
     # ---------- next ----------
     # v3.53.5: a decisão de esperar vale só até o next seguinte — ele a regrava se a espera continua (G20 lê .next-verdict).
     Set-NextVerdict $Root ''
+    $script:RunNews = Get-RunNews   # v3.59.0: o que ficou pronto ou parou desde o next anterior abre a fala ao stakeholder
     # v3.51.4: o run parou por limite de uso da conta (.usage-limit, gravado pela G16 ou pelo Stop) — diz o motivo e segue.
     $lim = Join-Path $tp '.usage-limit'
     if (Test-Path -LiteralPath $lim) {
@@ -940,6 +990,7 @@ try {
             if ($capS -gt 0 -and $sg.LastContext -gt $capS -and -not $flying.Count) {
                 Set-NextVerdict $Root 'reiniciar' '' "sessão com $kk mil de contexto (teto $([int]($capS / 1000)) mil)"
                 Out "PRÓXIMA AÇÃO: reiniciar a sessão — contexto da última chamada $kk mil, acima do teto de $([int]($capS / 1000)) mil (guards.json → run.sessionContextCap), e nenhum agente em voo."
+                Say 'Para economizar, preciso que você reinicie a conversa do sprint: digite /clear e depois /sm sprint run. Nada se perde — o trabalho continua de onde está.'
                 Out "  cada chamada desta sessão relê o histórico inteiro; reiniciada, ela parte de ~56 mil. Nada se perde: o quadro, o run-log, os cartões e o .active-run estão no disco."
                 Out "  sessão: diga ao stakeholder, em uma linha, para digitar /clear e depois /sm sprint run (o run retoma de onde está) — e encerre o turno (a G20 libera)."
                 exit 0
@@ -996,6 +1047,7 @@ try {
                 Write-ScenarioDivergence $rt $S $n
                 $only = if ($rt.Scenarios.Count) { Get-AcceptArgs $rt } else { '' }   # v3.56.0 (H2): os do plano, com o .scn da História
                 Out "PRÓXIMA AÇÃO: prova no alvo da $($rt.Id) — o alvo $tn voltou (target.ps1 ok): a Task sai de 🔴 para 🟪 e o operator roda o accept que ficou pendente"
+                Say "O ambiente de teste voltou; testando $(Get-RunLabel $rt.Id) no app rodando."
                 Out "  $(Get-AgentLine 'operator')"
                 Out "  prompt: `"Chamador: sessão $($rt.Id) — Rode na raiz: $plugin/accept.ps1 -Task $($rt.Id)$only (a prova no alvo que ficou pendente quando o alvo caiu). Exit 4 = ambiente: rode $plugin/target.ps1 -Target $tn -Repair uma vez e repita. Não altere código, cenário nem plano. Devolva o caminho do result.md e a linha de resumo.`""
                 Out "  depois: run.ps1 done -Task $($rt.Id) -Result ok (fecha pela evidência: o verify do dev e este accept) · accept com exit 4 de novo → run.ps1 done -Task $($rt.Id) -Result env (volta a 🔴 pela prova pendente) · cenário que falhou: o done ok manda dev em instância nova"
@@ -1028,6 +1080,7 @@ try {
             if (-not $noPlan.Count) { $prepared += $h.Name; if (@($h.Group | Where-Object { @(& $blockers $_).Count -eq 0 }).Count) { break }; continue }
             foreach ($t in @($noPlan | Where-Object { $_.Mark -eq $todoMk })) { $mo = Set-Mark $t.Id 'plan' 'Arquiteto · plano de correção (run.ps1 next)'; if ($mo) { Out "  $mo" } }
             Out "PRÓXIMA AÇÃO: plano de correção do portão — $(($noPlan | ForEach-Object { $_.Id }) -join ', ') (Arquiteto)"
+            Say 'A revisão final pediu ajustes; o arquiteto está planejando as correções.'
             Out "  $(Get-AgentLine 'architect')"
             Out "  prompt: `"Escreva o plano de correção de $(($noPlan | ForEach-Object { $_.Id }) -join ', ') em .team-project/sprints/$n/plan/<ID>-correcao.md (template fix-plan ou o plano enxuto), a partir dos achados 'Volta para: dev' de .team-project/sprints/$n/validation.md: **Arquivos tocados:** com os arquivos dos achados, teste de regressão por achado. O ✅ das Tasks originais não muda (R25). Rode plan.ps1 e corrija até passar; a sessão atualiza a coluna Plano do quadro. Volte em até 15 linhas.`""
             Out "  depois: plan.ps1 -Plan <caminho> e run.ps1 next (o executor de Task conduz a correção)"
@@ -1047,6 +1100,7 @@ try {
         }
         if ($missScn.Count) {
             Out "PRÓXIMA AÇÃO: preparo da construção — cenários executáveis da História $($h.Name) (QA)"
+            Say "Preparando $(Get-RunStory $h.Name): a qualidade está escrevendo os testes do app antes da construção."
             Out "  $(Get-AgentLine 'quality-assurance')"
             Out "  prompt: `"Escreva os cenários executáveis $($missScn -join ', ') em .team-project/quality-assurance/scenarios/$($h.Name).scn, na linguagem do accept.ps1 (cabeçalho do script), a partir dos critérios de aceite da $($h.Name) e das fichas SC-nnn. Use só os identificadores de teste do contrato; cada cenário com ao menos um assert-*. Cenário cujos identificadores nascem numa Task deste sprint: declare no .scn a linha '# aguarda <T-ID>: SC-…' em vez de escrevê-lo (o next o pede depois que ela fechar). Cenário que não se prova na tela (serviço, render, processo, gate, ação irreversível): aponte na volta como '(teste)' — a sessão marca na coluna Cenários e registra no run-log, sem formulário. Identificador que falta e nenhuma Task do sprint cria: 🔺 GAP. Confira com accept.ps1 -ParseOnly; não rode o app. Volte em até 15 linhas.`""
             Out "  depois: run.ps1 next"
@@ -1084,6 +1138,7 @@ try {
             $miss = Get-FichaMissing $Root $pick.F
             if ($miss.Count) {
                 Out "PRÓXIMA AÇÃO: corrigir a ficha da $($t.Id) antes do plano — caminho que não existe: $($miss -join ', ') (Arquiteto, instância curta)"
+                Say "Preparando $(Get-RunLabel $t.Id): o arquiteto está acertando a descrição antes de planejar."
                 Out "  $(Get-AgentLine 'architect')"
                 Out "  prompt: `"Na ficha da $($t.Id) em $bdRel, corrija os caminhos que não existem: $($miss -join ', '). Ache a pasta certa com Glob; o que não existir sai da ficha. Não escreva plano nem abra outros arquivos. Volte em até 3 linhas.`""
                 Out "  depois: run.ps1 next"
@@ -1101,6 +1156,7 @@ try {
             $bm0 = [regex]::Match($pick.F.Body, '\*\*Base:\*\*\s*`([^`]+)`')
             if ($bm0.Success) { $depTxt += ". A ficha tem **Base:** ``$($bm0.Groups[1].Value)`` — o plano da Task dividida: reaproveite os blocos e passos que ela cita (abra só esse trecho, com offset e limit); o que muda é o recorte, não as decisões" }
             Out "PRÓXIMA AÇÃO: preparo da construção — plano da $($t.Id) (História $($h.Name)) pela ficha, um Arquiteto por Task (regra 25)"
+            Say "Planejando $(Get-RunLabel $t.Id): o arquiteto está escrevendo o passo a passo da construção."
             Out "  $(Get-AgentLine 'architect')"
             Out "  prompt: `"Escreva o Plano de Implementação da $($t.Id) — $($t.Title) em .team-project/sprints/$n/plan/$($t.Id)-<slug>.md, no template enxuto. Abra só a ficha .team-project/sprints/$n/handoff/$($t.Id)-ficha.md, o template `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md e o .team-project/architect/context.md$depTxt. Do código e das fontes, leia o trecho que a ficha aponta (caminho:linha e §), não o arquivo inteiro. O plano fica como sair: não o corte por tamanho (regra 22) — acima de $($script:PlanMaxKb) KB o plan.ps1 reprova e a Task se divide; aí volte dizendo 'tamanho', sem corrigir. Ler além dela vale: cada arquivo vai na linha **Li além da ficha:** do cabeçalho. Use os nomes comuns da ficha literalmente. Não abra o plan.ps1 nem plano de outro sprint: rode plan.ps1 e corrija pelo que ele imprime. A sessão atualiza a coluna Plano do quadro. Volte em até 15 linhas.`""
             Out "  depois: plan.ps1 -Plan <caminho> (exit 1 volta à mesma instância se ela respondeu há menos de 5 min; senão instância nova) e run.ps1 next$(if ($rest.Count) { " — faltam $($rest -join ', ')" })"
@@ -1108,6 +1164,7 @@ try {
         }
         if ($noPlan.Count) {
             Out "PRÓXIMA AÇÃO: preparo da construção — planos da História $($h.Name) numa instância do Arquiteto (regra 25)"
+            Say "Planejando $(Get-RunStory $h.Name): o arquiteto está escrevendo o passo a passo da construção."
             Out "  $(Get-AgentLine 'architect')"
             Out "  prompt: `"Escreva os Planos de Implementação de $(($noPlan | ForEach-Object { $_.Id }) -join ', ') (História $($h.Name)) em .team-project/sprints/$n/plan/<T-ID>-<slug>.md, no template enxuto (regras 22 a 25: cite em vez de copiar, sem cortar por tamanho, **Cenários:** com os da Task, **Risco:**, **Layout novo:**). Leia o SDD, os standards citados e o código uma vez para todas. Rode plan.ps1 em cada plano e corrija até passar — menos o 'tamanho' (acima de $($script:PlanMaxKb) KB): esse plano fica como está e a Task se divide no run.ps1 next; atualize a coluna Plano do quadro pela sessão. Volte em até 15 linhas.`""
             Out "  depois: para cada plano, plan.ps1 -Plan <caminho> (exit 1 volta à mesma instância se ela respondeu há menos de 5 min; senão instância nova) e run.ps1 next"
@@ -1136,6 +1193,7 @@ try {
             $wA = Get-TaskWait $Root $next.Id
             if ($wA -and $wA.Pulse.Stalled -and -not ($wA.PSObject.Properties['NoProgress'] -and $wA.NoProgress)) { exit (Write-StallAction $next $S $n $wA) }
             Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) já tem $agTxt. Não dispare outro executor nem dev: seriam duas instâncias no mesmo alvo. Encerre o turno; o aviso de volta reabre a sessão (se ele é de outra sessão, a volta chega lá). Sem sinal de vida por 20 min, o registro deixa de valer e o next segue."
+            Say "$(Get-RunLabel $next.Id) continua em construção; o time está trabalhando nela."
             # v3.53.5: o comando que o agente espera, com o sinal de vida (CPU, arquivo, POSSÍVEL TRAVAMENTO).
             if ($wA) { Out "  espera: $($wA.Text)"; if ($wA.PSObject.Properties['NoProgress'] -and $wA.NoProgress) { Set-AskRoute $Root 'sem-avanco' $next.Id $wA.NoProgress; Out "  SEM AVANÇO: $($wA.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." } }
             Out (Get-WatcherLine)
@@ -1149,6 +1207,7 @@ try {
             $noProgN = $wN.PSObject.Properties['NoProgress'] -and $wN.NoProgress
             if ($wN.Pulse.Stalled -and -not $noProgN) { exit (Write-StallAction $next $S $n $wN) }
             Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) ainda tem $($wN.Text) rodando (um dev esperava por ele). Não dispare executor nem dev: seriam dois na mesma Task e no mesmo alvo. Encerre o turno; rode run.ps1 next quando o aviso de volta chegar."
+            Say "$(Get-RunLabel $next.Id): esperando os testes ou a compilação terminarem."
             if ($noProgN) { Set-AskRoute $Root 'sem-avanco' $next.Id $wN.NoProgress; Out "  SEM AVANÇO: $($wN.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." }
             Out (Get-WatcherLine)
             Set-NextVerdict $Root 'esperar' $next.Id "comando: $($wN.Text)"
@@ -1158,11 +1217,13 @@ try {
         $csN = Get-CommandStop $next $tasks $S
         if ($csN.DeniedForT.Count) {
             Out "PRÓXIMA AÇÃO: a $($next.Id) declara comando negado pelo stakeholder ($($csN.DeniedForT -join '; ')) — Arquiteto em instância curta (/arc question) troca o comando no plano (### Comandos da Task), plan.ps1 reconfere e run.ps1 next de novo. Não dispare executor nem dev."
+            Say "$(Get-RunLabel $next.Id) usava um comando que você não autorizou; o arquiteto vai ajustar o plano para seguir sem ele."
             exit 3
         }
         if ($csN.Pending.Count) {
             Set-AskRoute $Root 'comandos' $next.Id "comandos dos planos de $($next.Story) que a G14 não libera"
             Out "PRÓXIMA AÇÃO: formulário de comandos (uma vez) antes de construir $($next.Id) — não dispare executor nem dev."
+            Say "Antes de construir $(Get-RunStory $next.Story), preciso da sua autorização para alguns comandos de compilação e teste. Vou perguntar uma vez só."
             Out (Format-CommandStop $csN $next)
             Out "  ao voltar: run.ps1 next"
             exit 3
@@ -1171,6 +1232,7 @@ try {
         $resume = if ($cur -and (Test-Path -LiteralPath $dv)) { " A Task já está em $($next.Mark) com relatório em .team-project/sprints/$n/delivery/$($next.Id).md: se o dev voltou com a entrega, comece por run.ps1 done; se caiu no meio, run.ps1 start retoma pelo cartão." } else { '' }
         Set-AskRoute $Root ''   # v3.58.3 (G24): a fila anda — nenhuma decisão do stakeholder pendente nesta rodada
         Out "PRÓXIMA AÇÃO: construir $($next.Id) — $($next.Title) (executor de Task)"
+        Say "Construindo $(Get-RunLabel $next.Id)."
         Out "  $(Get-AgentLine 'task-runner')"
         Out "  prompt: `"Conduza a $($next.Id) até fechar ou parar, pelo ciclo do agents/task-runner.md: run.ps1 start -Task $($next.Id), dev, run.ps1 done -Task $($next.Id) -Result ok|gap|env|teto (gap: Arquiteto e start de novo; teto: start de novo).$resume Volte em UMA linha.`""
         Out "  ao voltar: run.ps1 next"
@@ -1179,6 +1241,7 @@ try {
     if ($gapWait.Count -or @(Get-ExternalPending).Count) { Write-ExternalWait }
     if ($open.Count) {
         Out "PRÓXIMA AÇÃO: nenhuma Task elegível — $(($open | ForEach-Object { "$($_.Id) espera $((& $blockers $_) -join ',')" }) -join '; '). Bloqueio sobe pelo degrau 1 (R22)."
+        Say 'Nada pode avançar agora: o que falta depende de partes que estão paradas. O dono do produto e o arquiteto vão tentar destravar; se não conseguirem, trago a decisão para você.'
         # v3.58.3 (G24): fila esgotada — o formulário de bloqueio passa a caber, DEPOIS do par PO + Arquiteto (R25 c).
         Set-AskRoute $Root 'bloqueio' (($open | ForEach-Object { [string]$_.Id }) -join ',') 'nenhuma Task elegível; formulário só com o degrau 1 (PO + Arquiteto) sem solução'
         # v3.57.0 (item 6): diz por que — ciclo de espera (a Task espera a que a espera) e espera por Task que não está no quadro
@@ -1204,6 +1267,7 @@ try {
     if ($vv -ne $E.Done -and -not $poDebt) {
         if (-not (& $fresh $qr) -or ((Get-TargetsConfig $Root) -and -not (& $fresh $ar))) {
             Out "PRÓXIMA AÇÃO: validação do sprint $n — medir (operator, comandos longos fora das instâncias caras; C3)"
+            Say 'Todas as partes do sprint estão prontas. Começou a revisão final: rodando todos os testes do app.'
             Out "  $(Get-AgentLine 'operator')"
             Out ("  prompt: `"Chamador: sessão $sid — Rode na raiz: $plugin/quality.ps1 -Id $sid" + $(if (Get-TargetsConfig $Root) { " e $plugin/accept.ps1 -Task $sid (todos os cenários)" } else { '' }) + ". Exit 4 = ambiente: rode target.ps1 -Repair uma vez e repita. Devolva os caminhos dos result.md e as linhas de resumo.`"")
             Out "  depois: run.ps1 next"
@@ -1211,6 +1275,7 @@ try {
         }
         if ($null -eq $vv -or $vv -eq '') {
             Out "PRÓXIMA AÇÃO: validação do sprint $n — julgar (QA, uma passada só; portão da Review)"
+            Say 'Revisão final: a qualidade está avaliando tudo o que foi entregue no sprint.'
             Out "  $(Get-AgentLine 'quality-assurance')"
             Out ("  prompt: `"/qa sprint $n — leia .team-project/quality/$n/$sid/result.md" + $(if (Get-TargetsConfig $Root) { " e .team-project/accept/$n/$sid/result.md (com as capturas)" } else { '' }) + ", os planos e o diff do sprint. Julgue SOLID, clean code, aderência à arquitetura e aos planos, padrões e segurança, citando standards/ (Q<n>). Escreva .team-project/sprints/$n/validation.md (template sprint-validation) com o veredito e os achados (Volta para: dev | Arquiteto). Não rode build nem o app. Volte em até 15 linhas.`"")
             exit 0
@@ -1221,6 +1286,7 @@ try {
         if ($measAt.Count -and $measAt[0] -gt (Get-Item -LiteralPath $val).LastWriteTime) {
             $round = @([regex]::Matches((Read-Text $val), '(?m)^\*\*Veredito[^*\r\n]*:\*\*')).Count + 1
             Out "PRÓXIMA AÇÃO: validação do sprint $n — revisar o veredito (QA, instância nova; a medição é mais nova que o validation.md)"
+            Say 'Revisão final: a qualidade está conferindo as correções.'
             Out "  $(Get-AgentLine 'quality-assurance')"
             Out ("  prompt: `"/qa sprint $n — a correção do portão fechou e o operator mediu de novo: leia .team-project/quality/$n/$sid/result.md" + $(if (Get-TargetsConfig $Root) { " e .team-project/accept/$n/$sid/result.md" } else { '' }) + ", os achados e o diff das Tasks Q-S$n. Acrescente no fim de .team-project/sprints/$n/validation.md a linha **Veredito (rodada $round):** ✅ | ⚠️ | ❌ com o estado de cada achado — não apague a rodada anterior. Não rode build nem o app. Volte em até 15 linhas.`"")
             Out "  depois: run.ps1 next"
@@ -1229,6 +1295,7 @@ try {
         $qs = @($tasks | Where-Object { $_.Id -match "^Q-S$n([a-z]?)$" } | ForEach-Object { $_.Id })
         $qid = if (-not $qs.Count) { "Q-S$n" } else { $sfx = @($qs | ForEach-Object { if ($_ -match '([a-z])$') { [int][char]$Matches[1] } else { [int][char]'a' } } | Sort-Object -Descending)[0]; "Q-S$n" + [char]($sfx + 1) }
         Out "PRÓXIMA AÇÃO: abrir $qid — correção do portão (validation.md: veredito $vv, sem decisão do PO)"
+        Say $(if ($vv -eq $E.Warn) { 'A revisão final encontrou pontos a melhorar. O dono do produto decide se aceita como pendência para depois; se não, abro uma tarefa de correção.' } else { 'A revisão final encontrou problemas que precisam de correção antes da apresentação; abrindo uma tarefa de correção.' })
         Out "  1. a sessão grava a linha da $qid no quadro, seção '## Correção do portão — sprint $n' (a tabela das Histórias: ID, Task, Est., Dono, Depende de, Plano, Evidência, Cenários…), marcador $todoMk, com os achados 'Volta para: dev' do validation.md"
         Out "  2. achado com 'Volta para: Arquiteto' → /arc question (instância nova) com o caminho do validation.md"
         Out "  3. depois: run.ps1 next — o Arquiteto escreve o plano de correção (template fix-plan ou plano enxuto) e o executor de Task conduz a $qid; fechada, o operator mede de novo e o QA revisa o veredito. O ✅ das Tasks originais não muda (R25)"
@@ -1239,12 +1306,14 @@ try {
     $cons = Join-Path $S 'docs-consolidation.md'
     if (-not (Test-Path -LiteralPath $cons) -or (Read-Text $cons) -notmatch '(?m)^\*\*Estado:\*\*\s*feita') {
         Out "PRÓXIMA AÇÃO: consolidação dos documentos vivos (R12) — Arquiteto, uma vez no sprint (A5)"
+        Say 'A revisão final passou. Atualizando a documentação com o que foi entregue.'
         Out "  $(Get-AgentLine 'architect')"
         Out "  prompt: `"Consolide os documentos vivos do sprint ${n}: leia as seções 'Documentos vivos (R12)' de .team-project/sprints/$n/delivery/*.md, atualize o SDD técnico e os ADRs que são seus e peça ao dono o que não é seu. Registre em .team-project/sprints/$n/docs-consolidation.md, com **Estado:** feita na primeira linha e a lista (documento, o que mudou, dono). Volte em até 15 linhas.`""
         exit 0
     }
     Set-AskRoute $Root 'review' "S$n" 'fim da fila: formulário de autorização da Review'
     Out "PRÓXIMA AÇÃO: fim da fila — formulário de autorização da Review (sprint-run.md §Ao fim da fila), no formato do H1: o problema simples, um exemplo, as opções e 'Pedir mais contexto' por último."
+    Say 'Sprint concluído e revisado. Vou pedir sua autorização para a apresentação do que foi feito (Review).'
     exit 0
 } catch {
     [Console]::Error.WriteLine("run: erro — $($_.Exception.Message)")

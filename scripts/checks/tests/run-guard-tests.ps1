@@ -972,6 +972,11 @@ $cases = @(
        Payload = @{ prompt = '/team:team-usage 7'; transcript_path = '' } },
     @{ Name = '/team-status com texto a mais: não é a visão, segue ao modelo (silêncio)'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
        Payload = @{ prompt = '/team-status por favor explique'; transcript_path = '' } },
+    # v3.59.0: "detalhe" (ou "técnico"), em qualquer ordem com o número, abre a visão técnica — sem passar pelo modelo.
+    @{ Name = 'v3.59.0 /team-status 7 detalhe: bloqueia e passa o sprint pedido à visão técnica'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = 'Sprint 7'
+       Payload = @{ prompt = '/team-status 7 detalhe'; transcript_path = '' } },
+    @{ Name = 'v3.59.0 /team-status técnico: bloqueia (decision=block)'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = '"decision":"block"'
+       Payload = @{ prompt = '/team-status técnico'; transcript_path = '' } },
     # ---------- v3.53.2 — R22: a forma da conversa com o stakeholder no contexto de toda sessão ----------
     @{ Name = 'SessionStart (v3.53.2): a sessão recebe a forma da conversa — toda pergunta em formulário, "Outro" para digitar'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = "Conversa com o stakeholder (R22): toda pergunta a ele*formulário AskUserQuestion, na mesma resposta*campo 'Outro'*repita o formulário na mesma resposta"
        Payload = @{ hook_event_name = 'SessionStart'; source = 'clear' } },

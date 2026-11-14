@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.56`](process-changelog-archive.md) | A lição de cada GAP no lugar certo: origem e destino na decisão, conhecimento do projeto que atravessa sprints, armadilhas da stack e o SM atualizando o lado do projeto no fechamento (SM + Arquiteto + Dev + QA) — 06/11/2026 |
 | [`v3.55`](process-changelog-archive.md) | Fechamento da margem, verificador por caminho e padrão de ids de teste (SM + Arquiteto + Dev + QA) — 05/11/2026 |
 | [`v3.54`](process-changelog-archive.md) | Mutação pela regra e margem do dev: o Arquiteto diz o que provar, o dev escreve o trecho e corrige o defeito do próprio teste, com travas no fechamento (SM + Arquiteto + Dev + QA) — 04/11/2026 · *com addenda v3.54.1 e v3.54.2* |
 | [`v3.53`](process-changelog-archive.md) | Plano pela ficha: a quebra em Tasks traz a ficha de cada Task, um Arquiteto por Task e o template do plano só com o operativo (SM + Arquiteto + Dev + QA) — 28/10/2026 · *com addenda v3.53.1 a v3.53.7* |
@@ -94,6 +95,41 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.59 — Acompanhar o sprint em palavras simples: a fala da sessão, o Resumo do quadro e o /team-status para quem é de negócio, com o técnico sob pedido (SM + PO) — 14/11/2026
+
+**Instrução:** (stakeholder, 14/11/2026) "precisamos melhorar as frases de conversação e posicionamento na sessão do orquestrador e no kanban para facilitar o acompanhamento … frases simples e mais diretas que deem clareza do que está acontecendo para alguém de negócio entender, sem termos técnicos, que podem ser solicitados caso necessário"; avaliação aprovada por inteiro ("pode fazer todas").
+**Medido (sprint 6 do garden, 14/11):** o quadro do `kanban.md` mostrava só códigos (`T-069b`, `T-070a`); os bloqueios e as decisões ficavam no fim de 58 KB, depois das tabelas de tokens; o "Agora" chegou a mostrar `QA | — | trabalhando`; o `/team-status` mostrava a T-069a "em execução" e PARADA ao mesmo tempo que "Fechada", e "131 decisões" esperando o stakeholder, 98 delas resolvidas; a sessão repetia o vocabulário do `run.ps1 next` (PRÓXIMA AÇÃO, R12, `.scn`, executor de Task, GAP).
+**Classificação:** formato (`## Resumo` e `## Detalhe técnico` no `kanban.md`, quadro em lista por etapa, coluna **Para o stakeholder** no Sprint Backlog, `/team-status detalhe`) · comportamento de agente (a sessão do `sprint run` fala pela linha `PARA O STAKEHOLDER:`) · propriedade (o PO escreve o nome de negócio de cada Task na Planning)
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `sprint-run.md` | §Fala ao stakeholder (nova) · §Como o SM verifica · passo 8 · §Marcador | a fala da sessão é a linha `PARA O STAKEHOLDER:` do `next`, copiada, uma por turno; o técnico, só quando o stakeholder pede; o `done` apaga o registro da Task fechada |
+| `workflow-sprint.md` | §5e passo 4 | o PO escreve o nome de negócio de cada Task (coluna **Para o stakeholder**) |
+| `templates/sprint-backlog.md` | tabela e §Como preencher | coluna **Para o stakeholder**, a última |
+| `templates/kanban.md` | estrutura e §Como preencher | Resumo · Agora · Kanban · Controle · Fechamento; depois Detalhe técnico (Linha de base, Série, Registro, Rodadas); o quadro em lista por etapa, com o nome de negócio |
+| `commands/sm.md`, `commands/team-status.md`, `how-to.md` | `sprint run` · `/team-status` | a fala ao stakeholder; `/team-status` simples por padrão e `detalhe` para o técnico |
+
+### Por quê
+Quem acompanha o sprint é de negócio. O que ele vê precisa dizer o que está pronto, o que anda, o que parou e por quê, e o que depende dele, sem precisar saber o que é uma Task, um GAP ou o `accept`. A regra H1 já dava essa forma ao formulário, mas o acompanhamento contínuo não tinha regra. As frases saem de um script (`plain.ps1`), não do modelo: custam zero token e são as mesmas no quadro, no `/team-status` e na fala da sessão. O código da parte vai sempre no fim, entre parênteses, para o stakeholder pedir o detalhe pelo nome que o time usa.
+
+### Conflitos com o processo vigente
+A regra "nenhuma mensagem ao stakeholder entre a aprovação do pacote e a Review que não seja formulário" passa a admitir a linha `PARA O STAKEHOLDER:`. A sessão já escrevia algo a cada fim de turno, e nada definia o que era. O Controle (Bloqueios, Decisões) continua escrito à mão pelo SM. O Resumo e o quadro só o traduzem, e a natureza do bloqueio deve ser escrita sem caminho de arquivo nem nome de regra.
+
+### Como saberemos que funcionou
+Sprint 7 do garden: nenhuma fala da sessão com `PRÓXIMA AÇÃO`, sigla de regra ou caminho de arquivo sem o stakeholder ter pedido detalhe (transcript); toda Task do quadro com a coluna **Para o stakeholder** preenchida na Planning; o `/team-status` sem Task "em execução" que já está ✅; "Precisa de você" com o número real de decisões abertas.
+
+### Verificação
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.56 que saiu do vivo × arquivo (`.Contains`) | o vivo fica com v3.59, v3.58, v3.57 | ✅ |
+| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.59.0 | ✅ |
+
+### Parte mecânica (implementada pela sessão principal, citada aqui)
+`scripts/checks/plain.ps1` novo (nome de cada parte, papel, ação, etapa, motivo de parada, pendências do README §7, o Resumo); `kanban.ps1` (Resumo, quadro em lista, ordem das seções); `team-view.ps1` (visão simples e `-Detail`; Task do registro já ✅ ou 🔴 fora de "em execução"; pendências sem as resolvidas); `run.ps1` (`PARA O STAKEHOLDER:` em cada ação do `next`, "Pronto/Parou" uma vez por `.stakeholder-seen`, `dispatch -Clear` no `done`); `external-plan.ps1`; `hooks/common.ps1` (o "## Agora" com nomes de negócio); `hooks/prompt-submit.ps1` (`/team-status detalhe`).
 
 ---
 
@@ -191,35 +227,3 @@ Sprint 6 do garden (`validacoes-sprint-6.md`): sessão principal abaixo de 1/3 d
 |---|---|---|---|
 | Arquivamento de entrada | bloco v3.54 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.57, v3.56, v3.55 | ✅ |
 | Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.57.0 a v3.57.3 | ✅ |
-
----
-
-## v3.56 — A lição de cada GAP no lugar certo: origem e destino na decisão, conhecimento do projeto que atravessa sprints, armadilhas da stack e o SM atualizando o lado do projeto no fechamento (SM + Arquiteto + Dev + QA) — 06/11/2026
-
-**Instrução** (stakeholder, 06/11/2026, `melhorias/plano-v3.56.0.md` aprovado com as recomendações do §9: SM mecânico no fechamento, teto de 15 KB, P-r2 do benchmark com a 3.56.0, os três defeitos abertos do plugin nesta versão). Implementar antes de retomar o garden no sprint 6.
-**Medido (garden, sprints 1 a 5, 117 GAPs classificados):** 40 lições ficam no plugin (31 defeitos, 9 com conferência mecânica que já existia), 40 vão ao projeto (25 conhecimento do app, 10 ambiente, 5 requisito), 7 à stack, 30 só aparecem executando. O template do GAP só distinguia `plano` de `standard`; o `decisions/S<n>.md` morria com o sprint e misturava níveis (no S5, a D-1 era lição de stack, a D-2 e a D-3 remendavam o plugin). O limiar de 160 px reprovou na T-052 do S4 e de novo na T-063 do S5. Dos 31 defeitos do plugin, 21 já estavam tratados e 10 abertos em 3 defeitos (o `-Only` do accept, os cenários do backlog contra os do plano, a G9 com saída de build).
-**Classificação:** formato (`**Origem:**` e `**Lição:**` na decisão; `**Decisões:** D-<k>, K-<n>`; `knowledge.md`; `pitfalls.md`) · regra (R6 a decisão tem destino; R16 a camada local de stack; R25 o formulário segue único; regra 29 ampliada) · instrumento (`knowledge.ps1` novo; `plan.ps1`, `run.ps1`, `accept.ps1`, `close.ps1`, G9, G13) · ritual (`/sm sprint close` e `prepare`; `/team update` 7m; `/team init` 4a).
-
-### O que mudou
-- **Arquiteto** (`technical-decision.md` §Origem e Lição, `implementation-plan.md` regra 29, `plan-rules-why.md`, `knowledge.md` novo, `agents/architect.md`): toda decisão de 🔺 GAP declara **Origem** (previsão · conhecimento · requisito · ambiente · processo) e **Lição** (projeto · stack:<nome> · plugin · nenhuma); grava D quando vale para mais de uma Task **ou** a lição é de projeto ou de stack. Cita K em `**Decisões:**`. Consolida o `knowledge.md` quando o teto estoura (primeiro item do `prepare`).
-- **Dev** (`gap.md`, `agents/developer.md`): sugere a Origem; o cartão traz **Conhecimento do projeto** e **Armadilhas da stack** que casam por glob com os arquivos da Task — não abre os arquivos. O plano manda nos cenários; ordem do cartão que o contradiga é GAP de processo.
-- **SM** (`workflow-sprint.md` §Retrospective e §Preparação, `retrospective.md` §Lições do sprint, `plugin-report.md` §GAPs de processo, `working-rules.md` R6/R16/R25, `artifact-ownership.md` §1, `sm.md`, `team-update.md` 7m, `team-init.md`): no `close`, `knowledge.ps1 -Sprint <n> -Apply` antes de fechar a pasta — tabela origem × destino, D → K e D → L por cópia, lição de plugin como ocorrência (iii) no formulário único, repetição com registro, propostas de configuração; escritor do `knowledge.md` e da camada local **só** por essa promoção.
-- **QA** (README): o `accept -Only` valida só os cenários pedidos; o `-ParseOnly` sem `-Only` segue sendo a conferência do arquivo.
-
-### Por quê
-O que o sprint ensinava sobre o sistema não voltava a nenhum lugar que o seguinte lesse, e lição de plugin virava remendo de projeto. Com o destino declarado na decisão e a promoção mecânica no fechamento, o conhecimento atravessa sprints sem ninguém reler arquivos inteiros: o cartão traz só as entradas que casam com a Task.
-
-### Conflitos com o processo vigente
-A regra 29 é ampliada, não substituída: o rótulo `**Decisões do sprint:**` continua aceito. Decisão anterior à 3.56.0 só avisa (sprint antes do `**Classificação desde:**`). A ocorrência de plugin ganha o critério (iii) sem limiar, no mesmo formulário de (i) e (ii). A G9 passa a liberar saída ignorada pelo git; a G5 continua antes.
-
-### Como saberemos que funcionou
-Sprint 6 do garden (`validacoes-sprint-6.md` item 20): tabela origem × destino contra a linha de base do S5 (previsão 11, processo 15, conhecimento 2, ambiente 10, requisito 1); **repetição com registro = 0**; conhecimento ≤ 2 e caindo; linhas de K e de stack por cartão (média e máximo); tamanho do `knowledge.md`; propostas de configuração aprovadas.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Arquivamento de entrada | bloco v3.53 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.56, v3.55, v3.54 | ✅ |
-| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.56.0 | ✅ |
-
-### Parte mecânica (implementada pela sessão principal, citada aqui)
-`lib.ps1` (`Get-LessonClass`, `Get-KnowledgeSince`, `Get-PlanGapDecisions`, `Get-ProjectKnowledge`, `Get-TaskKnowledgeLines`, `Get-KnowledgeDigest`, `Get-Stacks`, `Get-StackPitfallLines`, `Get-PlanScenarios`, `Get-ScenarioFiles`; os cenários da Task pelo plano em `Get-SprintTasks`); `knowledge.ps1` novo; `plan.ps1` (regra 29); `run.ps1` (cartão, recorte, prompts, `Get-AcceptArgs`); `accept.ps1` (`-Only`); `close.ps1` (R30 pelo plano); `hooks/pre-tool.ps1` (G9 × `git check-ignore`), `session-start.ps1` (G13 sem `stacks`), `common.ps1` (`Get-InferredStacks`); `ownership.json`; `standards/stacks/ionic-capacitor/` e `pitfalls.md` das stacks.

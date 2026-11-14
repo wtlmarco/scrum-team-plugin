@@ -242,12 +242,44 @@ Dois comandos mostram como o sprint está andando. Quem responde é um script: o
 
 | Comando | Mostra | Use quando quiser saber |
 |---|---|---|
-| `/team-status` | O quadro do sprint e o que espera você | "Como está o sprint? Quem está trabalhando? Tem decisão minha parada?" |
+| `/team-status` | Como está o sprint, em palavras simples: o que está pronto, em andamento ou parado, quem trabalha agora e o que espera você (com `detalhe`, a visão técnica) | "Como está o sprint? Quem está trabalhando? Tem decisão minha parada?" |
 | `/team-usage` | Quanto o sprint gastou, por Task e por papel, e quanto da cota da assinatura | "Quanto da minha cota já foi? Qual Task ou papel gasta mais?" |
 
 Sem número, mostram o sprint corrente. Com um número, mostram outro: `/team-status 4`, `/team-usage 4`.
 
-**O que o `/team-status` mostra:**
+**O que o `/team-status` mostra (v3.59.0 — em palavras simples):**
+
+```text
+Sprint 6 — 12 de 22 partes prontas (cerca de 51% do trabalho estimado)
+
+Agora:
+  - Coordenador da tarefa — Vendas: resumo e lista por Período — parte 4 de 4 (T-069b): esperando o membro do time que ele chamou terminar (desde 18:53)
+  - Desenvolvedor (chamado pelo Coordenador da tarefa) — Vendas: resumo e lista por Período — parte 4 de 4 (T-069b): rodando os testes do que mudou (desde 19:04)
+Em andamento: Vendas: resumo e lista por Período — parte 4 de 4 (T-069b) — em construção
+Precisa de você: 2 decisões na lista de pendências (README §7); a mais recente: "Liberar o APK 1.05.30?"
+A seguir: Paginar também o "Em Andamento" — parte 1 de 2 (T-070a); depois, Paginar também o "Em Andamento" — parte 2 de 2 (T-070b)
+
+Quadro:
+  🟨 Em construção (1)
+    · Vendas: resumo e lista por Período — parte 4 de 4 (T-069b)
+  🟦 Sendo planejadas (9)
+    · …
+  ✅ Prontas (12) — as mais recentes:
+    · Unidade da Colheita editável em Domínios — parte 1 de 3 (T-089)
+    · …
+
+Detalhe técnico (comandos, tempos, registro): /team-status detalhe
+```
+
+- **1ª linha:** quantas partes do sprint estão prontas e quanto do trabalho estimado isso representa.
+- **Nome de cada parte:** a coluna **Para o stakeholder** do quadro, escrita na Planning; sem ela, o título da História, com "parte k de m" quando a História tem mais de uma Task. O código (`T-069b`) vem no fim, entre parênteses: use-o para pedir detalhe ao time.
+- **Agora:** quem do time está trabalhando neste momento, em qual parte e fazendo o quê.
+- **Atenção:** aparece quando o sprint está em andamento, mas nada roda para a parte em construção há 20 min ou mais. Retome com `/sm sprint run`.
+- **Em andamento · Parado · A seguir:** o que está em construção ou em teste; o que parou e por quê, em uma frase; as próximas duas partes da fila.
+- **Precisa de você:** o que depende de você agora. Pode ser retomar o sprint pausado, responder a pergunta aberta na conversa do sprint ou uma das decisões da lista de pendências (`.team-project/README.md` §7, sem as já resolvidas).
+- **Quadro:** cada etapa com as suas partes. Etapas: em construção · em teste · paradas · sendo planejadas · na fila · prontas.
+
+**`/team-status detalhe`** (ou `/team-status técnico`, `/team-status 5 detalhe`) mostra a visão técnica, a mesma de antes da v3.59.0:
 
 ```text
 Sprint 5 · 16 Tasks · ✅ 1 · 🟪 0 · 🟨 0 · 🟦 13 · ⬜ 2 · 🔴 0
@@ -271,15 +303,16 @@ Esperando você: 2 decisão(ões) em README §7
 
 - **1ª linha:** o placar. ✅ fechada · 🟪 em verificação · 🟨 em construção · 🟦 com plano · ⬜ a fazer · 🔴 bloqueada.
 - **Restante:** quanto falta do sprint, pela estimativa do burndown.
-- **Run e Agora:** se um `sprint run` está rodando e quais agentes trabalham neste momento, em qual Task e há quanto tempo.
+- **Run e Agora:** se um `sprint run` está rodando e quais agentes trabalham neste momento, em qual Task, há quanto tempo e o último comando.
 - **Em execução (v3.53.5):** a Task em construção e há quanto tempo, desde o último `start`. Também mostra o último sinal de vida dela, o mais recente entre o agente, a pasta do `verify`, a do `accept` e o relatório. Se a Task espera um comando (`verify`, `accept`, reparo do alvo), aparecem o tempo, a CPU, o processo em que ele espera e o último arquivo gravado. Use isto para ler uma espera longa:
   - **⚠ POSSÍVEL TRAVAMENTO:** o comando roda há 10 min ou mais sem gastar CPU nem gravar arquivo. Esperar não adianta. Na primeira vez da Task, o `run.ps1 next` manda a sessão encerrar só o que o run iniciou e retomar, sem te perguntar (v3.58.3); se travar de novo na mesma Task, ele leva a decisão a você (encerrar o processo ou seguir esperando).
   - **⚠ PARADA:** o run está em andamento, mas nenhum agente nem comando roda para a Task há 20 min ou mais. Retome com `/sm sprint run`.
   - **run pausado:** nada roda porque o run foi pausado de propósito.
-  - Sem Task em construção, aparece a última Task trabalhada e há quanto tempo o relatório dela foi gravado.
+  - Sem Task em construção, aparece a última Task trabalhada e há quanto tempo o relatório dela foi gravado. Se o registro da Task ficou para trás com ela já ✅ ou 🔴, a linha diz isso, e ela não aparece em execução (v3.59.0).
 - **As colunas:** em que etapa cada Task está.
-- **Esperando você:** as decisões suas que estão paradas (até 3 aparecem; o resto está em `.team-project/README.md` §7).
+- **Esperando você:** as decisões suas que estão paradas (até 3 aparecem, as mais recentes primeiro; o resto está em `.team-project/README.md` §7). Desde a v3.59.0, as marcadas como resolvidas, guardadas ou em andamento não contam.
 
+**O que o sprint te diz enquanto roda (v3.59.0).** Durante o `/sm sprint run`, a sessão fala com você em uma linha por vez, em palavras simples: "Construindo Geral: filtro Estado responde ao toque (T-081).", "Pronto: Vendas — parte 3 de 4 (T-069a). Construindo …", "Parou: … — o teste no app não encontra a tela por onde começa; precisa de uma decisão." Ela não manda os termos internos do processo. Quer o detalhe técnico de uma parte? Pergunte pelo código (`T-081`) ou use `/team-status detalhe`. O `kanban.md` do sprint também abre por um **Resumo** em palavras simples. O registro técnico (série do burndown, cada passagem de etapa, custo por rodada) fica no fim do arquivo, sob **Detalhe técnico**.
 **O que o `/team-usage` mostra:**
 
 ```text
@@ -460,7 +493,7 @@ Depois disso, basta `claude --remote-control "ACME · <produto>"`. Duas coisas p
 | `/sec` | `blackbox [escopo]` · `graybox [escopo]` · `whitebox [escopo]` | Security Engineer — engajamento de segurança **profundo e sob demanda** (pentest e secure code review do sistema), fora da cadência do sprint; reporta, não corrige. A checagem leve por Task é a frente 3 do `/qa` |
 | `/team` | `init` · `update` · `version` · `remote` | Instala, atualiza e informa a versão — não dispara agente |
 | `/review` | `<instrução>` · `note` · `metrics` · `audit` · `history` | Evolução do processo do time — **só no repositório-fonte do plugin** |
-| `/team-status` · `/team-usage` | `[<n do sprint>]` (sem número: o sprint corrente) | Consulta **sem token**: um script responde e o modelo não é acionado. `/team-status` mostra o quadro, quem trabalha agora, o run e o que espera você; `/team-usage` mostra tokens, US$ e tempo dos agentes, por Task e por papel |
+| `/team-status` · `/team-usage` | `[<n do sprint>]` (sem número: o sprint corrente) · `/team-status` aceita também `detalhe` | Consulta **sem token**: um script responde e o modelo não é acionado. `/team-status` mostra, em palavras simples, o que está pronto, em andamento ou parado, quem trabalha agora e o que espera você (`detalhe`: a visão técnica, com o run e os comandos); `/team-usage` mostra tokens, US$ e tempo dos agentes, por Task e por papel |
 
 **No dia a dia você usa quase só `/sm`, `/po` e, às vezes, `/arc question`.** Os `/sm` de ritual chamam os outros papéis por você.
 

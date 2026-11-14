@@ -46,9 +46,9 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 **Congelada em:** [`stories/H-<nnn>.md`](stories/) — a História como foi aprovada no pacote de abertura (dono: PO). A fonte **viva** continua sendo o Product Backlog.
 **Portão ③:** aprovado no **pacote de abertura deste sprint**, na data acima. Sem ele, nenhuma Task desta História entra em construção.
 
-| ID | Task | Est. | Trilha | Dono | Depende de | Plano | Evidência | Cenários | Critério de pronto |
-|---|---|---|---|---|---|---|---|---|---|
-| ⬜ T-<nnn> | <o que é feito, em uma linha> | <n> | plena | dev | <IDs ou —> | [`plan/T-<nnn>-<slug>.md`](plan/) | [`delivery/T-<nnn>.md`](delivery/) | <SC-nnn (novo), SC-nnn (regressivo) \| nenhum aplicável — motivo> | <como se prova que ficou pronto> |
+| ID | Task | Est. | Trilha | Dono | Depende de | Plano | Evidência | Cenários | Critério de pronto | Para o stakeholder |
+|---|---|---|---|---|---|---|---|---|---|---|
+| ⬜ T-<nnn> | <o que é feito, em uma linha> | <n> | plena | dev | <IDs ou —> | [`plan/T-<nnn>-<slug>.md`](plan/) | [`delivery/T-<nnn>.md`](delivery/) | <SC-nnn (novo), SC-nnn (regressivo) \| nenhum aplicável — motivo> | <como se prova que ficou pronto> | <o que a pessoa reconhece no app, sem termo técnico, até ~8 palavras — ex.: "filtro de estado da tela Geral"> |
 
 > Nota do SM: <serialização forçada, migration compartilhada, risco específico — só quando houver>
 
@@ -58,9 +58,9 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 
 > *Só existe se o portão do QA deu ⚠️/❌ sem a decisão do PO* (v3.52.2 · [`../process/sprint-run.md`](../process/sprint-run.md) §Validação do sprint). **A sessão grava a linha** quando o `run.ps1 next` manda abrir a correção; o plano é do Arquiteto e o executor de Task a constrói. O ✅ das Tasks originais **não muda** (R25).
 
-| ID | Task | Est. | Trilha | Dono | Depende de | Plano | Evidência | Cenários | Critério de pronto |
-|---|---|---|---|---|---|---|---|---|---|
-| ⬜ Q-S<n> | <os achados "Volta para: dev" do `validation.md`, em uma linha> | <n> | plena | dev | <IDs ou —> | [`plan/Q-S<n>-<slug>.md`](plan/) | [`delivery/Q-S<n>.md`](delivery/) | <os cenários do sprint que o achado reprovou> | <veredito do QA na rodada seguinte do `validation.md`> |
+| ID | Task | Est. | Trilha | Dono | Depende de | Plano | Evidência | Cenários | Critério de pronto | Para o stakeholder |
+|---|---|---|---|---|---|---|---|---|---|---|
+| ⬜ Q-S<n> | <os achados "Volta para: dev" do `validation.md`, em uma linha> | <n> | plena | dev | <IDs ou —> | [`plan/Q-S<n>-<slug>.md`](plan/) | [`delivery/Q-S<n>.md`](delivery/) | <os cenários do sprint que o achado reprovou> | <o que o ajuste corrige, em palavras do produto — ex.: "títulos cortados na letra Grande"> |
 
 ---
 
@@ -86,6 +86,7 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 - **Depende de** — dependência real de execução, não de preferência. É o que define a ordem, mais do que a criticidade.
 - **Trilha** (v3.46 · R23) — `plena` ou `leve`, decidida na Planning (passo 5). **Leve só se tudo for verdade:** estimativa ≤ 0,5; até 4 arquivos; sem migration; sem segurança (§10 do plano); sem interface; sem arquivo protegido — documentação pura é sempre leve. Na leve, plano curto disparado em Sonnet e QA nas frentes que a Task toca; a evidência não muda. Quadro anterior à v3.46 sem a coluna = plena.
 - **Critério de pronto / evidência** — precisa citar o comando, teste ou passo de UI que prova a conclusão. "Funcionando" não é critério.
+- **Para o stakeholder** (v3.59.0, última coluna) — o nome da parte como quem é de negócio a reconhece no app, em até ~8 palavras e sem termo técnico (sem nome de arquivo, de classe, de campo ou de regra): "filtro de estado da tela Geral", não "`opcoesFiltroStatus` vira campo calculado". Escrita pelo **PO** na Planning (passo 4 da [`workflow-sprint.md` §5e](../process/workflow-sprint.md)), junto com a quebra. É o nome que o `kanban.md` (Resumo, Agora e Kanban), o `/team-status` e a fala da sessão durante o `sprint run` mostram, com o código no fim (`… (T-081)`). Vazia ou ausente (quadro anterior à v3.59.0): vale o título da História, com "parte k de m" quando ela tem mais de uma Task. É a última coluna de propósito: os scripts que leem o quadro por posição não mudam.
 - **Uma migration por Task.** Tasks que compartilham a mesma migration viram uma Task só.
 - **No fechamento do sprint**, Task não concluída volta ao Product Backlog **junto com a História** — não fica pendurada no quadro do sprint seguinte (R5 · §5e).
 - **Toda mudança de marcador aqui ganha linha no Registro de transições e na Série de [`kanban.md`](kanban.md)** (até a v3.50, `burndown.md`), na mesma pasta (R24) — o Registro vive lá, não neste quadro (v3.44.1). Rodada de `/sm board` sem mudança de marcador não escreve linha nenhuma; "sem transição" não é evento.
@@ -99,7 +100,7 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 Destrava a saída do dado da plataforma: hoje o analista refaz o quadro no slide.
 Congelada em: stories/H-014.md · Portão ③: pacote de abertura aprovado em 03/09/2026
 
-| ⬜ T-041 | Endpoint de exportação respeitando o filtro aplicado | 1 | plena | dev | — | plan/T-041-export-endpoint.md | evidence/T-041.md | SC-014 (novo) | Teste de integração: 214 linhas na tela = 214 no arquivo |
-| ⬜ T-042 | Assinatura e expiração de 24h no link de download | 1 | plena | dev | T-041 | plan/T-042-signed-url.md | evidence/T-042.md | SC-015 (novo), SC-014 (regressivo) | Teste: assinatura válida (200), expirada (410), adulterada (403) |
-| ⬜ T-043 | Filtro de colunas por permissão do perfil | 1 | plena | dev | T-041 | plan/T-043-column-acl.md | evidence/T-043.md | SC-016 (novo), SC-014 (regressivo) | Teste de isolamento: perfil júnior não recebe a coluna de custo |
+| ⬜ T-041 | Endpoint de exportação respeitando o filtro aplicado | 1 | plena | dev | — | plan/T-041-export-endpoint.md | evidence/T-041.md | SC-014 (novo) | Teste de integração: 214 linhas na tela = 214 no arquivo | exportar a análise com o filtro da tela |
+| ⬜ T-042 | Assinatura e expiração de 24h no link de download | 1 | plena | dev | T-041 | plan/T-042-signed-url.md | evidence/T-042.md | SC-015 (novo), SC-014 (regressivo) | Teste: assinatura válida (200), expirada (410), adulterada (403) | link de download que vale por 24 horas |
+| ⬜ T-043 | Filtro de colunas por permissão do perfil | 1 | plena | dev | T-041 | plan/T-043-column-acl.md | evidence/T-043.md | SC-016 (novo), SC-014 (regressivo) | Teste de isolamento: perfil júnior não recebe a coluna de custo | cada perfil vê só as colunas permitidas |
 ```
