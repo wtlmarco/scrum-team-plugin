@@ -350,6 +350,7 @@ function Get-ExternalPending {
 function Write-ExternalWait {
     $pend = @(Get-ExternalPending)
     Out "PRÓXIMA AÇÃO: external plan — com o stakeholder; o time não tem o que fazer até o retorno"
+    if (Get-Command Say -ErrorAction SilentlyContinue) { Say 'O time está esperando você: leve o pacote de planejamento ao assistente externo e traga a resposta. O passo a passo está logo abaixo.' }   # v3.59.0
     foreach ($p in $pend) {
         Out "  • $($p.Label): pegue .team-project/sprints/$n/pack/out/$($p.Name).zip (chat na web) ou a pasta .team-project/sprints/$n/pack/out/$($p.Name)/ (app do Codex) e peça `"siga o INSTRUCTIONS.md`"; devolva o $($p.Name)-return.zip (ou os <T-ID>-plan.md soltos) em .team-project/sprints/$n/pack/in/"
     }

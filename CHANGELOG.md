@@ -13,6 +13,44 @@
 
 ---
 
+## v3.59.0 — 2026-11-14
+
+**Branch:** `feat/v3.59.0` a partir de `develop` (`3d84ae5`, v3.58.4 mesclada) · **Processo:** v3.59 (a fala da sessão no `sprint run`, a ordem do `kanban.md`, a coluna **Para o stakeholder** na Planning)
+
+Origem: pedido do stakeholder em 14/11/2026: "frases de conversação e posicionamento na sessão do orquestrador e no kanban … simples e mais diretas, que deem clareza do que está acontecendo para alguém de negócio entender, sem termos técnicos, que podem ser solicitados caso necessário". A avaliação foi aprovada por inteiro. Medido no sprint 6 do garden:
+- o quadro do `kanban.md` mostrava só códigos (`T-069b`, `T-070a`);
+- os bloqueios e as decisões ficavam no fim de 58 KB, depois das tabelas de tokens;
+- o "## Agora" chegou a mostrar `QA | — | trabalhando`;
+- o `/team-status` mostrava a T-069a "em execução" e PARADA, e na mesma tela "Fechada". Também contava "131 decisões" esperando o stakeholder, 98 delas já resolvidas;
+- a sessão repetia o vocabulário do `run.ps1 next` (PRÓXIMA AÇÃO, R12, `.scn`, executor de Task, GAP).
+
+Mudanças:
+- **`scripts/checks/plain.ps1` (novo):** fonte única das frases para quem acompanha. Dá o nome de cada parte do sprint pela ordem: a coluna **Para o stakeholder** do quadro; sem ela, o título da História, com "parte k de m" quando há mais de uma Task; na correção do portão, "ajustes pedidos na revisão final". O código vai sempre no fim (`Geral: filtro Estado responde ao toque (T-081)`). Também traduz o papel (Desenvolvedor, Coordenador da tarefa, Qualidade (QA)…), a ação, a etapa e o motivo de parada em frase simples. As pendências do README §7 que ainda esperam o stakeholder saem sem as resolvidas, as guardadas, as em andamento e as repetidas.
+- **`kanban.md` (`kanban.ps1`):**
+  - abre pelo **`## Resumo`**, em palavras simples: objetivo, andamento ("12 de 22 partes prontas, cerca de 51% do trabalho estimado"), o que está em andamento, o que parou e por quê, o que precisa do stakeholder e o que vem a seguir;
+  - o quadro passa a ser uma lista por etapa (em construção · em teste · paradas · sendo planejadas · na fila · prontas), com o nome de cada parte;
+  - a ordem fica Resumo · Agora · Kanban · Controle · Fechamento. O registro técnico vai para o fim, sob **`## Detalhe técnico`** (Linha de base, Série, Registro de transições, Rodadas). Só se movem seções inteiras: os scripts acham cada uma pelo título, e o conteúdo fica igual (conferido na cópia do sprint 6 do garden: Controle, Série e Registro byte a byte, e a segunda gravação não muda nada).
+- **"## Agora" (`hooks/common.ps1`):** coluna "Em quê" com o nome da parte e o papel com nome de gente.
+- **`/team-status`:**
+  - abre em palavras simples: andamento, quem do time trabalha agora e fazendo o quê, em andamento, parado, o que precisa de você e a seguir, e o quadro com os nomes;
+  - `/team-status detalhe` (ou `técnico`, em qualquer ordem com o número do sprint) mostra a visão técnica de antes, respondida pelo hook sem token;
+  - corrigido: a Task do registro (`.active-task`) que já está ✅ ou 🔴 não aparece mais "em execução" nem PARADA;
+  - corrigido: "Esperando você" não conta mais as pendências resolvidas, guardadas, em andamento ou repetidas.
+- **`run.ps1 next`:**
+  - cada `PRÓXIMA AÇÃO` vem com a linha **`PARA O STAKEHOLDER:`**, por exemplo "Construindo …", "Planejando …", "Revisão final: …" e "Um teste de … travou; o time vai encerrá-lo e recomeçar sozinho";
+  - o que ficou pronto ou parou desde o `next` anterior abre a linha ("Pronto: …", "Parou: … — <motivo>"), uma vez cada, pelo `.team-project/.stakeholder-seen`;
+  - a sessão do `sprint run` passa a falar por essa linha, copiada (`sprint-run.md` §Fala ao stakeholder). O técnico só aparece quando o stakeholder pede.
+- **`run.ps1 done`:** a Task fechada roda o `dispatch.ps1 -Clear` (passo 8). Antes, dependia de o executor de Task rodá-lo, e foi assim que o registro da T-069a sobrou.
+- **Planning (`workflow-sprint.md` §5e passo 4, `templates/sprint-backlog.md`):** o PO escreve, na última coluna do Sprint Backlog (**Para o stakeholder**), o nome de cada Task como quem é de negócio a reconhece no app. A coluna é a última para os scripts que leem o quadro por posição não mudarem. Quadro sem ela: vale o título da História.
+- **Textos:** `templates/kanban.md` (estrutura nova), `sprint-run.md` (§Fala ao stakeholder, verificação do SM, passo 8, §Marcador), `commands/sm.md`, `commands/team-status.md`, `how-to.md` (as duas visões do `/team-status` e a fala da sessão), `hooks/COVERAGE.md`.
+- **Testes:**
+  - `run-check-tests.ps1`: casos novos para a visão simples e o `-Detail`, a Task já ✅ fora de "em execução", as pendências resolvidas e repetidas, a ordem e o Resumo do `kanban.md`, o nome das partes pela coluna, pela História e pela correção do portão, e o `PARA O STAKEHOLDER:` com o "Parou" dito uma vez. Os casos que fixavam os textos antigos foram atualizados;
+  - `run-guard-tests.ps1`: `/team-status 7 detalhe` e `/team-status técnico`.
+
+**Não coberto:** o `fix run` segue sem a linha `PARA O STAKEHOLDER:`, porque não passa pelo `run.ps1 next`. O "Precisa de você" mostra as pendências do README §7 como estão escritas: pendência resolvida e não marcada como `[RESOLVIDO …]` continua contando (no garden, 22 abertas, várias já superadas — é a R34 do lado do projeto).
+
+---
+
 ## v3.58.4 — 2026-11-14
 
 **Branch:** `fix/v3.58.4` a partir de `develop` (`0519303`, v3.58.3 mesclada) · **Processo:** nenhum (a prova no alvo e o verify seguem os mesmos; muda quando o emulador fica ligado e o que o verify faz com pouca memória)

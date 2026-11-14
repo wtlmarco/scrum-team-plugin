@@ -17,11 +17,13 @@ param([string]$Block = '', [switch]$Init, [string]$Fid = '', [string]$To = '', [
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib.ps1')
+. (Join-Path $PSScriptRoot 'plain.ps1')
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $pt = [System.Globalization.CultureInfo]::GetCultureInfo('pt-BR')
 $short = @{ 'scrum-master' = 'sm'; 'product-owner' = 'po'; 'architect' = 'arc'; 'user-experience' = 'ux'; 'quality-assurance' = 'qa'; 'developer' = 'dev'; 'operator' = 'operator' }
 $todo = [char]::ConvertFromUtf32(0x2B1C); $red = [char]::ConvertFromUtf32(0x1F534)
-$cols = @(@{ mk = $todo; t = 'A fazer' }, @{ mk = $E.Plan; t = 'Plano' }, @{ mk = $E.Build; t = 'Construção' }, @{ mk = $E.QA; t = 'Verificação' }, @{ mk = $E.Done; t = 'Fechada' }, @{ mk = $red; t = 'Bloqueada' })
+# v3.59.0: as colunas com o nome que quem acompanha entende (eram A fazer · Plano · Construção · Verificação · Fechada · Bloqueada).
+$cols = @(@{ mk = $todo; t = 'Na fila' }, @{ mk = $E.Plan; t = 'Sendo planejadas' }, @{ mk = $E.Build; t = 'Em construção' }, @{ mk = $E.QA; t = 'Em teste' }, @{ mk = $E.Done; t = 'Prontas' }, @{ mk = $red; t = 'Paradas' })
 
 # Modelo servido com a versão, como no consumption.ps1: "claude-haiku-4-5-20251001" → "haiku 4.5".
 function Get-ShortModel([string]$Model) {
@@ -158,6 +160,46 @@ function Set-Section([string]$Text, [string]$Heading, [string]$New, [string]$Bef
     return $Text.TrimEnd() + "`n`n" + $New
 }
 
+# v3.59.0 (pedido do stakeholder, 14/11/2026): o quadro do sprint em lista por etapa, com o nome de negócio de cada parte e o
+# código no fim — a tabela de seis colunas só com códigos (T-069b, T-070a…) não dizia nada a quem é de negócio. A parada traz o
+# motivo em frase simples. Etapas vazias não aparecem.
+function Format-PlainBoard($Items, [string]$Nl) {
+    if (-not @($Items).Count) { return 'Nenhuma parte no quadro ainda.' }
+    $o = @()
+    foreach ($st in $script:PlainStages) {
+        $l = @($Items | Where-Object { $_.Mark -eq $st.Mark }); if (-not $l.Count) { continue }
+        if ($o.Count) { $o += '' }
+        $o += "**$($st.Mark) $($st.Plural) ($($l.Count))**"
+        foreach ($it in $l) { $o += "- $($it.Label)" + $(if ($it.Why) { " — $($it.Why)" } else { '' }) }
+    }
+    return $o -join $Nl
+}
+
+# v3.59.0: a ordem do kanban.md para quem acompanha — primeiro o que se lê (Resumo, Agora, Kanban, Controle, Fechamento),
+# depois o registro técnico, sob "## Detalhe técnico" (Linha de base, Série, Registro de transições, Rodadas). Só move
+# seções inteiras, sem mudar o conteúdo; seção que o script não conhece fica entre as duas partes, na ordem em que estava.
+# Os scripts acham cada seção pelo título (mark.ps1, close.ps1, G16), não pela posição.
+function Set-KanbanOrder([string]$Text, [string]$Nl) {
+    $hs = @([regex]::Matches($Text, '(?m)^##\s+([^\r\n]*?)\s*$'))
+    if (-not $hs.Count) { return $Text }
+    $pre = $Text.Substring(0, $hs[0].Index)
+    $secs = @()
+    for ($i = 0; $i -lt $hs.Count; $i++) {
+        $end = if ($i + 1 -lt $hs.Count) { $hs[$i + 1].Index } else { $Text.Length }
+        $secs += [pscustomobject]@{ Name = $hs[$i].Groups[1].Value; Body = $Text.Substring($hs[$i].Index, $end - $hs[$i].Index).TrimEnd() + $Nl + $Nl }
+    }
+    $front = @('^Resumo$', '^Agora$', '^Kanban$', '^Controle', '^Fechamento')
+    $back = @('^Detalhe t[ée]cnico', '^Linha de base', '^S[ée]rie', '^Registro de transi', '^Rodadas')
+    $pick = { param($res) foreach ($re in $res) { foreach ($s in $secs) { if ($s.Name -match $re) { $s } } } }
+    $f = @(& $pick $front); $b = @(& $pick $back)
+    if (-not @($b | Where-Object { $_.Name -match '^Detalhe t[ée]cnico' }).Count -and $b.Count) {
+        $b = @([pscustomobject]@{ Name = 'Detalhe técnico'; Body = "## Detalhe técnico$Nl*(Daqui para baixo, o registro técnico do sprint: linha de base, série do burndown, cada passagem de etapa e o custo de cada rodada do time. Quem acompanha não precisa ler.)*$Nl$Nl" }) + $b
+    }
+    $known = @($f) + @($b)
+    $mid = @($secs | Where-Object { $known -notcontains $_ })
+    return ($pre + ((@($f) + $mid + @($b) | ForEach-Object { $_.Body }) -join '')).TrimEnd() + $Nl
+}
+
 function Format-Board($Items, [string]$Nl) {
     $rows = [Math]::Max(1, (@($cols | ForEach-Object { $c = $_; @($Items | Where-Object { $_.Mark -eq $c.mk }).Count } | Measure-Object -Maximum).Maximum))
     $tbl = @(('| ' + (($cols | ForEach-Object { "$($_.mk) $($_.t)" }) -join ' | ') + ' |'), ('|' + ('---|' * $cols.Count)))
@@ -195,20 +237,27 @@ try {
         # v3.54.2 (carta do sprint 5 do garden, item 4): Task sem marcador (recém-entrada no sprint-backlog — entrada fora da
         # Planning, divisão) aparece em ⬜ A fazer, não some do quadro até a primeira transição; a 🔴 traz o motivo curto (a
         # última linha dela em Bloqueios), para quem olha o quadro saber por quê sem descer à tabela.
+        # v3.59.0: cada parte com o nome de negócio (Get-PlainNames) e o código no fim; a 🔴, com o motivo em frase simples.
         $tdK = [char]::ConvertFromUtf32(0x2B1C); $rdK = [char]::ConvertFromUtf32(0x1F534)
         $blkR = Get-BlockLines $S
+        $pn = Get-PlainNames $Root $n
         $tasks = @(); if (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md')) { $tasks = @(Get-SprintTasks $S | ForEach-Object {
-            $mk = if ($_.Mark) { $_.Mark } else { $tdK }; $lb = $_.Id
-            if ($mk -eq $rdK -and $blkR.ContainsKey($_.Id)) { $w = (([string]@($blkR[$_.Id])[-1]) -replace '\|', '/' -replace '\s+', ' ').Trim(); if ($w.Length -gt 40) { $w = $w.Substring(0, 40).TrimEnd() + '…' }; if ($w) { $lb = "$($_.Id) · $w" } }
-            [pscustomobject]@{ Mark = $mk; Label = $lb } }) }
+            $mk = if ($_.Mark) { $_.Mark } else { $tdK }
+            $why = if ($mk -eq $rdK -and $blkR.ContainsKey($_.Id)) { Get-PlainReason ([string]@($blkR[$_.Id])[-1]) } else { '' }
+            [pscustomobject]@{ Mark = $mk; Label = ((Get-PlainLabel $pn $_.Id) -replace '\|', '/'); Why = $why } }) }
         $rounds = @(Get-Rounds $tp ".team-project/sprints/$n/consumption.md")
         # v3.51.4: ler, mudar e regravar sob a trava do kanban.md — a G16 e o mark.ps1 escrevem nele ao mesmo tempo (garden item 23).
         $null = Invoke-WithFileLock $kb {
             $text = Read-Text $kb; $nl = if ($text.Contains("`r`n")) { "`r`n" } else { "`n" }
             if ($text -match '(?m)^##\s+Kanban\s*$') {
-                $text = Set-Section $text 'Kanban' ("## Kanban$nl*(Regravado pelo ``kanban.ps1`` a cada transição e ao fim de cada rodada — não editar à mão.)*$nl$nl" + (Format-Board $tasks $nl) + "$nl$nl") 'Linha de base'
+                $text = Set-Section $text 'Kanban' ("## Kanban$nl*(Onde está cada parte do sprint. Regravado a cada mudança de etapa e a cada rodada do time — não editar à mão.)*$nl$nl" + (Format-PlainBoard $tasks $nl) + "$nl$nl") 'Linha de base'
             }
             $text = Set-Section $text 'Rodadas' ((Format-Rounds $rounds $nl (Get-MarkHistory $text)) + (Format-CommandWait $tp $n $nl)) 'Linha de base'
+            # v3.59.0: o "## Resumo" em palavras simples, no topo (antes do "## Agora"), e o registro técnico no fim.
+            $sum = @(Get-PlainSummary $Root $n -Objective | ForEach-Object { "- **$($_.K):** $($_.V)" })
+            $res = "## Resumo$nl*(Para quem acompanha, em palavras simples. Gerado às $((Get-Date).ToString('HH:mm')) a cada mudança de etapa e a cada rodada do time — não editar à mão. Agora mesmo: ``/team-status``; detalhe técnico: ``/team-status detalhe`` e o fim deste arquivo.)*$nl$nl" + ($sum -join $nl) + "$nl$nl"
+            $text = Set-Section $text 'Resumo' $res $(if ($text -match '(?m)^##\s+Agora\s*$') { 'Agora' } else { 'Kanban' })
+            $text = Set-KanbanOrder $text $nl
             [System.IO.File]::WriteAllText($kb, $text, $utf8)
         }
         [Console]::Out.WriteLine("kanban: sprints/$n/kanban.md · $($tasks.Count) Task(s) · $($rounds.Count) rodada(s)")
