@@ -4,6 +4,21 @@ Vale para **todo** ponto que vai ao stakeholder: o bloqueio que o degrau 1 não 
 
 A guarda G3 confere duas coisas no formulário: a última opção é **"Pedir mais contexto"** e há um **exemplo** (na pergunta ou na descrição de uma opção). O resto é do SM, na retrospectiva.
 
+## Antes de perguntar — a decisão é dele? (v3.58.3)
+
+A forma vem depois da pergunta certa. No sprint 6 do garden, 12 de 22 formulários eram decisões que o roteiro já tomava ou que eram do par PO + Arquiteto. Antes de abrir o formulário, confira:
+
+| Se a pergunta é… | Quem decide | O que fazer |
+|---|---|---|
+| cenário que só se prova por teste de código | o roteiro | marcar `(teste)` na coluna Cenários e uma linha no run-log, sem formulário |
+| nome de teste (id) que falta na tela | Arquiteto | 🔺 GAP: ele estende o plano ou o contrato de ids |
+| teste vermelho fora da Task, premissa da sessão, em que commit entra uma correção, ordem da fila | par PO + Arquiteto (degrau 1) | `mark.ps1 -To blocked`; a fila segue nas independentes |
+| dois planos para a mesma Task, ajuste de lint previsto no plano | Arquiteto / o próprio plano | comparar e seguir; avisar em uma linha |
+| "sigo?", "tento de novo?", "retomo o sprint?" | o roteiro | `run.ps1 next` (ou, em outro comando, dizer em uma linha como retomar) |
+| estado de um processo, de um arquivo, de um log | quem pergunta | ler; nunca pedir ao stakeholder que rode um comando de leitura |
+
+Durante o `sprint run`, a **G24** nega o formulário sem a rota que o `run.ps1` grava (`.team-project/.ask-route`). Decidida a pergunta, a linha dela sai da §7 do README **na mesma resposta** (R34): pendência respondida que fica lá vira pergunta repetida na sessão seguinte.
+
 ## O formato
 
 1. **O problema em uma ou duas frases**, sem sigla, sem nome de regra, sem nome de arquivo.

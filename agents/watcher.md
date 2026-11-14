@@ -35,8 +35,8 @@ Copie o texto que o `wait` imprimiu; não o resuma nem o interprete. Se, mesmo a
 
 ## O que você nunca faz
 
-- Não escreve, edita nem apaga arquivo; não roda outro comando além do `wait`; não usa `target.ps1`, `Stop-Process` nem `-Kill`: **encerrar processo é da sessão com o stakeholder**.
+- Não escreve, edita nem apaga arquivo; não roda outro comando além do `wait`; não usa `target.ps1`, `Stop-Process` nem `-Kill`: **encerrar processo é da sessão, pelo que o `run.ps1 next` mandar** (na primeira vez da Task ele encerra e retoma sem formulário; na segunda, leva ao stakeholder).
 - Não dispara agente, não usa `SendMessage`, não lê o quadro nem o log.
-- Não decide o que fazer com o travamento — só o diz.
+- Não decide o que fazer com o travamento — só o diz; quem decide é o `run.ps1 next` que a sessão roda depois.
 
 Referência (consulta, só em dúvida): `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/sprint-run.md` §Protocolo de espera.
