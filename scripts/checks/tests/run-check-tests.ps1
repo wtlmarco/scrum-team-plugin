@@ -1669,13 +1669,19 @@ if ($ct -match 'cota 5h \+') { $fail++; Write-Output '---- cota antiga ficou na 
 
 # 15. v3.53.2 — /team-status e /team-usage sem custo de token (team-view.ps1; o hook prompt-submit.ps1 o chama).
 $p = Join-Path $tmp 'view'; New-Project $p
+# v3.59.0: /team-status abre em palavras simples; a visão técnica de antes sai com -Detail (/team-status detalhe).
 $r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Root', $p)
+Check 'v3.59.0 team-view status em palavras simples: andamento, nome de negócio com o código no fim, o que precisa de você, quadro por etapa e o caminho do detalhe' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'T-041 ·|Verificação:|Run:') { "`nTECNICO=sobrou" } else { '' }) } 0 @('Sprint 1 — 0 de 2 partes prontas \(cerca de 0% do trabalho estimado\)', 'Agora: ninguém do time está trabalhando', 'Em andamento: Exportar o resultado da análise — parte 1 de 2 \(T-041\) — em teste', 'Precisa de você: o sprint está pausado — para continuar, digite /sm sprint run', 'A seguir: Exportar o resultado da análise — parte 2 de 2 \(T-041a\)', "$($e.qa) Em teste \(1\)\r?\n\s+· Exportar o resultado da análise — parte 1 de 2 \(T-041\)", 'Detalhe técnico \(comandos, tempos, registro\): /team-status detalhe', '^(?![\s\S]*TECNICO=sobrou)')
+$r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Detail', '-Root', $p)
 Check 'team-view status: placar, restante da Série, quadro por coluna, última transição; "1. nenhuma" não é pendência' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'Esperando você') { "`nPEND=errado" } else { '' }) } 0 @("Sprint 1 · 2 Tasks · $($e.ok) 0 · $($e.qa) 1 · $($e.build) 0 · $($e.plan) 0 · $($e.todo) 1", 'Restante: 2 de 2', 'Run: parado', 'Agora: nenhum agente', "$($e.qa) Verificação: T-041\r?\n$($e.todo) A fazer: T-041a", "Última transição: T-041 $($e.build) → $($e.qa) · 2026-09-03 15:00")
-Edit-File (Join-Path $p '.team-project/README.md') '1. nenhuma' '1. **[TST · S1 · ③ pacote]** Aprovar o pacote? — material: x — 2026-09-01 10:00'
+# v3.59.0: a resolvida e a repetida não contam (no garden, "131 decisões" com 98 resolvidas).
+Edit-File (Join-Path $p '.team-project/README.md') '1. nenhuma' "1. **[TST · S1 · ③ pacote]** Aprovar o pacote? — material: x — 2026-09-01 10:00`n2. **[RESOLVIDO em 2026-09-02] [TST · S1 · nome]** Qual nome mostrar? — Horta Fácil`n3. **[TST · S1 · ③ pacote]** Aprovar o pacote? — material: x — 2026-09-01 10:00"
 Put $p '.team-project/.active-run' '{ "trilha": "sprint", "id": "1", "desde": "2026-09-02 08:00" }'
 Put $p '.team-project/.active-agents' ('[{"type":"team:developer","desde":"2026-09-02 09:00:00","work":"T-041a","last":"verify.ps1 -Mode focused","at":"' + (Get-Date).AddMinutes(-3).ToString('yyyy-MM-dd HH:mm:ss') + '"}]')
+$r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Detail', '-Root', $p)
+Check 'team-view status: run em andamento, agente vivo com "há 3 min" e a pendência de §7 sem negrito (v3.59.0: sem a resolvida nem a repetida)' $r 0 @('Run: sprint 1 em andamento desde 2026-09-02 08:00', 'Agora \(1\):', 'dev · T-041a · há 3 min · verify\.ps1 -Mode focused', 'Esperando você: 1 decisão', '\d\. \[TST · S1 · ③ pacote\] Aprovar')
 $r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Root', $p)
-Check 'team-view status: run em andamento, agente vivo com "há 3 min" e a pendência de §7 sem negrito' $r 0 @('Run: sprint 1 em andamento desde 2026-09-02 08:00', 'Agora \(1\):', 'dev · T-041a · há 3 min · verify\.ps1 -Mode focused', 'Esperando você: 1 decisão', '1\. \[TST · S1 · ③ pacote\] Aprovar')
+Check 'v3.59.0 team-view status simples: quem trabalha agora em frase simples e a pendência que espera o stakeholder (a resolvida não conta)' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'pausado') { "`nPAUSADO=errado" } else { '' }) } 0 @('Agora:\r?\n\s+- Desenvolvedor — Exportar o resultado da análise — parte 2 de 2 \(T-041a\): rodando os testes do que mudou \(desde 09:00\)', 'Precisa de você: 1 decisão na lista de pendências \(README §7\); a mais recente: "Aprovar o pacote\?', '^(?![\s\S]*PAUSADO=errado)')
 $r = Invoke-Check 'team-view.ps1' @('-View', 'usage', '-Root', $p)
 Check 'team-view usage sem rodadas: diz que nada foi medido' $r 0 @('Nenhuma rodada de agente medida')
 Put $p '.team-project/usage.jsonl' ('{"role":"architect","work":"T-041","works":["T-041","T-041a"],"model":"claude-opus-5-5","start":"2026-09-01T11:00:00","duration_s":600,"processed":1000000,"usd":2.0,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"developer","work":"T-041","model":"claude-haiku-5-5","start":"2026-09-02T10:00:00","duration_s":300,"processed":50000,"usd":0.5,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"quality-assurance","work":"T-041a","model":"claude-sonnet-5-5","start":"2026-09-03T10:00:00","duration_s":30,"processed":8000,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"developer","work":"T-099","model":"claude-haiku-5-5","start":"2026-08-01T10:00:00","duration_s":30,"processed":7,"usd":9,"dest":".team-project/consumption.md"}' + "`n")
@@ -1689,6 +1695,15 @@ Check 'v3.53.6 team-view usage: cota agora e a subida da semanal desde a 1ª rod
 $env:TEAM_QUOTA_LOG = $qlOld
 $r = Invoke-Check 'team-view.ps1' @('-View', 'kanban', '-Root', $p)
 Check 'team-view -View inválido: exit 2' $r 2 @('inválido')
+# v3.59.0 (sprint 6 do garden): o registro da Task (.active-task) que sobrou de uma Task já ✅ não a põe "em execução" nem
+# PARADA — a T-069a saía em execução, PARADA e Fechada na mesma tela.
+Put $p '.team-project/.active-task' '{"trilha":"sprint","id":"T-041","plano":".team-project/sprints/1/plan/T-041-export.md"}'
+(Get-Item -LiteralPath (Join-Path $p '.team-project/.active-task')).LastWriteTime = (Get-Date).AddMinutes(-40)
+Remove-Item -LiteralPath (Join-Path $p '.team-project/.active-agents') -Force
+Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') "| $($e.qa) T-041 |" "| $($e.ok) T-041 |"
+$r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Detail', '-Root', $p)
+$r2 = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Root', $p)
+Check 'v3.59.0 team-view: Task do registro já ✅ não está em execução nem PARADA (detalhe e simples)' @{ Code = $r.Code; Out = $r.Out + "`n" + $r2.Out + $(if (($r.Out + $r2.Out) -match 'PARADA|Atenção: nada roda') { "`nALARME" } else { '' }) } 0 @("Em execução: nenhuma Task · a T-041 do registro já está $($e.ok) no quadro", '^(?![\s\S]*ALARME)')
 
 # 16. v3.53.3 (avaliação do sprint 5 do garden).
 # 16a. item 3: preparo de UMA História por vez — a preparada com Task a construir é construída antes de preparar a próxima.
@@ -1807,19 +1822,22 @@ try {
     Check 'v3.53.5: reparo recente (1 min) → esperar, sem POSSÍVEL TRAVAMENTO' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'POSSÍVEL TRAVAMENTO') { "`nTRAVOU" } else { '' }) } 3 @('esperar — a T-041', 'há 1 min', '^(?![\s\S]*TRAVOU)')
     & $tlk 25
     Put $p '.team-project/.active-task' '{"trilha":"sprint","id":"T-041","plano":".team-project/sprints/1/plan/T-041-export.md"}'
-    $r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Root', $p)
+    $r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Detail', '-Root', $p)
     Check 'v3.53.5: /team-status — Task em execução, há quanto tempo, último sinal de vida e o comando parado' $r 0 @('Em execução: T-041 · .* · há \d+ s \(start às', 'último sinal de vida há', 'comando: reparo/conferência do alvo android .*POSSÍVEL TRAVAMENTO')
 } finally { Stop-Process -Id $slp.Id -Force -ErrorAction SilentlyContinue }
 Remove-Item -LiteralPath (Join-Path $p '.team-project/.target-lock') -Force
 (Get-Item -LiteralPath (Join-Path $p '.team-project/.active-task')).LastWriteTime = (Get-Date).AddMinutes(-40)
 Put $p '.team-project/.active-run' '{ "trilha": "sprint", "id": "1", "desde": "2026-11-02 14:31" }'
-$r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Root', $p)
+$r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Detail', '-Root', $p)
 Check 'v3.53.5: /team-status — run em andamento sem agente nem comando há 40 min → PARADA' $r 0 @('Em execução: T-041 .* há 40 min', 'PARADA: o run está em andamento, mas nenhum agente nem comando vivo para a T-041 há 40 min')
-Remove-Item -LiteralPath (Join-Path $p '.team-project/.active-run') -Force
 $r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Root', $p)
+Check 'v3.59.0: /team-status simples — o mesmo caso em frase simples, com o comando que retoma' $r 0 @('Atenção: nada roda para Exportar o resultado da análise — parte 1 de 2 \(T-041\) há 40 min, com o sprint em andamento — para retomar, digite /sm sprint run\.')
+Remove-Item -LiteralPath (Join-Path $p '.team-project/.active-run') -Force
+$r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Detail', '-Root', $p)
 Check 'v3.53.5: /team-status — run pausado não soa como PARADA' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'PARADA') { "`nALARME" } else { '' }) } 0 @('run pausado: nada roda para a T-041', '^(?![\s\S]*ALARME)')
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'v3.53.5: next sem espera apaga o .next-verdict; v3.58.3: o "construir" apaga a rota ao stakeholder (.ask-route)' @{ Code = $r.Code; Out = $r.Out + "`nverdict=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.next-verdict')) + "`nroute=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.ask-route')) } 0 @('verdict=False', 'PRÓXIMA AÇÃO: construir T-041', 'route=False')
+Check 'v3.59.0: next "construir" — a fala ao stakeholder com o nome da parte e o código no fim' $r 0 @('PARA O STAKEHOLDER: Construindo Exportar o resultado da análise — parte 1 de 2 \(T-041\)\.')
 
 # 16f. v3.53.5 — adaptador android: prazo no adb (o processo é encerrado) e a recusa de abrir um segundo emulador.
 $fakeSdk = Join-Path $tmp 'fake-sdk'; New-Item -ItemType Directory -Force (Join-Path $fakeSdk 'platform-tools') | Out-Null
@@ -2603,7 +2621,25 @@ Put $p '.team-project/sprints/1/kanban.md' ("# Kanban — Sprint 1`n`n## Kanban`
 Remove-Item -LiteralPath (Join-Path $p '.team-project/sprints/1/burndown.md') -Force
 Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') "$($e.todo) T-041a" 'T-041a'
 $r = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'blocked', '-Reason', 'prova no alvo pendente — emulador fora', '-Root', $p)
-Check 'v3.54.2: quadro — Task sem marcador em ⬜ A fazer; 🔴 com o motivo curto ao lado' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/kanban.md'), $utf8) } 0 @('(?m)^\| T-041a \|.*\| T-041 · prova no alvo pendente — emulador fora \|\s*$')
+# v3.59.0: o quadro em lista por etapa, com o nome de negócio e o código no fim; a parada traz o motivo em frase simples.
+Check 'v3.54.2: quadro — Task sem marcador em Na fila; 🔴 com o motivo ao lado (v3.59.0: em frase simples)' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/kanban.md'), $utf8) } 0 @("\*\*$($e.todo) Na fila \(1\)\*\*\r?\n- Exportar o resultado da análise — parte 2 de 2 \(T-041a\)", '\*\*\S+ Paradas \(1\)\*\*\r?\n- Exportar o resultado da análise — parte 1 de 2 \(T-041\) — falta testar no app rodando: o ambiente de teste caiu')
+# v3.59.0: o "## Resumo" em palavras simples no topo e o registro técnico no fim, sob "## Detalhe técnico" — só move seções
+# inteiras (o Registro e a Série ficam iguais) e regravar de novo não muda a ordem nem duplica.
+$kbp = Join-Path $p '.team-project/sprints/1/kanban.md'
+$kb1 = [System.IO.File]::ReadAllText($kbp, $utf8)
+$null = Invoke-Check 'kanban.ps1' @('-Root', $p)
+$kb2 = [System.IO.File]::ReadAllText($kbp, $utf8)
+$heads = (@([regex]::Matches($kb2, '(?m)^## ([^\r\n]+)') | ForEach-Object { $_.Groups[1].Value.Trim() }) -join ' > ')
+$reg1 = [regex]::Match($kb1, '(?ms)^## Registro de transi.*?(?=^## |\z)').Value.TrimEnd(); $reg2 = [regex]::Match($kb2, '(?ms)^## Registro de transi.*?(?=^## |\z)').Value.TrimEnd()
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+$news1 = $r.Out
+$null = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'qa', '-Root', $p)
+$null = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'blocked', '-Reason', 'estado de partida — tela Login', '-Root', $p)
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+$news2 = $r.Out
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.59.0: next — PARA O STAKEHOLDER: em toda ação; o que parou desde o next anterior abre a fala, uma vez, em frase simples' @{ Code = 0; Out = "N1=[$news1]`nN2=[$news2]`nN3=[$($r.Out)]" } 0 @('N1=\[[\s\S]*PARA O STAKEHOLDER: (?!Pronto|Parou)', 'N2=\[[\s\S]*PARA O STAKEHOLDER: Parou: Exportar o resultado da análise — parte 1 de 2 \(T-041\) — o teste no app não encontra a tela por onde começa; precisa de uma decisão\. ', 'N3=\[(?![^\]]*Parou:)[\s\S]*PARA O STAKEHOLDER: ')
+Check 'v3.59.0: kanban.md — Resumo no topo, quadro, depois o Detalhe técnico com Série, Registro e Rodadas; regravar não duplica nem muda o Registro' @{ Code = 0; Out = "HEADS=$heads`nREG=$($reg1 -eq $reg2 -and $reg1.Length -gt 0)`n$kb2" } 0 @('(?m)^HEADS=Resumo > Kanban > Detalhe técnico > Série > Registro de transições \(R24\) > Rodadas\r?$', 'REG=True', '- \*\*Andamento:\*\* 0 de 2 partes prontas \(cerca de 0% do trabalho estimado\)', '- \*\*Parado:\*\* Exportar o resultado da análise — parte 1 de 2 \(T-041\) — falta testar no app rodando', '- \*\*A seguir:\*\* Exportar o resultado da análise — parte 2 de 2 \(T-041a\)')
 
 # v3.54.2 (item 3): espera de um accept que só falha — o next mostra o avanço (progress.json do mesmo processo) e, sem nenhum
 # cenário passando em 15 min, SEM AVANÇO (a captura de falha contava como sinal de vida: T-063, 50 min esperando).
@@ -2900,7 +2936,16 @@ Write-NowSection $P @(
 '@, (New-Object System.Text.UTF8Encoding($true)))
 $hm = (Get-Date).AddMinutes(-12).ToString('HH:mm')
 $ao = (& powershell -NoProfile -ExecutionPolicy Bypass -File $ag -Common (Join-Path $checks '../../hooks/common.ps1') -P (Join-Path $tmp 'agora-proj') 2>&1 | ForEach-Object { "$_" }) -join "`n"
-Check 'v3.57.1 item 11: "## Agora" com papel por nome, título da Task, frase simples e horários fixos (sem "Há N min" nem comando cru)' @{ Code = 0; Out = $ao } 0 @('\| Quem \| Task \| O que está fazendo \| Última ação às \| Começou às \|', "\| Executor da Task \| T-9 · Tela de login \| esperando o papel que ele chamou terminar \| $hm \| $hm \|", '\| Dev \(chamado pelo Executor da Task\) \| T-9 · Tela de login \| conferindo tudo: compilação, testes e cobertura \|', '\| Watcher \(espera\) \| — \| conferindo se a espera terminou \|', '\| Dev \| Q-S3b · Suíte estável \| alterando o arquivo karma\.conf\.js \|', '^(?![\s\S]*(velho|verify\.ps1|\d+ min \|))', '## Kanban\nx')
+# v3.59.0: o papel com o nome que alguém de negócio reconhece e a parte pelo nome, com o código no fim.
+Check 'v3.57.1 item 11: "## Agora" com papel por nome, nome da parte, frase simples e horários fixos (sem "Há N min" nem comando cru)' @{ Code = 0; Out = $ao } 0 @('\| Quem \| Em quê \| O que está fazendo \| Última ação às \| Começou às \|', "\| Coordenador da tarefa \| Tela de login \(T-9\) \| esperando o membro do time que ele chamou terminar \| $hm \| $hm \|", '\| Desenvolvedor \(chamado pelo Coordenador da tarefa\) \| Tela de login \(T-9\) \| conferindo tudo: compilação, testes e cobertura \|', '\| Vigia \(só acompanha a espera\) \| — \| conferindo se a espera terminou \|', '\| Desenvolvedor \| Suíte estável \(Q-S3b\) \| alterando o arquivo karma\.conf\.js \|', '^(?![\s\S]*(velho|verify\.ps1|\d+ min \|))', '## Kanban\nx')
+# v3.59.0 — o nome de cada parte para quem acompanha (plain.ps1): a coluna "Para o stakeholder" vence; sem ela, o título da
+# História (sem o parêntese do fim) com "parte k de m"; a correção do portão, "ajustes pedidos na revisão final"; a retirada fica fora.
+$pnp = Join-Path $tmp 'plain-names'
+Put $pnp '.team-project/sprints/2/sprint-backlog.md' ("## História H-W — Geral: filtro ``Estado`` responde ao toque (2 Tasks)`n`n| ID | Task | Est. | Cenários | Critério de pronto | Para o stakeholder |`n|---|---|---|---|---|---|`n| $($e.todo) T-1 | ``opcoesFiltroStatus`` vira campo calculado | 1 | — | x | filtro de estado da tela Geral |`n| $($e.todo) T-2 | ``trackBy`` por valor | 1 | — | x | |`n| $($e.todo) ~~T-3~~ retirada | x | 1 | — | x | |`n`n## História H-V — Vendas por Período (alta)`n`n| ID | Task | Est. |`n|---|---|---|`n| $($e.todo) T-4 | ``VendaService`` | 1 |`n`n## Correção do portão — sprint 2`n`n| ID | Task | Est. |`n|---|---|---|`n| $($e.todo) Q-S2 | achados 1 e 2 | 1 |`n")
+$pnScript = Join-Path $tmp 'plain-names.ps1'
+[System.IO.File]::WriteAllText($pnScript, "param([string]`$Plain, [string]`$P)`n. `$Plain`n`$n = Get-PlainNames `$P '2'`nforeach (`$k in (`$n.Keys | Sort-Object)) { `"`$k=`$(`$n[`$k])`" }`n`"LABEL=`$(Get-PlainLabel `$n 'T-2')`"`n`"REASON=`$(Get-PlainReason 'dependência de método: cada migração só se planeja com a anterior')`"`n", (New-Object System.Text.UTF8Encoding($true)))
+$pno = (& powershell -NoProfile -ExecutionPolicy Bypass -File $pnScript -Plain (Join-Path $checks 'plain.ps1') -P $pnp 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.59.0: nome da parte — coluna Para o stakeholder, História com parte k de m, correção do portão; a retirada fica fora' @{ Code = 0; Out = $pno } 0 @('(?m)^Q-S2=ajustes pedidos na revisão final$', '(?m)^T-1=filtro de estado da tela Geral$', '(?m)^T-2=Geral: filtro Estado responde ao toque — parte 2 de 2$', '(?m)^T-4=Vendas por Período$', 'LABEL=Geral: filtro Estado responde ao toque — parte 2 de 2 \(T-2\)', 'REASON=espera outra parte ficar pronta', '^(?![\s\S]*T-3=)')
 # v3.57.0 — modo desprendido e target.ps1 -Kill: só o que o run registrou é encerrado; o de fora e o PID reaproveitado, não.
 $kt = Join-Path $tmp 'kill-test.ps1'
 [System.IO.File]::WriteAllText($kt, @'

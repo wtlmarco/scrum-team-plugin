@@ -326,74 +326,20 @@ function Get-SprintNumber([string]$ProjectDir) {
 # backlog, o que ele faz numa frase simples (Get-PlainAction) e HORARIOS FIXOS. O "Ha N min" era calculado ao gravar e o
 # arquivo so muda na acao seguinte: aberto 12 min depois, ainda dizia "0 min" (o comando cru continua no .active-agents e no
 # /team-status, que calcula na leitura).
-function Get-PlainRole([string]$Type) {
-    $r = $Type -replace '^.*:', ''
-    switch ($r) { 'developer' { 'Dev' } 'task-runner' { 'Executor da Task' } 'architect' { 'Arquiteto' } 'quality-assurance' { 'QA' } 'operator' { 'Operador' } 'product-owner' { 'PO' } 'scrum-master' { 'SM' } 'user-experience' { 'UX' } 'security-engineer' { 'Security Engineer' } 'watcher' { 'Watcher (espera)' } default { $r } }
-}
-function Get-PlainAction([string]$Last) {
-    $l = [string]$Last
-    switch -Regex ($l) {
-        '^\s*$|^disparado$'                                   { return 'começando' }
-        # arquivo e disparo antes dos padrões de comando: "Edit karma.conf.js" não é "rodando os testes"
-        '^(Edit|Write)\s+(.+)$'                               { return "alterando o arquivo $($Matches[2])" }
-        '^Agent$'                                             { return 'chamando outro papel' }
-        '^aguardando filho$'                                  { return 'esperando o papel que ele chamou terminar' }
-        'verify\.ps1.*-Mode\s+full'                           { return 'conferindo tudo: compilação, testes e cobertura' }
-        'verify\.ps1.*(-Mode\s+mutation|-Precheck)'           { return 'provando que os testes pegam erros (mutação)' }
-        'verify\.ps1'                                         { return 'rodando os testes do que mudou' }
-        'accept\.ps1'                                         { return 'testando os cenários no app rodando (emulador ou navegador)' }
-        'target\.ps1.*-Repair'                                { return 'religando o emulador ou o ambiente de teste' }
-        'target\.ps1.*-Kill'                                  { return 'encerrando um processo travado do ambiente' }
-        'target\.ps1'                                         { return 'conferindo se o emulador ou o ambiente está pronto' }
-        'run\.ps1"?\s+wait'                                   { return 'conferindo se a espera terminou' }
-        'run\.ps1'                                            { return 'passando a Task para a próxima etapa' }
-        'close\.ps1'                                          { return 'fechando a Task e conferindo a entrega' }
-        'plan\.ps1'                                           { return 'conferindo o plano da Task' }
-        '(mark|kanban)\.ps1'                                  { return 'atualizando o quadro' }
-        '\bgit\s+commit\b'                                    { return 'registrando o trabalho no git (commit)' }
-        '\bgit\s'                                             { return 'consultando o histórico do código (git)' }
-        'alvo:apk|assemble(Debug|Release)|\bcap\s+sync\b'     { return 'gerando o APK do app' }
-        'cobertura|coverage'                                  { return 'rodando os testes com cobertura' }
-        '\b(test|tests|jest|vitest|karma|pytest)\b'           { return 'rodando os testes' }
-        '\bbuild\b|\btsc\b'                                   { return 'compilando o app' }
-        '\blint\b'                                            { return 'conferindo o estilo do código (lint)' }
-        '\badb\b'                                             { return 'operando o emulador' }
-        default                                               { return 'trabalhando' }
-    }
-}
-# Titulo curto da Task no sprint-backlog.md ("| ✅ T-042 | <titulo> | ..."): sem markdown, ate o primeiro " (" e 60 caracteres.
-function Get-TaskTitles([string]$ProjectDir, [string]$Sprint) {
-    $t = @{}
-    try {
-        $bp = Join-Path $ProjectDir ".team-project/sprints/$Sprint/sprint-backlog.md"
-        if (-not (Test-Path -LiteralPath $bp)) { return $t }
-        # A linha da Task tem o marcador de estado antes do ID (| ✅ T-042 |); outras tabelas (| T-042 | H-Q |) só se não houver.
-        $txt = [System.IO.File]::ReadAllText($bp)
-        $ms = @([regex]::Matches($txt, '(?m)^\|\s*\S+\s+([A-Z]+-[A-Z0-9]+[a-z]?)\s*\|\s*([^|\r\n]+?)\s*\|')) + @([regex]::Matches($txt, '(?m)^\|\s*([A-Z]+-[A-Z0-9]+[a-z]?)\s*\|\s*([^|\r\n]+?)\s*\|'))
-        foreach ($m in $ms) {
-            $id = $m.Groups[1].Value; if ($t.ContainsKey($id)) { continue }
-            $raw = $m.Groups[2].Value
-            $bold = [regex]::Match($raw, '^\s*\*\*([^*]{3,60}?):?\*\*')   # "**Suíte estável:** …": a frase em negrito é o nome
-            $x = if ($bold.Success) { $bold.Groups[1].Value.Trim() } else { ($raw -replace '\*\*|`', '' -replace '\s+', ' ').Trim() }
-            if ($x -match '^[A-Z]+-[A-Z0-9]+[a-z]?$' -or $x -match '^-+$') { continue }
-            $cut = $x.IndexOf(' ('); if ($cut -gt 10) { $x = $x.Substring(0, $cut) }
-            if ($x.Length -gt 60) { $x = $x.Substring(0, 60).TrimEnd() + '…' }
-            $t[$id] = $x
-        }
-    } catch { }
-    return $t
-}
+# v3.59.0: Get-PlainRole, Get-PlainAction e o nome de cada parte (Get-PlainNames) moram em scripts/checks/plain.ps1 — a mesma
+# fonte do quadro, do /team-status e da linha PARA O STAKEHOLDER: do run.ps1 next.
+. (Join-Path $PSScriptRoot '..\scripts\checks\plain.ps1')
 function Write-NowSection([string]$ProjectDir, $List) {
     try {
         $n = Get-SprintNumber $ProjectDir; if (-not $n) { return }
         $kb = Join-Path $ProjectDir ".team-project/sprints/$n/kanban.md"
         if (-not (Test-Path -LiteralPath $kb) -or (Test-Path -LiteralPath (Join-Path $ProjectDir ".team-project/sprints/$n/retrospective.md"))) { return }
         $now = Get-Date
-        $rows = @('## Agora', "*(Atualizado às $($now.ToString('HH:mm')) pelos hooks, a cada ação de agente — não editar à mão. Os horários são fixos: compare com o relógio. Para o detalhe técnico e o tempo corrido, ``/team-status``.)*", '')
-        if (-not @($List).Count) { $rows += 'Nenhum agente trabalhando agora.' }
+        $rows = @('## Agora', "*(Quem do time está trabalhando neste momento. Atualizado às $($now.ToString('HH:mm')), a cada ação — os horários são fixos: compare com o relógio. Detalhe técnico: ``/team-status detalhe``.)*", '')
+        if (-not @($List).Count) { $rows += 'Ninguém do time está trabalhando neste momento.' }
         else {
-            $titles = Get-TaskTitles $ProjectDir $n
-            $rows += '| Quem | Task | O que está fazendo | Última ação às | Começou às |'; $rows += '|---|---|---|---|---|'
+            $titles = Get-PlainNames $ProjectDir $n   # v3.59.0: o nome de negócio da parte, com o código no fim
+            $rows += '| Quem | Em quê | O que está fazendo | Última ação às | Começou às |'; $rows += '|---|---|---|---|---|'
             foreach ($a in @($List)) {
                 $at = try { ([datetime]::Parse([string]$(if ($a.at) { $a.at } else { $a.desde }))).ToString('HH:mm') } catch { '?' }
                 $since = try { ([datetime]::Parse([string]$a.desde)).ToString('HH:mm') } catch { '?' }
@@ -402,7 +348,7 @@ function Write-NowSection([string]$ProjectDir, $List) {
                 $by = ''
                 if ($a.PSObject.Properties['parent'] -and [string]$a.parent) { $pa = @(@($List) | Where-Object { [string]$_.agent_id -eq [string]$a.parent } | Select-Object -First 1); if ($pa.Count) { $by = ' (chamado pelo ' + (Get-PlainRole ([string]$pa[0].type)) + ')' } }
                 $wk = [string]$a.work
-                $task = if ($wk) { if ($titles.ContainsKey($wk)) { "$wk · $(($titles[$wk]) -replace '\|', '/')" } else { $wk } } else { '—' }
+                $task = if ($wk) { (Get-PlainLabel $titles $wk) -replace '\|', '/' } else { '—' }
                 $rows += "| $(Get-PlainRole ([string]$a.type))$by | $task | $doing | $at | $since |"
             }
         }

@@ -164,6 +164,8 @@ Não é guarda: o `UserPromptSubmit` (`hooks/prompt-submit.ps1`) reconhece `/tea
 
 **SessionStart (R22, v3.53.2):** põe no contexto de toda sessão a forma da conversa com o stakeholder: toda pergunta já como formulário, linguagem simples, "Outro" para digitar, "Pedir mais contexto" com a explicação e o formulário repetido. Sai mesmo com a G13 desligada. **Não cobre:** a pergunta que, mesmo assim, sai em texto corrido. Não há guarda no `Stop`, por decisão do stakeholder (custaria uma volta do modelo); a retrospectiva conta os casos. A G3 segue conferindo a forma de todo formulário.
 
+**v3.59.0:** `/team-status [<n>] [detalhe|técnico]`, com as palavras em qualquer ordem. Sem `detalhe`, o `team-view.ps1` abre a visão em palavras simples; com `detalhe`, passa `-Detail` e mostra a visão técnica de antes. Casos em `run-guard-tests.ps1` (`/team-status 7 detalhe`, `/team-status técnico`) e `run-check-tests.ps1` (bloco 15). O "## Agora" que os hooks regravam no `kanban.md` usa os nomes de `scripts/checks/plain.ps1`, que o `common.ps1` carrega.
+
 **O que não cobre (`/team-status`, `/team-usage`):** o comando com texto a mais (`/team-status explique`) segue ao modelo, de propósito; a sessão principal fica fora do `/team-usage` (o transcript tem dezenas de MB: ela continua no `consumption.ps1 -Session`, no close); a exibição no app do celular e o comando digitado durante um turno em andamento ainda não foram medidos. Com o hook falhando (exit 1), o `commands/team-*.md` roda o script pelo modelo, com custo.
 
 ## v3.53.1 — teto do dev, agente vivo de outra sessão, medição por Task

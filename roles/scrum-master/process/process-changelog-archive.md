@@ -8,6 +8,38 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.56 — A lição de cada GAP no lugar certo: origem e destino na decisão, conhecimento do projeto que atravessa sprints, armadilhas da stack e o SM atualizando o lado do projeto no fechamento (SM + Arquiteto + Dev + QA) — 06/11/2026
+
+**Instrução** (stakeholder, 06/11/2026, `melhorias/plano-v3.56.0.md` aprovado com as recomendações do §9: SM mecânico no fechamento, teto de 15 KB, P-r2 do benchmark com a 3.56.0, os três defeitos abertos do plugin nesta versão). Implementar antes de retomar o garden no sprint 6.
+**Medido (garden, sprints 1 a 5, 117 GAPs classificados):** 40 lições ficam no plugin (31 defeitos, 9 com conferência mecânica que já existia), 40 vão ao projeto (25 conhecimento do app, 10 ambiente, 5 requisito), 7 à stack, 30 só aparecem executando. O template do GAP só distinguia `plano` de `standard`; o `decisions/S<n>.md` morria com o sprint e misturava níveis (no S5, a D-1 era lição de stack, a D-2 e a D-3 remendavam o plugin). O limiar de 160 px reprovou na T-052 do S4 e de novo na T-063 do S5. Dos 31 defeitos do plugin, 21 já estavam tratados e 10 abertos em 3 defeitos (o `-Only` do accept, os cenários do backlog contra os do plano, a G9 com saída de build).
+**Classificação:** formato (`**Origem:**` e `**Lição:**` na decisão; `**Decisões:** D-<k>, K-<n>`; `knowledge.md`; `pitfalls.md`) · regra (R6 a decisão tem destino; R16 a camada local de stack; R25 o formulário segue único; regra 29 ampliada) · instrumento (`knowledge.ps1` novo; `plan.ps1`, `run.ps1`, `accept.ps1`, `close.ps1`, G9, G13) · ritual (`/sm sprint close` e `prepare`; `/team update` 7m; `/team init` 4a).
+
+### O que mudou
+- **Arquiteto** (`technical-decision.md` §Origem e Lição, `implementation-plan.md` regra 29, `plan-rules-why.md`, `knowledge.md` novo, `agents/architect.md`): toda decisão de 🔺 GAP declara **Origem** (previsão · conhecimento · requisito · ambiente · processo) e **Lição** (projeto · stack:<nome> · plugin · nenhuma); grava D quando vale para mais de uma Task **ou** a lição é de projeto ou de stack. Cita K em `**Decisões:**`. Consolida o `knowledge.md` quando o teto estoura (primeiro item do `prepare`).
+- **Dev** (`gap.md`, `agents/developer.md`): sugere a Origem; o cartão traz **Conhecimento do projeto** e **Armadilhas da stack** que casam por glob com os arquivos da Task — não abre os arquivos. O plano manda nos cenários; ordem do cartão que o contradiga é GAP de processo.
+- **SM** (`workflow-sprint.md` §Retrospective e §Preparação, `retrospective.md` §Lições do sprint, `plugin-report.md` §GAPs de processo, `working-rules.md` R6/R16/R25, `artifact-ownership.md` §1, `sm.md`, `team-update.md` 7m, `team-init.md`): no `close`, `knowledge.ps1 -Sprint <n> -Apply` antes de fechar a pasta — tabela origem × destino, D → K e D → L por cópia, lição de plugin como ocorrência (iii) no formulário único, repetição com registro, propostas de configuração; escritor do `knowledge.md` e da camada local **só** por essa promoção.
+- **QA** (README): o `accept -Only` valida só os cenários pedidos; o `-ParseOnly` sem `-Only` segue sendo a conferência do arquivo.
+
+### Por quê
+O que o sprint ensinava sobre o sistema não voltava a nenhum lugar que o seguinte lesse, e lição de plugin virava remendo de projeto. Com o destino declarado na decisão e a promoção mecânica no fechamento, o conhecimento atravessa sprints sem ninguém reler arquivos inteiros: o cartão traz só as entradas que casam com a Task.
+
+### Conflitos com o processo vigente
+A regra 29 é ampliada, não substituída: o rótulo `**Decisões do sprint:**` continua aceito. Decisão anterior à 3.56.0 só avisa (sprint antes do `**Classificação desde:**`). A ocorrência de plugin ganha o critério (iii) sem limiar, no mesmo formulário de (i) e (ii). A G9 passa a liberar saída ignorada pelo git; a G5 continua antes.
+
+### Como saberemos que funcionou
+Sprint 6 do garden (`validacoes-sprint-6.md` item 20): tabela origem × destino contra a linha de base do S5 (previsão 11, processo 15, conhecimento 2, ambiente 10, requisito 1); **repetição com registro = 0**; conhecimento ≤ 2 e caindo; linhas de K e de stack por cartão (média e máximo); tamanho do `knowledge.md`; propostas de configuração aprovadas.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.53 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.56, v3.55, v3.54 | ✅ |
+| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.56.0 | ✅ |
+
+### Parte mecânica (implementada pela sessão principal, citada aqui)
+`lib.ps1` (`Get-LessonClass`, `Get-KnowledgeSince`, `Get-PlanGapDecisions`, `Get-ProjectKnowledge`, `Get-TaskKnowledgeLines`, `Get-KnowledgeDigest`, `Get-Stacks`, `Get-StackPitfallLines`, `Get-PlanScenarios`, `Get-ScenarioFiles`; os cenários da Task pelo plano em `Get-SprintTasks`); `knowledge.ps1` novo; `plan.ps1` (regra 29); `run.ps1` (cartão, recorte, prompts, `Get-AcceptArgs`); `accept.ps1` (`-Only`); `close.ps1` (R30 pelo plano); `hooks/pre-tool.ps1` (G9 × `git check-ignore`), `session-start.ps1` (G13 sem `stacks`), `common.ps1` (`Get-InferredStacks`); `ownership.json`; `standards/stacks/ionic-capacitor/` e `pitfalls.md` das stacks.
+
+---
+
 ## v3.55 — Fechamento da margem, verificador por caminho e padrão de ids de teste: a fixture com regra na margem, o comando de teste escolhido pelo caminho, um nome de id para todo o sistema e os comandos do run declarados antes da construção (SM + Arquiteto + Dev + QA) — 05/11/2026
 
 **Instrução** (stakeholder, 05/11/2026, carta 2 da sessão do sprint 5 do garden — fechamento da R7-margem — e itens 10 e 11 da fila do `/review`; análise com o stakeholder e `plano-v3.55.0.md`). Recusados: aceitar mutação manual do dev como evidência de R7-margem e dispensar a trava para teste da própria Task. Decidido: padrão de ids para **todo** o sistema (todo elemento que um teste ou cenário lê ou toca); o `/team update` **audita e propõe, nunca corrige**.
