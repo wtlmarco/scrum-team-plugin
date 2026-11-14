@@ -554,6 +554,61 @@ Put $p $pl ("# Plano`n**Arquivos tocados:** ``src/calc.ts```n``tests/node/zero.p
 $null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
 Check 'v3.55.0 B2: node:test com "tests 0" na linha de base é inconclusivo, não ok' $r 1 @('M1 src/calc\.ts: inconclusivo.*tests 0')
+# 5d3c. v3.58.2: mutação em observação (verify.watch) — um runner por teste; a 1ª rodada é a linha de base; cada mutante e cada
+# restauração são rodadas incrementais; o mutante que não compila sai inconclusivo sem esperar o prazo; a restauração que não volta
+# verde derruba a sessão (o resto roda a frio); o runner que não chega à 1ª rodada cai para a frio. Com toda mutação em observação,
+# o precheck automático confere só o trecho (sem o verify.compile por mutante).
+$p = Join-Path $tmp 'mutacao-watch'; New-Project $p
+$ErrorActionPreference = 'Continue'
+& git -C $p init -q 2>$null; Put $p '.gitignore' ".team-project/`n"
+Put $p 'src/calc.ts' "export function soma(a, b) {`n  return a + b; // fim`n}`n"
+Put $p 'tests/check.ps1' 'if ((Get-Content src/calc.ts -Raw) -match "a \+ b") { "COLD-RAN Tests: 1 passed" } else { "COLD-RAN Tests: 1 failed"; exit 1 }'
+Put $p 'tests/watch.ps1' @'
+param($t, $modo = 'normal')
+$last = ''; $n = 0
+while ($true) {
+    $c = $last; try { $c = [System.IO.File]::ReadAllText((Join-Path (Get-Location) 'src/calc.ts')) } catch { }
+    if ($c -ne $last) {
+        $last = $c; $n++
+        [Console]::Out.WriteLine('Application bundle generation complete.')
+        if ($c -match 'NAOCOMPILA') { [Console]::Out.WriteLine('src/calc.ts:2:3 - error TS2304: Cannot find name x') }
+        elseif ($modo -eq 'instavel' -and $n -gt 2) { [Console]::Out.WriteLine('Chrome: Executed 1 of 1 (1 FAILED) (0.1 secs / 0.1 secs)') }
+        elseif ($c -match 'a \+ b') { [Console]::Out.WriteLine("Chrome: Executed 1 of 1 SUCCESS (0.1 secs / 0.1 secs) [$t]") }
+        else { [Console]::Out.WriteLine('Chrome: Executed 1 of 1 (1 FAILED) (0.1 secs / 0.1 secs)') }
+        [Console]::Out.Flush()
+    }
+    Start-Sleep -Milliseconds 150
+}
+'@
+& git -C $p add -A 2>$null; & git -C $p -c user.email=t@t -c user.name=t commit -qm init 2>$null
+$ErrorActionPreference = 'Stop'
+Put $p '.team-project/guards.json' '{ "verify": { "focused": "powershell -NoProfile -File tests/check.ps1 {tests}", "watch": { "command": "powershell -NoProfile -File tests/watch.ps1 {tests}", "runStart": "bundle generation complete" }, "compile": "Write-Output COMPILOU", "suite": "powershell -NoProfile -File tests/check.ps1" } }'
+$pl = '.team-project/sprints/1/plan/T-041-export.md'
+Put $p $pl ("# Plano`n**Arquivos tocados:** ``src/calc.ts```n``tests/check.ps1```n`n**Mutações:**`n- M1 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``a + b`` → ``a - b```n- M2 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``// fim`` → ``// NAOCOMPILA```n- M3 · teste ``tests/check.ps1`` · ``src/calc.ts`` · ``// fim`` → ``// x```n`n## 3. Ambiente`n")
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+$vdW = Join-Path $p '.team-project/verify/1/T-041'
+$left = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -match 'tests[\\/]watch\.ps1' }).Count
+Check 'v3.58.2: mutação em observação — base na 1ª rodada, M1 pega, M2 (não compila) inconclusivo pelo TS2304, M3 decorativa falha; uma sessão; precheck só do trecho; árvore igual' $r 1 @('Precheck \(automático, antes da mutação\).*trecho único; a compilação de cada mutante aparece na própria rodada em observação', 'M1 src/calc\.ts: ok', 'M2 src/calc\.ts: inconclusivo.*TS2304', 'M3 src/calc\.ts: falhou.*decoração', 'em observação \(verify\.watch\): 3 mutação\(ões\).*1 sessão', 'restaurada igual', '^(?![\s\S]*COLD-RAN)', '^(?![\s\S]*ATENÇÃO: o projeto não declara)')
+Check 'v3.58.2: a sessão sai no fim (nenhum runner vivo, sem running.json), sem build por mutante e com o log da rodada' @{ Code = $(if (-not $left -and -not (Test-Path (Join-Path $vdW 'running.json')) -and -not (Test-Path (Join-Path $vdW 'precheck-M1.log')) -and ([System.IO.File]::ReadAllText((Join-Path $vdW 'mutation-M1.log'), $utf8) -match 'rodada em observação')) { 0 } else { 1 }); Out = "vivos=$left running=$(Test-Path (Join-Path $vdW 'running.json')) precheck-M1=$(Test-Path (Join-Path $vdW 'precheck-M1.log')) em $([int]$sw.Elapsed.TotalSeconds) s" } 0 @()
+$rj = Get-Content (Join-Path $vdW 'result.json') -Raw | ConvertFrom-Json
+Check 'v3.58.2: o result.json marca as mutações que rodaram em observação' @{ Code = $(if (@($rj.mutation.items | Where-Object { $_.watch -eq $true }).Count -eq 3) { 0 } else { 1 }); Out = ($rj.mutation.items | ConvertTo-Json -Depth 4) } 0 @()
+# Restauração que não volta verde: o "pegou" do M1 não vale e o resto do teste (M3) roda a frio.
+Put $p '.team-project/guards.json' '{ "verify": { "focused": "powershell -NoProfile -File tests/check.ps1 {tests}", "watch": "powershell -NoProfile -File tests/watch.ps1 {tests} instavel", "suite": "powershell -NoProfile -File tests/check.ps1" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Only', 'M1,M3', '-Root', $p)
+Check 'v3.58.2: restauração vermelha em observação → M1 inconclusivo, sessão encerrada, M3 a frio' $r 1 @('M1 src/calc\.ts: inconclusivo — com o arquivo restaurado, a rodada em observação não voltou verde \(teste reprovado\)', 'M3 src/calc\.ts: falhou.*COLD-RAN', 'observação: M1: .*o resto dele roda a frio', 'restaurada igual')
+# Runner que não chega à 1ª rodada (prazo curto): as mutações caem para a frio, com a nota.
+Put $p '.team-project/guards.json' '{ "verify": { "focused": "powershell -NoProfile -File tests/check.ps1 {tests}", "watch": "Write-Output carregando; Start-Sleep 60 # {tests}", "timeoutMinutes": 0.1, "suite": "powershell -NoProfile -File tests/check.ps1" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Only', 'M1', '-Root', $p)
+Check 'v3.58.2: a observação não chega à 1ª rodada → a frio, com a nota; nenhum processo fica' $r 0 @('M1 src/calc\.ts: ok.*COLD-RAN', 'observação: a observação de tests/check\.ps1 não chegou à 1ª rodada \(timeout\)')
+# O tempo esgotado de um comando a frio não conta como "o teste reprovou" (antes: exit 124 → ok).
+Put $p '.team-project/guards.json' '{ "verify": { "focused": "powershell -NoProfile -File {tests}", "timeoutMinutes": 0.1, "suite": "powershell -NoProfile -File tests/check.ps1" } }'
+Put $p 'tests/lento.ps1' 'if ((Get-Content src/calc.ts -Raw) -match "a \+ b") { "Tests: 1 passed" } else { Start-Sleep 60 }'
+Put $p $pl ("# Plano`n**Arquivos tocados:** ``src/calc.ts```n``tests/lento.ps1```n`n**Mutações:**`n- M1 · teste ``tests/lento.ps1`` · ``src/calc.ts`` · ``a + b`` → ``a - b```n`n## 3. Ambiente`n")
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+Check 'v3.58.2: mutante a frio que estoura o prazo é inconclusivo, não "pego"' $r 1 @('M1 src/calc\.ts: inconclusivo.*TEMPO ESGOTADO')
 # v3.51 (D1/D2/D4): tempo limite próprio, árvore de processos encerrada, higiene por ferramenta e falha de ambiente (exit 4).
 Put $p '.team-project/guards.json' '{ "verify": { "build": "Start-Process powershell -ArgumentList ''-NoProfile'',''-Command'',''Start-Sleep 90'' -WindowStyle Hidden; Write-Output ''Build succeeded''", "suite": "Start-Sleep 60", "timeoutMinutes": 0.08 } }'
 $sw = [System.Diagnostics.Stopwatch]::StartNew()

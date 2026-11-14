@@ -262,6 +262,20 @@ function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [strin
     if ($KeepDescendants) { $r.kept = $kept }
     return $r
 }
+# v3.58.2 (verify.watch): o runner do teste focado em MODO DE OBSERVAÇÃO — um processo que fica vivo de propósito durante a
+# mutação. Mesma higiene de ambiente e saída em ARQUIVO do Invoke-ProjectCommand, sem esperar o fim: quem chama lê o arquivo
+# (verify.ps1 Wait-WatchRun), encerra a árvore no fim (Stop-ProcessTree) e o registro em -PidFile é o que o -Kill e a rodada
+# seguinte encerram se quem chamou cair. Devolve o processo (com o handle aberto).
+function Start-ProjectWatch([string]$Root, [string]$Cmd, [string]$Log, $EnvExtra, [string]$PidFile = '') {
+    $hy = Get-ToolHygiene $Cmd $EnvExtra   # os avisos de "modo de observação" não valem aqui: é de propósito
+    $envPrefix = (@($hy.Env.Keys) | ForEach-Object { "[Environment]::SetEnvironmentVariable('$($_ -replace "'", "''")', '$(([string]$hy.Env[$_]) -replace "'", "''")', 'Process'); " }) -join ''
+    $enc = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($envPrefix + $Cmd))
+    foreach ($f in $Log, "$Log.err") { if (Test-Path -LiteralPath $f) { Remove-Item -LiteralPath $f -Force } }
+    $p = Start-Process -FilePath 'powershell' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $enc) -WorkingDirectory $Root -RedirectStandardOutput $Log -RedirectStandardError "$Log.err" -NoNewWindow -PassThru
+    $null = $p.Handle
+    if ($PidFile) { try { [System.IO.File]::WriteAllText($PidFile, ([ordered]@{ pid = $p.Id; created = (Get-ProcessCreated $p.Id); key = 'watch'; owner = $PID; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false))) } catch { } }
+    return $p
+}
 # Descendentes vivos de um processo (filhos primeiro na ordem inversa), sem encerrar nenhum.
 function Get-DescendantIds([int]$RootPid) {
     $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Select-Object ProcessId, ParentProcessId, CreationDate)

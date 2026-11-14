@@ -67,6 +67,15 @@
 #     registrado pela anterior que caiu (o Chrome órfão que dava "Failed to create a temp dir").
 #   **Verificação:** comando — `<comando>` no plano: o comando roda como o passo "plano" no focused (sem -Tests, só ele e o
 #     lint) e no full. **Verificação:** dispensada — <motivo>: o close.ps1 não exige o full (o QA revisa a dispensa).
+# v3.58.2 (sprint 6 do garden: a T-086 levou 1029 s de mutação para ~3 s de teste): guards.json → verify.watch — o comando do
+#   teste focado em MODO DE OBSERVAÇÃO, com {tests} (string, ou { "command", "runStart", "runEnd", "failed" } em regex; padrões
+#   do Karma; também "watch" num objeto de verify.focused). Na mutação, UM runner por teste: a 1ª rodada é a linha de base; cada
+#   mutante e cada restauração são uma recompilação incremental (3–9 s medidos, contra ~62 s a frio). O mutante que não compila
+#   sai inconclusivo em segundos; a restauração que não volta verde invalida o "pegou" e o resto do teste roda a frio; a
+#   observação que não chega à 1ª rodada cai para a frio. Com toda mutação em observação, o precheck automático confere só o
+#   trecho (sem o build de verify.compile por mutante). Karma: "watch": { "command": "npx ng test --watch=true
+#   --browsers=ChromeHeadless --reporters=dots --include {tests}", "runStart": "(?i)bundle generation (complete|failed)" }.
+#   O tempo esgotado de um comando a frio (exit 124) também passa a ser inconclusivo — antes contava como "o teste reprovou".
 param(
     [Parameter(Mandatory = $true)][string]$Task,
     [ValidateSet('focused', 'full', 'check', 'mutation')][string]$Mode = 'full',
@@ -170,7 +179,7 @@ function Get-FocusedItems {
     if (-not $verify -or -not $verify.PSObject.Properties['focused'] -or $null -eq $verify.focused) { return @() }
     foreach ($x in @($verify.focused)) {
         if ($null -eq $x) { continue }
-        if ($x -is [string]) { if ($x.Trim()) { $out += [pscustomobject]@{ Command = $x; Paths = @(); TestRoot = $null; TestItem = $null } }; continue }
+        if ($x -is [string]) { if ($x.Trim()) { $out += [pscustomobject]@{ Command = $x; Paths = @(); TestRoot = $null; TestItem = $null; Watch = $null } }; continue }
         $c = if ($x.PSObject.Properties['command']) { [string]$x.command } else { '' }
         if (-not $c.Trim()) { continue }
         $out += [pscustomobject]@{
@@ -178,6 +187,7 @@ function Get-FocusedItems {
             Paths    = @(if ($x.PSObject.Properties['paths'] -and $x.paths) { @($x.paths) | Where-Object { $_ } | ForEach-Object { [string]$_ } })
             TestRoot = $(if ($x.PSObject.Properties['testRoot'] -and $null -ne $x.testRoot) { [string]$x.testRoot } else { $null })
             TestItem = $(if ($x.PSObject.Properties['testItem'] -and $x.testItem) { [string]$x.testItem } else { $null })
+            Watch    = $(if ($x.PSObject.Properties['watch'] -and $x.watch) { $x.watch } else { $null })   # v3.58.2
         }
     }
     return $out
@@ -217,12 +227,15 @@ $script:inconclusiveBase = @(
     '\bTS\d{4,5}:', '(?i)\bTest suite failed to run\b', '(?i)\bModule build failed\b', '(?i)\bFailed to compile\b',
     '(?i)\bTransform failed\b', '(?i)\bBuild failed with \d+ errors?\b', '(?i)\bTests:\s+0 total\b', '(?m)^\s*\S+\.java:\d+: error:',
     # v3.55.0 (B2): node:test sem teste executado ("ℹ tests 0" / "# tests 0") ou arquivo que o runner não achou.
-    '(?m)^\s*(#|ℹ)\s*tests 0\b', "(?i)\bCould not find '")
+    '(?m)^\s*(#|ℹ)\s*tests 0\b', "(?i)\bCould not find '",
+    # v3.58.2: o comando que estourou o prazo (Invoke-ProjectCommand) e a rodada em observação que não terminou ou perdeu o runner
+    # não provam nada — antes, o exit 124 do tempo esgotado contava como "o teste reprovou"; e o bundle do esbuild que falhou.
+    '(?m)^TEMPO ESGOTADO:', '(?m)^OBSERVAÇÃO ENCERRADA:', '(?i)\bbundle generation failed\b')
 
-function Get-Inconclusive([string]$Log) {
+function Get-Inconclusive([string]$Log) { return (Get-InconclusiveText ([System.IO.File]::ReadAllText($Log, $utf8))) }
+function Get-InconclusiveText([string]$text) {
     $pats = @($script:inconclusiveBase)
     if ($verify -and $verify.PSObject.Properties['inconclusive']) { $pats += @(@($verify.inconclusive) | Where-Object { $_ } | ForEach-Object { [string]$_ }) }
-    $text = [System.IO.File]::ReadAllText($Log, $utf8)
     foreach ($p in $pats) {
         $m = [regex]::Match($text, $p)
         if ($m.Success) {
@@ -244,6 +257,98 @@ function Get-MutationVerdict($Run) {
         if (-not ([regex]::IsMatch([System.IO.File]::ReadAllText($full, $utf8), [string]$verify.caught))) { return "inconclusivo — exit $($Run.exit) sem a marca de teste reprovado (verify.caught)" }
     }
     return 'ok — o teste reprovou com a regra removida'
+}
+
+# v3.58.2 (mutação em observação): no garden, cada rodada do teste focado era um `ng test` a frio — ~62 s de CLI, bundle e
+# Chrome para 0,3–0,7 s de teste; 6 mutantes da T-086 = ~7 min. Com verify.watch, UM runner fica em observação por teste: a
+# primeira rodada é a linha de base, e cada mutante (e cada restauração) é uma recompilação incremental de 3–9 s (medido).
+# verify.watch (ou "watch" num objeto de verify.focused): o comando, com {tests}, que fica observando — string ou objeto
+# { "command", "runStart", "runEnd", "failed" } (regex). runEnd = a rodada terminou; failed = algum teste reprovou nela;
+# runStart (opcional) = a recompilação começou (a rodada só conta depois dela). Os padrões são os do Karma.
+$script:watchRunEnd = 'Executed (\d+) of \1\b|Executed \d+ of \d+ ERROR'
+$script:watchFailed = '\(\d+ FAILED\)|Executed \d+ of \d+ ERROR'
+$script:watchNotes = @()
+function Get-WatchSpec($FItem) {
+    $w = $null
+    if ($FItem -and $FItem.Watch) { $w = $FItem.Watch }
+    elseif ($FItem -and -not $FItem.Paths.Count -and $verify -and $verify.PSObject.Properties['watch'] -and $verify.watch) { $w = $verify.watch }
+    if (-not $w) { return $null }
+    $get = { param($o, $n) if ($o -isnot [string] -and $o.PSObject.Properties[$n] -and $o.$n) { [string]$o.$n } else { '' } }
+    $cmd = if ($w -is [string]) { [string]$w } else { & $get $w 'command' }
+    if ($cmd -notmatch '\{tests\}') {
+        $n = 'verify.watch sem {tests} no comando: ignorado, a mutação roda a frio'
+        if ($script:watchNotes -notcontains $n) { $script:watchNotes += $n }
+        return $null
+    }
+    $end = & $get $w 'runEnd'; $fail = & $get $w 'failed'
+    return [pscustomobject]@{ Command = $cmd; RunStart = (& $get $w 'runStart'); RunEnd = $(if ($end) { $end } else { $script:watchRunEnd }); Failed = $(if ($fail) { $fail } else { $script:watchFailed }) }
+}
+# Sobe o runner em observação para um teste, com a mesma higiene de ambiente dos outros comandos, registrado em running.json
+# (o -Kill e a rodada seguinte o encerram se o verify cair no meio).
+function Start-WatchSession($Spec, [string]$Test, $FItem, [string]$Log) {
+    $cmd = $Spec.Command.Replace('{tests}', (Format-Tests @($Test) $FItem))
+    $extra = [ordered]@{}
+    if ($verify.PSObject.Properties['env'] -and $verify.env) { foreach ($p in $verify.env.PSObject.Properties) { $extra[$p.Name] = [string]$p.Value } }
+    $p = Start-ProjectWatch $Root $cmd $Log ([pscustomobject]$extra) -PidFile (Join-Path $dir 'running.json')   # lib.ps1: o executor dos processos
+    return [pscustomobject]@{ Proc = $p; Log = $Log; Pos = @{ out = [long]0; err = [long]0 }; Spec = $Spec; Command = $cmd; Test = $Test; Clock = [System.Diagnostics.Stopwatch]::StartNew(); Runs = 0 }
+}
+# O que o runner escreveu desde a última leitura (stdout e stderr; o arquivo segue aberto por ele).
+function Read-WatchText($S) {
+    $txt = ''
+    foreach ($k in 'out', 'err') {
+        $f = if ($k -eq 'out') { $S.Log } else { "$($S.Log).err" }
+        if (-not (Test-Path -LiteralPath $f)) { continue }
+        try {
+            $fs = New-Object System.IO.FileStream($f, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+            try {
+                if ($fs.Length -gt $S.Pos[$k]) { $fs.Position = $S.Pos[$k]; $buf = New-Object byte[] ([int]($fs.Length - $S.Pos[$k])); $n = $fs.Read($buf, 0, $buf.Length); $S.Pos[$k] += $n; $txt += $utf8.GetString($buf, 0, $n) }
+            } finally { $fs.Dispose() }
+        } catch { }
+    }
+    return $txt
+}
+# A próxima rodada inteira. State: run (terminou) · nocompile (o código não compilou: não há rodada) · timeout · died (o runner
+# saiu). Depois do fim, espera a saída assentar (a linha final do progress, o resumo) para a troca seguinte não ler resto desta.
+function Wait-WatchRun($S, [double]$TimeoutSec) {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew(); $raw = ''; $state = ''
+    $strip = { param($t) $t -replace '\x1b\[[0-9;?]*[A-Za-z]', '' }
+    $after = { param($t) if (-not $S.Spec.RunStart) { return $t }; $m0 = [regex]::Match($t, $S.Spec.RunStart); if ($m0.Success) { $t.Substring($m0.Index) } else { $null } }
+    while (-not $state) {
+        $raw += Read-WatchText $S
+        $tail = & $after (& $strip $raw)
+        if ($null -ne $tail) {
+            if ([regex]::IsMatch($tail, $S.Spec.RunEnd)) { $state = 'run' } elseif (Get-InconclusiveText $tail) { $state = 'nocompile' }
+        }
+        if (-not $state -and $S.Proc.HasExited) { $raw += Read-WatchText $S; $state = 'died' }
+        if (-not $state -and $sw.Elapsed.TotalSeconds -gt $TimeoutSec) { $state = 'timeout' }
+        if (-not $state) { Start-Sleep -Milliseconds 250 }
+    }
+    if ($state -in 'run', 'nocompile') {
+        $quiet = [System.Diagnostics.Stopwatch]::StartNew(); $cap = [System.Diagnostics.Stopwatch]::StartNew()
+        $need = if ($state -eq 'run') { 800 } else { 2500 }   # o erro de compilação: dá tempo de a rodada aparecer, se houver
+        while ($cap.Elapsed.TotalSeconds -lt 8 -and $quiet.Elapsed.TotalMilliseconds -lt $need) { $t = Read-WatchText $S; if ($t) { $raw += $t; $quiet.Restart() }; Start-Sleep -Milliseconds 150 }
+        $tail = & $after (& $strip $raw)
+        if ($state -eq 'nocompile' -and $null -ne $tail -and [regex]::IsMatch($tail, $S.Spec.RunEnd)) { $state = 'run' }
+    }
+    $S.Runs++
+    return [pscustomobject]@{ State = $state; Text = (& $strip $raw); Seconds = $sw.Elapsed.TotalSeconds }
+}
+# A rodada vira o mesmo registro de um comando (exit, log, linhas decisivas): o veredito e o result.json não distinguem.
+function Complete-WatchRun($S, $W, [string]$Key, [string]$Log) {
+    $code = switch ($W.State) { 'run' { if ([regex]::IsMatch($W.Text, $S.Spec.Failed)) { 1 } else { 0 } } 'timeout' { 124 } default { 1 } }
+    $note = switch ($W.State) { 'timeout' { "`nTEMPO ESGOTADO: a rodada em observação não terminou em $([int]$W.Seconds) s`n" } 'died' { "`nOBSERVAÇÃO ENCERRADA: o runner saiu no meio da rodada`n" } default { '' } }
+    [System.IO.File]::WriteAllText($Log, "(rodada em observação · $($S.Command))`n" + $W.Text + $note + "`nEXIT=$code`n", $utf8)
+    $d = Get-Decisive $Log
+    return [ordered]@{ key = $Key; command = "$($S.Command) (observação)"; exit = $code; seconds = [int][Math]::Ceiling($W.Seconds); log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive; environment = $null; watch = $true }
+}
+function Stop-WatchSession($S) {
+    $null = Stop-ProcessTree $S.Proc.Id
+    $S.Proc.WaitForExit(5000) | Out-Null
+    Remove-Item -LiteralPath (Join-Path $dir 'running.json') -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 200
+    $ef = "$($S.Log).err"
+    if (Test-Path -LiteralPath $ef) { try { $e = [System.IO.File]::ReadAllText($ef, $utf8); if ($e) { [System.IO.File]::AppendAllText($S.Log, $e, $utf8) }; Remove-Item -LiteralPath $ef -Force } catch { } }
+    $script:cmdSeconds += [int]$S.Clock.Elapsed.TotalSeconds; $script:cmdRuns++
 }
 
 # v3.52.3 (note.md item 2): duração esperada de cada comando do full — o maior tempo das últimas 5 rodadas da chave (build,
@@ -409,17 +514,24 @@ try {
         # árvore (precheck.json) — e para cedo, com a lista; nunca depende de alguém lembrar. Sem verify.compile a compilação dos
         # mutantes não tem como ser conferida de antemão: o aviso é alto, porque o erro só vai aparecer dentro da mutação.
         $compileDecl = @(Get-Commands $verify 'compile') | Select-Object -First 1
+        # v3.58.2: com toda mutação do plano num runner em observação (verify.watch), o mutante que não compila aparece na própria
+        # rodada em segundos (inconclusivo, com o erro) — o precheck automático confere só o trecho, sem um build por mutante
+        # (no garden, ~90 s cada). O -Precheck pedido de propósito segue compilando.
+        $pt0 = Read-Text (Join-Path $Root $Plan); $pm0 = @(Get-TaskMutations $Root $Plan $pt0 $Task); if ($Only.Count) { $pm0 = @($pm0 | Where-Object { $Only -contains $_.Id }) }
+        $allWatch = $pm0.Count -gt 0 -and -not @($pm0 | Where-Object { -not (Get-WatchSpec (Resolve-FocusedItem $focusedItems ([string]$_.Test))) }).Count
         $autoPre = $false
         if (-not $Precheck -and $compileDecl) {
             $pjf = Join-Path $dir 'precheck.json'; $green = $false
-            if (Test-Path -LiteralPath $pjf) { try { $pr = Read-Text $pjf | ConvertFrom-Json; $green = ([string]$pr.tree -eq $tree) -and ([int]$pr.problems -eq 0) -and ($pr.compile -eq $true) } catch { } }
+            if (Test-Path -LiteralPath $pjf) { try { $pr = Read-Text $pjf | ConvertFrom-Json; $green = ([string]$pr.tree -eq $tree) -and ([int]$pr.problems -eq 0) -and ($pr.compile -eq $true -or ($allWatch -and $pr.PSObject.Properties['watch'] -and $pr.watch -eq $true)) } catch { } }
             $autoPre = -not $green
         }
-        if (-not $Precheck -and -not $compileDecl) { [Console]::Out.WriteLine('  ATENÇÃO: o projeto não declara verify.compile em guards.json — a compilação dos mutantes NÃO foi conferida de antemão; um mutante que não compila só aparece dentro da mutação (minutos por mutante). Declare verify.compile (comando que só compila, sem rodar teste) e rode -Mode mutation -Precheck.') }
+        if (-not $Precheck -and -not $compileDecl -and -not $allWatch) { [Console]::Out.WriteLine('  ATENÇÃO: o projeto não declara verify.compile em guards.json — a compilação dos mutantes NÃO foi conferida de antemão; um mutante que não compila só aparece dentro da mutação (minutos por mutante). Declare verify.compile (comando que só compila, sem rodar teste) e rode -Mode mutation -Precheck.') }
         if ($Precheck -or $autoPre) {
             # v3.51.4 (garden item 27): conferência prévia, sem teste — trecho único no arquivo e, com verify.compile, mutante que compila.
-            $pt = Read-Text (Join-Path $Root $Plan); $pm = @(Get-TaskMutations $Root $Plan $pt $Task); if ($Only.Count) { $pm = @($pm | Where-Object { $Only -contains $_.Id }) }
+            $pt = $pt0; $pm = $pm0
             $compile = @(Get-Commands $verify 'compile') | Select-Object -First 1
+            $preWatch = $autoPre -and $allWatch
+            if ($preWatch) { $compile = $null }
             $probs = @(); $okIds = @()
             foreach ($mu in $pm) {
                 $rel = ($mu.File -replace '\\', '/') -replace '^\./', ''; $f2 = Join-Path $Root $rel
@@ -447,8 +559,8 @@ try {
                 $okIds += $mu.Id
             }
             if ((Get-WorkTree $Root) -ne $tree) { [Console]::Error.WriteLine('verify: ERRO — a árvore não voltou igual depois da conferência prévia. Confira com git status/git diff.'); exit 2 }
-            [Console]::Out.WriteLine("verify mutation -Precheck$(if ($autoPre) { ' (automático, antes da mutação)' }) $Task · $($okIds.Count) de $($pm.Count) mutação(ões) prontas" + $(if ($compile) { ' (trecho único e mutante compila)' } else { ' (trecho único; ATENÇÃO: sem verify.compile a compilação dos mutantes NÃO foi conferida — só aparece na mutação)' }))
-            try { New-Item -ItemType Directory -Force $dir | Out-Null; [System.IO.File]::WriteAllText((Join-Path $dir 'precheck.json'), ([ordered]@{ tree = $tree; at = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss'); compile = [bool]$compile; ok = @($okIds); problems = $probs.Count } | ConvertTo-Json -Compress), $utf8) } catch { }
+            [Console]::Out.WriteLine("verify mutation -Precheck$(if ($autoPre) { ' (automático, antes da mutação)' }) $Task · $($okIds.Count) de $($pm.Count) mutação(ões) prontas" + $(if ($compile) { ' (trecho único e mutante compila)' } elseif ($preWatch) { ' (trecho único; a compilação de cada mutante aparece na própria rodada em observação, em segundos — verify.watch)' } else { ' (trecho único; ATENÇÃO: sem verify.compile a compilação dos mutantes NÃO foi conferida — só aparece na mutação)' }))
+            try { New-Item -ItemType Directory -Force $dir | Out-Null; [System.IO.File]::WriteAllText((Join-Path $dir 'precheck.json'), ([ordered]@{ tree = $tree; at = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss'); compile = [bool]$compile; watch = [bool]$preWatch; ok = @($okIds); problems = $probs.Count } | ConvertTo-Json -Compress), $utf8) } catch { }
             # v3.54: a mutação declarada pela regra é do dev — o trecho dele se corrige no relatório, sem GAP.
             foreach ($p in $probs) { $own = $p -match '^(M\d+):' -and @($pm | Where-Object { $_.Id -eq $Matches[1] -and $_.Source -eq 'dev' }).Count; [Console]::Out.WriteLine("  $p — " + $(if ($own) { 'a linha é sua (mutação pela regra): corrija o trecho no bloco **Mutações:** do relatório' } else { 'o plano é do Arquiteto: 🔺 GAP com esta linha' })) }
             if ($probs.Count) { exit 1 } elseif ($Precheck) { exit 0 }
@@ -473,6 +585,11 @@ try {
         $items = @(); $pending = @()
         $budget = [System.Diagnostics.Stopwatch]::StartNew(); $lastSec = 0; $ranAny = $false
         $base = @{}   # teste → $null (passou e executou) ou o motivo de não servir de linha de base
+        # v3.58.2: com verify.watch, as mutações do mesmo teste rodam juntas numa sessão (ordem do plano mantida dentro do teste).
+        $anyWatch = @($muts | Where-Object { Get-WatchSpec (Resolve-FocusedItem $focusedItems ([string]$_.Test)) }).Count -gt 0
+        if ($anyWatch) { $order = @(); foreach ($m1 in $muts) { if ($order -notcontains [string]$m1.Test) { $order += [string]$m1.Test } }; $muts = @(foreach ($t1 in $order) { $muts | Where-Object { [string]$_.Test -eq $t1 } }) }
+        $ws = $null; $watchOff = @{}; $wsN = 0
+        try {
         foreach ($mu in $muts) {
             $rel = ($mu.File -replace '\\', '/') -replace '^\./', ''
             $item = [ordered]@{ id = $mu.Id; test = $mu.Test; file = $rel; result = ''; exit = $null; decisive = @(); log = '' }
@@ -488,6 +605,23 @@ try {
             $ranAny = $true
             $fi = Resolve-FocusedItem $focusedItems $mu.Test
             if (-not $fi) { [Console]::Error.WriteLine("verify: nenhum item de verify.focused casa o teste $($mu.Test) (paths) e não há item padrão sem paths."); exit 2 }
+            $spec = if ($watchOff.ContainsKey([string]$mu.Test)) { $null } else { Get-WatchSpec $fi }
+            if ($ws -and (-not $spec -or $ws.Test -ne [string]$mu.Test)) { Stop-WatchSession $ws; $ws = $null }
+            if ($spec -and -not $ws) {
+                $wsN++
+                $ws = Start-WatchSession $spec ([string]$mu.Test) $fi (Join-Path $dir "mutation-watch-$wsN.log")
+                $first = Wait-WatchRun $ws ($script:timeoutMinutes * 60)
+                if ($first.State -ne 'run') {
+                    $script:watchNotes += "a observação de $($mu.Test) não chegou à 1ª rodada ($($first.State)) — as mutações dele rodam a frio; saída em $((Join-Path $dir "mutation-watch-$wsN.log").Substring($Root.Length + 1) -replace '\\', '/')"
+                    Stop-WatchSession $ws; $ws = $null; $watchOff[[string]$mu.Test] = $true
+                } elseif (-not $base.ContainsKey($mu.Test)) {
+                    $bk = 'base-' + ($base.Count + 1)
+                    $b = Complete-WatchRun $ws $first $bk (Join-Path $dir "mutation-$bk.log")
+                    $bw = Get-Inconclusive (Join-Path $Root $b.log)
+                    $base[$mu.Test] = if ([int]$b.exit -ne 0) { "o teste falha sem mutação (linha de base exit $($b.exit), $($b.log))" } elseif ($bw) { "a linha de base não executou teste: $bw" } else { $null }
+                    $lastSec = $b.seconds
+                }
+            }
             if (-not $base.ContainsKey($mu.Test)) {
                 $bk = 'base-' + ($base.Count + 1)
                 $b = Invoke-Logged $bk $fi.Command.Replace('{tests}', (Format-Tests @($mu.Test) $fi)) (Join-Path $dir "mutation-$bk.log")
@@ -506,18 +640,39 @@ try {
             $mutated = $text.Substring(0, $first) + $mu.Replace + $text.Substring($first + $mu.Find.Length)
             [System.IO.File]::WriteAllBytes((Join-Path $dir 'mutation.bak'), $bytes)
             [System.IO.File]::WriteAllText((Join-Path $dir 'mutation-pending.json'), (@{ file = $rel; id = $mu.Id } | ConvertTo-Json -Compress), $utf8)
+            $w1 = $null; $badRestore = ''
             try {
+                if ($ws) { Start-Sleep -Milliseconds 400; $null = Read-WatchText $ws }   # o que sobrou da rodada anterior não conta
                 [System.IO.File]::WriteAllText($full2, $mutated, (New-Object System.Text.UTF8Encoding($bom)))
-                $r = Invoke-Logged $mu.Id $fi.Command.Replace('{tests}', (Format-Tests @($mu.Test) $fi)) (Join-Path $dir "mutation-$($mu.Id).log")
+                if ($ws) {
+                    $w1 = Wait-WatchRun $ws ($script:timeoutMinutes * 60)
+                    $r = Complete-WatchRun $ws $w1 $mu.Id (Join-Path $dir "mutation-$($mu.Id).log")
+                } else {
+                    $r = Invoke-Logged $mu.Id $fi.Command.Replace('{tests}', (Format-Tests @($mu.Test) $fi)) (Join-Path $dir "mutation-$($mu.Id).log")
+                }
             } finally {
                 [System.IO.File]::WriteAllBytes($full2, $bytes)
                 foreach ($tmpf in 'mutation-pending.json', 'mutation.bak') { $pth = Join-Path $dir $tmpf; if (Test-Path -LiteralPath $pth) { [System.IO.File]::Delete($pth) } }
             }
+            # Em observação, o arquivo restaurado dispara outra rodada: ela tem de voltar verde antes do próximo mutante — senão o
+            # teste não é estável e o "pegou" deste mutante não prova nada; a sessão sai e o resto do teste roda a frio.
+            if ($ws) {
+                if ($w1.State -in 'timeout', 'died') { $badRestore = "a rodada em observação $(if ($w1.State -eq 'timeout') { 'não terminou' } else { 'perdeu o runner' })" }
+                else {
+                    $w2 = Wait-WatchRun $ws ($script:timeoutMinutes * 60)
+                    $why2 = if ($w2.State -ne 'run') { $w2.State } elseif ([regex]::IsMatch($w2.Text, $ws.Spec.Failed)) { 'teste reprovado' } else { Get-InconclusiveText $w2.Text }
+                    if ($why2) { $badRestore = "com o arquivo restaurado, a rodada em observação não voltou verde ($why2)" }
+                }
+                if ($badRestore) { $script:watchNotes += "$($mu.Id): $badRestore — a observação de $($mu.Test) foi encerrada; o resto dele roda a frio"; Stop-WatchSession $ws; $ws = $null; $watchOff[[string]$mu.Test] = $true }
+            }
             $item.exit = $r.exit; $item.decisive = $r.decisive; $item.log = $r.log
             $item.result = Get-MutationVerdict $r
+            if ($r.Contains('watch')) { $item.watch = $true }
+            if ($badRestore -and ([string]$item.result).StartsWith('ok')) { $item.result = "inconclusivo — $badRestore" }
             $lastSec = $r.seconds
             $items += $item
         }
+        } finally { if ($ws) { Stop-WatchSession $ws; $ws = $null } }
         $after = Get-WorkTree $Root
         if ($after -ne $tree) { [Console]::Error.WriteLine("verify: ERRO — a árvore não voltou igual depois das mutações ($($tree.Substring(0, 12)) → $($after.Substring(0, 12))). Confira com git status/git diff antes de seguir."); exit 2 }
         # Amostragem (-Only) e retomada sobre a mesma árvore substituem só as mutações que rodaram; as outras do registro ficam.
@@ -533,6 +688,9 @@ try {
         [Console]::Out.WriteLine("verify mutation $Task · árvore $($tree.Substring(0, 12)) (restaurada igual) · $okN de $($want.Count) mutação(ões) pegas pelo teste" + $(if ($pending.Count) { " · $($pending.Count) pendente(s)" } else { '' }) + " · $($resPath.Substring($Root.Length + 1) -replace '\\', '/')")
         foreach ($it in $items) { [Console]::Out.WriteLine("  $($it.id) $($it.file): $($it.result)" + $(if ($null -ne $it.exit) { " · exit $($it.exit) · $(@($it.decisive) | Select-Object -Last 1)" } else { '' }) + $(if ($it.Contains('rule')) { " · regra: $($it.rule) · trecho do dev: ``$($it.find)`` → ``$($it.replace)``" } else { '' })) }
         foreach ($it in @($merged | Where-Object { $want -contains [string]$_.id })) { [Console]::Out.WriteLine("  $($it.id) $($it.file): $($it.result) (chamada anterior, mesma árvore)") }
+        $wItems = @($items | Where-Object { $_.Contains('watch') }).Count
+        if ($wItems) { [Console]::Out.WriteLine("  em observação (verify.watch): $wItems mutação(ões) numa recompilação incremental, $wsN sessão(ões) do runner — sem partida a frio por mutante") }
+        foreach ($n in @($script:watchNotes | Select-Object -Unique)) { [Console]::Out.WriteLine("  observação: $n") }
         if ($pending.Count) { [Console]::Out.WriteLine("  parcial: $($pending -join ', ') não couberam em -MaxMinutes $MaxMinutes — rode o MESMO comando de novo; ele continua de onde parou."); exit 3 }
         if ($badM.Count) { exit 1 }
         exit 0

@@ -1,7 +1,7 @@
 {
   "name": "team",
   "displayName": "Time Scrum",
-  "version": "3.58.1",
+  "version": "3.58.2",
   "description": "Time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor, QA e Security Engineer — com roteiros de atuacao, skills, padroes de engenharia e modelos de documentacao. Comandos: /sm /po /arc /ux /dev /qa /sec /team /review /team-status /team-usage.",
   "author": {
     "name": "Marco Antonio Amaral Santos"
