@@ -210,6 +210,7 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 | **G20** | o fim de turno no meio do `sprint run` com Task elegível no quadro (v3.51) | — a sessão segue a fila sozinha; esperar agente disparado nesta sessão é permitido (o aviso reabre a sessão) |
 | **G16** | registra em `.team-project/usage.jsonl` o consumo **medido** de cada subagente (tokens processados, contexto final, modelo, duração, Task) | — e roda `scripts/checks/consumption.ps1`, que escreve o `consumption.md` (v3.49; antes, a sessão o rodava); ninguém copia número da notificação |
 | **G23** | durante o run, o dev cujo contexto passou do teto (`guards.json` → `devContextCap`, padrão 100 mil; v3.53.1) roda comando ou edita código | — o dev grava o ponto de retomada no relatório e volta com `TETO`; o executor de Task abre instância nova, que segue dali. Projeto que precise de outro teto: ajuste o número (0 desliga) |
+| **G24** | durante o `sprint run`, a sessão que conduz o run abre formulário para você sem que o `run.ps1` tenha mandado levar a decisão a você (v3.58.3) | — a sessão decide pelo roteiro (cenário só por teste, nome de teste que falta, Task bloqueada com a fila andando, "tento de novo?") e você só recebe o que é seu: fim da fila, bloqueio sem saída, GAP de produto, ambiente sem reparo, travamento repetido. Se você interromper e pedir a pergunta, a sessão para o run antes (parada d) |
 
 - **O agente recebe o motivo e corrige o rumo** — você normalmente nem vê o bloqueio. As guardas por papel (G5–G11) não valem para a sua sessão principal.
 - **Falso positivo:** acrescente a guarda a `"disabled"` em `.team-project/guards.json`; vale na hora. Leve o caso ao `/review`, para a guarda ser corrigida.
@@ -272,7 +273,7 @@ Esperando você: 2 decisão(ões) em README §7
 - **Restante:** quanto falta do sprint, pela estimativa do burndown.
 - **Run e Agora:** se um `sprint run` está rodando e quais agentes trabalham neste momento, em qual Task e há quanto tempo.
 - **Em execução (v3.53.5):** a Task em construção e há quanto tempo, desde o último `start`. Também mostra o último sinal de vida dela, o mais recente entre o agente, a pasta do `verify`, a do `accept` e o relatório. Se a Task espera um comando (`verify`, `accept`, reparo do alvo), aparecem o tempo, a CPU, o processo em que ele espera e o último arquivo gravado. Use isto para ler uma espera longa:
-  - **⚠ POSSÍVEL TRAVAMENTO:** o comando roda há 10 min ou mais sem gastar CPU nem gravar arquivo. Esperar não adianta: o `run.ps1 next` leva a decisão a você (encerrar o processo ou seguir esperando).
+  - **⚠ POSSÍVEL TRAVAMENTO:** o comando roda há 10 min ou mais sem gastar CPU nem gravar arquivo. Esperar não adianta. Na primeira vez da Task, o `run.ps1 next` manda a sessão encerrar só o que o run iniciou e retomar, sem te perguntar (v3.58.3); se travar de novo na mesma Task, ele leva a decisão a você (encerrar o processo ou seguir esperando).
   - **⚠ PARADA:** o run está em andamento, mas nenhum agente nem comando roda para a Task há 20 min ou mais. Retome com `/sm sprint run`.
   - **run pausado:** nada roda porque o run foi pausado de propósito.
   - Sem Task em construção, aparece a última Task trabalhada e há quanto tempo o relatório dela foi gravado.

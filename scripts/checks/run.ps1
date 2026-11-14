@@ -27,6 +27,9 @@
 # next monta o pacote da História em sprints/<n>/pack/out/, o stakeholder o leva a um assistente de fora e devolve os
 # planos em pack/in/; o next seguinte confere cada um (plan.ps1) antes de aceitar. O 🔺 GAP de plano dela também vai
 # num pacote (done -Result gap). Funções em external-plan.ps1.
+# v3.58.3: toda saída que manda levar a decisão ao stakeholder grava .team-project/.ask-route (Set-AskRoute, lib.ps1) — a G24
+# só deixa a sessão do run abrir formulário com ela; o start e o "construir" do next a apagam. POSSÍVEL TRAVAMENTO: a primeira
+# vez da Task é encerrada e retomada sem formulário (Write-StallAction).
 
 param(
     [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff', 'allow', 'wait')][string]$Action,
@@ -63,7 +66,8 @@ function Get-WatcherLine {
 # wait (v3.57.0, protocolo de espera regras 1 e 6): a sonda do WATCHER (agents/watcher.md), SÓ DE LEITURA — não grava o
 # .next-verdict, não dispara nada, não decide. Usa a espera que o último next registrou (.next-verdict) e as mesmas funções
 # dele (Get-LiveAgents, Get-TaskWait). Exit 0 = terminou (nada em espera; a sessão roda o next) · 3 = vivo · 5 = POSSÍVEL
-# TRAVAMENTO (10 min ou mais sem CPU, processo filho nem arquivo novo; a decisão é da sessão e do stakeholder).
+# TRAVAMENTO (10 min ou mais sem CPU, processo filho nem arquivo novo; quem decide é o next — v3.58.3: na primeira vez da
+# Task, encerrar e retomar sem formulário; na segunda, o formulário ao stakeholder).
 # v3.57.1: com -For, a espera é DESTE script (Start-Sleep aqui dentro não passa pela G14, que lê o texto do comando): confere,
 # dorme -Every, confere de novo, e para no primeiro "terminou" ou "travado" ou quando a próxima espera passaria de -For.
 function Get-WaitState {
@@ -143,17 +147,41 @@ function Get-AgentLine([string]$Role) {
 # e NÃO conta para o escalonamento — 2 quedas de rede subiam o dev para sonnet no piloto.
 function Get-DevCounter($T, [string]$S) {
     $p = Join-Path $S "handoff/$($T.Id).json"; $all = @{}
-    if (Test-Path -LiteralPath $p) { try { $j = Read-Text $p | ConvertFrom-Json; foreach ($b in $j.blocks.PSObject.Properties) { $all[$b.Name] = @{ starts = [int]$b.Value.starts; fail = [int]$b.Value.fail; env = [int]$b.Value.env } } } catch { } }
+    if (Test-Path -LiteralPath $p) { try { $j = Read-Text $p | ConvertFrom-Json; foreach ($b in $j.blocks.PSObject.Properties) { $all[$b.Name] = @{ starts = [int]$b.Value.starts; fail = [int]$b.Value.fail; env = [int]$b.Value.env; stall = [int]$b.Value.stall } } } catch { } }
     return $all
 }
+# v3.58.3: "stall" conta o POSSÍVEL TRAVAMENTO que o next mandou encerrar e retomar sem formulário (regra 5 do protocolo de
+# espera: uma tentativa automática por causa); não conta para o escalonamento do dev.
 function Update-DevCounter($T, [string]$S, [string]$Field) {
     $all = Get-DevCounter $T $S; $k = if ($Block) { $Block } else { '-' }
-    if (-not $all.ContainsKey($k)) { $all[$k] = @{ starts = 0; fail = 0; env = 0 } }
+    if (-not $all.ContainsKey($k)) { $all[$k] = @{ starts = 0; fail = 0; env = 0; stall = 0 } }
     $all[$k][$Field]++
     $dir = Join-Path $S 'handoff'; New-Item -ItemType Directory -Force $dir | Out-Null
-    $o = [ordered]@{ task = $T.Id; blocks = [ordered]@{} }; foreach ($b in ($all.Keys | Sort-Object)) { $o.blocks[$b] = [ordered]@{ starts = $all[$b].starts; fail = $all[$b].fail; env = $all[$b].env } }
+    $o = [ordered]@{ task = $T.Id; blocks = [ordered]@{} }; foreach ($b in ($all.Keys | Sort-Object)) { $o.blocks[$b] = [ordered]@{ starts = $all[$b].starts; fail = $all[$b].fail; env = $all[$b].env; stall = $all[$b].stall } }
     [System.IO.File]::WriteAllText((Join-Path $dir "$($T.Id).json"), ($o | ConvertTo-Json -Depth 4 -Compress), $utf8)
     return $all[$k]
+}
+# v3.58.3 (sprint 6 do garden: a T-067 levou 3 formulários em 15 min e ficou 2 h parada à espera da resposta, por uma suíte
+# com o navegador de teste preso): POSSÍVEL TRAVAMENTO segue a regra 5 do protocolo de espera — UMA tentativa automática por
+# causa. Na primeira vez da Task, a sessão encerra só o que o run iniciou (verify.ps1 -Kill / target.ps1 -Kill) e retoma, sem
+# formulário; na segunda, o formulário, com a rota gravada para a G24. Devolve o exit code do next.
+function Write-StallAction($T, [string]$S, [string]$n, $W) {
+    $k = 0; foreach ($v in (Get-DevCounter $T $S).Values) { $k += [int]$v.stall }
+    if ($k -lt 1) {
+        $null = Update-DevCounter $T $S 'stall'
+        Set-NextVerdict $Root ''
+        Add-RunLog $S $n $T.Id 'POSSÍVEL TRAVAMENTO → encerrado e retomado sem formulário (protocolo de espera, regra 5: 1ª vez na Task)' $W.Text "sprints/$n/handoff/$($T.Id).json"
+        Out "PRÓXIMA AÇÃO: encerrar e retomar — POSSÍVEL TRAVAMENTO na $($T.Id): $($W.Text)"
+        Out "  primeira vez nesta Task: sem formulário (protocolo de espera, regra 5 — uma tentativa automática por causa; a segunda vai ao stakeholder)."
+        Out "  1. encerre só o que o run iniciou: $plugin/$($W.Kill)"
+        Out "  2. encerre o turno: o dev que esperava esse comando recebe o aviso do fim dele e refaz a rodada; sem agente da Task no registro, rode run.ps1 next (ele manda construir a $($T.Id) de novo, dev novo pelo cartão)."
+        return 0
+    }
+    Set-AskRoute $Root 'travamento' $T.Id $W.Text
+    Out "PRÓXIMA AÇÃO: esperar — POSSÍVEL TRAVAMENTO na $($T.Id) de novo: $($W.Text)"
+    Out "  já houve um encerramento automático nesta Task (regra 5): leve ao stakeholder num formulário (R22) — encerrar o processo ($plugin/$($W.Kill)) e retomar a $($T.Id) por dev novo com o cartão (run.ps1 start), ou seguir esperando."
+    Set-NextVerdict $Root 'esperar' $T.Id "comando: $($W.Text)"
+    return 3
 }
 # "Parei no passo" da seção mais recente do delivery/<T-ID>.md; '' se não houver.
 function Get-StopStep([string]$S, [string]$Id) {
@@ -557,6 +585,7 @@ try {
                 exit 2
             }
             if ($csS.Pending.Count) {
+                Set-AskRoute $Root 'comandos' $T.Id "comandos dos planos de $($T.Story) que a G14 não libera"
                 [Console]::Error.WriteLine("run start: comandos dos planos de $($T.Story) que a G14 ainda não libera — nenhum dev começa antes da decisão do stakeholder. Executor: não dispare o dev; devolva à sessão a linha `"$($T.Id) 🔺 comandos → formulário`".`n" + (Format-CommandStop $csS $T))
                 exit 2
             }
@@ -588,6 +617,7 @@ try {
         $dr = Invoke-Child 'dispatch.ps1' $dargs; $d = $dr.Out
         if ($dr.Code -ne 0) { [Console]::Error.WriteLine("run start: dispatch falhou — $($d.Trim())"); exit 2 }
         Remove-Item -LiteralPath (Join-Path $tp '.safe-point') -Force -ErrorAction SilentlyContinue   # v3.52: Task em voo não é ponto seguro
+        Set-AskRoute $Root ''   # v3.58.3 (G24): dev em voo — a rota ao stakeholder que havia já foi decidida ou superada
         $card = Write-Handoff $T $S $n
         Write-ScenarioDivergence $T $S $n
         $acc = if ($T.Scenarios.Count -and (Get-TargetsConfig $Root)) { " e accept.ps1 -Task $($T.Id)$(Get-AcceptArgs $T) no alvo" } else { '' }
@@ -692,6 +722,7 @@ try {
                 exit 0
             }
             if ($nat -eq 'produto') {
+                Set-AskRoute $Root 'gap-produto' $T.Id $(if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP de produto' })
                 Add-RunLog $S $n $T.Id "🔺 GAP [produto · $natSrc] → stakeholder (formulário); o Arquiteto só registra a decisão depois" $(if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }) "sprints/$n/delivery/$($T.Id).md"
                 Out "run: $($T.Id) com 🔺 GAP de natureza PRODUTO — a decisão é do STAKEHOLDER, não do Arquiteto (mexe no que o usuário vê ou faz):"
                 Out "  sessão: leve ao stakeholder num formulário (com exemplo prático — G3) a pergunta e as opções do GAP em .team-project/sprints/$n/delivery/$($T.Id).md; decidido, o Arquiteto só registra no plano (/arc question, parecer curto) e o dev volta por run.ps1 start -Task $($T.Id)."
@@ -724,6 +755,7 @@ try {
             if ($ass -and $ass.PSObject.Properties['startState'] -and $ass.startState) {
                 $stS = (([string]$ass.startState -replace '["|]', "'") -replace '\s+', ' ').Trim(); if ($stS.Length -gt 90) { $stS = $stS.Substring(0, 90) + '…' }
                 $shS = @($ass.results | Where-Object { $_.shot } | ForEach-Object { [string]$_.shot }) | Select-Object -Last 1
+                Set-AskRoute $Root 'estado-de-partida' $T.Id $stS
                 # v3.57.1 (note.md item 13): o accept distingue "ids não publicados" (o app na tela certa, a WebView sem o id HTML
                 # no dump) do estado de partida; a rota é a mesma (sem reparo, ao stakeholder), o que se pede a ele não.
                 if ([string]$ass.environment -match '^IDS NÃO PUBLICADOS') {
@@ -743,6 +775,8 @@ try {
             Out "run: $($T.Id) parou por FALHA DE AMBIENTE (D4) — não é defeito do código; nenhum papel caro é chamado. Registrada ($($ec.env) neste bloco); não conta para o escalonamento do dev (R27)."
             foreach ($nm in $names) { Out "  1. $plugin/target.ps1 -Target $nm -Repair" }
             Out "  2. pronto → dev em instância NOVA: run.ps1 start -Task $($T.Id) (o relatório em delivery/ diz o que já foi feito; rode de novo o que falhou)"
+            # v3.58.3 (G24): sem reparo, o bloqueio de ambiente vai ao stakeholder; com o reparo, o start apaga a rota.
+            Set-AskRoute $Root 'ambiente' $T.Id 'queda de ambiente; o formulário só se o reparo não resolver'
             # v3.53.6 (sprint 5 do garden, item 9): o accept da Task parou por ambiente e o reparo falhou → 🔴 com "prova no alvo
             # pendente" em Bloqueios (mark.ps1 -Reason), nunca ✅ com "nenhum aplicável — emulador fora do ar". O next reabre.
             $aenv = ''; $arj = Join-Path ((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'
@@ -928,6 +962,7 @@ try {
         $tpT = @($tpT | Where-Object { (Get-TargetRetakeCount $blkL $_.Id) -lt 1 })
         foreach ($ht in $heldT) {
             $lf = Get-AcceptLastFailure $Root $ht.Id
+            Set-AskRoute $Root 'vaivem-alvo' $ht.Id $(if ($lf) { $lf } else { 'caiu de novo na prova no alvo' })
             Out "  $($ht.Id) 🔴: já reaberta pelo alvo de volta e caiu de novo na prova no alvo — o next não a reabre outra vez (vaivém). Leve ao stakeholder num formulário (R22)$(if ($lf) { " com a última falha: $lf" }): reabrir (mark.ps1 -Task $($ht.Id) -To qa e o accept pelo operator) depois de preparar o estado de partida ou o alvo, ou seguir bloqueada. A fila continua."
         }
         if ($tpT.Count) {
@@ -1076,10 +1111,12 @@ try {
         if ($liveA.Count) {
             $a = @($liveA | Sort-Object { [string]$_.at } -Descending)[0]
             $agTxt = "$(([string]$a.type) -replace '^.*:', '') vivo (última ação $(if ($a.last) { $a.last } else { 'disparado' }) há $([int]((Get-AgentIdleHours $a) * 60)) min$(if ($a.host_pid) { ", processo $($a.host_pid)" }))"
+            # v3.58.3: o agente está vivo, mas o comando que ele espera parou — o mesmo POSSÍVEL TRAVAMENTO que o watcher acusa.
+            $wA = Get-TaskWait $Root $next.Id
+            if ($wA -and $wA.Pulse.Stalled -and -not ($wA.PSObject.Properties['NoProgress'] -and $wA.NoProgress)) { exit (Write-StallAction $next $S $n $wA) }
             Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) já tem $agTxt. Não dispare outro executor nem dev: seriam duas instâncias no mesmo alvo. Encerre o turno; o aviso de volta reabre a sessão (se ele é de outra sessão, a volta chega lá). Sem sinal de vida por 20 min, o registro deixa de valer e o next segue."
             # v3.53.5: o comando que o agente espera, com o sinal de vida (CPU, arquivo, POSSÍVEL TRAVAMENTO).
-            $wA = Get-TaskWait $Root $next.Id
-            if ($wA) { Out "  espera: $($wA.Text)"; if ($wA.PSObject.Properties['NoProgress'] -and $wA.NoProgress) { Out "  SEM AVANÇO: $($wA.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." } }
+            if ($wA) { Out "  espera: $($wA.Text)"; if ($wA.PSObject.Properties['NoProgress'] -and $wA.NoProgress) { Set-AskRoute $Root 'sem-avanco' $next.Id $wA.NoProgress; Out "  SEM AVANÇO: $($wA.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." } }
             Out (Get-WatcherLine)
             Set-NextVerdict $Root 'esperar' $next.Id "agente: $agTxt"
             exit 3
@@ -1088,9 +1125,10 @@ try {
         # v3.53.5: também o reparo do alvo; a linha traz o sinal de vida e, parado, a saída (não esperar às cegas).
         $wN = Get-TaskWait $Root $next.Id
         if ($wN) {
+            $noProgN = $wN.PSObject.Properties['NoProgress'] -and $wN.NoProgress
+            if ($wN.Pulse.Stalled -and -not $noProgN) { exit (Write-StallAction $next $S $n $wN) }
             Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) ainda tem $($wN.Text) rodando (um dev esperava por ele). Não dispare executor nem dev: seriam dois na mesma Task e no mesmo alvo. Encerre o turno; rode run.ps1 next quando o aviso de volta chegar."
-            if ($wN.PSObject.Properties['NoProgress'] -and $wN.NoProgress) { Out "  SEM AVANÇO: $($wN.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." }
-            if ($wN.Pulse.Stalled) { Out "  POSSÍVEL TRAVAMENTO: o comando não gasta CPU nem grava arquivo há 10 min ou mais. Não espere às cegas: leve ao stakeholder (formulário) — encerrar o processo (ele decide) e retomar a $($next.Id) por dev novo com o cartão (run.ps1 start), ou seguir esperando." }
+            if ($noProgN) { Set-AskRoute $Root 'sem-avanco' $next.Id $wN.NoProgress; Out "  SEM AVANÇO: $($wN.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." }
             Out (Get-WatcherLine)
             Set-NextVerdict $Root 'esperar' $next.Id "comando: $($wN.Text)"
             exit 3
@@ -1102,6 +1140,7 @@ try {
             exit 3
         }
         if ($csN.Pending.Count) {
+            Set-AskRoute $Root 'comandos' $next.Id "comandos dos planos de $($next.Story) que a G14 não libera"
             Out "PRÓXIMA AÇÃO: formulário de comandos (uma vez) antes de construir $($next.Id) — não dispare executor nem dev."
             Out (Format-CommandStop $csN $next)
             Out "  ao voltar: run.ps1 next"
@@ -1109,6 +1148,7 @@ try {
         }
         $dv = Join-Path $S "delivery/$($next.Id).md"
         $resume = if ($cur -and (Test-Path -LiteralPath $dv)) { " A Task já está em $($next.Mark) com relatório em .team-project/sprints/$n/delivery/$($next.Id).md: se o dev voltou com a entrega, comece por run.ps1 done; se caiu no meio, run.ps1 start retoma pelo cartão." } else { '' }
+        Set-AskRoute $Root ''   # v3.58.3 (G24): a fila anda — nenhuma decisão do stakeholder pendente nesta rodada
         Out "PRÓXIMA AÇÃO: construir $($next.Id) — $($next.Title) (executor de Task)"
         Out "  $(Get-AgentLine 'task-runner')"
         Out "  prompt: `"Conduza a $($next.Id) até fechar ou parar, pelo ciclo do agents/task-runner.md: run.ps1 start -Task $($next.Id), dev, run.ps1 done -Task $($next.Id) -Result ok|gap|env|teto (gap: Arquiteto e start de novo; teto: start de novo).$resume Volte em UMA linha.`""
@@ -1118,6 +1158,8 @@ try {
     if ($gapWait.Count -or @(Get-ExternalPending).Count) { Write-ExternalWait }
     if ($open.Count) {
         Out "PRÓXIMA AÇÃO: nenhuma Task elegível — $(($open | ForEach-Object { "$($_.Id) espera $((& $blockers $_) -join ',')" }) -join '; '). Bloqueio sobe pelo degrau 1 (R22)."
+        # v3.58.3 (G24): fila esgotada — o formulário de bloqueio passa a caber, DEPOIS do par PO + Arquiteto (R25 c).
+        Set-AskRoute $Root 'bloqueio' (($open | ForEach-Object { [string]$_.Id }) -join ',') 'nenhuma Task elegível; formulário só com o degrau 1 (PO + Arquiteto) sem solução'
         # v3.57.0 (item 6): diz por que — ciclo de espera (a Task espera a que a espera) e espera por Task que não está no quadro
         # (a mãe dividida em A/B, que nunca fecha) — em vez de deixar o Arquiteto descobrir relendo o .scn e os planos.
         $edgesW = @{}; foreach ($ot in $open) { $edgesW[[string]$ot.Id] = @(& $blockers $ot) }
@@ -1169,7 +1211,7 @@ try {
         Out "  1. a sessão grava a linha da $qid no quadro, seção '## Correção do portão — sprint $n' (a tabela das Histórias: ID, Task, Est., Dono, Depende de, Plano, Evidência, Cenários…), marcador $todoMk, com os achados 'Volta para: dev' do validation.md"
         Out "  2. achado com 'Volta para: Arquiteto' → /arc question (instância nova) com o caminho do validation.md"
         Out "  3. depois: run.ps1 next — o Arquiteto escreve o plano de correção (template fix-plan ou plano enxuto) e o executor de Task conduz a $qid; fechada, o operator mede de novo e o QA revisa o veredito. O ✅ das Tasks originais não muda (R25)"
-        if ($vv -eq $E.Warn) { Out "  ⚠️ que o PO aceita como dívida (formulário): a sessão grava no validation.md **Decisão do PO:** aceito com dívida — <motivo e onde a dívida está registrada>; com ela o portão passa (❌ nunca passa)" }
+        if ($vv -eq $E.Warn) { Set-AskRoute $Root 'portao' $sid 'veredito ⚠️ do portão: o PO aceita como dívida (formulário)'; Out "  ⚠️ que o PO aceita como dívida (formulário): a sessão grava no validation.md **Decisão do PO:** aceito com dívida — <motivo e onde a dívida está registrada>; com ela o portão passa (❌ nunca passa)" }
         exit 0
     }
     # 5 · consolidação dos documentos vivos (A5) e 6 · Review.
@@ -1180,6 +1222,7 @@ try {
         Out "  prompt: `"Consolide os documentos vivos do sprint ${n}: leia as seções 'Documentos vivos (R12)' de .team-project/sprints/$n/delivery/*.md, atualize o SDD técnico e os ADRs que são seus e peça ao dono o que não é seu. Registre em .team-project/sprints/$n/docs-consolidation.md, com **Estado:** feita na primeira linha e a lista (documento, o que mudou, dono). Volte em até 15 linhas.`""
         exit 0
     }
+    Set-AskRoute $Root 'review' "S$n" 'fim da fila: formulário de autorização da Review'
     Out "PRÓXIMA AÇÃO: fim da fila — formulário de autorização da Review (sprint-run.md §Ao fim da fila), no formato do H1: o problema simples, um exemplo, as opções e 'Pedir mais contexto' por último."
     exit 0
 } catch {

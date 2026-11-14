@@ -25,7 +25,7 @@ Busque `https://raw.githubusercontent.com/wtlmarco/scrum-team-plugin/main/.claud
 ## 5. Compare (semver)
 
 - instalada ≥ corrente → "já está na versão mais recente (`vX.Y.Z`)"; pare.
-- instalada < corrente → busque `https://raw.githubusercontent.com/wtlmarco/scrum-team-plugin/main/CHANGELOG.md` e mostre as entradas entre as duas versões. Peça confirmação para aplicar.
+- instalada < corrente → busque `https://raw.githubusercontent.com/wtlmarco/scrum-team-plugin/main/CHANGELOG.md` e mostre as entradas entre as duas versões. Peça confirmação para aplicar — **exceto (v3.58.3)** quando as duas condições valem: o stakeholder **digitou** o `/team update` nesta sessão (o comando é o pedido) **e** todas as entradas entre as duas versões são correção da mesma linha (mesmo `MAJOR.MINOR`) com `**Processo:** nenhum`. Aí aplique direto (passo 7), diga em três linhas o que mudou e registre na §7 como resolvido. Qualquer entrada com processo, migração ou `MINOR` novo mantém a confirmação. No sprint 6 do garden, seis formulários de atualização (3.57.4 a 3.58.2) foram respondidos em segundos, sempre na opção recomendada.
 
 ## 6. Avalie o impacto de mudança de processo sobre os deliverables já escritos
 
@@ -52,7 +52,7 @@ deliberadamente atrás.
 
 ## 7. Aplique
 
-Só após confirmação, na raiz do projeto:
+Só após confirmação (ou na exceção do passo 5: correção da mesma linha, sem processo, pedida pelo próprio stakeholder), na raiz do projeto:
 
 ```powershell
 claude plugin marketplace update team

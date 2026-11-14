@@ -715,6 +715,8 @@ Edit-File $sb "| $($e.qa) T-041 | Endpoint de exportação | 1 | dev | — |" "|
 Edit-File $sb "| T-041 | [``plan/T-041a-x.md``]" "| — | [``plan/T-041a-x.md``]"
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'v3.53.2: Task cujo cenário aguarda outra Task não é construída antes dela (o bloqueio aparece; v3.57.0: o ciclo T-041 ↔ T-041a é dito e a Task não espera por si mesma)' $r 3 @('nenhuma Task elegível — .*T-041a espera T-041', 'CICLO de espera: (T-041 → T-041a → T-041|T-041a → T-041 → T-041a)', '^(?![\s\S]*T-041 espera T-041a,T-041)')
+$arpB = Join-Path $p '.team-project/.ask-route'
+Check 'v3.58.3: nenhuma Task elegível grava a rota "bloqueio" — o formulário de R25 (c) passa pela G24' @{ Code = 0; Out = $(if (Test-Path -LiteralPath $arpB) { [System.IO.File]::ReadAllText($arpB, $utf8) } else { 'ausente' }) } 0 @('"rota":"bloqueio"', '"task":"[^"]*T-041', 'degrau 1')
 Edit-File $sb "| $($e.todo) T-041 | Endpoint de exportação | 1 | dev | T-041a |" "| $($e.ok) T-041 | Endpoint de exportação | 1 | dev | — |"
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'v3.53.2: fechada a Task que cria os nomes, o next pede o cenário que aguardava (QA)' $r 0 @('cenários executáveis da História H-014', 'SC-016', "aguarda <T-ID>")
@@ -1765,7 +1767,12 @@ try {
     & $tlk 25
     $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
     $nvp = Join-Path $p '.team-project/.next-verdict'
-    Check 'v3.53.5: reparo do alvo (dono target.ps1) segura a Task — esperar com o sinal de vida e POSSÍVEL TRAVAMENTO; grava .next-verdict' @{ Code = $r.Code; Out = $r.Out + "`nverdict=" + $(if (Test-Path -LiteralPath $nvp) { [System.IO.File]::ReadAllText($nvp, $utf8) } else { 'ausente' }) } 3 @('esperar — a T-041 ainda tem reparo/conferência do alvo android \(target\.ps1 android\) \(pid \d+', 'há 25 min · CPU \d+ s', 'POSSÍVEL TRAVAMENTO', 'encerrar o processo \(ele decide\)', 'verdict=\{"acao":"esperar","task":"T-041"')
+    # v3.58.3: a primeira vez da Task não vai ao stakeholder — regra 5 do protocolo de espera (uma tentativa automática).
+    $rlp = Join-Path $p '.team-project/sprints/1/run-log.md'
+    Check 'v3.58.3: POSSÍVEL TRAVAMENTO na primeira vez da Task → encerrar e retomar sem formulário (comando de encerrar, run-log, sem .next-verdict)' @{ Code = $r.Code; Out = $r.Out + "`nverdict=" + $(if (Test-Path -LiteralPath $nvp) { [System.IO.File]::ReadAllText($nvp, $utf8) } else { 'ausente' }) + "`n" + $(if (Test-Path -LiteralPath $rlp) { [System.IO.File]::ReadAllText($rlp, $utf8) } else { 'sem run-log' }) } 0 @('PRÓXIMA AÇÃO: encerrar e retomar — POSSÍVEL TRAVAMENTO na T-041: reparo/conferência do alvo android \(target\.ps1 android\) \(pid \d+', 'há 25 min · CPU \d+ s', 'sem formulário', 'target\.ps1 -Target android -Kill', 'verdict=ausente', '\| T-041 \| POSSÍVEL TRAVAMENTO → encerrado e retomado sem formulário')
+    $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+    $arp = Join-Path $p '.team-project/.ask-route'
+    Check 'v3.58.3: POSSÍVEL TRAVAMENTO de novo na mesma Task → formulário: rota gravada para a G24 e .next-verdict esperar' @{ Code = $r.Code; Out = $r.Out + "`nroute=" + $(if (Test-Path -LiteralPath $arp) { [System.IO.File]::ReadAllText($arp, $utf8) } else { 'ausente' }) + "`nverdict=" + $(if (Test-Path -LiteralPath $nvp) { [System.IO.File]::ReadAllText($nvp, $utf8) } else { 'ausente' }) } 3 @('POSSÍVEL TRAVAMENTO na T-041 de novo', 'leve ao stakeholder num formulário', 'target\.ps1 -Target android -Kill', 'route=\{"rota":"travamento","task":"T-041"', 'verdict=\{"acao":"esperar","task":"T-041"')
     $r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
     Check 'v3.53.5: start com o reparo do alvo vivo não dispara outro dev' $r 2 @('reparo/conferência\s+do\s+alvo\s+android', 'Não\s+dispare\s+outro\s+dev')
     & $tlk 1
@@ -1785,7 +1792,7 @@ Remove-Item -LiteralPath (Join-Path $p '.team-project/.active-run') -Force
 $r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Root', $p)
 Check 'v3.53.5: /team-status — run pausado não soa como PARADA' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'PARADA') { "`nALARME" } else { '' }) } 0 @('run pausado: nada roda para a T-041', '^(?![\s\S]*ALARME)')
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
-Check 'v3.53.5: next sem espera apaga o .next-verdict' @{ Code = $r.Code; Out = $r.Out + "`nverdict=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.next-verdict')) } 0 @('verdict=False')
+Check 'v3.53.5: next sem espera apaga o .next-verdict; v3.58.3: o "construir" apaga a rota ao stakeholder (.ask-route)' @{ Code = $r.Code; Out = $r.Out + "`nverdict=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.next-verdict')) + "`nroute=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.ask-route')) } 0 @('verdict=False', 'PRÓXIMA AÇÃO: construir T-041', 'route=False')
 
 # 16f. v3.53.5 — adaptador android: prazo no adb (o processo é encerrado) e a recusa de abrir um segundo emulador.
 $fakeSdk = Join-Path $tmp 'fake-sdk'; New-Item -ItemType Directory -Force (Join-Path $fakeSdk 'platform-tools') | Out-Null

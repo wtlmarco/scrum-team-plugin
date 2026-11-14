@@ -622,7 +622,7 @@ function Get-TaskWait([string]$Root, [string]$Id) {
             $p = Get-Process -Id ([int]$l.pid) -ErrorAction SilentlyContinue
             if ($p -and (-not $l.started -or $p.StartTime.ToString('o') -eq [string]$l.started)) {
                 $pu = Get-WaitPulse ([int]$l.pid) ([string]$l.at) $vd
-                return [pscustomobject]@{ Text = "verify $([string]$l.mode) (pid $([int]$l.pid), desde $([string]$l.at)) — $($pu.Text)"; Pulse = $pu }
+                return [pscustomobject]@{ Text = "verify $([string]$l.mode) (pid $([int]$l.pid), desde $([string]$l.at)) — $($pu.Text)"; Pulse = $pu; Kill = "verify.ps1 -Task $Id -Kill" }
             }
         }
     }
@@ -647,7 +647,7 @@ function Get-TaskWait([string]$Root, [string]$Id) {
                         if ($pu.Min -ge 15 -and $g.Passed -eq 0 -and $g.Failed -ge 2) { $noProg = "$($g.Failed) cenário(s) falharam e nenhum passou em $([int]$pu.Min) min$(if ($g.LastText) { " — último: $($g.LastText)" })" }
                     }
                 }
-                return [pscustomobject]@{ Text = "$what (pid $([int]$t.pid), desde $([string]$t.desde)) — $($pu.Text)$prog"; Pulse = $pu; NoProgress = $noProg }
+                return [pscustomobject]@{ Text = "$what (pid $([int]$t.pid), desde $([string]$t.desde)) — $($pu.Text)$prog"; Pulse = $pu; NoProgress = $noProg; Kill = "target.ps1 -Target $([string]$t.target) -Kill" }
             }
         }
     }
@@ -766,6 +766,17 @@ function Set-NextVerdict([string]$Root, [string]$Acao, [string]$Task = '', [stri
     if (-not $Acao) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue; return }
     if ($Motivo.Length -gt 300) { $Motivo = $Motivo.Substring(0, 300) + '…' }
     [System.IO.File]::WriteAllText($p, ([ordered]@{ acao = $Acao; task = $Task; motivo = $Motivo; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+}
+# v3.58.3 (sprint 6 do garden: 12 de 22 formulários subiram ao stakeholder fora da rota, 6 deles por uma linha de teste): o
+# run.ps1 grava aqui a rota que manda levar a decisão ao stakeholder — fim da fila, bloqueio sem Task elegível, GAP de
+# produto, estado de partida, ambiente sem reparo, travamento repetido, comandos dos planos. A G24 (hooks/pre-tool.ps1) só
+# deixa a sessão que conduz o sprint run abrir formulário com ela gravada (R25 c). Vale até o próximo start ou até o next
+# mandar construir, e no máximo 24 h. Rota '' apaga.
+function Set-AskRoute([string]$Root, [string]$Rota, [string]$Task = '', [string]$Motivo = '') {
+    $p = Join-Path $Root '.team-project/.ask-route'
+    if (-not $Rota) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue; return }
+    if ($Motivo.Length -gt 300) { $Motivo = $Motivo.Substring(0, 300) + '…' }
+    [System.IO.File]::WriteAllText($p, ([ordered]@{ rota = $Rota; task = $Task; motivo = $Motivo; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
 }
 function Exit-TargetLock([string]$Root) {
     $lp = Join-Path $Root '.team-project/.target-lock'

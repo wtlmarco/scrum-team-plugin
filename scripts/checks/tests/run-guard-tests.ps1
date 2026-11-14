@@ -1028,7 +1028,41 @@ $cases = @(
     @{ Name = 'G14 (v3.57.3): Set-Location para fora do projeto não reescreve o caminho: negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'Set-Location ..; node scripts/alvo/prova-cdp.mjs --task S5' } } },
     @{ Name = 'G14 (v3.57.3): Set-Location com aspas e -Path também vale'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
-       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'Set-Location -Path "source"; node scripts/alvo/prova-cdp.mjs' } } }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'Set-Location -Path "source"; node scripts/alvo/prova-cdp.mjs' } } },
+    # ---------- v3.58.3 — G24: na sessão do sprint run, formulário só pela rota do run.ps1 (R25 c) ----------
+    @{ Name = 'G24 (v3.58.3): a sessão que roda o run.ps1 next fica registrada como a do run (.run-session)'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ }', (New-Object System.Text.UTF8Encoding($false)))
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "6", "desde": "2026-11-13 10:00" }' -Encoding UTF8
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/.run-session'), (Join-Path $proj '.team-project/.ask-route') -Force -ErrorAction SilentlyContinue }
+       Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/.run-session') -Raw -Encoding UTF8) -match '"session":"sessRun"' }
+       Payload = @{ tool_name = 'PowerShell'; session_id = 'sessRun'; tool_input = @{ command = 'powershell -NoProfile -File "C:/p/scripts/checks/run.ps1" next' } } },
+    @{ Name = 'G24 (v3.58.3): Task bloqueada com a fila andando, sem rota do run.ps1 — formulário negado, com o caminho do roteiro'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'R25 (c): durante o sprint run*par PO + Arquiteto*rode run.ps1 next*parada (d)'
+       Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessRun'; tool_input = @{ questions = @(@{ question = 'A T-089 está parada por um teste de Manejo. Como seguir? Exemplo: hoje o teste espera a ordem antiga.'; header = 'T-089'; multiSelect = $false; options = @((Opt 'Corrigir o Manejo (Recomendado)'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'G24 (v3.58.3): com a rota que o run.ps1 gravou, o mesmo formulário passa'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') ('{"rota":"bloqueio","task":"T-089","motivo":"nenhuma Task elegível","at":"' + (Get-Date).AddMinutes(-5).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessRun'; tool_input = @{ questions = @(@{ question = 'A T-089 está bloqueada e nenhuma Task anda. Como seguir? Exemplo: hoje o teste espera a ordem antiga.'; header = 'T-089'; multiSelect = $false; options = @((Opt 'Corrigir o Manejo (Recomendado)'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'G24 (v3.58.3): rota com mais de 24 h vale como ausente — negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'durante o sprint run o formulário'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') ('{"rota":"bloqueio","task":"T-089","motivo":"x","at":"' + (Get-Date).AddHours(-25).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessRun'; tool_input = @{ questions = @(@{ question = 'Tento de novo? Exemplo: a verificação falhou duas vezes.'; header = 'Q'; multiSelect = $false; options = @((Opt 'Tentar de novo'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'G24 (v3.58.3): outra sessão no mesmo projeto (o /team update) não passa pela guarda'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessUpdate'; tool_input = @{ questions = @(@{ question = 'Atualizar o plugin? Exemplo: a mutação cai de 17 para 2,5 min.'; header = 'Atualizar'; multiSelect = $false; options = @((Opt 'Atualizar agora'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'G24 (v3.58.3): papel não é conferido pela G24'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessRun'; agent_type = 'team:product-owner'; agent_id = 'po1'; tool_input = @{ questions = @(@{ question = 'Q? Exemplo: x.'; header = 'Q'; multiSelect = $false; options = @((Opt 'Sim'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'G24 (v3.58.3): trilha fix (formulário dos ajustes, R33) não é conferida'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "fix", "id": "B-009", "desde": "2026-11-13 10:00" }' -Encoding UTF8 }
+       Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessRun'; tool_input = @{ questions = @(@{ question = 'Aprova o ajuste? Exemplo: o rótulo muda.'; header = 'A'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'G24 (v3.58.3): sem .active-run (interrupção, parada d) a guarda cala'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-run') -Force -ErrorAction SilentlyContinue }
+       Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessRun'; tool_input = @{ questions = @(@{ question = 'Quais as opções? Exemplo: corrigir antes.'; header = 'Q'; multiSelect = $false; options = @((Opt 'Planejar a correção'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'G24 (v3.58.3): desligável em guards.json → disabled'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "6", "desde": "2026-11-13 10:00" }' -Encoding UTF8
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/.ask-route') -Force -ErrorAction SilentlyContinue
+                 [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ "disabled": ["G24"] }', (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessRun'; tool_input = @{ questions = @(@{ question = 'Sigo? Exemplo: x.'; header = 'Q'; multiSelect = $false; options = @((Opt 'Sim'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'SessionStart (v3.58.3): a retomada vale para o comando do run; outro comando diz em uma linha, sem formulário'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'G23, G24;*Retome agora, sem esperar o stakeholder: /sm sprint run*se ele pediu outro comando*sem formulário*formulário só quando o run.ps1 manda levar ao stakeholder (G24'
+       Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ }', (New-Object System.Text.UTF8Encoding($false))) }
+       Check = { foreach ($f in '.active-run', '.run-session', '.ask-route') { Remove-Item -LiteralPath (Join-Path $proj ".team-project/$f") -Force -ErrorAction SilentlyContinue }; $true }
+       Payload = @{ hook_event_name = 'SessionStart'; source = 'startup' } }
 )
 
 $rows = @(); $fail = 0
