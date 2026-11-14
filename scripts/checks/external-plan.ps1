@@ -401,7 +401,7 @@ function Import-OnePlan($It, $St, $Planner, [string]$Re) {
     $isGap = $St.gaps.ContainsKey($id)
     $inPack = @($St.packs.Values | Where-Object { @($_.tasks) -contains $id }).Count -gt 0
     $cur = Get-PlanFull $T $S
-    if ($cur -and -not $isGap) { return "  external plan: $($It.Name) recusado — a $id já tem plano ($($T.Plan)); plano de Task já planejada só muda pela decisão de um 🔺 GAP" }
+    if ($cur -and -not $isGap) { return "  external plan: $($It.Name) recusado — a $id já tem plano ($($T.Plan)); plano de Task já planejada só muda pela decisão de um 🔺 GAP. Não é decisão do stakeholder (v3.58.3): diga-lhe em uma linha, sem formulário, que vale o plano aceito e que o arquivo novo ficou de fora" }
     if (-not $isGap -and -not $inPack -and -not (Test-ExternalTask $Planner $id)) { return "  external plan: $($It.Name) recusado — a $id não está no plano externo (guards.json → run)" }
     $destRel = if ($cur) { $T.Plan } else { Get-PlanDest $T }
     $dest = Join-Path $S $destRel

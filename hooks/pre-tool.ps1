@@ -12,6 +12,7 @@
 # v3.53.1: G23 teto de contexto por instância do dev (guards.json → devContextCap); o registro do Agent leva o processo hospedeiro.
 # v3.57.3: a G7 cobra "Chamador: <papel> <ID>" no pedido ao operator (da sessão também); a G14 lê o caminho relativo a partir
 # do Set-Location para uma pasta dentro do projeto.
+# v3.58.3: G24 — na sessão que conduz o sprint run, AskUserQuestion só com a rota que o run.ps1 gravou (.ask-route; R25 c).
 # v3.48 (primeiro sprint do piloto): .active-task ilegível nega (antes derrubava o hook); texto entre aspas não é destino;
 # destino em variável do mesmo comando se resolve; G14 sem os falsos negados medidos; G11 só no segmento canônico.
 # Devolve a PRIMEIRA negação: exit 2 com o motivo no stderr; "allow" (G14) sai em JSON com exit 0. Nenhuma guarda pergunta.
@@ -100,6 +101,40 @@ function Test-G3([object]$ToolInput) {
             }
         }
     }
+}
+
+# G24 (v3.58.3) — R25 (c): entre o pacote e a Review, o time roda a fila sem acionar o stakeholder; o formulário só sai pela
+# rota que o run.ps1 imprimiu (fim da fila, bloqueio sem Task elegível, GAP de produto, estado de partida, ambiente sem
+# reparo, travamento repetido, comandos dos planos, portão) — gravada em .team-project/.ask-route. Sprint 6 do garden: 12 de
+# 22 formulários subiram sem rota (cenário "(teste)" que o roteiro manda marcar sem formulário, nome de teste que é GAP do
+# Arquiteto, Task bloqueada com a fila andando — 6 formulários e ~2h30 por uma linha de teste —, "tento de novo?"). Vale só
+# para a sessão que conduz o sprint run (a última que rodou run.ps1 next, .run-session): o /team update ou o /po em outra
+# sessão não passam por aqui. Interrupção pelo stakeholder é a parada (d): o .active-run sai, e a guarda cala.
+function Set-RunSession([object]$ToolInput) {
+    $sid = [string]$script:hookInput.session_id
+    if (-not $sid) { return }
+    if ([string]$ToolInput.command -notmatch '(?i)run\.ps1["'']?\s+(-Action\s+)?next\b') { return }
+    $p = Join-Path $script:projectDir '.team-project/.run-session'
+    try { [System.IO.File]::WriteAllText($p, (@{ session = $sid; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false))) } catch { }
+}
+function Test-G24([object]$ToolInput) {
+    if ($script:role) { return }                                    # papel não pergunta ao stakeholder (G3/G7 cuidam)
+    $run = Get-Marker $script:projectDir '.active-run'
+    if ($null -eq $run -or [string]$run.trilha -ne 'sprint') { return }   # o fix run tem o formulário dos ajustes (R33)
+    $rs = Get-Marker $script:projectDir '.run-session'
+    $sid = [string]$script:hookInput.session_id
+    if ($null -eq $rs -or -not $sid -or [string]$rs.session -ne $sid) { return }   # sessão que não conduz o run
+    $ar = Get-Marker $script:projectDir '.ask-route'
+    if ($null -ne $ar) {
+        $age = 999; try { $age = ((Get-Date) - [datetime]::ParseExact([string]$ar.at, 'yyyy-MM-dd HH:mm:ss', $null)).TotalHours } catch { }
+        if ($age -lt 24) { return }
+    }
+    $q = [string](@($ToolInput.questions) | Select-Object -First 1).question
+    if ($q.Length -gt 100) { $q = $q.Substring(0, 100) + '…' }
+    Deny 'G24' $q ("R25 (c): durante o sprint run o formulário ao stakeholder só sai pela rota que o run.ps1 imprime (.team-project/.ask-route ausente ou vencida) — fim da fila, bloqueio sem Task elegível depois do par PO + Arquiteto, GAP de produto, estado de partida, ambiente sem reparo, travamento repetido, comandos dos planos, portão. Esta pergunta não tem rota; decida pelo roteiro, sem formulário: " +
+        "cenário que só se prova por teste → '(teste)' na coluna Cenários e linha no run-log; nome de teste (id) que falta → 🔺 GAP ao Arquiteto (ele estende o plano); Task bloqueada (teste vermelho fora dela, premissa errada, conflito de plano) → mark.ps1 -To blocked e o par PO + Arquiteto decide — a fila segue nas independentes; " +
+        "'sigo?', 'tento de novo?', 'retomo?' → rode run.ps1 next; estado de processo, arquivo ou log → leia você mesmo; devolução de plano externo recusada → diga em uma linha. Se o run.ps1 next mandar levar ao stakeholder, a rota fica gravada e o formulário passa. " +
+        "Se o stakeholder interrompeu e pediu a pergunta, é a parada (d): apague o .active-run antes (sprint-run.md §Paradas legítimas).")
 }
 
 # G19 (v3.51, C1) — a sessão não retoma por SendMessage um papel caro parado há mais de 5 min: o cache do subagente dura
@@ -861,6 +896,7 @@ try {
             if (Test-GuardEnabled $cfg 'G1') { Test-G1 $ti }   # G1 vale sem guards.json (D5)
             if (-not $script:role -and $script:teamProject -and (Test-GuardEnabled $cfg 'G22')) { Test-G22 $ti }   # só a sessão principal
             if ($script:teamProject -and (Test-GuardEnabled $cfg 'G23')) { Test-G23 $ti }   # v3.53.1: só o dev
+            if (-not $script:role -and $script:teamProject) { Set-RunSession $ti }   # v3.58.3 (G24): quem roda o next conduz o run
             if ($phase2) {
                 $base = if ($script:hookInput.cwd) { [string]$script:hookInput.cwd } else { $script:projectDir }
                 foreach ($t in (Get-WriteTargets ([string]$ti.command))) {
@@ -889,6 +925,7 @@ try {
         }
         '^AskUserQuestion$'     {
             if ($script:teamProject -and (Test-GuardEnabled $cfg 'G18')) { Test-G18Ask $ti }   # modo benchmark responde antes da G3
+            if ($script:teamProject -and (Test-GuardEnabled $cfg 'G24')) { Test-G24 $ti }     # v3.58.3: rota antes da forma
             if (Test-GuardEnabled $cfg 'G3') { Test-G3 $ti }
         }
         '^Agent$'               {

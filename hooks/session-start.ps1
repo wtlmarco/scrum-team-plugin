@@ -61,10 +61,10 @@ try {
     }
     # v3.53.2 (R22, pedido do stakeholder em 2026-11-01): a forma da conversa vai no contexto de toda sessão — a pergunta já
     # nasce como formulário, sem a volta a mais que uma guarda no Stop custaria. Não é guarda: sai mesmo com a G13 desligada.
-    $talk = " Conversa com o stakeholder (R22): toda pergunta a ele — decisão, dado, confirmação ou próximo passo — sai já como formulário AskUserQuestion, na mesma resposta; nunca uma pergunta em texto para ele responder depois. Linguagem simples (termo técnico só se indispensável, e explicado), rótulos curtos, a opção recomendada primeiro e 'Pedir mais contexto' por último; para escrever a própria resposta ele usa o campo 'Outro' que o formulário já traz. Se ele pedir mais contexto: explique em texto curto e repita o formulário na mesma resposta."
+    $talk = " Conversa com o stakeholder (R22): toda pergunta a ele — decisão, dado, confirmação ou próximo passo — sai já como formulário AskUserQuestion, na mesma resposta; nunca uma pergunta em texto para ele responder depois. Linguagem simples (termo técnico só se indispensável, e explicado), rótulos curtos, a opção recomendada primeiro e 'Pedir mais contexto' por último; para escrever a própria resposta ele usa o campo 'Outro' que o formulário já traz. Se ele pedir mais contexto: explique em texto curto e repita o formulário na mesma resposta. Decidida a pergunta, a linha dela sai da §7 do README na mesma resposta (R34) — pendência respondida que fica lá vira pergunta repetida na sessão seguinte. Durante o sprint run, formulário só quando o run.ps1 manda levar ao stakeholder (G24, R25 c); o resto se decide pelo roteiro."
     if (-not (Test-GuardEnabled $cfg 'G13')) { [Console]::Out.Write(($talk + $resume).Trim()); exit 0 }
 
-    $all = 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G11', 'G14', 'G15', 'G16', 'G17', 'G18', 'G19', 'G20', 'G21', 'G22', 'G23'
+    $all = 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G11', 'G14', 'G15', 'G16', 'G17', 'G18', 'G19', 'G20', 'G21', 'G22', 'G23', 'G24'
     $on= @($all | Where-Object { Test-GuardEnabled $cfg $_ })
     $off = @($all | Where-Object { -not (Test-GuardEnabled $cfg $_) })
     $line = "Guardas do time (hooks/COVERAGE.md): ativas " + ($(if ($on.Count) { $on -join ', ' } else { 'nenhuma' })) +
@@ -85,7 +85,8 @@ try {
     $run = Get-Marker $projectDir '.active-run'
     if ($null -ne $run -and [string]$run.trilha -in @('sprint', 'fix')) {
         $cmd = if ([string]$run.trilha -eq 'sprint') { '/sm sprint run' } else { '/sm fix run' }
-        $line += " Retomada: o $([string]$run.trilha) run $([string]$run.id) estava em andamento (desde $([string]$run.desde)). Retome agora, sem esperar o stakeholder: $cmd — a fila continua pelo marcador do quadro e pelo run.ps1 next (sprint-run.md §Ordem da fila e retomada); agente: dispare e encerre o turno — o aviso reabre a sessão; retomada por instância nova com o cartão. Só apague o .active-run se o run terminou ou o stakeholder mandou parar."
+        $line += " Retomada: o $([string]$run.trilha) run $([string]$run.id) estava em andamento (desde $([string]$run.desde)). Retome agora, sem esperar o stakeholder: $cmd — a fila continua pelo marcador do quadro e pelo run.ps1 next (sprint-run.md §Ordem da fila e retomada); agente: dispare e encerre o turno — o aviso reabre a sessão; retomada por instância nova com o cartão. Só apague o .active-run se o run terminou ou o stakeholder mandou parar." +
+                 " Isso vale quando o pedido desta sessão é o $cmd (ou 'continue'); se ele pediu outro comando (/team update, /team version, /po …), faça só o que ele pediu e diga em uma linha que o run segue parado e retoma com $cmd — sem formulário: 'retomo?' não é decisão do stakeholder (v3.58.3; no sprint 6 do garden, o /team version perguntou duas vezes)."
     } elseif (Test-Path -LiteralPath $runPath) {
         $line += " Atenção: .team-project/.active-run existe mas está ilegível — se nada está em andamento, retome com o comando do run ou apague o arquivo."
     }

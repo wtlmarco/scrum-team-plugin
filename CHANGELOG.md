@@ -13,6 +13,23 @@
 
 ---
 
+## v3.58.3 — 2026-11-14
+
+**Branch:** `fix/v3.58.3` a partir de `develop` (`b629732`, v3.58.2 mesclada) · **Processo:** addendum v3.58.3 (R25 c ganha instrumento, a G24; o travamento segue a regra 5 do protocolo de espera; correção do plugin pedida pelo próprio stakeholder sai sem formulário)
+
+Origem: avaliação do sprint 6 do projeto, pedida pelo stakeholder — "questões que poderiam ter sido decididas sozinhas subiram para minha decisão, parando o processo". Nos transcripts de 11/11 a 14/11, **22 formulários** chegaram a ele (sem contar as repetições que a G3 barrou). **12 contrariavam a regra vigente:** o cenário que só se prova por teste, que o `run.ps1` manda marcar "sem formulário"; o nome de teste que falta, que é 🔺 GAP do Arquiteto; a Task bloqueada com a fila andando, que vai ao par PO + Arquiteto (R25 c) — sozinha, a T-089 gerou 6 formulários e ~2h30 de espera por uma linha de teste, duas delas nascidas de uma premissa errada da sessão; "tento de novo?"; "retomo o sprint?" perguntado duas vezes dentro do `/team version`; dois planos para a mesma Task, que a conferência já recusava. **3 seguiam a regra, mas a regra perguntava cedo demais:** o POSSÍVEL TRAVAMENTO da T-067, 3 formulários em 15 min e 2 h parada à espera da resposta. **6 eram atualizações do plugin** (3.57.4 a 3.58.2), todas pedidas pelo próprio stakeholder e respondidas em segundos na opção recomendada. A G3 conferia a forma de cada pergunta; nenhuma guarda conferia se ela cabia na janela de R25 (c).
+
+Mudanças:
+- **G24 (nova, `hooks/pre-tool.ps1`):** na sessão que conduz o `sprint run` (a última que rodou `run.ps1 next`, registrada em `.team-project/.run-session` pela própria PreToolUse), o `AskUserQuestion` só passa com `.team-project/.ask-route` gravado há menos de 24 h. A negação diz o caminho do roteiro para cada caso do sprint 6, e a saída para a interrupção do stakeholder: a parada (d) apaga o `.active-run`. Outra sessão no mesmo projeto, a trilha `fix`, os papéis e o projeto com `G24` em `disabled` não passam por ela.
+- **`run.ps1` → `.ask-route` (`Set-AskRoute`, `lib.ps1`):** gravada em cada saída que já mandava levar a decisão ao stakeholder — fim da fila (Review), nenhuma Task elegível (bloqueio, depois do degrau 1), GAP de produto, estado de partida e ids não publicados, ambiente sem reparo, vaivém do alvo, SEM AVANÇO, travamento repetido, comandos dos planos (no `next` e no `start`), portão ⚠️. Apagada no `start` e no `construir` do `next`.
+- **POSSÍVEL TRAVAMENTO (`run.ps1 next`, regra 5 do protocolo de espera — uma tentativa automática por causa):** na primeira vez da Task, `PRÓXIMA AÇÃO: encerrar e retomar`, com o comando de encerrar só o que o run iniciou (`verify.ps1 -Task <ID> -Kill` ou `target.ps1 -Target <alvo> -Kill`, de `Get-TaskWait → Kill`), linha no `run-log.md` e contador `stall` no `handoff/<ID>.json`, sem formulário. Na segunda, a rota `travamento` e o formulário. Vale também com o agente da Task vivo (antes só o watcher acusava esse caso).
+- **SessionStart:** a retomada do run vale quando o pedido da sessão é o comando do run; outro comando faz só o pedido e diz em uma linha que o run segue parado. A linha da conversa ganha: decidida, a pendência sai da §7 na mesma resposta (R34) — no sprint 6, os itens 18 a 23 ficaram lá respondidos, e a sessão seguinte os deu como abertos.
+- **`rituals/team-update.md` passo 5:** com o `/team update` digitado pelo stakeholder e todas as entradas da mesma linha com `**Processo:** nenhum`, aplica sem formulário e diz em três linhas o que mudou; processo, migração ou `MINOR` novo mantêm a confirmação.
+- **Textos:** `stakeholder-question.md` ganha "Antes de perguntar — a decisão é dele?" (a tabela dos casos do sprint 6); `sprint-run.md` (paradas, item 5 da espera, contrato do watcher); `agents/watcher.md`; R25 e R34 citam a G24 como instrumento; `external-plan.ps1` diz que a devolução recusada não é decisão do stakeholder; `how-to.md` e `hooks/COVERAGE.md` com a G24.
+- **Testes:** `run-guard-tests` com 10 casos (a sessão do run registrada, negado sem rota, passa com rota, rota vencida, outra sessão, papel, trilha `fix`, sem `.active-run`, desligada, SessionStart). `run-check-tests`: o travamento da primeira vez encerra sem formulário, o da segunda grava a rota e espera, o "nenhuma Task elegível" grava `bloqueio` e o `construir` apaga a rota.
+
+`agents/watcher.md` e o ritual são do stakeholder: propostos aqui, aplicados com a aprovação do PR.
+
 ## v3.58.2 — 2026-11-13
 
 **Branch:** `fix/v3.58.2` a partir de `develop` (`b919e6f`, v3.58.1 mesclada) · **Processo:** nenhum (a prova de falha continua a mesma — linha de base, mutante, restauração byte a byte, árvore igual; muda onde o teste roda)
