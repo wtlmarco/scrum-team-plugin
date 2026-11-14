@@ -33,6 +33,8 @@
 
 Com Karma no lugar do Jest: `"focused": "npx ng test --watch=false --browsers=ChromeHeadless --include {tests}"` — sem `--watch=false` o comando nunca termina.
 
+Com Karma, a mutação (v3.58.2) roda num runner em observação: `"watch": { "command": "npx ng test --watch=true --browsers=ChromeHeadless --reporters=dots --include {tests}", "runStart": "(?i)bundle generation (complete|failed)" }`. Cada `ng test` a frio custa ~60 s de CLI, bundle e Chrome para menos de 1 s de teste; em observação, cada mutante custa 3–9 s (medido no garden, sprint 6). Para o `verify.compile`, `npx ngc -p tsconfig.app.json --noEmit` (TS e templates, ~22 s) no lugar de `npx ng build` (~90 s).
+
 ## NG-Q3 Ficha de Vinculação pré-preenchida
 
 | # | Vinculação | Angular |

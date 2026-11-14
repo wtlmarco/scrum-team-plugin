@@ -13,6 +13,25 @@
 
 ---
 
+## v3.58.2 — 2026-11-13
+
+**Branch:** `fix/v3.58.2` a partir de `develop` (`b919e6f`, v3.58.1 mesclada) · **Processo:** nenhum (a prova de falha continua a mesma — linha de base, mutante, restauração byte a byte, árvore igual; muda onde o teste roda)
+
+Origem: sprint 6 do projeto. A mutação da T-086 (6 mutantes, um spec de 9 testes) levou **1029 s** para **~3 s de teste**: o precheck automático rodou o `verify.compile` do projeto (`npx ng build`, ~90 s) uma vez por mutante (~9 min), e a linha de base e cada mutante foram um `ng test --include` **a frio** (~62 s de CLI, bundle webpack e Chrome para 0,3–0,7 s de teste; ~7 min). Medido numa cópia do projeto: com UM Karma em observação (`ng test --watch=true`), trocar o arquivo custa **3–9 s** por mutante e 2–4 s por restauração, com os mesmos veredictos (todo mutante reprovou, toda restauração voltou verde); o mutante que não compila aparece em menos de 1 s (`error TS2304` no webpack, `✘ [ERROR] TS2304:` no esbuild), sem rodada de teste.
+
+Ponta a ponta, com o `verify.ps1` novo numa cópia do projeto: as 6 mutações da T-086 mais uma que não compila em **147 s de parede** (precheck só do trecho, partida do Karma, ~10 s por mutante com a restauração), contra 1029 s para as 6 no sprint. Mesmos veredictos (M1–M6 pegas), o mutante que não compila inconclusivo pelo `TS2304`, a árvore igual, nenhum processo sobrando.
+
+Fora desta entrega: o Karma com o builder esbuild (`builderMode: "application"`) parte a frio em ~19 s contra ~62–86 s, mas não é troca direta no projeto: na suíte inteira, 25 testes caem em `JSZip is not a constructor` (`import * as JSZip` + `new JSZip()`, interop CommonJS mais estrito que o do webpack). Fica como recomendação ao projeto, com a correção do import e uma suíte completa comparando a cobertura com a baseline.
+
+Mudanças:
+- **`verify.ps1` → `verify.watch`** (ou `"watch"` num objeto de `verify.focused`): o comando do teste focado em modo de observação, com `{tests}` — string, ou objeto com `command`, `runStart`, `runEnd`, `failed` (regex; os padrões são os do Karma: `Executed N of N` fecha a rodada, `(k FAILED)` ou `ERROR` reprova). Na mutação, as mutações do mesmo teste rodam numa sessão: a 1ª rodada é a linha de base; cada mutante é uma rodada; a restauração dispara outra, que **tem de voltar verde** antes do próximo mutante (senão o "pegou" vira inconclusivo e o resto daquele teste roda a frio). Mutante que não compila: a rodada para no erro e sai inconclusiva, sem esperar o prazo. A observação que não chega à 1ª rodada, estoura o prazo ou perde o runner cai para a frio, com a nota na saída. A sessão nasce pelo `lib.ps1` (`Start-ProjectWatch`, ao lado do `Invoke-ProjectCommand`: a mesma higiene de ambiente, saída em arquivo, o guarda de processo solto do protocolo de espera continua valendo), é registrada em `running.json` (o `-Kill` e a rodada seguinte a encerram se o verify cair) e sai no fim, com a árvore de processos (Node, Chrome). O `result.json` marca `watch: true` nas mutações que rodaram em observação; o log da sessão fica em `mutation-watch-<n>.log`.
+- **Precheck automático com tudo em observação:** confere só o trecho único, sem o build de `verify.compile` por mutante — o mutante que não compila aparece na própria rodada, em segundos. O `-Precheck` pedido de propósito segue compilando.
+- **Tempo esgotado na mutação a frio é inconclusivo:** o exit 124 do comando que estourou o prazo contava como "o teste reprovou com a regra removida" (`ok`). Os padrões de inconclusivo ganham `TEMPO ESGOTADO:`, `OBSERVAÇÃO ENCERRADA:` e `bundle generation failed`.
+- **Documentação:** modelo `deliverables/team-project/guards.json` (`verify.watch` vazio e o exemplo do Karma; `verify.compile` do Angular com `ngc --noEmit`), `standards/stacks/angular/quality.md` e `roles/developer/README.md`.
+- **Testes:** `run-check-tests` caso 5d3c — sessão em observação com runner falso (base, mutante pego, mutante que não compila, decorativo, uma sessão, precheck só do trecho, nenhum processo sobrando, `watch` no `result.json`), restauração vermelha (inconclusivo e o resto a frio), observação que não sobe (a frio) e tempo esgotado a frio (inconclusivo).
+
+---
+
 ## v3.58.1 — 2026-11-12
 
 **Branch:** `fix/v3.58.1` a partir de `develop` (`e3d3528`, v3.58.0 mesclada) · **Processo:** nenhum (as seis regras do protocolo de espera continuam as mesmas; mudam a constante medida errada, o comando do watcher e o sinal de vida da sonda)
