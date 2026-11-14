@@ -8,6 +8,7 @@
 #   web      site no ar (targets.web.health ou url) e Node instalado · reparo: sobe o servidor por targets.web.start
 #   (api e desktop: próximo incremento)
 # -Unlock apaga a trava de dono único (.team-project/.target-lock) deixada por um executor que caiu.
+# -Release (v3.58.4) desliga o emulador local que a construção não está usando (memória); o accept seguinte o religa.
 # Exit 0 = alvo pronto · 2 = erro de uso · 4 = FALHA DE AMBIENTE (o motivo e a ação na saída). Quem vê 4 não depura o app.
 
 param(
@@ -15,6 +16,7 @@ param(
     [switch]$Repair,
     [switch]$Unlock,
     [switch]$Kill,
+    [switch]$Release,
     [string]$Root = (Get-Location).Path
 )
 
@@ -37,6 +39,26 @@ try {
     if ($Unlock) { $lp = Join-Path $Root '.team-project/.target-lock'; if (Test-Path -LiteralPath $lp) { Remove-Item -LiteralPath $lp -Force; [Console]::Out.WriteLine('target: trava removida') } }
     $targets = Get-TargetsConfig $Root
     $cfg = if ($targets -and $targets.PSObject.Properties[$Target]) { $targets.$Target } else { $null }
+    # -Release (v3.58.4): desliga o emulador local quando a construção não precisa dele (run.ps1 start, entre Tasks; verify full,
+    # com pouca memória livre antes da suíte). Com a trava do alvo: nunca no meio de um accept ou de um reparo. Exit 0 com o
+    # emulador desligado ou nada a desligar · 4 quando não pode (alvo em uso, container, sem reparo declarado) — quem chama segue.
+    if ($Release) {
+        if ($Target -ne 'android') { [Console]::Out.WriteLine("target ${Target}: -Release só desliga emulador android — nada a liberar"); exit 0 }
+        . (Join-Path $PSScriptRoot 'targets/android.ps1')
+        $init = Initialize-Android $cfg
+        if ($init) { [Console]::Out.WriteLine("target android: não liberado — $init"); exit 4 }
+        $blk = Get-AndroidReleaseBlock $cfg
+        if ($blk) { [Console]::Out.WriteLine("target android: não liberado — $blk"); exit 4 }
+        $lock = Enter-TargetLock $Root $Target "target.ps1 $Target -Release"
+        if ($lock) { [Console]::Out.WriteLine("target android: não liberado — $lock"); exit 4 }
+        try {
+            $k = Stop-Detached $Root 'android'   # o que o próprio run subiu e registrou (AVD local)
+            $st = Stop-AndroidEmulator           # e o dono da porta do console (o reparo declarado sobe por fora do registro)
+        } finally { Exit-TargetLock $Root }
+        if ($st.Stopped -or $k.stopped) { [Console]::Out.WriteLine("target android: liberado — $($st.Text); o próximo accept o religa pelo reparo declarado, e target.ps1 -Target android -Repair o sobe antes, se um comando do projeto precisar do aparelho"); exit 0 }
+        [Console]::Out.WriteLine("target android: nada a liberar — $($st.Text)")
+        exit 0
+    }
     if ($Target -eq 'android') { . (Join-Path $PSScriptRoot 'targets/android.ps1'); $init = Initialize-Android $cfg; $health = { Test-AndroidHealth }; $fix = { Repair-Android } }
     else {
         if (-not $cfg) { [Console]::Error.WriteLine('target: guards.json sem targets.web'); exit 2 }

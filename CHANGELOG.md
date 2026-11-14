@@ -13,6 +13,25 @@
 
 ---
 
+## v3.58.4 — 2026-11-14
+
+**Branch:** `fix/v3.58.4` a partir de `develop` (`0519303`, v3.58.3 mesclada) · **Processo:** nenhum (a prova no alvo e o verify seguem os mesmos; muda quando o emulador fica ligado e o que o verify faz com pouca memória)
+
+Origem: sprint 6 do projeto, pedida pelo stakeholder ("o motivo do problema de falta de memória, quais processos estão gerando essa situação"). Às 14:01 de 14/11, o Claude Code encerrou o `verify` full da T-081 em segundo plano, com a sessão ociosa ("stopped because the system is running low on memory"). A suíte do Karma estava no teste **2925 de 2926**, com 9 min 53 s: 10 min perdidos e a Task parada, e o dev não repetiu porque o aviso pede para não repetir. O Windows estava longe do limite de alocação: nenhum evento de falta de memória em 10 dias, e o arquivo de paginação de 22 GB com pico de uso de 179 MB. O que acabou foi a memória física livre.
+
+Medido na máquina, cada etapa isolada: teste focado com pico de 2,0 GB em 24 s · lint 1,6 GB · build 2,3 GB · **suíte com cobertura: 12,8 min, média de 4,4 GB e pico de 6,6 GB** (o Node fica em 1,5 GB e o Chrome cresce de 1,3 para 5,0 GB) · build do APK: a VM do Docker foi de 1,4 para 4,8 GB e só devolveu a memória ~10 min depois · **emulador: 4,1 GB reservados o dia todo**. O `verify` já roda um comando por vez e encerra a árvore de processos de cada um. O que se somava à suíte era o que não é dela: o emulador ligado desde o accept das 11:55, que o primeiro accept da Task seguinte reiniciaria de qualquer jeito (`freshStart`), e a VM do Docker depois do build do APK.
+
+Mudanças:
+- **`target.ps1 -Release` (`targets/android.ps1` → `Get-AndroidReleaseBlock`, `Get-LocalEmulatorProcs`, `Stop-AndroidEmulator`):** desliga o emulador local do serial, achado pelo dono da porta do console (`emulator-5554` → 5554), porque o reparo do garden sobe o emulador pelo WMI, fora do registro do `-Kill`. Primeiro tenta `adb emu kill` (20 s); se não sair, encerra a árvore. Também encerra o que o próprio run registrou. Respeita a trava do alvo, então nunca roda no meio de um accept ou de um reparo. Não desliga emulador em container (serial de rede) nem emulador sem `repair`/`avd` declarado, porque o plugin não saberia religá-lo. Nesses casos sai com exit 4 e quem chama segue.
+- **`run.ps1 start`:** desliga o emulador que sobrou da Task anterior quando o primeiro accept da Task ainda vai reiniciá-lo, ou quando a Task não tem cenário. Ele fica ligado na retomada de uma Task que já fez o primeiro accept. `targets.android.releaseBetweenTasks: false` desliga o comportamento. O prompt do dev diz para subir o emulador com `target.ps1 -Repair` só quando um comando do projeto precisar do aparelho (instalar o APK).
+- **`accept.ps1` (`freshStartMinutes`, padrão 30):** no primeiro accept da Task, um emulador ligado há menos que esse tempo (o `-Repair` do dev, antes do `alvo:apk`) já conta como reiniciado. Sem isso, seriam dois boots (~2 min cada) por Task.
+- **`verify.ps1` full, antes da suíte:** com memória física livre abaixo de `verify.minFreeMB` (padrão 6144; `0` desliga), desliga o emulador (`-Release`). Se ainda faltar memória, a suíte roda com uma linha `atenção:` que lista os maiores consumidores, no console e no parcial.
+- **Encerramento por memória baixa:** o prompt do dev (`run.ps1 start`) e o `agents/developer.md` autorizam rodar o mesmo comando uma vez de novo. O `verify` full desliga o emulador e continua do parcial. Encerrado de novo, o dev para como exit 4 (ambiente: memória).
+- **Textos:** `how-to.md` (emulador desligado durante a construção; memória antes da suíte, com a VM do Docker e o `.wslconfig` como responsabilidade do stakeholder); `deliverables/team-project/guards.json` (`verify.minFreeMB`, `releaseBetweenTasks`, `freshStartMinutes`).
+- **Testes (`run-check-tests`):** pré-voo de memória com `TEAM_TEST_FREE_MB` (tenta liberar e avisa; `minFreeMB: 0` desliga; sem alvo android, só o aviso); `target.ps1 -Release` recusando sem reparo, com serial de rede e no alvo web; adaptador (bloqueios, porta do console, `freshStartMinutes`, uptime pelo `/proc/uptime`, porta vazia). Nenhum teste desliga emulador de verdade.
+
+Fica no projeto, fora do plugin: o relatório `html` da cobertura no `karma.conf.js` (o gate só lê `coverage-summary.json` e `lcov.info`) e o crescimento do Chrome ao longo da suíte (H2 da investigação do sprint 5: sobras do Ionic entre os testes).
+
 ## v3.58.3 — 2026-11-14
 
 **Branch:** `fix/v3.58.3` a partir de `develop` (`b629732`, v3.58.2 mesclada) · **Processo:** addendum v3.58.3 (R25 c ganha instrumento, a G24; o travamento segue a regra 5 do protocolo de espera; correção do plugin pedida pelo próprio stakeholder sai sem formulário)

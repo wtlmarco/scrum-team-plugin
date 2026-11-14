@@ -154,7 +154,7 @@ function Invoke-Once($Block) {
 # Corpo com a trava já tomada. Devolve o código de saída.
 function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
     $dir = (Get-VerifyDir $Root $Task) -replace '[\\/]verify[\\/]', '/accept/'
-    $fresh = $false; $script:BaseCfg = $Cfg
+    $fresh = $false; $freshOk = $false; $script:BaseCfg = $Cfg
     if ($script:Tgt -eq 'android') {
         # v3.51.1: sem targets.android.package/apk, o executor descobre o APK construído e o applicationId dele.
         $appApk = Resolve-AndroidApk $Root $Apk
@@ -170,12 +170,26 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
         if ($st.Note) { [Console]::Out.WriteLine("accept: $($st.Note)") }
         $fresh = Test-AndroidFreshStartDue $Cfg $dir ([bool]$NoRepair)
     }
+    # v3.58.4: o emulador desligado entre Tasks (run.ps1 start → target.ps1 -Release) volta pelo -Repair do dev, para o comando
+    # do projeto instalar o APK antes do accept; ligado há menos de targets.android.freshStartMinutes (padrão 30), ele já começa
+    # limpo — reiniciar de novo seria um segundo boot sem ganho de memória.
+    if ($fresh) {
+        $hPre = & $Health
+        $upm = if (-not $hPre) { Get-AndroidUptimeMin } else { $null }
+        $lim = Get-AndroidFreshMinutes $Cfg
+        if ($null -ne $upm -and $upm -lt $lim) {
+            Set-AndroidFreshStartDone $dir $Task "primeiro accept da Task: emulador ligado há $upm min (< $lim min, targets.android.freshStartMinutes) — já começa limpo, sem novo reinício"
+            [Console]::Out.WriteLine("accept: primeiro accept da $Task — o emulador está ligado há $upm min (limite $lim min): já começa limpo, sem novo reinício")
+            $fresh = $false; $freshOk = $true
+        }
+    }
     if ($fresh) {
         # v3.53.6 (item 5, decisão do stakeholder): o primeiro accept de cada Task reinicia o emulador em container (repair).
         [Console]::Out.WriteLine("accept: primeiro accept da $Task — reiniciando o emulador pelo reparo declarado (targets.android.repair) para começar com memória limpa; as repetições desta Task reaproveitam o emulador (targets.android.freshStart: false desliga)")
         $fsw = [System.Diagnostics.Stopwatch]::StartNew()
         $h = & $Repair
         if (-not $h) { Set-AndroidFreshStartDone $dir $Task; [Console]::Out.WriteLine("accept: emulador reiniciado e pronto em $([int]$fsw.Elapsed.TotalSeconds) s") }
+    } elseif ($freshOk) { $h = $null   # o pré-voo acabou de passar (v3.58.4, acima)
     } else {
         # Pré-voo; com falha, o reparo é tentado UMA vez (D4) antes de desistir.
         $h = & $Health
