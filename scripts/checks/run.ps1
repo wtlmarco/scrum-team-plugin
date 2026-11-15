@@ -275,6 +275,94 @@ function Save-TaskCommit($T, [string]$S) {
     $sha = ([string](& git -C $Root rev-parse --short HEAD 2>$null)).Trim()
     return @{ Line = "  commit: $sha $subj ($($staged.Count) arquivo(s) do plano)$outTxt"; Sha = $sha }
 }
+# v3.59.2 (R12; no garden, a consolidação do sprint 5 ficou "feita" com o SDD do Arquiteto sem commit há 5 dias, parte dele
+# dentro do commit da T-079, e os 4 pedidos ao PO nunca aplicados — o RF-MAN-02 segue dizendo "um canteiro por vez" com o
+# manejo em vários canteiros construído): o docs-consolidation.md é lido em duas tabelas — "## Aplicado pelo Arquiteto" e
+# "## Pedidos aos donos" (roles/architect/templates/docs-consolidation.md) — e o next confere no git, aciona os donos e
+# versiona. O estado mecânico fica em sprints/<n>/.docs-check.json (do script; ninguém edita).
+$script:docOwnerRoles = @{ 'PO' = 'product-owner'; 'UX' = 'user-experience'; 'SM' = 'scrum-master'; 'QA' = 'quality-assurance'; 'Arquiteto' = 'architect' }
+function Get-ConsolidationRows([string]$Text) {
+    $sec = ''; $hasArch = $false; $arch = @(); $req = @()
+    foreach ($line in ($Text -split "`r?`n")) {
+        if ($line -match '^##\s+(.+?)\s*$') {
+            $h = $Matches[1]
+            $sec = if ($h -match '(?i)^Aplicado pelo Arquiteto') { 'arch' } elseif ($h -match '(?i)^Pedidos aos donos') { 'req' } else { '' }
+            if ($sec -eq 'arch') { $hasArch = $true }
+            continue
+        }
+        if (-not $sec -or $line -notmatch '^\s*\|') { continue }
+        $cells = @($line.Trim().Trim('|') -split '\|' | ForEach-Object { $_.Trim() })
+        if (-not $cells.Count -or $cells[0] -match '^:?-{2,}' -or $cells[0] -match '(?i)^documento$') { continue }
+        # Todo caminho entre crases da 1ª célula; nome solto ("`changelog.md`") herda a pasta do primeiro.
+        $paths = @(); $dir = ''
+        foreach ($m in [regex]::Matches($cells[0], '`([^`]+)`')) {
+            $p = ($m.Groups[1].Value -replace '\\', '/').Trim()
+            $p = ($p -replace '\s+§.*$', '' -replace '\s*\(.*$', '' -replace ':\d+.*$', '' -replace '#.*$', '').Trim()
+            if ($p -notmatch '\.\w{1,6}$') { continue }
+            if ($p -notmatch '/') { if ($dir) { $p = "$dir/$p" } else { continue } } elseif (-not $dir) { $dir = ($p -replace '/[^/]+$', '') }
+            if ($p -match '^\.team-project/') { continue }   # o registro do time não é documento do produto
+            $paths += $p
+        }
+        foreach ($p in $paths) {
+            if ($sec -eq 'arch') { $arch += $p }
+            else { $req += [pscustomobject]@{ Path = $p; Owner = ([string]$cells[-1] -replace '[*_`]', '').Trim() } }
+        }
+    }
+    return @{ HasArch = $hasArch; Arch = @($arch | Select-Object -Unique); Req = @($req) }
+}
+function Get-DocsCheck([string]$S) {
+    $p = Join-Path $S '.docs-check.json'
+    $o = @{ arch_redo = ''; format_redo = ''; base = @{}; dispatched = @{}; gaps_logged = ''; commit = ''; arch_gaps = @() }
+    if (Test-Path -LiteralPath $p) {
+        try {
+            $j = Read-Text $p | ConvertFrom-Json
+            foreach ($k in 'arch_redo', 'format_redo', 'gaps_logged', 'commit') { if ($j.PSObject.Properties[$k]) { $o[$k] = [string]$j.$k } }
+            if ($j.PSObject.Properties['arch_gaps']) { $o.arch_gaps = @($j.arch_gaps | ForEach-Object { [string]$_ }) }
+            if ($j.base) { foreach ($b in $j.base.PSObject.Properties) { $o.base[$b.Name] = [string]$b.Value } }
+            if ($j.dispatched) { foreach ($b in $j.dispatched.PSObject.Properties) { $o.dispatched[$b.Name] = [string]$b.Value } }
+        } catch { }
+    }
+    return $o
+}
+function Set-DocsCheck([string]$S, $State) { [System.IO.File]::WriteAllText((Join-Path $S '.docs-check.json'), ($State | ConvertTo-Json -Depth 4 -Compress), $utf8) }
+function Get-DocHash([string]$Path) {
+    $full = Join-Path $Root $Path
+    if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { return '' }
+    $ErrorActionPreference = 'Continue'
+    return ([string](& git -C $Root hash-object -- $full 2>$null)).Trim()
+}
+# O documento mudou no sprint: alteração pendente no disco ou commit desde o início do sprint (1ª linha do run-log.md).
+function Test-DocChangedInSprint([string]$Path, [string]$Since) {
+    if (-not (Test-Path -LiteralPath (Join-Path $Root $Path) -PathType Leaf)) { return $false }
+    $ErrorActionPreference = 'Continue'
+    if (@(& git -C $Root status --porcelain -- ":(literal)$Path" 2>$null | Where-Object { $_ }).Count) { return $true }
+    if (-not $Since) { return $false }
+    return [bool]@(& git -C $Root log "--since=$Since" --format=%h -- ":(literal)$Path" 2>$null | Where-Object { $_ }).Count
+}
+function Get-SprintStart([string]$S) {
+    $rl = Join-Path $S 'run-log.md'
+    if (Test-Path -LiteralPath $rl) { $m = [regex]::Match((Read-Text $rl), '(?m)^\|\s*(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\s*\|'); if ($m.Success) { return $m.Groups[1].Value } }
+    try { return (Get-Item -LiteralPath $S).CreationTime.ToString('yyyy-MM-dd HH:mm') } catch { return '' }
+}
+# Commit próprio da consolidação: só os documentos citados nas duas tabelas, nunca .team-project/. @{ Line; Sha }.
+function Save-DocsCommit([string[]]$Paths, [string]$n) {
+    $ErrorActionPreference = 'Continue'
+    $null = & git -C $Root rev-parse --is-inside-work-tree 2>$null
+    if ($LASTEXITCODE -ne 0) { return @{ Line = '  commit da consolidação: projeto sem git — os documentos ficam no disco'; Sha = '' } }
+    $ps = @($Paths | Where-Object { $_ -and $_ -notmatch '^\.team-project(/|$)' } | Select-Object -Unique)
+    foreach ($f in $ps) { $null = & git -C $Root add -A -- ":(literal)$f" 2>$null }
+    $staged = @(& git -C $Root diff --cached --name-only -- @($ps | ForEach-Object { ":(literal)$_" }) 2>$null | Where-Object { $_ })
+    if (-not $staged.Count) { return @{ Line = "  commit da consolidação: nada pendente — os documentos do sprint $n já estão versionados"; Sha = '-' } }
+    $mf = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText($mf, "docs(sdd): consolidação dos documentos vivos do sprint $n`n`nArquiteto e donos (R12, .team-project/sprints/$n/docs-consolidation.md): $($staged -join ', ')`n", $utf8)
+        $o = & git -C $Root commit -q -F $mf -- @($staged | ForEach-Object { ":(literal)$_" }) 2>&1 | Out-String
+        $code = $LASTEXITCODE
+    } finally { Remove-Item -LiteralPath $mf -Force -ErrorAction SilentlyContinue }
+    if ($code -ne 0) { return @{ Line = "  commit da consolidação: falhou ($(($o -replace '\s+', ' ').Trim())) — os documentos seguem no disco; reporte na Review"; Sha = '' } }
+    $sha = ([string](& git -C $Root rev-parse --short HEAD 2>$null)).Trim()
+    return @{ Line = "  commit da consolidação: $sha ($($staged.Count) documento(s): $(($staged | Select-Object -First 6) -join ', ')$(if ($staged.Count -gt 6) { ' …' }))"; Sha = $sha }
+}
 # v3.52 (R29, parada (f)): Task fechada = ponto seguro. O marcador libera o fim de turno na G20; o próximo start o apaga.
 function Set-SafePoint($T, [string]$n) {
     $o = [ordered]@{ task = $T.Id; sprint = $n; desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') }
@@ -1308,11 +1396,68 @@ try {
         Out "PRÓXIMA AÇÃO: consolidação dos documentos vivos (R12) — Arquiteto, uma vez no sprint (A5)"
         Say 'A revisão final passou. Atualizando a documentação com o que foi entregue.'
         Out "  $(Get-AgentLine 'architect')"
-        Out "  prompt: `"Consolide os documentos vivos do sprint ${n}: leia as seções 'Documentos vivos (R12)' de .team-project/sprints/$n/delivery/*.md, atualize o SDD técnico e os ADRs que são seus e peça ao dono o que não é seu. Registre em .team-project/sprints/$n/docs-consolidation.md, com **Estado:** feita na primeira linha e a lista (documento, o que mudou, dono). Volte em até 15 linhas.`""
+        Out "  prompt: `"Consolide os documentos vivos do sprint ${n}: leia as seções 'Documentos vivos (R12)' de .team-project/sprints/$n/delivery/*.md, atualize o SDD técnico e os ADRs que são seus e peça ao dono o que não é seu. Registre em .team-project/sprints/$n/docs-consolidation.md no modelo roles/architect/templates/docs-consolidation.md do plugin: **Estado:** feita na primeira linha e as tabelas '## Aplicado pelo Arquiteto', '## Pedidos aos donos' (a última coluna é o dono: PO, UX, SM ou QA) e '## Sem mudança', com o caminho de cada documento entre crases na primeira coluna. O run.ps1 confere no git cada documento da primeira tabela, leva os pedidos aos donos e faz o commit. Não faça commit. Volte em até 15 linhas.`""
         exit 0
+    }
+    # v3.59.2 (R12): a consolidação "feita" é conferida, os pedidos chegam aos donos e os documentos vão a um commit próprio.
+    $dc = Get-DocsCheck $S; $rows = Get-ConsolidationRows (Read-Text $cons); $docGaps = @()
+    if (-not $rows.HasArch) {
+        if (-not $dc.format_redo) {
+            $dc.format_redo = (Get-Date -Format 'yyyy-MM-dd HH:mm'); Set-DocsCheck $S $dc
+            Out "PRÓXIMA AÇÃO: consolidação fora do modelo — o docs-consolidation.md não tem a tabela '## Aplicado pelo Arquiteto' (o run.ps1 não confere nem versiona o que não consegue ler)"
+            Say 'A atualização da documentação foi registrada num formato que não consigo conferir; o Arquiteto vai reescrever o registro.'
+            Out "  $(Get-AgentLine 'architect')"
+            Out "  prompt: `"Reescreva .team-project/sprints/$n/docs-consolidation.md no modelo roles/architect/templates/docs-consolidation.md do plugin, sem mudar o conteúdo: '## Aplicado pelo Arquiteto', '## Pedidos aos donos' (dono na última coluna) e '## Sem mudança', com o caminho de cada documento entre crases na primeira coluna. Não edite o SDD. Volte em até 5 linhas.`""
+            exit 0
+        }
+        $docGaps += 'o docs-consolidation.md segue fora do modelo: os documentos do Arquiteto não foram conferidos'
+    }
+    $since = Get-SprintStart $S
+    # Depois do commit, a conferência já foi feita: vale o que ficou registrado (o next seguinte não reconfere o versionado).
+    $unchanged = if ($dc.commit) { @($dc.arch_gaps) } else { @($rows.Arch | Where-Object { -not (Test-DocChangedInSprint $_ $since) }) }
+    if ($unchanged.Count) {
+        if (-not $dc.arch_redo) {
+            $dc.arch_redo = (Get-Date -Format 'yyyy-MM-dd HH:mm'); Set-DocsCheck $S $dc
+            Out "PRÓXIMA AÇÃO: consolidação declarada sem mudança no disco — $($unchanged -join ', ') (nem alteração pendente nem commit desde $since)"
+            Say 'A documentação foi dada como atualizada, mas alguns documentos não mudaram; o Arquiteto vai conferir.'
+            Out "  $(Get-AgentLine 'architect')"
+            Out "  prompt: `"No .team-project/sprints/$n/docs-consolidation.md, a tabela '## Aplicado pelo Arquiteto' cita $($unchanged -join ', '), que não mudaram no sprint (git). Para cada um: aplique a mudança no documento, ou mova a linha para '## Sem mudança' com o motivo. Não faça commit. Volte em até 5 linhas.`""
+            exit 0
+        }
+        $docGaps += "declarado pelo Arquiteto e sem mudança no disco: $($unchanged -join ', ')"
+    }
+    # Pedidos aos donos: a impressão (git hash-object) de cada documento ao ver o pedido; aplicado = a impressão mudou.
+    $changedBase = $false
+    foreach ($q in $rows.Req) { if (-not $dc.base.ContainsKey($q.Path)) { $dc.base[$q.Path] = (Get-DocHash $q.Path); $changedBase = $true } }
+    if ($changedBase) { Set-DocsCheck $S $dc }
+    foreach ($grp in @($rows.Req | Group-Object Owner)) {
+        $own = [string]$grp.Name
+        $open = @($grp.Group | Where-Object { (Get-DocHash $_.Path) -eq [string]$dc.base[$_.Path] } | ForEach-Object { $_.Path } | Select-Object -Unique)
+        if (-not $open.Count) { continue }
+        $role = if ($script:docOwnerRoles.ContainsKey($own)) { $script:docOwnerRoles[$own] } else { '' }
+        if ($role -and -not $dc.dispatched.ContainsKey($own)) {
+            $dc.dispatched[$own] = (Get-Date -Format 'yyyy-MM-dd HH:mm'); Set-DocsCheck $S $dc
+            Out "PRÓXIMA AÇÃO: pedidos da consolidação ao dono $own — $($open -join ', ') (R12: o Arquiteto pediu, ninguém aplicou ainda)"
+            Say "A documentação de responsabilidade do $own precisa ser atualizada com o que foi entregue no sprint."
+            Out "  $(Get-AgentLine $role)"
+            Out "  prompt: `"Aplique os pedidos ao $own da tabela '## Pedidos aos donos' de .team-project/sprints/$n/docs-consolidation.md nos documentos $($open -join ', '). Pedido que não procede: diga o motivo na volta (ele vai à Review). Não faça commit. Volte em até 10 linhas.`""
+            exit 0
+        }
+        $docGaps += "pedido ao $own não aplicado: $($open -join ', ')$(if (-not $role) { " (dono '$own' sem papel no time)" })"
+    }
+    if (-not $dc.commit) {
+        $docPaths = @(@($rows.Arch) + @($rows.Req | ForEach-Object { $_.Path }))
+        $cm = Save-DocsCommit $docPaths $n
+        Out $cm.Line
+        if ($cm.Sha) { $dc.commit = $cm.Sha; $dc.arch_gaps = @($unchanged); Set-DocsCheck $S $dc; if ($cm.Sha -ne '-') { Add-RunLog $S $n "S$n" 'commit da consolidação dos documentos vivos (R12)' $cm.Line.Trim() "sprints/$n/docs-consolidation.md" } }
+    }
+    if ($docGaps.Count -and -not $dc.gaps_logged) {
+        $dc.gaps_logged = (Get-Date -Format 'yyyy-MM-dd HH:mm'); Set-DocsCheck $S $dc
+        Add-RunLog $S $n "S$n" 'documentos vivos: pendência que vai à Review (R12)' ($docGaps -join ' · ') "sprints/$n/docs-consolidation.md"
     }
     Set-AskRoute $Root 'review' "S$n" 'fim da fila: formulário de autorização da Review'
     Out "PRÓXIMA AÇÃO: fim da fila — formulário de autorização da Review (sprint-run.md §Ao fim da fila), no formato do H1: o problema simples, um exemplo, as opções e 'Pedir mais contexto' por último."
+    if ($docGaps.Count) { Out "  documentos vivos com pendência (R12) — diga no formulário da Review, em palavras simples: $($docGaps -join ' · ')" }
     Say 'Sprint concluído e revisado. Vou pedir sua autorização para a apresentação do que foi feito (Review).'
     exit 0
 } catch {
