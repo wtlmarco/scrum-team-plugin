@@ -125,16 +125,36 @@ function Test-G24([object]$ToolInput) {
     $sid = [string]$script:hookInput.session_id
     if ($null -eq $rs -or -not $sid -or [string]$rs.session -ne $sid) { return }   # sessão que não conduz o run
     $ar = Get-Marker $script:projectDir '.ask-route'
-    if ($null -ne $ar) {
-        $age = 999; try { $age = ((Get-Date) - [datetime]::ParseExact([string]$ar.at, 'yyyy-MM-dd HH:mm:ss', $null)).TotalHours } catch { }
-        if ($age -lt 24) { return }
-    }
     $q = [string](@($ToolInput.questions) | Select-Object -First 1).question
     if ($q.Length -gt 100) { $q = $q.Substring(0, 100) + '…' }
+    $usedNote = ''
+    if ($null -ne $ar) {
+        $age = 999; try { $age = ((Get-Date) - [datetime]::ParseExact([string]$ar.at, 'yyyy-MM-dd HH:mm:ss', $null)).TotalHours } catch { }
+        if ($age -lt 24) {
+            # v3.60.1 (sprint 6 do garden: depois de uma rota legítima, "arquivos soltos" e "pedir ao QA os cenários" passaram
+            # pela mesma rota): a rota vale para UM formulário — o primeiro uso grava "usado", e só as refações nos 10 min
+            # seguintes (a G3 recusou a forma, o formulário volta corrigido) passam. Pergunta nova pede rota nova do run.ps1.
+            $usedAt = $null; if ($ar.PSObject.Properties['usado'] -and $ar.usado) { try { $usedAt = [datetime]::ParseExact([string]$ar.usado, 'yyyy-MM-dd HH:mm:ss', $null) } catch { } }
+            if ($null -eq $usedAt) {
+                try {
+                    $ar | Add-Member -NotePropertyName usado -NotePropertyValue (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') -Force
+                    [System.IO.File]::WriteAllText((Join-Path $script:projectDir '.team-project/.ask-route'), ($ar | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+                } catch { }
+                return
+            }
+            if (((Get-Date) - $usedAt).TotalMinutes -lt 10) { return }
+            $usedNote = "A rota '$([string]$ar.rota)'$(if ($ar.task) { " ($([string]$ar.task))" }) já foi usada por um formulário às $($usedAt.ToString('HH:mm')) — vale uma pergunta por rota. "
+        }
+    }
+    if ($usedNote) {
+        Deny 'G24' $q ("R25 (c): $usedNote" + "Aplique a resposta que o stakeholder deu (run.ps1 prove, mark.ps1, run.ps1 next) e siga a fila; se o run.ps1 next mandar levar outra decisão ao stakeholder, ele grava rota nova e o formulário passa. Se o stakeholder interrompeu e pediu a pergunta, é a parada (d): run.ps1 pause antes.")
+        return
+    }
     Deny 'G24' $q ("R25 (c): durante o sprint run o formulário ao stakeholder só sai pela rota que o run.ps1 imprime (.team-project/.ask-route ausente ou vencida) — fim da fila, bloqueio sem Task elegível depois do par PO + Arquiteto, GAP de produto, estado de partida, ambiente sem reparo, travamento repetido, comandos dos planos, portão. Esta pergunta não tem rota; decida pelo roteiro, sem formulário: " +
         "cenário que só se prova por teste → '(teste)' na coluna Cenários e linha no run-log; nome de teste (id) que falta → 🔺 GAP ao Arquiteto (ele estende o plano); Task bloqueada (teste vermelho fora dela, premissa errada, conflito de plano) → mark.ps1 -To blocked e o par PO + Arquiteto decide — a fila segue nas independentes; " +
         "'sigo?', 'tento de novo?', 'retomo?' → rode run.ps1 next; estado de processo, arquivo ou log → leia você mesmo; devolução de plano externo recusada → diga em uma linha. Se o run.ps1 next mandar levar ao stakeholder, a rota fica gravada e o formulário passa. " +
-        "Se o stakeholder interrompeu e pediu a pergunta, é a parada (d): apague o .active-run antes (sprint-run.md §Paradas legítimas).")
+        "Cenário de tela que não roda neste alvo (ids não publicados, estado de partida) e já decidido 'provar por teste' → run.ps1 prove -Task <T-ID>; arquivo alterado por outra Task → não é da Task em curso (o close o ignora desde o start dela), siga; id dinâmico que falta → o Arquiteto declara no código (// testid-dinamico: <padrão>), sem formulário. " +
+        "Se o stakeholder interrompeu e pediu a pergunta, é a parada (d): run.ps1 pause antes (sprint-run.md §Paradas legítimas).")
 }
 
 # G19 (v3.51, C1) — a sessão não retoma por SendMessage um papel caro parado há mais de 5 min: o cache do subagente dura

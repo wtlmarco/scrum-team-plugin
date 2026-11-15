@@ -16,8 +16,16 @@ A forma vem depois da pergunta certa. No sprint 6 do garden, 12 de 22 formulári
 | dois planos para a mesma Task, ajuste de lint previsto no plano | Arquiteto / o próprio plano | comparar e seguir; avisar em uma linha |
 | "sigo?", "tento de novo?", "retomo o sprint?" | o roteiro | `run.ps1 next` (ou, em outro comando, dizer em uma linha como retomar) |
 | estado de um processo, de um arquivo, de um log | quem pergunta | ler; nunca pedir ao stakeholder que rode um comando de leitura |
+| *(v3.60.1)* a prova no aparelho não roda (ids não publicados, estado de partida) | a política do projeto (`guards.json` → `run.deviceProofFallback`) ou, sem ela, o stakeholder **uma vez** | com a política, o `run.ps1 done` aplica a prova por teste sozinho; sem ela, no formulário ofereça gravar a política, e a resposta se aplica com `run.ps1 prove -Task <T-ID>` — nunca editando plano ou quadro à mão |
+| *(v3.60.1)* a decisão já tomada não chegou ao plano ou ao quadro; "posso tirar de 🔴?" | o roteiro | `run.ps1 prove` (prova por teste) ou `mark.ps1`; nunca perguntar de novo o que já foi respondido |
+| *(v3.60.1)* plano acima de 30 KB numa Task em construção | Arquiteto | as decisões de 🔺 GAP não contam para o teto; se ainda passa, o `run.ps1 start` dá o prompt dele — nunca "encurtar ou dividir?" ao stakeholder |
+| *(v3.60.1)* arquivo alterado por outra Task trava o fechamento | o roteiro | o que já estava alterado quando a Task começou não é dela (`handoff/<T-ID>-alheios.json`); o close o ignora, siga |
+| *(v3.60.1)* id dinâmico que falta, comentário no HTML × lista no guards.json | Arquiteto | declara no código (`// testid-dinamico: <padrão>`), sem mexer no `guards.json` e sem formulário |
+| *(v3.60.1)* serviço do ambiente desligado (Docker…) | o roteiro | declarado em `guards.json` → `run.prereqs`, o `run.ps1 start` o sobe; formulário só se ele não subir |
+| *(v3.60.1)* "pode pausar?" / o stakeholder mandou parar | o stakeholder já decidiu | `run.ps1 pause` (apaga o `.active-run` e registra); nunca pedir que ele apague arquivo |
+| *(v3.60.1)* "quando posso atualizar o plugin?" | o roteiro | todo reinício por teto de contexto e todo intervalo entre Tasks é ponto seguro — a linha PARA O STAKEHOLDER já diz |
 
-Durante o `sprint run`, a **G24** nega o formulário sem a rota que o `run.ps1` grava (`.team-project/.ask-route`). Decidida a pergunta, a linha dela sai da §7 do README **na mesma resposta** (R34): pendência respondida que fica lá vira pergunta repetida na sessão seguinte.
+Durante o `sprint run`, a **G24** nega o formulário sem a rota que o `run.ps1` grava (`.team-project/.ask-route`). Desde a v3.60.1 a rota vale para **um** formulário: as refações nos 10 minutos seguintes (a G3 recusou a forma) passam, e outra pergunta pede rota nova. Decidida a pergunta, a linha dela sai da §7 do README **na mesma resposta** (R34): pendência respondida que fica lá vira pergunta repetida na sessão seguinte.
 
 ## O formato
 

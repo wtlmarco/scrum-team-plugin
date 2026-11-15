@@ -99,7 +99,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
-## v3.60 — A ficha leva os trechos (o Arquiteto do plano lê uma vez e escreve) e o kanban acompanha o prazo: previsão por parte, farol e burndown visual, com o registro técnico no consumo (SM + Arquiteto) — 15/11/2026
+## v3.60 — A ficha leva os trechos (o Arquiteto do plano lê uma vez e escreve) e o kanban acompanha o prazo: previsão por parte, farol e burndown visual, com o registro técnico no consumo (SM + Arquiteto) — 15/11/2026 · *com addendum v3.60.1*
 
 **Instrução:** (stakeholder, 14–15/11/2026, sobre a H-M do garden dividida em 3 Tasks) "Não seria melhor o Desenvolvedor Haiku receber as 3 tarefas de uma mesma vez"; depois "avalie talvez a possibilidade de em somente uma interação com o Arquiteto ele já gerar os 3 planos sem precisar reler tudo de novo … assim mantemos o benefício da divisão menor para evitar os erros do Haiku e otimizamos o Arquiteto", "consegue fazer uma simulação para ver qual seria o modo mais otimizado" e "pode implementar essa melhoria em uma branch feat". A divisão para o dev fica como está.
 **Medido (sprint 6 do garden, H-M, plugin 3.58.2):** os 3 planos (T-092 a T-094) custaram US$ 9,02 em 125 chamadas; 111 delas e 84 % do custo foram exploração antes do primeiro `Write` (~75 buscas, leituras em pedaços — o `migracoes.spec.ts` foi aberto 7 vezes). O que os 3 leram em comum era pouco (template, `context.md`, `.scn`); o template, ~35 mil caracteres, era lido inteiro na 1ª chamada e reenviado em todas as outras. A ficha apontava 4 arquivos; o plano leu ~11. O breakdown do S6 já trazia as linhas medidas na Planning.
@@ -138,6 +138,19 @@ Sprint 7 do garden: ~10 chamadas por plano (eram 33 a 50); US$ do plano por Task
 
 ### Parte mecânica (implementada pela sessão principal, citada aqui)
 `lib.ps1`: `Get-FichaCodeRefs`, `Get-FichaSourceRefs`, `Get-MdSectionSpan`, `Get-FichaExcerpts`, `Get-FichaBadRanges`, `Get-PlanGuide`; `Get-Ficha` devolve as faixas e as seções. `run.ps1`: o recorte ganha os trechos e o guia, a faixa fora do arquivo vai à correção da ficha, e o prompt do Arquiteto do plano muda (sem guia, o de antes).
+
+### Addendum v3.60.1 — o time decide o que o stakeholder já respondeu (SM + Arquiteto + QA) — 2026-11-15
+
+**Instrução:** (stakeholder, 15/11/2026) "analise o sprint 6 do garden e veja todas as paradas que aguardaram minha interação… quais ainda podem ser tratadas para o próprio PO, SM ou Arquiteto tomarem as decisões"; depois, "pode aplicar as propostas".
+**Medido (garden, S6, de 14/11 15h a 15/11):** a prova no aparelho que não roda (ids não publicados, estado de partida) foi ao stakeholder 4 vezes com a mesma resposta, e na T-090 duas vezes, porque a decisão não chegou ao plano; "arquivos soltos" de outra Task, 3 formulários e 4 voltas do dev; Docker desligado, 4 formulários; "encurtar ou dividir" um plano que passou de 30 KB com as decisões de GAP; pausar exigiu apagar o `.active-run` pelo Explorador; uma rota da G24 deixou passar outras perguntas.
+**Classificação:** instrumento (`run.ps1 prove` e `pause`; política e pré-requisitos no `guards.json`; retrato dos arquivos alheios; teto do plano sem as decisões de GAP) · regra (G24: uma pergunta por rota; o update não retoma o run).
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `sprint-run.md` | Paradas legítimas · Pausa segura | pausa por `run.ps1 pause`; prova por teste por `run.ps1 prove` ou pela política; a rota vale para um formulário |
+| `stakeholder-question.md` | Antes de perguntar | oito linhas novas de "quem decide" (prova no aparelho, decisão que não chegou ao plano, plano > 30 KB, arquivos alheios, id dinâmico, serviço desligado, pausa, atualização) |
+| `team-update.md` | 9. Feche | o update não retoma o run nem pergunta "retomar agora?" |
+| `deliverables/team-project/guards.json` | `_exemplos` | `run.deviceProofFallback` e `run.prereqs` |
 
 ---
 

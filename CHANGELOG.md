@@ -13,6 +13,55 @@
 
 ---
 
+## v3.60.1 — 2026-11-15
+
+**Branch:** `fix/v3.60.1` a partir de `develop` (`6341ae3`, v3.60.0 mesclada) · **Processo:** addendum v3.60.1 (o time decide o que o stakeholder já respondeu)
+
+Origem: análise pedida pelo stakeholder em 15/11/2026 das paradas do sprint 6 do garden que esperaram por ele ("quais ainda podem ser tratadas para o próprio PO, SM ou Arquiteto tomarem as decisões"), e depois "pode aplicar as propostas". Depois da v3.58.3, ainda subiram ao stakeholder:
+- a prova no aparelho que não roda, 4 vezes com a mesma resposta;
+- a mesma decisão duas vezes na T-090, porque ela não chegou ao plano;
+- "arquivos soltos" de outra Task (T-093), em 3 formulários;
+- o Docker desligado, em 4 formulários;
+- "encurtar ou dividir" um plano que passou de 30 KB por causa das decisões de GAP;
+- a pausa, que acabou com o `.active-run` apagado pelo Explorador.
+
+1. **`run.ps1 prove -Task <T> -By <quem> -Because <motivo>`: a decisão "provar por teste" é aplicada inteira pelo script.**
+   - Os cenários de tela viram `(teste)` na linha **Cenários:** do plano (que manda desde a v3.56.0) e na coluna do quadro.
+   - O plano ganha a linha **Prova no aparelho pendente:**, e a Task entra em `sprints/<n>/device-pending.md`. O prompt do QA na validação do sprint passa a citar essa lista.
+   - A Task em 🔴 volta a 🟨 e a rota ao stakeholder é apagada. A saída manda fechar com `run.ps1 done -Result ok`.
+2. **Política do projeto: `guards.json` → `run.deviceProofFallback: "teste"`.** Quando o accept para em IDS NÃO PUBLICADOS ou no ESTADO DE PARTIDA, o `done -Result env` aplica o `prove` sozinho, sem formulário e sem 🔴. Sem a chave, a decisão continua com o stakeholder, e a saída manda oferecer, no mesmo formulário, gravar a política.
+3. **Fim do laço "evidência incompleta" da T-090.** Quando o único reprovado do close é o R7-aceite, com o accept parado no estado de partida na árvore de agora, o `done -Result ok` vai à rota de ambiente (item 2), em vez de mandar outro dev rodar o mesmo accept.
+4. **As decisões de 🔺 GAP não contam para o teto de 30 KB do plano** (`Get-PlanCoreKb`), no `plan.ps1` (regra 22) e no `run.ps1 start`/`next`. A linha do tamanho diz quantos KB ficaram fora. A Task já construída não vai à divisão nem ao stakeholder por crescer com as decisões.
+5. **Arquivos alheios.** Na primeira vez da Task, antes do relatório do dev, o `run.ps1 start` grava em `handoff/<T-ID>-alheios.json` o hash de cada arquivo pendente no git.
+   - O R7-margem do `close.ps1` ignora o arquivo que segue com o mesmo hash. Se a Task mexer nele depois, a cobrança volta.
+   - A saída do start lista os alheios.
+6. **Pré-requisitos do ambiente: `guards.json` → `run.prereqs`** (`name`, `check`, `start`, `waitSec`).
+   - O `run.ps1 start` confere cada um antes do dev. O que não responde, ele sobe pelo `start` e espera o `check` passar.
+   - Só o que não sobe vai ao stakeholder, pela rota de ambiente.
+   - O modelo do `guards.json` traz o exemplo do Docker Desktop.
+7. **`run.ps1 pause -Because <motivo>`.** Apaga o `.active-run`, o `.ask-route` e o `.safe-point`, registra a pausa no run-log e diz como retomar. A parada (d)/(e) do `sprint-run.md` passa a usar o comando.
+8. **G24: uma pergunta por rota.**
+   - O primeiro formulário marca a rota como `usado`. As refações nos 10 minutos seguintes passam (a G3 recusou a forma).
+   - Outra pergunta é negada com o caminho: aplicar a resposta (`prove`, `mark`, `next`) ou `pause`.
+   - A mensagem de negação ganha os caminhos novos: `prove`, arquivos alheios e id dinâmico declarado no código pelo Arquiteto.
+9. **O `/team update` não retoma o run** (`team-update.md`, passo 9). Termina dizendo para reiniciar e digitar `/sm sprint run`, sem perguntar "retomar agora?".
+10. **O reinício por teto de contexto avisa que é ponto seguro para atualizar o plugin** (linha PARA O STAKEHOLDER).
+
+- Documentos: `stakeholder-question.md` (oito linhas novas em "a decisão é dele?"), `sprint-run.md` (paradas legítimas, pausa segura, G24), `team-update.md`, `deliverables/team-project/guards.json` (`run.deviceProofFallback`, `run.prereqs`).
+- Fica com o stakeholder: liberar comando novo em `runCommands`. É fronteira de segurança, porque o comando roda sem pedido de permissão. O id dinâmico deixa de precisar do `guards.json`: o Arquiteto o declara no código (`// testid-dinamico:`), que o `ids` já aceitava.
+- Testes de conferência (+9):
+  - o teto sem as decisões (passa com 27 + 4 KB; reprova com 31 + 4);
+  - o `prove`: plano, quadro, lista da validação, 🔴 → 🟨 e rota apagada; rodar de novo não duplica nada;
+  - a política no `done -Result env`, sem formulário nem 🔴;
+  - o `pause`;
+  - os arquivos alheios: ignorado quando segue igual, cobrado de novo quando muda;
+  - o `run.prereqs`, que sobe pelo `start` e falha com o motivo quando não há `start`.
+- Testes de guarda (+2): a rota marcada como usada no primeiro formulário; outra pergunta com a rota já usada é negada.
+- Suítes: 545 conferências e 347 guardas, nenhuma falha; `release.ps1` (C3) ok.
+- Correção durante a entrega: o parâmetro do motivo se chama `-Because`. Como `-Why`, ele colidia com a variável `$why` do `next`, e o PowerShell não diferencia maiúsculas: o motivo do "alvo ainda fora" saía como uma letra só. O caso 9c da suíte pegou.
+
+---
+
 ## v3.60.0 — 2026-11-15
 
 **Branch:** `feat/v3.60.0` a partir de `develop` (`119077f`, v3.59.2 mesclada) · **Processo:** v3.60 (a ficha leva os trechos; o Arquiteto do plano lê uma vez e escreve · o kanban acompanha o prazo, com o registro técnico no consumo)
