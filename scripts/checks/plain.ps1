@@ -180,7 +180,7 @@ function Get-PlainPending([string]$ReadmeText) {
 
 # As passagens a ✅ no Registro de transições, na ordem do arquivo (para "a última pronta foi …" e "as mais recentes").
 function Get-PlainDoneLog([string]$SprintDir) {
-    $chart = Get-ChartPath $SprintDir; if (-not (Test-Path -LiteralPath $chart)) { return @() }
+    $chart = Get-RecordPath $SprintDir; if (-not (Test-Path -LiteralPath $chart)) { return @() }   # v3.60.0: consumption.md ou kanban.md
     $reg = Get-Section (Read-Text $chart) '^##\s+Registro de transi'; if (-not $reg) { return @() }
     $t = @(Get-Tables $reg)[0]; if (-not $t) { return @() }
     $out = @()
@@ -198,6 +198,44 @@ function Format-PlainWhen([string]$When) {
     if ($When.Length -le 10) { return "em $($d.ToString('dd/MM'))" }
     if ($d.Date -eq (Get-Date).Date) { return "às $($d.ToString('HH:mm'))" }
     return "em $($d.ToString('dd/MM')) às $($d.ToString('HH:mm'))"
+}
+
+# v3.60.0: prazo em palavras simples. Tempo de relógio: minutos, horas ou dias; data como "18/11 às 14:00".
+$script:PlainFarol = @{ 'no prazo' = '🟢 No prazo'; 'atrasado' = '🔴 Atrasado'; 'adiantado' = '🔵 Adiantado'; 'sem ritmo' = '⚪ Ainda sem ritmo medido'; 'sem prazo' = '⚪ Sem prazo definido'; 'pronto' = '✅ Tudo pronto' }
+function Format-PlainHours($H) {
+    if ($null -eq $H) { return '' }
+    $pt = [Globalization.CultureInfo]::GetCultureInfo('pt-BR')
+    if ($H -lt 1) { return "~$([Math]::Max(1, [int][Math]::Round($H * 60))) min" }
+    if ($H -lt 10) { return "~$(([Math]::Round($H, 1)).ToString('0.#', $pt)) h" }
+    if ($H -lt 48) { return "~$([int][Math]::Round($H)) h" }
+    return "~$(([Math]::Round($H / 24, 1)).ToString('0.#', $pt)) dias"
+}
+function Format-PlainDate($D) { if ($null -eq $D) { return '' }; return "$($D.ToString('dd/MM')) às $($D.ToString('HH:mm'))" }
+# De onde veio o prazo, para quem lê saber se é data combinada ou conta da estimativa.
+function Format-PlainDeadline($Sc) {
+    if (-not $Sc.End) { return '' }
+    $pt = [Globalization.CultureInfo]::GetCultureInfo('pt-BR')
+    # Prazo à meia-noite = o fim do dia anterior ("10/09 (fim do dia)", não "11/09 às 00:00").
+    $when = if ($Sc.End.TimeOfDay.TotalMinutes -eq 0) { "$($Sc.End.AddDays(-1).ToString('dd/MM')) (fim do dia)" } else { Format-PlainDate $Sc.End }
+    switch ($Sc.EndSource) {
+        'janela' { return "prazo $when, o fim do sprint" }
+        'duração' { return "prazo $when, pela duração do sprint" }
+        default { return "prazo $when, pela estimativa ($($Sc.Planned.ToString('0.##', $pt)) $($Sc.Unit) desde a abertura em $($Sc.Start.ToString('dd/MM')))" }
+    }
+}
+# A linha "Prazo" do Resumo e do /team-status: o farol, a previsão de término e de onde vem o prazo.
+function Get-PlainDeadlineLine($Sc) {
+    if (-not $Sc) { return $null }
+    $f = $script:PlainFarol[$Sc.State]
+    switch ($Sc.State) {
+        'pronto' { return $f }
+        'sem ritmo' { return "$f — nenhuma parte pronta ainda para medir o ritmo; $(Format-PlainDeadline $Sc)." }
+        'sem prazo' { return "$f — $(if ($Sc.Projected) { "previsão de término $(Format-PlainDate $Sc.Projected)" } else { 'sem ritmo medido ainda' }). Para ter o farol, ponha a data de fim na Janela (Linha de base) ou a duração do sprint no README." }
+        default {
+            $p = if ($Sc.Projected) { "previsão de término $(Format-PlainDate $Sc.Projected) (faltam $(Format-PlainHours (($Sc.Projected - $Sc.Now).TotalHours)) de relógio)" } else { 'nenhuma parte pronta ainda' }
+            return "$f — $p; $(Format-PlainDeadline $Sc)."
+        }
+    }
 }
 
 # O resumo do sprint para quem acompanha (v3.59.0): uma lista de @{ K = rótulo; V = frase }, na ordem de leitura.
@@ -220,6 +258,8 @@ function Get-PlainSummary([string]$Root, [string]$Sprint, [switch]$Live, [switch
     $estD = [double](@($done | Where-Object { $null -ne $_.Est } | ForEach-Object { $_.Est }) | Measure-Object -Sum).Sum
     $pct = if ($estT -gt 0) { " (cerca de $([int][Math]::Round(100 * $estD / $estT))% do trabalho estimado)" } else { '' }
     $o += @{ K = 'Andamento'; V = "$($done.Count) de $($tasks.Count) partes prontas$pct$(if ($closed) { ' — sprint encerrado' })" }
+    # v3.60.0: o farol do prazo, logo depois do andamento.
+    if (-not $closed -and $tasks.Count) { $dl = Get-PlainDeadlineLine (Get-SprintSchedule $Root $S); if ($dl) { $o += @{ K = 'Prazo'; V = $dl } } }
     $moving = @($tasks | Where-Object { $_.Mark -eq $script:PlainBuild -or $_.Mark -eq $script:PlainQA })
     $open = @($tasks | Where-Object { $_.Mark -ne $script:PlainDone })
     if ($moving.Count) { $o += @{ K = 'Em andamento'; V = (($moving | ForEach-Object { "$(& $lab $_.Id) — $(Get-PlainStage $_.Mark)" }) -join '; ') } }

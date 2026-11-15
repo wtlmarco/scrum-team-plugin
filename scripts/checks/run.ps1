@@ -22,7 +22,9 @@
 # v3.52.2: a construção de cada Task é do executor de Task (team:task-runner) — o next o dispara; start e done são dele.
 # O next também lê .interrupted (retomada após queda), mede a sessão (SESSÃO:) e abre a correção do portão como Q-S<n>.
 # v3.53: Task com ficha no architect/breakdown/S<n>.md é planejada por um Arquiteto só dela, a partir do recorte da ficha
-# (sprints/<n>/handoff/<T-ID>-ficha.md); sem ficha, a História segue numa instância.
+# (sprints/<n>/handoff/<T-ID>-ficha.md); sem ficha, a História segue numa instância. v3.60.0: o recorte traz os trechos que
+# a ficha aponta (faixas de linhas e seções, com o número da linha) e o guia de escrita gerado do template — o Arquiteto lê
+# um arquivo e escreve, em vez de explorar; faixa fora do arquivo se corrige antes, como o caminho que não existe.
 # v3.53.4: com guards.json → "run": { "planner": "external", "tasks": [] }, o plano da Task com ficha sai do Claude — o
 # next monta o pacote da História em sprints/<n>/pack/out/, o stakeholder o leva a um assistente de fora e devolve os
 # planos em pack/in/; o next seguinte confere cada um (plan.ps1) antes de aceitar. O 🔺 GAP de plano dela também vai
@@ -77,7 +79,7 @@ function Say([string]$Text) { Out "PARA O STAKEHOLDER: $($script:RunNews)$Text";
 # linhas já foram ditas). Na primeira vez, só marca — não despeja o sprint inteiro.
 function Get-RunNews {
     $seenF = Join-Path $tp '.stakeholder-seen'
-    $chart = Get-ChartPath $S; if (-not (Test-Path -LiteralPath $chart)) { return '' }
+    $chart = Get-RecordPath $S; if (-not (Test-Path -LiteralPath $chart)) { return '' }   # v3.60.0: consumption.md ou kanban.md
     $reg = Get-Section (Read-Text $chart) '^##\s+Registro de transi'; if (-not $reg) { return '' }
     $t = @(Get-Tables $reg)[0]; if (-not $t) { return '' }
     $rows = @($t.Rows); $seen = -1
@@ -343,6 +345,30 @@ function Get-SprintStart([string]$S) {
     $rl = Join-Path $S 'run-log.md'
     if (Test-Path -LiteralPath $rl) { $m = [regex]::Match((Read-Text $rl), '(?m)^\|\s*(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\s*\|'); if ($m.Success) { return $m.Groups[1].Value } }
     try { return (Get-Item -LiteralPath $S).CreationTime.ToString('yyyy-MM-dd HH:mm') } catch { return '' }
+}
+# v3.60.0: base das linhas da ficha — o código a que elas se referem. A da Planning é o último commit antes do início do
+# sprint; a ficha corrigida no run (caminho ou faixa) passa a valer pelo commit do momento da correção, gravado em
+# sprints/<n>/.ficha-base.json. '' sem git: as linhas valem como estão.
+function Get-FichaBase([string]$S, [string]$Id) {
+    $ErrorActionPreference = 'Continue'
+    $null = & git -C $Root rev-parse --is-inside-work-tree 2>$null
+    if ($LASTEXITCODE -ne 0) { return '' }
+    $sf = Join-Path $S '.ficha-base.json'
+    if (Test-Path -LiteralPath $sf) { try { $o = Read-Text $sf | ConvertFrom-Json; if ($o.$Id) { return [string]$o.$Id } } catch { } }
+    $st = Get-SprintStart $S
+    if (-not $st) { return '' }
+    $b = "$(& git -C $Root rev-list -1 "--before=$st" HEAD 2>$null)"
+    if ($LASTEXITCODE -ne 0) { return '' }
+    return $b.Trim()
+}
+function Set-FichaBase([string]$S, [string]$Id) {
+    $ErrorActionPreference = 'Continue'
+    $h = "$(& git -C $Root rev-parse HEAD 2>$null)".Trim()   # "$(…)": sem saída do git, texto vazio (o [string] dava $null no 5.1)
+    if ($LASTEXITCODE -ne 0 -or -not $h) { return }
+    $sf = Join-Path $S '.ficha-base.json'; $o = [ordered]@{}
+    if (Test-Path -LiteralPath $sf) { try { (Read-Text $sf | ConvertFrom-Json).PSObject.Properties | ForEach-Object { $o[$_.Name] = $_.Value } } catch { } }
+    $o[$Id] = $h
+    [System.IO.File]::WriteAllText($sf, ($o | ConvertTo-Json -Compress), $utf8)
 }
 # Commit próprio da consolidação: só os documentos citados nas duas tabelas, nunca .team-project/. @{ Line; Sha }.
 function Save-DocsCommit([string[]]$Paths, [string]$n) {
@@ -1203,7 +1229,8 @@ try {
         $xpack = $null
         $extF = @($withF | Where-Object { Test-ExternalTask $planner $_.T.Id })
         if ($extF.Count) {
-            $xbad = @($extF | Where-Object { ($null -ne $_.F.Planned -and $_.F.Planned -gt $script:FichaMaxFiles) -or @(Get-FichaMissing $Root $_.F).Count }) | Select-Object -First 1
+            # v3.60.0: faixa fora do arquivo também volta à correção antes do pacote, como no Arquiteto interno.
+            $xbad = @($extF | Where-Object { ($null -ne $_.F.Planned -and $_.F.Planned -gt $script:FichaMaxFiles) -or @(Get-FichaMissing $Root $_.F).Count -or @(Get-FichaBadRanges $Root $_.F (Get-FichaBase $S $_.T.Id)).Count }) | Select-Object -First 1
             if ($xbad) { $withF = @($xbad) }
             else {
                 $xpack = Update-StoryPack $h.Name @($extF | ForEach-Object { $_.T })
@@ -1224,11 +1251,17 @@ try {
             $bdRel = ".team-project/architect/breakdown/S$n.md"
             if ($null -ne $pick.F.Planned -and $pick.F.Planned -gt $script:FichaMaxFiles) { Write-SplitAction $t $h.Name $pick.F $null; exit 0 }
             $miss = Get-FichaMissing $Root $pick.F
-            if ($miss.Count) {
-                Out "PRÓXIMA AÇÃO: corrigir a ficha da $($t.Id) antes do plano — caminho que não existe: $($miss -join ', ') (Arquiteto, instância curta)"
+            # v3.60.0: faixa de linhas que passa do fim do arquivo também se corrige antes — o trecho copiado sairia vazio.
+            $fBase = Get-FichaBase $S $t.Id
+            $badR = if ($miss.Count) { @() } else { @(Get-FichaBadRanges $Root $pick.F $fBase) }
+            if ($miss.Count -or $badR.Count) {
+                Set-FichaBase $S $t.Id   # o Arquiteto corrige pelas linhas de hoje: a base da ficha passa a ser este commit
+                $what = @($(if ($miss.Count) { "caminho que não existe: $($miss -join ', ')" }) + $(if ($badR.Count) { "faixa fora do arquivo: $($badR -join ', ')" }) | Where-Object { $_ }) -join '; '
+                Out "PRÓXIMA AÇÃO: corrigir a ficha da $($t.Id) antes do plano — $what (Arquiteto, instância curta)"
                 Say "Preparando $(Get-RunLabel $t.Id): o arquiteto está acertando a descrição antes de planejar."
                 Out "  $(Get-AgentLine 'architect')"
-                Out "  prompt: `"Na ficha da $($t.Id) em $bdRel, corrija os caminhos que não existem: $($miss -join ', '). Ache a pasta certa com Glob; o que não existir sai da ficha. Não escreva plano nem abra outros arquivos. Volte em até 3 linhas.`""
+                $fix = @($(if ($miss.Count) { "os caminhos que não existem: $($miss -join ', '). Ache a pasta certa com Glob; o que não existir sai da ficha" }) + $(if ($badR.Count) { "as faixas que passam do fim do arquivo: $($badR -join ', '). Ache o trecho certo com Grep e escreva a faixa nova como caminho:a-b" }) | Where-Object { $_ }) -join '; e '
+                Out "  prompt: `"Na ficha da $($t.Id) em $bdRel, corrija $fix. Não escreva plano nem abra outros arquivos. Volte em até 3 linhas.`""
                 Out "  depois: run.ps1 next"
                 exit 0
             }
@@ -1237,6 +1270,9 @@ try {
             # v3.53.2: o resumo do plano da dependência vai no recorte; o plano inteiro só se abre no trecho que faltar.
             $depSum = @($depPlans | ForEach-Object { "## Plano da dependência — resumo de ``$_```n`n" + (Get-PlanSummary (Join-Path $Root $_)) })
             $card = "# Ficha da $($t.Id) — recorte de ``$bdRel```n`n> Gerado pelo ``run.ps1 next`` para o Arquiteto do plano (v3.53). A fonte é o breakdown: não edite aqui.`n`n" + $(if ($pick.F.Common) { $pick.F.Common + "`n`n" } else { '' }) + $pick.F.Body + "`n" + $(if ($depSum.Count) { "`n" + ($depSum -join "`n`n") + "`n" } else { '' }) + (Get-DecisionsDigest $Root $n) + (Get-KnowledgeDigest $Root) + (Get-StackPitfallDigest $Root $n $t.Id)   # v3.56.0 (B, C)
+            # v3.60.0: os trechos que a ficha aponta e o guia de escrita vão no recorte — o Arquiteto lê um arquivo e escreve.
+            $guide = Get-PlanGuide
+            $card += (Get-FichaExcerpts $Root $pick.F $fBase) + $guide
             [System.IO.File]::WriteAllText((Join-Path $dir "$($t.Id)-ficha.md"), $card, $utf8)
             $depTxt = if ($depPlans.Count) { '. O resumo do plano da dependência (' + ($depPlans -join ', ') + ': arquivos, nomes, passos) está no fim da ficha: abra esse plano só no trecho que faltar, com offset e limit' } else { '' }
             $rest = @($noPlan | Where-Object { $_.Id -ne $t.Id } | ForEach-Object { $_.Id })
@@ -1246,7 +1282,10 @@ try {
             Out "PRÓXIMA AÇÃO: preparo da construção — plano da $($t.Id) (História $($h.Name)) pela ficha, um Arquiteto por Task (regra 25)"
             Say "Planejando $(Get-RunLabel $t.Id): o arquiteto está escrevendo o passo a passo da construção."
             Out "  $(Get-AgentLine 'architect')"
-            Out "  prompt: `"Escreva o Plano de Implementação da $($t.Id) — $($t.Title) em .team-project/sprints/$n/plan/$($t.Id)-<slug>.md, no template enxuto. Abra só a ficha .team-project/sprints/$n/handoff/$($t.Id)-ficha.md, o template `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md e o .team-project/architect/context.md$depTxt. Do código e das fontes, leia o trecho que a ficha aponta (caminho:linha e §), não o arquivo inteiro. O plano fica como sair: não o corte por tamanho (regra 22) — acima de $($script:PlanMaxKb) KB o plan.ps1 reprova e a Task se divide; aí volte dizendo 'tamanho', sem corrigir. Ler além dela vale: cada arquivo vai na linha **Li além da ficha:** do cabeçalho. Use os nomes comuns da ficha literalmente. Não abra o plan.ps1 nem plano de outro sprint: rode plan.ps1 e corrija pelo que ele imprime. A sessão atualiza a coluna Plano do quadro. Volte em até 15 linhas.`""
+            # v3.60.0: com o guia e os trechos no recorte, a abertura é a ficha e o context.md numa chamada, e o que faltar vem
+            # numa chamada só — a exploração era 84 % do custo do plano no garden (S6). Sem guia (template fora da forma), como antes.
+            $openTxt = if ($guide) { "Abra a ficha .team-project/sprints/$n/handoff/$($t.Id)-ficha.md e o .team-project/architect/context.md, os dois na mesma chamada$depTxt. A ficha já traz os trechos do código e das fontes que ela aponta, com o número das linhas, e o guia de escrita do plano (o esqueleto e a primeira frase de cada regra): escreva a partir dela, sem abrir o template inteiro nem reler os arquivos copiados — uma regra inteira, só pela linha que o guia dá. Se faltar algo, peça tudo numa chamada só (leituras em paralelo, com offset e limit) e registre cada arquivo na linha **Li além da ficha:** do cabeçalho" } else { "Abra só a ficha .team-project/sprints/$n/handoff/$($t.Id)-ficha.md, o template `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/implementation-plan.md e o .team-project/architect/context.md$depTxt. Do código e das fontes, leia o trecho que a ficha aponta (caminho:linha e §), não o arquivo inteiro. Ler além dela vale: cada arquivo vai na linha **Li além da ficha:** do cabeçalho" }
+            Out "  prompt: `"Escreva o Plano de Implementação da $($t.Id) — $($t.Title) em .team-project/sprints/$n/plan/$($t.Id)-<slug>.md, no template enxuto. $openTxt. O plano fica como sair: não o corte por tamanho (regra 22) — acima de $($script:PlanMaxKb) KB o plan.ps1 reprova e a Task se divide; aí volte dizendo 'tamanho', sem corrigir. Use os nomes comuns da ficha literalmente. Não abra o plan.ps1 nem plano de outro sprint: rode plan.ps1 e corrija pelo que ele imprime. A sessão atualiza a coluna Plano do quadro. Volte em até 15 linhas.`""
             Out "  depois: plan.ps1 -Plan <caminho> (exit 1 volta à mesma instância se ela respondeu há menos de 5 min; senão instância nova) e run.ps1 next$(if ($rest.Count) { " — faltam $($rest -join ', ')" })"
             exit 0
         }

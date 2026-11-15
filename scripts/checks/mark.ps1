@@ -49,7 +49,10 @@ try {
     $m = [regex]::Match((Read-Text $readmePath), $script:SprintLineRe)
     if (-not $m.Success) { [Console]::Error.WriteLine('mark: .team-project/README.md §2 sem a linha "Sprint corrente" — esperado: ' + $script:SprintLineHelp); exit 2 }
     $S = Join-Path $tp "sprints/$($m.Groups[1].Value)"
-    $boardPath = Join-Path $S 'sprint-backlog.md'; $bdPath = Get-ChartPath $S   # kanban.md (v3.51) ou burndown.md
+    $boardPath = Join-Path $S 'sprint-backlog.md'; $chartPath = Get-ChartPath $S   # kanban.md (v3.51) ou burndown.md: controle e trava
+    # v3.60.0: a Série e o Registro de transições no consumption.md quando já estão lá (Get-RecordPath); o controle (Bloqueios)
+    # continua no kanban.md.
+    $bdPath = Get-RecordPath $S
     foreach ($p in $boardPath, $bdPath) { if (-not (Test-Path -LiteralPath $p)) { [Console]::Error.WriteLine("mark: $p não existe."); exit 2 } }
     $idPat = Get-IdPattern $Task
     $now = Get-Date -Format 'yyyy-MM-dd HH:mm'
@@ -74,7 +77,8 @@ try {
 
     # v3.51.4 (garden item 23): a leitura e a gravação do quadro e do kanban.md sob a trava do kanban.md — o kanban.ps1 da
     # G16 regravava o arquivo no meio e a linha da Série desta transição sumia.
-    $null = Invoke-WithFileLock $bdPath {
+    $null = Invoke-WithFileLock $chartPath {
+    $recFs = if ($bdPath -ne $chartPath) { Enter-FileLock $bdPath } else { $null }   # v3.60.0: o consumption.ps1 também o regrava
     # 1 · marcador no quadro (só a 1ª célula da linha da Task)
     $board = Read-Text $boardPath; $nl = if ($board.Contains("`r`n")) { "`r`n" } else { "`n" }
     $bl = ConvertTo-Lines $board
@@ -95,6 +99,8 @@ try {
     # 2 · Série do burndown: a composição recontada, a estimativa e as Tasks restantes como estavam (R24 — só o ✅ baixa)
     $bdText = Read-Text $bdPath; $bnl = if ($bdText.Contains("`r`n")) { "`r`n" } else { "`n" }
     $lines = ConvertTo-Lines $bdText
+    $sepChart = ($bdPath -ne $chartPath)
+    if ($sepChart -and (Test-Path -LiteralPath $chartPath)) { $kText = Read-Text $chartPath; $knl = if ($kText.Contains("`r`n")) { "`r`n" } else { "`n" }; $kLines = ConvertTo-Lines $kText } else { $sepChart = $false; $kLines = $lines }
     $se = Get-TableEnd $lines '^##\s+S[ée]rie'
     if ($se -lt 0) { [Console]::Error.WriteLine('mark: burndown sem tabela na "## Série".'); exit 2 }
     $sTable = (Get-Tables (Get-Section $bdText '^##\s+S[ée]rie'))[0]
@@ -126,8 +132,8 @@ try {
     $blkTxt = ''
     if ($Reason) {
         $hdr = '^#{2,3}\s+Bloqueios e riscos abertos'
-        $tl = $null; $be = Get-TableEnd $lines $hdr; $bw = Split-Path $bdPath -Leaf
-        if ($be -ge 0) { $tl = $lines } else { $be = Get-TableEnd $bl $hdr; if ($be -ge 0) { $tl = $bl; $bw = 'sprint-backlog.md' } }
+        $tl = $null; $be = Get-TableEnd $kLines $hdr; $bw = Split-Path $chartPath -Leaf
+        if ($be -ge 0) { $tl = $kLines } else { $be = Get-TableEnd $bl $hdr; if ($be -ge 0) { $tl = $bl; $bw = 'sprint-backlog.md' } }
         if ($tl) {
             $hs = $be; while ($hs - 1 -ge 0 -and $tl[$hs - 1].TrimStart().StartsWith('|')) { $hs-- }
             $hd = @(Split-Row $tl[$hs] | ForEach-Object { Clean-Cell $_ })
@@ -146,7 +152,8 @@ try {
     }
     if ($from -eq $red -and $target -ne $red) {
         $nr = 0
-        foreach ($ls in @($lines, $bl)) {
+        $lsAll = New-Object System.Collections.ArrayList; [void]$lsAll.Add($lines); [void]$lsAll.Add($bl); if ($sepChart) { [void]$lsAll.Add($kLines) }
+        foreach ($ls in $lsAll) {
             for ($i = 0; $i -lt $ls.Count; $i++) {
                 if ($ls[$i].TrimStart().StartsWith('|') -and $ls[$i] -match $idPat -and $ls[$i] -match ('(?i)' + [regex]::Escape($script:TargetPendingTag))) {
                     $ls[$i] = [regex]::Replace($ls[$i], '(?i)' + [regex]::Escape($script:TargetPendingTag), "prova no alvo retomada em $now"); $nr++
@@ -160,6 +167,8 @@ try {
     $utf8 = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($boardPath, ($bl -join $nl), $utf8)
     [System.IO.File]::WriteAllText($bdPath, ($lines -join $bnl), $utf8)
+    if ($sepChart) { [System.IO.File]::WriteAllText($chartPath, ($kLines -join $knl), $utf8) }
+    if ($recFs) { Exit-FileLock $recFs $bdPath }
     [Console]::Out.WriteLine("mark: $Task $from → $target · quadro, Série e Registro gravados (Registro em $where; por quem: $By)$blkTxt")
     }
     try { $null = & (Join-Path $PSScriptRoot 'kanban.ps1') -Root $Root 2>&1 } catch { }   # v3.51.2: o Kanban (Markdown) acompanha a transição

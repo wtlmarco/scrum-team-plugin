@@ -312,6 +312,10 @@ try {
         $path = Join-Path $Root $dest
         if (-not (Test-Path -LiteralPath $path)) { [Console]::Out.WriteLine("consumo: $dest não existe — linhas medidas ficam no usage.jsonl. Bloco de fix: a G16 o cria na primeira rodada (kanban.ps1 -Block B-<nnn> -Init); sprint: nasce no sprint plan; fora de sprint: no /team init."); continue }
         if (Test-Closed $dest) { [Console]::Out.WriteLine("consumo: $dest está fechado — nenhuma linha nova (templates/consumption.md)."); continue }
+        # v3.60.0: a Série e o Registro de transições moram no consumption.md do sprint, gravados pelo mark.ps1, pelo close.ps1
+        # e pelo kanban.ps1 — ler, mudar e regravar sob a trava do arquivo, como no kanban.md (garden item 23).
+        $lockFs = Enter-FileLock $path
+        try {
         $text = Read-Text $path
         $storyMap = @{}
         $sm = [regex]::Match($dest, '/sprints/(\d+)/')
@@ -397,7 +401,8 @@ try {
 
         # ## Registro: mantém cabeçalho e as linhas que não vieram do hook; as medidas são reescritas por inteiro.
         $lines = New-Object System.Collections.ArrayList; foreach ($l in ($text -split "`r?`n")) { [void]$lines.Add($l) }
-        $hi = -1; for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^##\s+Registro\b') { $hi = $i; break } }
+        # v3.60.0: "## Registro de transições" mora no mesmo arquivo — não é o registro de consumo.
+        $hi = -1; for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^##\s+Registro\b(?!\s+de\s+transi)') { $hi = $i; break } }
         if ($hi -lt 0) { [Console]::Error.WriteLine("consumo: $dest sem a seção '## Registro'."); continue }
         $ts = -1; for ($i = $hi + 1; $i -lt $lines.Count; $i++) { if ($lines[$i].TrimStart().StartsWith('|')) { $ts = $i; break }; if ($lines[$i] -match '^#') { break } }
         if ($ts -lt 0) { [Console]::Error.WriteLine("consumo: $dest sem a tabela do '## Registro'."); continue }
@@ -535,6 +540,7 @@ try {
         $result = ($lines -join "`n")
         if ($Print) { [Console]::Out.WriteLine("---- $dest"); [Console]::Out.WriteLine($result) }
         else { [System.IO.File]::WriteAllText($path, $result, $utf8); [Console]::Out.WriteLine("consumo: $dest — $($measured.Count) linha(s) medida(s), $($kept.Count) mantida(s); $quotaSummary.") }
+        } finally { Exit-FileLock $lockFs $path }
     }
     exit 0
 } catch {

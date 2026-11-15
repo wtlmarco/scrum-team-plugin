@@ -1,5 +1,7 @@
 ﻿# Kanban em Markdown do sprint e do bloco de fix (v3.51.2 — pedido do stakeholder, 22/10/2026; substitui o kanban-html.ps1).
 # Sprint: regrava em sprints/<n>/kanban.md a tabela "## Kanban" (do quadro) e a seção "## Rodadas" (do usage.jsonl).
+# v3.60.0: e a "## Burndown" (prazo, farol, ritmo, gráfico e tabela) e, no quadro, quanto falta de cada parte aberta e quando
+# termina. A Série, o Registro de transições, a Rodada a rodada e a Espera de comando vão para o consumption.md do sprint.
 # Bloco (-Block B-<nnn>): regrava fixes/B-<nnn>/kanban.md inteiro — Kanban das F-IDs com as colunas do sprint, Registro de
 # transições e Rodadas, derivados do plan.md, do verdict.md e do usage.jsonl. -Init cria a pasta e o consumption.md do bloco.
 # Rodadas: uma linha por rodada de subagente (quando, item, papel, modelo, tokens, tempo), a mais nova primeiro, e o total
@@ -104,7 +106,7 @@ function Split-Rounds($Rows, $History) {
     return $out
 }
 
-function Format-Rounds($Rows, [string]$Nl, $History = @{}) {
+function Format-Rounds($Rows, [string]$Nl, $History = @{}, [switch]$NoList) {
     $o = @('## Rodadas', '*(Regravado pelo `kanban.ps1` ao fim de cada rodada de agente — não editar à mão. Custo = tokens processados e tempo; o consolidado fica no `consumption.md`.)*', '')
     if (-not $Rows.Count) { return (($o + 'Nenhuma rodada medida ainda.' + '') -join $Nl) + $Nl }
     # Por tarefa e fase: Plano e preparo · Construção · Verificação · Outros (PO, SM, UX); a última linha é o consolidado.
@@ -125,18 +127,29 @@ function Format-Rounds($Rows, [string]$Nl, $History = @{}) {
         [pscustomobject]@{ k = $_.Name; n = $_.Count; t = ($_.Group | Measure-Object processed -Sum).Sum; s = ($_.Group | Measure-Object duration_s -Sum).Sum } } | Sort-Object t -Descending)
     foreach ($g in $groups) { $rm = $g.k -split '\|', 2; $o += "| $($rm[0]) | $($rm[1]) | $($g.n) | $(Format-Tokens $g.t) | $(Format-Duration ([int]$g.s)) |" }
     $o += "| **Total** | — | **$($Rows.Count)** | **$(Format-Tokens (($Rows | Measure-Object processed -Sum).Sum))** | **$(Format-Duration ([int](($Rows | Measure-Object duration_s -Sum).Sum)))** |"
+    if ($NoList) { $o += ''; $o += '*(Rodada a rodada e espera de comando: no `consumption.md` do sprint.)*'; return (($o + '') -join $Nl) + $Nl }
     $o += ''; $o += '### Rodada a rodada *(a mais nova primeiro)*'; $o += ''
-    $o += '| Quando | Item | Papel | Modelo | Tokens | Tempo |'; $o += '|---|---|---|---|---|---|'
+    $o += Format-RoundRows $Rows
+    return (($o + '') -join $Nl) + $Nl
+}
+function Format-RoundRows($Rows) {
+    $o = @('| Quando | Item | Papel | Modelo | Tokens | Tempo |', '|---|---|---|---|---|---|')
     for ($i = $Rows.Count - 1; $i -ge 0; $i--) {
         $r = $Rows[$i]; $when = try { ([datetime]$r.start).ToString('yyyy-MM-dd HH:mm') } catch { [string]$r.start }
         $o += "| $when | $([string]$r.work) | $(Get-Role $r) | $(Get-ShortModel ([string]$r.model)) | $(Format-Tokens ([double]$r.processed)) | $(Format-Duration ([int]$r.duration_s)) |"
     }
+    return $o
+}
+# v3.60.0 (pedido do stakeholder, 15/11/2026): a "Rodada a rodada" sai do kanban.md e vai ao consumption.md, numa seção própria.
+function Format-RoundList($Rows, [string]$Nl) {
+    $o = @('## Rodada a rodada', '*(Uma linha por rodada de agente, a mais nova primeiro. Regravada pelo `kanban.ps1` ao fim de cada rodada — não editar à mão.)*', '')
+    if (-not @($Rows).Count) { $o += 'Nenhuma rodada medida ainda.' } else { $o += Format-RoundRows $Rows }
     return (($o + '') -join $Nl) + $Nl
 }
 
 # Espera de comando por Task (v3.51.4, note.md item 12): o tempo que o verify.ps1 passou rodando comandos do projeto
 # (build, teste, lint, mutação), somado de verify/<n>/<T-ID>/time.jsonl — quanto do relógio da Task foi espera, não raciocínio.
-function Format-CommandWait([string]$Tp, [string]$N, [string]$Nl) {
+function Format-CommandWait([string]$Tp, [string]$N, [string]$Nl, [string]$Level = '###') {
     $vd = Join-Path $Tp "verify/$N"
     $rows = @()
     foreach ($d in @(Get-ChildItem -LiteralPath $vd -Directory -ErrorAction SilentlyContinue | Sort-Object Name)) {
@@ -148,16 +161,62 @@ function Format-CommandWait([string]$Tp, [string]$N, [string]$Nl) {
         $rows += "| $($d.Name) | $calls | " + ((@('focused', 'full', 'mutation') | ForEach-Object { if ($by.ContainsKey($_)) { Format-Duration $by[$_] } else { '—' } }) -join ' | ') + " | **$(Format-Duration $tot)** |"
     }
     if (-not $rows.Count) { return '' }
-    return ((@('### Espera de comando *(verify.ps1: tempo rodando build, teste, lint e mutação)*', '', '| Task | Chamadas | focused | full | mutation | Total |', '|---|---|---|---|---|---|') + $rows + '') -join $Nl) + $Nl
+    $head = if ($Level -eq '##') { @('## Espera de comando', '*(verify.ps1: tempo rodando build, teste, lint e mutação, por Task — quanto do relógio foi espera, não raciocínio.)*') } else { @('### Espera de comando *(verify.ps1: tempo rodando build, teste, lint e mutação)*') }
+    return ((@($head) + @('', '| Task | Chamadas | focused | full | mutation | Total |', '|---|---|---|---|---|---|') + $rows + '') -join $Nl) + $Nl
 }
 
-# Troca a seção "## <título>" (até o próximo "## ") ou a insere antes da seção indicada; sem ela, no fim.
+# Troca a seção "## <título>" (até o próximo "## ") ou a insere antes da seção indicada; sem ela (ou sem $Before), no fim.
 function Set-Section([string]$Text, [string]$Heading, [string]$New, [string]$Before) {
     $sec = [regex]::Match($Text, '(?ms)^##\s+' + $Heading + '\s*\r?\n.*?(?=^##\s|\z)')
     if ($sec.Success) { return $Text.Substring(0, $sec.Index) + $New + $Text.Substring($sec.Index + $sec.Length) }
-    $at = [regex]::Match($Text, '(?m)^##\s+' + $Before)
-    if ($at.Success) { return $Text.Substring(0, $at.Index) + $New + $Text.Substring($at.Index) }
-    return $Text.TrimEnd() + "`n`n" + $New
+    if ($Before) { $at = [regex]::Match($Text, '(?m)^##\s+' + $Before); if ($at.Success) { return $Text.Substring(0, $at.Index) + $New + $Text.Substring($at.Index) } }
+    $nl = if ($Text.Contains("`r`n")) { "`r`n" } else { "`n" }
+    return $Text.TrimEnd() + $nl + $nl + $New
+}
+
+# v3.60.0 (pedido do stakeholder, 15/11/2026): o Burndown visual no kanban.md — o farol do prazo, o ritmo medido, o gráfico
+# (Mermaid xychart: renderiza no GitHub e nos editores com Mermaid; no terminal fica o texto) e a mesma conta em tabela, que é
+# a leitura em qualquer lugar e a versão acessível. Duas linhas: o real em azul (#2a78d6, a 1ª cor da paleta validada) e o
+# ideal em cinza neutro (referência, não categoria); o xychart não tem legenda — ela vai em texto acima. Sem prazo, só o real.
+function Format-Burndown($Sc, [string]$Nl) {
+    $o = @('## Burndown', '*(Quanto falta do trabalho estimado, dia a dia, contra o ritmo ideal até o prazo. Regravado a cada mudança de etapa e a cada rodada do time — não editar à mão. A Série, ponto a ponto, fica no `consumption.md`.)*', '')
+    if (-not $Sc) { return (($o + 'Sem dados ainda: a Série do sprint não tem a linha de abertura.' + '') -join $Nl) + $Nl }
+    $pt = [Globalization.CultureInfo]::GetCultureInfo('pt-BR'); $inv = [Globalization.CultureInfo]::InvariantCulture
+    $n = { param($x) ([double]$x).ToString('0.##', $pt) }
+    $o += "- **Prazo:** $(Get-PlainDeadlineLine $Sc)"
+    $one = @{ dias = 'dia estimado'; pontos = 'ponto'; unidades = 'unidade estimada' }[$Sc.Unit]
+    if ($null -ne $Sc.PaceH) { $o += "- **Ritmo medido:** $(& $n $Sc.Done) $($Sc.Unit) estimados prontos em $(Format-PlainHours $Sc.ElapsedH) de relógio desde a abertura — $(Format-PlainHours $Sc.PaceH) por $one. Faltam $(& $n $Sc.Remaining) ($(Format-PlainHours ($Sc.Remaining * $Sc.PaceH)))." }
+    else { $o += "- **Ritmo medido:** nenhuma parte pronta ainda — a previsão aparece quando a primeira fechar. Faltam $(& $n $Sc.Remaining) $($Sc.Unit) estimados." }
+    $days = @($Sc.Days); if (-not $days.Count) { return (($o + '') -join $Nl) + $Nl }
+    $hasIdeal = ($null -ne $days[0].Ideal)
+    $real = @($days | Where-Object { $null -ne $_.Real })
+    $max = [Math]::Max(1.0, [Math]::Ceiling([double](@(@($days | ForEach-Object { $_.Ideal }) + @($real | ForEach-Object { $_.Real }) + @($Sc.Planned) | Where-Object { $null -ne $_ } | Measure-Object -Maximum).Maximum)))
+    $o += ''
+    $o += $(if ($hasIdeal) { '**Legenda:** linha azul = restante real · linha cinza = ritmo ideal até o prazo.' } else { '**Legenda:** linha azul = restante real (sem prazo, sem linha ideal).' })
+    $o += '', '```mermaid'
+    $o += '%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "' + $(if ($hasIdeal) { '#9a9993, #2a78d6' } else { '#2a78d6' }) + '"}}}}%%'
+    $o += 'xychart-beta'
+    $o += "    title `"Restante do sprint ($($Sc.Unit) estimados)`""
+    $o += '    x-axis [' + (($days | ForEach-Object { '"' + $_.Date.ToString('dd/MM') + '"' }) -join ', ') + ']'
+    $o += "    y-axis `"Restante`" 0 --> $max"
+    if ($hasIdeal) { $o += '    line [' + (($days | ForEach-Object { ([Math]::Round([double]$_.Ideal, 2)).ToString('0.##', $inv) }) -join ', ') + ']' }
+    $o += '    line [' + (($real | ForEach-Object { ([Math]::Round([double]$_.Real, 2)).ToString('0.##', $inv) }) -join ', ') + ']'
+    $o += '```', ''
+    $o += '| Dia | Data | Restante (fim do dia; hoje, agora) | Ideal | |', '|---:|---|---:|---:|---|'
+    foreach ($d in $days) {
+        $bar = if ($null -ne $d.Real) { '█' * [int][Math]::Round(20 * [double]$d.Real / $max) } else { '' }
+        $o += "| $($d.Day) | $($d.Date.ToString('dd/MM')) | $(if ($null -ne $d.Real) { & $n $d.Real } else { '—' }) | $(if ($null -ne $d.Ideal) { & $n $d.Ideal } else { '—' }) | $bar |"
+    }
+    return (($o + '') -join $Nl) + $Nl
+}
+# O que vai ao lado de cada parte aberta no quadro: quanto falta e quando termina, na ordem da fila.
+function Get-EtaText($Sc, [string]$Id, $Est) {
+    if (-not $Sc -or -not $Sc.Eta.ContainsKey($Id)) { return '' }
+    $e = $Sc.Eta[$Id]; $pt = [Globalization.CultureInfo]::GetCultureInfo('pt-BR')
+    if ($e.Red) { return 'parada — sem previsão até destravar' + $(if ($null -ne $e.Hours) { " (depois, $(Format-PlainHours $e.Hours))" } else { '' }) }
+    if ($null -eq $e.Hours) { return $(if ($null -ne $Est) { "estimada em $(([double]$Est).ToString('0.##', $pt)) $($Sc.Unit) · sem previsão de hora até a primeira parte ficar pronta" } else { '' }) }
+    if ($e.Over) { return "passou do tempo previsto · deve terminar a qualquer momento ($(Format-PlainDate $e.Finish))" }
+    return "falta $(Format-PlainHours $e.Hours) · termina por volta de $(Format-PlainDate $e.Finish)"
 }
 
 # v3.59.0 (pedido do stakeholder, 14/11/2026): o quadro do sprint em lista por etapa, com o nome de negócio de cada parte e o
@@ -170,7 +229,7 @@ function Format-PlainBoard($Items, [string]$Nl) {
         $l = @($Items | Where-Object { $_.Mark -eq $st.Mark }); if (-not $l.Count) { continue }
         if ($o.Count) { $o += '' }
         $o += "**$($st.Mark) $($st.Plural) ($($l.Count))**"
-        foreach ($it in $l) { $o += "- $($it.Label)" + $(if ($it.Why) { " — $($it.Why)" } else { '' }) }
+        foreach ($it in $l) { $o += "- $($it.Label)" + $(if ($it.Why) { " — $($it.Why)" } else { '' }) + $(if ($it.Eta -and $it.Mark -ne $script:PlainRed) { " · $($it.Eta)" } else { '' }) }
     }
     return $o -join $Nl
 }
@@ -188,12 +247,12 @@ function Set-KanbanOrder([string]$Text, [string]$Nl) {
         $end = if ($i + 1 -lt $hs.Count) { $hs[$i + 1].Index } else { $Text.Length }
         $secs += [pscustomobject]@{ Name = $hs[$i].Groups[1].Value; Body = $Text.Substring($hs[$i].Index, $end - $hs[$i].Index).TrimEnd() + $Nl + $Nl }
     }
-    $front = @('^Resumo$', '^Agora$', '^Kanban$', '^Controle', '^Fechamento')
+    $front = @('^Resumo$', '^Agora$', '^Kanban$', '^Burndown$', '^Controle', '^Fechamento')   # v3.60.0: Burndown
     $back = @('^Detalhe t[ée]cnico', '^Linha de base', '^S[ée]rie', '^Registro de transi', '^Rodadas')
     $pick = { param($res) foreach ($re in $res) { foreach ($s in $secs) { if ($s.Name -match $re) { $s } } } }
     $f = @(& $pick $front); $b = @(& $pick $back)
     if (-not @($b | Where-Object { $_.Name -match '^Detalhe t[ée]cnico' }).Count -and $b.Count) {
-        $b = @([pscustomobject]@{ Name = 'Detalhe técnico'; Body = "## Detalhe técnico$Nl*(Daqui para baixo, o registro técnico do sprint: linha de base, série do burndown, cada passagem de etapa e o custo de cada rodada do time. Quem acompanha não precisa ler.)*$Nl$Nl" }) + $b
+        $b = @([pscustomobject]@{ Name = 'Detalhe técnico'; Body = "## Detalhe técnico$Nl*(Daqui para baixo, o registro técnico do sprint: linha de base e o custo de cada rodada do time. A Série, cada passagem de etapa, a rodada a rodada e a espera de comando ficam no ``consumption.md``. Quem acompanha não precisa ler.)*$Nl$Nl" }) + $b
     }
     $known = @($f) + @($b)
     $mid = @($secs | Where-Object { $known -notcontains $_ })
@@ -241,18 +300,43 @@ try {
         $tdK = [char]::ConvertFromUtf32(0x2B1C); $rdK = [char]::ConvertFromUtf32(0x1F534)
         $blkR = Get-BlockLines $S
         $pn = Get-PlainNames $Root $n
+        # v3.60.0: o prazo, a previsão de cada parte e os pontos do burndown (lib.ps1, Get-SprintSchedule).
+        $sc = $null; try { $sc = Get-SprintSchedule $Root $S } catch { }
         $tasks = @(); if (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md')) { $tasks = @(Get-SprintTasks $S | ForEach-Object {
             $mk = if ($_.Mark) { $_.Mark } else { $tdK }
             $why = if ($mk -eq $rdK -and $blkR.ContainsKey($_.Id)) { Get-PlainReason ([string]@($blkR[$_.Id])[-1]) } else { '' }
-            [pscustomobject]@{ Mark = $mk; Label = ((Get-PlainLabel $pn $_.Id) -replace '\|', '/'); Why = $why } }) }
+            [pscustomobject]@{ Mark = $mk; Label = ((Get-PlainLabel $pn $_.Id) -replace '\|', '/'); Why = $why; Eta = $(if ($mk -ne $E.Done) { Get-EtaText $sc $_.Id $_.Est } else { '' }) } }) }
         $rounds = @(Get-Rounds $tp ".team-project/sprints/$n/consumption.md")
         # v3.51.4: ler, mudar e regravar sob a trava do kanban.md — a G16 e o mark.ps1 escrevem nele ao mesmo tempo (garden item 23).
         $null = Invoke-WithFileLock $kb {
             $text = Read-Text $kb; $nl = if ($text.Contains("`r`n")) { "`r`n" } else { "`n" }
-            if ($text -match '(?m)^##\s+Kanban\s*$') {
-                $text = Set-Section $text 'Kanban' ("## Kanban$nl*(Onde está cada parte do sprint. Regravado a cada mudança de etapa e a cada rodada do time — não editar à mão.)*$nl$nl" + (Format-PlainBoard $tasks $nl) + "$nl$nl") 'Linha de base'
+            # v3.60.0 (pedido do stakeholder, 15/11/2026): a Série, o Registro de transições, a Rodada a rodada e a Espera de
+            # comando moram no consumption.md do sprint — o kanban.md fica para acompanhar. A Série e o Registro vão para lá uma
+            # vez (sprint aberto antes da v3.60 ou escrito na Planning), sob as duas travas: o consumption.ps1 também o regrava.
+            $hasCons = Test-Path -LiteralPath $consS
+            $recText = $text
+            if ($hasCons) {
+                $cFs = Enter-FileLock $consS
+                try {
+                    $ct = Read-Text $consS; $cnl = if ($ct.Contains("`r`n")) { "`r`n" } else { "`n" }
+                    foreach ($h in @('S[ée]rie', 'Registro de transi')) {
+                        $mm = [regex]::Match($text, '(?ms)^##\s+' + $h + '[^\r\n]*\r?\n.*?(?=^##\s|\z)')
+                        if (-not $mm.Success -or $ct -match ('(?m)^##\s+' + $h)) { continue }
+                        $ct = $ct.TrimEnd() + $cnl + $cnl + ($mm.Value.TrimEnd() -replace '\r?\n', $cnl) + $cnl
+                        $text = $text.Remove($mm.Index, $mm.Length)
+                    }
+                    if ($ct -match '(?m)^##\s+Registro de transi') { $recText = $ct }
+                    $ct = Set-Section $ct 'Rodada a rodada' (Format-RoundList $rounds $cnl) ''
+                    $cw = Format-CommandWait $tp $n $cnl '##'
+                    if ($cw) { $ct = Set-Section $ct 'Espera de comando' $cw '' }
+                    [System.IO.File]::WriteAllText($consS, $ct, $utf8)
+                } finally { Exit-FileLock $cFs $consS }
             }
-            $text = Set-Section $text 'Rodadas' ((Format-Rounds $rounds $nl (Get-MarkHistory $text)) + (Format-CommandWait $tp $n $nl)) 'Linha de base'
+            if ($text -match '(?m)^##\s+Kanban\s*$') {
+                $text = Set-Section $text 'Kanban' ("## Kanban$nl*(Onde está cada parte do sprint e, nas abertas, quanto falta e quando termina, pelo ritmo medido no sprint. Regravado a cada mudança de etapa e a cada rodada do time — não editar à mão.)*$nl$nl" + (Format-PlainBoard $tasks $nl) + "$nl$nl") 'Linha de base'
+                $text = Set-Section $text 'Burndown' (Format-Burndown $sc $nl) 'Controle'
+            }
+            $text = Set-Section $text 'Rodadas' ((Format-Rounds $rounds $nl (Get-MarkHistory $recText) -NoList:$hasCons) + $(if (-not $hasCons) { Format-CommandWait $tp $n $nl } else { '' })) 'Linha de base'
             # v3.59.0: o "## Resumo" em palavras simples, no topo (antes do "## Agora"), e o registro técnico no fim.
             $sum = @(Get-PlainSummary $Root $n -Objective | ForEach-Object { "- **$($_.K):** $($_.V)" })
             $res = "## Resumo$nl*(Para quem acompanha, em palavras simples. Gerado às $((Get-Date).ToString('HH:mm')) a cada mudança de etapa e a cada rodada do time — não editar à mão. Agora mesmo: ``/team-status``; detalhe técnico: ``/team-status detalhe`` e o fim deste arquivo.)*$nl$nl" + ($sum -join $nl) + "$nl$nl"

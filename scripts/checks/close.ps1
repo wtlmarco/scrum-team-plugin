@@ -356,7 +356,7 @@ try {
         # Marcador acompanhado (sprint-run.md §Marcador): a Task fechada passou por 🟦, 🟨 e 🟪 no Registro.
         $skipped = @($E.Plan, $E.Build, $E.QA | Where-Object { -not $reached.ContainsKey($_) })
         if ($closed -and $skipped.Count) { $bdIssues += "Registro sem a linha → " + ($skipped -join ', → ') + " de $Task (marcador não acompanhado)" }
-        $bdPath = Get-ChartPath $S
+        $bdPath = Get-RecordPath $S   # v3.60.0: consumption.md (ou kanban.md/burndown.md antes da mudança)
         if (Test-Path -LiteralPath $bdPath) {
             $serie = Get-Section (Read-Text $bdPath) '^##\s+S[ée]rie'
             if ($serie) {
@@ -489,7 +489,7 @@ try {
     $opLines = 0
     $consPath = Join-Path $S 'consumption.md'
     if (Test-Path -LiteralPath $consPath) {
-        $reg = Get-Section (Read-Text $consPath) '^##\s+Registro'
+        $reg = Get-Section (Read-Text $consPath) '^##\s+Registro(?!\s+de\s+transi)'   # v3.60.0: o Registro de transições mora no mesmo arquivo
         if ($reg) { foreach ($t in (Get-Tables $reg)) {
             $ip = Find-Col $t 'Papel'; $it = Find-Col $t 'Task'
             foreach ($row in $t.Rows) { if ((Clean-Cell (Get-Cell $row $ip)) -eq 'operator' -and (Get-Cell $row $it) -match $idPat) { $opLines++ } }
@@ -584,8 +584,10 @@ try {
         [System.IO.File]::WriteAllText($boardPath, ($bl -join $nl), $utf8)
 
         # 2 · Registro e Série no burndown (R24): uma transição = uma linha em cada
-        $bdPath = Get-ChartPath $S
+        # v3.60.0: no consumption.md quando já estão lá — sob a trava dele também (o consumption.ps1 o regrava).
+        $bdPath = Get-RecordPath $S
         if (-not (Test-Path -LiteralPath $bdPath)) { [Console]::Error.WriteLine("C1 -Apply: $bdPath não existe."); exit 2 }
+        $recFs = if ($bdPath -ne $lockPath) { Enter-FileLock $bdPath } else { $null }
         $bdText = Read-Text $bdPath; $bnl = if ($bdText.Contains("`r`n")) { "`r`n" } else { "`n" }
         $lines = New-Object System.Collections.ArrayList; foreach ($l in ($bdText -split "`r?`n")) { [void]$lines.Add($l) }
         function Get-TableEnd($Lines, [string]$Heading) {
@@ -628,6 +630,7 @@ try {
             $regNote = ' · Registro no sprint-backlog.md (quadro anterior à v3.44.1 — o /team update o leva ao burndown)'
         }
         [System.IO.File]::WriteAllText($bdPath, ($lines -join $bnl), $utf8)
+        if ($recFs) { Exit-FileLock $recFs $bdPath }
         Exit-FileLock $lockFs $lockPath
         try { $null = & (Join-Path $PSScriptRoot 'kanban.ps1') -Root $Root 2>&1 } catch { }   # v3.51.2: o Kanban (Markdown) acompanha o fechamento
 

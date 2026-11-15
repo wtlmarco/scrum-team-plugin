@@ -112,6 +112,23 @@ Período · nº de leituras da cota · pesos em uso. Tabela por modelo (rodadas,
 
 ## Relação com `/review metrics`
 `/review metrics` mede a **pegada estática** do processo — bytes de `agents/`+`commands/`+`roles/`, fixa por versão do plugin, igual em qualquer projeto que instale o time. Este registro mede o **gasto real**, variável por projeto e por sprint. **Os dois não se somam nem se substituem**: a pegada estática diz quanto cada invocação paga de carga fixa antes de qualquer trabalho; este registro diz quanto se gastou de fato fazendo o trabalho. Ver `workflow-processo.md` §5c do processo do time.
+
+## Série
+*(v3.60.0: o registro técnico do sprint mora aqui; o `kanban.md` fica para acompanhar. Uma linha por transição de marcador, gravada pelo `mark.ps1` e pelo `close.ps1 -Apply` — formato em [`kanban.md`](kanban.md) §Como preencher. A linha 0 nasce na Planning, no `kanban.md`; o `kanban.ps1` traz a Série e o Registro para cá na primeira regravação do `sprint run`. Por isso este arquivo **não se apaga** com o sprint aberto: com ele vai o histórico do burndown.)*
+
+| Dia | Data | Evento | Est. restante | Tasks restantes | ⬜ | 🟦 | 🟨 | 🟪 | ✅ | 🔴 |
+|---|---|---|---|---|---|---|---|---|---|---|
+
+## Registro de transições (R24)
+
+| Task | De → Para | Quando | Por quem |
+|---|---|---|---|
+
+## Rodada a rodada
+*(Regravada pelo `kanban.ps1` ao fim de cada rodada: uma linha por rodada de agente — quando, item, papel, modelo, tokens, tempo —, a mais nova primeiro.)*
+
+## Espera de comando
+*(Regravada pelo `kanban.ps1`: por Task, o tempo que o `verify.ps1` passou rodando build, teste, lint e mutação — focused · full · mutation —, quanto do relógio foi espera, não raciocínio.)*
 ```
 
 ## Como gravar
