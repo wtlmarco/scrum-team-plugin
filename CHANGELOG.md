@@ -13,6 +13,27 @@
 
 ---
 
+## v3.59.2 — 2026-11-14
+
+**Branch:** `fix/v3.59.2` a partir de `develop` (`b63e828`, v3.59.1 mesclada) · **Processo:** addendum v3.59.2 (R12: a consolidação dos documentos vivos é conferida, chega aos donos e é versionada)
+
+Origem: pergunta do stakeholder em 14/11/2026, "toda tarefa gera a atualização do SDD? Quem faz? Sempre a documentação está atualizada?", e depois "faça as três correções no plugin". Medido no garden:
+- a consolidação do sprint 5 está "feita" desde 09/11, mas `architecture.md`, `data-model.md` e os ADRs 0001 e 0011 continuam sem commit;
+- a parte do `api-spec.md` entrou no commit da T-079;
+- os 4 pedidos ao PO nunca foram aplicados. O `requirements.md` não muda desde 31/10, e o RF-MAN-02 ainda diz "um canteiro por vez", com o manejo em vários canteiros construído no sprint 5.
+
+A Review conferia só a linha `**Estado:** feita`.
+
+1. **"Feita" conferida no git.** O `run.ps1 next` lê a tabela `## Aplicado pelo Arquiteto`, no modelo novo `roles/architect/templates/docs-consolidation.md`. Cada documento citado precisa ter alteração pendente ou commit desde a 1ª linha do `run-log.md`. Sem mudança, o Arquiteto volta uma vez para aplicar ou mover para `## Sem mudança`; depois disso, vira pendência da Review. Um registro fora do modelo também leva o Arquiteto a reescrevê-lo, uma vez.
+2. **Pedidos aos donos disparados.** A tabela `## Pedidos aos donos` leva cada dono (PO, UX, SM, QA) a ser disparado uma vez, com os documentos dele. "Aplicado" quer dizer que a impressão do documento (`git hash-object`) mudou desde que o pedido apareceu. O pedido não aplicado vai ao formulário da Review e ao `run-log.md`.
+3. **Commit próprio da consolidação.** O script versiona só os documentos das duas tabelas, nunca `.team-project/`, em `docs(sdd): consolidação dos documentos vivos do sprint <n>`, separado dos commits das Tasks. O Arquiteto e os donos não fazem commit.
+- O estado mecânico fica em `sprints/<n>/.docs-check.json` (do script), e cada passo acontece uma vez só.
+- Testes: conferências +7 (fora do modelo, documento sem mudança, PO, SM, commit com a pendência na Review, sem repetição).
+
+Não muda: a consolidação continua uma vez por sprint, no fim do `sprint run` (o SDD fica até um sprint atrás do código durante o sprint), e a trilha `fix` segue o ciclo de antes.
+
+---
+
 ## v3.59.1 — 2026-11-14
 
 **Branch:** `fix/v3.59.1` a partir de `develop` (`dc583d0`, v3.59.0 mesclada) · **Processo:** sem mudança de regra (correção do registro de agentes e do `verify` full)
