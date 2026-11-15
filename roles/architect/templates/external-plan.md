@@ -24,7 +24,7 @@ Planeje na ordem da tabela. Quando uma Task depende de outra deste pacote, use o
 ## Para cada Task
 
 1. Leia a ficha `tasks/<T-ID>-ficha.md` — as decisões comuns da História, **Código a ler**, **Fontes**, **Nomes comuns** e **Arquivos previstos**, escritos pelo Arquiteto na Planning.
-2. Do código e das fontes, leia em `files/` o trecho que a ficha aponta (`caminho:linha`, `§seção`), não o arquivo inteiro. Os caminhos em `files/` são os do projeto; `files/plugin/` são arquivos do plugin (como `standards/`).
+2. Os trechos que a ficha aponta já estão no fim dela (**Trechos que a ficha aponta**), com o número da linha **de hoje** — as linhas escritas na ficha são as da Planning, e o código pode ter andado desde então: cite as linhas dos trechos, não as da ficha. Trecho marcado com ⚠ mudou desde a Planning: confira se ainda é o que a Task precisa. O que faltar, leia em `files/` (os arquivos inteiros, de hoje), no trecho. Os caminhos em `files/` são os do projeto; `files/plugin/` são arquivos do plugin (como `standards/`).
 3. Escreva o plano no modelo `context/implementation-plan.md` (o template enxuto e as "Regras do formato").
 4. Contexto, quando existir: `context/architect-context.md` (arquitetura do projeto), `context/environment.md` (ambiente medido neste sprint), `context/scenarios/` (cenários executáveis da QA) e `context/stories/` (a História e os critérios de aceite).
 

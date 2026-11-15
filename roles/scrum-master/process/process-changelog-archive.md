@@ -8,6 +8,37 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.57 — O sprint real: protocolo de espera, sessão medida e reiniciada pelo teto, suíte só pelo verify, Arquiteto com contexto enxuto e o que o sprint 5 do garden não tinha onde pôr (SM + Arquiteto + Dev + QA) — 07/11/2026 · *com addenda v3.57.1 a v3.57.3*
+
+**Instrução** (stakeholder, 07/11 a 10/11/2026: relatório intermediário do sprint 5 do garden e `decisoes-plugin-report.md` → v3.57.0; `note.md` itens 1 a 13 → v3.57.1; ocorrências do sprint 5, itens 14 a 24, com as decisões de 09/11 por formulário → v3.57.2; o `plugin-report.md` final do sprint 5 conferido contra a 3.57.2, com as decisões de 10/11 por formulário → v3.57.3, "podemos já fazer todos").
+**Medido (sprint 5 do garden, plugin 3.57.0):** sessão principal 364 M tokens (46,7 % do total, 8,5× o sprint anterior), 56 mil → 409 mil de contexto numa sessão; executor de Task com 83 % das rodadas em ≤ 3 chamadas; Arquiteto em Opus 37,6 % de papéis + `operator`, planos refeitos inteiros; 3 suítes completas ao mesmo tempo numa Task; 11 entradas fora da Planning (+35 % da capacidade); 6 das 11 lições de GAP de plugin eram Tasks sem caminho no `verify`/`close`; `operator` sem chamador em 27 %.
+**Classificação:** regra (G14 da suíte; G7 do chamador; regras 33, 34 e 35 do plano; teto da sessão) · formato (`**Aceite:**`, `**Verificação:**`, `Chamador:`) · instrumento (`run.ps1`, `verify.ps1`, `quality.ps1`, `kanban.ps1`, `close.ps1`, `plan.ps1`, `accept.ps1`, hooks) · ritual (o formulário da entrada fora da Planning traz a conta).
+
+### O que mudou
+- **Espera** (v3.57.0–v3.57.1): seis regras em `sprint-run.md` §Protocolo de espera; comando de terceiros com prazo (`Invoke-Bounded`); o watcher confere por `run.ps1 wait -For`.
+- **Sessão** (v3.57.2): medida a cada Task fechada (`consumption.ps1 -Session`); acima de `run.sessionContextCap` sem agente em voo, o `next` manda reiniciar e a G20 aceita o veredito.
+- **Dev e executor** (v3.57.2): suíte e cobertura só pelo `verify.ps1` (G14); evidência que falta vai ao cartão. **v3.57.3:** `verify.ps1 -Kill` encerra o que o verify da Task iniciou; a rodada nova encerra o órfão da anterior.
+- **Arquiteto** (v3.57.1–v3.57.3): envelope de medidas (33) e linha `**Aceite:**` (34) reprovam; GAP decidido pelo recorte e plano mudado por delta; **regra 35** — `**Verificação:** dispensada — <motivo>` (o `close` não exige o full; o QA revisa no portão) ou ``comando — `<comando>` `` (o `verify` o roda como o passo `plano`).
+- **QA** (v3.57.3): a Q11 reaproveita a cobertura do verify full da mesma árvore; "Unknown% / 0 de 0" é "não medido", não reprovação.
+- **SM** (v3.57.3): a entrada fora da Planning leva ao formulário a linha de `kanban.ps1 -Capacity -Add <est>`; o R4 repete a conta. Todo pedido ao `operator` começa por `Chamador: <papel> <ID>` (G7), gravado no consumo.
+
+### Por quê
+O plugin foi escrito para o caminho em que tudo dá certo; o sprint real teve emulador lento, processo que não termina, notebook que dorme, plano que muda no meio e Tasks que não cabiam em nenhum caminho oficial. Cada mudança dá um caminho declarado ao que antes virava GAP de processo, parada ou custo escondido.
+
+### Conflitos com o processo vigente
+A regra 18 continua: com `**Verificação:** dispensada`, a mutação sai por `sem prova: <motivo>`. A G14 não libera comando novo com o `Set-Location`: só lê o caminho a partir da pasta. O estouro de capacidade continua decisão do stakeholder; a conta só fica visível.
+
+### Como saberemos que funcionou
+Sprint 6 do garden (`validacoes-sprint-6.md`): sessão principal abaixo de 1/3 do total; nenhuma suíte duplicada nem `taskkill` à mão; Arquiteto abaixo de 25 % de papéis + `operator`; nenhum GAP de processo por Task sem caminho no `verify`; `operator` com chamador em 100 %; entradas fora da Planning com a conta no formulário.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.54 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.57, v3.56, v3.55 | ✅ |
+| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.57.0 a v3.57.3 | ✅ |
+
+---
+
 ## v3.56 — A lição de cada GAP no lugar certo: origem e destino na decisão, conhecimento do projeto que atravessa sprints, armadilhas da stack e o SM atualizando o lado do projeto no fechamento (SM + Arquiteto + Dev + QA) — 06/11/2026
 
 **Instrução** (stakeholder, 06/11/2026, `melhorias/plano-v3.56.0.md` aprovado com as recomendações do §9: SM mecânico no fechamento, teto de 15 KB, P-r2 do benchmark com a 3.56.0, os três defeitos abertos do plugin nesta versão). Implementar antes de retomar o garden no sprint 6.

@@ -1292,6 +1292,121 @@ function Format-SprintCapacity($C) {
     if ($C.Add -gt 0) { $s += " · com a entrada (+$(& $f $C.Add)): $(& $f $C.With) ($(& $sg $C.WithPct))" }
     return $s
 }
+# ---------- v3.60.0 · prazo, previsão e burndown (pedido do stakeholder, 15/11/2026) ----------
+# "Adicionar no Kanban a estimativa de tempo de cada tarefa para finalizar e a estimativa de tempo do Sprint e um farol No
+# Prazo, Atrasado e Adiantado" e "um gráfico Burndown visual". O ritmo é MEDIDO no próprio sprint: horas de relógio desde a
+# abertura ÷ unidades estimadas já prontas (✅). Cada parte aberta leva estimativa × ritmo; as em construção descontam o que
+# já correram desde que entraram em 🟨; somadas na ordem da fila (R1: uma por vez), dão a previsão de cada uma e a do sprint.
+# O prazo, na ordem: a data de fim da Janela (Linha de base) · a "Duração do sprint" do README (N dias ou semanas) · com a
+# unidade em dias, a própria estimativa planejada na abertura (o garden não tem data fixa: 13,75 d desde a abertura). Sem
+# nenhum, só a previsão, sem farol. Farol: previsão depois do prazo → Atrasado; folga acima de 15 % da janela → Adiantado;
+# senão No prazo. Sem parte pronta ainda, não há ritmo: Atrasado só se o prazo passou ou mais de 25 % dele correu.
+$script:ScheduleAheadPct = 0.15
+$script:ScheduleNoPaceLatePct = 0.25
+$script:ScheduleMaxDays = 60
+function ConvertTo-ScheduleNumber([string]$V) { $m = [regex]::Match([string]$V, '-?\d+(?:[.,]\d+)?'); if ($m.Success) { return [double]($m.Value -replace ',', '.') }; return $null }
+function ConvertTo-ScheduleDate([string]$V) {
+    $m = [regex]::Match([string]$V, '(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}))?')
+    if ($m.Success) {
+        $s = $m.Groups[1].Value + $(if ($m.Groups[2].Success) { ' ' + $m.Groups[2].Value } else { '' })
+        try { return [datetime]::ParseExact($s, [string[]]@('yyyy-MM-dd HH:mm', 'yyyy-MM-dd'), [Globalization.CultureInfo]::InvariantCulture, 'None') } catch { }
+    }
+    $m = [regex]::Match([string]$V, '\b(\d{2})/(\d{2})/(\d{4})\b')
+    if ($m.Success) { try { return (New-Object DateTime ([int]$m.Groups[3].Value), ([int]$m.Groups[2].Value), ([int]$m.Groups[1].Value)) } catch { } }
+    return $null
+}
+# Pontos da Série: quando e a estimativa restante, na ordem do arquivo. Timed = a célula tinha hora.
+function Get-SeriesPoints([string]$Text) {
+    $sec = Get-Section $Text '^##\s+S[ée]rie'; if (-not $sec) { return @() }
+    $t = @(Get-Tables $sec)[0]; if (-not $t) { return @() }
+    $di = Find-Col $t 'Data'; $ri = Find-Col $t 'Est. restante'
+    if ($di -lt 0 -or $ri -lt 0) { return @() }
+    $out = @()
+    foreach ($r in $t.Rows) {
+        $at = ConvertTo-ScheduleDate (Get-Cell $r $di); $rem = ConvertTo-ScheduleNumber (Get-Cell $r $ri)
+        if ($at -and $null -ne $rem) { $out += [pscustomobject]@{ At = $at; Rem = $rem; Timed = ((Get-Cell $r $di) -match '\d{2}:\d{2}') } }
+    }
+    return $out
+}
+# Quando cada Task entrou em 🟨 pela última vez (Registro de transições) — o que ela já correu na construção.
+function Get-BuildStarts([string]$Text) {
+    $h = @{}; $sec = Get-Section $Text '^##\s+Registro de transi'; if (-not $sec) { return $h }
+    foreach ($t in @(Get-Tables $sec)) { foreach ($r in $t.Rows) {
+        $ids = @([regex]::Matches((Get-Cell $r 0), $script:TaskIdRe)); if ($ids.Count -ne 1) { continue }
+        if (((Get-Cell $r 1) -split '→')[-1].Trim() -ne $E.Build) { continue }
+        $at = ConvertTo-ScheduleDate (Get-Cell $r 2); if ($at) { $h[$ids[0].Value] = $at } } }
+    return $h
+}
+function Get-SprintSchedule([string]$Root, [string]$S, $Now = $null) {
+    # TEAM_SCHEDULE_NOW ("aaaa-mm-dd hh:mm"): o "agora" fixo dos testes (run-check-tests.ps1); fora deles, o relógio.
+    if (-not $Now) { $Now = if ($env:TEAM_SCHEDULE_NOW) { [datetime]::ParseExact($env:TEAM_SCHEDULE_NOW, 'yyyy-MM-dd HH:mm', [Globalization.CultureInfo]::InvariantCulture) } else { Get-Date } }
+    if (-not (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md'))) { return $null }
+    $todoMk = [char]::ConvertFromUtf32(0x2B1C); $redMk = [char]::ConvertFromUtf32(0x1F534)
+    $tasks = @(Get-SprintTasks $S)
+    $rec = Get-RecordPath $S; $recT = if (Test-Path -LiteralPath $rec) { Read-Text $rec } else { '' }
+    $ch = Get-ChartPath $S; $chT = if (Test-Path -LiteralPath $ch) { Read-Text $ch } else { '' }
+    $pts = @(Get-SeriesPoints $recT)
+    $base = Get-Section $chT '^##\s+Linha de base'
+    $jan = if ($base) { [string](Get-LabelValue $base 'Janela') } else { '' }
+    $jm = [regex]::Match($jan, '^(.*?)(?:→|->)(.*)$')
+    $jStart = ConvertTo-ScheduleDate $(if ($jm.Success) { $jm.Groups[1].Value } else { $jan })
+    $jEnd = if ($jm.Success) { ConvertTo-ScheduleDate $jm.Groups[2].Value } else { $null }
+    # Início: a abertura na Série (a 1ª linha com hora, se a de abertura só tem a data), senão o começo da Janela.
+    $start = $null
+    if ($pts.Count) { $start = $pts[0].At; if (-not $pts[0].Timed) { $tm = @($pts | Where-Object { $_.Timed -and $_.At.Date -eq $pts[0].At.Date }) | Select-Object -First 1; if ($tm) { $start = $tm.At } } }
+    elseif ($jStart) { $start = $jStart }
+    if (-not $start) { return $null }
+    $est = { param($t) if ($null -ne $t.Est) { [double]$t.Est } else { 0.0 } }
+    $open = @($tasks | Where-Object { $_.Mark -ne $E.Done })
+    $doneU = [double](@($tasks | Where-Object { $_.Mark -eq $E.Done } | ForEach-Object { & $est $_ }) | Measure-Object -Sum).Sum
+    $remU = [double](@($open | ForEach-Object { & $est $_ }) | Measure-Object -Sum).Sum
+    $planned = if ($pts.Count) { $pts[0].Rem } else { $doneU + $remU }
+    # Prazo
+    $rd = Join-Path $Root '.team-project/README.md'; $rt = if (Test-Path -LiteralPath $rd) { Read-Text $rd } else { '' }
+    $unit = [string](Get-LabelValue $rt 'Unidade de estimativa')
+    $unitName = if ($unit -match '(?i)\bdias?\b') { 'dias' } elseif ($unit -match '(?i)ponto') { 'pontos' } else { 'unidades' }
+    $end = $null; $src = ''
+    if ($jEnd -and $jEnd -gt $start) { $end = if ($jEnd.TimeOfDay.TotalMinutes -eq 0) { $jEnd.AddDays(1) } else { $jEnd }; $src = 'janela' }
+    else {
+        $dm = [regex]::Match([string](Get-LabelValue $rt 'Duração do sprint'), '(?i)(\d+)\s*(semana|dia)')
+        if ($dm.Success) { $k = [int]$dm.Groups[1].Value; $end = $start.Date.AddDays($(if ($dm.Groups[2].Value -match '(?i)semana') { 7 * $k } else { $k })); $src = 'duração' }
+        elseif ($unit -match '(?i)\bdias?\b' -and $planned -gt 0) { $end = $start.AddDays($planned); $src = 'estimativa' }
+    }
+    # Ritmo e previsão, na ordem da fila: em construção/teste · sendo planejadas · na fila · paradas no fim.
+    $elapsedH = [Math]::Max(0.0, ($Now - $start).TotalHours)
+    $pace = if ($doneU -gt 0 -and $elapsedH -gt 0) { $elapsedH / $doneU } else { $null }
+    $bs = Get-BuildStarts $recT
+    $order = @($open | Where-Object { $_.Mark -eq $E.Build -or $_.Mark -eq $E.QA }) + @($open | Where-Object { $_.Mark -eq $E.Plan }) + @($open | Where-Object { -not $_.Mark -or $_.Mark -eq $todoMk }) + @($open | Where-Object { $_.Mark -eq $redMk })
+    $eta = @{}; $t = $Now
+    foreach ($tk in $order) {
+        $red = ($tk.Mark -eq $redMk)
+        if ($null -eq $pace) { $eta[$tk.Id] = [pscustomobject]@{ Hours = $null; Finish = $null; Over = $false; Red = $red }; continue }
+        $dur = (& $est $tk) * $pace; $left = $dur; $over = $false
+        if (($tk.Mark -eq $E.Build -or $tk.Mark -eq $E.QA) -and $bs.ContainsKey($tk.Id)) { $spent = ($Now - $bs[$tk.Id]).TotalHours; $left = [Math]::Max(0.0, $dur - $spent); $over = ($spent -gt $dur) }
+        $t = $t.AddHours($left)
+        $eta[$tk.Id] = [pscustomobject]@{ Hours = $left; Finish = $t; Over = $over; Red = $red }
+    }
+    $proj = if ($null -ne $pace) { $t } else { $null }
+    $state = if (-not $open.Count) { 'pronto' } elseif (-not $end) { 'sem prazo' } elseif ($null -eq $pace) {
+        if ($Now -gt $end -or ($elapsedH / [Math]::Max(0.01, ($end - $start).TotalHours)) -gt $script:ScheduleNoPaceLatePct) { 'atrasado' } else { 'sem ritmo' }
+    } elseif ($proj -gt $end) { 'atrasado' } elseif (($end - $proj).TotalHours -gt $script:ScheduleAheadPct * ($end - $start).TotalHours) { 'adiantado' } else { 'no prazo' }
+    # Dias do burndown: do dia 0 ao último entre o prazo e hoje (até $ScheduleMaxDays). Real até hoje, com o último valor do
+    # dia (o de antes vale nos dias sem evento); ideal do planejado a zero no último dia do prazo.
+    $today = [int]($Now.Date - $start.Date).TotalDays
+    $endDay = if ($end) { [int]($end.AddSeconds(-1).Date - $start.Date).TotalDays } else { $null }
+    $last = [Math]::Min($script:ScheduleMaxDays, [Math]::Max($today, $(if ($null -ne $endDay) { $endDay } else { 0 })))
+    $days = @(); $cur = $planned
+    for ($d = 0; $d -le $last; $d++) {
+        $day = $start.Date.AddDays($d)
+        foreach ($p in $pts) { if ($p.At.Date -le $day) { $cur = $p.Rem } }
+        $ideal = if ($null -ne $endDay -and $endDay -gt 0) { [Math]::Max(0.0, $planned * (1 - $d / $endDay)) } elseif ($null -ne $endDay) { 0.0 } else { $null }
+        # Hoje vale o restante do quadro (a Série pode atrasar em relação ao quadro; no garden S6 ela marcava 0 com 2 abertas).
+        $days += [pscustomobject]@{ Day = $d; Date = $day; Real = $(if ($d -lt $today) { $cur } elseif ($d -eq $today) { $remU } else { $null }); Ideal = $ideal }
+    }
+    return [pscustomobject]@{ Start = $start; End = $end; EndSource = $src; Unit = $unitName; Planned = $planned; Done = $doneU; Remaining = $remU; ElapsedH = $elapsedH
+                              PaceH = $pace; Projected = $proj; State = $state; Eta = $eta; Days = $days; Now = $Now }
+}
+
 # Arquivo do sprint com o Kanban, a Série, o Registro de transições e o controle (v3.51, G1): kanban.md; sprint aberto
 # antes da v3.51 tem burndown.md (o mesmo conteúdo, sem o Kanban). Devolve o que existe, o kanban.md primeiro.
 function Get-ChartPath([string]$SprintDir) {
@@ -1307,9 +1422,18 @@ function Get-ControlSection([string]$SprintDir, [string]$Board, [string]$Heading
     return $null
 }
 
-# Registro de transições (R24): vive no kanban.md (v3.51) ou no burndown.md (v3.44.1) do sprint; sprint aberto antes disso o tem no sprint-backlog.md. $null se nenhum.
+# v3.60.0 (pedido do stakeholder, 15/11/2026: o kanban.md para quem acompanha; o registro técnico no consumption.md): a
+# Série e o Registro de transições vivem no consumption.md do sprint quando ele os tem — o kanban.ps1 os leva para lá no
+# sprint run. Antes disso (Planning, sprint anterior à v3.60), no kanban.md ou no burndown.md. Quem lê ou grava a Série e o
+# Registro usa este caminho; o controle e a linha de base continuam no kanban.md (Get-ChartPath).
+function Get-RecordPath([string]$SprintDir) {
+    $c = Join-Path $SprintDir 'consumption.md'
+    if ((Test-Path -LiteralPath $c) -and ((Read-Text $c) -match '(?m)^##\s+(S[ée]rie|Registro de transi)')) { return $c }
+    return (Get-ChartPath $SprintDir)
+}
+# Registro de transições (R24): vive no consumption.md (v3.60), no kanban.md (v3.51) ou no burndown.md (v3.44.1) do sprint; sprint aberto antes disso o tem no sprint-backlog.md. $null se nenhum.
 function Get-TransitionLog([string]$SprintDir, [string]$Board) {
-    $bd = Get-ChartPath $SprintDir
+    $bd = Get-RecordPath $SprintDir
     if (Test-Path -LiteralPath $bd) { $s = Get-Section (Read-Text $bd) '^##\s+Registro de transi'; if ($s) { return $s } }
     if ($Board) { return Get-Section $Board '^##\s+Registro de transi' }
     return $null
@@ -1486,7 +1610,9 @@ function Get-Ficha([string]$Root, [string]$Sprint, [string]$Id) {
         # v3.53.2: **Arquivos previstos:** <n> — quantos arquivos (produção e teste) a Task deve mudar; $null sem a linha.
         $pm = [regex]::Match($fm.Value, '\*\*Arquivos previstos:\*\*\s*(\d+)')
         $planned = if ($pm.Success) { [int]$pm.Groups[1].Value } else { $null }
-        return [pscustomobject]@{ Path = $bp; Common = $(if ($dm.Success) { $dm.Value.TrimEnd() } else { '' }); Body = $fm.Value.TrimEnd(); Read = $read; Sources = $src; Names = $names; Planned = $planned }
+        # v3.60.0: as mesmas linhas, com as faixas (CodeRefs) e as seções (SourceRefs) — o run.ps1 next copia os trechos.
+        return [pscustomobject]@{ Path = $bp; Common = $(if ($dm.Success) { $dm.Value.TrimEnd() } else { '' }); Body = $fm.Value.TrimEnd(); Read = $read; Sources = $src; Names = $names; Planned = $planned
+                                  CodeRefs = @(Get-FichaCodeRefs (& $label 'C[óo]digo a ler')); SourceRefs = @(Get-FichaSourceRefs (& $label 'Fontes')) }
     }
     return $null
 }
@@ -1500,6 +1626,202 @@ function Resolve-FichaPath([string]$Root, [string]$Rel) {
 # Caminhos da ficha que não existem (Código a ler + Fontes). v3.53.2: o run.ps1 next confere antes de disparar o Arquiteto.
 function Get-FichaMissing([string]$Root, $Ficha) {
     return @(@($Ficha.Read) + @($Ficha.Sources) | Where-Object { $_ -and -not (Test-Path -LiteralPath (Resolve-FichaPath $Root $_)) })
+}
+
+# ---------- v3.60.0 · a ficha leva os trechos, o plano não explora ----------
+# Medido no garden (S6, H-M, 3 planos, US$ 9,02): 111 de 125 chamadas do Arquiteto e 84 % do custo foram exploração antes do
+# primeiro Write — ~75 buscas e leituras em pedaços do código que a Planning já tinha medido (o breakdown trazia as linhas).
+# Cada chamada reenvia a conversa inteira, então o custo é chamadas × contexto. Agora a Planning aponta faixas e o run.ps1
+# next copia os trechos para o recorte: o Arquiteto lê uma vez e escreve. Simulação calibrada nas 3 conversas: ≈ US$ 5,7
+# (4,4 a 6,9) contra 9,0; um Arquiteto para a História inteira, mesmo com os trechos, ficou 25 a 35 % acima disso.
+$script:FichaLineWindow = 40      # `caminho:linha` sem fim: 40 linhas, a partir de 5 antes da linha citada
+$script:FichaWholeMaxLines = 150  # `caminho` sem linha nem §: o arquivo inteiro só até este tamanho
+$script:FichaExcerptMaxKb = 60    # teto dos trechos no recorte; o que passa fica como nota, para ler no trecho
+
+# Linhas de **Código a ler:** — `caminho:a-b` (faixa), `caminho:a` (janela de $FichaLineWindow), `caminho` (sem faixa); na
+# mesma linha, `:c-d` e `:c` acrescentam faixas ao mesmo arquivo. Spans: @(de, até), até = 0 na janela.
+function Get-FichaCodeRefs([string]$Label) {
+    $out = @()
+    foreach ($line in ($Label -split "`r?`n")) {
+        $toks = @([regex]::Matches($line, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value.Trim() })
+        if (-not $toks.Count) { continue }
+        $m = [regex]::Match(((($toks[0] -replace '\\', '/') -replace '^\./', '') -replace '#.*$', ''), '^(.+?)(?::(\d+)(?:-(\d+))?)?$')
+        if (-not $m.Success -or $m.Groups[1].Value -match '^:') { continue }
+        $spans = @()
+        if ($m.Groups[2].Success) { $spans += , @([int]$m.Groups[2].Value, $(if ($m.Groups[3].Success) { [int]$m.Groups[3].Value } else { 0 })) }
+        foreach ($t in @($toks | Select-Object -Skip 1)) {
+            $x = [regex]::Match($t, '^:(\d+)(?:-(\d+))?$')
+            if ($x.Success) { $spans += , @([int]$x.Groups[1].Value, $(if ($x.Groups[2].Success) { [int]$x.Groups[2].Value } else { 0 })) }
+        }
+        $wm = [regex]::Match($line, '\s[—–]\s(.*)$')
+        $out += [pscustomobject]@{ Path = $m.Groups[1].Value; Spans = $spans; Sections = @(); Why = $(if ($wm.Success) { $wm.Groups[1].Value.Trim() } else { '' }) }
+    }
+    return $out
+}
+# Itens de **Fontes:** (separados por " · " ou linha) com caminho: `doc.md` §2.5, §2–§7, §"Título da seção". Item sem
+# caminho (regra da História, nome de classe) fica fora, como no Get-Ficha.
+function Get-FichaSourceRefs([string]$Label) {
+    $out = @()
+    foreach ($item in ($Label -split '\s·\s|\r?\n')) {
+        $tm = [regex]::Match($item, '`([^`]+)`')
+        if (-not $tm.Success) { continue }
+        $p = (((($tm.Groups[1].Value.Trim() -replace '\\', '/') -replace '^\./', '') -replace '#.*$', '') -replace ':\d+(-\d+)?$', '')
+        if ($p -notmatch '/|\.[A-Za-z0-9]{1,6}$') { continue }
+        $secs = @()
+        foreach ($sm in [regex]::Matches($item.Substring($tm.Index + $tm.Length), '§\s*["“]([^"”]+)["”]|§\s*(\d[\w.]*)(?:\s*[–-]\s*§?\s*(\d[\w.]*))?')) {
+            if ($sm.Groups[1].Success) { $secs += [pscustomobject]@{ From = $sm.Groups[1].Value.Trim(); To = $null; Title = $true } }
+            else { $secs += [pscustomobject]@{ From = $sm.Groups[2].Value.TrimEnd('.'); To = $(if ($sm.Groups[3].Success) { $sm.Groups[3].Value.TrimEnd('.') } else { $null }); Title = $false } }
+        }
+        $out += [pscustomobject]@{ Path = $p; Spans = @(); Sections = $secs; Why = '' }
+    }
+    return $out
+}
+function Read-FileLines([string]$Path) {
+    $ls = @((Read-Text $Path) -split "`r?`n")
+    if ($ls.Count -gt 1 -and $ls[-1] -eq '') { $ls = @($ls | Select-Object -First ($ls.Count - 1)) }
+    return , $ls
+}
+# Faixa (1-based, inclusiva) da seção de um markdown: o título que começa pelo número (§2 não casa 2.5) ou que contém o texto;
+# vai até o próximo título de nível igual ou maior (com To, até o fim da seção To). Títulos dentro de bloco de código não contam.
+function Get-MdSectionSpan([string[]]$Lines, $Sec) {
+    $heads = @(); $fence = $false
+    for ($i = 0; $i -lt $Lines.Count; $i++) {
+        if ($Lines[$i] -match '^\s*(```|~~~)') { $fence = -not $fence; continue }
+        if (-not $fence -and $Lines[$i] -match '^(#{1,6})\s+(.*)$') { $heads += [pscustomobject]@{ I = $i; Level = $Matches[1].Length; Text = ($Matches[2].Trim() -replace '^§\s*', '') } }
+    }
+    $find = { param($key, $isTitle, $after)
+        foreach ($h in @($heads | Where-Object { $_.I -ge $after })) {
+            if ($isTitle) { if ($h.Text.IndexOf($key, [StringComparison]::OrdinalIgnoreCase) -ge 0) { return $h } }
+            elseif ($h.Text -match ('^' + [regex]::Escape($key) + '(?!\d|\.\d)')) { return $h }
+        }
+        return $null }
+    $endOf = { param($h) $nx = @($heads | Where-Object { $_.I -gt $h.I -and $_.Level -le $h.Level }) | Select-Object -First 1; if ($nx) { $nx.I } else { $Lines.Count } }
+    $h1 = & $find $Sec.From $Sec.Title 0
+    if (-not $h1) { return $null }
+    $last = $h1
+    if ($Sec.To) { $h2 = & $find $Sec.To $false $h1.I; if ($h2) { $last = $h2 } }
+    return , @(($h1.I + 1), (& $endOf $last))
+}
+# As linhas da ficha são as do código na Planning; até o plano da Task, as Tasks de Histórias anteriores já mudaram o código
+# (no garden, S6: 6 de 60 faixas tinham andado — `migracoes.ts:1131` 80 linhas, pela T-089; `plantio-form.page.ts` 24, pela
+# T-087). O mapa traduz a linha da base (commit do início do sprint, ou o da última correção da ficha) para a de hoje, pelo
+# `git diff -U0 <base>` contra o disco. $null sem base, sem git ou sem mudança no arquivo: a linha vale como está.
+function Get-LineMap([string]$Root, [string]$Base, [string]$Path) {
+    if (-not $Base -or $Path -match '^(standards/|\$\{CLAUDE_PLUGIN_ROOT\})') { return $null }
+    $ErrorActionPreference = 'Continue'
+    $d = @(& git -C $Root diff -U0 --no-color --no-ext-diff $Base -- ":(literal)$Path" 2>$null)
+    if ($LASTEXITCODE -ne 0 -or -not $d.Count) { return $null }
+    $hunks = @(foreach ($h in $d) {
+        $m = [regex]::Match($h, '^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@')
+        if ($m.Success) { [pscustomobject]@{ Os = [int]$m.Groups[1].Value; Oc = $(if ($m.Groups[2].Success) { [int]$m.Groups[2].Value } else { 1 }); Nc = $(if ($m.Groups[4].Success) { [int]$m.Groups[4].Value } else { 1 }) } } })
+    if (-not $hunks.Count) { return $null }
+    $by = @(& git -C $Root log --format=%s "$Base..HEAD" -- ":(literal)$Path" 2>$null | ForEach-Object { [regex]::Matches($_, $script:TaskIdRe) | Select-Object -First 1 | ForEach-Object { $_.Value } } | Select-Object -Unique)
+    return [pscustomobject]@{ Hunks = $hunks; By = $by }
+}
+# Faixa da base → faixa de hoje. Hunk antes da faixa desloca; hunk que a toca a marca alterada (o trecho copiado é o de hoje,
+# com aviso). Inserção pura (-n,0) fica depois da linha n.
+function Convert-FichaSpan($Map, [int]$A, [int]$B) {
+    if (-not $Map) { return [pscustomobject]@{ From = $A; To = $B; Shift = 0; Changed = $false } }
+    $shift = 0; $grow = 0; $hit = $false
+    foreach ($h in $Map.Hunks) {
+        $before = if ($h.Oc -eq 0) { $h.Os -lt $A } else { ($h.Os + $h.Oc - 1) -lt $A }
+        $inside = if ($h.Oc -eq 0) { $h.Os -ge $A -and $h.Os -lt $B } else { $h.Os -le $B -and ($h.Os + $h.Oc - 1) -ge $A }
+        if ($before) { $shift += $h.Nc - $h.Oc } elseif ($inside) { $hit = $true; $grow += $h.Nc - $h.Oc }
+    }
+    $from = $A + $shift
+    return [pscustomobject]@{ From = $from; To = [Math]::Max($from, $B + $shift + $grow); Shift = $shift; Changed = $hit }
+}
+# Faixas de **Código a ler:** que passam do fim do arquivo (ficha velha ou linha errada), já traduzidas para hoje: o run.ps1
+# next pede a correção da ficha antes do plano, como para o caminho que não existe.
+function Get-FichaBadRanges([string]$Root, $Ficha, [string]$Base = '') {
+    $bad = @()
+    foreach ($r in @($Ficha.CodeRefs)) {
+        $fp = Resolve-FichaPath $Root $r.Path
+        if (-not @($r.Spans).Count -or -not (Test-Path -LiteralPath $fp -PathType Leaf)) { continue }
+        $n = (Read-FileLines $fp).Count; $map = Get-LineMap $Root $Base $r.Path
+        foreach ($s in @($r.Spans)) { $c = Convert-FichaSpan $map $s[0] $(if ($s[1]) { $s[1] } else { $s[0] }); if ($c.From -gt $n) { $bad += "$($r.Path):$($s[0])$(if ($s[1]) { "-$($s[1])" }) ($n linhas)" } }
+    }
+    return $bad
+}
+# Os trechos que a ficha aponta, com o número da linha, para o recorte do Arquiteto do plano. Um bloco por arquivo, na
+# ordem da ficha, faixas sobrepostas juntas. '' quando a ficha não aponta nada.
+function Get-FichaExcerpts([string]$Root, $Ficha, [string]$Base = '') {
+    $order = New-Object System.Collections.Generic.List[string]; $by = @{}
+    foreach ($r in @($Ficha.CodeRefs) + @($Ficha.SourceRefs)) {
+        if (-not $r -or -not $r.Path) { continue }
+        if (-not $by.ContainsKey($r.Path)) { $order.Add($r.Path); $by[$r.Path] = [pscustomobject]@{ Spans = @(); Sections = @(); Why = @(); Whole = $false } }
+        $e = $by[$r.Path]; $e.Spans += @($r.Spans); $e.Sections += @($r.Sections); if ($r.Why) { $e.Why += $r.Why }
+        if (-not @($r.Spans).Count -and -not @($r.Sections).Count) { $e.Whole = $true }
+    }
+    if (-not $order.Count) { return '' }
+    $cap = $script:FichaExcerptMaxKb * 1024; $used = 0; $blocks = @(); $notes = @()
+    foreach ($path in $order) {
+        $e = $by[$path]; $fp = Resolve-FichaPath $Root $path
+        if (-not (Test-Path -LiteralPath $fp -PathType Leaf)) { $notes += "- ``$path`` — não existe"; continue }
+        $ls = Read-FileLines $fp; $n = $ls.Count; $spans = @(); $miss = @()
+        # v3.60.0: as linhas da ficha são as da base; o mapa as traz para hoje. Seção (§) se acha pelo título, sem mapa.
+        $map = if (@($e.Spans).Count) { Get-LineMap $Root $Base $path } else { $null }
+        $moved = @(); $changed = @()
+        foreach ($s in @($e.Spans)) {
+            $c = Convert-FichaSpan $map $s[0] $(if ($s[1]) { $s[1] } else { $s[0] })
+            $tag = "$($s[0])$(if ($s[1]) { "-$($s[1])" })"
+            if ($c.Changed) { $changed += $tag } elseif ($c.Shift) { $moved += "$tag → $($c.From)$(if ($s[1]) { "-$($c.To)" })" }
+            if ($c.From -gt $n) { $miss += "faixa $tag fora do arquivo ($n linhas)"; continue }
+            if ($s[1]) { $spans += , @([Math]::Max(1, $c.From), [Math]::Min($n, $c.To)) }
+            else { $a = [Math]::Max(1, $c.From - 5); $spans += , @($a, [Math]::Min($n, [Math]::Max($a + $script:FichaLineWindow - 1, $c.To))) }
+        }
+        $who = if ($map -and @($map.By).Count) { " (por $(@($map.By) -join ', '))" } else { '' }
+        if ($moved.Count) { $miss += "linhas da ficha deslocadas desde a Planning$who`: $($moved -join ', ')" }
+        if ($changed.Count) { $miss += "⚠ trecho alterado desde a Planning$who`: $($changed -join ', ') — o copiado é o de hoje; confira se ainda é o que a Task precisa" }
+        foreach ($sec in @($e.Sections)) {
+            $sp = Get-MdSectionSpan $ls $sec
+            if ($sp) { $spans += , $sp } else { $miss += "§$(if ($sec.Title) { '"' + $sec.From + '"' } else { $sec.From })$(if ($sec.To) { "–§$($sec.To)" }) não achada" }
+        }
+        if ($e.Whole -and -not $spans.Count) {
+            if ($n -le $script:FichaWholeMaxLines) { $spans += , @(1, $n) }
+            else { $notes += "- ``$path`` — sem faixa nem §: $n linhas, não copiado (escreva ``caminho:a-b`` na ficha; leia só o trecho)"; continue }
+        }
+        if (-not $spans.Count) { $notes += "- ``$path`` — " + ($miss -join '; '); continue }
+        $spans = @($spans | Sort-Object { $_[0] }, { $_[1] })
+        $merged = @(); foreach ($s in $spans) { if ($merged.Count -and $s[0] -le $merged[-1][1] + 3) { $merged[-1][1] = [Math]::Max($merged[-1][1], $s[1]) } else { $merged += , @($s[0], $s[1]) } }
+        $w = ([string]$n).Length
+        $body = @($merged | ForEach-Object { $sp = $_; @(($sp[0] - 1)..($sp[1] - 1) | ForEach-Object { ("{0," + $w + "}  {1}") -f ($_ + 1), $ls[$_] }) -join "`n" }) -join "`n   …`n"
+        $head = "### ``$path`` — linhas " + (@($merged | ForEach-Object { "$($_[0])–$($_[1])" }) -join ', ') + " de $n" + $(if ($e.Why.Count) { ' · ' + (@($e.Why | Select-Object -Unique) -join ' · ') } else { '' }) + $(if ($miss.Count) { ' · ' + ($miss -join '; ') } else { '' })
+        $blk = "$head`n~~~~`n$body`n~~~~`n"
+        $sz = [System.Text.Encoding]::UTF8.GetByteCount($blk)
+        if ($used + $sz -gt $cap) { $notes += "- ``$path`` — linhas $(@($merged | ForEach-Object { "$($_[0])–$($_[1])" }) -join ', '): não copiado, o recorte passou de $($script:FichaExcerptMaxKb) KB (leia o trecho)"; continue }
+        $used += $sz; $blocks += $blk
+    }
+    $out = "`n## Trechos que a ficha aponta (v3.60.0)`n`n> Copiados pelo ``run.ps1 next`` do código e das fontes da ficha, com o número da linha: cite ``caminho:linha`` por eles e não releia esses arquivos. O que faltar, peça numa chamada só e registre em **Li além da ficha:**.`n`n" + ($blocks -join "`n")
+    if ($notes.Count) { $out += "`n**Não copiado:**`n" + ($notes -join "`n") + "`n" }
+    return $out
+}
+# Guia de escrita do plano (v3.60.0): gerado do template a cada recorte — a introdução, o esqueleto inteiro, a primeira frase
+# de cada regra com a linha dela no template e a variante leve. Sem segunda cópia: o template continua a única fonte. No
+# garden, o template (~35 mil caracteres, ~19,5 mil tokens) era lido inteiro na 1ª chamada e reenviado em todas as outras.
+# '' se o template mudou de forma e as marcas sumiram — o prompt volta a mandar abrir o template.
+function Get-PlanGuide {
+    $rel = 'roles/architect/templates/implementation-plan.md'
+    $tp = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path $rel
+    if (-not (Test-Path -LiteralPath $tp)) { return '' }
+    $ls = Read-FileLines $tp
+    $idx = { param($re, $from) for ($i = $from; $i -lt $ls.Count; $i++) { if ($ls[$i] -match $re) { return $i } }; return -1 }
+    $s = & $idx '^```markdown\s*$' 0; $e = if ($s -ge 0) { & $idx '^```\s*$' ($s + 1) } else { -1 }
+    $r = & $idx '^## Regras do formato' 0; $v = & $idx '^## Variante leve' 0; $x = & $idx '^## Exemplo abreviado' 0
+    if ($s -lt 0 -or $e -lt 0 -or $r -lt 0 -or $v -lt $r -or $x -lt $v) { return '' }
+    $intro = (@($ls[1..($s - 1)]) -join "`n").Trim()
+    $rules = @()
+    for ($i = $r + 1; $i -lt $v; $i++) {
+        $m = [regex]::Match($ls[$i], '^(\d+)\.\s+((?:✓\s*)?\*\*.+?\*\*)(.*)$')
+        if (-not $m.Success) { continue }
+        # Até o primeiro ponto final (o ponto de `plan.ps1` não conta: vem colado na letra); sem ponto, 200 caracteres.
+        $rest = $m.Groups[3].Value.TrimEnd()
+        $fm = [regex]::Match($rest, '^(.{0,260}?\.)(?=\s|$)')
+        $first = if ($fm.Success) { $fm.Groups[1].Value } elseif ($rest.Length -gt 200) { $rest.Substring(0, 200).TrimEnd() + '…' } else { $rest }
+        $rules += "$($m.Groups[1].Value). $($m.Groups[2].Value)$first *(l. $($i + 1))*"
+    }
+    $leve = (@($ls[$v..($x - 1)]) -join "`n").Trim() -replace '^## ', '### '
+    return "`n## Guia de escrita do plano (v3.60.0)`n`n> Gerado pelo ``run.ps1 next`` de ``$('${CLAUDE_PLUGIN_ROOT}')/$rel``: o esqueleto inteiro e a primeira frase de cada regra, com a linha dela no template. Escreva por aqui; a regra inteira só quando precisar dela ou quando o ``plan.ps1`` a citar (Read do template com offset na linha indicada e limit 3). ✓ = o ``plan.ps1`` confere. Exemplo de plano: template, linha $($x + 1).`n`n$intro`n`n### Esqueleto`n`n" + (@($ls[$s..$e]) -join "`n") + "`n`n### Regras — a primeira frase de cada uma`n`n" + ($rules -join "`n") + "`n`n$leve`n"
 }
 # Teto de arquivos previstos por Task com ficha (v3.53.2, plugin-report prévio do sprint 5 do garden): acima dele, o custo
 # do plano cresce mais rápido que a Task (6 arquivos ≈ US$ 2,5; 9 ≈ US$ 4,7; 12 ≈ US$ 8,7) — a Task se divide antes do Opus.
