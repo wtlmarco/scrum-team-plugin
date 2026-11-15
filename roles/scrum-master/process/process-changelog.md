@@ -98,7 +98,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
-## v3.59 — Acompanhar o sprint em palavras simples: a fala da sessão, o Resumo do quadro e o /team-status para quem é de negócio, com o técnico sob pedido (SM + PO) — 14/11/2026
+## v3.59 — Acompanhar o sprint em palavras simples: a fala da sessão, o Resumo do quadro e o /team-status para quem é de negócio, com o técnico sob pedido (SM + PO + Arquiteto) — 14/11/2026 · *com addendum v3.59.2*
 
 **Instrução:** (stakeholder, 14/11/2026) "precisamos melhorar as frases de conversação e posicionamento na sessão do orquestrador e no kanban para facilitar o acompanhamento … frases simples e mais diretas que deem clareza do que está acontecendo para alguém de negócio entender, sem termos técnicos, que podem ser solicitados caso necessário"; avaliação aprovada por inteiro ("pode fazer todas").
 **Medido (sprint 6 do garden, 14/11):** o quadro do `kanban.md` mostrava só códigos (`T-069b`, `T-070a`); os bloqueios e as decisões ficavam no fim de 58 KB, depois das tabelas de tokens; o "Agora" chegou a mostrar `QA | — | trabalhando`; o `/team-status` mostrava a T-069a "em execução" e PARADA ao mesmo tempo que "Fechada", e "131 decisões" esperando o stakeholder, 98 delas resolvidas; a sessão repetia o vocabulário do `run.ps1 next` (PRÓXIMA AÇÃO, R12, `.scn`, executor de Task, GAP).
@@ -131,6 +131,19 @@ Sprint 7 do garden: nenhuma fala da sessão com `PRÓXIMA AÇÃO`, sigla de regr
 ### Parte mecânica (implementada pela sessão principal, citada aqui)
 `scripts/checks/plain.ps1` novo (nome de cada parte, papel, ação, etapa, motivo de parada, pendências do README §7, o Resumo); `kanban.ps1` (Resumo, quadro em lista, ordem das seções); `team-view.ps1` (visão simples e `-Detail`; Task do registro já ✅ ou 🔴 fora de "em execução"; pendências sem as resolvidas); `run.ps1` (`PARA O STAKEHOLDER:` em cada ação do `next`, "Pronto/Parou" uma vez por `.stakeholder-seen`, `dispatch -Clear` no `done`); `external-plan.ps1`; `hooks/common.ps1` (o "## Agora" com nomes de negócio); `hooks/prompt-submit.ps1` (`/team-status detalhe`).
 
+
+### Addendum v3.59.2 — a consolidação dos documentos vivos é conferida, chega aos donos e é versionada (SM + Arquiteto) — 2026-11-14
+
+**Instrução:** (stakeholder, 14/11/2026) "toda tarefa gera, quando necessário, a atualização do SDD? Quem faz? Sempre a documentação está atualizada?"; depois da avaliação, "faça as três correções no plugin".
+**Medido (garden, sprints 5 e 6):** a consolidação do sprint 5 está "feita" desde 09/11, mas `architecture.md`, `data-model.md` e os ADRs 0001 e 0011 continuam sem commit. A parte do `api-spec.md` entrou no commit da T-079. Os 4 pedidos ao PO nunca foram aplicados: o `requirements.md` não muda desde 31/10, e o RF-MAN-02 ainda diz "um canteiro por vez", com o manejo em vários canteiros construído no sprint 5. A Review conferia só a linha `**Estado:** feita`.
+**Classificação:** instrumento (`run.ps1 next`: `Get-ConsolidationRows`, `Test-DocChangedInSprint`, `Save-DocsCommit`, `.docs-check.json`) · fluxo (os donos dos pedidos disparados no passo 6) · formato (modelo `roles/architect/templates/docs-consolidation.md`).
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `working-rules.md` | R12 | "feita" é conferida no git; os pedidos vão aos donos; commit próprio dos documentos; o que não mudou vai à Review |
+| `sprint-run.md` | passo 6 | os donos dos pedidos (PO, UX, SM, QA), uma vez cada; o commit é do script |
+| `artifact-ownership.md` | Consolidação dos documentos vivos | o dono aplica no documento dele; o commit não é do Arquiteto nem dos donos |
+| `roles/architect/README.md` · `templates/docs-consolidation.md` (novo) | Documentos vivos | as três tabelas que o script lê; o Arquiteto não faz commit |
 ---
 
 ## v3.58 — Security Engineer: pentest e secure code review sob demanda, com o laço que leva o achado ao standard do Arquiteto (SM + Arquiteto + Security Engineer) — 2026-11-12 · *com addendum v3.58.3*

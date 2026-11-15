@@ -131,7 +131,13 @@ Task que toca autenticação, autorização, escopo/tenant, dado pessoal ou cont
 ### R12. Documento vivo se atualiza no mesmo ciclo
 Product Backlog, Sprint Backlog, evidências, inventário de código, registro de GAPs e documento de status são atualizados **no ciclo em que o fato aconteceu**, por seus donos. Nunca "depois". Gaps e débitos levantados na Sprint Review entram no Product Backlog na mesma sessão.
 
-**v3.51 — consolidação no fim do sprint (A5).** No `sprint run`, o dev lista no relatório de entrega o que muda nos documentos (`### Documentos vivos (R12)`, **Estado:** a consolidar) e a Task fecha com isso; o Arquiteto consolida **uma vez**, depois do portão do QA, em `sprints/<n>/docs-consolidation.md`, e a Review só abre com a consolidação feita. Fora do `run` (e na trilha `fix`), vale o mesmo ciclo de antes.
+**v3.51 — consolidação no fim do sprint (A5).** No `sprint run`, o dev lista no relatório de entrega o que muda nos documentos (`### Documentos vivos (R12)`, **Estado:** a consolidar) e a Task fecha com isso; o Arquiteto consolida **uma vez**, depois do portão do QA, em `sprints/<n>/docs-consolidation.md`, e a Review só abre com a consolidação feita. Fora do `run` (e na trilha `fix`), vale o mesmo ciclo de antes. **v3.59.2 — "feita" é conferida, chega aos donos e é versionada.** O `run.ps1 next` lê o registro no modelo [`../../architect/templates/docs-consolidation.md`](../../architect/templates/docs-consolidation.md) e faz quatro coisas:
+- confere no git que cada documento de "Aplicado pelo Arquiteto" mudou no sprint (sem mudança, o Arquiteto volta uma vez);
+- dispara cada dono de "Pedidos aos donos" (PO, UX, SM, QA) uma vez com os documentos dele;
+- versiona os documentos num commit próprio, `docs(sdd): consolidação … sprint <n>`, separado das Tasks;
+- leva ao formulário da Review o que não mudou.
+
+No garden, a consolidação do sprint 5 ficou "feita" com o SDD sem commit e os 4 pedidos ao PO sem aplicar.
 
 **Evita:** documentação que descreve um projeto que não existe mais.
 **SM verifica:** fechamento de Task exige as atualizações; sem elas, a Task não fecha. Review sem os gaps registrados não encerra o sprint. **Instrumento:** C1 — conferência **bloqueante** (campo "Documentos vivos (R12)" = `atualizados`).

@@ -3119,6 +3119,42 @@ Put $pf 'src/novo.ts' "x`n"
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pf)
 Check 'v3.59.1 item 3: árvore mudou → roda tudo, sem reaproveitar' $r 0 @('tudo exit 0', '^(?![\s\S]*reaproveitado)')
 
+# v3.59.2 (R12; garden: consolidação do sprint 5 "feita" sem commit e pedidos ao PO nunca aplicados) — o next confere no git
+# os documentos do Arquiteto, dispara os donos dos pedidos uma vez cada, faz o commit próprio e leva o que faltou à Review.
+$pd = Join-Path $tmp 'v3592-docs'; New-Project $pd
+$ErrorActionPreference = 'Continue'
+& git -C $pd init -q 2>$null; Put $pd '.gitignore' ".team-project/`n"; Put $pd 'docs/sdd/api.md' "# API`n"; Put $pd 'docs/sdd/requirements.md' "# Req`n"; Put $pd 'docs/sdd/status.md' "# Status`n"
+& git -C $pd add -A 2>$null; & git -C $pd -c user.email=t@t -c user.name=t commit -qm init 2>$null
+& git -C $pd config user.email t@t 2>$null; & git -C $pd config user.name t 2>$null
+$ErrorActionPreference = 'Stop'
+$sbd = Join-Path $pd '.team-project/sprints/1/sprint-backlog.md'
+Edit-File $sbd "| $($e.qa) T-041 |" "| $($e.ok) T-041 |"; Edit-File $sbd "| $($e.todo) T-041a |" "| $($e.ok) T-041a |"
+Put $pd '.team-project/quality/1/S1/result.json' '{"tree":null}'
+Put $pd '.team-project/sprints/1/validation.md' "# Validação`n`n**Veredito:** $($e.ok) aprovado — 2026-09-05`n"
+(Get-Item -LiteralPath (Join-Path $pd '.team-project/quality/1/S1/result.json')).LastWriteTime = (Get-Date).AddHours(-1)
+# O sprint "começa" daqui a 1 h: o commit init fica antes dele, então só conta a alteração pendente no disco.
+$rld = Join-Path $pd '.team-project/sprints/1/run-log.md'
+Put $pd '.team-project/sprints/1/run-log.md' ("# Run-log`n`n| Data | Item | O quê | Por quê | Ref |`n|---|---|---|---|---|`n| " + (Get-Date).AddHours(1).ToString('yyyy-MM-dd HH:mm') + " | T-041 | início | — | — |`n")
+$cd = Join-Path $pd '.team-project/sprints/1/docs-consolidation.md'
+Put $pd '.team-project/sprints/1/docs-consolidation.md' "**Estado:** feita`n`n# Sprint 1`n`n- api.md atualizado`n"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pd)
+Check 'v3.59.2: consolidação "feita" fora do modelo → Arquiteto reescreve no modelo (uma vez)' $r 0 @('PRÓXIMA AÇÃO: consolidação fora do modelo', 'team:architect', 'roles/architect/templates/docs-consolidation\.md')
+Put $pd '.team-project/sprints/1/docs-consolidation.md' ("**Estado:** feita`n`n# Sprint 1`n`n## Aplicado pelo Arquiteto`n`n| Documento | O que mudou | Task |`n|---|---|---|`n| ``docs/sdd/api.md`` §2 | linha nova | T-041 |`n`n## Pedidos aos donos`n`n| Documento | O que mudar | Origem | Dono |`n|---|---|---|---|`n| ``docs/sdd/requirements.md`` RF-1 (:3) | vários canteiros | T-041 | PO |`n| ``docs/sdd/status.md`` | retrato | — | SM |`n| ``.team-project/README.md`` | §7 | — | SM |`n`n## Sem mudança`n`n| Task | Motivo |`n|---|---|`n| T-041a | só teste |`n")
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pd)
+Check 'v3.59.2: documento do Arquiteto sem mudança no disco nem commit no sprint → Arquiteto de novo (aplicar ou mover para Sem mudança)' $r 0 @('consolidação declarada sem mudança no disco — docs/sdd/api\.md', 'team:architect', "Sem mudança' com o motivo")
+Put $pd 'docs/sdd/api.md' "# API`n`nlinha nova`n"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pd)
+Check 'v3.59.2: com o documento do Arquiteto alterado, os pedidos vão ao PO (só os documentos dele; .team-project fora)' $r 0 @('pedidos da consolidação ao dono PO — docs/sdd/requirements\.md', 'team:product-owner', '^(?![\s\S]*\.team-project/README)')
+Put $pd 'docs/sdd/requirements.md' "# Req`n`nRF-1 vários canteiros`n"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pd)
+Check 'v3.59.2: depois do PO, o SM com o documento dele' $r 0 @('pedidos da consolidação ao dono SM — docs/sdd/status\.md', 'team:scrum-master')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pd)
+$ErrorActionPreference = 'Continue'; $glog = (& git -C $pd log -1 --format='%s|%h' 2>$null); $gfiles = (& git -C $pd show --name-only --format= HEAD 2>$null) -join ','; $ErrorActionPreference = 'Stop'
+Check 'v3.59.2: SM não aplicou → commit próprio só com os documentos que mudaram, pendência no formulário da Review e no run-log' @{ Code = $r.Code; Out = "$($r.Out)`nLOG=$glog`nFILES=$gfiles`nRL=" + [System.IO.File]::ReadAllText($rld, $utf8) } 0 @('commit da consolidação: [0-9a-f]{7,} \(2 documento\(s\): docs/sdd/api\.md, docs/sdd/requirements\.md\)', 'LOG=docs\(sdd\): consolidação dos documentos vivos do sprint 1\|', 'FILES=docs/sdd/api\.md,docs/sdd/requirements\.md\r?\n', 'PRÓXIMA AÇÃO: fim da fila', 'documentos vivos com pendência \(R12\).*pedido ao SM não aplicado: docs/sdd/status\.md', 'RL=[\s\S]*\| S1 \| commit da consolidação[\s\S]*\| S1 \| documentos vivos: pendência que vai à Review')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pd)
+$rlTxt = [System.IO.File]::ReadAllText($rld, $utf8)
+Check 'v3.59.2: next de novo — sem commit nem linha de run-log repetidos' @{ Code = $r.Code; Out = "$($r.Out)`nN=" + ([regex]::Matches($rlTxt, '\| S1 \| commit da consolidação')).Count + '/' + ([regex]::Matches($rlTxt, 'pendência que vai à Review')).Count } 0 @('PRÓXIMA AÇÃO: fim da fila', '^(?![\s\S]*commit da consolidação:)', '^(?![\s\S]*declarado pelo Arquiteto)', 'pedido ao SM não aplicado', 'N=1/1')
+
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
 foreach ($sl in @($rows | Sort-Object Seg -Descending | Select-Object -First 12)) { $sn = [string]$sl.Caso; Write-Output ("lento: {0,5} s  {1}" -f $sl.Seg, $(if ($sn.Length -gt 120) { $sn.Substring(0, 120) } else { $sn })) }
