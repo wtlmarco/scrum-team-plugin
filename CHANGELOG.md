@@ -15,7 +15,7 @@
 
 ## v3.60.0 — 2026-11-15
 
-**Branch:** `feat/v3.60.0` a partir de `develop` (`119077f`, v3.59.2 mesclada) · **Processo:** v3.60 (a ficha leva os trechos; o Arquiteto do plano lê uma vez e escreve)
+**Branch:** `feat/v3.60.0` a partir de `develop` (`119077f`, v3.59.2 mesclada) · **Processo:** v3.60 (a ficha leva os trechos; o Arquiteto do plano lê uma vez e escreve · o kanban acompanha o prazo, com o registro técnico no consumo)
 
 Origem: pergunta do stakeholder em 14/11/2026 sobre a H-M do garden, dividida em 3 Tasks, e o pedido seguinte: manter a divisão para o dev em Haiku e otimizar o Arquiteto. Medido nas conversas dos 3 Arquitetos do plano (sprint 6, US$ 9,02): 84 % do custo e 111 de 125 chamadas foram exploração antes do primeiro `Write`. A simulação calibrada nessas conversas apontou um Arquiteto por Task com os trechos prontos (≈ US$ 5,7, entre 4,4 e 6,9). Um Arquiteto para a História inteira saiu mais caro em todos os cenários (até US$ 13,6 explorando; 25 a 35 % acima com os trechos).
 
@@ -34,9 +34,35 @@ Origem: pergunta do stakeholder em 14/11/2026 sobre a H-M do garden, dividida em
    - Conferido no garden: as 17 linhas da H-M que não mudaram caem no mesmo código hoje (deslocamentos de até 80); as 2 que a T-092 alterou saem com ⚠.
 
 - Documentos: `breakdown.md` (abertura e regras 2, 3 e 6), `implementation-plan.md` (regra 28), `agents/architect.md`, `roles/architect/README.md`, `workflow-sprint.md` (Planning, passo 4), `sprint-run.md` (indicador). A entrada v3.57 do changelog do processo foi arquivada sem alteração.
-- Testes: as conferências do recorte (5d2) passam a cobrir a faixa fora do arquivo, os trechos numerados, a seção do SDD com a subseção, o standard do plugin, a faixa exata com a faixa extra na linha e o guia, que é menor que o template e não traz o exemplo. Num projeto com git, cobrem ainda: a faixa deslocada por um commit de outra Task, o trecho alterado (⚠), a correção que grava a base e a ficha corrigida, que não é deslocada de novo. Nos quatro cenários do pacote externo, o `src/a.ts` de 1 linha passou a ter 3, porque a ficha aponta a linha 3. Suítes: 527 conferências e 345 guardas, nenhuma falha; `release.ps1` (C3) ok.
+- Testes: as conferências do recorte (5d2) passam a cobrir a faixa fora do arquivo, os trechos numerados, a seção do SDD com a subseção, o standard do plugin, a faixa exata com a faixa extra na linha e o guia, que é menor que o template e não traz o exemplo. Num projeto com git, cobrem ainda: a faixa deslocada por um commit de outra Task, o trecho alterado (⚠), a correção que grava a base e a ficha corrigida, que não é deslocada de novo. Nos quatro cenários do pacote externo, o `src/a.ts` de 1 linha passou a ter 3, porque a ficha aponta a linha 3. Pacote externo: +2 testes (os trechos na ficha do pacote; a faixa fora do arquivo antes do pacote).
+- Testes do acompanhamento (+7): as quatro seções vão ao `consumption.md`; a previsão de cada parte (74 h por dia estimado no caso de teste); o farol Adiantado e o Atrasado, com o "agora" fixo (`TEAM_SCHEDULE_NOW`); o Mermaid e a tabela; o `mark.ps1` e a R24 do `close.ps1 -Post` no `consumption.md`. Três testes antigos passam a ler o `consumption.md`. O do `-Init` tira o arquivo do caminho em vez de apagá-lo. Suítes: 536 conferências e 345 guardas, nenhuma falha; `release.ps1` (C3) ok.
 
-Não muda: o dev recebe uma Task por vez, com até 6 arquivos; a Task sem ficha segue planejada numa instância por História; o pacote do plano externo (`external-plan.ps1`) continua levando os arquivos inteiros.
+6. **Plano externo também** (pergunta do stakeholder em 15/11: "essa mudança não afeta o planejador externo?"). O pacote levava a ficha com as linhas da Planning e os arquivos de hoje em `files/`, e o roteiro mandava ler "o trecho que a ficha aponta". No caso da T-092, isso abriria `migracoes.ts` 80 linhas acima do código certo.
+   - A ficha do pacote ganha os mesmos trechos, nas linhas de hoje, com o deslocamento e o ⚠.
+   - O roteiro (`external-plan.md`, passo 2) manda citar as linhas dos trechos e ler em `files/` só o que faltar.
+   - A faixa fora do arquivo volta à correção da ficha antes de o pacote ser montado.
+   - O modelo do plano continua indo inteiro, porque o planejador externo não gasta a cota da conta.
+
+**Acompanhamento do sprint (pedido do stakeholder em 15/11, na mesma entrega):**
+
+7. **O kanban.md fica para acompanhar.** A **Série**, o **Registro de transições**, a **Rodada a rodada** e a **Espera de comando** passam ao `consumption.md` do sprint. No garden, S6, o `kanban.md` caiu de 85 KB para 12 KB.
+   - A Série e o Registro continuam nascendo na Planning (linha 0) e vão para lá na primeira regravação do `kanban.ps1` no `sprint run`. Isso vale também para sprint já aberto, uma vez e sob as duas travas.
+   - Todo script que lê ou grava esses dados (`mark`, `close`, `kanban`, `plain`, `team-view`, `run`, R24) os acha onde estiverem (`Get-RecordPath`).
+   - O `consumption.ps1` passa a regravar sob a trava do arquivo, e o `## Registro` dele não confunde mais o Registro de transições.
+   - Os Bloqueios continuam no `kanban.md`.
+   - **Atenção:** a partir daqui, o `consumption.md` de um sprint aberto guarda o histórico do burndown. Apagá-lo (para recriar o consumo, por exemplo) apaga a Série e o Registro. O `kanban.ps1 -Init` só o cria quando falta e nunca o sobrescreve.
+8. **Previsão de cada parte e do sprint, com farol.** O ritmo é medido no próprio sprint: horas de relógio desde a abertura ÷ unidades estimadas prontas.
+   - Cada parte aberta no Kanban mostra "falta ~3,8 h · termina por volta de 15/11 às 15:50", na ordem da fila. A que está em construção desconta o tempo que já correu.
+   - O Resumo (e o `/team-status`) ganha a linha **Prazo**: 🟢 No prazo · 🔴 Atrasado · 🔵 Adiantado, com a previsão de término.
+   - O prazo vem, nesta ordem, do fim da Janela, da duração do sprint no README ou, com a estimativa em dias, da própria estimativa (o garden não tem data fixa).
+   - Previsão depois do prazo é atraso. Folga acima de 15 % da janela é adiantamento. Sem parte pronta não há ritmo (⚪).
+9. **Burndown visual.** Nova seção `## Burndown` no `kanban.md`, logo depois do Kanban, com o farol e o ritmo.
+   - O gráfico é um Mermaid xychart: a linha real em azul (`#2a78d6`, primeira cor da paleta validada) e a ideal em cinza, do planejado a zero no prazo. Como o xychart não tem legenda própria, ela vai em texto acima.
+   - Uma tabela traz a mesma conta (restante, ideal e uma barra por dia), que se lê no terminal e serve de versão acessível.
+   - O ponto de hoje usa o restante do quadro. No garden, a Série marcava 0 com 2 partes abertas.
+   - Conferido numa cópia do garden: 🔵 Adiantado, previsão 15/11 às 21:30 contra o prazo de 25/11 pela estimativa; o `consumption.ps1` e o `mark.ps1` gravaram no lugar novo.
+
+Não muda: o dev recebe uma Task por vez, com até 6 arquivos; a Task sem ficha segue planejada numa instância por História.
 
 ---
 

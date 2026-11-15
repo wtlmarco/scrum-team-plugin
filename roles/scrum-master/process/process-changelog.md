@@ -99,7 +99,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
-## v3.60 — A ficha leva os trechos: o Arquiteto do plano lê uma vez e escreve, com o guia de escrita gerado do template (SM + Arquiteto) — 15/11/2026
+## v3.60 — A ficha leva os trechos (o Arquiteto do plano lê uma vez e escreve) e o kanban acompanha o prazo: previsão por parte, farol e burndown visual, com o registro técnico no consumo (SM + Arquiteto) — 15/11/2026
 
 **Instrução:** (stakeholder, 14–15/11/2026, sobre a H-M do garden dividida em 3 Tasks) "Não seria melhor o Desenvolvedor Haiku receber as 3 tarefas de uma mesma vez"; depois "avalie talvez a possibilidade de em somente uma interação com o Arquiteto ele já gerar os 3 planos sem precisar reler tudo de novo … assim mantemos o benefício da divisão menor para evitar os erros do Haiku e otimizamos o Arquiteto", "consegue fazer uma simulação para ver qual seria o modo mais otimizado" e "pode implementar essa melhoria em uma branch feat". A divisão para o dev fica como está.
 **Medido (sprint 6 do garden, H-M, plugin 3.58.2):** os 3 planos (T-092 a T-094) custaram US$ 9,02 em 125 chamadas; 111 delas e 84 % do custo foram exploração antes do primeiro `Write` (~75 buscas, leituras em pedaços — o `migracoes.spec.ts` foi aberto 7 vezes). O que os 3 leram em comum era pouco (template, `context.md`, `.scn`); o template, ~35 mil caracteres, era lido inteiro na 1ª chamada e reenviado em todas as outras. A ficha apontava 4 arquivos; o plano leu ~11. O breakdown do S6 já trazia as linhas medidas na Planning.
@@ -113,15 +113,19 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | `templates/implementation-plan.md` | regra 28 | o recorte traz os trechos, o resumo da dependência e o guia; a regra inteira só pela linha que o guia dá; o que faltar, numa chamada |
 | `agents/architect.md` · `roles/architect/README.md` | Plano pela ficha · Preparo · Ficha por Task | a abertura nova; a medição e a simulação |
 | `workflow-sprint.md` | Planning, passo 4 | código com faixa, fontes com seção |
-| `sprint-run.md` | Como o SM verifica | indicador da v3.60 |
+| `sprint-run.md` | Como o SM verifica · O que fica onde · Marcador | indicador da v3.60; a Série e o Registro no `consumption.md`, sob a trava dele |
+| `working-rules.md` (R24) · `artifact-ownership.md` · `workflow-sprint.md` §5f | — | a Série e o Registro no `consumption.md` do sprint; o Burndown visual no `kanban.md` |
+| `templates/kanban.md` · `templates/consumption.md` | estrutura e §Como preencher | o Kanban com a previsão, a seção Burndown e as regras do prazo; as quatro seções técnicas no consumo |
 
 ### Por quê
 O custo de uma instância é chamadas × contexto: cada chamada reenvia a conversa inteira. A exploração do plano refazia a busca que a Planning já tinha feito. Juntar os planos numa instância não resolve: o que se poupa (prompt e template uma vez) é menor que carregar a exploração da Task anterior em todas as chamadas da seguinte — foi o H-K1 do sprint 4 (US$ 16,3) que levou à v3.53. Trazer os trechos prontos tira as chamadas sem crescer a instância, e o dev continua recebendo Task de até 6 arquivos.
 
-**As linhas andam com o código** (stakeholder, 15/11: "uma tarefa pode modificar o código e assim as referências irão quebrar"): a ficha é da Planning, e no garden 6 de 60 faixas tinham andado até o plano (`migracoes.ts:1131`, 80 linhas). O `run.ps1 next` traduz a faixa pelo `git diff` desde o início do sprint (ou desde a correção da ficha), copia no lugar novo, diz quanto andou e por qual Task, e marca ⚠ quando o próprio trecho mudou. A seção (`§`) se acha pelo título.
+**As linhas andam com o código** (stakeholder, 15/11: "uma tarefa pode modificar o código e assim as referências irão quebrar"): a ficha é da Planning, e no garden 6 de 60 faixas tinham andado até o plano (`migracoes.ts:1131`, 80 linhas). O `run.ps1 next` traduz a faixa pelo `git diff` desde o início do sprint (ou desde a correção da ficha), copia no lugar novo, diz quanto andou e por qual Task, e marca ⚠ quando o próprio trecho mudou. A seção (`§`) se acha pelo título. O pacote do plano externo recebe os mesmos trechos, e o roteiro dele (`external-plan.md`) passa a mandar citar as linhas de hoje, não as da ficha.
+
+**Acompanhamento** (stakeholder, 15/11: "passar do Kanban para consumption: Série, Registro de Transições, Rodada a Rodada, Espera de Comando"; "estimativa de tempo de cada tarefa … do Sprint e um farol No Prazo, Atrasado e adiantado"; "um gráfico Burndown visual"): as quatro seções técnicas vão ao `consumption.md` (R24 passa a apontar para lá; a Série nasce no `kanban.md` na Planning e o `kanban.ps1` a leva no run); o `kanban.md` ganha a previsão de cada parte pelo ritmo medido no sprint, a linha **Prazo** com o farol no Resumo e a seção **Burndown** (gráfico Mermaid e tabela). Prazo: fim da Janela · duração do sprint · a estimativa em dias.
 
 ### Conflitos com o processo vigente
-Nenhum com regra. A ficha continua só apontando (regra 1 do breakdown). O template continua a única fonte do formato: o guia é gerado dele a cada recorte, e sem as marcas de forma o prompt volta a mandar abrir o template. Ficha antiga, com `caminho:linha`, segue valendo, com janela de 40 linhas.
+Nenhum com regra. A ficha continua só apontando (regra 1 do breakdown). R24 muda o arquivo, não a regra: uma transição continua sendo uma linha no Registro e uma na Série, no mesmo arquivo e no mesmo momento. O template continua a única fonte do formato: o guia é gerado dele a cada recorte, e sem as marcas de forma o prompt volta a mandar abrir o template. Ficha antiga, com `caminho:linha`, segue valendo, com janela de 40 linhas.
 
 ### Como saberemos que funcionou
 Sprint 7 do garden: ~10 chamadas por plano (eram 33 a 50); US$ do plano por Task perto de 2 (era 2,3 a 3,5); `**Li além da ficha:**` com até 2 arquivos; reprovações do `plan.ps1` e 🔺 GAPs de plano por Task não maiores que no S6. Plano que não barateia, ou GAP de plano que sobe, volta ao `/review`.

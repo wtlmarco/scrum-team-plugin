@@ -79,7 +79,7 @@ function Say([string]$Text) { Out "PARA O STAKEHOLDER: $($script:RunNews)$Text";
 # linhas já foram ditas). Na primeira vez, só marca — não despeja o sprint inteiro.
 function Get-RunNews {
     $seenF = Join-Path $tp '.stakeholder-seen'
-    $chart = Get-ChartPath $S; if (-not (Test-Path -LiteralPath $chart)) { return '' }
+    $chart = Get-RecordPath $S; if (-not (Test-Path -LiteralPath $chart)) { return '' }   # v3.60.0: consumption.md ou kanban.md
     $reg = Get-Section (Read-Text $chart) '^##\s+Registro de transi'; if (-not $reg) { return '' }
     $t = @(Get-Tables $reg)[0]; if (-not $t) { return '' }
     $rows = @($t.Rows); $seen = -1
@@ -1229,7 +1229,8 @@ try {
         $xpack = $null
         $extF = @($withF | Where-Object { Test-ExternalTask $planner $_.T.Id })
         if ($extF.Count) {
-            $xbad = @($extF | Where-Object { ($null -ne $_.F.Planned -and $_.F.Planned -gt $script:FichaMaxFiles) -or @(Get-FichaMissing $Root $_.F).Count }) | Select-Object -First 1
+            # v3.60.0: faixa fora do arquivo também volta à correção antes do pacote, como no Arquiteto interno.
+            $xbad = @($extF | Where-Object { ($null -ne $_.F.Planned -and $_.F.Planned -gt $script:FichaMaxFiles) -or @(Get-FichaMissing $Root $_.F).Count -or @(Get-FichaBadRanges $Root $_.F (Get-FichaBase $S $_.T.Id)).Count }) | Select-Object -First 1
             if ($xbad) { $withF = @($xbad) }
             else {
                 $xpack = Update-StoryPack $h.Name @($extF | ForEach-Object { $_.T })

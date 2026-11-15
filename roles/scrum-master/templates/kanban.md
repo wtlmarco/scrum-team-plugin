@@ -1,7 +1,8 @@
 # Template — Kanban do Sprint (Kanban · Burndown · Controle)
 
 > **Dono:** SM · Vive em `.team-project/sprints/<n>/kanban.md` (sprint aberto antes da v3.51 continua com `burndown.md`, e os scripts leem os dois).
-> **Um arquivo para acompanhar o sprint** (pedido do stakeholder, 2026-10-21), **na ordem de quem acompanha** (v3.59.0, pedido do stakeholder em 14/11/2026: "frases simples e diretas, que alguém de negócio entenda; o técnico, só quando pedir"): primeiro o **Resumo** em palavras simples, **quem trabalha agora**, **onde cada parte está** (o Kanban, com o nome de negócio de cada parte) e **o controle** — o que entrou fora da Planning, o que está bloqueado e o que espera o stakeholder; depois, sob **Detalhe técnico**, a linha de base, o Burndown (Série e Registro de transições) e as Rodadas. O `sprint-backlog.md` fica só com as Histórias e as Tasks.
+> **Um arquivo para acompanhar o sprint** (pedido do stakeholder, 2026-10-21), **na ordem de quem acompanha** (v3.59.0, pedido do stakeholder em 14/11/2026: "frases simples e diretas, que alguém de negócio entenda; o técnico, só quando pedir"): primeiro o **Resumo** em palavras simples, **quem trabalha agora**, **onde cada parte está** (o Kanban, com o nome de negócio de cada parte e, nas abertas, quanto falta e quando termina), o **Burndown** (farol do prazo, ritmo medido e o gráfico) e **o controle** — o que entrou fora da Planning, o que está bloqueado e o que espera o stakeholder; depois, sob **Detalhe técnico**, a linha de base e as Rodadas por tarefa e por papel. O `sprint-backlog.md` fica só com as Histórias e as Tasks.
+> **v3.60.0 (pedido do stakeholder, 15/11/2026):** a **Série**, o **Registro de transições**, a **Rodada a rodada** e a **Espera de comando** moram no [`consumption.md`](consumption.md) do sprint. A Série e o Registro nascem aqui na Planning (linha 0) e o `kanban.ps1` os leva para lá na primeira regravação do `sprint run`; os scripts os acham onde estiverem (`Get-RecordPath`).
 > Nasce no `/sm sprint plan` (linha de abertura, dia 0 — **a data da aprovação do pacote de abertura**, não a do fechamento da Planning · R25), ganha **uma linha na Série e uma no Registro a cada transição de marcador** — no `sprint run`, gravadas pelo `mark.ps1` e pelo `close.ps1 -Apply` no momento da passagem ([`sprint-run.md`](../process/sprint-run.md) §Marcador); fora dele, no `/sm board` e no `/sm close <T-ID>` (R24) —, e **fecha** — sem mais edição — no `/sm sprint close`.
 > **Só Markdown:** não há página HTML. `scripts/checks/kanban.ps1` regrava o `## Resumo`, o `## Kanban` e a `## Rodadas` **a cada transição** (`mark.ps1`, `close.ps1`) **e ao fim de cada rodada de agente** (hook G16, que confirma o estado e soma o custo), e põe as seções na ordem acima (v3.59.0: só move seções inteiras; os scripts acham cada uma pelo título). É script: **não custa token**. O nome de cada parte vem de `scripts/checks/plain.ps1` — a coluna **Para o stakeholder** do Sprint Backlog ou, sem ela, o título da História com "parte k de m".
 > **Bloco de fix:** `fixes/<B-nnn>/kanban.md`, gerado **inteiro** por `kanban.ps1 -Block B-<nnn>` (`-Init` no `fix plan`) — ver a variante no fim.
@@ -36,6 +37,20 @@
 - <nome da parte> (T-<nnn>) — <motivo em frase simples>
 
 **🟦 Sendo planejadas (<k>)** · **⬜ Na fila (<k>)** · **✅ Prontas (<k>)** — *(a mesma forma; a ordem é 🟨 · 🟪 Em teste · 🔴 · 🟦 · ⬜ · ✅, e etapa vazia não aparece)*
+*(v3.60.0: cada parte aberta leva ` · falta ~<tempo> · termina por volta de <dd/mm às hh:mm>`, pelo ritmo medido no sprint, na ordem da fila.)*
+
+## Burndown
+*(v3.60.0. Regravado a cada mudança de etapa e a cada rodada do time — não editar à mão.)*
+
+- **Prazo:** <🟢 No prazo | 🔴 Atrasado | 🔵 Adiantado> — previsão de término <dd/mm às hh:mm> (faltam <tempo> de relógio); prazo <dd/mm às hh:mm>, <o fim do sprint | pela duração do sprint | pela estimativa (<n> dias desde a abertura)>.
+- **Ritmo medido:** <n> <unidade> estimados prontos em <tempo> de relógio desde a abertura — <tempo> por <unidade>. Faltam <n> (<tempo>).
+
+**Legenda:** linha azul = restante real · linha cinza = ritmo ideal até o prazo.
+
+<bloco mermaid xychart-beta: x = dias, y = restante; a linha ideal (cinza) do planejado a zero no prazo; a real (azul) até hoje>
+
+| Dia | Data | Restante (fim do dia; hoje, agora) | Ideal | |
+|---:|---|---:|---:|---|
 
 ## Controle
 
@@ -77,6 +92,7 @@
 | **Estimativa total planejada** | <n> <unidade> — soma de todas as Tasks na abertura |
 
 ## Série
+*(Só na Planning: a linha 0. No `sprint run`, o `kanban.ps1` leva a Série e o Registro ao `consumption.md`, onde o `mark.ps1` e o `close.ps1 -Apply` gravam cada transição — v3.60.0.)*
 
 | Dia | Data | Evento | Est. restante | Tasks restantes | ⬜ | 🟦 | 🟨 | 🟪 | ✅ | 🔴 |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -94,14 +110,14 @@
 
 - **Por tarefa e fase:** Plano e preparo · Construção · Verificação · Outros (PO, SM, UX) — `tokens · tempo`, a coluna **Pausa** e a linha Consolidado. v3.51.4: a fase é a do **marcador da Task no início da rodada** (⬜/🟦 → Plano · 🟨 → Construção · 🟪 → Verificação; sem Registro, pelo papel); rodada que cita várias Tasks (plano por História) entra **rateada** em cada uma; lacuna acima de 20 min (limite de conta, máquina parada) fica fora do tempo, na coluna Pausa.
 - **Por papel e modelo:** uma linha por par, com o Total.
-- **Rodada a rodada:** uma linha por rodada (data e hora, Task ou F-ID, papel, modelo, tokens, tempo), a mais nova primeiro.
-- **Espera de comando** (v3.51.4): por Task, o tempo que o `verify.ps1` passou rodando build, teste, lint e mutação (focused · full · mutation) — quanto do relógio foi espera, não raciocínio.
+- **Rodada a rodada** e **Espera de comando** (v3.51.4): no `consumption.md` do sprint desde a v3.60.0 (aqui só enquanto ele não existe).
 
 ```
 
 ## Como preencher
 
 - **Task de correção do portão** (`Q-S<n>`, `Q-S<n>b`… — v3.52.2): entra no Kanban, no Registro e na Série como qualquer Task, a partir da abertura dela na seção `## Correção do portão — sprint <n>` do Sprint Backlog; **não** vai a "Entradas fora da Planning" (não cresce o escopo — corrige o que o sprint entregou; [`sprint-run.md`](../process/sprint-run.md) §Validação do sprint). A estimativa dela soma ao restante na abertura e cai no ✅.
+- **Prazo e previsão (v3.60.0).** O ritmo é **medido no sprint**: horas de relógio desde a abertura ÷ unidades estimadas já prontas. Cada parte aberta leva estimativa × ritmo (a em construção desconta o que já correu desde que entrou em 🟨), somadas na ordem da fila. O prazo é, na ordem: a data de fim da **Janela** (Linha de base) · a **Duração do sprint** do README (N dias ou semanas) · com a unidade em dias, a própria estimativa planejada desde a abertura. Farol: previsão depois do prazo → 🔴 Atrasado; folga acima de 15 % da janela → 🔵 Adiantado; senão 🟢 No prazo. Sem parte pronta não há ritmo: ⚪ até a primeira fechar (🔴 se o prazo passou ou mais de 25 % dele correu). Sem prazo nenhum, só a previsão (⚪ Sem prazo definido).
 - **Uma transição = uma linha no Registro + uma linha na Série, no mesmo arquivo e no mesmo momento.** O **Evento** da Série cita a Task e a passagem (`T-041 🟦 → 🟨`). Sprint sem eventos num dia não gera linha vazia — o burndown é por evento.
 - **Est. restante só cai quando uma Task fecha (✅).** Passar a 🟦/🟨/🟪 não reduz o restante — muda a composição das colunas de estado.
 - **O dia 0 é a aprovação do pacote, não o fim da Planning** (R25 · [`../process/workflow-sprint.md` §5f](../process/workflow-sprint.md)).

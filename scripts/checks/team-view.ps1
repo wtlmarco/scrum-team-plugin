@@ -177,7 +177,7 @@ try {
         $o += "$title · $($tasks.Count) Tasks · $($E.Done) $(& $count $E.Done) · $($E.QA) $(& $count $E.QA) · $($E.Build) $(& $count $E.Build) · $($E.Plan) $(& $count $E.Plan) · $todo $(& $count $todo) · $red $(& $count $red)"
 
         # Estimativa restante: primeira e última linha da Série.
-        $chart = Get-ChartPath $S; $chartText = if (Test-Path -LiteralPath $chart) { Read-Text $chart } else { '' }
+        $chart = Get-RecordPath $S; $chartText = if (Test-Path -LiteralPath $chart) { Read-Text $chart } else { '' }   # v3.60.0: Série e Registro no consumption.md
         $serie = if ($chartText) { Get-Section $chartText '^##\s+S[ée]rie' } else { $null }
         if ($serie) {
             $t = @(Get-Tables $serie)[0]

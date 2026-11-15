@@ -694,7 +694,7 @@ Check 'mark com kanban.md: a transição vai ao kanban.md e a tabela Kanban é r
 # v3.51.2 (note.md itens 7, 9 e 10): rodadas no kanban.md do sprint; kanban.md e consumption.md do bloco de fix.
 Put $p '.team-project/usage.jsonl' ('{"role":"developer","work":"T-041a","model":"claude-sonnet-5-5","start":"2026-09-03T10:00:00","duration_s":360,"processed":180000,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"developer","work":"F-001","model":"claude-haiku-4-5-20251001","start":"2026-09-03T11:00:00","duration_s":120,"processed":50000,"dest":".team-project/fixes/B-001/consumption.md"}' + "`n" + '{"role":"quality-assurance","work":"B-001","model":"claude-sonnet-5-5","start":"2026-09-03T12:00:00","duration_s":240,"processed":90000,"dest":".team-project/fixes/B-001/consumption.md"}' + "`n")
 $r = Invoke-Check 'kanban.ps1' @('-Root', $p)
-Check 'kanban (sprint): seção Rodadas com papel, modelo, tokens e tempo, e o total' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($kb, $utf8) } 0 @('1 rodada', '\| dev \| sonnet 5\.5 \| 1 \| 180\.000 \| 06:00 \|', '\| 2026-09-03 10:00 \| T-041a \| dev \|', '\*\*Total\*\*')
+Check 'kanban (sprint): seção Rodadas com papel, modelo, tokens e tempo, e o total (v3.60.0: a rodada a rodada no consumption.md)' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($kb, $utf8) + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/consumption.md'), $utf8) } 0 @('1 rodada', '\| dev \| sonnet 5\.5 \| 1 \| 180\.000 \| 06:00 \|', '\| 2026-09-03 10:00 \| T-041a \| dev \|', '\*\*Total\*\*')
 Put $p '.team-project/fixes/B-001/plan.md' "# B-001 · mini-planos`n`n## F-001 · Data futura`n`n### Arquivos`n- produção: ``src/a.ts```n`n## F-002 · CPF`n`n**Critério que caiu:** C5 — schema`n`n## Verificação do bloco`n"
 $r = Invoke-Check 'kanban.ps1' @('-Root', $p, '-Block', 'B-001', '-Init')
 $kbB = Join-Path $p '.team-project/fixes/B-001/kanban.md'
@@ -835,6 +835,35 @@ Put $pg '.team-project/architect/breakdown/S1.md' ($bdText.Replace('`src/a.ts:3`
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $pg)
 $fcText = if (Test-Path -LiteralPath $fcg) { [System.IO.File]::ReadAllText($fcg, $utf8) } else { 'sem ficha' }
 Check 'v3.60.0: ficha corrigida pelas linhas de hoje não é deslocada de novo' @{ Code = $r.Code; Out = $fcText } 0 @('### `src/a\.ts` — linhas 15–17 de 65 · padrão a espelhar', '(?m)^15  export const v10 = 10$', '^(?![\s\S]*deslocadas desde a Planning)')
+
+# v3.60.0 (pedido do stakeholder, 15/11/2026): acompanhamento — a Série, o Registro de transições, a Rodada a rodada e a
+# Espera de comando vão ao consumption.md; o kanban.md ganha a previsão de cada parte, o farol do prazo e o Burndown visual.
+# Agora fixo (TEAM_SCHEDULE_NOW): T-041 (1) pronta em 04/09 10:00, abertura 01/09 10:00 → 74 h por dia estimado; a T-041a (1)
+# termina 07/09 14:00; Janela até 10/09 → folga de 82 h > 15 % de 230 h → Adiantado.
+$pk = Join-Path $tmp 'acompanha'; New-Project $pk
+Edit-File (Join-Path $pk '.team-project/sprints/1/sprint-backlog.md') "| $($e.qa) T-041 | Endpoint" "| $($e.ok) T-041 | Endpoint"
+Remove-Item -LiteralPath (Join-Path $pk '.team-project/sprints/1/burndown.md') -Force
+Put $pk '.team-project/sprints/1/kanban.md' "# Kanban — Sprint 1`n`n## Kanban`n`n## Controle`n`n### Bloqueios e riscos abertos`n`n| # | Task / História | Natureza | Degrau | Quem destrava | Desde |`n|---|---|---|---|---|---|`n`n## Linha de base`n`n| | |`n|---|---|`n| **Sprint** | 1 |`n| **Janela** | 2026-09-01 → 2026-09-10 |`n`n## Série`n`n| Dia | Data | Evento | Est. restante | Tasks restantes |`n|---|---|---|---|---|`n| 0 | 2026-09-01 | pacote aprovado | 2 | 2 |`n| 0 | 2026-09-01 10:00 | T-041 $($e.todo) → $($e.plan) | 2 | 2 |`n| 1 | 2026-09-02 09:00 | T-041 $($e.plan) → $($e.build) | 2 | 2 |`n| 2 | 2026-09-03 15:00 | T-041 $($e.build) → $($e.qa) | 2 | 2 |`n| 3 | 2026-09-04 10:00 | T-041 $($e.qa) → $($e.ok) | 1 | 1 |`n`n## Registro de transições (R24)`n`n| Task | De → Para | Quando | Por quem |`n|---|---|---|---|`n| T-041 | $($e.todo) → $($e.plan) | 2026-09-01 10:00 | Arquiteto |`n| T-041 | $($e.plan) → $($e.build) | 2026-09-02 09:00 | dev |`n| T-041 | $($e.build) → $($e.qa) | 2026-09-03 15:00 | QA |`n| T-041 | $($e.qa) → $($e.ok) | 2026-09-04 10:00 | SM |`n`n## Rodadas`n"
+Put $pk '.team-project/verify/1/T-041/time.jsonl' "{`"mode`":`"full`",`"seconds`":125}`n"
+$env:TEAM_SCHEDULE_NOW = '2026-09-04 12:00'
+$r = Invoke-Check 'kanban.ps1' @('-Root', $pk)
+$kbA = [System.IO.File]::ReadAllText((Join-Path $pk '.team-project/sprints/1/kanban.md'), $utf8)
+$csA = [System.IO.File]::ReadAllText((Join-Path $pk '.team-project/sprints/1/consumption.md'), $utf8)
+Check 'v3.60.0: Série, Registro, Rodada a rodada e Espera de comando vão ao consumption.md; o kanban.md fica sem elas' @{ Code = $r.Code; Out = "@@KANBAN@@`n$kbA`n@@CONSUMO@@`n$csA" } 0 @('(?ms)@@CONSUMO@@.*^## Série\r?\n.*\| 3 \| 2026-09-04 10:00 \| T-041', '(?ms)@@CONSUMO@@.*^## Registro de transições \(R24\)\r?\n.*\| T-041 \| \S+ → \S+ \| 2026-09-04 10:00 \| SM \|', '(?ms)@@CONSUMO@@.*^## Rodada a rodada', '(?ms)@@CONSUMO@@.*^## Espera de comando.*\| T-041 \| 1 \| — \| 02:05 \| — \| \*\*02:05\*\* \|', '(?ms)@@CONSUMO@@.*^## Registro\r?\n\| Data \| Papel', '(?m)\A(?![\s\S]*@@KANBAN@@[\s\S]*^## S[ée]rie[\s\S]*@@CONSUMO@@)(?![\s\S]*@@KANBAN@@[\s\S]*^## Registro de transi[\s\S]*@@CONSUMO@@)(?![\s\S]*@@KANBAN@@[\s\S]*### Rodada a rodada[\s\S]*@@CONSUMO@@)')
+Check 'v3.60.0: o Kanban traz quanto falta de cada parte aberta e quando termina, pelo ritmo medido (74 h por dia estimado)' @{ Code = $r.Code; Out = $kbA } 0 @('\(T-041a\) · falta ~3,1 dias · termina por volta de 07/09 às 14:00')
+Check 'v3.60.0: farol no Resumo e no Burndown — Adiantado, previsão 07/09 14:00, prazo pela Janela (fim do dia 10/09)' @{ Code = $r.Code; Out = $kbA } 0 @('(?m)^- \*\*Prazo:\*\* 🔵 Adiantado — previsão de término 07/09 às 14:00 \(faltam ~3,1 dias de relógio\); prazo 10/09 \(fim do dia\), o fim do sprint\.', '(?ms)^## Kanban.*^## Burndown.*^## Controle', '- \*\*Ritmo medido:\*\* 1 dias estimados prontos em ~3,1 dias de relógio desde a abertura — ~3,1 dias por dia estimado')
+Check 'v3.60.0: Burndown visual — Mermaid com a linha ideal (cinza) e a real (azul), legenda em texto e a tabela por dia' @{ Code = $r.Code; Out = $kbA } 0 @('\*\*Legenda:\*\* linha azul = restante real · linha cinza = ritmo ideal até o prazo', '"plotColorPalette": "#9a9993, #2a78d6"', '(?m)^xychart-beta$', 'x-axis \["01/09", "02/09", "03/09", "04/09", "05/09", "06/09", "07/09", "08/09", "09/09", "10/09"\]', 'y-axis "Restante" 0 --> 2', '(?m)^    line \[2, 1\.78, 1\.56, 1\.33, 1\.11, 0\.89, 0\.67, 0\.44, 0\.22, 0\]$', '(?m)^    line \[2, 2, 2, 1\]$', '\| 3 \| 04/09 \| 1 \| 1,33 \| ██████████ \|', '\| 4 \| 05/09 \| — \| 1,11 \|  \|')
+$env:TEAM_SCHEDULE_NOW = '2026-09-12 10:00'
+$r = Invoke-Check 'kanban.ps1' @('-Root', $pk)
+$kbA = [System.IO.File]::ReadAllText((Join-Path $pk '.team-project/sprints/1/kanban.md'), $utf8)
+Check 'v3.60.0: com o prazo vencido e parte aberta → Atrasado' @{ Code = $r.Code; Out = $kbA } 0 @('(?m)^- \*\*Prazo:\*\* 🔴 Atrasado — previsão de término')
+Remove-Item Env:TEAM_SCHEDULE_NOW -ErrorAction SilentlyContinue
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'plan', '-By', 'teste', '-Root', $pk)
+$csA = [System.IO.File]::ReadAllText((Join-Path $pk '.team-project/sprints/1/consumption.md'), $utf8)
+$kbA = [System.IO.File]::ReadAllText((Join-Path $pk '.team-project/sprints/1/kanban.md'), $utf8)
+Check 'v3.60.0: o mark.ps1 grava a Série e o Registro no consumption.md (e não os recria no kanban.md)' @{ Code = $r.Code; Out = $r.Out + "`n@@CONSUMO@@`n$csA`n@@KANBAN@@`n$kbA" } 0 @('Registro em consumption\.md', '(?ms)@@CONSUMO@@.*\| T-041a \| \S+ → \S+ \| \d{4}-\d\d-\d\d \d\d:\d\d \| teste', '(?ms)@@CONSUMO@@.*T-041a \S+ → \S+ · teste', '(?m)\A(?![\s\S]*@@KANBAN@@[\s\S]*^## S[ée]rie)')
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Post', '-Root', $pk)
+Check 'v3.60.0: a R24 do close.ps1 -Post lê o Registro e a Série no consumption.md' @{ Code = 0; Out = $r.Out } 0 @('\| R24 \| ok')
 Put $p $pl ("# Plano de Implementação — T-041a Variante`n**Li além da ficha:** ``src/b.ts`` — o leitor do export_job`n" + $fbase)
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.53 regra 28: plano pela ficha conferido — nomes, caminhos, "li além" contado e (v3.53.2) previsto × plano' $r 0 @('\| ficha \| ok.*1 nome.*3 caminho.*li além da ficha: 1; arquivos previstos 2, no plano 2')
@@ -1208,14 +1237,18 @@ Check 'run next: plano da História H-014 lista só T-041a, sem IDs repetidos (g
 
 # 11b. kanban.ps1 -Init cria o consumption.md do sprint; rodadas rateadas entre as Tasks citadas, fase pelo marcador, pausa e
 # espera de comando (garden 1, 8, 9; note.md 12 e 13).
-Remove-Item -LiteralPath (Join-Path $p '.team-project/sprints/1/consumption.md') -Force
+# v3.60.0: a Série e o Registro de transições já moram no consumption.md deste projeto (as regravações acima os levaram) — o
+# teste do -Init tira o arquivo do caminho e o devolve depois, em vez de apagar o histórico.
+$consP = Join-Path $p '.team-project/sprints/1/consumption.md'
+Move-Item -LiteralPath $consP -Destination "$consP.bak" -Force
 $r = Invoke-Check 'kanban.ps1' @('-Init', '-Root', $p)
-Check 'kanban -Init: cria o consumption.md do sprint' @{ Code = $r.Code; Out = $r.Out + "`nCONS=" + $(if (Test-Path -LiteralPath (Join-Path $p '.team-project/sprints/1/consumption.md')) { 'ok' } else { 'ausente' }) } 0 @('consumption\.md criado', 'CONS=ok')
+Check 'kanban -Init: cria o consumption.md do sprint' @{ Code = $r.Code; Out = $r.Out + "`nCONS=" + $(if (Test-Path -LiteralPath $consP) { 'ok' } else { 'ausente' }) } 0 @('consumption\.md criado', 'CONS=ok')
+Move-Item -LiteralPath "$consP.bak" -Destination $consP -Force
 Put $p '.team-project/usage.jsonl' ('{"role":"architect","work":"T-041","works":["T-041","T-041a"],"model":"claude-opus-5-5","start":"2026-09-01T11:00:00","duration_s":600,"paused_s":0,"processed":1000000,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"quality-assurance","work":"T-041","model":"claude-sonnet-5-5","start":"2026-09-01T12:00:00","duration_s":120,"paused_s":0,"processed":10000,"dest":".team-project/sprints/1/consumption.md"}' + "`n" + '{"role":"developer","work":"T-041","model":"claude-haiku-5-5","start":"2026-09-02T10:00:00","duration_s":300,"paused_s":9000,"processed":50000,"dest":".team-project/sprints/1/consumption.md"}' + "`n")
 Put $p '.team-project/verify/1/T-041/time.jsonl' ('{"at":"2026-09-02T10:01:00","mode":"full","seconds":480}' + "`n" + '{"at":"2026-09-02T10:20:00","mode":"mutation","seconds":300}' + "`n")
 $r = Invoke-Check 'kanban.ps1' @('-Root', $p)
 $kbt = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/kanban.md'), $utf8)
-Check 'kanban: plano por História rateado (500 mil em cada), QA antes da construção conta no Plano, pausa e espera de comando' @{ Code = $r.Code; Out = $kbt } 0 @('\| T-041 \| 510\.000 · 07:00 \| 50\.000 · 05:00 \| — \| — \| 560\.000 · 12:00 \| 150:00 \|', '\| T-041a \| 500\.000 · 05:00 \|', '### Espera de comando', '\| T-041 \| 2 \| — \| 08:00 \| 05:00 \| \*\*13:00\*\* \|')
+Check 'kanban: plano por História rateado (500 mil em cada), QA antes da construção conta no Plano, pausa e espera de comando (v3.60.0: no consumption.md)' @{ Code = $r.Code; Out = $kbt + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/consumption.md'), $utf8) } 0 @('\| T-041 \| 510\.000 · 07:00 \| 50\.000 · 05:00 \| — \| — \| 560\.000 · 12:00 \| 150:00 \|', '\| T-041a \| 500\.000 · 05:00 \|', '(?m)^## Espera de comando', '\| T-041 \| 2 \| — \| 08:00 \| 05:00 \| \*\*13:00\*\* \|')
 
 # 11c. run.ps1 done (garden 19, 22): confere antes; fechando, passa por 🟪 e o -Post fica ok; GAP volta a 🟨.
 $p = Join-Path $tmp 'done'; New-Project $p
@@ -1949,6 +1982,14 @@ Check 'v3.53.4: planner external → pacote da História gerado (sem Arquiteto) 
 $zl = & $zipList (Join-Path $xpk 'out/H-014.zip')
 $ins = [System.IO.File]::ReadAllText((Join-Path $xpk 'out/H-014/INSTRUCTIONS.md'), $utf8)
 Check 'v3.53.4: o zip leva o roteiro, a ficha (com o resumo da dependência), o modelo, o ambiente medido e os arquivos da ficha, com "/"' @{ Code = 0; Out = $zl + "`n" + $ins + "`n" + [System.IO.File]::ReadAllText((Join-Path $xpk 'out/H-014/tasks/T-041a-ficha.md'), $utf8) } 0 @('(?m)^INSTRUCTIONS\.md$', '(?m)^tasks/T-041a-ficha\.md$', '(?m)^context/implementation-plan\.md$', '(?m)^context/environment\.md$', '(?m)^files/src/a\.ts$', '(?m)^files/docs/sdd/03-architecture\.md$', '(?m)^files/plugin/standards/implementation-principles\.md$', '`T-041a-plan\.md` — Variante', '`H-014-return\.zip`', '\| 1 \| T-041a \| Variante \| T-041 \|', 'Nunca invente uma saída', '## Plano da dependência — resumo de `sprints/1/plan/T-041-export\.md`')
+# v3.60.0: a ficha do pacote traz os trechos nas linhas de hoje, e o roteiro manda citar essas linhas, não as da ficha.
+Check 'v3.60.0: pacote externo — a ficha traz os trechos (linhas de hoje) e o roteiro manda usá-los antes de files/' @{ Code = 0; Out = [System.IO.File]::ReadAllText((Join-Path $xpk 'out/H-014/tasks/T-041a-ficha.md'), $utf8) + "`n" + $ins } 0 @('## Trechos que a ficha aponta', '### `src/a\.ts` — linhas 1–3 de 3 · padrão a espelhar', '(?m)^3  export const c = 3$', 'com o número da linha \*\*de hoje\*\*', 'O que faltar, leia em `files/`')
+$xb = Join-Path $tmp 'externo-faixa'; New-Project $xb
+Put $xb '.team-project/architect/breakdown/S1.md' ($bdText.Replace('`src/a.ts:3` — padrão a espelhar', '`src/a.ts:90-95` — padrão a espelhar'))
+Put $xb 'src/a.ts' "export const a = 1`nexport const b = 2`nexport const c = 3`n"; Put $xb 'docs/sdd/03-architecture.md' "# Arquitetura`n"
+Put $xb '.team-project/guards.json' '{ "run": { "planner": "external", "tasks": [] } }'
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $xb)
+Check 'v3.60.0: pacote externo — faixa fora do arquivo volta à correção da ficha antes do pacote' @{ Code = $r.Code; Out = $r.Out + "`npack=" + (Test-Path -LiteralPath (Join-Path $xb '.team-project/sprints/1/pack/out')) } 0 @('corrigir a ficha da T-041a antes do plano — faixa fora do arquivo: src/a\.ts:90-95 \(3 linhas\)', 'pack=False')
 Edit-File $xsb "| $($e.qa) T-041 | Endpoint" "| $($e.ok) T-041 | Endpoint"
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $xp)
 Check 'v3.53.4: sem Task em construção, o run espera o stakeholder (exit 3) e diz onde pegar e onde devolver; a marca libera a G20' @{ Code = $r.Code; Out = $r.Out + "`nmarca=" + (Test-Path -LiteralPath (Join-Path $xp '.team-project/.external-plan')) } 3 @('aguardando o retorno de T-041a \(pacote H-014\)', 'PRÓXIMA AÇÃO: external plan — com o stakeholder', 'pack/out/H-014\.zip \(chat na web\)', 'pack/out/H-014/ \(app do Codex\)', 'devolva o H-014-return\.zip .* em \.team-project/sprints/1/pack/in/', 'marca=True')
@@ -2694,11 +2735,13 @@ Check 'v3.54.2: quadro — Task sem marcador em Na fila; 🔴 com o motivo ao la
 # v3.59.0: o "## Resumo" em palavras simples no topo e o registro técnico no fim, sob "## Detalhe técnico" — só move seções
 # inteiras (o Registro e a Série ficam iguais) e regravar de novo não muda a ordem nem duplica.
 $kbp = Join-Path $p '.team-project/sprints/1/kanban.md'
-$kb1 = [System.IO.File]::ReadAllText($kbp, $utf8)
+# v3.60.0: a Série e o Registro já foram ao consumption.md (o mark.ps1 acima regravou o kanban) — o "não muda" se confere lá.
+$csp = Join-Path $p '.team-project/sprints/1/consumption.md'
+$kb1 = [System.IO.File]::ReadAllText($csp, $utf8)
 $null = Invoke-Check 'kanban.ps1' @('-Root', $p)
-$kb2 = [System.IO.File]::ReadAllText($kbp, $utf8)
+$kb2 = [System.IO.File]::ReadAllText($kbp, $utf8); $cs2 = [System.IO.File]::ReadAllText($csp, $utf8)
 $heads = (@([regex]::Matches($kb2, '(?m)^## ([^\r\n]+)') | ForEach-Object { $_.Groups[1].Value.Trim() }) -join ' > ')
-$reg1 = [regex]::Match($kb1, '(?ms)^## Registro de transi.*?(?=^## |\z)').Value.TrimEnd(); $reg2 = [regex]::Match($kb2, '(?ms)^## Registro de transi.*?(?=^## |\z)').Value.TrimEnd()
+$reg1 = [regex]::Match($kb1, '(?ms)^## Registro de transi.*?(?=^## |\z)').Value.TrimEnd(); $reg2 = [regex]::Match($cs2, '(?ms)^## Registro de transi.*?(?=^## |\z)').Value.TrimEnd()
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 $news1 = $r.Out
 $null = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'qa', '-Root', $p)
@@ -2707,7 +2750,7 @@ $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 $news2 = $r.Out
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'v3.59.0: next — PARA O STAKEHOLDER: em toda ação; o que parou desde o next anterior abre a fala, uma vez, em frase simples' @{ Code = 0; Out = "N1=[$news1]`nN2=[$news2]`nN3=[$($r.Out)]" } 0 @('N1=\[[\s\S]*PARA O STAKEHOLDER: (?!Pronto|Parou)', 'N2=\[[\s\S]*PARA O STAKEHOLDER: Parou: Exportar o resultado da análise — parte 1 de 2 \(T-041\) — o teste no app não encontra a tela por onde começa; precisa de uma decisão\. ', 'N3=\[(?![^\]]*Parou:)[\s\S]*PARA O STAKEHOLDER: ')
-Check 'v3.59.0: kanban.md — Resumo no topo, quadro, depois o Detalhe técnico com Série, Registro e Rodadas; regravar não duplica nem muda o Registro' @{ Code = 0; Out = "HEADS=$heads`nREG=$($reg1 -eq $reg2 -and $reg1.Length -gt 0)`n$kb2" } 0 @('(?m)^HEADS=Resumo > Kanban > Detalhe técnico > Série > Registro de transições \(R24\) > Rodadas\r?$', 'REG=True', '- \*\*Andamento:\*\* 0 de 2 partes prontas \(cerca de 0% do trabalho estimado\)', '- \*\*Parado:\*\* Exportar o resultado da análise — parte 1 de 2 \(T-041\) — falta testar no app rodando', '- \*\*A seguir:\*\* Exportar o resultado da análise — parte 2 de 2 \(T-041a\)')
+Check 'v3.59.0: kanban.md — Resumo no topo, quadro, depois o Detalhe técnico; v3.60.0: o Burndown depois do quadro, a Série e o Registro no consumption.md; regravar não duplica nem muda o Registro' @{ Code = 0; Out = "HEADS=$heads`nREG=$($reg1 -eq $reg2 -and $reg1.Length -gt 0)`n$kb2" } 0 @('(?m)^HEADS=Resumo > Kanban > Burndown > Detalhe técnico > Rodadas\r?$', 'REG=True', '- \*\*Andamento:\*\* 0 de 2 partes prontas \(cerca de 0% do trabalho estimado\)', '- \*\*Parado:\*\* Exportar o resultado da análise — parte 1 de 2 \(T-041\) — falta testar no app rodando', '- \*\*A seguir:\*\* Exportar o resultado da análise — parte 2 de 2 \(T-041a\)')
 
 # v3.54.2 (item 3): espera de um accept que só falha — o next mostra o avanço (progress.json do mesmo processo) e, sem nenhum
 # cenário passando em 15 min, SEM AVANÇO (a captura de falha contava como sinal de vida: T-063, 50 min esperando).

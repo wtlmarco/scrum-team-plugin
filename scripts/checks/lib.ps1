@@ -1292,6 +1292,121 @@ function Format-SprintCapacity($C) {
     if ($C.Add -gt 0) { $s += " · com a entrada (+$(& $f $C.Add)): $(& $f $C.With) ($(& $sg $C.WithPct))" }
     return $s
 }
+# ---------- v3.60.0 · prazo, previsão e burndown (pedido do stakeholder, 15/11/2026) ----------
+# "Adicionar no Kanban a estimativa de tempo de cada tarefa para finalizar e a estimativa de tempo do Sprint e um farol No
+# Prazo, Atrasado e Adiantado" e "um gráfico Burndown visual". O ritmo é MEDIDO no próprio sprint: horas de relógio desde a
+# abertura ÷ unidades estimadas já prontas (✅). Cada parte aberta leva estimativa × ritmo; as em construção descontam o que
+# já correram desde que entraram em 🟨; somadas na ordem da fila (R1: uma por vez), dão a previsão de cada uma e a do sprint.
+# O prazo, na ordem: a data de fim da Janela (Linha de base) · a "Duração do sprint" do README (N dias ou semanas) · com a
+# unidade em dias, a própria estimativa planejada na abertura (o garden não tem data fixa: 13,75 d desde a abertura). Sem
+# nenhum, só a previsão, sem farol. Farol: previsão depois do prazo → Atrasado; folga acima de 15 % da janela → Adiantado;
+# senão No prazo. Sem parte pronta ainda, não há ritmo: Atrasado só se o prazo passou ou mais de 25 % dele correu.
+$script:ScheduleAheadPct = 0.15
+$script:ScheduleNoPaceLatePct = 0.25
+$script:ScheduleMaxDays = 60
+function ConvertTo-ScheduleNumber([string]$V) { $m = [regex]::Match([string]$V, '-?\d+(?:[.,]\d+)?'); if ($m.Success) { return [double]($m.Value -replace ',', '.') }; return $null }
+function ConvertTo-ScheduleDate([string]$V) {
+    $m = [regex]::Match([string]$V, '(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}))?')
+    if ($m.Success) {
+        $s = $m.Groups[1].Value + $(if ($m.Groups[2].Success) { ' ' + $m.Groups[2].Value } else { '' })
+        try { return [datetime]::ParseExact($s, [string[]]@('yyyy-MM-dd HH:mm', 'yyyy-MM-dd'), [Globalization.CultureInfo]::InvariantCulture, 'None') } catch { }
+    }
+    $m = [regex]::Match([string]$V, '\b(\d{2})/(\d{2})/(\d{4})\b')
+    if ($m.Success) { try { return (New-Object DateTime ([int]$m.Groups[3].Value), ([int]$m.Groups[2].Value), ([int]$m.Groups[1].Value)) } catch { } }
+    return $null
+}
+# Pontos da Série: quando e a estimativa restante, na ordem do arquivo. Timed = a célula tinha hora.
+function Get-SeriesPoints([string]$Text) {
+    $sec = Get-Section $Text '^##\s+S[ée]rie'; if (-not $sec) { return @() }
+    $t = @(Get-Tables $sec)[0]; if (-not $t) { return @() }
+    $di = Find-Col $t 'Data'; $ri = Find-Col $t 'Est. restante'
+    if ($di -lt 0 -or $ri -lt 0) { return @() }
+    $out = @()
+    foreach ($r in $t.Rows) {
+        $at = ConvertTo-ScheduleDate (Get-Cell $r $di); $rem = ConvertTo-ScheduleNumber (Get-Cell $r $ri)
+        if ($at -and $null -ne $rem) { $out += [pscustomobject]@{ At = $at; Rem = $rem; Timed = ((Get-Cell $r $di) -match '\d{2}:\d{2}') } }
+    }
+    return $out
+}
+# Quando cada Task entrou em 🟨 pela última vez (Registro de transições) — o que ela já correu na construção.
+function Get-BuildStarts([string]$Text) {
+    $h = @{}; $sec = Get-Section $Text '^##\s+Registro de transi'; if (-not $sec) { return $h }
+    foreach ($t in @(Get-Tables $sec)) { foreach ($r in $t.Rows) {
+        $ids = @([regex]::Matches((Get-Cell $r 0), $script:TaskIdRe)); if ($ids.Count -ne 1) { continue }
+        if (((Get-Cell $r 1) -split '→')[-1].Trim() -ne $E.Build) { continue }
+        $at = ConvertTo-ScheduleDate (Get-Cell $r 2); if ($at) { $h[$ids[0].Value] = $at } } }
+    return $h
+}
+function Get-SprintSchedule([string]$Root, [string]$S, $Now = $null) {
+    # TEAM_SCHEDULE_NOW ("aaaa-mm-dd hh:mm"): o "agora" fixo dos testes (run-check-tests.ps1); fora deles, o relógio.
+    if (-not $Now) { $Now = if ($env:TEAM_SCHEDULE_NOW) { [datetime]::ParseExact($env:TEAM_SCHEDULE_NOW, 'yyyy-MM-dd HH:mm', [Globalization.CultureInfo]::InvariantCulture) } else { Get-Date } }
+    if (-not (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md'))) { return $null }
+    $todoMk = [char]::ConvertFromUtf32(0x2B1C); $redMk = [char]::ConvertFromUtf32(0x1F534)
+    $tasks = @(Get-SprintTasks $S)
+    $rec = Get-RecordPath $S; $recT = if (Test-Path -LiteralPath $rec) { Read-Text $rec } else { '' }
+    $ch = Get-ChartPath $S; $chT = if (Test-Path -LiteralPath $ch) { Read-Text $ch } else { '' }
+    $pts = @(Get-SeriesPoints $recT)
+    $base = Get-Section $chT '^##\s+Linha de base'
+    $jan = if ($base) { [string](Get-LabelValue $base 'Janela') } else { '' }
+    $jm = [regex]::Match($jan, '^(.*?)(?:→|->)(.*)$')
+    $jStart = ConvertTo-ScheduleDate $(if ($jm.Success) { $jm.Groups[1].Value } else { $jan })
+    $jEnd = if ($jm.Success) { ConvertTo-ScheduleDate $jm.Groups[2].Value } else { $null }
+    # Início: a abertura na Série (a 1ª linha com hora, se a de abertura só tem a data), senão o começo da Janela.
+    $start = $null
+    if ($pts.Count) { $start = $pts[0].At; if (-not $pts[0].Timed) { $tm = @($pts | Where-Object { $_.Timed -and $_.At.Date -eq $pts[0].At.Date }) | Select-Object -First 1; if ($tm) { $start = $tm.At } } }
+    elseif ($jStart) { $start = $jStart }
+    if (-not $start) { return $null }
+    $est = { param($t) if ($null -ne $t.Est) { [double]$t.Est } else { 0.0 } }
+    $open = @($tasks | Where-Object { $_.Mark -ne $E.Done })
+    $doneU = [double](@($tasks | Where-Object { $_.Mark -eq $E.Done } | ForEach-Object { & $est $_ }) | Measure-Object -Sum).Sum
+    $remU = [double](@($open | ForEach-Object { & $est $_ }) | Measure-Object -Sum).Sum
+    $planned = if ($pts.Count) { $pts[0].Rem } else { $doneU + $remU }
+    # Prazo
+    $rd = Join-Path $Root '.team-project/README.md'; $rt = if (Test-Path -LiteralPath $rd) { Read-Text $rd } else { '' }
+    $unit = [string](Get-LabelValue $rt 'Unidade de estimativa')
+    $unitName = if ($unit -match '(?i)\bdias?\b') { 'dias' } elseif ($unit -match '(?i)ponto') { 'pontos' } else { 'unidades' }
+    $end = $null; $src = ''
+    if ($jEnd -and $jEnd -gt $start) { $end = if ($jEnd.TimeOfDay.TotalMinutes -eq 0) { $jEnd.AddDays(1) } else { $jEnd }; $src = 'janela' }
+    else {
+        $dm = [regex]::Match([string](Get-LabelValue $rt 'Duração do sprint'), '(?i)(\d+)\s*(semana|dia)')
+        if ($dm.Success) { $k = [int]$dm.Groups[1].Value; $end = $start.Date.AddDays($(if ($dm.Groups[2].Value -match '(?i)semana') { 7 * $k } else { $k })); $src = 'duração' }
+        elseif ($unit -match '(?i)\bdias?\b' -and $planned -gt 0) { $end = $start.AddDays($planned); $src = 'estimativa' }
+    }
+    # Ritmo e previsão, na ordem da fila: em construção/teste · sendo planejadas · na fila · paradas no fim.
+    $elapsedH = [Math]::Max(0.0, ($Now - $start).TotalHours)
+    $pace = if ($doneU -gt 0 -and $elapsedH -gt 0) { $elapsedH / $doneU } else { $null }
+    $bs = Get-BuildStarts $recT
+    $order = @($open | Where-Object { $_.Mark -eq $E.Build -or $_.Mark -eq $E.QA }) + @($open | Where-Object { $_.Mark -eq $E.Plan }) + @($open | Where-Object { -not $_.Mark -or $_.Mark -eq $todoMk }) + @($open | Where-Object { $_.Mark -eq $redMk })
+    $eta = @{}; $t = $Now
+    foreach ($tk in $order) {
+        $red = ($tk.Mark -eq $redMk)
+        if ($null -eq $pace) { $eta[$tk.Id] = [pscustomobject]@{ Hours = $null; Finish = $null; Over = $false; Red = $red }; continue }
+        $dur = (& $est $tk) * $pace; $left = $dur; $over = $false
+        if (($tk.Mark -eq $E.Build -or $tk.Mark -eq $E.QA) -and $bs.ContainsKey($tk.Id)) { $spent = ($Now - $bs[$tk.Id]).TotalHours; $left = [Math]::Max(0.0, $dur - $spent); $over = ($spent -gt $dur) }
+        $t = $t.AddHours($left)
+        $eta[$tk.Id] = [pscustomobject]@{ Hours = $left; Finish = $t; Over = $over; Red = $red }
+    }
+    $proj = if ($null -ne $pace) { $t } else { $null }
+    $state = if (-not $open.Count) { 'pronto' } elseif (-not $end) { 'sem prazo' } elseif ($null -eq $pace) {
+        if ($Now -gt $end -or ($elapsedH / [Math]::Max(0.01, ($end - $start).TotalHours)) -gt $script:ScheduleNoPaceLatePct) { 'atrasado' } else { 'sem ritmo' }
+    } elseif ($proj -gt $end) { 'atrasado' } elseif (($end - $proj).TotalHours -gt $script:ScheduleAheadPct * ($end - $start).TotalHours) { 'adiantado' } else { 'no prazo' }
+    # Dias do burndown: do dia 0 ao último entre o prazo e hoje (até $ScheduleMaxDays). Real até hoje, com o último valor do
+    # dia (o de antes vale nos dias sem evento); ideal do planejado a zero no último dia do prazo.
+    $today = [int]($Now.Date - $start.Date).TotalDays
+    $endDay = if ($end) { [int]($end.AddSeconds(-1).Date - $start.Date).TotalDays } else { $null }
+    $last = [Math]::Min($script:ScheduleMaxDays, [Math]::Max($today, $(if ($null -ne $endDay) { $endDay } else { 0 })))
+    $days = @(); $cur = $planned
+    for ($d = 0; $d -le $last; $d++) {
+        $day = $start.Date.AddDays($d)
+        foreach ($p in $pts) { if ($p.At.Date -le $day) { $cur = $p.Rem } }
+        $ideal = if ($null -ne $endDay -and $endDay -gt 0) { [Math]::Max(0.0, $planned * (1 - $d / $endDay)) } elseif ($null -ne $endDay) { 0.0 } else { $null }
+        # Hoje vale o restante do quadro (a Série pode atrasar em relação ao quadro; no garden S6 ela marcava 0 com 2 abertas).
+        $days += [pscustomobject]@{ Day = $d; Date = $day; Real = $(if ($d -lt $today) { $cur } elseif ($d -eq $today) { $remU } else { $null }); Ideal = $ideal }
+    }
+    return [pscustomobject]@{ Start = $start; End = $end; EndSource = $src; Unit = $unitName; Planned = $planned; Done = $doneU; Remaining = $remU; ElapsedH = $elapsedH
+                              PaceH = $pace; Projected = $proj; State = $state; Eta = $eta; Days = $days; Now = $Now }
+}
+
 # Arquivo do sprint com o Kanban, a Série, o Registro de transições e o controle (v3.51, G1): kanban.md; sprint aberto
 # antes da v3.51 tem burndown.md (o mesmo conteúdo, sem o Kanban). Devolve o que existe, o kanban.md primeiro.
 function Get-ChartPath([string]$SprintDir) {
@@ -1307,9 +1422,18 @@ function Get-ControlSection([string]$SprintDir, [string]$Board, [string]$Heading
     return $null
 }
 
-# Registro de transições (R24): vive no kanban.md (v3.51) ou no burndown.md (v3.44.1) do sprint; sprint aberto antes disso o tem no sprint-backlog.md. $null se nenhum.
+# v3.60.0 (pedido do stakeholder, 15/11/2026: o kanban.md para quem acompanha; o registro técnico no consumption.md): a
+# Série e o Registro de transições vivem no consumption.md do sprint quando ele os tem — o kanban.ps1 os leva para lá no
+# sprint run. Antes disso (Planning, sprint anterior à v3.60), no kanban.md ou no burndown.md. Quem lê ou grava a Série e o
+# Registro usa este caminho; o controle e a linha de base continuam no kanban.md (Get-ChartPath).
+function Get-RecordPath([string]$SprintDir) {
+    $c = Join-Path $SprintDir 'consumption.md'
+    if ((Test-Path -LiteralPath $c) -and ((Read-Text $c) -match '(?m)^##\s+(S[ée]rie|Registro de transi)')) { return $c }
+    return (Get-ChartPath $SprintDir)
+}
+# Registro de transições (R24): vive no consumption.md (v3.60), no kanban.md (v3.51) ou no burndown.md (v3.44.1) do sprint; sprint aberto antes disso o tem no sprint-backlog.md. $null se nenhum.
 function Get-TransitionLog([string]$SprintDir, [string]$Board) {
-    $bd = Get-ChartPath $SprintDir
+    $bd = Get-RecordPath $SprintDir
     if (Test-Path -LiteralPath $bd) { $s = Get-Section (Read-Text $bd) '^##\s+Registro de transi'; if ($s) { return $s } }
     if ($Board) { return Get-Section $Board '^##\s+Registro de transi' }
     return $null
