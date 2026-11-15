@@ -781,10 +781,60 @@ $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.53 regra 28: sem Li além da ficha, sem o nome comum e a ficha com caminho que não existe: exit 1' $r 1 @('\| ficha \| falhou.*sem \*\*Li além da ficha:\*\*.*export_job.*caminho que não existe.*src/a\.ts, docs/sdd/03-architecture\.md')
 Put $p 'src/a.ts' "export const a = 1`n"; Put $p 'docs/sdd/03-architecture.md' "# Arquitetura`n"
 Remove-Item -LiteralPath (Join-Path $p $pl) -Force
+# v3.60.0: a faixa da ficha que passa do fim do arquivo (src/a.ts:3 num arquivo de 1 linha) se corrige antes do plano.
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.60.0: faixa da ficha fora do arquivo → corrigir a ficha antes do plano (Grep, faixa nova caminho:a-b)' @{ Code = $r.Code; Out = $r.Out + "`nrecorte=" + (Test-Path -LiteralPath $fc) } 0 @('corrigir a ficha da T-041a antes do plano — faixa fora do arquivo: src/a\.ts:3 \(1 linhas\)', 'escreva a faixa nova como caminho:a-b', 'Não escreva plano', 'recorte=False')
+Put $p 'src/a.ts' ((1..60 | ForEach-Object { "export const v$_ = $_" }) -join "`n")
+Put $p 'docs/sdd/03-architecture.md' "# Arquitetura`n`n## 3. Antes`nTEXTO-ANTES`n`n## 4. Camadas`nCAMADA-DOMINIO no centro`n`n### 4.1 Detalhe`nDETALHE-41`n`n## 5. Depois`nTEXTO-DEPOIS`n"
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 $fcText = if (Test-Path -LiteralPath $fc) { [System.IO.File]::ReadAllText($fc, $utf8) } else { 'sem ficha' }
-Check 'v3.53: Task com ficha → plano por Task pela ficha, sem abrir o plan.ps1; v3.53.2: resumo da dependência no recorte, leitura do trecho, sem corte' @{ Code = $r.Code; Out = $r.Out + "`n" + $fcText } 0 @('plano da T-041a \(História H-014\) pela ficha, um Arquiteto por Task', 'handoff/T-041a-ficha\.md', 'resumo do plano da dependência \(\.team-project/sprints/1/plan/T-041-export\.md', 'leia o trecho que a ficha aponta', 'não o corte por tamanho', 'Li além da ficha', 'Não abra o plan\.ps1', '### Decisões comuns — H-014', '### Ficha T-041a', '## Plano da dependência — resumo de `\.team-project/sprints/1/plan/T-041-export\.md`', '# Plano de Implementação — T-041 Endpoint', 'Passos/blocos:\*\*\s+- Passo 1 — endpoint')
+Check 'v3.53: Task com ficha → plano por Task pela ficha, sem abrir o plan.ps1; v3.53.2: resumo da dependência no recorte, sem corte; v3.60.0: ficha e context.md numa chamada, o que faltar numa chamada só' @{ Code = $r.Code; Out = $r.Out + "`n" + $fcText } 0 @('plano da T-041a \(História H-014\) pela ficha, um Arquiteto por Task', 'handoff/T-041a-ficha\.md e o \.team-project/architect/context\.md, os dois na mesma chamada', 'resumo do plano da dependência \(\.team-project/sprints/1/plan/T-041-export\.md', 'A ficha já traz os trechos do código e das fontes', 'sem abrir o template inteiro', 'peça tudo numa chamada só', 'não o corte por tamanho', 'Li além da ficha', 'Não abra o plan\.ps1', '### Decisões comuns — H-014', '### Ficha T-041a', '## Plano da dependência — resumo de `\.team-project/sprints/1/plan/T-041-export\.md`', '# Plano de Implementação — T-041 Endpoint', 'Passos/blocos:\*\*\s+- Passo 1 — endpoint')
 Check 'v3.53: o recorte leva só a ficha da Task (não a da outra História)' @{ Code = 0; Out = $(if ($fcText -notmatch 'T-099') { 'só a ficha' } else { 'vazou' }) } 0 @('só a ficha')
+Check 'v3.60.0: o recorte traz os trechos — caminho:linha vira 40 linhas numeradas; §4 do SDD só a seção (com a 4.1); o standard do plugin' @{ Code = 0; Out = $fcText } 0 @('## Trechos que a ficha aponta', '### `src/a\.ts` — linhas 1–40 de 60 · padrão a espelhar', '(?m)^ 3  export const v3 = 3$', '(?m)^40  export const v40 = 40$', '### `docs/sdd/03-architecture\.md` — linhas 6–11 de 13', 'CAMADA-DOMINIO', 'DETALHE-41', '### `standards/implementation-principles\.md` — linhas \d+–\d+ de \d+', '^(?![\s\S]*v41 = 41)(?![\s\S]*TEXTO-DEPOIS)(?![\s\S]*TEXTO-ANTES)')
+$tplLen = [System.IO.File]::ReadAllText((Join-Path $checks '..\..\roles\architect\templates\implementation-plan.md'), $utf8).Length
+$gi = $fcText.IndexOf('## Guia de escrita do plano')
+Check 'v3.60.0: o recorte traz o guia de escrita — esqueleto e uma linha por regra com a linha no template, sem o exemplo, menor que o template' @{ Code = 0; Out = $fcText + "`nGUIA=" + $(if ($gi -ge 0 -and ($fcText.Length - $gi) -lt 0.65 * $tplLen) { 'enxuto' } else { 'grande' }) } 0 @('## Guia de escrita do plano', '### Esqueleto', '# Plano de Implementação — <T-ID> <título da Task>', '28\. ✓ \*\*Plano pela ficha.*\*\(l\. \d+\)\*', '### Variante leve', 'GUIA=enxuto', '^(?![\s\S]*Chave de assinatura obrigatória)')
+# v3.60.0: faixa exata e faixa extra do mesmo arquivo na linha (`:c-d`) — só as linhas pedidas.
+Put $p '.team-project/architect/breakdown/S1.md' ($bdText.Replace('`src/a.ts:3` — padrão a espelhar', '`src/a.ts:10-12` — padrão a espelhar (`:50-52`)'))
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+$fcText = if (Test-Path -LiteralPath $fc) { [System.IO.File]::ReadAllText($fc, $utf8) } else { 'sem ficha' }
+Check 'v3.60.0: faixa exata e faixa extra na mesma linha → só as linhas pedidas' @{ Code = $r.Code; Out = $fcText } 0 @('### `src/a\.ts` — linhas 10–12, 50–52 de 60', '(?m)^12  export const v12 = 12$', '(?m)^51  export const v51 = 51$', '^(?![\s\S]*v13 = 13)(?![\s\S]*v49 = 49)')
+Put $p '.team-project/architect/breakdown/S1.md' $bdText
+# v3.60.0 (pergunta do stakeholder: "uma tarefa pode modificar o código e assim as referências irão quebrar"): as linhas da
+# ficha são as do código no início do sprint; o git as traz para hoje. No garden (S6), 6 de 60 faixas tinham andado até o
+# plano — `migracoes.ts:1131` 80 linhas. Base = último commit antes da 1ª linha do run-log.md; ficha corrigida no run, o
+# commit da correção (.ficha-base.json).
+$pg = Join-Path $tmp 'ficha-git'; New-Project $pg
+Put $pg '.team-project/architect/breakdown/S1.md' ($bdText.Replace('`src/a.ts:3` — padrão a espelhar', '`src/a.ts:10-12` — padrão a espelhar'))
+Put $pg 'src/a.ts' ((1..60 | ForEach-Object { "export const v$_ = $_" }) -join "`n")
+Put $pg 'docs/sdd/03-architecture.md' "# Arquitetura`n`n## 4. Camadas`nX`n"; Put $pg '.gitignore' ".team-project/`n"
+$ErrorActionPreference = 'Continue'   # aviso do git no stderr (fim de linha) não é falha do teste
+& git -C $pg init -q 2>$null; & git -C $pg config user.email t@t 2>$null; & git -C $pg config user.name t 2>$null; & git -C $pg config core.autocrlf false 2>$null
+$env:GIT_AUTHOR_DATE = '2026-01-01T10:00:00'; $env:GIT_COMMITTER_DATE = '2026-01-01T10:00:00'
+& git -C $pg add -A 2>$null; & git -C $pg commit -qm 'base do sprint' 2>$null
+Put $pg '.team-project/sprints/1/run-log.md' "# Run-log`n`n| quando | item | decisão |`n|---|---|---|`n| 2026-01-02 09:00 | sprint 1 · run | Run iniciado |`n"
+Put $pg 'src/a.ts' ((@(1..5 | ForEach-Object { "// novo $_" }) + @(1..60 | ForEach-Object { "export const v$_ = $_" })) -join "`n")
+$env:GIT_AUTHOR_DATE = '2026-01-03T10:00:00'; $env:GIT_COMMITTER_DATE = '2026-01-03T10:00:00'
+& git -C $pg commit -qam 'T-041: cabeçalho novo em a.ts' 2>$null
+Remove-Item Env:GIT_AUTHOR_DATE, Env:GIT_COMMITTER_DATE -ErrorAction SilentlyContinue
+$ErrorActionPreference = 'Stop'
+$fcg = Join-Path $pg '.team-project/sprints/1/handoff/T-041a-ficha.md'
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pg)
+$fcText = if (Test-Path -LiteralPath $fcg) { [System.IO.File]::ReadAllText($fcg, $utf8) } else { 'sem ficha' }
+Check 'v3.60.0: Task anterior empurrou o código 5 linhas → a faixa 10-12 da ficha vira 15-17, com a nota e a Task que mudou' @{ Code = $r.Code; Out = $fcText } 0 @('### `src/a\.ts` — linhas 15–17 de 65', 'linhas da ficha deslocadas desde a Planning \(por T-041\): 10-12 → 15-17', '(?m)^15  export const v10 = 10$', '(?m)^17  export const v12 = 12$', '^(?![\s\S]*v13 = 13)(?![\s\S]*novo 5)')
+Put $pg 'src/a.ts' ((@(1..5 | ForEach-Object { "// novo $_" }) + @(1..60 | ForEach-Object { if ($_ -eq 11) { 'export const v11 = 1100 // mudou' } else { "export const v$_ = $_" } })) -join "`n")
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pg)
+$fcText = if (Test-Path -LiteralPath $fcg) { [System.IO.File]::ReadAllText($fcg, $utf8) } else { 'sem ficha' }
+Check 'v3.60.0: o próprio trecho mudou desde a Planning → copia o de hoje, com ⚠ para conferir' @{ Code = $r.Code; Out = $fcText } 0 @('⚠ trecho alterado desde a Planning \(por T-041\): 10-12 — o copiado é o de hoje', '(?m)^16  export const v11 = 1100 // mudou$')
+$ErrorActionPreference = 'Continue'; & git -C $pg checkout -q -- src/a.ts 2>$null; $hdSha = "$(& git -C $pg rev-parse HEAD 2>$null)".Trim(); $ErrorActionPreference = 'Stop'
+Put $pg '.team-project/architect/breakdown/S1.md' ($bdText.Replace('`src/a.ts:3` — padrão a espelhar', '`src/a.ts:90-95` — padrão a espelhar'))
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pg)
+$fbj = Join-Path $pg '.team-project/sprints/1/.ficha-base.json'
+Check 'v3.60.0: faixa fora do arquivo → correção da ficha, e a base dela passa a ser o commit da correção' @{ Code = $r.Code; Out = $r.Out + "`nBASE=" + $(if (Test-Path -LiteralPath $fbj) { [System.IO.File]::ReadAllText($fbj, $utf8) } else { 'sem' }) } 0 @('faixa fora do arquivo: src/a\.ts:90-95 \(65 linhas\)', "BASE=\{`"T-041a`":`"$hdSha`"\}")
+Put $pg '.team-project/architect/breakdown/S1.md' ($bdText.Replace('`src/a.ts:3` — padrão a espelhar', '`src/a.ts:15-17` — padrão a espelhar'))
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pg)
+$fcText = if (Test-Path -LiteralPath $fcg) { [System.IO.File]::ReadAllText($fcg, $utf8) } else { 'sem ficha' }
+Check 'v3.60.0: ficha corrigida pelas linhas de hoje não é deslocada de novo' @{ Code = $r.Code; Out = $fcText } 0 @('### `src/a\.ts` — linhas 15–17 de 65 · padrão a espelhar', '(?m)^15  export const v10 = 10$', '^(?![\s\S]*deslocadas desde a Planning)')
 Put $p $pl ("# Plano de Implementação — T-041a Variante`n**Li além da ficha:** ``src/b.ts`` — o leitor do export_job`n" + $fbase)
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.53 regra 28: plano pela ficha conferido — nomes, caminhos, "li além" contado e (v3.53.2) previsto × plano' $r 0 @('\| ficha \| ok.*1 nome.*3 caminho.*li além da ficha: 1; arquivos previstos 2, no plano 2')
@@ -1891,7 +1941,7 @@ $xmiss = @($xrules | Where-Object { $xtpl -notmatch ('`\[' + [regex]::Escape($_)
 Check 'v3.57.7: toda regra que o plan.ps1 reprova tem instrução no roteiro do pacote externo ([<regra>])' @{ Code = 0; Out = "regras=$($xrules.Count) faltam=[$($xmiss -join ', ')]" } 0 @('regras=(1[5-9]|[2-9]\d)', 'faltam=\[\]')
 $xp = Join-Path $tmp 'externo'; New-Project $xp
 Put $xp '.team-project/architect/breakdown/S1.md' $bdText
-Put $xp 'src/a.ts' "export const a = 1`n"; Put $xp 'docs/sdd/03-architecture.md' "# Arquitetura`n"
+Put $xp 'src/a.ts' "export const a = 1`nexport const b = 2`nexport const c = 3`n"; Put $xp 'docs/sdd/03-architecture.md' "# Arquitetura`n"
 Put $xp '.team-project/guards.json' '{ "run": { "planner": "external", "tasks": [] } }'
 $xsb = Join-Path $xp '.team-project/sprints/1/sprint-backlog.md'; $xpk = Join-Path $xp '.team-project/sprints/1/pack'
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $xp)
@@ -1928,7 +1978,7 @@ Check 'v3.53.4: a decisão do GAP volta aprovada → substitui o plano e a Task 
 # Piloto: com a lista, só as Tasks dela vão para fora — as outras seguem com o Opus.
 $xp2 = Join-Path $tmp 'externo-piloto'; New-Project $xp2
 Put $xp2 '.team-project/architect/breakdown/S1.md' $bdText
-Put $xp2 'src/a.ts' "export const a = 1`n"; Put $xp2 'docs/sdd/03-architecture.md' "# Arquitetura`n"
+Put $xp2 'src/a.ts' "export const a = 1`nexport const b = 2`nexport const c = 3`n"; Put $xp2 'docs/sdd/03-architecture.md' "# Arquitetura`n"
 Put $xp2 '.team-project/guards.json' '{ "run": { "planner": "external", "tasks": ["T-099"] } }'
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $xp2)
 Check 'v3.53.4: Task fora da lista do piloto → Arquiteto Opus pela ficha, sem pacote' @{ Code = $r.Code; Out = $r.Out + "`npack=" + (Test-Path -LiteralPath (Join-Path $xp2 '.team-project/sprints/1/pack')) } 0 @('plano da T-041a \(História H-014\) pela ficha', 'pack=False')
@@ -2229,7 +2279,7 @@ Put $p '.team-project/sprints/1/plan/T-041a-x.md' $bigPlan
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'v3.53.6 item 1: plano de 31 KB (sem ficha) → dividir a Task com os blocos do plano como base, sem plano novo nem corte' $r 0 @('dividir a T-041a — o plano dela tem 3\d[\d,.]* KB \(teto 30 KB, regra 22\)', '`\.team-project/sprints/1/plan/T-041a-x\.md`', 'blocos — ou grupos de passos — desse plano como base', 'não o reescreva nem o corte', 'Divida-a em T-041b, T-041c', 'não tem ficha no breakdown', 'troca a linha da T-041a no Sprint Backlog', 'o plano grande fica no disco como base')
 Put $p '.team-project/architect/breakdown/S1.md' $bdText
-Put $p 'src/a.ts' "export const a = 1`n"; Put $p 'docs/sdd/03-architecture.md' "# Arquitetura`n"
+Put $p 'src/a.ts' "export const a = 1`nexport const b = 2`nexport const c = 3`n"; Put $p 'docs/sdd/03-architecture.md' "# Arquitetura`n"
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'v3.53.6 item 1: com ficha, cada ficha nova leva **Base:** com o plano grande e os blocos que herda' $r 0 @('dividir a T-041a — o plano dela tem', 'No próprio \.team-project/architect/breakdown/S1\.md', '\*\*Base:\*\* `\.team-project/sprints/1/plan/T-041a-x\.md`')
 Put $p '.team-project/architect/breakdown/S1.md' (([System.IO.File]::ReadAllText((Join-Path $p '.team-project/architect/breakdown/S1.md'), $utf8)) -replace '(\*\*Arquivos previstos:\*\* 2)', "`$1`n**Base:** ``.team-project/sprints/1/plan/T-041a-x.md`` — Bloco 1")
@@ -2239,7 +2289,7 @@ Check 'v3.53.6 item 1: Task nova com **Base:** na ficha → o Arquiteto do plano
 # 18b. item 1, plano externo: o plano devolvido acima de 30 KB vai à divisão, não a um pacote de correção.
 $xg = Join-Path $tmp 'externo-grande'; New-Project $xg
 Put $xg '.team-project/architect/breakdown/S1.md' $bdText
-Put $xg 'src/a.ts' "export const a = 1`n"; Put $xg 'docs/sdd/03-architecture.md' "# Arquitetura`n"
+Put $xg 'src/a.ts' "export const a = 1`nexport const b = 2`nexport const c = 3`n"; Put $xg 'docs/sdd/03-architecture.md' "# Arquitetura`n"
 Put $xg '.team-project/guards.json' '{ "run": { "planner": "external", "tasks": [] } }'
 $null = Invoke-Check 'run.ps1' @('next', '-Root', $xg)
 Put $xg '.team-project/sprints/1/pack/in/T-041a-plan.md' ($xgood + "`n## 4. Passos`n`n### Bloco 1 — x`n" + ('y' * 32000))

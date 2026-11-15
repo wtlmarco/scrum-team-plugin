@@ -13,6 +13,33 @@
 
 ---
 
+## v3.60.0 — 2026-11-15
+
+**Branch:** `feat/v3.60.0` a partir de `develop` (`119077f`, v3.59.2 mesclada) · **Processo:** v3.60 (a ficha leva os trechos; o Arquiteto do plano lê uma vez e escreve)
+
+Origem: pergunta do stakeholder em 14/11/2026 sobre a H-M do garden, dividida em 3 Tasks, e o pedido seguinte: manter a divisão para o dev em Haiku e otimizar o Arquiteto. Medido nas conversas dos 3 Arquitetos do plano (sprint 6, US$ 9,02): 84 % do custo e 111 de 125 chamadas foram exploração antes do primeiro `Write`. A simulação calibrada nessas conversas apontou um Arquiteto por Task com os trechos prontos (≈ US$ 5,7, entre 4,4 e 6,9). Um Arquiteto para a História inteira saiu mais caro em todos os cenários (até US$ 13,6 explorando; 25 a 35 % acima com os trechos).
+
+1. **A ficha leva os trechos.** O `run.ps1 next` copia para o recorte da ficha (`sprints/<n>/handoff/<T-ID>-ficha.md`) os trechos que ela aponta, com o número da linha:
+   - **Código a ler:** aceita `caminho:a-b`, com faixas extras do mesmo arquivo na linha (`:c-d`, `:e`). `caminho:linha` copia 40 linhas a partir de 5 antes; `caminho` sozinho copia o arquivo inteiro só até 150 linhas.
+   - **Fontes:** aceita `§2.5`, `§2–§7` e `§"título"`. O script copia a seção pelo título do markdown, ignorando os títulos que estão dentro de bloco de código.
+   - Faixas sobrepostas se juntam num bloco por arquivo. O teto dos trechos é de 60 KB; o que passar vira nota "não copiado", com o motivo.
+2. **Guia de escrita gerado do template.** O recorte traz a introdução, o esqueleto inteiro e a primeira frase de cada regra, com a linha dela no `implementation-plan.md`, mais a variante leve. São 19,5 mil caracteres, contra 34,8 mil do template. Não existe segunda cópia: se o template perder as marcas de forma, o guia sai vazio e o prompt volta ao de antes.
+3. **Prompt do Arquiteto do plano.** Ele abre a ficha e o `context.md` na mesma chamada e escreve a partir deles. Não abre o template inteiro nem relê arquivo já copiado; o que faltar pede numa chamada só, em paralelo e no trecho, e registra em `**Li além da ficha:**`.
+4. **Faixa fora do arquivo se corrige antes do plano**, como o caminho que não existe: o Arquiteto, numa instância curta, acha o trecho com Grep e escreve a faixa nova.
+5. **As linhas da ficha andam com o código** (pergunta do stakeholder em 15/11: "uma tarefa pode modificar o código e assim as referências irão quebrar"). A ficha é escrita na Planning, e as Tasks das Histórias anteriores mudam o código antes do plano. No garden, S6, 6 de 60 faixas tinham andado: `migracoes.ts:1131` desceu 80 linhas com a T-089, e `plantio-form.page.ts` desceu 24 com a T-087.
+   - O `run.ps1 next` traduz cada faixa pelo `git diff -U0` contra o disco. A base é o último commit antes da 1ª linha do `run-log.md`; para a ficha corrigida no run, é o commit da correção, gravado em `sprints/<n>/.ficha-base.json`.
+   - O trecho é copiado no lugar novo, e o cabeçalho diz quanto andou e por qual Task (pela mensagem do commit).
+   - Se o próprio trecho mudou, o script copia o de hoje e marca ⚠ para o plano conferir.
+   - Seção (`§`) se acha pelo título, sem depender de linha. Sem git, as linhas valem como estão.
+   - Conferido no garden: as 17 linhas da H-M que não mudaram caem no mesmo código hoje (deslocamentos de até 80); as 2 que a T-092 alterou saem com ⚠.
+
+- Documentos: `breakdown.md` (abertura e regras 2, 3 e 6), `implementation-plan.md` (regra 28), `agents/architect.md`, `roles/architect/README.md`, `workflow-sprint.md` (Planning, passo 4), `sprint-run.md` (indicador). A entrada v3.57 do changelog do processo foi arquivada sem alteração.
+- Testes: as conferências do recorte (5d2) passam a cobrir a faixa fora do arquivo, os trechos numerados, a seção do SDD com a subseção, o standard do plugin, a faixa exata com a faixa extra na linha e o guia, que é menor que o template e não traz o exemplo. Num projeto com git, cobrem ainda: a faixa deslocada por um commit de outra Task, o trecho alterado (⚠), a correção que grava a base e a ficha corrigida, que não é deslocada de novo. Nos quatro cenários do pacote externo, o `src/a.ts` de 1 linha passou a ter 3, porque a ficha aponta a linha 3. Suítes: 527 conferências e 345 guardas, nenhuma falha; `release.ps1` (C3) ok.
+
+Não muda: o dev recebe uma Task por vez, com até 6 arquivos; a Task sem ficha segue planejada numa instância por História; o pacote do plano externo (`external-plan.ps1`) continua levando os arquivos inteiros.
+
+---
+
 ## v3.59.2 — 2026-11-14
 
 **Branch:** `fix/v3.59.2` a partir de `develop` (`b63e828`, v3.59.1 mesclada) · **Processo:** addendum v3.59.2 (R12: a consolidação dos documentos vivos é conferida, chega aos donos e é versionada)
