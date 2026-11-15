@@ -248,7 +248,9 @@ try {
         $chg = @(& git -C $Root status --porcelain -uall 2>$null | ForEach-Object { $gs = ([string]$_).Substring([Math]::Min(3, ([string]$_).Length)); if ($gs -match ' -> ') { $gs = ($gs -split ' -> ')[-1] }; $gs.Trim('"') })   # $gs, não $s: o ForEach-Object roda no escopo do script e $s é o $S do sprint
         $ErrorActionPreference = $eapM
         $declared = @($adj | Where-Object { $_.Kind -eq 'stub' } | ForEach-Object { $_.File })
-        $stubUndecl = @($chg | Where-Object { $_ -and $_ -notmatch '^\.team-project/' -and $scopeA -notcontains $_ -and $declared -notcontains $_ -and (Test-MountingSpec $Root $_ $scopeA) })
+        # v3.60.1 (sprint 6 do garden, T-093): o que já estava alterado quando a Task começou, e segue igual, é de outro dono.
+        $foreign = @(Get-ForeignUnchanged $Root $S $Task)
+        $stubUndecl = @($chg | Where-Object { $_ -and $_ -notmatch '^\.team-project/' -and $scopeA -notcontains $_ -and $declared -notcontains $_ -and $foreign -notcontains $_ -and (Test-MountingSpec $Root $_ $scopeA) })
     }
     if (-not $adj.Count -and -not $stubUndecl.Count) { Add-Result 'R7-margem' 'n-a' 'nenhum ajuste na margem no relatório do dev' }
     else {

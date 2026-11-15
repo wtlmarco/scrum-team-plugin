@@ -264,3 +264,5 @@ Se nada mudou nos modelos entre as duas versões, diga isso em uma linha e siga.
 ## 9. Feche
 
 Diga que a nova versão **só entra em vigor após reiniciar a sessão**, e que depois `claude plugin details team@team` deve mostrar a versão nova. Resuma em uma linha o que mudou (do CHANGELOG) e liste, se houve, o que foi reconciliado no `.team-project/` e o que ficou pendente de decisão.
+
+**O update não retoma o run (v3.60.1).** Com `.team-project/.active-run`, termine com uma linha só, sem formulário: "o sprint segue pausado onde estava; feche esta conversa (ou `/clear`) e digite `/sm sprint run` — a sessão nova já roda a versão nova". Nunca pergunte "retomar agora?" e nunca rode o `run.ps1 next` nesta sessão: ela ainda carrega a versão anterior até reiniciar. No garden (15/11), a sessão do update perguntou "Retomar agora o sprint 6?" e retomou na versão velha.
