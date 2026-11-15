@@ -958,6 +958,14 @@ Check 'v3.53.2: plano de 21 KB não reprova por tamanho (sem corte); sem **Cená
 Put $p $pl ("# Plano`n**Cenários:** SC-001, SC-009`n**Risco:** interface simples`n**Layout novo:** não`n`n" + $head + ('x' * 32000))
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.53.6 item 1: plano acima de 30 KB reprova (exit 1) — Task grande à divisão, nunca corte nem correção (regra 22)' $r 1 @('\| tamanho \| falhou.*acima de 30 KB: Task grande — NÃO corte nem encurte', 'run\.ps1 next a divide com os blocos deste plano', "volte dizendo 'tamanho'", '^(?![\s\S]*volta ao Arquiteto com esta tabela)')
+# v3.60.1 (sprint 6 do garden, T-090): as decisões de 🔺 GAP não contam para o teto — 27 KB de plano + 4 KB de decisões passa.
+$gapDec = "**Decisão do GAP T-001 (2026-11-15):** " + ('d' * 2000) + "`n**Origem:** processo`n**Lição:** nenhuma`n`n**Decisão do GAP T-001 (2026-11-15):** " + ('e' * 2000) + "`n**Origem:** ambiente`n**Lição:** projeto`n`n"
+Put $p $pl ("# Plano`n**Cenários:** SC-001, SC-009`n**Risco:** interface simples`n**Layout novo:** não`n`n" + $gapDec + $head + ('x' * 27000))
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.60.1: decisões de 🔺 GAP fora da conta do teto — 27 KB de plano + 4 KB de decisões passa, e a linha diz quanto ficou fora' $r 0 @('\| tamanho \| ok \| 2\d(?:[.,]\d)? KB \(\+4[.,]\d KB de decisões de 🔺 GAP, fora da conta; arquivo com 3\d(?:[.,]\d)? KB\)')
+Put $p $pl ("# Plano`n**Cenários:** SC-001, SC-009`n**Risco:** interface simples`n**Layout novo:** não`n`n" + $gapDec + $head + ('x' * 31000))
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.60.1: plano acima do teto sem as decisões continua reprovando' $r 1 @('\| tamanho \| falhou.*\(\+4[.,]\d KB de decisões de 🔺 GAP')
 
 # 5g. v3.48 — achados do primeiro sprint do piloto: revisão sem veredito acima da rodada, entrada aceita pelo stakeholder,
 # report gravado pelo hook com nome livre, pasta citada sem report, -Apply com o Registro no quadro antigo.
@@ -2410,6 +2418,36 @@ Check 'v3.54.2: bloqueio por estado de partida vai ao stakeholder e não diz que
 Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "IDS NÃO PUBLICADOS: …", "startState": "br.x/br.x.MainActivity · textos: Cultiva", "results": [ { "id": "SC-165", "status": "FALHOU", "shot": ".team-project/accept/1/T-041/shots/SC-165-falha.png" } ] }'
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
 Check 'v3.57.1 item 13: done -Result env com IDS NÃO PUBLICADOS → sem reparo, bloqueio "ids não publicados" e o caminho do aria-label/content-desc (não o baseline)' $r 0 @('IDS NÃO PUBLICADOS \(br\.x/br\.x\.MainActivity', 'mark\.ps1 -Task T-041 -To blocked -Reason "ids não publicados pela WebView', 'T-041 🔴 bloqueada: ids não publicados', 'aria-label do build de prova', '^(?![\s\S]*-Repair)', '^(?![\s\S]*targets\.android\.baseline)')
+# v3.60.1 (sprint 6 do garden, T-090): "provar por teste" aplicado pelo script — plano, quadro, lista da validação, 🔴 → 🟨.
+$null = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'blocked', '-Reason', 'ids não publicados pela WebView — br.x', '-Root', $p)
+$plP = Join-Path $p '.team-project/sprints/1/plan/T-041-export.md'
+Edit-File $plP "# Plano de Implementação — T-041 Endpoint de exportação`n" "# Plano de Implementação — T-041 Endpoint de exportação`n**Cenários:** SC-014`n"
+Edit-File $plP "# Plano de Implementação — T-041 Endpoint de exportação`r`n" "# Plano de Implementação — T-041 Endpoint de exportação`r`n**Cenários:** SC-014`r`n"
+$r = Invoke-Check 'run.ps1' @('prove', '-Task', 'T-041', '-By', 'stakeholder (README §7 item 21)', '-Because', 'a WebView não publica os ids', '-Root', $p)
+$bk = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/sprint-backlog.md'), $utf8)
+Check 'v3.60.1: run.ps1 prove — cenário (teste) no plano e no quadro, prova pendente no plano e na lista da validação, 🔴 → 🟨, rota apagada' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($plP, $utf8) + "`n" + $bk + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/device-pending.md'), $utf8) + "`nrota=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.ask-route')) } 0 @('run prove: T-041 provada pelos testes do plano', 'mark: T-041 🔴 → 🟨', 'run\.ps1 done -Task T-041 -Result ok', '\*\*Cenários:\*\* SC-014 \(teste\)', '\*\*Prova no aparelho pendente:\*\* SC-014 — a WebView não publica os ids', 'T-041 \| Endpoint de exportação[^\r\n]*SC-014 \(teste\)', '\| T-041 \| SC-014 \| a WebView não publica os ids \| stakeholder \(README §7 item 21\) \|', 'rota=False')
+$r = Invoke-Check 'run.ps1' @('prove', '-Task', 'T-041', '-Root', $p)
+Check 'v3.60.1: run.ps1 prove de novo não duplica nada' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText($plP, $utf8) + "`nN=" + ([regex]::Matches([System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/device-pending.md'), $utf8), '\| T-041 \|').Count) } 0 @('SC-014 \(teste\)(?! \(teste\))', 'N=1', '^(?![\s\S]*\(teste\) \(teste\))')
+# Política do projeto: o done -Result env aplica a prova por teste sozinho, sem 🔴 e sem rota ao stakeholder.
+$p = Join-Path $tmp 'env-politica'; New-Project $p
+Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } }, "run": { "deviceProofFallback": "teste" } }'
+Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "IDS NÃO PUBLICADOS: …", "startState": "br.x/br.x.MainActivity · textos: Cultiva", "results": [ { "id": "SC-014", "status": "FALHOU" } ] }'
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
+Check 'v3.60.1: com run.deviceProofFallback = teste, IDS NÃO PUBLICADOS → prova por teste sem formulário nem 🔴; o executor fecha' @{ Code = $r.Code; Out = $r.Out + "`nrota=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.ask-route')) + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/run-log.md'), $utf8) } 0 @('Política do projeto \(guards\.json → run\.deviceProofFallback = teste\)', 'run\.ps1 done -Task T-041 -Result ok', 'Não abra formulário', 'rota=False', 'prova por teste: SC-014 \(teste\)', '^(?![\s\S]*mark\.ps1 -Task T-041 -To blocked)')
+# Pausa pelo script (o Remove-Item do .active-run foi negado no garden).
+Put $p '.team-project/.active-run' '{ "trilha": "sprint", "id": "1", "desde": "2026-11-15 10:00" }'
+$r = Invoke-Check 'run.ps1' @('pause', '-Because', 'o stakeholder pediu', '-Root', $p)
+Check 'v3.60.1: run.ps1 pause apaga o .active-run e registra no run-log' @{ Code = $r.Code; Out = $r.Out + "`nrun=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.active-run')) + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/run-log.md'), $utf8) } 0 @('run pause: o sprint run 1 está pausado', '/sm sprint run', 'run=False', 'pausa a pedido de stakeholder \(sprint run 1\) \| o stakeholder pediu')
+# Pré-requisito do ambiente (Docker no garden): sobe pelo start declarado; sem start, falha com o motivo.
+$p = Join-Path $tmp 'prereq'; New-Item -ItemType Directory -Force (Join-Path $p '.team-project') | Out-Null
+Put $p '.team-project/guards.json' '{ "run": { "prereqs": [ { "name": "Serviço X", "check": "if (Test-Path x.flag) { exit 0 } else { exit 1 }", "start": "Set-Content x.flag 1", "waitSec": 30 } ] } }'
+$ErrorActionPreference = 'Continue'
+$pqs = Join-Path $tmp 'prereq-probe.ps1'; [System.IO.File]::WriteAllText($pqs, ("param([string]`$Root)`n. '" + $checks + "\lib.ps1'`n`$r = Invoke-RunPrereqs `$Root`n'OK=' + `$r.Ok + ' L=' + (`$r.Lines -join ';') + ' F=' + `$r.Fail`n"), (New-Object System.Text.UTF8Encoding($true)))
+$pq = & powershell -NoProfile -ExecutionPolicy Bypass -File $pqs -Root $p 2>&1 | Out-String
+Put $p '.team-project/guards.json' '{ "run": { "prereqs": [ { "name": "Serviço Y", "check": "exit 3" } ] } }'
+$pq2 = & powershell -NoProfile -ExecutionPolicy Bypass -File $pqs -Root $p 2>&1 | Out-String
+$ErrorActionPreference = 'Stop'
+Check 'v3.60.1: run.prereqs — o desligado sobe pelo start e espera o check; sem start, falha com o motivo' @{ Code = 0; Out = $pq + "`n" + $pq2 } 0 @('OK=True L=Serviço X estava desligado — subiu', 'OK=False L= F=Serviço Y não responde \(exit 3 saiu com 3\)')
 
 # v3.54.2 (item 3): o accept para cedo quando os 2 primeiros cenários falham na mesma tela, grava progress.json a cada
 # cenário e o startState no result.json (as funções do accept.ps1 com Invoke-Once falso — sem aparelho).
@@ -2610,6 +2648,17 @@ $null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', 
 $null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'v3.54.1: spec fora da lista que monta arquivo do plano, alterado sem a linha stub → R7-margem não fecha' $r 1 @('\| R7-margem \| falhou.*tests/calc\.render\.spec\.ts \(teste fora da lista que monta src/calc\.ts\) foi alterado sem linha')
+# v3.60.1 (sprint 6 do garden, T-093): o mesmo arquivo, já alterado quando a Task começou (retrato do run.ps1 start) e igual
+# desde então, não é da Task — o close não o cobra; mexido depois do retrato, volta a cobrar.
+$frg = Join-Path $p '.team-project/sprints/1/handoff/T-041-alheios.json'
+$sha1 = [System.Security.Cryptography.SHA1]::Create(); $hsh = ([BitConverter]::ToString($sha1.ComputeHash([System.IO.File]::ReadAllBytes((Join-Path $p 'tests/calc.render.spec.ts')))) -replace '-', '').ToLowerInvariant(); $sha1.Dispose()
+Put $p '.team-project/sprints/1/handoff/T-041-alheios.json' ('{ "task": "T-041", "at": "2026-11-15 10:00:00", "files": { "tests/calc.render.spec.ts": "' + $hsh + '" } }')
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.60.1: arquivo alterado antes da Task e igual desde então não trava o R7-margem' @{ Code = $r.Code; Out = $r.Out } 0 @('^(?![\s\S]*foi alterado sem linha)')
+Put $p '.team-project/sprints/1/handoff/T-041-alheios.json' '{ "task": "T-041", "at": "2026-11-15 10:00:00", "files": { "tests/calc.render.spec.ts": "0000" } }'
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.60.1: alterado depois do retrato do start, volta a ser da Task — R7-margem cobra' $r 1 @('\| R7-margem \| falhou.*tests/calc\.render\.spec\.ts \(teste fora da lista que monta src/calc\.ts\) foi alterado sem linha')
+Remove-Item -LiteralPath $frg -Force
 [System.IO.File]::AppendAllText($dvp, "- A3 · stub · ``tests/calc.render.spec.ts`` · stub do FornecedorService (inject novo em src/calc.ts)`n- A4 · stub · ``tests/other.ps1`` · x`n", $utf8)
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'v3.54.1: stub de teste que não monta arquivo do plano é GAP; o declarado deixa de ser cobrado' $r 1 @('\| R7-margem \| falhou.*A4: tests/other\.ps1 não é teste existente que cita um arquivo', '^(?![\s\S]*foi alterado sem linha)')

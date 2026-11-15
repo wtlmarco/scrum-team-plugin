@@ -1831,6 +1831,91 @@ $script:FichaMaxFiles = 6
 # arredondados a 0,1, como o plan.ps1 imprime.
 $script:PlanMaxKb = 30
 function Get-PlanKb([string]$Text) { return [Math]::Round(([System.Text.Encoding]::UTF8.GetByteCount($Text)) / 1024, 1) }
+# v3.60.1 (sprint 6 do garden, T-090): o teto mede o plano que o Arquiteto escreveu, não as decisões de 🔺 GAP que a
+# construção acrescentou. A T-090 passou a 30,2 KB com as decisões do degrau 1 e a sessão levou ao stakeholder "encurtar ou
+# dividir" uma Task já construída — a regra 22 (Task grande → divisão) é da Planning. Os blocos "**Decisão do GAP …:**"
+# (Get-PlanGapDecisions) ficam fora da conta; a soma deles vai em Gap. @{ Kb = conta; Total = arquivo inteiro; Gap = decisões }.
+function Get-PlanCoreKb([string]$Text) {
+    $tot = Get-PlanKb $Text
+    $gb = 0; foreach ($d in @(Get-PlanGapDecisions $Text)) { $gb += [System.Text.Encoding]::UTF8.GetByteCount([string]$d.Text) + 1 }
+    $g = [Math]::Round($gb / 1024, 1)
+    return @{ Kb = [Math]::Round([Math]::Max(0, $tot - $g), 1); Total = $tot; Gap = $g }
+}
+
+# v3.60.1 (sprint 6 do garden, T-093: 3 formulários "arquivos soltos" e 4 "evidência incompleta" pelo mesmo
+# contorno-escuro.render.spec.ts, alterado por outra Task e sem commit): o que já estava alterado no git quando a Task começou
+# não é dela. O run.ps1 start grava, na primeira vez da Task, sprints/<n>/handoff/<T-ID>-alheios.json com o hash de cada
+# arquivo pendente (fora de .team-project/); o close.ps1 ignora no R7-margem o arquivo que segue com o mesmo hash. Mexeu nele
+# depois, a conferência volta a valer — a mudança passou a ser da Task.
+function Get-FileStateHash([string]$Root, [string]$Rel) {
+    $full = Join-Path $Root $Rel
+    if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { return 'ausente' }
+    try { $sha = [System.Security.Cryptography.SHA1]::Create(); try { return ([BitConverter]::ToString($sha.ComputeHash([System.IO.File]::ReadAllBytes($full))) -replace '-', '').ToLowerInvariant() } finally { $sha.Dispose() } } catch { return '' }
+}
+function Get-GitPendingFiles([string]$Root) {
+    $eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    try {
+        $null = & git -C $Root rev-parse --is-inside-work-tree 2>$null
+        if ($LASTEXITCODE -ne 0) { return @() }
+        return @(& git -C $Root status --porcelain -uall 2>$null | ForEach-Object { $gs = ([string]$_).Substring([Math]::Min(3, ([string]$_).Length)); if ($gs -match ' -> ') { $gs = ($gs -split ' -> ')[-1] }; $gs.Trim('"') } | Where-Object { $_ -and $_ -notmatch '^\.team-project/' })
+    } finally { $ErrorActionPreference = $eap }
+}
+function Save-ForeignSnapshot([string]$Root, [string]$S, [string]$Id) {
+    $p = Join-Path $S "handoff/$Id-alheios.json"
+    if (Test-Path -LiteralPath $p) { return $null }
+    # Só antes da construção: com relatório em delivery/, o pendente pode já ser do dev desta Task (instância anterior).
+    if (Test-Path -LiteralPath (Join-Path $S "delivery/$Id.md")) { return $null }
+    $files = [ordered]@{}; foreach ($f in @(Get-GitPendingFiles $Root)) { $files[$f] = Get-FileStateHash $Root $f }
+    New-Item -ItemType Directory -Force (Split-Path $p) | Out-Null
+    [System.IO.File]::WriteAllText($p, ([ordered]@{ task = $Id; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); files = $files } | ConvertTo-Json -Depth 4 -Compress), (New-Object System.Text.UTF8Encoding($false)))
+    return @($files.Keys)
+}
+function Get-ForeignUnchanged([string]$Root, [string]$S, [string]$Id) {
+    $p = Join-Path $S "handoff/$Id-alheios.json"
+    if (-not (Test-Path -LiteralPath $p)) { return @() }
+    try { $j = Read-Text $p | ConvertFrom-Json } catch { return @() }
+    if (-not $j.files) { return @() }
+    return @($j.files.PSObject.Properties | Where-Object { $_.Value -and (Get-FileStateHash $Root $_.Name) -eq [string]$_.Value } | ForEach-Object { $_.Name })
+}
+
+# v3.60.1: chave de guards.json → run (o objeto do stakeholder). $null sem o arquivo, sem "run" ou sem a chave.
+function Get-RunSetting([string]$Root, [string]$Name) {
+    $g = Join-Path $Root '.team-project/guards.json'
+    if (-not (Test-Path -LiteralPath $g)) { return $null }
+    try { $j = Read-Text $g | ConvertFrom-Json } catch { return $null }
+    if (-not $j.PSObject.Properties['run'] -or $null -eq $j.run -or -not $j.run.PSObject.Properties[$Name]) { return $null }
+    return $j.run.$Name
+}
+# v3.60.1 (sprint 6 do garden: ids não publicados pela WebView na T-081, T-069a e T-090 — 4 formulários com a mesma resposta):
+# guards.json → run.deviceProofFallback = "teste" é a decisão do stakeholder gravada como política do projeto. Quando o accept
+# para em IDS NÃO PUBLICADOS ou no ESTADO DE PARTIDA, o run.ps1 aplica a prova por teste (run.ps1 prove) sem formulário, e a
+# conferência no aparelho fica para a validação do sprint. Sem a chave, a decisão segue com o stakeholder.
+function Test-DeviceProofPolicy([string]$Root) {
+    $v = Get-RunSetting $Root 'deviceProofFallback'
+    return ([string]$v -match '^(?i)(teste|test)$')
+}
+# v3.60.1 (sprint 6 do garden: Docker Desktop desligado na hora do APK, 4 formulários): guards.json → run.prereqs =
+# [{ "name": "Docker Desktop", "check": "docker info", "start": "Start-Process '…\\Docker Desktop.exe'", "waitSec": 120 }].
+# Declarar o pré-requisito no guards.json (do stakeholder) já é a autorização para subi-lo. O run.ps1 start confere cada um;
+# o que não responde, ele sobe pelo "start" e espera o "check" passar até waitSec (padrão 120 s). @{ Ok; Lines; Fail }.
+function Invoke-RunPrereqs([string]$Root) {
+    $out = @{ Ok = $true; Lines = @(); Fail = '' }
+    $pr = Get-RunSetting $Root 'prereqs'
+    foreach ($p in @($pr | Where-Object { $_ -and $_.PSObject.Properties['check'] -and [string]$_.check })) {
+        $nm = if ($p.PSObject.Properties['name'] -and $p.name) { [string]$p.name } else { [string]$p.check }
+        $chk = Invoke-Bounded $Root ([string]$p.check) 30
+        if ($chk.exit -eq 0) { continue }
+        $st = if ($p.PSObject.Properties['start'] -and $p.start) { [string]$p.start } else { '' }
+        if (-not $st) { $out.Ok = $false; $out.Fail = "$nm não responde ($([string]$p.check) saiu com $($chk.exit)) e guards.json → run.prereqs não declara o 'start'"; return $out }
+        $ws = if ($p.PSObject.Properties['waitSec'] -and [int]$p.waitSec -gt 0) { [int]$p.waitSec } else { 120 }
+        $null = Invoke-Bounded $Root $st 60 -KeepDescendants
+        $fim = (Get-Date).AddSeconds($ws); $ok = $false
+        while (-not $ok -and (Get-Date) -lt $fim) { Start-Sleep -Seconds 5; $ok = ((Invoke-Bounded $Root ([string]$p.check) 30).exit -eq 0) }
+        if (-not $ok) { $out.Ok = $false; $out.Fail = "$nm não subiu em $ws s pelo 'start' de guards.json → run.prereqs"; return $out }
+        $out.Lines += "$nm estava desligado — subiu pelo 'start' de guards.json → run.prereqs"
+    }
+    return $out
+}
 
 # Prova no alvo pendente (v3.53.6, sprint 5 do garden, item 9): a Task cujo accept parou por ambiente e cujo reparo falhou vai
 # a 🔴 com esta etiqueta na linha de "Bloqueios e riscos abertos" (mark.ps1 -Reason) — antes ela fechava ✅ com "nenhum

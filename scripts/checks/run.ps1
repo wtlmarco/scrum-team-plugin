@@ -11,6 +11,11 @@
 #   done      o dev voltou: ok → close.ps1 -Apply (fecha pela evidência do dev) · gap → rota ao Arquiteto · env → reparo
 #             · teto → a G23 parou o dev no teto de contexto: instância nova pelo ponto de retomada (v3.53.1)
 #   handoff   (re)gera o cartão de passagem da Task: sprints/<n>/handoff/<T-ID>.md, até ~2 KB (C2)
+#   prove     (v3.60.1) aplica "provar por teste" na Task (-Task, -Because, -By): cenários de tela → (teste) no plano e no quadro,
+#             **Prova no aparelho pendente:** no plano, a Task na lista da validação (sprints/<n>/device-pending.md), 🔴 → 🟨.
+#             Roda sozinho com guards.json → run.deviceProofFallback "teste" (política); sem ela, depois da decisão do stakeholder.
+#   pause     (v3.60.1) pausa o run a pedido do stakeholder (-Because): apaga .active-run e .ask-route e registra no run-log; o
+#             mesmo /sm sprint run retoma. Antes era apagar o .active-run à mão (negado pelo classificador no garden, 15/11).
 #   allow     (v3.55.0, F2) grava a decisão do formulário único dos comandos dos planos: -Commands = prefixos liberados (vão para guards.json →
 #             runCommands, resto do arquivo intacto), -Deny = negados (a Task volta ao Arquiteto), -By = quem autorizou (run-log.md). O next/start
 #             param uma vez com os comandos de '### Comandos da Task' que a G14 ainda não libera, de todos os planos da História.
@@ -34,7 +39,7 @@
 # vez da Task é encerrada e retomada sem formulário (Write-StallAction).
 
 param(
-    [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff', 'allow', 'wait')][string]$Action,
+    [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff', 'allow', 'wait', 'prove', 'pause')][string]$Action,
     [string]$Task = '',
     [ValidateSet('', 'ok', 'gap', 'env', 'teto')][string]$Result = '',
     [string]$Block = '',
@@ -44,6 +49,7 @@ param(
     [int]$For = 0,            # v3.57.1 · wait: segundos de espera com conferência dentro do script (0 = uma conferência só)
     [int]$Every = 30,         # v3.57.1 · wait: intervalo entre as conferências
     [ValidateSet('', 'aparência', 'aparencia', 'desenho', 'produto', 'processo', 'ambiente')][string]$Nature = '',   # v3.57.1 · done -Result gap: a natureza que o executor lê no GAP sem **Natureza:**
+    [string]$Because = '',        # v3.60.1 · prove: o motivo (vai ao plano, ao device-pending.md e ao run-log) · pause: o motivo da pausa
     [string]$Root = (Get-Location).Path
 )
 
@@ -401,6 +407,60 @@ function Set-Mark([string]$Id, [string]$To, [string]$By) {
     if ($r.Code -eq 0) { return (($r.Out -split "`r?`n") | Where-Object { $_ -match '^mark:' } | Select-Object -First 1) }
     return $null
 }
+# v3.60.1 (sprint 6 do garden, T-090): a decisão "provar por teste" é aplicada pelo script, inteira, numa chamada. No garden a
+# sessão gravou a decisão no quadro e no README, mas o plano (que manda nos cenários desde a v3.56.0) seguiu com SC-264/265
+# no aparelho: o accept rodou de novo, parou de novo e a decisão foi pedida ao stakeholder outra vez; depois a sessão não
+# sabia se podia tirar a Task de 🔴. Aqui: os cenários de tela da Task viram "(teste)" no **Cenários:** do plano e na coluna
+# do quadro, a linha **Prova no aparelho pendente:** fica no plano, a Task entra na lista da validação do sprint
+# (sprints/<n>/device-pending.md — o QA confere no aparelho ou registra a dívida), 🔴 volta a 🟨 e a rota ao stakeholder sai.
+function Invoke-ProveByTest($T, [string]$Because, [string]$By) {
+    $lines = @(); $ids = @($T.Scenarios)
+    $pf = Get-PlanFull $T $S
+    if ($pf) {
+        $pt = Read-Text $pf
+        $cm = [regex]::Match($pt, '(?m)^\*\*Cen[áa]rios:\*\*[^\r\n]*')
+        if ($cm.Success) {
+            $ids = @(Get-ScenarioIds $cm.Value -TargetOnly)
+            $nl = $cm.Value; foreach ($id in $ids) { $nl = [regex]::Replace($nl, "\b$([regex]::Escape($id))\b(?!\s*\((?i:teste)\))", "$id (teste)") }
+            $pend = "**Prova no aparelho pendente:** $(if ($ids.Count) { $ids -join ', ' } else { '—' }) — $Because ($(Get-Date -Format 'yyyy-MM-dd') · $By); provados pelos testes do plano, a conferência no aparelho é da validação do sprint (sprints/$n/device-pending.md)"
+            $pt2 = $pt.Substring(0, $cm.Index) + $nl + $pt.Substring($cm.Index + $cm.Length)
+            $pm = [regex]::Match($pt2, '(?m)^\*\*Prova no aparelho pendente:\*\*[^\r\n]*')
+            if ($pm.Success) { $pt2 = $pt2.Substring(0, $pm.Index) + $pend + $pt2.Substring($pm.Index + $pm.Length) }
+            else { $at = $cm.Index + $nl.Length; $pt2 = $pt2.Substring(0, $at) + "`n" + $pend + $pt2.Substring($at) }
+            if ($pt2 -ne $pt) { [System.IO.File]::WriteAllText($pf, $pt2, $utf8); $lines += "plano: $(if ($ids.Count) { ($ids -join ', ') + ' → (teste)' } else { 'sem cenário de tela' }) e a linha **Prova no aparelho pendente:**" }
+        }
+    }
+    # A coluna Cenários do quadro, só na linha da Task.
+    $bp = Join-Path $S 'sprint-backlog.md'
+    $bIds = @(@($ids) + @($T.BacklogScenarios | ForEach-Object { ([string]$_ -split '\s')[0] } | Where-Object { $_ -match '^SC-' }) | Select-Object -Unique)
+    $lk = Enter-FileLock $bp
+    try {
+        $bl = @((Read-Text $bp) -split "`r?`n"); $col = -1; $chg = $false
+        for ($i = 0; $i -lt $bl.Count; $i++) {
+            $ln = [string]$bl[$i]
+            if (-not $ln.TrimStart().StartsWith('|')) { $col = -1; continue }
+            $parts = $ln -split '(?<!\\)\|'
+            if ((Clean-Cell $parts[1]) -eq 'ID') { $col = -1; for ($k = 1; $k -lt $parts.Count; $k++) { if ((Clean-Cell $parts[$k]) -match '^Cen[áa]rios') { $col = $k; break } }; continue }
+            if ($col -lt 0 -or $col -ge $parts.Count -or $parts[1] -match '~~' -or $parts[1] -notmatch "(?<![\w-])$([regex]::Escape($T.Id))(?![\w-])") { continue }
+            $c0 = $parts[$col]; $c1 = $c0
+            foreach ($id in $bIds) { $c1 = [regex]::Replace($c1, "\b$([regex]::Escape($id))\b(?!\s*\((?i:teste)\))", "$id (teste)") }
+            if ($c1 -ne $c0) { $parts[$col] = $c1; $bl[$i] = $parts -join '|'; $chg = $true }
+        }
+        if ($chg) { [System.IO.File]::WriteAllText($bp, ($bl -join "`n"), $utf8); $lines += "quadro: coluna Cenários da $($T.Id) com (teste)" }
+    } finally { Exit-FileLock $lk $bp }
+    # A lista da validação do sprint.
+    $dp = Join-Path $S 'device-pending.md'
+    if (-not (Test-Path -LiteralPath $dp)) { [System.IO.File]::WriteAllText($dp, "# Prova no aparelho pendente — S$n`n> Gravado pelo run.ps1 prove. A Task fechou provada pelos testes do plano; o QA confere cada linha no aparelho na validação do sprint (ou registra a dívida no validation.md).`n`n| Task | Cenários | Motivo | Decidido por | Quando |`n|---|---|---|---|---|`n", $utf8) }
+    $cellF = { param($x) (([string]$x -replace '\|', '/') -replace '\s+', ' ').Trim() }
+    if (-not ((Read-Text $dp) -match "(?m)^\|\s*$([regex]::Escape($T.Id))\s*\|")) {
+        [System.IO.File]::AppendAllText($dp, "| $($T.Id) | $(if ($ids.Count) { $ids -join ', ' } else { '—' }) | $(& $cellF $Because) | $(& $cellF $By) | $(Get-Date -Format 'yyyy-MM-dd HH:mm') |`n", $utf8)
+        $lines += "validação: $($T.Id) em sprints/$n/device-pending.md"
+    }
+    if ($T.Mark -eq $redMk) { $mo = Set-Mark $T.Id 'build' 'SM (prova por teste)'; if ($mo) { $lines += $mo } }
+    Add-RunLog $S $n $T.Id "prova por teste: $(if ($ids.Count) { ($ids -join ', ') + ' (teste)' } else { 'nenhum cenário de tela' }); a conferência no aparelho vai à validação do sprint" "$Because — decidido por $By" "sprints/$n/device-pending.md"
+    Set-AskRoute $Root ''
+    return $lines
+}
 # Estimativa do que falta (v3.51.4, note.md item 11): o consumo medido do sprint (G16) por Task fechada × as Tasks abertas.
 # Piso: não inclui a sessão principal. Sem Task fechada, só o gasto até aqui.
 function Get-RunEstimate {
@@ -463,7 +523,7 @@ function Get-OversizedPlan($T) {
     $c += (Join-Path $S "pack/review/$($T.Id)-plan.md")
     foreach ($f in @($c | Select-Object -Unique)) {
         if (-not (Test-Path -LiteralPath $f -PathType Leaf)) { continue }
-        $kb = Get-PlanKb (Read-Text $f)
+        $kb = (Get-PlanCoreKb (Read-Text $f)).Kb   # v3.60.1: as decisões de 🔺 GAP não contam para o teto
         if ($kb -gt $script:PlanMaxKb) { $fn = $f -replace '\\', '/'; $ix = $fn.LastIndexOf('/.team-project/'); return @{ Path = $f; Rel = $(if ($ix -ge 0) { $fn.Substring($ix + 1) } else { $fn }); Kb = $kb } }
     }
     return $null
@@ -699,6 +759,31 @@ try {
 
     if ($Action -eq 'handoff') { if (-not $T) { [Console]::Error.WriteLine('run handoff pede -Task.'); exit 2 }; Out "run: cartão $(Write-Handoff $T $S $n)"; exit 0 }
 
+    # v3.60.1: a decisão "provar por teste" aplicada inteira pelo script (Invoke-ProveByTest).
+    if ($Action -eq 'prove') {
+        if (-not $T) { [Console]::Error.WriteLine('run prove pede -Task.'); exit 2 }
+        if ($T.Mark -eq $E.Done) { [Console]::Error.WriteLine("run prove: a $($T.Id) já está ✅."); exit 2 }
+        $wy = if ($Because) { $Because } else { 'a prova no aparelho não roda neste alvo' }
+        $pl = @(Invoke-ProveByTest $T $wy $By)
+        Out "run prove: $($T.Id) provada pelos testes do plano — $wy (decidido por $By)."
+        foreach ($x in $pl) { Out "  $x" }
+        Say "$(Get-RunLabel $T.Id) será comprovada pelos testes automáticos; a conferência no celular fica para a revisão final do sprint."
+        Out "  próximo: run.ps1 done -Task $($T.Id) -Result ok (fecha pela evidência: verify full e mutação; o accept não é mais pedido) — se o dev ainda não terminou o código, run.ps1 start -Task $($T.Id)"
+        exit 0
+    }
+
+    # v3.60.1: pausa a pedido do stakeholder — o .active-run sai pelo script (sprint-run.md §Paradas legítimas, parada d).
+    if ($Action -eq 'pause') {
+        $ar0 = Get-Marker $Root '.active-run'
+        foreach ($f in '.active-run', '.ask-route', '.safe-point') { Remove-Item -LiteralPath (Join-Path $tp $f) -Force -ErrorAction SilentlyContinue }
+        $live = @(Get-ActiveAgents $Root | Where-Object { (Get-AgentIdleHours $_) * 60 -lt 30 })
+        Add-RunLog $S $n 'run' "pausa a pedido de $By$(if ($ar0) { " ($([string]$ar0.trilha) run $([string]$ar0.id))" })" $(if ($Because) { $Because } else { 'pedido do stakeholder (parada d)' }) '.active-run apagado pelo run.ps1 pause'
+        Out "run pause: $(if ($ar0) { "o $([string]$ar0.trilha) run $([string]$ar0.id) está pausado" } else { 'não havia run ativo (.active-run ausente)' }) — .active-run e .ask-route apagados; registrado no run-log.md."
+        if ($live.Count) { Out "  ainda em voo: $(($live | ForEach-Object { "$([string]$_.type -replace '^.*:', '') ($([string]$_.work))" }) -join ', ') — ele termina o que está fazendo; a retomada lê o que ele gravou." }
+        Say 'O sprint está pausado. Para continuar, é só digitar /sm sprint run — ele retoma de onde parou.'
+        exit 0
+    }
+
     # v3.55.0 (F2): grava a decisão do formulário único — liberados em guards.json → runCommands, negados no registro.
     if ($Action -eq 'allow') {
         $al = @($Commands -split ';' | ForEach-Object { ($_.Trim() -replace '\s+', ' ') } | Where-Object { $_ })
@@ -749,6 +834,16 @@ try {
                 exit 2
             }
         }
+        # v3.60.1 (sprint 6 do garden: Docker Desktop desligado na hora do APK, 4 formulários): os pré-requisitos declarados em
+        # guards.json → run.prereqs sobem sozinhos antes do dev; só o que não sobe vai ao stakeholder (rota de ambiente).
+        $preq = Invoke-RunPrereqs $Root
+        if (-not $preq.Ok) {
+            Set-AskRoute $Root 'ambiente' $T.Id $preq.Fail
+            Add-RunLog $S $n $T.Id "pré-requisito fora do ar → stakeholder (o start declarado não resolveu)" $preq.Fail 'guards.json → run.prereqs'
+            [Console]::Error.WriteLine("run start: FALHA DE AMBIENTE — $($preq.Fail). O dev não começa. Executor: devolva à sessão `"$($T.Id) 🔴 ambiente: $($preq.Fail)`"; a sessão leva ao stakeholder num formulário (a rota está gravada) e, resolvido, run.ps1 start de novo.")
+            exit 2
+        }
+        $preqNote = $preq.Lines
         $liveDev = @(Get-LiveAgents $Root $T.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -eq 'developer' })
         if ($liveDev.Count) {
             $a = $liveDev[0]; $idle = [int]((Get-AgentIdleHours $a) * 60)
@@ -795,6 +890,7 @@ try {
             }
         }
         Set-AskRoute $Root ''   # v3.58.3 (G24): dev em voo — a rota ao stakeholder que havia já foi decidida ou superada
+        $foreignNow = Save-ForeignSnapshot $Root $S $T.Id   # v3.60.1: o que já estava alterado antes da Task não é dela (close R7-margem)
         $card = Write-Handoff $T $S $n
         Write-ScenarioDivergence $T $S $n
         $acc = if ($T.Scenarios.Count -and (Get-TargetsConfig $Root)) { " e accept.ps1 -Task $($T.Id)$(Get-AcceptArgs $T) no alvo" } else { '' }
@@ -810,6 +906,8 @@ try {
         Out ($d.Trim())
         Out "  cartão: $card"
         if ($relNote) { Out "  alvo: $relNote" }
+        foreach ($pn in @($preqNote)) { if ($pn) { Out "  pré-requisito: $pn" } }
+        if ($foreignNow -and @($foreignNow).Count) { Out "  alheios: $(@($foreignNow).Count) arquivo(s) já alterado(s) antes da $($T.Id) ($((@($foreignNow) | Select-Object -First 3) -join ', ')$(if (@($foreignNow).Count -gt 3) { '…' })) — não são da Task: ficam fora do commit dela e o close não os cobra; o dev não os toca" }
         # v3.51.4: o formato que o close.ps1 lê (garden item 17), a retomada do verify parcial (exit 3, garden item 18) e o
         # alvo pelo target.ps1, sem adb nem espera à mão (note.md item 4).
         $tgt = if (Get-TargetsConfig $Root) { " Alvo: confira com target.ps1 -Target <alvo> (com -Repair ele reinicia e espera); não use adb nem Start-Sleep." } else { '' }
@@ -935,6 +1033,18 @@ try {
             if ($ass -and $ass.PSObject.Properties['startState'] -and $ass.startState) {
                 $stS = (([string]$ass.startState -replace '["|]', "'") -replace '\s+', ' ').Trim(); if ($stS.Length -gt 90) { $stS = $stS.Substring(0, 90) + '…' }
                 $shS = @($ass.results | Where-Object { $_.shot } | ForEach-Object { [string]$_.shot }) | Select-Object -Last 1
+                # v3.60.1: com a política do projeto (guards.json → run.deviceProofFallback "teste"), a decisão já está tomada —
+                # a prova por teste é aplicada aqui e a Task segue ao fechamento, sem formulário e sem 🔴.
+                $idsNp = [string]$ass.environment -match '^IDS NÃO PUBLICADOS'
+                if (Test-DeviceProofPolicy $Root) {
+                    $kind = if ($idsNp) { 'ids não publicados pela WebView' } else { 'estado de partida' }
+                    $pl = @(Invoke-ProveByTest $T "$kind — $stS" 'política do projeto (guards.json → run.deviceProofFallback)')
+                    Out "run: $($T.Id) — o accept parou (${kind}: $stS). Política do projeto (guards.json → run.deviceProofFallback = teste): provada pelos testes do plano, sem formulário; a conferência no aparelho vai à validação do sprint."
+                    foreach ($x in $pl) { Out "  $x" }
+                    Say "$(Get-RunLabel $T.Id) não pôde ser conferida no celular; pela regra que você deixou, ela segue comprovada pelos testes automáticos e o celular fica para a revisão final."
+                    Out "  executor: rode run.ps1 done -Task $($T.Id) -Result ok (fecha pela evidência; o accept não é mais pedido). Não abra formulário."
+                    exit 0
+                }
                 Set-AskRoute $Root 'estado-de-partida' $T.Id $stS
                 # v3.57.1 (note.md item 13): o accept distingue "ids não publicados" (o app na tela certa, a WebView sem o id HTML
                 # no dump) do estado de partida; a rota é a mesma (sem reparo, ao stakeholder), o que se pede a ele não.
@@ -942,13 +1052,13 @@ try {
                     Add-RunLog $S $n $T.Id "accept: ids não publicados pela WebView ($stS) → 🔴 sem reabertura automática; decisão do stakeholder" 'environment no result.json do accept (tag ausente nos 2 primeiros cenários, dump só com ids do Android)' "accept/$n/$($T.Id)/result.md"
                     Out "run: $($T.Id) — o accept não achou os ids: IDS NÃO PUBLICADOS ($stS). O app estava na tela; a WebView não publica o id HTML no dump. Não é o estado de partida, nem defeito do código, nem queda do alvo: o reparo não resolve e o dev não depura."
                     Out "  1. $plugin/mark.ps1 -Task $($T.Id) -To blocked -Reason `"ids não publicados pela WebView — $stS`""
-                    Out "  2. devolva `"$($T.Id) 🔴 bloqueada: ids não publicados · a fila segue`". A sessão leva ao stakeholder num formulário (R22), com a captura $(if ($shS) { $shS } else { "de accept/$n/$($T.Id)/shots/" }): espelhar o id no aria-label do build de prova (o accept acha pelo content-desc desde a v3.57.1 — Task do Arquiteto) ou provar por outro executor com desvio registrado."
+                    Out "  2. devolva `"$($T.Id) 🔴 bloqueada: ids não publicados · a fila segue`". A sessão leva ao stakeholder num formulário (R22), com a captura $(if ($shS) { $shS } else { "de accept/$n/$($T.Id)/shots/" }): espelhar o id no aria-label do build de prova (o accept acha pelo content-desc desde a v3.57.1 — Task do Arquiteto) ou provar por teste. Decidido 'provar por teste': run.ps1 prove -Task $($T.Id) -By stakeholder -Because `"<motivo>`" (aplica no plano e no quadro e tira de 🔴); para não perguntar de novo nas próximas Tasks, ofereça no mesmo formulário gravar a política em guards.json → run.deviceProofFallback = `"teste`"."
                     exit 0
                 }
                 Add-RunLog $S $n $T.Id "accept parado no estado de partida ($stS) → 🔴 sem reabertura automática; decisão do stakeholder" 'startState no result.json do accept (2 primeiros cenários na mesma tela, nenhum passou)' "accept/$n/$($T.Id)/result.md"
                 Out "run: $($T.Id) — o accept parou no ESTADO DE PARTIDA: $stS. Não é defeito do código nem queda do alvo: o reparo do emulador não muda a tela de partida e o dev não depura. Nenhum papel caro é chamado."
                 Out "  1. $plugin/mark.ps1 -Task $($T.Id) -To blocked -Reason `"estado de partida — $stS`" (sem a etiqueta da prova pendente: o run.ps1 next não a reabre sozinho)"
-                Out "  2. devolva `"$($T.Id) 🔴 bloqueada: estado de partida · a fila segue`". A sessão leva ao stakeholder num formulário (R22), com a captura $(if ($shS) { $shS } else { "de accept/$n/$($T.Id)/shots/" }): declarar o estado de partida (guards.json → targets.android.baseline = o nome de uma massa de targets.android.seeds) ou o QA ajustar o cenário; depois mark.ps1 -Task $($T.Id) -To qa e o accept pelo operator."
+                Out "  2. devolva `"$($T.Id) 🔴 bloqueada: estado de partida · a fila segue`". A sessão leva ao stakeholder num formulário (R22), com a captura $(if ($shS) { $shS } else { "de accept/$n/$($T.Id)/shots/" }): declarar o estado de partida (guards.json → targets.android.baseline = o nome de uma massa de targets.android.seeds) ou o QA ajustar o cenário; depois mark.ps1 -Task $($T.Id) -To qa e o accept pelo operator. Decidido 'provar por teste': run.ps1 prove -Task $($T.Id) -By stakeholder -Because `"<motivo>`" (e ofereça gravar a política em guards.json → run.deviceProofFallback = `"teste`")."
                 exit 0
             }
             Add-RunLog $S $n $T.Id "queda de ambiente ($($ec.env) neste bloco) → reparo do alvo e dev em instância nova" 'o dev parou por ambiente (exit 4 do verify/accept, rede, energia); não conta para o escalonamento (R27)' "sprints/$n/delivery/$($T.Id).md"
@@ -986,6 +1096,19 @@ try {
             $null = Update-DevCounter $T $S 'fail'   # v3.52.2 (item 14): evidência reprovada é falha de papel
             $bad = @($pre -split "`r?`n" | Where-Object { $_ -match '\|\s*(R7[\w-]*|R12)\s*\|\s*falhou' } | ForEach-Object { ($_ -replace '\s+', ' ').Trim() })
             if (-not $bad.Count) { $bad = @(($pre -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 2) -join ' ') }
+            # v3.60.1 (sprint 6 do garden, T-090: 4 "evidência incompleta" seguidas pelo mesmo R7-aceite): o único reprovado é o
+            # accept parado no estado de partida (ou ids não publicados) na árvore de agora — outro dev só rodaria o mesmo accept
+            # e pararia igual. Vai à rota de ambiente do done (política do projeto ou decisão do stakeholder).
+            $arjO = Join-Path ((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'
+            $accO = $null; if (Test-Path -LiteralPath $arjO) { try { $accO = Read-Text $arjO | ConvertFrom-Json } catch { } }
+            $onlyAcc = $bad.Count -and -not @($bad | Where-Object { $_ -notmatch '\|\s*R7-aceite\s*\|' }).Count
+            $sameTree = $accO -and (-not $accO.tree -or [string]$accO.tree -eq [string](Get-WorkTree $Root))
+            if ($onlyAcc -and $sameTree -and $accO.PSObject.Properties['startState'] -and $accO.startState) {
+                $rr = Invoke-Child 'run.ps1' @('done', '-Task', $T.Id, '-Result', 'env', '-By', $By, '-Root', $Root)
+                Out "run: $($T.Id) — só o R7-aceite reprovou, pelo accept parado no estado de partida na árvore de agora: outro dev rodaria o mesmo accept. Rota de ambiente:"
+                Out ($rr.Out.TrimEnd())
+                exit $rr.Code
+            }
             # v3.57.2 (note.md item 22, ocorrência 12 do sprint 5 do garden): o executor recebia só "dev novo com o que falta" — o
             # dev novo reabria o trabalho, e a nota ficava no retorno do executor, não no run-log. Agora o que falta vai a um
             # arquivo que o cartão traz com a ordem exclusiva (completar a evidência, sem mudar código) e a rota fica no run-log.
@@ -1104,7 +1227,8 @@ try {
             if ($capS -gt 0 -and $sg.LastContext -gt $capS -and -not $flying.Count) {
                 Set-NextVerdict $Root 'reiniciar' '' "sessão com $kk mil de contexto (teto $([int]($capS / 1000)) mil)"
                 Out "PRÓXIMA AÇÃO: reiniciar a sessão — contexto da última chamada $kk mil, acima do teto de $([int]($capS / 1000)) mil (guards.json → run.sessionContextCap), e nenhum agente em voo."
-                Say 'Para economizar, preciso que você reinicie a conversa do sprint: digite /clear e depois /sm sprint run. Nada se perde — o trabalho continua de onde está.'
+                # v3.60.1 (sprint 6 do garden: "quando posso atualizar?" perguntado 5 vezes): o reinício é ponto seguro — diz sempre.
+                Say 'Para economizar, preciso que você reinicie a conversa do sprint: digite /clear e depois /sm sprint run. Nada se perde — o trabalho continua de onde está. Este também é um bom momento para atualizar o plugin, se houver versão nova: /team update antes do /clear.'
                 Out "  cada chamada desta sessão relê o histórico inteiro; reiniciada, ela parte de ~56 mil. Nada se perde: o quadro, o run-log, os cartões e o .active-run estão no disco."
                 Out "  sessão: diga ao stakeholder, em uma linha, para digitar /clear e depois /sm sprint run (o run retoma de onde está) — e encerre o turno (a G20 libera)."
                 exit 0
@@ -1404,7 +1528,9 @@ try {
             Out "PRÓXIMA AÇÃO: validação do sprint $n — julgar (QA, uma passada só; portão da Review)"
             Say 'Revisão final: a qualidade está avaliando tudo o que foi entregue no sprint.'
             Out "  $(Get-AgentLine 'quality-assurance')"
-            Out ("  prompt: `"/qa sprint $n — leia .team-project/quality/$n/$sid/result.md" + $(if (Get-TargetsConfig $Root) { " e .team-project/accept/$n/$sid/result.md (com as capturas)" } else { '' }) + ", os planos e o diff do sprint. Julgue SOLID, clean code, aderência à arquitetura e aos planos, padrões e segurança, citando standards/ (Q<n>). Escreva .team-project/sprints/$n/validation.md (template sprint-validation) com o veredito e os achados (Volta para: dev | Arquiteto). Não rode build nem o app. Volte em até 15 linhas.`"")
+            # v3.60.1: as Tasks fechadas pela prova por teste (run.ps1 prove) entram no julgamento — a conferência no aparelho é aqui.
+            $dpRel = if (Test-Path -LiteralPath (Join-Path $S 'device-pending.md')) { ", a lista de prova no aparelho pendente .team-project/sprints/$n/device-pending.md (cada linha: o cenário passou no accept do sprint ou fica como dívida no validation.md, com a Task e o motivo)" } else { '' }
+            Out ("  prompt: `"/qa sprint $n — leia .team-project/quality/$n/$sid/result.md" + $(if (Get-TargetsConfig $Root) { " e .team-project/accept/$n/$sid/result.md (com as capturas)" } else { '' }) + "$dpRel, os planos e o diff do sprint. Julgue SOLID, clean code, aderência à arquitetura e aos planos, padrões e segurança, citando standards/ (Q<n>). Escreva .team-project/sprints/$n/validation.md (template sprint-validation) com o veredito e os achados (Volta para: dev | Arquiteto). Não rode build nem o app. Volte em até 15 linhas.`"")
             exit 0
         }
         # v3.52.2 (note.md item 15, C5): medição mais nova que o validation.md = a correção fechou e o operator mediu de novo

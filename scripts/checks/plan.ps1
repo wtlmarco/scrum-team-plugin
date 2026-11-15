@@ -213,9 +213,12 @@ try {
     # v3.53.6 (sprint 5 do garden, item 1): acima do teto ($PlanMaxKb, lib.ps1) o plano REPROVA — o aviso deixava a Task grande
     # ir ao dev. O remédio continua não sendo cortar: o run.ps1 next leva a Task à divisão, com os blocos deste plano como base,
     # e cada Task nova ganha plano próprio.
-    $kb = Get-PlanKb $text
-    if ($kb -gt $script:PlanMaxKb) { Add-Result 'tamanho' 'falhou' "$kb KB, acima de $($script:PlanMaxKb) KB: Task grande — NÃO corte nem encurte o plano (cortar relê a conversa a cada edição e não traz informação nova). A Task vai à divisão: o run.ps1 next a divide com os blocos deste plano como base e cada Task nova ganha plano próprio (regra 22). Exceção (v3.54.1): Task já em construção que passou do teto com a decisão de um 🔺 GAP não se divide — a decisão substitui o texto que derrubou, não fica ao lado" }
-    else { Add-Result 'tamanho' 'ok' "$kb KB" }
+    # v3.60.1 (sprint 6 do garden, T-090): as decisões de 🔺 GAP ("**Decisão do GAP …:**") não contam — a Task já construída
+    # que cresceu com elas não vai à divisão nem ao stakeholder.
+    $kbc = Get-PlanCoreKb $text; $kb = $kbc.Kb
+    $gapTxt = if ($kbc.Gap -gt 0) { " (+$($kbc.Gap) KB de decisões de 🔺 GAP, fora da conta; arquivo com $($kbc.Total) KB)" } else { '' }
+    if ($kb -gt $script:PlanMaxKb) { Add-Result 'tamanho' 'falhou' "$kb KB$gapTxt, acima de $($script:PlanMaxKb) KB: Task grande — NÃO corte nem encurte o plano (cortar relê a conversa a cada edição e não traz informação nova). A Task vai à divisão: o run.ps1 next a divide com os blocos deste plano como base e cada Task nova ganha plano próprio (regra 22). As decisões de 🔺 GAP (**Decisão do GAP …:**) não contam para o teto" }
+    else { Add-Result 'tamanho' 'ok' "$kb KB$gapTxt" }
 
     # ---------- 23 · cenários ao lado do plano (v3.51) ----------
     $cm = [regex]::Match($text, '(?m)^\*\*Cen[áa]rios:\*\*\s*(.+)$')
