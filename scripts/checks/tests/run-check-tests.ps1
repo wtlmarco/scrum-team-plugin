@@ -3297,6 +3297,97 @@ $r = Invoke-Check 'run.ps1' @('next', '-Root', $pd)
 $rlTxt = [System.IO.File]::ReadAllText($rld, $utf8)
 Check 'v3.59.2: next de novo — sem commit nem linha de run-log repetidos' @{ Code = $r.Code; Out = "$($r.Out)`nN=" + ([regex]::Matches($rlTxt, '\| S1 \| commit da consolidação')).Count + '/' + ([regex]::Matches($rlTxt, 'pendência que vai à Review')).Count } 0 @('PRÓXIMA AÇÃO: fim da fila', '^(?![\s\S]*commit da consolidação:)', '^(?![\s\S]*declarado pelo Arquiteto)', 'pedido ao SM não aplicado', 'N=1/1')
 
+# ---------- v3.61.0 — sprint 0 (R35): foundation.ps1, G25 no C2 e a R15 dos documentos aceitos no sprint 0 ----------
+$f0 = Join-Path $tmp 'sprint0'
+Put $f0 '.team-project/README.md' ("# Ctx`n`n## 2. Situação atual`n`n| | |`n|---|---|`n| **Sprint corrente** | **<n>** — x |`n`n**Diretório de produto:** ``docs/```n" -replace "`n", "`r`n")   # CRLF: o README de projeto no Windows
+Put $f0 'src/app.ts' 'export const a = 1;'
+Put $f0 'docs/sdd/01-requirements.md' "# 01`n`n### RF-001 — Cadastrar canteiro`n`n**Critério de aceite**`n- [ ] Dado x`n"
+$r = Invoke-Check 'foundation.ps1' @('assess', '-Root', $f0)
+Check 'v3.61.0 assess: 00 ausente, 01 fora do padrão (RF sem Como verificar), ambiente ausente, tipo retomada' $r 0 @('SDD-00 · docs/sdd/00-overview-objectives\.md \| ausente', "SDD-01 · docs/sdd/01-requirements\.md \| fora do padrão \| .*RF-001 sem 'Como verificar'", 'AMB-verify .*\| ausente', 'Tipo: retomada — .*src/app\.ts')
+$r = Invoke-Check 'foundation.ps1' @('gate', '-Root', $f0)
+Check 'v3.61.0 gate sem a linha Sprint 0 (projeto anterior): ok' $r 0 @('gate: ok .*anterior à v3\.61\.0')
+$r = Invoke-Check 'foundation.ps1' @('init', '-Root', $f0)
+$rd = [System.IO.File]::ReadAllText((Join-Path $f0 '.team-project/README.md'), $utf8)
+Check 'v3.61.0 init: 7 documentos + ambiente no quadro; README §2 → exigido logo abaixo do Sprint corrente' @{ Code = $r.Code; Out = "$($r.Out)`nRD=$rd" } 0 @('criado com 10 item\(ns\) \(retomada\)', 'Sprint corrente\*\* \| \*\*<n>\*\* — x \|\r?\n\| \*\*Sprint 0 \(fundação\)\*\* \| exigido — em andamento')
+$r = Invoke-Check 'foundation.ps1' @('gate', '-Root', $f0)
+Check 'v3.61.0 gate com o sprint 0 exigido: exit 1' $r 1 @('gate: bloqueado — sprint 0 exigido')
+$r = Invoke-Check 'foundation.ps1' @('next', '-Root', $f0)
+Check 'v3.61.0 next sem escopo: formulário do escopo, nenhum papel disparado' $r 0 @('PRÓXIMA AÇÃO: formulário do escopo', 'foundation\.ps1 approve -Areas', '^(?![\s\S]*Agent:)')
+$r = Invoke-Check 'foundation.ps1' @('approve', '-Areas', 'Canteiros', '-By', 'Stakeholder', '-Root', $f0)
+$r = Invoke-Check 'foundation.ps1' @('next', '-Root', $f0)
+Check 'v3.61.0 next: S0-01 → 🟨 e o PO disparado com o modelo do SDD e a régua do item' $r 0 @("S0-01 → $($e.build) — PO escreve docs/sdd/00-overview-objectives\.md", 'team:product-owner', 'deliverables/sdd/00-overview-objectives\.md', 'COMO ELE É HOJE', 'check -Item S0-01')
+$r = Invoke-Check 'foundation.ps1' @('next', '-Root', $f0)
+Check 'v3.61.0 next: o PO voltou sem o documento → devolvido 1/3 com a falha da régua' $r 0 @('S0-01 devolvido \(1/3\) — régua: .*00-overview-objectives\.md ausente', 'team:product-owner')
+$ficha = (1..22 | ForEach-Object { "| V$_ | item | valor $_ |" }) -join "`n"
+Put $f0 'docs/sdd/00-overview-objectives.md' "# SDD`n`n## OBJ-001 — Cuidar da horta`n`n**Como saberemos que foi atingido:** regas em dia.`n"
+Put $f0 'docs/sdd/01-requirements.md' "# 01`n`n### RF-001 — Cadastrar canteiro`n`n**Critério de aceite**`n- [ ] Dado x`n`n**Como verificar**`nteste`n"
+Put $f0 'docs/sdd/02-flows-and-roles.md' "# 02`n`n# 2. Papéis`n`n## 2.1 Jardineiro`n**Responsabilidade:** cuida dos canteiros`n`n# 3. Fluxos`n`n## 3.1 Fluxo principal`n**Pontos de falha e retomada:** offline.`n"
+Put $f0 'docs/sdd/03-architecture.md' "# 03`n`n## Índice`n- x`n`n## P-001 — Offline primeiro`nRegra.`n**Consequência observável:** sem chamada de rede.`n`n# 2b. Ficha de Vinculação de Stack`n`n| # | Item | Valor |`n|---|---|---|`n$ficha`n"
+Put $f0 'docs/sdd/04-data-model.md' "# 04`n`n## 1. Entidades principais`nCanteiro.`n`n## 2. Relacionamentos`nnenhum`n"
+Put $f0 'docs/sdd/05-api-model.md' "# 05`n`nNão se aplica — o app é offline, sem API.`n"
+Put $f0 'docs/sdd/06-changelog.md' "# 06`n`n## v1.0 (2026-11-16)`n**Motivação:** sprint 0`n"
+Put $f0 'docs/sdd/README.md' "# SDD`n"
+$r = Invoke-Check 'foundation.ps1' @('check', '-Item', 'S0-02', '-Root', $f0)
+Check 'v3.61.0 check -Item: só a régua do item; o 01 cita a área do escopo' $r 1 @('\| SDD-01 \| falhou \| .*área sem menção: Canteiros', '^(?![\s\S]*SDD-00)')
+Put $f0 'docs/sdd/01-requirements.md' "# 01`n`n### RF-001 — Cadastrar canteiro (Canteiros)`n`n**Critério de aceite**`n- [ ] Dado x`n`n**Como verificar**`nteste`n"
+Put $f0 'docs/sdd/02-flows-and-roles.md' "# 02`n`n# 2. Papéis`n`n## 2.1 Jardineiro`n**Responsabilidade:** cuida dos Canteiros`n`n# 3. Fluxos`n`n## 3.1 Fluxo principal`n**Pontos de falha e retomada:** offline.`n"
+Put $f0 'docs/sdd/03-architecture.md' "# 03`n`n## Índice`n- x`n`n## P-001 — Offline primeiro`nRegra.`n**Consequência observável:** sem chamada de rede.`n`n# 2b. Ficha de Vinculação de Stack`n`n| # | Item | Valor |`n|---|---|---|`n$($ficha -replace '\| V7 \| item \| valor 7 \|', '| V7 | item | <ferramenta + comando> |')`n"
+$r = Invoke-Check 'foundation.ps1' @('check', '-Root', $f0)
+Check 'v3.61.0 check completo: Ficha com marcador do modelo reprova o 03; ambiente e conformidade pendentes' $r 1 @('\| SDD-00 \| ok', '\| SDD-03 \| falhou \| .*Ficha com linha sem valor .*V7', '\| SDD-05 \| ok', '\| AMB-verify \| falhou', '\| QA-conformidade \| falhou', '\| itens \| falhou')
+Put $f0 'docs/sdd/03-architecture.md' "# 03`n`n## Índice`n- x`n`n## P-001 — Offline primeiro`nRegra.`n**Consequência observável:** sem chamada de rede.`n`n# 2b. Ficha de Vinculação de Stack`n`n| # | Item | Valor |`n|---|---|---|`n$ficha`n"
+$r = Invoke-Check 'foundation.ps1' @('next', '-Root', $f0)
+Check 'v3.61.0 next: régua do item ok → 🟪 e o QA disparado com o modelo da conformidade' $r 0 @("S0-01 → $($e.qa)", 'team:quality-assurance', 'templates/conformance\.md')
+Put $f0 '.team-project/sprints/0/evidence/conformance.md' "# Conformidade`n`n| Documento | Régua | Fidelidade | Veredito |`n|---|---|---|---|`n| 00-overview-objectives.md | ok | RF-001 sem código | $([char]::ConvertFromUtf32(0x274C)) |`n"
+$r = Invoke-Check 'foundation.ps1' @('next', '-Root', $f0)
+Check 'v3.61.0 next: QA ❌ → volta ao dono (🟨) com o ponteiro dos achados' $r 0 @("S0-01 devolvido \(2/3\) — QA: 00-overview-objectives\.md", 'team:product-owner', 'evidence/conformance\.md')
+$okRows = @('00-overview-objectives', '01-requirements', '02-flows-and-roles', '03-architecture', '04-data-model', '05-api-model', '06-changelog') | ForEach-Object { "| $_.md | ok | ok | $($e.ok) |" }
+Start-Sleep -Seconds 2
+Put $f0 '.team-project/sprints/0/evidence/conformance.md' ("# Conformidade`n`n| Documento | Régua | Fidelidade | Veredito |`n|---|---|---|---|`n" + ($okRows -join "`n") + "`n")
+$out = ''; for ($k = 0; $k -lt 16; $k++) { $r = Invoke-Check 'foundation.ps1' @('next', '-Root', $f0); $out += $r.Out; if ($r.Out -match 'o Arquiteto escreve o plano do ambiente') { break } }
+Check 'v3.61.0 next em laço: os 7 documentos fecham com régua + QA, e o ambiente começa pelo plano do Arquiteto' @{ Code = $r.Code; Out = $out } 0 @("S0-07 $($e.ok) — QA $($e.ok) em 06-changelog\.md", "S0-08 → $($e.plan) — o Arquiteto escreve o plano do ambiente", 'team:architect', 'foundation-env-plan\.md')
+Put $f0 '.team-project/sprints/0/plan/S0-08-ambiente.md' "# Plano`n`n**Arquivos tocados:** ``package.json```n`n## guards.json proposto`n`n{ }`n"
+$r = Invoke-Check 'foundation.ps1' @('next', '-Root', $f0)
+$at = [System.IO.File]::ReadAllText((Join-Path $f0 '.team-project/.active-task'), $utf8)
+Check 'v3.61.0 next: plano → 🟨, escopo do dev gravado (G9) e o dev disparado' @{ Code = $r.Code; Out = "$($r.Out)`nAT=$at" } 0 @("S0-08 → $($e.build) — o dev executa", 'team:developer', 'AT=\{"trilha":"sprint","id":"S0-08","plano":".team-project/sprints/0/plan/S0-08-ambiente\.md"\}')
+Put $f0 '.team-project/sprints/0/delivery/S0-08.md' "# Entrega`nok`n"
+$r = Invoke-Check 'foundation.ps1' @('next', '-Root', $f0)
+Check 'v3.61.0 next: com a entrega e a régua ainda reprovada, a sessão grava o guards.json proposto (uma vez)' $r 0 @("a sessão grava em \.team-project/guards\.json o bloco '## guards\.json proposto'")
+Put $f0 '.team-project/guards.json' '{ "verify": { "suite": "npm test", "build": "npm run build" } }'
+$r = Invoke-Check 'foundation.ps1' @('next', '-Root', $f0)
+Check 'v3.61.0 next: AMB-verify ok → S0-08 ✅, escopo do dev apagado, baseline ao QA' @{ Code = $r.Code; Out = "$($r.Out)`nAT=$(Test-Path (Join-Path $f0 '.team-project/.active-task'))" } 0 @("S0-08 $($e.ok) — verify\.suite = npm test", "S0-09 → $($e.build) — o QA prova o ambiente", '/qa baseline', 'AT=False')
+Put $f0 '.team-project/quality-assurance/baseline.md' "# Baseline`n"
+Put $f0 '.team-project/quality-assurance/scenarios/SC-001.md' "# SC-001`n`n## Histórico de execuções`n| Data | Task/Sprint | Resultado | Forma | Evidência |`n|---|---|---|---|---|`n| 2026-11-16 | S0-10 / sprint 0 | $($e.ok) passou | script | npm test |`n"
+$r = Invoke-Check 'foundation.ps1' @('next', '-Root', $f0); $r = Invoke-Check 'foundation.ps1' @('next', '-Root', $f0)
+Check 'v3.61.0 next: baseline e cenário do sprint 0 → todos prontos, review' $r 0 @('todos os itens prontos — /clear e /sm sprint0 review')
+$r = Invoke-Check 'foundation.ps1' @('close', '-Root', $f0)
+Check 'v3.61.0 close sem -By: erro de uso, nada gravado' $r 2 @('close exige -By')
+$r = Invoke-Check 'foundation.ps1' @('close', '-By', 'Stakeholder', '-Root', $f0)
+$rd = [System.IO.File]::ReadAllText((Join-Path $f0 '.team-project/README.md'), $utf8)
+Check 'v3.61.0 close: régua completa ok, aceite gravado e README §2 → concluído com as áreas' @{ Code = $r.Code; Out = "$($r.Out)`nRD=$rd" } 0 @('\| QA-conformidade \| ok', '\| itens \| ok \| todos', 'RD=[\s\S]*\| \*\*Sprint 0 \(fundação\)\*\* \| concluído em \d{4}-\d{2}-\d{2} — áreas documentadas: Canteiros')
+$r = Invoke-Check 'foundation.ps1' @('gate', '-Root', $f0)
+Check 'v3.61.0 gate depois do aceite: ok' $r 0 @('gate: ok — sprint 0 concluído')
+$r = Invoke-Check 'foundation.ps1' @('area', '-Add', 'Alertas', '-By', 'Stakeholder', '-Root', $f0)
+$r2 = Invoke-Check 'foundation.ps1' @('gate', '-Root', $f0)
+$rd = [System.IO.File]::ReadAllText((Join-Path $f0 '.team-project/README.md'), $utf8)
+Check 'v3.61.0 area: reabre só a área (4 itens), o portão segue aberto e o README (CRLF) tem a linha uma vez só' @{ Code = $r.Code; Out = "$($r.Out)`n$($r2.Out)`nN=" + ([regex]::Matches($rd, 'Sprint 0 \(fundação\)')).Count + " LF=" + ([regex]::Matches($rd, "(?<!`r)`n")).Count } 0 @("área 'Alertas' reaberta com 4 item\(ns\)", 'gate: ok — sprint 0 concluído .*área Alertas em documentação', 'N=1 LF=0')
+# Documento com o nome do projeto (sem 0n-) e requisitos em lista, com ID por área (o formato do garden).
+$f2 = Join-Path $tmp 'sprint0-nomes'
+Put $f2 '.team-project/README.md' "# Ctx`n`n**Diretório de produto:** ``docs/```n"
+Put $f2 'docs/sdd/requirements.md' "# Requisitos`n`n## 4. Requisitos funcionais`n`n- **RF-CAN-01** — CRUD de canteiro`n- **RF-CAN-02** — Visão geral`n"
+Put $f2 'docs/sdd/architecture.md' "# Arquitetura`n`n## Índice`n`n| V12 | gate | ``npm run gate -- --diff <commit-base>`` |`n"
+$r = Invoke-Check 'foundation.ps1' @('assess', '-Root', $f2)
+Check 'v3.61.0 assess: acha o documento pelo nome do projeto, avisa o nome do modelo e conta os RF em lista sem seção' $r 0 @('SDD-01 · docs/sdd/requirements\.md \| fora do padrão \| .*nome do projeto.*01-requirements\.md.*2 requisito\(s\) em lista \(RF-CAN-01…\), sem seção própria', 'SDD-03 · docs/sdd/architecture\.md \| fora do padrão \| .*Ficha', '^(?![\s\S]*Ficha com linha sem valor[^|]*V12)')
+# C2: R35 e a R15 dos documentos aceitos no sprint 0.
+$r = Invoke-Check 'project.ps1' @('-Root', $f0)
+Check 'v3.61.0 C2: R35 ok com o sprint 0 concluído' $r 0 @('\| R35 \| ok \| sprint 0 concluído')
+$f1 = Join-Path $tmp 'sprint0-pulado'; New-Project $f1
+Edit-File (Join-Path $f1 '.team-project/README.md') '| **Sprint corrente** | **1** — exportar o resultado' "| **Sprint 0 (fundação)** | exigido — em andamento desde 2026-08-30 |`n| **Sprint corrente** | **1** — exportar o resultado"
+$r = Invoke-Check 'project.ps1' @('-Root', $f1)
+Check 'v3.61.0 C2: sprint 1 com pacote aprovado e o sprint 0 exigido → R35 falhou' $r 0 @("\| R35 \| falhou \| sprint 1 com pacote aprovado e o sprint 0 'exigido")
+$r = Invoke-Check 'foundation.ps1' @('dispense', '-By', 'Stakeholder', '-Because', 'documentação do cliente já auditada', '-Root', $f1)
+$r = Invoke-Check 'project.ps1' @('-Root', $f1)
+Check 'v3.61.0 C2: sprint 0 dispensado pelo stakeholder → R35 ok com o risco aceito' $r 0 @('\| R35 \| ok \| sprint 0 dispensado em .* por Stakeholder — documentação do cliente já auditada')
+
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
 foreach ($sl in @($rows | Sort-Object Seg -Descending | Select-Object -First 12)) { $sn = [string]$sl.Caso; Write-Output ("lento: {0,5} s  {1}" -f $sl.Seg, $(if ($sn.Length -gt 120) { $sn.Substring(0, 120) } else { $sn })) }

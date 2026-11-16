@@ -61,7 +61,7 @@ Com os comandos reais de build/teste/lint do passo 3, siga os **passos 7f e 7h d
 
 Conforme a resposta do passo 3:
 
-- **projeto retomado** → `/sm onboarding`, depois `/qa audit` e `/qa baseline` — o levantamento sobre código vira as primeiras Histórias;
+- **projeto retomado** → `/sm onboarding`, depois o sprint 0 (`/sm sprint0 plan` → `run` → `review`, R35): o SDD do sistema como ele é, conferido pelo QA contra o código, e o ambiente de testes provado — as primeiras Histórias saem do SDD aceito;
 - **projeto novo com ideia ainda aberta** → `/sm brainstorm <ideia>` e depois `/sm sdd`;
 - **projeto novo com requisitos já claros** → `/po analyze <visão do produto>` e depois `/sm sdd`.
 

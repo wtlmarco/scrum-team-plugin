@@ -83,7 +83,7 @@ Antes de validar qualquer Task nova, reproduza os números que a documentação 
 
 Essa reprodução, quando envolve build/teste completos, é execução pesada e passa pelo `operator` (seção 2) como qualquer outra: `baseline.md` registra o trecho e o ponteiro do `report`, nunca só o número final.
 
-Registre em `.team-project/quality-assurance/baseline.md` — fora da pasta do sprint, porque a linha de base roda tipicamente **antes** de o sprint 1 existir (`/sm onboarding` → `/qa audit` → `/qa baseline`).
+Registre em `.team-project/quality-assurance/baseline.md` — fora da pasta do sprint, porque a linha de base roda tipicamente **antes** de o sprint 1 existir — no sprint 0 (R35), ou, com ele dispensado, em `/sm onboarding` → `/qa audit` → `/qa baseline`.
 
 ## 10. Validar contra o normativo de engenharia sem editá-lo
 
