@@ -805,6 +805,33 @@ $cases = @(
     @{ Name = 'v3.57.4 primeiro prompt da sessão nova (transcript ainda sem arquivo): grava o .session-transcript dela'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
        Check = { $f = Join-Path $proj '.team-project/.session-transcript'; $ok = (Test-Path -LiteralPath $f) -and ((Get-Content -LiteralPath $f -Raw -Encoding UTF8).Trim() -eq (Join-Path $tmp 'transcripts/pos-clear.jsonl')); Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue; $ok }
        Payload = @{ prompt = '/sm sprint run'; transcript_path = (Join-Path $tmp 'transcripts/pos-clear.jsonl') } },
+    # ---------- v3.61.0 — G25: o backlog funcional espera o sprint 0 (R35) ----------
+    @{ Name = 'G25 /sm sprint prepare com o sprint 0 exigido: bloqueia o prompt com a rota'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = '"decision":"block"'
+       Setup = { foreach ($n in 'README.md', 'guards.json') { $s = Join-Path $proj ".team-project/$n"; if (Test-Path -LiteralPath $s) { Copy-Item -LiteralPath $s -Destination "$s.g25bak" -Force } }; [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/README.md'), "# Ctx`n`n## 2. Situação atual`n| | |`n|---|---|`n| **Sprint 0 (fundação)** | exigido — em andamento desde 2026-11-16 |`n", (New-Object System.Text.UTF8Encoding($false))) }
+       Check = { $l = Join-Path $proj '.team-project/guards.log'; (Test-Path -LiteralPath $l) -and ((Get-Content -LiteralPath $l -Raw -Encoding UTF8) -match 'G25') }
+       Payload = @{ prompt = '/team:sm sprint plan' } },
+    @{ Name = 'G25 o motivo cita o caminho (sprint0 run → review) e a dispensa'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = '/sm sprint0 run'
+       Payload = @{ prompt = '/sm sprint prepare' } },
+    @{ Name = 'G25 /sm sprint run não passa pela G25 (o pacote já foi aprovado)'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
+       Payload = @{ prompt = '/sm sprint run' } },
+    @{ Name = 'G25 linha com o marcador do modelo (onboarding sem decisão): bloqueia'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = 'ainda não foi decidida'
+       Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/README.md'), "| **Sprint 0 (fundação)** | <exigido — … · concluído em <data> · dispensado …> |`n", (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ prompt = '/sm sprint prepare' } },
+    @{ Name = 'G25 sprint 0 concluído: silêncio'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
+       Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/README.md'), "| **Sprint 0 (fundação)** | concluído em 2026-11-20 — áreas documentadas: Canteiros |`n", (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ prompt = '/sm sprint prepare' } },
+    @{ Name = 'G25 sprint 0 dispensado: silêncio'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
+       Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/README.md'), "| **Sprint 0 (fundação)** | dispensado em 2026-11-20 por Stakeholder — risco aceito |`n", (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ prompt = '/sm sprint plan' } },
+    @{ Name = 'G25 desligada no guards.json: silêncio mesmo com o sprint 0 exigido'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
+       Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/README.md'), "| **Sprint 0 (fundação)** | exigido — em andamento desde 2026-11-16 |`n", (New-Object System.Text.UTF8Encoding($false))); Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "disabled": ["G25"] }' -Encoding UTF8 }
+       Payload = @{ prompt = '/sm sprint prepare' } },
+    @{ Name = 'G25 sem a linha (projeto anterior à v3.61.0): silêncio'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.json') -Force -ErrorAction SilentlyContinue; Set-Content -LiteralPath (Join-Path $proj '.team-project/README.md') 'local' -Encoding UTF8 }
+       Payload = @{ prompt = '/sm sprint prepare' } },
+    @{ Name = 'G25 (fim): README e guards.json do projeto falso voltam ao que eram'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
+       Setup = { foreach ($n in 'README.md', 'guards.json') { $s = Join-Path $proj ".team-project/$n"; if (Test-Path -LiteralPath "$s.g25bak") { Move-Item -LiteralPath "$s.g25bak" -Destination $s -Force } } }
+       Payload = @{ prompt = '/po status' } },
     @{ Name = 'G19 SendMessage da sessão durante o run, até ao dev (Haiku): nega com a rota da instância nova (v3.52)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'instância NOVA'
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "7", "desde": "2026-10-06 10:00" }' -Encoding UTF8 }
        Payload = @{ tool_name = 'SendMessage'; tool_input = @{ to = 'dev19old'; message = 'x' } } },

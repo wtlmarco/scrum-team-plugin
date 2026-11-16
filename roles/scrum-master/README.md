@@ -33,7 +33,7 @@ Organizo o trabalho, protejo o processo e mantenho a verdade sobre o andamento. 
 Acontece **uma vez**, antes da primeira Planning Meeting (R14). Roteiro completo em [`process/workflow-ritos.md` §5a](process/workflow-ritos.md).
 1. **Inventário das fontes** de documentação do projeto: existe? última atualização? dono?
 2. **Lacunas contra a documentação** — a documentação existente é a primeira fonte; o stakeholder responde só o que ela não cobre.
-3. **Bifurcação:** doc funcional essencial ausente → abrir `/sm brainstorm` e pausar; doc desatualizada/contraditória → risco no quadro + `/qa audit`.
+3. **Onde está a documentação, e ela serve?** `foundation.ps1 assess` → com código, o sprint 0 (R35 · `workflow-sprint0.md`): criar o que falta, revisar contra o código o que existe e provar o ambiente; sem código e sem documentação funcional → `/sm brainstorm`; doc contraditória → risco no quadro, resolvida no sprint 0.
 4. **Leitura de entrada** dos outros cinco papéis (PO · Arquiteto · UX · dev · QA): mandato entendido, o que falta, um risco.
 5. **Consolidar** e levar ao stakeholder **uma** lista de perguntas (estratégicas + lacunas pequenas + **duração do sprint** e **unidade de estimativa**), na forma fixa de R22: alternativas descritas, recomendação e a via de pedir mais contexto — resolvida em formulário, não em texto corrido.
 6. **Registrar o alinhamento** no contexto do projeto e abrir o quadro.

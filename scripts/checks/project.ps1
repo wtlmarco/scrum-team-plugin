@@ -1,4 +1,4 @@
-﻿# C2 — conferência do projeto: onboarding (R14), ordem ① → SDD técnico (R15), aceite só na Review (R21) e git só com o produto (R31).
+﻿# C2 — conferência do projeto: onboarding (R14), sprint 0 antes do backlog funcional (R35, v3.61.0), ordem ① → SDD técnico (R15), aceite só na Review (R21) e git só com o produto (R31).
 # Uso: powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/project.ps1" [-Root <projeto>] [-Deep]
 #   Roda na retrospectiva e no /sm onboarding. -Deep acrescenta o histórico do git (lento) ao R31.
 # Saída: tabela regra · resultado · linha decisiva. Exit 0 sempre; 2 só em erro de uso ou de leitura.
@@ -33,6 +33,28 @@ try {
     }
     if ($r14.Count) { Add-Result 'R14' 'falhou' ($r14 -join '; ') } else { Add-Result 'R14' 'ok' '§4, §7 e cadência preenchidos (datas: n-a — o modelo não tem campo de data)' }
 
+    # ---------- R35 · sprint 0 antes do backlog funcional (v3.61.0) ----------
+    # A linha "Sprint 0 (fundação)" do README §2 é gravada pelo foundation.ps1. Sem ela, o projeto é anterior à regra.
+    $s0Accept = $null
+    $s0Board = Join-Path $tp 'sprints/0/foundation.md'
+    if (Test-Path -LiteralPath $s0Board) { $s0Accept = Get-FirstDate ([string](Get-LabelValue (Read-Text $s0Board) 'Aceite')) }
+    $s0 = [regex]::Match($readme, '(?m)^\|\s*\*{0,2}Sprint 0 \(fundação\)\*{0,2}\s*\|([^\r\n]*)\|\s*$')
+    if (-not $s0.Success) { Add-Result 'R35' 'n-a' 'README §2 sem a linha "Sprint 0 (fundação)" (projeto anterior à v3.61.0)' }
+    else {
+        $s0v = Clean-Cell $s0.Groups[1].Value
+        $openSprint = $null
+        $csm = [regex]::Match($readme, $script:SprintLineRe)
+        if ($csm.Success -and [int]$csm.Groups[1].Value -ge 1) {
+            $cbp = Join-Path $tp ('sprints/' + $csm.Groups[1].Value + '/sprint-backlog.md')
+            if ((Test-Path -LiteralPath $cbp) -and (Get-FirstDate ([string](Get-LabelValue (Read-Text $cbp) 'Aprovado em')))) { $openSprint = $csm.Groups[1].Value }
+        }
+        if ($s0v -match '(?i)^conclu') { Add-Result 'R35' 'ok' "sprint 0 $s0v" }
+        elseif ($s0v -match '(?i)^dispensad') { Add-Result 'R35' 'ok' "sprint 0 $s0v (risco aceito pelo stakeholder)" }
+        elseif ($openSprint) { Add-Result 'R35' 'falhou' "sprint $openSprint com pacote aprovado e o sprint 0 '$s0v' — o backlog funcional abriu antes do aceite do sprint 0 (G25 desligada ou contornada)" }
+        elseif (Test-Placeholder $s0v) { Add-Result 'R35' 'aviso' 'linha "Sprint 0 (fundação)" sem decisão — o /sm onboarding (passo 3) decide' }
+        else { Add-Result 'R35' 'ok' "sprint 0 $s0v — nenhum sprint funcional aberto" }
+    }
+
     # ---------- R15 · ① antes do SDD técnico (03/04/05) ----------
     $navDate = $null; $navSimulada = $false
     # v3.47 (M3): "n/a — navegação simulada (benchmark)" só vale com guards.json → bench ligado.
@@ -55,17 +77,20 @@ try {
     elseif (-not $navDate) { Add-Result 'R15' 'n-a' 'ficha do protótipo funcional sem "Navegado pelo stakeholder em:" com data' }
     elseif (-not $isGit) { Add-Result 'R15' 'n-a' 'fora de repositório git: sem data de criação do SDD técnico' }
     else {
-        $early = @(); $seen = 0
+        $early = @(); $seen = 0; $byS0 = 0
         if (Test-Path -LiteralPath $product) {
             foreach ($f in (Get-ChildItem -LiteralPath $product -Recurse -File | Where-Object { $_.Name -match '^0[345]-.*\.md$' })) {
                 $dates = @(& git -C $Root log --diff-filter=A --format=%as -- $f.FullName 2>$null)
                 if ($dates.Count -eq 0) { continue }
-                $seen++
                 $added = Get-FirstDate $dates[-1]
+                # v3.61.0 (R35): o documento do sistema existente, aceito no sprint 0, não passa pelo ① — o aceite vale pelos dois portões.
+                if ($s0Accept -and $added -and $added -le $s0Accept) { $byS0++; continue }
+                $seen++
                 if ($added -and $added -lt $navDate) { $early += "$($f.Name) em $($dates[-1])" }
             }
         }
-        if ($seen -eq 0) { Add-Result 'R15' 'n-a' "nenhum 03/04/05 versionado em $productRel" }
+        if ($seen -eq 0 -and $byS0) { Add-Result 'R15' 'n-a' "$byS0 documento(s) 03/04/05 aceito(s) no sprint 0 (R35), fora do ①" }
+        elseif ($seen -eq 0) { Add-Result 'R15' 'n-a' "nenhum 03/04/05 versionado em $productRel" }
         elseif ($early.Count) { Add-Result 'R15' 'falhou' ("SDD técnico antes da navegação do ① (" + $navDate.ToString('yyyy-MM-dd') + "): " + ($early -join '; ')) }
         else { Add-Result 'R15' 'ok' ("$seen documento(s) 03/04/05 criados depois do ① (" + $navDate.ToString('yyyy-MM-dd') + "); ② antes da 1ª História: n-a") }
     }

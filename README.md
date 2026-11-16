@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.60.1** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.61.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -26,7 +26,7 @@ este repositório   processo   → genérico, um só, serve todos os projetos
 ├── agents/      scrum-master · product-owner · architect · user-experience · developer · quality-assurance · operator · task-runner (executor de Task, v3.52.2)
 ├── commands/    sm · po · arc · ux · dev · qa · sec · team · review · team-status · team-usage   definições dos 11 comandos (os dois últimos respondidos pelo hook, sem token)
 ├── hooks/                           guardas do harness (fase 1: G1 R31 · G2 cópia instalada · G3 R22 · G4 R28 · G13 autoteste; fase 2, por papel: G5 gate · G6 teste ignorado · G7 R28 · G8 matriz de propriedade · G9 R4/R8 · G11 operator; v3.44: G14 run sem trava · G15 pedido de permissão no log; v3.45: G16 consumo medido; v3.58.3: G24 formulário só pela rota do run) — hooks.json, despachantes PowerShell, ownership.json (derivado da matriz) e COVERAGE.md (o que cada uma NÃO cobre)
-├── scripts/checks/                  conferências: close.ps1 (C1, /sm close) · project.ps1 (C2, retrospectiva e onboarding) · release.ps1 (C3, antes do PR) · fix.ps1 (C4, /sm fix run) · tests/; e as escritas mecânicas da sessão no run: mark.ps1 (marcador) · dispatch.ps1 (preparo do disparo) · consumption.ps1 (registro de consumo); e team-view.ps1 (/team-status e /team-usage, só leitura) · plain.ps1 (as frases em palavras simples do quadro, do /team-status e da fala da sessão)
+├── scripts/checks/                  conferências: close.ps1 (C1, /sm close) · project.ps1 (C2, retrospectiva e onboarding) · release.ps1 (C3, antes do PR) · fix.ps1 (C4, /sm fix run) · foundation.ps1 (sprint 0, R35: avaliação, quadro, régua, próxima ação, aceite, portão) · tests/; e as escritas mecânicas da sessão no run: mark.ps1 (marcador) · dispatch.ps1 (preparo do disparo) · consumption.ps1 (registro de consumo); e team-view.ps1 (/team-status e /team-usage, só leitura) · plain.ps1 (as frases em palavras simples do quadro, do /team-status e da fala da sessão)
 ├── scripts/metrics/                 medição de custo pelos transcripts (mantenedor e benchmark, Node)
 ├── deliverables/                    estrutura dos documentos que o time entrega
 │   ├── README.md                    os conjuntos: donos, ordem de elaboração, critérios de qualidade
@@ -100,13 +100,13 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 | Desenvolvedor(a) júnior | [`roles/developer/`](roles/developer/README.md) | `developer` | Haiku | `/dev` |
 | QA | [`roles/quality-assurance/`](roles/quality-assurance/README.md) | `quality-assurance` | Sonnet | `/qa` |
 | Security Engineer *(sob demanda)* | [`roles/security-engineer/`](roles/security-engineer/README.md) | `security-engineer` | Sonnet | `/sec` |
-| **O time inteiro** | — | os seis, orquestrados pela sessão nos modos do `/sm` que reúnem papéis (`onboarding`, `brainstorm`, `sdd`, `sprint prepare`, `plan`, `run`, `review`) | — | `/team` só instala e atualiza (`init` · `update` · `version`) |
+| **O time inteiro** | — | os seis, orquestrados pela sessão nos modos do `/sm` que reúnem papéis (`onboarding`, `sprint0`, `brainstorm`, `sdd`, `sprint prepare`, `plan`, `run`, `review`) | — | `/team` só instala e atualiza (`init` · `update` · `version`) |
 | Stakeholder | você | — | — | conversa direta com qualquer papel |
 
 ## Comandos
 
 ```
-/sm     onboarding | brainstorm <ideia> | sdd [<tema>] | sprint prepare | sprint plan | sprint run [<T-ID>] | sprint review | sprint close | board | agreement <questão> | consulting <domínio> <tema> | close <T-ID>    (review = alias de sprint review)
+/sm     onboarding | sprint0 plan|run|review|area <área> | brainstorm <ideia> | sdd [<tema>] | sprint prepare | sprint plan | sprint run [<T-ID>] | sprint review | sprint close | board | agreement <questão> | consulting <domínio> <tema> | close <T-ID>    (review = alias de sprint review)
 /po     status | impact <mudança> | analyze <ideia> | requirement <ID> | story <H-ID> | prioritize | accept <H-ID> | bug <relato> | note
 /arc    plan <T-ID> | adr <tema> | question <dúvida>
 /ux     prototype | prototype sprint <n> | prototype screen <tela> | journey <fluxo> | screen <nome> | review-ui <tela>
@@ -134,6 +134,7 @@ O **SM não é canal de demanda** — é **processo, organização e eficiência
 | `/po status` | Onde estamos, em **Histórias** — entregue, em andamento, bloqueado, próximo, risco ao plano | O seu "como está o projeto?" |
 | `/sm agreement <questão>` | O SM chama **só os papéis que a questão toca**, consolida **uma** recomendação e registra a divergência que sobrou | Questão que atravessa papéis e precisa de uma posição |
 | `/sm consulting <domínio> <tema>` | Segunda opinião **externa** (humano ou IA, do registro do projeto): os papéis do domínio escrevem a carta sanitizada, você a transporta, o time valida a resposta (até 3 réplicas) e você escolhe entre 3 opções em formulário (R32) | Decisão técnica especializada ou processo de uma área de negócio que o time não domina — **fora do `sprint run`** |
+| `/sm sprint0 plan · run · review` | **Sprint 0** — entre o onboarding e o primeiro sprint: o SDD do sistema **como ele é**, nos modelos e conferido pelo QA contra o código, e o ambiente de testes provado (comandos no `guards.json`, baseline, um cenário no alvo). Um formulário de escopo (áreas da 1ª onda) e um aceite (R35, [`workflow-sprint0.md`](roles/scrum-master/process/workflow-sprint0.md)); `area <área>` reabre para uma área nova | Projeto com código que vai receber backlog — antes do primeiro `/sm sprint prepare` |
 | `/sm brainstorm <ideia>` | Descoberta funcional de ideia sem documentação, facilitada pelo SM: fase 1 stakeholder + PO + UX; fase 2 entra o Arquiteto, em rodadas até fechar para o SDD (R15, [`workflow-ritos.md` §5b](roles/scrum-master/process/workflow-ritos.md)) | Ideia greenfield que ainda não tem visão, requisitos nem fluxos |
 | `/sm sdd [<tema>]` | Transição inteira para o SDD, depois do brainstorm (ideia nova) ou do `/po analyze` (área documentada): SDD funcional + protótipo → **① formulário** → SDD técnico da fatia → **② formulário** → Histórias no Product Backlog (R15, [`workflow-sdd.md` §5h](roles/scrum-master/process/workflow-sdd.md)) | Levar o brief até Histórias prontas para o `prepare`, com dois portões seus | UX (se há interface) → Arquiteto → dev → QA e fecha a Task no ✅, a fila inteira do sprint ou uma Task, parando no primeiro problema | Levar a fila (ou uma Task) do plano ao veredito, sem te acionar |
 
@@ -145,6 +146,7 @@ Acordo e status **não escrevem em disco** — são conversa e leitura. O que vi
 
 ```
 [projeto novo/retomado] ──▶ /sm onboarding ──▶ entendimento alinhado + contexto do projeto  (uma vez, R14)
+[projeto com código]    ──▶ /sm sprint0 ──▶ SDD do sistema como é (conferido pelo QA) + ambiente de testes provado ──▶ aceite  (R35)
 [ideia sem documentação] ──▶ /sm brainstorm ──▶ fase 1 (PO+UX) ─▶ fase 2 (+Arquiteto) ─▶ brief  (R15)  ──▶ /sm sdd
                                    │
 stakeholder ──▶ /po analyze ──▶ decisão + requisito  ──▶ /sm sdd  (área já documentada: só o delta)
