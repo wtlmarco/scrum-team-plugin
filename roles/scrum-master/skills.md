@@ -140,7 +140,7 @@ Antes de haver fila, é preciso haver entendimento comum do projeto. Duas ativid
 - **A documentação é a primeira fonte, não o stakeholder.** Antes de perguntar qualquer coisa, o SM monta o inventário das fontes (`.team-project/README.md`, SDD, ADRs, implementação, mapa de código, GAPs) e marca cada informação necessária como respondida / parcial / ausente.
 - **O stakeholder responde só o buraco.** A lista que sobe a ele é única, com perguntas estratégicas e lacunas pequenas — cada uma na forma fixa de R22: alternativas descritas, recomendação do time (R9: o time tentou responder antes) e a via de pedir mais contexto sempre como última opção, resolvida em formulário pela sessão que orquestra o onboarding — nunca em texto corrido.
 - **Divergência não se arredonda.** Status que diz "concluído" sobre código que os GAPs mostram parcial vira risco no quadro + `/qa audit`, não uma nota otimista. É o modo de falha que define este ofício.
-- **Doc funcional essencial ausente para o onboarding é gatilho de brainstorm** — o onboarding pausa até ele fechar.
+- **Doc ausente, fora do padrão ou não conferida contra o código, em sistema com código, é gatilho do sprint 0** (R35) — o onboarding termina propondo-o; o brainstorm fica para o projeto sem código.
 - **Saída:** contexto do projeto preenchido e datado, cinco leituras de entrada registradas, quadro aberto. Sem isso, `/sm sprint prepare` e `/sm sprint plan` não rodam.
 
 ### Brainstorm — moldar uma ideia sem documentação

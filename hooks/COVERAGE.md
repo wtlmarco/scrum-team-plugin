@@ -210,3 +210,12 @@ No sprint 6 do garden, 22 formulários chegaram ao stakeholder durante o `sprint
 | **SessionStart** | a retomada do run vale quando o pedido da sessão é o comando do run (ou "continue"); outro comando faz só o pedido e diz em uma linha que o run segue parado, sem formulário. A linha da conversa ganha: decidida, a pendência sai da §7 na mesma resposta (R34) | a sessão que ignora a linha (não há guarda: o "retomo?" de outra sessão não passa pela G24) |
 
 **Script (v3.58.3):** `run.ps1 next` — `POSSÍVEL TRAVAMENTO` (com o agente vivo ou sem ele): na primeira vez da Task, `PRÓXIMA AÇÃO: encerrar e retomar` com o comando de encerrar (`verify.ps1 -Task <ID> -Kill` ou `target.ps1 -Target <alvo> -Kill`, vindo de `Get-TaskWait → Kill`), sem formulário e sem `.next-verdict`; contador `stall` no `handoff/<ID>.json`. Na segunda, a rota `travamento` e o formulário.
+## v3.61.0 — o backlog funcional espera o sprint 0
+
+O onboarding passou a decidir o sprint 0 (R35): documentação do sistema nos modelos do SDD, conferida contra o código, e ambiente de testes provado antes do primeiro sprint funcional. Sem guarda, o `/sm sprint prepare` abriria o backlog sobre a documentação que o próprio onboarding marcou como ausente ou fora do padrão.
+
+| Guarda | Evento · ferramenta | Papel | Regra | Decisão | O que **não** cobre |
+|---|---|---|---|---|---|
+| **G25** (nova) | `UserPromptSubmit` (`hooks/prompt-submit.ps1`) | sessão principal | R35 | **bloqueia** `/sm sprint prepare` e `/sm sprint plan` (`decision: block`, o motivo vai ao stakeholder e o prompt não chega ao modelo; linha no `guards.log`) quando a linha `Sprint 0 (fundação)` do `README.md` §2 existe e não começa por `concluído` nem `dispensado` — inclusive o marcador do modelo, que é onboarding sem decisão. Sem a linha: projeto anterior à v3.61.0, silêncio | a História de área ainda não documentada depois do aceite (julgamento do SM no `prepare`, com `/sm sprint0 area`); o pedido em texto livre ("planeje o sprint"), que não é comando; a qualidade do que o sprint 0 aceitou (é da régua e do QA) |
+
+**Script (v3.61.0):** `foundation.ps1` — `assess`, `init`, `approve`, `next`, `check`, `area`, `close`, `dispense` e `gate` (o mesmo critério da G25, para o C2 e para quem quiser perguntar sem abrir o comando). O `close` não grava o aceite com a régua reprovada.

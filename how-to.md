@@ -29,7 +29,9 @@ O time trabalha numa cadência fixa, toda conduzida pelo `/sm`:
 |---|---|
 | Instalar o time num projeto | instalação (abaixo) e depois `/team init` |
 | Começar de uma ideia sem documentação | `/sm brainstorm <ideia>` → cenário A |
-| Assumir um projeto que já existe | `/sm onboarding` → cenário B |
+| Assumir um projeto que já existe | `/sm onboarding` → `/sm sprint0 plan` → cenário B |
+| Documentar o sistema e preparar o ambiente de testes antes do primeiro sprint (sprint 0) | `/sm sprint0 plan` → `/sm sprint0 run` → `/sm sprint0 review` → cenário B |
+| Documentar uma área nova que o backlog vai tocar | `/sm sprint0 area <área>` |
 | Evoluir uma área que já está documentada | `/po analyze <ideia>` → `/sm sdd` → cenário C |
 | Transformar o brief ou a decisão em SDD e Histórias | `/sm sdd` |
 | Abrir um sprint | `/sm sprint prepare` e depois `/sm sprint plan` |
@@ -66,6 +68,8 @@ O time trabalha numa cadência fixa, toda conduzida pelo `/sm`:
                               Arquiteto escreve o SDD técnico da primeira fatia
                               ② você decide o SDD técnico
                               PO cria as Histórias no Product Backlog
+/sm sprint0 plan · run · review   sprint 0: o QA confere o SDD com a régua, e o time monta e prova o ambiente de testes
+                              (scaffold, comandos de verificação, um cenário rodado no alvo) — você aceita uma vez
 /sm sprint prepare          o time detalha as candidatas (regras, critérios, telas, cenários de teste) — sem te acionar
 /sm sprint plan             Planning: quebra em Tasks, estima, corta pela capacidade, costura o protótipo do sprint
                               ③ você navega o protótipo do sprint e decide o PACOTE
@@ -82,17 +86,21 @@ Há código, e a documentação pode não corresponder a ele.
 
 ```
 /team init                  cria .team-project/
-/sm onboarding              inventário das fontes; o que a documentação não cobre vira pergunta a você
-/qa audit                   cruza os documentos com o código real
-/qa baseline                reproduz os números declarados (build, testes, cobertura) — a régua de regressão
+/sm onboarding              onde está a documentação, e ela serve? (foundation.ps1 assess: ausente · fora do padrão · conforme)
+                              o que só você responde vira formulário; a decisão do sprint 0 é uma delas
+/sm sprint0 plan            o quadro do sprint 0 e UM formulário: por quais áreas começar (a 1ª onda do backlog)
+/sm sprint0 run             PO e Arquiteto escrevem ou revisam o SDD do sistema COMO ELE É, a partir do código;
+                              a régua confere a forma e o QA confere contra o código (arquivo:linha);
+                              Arquiteto e dev montam o ambiente de testes; o QA refaz a baseline e roda
+                              um cenário ponta a ponta no alvo — sem te acionar, salvo bloqueio
+/sm sprint0 review          o PO mostra o que mudou, os achados e a dívida encontrada; você aceita uma vez
+/po story <H-ID>            as Histórias saem do SDD aceito (a dívida já virou item do backlog)
+/sm sprint prepare          a partir daqui, o fluxo normal
 ```
 
-Depois, conforme o que o onboarding encontrou:
+**O sprint 0 documenta, não refatora.** Documento que já existe é revisado contra o código, não aceito por existir; documento que não existe é criado; má prática no código vira dívida no backlog. A régua é a dos modelos do SDD — critério de aceite com "como verificar" em todo requisito, Ficha de Vinculação de Stack preenchida, princípio com consequência observável. Área que o backlog tocar depois entra pelo `/sm sprint0 area <área>`, sem refazer o resto. Antes do aceite, o `/sm sprint prepare` volta com o motivo (guarda G25). Dispensar o sprint 0 é decisão sua, com o risco registrado.
 
-- **Há SDD aproveitável** → ele vale como aprovado; o PO escreve as Histórias do que a auditoria achou (`/po story <ID>`) e segue para `/sm sprint prepare`.
-- **Não há SDD, ou ele não corresponde ao código** → `/sm sdd`, como no cenário A.
-
-**Comece pela auditoria, não pelo plano.** O status de um projeto retomado costuma declarar mais pronto do que o código sustenta; o levantamento sobre o código vence a narrativa, e a divergência vira risco no quadro.
+**Comece pela documentação conferida, não pelo plano.** O status de um projeto retomado costuma declarar mais pronto do que o código sustenta; o levantamento sobre o código vence a narrativa, e a divergência vira risco no quadro.
 
 ### C · Evoluir o produto
 
@@ -484,7 +492,7 @@ Depois disso, basta `claude --remote-control "ACME · <produto>"`. Duas coisas p
 
 | Comando | Modos | Papel |
 |---|---|---|
-| `/sm` | `onboarding` · `brainstorm <ideia>` · `sdd [<tema>]` · `sprint prepare \| plan \| run [<T-ID>] \| review \| close` *(`review` tem o alias `/sm review`)* · `fix [plan [<F-ID> …] \| run]` · `board` · `agreement <questão>` · `consulting <domínio> <tema>` · `close <T-ID>` | Scrum Master — cadência, rituais, quadro, capacidade, riscos |
+| `/sm` | `onboarding` · `sprint0 plan \| run \| review \| area <área>` · `brainstorm <ideia>` · `sdd [<tema>]` · `sprint prepare \| plan \| run [<T-ID>] \| review \| close` *(`review` tem o alias `/sm review`)* · `fix [plan [<F-ID> …] \| run]` · `board` · `agreement <questão>` · `consulting <domínio> <tema>` · `close <T-ID>` | Scrum Master — cadência, rituais, quadro, capacidade, riscos |
 | `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` · `bug <relato>` · `note` | Product Owner — **o seu canal**: status, prazo, requisitos, Histórias, backlog, aceite, defeitos que você relata |
 | `/arc` | `plan <ID>` · `adr <tema>` · `question <dúvida>` | Arquiteto — desenho, SDD técnico, Plano de Implementação, ADR, standards |
 | `/ux` | `prototype` · `prototype sprint <n>` · `prototype screen <tela>` · `journey <fluxo>` · `screen <nome>` · `review-ui <tela>` | UX — protótipos, jornadas, telas, usabilidade, acessibilidade |

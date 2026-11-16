@@ -15,6 +15,7 @@ function Get-RitualKey([string]$Cmd, [string]$ArgText) {
     switch ($c) {
         'sm' {
             if ($a1 -in @('onboarding', 'brainstorm', 'sdd')) { return "sm $a1" }
+            if ($a1 -eq 'sprint0' -and $a2 -in @('plan', 'run', 'review', 'area')) { return "sm sprint0 $a2" }
             if ($a1 -eq 'sprint' -and $a2 -in @('prepare', 'plan', 'run', 'review', 'close')) { return "sm sprint $a2" }
             if ($a1 -eq 'review') { return 'sm sprint review' }
             if ($a1 -eq 'fix' -and $a2 -in @('plan', 'run')) { return "sm fix $a2" }
@@ -53,11 +54,30 @@ try {
         try { [System.IO.File]::WriteAllText((Join-Path $projectDir '.team-project/.session-transcript'), [string]$hookInput.transcript_path, (New-Object System.Text.UTF8Encoding($false))) } catch { }
     }
     $cfg = Get-GuardConfig $projectDir
-    if (-not (Test-GuardEnabled $cfg 'G21')) { exit 0 }
     $m = [regex]::Match([string]$hookInput.prompt, '^\s*(/[\w:-]+)\s*(.*)$', 'Singleline')
     if (-not $m.Success) { exit 0 }
     $now = Get-RitualKey $m.Groups[1].Value $m.Groups[2].Value
     if (-not $now) { exit 0 }
+    # G25 (v3.61.0 · R35) — o backlog funcional abre depois do sprint 0: com a linha "Sprint 0 (fundação)" do README §2
+    # exigida e não concluída (nem dispensada), /sm sprint prepare e plan voltam com o motivo, sem chegar ao modelo. Sem a
+    # linha, o projeto é anterior à v3.61.0 e nada se impõe. A mesma decisão do foundation.ps1 gate, sem subir processo.
+    if ($now -in @('sm sprint prepare', 'sm sprint plan') -and (Test-GuardEnabled $cfg 'G25')) {
+        $rp = Join-Path $projectDir '.team-project/README.md'
+        if (Test-Path -LiteralPath $rp) {
+            $rm = [regex]::Match([System.IO.File]::ReadAllText($rp, (New-Object System.Text.UTF8Encoding($false))), '(?m)^\|\s*\*{0,2}Sprint 0 \(fundação\)\*{0,2}\s*\|([^\r\n]*)\|\s*$')
+            if ($rm.Success) {
+                $val = ($rm.Groups[1].Value -replace '\*\*', '' -replace '`', '').Trim()
+                if ($val -notmatch '(?i)^(conclu|dispensad)') {
+                    $why = if (-not $val -or $val -match '<[^>]+>') { 'a linha "Sprint 0 (fundação)" do README §2 ainda não foi decidida — o /sm onboarding (passo 3) decide se há sprint 0' } else { "sprint 0 $val" }
+                    Write-GuardLog $projectDir 'G25' $hookInput $now "negado: $why"
+                    $reason = "[G25] /$now espera o sprint 0 (R35): $why. O backlog funcional abre sobre documentação conforme e ambiente de testes provado. Caminho: /sm sprint0 plan (se ainda não há quadro) → /sm sprint0 run → /sm sprint0 review. Dispensar é decisão sua, com o risco aceito: peça ao time o formulário de dispensa (foundation.ps1 dispense)."
+                    [Console]::Out.Write((@{ decision = 'block'; reason = $reason } | ConvertTo-Json -Compress))
+                    exit 0
+                }
+            }
+        }
+    }
+    if (-not (Test-GuardEnabled $cfg 'G21')) { exit 0 }
     $tr = [string]$hookInput.transcript_path
     if (-not $tr -or -not (Test-Path -LiteralPath $tr)) { exit 0 }
     $before = @()

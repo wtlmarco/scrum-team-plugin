@@ -8,6 +8,73 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.58 — Security Engineer: pentest e secure code review sob demanda, com o laço que leva o achado ao standard do Arquiteto (SM + Arquiteto + Security Engineer) — 2026-11-12 · *com addendum v3.58.3*
+
+**Instrução:** (stakeholder, 11–12/11/2026) "criaremos uma nova role como analista de segurança … para avaliar o sistema"; e "uma revisão de práticas de segurança que direcione aos standards do Arquiteto a base para escrita de planos de código e arquitetura que já atenda aos princípios de segurança que esses testes irão validar".
+**Classificação:** escopo de papel · comportamento de agente · propriedade · formato de documento
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `agents/security-engineer.md`, `commands/sec.md` | novos | Papel **sob demanda** (fora dos seis dos rituais), Sonnet, três modos: `blackbox`, `graybox`, `whitebox` |
+| `roles/security-engineer/` | novo | README, skills, `playbooks/{black,gray,white}-box.md` (generalizados do marcador-next), `templates/{context,security-report}.md` |
+| `standards/implementation-appsec-web-api.md` | novo (transversal) | Superfície web/API: validação, injeção, saída/XSS, mass assignment, token na borda, CORS, cabeçalhos/HSTS, rate limiting, SSRF, erros, SCA — o eixo que o `security-lgpd` não cobre |
+| `standards/README.md` | índice | linha do appsec |
+| `hooks/common.ps1` | CallerByRole, Get-CallerToken, Get-PlainRole, ModelRoles/Aliases | `sec` / `security-engineer` |
+| `hooks/pre-tool.ps1` | G7 | o papel dispara o `operator` (R28) |
+| `hooks/ownership.json` + `artifact-ownership.md` §1 | G8 | `roles`; `.team-project/security-engineer/context.md`, `security/**`, `roles/security-engineer/**`, process-changelog; linha nova em §1 (relatórios de segurança) |
+| `deliverables/team-project/{README.md,models.json}`, `rituals/review-contract.md`, `README.md`, `how-to.md`, `.claude-plugin/*` | registros | seeds sob demanda, chave de modelo, alcance do `/review`, tabelas e contagens de comando/agente |
+
+### Por quê
+A checagem de segurança do QA (frente 3) é **por Task, no portão** — rasa para um pentest ou uma revisão de segurança de código do **sistema**. Faltava um papel dono de um engajamento profundo, sob demanda, com relatório. E faltava o **laço**: o que o pentest acha no fim, o standard deve exigir no começo — por isso o achado cuja causa-raiz é standard ausente/fraco vai ao Arquiteto complementar `standards/`, como o QA já faz com defeito de standard (R16). A análise de lacuna mostrou identidade/autorização/LGPD já cobertas; a superfície web/API dinâmica (injeção, CORS, cabeçalhos, rate limiting, token na borda, SCA) não — virou o `implementation-appsec-web-api.md`.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda |
+|---|---|
+| Security Engineer (novo) | Dono do engajamento sob demanda; reporta, não corrige; roteia achado de código ao PO/QA e de causa sistêmica ao `/review` |
+| Arquiteto | Dono editorial do novo standard appsec; recebe o achado de causa sistêmica pelo `/review` |
+| QA | Mantém a frente 3 (checagem por Task); não se sobrepõe ao `/sec` |
+| SM | Matriz §1 e manifesto ganham o papel; mantém a coerência do `context.md` |
+
+### Conflitos com o processo vigente
+Nenhum: o papel é sob demanda, fora dos seis dos rituais; não entra em onboarding/sdd/sprint. O homônimo `/qa security` × `/sec` é distinguido no README e no `how-to` (§1b).
+
+### Como saberemos que funcionou
+Um engajamento `/sec` produz relatório em `.team-project/security/<data>/` com achados roteados; um achado de causa sistêmica vira entrada de `/review` que complementa `standards/`. Indicador: planos de Task que tocam borda HTTP passam a citar `implementation-appsec-web-api.md`.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| substituição de padrão (playbooks sem marcador-next) | `Select-String roles/security-engineer/playbooks/*.md -Pattern 'marcador-next\|eyeclinic\|X-Authorization\|localhost:3000'` | 0 ocorrências | ✅ |
+| Entrega | `release.ps1` (C3) · `run-guard-tests.ps1` · `run-check-tests.ps1` | ver CHANGELOG v3.58.0 | ✅ |
+
+### Pendente do stakeholder
+`agents/security-engineer.md`, `commands/sec.md` e `.claude-plugin/*` são do stakeholder — propostos nesta entrega, aplicados com a aprovação do PR.
+
+### Addendum v3.58.3 — o formulário só sai pela rota do `run.ps1` (SM) — 2026-11-14
+
+**Instrução:** (stakeholder, 14/11/2026) "avalie o sprint 6 … questões apresentadas a mim que poderiam ter sido decididas sozinhas subiram para minha decisão parando o processo"; depois da avaliação, "prepare a proposta para o /review; crie a branch fix e aplique a correção".
+**Medido (sprint 6, transcripts de 11 a 14/11):** 22 formulários ao stakeholder. 12 contra a regra vigente (cenário "(teste)" que o roteiro marca sem formulário; nome de teste que é 🔺 GAP do Arquiteto; Task bloqueada com a fila andando — 6 formulários, ~2h30, uma linha de teste; "tento de novo?"; "retomo?" num outro comando; dois planos da mesma Task). 3 pela regra do travamento, que perguntava já na primeira vez (2 h parada). 6 atualizações do plugin pedidas pelo próprio stakeholder.
+**Classificação:** instrumento (G24, `run.ps1 → .ask-route`, `Write-StallAction`) · fluxo (travamento com uma tentativa automática; retomada só pelo comando do run) · ritual (`/team update` sem formulário na correção sem processo) · formato (`stakeholder-question.md` §Antes de perguntar).
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `working-rules.md` | R25 (SM verifica) · R34 (julgamento) | a G24 é o instrumento da janela de R25 (c): nenhuma regra nova, a regra que existia ganha a guarda |
+| `sprint-run.md` | Paradas legítimas · item 5 da espera · contrato do watcher | o formulário durante o run só pela rota; POSSÍVEL TRAVAMENTO: 1ª vez encerrar e retomar sem formulário (regra 5), 2ª ao stakeholder |
+| `templates/stakeholder-question.md` | Antes de perguntar | a tabela "a decisão é dele?" com os seis casos do sprint 6; a pendência sai da §7 na mesma resposta |
+| `rituals/team-update.md` | passo 5 · passo 7 | correção da mesma linha com `**Processo:** nenhum`, pedida pelo stakeholder: aplica sem formulário |
+| `hooks/pre-tool.ps1` · `session-start.ps1` · `scripts/checks/{run,lib,external-plan}.ps1` · `agents/watcher.md` | G24 · retomada · rota · travamento | ver CHANGELOG v3.58.3 |
+
+**Quem passa a ser cobrado de forma diferente:** a sessão que orquestra (SM) — pergunta só pela rota; o bloqueio com a fila andando vai ao par PO + Arquiteto, como R25 (c) já mandava. Nenhum papel muda de dono.
+**Conflitos com o processo vigente:** nenhum. A lista de paradas e os três formulários de R25 já existiam; muda a verificação, de julgamento para guarda. A regra 5 do protocolo de espera ("no máximo uma tentativa automática por causa") passa a valer também para o encerramento do processo travado, que antes ia direto ao stakeholder.
+**Como saberemos que funcionou:** no sprint 7, os formulários do `sprint run` são só os de rota gravada (`guards.log` sem G24 repetida na mesma pergunta); nenhum formulário de travamento na primeira vez de uma Task; nenhum "retomo?" fora do `/sm sprint run`; §7 sem item respondido em aberto.
+
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Entrega | `run-guard-tests.ps1` · `run-check-tests.ps1` · `release.ps1` (C3) | ver CHANGELOG v3.58.3 | ✅ |
+
+---
+
 ## v3.57 — O sprint real: protocolo de espera, sessão medida e reiniciada pelo teto, suíte só pelo verify, Arquiteto com contexto enxuto e o que o sprint 5 do garden não tinha onde pôr (SM + Arquiteto + Dev + QA) — 07/11/2026 · *com addenda v3.57.1 a v3.57.3*
 
 **Instrução** (stakeholder, 07/11 a 10/11/2026: relatório intermediário do sprint 5 do garden e `decisoes-plugin-report.md` → v3.57.0; `note.md` itens 1 a 13 → v3.57.1; ocorrências do sprint 5, itens 14 a 24, com as decisões de 09/11 por formulário → v3.57.2; o `plugin-report.md` final do sprint 5 conferido contra a 3.57.2, com as decisões de 10/11 por formulário → v3.57.3, "podemos já fazer todos").

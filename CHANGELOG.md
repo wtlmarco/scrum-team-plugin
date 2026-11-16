@@ -13,6 +13,45 @@
 
 ---
 
+## v3.61.0 — 2026-11-16
+
+**Branch:** `feat/v3.61.0` a partir de `develop` (`586731b`, v3.60.1 mesclada) · **Processo:** v3.61 (sprint 0: o backlog funcional abre sobre documentação conforme e ambiente de testes provado)
+
+Origem: o stakeholder perguntou, em 16/11/2026, como usar QA, Sec, Arquiteto e PO em tarefas avulsas e propôs: "o processo de onboarding [é] o questionamento da onde está a documentação; se não existir, propor criá-la disparando uma atividade de sprint 0 … com a criação da documentação e do ambiente de testes; se existir, o sprint 0 irá revisá-la e adequá-la aos pontos de boas práticas … e somente assim iniciar um backlog funcional". A avaliação trouxe cinco ajustes, que ele aceitou: liberar por área, régua verificável, documentar como é (sem refatorar), ambiente com condição de pronto objetiva e mecânica própria.
+
+1. **O onboarding decide o sprint 0** (`workflow-ritos.md` §5a, passo 3). `foundation.ps1 assess` classifica cada documento do SDD (`00`–`06`) e cada frente do ambiente como **ausente · fora do padrão · conforme**, e o projeto como **retomada** (há código) ou **novo**. Com código, o caminho é o sprint 0; sem código e sem documentação, o brainstorm. Dispensar é decisão do stakeholder, com o risco registrado.
+2. **`/sm sprint0 plan · run · review · area <área>`** (`workflow-sprint0.md`, novo), guiado por `scripts/checks/foundation.ps1`:
+   - `plan`: o quadro `sprints/0/foundation.md` com um item por documento (criar ou revisar contra o código) e por frente de ambiente, e **um formulário de escopo**: as áreas da 1ª onda e a autorização para a sessão gravar o `guards.json`;
+   - `run`: laço `foundation.ps1 next`. PO (`00`–`02`, `06`) e Arquiteto (`03`–`05`) escrevem o sistema **como ele é**. Cada documento fecha com a **régua** e com o ✅ do QA em `evidence/conformance.md` (régua + amostra `arquivo:linha` + verificabilidade). Ambiente: plano do Arquiteto, o dev pelo escopo da G9, a sessão grava o `guards.json` proposto, depois baseline refeita e um cenário ponta a ponta rodado no alvo. Três devoluções levam o item a 🔴;
+   - `review`: o PO apresenta o que mudou, os achados e a dívida (já como itens do backlog); **um formulário de aceite**; `foundation.ps1 close` só grava com a régua completa ok;
+   - `area`: reabre só a área que o backlog vai tocar (`01`, `02`, `04`, `05`), sem fechar o backlog das áreas já documentadas.
+3. **A régua** (`foundation.ps1 check [-Item]`):
+   - `00` com `OBJ-nnn` e "Como saberemos";
+   - todo `RF` com critério de aceite e "Como verificar", e todo `RNF` com "Como verificar";
+   - `02` com papel, fluxo e "Pontos de falha";
+   - `03` com índice, `P-nnn` com consequência observável e a Ficha de Vinculação de Stack V1–V22 com valor em toda linha;
+   - `04` com entidades e relacionamentos;
+   - `05` com contrato de erro, ou "não se aplica — <motivo>";
+   - `06` com uma versão e o índice do SDD;
+   - `01` e `02` citam as áreas do escopo, e nenhum documento guarda marcador do modelo;
+   - ambiente: `verify.suite`, `run.prereqs` no ar, baseline do sprint 0 e cenário ✅ com `sprint 0` no Histórico;
+   - o documento com o nome do projeto (`requirements.md`, `architecture.md`, `api-spec.md`) é achado e revisado onde está, sem renomear, e a linha diz o nome do modelo; ID com área (`RF-CAN-01`) vale.
+4. **G25** (`hooks/prompt-submit.ps1`): bloqueia `/sm sprint prepare` e `plan` quando a linha `Sprint 0 (fundação)` do `README.md` §2 existe e não diz **concluído** nem **dispensado**. O motivo e o caminho vão ao stakeholder, e o prompt não chega ao modelo. Projeto sem a linha (anterior à v3.61.0, como o garden) fica como está. A G21 passa a conhecer `sm sprint0 <modo>`.
+5. **C2 (`project.ps1`)**: a linha R35 reprova sprint funcional com pacote aprovado e o sprint 0 exigido. A R15 deixa de cobrar o ① dos `03`–`05` aceitos no sprint 0.
+6. **R35 nova e R14 ajustada** (`working-rules.md`, índice). No `prepare`, passo 1, a candidata precisa cair numa área documentada, e o requisito aceito no sprint 0 vale como ① e ②.
+
+- Modelos novos: `templates/foundation.md` (SM), `quality-assurance/templates/conformance.md`, `architect/templates/foundation-env-plan.md`.
+- Documentos: `commands/sm.md` (modo e pré-condições), `project-context.md` (§2, §8 e "Por onde começar"), `artifact-ownership.md` §1e, `deliverables/team-project/README.md` (a pasta do sprint 0), `workflow-sprint.md`, `team-update.md` (7n: projeto em andamento não ganha a linha; adotar é `/sm sprint0 plan`), `how-to.md` (cenários A e B), `README.md`, `hooks/COVERAGE.md`.
+- Testes de conferência (+24): o `assess`; o `init` com a linha no README; o portão antes e depois; o formulário do escopo sem disparo; o dono disparado com o modelo e a régua; devolução pela régua e pelo QA; a Ficha com marcador; os 7 documentos em laço; o plano de ambiente, o escopo do dev gravado e apagado; o `guards.json` pela sessão; baseline e cenário; o `close` sem `-By` e com a régua ok; a `area`; o documento com o nome do projeto e os requisitos em lista; e o C2 R35 (concluído, sprint aberto sem o sprint 0, dispensado).
+- Testes de guarda (+9): a G25 com o sprint 0 exigido, com o marcador do modelo, concluído, dispensado, desligada, sem a linha, e o `sprint run` fora dela.
+- Suítes: 568 conferências (com 23 dos casos novos) e 356 guardas, nenhuma falha; o 24º caso (nomes do projeto e README em CRLF) rodou no bloco do sprint 0, 24 de 24; `release.ps1` (C3) ok.
+- Correções durante a entrega:
+  - "Não se aplica — o app é offline" não passava no `05`, porque a regex pedia três letras seguidas depois do travessão. O teste de fumaça pegou.
+  - O `assess` rodado no garden (só leitura) dava os sete documentos como ausentes: o SDD dele existe, com nomes sem número. Agora o script acha o documento pelo assunto. A V12 da Ficha saía "sem valor" por causa de `<commit-base>` dentro de crases; código entre crases deixou de contar como marcador. Os "84 requisitos em lista sem seção própria" do `requirements.md` e a falta da V22, do índice e dos princípios `P-nnn` no `architecture.md` são achados reais.
+  - As regex de fim de linha ([^\r\n]*$) não casavam numa linha terminada em CRLF, e o README de projeto no Windows teria a linha do sprint 0 duplicada em vez de atualizada. Agora a linha é trocada no lugar, com o fim de linha do arquivo; o teste usa README em CRLF.
+
+---
+
 ## v3.60.1 — 2026-11-15
 
 **Branch:** `fix/v3.60.1` a partir de `develop` (`6341ae3`, v3.60.0 mesclada) · **Processo:** addendum v3.60.1 (o time decide o que o stakeholder já respondeu)

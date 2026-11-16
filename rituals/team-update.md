@@ -242,6 +242,15 @@ Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere ap
 
 **Verificação do passo:** `Test-Path .team-project/architect/knowledge.md` e `Test-Path .team-project/standards/stacks` devolvem `True`; `Select-String -Path .team-project/architect/knowledge.md -Pattern 'Classificação desde'` mostra o sprint seguinte ao aberto; `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).stacks` devolve a lista aprovada (ou o formulário 1 ficou sem resposta e o G13 avisa).
 
+## 7n. Sprint 0 — só por escolha, em projeto em andamento (v3.61.0)
+
+> Roda quando a versão instalada for anterior à `v3.61.0`. **O passo não grava nada.** O sprint 0 (R35 · `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/workflow-sprint0.md`) vale para o projeto que faz o onboarding a partir desta versão; projeto em andamento **não ganha** a linha `Sprint 0 (fundação)` no `README.md` §2 — e, sem ela, a G25 e o C2 R35 ficam calados.
+
+1. **Rode** `powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/foundation.ps1" assess` (só leitura) e resuma em até 4 linhas: quantos documentos do SDD estão ausentes ou fora do padrão e se o ambiente de testes passa.
+2. **Diga ao stakeholder em uma linha** que adotar o sprint 0 é escolha dele: `/sm sprint0 plan` grava a linha como **exigido** e, a partir daí, o próximo `/sm sprint prepare` espera o aceite do sprint 0 — o sprint aberto segue até o fim. **Não pergunte agora** nem acrescente a linha: a decisão vem quando ele chamar o comando.
+
+**Verificação do passo:** `Select-String -Path .team-project/README.md -Pattern 'Sprint 0 \(fundação\)'` não devolve nada (a menos que o projeto já a tivesse).
+
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
 Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.
