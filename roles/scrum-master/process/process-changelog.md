@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.59`](process-changelog-archive.md) | Acompanhar o sprint em palavras simples: a fala da sessão, o Resumo do quadro e o /team-status para quem é de negócio, com o técnico sob pedido (SM + PO + Arquiteto) — 14/11/2026 · *com addendum v3.59.2* |
 | [`v3.58`](process-changelog-archive.md) | Security Engineer: pentest e secure code review sob demanda, com o laço que leva o achado ao standard do Arquiteto (SM + Arquiteto + Security Engineer) — 12/11/2026 · *com addendum v3.58.3* |
 | [`v3.57`](process-changelog-archive.md) | O sprint real: protocolo de espera, sessão medida e reiniciada pelo teto, suíte só pelo verify, Arquiteto com contexto enxuto e o que o sprint 5 do garden não tinha onde pôr (SM + Arquiteto + Dev + QA) — 07/11/2026 · *com addenda v3.57.1 a v3.57.3* |
 | [`v3.56`](process-changelog-archive.md) | A lição de cada GAP no lugar certo: origem e destino na decisão, conhecimento do projeto que atravessa sprints, armadilhas da stack e o SM atualizando o lado do projeto no fechamento (SM + Arquiteto + Dev + QA) — 06/11/2026 |
@@ -97,6 +98,48 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | [`v1.2`](process-changelog-archive.md) | Evolução do processo distribuída por papel — 02/09/2026 |
 | [`v1.1`](process-changelog-archive.md) | Comando de evolução do processo — 02/09/2026 · *(substituída pela v1.2)* |
 | [`v1.0`](process-changelog-archive.md) | Linha de base do time — 01–02/09/2026 |
+
+---
+
+## v3.62 — A prova do app híbrido no aparelho é de primeira classe: o id é lido pelo CDP e a configuração do alvo vai ao stakeholder, não ao Arquiteto (SM + Arquiteto + QA) — 16/11/2026
+
+**Instrução:** (stakeholder, 16/11/2026, sobre o item 25 de `note.md`, depois de análise no garden) versão com plano; `assert-count` e `assert-order` valem para a lista inteira; revogada a espera pelo espelho do id no `aria-label`; correção genérica para qualquer app híbrido. Depois: "aplicar a fase G do plano-v3.62.0".
+**Medido (garden, sprints 4 a 6):** no alvo `android` com WebView, todo cenário por id dava "tag não encontrada"; 10 das 18 decisões do Arquiteto do S6 e 8 itens do README §7 eram sobre o meio de prova; a Task fechava com `NÃO EXERCITADA (ambiente)` ou com "prova por outro executor, com desvio registrado". A premissa dos documentos (o id chega ao `uiautomator`, ou pelo `aria-label`) foi desmentida em Android 15 / WebView 124.
+**Classificação:** instrumento (`targets.android.locator = "cdp"`, `scenario-language.md`; parte mecânica no `CHANGELOG.md` v3.62.0) · rota (CONFIGURAÇÃO DO ALVO: exit 4 com `configuration` no `result.json` vai ao stakeholder) · formato de documento (standards e roteiros do dev, do Arquiteto e da QA)
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `sprint-run.md` | passo 4 (Gap) · Paradas legítimas · Falha de ambiente | a CONFIGURAÇÃO DO ALVO não é GAP: o `run.ps1 done -Result env` a leva ao stakeholder (🔴 "configuração do alvo", rota `configuracao-do-alvo`), sem `operator` de diagnóstico, reparo, dev, Arquiteto nem reabertura automática; o `deviceProofFallback` não se aplica; o `result.json` com `locator: "cdp"` é prova de primeira classe |
+| `templates/stakeholder-question.md` | Antes de perguntar | linha nova da configuração do alvo; "ids não publicados" sai da linha da prova que não roda |
+| `standards/test-ids.md` · `standards/scenario-language.md` (novo) · guias Angular, React, Ionic/Capacitor, Kotlin | §2, §4, §6 · índice · IONIC-3 | o id do app híbrido é lido pelo CDP; saem "Não há driver por CDP", o `[PARCIAL]` como limite e a evidência com caminho de um projeto; IONIC-3 recomenda `locator: cdp`, `hiddenScopes`, depuração da WebView e `readyExpr`/`failExpr`; os guias deixam de afirmar que o `uiautomator` lê o id; exemplos `horta.*` → `pedido.*` (Arquiteto) |
+| `roles/developer/{README,templates/gap}.md` · `roles/architect/templates/{implementation-plan,technical-decision}.md` | rota de GAP · P3 · ids | a CONFIGURAÇÃO DO ALVO sai da rota de GAP (não é GAP, nem ambiente da Task, nem decisão do Arquiteto) (Arquiteto) |
+| `roles/quality-assurance/README.md` | l. 58 e 116 | a tela da WebView de app híbrido é cenário executável com `locator: "cdp"`; saem o limite `[PARCIAL]` e o "🔺 GAP ao Arquiteto por WebView opaca"; "tag não encontrada" em híbrido com `uiautomator` é configuração do alvo; o `result.json` com cdp é prova de primeira classe no portão, sem desvio registrado (QA) |
+| `note.md` | item 25 · item 8 | o item 25 sai da fila (aplicado); ficam as provas de campo no item 8 |
+
+### Por quê
+O desvio institucionalizado custava uma decisão por Task: o `accept` só reconhecia o `uiautomator`, e a prova que funcionava (CDP) vivia num script do projeto e só entrava "por decisão". Dar ao plugin o executor que fala com a WebView tira o meio de prova da pauta do Arquiteto; separar a configuração do alvo da falha do app tira do dev, do operator e do Arquiteto um conserto que não é deles (o build e o `guards.json` são do stakeholder) e acaba com a ida repetida ao stakeholder pela mesma causa, agora com a mensagem que diz o que corrigir.
+
+### Conflitos com o processo vigente
+Nenhum com regra. Contraria o texto da v3.53.3 (GAP da prova no alvo vai ao `operator`) só para a configuração do alvo, que a v3.62.0 identifica antes do 1º cenário. A v3.60.1 (`run.deviceProofFallback`) segue valendo para estado de partida e serviço fora do ar, não para a configuração.
+
+### Como saberemos que funcionou
+Nos próximos sprints com app híbrido: nenhum 🔺 GAP ambiente por id não encontrado e nenhum de "WebView opaca"; nenhum `[PARCIAL]` por WebView; nenhuma decisão do Arquiteto sobre meio de prova; Tasks fechadas pelo `result.json` sem linha de desvio no `run-log.md`; a configuração do alvo chega ao stakeholder uma vez, com a correção dita. Prova de campo pendente em `note.md` item 8: `accept -Target android` com `locator: cdp` num app híbrido real, `done` fechando pelo `result.json`, zero `NÃO EXERCITADA` por id e id dinâmico confirmado em execução.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.59 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.62, v3.61, v3.60 | ✅ |
+| Substituição de padrão | `Grep` de `Não há driver por CDP\|horta\|desvio registrado\|outro executor` em `standards/` e `roles/{developer,architect}` | zero (conferido pelo Arquiteto) | ✅ |
+| Entrega | `release.ps1` (C3) | R17 e R18 ok | ✅ |
+
+### Parte mecânica (implementada pela sessão principal, citada aqui)
+`targets/android-cdp.js`, `cdp-verbs.js`, `dom-probe.js`; `android.ps1`, `accept.ps1` (exit 4 com `configuration`), `run.ps1` (rota `configuracao-do-alvo`), `web-runner.js` na semântica comum; teste de paridade. Detalhe e suítes no `CHANGELOG.md` v3.62.0.
+
+### Decidido pelo stakeholder (formulário de 16/11)
+- **Nome de projeto como procedência:** neutralizado para "projeto piloto" em todos os documentos do plugin (`standards/`, `roles/`, `agents/`, `rituals/`, `how-to.md`, `hooks/COVERAGE.md` e modelos). Data e sprint ficam, então a ligação com a medição continua rastreável. Os changelogs e os comentários de script ficam como histórico.
+- **Tela de fora do app com `locator: "cdp"`:** é provada por teste (`(teste)` no cenário), conforme `standards/scenario-language.md` §3. O modo misto (passos de tela do sistema pelo `uiautomator`) ficou como item 26 da fila do `/review`.
+- **Guia e rituais:** o `how-to.md` passou a ensinar o `locator: "cdp"`. O `team-init` o propõe para stack híbrida, e o `team-update` ganhou o passo 7o.
 
 ---
 
@@ -192,52 +235,3 @@ Sprint 7 do garden: ~10 chamadas por plano (eram 33 a 50); US$ do plano por Task
 | `stakeholder-question.md` | Antes de perguntar | oito linhas novas de "quem decide" (prova no aparelho, decisão que não chegou ao plano, plano > 30 KB, arquivos alheios, id dinâmico, serviço desligado, pausa, atualização) |
 | `team-update.md` | 9. Feche | o update não retoma o run nem pergunta "retomar agora?" |
 | `deliverables/team-project/guards.json` | `_exemplos` | `run.deviceProofFallback` e `run.prereqs` |
-
----
-
-## v3.59 — Acompanhar o sprint em palavras simples: a fala da sessão, o Resumo do quadro e o /team-status para quem é de negócio, com o técnico sob pedido (SM + PO + Arquiteto) — 14/11/2026 · *com addendum v3.59.2*
-
-**Instrução:** (stakeholder, 14/11/2026) "precisamos melhorar as frases de conversação e posicionamento na sessão do orquestrador e no kanban para facilitar o acompanhamento … frases simples e mais diretas que deem clareza do que está acontecendo para alguém de negócio entender, sem termos técnicos, que podem ser solicitados caso necessário"; avaliação aprovada por inteiro ("pode fazer todas").
-**Medido (sprint 6 do garden, 14/11):** o quadro do `kanban.md` mostrava só códigos (`T-069b`, `T-070a`); os bloqueios e as decisões ficavam no fim de 58 KB, depois das tabelas de tokens; o "Agora" chegou a mostrar `QA | — | trabalhando`; o `/team-status` mostrava a T-069a "em execução" e PARADA ao mesmo tempo que "Fechada", e "131 decisões" esperando o stakeholder, 98 delas resolvidas; a sessão repetia o vocabulário do `run.ps1 next` (PRÓXIMA AÇÃO, R12, `.scn`, executor de Task, GAP).
-**Classificação:** formato (`## Resumo` e `## Detalhe técnico` no `kanban.md`, quadro em lista por etapa, coluna **Para o stakeholder** no Sprint Backlog, `/team-status detalhe`) · comportamento de agente (a sessão do `sprint run` fala pela linha `PARA O STAKEHOLDER:`) · propriedade (o PO escreve o nome de negócio de cada Task na Planning)
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `sprint-run.md` | §Fala ao stakeholder (nova) · §Como o SM verifica · passo 8 · §Marcador | a fala da sessão é a linha `PARA O STAKEHOLDER:` do `next`, copiada, uma por turno; o técnico, só quando o stakeholder pede; o `done` apaga o registro da Task fechada |
-| `workflow-sprint.md` | §5e passo 4 | o PO escreve o nome de negócio de cada Task (coluna **Para o stakeholder**) |
-| `templates/sprint-backlog.md` | tabela e §Como preencher | coluna **Para o stakeholder**, a última |
-| `templates/kanban.md` | estrutura e §Como preencher | Resumo · Agora · Kanban · Controle · Fechamento; depois Detalhe técnico (Linha de base, Série, Registro, Rodadas); o quadro em lista por etapa, com o nome de negócio |
-| `commands/sm.md`, `commands/team-status.md`, `how-to.md` | `sprint run` · `/team-status` | a fala ao stakeholder; `/team-status` simples por padrão e `detalhe` para o técnico |
-
-### Por quê
-Quem acompanha o sprint é de negócio. O que ele vê precisa dizer o que está pronto, o que anda, o que parou e por quê, e o que depende dele, sem precisar saber o que é uma Task, um GAP ou o `accept`. A regra H1 já dava essa forma ao formulário, mas o acompanhamento contínuo não tinha regra. As frases saem de um script (`plain.ps1`), não do modelo: custam zero token e são as mesmas no quadro, no `/team-status` e na fala da sessão. O código da parte vai sempre no fim, entre parênteses, para o stakeholder pedir o detalhe pelo nome que o time usa.
-
-### Conflitos com o processo vigente
-A regra "nenhuma mensagem ao stakeholder entre a aprovação do pacote e a Review que não seja formulário" passa a admitir a linha `PARA O STAKEHOLDER:`. A sessão já escrevia algo a cada fim de turno, e nada definia o que era. O Controle (Bloqueios, Decisões) continua escrito à mão pelo SM. O Resumo e o quadro só o traduzem, e a natureza do bloqueio deve ser escrita sem caminho de arquivo nem nome de regra.
-
-### Como saberemos que funcionou
-Sprint 7 do garden: nenhuma fala da sessão com `PRÓXIMA AÇÃO`, sigla de regra ou caminho de arquivo sem o stakeholder ter pedido detalhe (transcript); toda Task do quadro com a coluna **Para o stakeholder** preenchida na Planning; o `/team-status` sem Task "em execução" que já está ✅; "Precisa de você" com o número real de decisões abertas.
-
-### Verificação
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Arquivamento de entrada | bloco v3.56 que saiu do vivo × arquivo (`.Contains`) | o vivo fica com v3.59, v3.58, v3.57 | ✅ |
-| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.59.0 | ✅ |
-
-### Parte mecânica (implementada pela sessão principal, citada aqui)
-`scripts/checks/plain.ps1` novo (nome de cada parte, papel, ação, etapa, motivo de parada, pendências do README §7, o Resumo); `kanban.ps1` (Resumo, quadro em lista, ordem das seções); `team-view.ps1` (visão simples e `-Detail`; Task do registro já ✅ ou 🔴 fora de "em execução"; pendências sem as resolvidas); `run.ps1` (`PARA O STAKEHOLDER:` em cada ação do `next`, "Pronto/Parou" uma vez por `.stakeholder-seen`, `dispatch -Clear` no `done`); `external-plan.ps1`; `hooks/common.ps1` (o "## Agora" com nomes de negócio); `hooks/prompt-submit.ps1` (`/team-status detalhe`).
-
-
-### Addendum v3.59.2 — a consolidação dos documentos vivos é conferida, chega aos donos e é versionada (SM + Arquiteto) — 2026-11-14
-
-**Instrução:** (stakeholder, 14/11/2026) "toda tarefa gera, quando necessário, a atualização do SDD? Quem faz? Sempre a documentação está atualizada?"; depois da avaliação, "faça as três correções no plugin".
-**Medido (garden, sprints 5 e 6):** a consolidação do sprint 5 está "feita" desde 09/11, mas `architecture.md`, `data-model.md` e os ADRs 0001 e 0011 continuam sem commit. A parte do `api-spec.md` entrou no commit da T-079. Os 4 pedidos ao PO nunca foram aplicados: o `requirements.md` não muda desde 31/10, e o RF-MAN-02 ainda diz "um canteiro por vez", com o manejo em vários canteiros construído no sprint 5. A Review conferia só a linha `**Estado:** feita`.
-**Classificação:** instrumento (`run.ps1 next`: `Get-ConsolidationRows`, `Test-DocChangedInSprint`, `Save-DocsCommit`, `.docs-check.json`) · fluxo (os donos dos pedidos disparados no passo 6) · formato (modelo `roles/architect/templates/docs-consolidation.md`).
-
-| Documento | Seção | Mudança |
-|---|---|---|
-| `working-rules.md` | R12 | "feita" é conferida no git; os pedidos vão aos donos; commit próprio dos documentos; o que não mudou vai à Review |
-| `sprint-run.md` | passo 6 | os donos dos pedidos (PO, UX, SM, QA), uma vez cada; o commit é do script |
-| `artifact-ownership.md` | Consolidação dos documentos vivos | o dono aplica no documento dele; o commit não é do Arquiteto nem dos donos |
-| `roles/architect/README.md` · `templates/docs-consolidation.md` (novo) | Documentos vivos | as três tabelas que o script lê; o Arquiteto não faz commit |

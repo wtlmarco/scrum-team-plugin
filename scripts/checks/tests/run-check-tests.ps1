@@ -2287,9 +2287,11 @@ $s = Get-ApkStaleness $pa $Work; "AP6=$($s.Stale)|$(Split-Path $s.File -Leaf)|$(
 $script:AdCfg = [pscustomobject]@{ apk = 'source/dist/app-*-debug.apk' }; "AP7=$(Split-Path (Resolve-AndroidApk $Work '') -Leaf)"
 Set-Content -LiteralPath (Join-Path $hg 'guards.json') '{ "targets": { "android": { "package": "br.x", "apk": "source/dist/app-*-debug.apk" } } }' -Encoding UTF8
 $s = Get-ApkStaleness $pa $Work; "AP8=$($s.Stale)|$($s.Note)"
-# v3.57.1 (item 13): o id também pelo content-desc (aria-label da WebView); o resource-id vale primeiro
+# v3.62.0: o id é só o resource-id — o content-desc (v3.57.1) não acha mais; WebView sem nenhum id do app = app híbrido
 $script:Nodes = @([pscustomobject]@{ Id = ''; Text = 'Estufa'; Desc = 'tab-button-estufa'; X1 = 1; Y1 = 1; X2 = 9; Y2 = 9 }, [pscustomobject]@{ Id = 'geral.card'; Text = 'B9'; Desc = ''; X1 = 1; Y1 = 1; X2 = 9; Y2 = 9 }, [pscustomobject]@{ Id = 'geral.card'; Text = 'outro'; Desc = ''; X1 = 1; Y1 = 1; X2 = 9; Y2 = 9 })
-"FD1=$((Find 'tab-button-estufa').Text)|FD2=$((Find 'geral.card').Text)|FD3=[$((Find 'inexistente').Text)]"
+"FD1=[$((Find 'tab-button-estufa').Text)]|FD2=$((Find 'geral.card').Text)|FD3=[$((Find 'inexistente').Text)]"
+$wv = [pscustomobject]@{ Id = ''; Class = 'android.webkit.WebView' }
+"HY1=$(Test-HybridWithoutIds @($wv, [pscustomobject]@{ Id = 'content'; Class = 'android.widget.FrameLayout' }))|HY2=$(Test-HybridWithoutIds @($wv, [pscustomobject]@{ Id = 'tela.lista'; Class = 'android.view.View' }))|HY3=$(Test-HybridWithoutIds @([pscustomobject]@{ Id = ''; Class = 'android.widget.TextView' }))"
 # v3.57.2 (item 19): o accept instala por cima (mantém a base); só desinstala quando o Android recusa a atualização
 $script:Pkg = 'br.x'; $script:calls = @(); $script:mode = 'ok'
 function AdbT([int]$Sec, [string[]]$A) { $script:calls += ($A -join ' '); if ($script:mode -eq 'ok' -or ($A[0] -eq 'install' -and @($script:calls | Where-Object { $_ -like 'uninstall*' }).Count)) { 'Success' } elseif ($A[0] -eq 'install') { 'Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: Package br.x signatures do not match]' } else { 'Success' } }
@@ -2307,6 +2309,30 @@ function AdbT([int]$Sec, [string[]]$A) { $script:AdbTimeout = 'adb shell sem res
 function Get-LocalEmulatorProcs { @() }
 $st = Stop-AndroidEmulator; "SE1=$($st.Stopped)|$($st.Text)"
 $fd = Join-Path $Work 'accept/1/T-050'; Set-AndroidFreshStartDone $fd 'T-050' 'ligado há 5 min'; "FS6=" + ([System.IO.File]::ReadAllText((Join-Path $fd 'fresh-start.json'), [System.Text.Encoding]::UTF8) -match 'ligado há 5 min')
+# v3.62.0: localizador CDP — pid, socket da WebView, forward de porta livre, reconexão só com pid novo, limpeza só deste aparelho
+function AdbT([int]$Sec, [string[]]$A) { $script:AdbTimeout = ''; $j = $A -join ' '; $script:calls += $j
+    if ($j -like 'shell pidof*') { $script:pidNow } elseif ($j -like 'shell cat /proc/net/unix*') { '0000: 00000002 0 10000 0001 01 12345 @webview_devtools_remote_42420'; "0000: 00000002 0 10000 0001 01 12346 @webview_devtools_remote_$($script:pidNow)" }
+    elseif ($j -like 'forward tcp:0*') { '38123' } elseif ($j -eq 'forward --list') { 'emulator-5554 tcp:38123 localabstract:webview_devtools_remote_4242'; 'emulator-5556 tcp:38999 localabstract:webview_devtools_remote_77'; 'emulator-5554 tcp:5000 tcp:5000' } else { '' } }
+$script:Pkg = 'br.x'; $script:Serial = 'emulator-5554'; $script:calls = @(); $script:pidNow = '4242'
+"CD1=$(Get-AndroidAppPid)|$(Get-AndroidCdpSocket 4242)|[$(Get-AndroidCdpSocket 99)]"
+Connect-AndroidCdp; "CD2=$($script:CdpPort)|$($script:CdpPid)"
+$script:calls = @(); Connect-AndroidCdp; "CD3=$($script:calls -join ';')"
+$script:pidNow = '5353'; $script:calls = @(); Connect-AndroidCdp; "CD3b=$(@($script:calls | Where-Object { $_ -like 'forward*' }) -join ';')|$($script:CdpPid)"
+$script:calls = @(); "CD4=$(Clear-AndroidCdpForwards)|$(@($script:calls | Where-Object { $_ -like 'forward --remove*' }) -join ';')"
+$script:AdCfg = [pscustomobject]@{ locator = 'CDP'; cdp = [pscustomobject]@{ pageUrl = '^x'; hiddenScopes = @('.a', '.b') } }
+$cc = Get-AndroidCdpCfg; "CD5=$(Get-AndroidLocator)|$($cc.pageUrl)|$($cc.readyTimeoutSec)|$($cc.hiddenScopes -join ',')|$($cc.readyExpr)|$($cc.stepTimeoutSec)"
+$script:AdCfg = $null; "CD6=$(Get-AndroidLocator)"
+function AdbT([int]$Sec, [string[]]$A) { $script:AdbTimeout = ''; if (($A -join ' ') -like 'shell pidof*') { '5151' } else { '' } }
+$script:CdpPid = 0; $script:CdpPort = 0; $script:CdpSocketWaitSec = 1
+try { Connect-AndroidCdp; 'CD7=sem erro' } catch { "CD7=$($_.Exception.Message)" }
+function AdbT([int]$Sec, [string[]]$A) { $script:AdbTimeout = ''; '' }
+try { Connect-AndroidCdp; 'CD8=sem erro' } catch { "CD8=$($_.Exception.Message)" }
+# v3.62.0: type no uiautomator substitui o valor (fim do campo, apaga o atual, digita) e recusa texto fora do ASCII
+function Tap([string]$Id) { $script:calls += "tap $Id" }
+function Dump { $script:Nodes = @([pscustomobject]@{ Id = 'f.campo'; Text = 'abc'; Desc = ''; X1 = 0; Y1 = 0; X2 = 1; Y2 = 1 }); $script:Nodes }
+function AdbT([int]$Sec, [string[]]$A) { $script:AdbTimeout = ''; $script:calls += ($A -join ' '); '' }
+$script:calls = @(); TypeText 'f.campo' 'novo valor'; "TY1=$($script:calls -join ';')"
+try { TypeText 'f.campo' 'maçã'; 'TY2=sem erro' } catch { "TY2=$($_.Exception.Message)" }
 '@, $utf8)
 $wk = Join-Path $tmp 'android-b'; New-Item -ItemType Directory -Force $wk | Out-Null
 $r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $hs3 -Adapter (Join-Path $checks 'targets/android.ps1') -Work $wk 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
@@ -2315,7 +2341,10 @@ Check 'v3.53.6 item 5a: memória acima de maxMemoryMB reprova o pré-voo; abaixo
 Check 'v3.53.6 item 5b: reinício só no 1º accept da Task, com repair; freshStart false, -NoRepair e AVD local não reiniciam' $r 0 @('FS1=True', 'FS2=False', 'FS3=False', 'FS4=False', 'FS5=False')
 Check 'v3.53.6 item 7: APK mais velho que o código do módulo é recusado (o teste não conta); fora de build/outputs/apk, só a nota' $r 0 @('AP1=False\|\r?\n', 'AP2=True\|A\.kt\|assembleDebug', 'AP3=False\|idade do APK não conferida: o módulo não se infere')
 Check 'v3.57.1 item 4: app híbrido — targets.android.apk com máscara acha o APK mais novo de source/dist (verify e accept); apkSources compara com o código web, sem o .spec; sem apkSources, a nota pede a declaração' $r 0 @('AP4=app-T-002-debug\.apk', 'AP5=False\|\r?\n', 'AP6=True\|tela\.ts\|o build que gera o APK', 'AP7=app-T-002-debug\.apk', 'AP8=False\|.*declare em targets\.android\.apkSources')
-Check 'v3.57.1 item 13: o accept acha o id pelo content-desc quando a WebView não o publica como resource-id (o resource-id vale primeiro)' $r 0 @('FD1=Estufa\|FD2=B9\|FD3=\[\]')
+Check 'v3.62.0: o id é só o resource-id (o content-desc não acha mais); WebView sem nenhum id do app = app híbrido, com id do app ou sem WebView não' $r 0 @('FD1=\[\]\|FD2=B9\|FD3=\[\]', 'HY1=True\|HY2=False\|HY3=False')
+Check 'v3.62.0: localizador CDP — pid e socket da WebView, forward tcp:0 com a porta devolvida, mesmo pid não refaz, pid novo refaz, limpeza só dos forwards da WebView deste aparelho' $r 0 @('CD1=4242\|webview_devtools_remote_4242\|\[\]', 'CD2=38123\|4242', 'CD3=shell pidof br\.x\r?\n', 'CD3b=forward --remove tcp:38123;forward tcp:0 localabstract:webview_devtools_remote_5353\|5353', 'CD4=1\|forward --remove tcp:38123\r?\n')
+Check 'v3.62.0: configuração do cdp com padrões (locator sem caixa), sem socket = CONFIGURAÇÃO (depuração da WebView), app fechado = falha do passo' $r 0 @("CD5=cdp\|\^x\|30\|\.a,\.b\|document\.readyState === 'complete'\|60", 'CD6=uiautomator', 'CD7=CONFIGURAÇÃO: o APK não liga a depuração da WebView.*webview_devtools_remote_5151.*webContentsDebuggingEnabled', 'CD8=o app br\.x não está rodando')
+Check 'v3.62.0: type no uiautomator substitui o valor (MOVE_END, DEL × 3, texto) e recusa fora do ASCII' $r 0 @('TY1=tap f\.campo;shell input keyevent 123;shell input keyevent 67 67 67;shell input text novo%svalor;shell input keyevent 111', 'TY2=o uiautomator não digita fora do ASCII')
 Check 'v3.58.4: liberação do emulador — serial de rede e projeto sem reparo declarado não se liberam; repair ou avd, sim; a porta do console vem do serial (padrão 5554)' $r 0 @('RB1=emulador em container \(serial de rede localhost:5555\)', 'RB2=sem targets\.android\.repair nem avd', 'RB3=\[\]', 'RB4=\[\]', 'PT1=5556', 'PT2=5554')
 Check 'v3.58.4: emulador ligado há menos de freshStartMinutes (padrão 30) conta como reiniciado; uptime pelo /proc/uptime, sem resposta = desconhecido; nada na porta = nada desligado' $r 0 @('FM1=30\|FM2=10', 'UP1=12\b', 'UP2=\[\]', 'SE1=False\|nenhum emulador local na porta 5554', 'FS6=True')
 Check 'v3.57.2 item 19: o accept instala por cima sem desinstalar (a base fica); com assinatura diferente, desinstala, reinstala e avisa que a base foi apagada' $r 0 @('IN1=\[\]\|install -r\|NOTE=\[\]', 'IN2=\[\]\|install -r;uninstall br\.x;install -r\|NOTE=\[o APK não instalava por cima \(INSTALL_FAILED_UPDATE_INCOMPATIBLE\).*base do app no aparelho foi apagada\]')
@@ -2417,7 +2446,11 @@ $r = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'blocked', '-Reason', 'e
 Check 'v3.54.2: bloqueio por estado de partida vai ao stakeholder e não diz que o next reabre' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/sprint-backlog.md'), $utf8) } 0 @('T-041 \| estado de partida — br\.x/\.IntroActivity \| escalado ao stakeholder.*reabre com mark\.ps1 -To qa')
 Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "IDS NÃO PUBLICADOS: …", "startState": "br.x/br.x.MainActivity · textos: Cultiva", "results": [ { "id": "SC-165", "status": "FALHOU", "shot": ".team-project/accept/1/T-041/shots/SC-165-falha.png" } ] }'
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
-Check 'v3.57.1 item 13: done -Result env com IDS NÃO PUBLICADOS → sem reparo, bloqueio "ids não publicados" e o caminho do aria-label/content-desc (não o baseline)' $r 0 @('IDS NÃO PUBLICADOS \(br\.x/br\.x\.MainActivity', 'mark\.ps1 -Task T-041 -To blocked -Reason "ids não publicados pela WebView', 'T-041 🔴 bloqueada: ids não publicados', 'aria-label do build de prova', '^(?![\s\S]*-Repair)', '^(?![\s\S]*targets\.android\.baseline)')
+Check 'v3.62.0: done -Result env com o IDS NÃO PUBLICADOS de um result.json antigo → CONFIGURAÇÃO DO ALVO (locator cdp), sem reparo, sem baseline, sem aria-label' $r 0 @('CONFIGURAÇÃO DO ALVO: app híbrido.*targets\.android\.locator = .cdp.', 'mark\.ps1 -Task T-041 -To blocked -Reason "configuração do alvo — ', 'T-041 🔴 bloqueada: configuração do alvo', '^(?![\s\S]*-Repair)', '^(?![\s\S]*targets\.android\.baseline)', '^(?![\s\S]*aria-label)')
+Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "CONFIGURAÇÃO DO ALVO: o APK não liga a depuração da WebView", "configuration": "o APK não liga a depuração da WebView — no Capacitor: android.webContentsDebuggingEnabled", "startState": null, "results": [] }'
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
+Check 'v3.62.0: done -Result env com configuration no result.json → bloqueio "configuração do alvo", rota ao stakeholder, sem reparo nem Arquiteto' @{ Code = $r.Code; Out = $r.Out + "`nrota=" + $(try { (Get-Content -LiteralPath (Join-Path $p '.team-project/.ask-route') -Raw -Encoding UTF8) } catch { '' }) } 0 @('CONFIGURAÇÃO DO ALVO: o APK não liga a depuração da WebView', 'nem decisão do Arquiteto', 'mark\.ps1 -Task T-041 -To blocked -Reason "configuração do alvo — o APK não liga', 'rota=.*configuracao-do-alvo', '^(?![\s\S]*-Repair)', '^(?![\s\S]*team:architect)')
+Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "IDS NÃO PUBLICADOS: …", "startState": "br.x/br.x.MainActivity · textos: Cultiva", "results": [ { "id": "SC-165", "status": "FALHOU", "shot": ".team-project/accept/1/T-041/shots/SC-165-falha.png" } ] }'
 # v3.60.1 (sprint 6 do garden, T-090): "provar por teste" aplicado pelo script — plano, quadro, lista da validação, 🔴 → 🟨.
 $null = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'blocked', '-Reason', 'ids não publicados pela WebView — br.x', '-Root', $p)
 $plP = Join-Path $p '.team-project/sprints/1/plan/T-041-export.md'
@@ -2431,9 +2464,13 @@ Check 'v3.60.1: run.ps1 prove de novo não duplica nada' @{ Code = $r.Code; Out 
 # Política do projeto: o done -Result env aplica a prova por teste sozinho, sem 🔴 e sem rota ao stakeholder.
 $p = Join-Path $tmp 'env-politica'; New-Project $p
 Put $p '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } }, "run": { "deviceProofFallback": "teste" } }'
-Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "IDS NÃO PUBLICADOS: …", "startState": "br.x/br.x.MainActivity · textos: Cultiva", "results": [ { "id": "SC-014", "status": "FALHOU" } ] }'
+Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "CONFIGURAÇÃO DO ALVO: app híbrido", "configuration": "app híbrido: declare targets.android.locator = cdp", "results": [ { "id": "SC-014", "status": "FALHOU" } ] }'
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
-Check 'v3.60.1: com run.deviceProofFallback = teste, IDS NÃO PUBLICADOS → prova por teste sem formulário nem 🔴; o executor fecha' @{ Code = $r.Code; Out = $r.Out + "`nrota=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.ask-route')) + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/run-log.md'), $utf8) } 0 @('Política do projeto \(guards\.json → run\.deviceProofFallback = teste\)', 'run\.ps1 done -Task T-041 -Result ok', 'Não abra formulário', 'rota=False', 'prova por teste: SC-014 \(teste\)', '^(?![\s\S]*mark\.ps1 -Task T-041 -To blocked)')
+Check 'v3.62.0: com run.deviceProofFallback = teste, a CONFIGURAÇÃO DO ALVO não vira prova por teste — vai ao stakeholder' $r 0 @('CONFIGURAÇÃO DO ALVO: app híbrido', 'mark\.ps1 -Task T-041 -To blocked -Reason "configuração do alvo', '^(?![\s\S]*Política do projeto)')
+Remove-Item -LiteralPath (Join-Path $p '.team-project/.ask-route') -Force -ErrorAction SilentlyContinue
+Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "ESTADO DE PARTIDA: …", "startState": "br.x/br.x.MainActivity · textos: Cultiva", "results": [ { "id": "SC-014", "status": "FALHOU" } ] }'
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
+Check 'v3.60.1: com run.deviceProofFallback = teste, ESTADO DE PARTIDA → prova por teste sem formulário nem 🔴; o executor fecha' @{ Code = $r.Code; Out = $r.Out + "`nrota=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.ask-route')) + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/run-log.md'), $utf8) } 0 @('Política do projeto \(guards\.json → run\.deviceProofFallback = teste\)', 'run\.ps1 done -Task T-041 -Result ok', 'Não abra formulário', 'rota=False', 'prova por teste: SC-014 \(teste\)', '^(?![\s\S]*mark\.ps1 -Task T-041 -To blocked)')
 # Pausa pelo script (o Remove-Item do .active-run foi negado no garden).
 Put $p '.team-project/.active-run' '{ "trilha": "sprint", "id": "1", "desde": "2026-11-15 10:00" }'
 $r = Invoke-Check 'run.ps1' @('pause', '-Because', 'o stakeholder pediu', '-Root', $p)
@@ -2458,11 +2495,12 @@ $ErrorActionPreference = 'Stop'
 . $Lib
 $utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'T-041'; $NoRetry = $true; $NoRepair = $true; $Apk = ''
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
-foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Get-FailScreen', 'Test-IdsHidden', 'Write-AcceptProgress', 'Invoke-AcceptBaseline') { . ([scriptblock]::Create($f.Extent.Text)) } }
-$script:Tgt = 'web'; $script:ran = 0
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Get-FailScreen', 'Write-AcceptConfig', 'Write-AcceptProgress', 'Invoke-AcceptBaseline') { . ([scriptblock]::Create($f.Extent.Text)) } }
+$script:Tgt = 'web'; $script:ran = 0; $script:Locator = 'uiautomator'
 function Stop-WebServer { }
 function Invoke-Once($Block) {
     $script:ran++
+    if ($Case -eq 'config') { if ($script:ran -eq 2) { return @{ config = 'o APK não liga a depuração da WebView' } }; return @{ status = 'PASSOU'; detail = ''; shot = '' } }
     $tela = if ($Case -eq 'mesma') { 'br.x/.IntroActivity' } else { "br.x/.Tela$($script:ran)" }
     if ($Case -eq 'ocultos') { return @{ status = 'FALHOU'; detail = "passo 'assert-exists tab-button-estufa': tag ausente: tab-button-estufa [tela: br.x/br.x.MainActivity · ids: action_bar_root, content · textos: Cultiva / Área administrativa]"; shot = (Join-Path $Root ".team-project/accept/1/T-041/shots/$($Block.id)-falha.png") } }
     return @{ status = 'FALHOU'; detail = "passo 'tap tab-button-estufa': tag não encontrada: tab-button-estufa [tela: $tela · ids: intro.pular · textos: Bem-vindo(a) à Horta]"; shot = (Join-Path $Root ".team-project/accept/1/T-041/shots/$($Block.id)-falha.png") }
@@ -2480,7 +2518,13 @@ Check 'v3.54.2: 2 primeiros cenários na mesma tela, nenhum passou → para (exi
 $r = & $ha 'diferente'
 Check 'v3.54.2: falhas em telas diferentes → o accept roda todos (exit 1), sem startState' $r 0 @('CODE=1 RAN=5', '"startState":\s*null', '"failed":\s*5')
 $r = & $ha 'ocultos'
-Check 'v3.57.1 item 13: tag ausente nos 2 primeiros e o dump só com ids do Android (a WebView não publica o id HTML) → IDS NÃO PUBLICADOS, não estado de partida' $r 0 @('CODE=4 RAN=2', 'IDS NÃO PUBLICADOS: os 2 primeiros cenários \(SC-101, SC-102\)', 'declarar baseline não resolve', 'content-desc', '^(?![\s\S]*declare targets\.android\.baseline)')
+Check 'v3.62.0: tag ausente nos 2 primeiros na mesma tela → ESTADO DE PARTIDA (o app híbrido com o uiautomator para antes, na CONFIGURAÇÃO DO ALVO); o IDS NÃO PUBLICADOS saiu' $r 0 @('CODE=4 RAN=2', 'ESTADO DE PARTIDA: os 2 primeiros cenários \(SC-101, SC-102\)', '^(?![\s\S]*IDS NÃO PUBLICADOS)', '^(?![\s\S]*content-desc)')
+# v3.62.0: paridade dos executores — a página neutra e os cenários de fixtures/parity pelo CDP (toque por dedo, Chromium de
+# desktop: o caminho do locator "cdp" sem emulador) e pelo web-runner (Playwright, quando PARITY_PLAYWRIGHT_ROOT o resolve).
+$r = & { $ErrorActionPreference = 'Continue'; $o = & node (Join-Path $PSScriptRoot 'parity.js') 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
+Check 'v3.62.0: paridade — os 15 cenários (type que substitui, web component, página em cache, display contents, toque coberto, lista inteira, faixa horizontal, select, slider, fora do ASCII) dão o veredito esperado pelo CDP; web junto quando há Playwright' $r 0 @('paridade: cdp 15/15 · web (15/15|NÃO EXECUTADO)', '^(?![\s\S]*DIVERGE)')
+$r = & $ha 'config'
+Check 'v3.62.0: cenário que para na CONFIGURAÇÃO DO ALVO → exit 4, configuration no result.json com os cenários já rodados, sem rodar o resto' $r 0 @('CODE=4 RAN=2', 'CONFIGURAÇÃO DO ALVO \(web\): o APK não liga a depuração da WebView', '"configuration":\s*"o APK não liga a depuração da WebView"', '"environment":\s*"CONFIGURAÇÃO DO ALVO: ', '"passed":\s*1')
 
 # v3.53.7 (encadeamento do sprint 5 do garden, decisões do stakeholder de 04/11): select e seed no accept, premissa de layout
 # medida executando, decisões do sprint citadas e não copiadas.
@@ -2971,12 +3015,12 @@ foreach ($sf in @(Get-ChildItem -LiteralPath (Resolve-Path (Join-Path $checks '.
         if ($ln[$i].TrimStart().StartsWith('#')) { continue }
         if ($ln[$i] -match 'StandardOutput\.ReadToEnd\(\)|StandardError\.ReadToEnd\(\)') { $loose += "$($sf.Name):$($i + 1) leitura de pipe sem prazo (ReadToEnd)"; continue }
         if ($ln[$i] -match 'Start-Process|Process\]::Start') {
-            $mark = ($ln[$i] -match '#\s*protocolo:\s*(adb|desprendido)') -or ($i -gt 0 -and $ln[$i - 1] -match '#\s*protocolo:\s*(adb|desprendido)')
+            $mark = ($ln[$i] -match '#\s*protocolo:\s*(adb|node|desprendido)') -or ($i -gt 0 -and $ln[$i - 1] -match '#\s*protocolo:\s*(adb|node|desprendido)')
             if (-not $mark) { $loose += "$($sf.Name):$($i + 1) processo disparado fora do Invoke-Bounded e sem marca de protocolo" }
         }
     }
 }
-Check 'v3.57.0 protocolo: nenhum processo solto — Start-Process/Process::Start fora do lib.ps1 só com "# protocolo: adb|desprendido"' @{ Code = [int]($loose.Count -gt 0); Out = $(if ($loose.Count) { $loose -join "`n" } else { 'sem processo solto' }) } 0 @('sem processo solto')
+Check 'v3.57.0 protocolo: nenhum processo solto — Start-Process/Process::Start fora do lib.ps1 só com "# protocolo: adb|node|desprendido" (node: v3.62.0, executor cdp com prazo próprio)' @{ Code = [int]($loose.Count -gt 0); Out = $(if ($loose.Count) { $loose -join "`n" } else { 'sem processo solto' }) } 0 @('sem processo solto')
 
 $bt = Join-Path $tmp 'bounded-test.ps1'
 [System.IO.File]::WriteAllText($bt, @'

@@ -8,6 +8,55 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.59 — Acompanhar o sprint em palavras simples: a fala da sessão, o Resumo do quadro e o /team-status para quem é de negócio, com o técnico sob pedido (SM + PO + Arquiteto) — 14/11/2026 · *com addendum v3.59.2*
+
+**Instrução:** (stakeholder, 14/11/2026) "precisamos melhorar as frases de conversação e posicionamento na sessão do orquestrador e no kanban para facilitar o acompanhamento … frases simples e mais diretas que deem clareza do que está acontecendo para alguém de negócio entender, sem termos técnicos, que podem ser solicitados caso necessário"; avaliação aprovada por inteiro ("pode fazer todas").
+**Medido (sprint 6 do garden, 14/11):** o quadro do `kanban.md` mostrava só códigos (`T-069b`, `T-070a`); os bloqueios e as decisões ficavam no fim de 58 KB, depois das tabelas de tokens; o "Agora" chegou a mostrar `QA | — | trabalhando`; o `/team-status` mostrava a T-069a "em execução" e PARADA ao mesmo tempo que "Fechada", e "131 decisões" esperando o stakeholder, 98 delas resolvidas; a sessão repetia o vocabulário do `run.ps1 next` (PRÓXIMA AÇÃO, R12, `.scn`, executor de Task, GAP).
+**Classificação:** formato (`## Resumo` e `## Detalhe técnico` no `kanban.md`, quadro em lista por etapa, coluna **Para o stakeholder** no Sprint Backlog, `/team-status detalhe`) · comportamento de agente (a sessão do `sprint run` fala pela linha `PARA O STAKEHOLDER:`) · propriedade (o PO escreve o nome de negócio de cada Task na Planning)
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `sprint-run.md` | §Fala ao stakeholder (nova) · §Como o SM verifica · passo 8 · §Marcador | a fala da sessão é a linha `PARA O STAKEHOLDER:` do `next`, copiada, uma por turno; o técnico, só quando o stakeholder pede; o `done` apaga o registro da Task fechada |
+| `workflow-sprint.md` | §5e passo 4 | o PO escreve o nome de negócio de cada Task (coluna **Para o stakeholder**) |
+| `templates/sprint-backlog.md` | tabela e §Como preencher | coluna **Para o stakeholder**, a última |
+| `templates/kanban.md` | estrutura e §Como preencher | Resumo · Agora · Kanban · Controle · Fechamento; depois Detalhe técnico (Linha de base, Série, Registro, Rodadas); o quadro em lista por etapa, com o nome de negócio |
+| `commands/sm.md`, `commands/team-status.md`, `how-to.md` | `sprint run` · `/team-status` | a fala ao stakeholder; `/team-status` simples por padrão e `detalhe` para o técnico |
+
+### Por quê
+Quem acompanha o sprint é de negócio. O que ele vê precisa dizer o que está pronto, o que anda, o que parou e por quê, e o que depende dele, sem precisar saber o que é uma Task, um GAP ou o `accept`. A regra H1 já dava essa forma ao formulário, mas o acompanhamento contínuo não tinha regra. As frases saem de um script (`plain.ps1`), não do modelo: custam zero token e são as mesmas no quadro, no `/team-status` e na fala da sessão. O código da parte vai sempre no fim, entre parênteses, para o stakeholder pedir o detalhe pelo nome que o time usa.
+
+### Conflitos com o processo vigente
+A regra "nenhuma mensagem ao stakeholder entre a aprovação do pacote e a Review que não seja formulário" passa a admitir a linha `PARA O STAKEHOLDER:`. A sessão já escrevia algo a cada fim de turno, e nada definia o que era. O Controle (Bloqueios, Decisões) continua escrito à mão pelo SM. O Resumo e o quadro só o traduzem, e a natureza do bloqueio deve ser escrita sem caminho de arquivo nem nome de regra.
+
+### Como saberemos que funcionou
+Sprint 7 do garden: nenhuma fala da sessão com `PRÓXIMA AÇÃO`, sigla de regra ou caminho de arquivo sem o stakeholder ter pedido detalhe (transcript); toda Task do quadro com a coluna **Para o stakeholder** preenchida na Planning; o `/team-status` sem Task "em execução" que já está ✅; "Precisa de você" com o número real de decisões abertas.
+
+### Verificação
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.56 que saiu do vivo × arquivo (`.Contains`) | o vivo fica com v3.59, v3.58, v3.57 | ✅ |
+| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.59.0 | ✅ |
+
+### Parte mecânica (implementada pela sessão principal, citada aqui)
+`scripts/checks/plain.ps1` novo (nome de cada parte, papel, ação, etapa, motivo de parada, pendências do README §7, o Resumo); `kanban.ps1` (Resumo, quadro em lista, ordem das seções); `team-view.ps1` (visão simples e `-Detail`; Task do registro já ✅ ou 🔴 fora de "em execução"; pendências sem as resolvidas); `run.ps1` (`PARA O STAKEHOLDER:` em cada ação do `next`, "Pronto/Parou" uma vez por `.stakeholder-seen`, `dispatch -Clear` no `done`); `external-plan.ps1`; `hooks/common.ps1` (o "## Agora" com nomes de negócio); `hooks/prompt-submit.ps1` (`/team-status detalhe`).
+
+
+### Addendum v3.59.2 — a consolidação dos documentos vivos é conferida, chega aos donos e é versionada (SM + Arquiteto) — 2026-11-14
+
+**Instrução:** (stakeholder, 14/11/2026) "toda tarefa gera, quando necessário, a atualização do SDD? Quem faz? Sempre a documentação está atualizada?"; depois da avaliação, "faça as três correções no plugin".
+**Medido (garden, sprints 5 e 6):** a consolidação do sprint 5 está "feita" desde 09/11, mas `architecture.md`, `data-model.md` e os ADRs 0001 e 0011 continuam sem commit. A parte do `api-spec.md` entrou no commit da T-079. Os 4 pedidos ao PO nunca foram aplicados: o `requirements.md` não muda desde 31/10, e o RF-MAN-02 ainda diz "um canteiro por vez", com o manejo em vários canteiros construído no sprint 5. A Review conferia só a linha `**Estado:** feita`.
+**Classificação:** instrumento (`run.ps1 next`: `Get-ConsolidationRows`, `Test-DocChangedInSprint`, `Save-DocsCommit`, `.docs-check.json`) · fluxo (os donos dos pedidos disparados no passo 6) · formato (modelo `roles/architect/templates/docs-consolidation.md`).
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `working-rules.md` | R12 | "feita" é conferida no git; os pedidos vão aos donos; commit próprio dos documentos; o que não mudou vai à Review |
+| `sprint-run.md` | passo 6 | os donos dos pedidos (PO, UX, SM, QA), uma vez cada; o commit é do script |
+| `artifact-ownership.md` | Consolidação dos documentos vivos | o dono aplica no documento dele; o commit não é do Arquiteto nem dos donos |
+| `roles/architect/README.md` · `templates/docs-consolidation.md` (novo) | Documentos vivos | as três tabelas que o script lê; o Arquiteto não faz commit |
+
+---
+
 ## v3.58 — Security Engineer: pentest e secure code review sob demanda, com o laço que leva o achado ao standard do Arquiteto (SM + Arquiteto + Security Engineer) — 2026-11-12 · *com addendum v3.58.3*
 
 **Instrução:** (stakeholder, 11–12/11/2026) "criaremos uma nova role como analista de segurança … para avaliar o sistema"; e "uma revisão de práticas de segurança que direcione aos standards do Arquiteto a base para escrita de planos de código e arquitetura que já atenda aos princípios de segurança que esses testes irão validar".

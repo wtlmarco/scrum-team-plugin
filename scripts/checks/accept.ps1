@@ -17,6 +17,12 @@
 # partida depois de instalar e de cada reset; os 2 primeiros cenários falhando na MESMA tela, sem nenhum passar, param o
 # accept (exit 4, startState no result.json — o done -Result env não repara nem reabre: vai ao stakeholder); progress.json
 # a cada cenário (o run.ps1 next mostra quantos passaram e SEM AVANÇO).
+# v3.62.0 (app híbrido): targets.android.locator = "cdp" — os verbos de tela (tap, type, select, slider, assert-*) vão ao
+# android-cdp.js pelo DevTools da WebView, e o resto do ciclo continua no android.ps1; o result.json desse modo é prova de
+# primeira classe. CONFIGURAÇÃO DO ALVO (exit 4, campo configuration no result.json, sem reparo — o run.ps1 done leva ao
+# stakeholder): o APK sem a depuração da WebView, Node < 22, mais de uma página sem cdp.pageUrl, ou — com o uiautomator — a
+# tela do app ser uma WebView sem nenhum id do app (antes do 1º cenário; substitui o IDS NÃO PUBLICADOS da v3.57.1).
+# A semântica de cada verbo, igual em todo alvo: standards/scenario-language.md.
 #
 # Linguagem (uma instrução por linha; '#' comenta; texto com espaço vai depois do '='):
 #   scenario <ID> <título>             começa um cenário          reset                  apaga os dados do app (web: sessão nova)
@@ -52,6 +58,9 @@ $ErrorActionPreference = 'Stop'
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $verbs = 'reset', 'launch', 'open', 'restart', 'back', 'clock', 'wait', 'tap', 'type', 'select', 'seed', 'slider', 'font-scale', 'shot',
          'assert-text', 'assert-contains', 'assert-exists', 'assert-absent', 'assert-checked', 'assert-count', 'assert-order'
+# v3.62.0: os verbos de tela — com targets.android.locator = "cdp", vão ao android-cdp.js; os demais são do ciclo de vida.
+$screenVerbs = 'tap', 'type', 'select', 'slider', 'assert-text', 'assert-contains', 'assert-exists', 'assert-absent', 'assert-checked', 'assert-count', 'assert-order'
+$script:Locator = 'uiautomator'
 
 # Lê os cenários dos arquivos; erro de sintaxe vem com arquivo:linha.
 # v3.56.0 (H1, sprint 5 do garden #32): cada erro leva o id do cenário (Sc; '' = erro do arquivo) — com -Only, só contam
@@ -101,15 +110,17 @@ function Invoke-AcceptBaseline {
     if ($e) { return "estado de partida (targets.android.baseline): $e" }
     return $null
 }
-# v3.57.1 (note.md item 13): a falha foi "tag ausente" e os ids do dump são só do Android (janela, barra, conteúdo) — nenhum id
-# do app chegou à árvore de acessibilidade. Em app híbrido, é a WebView que não publica o id HTML (não o estado de partida).
-function Test-IdsHidden([string]$Detail) {
-    if ([string]$Detail -notmatch 'tag ausente') { return $false }
-    $m = [regex]::Match([string]$Detail, '\[tela: [^\]]*? · ids: ([^\]]*?) · textos:')
-    if (-not $m.Success) { return $false }
-    $ids = @($m.Groups[1].Value -split ',\s*' | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -ne 'nenhum' })
-    $framework = 'action_bar_root', 'content', 'statusBarBackground', 'navigationBarBackground', 'decor_content_parent', 'action_bar_container', 'action_bar', 'action_context_bar', 'parentPanel', 'action_mode_bar_stub'
-    return -not @($ids | Where-Object { $framework -notcontains $_ }).Count
+# v3.62.0: CONFIGURAÇÃO DO ALVO — o alvo, como está declarado, não consegue provar nada (APK sem a depuração da WebView, Node
+# antigo, app híbrido com o uiautomator). Não é o app, o estado de partida nem queda: o reparo não resolve. Exit 4 (o caminho
+# do "done -Result env"), com o campo configuration no result.json, que o run.ps1 done lê e leva ao stakeholder sem reparo.
+function Write-AcceptConfig([string]$Dir, [string]$Msg, $Results) {
+    New-Item -ItemType Directory -Force $Dir | Out-Null
+    $rs = @($Results | Where-Object { $_ })
+    [System.IO.File]::WriteAllText((Join-Path $Dir 'result.md'), "# Aceite $Task · alvo $script:Tgt · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n**Interrompido na CONFIGURAÇÃO DO ALVO:** $Msg`n", $utf8)
+    [System.IO.File]::WriteAllText((Join-Path $Dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $script:Locator; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); environment = "CONFIGURAÇÃO DO ALVO: $Msg"; configuration = $Msg; startState = $null; passed = @($rs | Where-Object { $_.status -eq 'PASSOU' }).Count; total = $rs.Count; results = $rs } | ConvertTo-Json -Depth 6), $utf8)
+    $rel = ($Dir.Substring($Root.Length + 1) -replace '\\', '/')
+    [Console]::Out.WriteLine("accept $Task · CONFIGURAÇÃO DO ALVO ($script:Tgt): $Msg · não é defeito do app nem queda do alvo — o reparo não resolve; vai ao stakeholder (guards.json e build são dele) · $rel/result.md")
+    return 4
 }
 # A tela em que o passo falhou, do "[tela: … · ids: … · textos: …]" do adaptador android ('' sem ela).
 function Get-FailScreen([string]$Detail) {
@@ -135,14 +146,22 @@ function Invoke-Once($Block) {
         $r = @($o.results)[0]; return @{ status = [string]$r.status; detail = [string]$r.detail; shot = [string]$r.shot }
     }
     $base = Join-Path $script:Shots $Block.id; $status = 'PASSOU'; $detail = ''
+    $cdp = $script:Locator -eq 'cdp'
     foreach ($s in $Block.steps) {
         $verb, $rest = ($s -split '\s+', 2); if ($null -eq $rest) { $rest = '' }
         try {
-            Invoke-AndroidStep $verb $rest $base | Out-Null
+            # v3.62.0: com o locator "cdp", o passo de tela vai pela WebView; abrir o app (e a fonte nova, que recria a WebView)
+            # espera a prontidão declarada (targets.android.cdp.readyExpr) e confere a tela de falha do app (failExpr).
+            if ($cdp -and $screenVerbs -contains $verb) { Invoke-AndroidCdpStep $verb $rest }
+            else {
+                Invoke-AndroidStep $verb $rest $base | Out-Null
+                if ($cdp -and $verb -in 'launch', 'open', 'restart', 'font-scale') { Invoke-AndroidCdpStep 'ready' '' }
+            }
             if ($verb -eq 'reset') { $be = Invoke-AcceptBaseline; if ($be) { return @{ environment = $be } } }   # v3.54.2
         }
         catch {
             $m = $_.Exception.Message
+            if ($m -like 'CONFIGURAÇÃO:*') { return @{ config = ($m -replace '^CONFIGURAÇÃO:\s*', '').Trim() } }
             if ($m -like 'AMBIENTE:*') { return @{ environment = $m.Substring(9).Trim() } }
             $status = 'FALHOU'; $detail = "passo '$s': $m"; break
         }
@@ -204,6 +223,17 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
         $be = Invoke-AcceptBaseline
         if ($be) { [Console]::Out.WriteLine("accept: FALHA DE AMBIENTE ($script:Tgt) — $be. Não é defeito do app."); return 4 }
         if ($Cfg -and $Cfg.PSObject.Properties['baseline'] -and $Cfg.baseline) { [Console]::Out.WriteLine("accept: estado de partida aplicado (targets.android.baseline '$([string]$Cfg.baseline)')") }
+        # v3.62.0: pré-voo do localizador.
+        if ($script:Locator -eq 'cdp') {
+            $nm = Test-AndroidCdpNode; if ($nm) { return (Write-AcceptConfig $dir $nm @()) }
+            $cl = Clear-AndroidCdpForwards; if ($cl) { [Console]::Out.WriteLine("accept: $cl forward(s) da WebView de uma execução anterior removido(s)") }
+        } else {
+            # Com o uiautomator: o app aberto, a tela é uma WebView e nenhum id do app chegou à árvore → nenhum cenário acharia
+            # id nenhum. Para ANTES do 1º cenário (a v3.57.1 só via isso depois de 2 cenários falharem).
+            $hy = $false
+            try { Invoke-AndroidStep 'launch' '' '' | Out-Null; $hy = Test-HybridWithoutIds (Dump) } catch { }
+            if ($hy) { return (Write-AcceptConfig $dir 'app híbrido: a tela do app é uma WebView e o uiautomator não recebe nenhum id do app (a WebView não publica o id HTML) — declare guards.json → targets.android.locator = "cdp" (standards/test-ids.md §6)' @()) }
+        }
     }
 
     $script:Shots = Join-Path $dir 'shots'; New-Item -ItemType Directory -Force $script:Shots | Out-Null
@@ -211,11 +241,13 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
     Write-AcceptProgress $dir $results $Blocks.Count
     foreach ($b in $Blocks) {
         $r1 = Invoke-Once $b
+        if ($r1.config) { return (Write-AcceptConfig $dir ([string]$r1.config) $results) }   # v3.62.0
         if ($r1.environment) { $envFail = $r1.environment; break }
         $final = $r1; $note = ''
         # Repete uma vez do zero (o alvo oscila); o relatório guarda as duas tentativas.
         if ($r1.status -ne 'PASSOU' -and -not $NoRetry) {
             $r2 = Invoke-Once $b
+            if ($r2.config) { return (Write-AcceptConfig $dir ([string]$r2.config) $results) }
             if ($r2.environment) { $envFail = $r2.environment; break }
             $final = $r2; $note = if ($r2.status -eq 'PASSOU') { "passou na 2ª tentativa; 1ª: $($r1.detail)" } else { 'falhou nas 2 tentativas' }
         }
@@ -232,14 +264,9 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
             $sc1 = Get-FailScreen $results[0].detail
             if ($sc1 -and $sc1 -eq (Get-FailScreen $results[1].detail)) {
                 $startState = $sc1
-                # v3.57.1 (note.md item 13): no garden o app ESTAVA na tela de partida (a captura mostra a aba Geral com a barra
-                # de abas) e o diagnóstico mandava declarar baseline — que o projeto já tinha (reset, seed base, launch). As duas
-                # falhas eram "tag ausente" com o dump trazendo só ids do próprio Android: a WebView não publica o id HTML.
-                if ((Test-IdsHidden $results[0].detail) -and (Test-IdsHidden $results[1].detail)) {
-                    $envFail = "IDS NÃO PUBLICADOS: os 2 primeiros cenários ($($results[0].id), $($results[1].id)) não acharam o id na tela — $sc1 — e o dump não traz nenhum id do app, só os do Android; $($Blocks.Count - 2) cenário(s) não rodaram. Não é o estado de partida (declarar baseline não resolve) nem defeito do código: em app híbrido, a WebView desta versão do Android não publica o id HTML como resource-id. O accept também procura o id no nome acessível (content-desc, v3.57.1): o app espelha o id no aria-label no build de prova; sem isso, a prova no alvo vai por outro executor, com desvio registrado. Captura: $($results[1].shot)"
-                } else {
-                    $envFail = "ESTADO DE PARTIDA: os 2 primeiros cenários ($($results[0].id), $($results[1].id)) pararam na mesma tela — $sc1 — e nenhum chegou ao critério; $($Blocks.Count - 2) cenário(s) não rodaram. Não é defeito do código nem queda do emulador: o app não está na tela de partida dos cenários (declare targets.android.baseline ou ajuste o cenário). Captura: $($results[1].shot)"
-                }
+                # v3.62.0: o app híbrido com o uiautomator para antes do 1º cenário (CONFIGURAÇÃO DO ALVO, acima) — o "IDS NÃO
+                # PUBLICADOS" da v3.57.1 saiu daqui.
+                $envFail = "ESTADO DE PARTIDA: os 2 primeiros cenários ($($results[0].id), $($results[1].id)) pararam na mesma tela — $sc1 — e nenhum chegou ao critério; $($Blocks.Count - 2) cenário(s) não rodaram. Não é defeito do código nem queda do emulador: o app não está na tela de partida dos cenários (declare targets.android.baseline ou ajuste o cenário). Captura: $($results[1].shot)"
                 break
             }
         }
@@ -250,7 +277,7 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
     $md = "# Aceite $Task · alvo $script:Tgt · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n$ok de $($results.Count) cenário(s) passaram" + $(if ($startState) { "; **interrompido no estado de partida:** $envFail" } elseif ($envFail) { "; **interrompido por falha de ambiente:** $envFail" } else { '' }) + ".`n`n| Cenário | Resultado | Detalhe | Prova (captura) |`n|---|---|---|---|`n"
     foreach ($r in $results) { $md += "| $($r.id) $($r.title) | $($r.status) | $((@($r.detail, $r.note) | Where-Object { $_ }) -join ' · ' -replace '\|', '/') | $($r.shot) |`n" }
     [System.IO.File]::WriteAllText((Join-Path $dir 'result.md'), $md, $utf8)
-    [System.IO.File]::WriteAllText((Join-Path $dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); environment = $envFail; startState = $startState; passed = $ok; total = $results.Count; results = $results } | ConvertTo-Json -Depth 6), $utf8)
+    [System.IO.File]::WriteAllText((Join-Path $dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $(if ($script:Tgt -eq 'android') { $script:Locator } else { $null }); at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); environment = $envFail; startState = $startState; passed = $ok; total = $results.Count; results = $results } | ConvertTo-Json -Depth 6), $utf8)
     $rel = ($dir.Substring($Root.Length + 1) -replace '\\', '/')
     if ($startState) { [Console]::Out.WriteLine("accept $Task · $envFail · $rel/result.md"); return 4 }
     if ($envFail) { [Console]::Out.WriteLine("accept $Task · FALHA DE AMBIENTE ($script:Tgt): $envFail · $ok de $($results.Count) antes da interrupção · $rel/result.md"); return 4 }
@@ -301,13 +328,22 @@ try {
     }
     $script:Tgt = $Target
     $cfg = if ($targets -and $targets.PSObject.Properties[$Target]) { $targets.$Target } else { $null }
-    if ($Target -eq 'android') { . (Join-Path $PSScriptRoot 'targets/android.ps1'); $init = Initialize-Android $cfg; $health = { Test-AndroidHealth }; $repair = { Repair-Android } }
+    if ($Target -eq 'android') {
+        . (Join-Path $PSScriptRoot 'targets/android.ps1'); $init = Initialize-Android $cfg; $health = { Test-AndroidHealth }; $repair = { Repair-Android }
+        # v3.62.0: o localizador declarado (uiautomator | cdp).
+        $script:Locator = Get-AndroidLocator
+        if ($script:Locator -notin 'uiautomator', 'cdp') { [Console]::Out.WriteLine("accept: guards.json → targets.android.locator '$($script:Locator)' não existe — use ""uiautomator"" (app nativo, o padrão) ou ""cdp"" (app híbrido: WebView)"); exit 2 }
+    }
     else { . (Join-Path $PSScriptRoot 'targets/web.ps1'); $init = Initialize-Web $cfg $Root; $health = { Test-WebHealth }; $repair = { Repair-Web } }
     if ($init) { [Console]::Out.WriteLine("accept: FALHA DE AMBIENTE ($Target) — $init"); exit 4 }
 
     $lock = Enter-TargetLock $Root $Target "accept $Task"
     if ($lock) { [Console]::Out.WriteLine("accept: FALHA DE AMBIENTE — $lock"); exit 4 }
-    try { $code = Invoke-Accept $blocks $cfg $health $repair | Select-Object -Last 1 } finally { Exit-TargetLock $Root }
+    try { $code = Invoke-Accept $blocks $cfg $health $repair | Select-Object -Last 1 }
+    finally {
+        if ($Target -eq 'android' -and $script:Locator -eq 'cdp') { try { $null = Clear-AndroidCdpForwards } catch { } }   # v3.62.0
+        Exit-TargetLock $Root
+    }
 } catch {
     [Console]::Error.WriteLine("accept: erro — $($_.Exception.Message)")
     exit 2
