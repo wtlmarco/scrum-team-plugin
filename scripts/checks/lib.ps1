@@ -207,10 +207,33 @@ function Get-EnvFailure([string]$Text) {
     return $null
 }
 
+# v3.62.1: o log do comando pode continuar aberto por um descendente ÓRFÃO alguns segundos depois de o comando sair. Caso
+# medido: o daemon de uso único do Gradle — sobe quando org.gradle.jvmargs difere da JVM cliente, o padrão de projeto Android —
+# herda a saída redirecionada e só a solta depois do gradlew; a espera fixa de 200 ms perdia a corrida e o verify caía com
+# exit 2 ("o processo não pode acessar o arquivo") com o build verde (ensaio do braço NT do benchmark, 2026-11-17: 3 de 3).
+# Read-LogText lê com FileShare.ReadWrite (não briga com quem ainda escreve). Add-LogText espera o arquivo ficar livre até
+# $WaitSec, depois grava compartilhando a escrita, e só então desiste — devolve $false, sem lançar nem escrever no stderr.
+function Read-LogText([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path)) { return '' }
+    $fs = New-Object System.IO.FileStream($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+    try { return (New-Object System.IO.StreamReader($fs, (New-Object System.Text.UTF8Encoding($false)))).ReadToEnd() } finally { $fs.Dispose() }
+}
+function Add-LogText([string]$Path, [string]$Text, [double]$WaitSec = 30) {
+    $bytes = (New-Object System.Text.UTF8Encoding($false)).GetBytes($Text)
+    $deadline = (Get-Date).AddSeconds([Math]::Max(0, $WaitSec))
+    $write = { param($share) $fs = New-Object System.IO.FileStream($Path, [System.IO.FileMode]::Append, [System.IO.FileAccess]::Write, $share); try { $fs.Write($bytes, 0, $bytes.Length) } finally { $fs.Dispose() } }
+    while ($true) {
+        try { & $write ([System.IO.FileShare]::Read); return $true } catch { if ((Get-Date) -ge $deadline) { break }; Start-Sleep -Milliseconds 250 }
+    }
+    try { & $write ([System.IO.FileShare]::ReadWrite); return $true } catch { }
+    # sem aviso no stderr: quem chama o verify com 2>&1 e erro fatal cairia pelo aviso (a suíte caiu assim); o $false basta
+    return $false
+}
+
 # Linhas decisivas de um log: as últimas que falam de teste, falha, cobertura ou porcentagem.
 function Get-Decisive([string]$Log) {
-    $u8 = New-Object System.Text.UTF8Encoding($false)
-    $lines = @([System.IO.File]::ReadAllLines($Log, $u8))
+    $lines = @((Read-LogText $Log) -split "`r?`n")
+    if ($lines.Count -and $lines[-1] -eq '') { $lines = @($lines | Select-Object -First ($lines.Count - 1)) }   # como o ReadAllLines: sem a vazia do fim
     $hit = @($lines | Where-Object { $_ -match '(?i)\b(pass(ed|ing)?|fail(ed|ures?)?|errors?|warnings?|tests?|total|coverage|cobertura|threshold)\b|\d+(\.\d+)?\s*%' } | Select-Object -Last 4)
     if ($hit.Count -eq 0) { $hit = @($lines | Where-Object { $_.Trim() } | Select-Object -Last 2) }
     return @{ Lines = $lines.Count; Decisive = @($hit | ForEach-Object { $t = $_.Trim(); if ($t.Length -gt 200) { $t.Substring(0, 200) + '…' } else { $t } }) }
@@ -245,15 +268,16 @@ function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [strin
     elseif ($KeepDescendants) { $p.WaitForExit(); $code = $p.ExitCode; $kept = @(Get-DescendantIds $p.Id) }
     else { $p.WaitForExit(); $code = $p.ExitCode; $null = Stop-ProcessTree $p.Id -ChildrenOnly }
     if ($PidFile) { Remove-Item -LiteralPath $PidFile -Force -ErrorAction SilentlyContinue }
-    Start-Sleep -Milliseconds 200   # o arquivo de saída fica livre depois que os descendentes saem
+    Start-Sleep -Milliseconds 200   # o arquivo de saída fica livre depois que os descendentes saem (órfão: Add-LogText espera)
     # v3.57.0 (plugin-report do sprint 5 do garden, item 8): o notebook suspendeu ~9 h no meio da suíte; o relógio de parede
     # andou horas contra um prazo de minutos, o Karma perdeu a conexão e a rodada reprovou sem defeito no código. Relógio muito
     # além do prazo = suspensão do sistema: o resultado não vale como prova e quem chama repete a rodada (uma vez).
     $wallMin = ((Get-Date) - $t0).TotalMinutes + $ClockSkewMin
     $suspended = $wallMin -gt ($limit * 1.5 + 1)
-    if (Test-Path -LiteralPath "$Log.err") { $err = [System.IO.File]::ReadAllText("$Log.err", $u8); if ($err) { [System.IO.File]::AppendAllText($Log, $err, $u8) }; Remove-Item -LiteralPath "$Log.err" -Force }
-    if ($timedOut) { [System.IO.File]::AppendAllText($Log, "`nTEMPO ESGOTADO: $limit min — árvore do processo encerrada`n", $u8) }
-    [System.IO.File]::AppendAllText($Log, "`nEXIT=$code`n", $u8)
+    # v3.62.1: leitura compartilhada e gravação com espera (Add-LogText) — o daemon órfão do Gradle ainda segura log e .err
+    if (Test-Path -LiteralPath "$Log.err") { $err = Read-LogText "$Log.err"; if ($err) { $null = Add-LogText $Log $err }; Remove-Item -LiteralPath "$Log.err" -Force -ErrorAction SilentlyContinue }
+    if ($timedOut) { $null = Add-LogText $Log "`nTEMPO ESGOTADO: $limit min — árvore do processo encerrada`n" }
+    $null = Add-LogText $Log "`nEXIT=$code`n"
     $d = Get-Decisive $Log
     $envFail = if ($suspended) { "suspensão do sistema detectada: o relógio andou $([int]$wallMin) min contra o prazo de $limit min — a rodada não vale como prova (o runner pode ter perdido a conexão); repita" }
                elseif ($timedOut) { "tempo esgotado ($limit min): o comando não devolveu o controle — confira modo de observação ou processo que não termina (tool-hygiene.json)" }

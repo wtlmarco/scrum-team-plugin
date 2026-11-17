@@ -13,6 +13,27 @@
 
 ---
 
+## v3.62.1 — 2026-11-17
+
+**Branch:** `fix/v3.62.1` a partir de `develop` (`4d35ae4`, v3.62.0 mesclada) · **Processo:** sem mudança
+
+Origem: ensaio do braço NT do benchmark (`melhorias/plano-virada.md`, passo 3), antes de qualquer braço rodar. Decisão do stakeholder em 17/11 (formulário): corrigir antes de congelar.
+
+**Sintoma.** Em projeto Android, o `verify` caía com exit 2 ("o processo não pode acessar o arquivo `…full-build.log`") logo depois de um build **verde**. Medido 3 de 3 vezes no código do N-forte-r1 do SunScape.
+
+**Causa.** Com `org.gradle.jvmargs` diferente da JVM cliente (o padrão de projeto Android), o Gradle sobe um daemon de uso único mesmo com `org.gradle.daemon=false`. O daemon herda a saída redirecionada e fica órfão: o `gradlew` sai antes, e o `Stop-ProcessTree` não o alcança pela árvore. Ele segura o log e o `.err` por alguns segundos. O `Invoke-ProjectCommand` (`lib.ps1`) esperava 200 ms fixos e então lia o `.err` e acrescentava ao log com `ReadAllText`/`AppendAllText`, que não compartilham o arquivo. O código é o mesmo desde a v3.51.0: o P-r1 (v3.51.3) passou porque ganhou a corrida.
+
+**Correção** (`scripts/checks/lib.ps1`):
+- `Read-LogText`: lê com `FileShare.ReadWrite`, sem brigar com quem ainda escreve. Usada no `.err` e no `Get-Decisive`.
+- `Add-LogText`: espera o log ficar livre (até 30 s), depois grava compartilhando a escrita e, se ainda assim não der, devolve `$false`. Nunca derruba a rodada nem escreve no stderr: um aviso ali derrubaria quem chama o `verify` com `2>&1` e erro fatal, como a própria suíte caiu na primeira versão desta correção.
+- A remoção do `.err` não lança mais.
+
+Medido: com um órfão de ~4 s, a chamada termina em 5 s (antes: exit 2). Com um órfão que não solta o arquivo, ela grava pelo caminho de reserva aos 30 s e segue.
+
+**Testes novos:** caso `v3.62.1 log preso por órfão` na suíte de conferências, com quatro situações: órfão real de ~4 s; arquivo preso por quem escreve compartilhando; arquivo exclusivo (devolve `$false`, não lança, stderr vazio); `Get-Decisive` com o arquivo aberto.
+
+**Não testado em sessão real:** o `verify full` de um braço do benchmark do começo ao fim (é o ensaio do passo 3 do plano da virada, que roda em seguida).
+
 ## v3.62.0 — 2026-11-16
 
 **Branch:** `feat/v3.62.0` a partir de `develop` (`432680e`, v3.61.0 mesclada) · **Processo:** v3.62 (a prova do app híbrido no aparelho é de primeira classe; a CONFIGURAÇÃO DO ALVO vai ao stakeholder) · **Plano:** `melhorias/plano-v3.62.0.md`
