@@ -609,8 +609,22 @@ function Test-PluginCheck([string]$Seg) {
     return $false
 }
 
+# v3.62.2: o detach.ps1 roda um comando do projeto em processo próprio — a G14 confere o comando de DENTRO (-Command "<…>")
+# como se ele viesse sozinho; sem isso, o detach seria uma porta para qualquer comando. -Kill sem -Command passa.
+function Test-DetachInner([string]$Seg) {
+    if ($Seg -match '(?i)(^|\s)-Kill\b' -and $Seg -notmatch '(?i)(^|\s)-Command\b') { return $true }
+    $m = [regex]::Match($Seg, '(?i)(?:^|\s)-Command\s+"__q(\d+)__"')
+    if (-not $m.Success -or -not $script:qmap -or $script:g14Depth -ge 3) { return $false }
+    $q = [string]$script:qmap[[int]$m.Groups[1].Value]
+    if ($q.Length -lt 2) { return $false }
+    $ok = Test-CommandText $q.Substring(1, $q.Length - 2) ($script:g14Depth + 1)
+    if (-not $ok -and -not $script:badSegInner) { $script:badSegInner = [string]$script:badSeg }   # a negação cita o trecho de dentro
+    return $ok
+}
+
 function Test-RunSegment([string]$Seg, [string[]]$Allowed) {
     if (Test-PluginCheck (Restore-Quoted $Seg)) {
+        if ((Restore-Quoted $Seg) -match '(?i)[\\/]detach\.ps1\b') { return (Test-DetachInner $Seg) }
         if ($Seg -match '(^|\s)[\d*]?>{1,2}(?!&)\s*[^\s$]') { return (Test-RunTargets $Seg) }   # saída para arquivo
         return $true
     }
@@ -848,22 +862,28 @@ function Test-G14([object]$ToolInput) {
     }
     $cmd = [string]$ToolInput.command
     if ([string]::IsNullOrWhiteSpace($cmd)) { return $false }
-    # Comando em segundo plano deixa o papel parado esperando a notificação — execução longa é do operator (R28).
-    if ($ToolInput.run_in_background -eq $true -and $script:role -ne 'operator') {
-        Deny 'G14' 'run_in_background' "comando em segundo plano durante o run: o papel fica parado esperando a notificação, e a chamada que o disparou pode voltar 'interrupted'. Rode em primeiro plano com timeout; execução longa (build, suíte, cobertura) vai ao operator (R28)."
+    # Comando em segundo plano: o Claude Code o ENCERRA quando o papel dá a resposta final, sem aviso (v3.62.2: vale também
+    # para o operator, que antes podia — garden, Q-S6d). Comando longo roda em processo próprio pelo detach.ps1 (ou pelo verify).
+    if ($ToolInput.run_in_background -eq $true) {
+        Deny 'G14' 'run_in_background' "comando em segundo plano durante o run: o Claude Code o encerra quando você der a resposta final, e nenhum aviso vem. Rode em primeiro plano com timeout. Comando que pode passar de ~2 min: ``powershell -NoProfile -File `"`${CLAUDE_PLUGIN_ROOT}/scripts/checks/detach.ps1`" -Dir <pasta do job> -Command `"<comando>`"`` — roda em processo próprio; exit 3 = ainda rodando: rode o MESMO comando de novo, no mesmo turno. Suíte, cobertura e build da Task: verify.ps1 (já roda assim)."
     }
+    # v3.62.2: o detach.ps1 passa pela conferência dos trechos (abaixo), que lê o comando de dentro — não pelo atalho das conferências.
+    $isDetach = $cmd -match '(?i)[\\/]scripts[\\/]checks[\\/]detach\.ps1\b'
     # Conferências C1–C4 (scripts/checks/*.ps1); v3.48: com 2>&1, *> arquivo ou | Out-String no fim (a regex excluía "&").
     # v3.51.2: só o script dentro da pasta do plugin (Test-PluginCheck); composto com ele passa pelos trechos, abaixo.
-    if ($cmd -match '^\s*(?i)(powershell|pwsh)(\.exe)?\s+(-\w+\s+)*-File\s+"?[^";|&]*[\\/]scripts[\\/]checks[\\/][\w-]+\.ps1"?([^;|&]|[*\d]?>&1)*(\|\s*Out-String\s*)?$' -and (Test-PluginCheck $cmd)) { return $true }
+    if (-not $isDetach -and $cmd -match '^\s*(?i)(powershell|pwsh)(\.exe)?\s+(-\w+\s+)*-File\s+"?[^";|&]*[\\/]scripts[\\/]checks[\\/][\w-]+\.ps1"?([^;|&]|[*\d]?>&1)*(\|\s*Out-String\s*)?$' -and (Test-PluginCheck $cmd)) { return $true }
     # v3.57.2 (note.md item 20): a suíte e a cobertura do projeto só pelo verify.ps1 para o dev e o executor. No sprint 5 do
     # garden o dev rodou "npm run test:cobertura:suite" direto (liberado pelo runCommands): sem verify.lock, o done, o start e o
     # next não viram a espera — 3 devs e 3 suítes completas ao mesmo tempo na Q-S5b, Chrome órfão, resumo de cobertura
     # sobrescrito, 391 rodadas vazias do executor. O verify tem trava única por Task, retoma do ponto e é o que a espera enxerga.
     if ($script:role -in 'developer', 'task-runner') {
-        $sseg = Find-SuiteSegment $cmd (Get-SuiteCores $script:projectDir)
+        # v3.62.2: o comando de dentro do detach.ps1 também — a suíte por ele escaparia da trava única do verify.
+        $suiteScan = $cmd
+        if ($isDetach) { $im = [regex]::Match($cmd, '(?i)-Command\s+(?:"([^"]*)"|''([^'']*)'')'); if ($im.Success) { $suiteScan = $cmd + ' ; ' + $im.Groups[1].Value + $im.Groups[2].Value } }
+        $sseg = Find-SuiteSegment $suiteScan (Get-SuiteCores $script:projectDir)
         if ($sseg) {
             $sshow = if ($sseg.Length -gt 80) { $sseg.Substring(0, 80) + '…' } else { $sseg }
-            Deny 'G14' $sshow "suíte ou cobertura do projeto fora do verify.ps1 (``$sshow``): rodada assim, o next, o start e o done não veem a espera e disparam outro dev — no sprint 5 do garden foram 3 suítes completas ao mesmo tempo na mesma Task. Rode ``powershell -NoProfile -File `"`${CLAUDE_PLUGIN_ROOT}/scripts/checks/verify.ps1`" -Task <ID> -Mode full`` (trava única, retoma do ponto, a espera enxerga) — ou ``-Mode focused -Tests <arquivos>`` para os testes do bloco. Passou de ~3 min: encerre o turno, o aviso traz a volta."
+            Deny 'G14' $sshow "suíte ou cobertura do projeto fora do verify.ps1 (``$sshow``): rodada assim, o next, o start e o done não veem a espera e disparam outro dev — no sprint 5 do garden foram 3 suítes completas ao mesmo tempo na mesma Task. Rode ``powershell -NoProfile -File `"`${CLAUDE_PLUGIN_ROOT}/scripts/checks/verify.ps1`" -Task <ID> -Mode full`` (trava única, retoma do ponto, a espera enxerga) — ou ``-Mode focused -Tests <arquivos>`` para os testes do bloco. Ele roda em processo próprio: exit 3 = ainda rodando, rode o MESMO comando de novo no mesmo turno (nunca encerre o turno para esperar)."
         }
     }
     $why = 'fora da lista operacional do run'
@@ -874,16 +894,16 @@ function Test-G14([object]$ToolInput) {
     }
     else {
         $script:g14Allowed = @($script:runBase) + @($cfg.runCommands) + @(Get-RepairCommands $script:projectDir)
-        $script:badSeg = ''
+        $script:badSeg = ''; $script:badSegInner = ''
         if (Test-CommandText $cmd 0) { return $true }
         if (@($cfg.runCommands).Count -eq 0) { return $false }        # projeto sem runCommands: o harness decide, como antes
-        $badSeg = [string]$script:badSeg
+        $badSeg = if ($script:badSegInner) { [string]$script:badSegInner } else { [string]$script:badSeg }
         # v3.53.6 (item 6): também nas formas "& <caminho>" e "<caminho>" direto.
         $plugCheck = ($badSeg -match '(?i)[\\/]scripts[\\/]checks[\\/][\w-]+\.ps1') -and ($badSeg -match '^(?i)(&|powershell|pwsh|["'']?(\.{0,2}[\\/]|[a-z]:[\\/]))')   # antes do corte
         if ($badSeg.Length -gt 80) { $badSeg = $badSeg.Substring(0, 80) + '…' }
         # v3.52.3 (note.md item 3): a ferramenta move para segundo plano o comando que passa de 600 s, e o aviso de conclusão
         # CHEGA ao papel — negado o sono, o dev do garden passou a sondar o log (Get-Date + Get-Content a cada ~5 s, 51 chamadas).
-        if ($badSeg -match '^(?i)(start-sleep|wait-process)\b') { $why = "espera com $(($badSeg -split '\s')[0]) durante o run (``$badSeg``) — o papel fica parado consumindo contexto. Comando que a ferramenta moveu para segundo plano ('moved to the background'): ENCERRE O TURNO — o aviso de conclusão traz o resultado; não sonde o log nem rode o comando de novo. Esperar o alvo (emulador, servidor): ``target.ps1 -Target <alvo> -Repair``, que espera ele ficar pronto. O verify.ps1 e o accept.ps1 voltam com exit 3 (parcial) e continuam do ponto na chamada seguinte; execução longa vai ao operator (R28) — dispare e encerre o turno; o aviso traz a volta" }
+        if ($badSeg -match '^(?i)(start-sleep|wait-process)\b') { $why = "espera com $(($badSeg -split '\s')[0]) durante o run (``$badSeg``) — o papel fica parado consumindo contexto. Comando longo: o verify.ps1 e o detach.ps1 o rodam em processo próprio e voltam com exit 3 enquanto ele roda — rode o MESMO comando de novo, no mesmo turno, sem espera à mão (v3.62.2: o Claude Code encerra o comando que moveu para segundo plano quando o papel dá a resposta final, e o aviso não vem). Esperar o alvo (emulador, servidor): ``target.ps1 -Target <alvo> -Repair``, que espera ele ficar pronto. O accept.ps1 volta com exit 3 (parcial) e continua do ponto na chamada seguinte" }
         elseif ($badSeg -match '^(?i)(\S*[\\/])?adb(\.exe)?\b') { $why = "``adb`` direto (``$badSeg``) — o alvo se confere e se repara pelo ``target.ps1 -Target android`` (com ``-Repair`` reinicia e espera o emulador), e os cenários rodam pelo ``accept.ps1``; inspeção da tela é do operator pela pasta do job" }
         elseif ($badSeg -match '^(?i)(robocopy|xcopy)\b') { $why = "cópia em massa (``$badSeg``) — réplica do projeto para medir ou provar é trabalho do operator, na pasta do job (R28)" }
         elseif ($badSeg -match '^(?i)cmd(\.exe)?\s+/[ck]\b') { $why = "``cmd /c`` (``$badSeg``) — a G14 lê o comando de dentro quando ele vem entre aspas duplas (cmd /c ""<comando> > <log>""); o trecho de dentro não está na lista ou o destino não se resolve no projeto" }

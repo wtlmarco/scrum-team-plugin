@@ -141,6 +141,20 @@ Nos próximos sprints com app híbrido: nenhum 🔺 GAP ambiente por id não enc
 - **Tela de fora do app com `locator: "cdp"`:** é provada por teste (`(teste)` no cenário), conforme `standards/scenario-language.md` §3. O modo misto (passos de tela do sistema pelo `uiautomator`) ficou como item 26 da fila do `/review`.
 - **Guia e rituais:** o `how-to.md` passou a ensinar o `locator: "cdp"`. O `team-init` o propõe para stack híbrida, e o `team-update` ganhou o passo 7o.
 
+### Addendum v3.62.2 — comando longo em processo próprio: ninguém encerra o turno para esperar um comando (SM + Dev + operator) — 2026-11-17
+
+**Instrução:** (stakeholder, 17/11/2026) "Preciso de uma solução definitiva para esse ponto pq travou o processo por diversas vezes, investigue"; depois, "implemente na versão fix 3.62.2".
+**Medido (garden, S6, Q-S6d, 16–17/11):** a suíte de 17–25 min passou dos 600 s da ferramenta, foi para segundo plano e o dev encerrou o turno com `ESPERANDO`. O Claude Code a encerrou junto ("it is terminated when you give your final response and no notification can follow that"), o aviso não veio, e o executor e a sessão esperaram até alguém digitar: 7 instâncias de dev numa Task, e uma suíte rodada à mão para escapar. Nas transcrições de 30 dias, a mesma chamada recebe ora o aviso, ora o encerramento, conforme a versão (2.1.308, 2.1.310, 2.1.325 e 2.1.326 encerram). Ensaio: o encerramento leva a árvore inteira; o processo criado pelo WMI sobrevive.
+**Classificação:** instrumento (`verify.ps1` e `detach.ps1` rodam o comando em processo próprio e só o acompanham; o `run.ps1` não espera rodada que não acorda ninguém) · regra (exit 3 = rode o mesmo comando no mesmo turno; nenhum papel encerra o turno esperando comando; `run_in_background` negado também ao operator).
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `sprint-run.md` | Disparo e espera, item 5 · Constantes · Ciclo do executor | o comando longo roda em processo próprio e é acompanhado no mesmo turno; a rodada do verify não depende do dev; o `ESPERANDO` sem comando acompanhável não segura o run; 480 s como constante |
+| `agents/developer.md` · `roles/developer/README.md` | passo 6 · Falhou, eu corrijo | exit 3 = rodando: o mesmo comando no mesmo turno; nunca encerrar o turno para esperar; comando longo fora do verify pelo `detach.ps1` |
+| `agents/operator.md` | Espera | comando longo pelo `detach.ps1`, acompanhado no mesmo turno; sem segundo plano |
+| `agents/task-runner.md` | passo 3 | `ESPERANDO` do dev: não esperar o aviso; o `done` diz o passo (dev novo reencontra a rodada) |
+| `hooks/COVERAGE.md` | G14 · bloco v3.62.2 | `run_in_background` negado a todo papel; o comando de dentro do `detach.ps1` conferido |
+
 ---
 
 ## v3.61 — Sprint 0: o backlog funcional abre sobre documentação conforme e ambiente de testes provado — o onboarding pergunta onde está a documentação e decide o sprint 0 (SM + PO + Arquiteto + QA) — 16/11/2026

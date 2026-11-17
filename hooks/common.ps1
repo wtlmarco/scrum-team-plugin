@@ -331,6 +331,25 @@ function Get-LiveAgents([string]$ProjectDir, [string]$Work, [int]$MaxIdleMin = 2
         return (((Get-Date) - $lastKid).TotalMinutes -lt 3)
     })
 }
+# v3.62.2: o agente só conta como vivo por uma rodada encerrada com "ESPERANDO <comando>" — a dele, ou, no "aguardando filho",
+# a do último filho. Essa espera só vale se o comando ainda roda: o Claude Code encerra o comando do agente quando ele dá a
+# resposta final, e o aviso não vem (Q-S6d do garden: o executor e a sessão esperaram horas). Quem tem o estado do comando
+# (run.ps1: Get-TaskWait) descarta esse agente quando nada da Task roda.
+function Test-AgentOnlyWaiting([string]$ProjectDir, $Agent) {
+    $id = [string]$Agent.agent_id
+    if (-not $id) { return $false }
+    $all = @(Get-ActiveAgents $ProjectDir)
+    $rounds = Get-AgentRounds $ProjectDir @($all | ForEach-Object { [string]$_.agent_id })
+    if ([string]$Agent.last -ne 'aguardando filho') {
+        if (-not $rounds.ContainsKey($id) -or -not $rounds[$id].waiting) { return $false }
+        try { return ([datetime]::Parse([string]$rounds[$id].ts) -ge [datetime]::Parse([string]$Agent.at)) } catch { return $true }
+    }
+    if (@(Get-PendingChildren $all $id $rounds | Where-Object { -not (Test-AgentOnlyWaiting $ProjectDir $_) }).Count) { return $false }
+    $kids = @(); if ($rounds.ContainsKey($id)) { $kids = @($rounds[$id].children) }
+    $last = $null; $lastW = $false
+    foreach ($k in $kids) { if ($rounds.ContainsKey([string]$k)) { try { $t = [datetime]::Parse([string]$rounds[[string]$k].ts); if (-not $last -or $t -gt $last) { $last = $t; $lastW = [bool]$rounds[[string]$k].waiting } } catch { } } }
+    return $lastW
+}
 function Add-ActiveAgent([string]$ProjectDir, [string]$Type, [string]$Description, [string]$Session = '', [string]$Parent = '') {
     # v3.52.2 (note.md item 15): Q-S<n> (correção do portão) também é item de trabalho.
     $work = ''; $wm = [regex]::Match($Description, '(?<![\w-])(Q-S\d+[a-z]?|T-\d+[a-z]?|F-\d+|B-\d+|H-\d+)(?![\w])'); if ($wm.Success) { $work = $wm.Value }
