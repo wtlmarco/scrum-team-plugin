@@ -35,7 +35,7 @@ Levantado pelo dev quando o plano — ou a seção de standard que ele citou —
 
 ## A natureza do GAP — quem responde (v3.57.0)
 
-No sprint 5 do garden, 4 de 5 GAPs de uma Task de interface eram decisões pequenas de medida ou de marcação, e cada um custou um Arquiteto novo mais um dev novo. A natureza que **você** marca decide a rota; na dúvida entre duas, marque a mais pesada.
+Num sprint de campo (o 5º de um projeto), 4 de 5 GAPs de uma Task de interface eram decisões pequenas de medida ou de marcação, e cada um custou um Arquiteto novo mais um dev novo. A natureza que **você** marca decide a rota; na dúvida entre duas, marque a mais pesada.
 
 | Natureza | Quando | Quem responde |
 |---|---|---|
@@ -45,11 +45,13 @@ No sprint 5 do garden, 4 de 5 GAPs de uma Task de interface eram decisões peque
 | `processo` | regra do time ou do plugin em conflito: o cartão manda o que o plano proíbe, comando negado pela guarda, ordem do `verify`, gate que reprova o que não devia | o Arquiteto, ciclo completo |
 | `ambiente` | alvo, emulador, prazo de comando, ferramenta ou massa de dados se comportam diferente do que o plano mediu | o Arquiteto, ciclo completo |
 
-**A linha é obrigatória (v3.57.1).** No sprint 5 do garden ela veio em 2 de 22 GAPs — a lista não tinha `processo` nem `ambiente`, que eram a maioria — e sem ela não se mede quantos GAPs são de aparência (a decisão de mandá-los a um modelo mais barato depende disso). Sem a linha nem a palavra na linha do 🔺, o `run.ps1 done -Result gap` recusa e o executor da Task classifica pelo seu texto.
+**CONFIGURAÇÃO DO ALVO não é GAP (v3.62.0).** O `accept` que sai com exit 4 e o campo `configuration` no `result.json` — app híbrido com `locator: "uiautomator"` (todo passo dá "tag não encontrada" numa tela de WebView), APK sem a depuração da WebView, Node < 22, mais de uma página sem `cdp.pageUrl` — não é 🔺 GAP, não é `ambiente` da Task e não é decisão do Arquiteto: o alvo, como está declarado, não prova nada, e o `guards.json` e o build são do stakeholder. Paro e digo, como em todo exit 4 (sem GAP no relatório); a rota do `run.ps1 done -Result env` leva a configuração ao stakeholder. Não troco de executor, não busco por texto ou `content-desc`, não copio o id para o `aria-label` (`${CLAUDE_PLUGIN_ROOT}/standards/test-ids.md` §6). O `result.json` do `accept` com `locator: "cdp"` e os cenários PASSOU é a prova da Task.
+
+**A linha é obrigatória (v3.57.1).** Naquele sprint de campo ela veio em 2 de 22 GAPs — a lista não tinha `processo` nem `ambiente`, que eram a maioria — e sem ela não se mede quantos GAPs são de aparência (a decisão de mandá-los a um modelo mais barato depende disso). Sem a linha nem a palavra na linha do 🔺, o `run.ps1 done -Result gap` recusa e o executor da Task classifica pelo seu texto.
 
 **Com envelope no plano** (`**Envelope de medidas**`, que o cartão traz): meça o caso, aplique o caso medido e registre a medida e a escolha no relatório (R9) — isso **não é GAP**. GAP de aparência só quando a medida cai **fora** do envelope.
 
-**Um GAP de aparência por Task.** Antes de parar, meça **todos** os casos do envelope e do que a tela mostra; o GAP lista cada medida fora do envelope, uma linha cada (`<medida> · <o que mediu> · <opções>`). A1 e A2 do garden foram dois ciclos separados a 10 min um do outro por falta disso.
+**Um GAP de aparência por Task.** Antes de parar, meça **todos** os casos do envelope e do que a tela mostra; o GAP lista cada medida fora do envelope, uma linha cada (`<medida> · <o que mediu> · <opções>`). Dois GAPs de aparência daquele sprint foram dois ciclos separados a 10 min um do outro por falta disso.
 
 ## Quando levantar (sempre)
 

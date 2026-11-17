@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paridade dos executores</title>
+<!-- Página neutra do teste de paridade (v3.62.0): um caso por regressão medida, sem framework nem produto. Os ids seguem a
+     gramática de standards/test-ids.md com a tela "p". O atributo de teste é "id" (como num app híbrido). -->
+<style>
+  body { margin: 0; font: 16px sans-serif; }
+  section { padding: 8px; border-bottom: 1px solid #ccc; }
+  .p-cache { position: absolute; left: 0; top: 0; transform: translateX(-200%); }
+  .camada { position: relative; height: 40px; }
+  .camada .tampa { position: absolute; inset: 0; background: rgba(0,0,0,.05); }
+  #p\.lista { height: 160px; overflow-y: auto; border: 1px solid #999; }
+  #p\.lista div { height: 30px; }
+  #p\.faixa { width: 240px; overflow-x: auto; white-space: nowrap; border: 1px solid #999; }
+  #p\.faixa span { display: inline-block; width: 120px; height: 30px; }
+  #p\.opcoes { display: none; }
+  #p\.opcoes.aberto { display: block; }
+  #p\.longe { margin-top: 1400px; }
+</style>
+</head>
+<body>
+<section id="p">
+  <h1 id="p.titulo">Paridade</h1>
+  <input id="p.campo" value="texto antigo">
+  <campo-livre id="p.livre"></campo-livre>
+  <span id="p.lido">—</span>
+</section>
+
+<!-- página em cache: o mesmo id fora da tela, dentro de um escopo declarado em hiddenScopes -->
+<section class="p-cache"><span id="p.repetido">em cache</span><span id="p.so-cache">só no cache</span><div id="p.item.cache">x</div></section>
+<section><span id="p.repetido">visível</span></section>
+
+<section>
+  <div id="p.contents" style="display: contents"><span>conteúdo sem caixa própria</span></div>
+  <button id="p.botao-livre" onclick="lido('livre')">livre</button>
+  <div class="camada"><button id="p.botao-coberto" onclick="lido('coberto')">coberto</button><div class="tampa"></div></div>
+  <span id="p.escondido" style="display: none">escondido</span>
+  <label><input id="p.marca" type="checkbox"> marca</label>
+</section>
+
+<section>
+  <div id="p.lista"></div>
+</section>
+
+<section>
+  <div id="p.faixa"><span>a</span><span>b</span><span>c</span><span>d</span><button id="p.fim-da-faixa" onclick="lido('faixa')">fim</button></div>
+</section>
+
+<section>
+  <select id="p.nativo"><option>Alface</option><option>Couve</option><option>Rúcula</option></select>
+  <button id="p.combo" onclick="document.getElementById('p.opcoes').classList.toggle('aberto')">Escolha</button>
+  <div id="p.opcoes"><button onclick="escolhe('Tomate')">Tomate</button><button onclick="escolhe('Pepino')">Pepino</button></div>
+  <input id="p.nivel" type="range" min="0" max="10" step="1" value="0">
+</section>
+
+<section><button id="p.longe" onclick="lido('longe')">longe</button></section>
+
+<script>
+  // Web component de formulário: o valor fica na propriedade "value" do host e o <textarea> vive num shadow root aberto.
+  customElements.define('campo-livre', class extends HTMLElement {
+    constructor() { super(); const r = this.attachShadow({ mode: 'open' }); r.innerHTML = '<textarea rows="2">nota antiga</textarea>'; this._t = r.querySelector('textarea'); }
+    get value() { return this._t.value; }
+  });
+  const lista = document.getElementById('p.lista');
+  for (let i = 1; i <= 40; i++) { const d = document.createElement('div'); d.id = 'p.item.' + i; d.textContent = 'item ' + i; lista.appendChild(d); }
+  function lido(v) { document.getElementById('p.lido').textContent = v; }
+  function escolhe(v) { document.getElementById('p.combo').textContent = v; document.getElementById('p.opcoes').classList.remove('aberto'); }
+</script>
+</body>
+</html>

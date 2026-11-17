@@ -1888,8 +1888,9 @@ function Get-RunSetting([string]$Root, [string]$Name) {
 }
 # v3.60.1 (sprint 6 do garden: ids não publicados pela WebView na T-081, T-069a e T-090 — 4 formulários com a mesma resposta):
 # guards.json → run.deviceProofFallback = "teste" é a decisão do stakeholder gravada como política do projeto. Quando o accept
-# para em IDS NÃO PUBLICADOS ou no ESTADO DE PARTIDA, o run.ps1 aplica a prova por teste (run.ps1 prove) sem formulário, e a
-# conferência no aparelho fica para a validação do sprint. Sem a chave, a decisão segue com o stakeholder.
+# para no ESTADO DE PARTIDA, o run.ps1 aplica a prova por teste (run.ps1 prove) sem formulário, e a conferência no aparelho
+# fica para a validação do sprint. Sem a chave, a decisão segue com o stakeholder. v3.62.0: o "IDS NÃO PUBLICADOS" virou
+# CONFIGURAÇÃO DO ALVO (locator "cdp" para app híbrido), que vai sempre ao stakeholder — a política não se aplica a ela.
 function Test-DeviceProofPolicy([string]$Root) {
     $v = Get-RunSetting $Root 'deviceProofFallback'
     return ([string]$v -match '^(?i)(teste|test)$')

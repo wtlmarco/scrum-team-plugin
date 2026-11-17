@@ -32,6 +32,14 @@ try {
         $lp = Join-Path $Root '.team-project/.target-lock'
         $held = if (Test-Path -LiteralPath $lp) { (Get-Content -LiteralPath $lp -Raw -ErrorAction SilentlyContinue) } else { '' }
         $k = Stop-Detached $Root $Target
+        # v3.62.0: os adb forward para a WebView (locator "cdp") que um accept encerrado no meio deixou.
+        if ($Target -eq 'android') {
+            try {
+                . (Join-Path $PSScriptRoot 'targets/android.ps1')
+                $tc = Get-TargetsConfig $Root
+                if (-not (Initialize-Android $(if ($tc -and $tc.PSObject.Properties['android']) { $tc.android } else { $null }))) { $fw = Clear-AndroidCdpForwards; if ($fw) { [Console]::Out.WriteLine("target android: -Kill — $fw forward(s) da WebView removido(s)") } }
+            } catch { }
+        }
         if (-not $k.registered) { [Console]::Out.WriteLine("target ${Target}: nada registrado — o run não iniciou nenhum processo deste alvo (processo de fora não é tocado)"); exit 0 }
         [Console]::Out.WriteLine("target ${Target}: -Kill — $($k.stopped) encerrado(s), $($k.gone) já tinha(m) saído, $($k.reused) com PID reaproveitado (não tocado)" + $(if ($held) { "; ATENÇÃO: a trava do alvo estava com outro executor (.target-lock)" } else { '' }))
         exit 0
