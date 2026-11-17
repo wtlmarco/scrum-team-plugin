@@ -263,10 +263,19 @@ $cases = @(
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'git commit --no-verify -m "x"' } } },
     @{ Name = 'G14 escrita em destino variável negada'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = 'Get-ChildItem dist | ForEach-Object { Remove-Item $_ }' } } },
-    @{ Name = 'G14 QA com comando em segundo plano: nega'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'operator'
+    @{ Name = 'G14 QA com comando em segundo plano: nega e aponta o detach.ps1 (v3.62.2)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'encerra quando você der a resposta final*detach.ps1'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:quality-assurance'; tool_input = @{ command = 'npm test'; run_in_background = $true } } },
-    @{ Name = 'G14 operator com comando em segundo plano: liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+    # v3.62.2 (garden, Q-S6d): o Claude Code encerra o comando em segundo plano com o turno — o operator também deixa de poder.
+    @{ Name = 'G14 v3.62.2: operator com comando em segundo plano: nega (antes liberado)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'detach.ps1'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'npm test *> .team-project/operator/1/suite/test.log'; run_in_background = $true } } },
+    @{ Name = 'G14 v3.62.2: operator pelo detach.ps1 com comando de dentro da lista: liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = "powershell -NoProfile -File `"$root\scripts\checks\detach.ps1`" -Dir .team-project/operator/1/T-001-suite -Command `"npm test`"" } } },
+    @{ Name = 'G14 v3.62.2: detach.ps1 com comando de dentro fora da lista: nega pelo trecho de dentro'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'git push'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = "powershell -NoProfile -File `"$root\scripts\checks\detach.ps1`" -Dir .team-project/operator/1/T-001-x -Command `"npm test; git push`"" } } },
+    @{ Name = 'G14 v3.62.2: detach.ps1 sem -Command entre aspas: nega'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = "powershell -NoProfile -File `"$root\scripts\checks\detach.ps1`" -Dir .team-project/operator/1/T-001-x -Command npm" } } },
+    @{ Name = 'G14 v3.62.2: detach.ps1 -Kill: liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = "powershell -NoProfile -File `"$root\scripts\checks\detach.ps1`" -Dir .team-project/operator/1/T-001-x -Kill" } } },
     @{ Name = 'G14 dev Edit no escopo liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
        Payload = @{ tool_name = 'Edit'; agent_type = 'team:developer'; tool_input = @{ file_path = (Join-Path $proj 'src/e.cs'); old_string = 'a'; new_string = 'b' } } },
     @{ Name = 'G14 Arquiteto no scratchpad liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
@@ -650,6 +659,10 @@ $cases = @(
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; agent_id = 'dv0000002'; tool_input = @{ command = 'Set-Location source; npm run test:cobertura:suite -- --browsers=ChromeHeadless' } } },
     @{ Name = 'v3.57.2 G14: o operator roda a mesma suíte (execução longa é dele, R28)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; agent_id = 'op0000002'; tool_input = @{ command = 'Set-Location source; npm run test:cobertura:suite -- --browsers=ChromeHeadless' } } },
+    @{ Name = 'v3.62.2 G14: o dev rodando a suíte por dentro do detach.ps1 é negado como a suíte direta (só pelo verify)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'suíte ou cobertura do projeto fora do verify.ps1'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; agent_id = 'dv0000002'; tool_input = @{ command = "powershell -NoProfile -File `"$root/scripts/checks/detach.ps1`" -Dir .team-project/operator/1/x -Command `"Set-Location source; npm run test:cobertura:suite -- --browsers=ChromeHeadless`"" } } },
+    @{ Name = 'v3.62.2 G14: o operator roda a suíte pelo detach.ps1 (execução longa é dele, em processo próprio)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; agent_id = 'op0000002'; tool_input = @{ command = "powershell -NoProfile -File `"$root/scripts/checks/detach.ps1`" -Dir .team-project/operator/1/x -Command `"Set-Location source; npm run test:cobertura:suite -- --browsers=ChromeHeadless`"" } } },
     @{ Name = 'v3.57.2 G14: o verify.ps1 do dev segue liberado (é o caminho da suíte)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
        Check = { $g = Join-Path $proj '.team-project/guards.json'; $b = Join-Path $tmp 'guards-antes-suite.json'
                  if (Test-Path -LiteralPath $b) { Move-Item -LiteralPath $b $g -Force } else { Remove-Item -LiteralPath $g -Force }; $true }
@@ -724,7 +737,7 @@ $cases = @(
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'adb devices 2>&1; "EXIT=$LASTEXITCODE"' } } },
     @{ Name = 'G14 Start-Sleep: nega com a rota do target.ps1 -Repair e do exit 3'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'exit 3'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'Start-Sleep -Seconds 60; "ok"' } } },
-    @{ Name = 'G14 Wait-Process (v3.52.3): nega dizendo para encerrar o turno e esperar o aviso'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'espera com Wait-Process*ENCERRE O TURNO*o aviso de conclusão traz o resultado'
+    @{ Name = 'G14 Wait-Process (v3.52.3; v3.62.2): nega e aponta o processo próprio do verify/detach, sem encerrar o turno'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'espera com Wait-Process*processo próprio*rode o MESMO comando de novo, no mesmo turno'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'Wait-Process -Id 4242' } } },
     @{ Name = 'G8 New-Item da pasta delivery/ pelo dev: a pasta casa a linha da matriz (garden item 25)'; Script = 'pre-tool.ps1'; Expect = 0
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'New-Item -ItemType Directory -Force .team-project/sprints/2/delivery' } } },

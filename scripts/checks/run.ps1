@@ -119,13 +119,27 @@ function Get-WatcherLine {
 # Task, encerrar e retomar sem formulário; na segunda, o formulário ao stakeholder).
 # v3.57.1: com -For, a espera é DESTE script (Start-Sleep aqui dentro não passa pela G14, que lê o texto do comando): confere,
 # dorme -Every, confere de novo, e para no primeiro "terminou" ou "travado" ou quando a próxima espera passaria de -For.
+# v3.62.2 (garden, Q-S6d): agente vivo SÓ por ter encerrado o turno com "ESPERANDO <comando>" não espera nada quando nenhum
+# comando da Task roda — ou quando o que roda é o verify em processo próprio, que não o acorda: o Claude Code encerrou o
+# comando dele com o turno e o aviso não vem. Esse agente sai da lista; o resto do registro fica como está.
+function Select-LiveAgents($Agents, [string]$Id) {
+    $list = @($Agents)
+    if (-not $list.Count) { return @() }
+    $w = Get-TaskWait $Root $Id
+    if ($w -and -not ($w.PSObject.Properties['Detached'] -and $w.Detached)) { return $list }
+    return @($list | Where-Object { -not (Test-AgentOnlyWaiting $Root $_) })
+}
 function Get-WaitState {
     $nv = Get-Marker $Root '.next-verdict'
     $tk = if ($nv) { [string]$nv.task } else { '' }
     if (-not $tk) { return @{ Code = 0; Text = 'wait: terminou — nenhuma espera registrada pelo next (.next-verdict); a sessão roda run.ps1 next' } }
-    $liveW = @(Get-LiveAgents $Root $tk | Where-Object { ([string]$_.type -replace '^.*:', '') -in 'task-runner', 'developer' })
+    $liveW0 = @(Get-LiveAgents $Root $tk | Where-Object { ([string]$_.type -replace '^.*:', '') -in 'task-runner', 'developer' })
+    $liveW = @(Select-LiveAgents $liveW0 $tk)
     $cmdW = Get-TaskWait $Root $tk
-    if (-not $liveW.Count -and -not $cmdW) { return @{ Code = 0; Text = "wait: terminou — a $tk não tem agente nem comando em espera; a sessão roda run.ps1 next" } }
+    if (-not $liveW.Count -and -not $cmdW) {
+        if ($liveW0.Count) { return @{ Code = 0; Text = "wait: terminou — o agente da $tk encerrou o turno esperando um comando que não roda mais (o Claude Code encerra o comando do agente com o turno; o aviso não vem); a sessão roda run.ps1 next" } }
+        return @{ Code = 0; Text = "wait: terminou — a $tk não tem agente nem comando em espera; a sessão roda run.ps1 next" }
+    }
     $partes = @(); $sig = $null
     if ($liveW.Count) {
         $a = @($liveW | Sort-Object { [string]$_.at } -Descending)[0]; $idle = (Get-AgentIdleHours $a) * 60
@@ -844,16 +858,20 @@ try {
             exit 2
         }
         $preqNote = $preq.Lines
-        $liveDev = @(Get-LiveAgents $Root $T.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -eq 'developer' })
+        $liveDev = @(Select-LiveAgents @(Get-LiveAgents $Root $T.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -eq 'developer' }) $T.Id)
         if ($liveDev.Count) {
             $a = $liveDev[0]; $idle = [int]((Get-AgentIdleHours $a) * 60)
             [Console]::Error.WriteLine("run start: a $($T.Id) já tem um dev vivo ($(if ($a.agent_id) { "agent_id $($a.agent_id), " })última ação $(if ($a.last) { $a.last } else { 'disparado' }) há $idle min$(if ($a.host_pid) { ", processo $($a.host_pid)" })) — não dispare outro: seriam duas instâncias no mesmo alvo. Encerre o turno e espere a volta dele; se a sessão dele foi fechada, o registro deixa de valer depois de 20 min sem sinal de vida.")
             exit 2
         }
         # v3.53.3: o dev encerrou o turno esperando um comando em segundo plano — ele volta sozinho; outro seria o segundo.
-        $busy = Get-TaskBusy $Root $T.Id
-        if ($busy) {
-            [Console]::Error.WriteLine("run start: a $($T.Id) ainda tem $busy rodando — o dev que o rodou encerrou o turno para esperar por ele e volta sozinho com o resultado. Não dispare outro dev (seriam dois na mesma Task e no mesmo alvo): encerre o turno; na volta dele, run.ps1 done.")
+        $busyW = Get-TaskWait $Root $T.Id
+        # v3.62.2: o verify em processo próprio não depende do dev que o rodou — sem dev vivo (acima), ninguém o acompanha; o dev
+        # novo roda o MESMO verify e o reencontra (não abre outro). Os outros comandos vivos (accept, reparo do alvo) seguram o start.
+        $script:detachedNote = ''
+        if ($busyW -and $busyW.PSObject.Properties['Detached'] -and $busyW.Detached) { $script:detachedNote = $busyW.Text; $busyW = $null }
+        if ($busyW) {
+            [Console]::Error.WriteLine("run start: a $($T.Id) ainda tem $($busyW.Text) rodando — quem o rodou ainda não o recolheu. Não dispare outro dev (seriam dois na mesma Task e no mesmo alvo): encerre o turno; rode run.ps1 next quando ele terminar.")
             exit 2
         }
         $planRel = ".team-project/sprints/$n/$($T.Plan)"
@@ -905,6 +923,7 @@ try {
         }
         Out ($d.Trim())
         Out "  cartão: $card"
+        if ($script:detachedNote) { Out "  verify: $($script:detachedNote) — segue em processo próprio, sem dev acompanhando; o dev novo roda o MESMO comando do verify e a reencontra (não abre outra rodada)" }
         if ($relNote) { Out "  alvo: $relNote" }
         foreach ($pn in @($preqNote)) { if ($pn) { Out "  pré-requisito: $pn" } }
         if ($foreignNow -and @($foreignNow).Count) { Out "  alheios: $(@($foreignNow).Count) arquivo(s) já alterado(s) antes da $($T.Id) ($((@($foreignNow) | Select-Object -First 3) -join ', ')$(if (@($foreignNow).Count -gt 3) { '…' })) — não são da Task: ficam fora do commit dela e o close não os cobra; o dev não os toca" }
@@ -915,7 +934,7 @@ try {
         if ($relOn) { $tgt += " O emulador fica desligado durante a construção (memória): suba-o com target.ps1 -Target android -Repair só quando um comando do projeto precisar do aparelho (instalar o APK) — o accept o religa sozinho." }
         # v3.53.6 (item 2): com ponto de retomada, o cartão traz os passos que faltam — o plano não se reabre.
         $readTxt = if ($script:CardResume) { "Retome do passo $($script:CardResume): o cartão .team-project/$card traz os passos que faltam e o que já está provado — siga por ele e não reabra o plano $planRel, salvo o trecho de que um passo precise e que o cartão não traga (offset e limit)." } else { "Leia o cartão .team-project/$card, o cabeçalho e a §6 do plano $planRel e o seu bloco — não o plano inteiro." }
-        Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk $readTxt $vrfTxt$acc. Exit 3 = parcial (o tempo da chamada acabou): rode o MESMO comando de novo, ele continua de onde parou. Comando que a ferramenta moveu para segundo plano ('moved to the background'): encerre o turno com a primeira linha ESPERANDO <comando> — o aviso de conclusão traz o resultado e você segue; não sonde o log nem dispare outro verify (exit 5 = outra rodada ainda roda). Comando encerrado pelo Claude Code por memória baixa ('stopped because the system is running low on memory'): não é defeito — o stakeholder autoriza rodar o MESMO comando UMA vez de novo (o verify full desliga o emulador que a suíte não usa e continua do parcial); encerrado de novo, pare como exit 4 (ambiente: memória). Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga.$tgt Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept — cada bloco de código começa com a linha do comando ('> verify.ps1 -Mode full …') e traz a saída embaixo — e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
+        Out "  prompt do dev: `"Construa a $($T.Id) — $($T.Title).$blk $readTxt $vrfTxt$acc. Exit 3 do verify = a rodada segue em processo próprio (ou parou no -MaxMinutes): rode o MESMO comando de novo, NO MESMO TURNO, até sair 0, 1 ou 4 — ele volta a acompanhar a mesma rodada, não abre outra. Nunca encerre o turno para esperar um comando: o Claude Code encerra o comando do agente quando ele dá a resposta final, e nenhum aviso vem (v3.62.2); não sonde o log nem dispare outro verify (exit 5 = outra rodada ainda roda). Falhou, corrija você mesmo; exit 4 é ambiente: pare e diga.$tgt Dúvida de desenho: 🔺 GAP no relatório e pare. Grave a seção nova no fim de .team-project/sprints/$n/delivery/$($T.Id).md com a saída colada do verify e do accept — cada bloco de código começa com a linha do comando ('> verify.ps1 -Mode full …') e traz a saída embaixo — e ### Documentos vivos (R12) **Estado:** a consolidar. Volte em até 15 linhas (R28).`""
         Out "  ao voltar: run.ps1 done -Task $($T.Id) -Result ok|gap|env|teto (teto = o dev voltou com TETO: a G23 o parou no teto de contexto)"
         exit 0
     }
@@ -924,7 +943,14 @@ try {
         if (-not $T -or -not $Result) { [Console]::Error.WriteLine('run done pede -Task e -Result ok|gap|env|teto.'); exit 2 }
         # v3.53.3 (sprint 5 do garden): o dev "voltou" só porque encerrou o turno esperando um comando em segundo plano — a
         # entrega ainda não está no relatório. Fechar, reparar ou redisparar aqui punha um segundo dev ao lado do primeiro.
-        $busy = Get-TaskBusy $Root $T.Id
+        $busyW = Get-TaskWait $Root $T.Id
+        # v3.62.2: o verify em processo próprio sobrevive ao dev que voltou — mas ninguém mais o acompanha e o aviso não vem.
+        # Não fecha nem espera: uma instância nova do dev roda o MESMO verify, que reencontra a rodada e entrega o resultado.
+        if ($busyW -and $busyW.PSObject.Properties['Detached'] -and $busyW.Detached) {
+            Out "run: a $($T.Id) tem $($busyW.Text) rodando, e o dev voltou sem o resultado — não feche. O verify segue em processo próprio (não depende do dev); rode run.ps1 start -Task $($T.Id) e dispare o dev novo: o MESMO comando do verify reencontra esta rodada, sem abrir outra, e entrega o resultado. Não espere o aviso: nenhum vem."
+            exit 3
+        }
+        $busy = if ($busyW) { $busyW.Text } else { $null }
         if ($busy) {
             Set-NextVerdict $Root 'esperar' $T.Id "comando: $busy"
             Out "run: ESPERANDO — a $($T.Id) ainda tem $busy rodando. O dev encerrou o turno para esperar esse comando (foi para segundo plano) e volta sozinho com o resultado. Não rode start, reparo nem Arquiteto: encerre o turno; o aviso da volta dele te acorda e aí rode run.ps1 done de novo."
@@ -1442,7 +1468,7 @@ try {
     if ($next) {
         # v3.53.1 (plugin-report do sprint 4 do garden, item 3): executor ou dev desta Task ainda vivo — de outra sessão aberta
         # no mesmo projeto, ou desta, antes do aviso de volta. Redisparar punha dois devs no mesmo emulador.
-        $liveA = @(Get-LiveAgents $Root $next.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -in 'task-runner', 'developer' })
+        $liveA = @(Select-LiveAgents @(Get-LiveAgents $Root $next.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -in 'task-runner', 'developer' }) $next.Id)
         if ($liveA.Count) {
             $a = @($liveA | Sort-Object { [string]$_.at } -Descending)[0]
             $agTxt = "$(([string]$a.type) -replace '^.*:', '') vivo (última ação $(if ($a.last) { $a.last } else { 'disparado' }) há $([int]((Get-AgentIdleHours $a) * 60)) min$(if ($a.host_pid) { ", processo $($a.host_pid)" }))"
@@ -1460,6 +1486,9 @@ try {
         # v3.53.3: sem agente no registro, mas com verify/accept da Task vivo — o dev esperava o comando quando o registro saiu.
         # v3.53.5: também o reparo do alvo; a linha traz o sinal de vida e, parado, a saída (não esperar às cegas).
         $wN = Get-TaskWait $Root $next.Id
+        # v3.62.2: verify em processo próprio sem agente nenhum — ele não acorda ninguém: o executor (e o dev novo dele) segue, e
+        # o MESMO verify do dev reencontra a rodada (o start avisa). Esperar aqui parava o run até alguém digitar.
+        if ($wN -and $wN.PSObject.Properties['Detached'] -and $wN.Detached -and -not $wN.Pulse.Stalled) { Out "  verify: $($wN.Text) — segue em processo próprio sem dev acompanhando; o executor dispara o dev, que a reencontra pelo mesmo comando"; $wN = $null }
         if ($wN) {
             $noProgN = $wN.PSObject.Properties['NoProgress'] -and $wN.NoProgress
             if ($wN.Pulse.Stalled -and -not $noProgN) { exit (Write-StallAction $next $S $n $wN) }

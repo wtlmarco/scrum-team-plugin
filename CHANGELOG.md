@@ -13,6 +13,68 @@
 
 ---
 
+## v3.62.2 — 2026-11-17
+
+**Branch:** `fix/v3.62.2` a partir de `develop` (`5ae0188`, v3.62.1 mesclada) · **Processo:** addendum v3.62.2 (comando longo em processo próprio; ninguém encerra o turno para esperar um comando)
+
+Origem: sprint 6 do garden, Q-S6d (16–17/11). O stakeholder pediu "uma solução definitiva para esse ponto pq travou o processo por diversas vezes".
+
+**Sintoma.** A suíte completa do projeto (17–25 min, `verify.timeoutMinutes` 25) morria no meio, e o run parava até alguém digitar. Foram 7 instâncias de dev numa Task, e uma suíte rodada à mão (`manual-suite.log`) para escapar.
+
+**Causa.** A chamada do `verify` passava dos 600 s da ferramenta, que a movia para segundo plano. O dev seguia a regra da v3.53.3 e encerrava o turno com `ESPERANDO`, contando com o aviso de conclusão. O Claude Code responde assim nesse caso: "it is terminated when you give your final response and no notification can follow that — so do not end your turn to wait for it". O aviso não vinha, e o executor e a sessão esperavam por ele. O registro de agentes mantinha o dev "vivo, aguardando", e o watcher respondia "vivo".
+
+Medido nas transcrições de 30 dias desta máquina: a mesma chamada (subagente, `timeout` 600000, estourou os 600 s) recebe ora "You will be notified when it completes", ora o encerramento. O encerramento aparece nas versões 2.1.308, 2.1.310, 2.1.325 e 2.1.326; na 2.1.326, também na sessão principal e no `run_in_background` explícito.
+
+Medido em ensaio: o encerramento leva a árvore inteira, e o filho de `Start-Process` morre junto. O processo criado pelo WMI sobrevive, na mesma sessão do Windows e com o mesmo PATH. A regra do plugin dependia de um comportamento que o Claude Code não garante.
+
+**Correção:**
+- **Rodada desacoplada** (`scripts/checks/lib.ps1`: `Start-DetachedJob`, `Get-DetachedJob`, `Wait-DetachedJob`, `Stop-DetachedJob`; executor novo `scripts/checks/detached-run.ps1`).
+  - O comando roda num processo criado por `Win32_Process.Create`, fora da árvore do Claude Code.
+  - O ambiente de quem chamou vai num arquivo do TEMP, que o executor lê e apaga na partida.
+  - A saída fica em `job.out`/`job.err` e o código de saída em `job.exit`.
+- **`verify.ps1`** (focused, full e mutation; o `check` não muda). A chamada só acompanha a rodada, por até 480 s.
+  - Terminou: a saída e o exit code são os da rodada, como antes.
+  - Não terminou: **exit 3 "RODANDO"**, com o passo em curso.
+  - O mesmo pedido de novo volta a acompanhar a mesma rodada, sem abrir outra.
+  - Outro pedido da Task enquanto ela roda: exit 5 (OCUPADO), ou espera com `-WaitBusySeconds`.
+  - Rodada que caiu sem resultado: a chamada diz e abre outra; caindo de novo na mesma chamada, exit 4.
+  - Rodada terminada que ninguém recolheu: entregue se a árvore é a mesma, senão roda de novo.
+  - O `-Kill` encerra a rodada desacoplada e a árvore dela.
+  - Sem `-MaxMinutes` explícito, a rodada roda tudo de uma vez. O orçamento por chamada existia por causa dos 600 s, que não valem mais para ela.
+  - `TEAM_VERIFY_INLINE=1` roda como antes.
+- **`detach.ps1`** (novo): o mesmo contrato para qualquer comando longo do operator, com a pasta do job, `output.log` e `-Kill`.
+- **`run.ps1`:**
+  - O `done`, com o verify da Task em processo próprio, não fecha nem espera o aviso: manda `run.ps1 start`.
+  - O `start` e o `next` seguem com a rodada viva, e o dev novo a reencontra pelo mesmo comando. Rodada travada continua indo ao POSSÍVEL TRAVAMENTO.
+  - Agente vivo só por ter encerrado com `ESPERANDO`, sem comando acompanhável da Task, não conta como vivo para o `next`, o `start` e o watcher (`Select-LiveAgents`; `Test-AgentOnlyWaiting` em `hooks/common.ps1`).
+  - O prompt do dev não manda mais encerrar o turno.
+- **G14** (`hooks/pre-tool.ps1`):
+  - `run_in_background` negado a todo papel durante o run, o operator incluído, com a rota do `detach.ps1`.
+  - O comando de dentro do `detach.ps1 -Command "<…>"` passa pela mesma conferência dos trechos, e a negação cita o trecho de dentro.
+  - Dev e executor rodando a suíte por dentro do `detach.ps1` são negados como a suíte direta.
+  - As rotas do `Start-Sleep`/`Wait-Process` e da suíte direta apontam o processo próprio.
+- **Papéis:** `developer.md`, `roles/developer/README.md`, `operator.md`, `task-runner.md`, `sprint-run.md`, `hooks/COVERAGE.md` e o addendum v3.62.2 no changelog do processo.
+
+**Testes novos:**
+- **`run-check-tests.ps1`:**
+  - full mais longo que a espera sai com exit 3;
+  - outro pedido com a rodada viva sai com exit 5;
+  - o mesmo comando entrega o resultado;
+  - **a árvore de quem chamou encerrada no meio da suíte, e a rodada sobrevive**;
+  - rodada caída é refeita;
+  - rodada não recolhida é entregue na mesma árvore;
+  - o `-Kill` não deixa processo vivo;
+  - `detach.ps1` sai com exit 3, depois exit 5, e por fim com o exit do comando e o log;
+  - o `done` e o `start` com o verify em processo próprio;
+  - o `next` com `ESPERANDO` sem comando vivo segue, e com o verify vivo espera.
+- **`run-guard-tests.ps1`:**
+  - operator com `run_in_background` negado;
+  - `detach.ps1` com o comando de dentro liberado ou negado, e sem aspas;
+  - `-Kill`;
+  - suíte por dentro do `detach.ps1`: negada ao dev, liberada ao operator.
+
+**Não testado em sessão real:** o sprint do garden com a suíte de 17–25 min do começo ao fim, sob o Claude Code 2.1.326. A prova de campo é retomar a Q-S6d.
+
 ## v3.62.1 — 2026-11-17
 
 **Branch:** `fix/v3.62.1` a partir de `develop` (`4d35ae4`, v3.62.0 mesclada) · **Processo:** sem mudança

@@ -76,6 +76,13 @@
 #   trecho (sem o build de verify.compile por mutante). Karma: "watch": { "command": "npx ng test --watch=true
 #   --browsers=ChromeHeadless --reporters=dots --include {tests}", "runStart": "(?i)bundle generation (complete|failed)" }.
 #   O tempo esgotado de um comando a frio (exit 124) também passa a ser inconclusivo — antes contava como "o teste reprovou".
+# v3.62.2 (sprint 6 do garden, Q-S6d — 7 instâncias de dev e o run parado): focused, full e mutation rodam em PROCESSO
+#   PRÓPRIO, criado pelo WMI fora da árvore do Claude Code (lib.ps1, Start-DetachedJob). A chamada só acompanha a rodada por
+#   até 8 min — nunca passa dos 600 s da ferramenta. Terminou: a saída e o exit code dela, como antes. Não terminou: exit 3
+#   "RODANDO" — o MESMO comando de novo, no mesmo turno, volta a acompanhar a MESMA rodada (não abre outra). Antes, a suíte
+#   de 17–25 min passava dos 600 s, ia para segundo plano, o dev encerrava o turno esperando o aviso e o Claude Code a
+#   encerrava junto com o turno. Sem -MaxMinutes explícito, a rodada roda tudo de uma vez (o orçamento por chamada era por
+#   causa do vigia de 600 s, que não vale mais para ela). -Kill encerra também a rodada em processo próprio.
 param(
     [Parameter(Mandatory = $true)][string]$Task,
     [ValidateSet('focused', 'full', 'check', 'mutation')][string]$Mode = 'full',
@@ -88,7 +95,8 @@ param(
     [switch]$Precheck,
     [int]$WaitBusySeconds = 0,
     [switch]$Fresh,
-    [string]$Root = (Get-Location).Path
+    [string]$Root = (Get-Location).Path,
+    [switch]$Worker   # v3.62.2: interno — a rodada desacoplada (o Start-DetachedJob a sobe); não se passa à mão
 )
 
 $ErrorActionPreference = 'Stop'
@@ -391,7 +399,8 @@ function Enter-VerifyLock([string]$Dir) {
         } catch [System.IO.IOException] {
             $other = $null; try { $other = Read-Text $lp | ConvertFrom-Json } catch { }
             $p = if ($other -and $other.pid) { Get-Process -Id ([int]$other.pid) -ErrorAction SilentlyContinue } else { $null }
-            if ($p -and $other.started -and $p.StartTime.ToString('o') -eq [string]$other.started) { return $other }
+            $pStart = if ($p) { try { $p.StartTime } catch { $null } } else { $null }   # v3.62.2: processo saindo = StartTime vazio
+            if ($p -and $pStart -and $other.started -and $pStart.ToString('o') -eq [string]$other.started) { return $other }
             Remove-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue
         }
     }
@@ -430,6 +439,122 @@ function Restore-Pending([string]$Dir) {
     return [string]$pj.file
 }
 
+# v3.62.2 — RODADA DESACOPLADA (lib.ps1, Start-DetachedJob). focused, full e mutation não rodam mais dentro desta chamada:
+# rodam num processo próprio, fora da árvore do Claude Code, e esta chamada só os ACOMPANHA por até 8 min (abaixo dos 600 s
+# da ferramenta — ela nunca vai para segundo plano). Terminou dentro do prazo: a saída e o exit code são os da rodada, como
+# antes. Não terminou: exit 3 com o passo em curso — o MESMO comando de novo volta a acompanhar a MESMA rodada (não abre
+# outra) e entrega o resultado quando ela acabar. No garden (sprint 6, Q-S6d), a suíte de 17–25 min passava dos 600 s, a
+# ferramenta a movia para segundo plano, o dev encerrava o turno com ESPERANDO e o Claude Code a encerrava junto: o aviso
+# nunca vinha e o run parava. Pedido = Task, modo, testes, plano, -Only, -Precheck, -Fresh, -TimeoutMinutes (o -MaxMinutes e
+# o -WaitBusySeconds são da espera, não do pedido). -MaxMinutes explícito segue valendo DENTRO da rodada (retomada por
+# comando/mutação, exit 3 parcial); sem ele, a rodada roda tudo de uma vez. TEAM_VERIFY_INLINE=1 roda como antes, nesta
+# chamada; TEAM_VERIFY_FRONT_SEC troca os 480 s da espera (testes).
+function Get-VerifySig {
+    $q = { param($a) ((@(Split-List @($a)) | Sort-Object) -join ',') }
+    return (@("task=$Task", "mode=$Mode", "tests=$(& $q $Tests)", "plan=$Plan", "only=$(& $q $Only)", "precheck=$([bool]$Precheck)", "fresh=$([bool]$Fresh)", "timeout=$TimeoutMinutes") -join '|')
+}
+function Get-WorkerCommand {
+    $lit = { param($v) "'" + ([string]$v -replace "'", "''") + "'" }
+    $a = @("-Task $(& $lit $Task)", "-Mode $(& $lit $Mode)", "-Root $(& $lit $Root)", '-Worker')
+    if (@($Tests).Count) { $a += "-Tests $(& $lit (@($Tests) -join ','))" }
+    if ($Plan) { $a += "-Plan $(& $lit $Plan)" }
+    if (@($Only).Count) { $a += "-Only $(& $lit (@($Only) -join ','))" }
+    if ($TimeoutMinutes -gt 0) { $a += "-TimeoutMinutes $([string]::Format([System.Globalization.CultureInfo]::InvariantCulture, '{0}', $TimeoutMinutes))" }
+    if ($Precheck) { $a += '-Precheck' }
+    if ($Fresh) { $a += '-Fresh' }
+    if ($WaitBusySeconds -gt 0) { $a += "-WaitBusySeconds $WaitBusySeconds" }
+    $a += "-MaxMinutes $(if ($PSBoundParameters.ContainsKey('MaxMinutes') -or $script:maxBound) { $MaxMinutes } else { 100000 })"
+    return "& $(& $lit $PSCommandPath) $($a -join ' '); exit `$LASTEXITCODE"
+}
+# A rodada acabou: a saída dela vai ao console desta chamada (stdout e stderr), os arquivos saem, e o exit code é o dela.
+function Complete-VerifyJob($Job, [string]$Prefix = '') {
+    $o = Read-DetachedOutput $Job.Dir
+    Clear-DetachedJob $Job.Dir
+    if ($Prefix) { [Console]::Out.WriteLine($Prefix) }
+    if ($o.Out) { [Console]::Out.Write($o.Out) }
+    if ($o.Err) { [Console]::Error.Write($o.Err) }
+    [Console]::Out.Flush()
+    exit ([int]$Job.Exit)
+}
+# O passo que a rodada roda agora (running.json do Invoke-ProjectCommand) e há quanto tempo.
+function Get-VerifyStep([string]$Dir) {
+    $f = Join-Path $Dir 'running.json'
+    if (-not (Test-Path -LiteralPath $f)) { return '' }
+    try {
+        $r = Read-Text $f | ConvertFrom-Json
+        $m = try { [int]((Get-Date) - [datetime]::ParseExact([string]$r.at, 'yyyy-MM-dd HH:mm:ss', $null)).TotalMinutes } catch { -1 }
+        return "agora: $([string]$r.key)$(if ($m -ge 0) { " há $m min" })"
+    } catch { return '' }
+}
+$script:maxBound = $PSBoundParameters.ContainsKey('MaxMinutes')
+if (-not $Worker -and -not $Kill -and $Mode -ne 'check' -and $env:TEAM_VERIFY_INLINE -ne '1') {
+    try {
+        if (-not (Test-Path -LiteralPath (Join-Path $Root '.team-project/guards.json'))) { [Console]::Error.WriteLine("verify: $(Join-Path $Root '.team-project/guards.json') não existe — rode na raiz do projeto ou passe -Root."); exit 2 }
+        $jDir = Join-Path (Get-VerifyDir $Root $Task) 'job'
+        $sig = Get-VerifySig
+        $frontSec = if ($env:TEAM_VERIFY_FRONT_SEC) { [int]$env:TEAM_VERIFY_FRONT_SEC } else { 480 }
+        $swF = [System.Diagnostics.Stopwatch]::StartNew()
+        $left = { [int][Math]::Max(1, $frontSec - $swF.Elapsed.TotalSeconds) }
+        # Duas chamadas ao mesmo tempo (dois devs, um executor e um dev) não sobem duas rodadas: a decisão "acompanhar ou subir"
+        # é de uma por vez, por pasta (mutex nomeado). Sem o mutex em 60 s, segue assim mesmo (a trava da Task segura a 2ª rodada).
+        $mxName = 'team-verify-' + (([System.BitConverter]::ToString((New-Object System.Security.Cryptography.SHA1Managed).ComputeHash([System.Text.Encoding]::UTF8.GetBytes($jDir.ToLowerInvariant())))) -replace '-', '')
+        $mx = New-Object System.Threading.Mutex($false, $mxName); $mxOwn = $false
+        # Saída no meio (exit 5, 4 ou a entrega): o processo acaba e o mutex é liberado com ele (o próximo o recebe "abandonado").
+        try { $mxOwn = $mx.WaitOne(60000) } catch [System.Threading.AbandonedMutexException] { $mxOwn = $true }
+        $job = Get-DetachedJob $jDir
+        # Outro pedido desta Task roda desacoplado (ex.: um full enquanto chega um focused): OCUPADO, ou espera com -WaitBusySeconds.
+        if ($job -and $job.Sig -ne $sig -and $job.State -eq 'running') {
+            if ($WaitBusySeconds -gt 0) {
+                $first = $job
+                $job = Wait-DetachedJob $jDir ([Math]::Min($WaitBusySeconds, (& $left)))
+                if ($job -and $job.State -ne 'running') { [Console]::Out.WriteLine("verify: esperou $([int]$swF.Elapsed.TotalSeconds) s pela rodada anterior ($($first.Label), pid $($first.Pid)); segue a desta chamada.") }
+            }
+            if ($job -and $job.State -eq 'running') {
+                [Console]::Out.WriteLine("verify $Mode $Task`: OCUPADO — outra rodada desta Task ($($job.Label), pid $($job.Pid), desde $($job.At)) ainda roda em processo próprio. Não dispare outra: rode o mesmo comando com -WaitBusySeconds 540, que espera ela acabar nesta chamada e segue (sem pausar o run).")
+                exit 5
+            }
+            $job = $null   # a outra acabou: o resultado dela está no result.json; esta chamada sobe a sua
+        }
+        if ($job -and $job.Sig -ne $sig) { Clear-DetachedJob $jDir; $job = $null }
+        # Rodada deste pedido que acabou sem ninguém recolher (quem acompanhava caiu): vale se a árvore é a de quando ela começou.
+        if ($job -and $job.State -eq 'done') {
+            $treeNow = Get-WorkTree $Root
+            if ($treeNow -and $treeNow -eq $job.Tree) { Complete-VerifyJob $job "verify: rodada deste pedido terminada às $((Get-Item -LiteralPath (Join-Path $jDir 'job.exit')).LastWriteTime.ToString('HH:mm:ss')) em processo próprio (pid $($job.Pid), desde $($job.At)) — a mesma árvore; o resultado é o dela." }
+            Clear-DetachedJob $jDir; $job = $null
+        }
+        $deadNote = ''
+        if ($job -and $job.State -eq 'dead') {
+            $tail = @(((Read-DetachedOutput $jDir).Out -split "`r?`n") | Where-Object { $_.Trim() } | Select-Object -Last 2) -join ' / '
+            $deadNote = "a rodada anterior deste pedido (pid $($job.Pid), desde $($job.At)) terminou sem gravar o resultado — encerrada de fora (verify -Kill, reinício da máquina)$(if ($tail) { "; fim da saída: $tail" })"
+            Clear-DetachedJob $jDir; $job = $null
+        }
+        if ($job) {
+            [Console]::Out.WriteLine("verify: acompanhando a rodada que já roda em processo próprio (pid $($job.Pid), desde $($job.At), há $([int]$job.Minutes) min) — mesmo pedido; não abro outra.")
+        } else {
+            if ($deadNote) { [Console]::Out.WriteLine("verify: $deadNote. Abro uma rodada nova.") }
+            $why = Start-DetachedJob $jDir $Root (Get-WorkerCommand) $sig "$Mode" (Get-WorkTree $Root)
+            if ($why) { [Console]::Out.WriteLine("verify $Mode $Task`: FALHA DE AMBIENTE — $why. Sem a rodada em processo próprio, a suíte longa morre com o turno do agente; não é defeito do código."); exit 4 }
+        }
+        if ($mxOwn) { try { $mx.ReleaseMutex() } catch { }; $mxOwn = $false }
+        $job = Wait-DetachedJob $jDir (& $left)
+        if ($job -and $job.State -eq 'done') { Complete-VerifyJob $job }
+        if (-not $job -or $job.State -eq 'dead') {
+            $o = if ($job) { Read-DetachedOutput $jDir } else { $null }
+            $tail = if ($o) { @((($o.Out + "`n" + $o.Err) -split "`r?`n") | Where-Object { $_.Trim() } | Select-Object -Last 3) -join ' / ' } else { '' }
+            Clear-DetachedJob $jDir
+            [Console]::Out.WriteLine("verify $Mode $Task`: FALHA DE AMBIENTE — a rodada em processo próprio terminou sem gravar o resultado$(if ($deadNote) { ' pela segunda vez' })$(if ($tail) { "; fim da saída: $tail" }). Não é defeito do código: rode o mesmo comando UMA vez de novo; caindo outra vez, pare (ambiente).")
+            exit 4
+        }
+        $step = Get-VerifyStep (Get-VerifyDir $Root $Task)
+        [Console]::Out.WriteLine("verify $Mode $Task · RODANDO em processo próprio (pid $($job.Pid), desde $($job.At), há $([int]$job.Minutes) min$(if ($step) { "; $step" })) — a rodada não depende desta chamada nem do seu turno.")
+        [Console]::Out.WriteLine("  rode o MESMO comando de novo AGORA, no mesmo turno (exit 3): ele volta a acompanhar esta rodada, não abre outra, e entrega o resultado quando ela acabar. Não encerre o turno para esperar: nenhum aviso vem — o Claude Code não avisa de processo que não é dele.")
+        exit 3
+    } catch {
+        [Console]::Error.WriteLine("verify: erro — $($_.Exception.Message)")
+        exit 2
+    }
+}
+
 try {
     $tp = Join-Path $Root '.team-project'
     $cfgPath = Join-Path $tp 'guards.json'
@@ -446,11 +571,16 @@ try {
     # Task iniciou: a rodada viva da trava (o verify e os filhos dele) e o órfão registrado de uma rodada que morreu.
     if ($Kill) {
         $said = @()
+        # v3.62.2: a rodada desacoplada (o executor e a árvore dele) sai primeiro; a trava dela é conferida abaixo.
+        $jn = Stop-DetachedJob (Join-Path $dir 'job')
+        if ($jn) { $said += "rodada em processo próprio encerrada ($jn processo(s))"; Start-Sleep -Milliseconds 500 }
         $lp = Join-Path $dir 'verify.lock'
         if (Test-Path -LiteralPath $lp) {
             $o = $null; try { $o = Read-Text $lp | ConvertFrom-Json } catch { }
             $op = if ($o -and $o.pid) { Get-Process -Id ([int]$o.pid) -ErrorAction SilentlyContinue } else { $null }
-            if ($op -and $o.started -and $op.StartTime.ToString('o') -eq [string]$o.started) {
+            # v3.62.2: o processo da trava pode estar saindo agora (a rodada acabou de ser encerrada) — o StartTime volta vazio.
+            $opStart = if ($op) { try { $op.StartTime } catch { $null } } else { $null }
+            if ($op -and $opStart -and $o.started -and $opStart.ToString('o') -eq [string]$o.started) {
                 $kids = Stop-ProcessTree ([int]$o.pid)
                 $said += "rodada $([string]$o.mode) encerrada (verify pid $($o.pid), desde $($o.at)) com $kids processo(s) filho(s)"
             } else { $said += 'a trava era de uma rodada que já tinha saído' }
@@ -797,7 +927,7 @@ try {
             $free2 = Get-FreeMemoryMB
             if ($free2 -ge 0 -and $free2 -lt $minFree) {
                 $top = Get-TopMemoryText 5
-                $memNotes += "memória livre $free2 MB antes da suíte (verify.minFreeMB $minFree)$(if ($top) { "; maiores consumidores: $top" }). A suíte rodou assim; com pouca memória o Claude Code encerra comando em segundo plano — o stakeholder fecha o que não é da construção (VM do Docker depois do build do APK, sessões e janelas paradas)"
+                $memNotes += "memória livre $free2 MB antes da suíte (verify.minFreeMB $minFree)$(if ($top) { "; maiores consumidores: $top" }). A suíte rodou assim; com pouca memória o runner e o navegador da suíte podem cair no meio — o stakeholder fecha o que não é da construção (VM do Docker depois do build do APK, sessões e janelas paradas)"
                 [Console]::Out.WriteLine("  atenção: $($memNotes[-1])")
             } elseif ($rel.Freed) { [Console]::Out.WriteLine("verify: memória livre agora $free2 MB — a suíte segue") }
         }

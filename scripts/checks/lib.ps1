@@ -422,6 +422,102 @@ function Stop-Detached([string]$Root, [string]$Target) {
     return [pscustomobject]$res
 }
 
+# v3.62.2 (sprint 6 do garden, Q-S6d: 7 instâncias de dev em 16–17/11) — RODADA DESACOPLADA. O comando que a ferramenta move
+# para segundo plano (passou de 600 s) é ENCERRADO pelo Claude Code quando o agente dá a resposta final: "it is terminated when
+# you give your final response and no notification can follow that" (2.1.308, 2.1.310, 2.1.325 e 2.1.326; em outras versões o
+# aviso chegava — o plugin apostava nele). E encerra a árvore inteira: o filho de Start-Process morre junto (medido em 17/11).
+# O processo criado pelo WMI (Win32_Process.Create) tem pai fora da árvore do shell e sobrevive (medido: mesma sessão do
+# Windows, mesmo usuário, node e git no PATH). A rodada longa roda num processo assim; quem chama só a ACOMPANHA, com prazo
+# abaixo dos 600 s, e o MESMO pedido de novo volta a acompanhá-la — nenhum agente precisa encerrar o turno para esperar.
+# Pasta da rodada: job.json (o pedido e o processo: sig, label, tree, pid, created, at), job.run.json (o que o executor lê:
+# cwd, comando), job.out / job.err (a saída do script) e job.exit (o código, gravado no fim pelo executor). O ambiente de quem
+# chamou vai num arquivo do TEMP (o WMI não o herda) que o executor lê e apaga na partida — não fica na pasta do projeto.
+$script:jobFiles = @('job.json', 'job.run.json', 'job.out', 'job.err', 'job.exit', 'job.exit.tmp')
+function Clear-DetachedJob([string]$Dir) {
+    foreach ($f in $script:jobFiles) { Remove-Item -LiteralPath (Join-Path $Dir $f) -Force -ErrorAction SilentlyContinue }
+}
+# Estado da rodada da pasta: $null sem rodada; senão State running · done (job.exit gravado; Exit = o código) · dead (o
+# executor saiu sem gravar o código: encerrado de fora, máquina reiniciada).
+function Get-DetachedJob([string]$Dir) {
+    $jf = Join-Path $Dir 'job.json'
+    if (-not (Test-Path -LiteralPath $jf)) { return $null }
+    $j = $null; try { $j = Read-Text $jf | ConvertFrom-Json } catch { }
+    if (-not $j) { return $null }
+    $ef = Join-Path $Dir 'job.exit'
+    $state = 'running'
+    if (Test-Path -LiteralPath $ef) { $state = 'done' }
+    else {
+        $cur = if ([int]$j.pid -gt 0) { Get-ProcessCreated ([int]$j.pid) } else { '' }
+        if (-not $cur -or ($j.created -and $cur -ne [string]$j.created)) { $state = if (Test-Path -LiteralPath $ef) { 'done' } else { 'dead' } }
+    }
+    $code = $null
+    if ($state -eq 'done') { try { $code = [int]((Read-Text $ef).Trim()) } catch { $code = 1 } }
+    $min = try { ((Get-Date) - [datetime]::ParseExact([string]$j.at, 'yyyy-MM-dd HH:mm:ss', $null)).TotalMinutes } catch { 0 }
+    return [pscustomobject]@{ Dir = $Dir; Sig = [string]$j.sig; Label = [string]$j.label; Tree = [string]$j.tree; Pid = [int]$j.pid; Created = [string]$j.created; At = [string]$j.at; State = $state; Exit = $code; Minutes = $min }
+}
+# Sobe a rodada: $Command (PowerShell) roda com a saída em job.out/job.err, na pasta $Root, com o ambiente desta chamada.
+# $null = subiu; senão o motivo.
+function Start-DetachedJob([string]$Dir, [string]$Root, [string]$Command, [string]$Sig, [string]$Label, [string]$Tree = '') {
+    $u8 = New-Object System.Text.UTF8Encoding($false)
+    New-Item -ItemType Directory -Force $Dir | Out-Null
+    Clear-DetachedJob $Dir
+    $envFile = Join-Path ([System.IO.Path]::GetTempPath()) ('team-job-' + [guid]::NewGuid().ToString('N') + '.json')
+    $envs = [ordered]@{}; foreach ($e in [Environment]::GetEnvironmentVariables('Process').GetEnumerator()) { $envs[[string]$e.Key] = [string]$e.Value }
+    [System.IO.File]::WriteAllText($envFile, ($envs | ConvertTo-Json -Compress), $u8)
+    # A saída do script em UTF-8 (o console redirecionado do 5.1 escreveria na página OEM e os acentos chegariam trocados).
+    $full = '$ProgressPreference = ''SilentlyContinue''; [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false); $OutputEncoding = [Console]::OutputEncoding; ' + $Command
+    $run = [ordered]@{ cwd = $Root; encoded = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($full)); env = $envFile }
+    [System.IO.File]::WriteAllText((Join-Path $Dir 'job.run.json'), ($run | ConvertTo-Json -Compress), $u8)
+    $runner = Join-Path $PSScriptRoot 'detached-run.ps1'
+    $cl = "powershell -NoProfile -ExecutionPolicy Bypass -File `"$runner`" -Dir `"$Dir`""
+    $r = $null
+    # protocolo: desprendido — a rodada deve sobreviver a quem chamou; o PID e a hora de criação vão ao job.json (abaixo).
+    try {
+        $si = New-CimInstance -ClassName Win32_ProcessStartup -ClientOnly -Property @{ ShowWindow = [uint16]0 }
+        $r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $cl; CurrentDirectory = $Root; ProcessStartupInformation = $si } -ErrorAction Stop
+    } catch { Remove-Item -LiteralPath $envFile -Force -ErrorAction SilentlyContinue; return "o WMI não criou o processo da rodada ($($_.Exception.Message))" }
+    if (-not $r -or [int]$r.ReturnValue -ne 0) { Remove-Item -LiteralPath $envFile -Force -ErrorAction SilentlyContinue; return "o WMI não criou o processo da rodada (Win32_Process.Create devolveu $(if ($r) { $r.ReturnValue } else { 'nada' }))" }
+    $jp = [int]$r.ProcessId
+    $j = [ordered]@{ sig = $Sig; label = $Label; tree = $Tree; pid = $jp; created = (Get-ProcessCreated $jp); at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') }
+    [System.IO.File]::WriteAllText((Join-Path $Dir 'job.json'), ($j | ConvertTo-Json -Compress), $u8)
+    return $null
+}
+# Acompanha a rodada até ela acabar ou até $Seconds: devolve o estado (Get-DetachedJob). Confere o job.exit a cada 0,5 s e se
+# o processo segue vivo a cada ~5 s.
+function Wait-DetachedJob([string]$Dir, [int]$Seconds) {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew(); $ef = Join-Path $Dir 'job.exit'; $lastLive = -10
+    while ($true) {
+        if (Test-Path -LiteralPath $ef) { return (Get-DetachedJob $Dir) }
+        $t = $sw.Elapsed.TotalSeconds
+        if ($t - $lastLive -ge 5) { $lastLive = $t; $job = Get-DetachedJob $Dir; if (-not $job -or $job.State -ne 'running') { return $job } }
+        if ($t -ge $Seconds) { return (Get-DetachedJob $Dir) }
+        Start-Sleep -Milliseconds 500
+    }
+}
+# A saída da rodada (job.out e job.err), lida compartilhando o arquivo.
+function Read-DetachedOutput([string]$Dir) {
+    $o = ''; $e = ''
+    try { $o = Read-LogText (Join-Path $Dir 'job.out') } catch { }
+    try { $e = Read-LogText (Join-Path $Dir 'job.err') } catch { }
+    # O PowerShell filho com -EncodedCommand escreve o stderr em CLIXML (registros de progresso, erros) MISTURADO com o texto
+    # cru do [Console]::Error: guarda as linhas de texto e o texto das mensagens de erro do XML; o resto (progresso) sai.
+    if ($e -match '^#< CLIXML') {
+        $plain = @(($e -split "`r?`n") | Where-Object { $_ -and $_ -ne '#< CLIXML' -and $_ -notmatch '^<Objs\b' })
+        $xmlErr = (([regex]::Matches($e, '<S S="Error">(.*?)</S>') | ForEach-Object { $_.Groups[1].Value }) -join '') -replace '_x000D__x000A_', "`n" -replace '_x000D_', '' -replace '&lt;', '<' -replace '&gt;', '>' -replace '&amp;', '&'
+        $e = (@($plain | ForEach-Object { "$_`n" }) -join '') + $xmlErr
+    }
+    return [pscustomobject]@{ Out = $o; Err = $e }
+}
+# Encerra a rodada viva (o executor e toda a árvore dele: o script e os comandos do projeto) e apaga os arquivos dela.
+# Devolve quantos processos saíram (0 sem rodada viva).
+function Stop-DetachedJob([string]$Dir) {
+    $job = Get-DetachedJob $Dir
+    $n = 0
+    if ($job -and $job.State -eq 'running') { $n = 1 + [int](Stop-ProcessTree $job.Pid) }
+    Clear-DetachedJob $Dir
+    return $n
+}
+
 # v3.58.4 (sprint 6 do garden): memória física livre, em MB. O Claude Code encerra o comando em segundo plano quando ela
 # acaba (com a sessão ociosa) — no garden, o verify full da T-081 no teste 2925 de 2926, com o Windows longe do limite de
 # alocação. TEAM_TEST_FREE_MB substitui a leitura (testes).
@@ -670,9 +766,13 @@ function Get-TaskWait([string]$Root, [string]$Id) {
         $l = $null; try { $l = Read-Text $lp | ConvertFrom-Json } catch { }
         if ($l -and $l.pid -and [int]$l.pid -ne $PID) {
             $p = Get-Process -Id ([int]$l.pid) -ErrorAction SilentlyContinue
-            if ($p -and (-not $l.started -or $p.StartTime.ToString('o') -eq [string]$l.started)) {
+            $pStart = if ($p) { try { $p.StartTime } catch { $null } } else { $null }   # v3.62.2: processo saindo = StartTime vazio
+            if ($p -and (-not $l.started -or ($pStart -and $pStart.ToString('o') -eq [string]$l.started))) {
                 $pu = Get-WaitPulse ([int]$l.pid) ([string]$l.at) $vd
-                return [pscustomobject]@{ Text = "verify $([string]$l.mode) (pid $([int]$l.pid), desde $([string]$l.at)) — $($pu.Text)"; Pulse = $pu; Kill = "verify.ps1 -Task $Id -Kill" }
+                # v3.62.2: rodada desacoplada — ela não depende de nenhum agente vivo; o MESMO verify de um dev novo a reencontra.
+                $jb = Get-DetachedJob (Join-Path $vd 'job')
+                $det = [bool]($jb -and $jb.State -eq 'running')
+                return [pscustomobject]@{ Text = "verify $([string]$l.mode)$(if ($det) { ' em processo próprio' }) (pid $([int]$l.pid), desde $([string]$l.at)) — $($pu.Text)"; Pulse = $pu; Kill = "verify.ps1 -Task $Id -Kill"; Detached = $det; Mode = [string]$l.mode }
             }
         }
     }
