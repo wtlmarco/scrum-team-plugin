@@ -3041,6 +3041,33 @@ $r = Invoke-Bounded $Root 'Write-Error "falhou aqui"; exit 5' 20
 $bo = (& powershell -NoProfile -ExecutionPolicy Bypass -File $bt -Lib (Join-Path $checks 'lib.ps1') -Root $tmp 2>&1 | ForEach-Object { "$_" }) -join "`n"
 Check 'v3.57.0 protocolo: Invoke-Bounded — filho com saída herdada não prende (sobrevive só com -KeepDescendants), prazo vira 124, exit/env/stdin passam, erro aparece' @{ Code = 0; Out = $bo } 0 @('A filho-herdado-sobrevive: rapido=True exit=0 timedOut=False kept=True out=pronto', 'B sem-keep-filho-morre: rapido=True kept=0', 'C prazo: exit=124 timedOut=True rapido=True', 'D exit-env-stdin: exit=7 out=v=abc\|in=ola', 'E erro-visivel: exit=5 msg=True')
 
+# v3.62.1 — log preso por descendente órfão (o daemon de uso único do Gradle, que sobe quando org.gradle.jvmargs difere da
+# JVM cliente): o Invoke-ProjectCommand lia o .err e acrescentava ao log 200 ms depois do comando sair e caía com "o processo
+# não pode acessar o arquivo" (ensaio NT do benchmark, 17/11: 3 de 3 com o build verde). Agora espera o arquivo ficar livre.
+# A: órfão de ~4 s (o cmd intermediário sai antes, como o gradlew) · B: Add-LogText com o arquivo preso por quem escreve
+# compartilhando (grava pelo caminho de reserva) · C: preso sem compartilhar (devolve $false, não lança) · D: Get-Decisive lê
+# com o arquivo aberto para escrita.
+$lt = Join-Path $tmp 'lograce-test.ps1'
+[System.IO.File]::WriteAllText($lt, @'
+param([string]$Lib, [string]$Root)
+$ErrorActionPreference = 'Stop'
+. $Lib
+$log = Join-Path $Root 'lograce-a.log'
+try { $r = Invoke-ProjectCommand -Root $Root -Key 'k' -Cmd 'cmd /c "start /b powershell -NoProfile -Command Start-Sleep -Seconds 4"; Write-Output pronto' -Log $log -TimeoutMinutes 1 -EnvExtra $null
+      "A orfao: exit=$($r.exit) pronto=$((Get-Content $log -Raw) -match 'pronto') fim=$((Get-Content $log -Raw) -match 'EXIT=0') err=$(Test-Path ""$log.err"")" } catch { "A orfao: ERRO $($_.Exception.Message)" }
+$f = Join-Path $Root 'lograce-b.log'; [IO.File]::WriteAllText($f, "base`n")
+$h = New-Object System.IO.FileStream($f, [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::ReadWrite)
+try { $ok = Add-LogText $f "nova`n" 1; "B compartilhado: ok=$ok" } catch { "B compartilhado: ERRO $($_.Exception.Message)" } finally { $h.Dispose() }
+"B texto: $((Get-Content $f -Raw) -match 'nova')"
+$h = New-Object System.IO.FileStream($f, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+$sw = New-Object System.IO.StringWriter; $oldErr = [Console]::Error; [Console]::SetError($sw)   # nada pode sair no stderr (derrubaria quem chama com 2>&1)
+try { $ok = Add-LogText $f "x`n" 1; "C exclusivo: ok=$ok stderr=$($sw.ToString().Length)" } catch { "C exclusivo: ERRO $($_.Exception.Message)" } finally { [Console]::SetError($oldErr); $h.Dispose() }
+$h = New-Object System.IO.FileStream($f, [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::ReadWrite)
+try { $d = Get-Decisive $f; "D decisive: linhas=$($d.Lines)" } catch { "D decisive: ERRO $($_.Exception.Message)" } finally { $h.Dispose() }
+'@, $utf8)
+$lo = (& powershell -NoProfile -ExecutionPolicy Bypass -File $lt -Lib (Join-Path $checks 'lib.ps1') -Root $tmp 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.62.1 log preso por órfão: o verify espera o log ficar livre (órfão do Gradle), grava compartilhando como reserva, não lança com o arquivo exclusivo e lê o decisivo com o arquivo aberto' @{ Code = 0; Out = $lo } 0 @('A orfao: exit=0 pronto=True fim=True err=False', 'B compartilhado: ok=True', 'B texto: True', 'C exclusivo: ok=False stderr=0', 'D decisive: linhas=2')
+
 # v3.57.0 (item 6) — Find-WaitCycle: ciclo de 2 e de 3 Tasks, ciclo com cauda, e fila sem ciclo (espera por Task fora do quadro não é ciclo).
 $wc = Join-Path $tmp 'waitcycle-test.ps1'
 [System.IO.File]::WriteAllText($wc, @'
