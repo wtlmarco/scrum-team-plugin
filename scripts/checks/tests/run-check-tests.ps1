@@ -1665,7 +1665,14 @@ $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'v3.59.1 item 1: dev parou há 1 min → o executor está sendo acordado: esperar' $r 3 @('PRÓXIMA AÇÃO: esperar — a T-041 já tem task-runner vivo')
 & $wrU $tB.Replace(' ', 'T') ',"waiting":true'
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
-Check 'v3.59.1 item 1: dev parou há 6 min com ESPERANDO (comando em segundo plano que o plugin não mede) → esperar, como antes' $r 3 @('PRÓXIMA AÇÃO: esperar — a T-041 já tem task-runner vivo')
+# v3.62.2 (garden, Q-S6d): o Claude Code encerra o comando do agente com o turno — o ESPERANDO sem comando vivo da Task não
+# espera nada (antes: esperar, e o run parava). Com um comando da Task vivo (o verify da trava), continua esperando.
+Check 'v3.62.2: dev parou há 6 min com ESPERANDO e nenhum comando da Task roda → o next segue (antes esperava o aviso que não vem)' $r 0 @('PRÓXIMA AÇÃO: construir T-041')
+$lk62 = Join-Path $p '.team-project/verify/1/T-041/verify.lock'
+Put $p '.team-project/verify/1/T-041/verify.lock' ('{"pid":' + $PID + ',"started":"' + (Get-Process -Id $PID).StartTime.ToString('o') + '","mode":"full","at":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '"}')
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.62.2: ESPERANDO com o verify da Task vivo (não desacoplado) → esperar, como antes' $r 3 @('PRÓXIMA AÇÃO: esperar — a T-041 já tem task-runner vivo')
+Remove-Item -LiteralPath $lk62 -Force -ErrorAction SilentlyContinue
 if ($null -ne $uaOld) { [System.IO.File]::WriteAllText($ua, $uaOld, $utf8) } else { Remove-Item -LiteralPath $ua -Force }
 Remove-Item -LiteralPath (Join-Path $p '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue
 # v3.57.2 (note.md item 14, ocorrência 8 do sprint 5 do garden): duas Tasks em 🟨, a primeira do quadro depende da segunda —
@@ -1842,6 +1849,16 @@ Check 'v3.53.3 item 4: done com o verify da Task vivo → ESPERANDO, exit 3, nad
 $r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
 Check 'v3.53.3 item 4: start com o verify da Task vivo → não dispara outro dev, exit 2' $r 2 @('ainda tem verify full', 'Não dispare outro dev')
 Remove-Item -LiteralPath (Join-Path $p $vl) -Force
+# v3.62.2 (garden, Q-S6d): o verify em processo próprio (job/job.json com o executor vivo) não depende do dev e não acorda
+# ninguém — o done não espera o aviso que não vem; o start dispara o dev novo, que reencontra a rodada pelo mesmo comando.
+$pd = Join-Path $tmp 'ocupado-desacoplado'; New-Project $pd
+Put $pd $vl ('{"pid":' + $PID + ',"started":"' + (Get-Process -Id $PID).StartTime.ToString('o') + '","mode":"full","at":"2026-11-17 13:43:00"}')
+$cr62 = (Get-CimInstance Win32_Process -Filter "ProcessId=$PID").CreationDate.ToString('o')
+Put $pd '.team-project/verify/1/T-041/job/job.json' ('{"sig":"x","label":"full","tree":"","pid":' + $PID + ',"created":"' + $cr62 + '","at":"2026-11-17 13:43:00"}')
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'ok', '-Root', $pd)
+Check 'v3.62.2: done com o verify em processo próprio → não fecha nem espera o aviso; manda o dev novo, que reencontra a rodada' $r 3 @('verify full em processo próprio', 'o dev voltou sem o resultado — não feche', 'run\.ps1 start -Task T-041', 'reencontra esta rodada', 'nenhum vem')
+$r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $pd)
+Check 'v3.62.2: start com o verify em processo próprio e sem dev vivo → dispara o dev, com o aviso da rodada (antes: exit 2, esperar a volta)' @{ Code = $r.Code; Out = $r.Out } 0 @('verify: verify full em processo próprio', 'o dev novo roda o MESMO comando do verify e a reencontra', 'Exit 3 do verify = a rodada segue em processo próprio', 'Nunca encerre o turno para esperar um comando', '^(?![\s\S]*ESPERANDO <comando>)')
 Put $p '.team-project/sprints/1/plan/T-041a-x.md' "# Plano`n"
 Edit-File (Join-Path $p '.team-project/sprints/1/sprint-backlog.md') '[`plan/T-041a-x.md`](plan/)' '[`plan/T-041a-x.md`](plan/T-041a-x.md)'
 Put $p '.team-project/.target-lock' ('{"target":"android","owner":"accept T-041","pid":' + $PID + ',"desde":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '"}')
@@ -3277,6 +3294,71 @@ foreach ($x in @($out, $orph2)) { try { Stop-Process -Id $x.Id -Force -ErrorActi
 '@, $utf8)
 $ko = (& powershell -NoProfile -ExecutionPolicy Bypass -File $vk -Checks $checks -Proj $p 2>&1 | ForEach-Object { "$_" }) -join "`n"
 Check 'v3.57.3 item 1: verify -Kill encerra a rodada viva da trava e o órfão registrado (o de fora fica); de novo = nada; a rodada nova encerra o órfão da anterior e não deixa registro' @{ Code = 0; Out = $ko } 0 @('1 saida: verify -Kill T-041: rodada full encerrada \(verify pid \d+, desde agora\).*órfão do passo suite encerrado', '2 dono-morreu=True orfao-morreu=True de-fora-vivo=True trava-saiu=True registro-saiu=True', '3 de-novo: verify -Kill T-041: nada a encerrar', '4 rodada-nova: orfao-morreu=True verify: encerrado o processo órfão da rodada anterior que caiu \(passo suite', '5 running-depois-do-full=False')
+
+# v3.62.2 (sprint 6 do garden, Q-S6d): RODADA DESACOPLADA. O Claude Code encerra o comando do agente — e a árvore dele — quando
+# o agente dá a resposta final; a suíte de 17–25 min morria com o turno do dev. Agora a rodada roda num processo criado pelo
+# WMI e a chamada só a acompanha: exit 3 "RODANDO", o MESMO comando volta a acompanhá-la, e ela sobrevive à árvore de quem chamou.
+$pj = Join-Path $tmp 'verify-desacoplado'; New-Project $pj
+$ErrorActionPreference = 'Continue'
+& git -C $pj init -q 2>$null; Put $pj '.gitignore' ".team-project/`n"; Put $pj 'src/calc.ts' "export const x = 1`n"
+& git -C $pj add -A 2>$null; & git -C $pj -c user.email=t@t -c user.name=t commit -qm init 2>$null
+$ErrorActionPreference = 'Stop'
+Put $pj '.team-project/guards.json' '{ "verify": { "minFreeMB": 0, "build": "Write-Output ''Build succeeded''", "suite": "Start-Sleep -Seconds 9; Write-Output ''Tests: 3 passed''" } }'
+$jd62 = Join-Path $pj '.team-project/verify/1/T-041/job'
+$env:TEAM_VERIFY_FRONT_SEC = '3'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pj)
+Check 'v3.62.2: full mais longo que a espera da chamada → exit 3 RODANDO em processo próprio, com a instrução de rodar o MESMO comando no mesmo turno' $r 3 @('verify full T-041 · RODANDO em processo próprio \(pid \d+', 'rode o MESMO comando de novo AGORA, no mesmo turno \(exit 3\)', 'Não encerre o turno para esperar')
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'focused', '-Tests', 'src/calc.ts', '-Root', $pj)
+Check 'v3.62.2: outro pedido da mesma Task com a rodada viva → OCUPADO, exit 5 (não abre uma segunda rodada)' $r 5 @('OCUPADO — outra rodada desta Task \(full, pid \d+', 'em processo próprio')
+$env:TEAM_VERIFY_FRONT_SEC = '60'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pj)
+Check 'v3.62.2: o MESMO comando volta a acompanhar a mesma rodada e entrega o resultado dela (exit 0), sem deixar a pasta da rodada' @{ Code = $r.Code; Out = $r.Out + "`nJOB=" + (Test-Path -LiteralPath (Join-Path $jd62 'job.json')) } 0 @('acompanhando a rodada que já roda em processo próprio', 'tudo exit 0', 'suite: exit 0 .*Tests: 3 passed', 'JOB=False')
+# A árvore de quem chamou morre no meio da suíte (o que o Claude Code faz no fim do turno): a rodada segue e a chamada seguinte a entrega.
+Put $pj 'src/calc.ts' "export const x = 2`n"
+$vs = Join-Path $tmp 'verify-sobrevive.ps1'
+[System.IO.File]::WriteAllText($vs, @'
+param([string]$Checks, [string]$Proj)
+. (Join-Path $Checks 'lib.ps1')
+$ag = Start-Process powershell -ArgumentList '-NoProfile', '-Command', "& powershell -NoProfile -ExecutionPolicy Bypass -File '$(Join-Path $Checks 'verify.ps1')' -Task T-041 -Mode full -Root '$Proj'" -PassThru -WindowStyle Hidden
+Start-Sleep -Seconds 5
+$k = Stop-ProcessTree $ag.Id
+$job = Get-DetachedJob (Join-Path $Proj '.team-project/verify/1/T-041/job')
+"1 agente-encerrado=$($k -ge 1) rodada=$(if ($job) { $job.State } else { 'nenhuma' })"
+'@, $utf8)
+$so = (& powershell -NoProfile -ExecutionPolicy Bypass -File $vs -Checks $checks -Proj $pj 2>&1 | ForEach-Object { "$_" }) -join "`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pj)
+Check 'v3.62.2: a árvore de quem chamou encerrada no meio da suíte (o fim do turno do agente) — a rodada sobrevive e o MESMO comando a entrega' @{ Code = $r.Code; Out = $so + "`n" + $r.Out } 0 @('1 agente-encerrado=True rodada=running', 'acompanhando a rodada que já roda em processo próprio', 'tudo exit 0')
+# Rodada que caiu sem resultado (executor encerrado de fora): a chamada diz e abre outra.
+Put $pj 'src/calc.ts' "export const x = 3`n"
+Put $pj '.team-project/verify/1/T-041/job/job.json' '{"sig":"task=T-041|mode=full|tests=|plan=|only=|precheck=False|fresh=False|timeout=0","label":"full","tree":"x","pid":999999,"created":"2001-01-01T00:00:00","at":"2026-11-17 13:43:00"}'
+Put $pj '.team-project/verify/1/T-041/job/job.out' "linha da suíte que caiu`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pj)
+Check 'v3.62.2: rodada anterior que caiu sem gravar o resultado → a chamada diz, com o fim da saída, e abre outra' $r 0 @('terminou sem gravar o resultado .*fim da saída: linha da suíte que caiu', 'Abro uma rodada nova', 'tudo exit 0')
+# Rodada terminada que ninguém recolheu (quem acompanhava caiu): na mesma árvore, o resultado é o dela; árvore mudada, roda de novo.
+$env:TEAM_VERIFY_FRONT_SEC = '3'
+Put $pj 'src/calc.ts' "export const x = 4`n"
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pj)
+Start-Sleep -Seconds 12
+$env:TEAM_VERIFY_FRONT_SEC = '60'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pj)
+Check 'v3.62.2: rodada terminada sem ninguém recolher, mesma árvore → o resultado é o dela, sem rodar de novo' $r 0 @('rodada deste pedido terminada às .* em processo próprio .* a mesma árvore; o resultado é o dela', 'tudo exit 0')
+# -Kill encerra a rodada em processo próprio e a árvore dela.
+$env:TEAM_VERIFY_FRONT_SEC = '3'
+Put $pj 'src/calc.ts' "export const x = 5`n"
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pj)
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Kill', '-Root', $pj)
+Start-Sleep -Seconds 1
+$vivos62 = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { [string]$_.CommandLine -match [regex]::Escape($jd62) -or [string]$_.CommandLine -match [regex]::Escape("-Root '$pj'") }).Count
+Check 'v3.62.2: verify -Kill encerra a rodada em processo próprio (executor, verify e suíte) e apaga a pasta dela' @{ Code = $r.Code; Out = $r.Out + "`nVIVOS=$vivos62 JOB=" + (Test-Path -LiteralPath (Join-Path $jd62 'job.json')) } 0 @('rodada em processo próprio encerrada \(\d+ processo', 'VIVOS=0 JOB=False')
+Remove-Item Env:TEAM_VERIFY_FRONT_SEC -ErrorAction SilentlyContinue
+# detach.ps1: comando longo do operator em processo próprio, com o mesmo contrato.
+$dj = Join-Path $pj '.team-project/operator/1/T-041-longo'
+$r = Invoke-Check 'detach.ps1' @('-Dir', $dj, '-Command', "Start-Sleep -Seconds 6; Write-Output 'pronto'; exit 7", '-WaitSeconds', '2', '-Root', $pj)
+Check 'v3.62.2: detach.ps1 com comando mais longo que a espera → exit 3 RODANDO' $r 3 @('detach: RODANDO em processo próprio \(pid \d+', 'rode o MESMO comando de novo AGORA')
+$r = Invoke-Check 'detach.ps1' @('-Dir', $dj, '-Command', "Write-Output outro", '-Root', $pj)
+Check 'v3.62.2: detach.ps1 com outro comando na mesma pasta viva → OCUPADO, exit 5' $r 5 @('detach: OCUPADO — outro comando roda')
+$r = Invoke-Check 'detach.ps1' @('-Dir', $dj, '-Command', "Start-Sleep -Seconds 6; Write-Output 'pronto'; exit 7", '-Root', $pj)
+Check 'v3.62.2: detach.ps1, o MESMO comando: acompanha a rodada e sai com o exit do comando, com o log no disco' @{ Code = $r.Code; Out = $r.Out + "`nLOG=" + (Test-Path -LiteralPath (Join-Path $dj 'output.log')) } 7 @('acompanhando a rodada que já roda', 'detach: terminou · exit 7', '  pronto', 'LOG=True')
 
 # quality.ps1 Q11: reaproveita a cobertura do verify full da mesma árvore; 0/0 vira "não medido".
 Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output ok", "suite": "Write-Output \"Tests: 12 passed\"", "coverage": "Write-Output \"All files  |  91.5 %\"" }, "quality": { "coverage": "Write-Output \"Statements   : Unknown% ( 0/0 )\"; exit 1" } }'
