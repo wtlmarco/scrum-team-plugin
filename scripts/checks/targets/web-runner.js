@@ -3,8 +3,12 @@
 // Chamado pelo accept.ps1: node web-runner.js <entrada.json> <saida.json>. A entrada traz url, atributo de teste
 // (padrão data-testid), viewport, pasta de capturas e os cenários já lidos ({ id, title, steps: ["tap x", …] }).
 // O Playwright vem do node_modules do projeto (ou do global). Sem ele, ou sem o navegador, a saída é FALHA DE AMBIENTE.
+// v3.62.0: os verbos de TELA (tap, type, select, slider, assert-*) são os do cdp-verbs.js — a mesma implementação do alvo android
+// com locator "cdp" —, pela sessão CDP do Playwright e com clique de mouse. Aqui fica o ciclo de vida da página (reset, open,
+// restart, back, clock, wait, font-scale, seed, shot). Semântica: standards/scenario-language.md. hiddenScopes: entrada opcional.
 'use strict';
 const fs = require('fs'), path = require('path'), cp = require('child_process');
+const { runStep, SCREEN_VERBS } = require('./cdp-verbs');
 const [, , inFile, outFile] = process.argv;
 const input = JSON.parse(fs.readFileSync(inFile, 'utf8'));
 const write = (o) => fs.writeFileSync(outFile, JSON.stringify(o, null, 1));
@@ -17,22 +21,20 @@ if (!pw) { try { pw = require('playwright'); } catch { /* sem playwright */ } }
 if (!pw) { write({ environment: 'o Playwright não está instalado no projeto: npm i -D playwright && npx playwright install chromium' }); process.exit(4); }
 
 const attr = input.testIdAttribute || 'data-testid';
-const sel = (id) => `[${attr}="${id}"]`;
-const selPrefix = (p) => `[${attr}^="${p}"]`;
-const split = (rest) => { const i = rest.indexOf('='); return i < 0 ? [rest.trim(), ''] : [rest.slice(0, i).trim(), rest.slice(i + 1).trim()]; };
-
-async function textOf(page, id) {
-  const loc = page.locator(sel(id)).first();
-  await loc.waitFor({ state: 'attached', timeout: 4000 }).catch(() => { throw new Error(`tag não encontrada: ${id}`); });
-  const tag = await loc.evaluate((e) => e.tagName.toLowerCase());
-  return (['input', 'textarea', 'select'].includes(tag) ? await loc.inputValue() : await loc.innerText()).trim();
-}
-async function ids(page, prefix) {
-  return page.locator(selPrefix(prefix)).evaluateAll((els, a) => els.map((e) => e.getAttribute(a)), attr).then((v) => v.map((s) => s.slice(prefix.length)));
+const callMs = input.callTimeoutMs || 10000;
+const verbCfg = { attr, hiddenScopes: input.hiddenScopes || [], pointer: 'mouse', scrollVia: 'cdp', selectConfirm: input.selectConfirm, callTimeoutMs: callMs };
+// Sessão CDP do Playwright no formato do cdp-verbs.js (call com prazo por chamada).
+async function cdpOf(ctx) {
+  if (ctx.cdp && ctx.cdpPage === ctx.page) return ctx.cdp;
+  const cs = await ctx.context.newCDPSession(ctx.page);
+  const call = (m, p) => Promise.race([cs.send(m, p || {}), new Promise((_, rej) => setTimeout(() => { const e = new Error(`${m} sem resposta do DevTools em ${callMs} ms`); e.kind = 'environment'; rej(e); }, callMs))]);
+  ctx.cdp = { cfg: verbCfg, call }; ctx.cdpPage = ctx.page;
+  return ctx.cdp;
 }
 
 async function step(ctx, verb, rest, shotBase) {
   const { page } = ctx;
+  if (SCREEN_VERBS.includes(verb)) { await runStep(await cdpOf(ctx), verb, rest); await page.waitForLoadState('networkidle').catch(() => {}); return; }
   switch (verb) {
     case 'reset': await ctx.fresh(); break;
     case 'launch': case 'open': await page.goto(input.url.replace(/\/$/, '') + (rest && rest.startsWith('/') ? rest : ''), { waitUntil: 'networkidle' }); break;
@@ -44,26 +46,6 @@ async function step(ctx, verb, rest, shotBase) {
     }
     case 'wait': await page.waitForTimeout(Number(rest) * 1000); break;
     case 'font-scale': await page.addStyleTag({ content: `html{font-size:${Number(rest) * 100}% !important}` }); break;
-    case 'tap': {
-      const loc = page.locator(sel(rest)).first();
-      await loc.waitFor({ state: 'visible', timeout: 6000 }).catch(() => { throw new Error(`tag não encontrada: ${rest}`); });
-      await loc.click(); await page.waitForLoadState('networkidle').catch(() => {}); break;
-    }
-    case 'type': { const [k, v] = split(rest); await page.locator(sel(k)).first().fill(v); break; }
-    // v3.53.7: <select> nativo pelo rótulo; seletor do framework (ion-select, mat-select…): abre, toca a opção pelo texto
-    // visível e confirma se o diálogo pedir (botão que casa selectConfirm).
-    case 'select': {
-      const [k, v] = split(rest); const loc = page.locator(sel(k)).first();
-      await loc.waitFor({ state: 'visible', timeout: 6000 }).catch(() => { throw new Error(`tag não encontrada: ${k}`); });
-      if ((await loc.evaluate((e) => e.tagName.toLowerCase())) === 'select') { await loc.selectOption({ label: v }); break; }
-      await loc.click();
-      const opt = page.getByText(v, { exact: true }).last();
-      await opt.waitFor({ state: 'visible', timeout: 6000 }).catch(() => { throw new Error(`opção '${v}' não apareceu depois de tocar ${k}`); });
-      await opt.click();
-      const ok = page.getByRole('button', { name: new RegExp(input.selectConfirm || '^(OK|Ok|Confirmar)$') }).first();
-      if (await ok.isVisible().catch(() => false)) await ok.click();
-      await page.waitForLoadState('networkidle').catch(() => {}); break;
-    }
     // v3.53.7: massa de dados — o comando do projeto (targets.web.seeds.<nome>) num PowerShell filho; falhou = ambiente.
     case 'seed': {
       const cmd = (input.seeds || {})[rest];
@@ -78,24 +60,7 @@ async function step(ctx, verb, rest, shotBase) {
       }
       break;
     }
-    case 'slider': {
-      const [id, v] = rest.split(/\s+/);
-      await page.locator(sel(id)).first().evaluate((e, val) => { e.value = val; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); }, v);
-      break;
-    }
     case 'shot': await page.screenshot({ path: `${shotBase}-${rest}.png`, fullPage: true }); break;
-    case 'assert-text': { const [k, v] = split(rest); const a = await textOf(page, k); if (a !== v) throw new Error(`esperado '${v}', obtido '${a}' em ${k}`); break; }
-    case 'assert-contains': { const [k, v] = split(rest); const a = await textOf(page, k); if (!a.includes(v)) throw new Error(`'${a}' não contém '${v}' em ${k}`); break; }
-    case 'assert-exists': await page.locator(sel(rest)).first().waitFor({ state: 'visible', timeout: 4000 }).catch(() => { throw new Error(`tag ausente: ${rest}`); }); break;
-    case 'assert-absent': if (await page.locator(sel(rest)).count()) throw new Error(`tag presente (esperada ausente): ${rest}`); break;
-    case 'assert-checked': { const [k, v] = split(rest); const c = await page.locator(sel(k)).first().isChecked(); if (c !== /^(true|sim|1)$/.test(v)) throw new Error(`${k} marcado = ${c}, esperado ${v}`); break; }
-    case 'assert-count': { const [k, v] = split(rest); const got = await ids(page, k); if (got.length !== Number(v)) throw new Error(`esperado ${v} itens '${k}*', obtido ${got.length}: [${got.join(',')}]`); break; }
-    case 'assert-order': {
-      const [k, v] = split(rest); const got = await ids(page, k); const want = v.split(/\s*,\s*/);
-      const idx = want.map((w) => got.indexOf(w));
-      if (idx.includes(-1) || idx.some((x, i) => i && x < idx[i - 1])) throw new Error(`ordem diferente: esperado [${v}], lista [${got.join(',')}]`);
-      break;
-    }
     default: throw new Error(`passo '${verb}' não existe no alvo web`);
   }
 }
@@ -120,7 +85,7 @@ async function step(ctx, verb, rest, shotBase) {
       const i = s.indexOf(' '); const verb = i < 0 ? s : s.slice(0, i); const rest = i < 0 ? '' : s.slice(i + 1).trim();
       try { await step(ctx, verb, rest, shotBase); }
       catch (e) {
-        if (e.environment) { envFail = String(e.message).split('\n')[0]; break; }
+        if (e.environment || e.kind === 'environment' || e.kind === 'config') { envFail = String(e.message).split('\n')[0]; break; }
         status = 'FALHOU'; detail = `passo '${s}': ${String(e.message).split('\n')[0]}`; break;
       }
     }

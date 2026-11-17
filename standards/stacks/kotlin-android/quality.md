@@ -64,7 +64,7 @@ Copie para o documento de arquitetura do produto (§2b ou equivalente) e ajuste 
 
 ## KA-Q4 Ids de teste (v3.53.6, regra que reprova o verify)
 
-Pedido do stakeholder depois do sprint 5 do garden ("nunca mais termos problema durante as rotinas de QA"): o identificador de teste é padrão de código, conferido pela máquina, não pela revisão.
+Pedido do stakeholder depois do sprint 5 do projeto piloto ("nunca mais termos problema durante as rotinas de QA"): o identificador de teste é padrão de código, conferido pela máquina, não pela revisão.
 
 | O que reprova o `verify.ps1 -Mode full` (chave `testids`, exit 1) | Saída |
 |---|---|

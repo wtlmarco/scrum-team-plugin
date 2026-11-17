@@ -6,7 +6,7 @@ A guarda G3 confere duas coisas no formulário: a última opção é **"Pedir ma
 
 ## Antes de perguntar — a decisão é dele? (v3.58.3)
 
-A forma vem depois da pergunta certa. No sprint 6 do garden, 12 de 22 formulários eram decisões que o roteiro já tomava ou que eram do par PO + Arquiteto. Antes de abrir o formulário, confira:
+A forma vem depois da pergunta certa. No sprint 6 do projeto piloto, 12 de 22 formulários eram decisões que o roteiro já tomava ou que eram do par PO + Arquiteto. Antes de abrir o formulário, confira:
 
 | Se a pergunta é… | Quem decide | O que fazer |
 |---|---|---|
@@ -16,7 +16,8 @@ A forma vem depois da pergunta certa. No sprint 6 do garden, 12 de 22 formulári
 | dois planos para a mesma Task, ajuste de lint previsto no plano | Arquiteto / o próprio plano | comparar e seguir; avisar em uma linha |
 | "sigo?", "tento de novo?", "retomo o sprint?" | o roteiro | `run.ps1 next` (ou, em outro comando, dizer em uma linha como retomar) |
 | estado de um processo, de um arquivo, de um log | quem pergunta | ler; nunca pedir ao stakeholder que rode um comando de leitura |
-| *(v3.60.1)* a prova no aparelho não roda (ids não publicados, estado de partida) | a política do projeto (`guards.json` → `run.deviceProofFallback`) ou, sem ela, o stakeholder **uma vez** | com a política, o `run.ps1 done` aplica a prova por teste sozinho; sem ela, no formulário ofereça gravar a política, e a resposta se aplica com `run.ps1 prove -Task <T-ID>` — nunca editando plano ou quadro à mão |
+| *(v3.62.0)* o `accept` sai com exit 4 e `configuration` no `result.json` (APK sem depuração da WebView, Node < 22, várias páginas sem `cdp.pageUrl`, app híbrido com `uiautomator`) | **o stakeholder**, dono do `guards.json` e do build — não é GAP, nem ambiente da Task, nem decisão do Arquiteto | formulário com a mensagem do `accept` e o que corrigir; sem reparo, sem dev, sem política de `deviceProofFallback` (não se aplica) |
+| *(v3.60.1)* a prova no aparelho não roda (estado de partida; serviço fora do ar) | a política do projeto (`guards.json` → `run.deviceProofFallback`) ou, sem ela, o stakeholder **uma vez** | com a política, o `run.ps1 done` aplica a prova por teste sozinho; sem ela, no formulário ofereça gravar a política, e a resposta se aplica com `run.ps1 prove -Task <T-ID>` — nunca editando plano ou quadro à mão |
 | *(v3.60.1)* a decisão já tomada não chegou ao plano ou ao quadro; "posso tirar de 🔴?" | o roteiro | `run.ps1 prove` (prova por teste) ou `mark.ps1`; nunca perguntar de novo o que já foi respondido |
 | *(v3.60.1)* plano acima de 30 KB numa Task em construção | Arquiteto | as decisões de 🔺 GAP não contam para o teto; se ainda passa, o `run.ps1 start` dá o prompt dele — nunca "encurtar ou dividir?" ao stakeholder |
 | *(v3.60.1)* arquivo alterado por outra Task trava o fechamento | o roteiro | o que já estava alterado quando a Task começou não é dela (`handoff/<T-ID>-alheios.json`); o close o ignora, siga |
@@ -43,7 +44,7 @@ Texto de apoio (antes do formulário): no máximo um parágrafo curto. O detalhe
 
 ## Pergunta aberta — exemplo
 
-> **Pergunta:** Qual nome o app deve mostrar na tela inicial? Exemplo: hoje aparece "garden-management", o nome da pasta do projeto.
+> **Pergunta:** Qual nome o app deve mostrar na tela inicial? Exemplo: hoje aparece "meu-projeto", o nome da pasta do projeto.
 >
 > | Opção | Descrição |
 > |---|---|

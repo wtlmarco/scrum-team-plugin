@@ -1030,14 +1030,29 @@ try {
             # Bloqueio sem a etiqueta da prova pendente; a decisão é do stakeholder.
             $arjS = Join-Path ((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'
             $ass = $null; if (Test-Path -LiteralPath $arjS) { try { $ass = Read-Text $arjS | ConvertFrom-Json } catch { } }
+            # v3.62.0: CONFIGURAÇÃO DO ALVO (campo configuration do result.json) — o alvo, como está declarado, não prova nada:
+            # APK sem a depuração da WebView, Node antigo, app híbrido com o uiautomator. Nem o app, nem queda, nem decisão do
+            # Arquiteto: sem reparo, sem dev, sem reabertura automática; o guards.json e o build são do stakeholder. O
+            # "IDS NÃO PUBLICADOS" de um result.json antigo (v3.57.1) é lido como esta configuração.
+            $cfgA = if ($ass -and $ass.PSObject.Properties['configuration'] -and $ass.configuration) { [string]$ass.configuration }
+                    elseif ($ass -and [string]$ass.environment -match '^IDS NÃO PUBLICADOS') { 'app híbrido: a WebView não publica o id HTML no uiautomator — declare guards.json → targets.android.locator = "cdp" (standards/test-ids.md §6)' }
+                    else { '' }
+            if ($cfgA) {
+                $cS = (($cfgA -replace '["|]', "'") -replace '\s+', ' ').Trim(); if ($cS.Length -gt 160) { $cS = $cS.Substring(0, 160) + '…' }
+                Set-AskRoute $Root 'configuracao-do-alvo' $T.Id $cS
+                Add-RunLog $S $n $T.Id "accept: configuração do alvo ($cS) → 🔴 sem reparo nem reabertura automática; decisão do stakeholder" 'configuration no result.json do accept' "accept/$n/$($T.Id)/result.md"
+                Out "run: $($T.Id) — o accept parou na CONFIGURAÇÃO DO ALVO: $cS. Não é defeito do código, nem queda do alvo, nem decisão do Arquiteto: o reparo não resolve e o dev não depura."
+                Out "  1. $plugin/mark.ps1 -Task $($T.Id) -To blocked -Reason `"configuração do alvo — $cS`""
+                Out "  2. devolva `"$($T.Id) 🔴 bloqueada: configuração do alvo · a fila segue`". A sessão leva ao stakeholder num formulário (R22) a correção que a mensagem aponta (guards.json → targets.android, ou o build de debug do app — são dele); corrigido, mark.ps1 -Task $($T.Id) -To qa e o accept pelo operator."
+                exit 0
+            }
             if ($ass -and $ass.PSObject.Properties['startState'] -and $ass.startState) {
                 $stS = (([string]$ass.startState -replace '["|]', "'") -replace '\s+', ' ').Trim(); if ($stS.Length -gt 90) { $stS = $stS.Substring(0, 90) + '…' }
                 $shS = @($ass.results | Where-Object { $_.shot } | ForEach-Object { [string]$_.shot }) | Select-Object -Last 1
                 # v3.60.1: com a política do projeto (guards.json → run.deviceProofFallback "teste"), a decisão já está tomada —
                 # a prova por teste é aplicada aqui e a Task segue ao fechamento, sem formulário e sem 🔴.
-                $idsNp = [string]$ass.environment -match '^IDS NÃO PUBLICADOS'
                 if (Test-DeviceProofPolicy $Root) {
-                    $kind = if ($idsNp) { 'ids não publicados pela WebView' } else { 'estado de partida' }
+                    $kind = 'estado de partida'
                     $pl = @(Invoke-ProveByTest $T "$kind — $stS" 'política do projeto (guards.json → run.deviceProofFallback)')
                     Out "run: $($T.Id) — o accept parou (${kind}: $stS). Política do projeto (guards.json → run.deviceProofFallback = teste): provada pelos testes do plano, sem formulário; a conferência no aparelho vai à validação do sprint."
                     foreach ($x in $pl) { Out "  $x" }
@@ -1046,15 +1061,6 @@ try {
                     exit 0
                 }
                 Set-AskRoute $Root 'estado-de-partida' $T.Id $stS
-                # v3.57.1 (note.md item 13): o accept distingue "ids não publicados" (o app na tela certa, a WebView sem o id HTML
-                # no dump) do estado de partida; a rota é a mesma (sem reparo, ao stakeholder), o que se pede a ele não.
-                if ([string]$ass.environment -match '^IDS NÃO PUBLICADOS') {
-                    Add-RunLog $S $n $T.Id "accept: ids não publicados pela WebView ($stS) → 🔴 sem reabertura automática; decisão do stakeholder" 'environment no result.json do accept (tag ausente nos 2 primeiros cenários, dump só com ids do Android)' "accept/$n/$($T.Id)/result.md"
-                    Out "run: $($T.Id) — o accept não achou os ids: IDS NÃO PUBLICADOS ($stS). O app estava na tela; a WebView não publica o id HTML no dump. Não é o estado de partida, nem defeito do código, nem queda do alvo: o reparo não resolve e o dev não depura."
-                    Out "  1. $plugin/mark.ps1 -Task $($T.Id) -To blocked -Reason `"ids não publicados pela WebView — $stS`""
-                    Out "  2. devolva `"$($T.Id) 🔴 bloqueada: ids não publicados · a fila segue`". A sessão leva ao stakeholder num formulário (R22), com a captura $(if ($shS) { $shS } else { "de accept/$n/$($T.Id)/shots/" }): espelhar o id no aria-label do build de prova (o accept acha pelo content-desc desde a v3.57.1 — Task do Arquiteto) ou provar por teste. Decidido 'provar por teste': run.ps1 prove -Task $($T.Id) -By stakeholder -Because `"<motivo>`" (aplica no plano e no quadro e tira de 🔴); para não perguntar de novo nas próximas Tasks, ofereça no mesmo formulário gravar a política em guards.json → run.deviceProofFallback = `"teste`"."
-                    exit 0
-                }
                 Add-RunLog $S $n $T.Id "accept parado no estado de partida ($stS) → 🔴 sem reabertura automática; decisão do stakeholder" 'startState no result.json do accept (2 primeiros cenários na mesma tela, nenhum passou)' "accept/$n/$($T.Id)/result.md"
                 Out "run: $($T.Id) — o accept parou no ESTADO DE PARTIDA: $stS. Não é defeito do código nem queda do alvo: o reparo do emulador não muda a tela de partida e o dev não depura. Nenhum papel caro é chamado."
                 Out "  1. $plugin/mark.ps1 -Task $($T.Id) -To blocked -Reason `"estado de partida — $stS`" (sem a etiqueta da prova pendente: o run.ps1 next não a reabre sozinho)"

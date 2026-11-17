@@ -3,7 +3,8 @@
 # Os cenários rodam no web-runner.js (Playwright, navegador headless) — Angular, React ou qualquer front-end com data-testid.
 # Config (guards.json → targets.web): url, health (padrão = url), start (ex.: "npm run start"), startTimeoutSec (120),
 # testIdAttribute ("data-testid"), viewport ({ "width": 1280, "height": 800 }), seeds + seedTimeoutSec (v3.53.7: massa de
-# dados por nome, passo "seed"), selectConfirm (v3.53.7: botão de confirmação do seletor no passo "select").
+# dados por nome, passo "seed"), selectConfirm (v3.53.7: botão de confirmação do seletor no passo "select"), hiddenScopes
+# (v3.62.0: seletores das áreas do DOM fora da tela — páginas em cache). Os verbos de tela são os do cdp-verbs.js (v3.62.0).
 
 $script:WebCfg = $null; $script:WebRoot = $null
 
@@ -44,6 +45,8 @@ function Invoke-WebScenarios($Scenarios, [string]$ShotDir) {
     $tmpIn = [System.IO.Path]::GetTempFileName(); $tmpOut = [System.IO.Path]::GetTempFileName()
     $in = [ordered]@{ url = [string]$script:WebCfg.url; root = $script:WebRoot; testIdAttribute = (Get-TestIdAttribute $script:WebRoot)   # v3.55.0 (C2): testIds.attribute → targets.web.testIdAttribute → data-testid
                       viewport = $script:WebCfg.viewport; shotDir = $ShotDir
+                      # v3.62.0: áreas do DOM fora da tela (páginas em cache) que o cenário ignora.
+                      hiddenScopes = @(if ($script:WebCfg.PSObject.Properties['hiddenScopes'] -and $script:WebCfg.hiddenScopes) { @($script:WebCfg.hiddenScopes | ForEach-Object { [string]$_ }) })
                       # v3.53.7: massa de dados (passo "seed") e o botão de confirmação do seletor (passo "select").
                       seeds = (Get-TargetSeeds $script:WebCfg); seedTimeoutSec = $(if ($script:WebCfg.PSObject.Properties['seedTimeoutSec'] -and $script:WebCfg.seedTimeoutSec) { [int]$script:WebCfg.seedTimeoutSec } else { 300 })
                       selectConfirm = $(if ($script:WebCfg.PSObject.Properties['selectConfirm'] -and $script:WebCfg.selectConfirm) { [string]$script:WebCfg.selectConfirm } else { '^(OK|Ok|Confirmar|Concluir|Pronto|Aplicar|Done)$' })

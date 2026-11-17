@@ -1,7 +1,11 @@
 ﻿# Adaptador Android do executor de cenários (v3.51, F1) e do pré-voo do alvo (D3). Dot-source: . targets\android.ps1
 # Lê a árvore de acessibilidade (testTag exposto como resource-id) por uiautomator e age por adb. Sem nada de produto.
-# v3.55.0 (C2): em app híbrido (WebView) o atributo HTML `id` chega como resource-id puro (sem "pacote:id/") — o -replace do
-# Id abaixo o deixa como está, e o cenário localiza pelo mesmo id do Compose (testIds.attribute = "id"; standards/test-ids.md).
+# v3.62.0: em app híbrido (WebView) o id HTML NÃO chega ao uiautomator nas WebViews atuais (medido: Android 15, WebView 124 —
+# resource-id vazio, o aria-label vira text). Com targets.android.locator = "cdp", os verbos de tela vão ao android-cdp.js
+# pelo DevTools da WebView (adb forward de porta livre) e o ciclo de vida continua aqui; com "uiautomator" (padrão), um app
+# cuja tela é uma WebView sem nenhum id do app é CONFIGURAÇÃO DO ALVO antes do 1º cenário (accept.ps1). Semântica dos verbos:
+# standards/scenario-language.md. Config: locator, cdp { pageUrl, readyExpr, readyTimeoutSec, failExpr, hiddenScopes,
+# stepTimeoutSec, callTimeoutMs } — abaixo, "localizador CDP".
 # Lições incorporadas do avaliador do benchmark: rolagem lenta e curta, esperar a animação parar antes de ler, coletar
 # listas virtualizadas rolando até não aparecer item novo, tela em branco = falha de ambiente (não do app).
 # Config (guards.json → targets.android): package, apk (opcional; v3.57.1: máscara no nome, vale o mais novo), apkSources
@@ -328,7 +332,7 @@ function Dump {
                 $d = New-Object Xml.XmlDocument; $d.LoadXml($xml.Substring($xml.IndexOf('<?xml')))
                 $script:Nodes = @($d.SelectNodes('//node') | ForEach-Object {
                     $b = [regex]::Match($_.GetAttribute('bounds'), '\[(\d+),(\d+)\]\[(\d+),(\d+)\]')
-                    [pscustomobject]@{ Id = $_.GetAttribute('resource-id') -replace '^.*:id/', ''; Text = $_.GetAttribute('text'); Desc = $_.GetAttribute('content-desc')
+                    [pscustomobject]@{ Id = $_.GetAttribute('resource-id') -replace '^.*:id/', ''; Text = $_.GetAttribute('text'); Desc = $_.GetAttribute('content-desc'); Class = $_.GetAttribute('class')
                         Checked = ($_.GetAttribute('checked') -eq 'true'); X1 = [int]$b.Groups[1].Value; Y1 = [int]$b.Groups[2].Value; X2 = [int]$b.Groups[3].Value; Y2 = [int]$b.Groups[4].Value } })
                 $script:EmptyDumps = 0
                 return $script:Nodes
@@ -340,15 +344,17 @@ function Dump {
     if ($script:EmptyDumps -ge 3) { $b = Get-ScreenBytes; if ($b -gt 0 -and $b -lt 12000) { throw 'AMBIENTE: a tela do aparelho está em branco e o uiautomator não devolve a árvore' } }
     return $script:Nodes
 }
-# v3.57.1 (note.md item 13, decisão do stakeholder de 08/11 no garden — README §7 itens 77-79): o id também pelo nome acessível.
-# No emulador horta-api35 (Android 15, WebView 124) o uiautomator não publica o id HTML como resource-id — a aba aparece como
-# View clicável com text='Estufa', rid='' (operator/5/T-074-ids-webview) — e o accept, que só achava por resource-id, não
-# chegou a nenhum critério no sprint 5. O app espelha o id no aria-label (que chega como content-desc) no build de prova;
-# o resource-id continua valendo primeiro.
-function Find([string]$Id) {
-    $n = $script:Nodes | Where-Object { $_.Id -eq $Id } | Select-Object -First 1
-    if ($n) { return $n }
-    return ($script:Nodes | Where-Object { $_.Desc -eq $Id } | Select-Object -First 1)
+# O id é o resource-id (standards/test-ids.md §4: texto, content-desc e aria-label não são seletor). v3.62.0: saiu o recurso
+# ao content-desc da v3.57.1 — o aria-label da WebView chega como text, não como content-desc, e espelhar o id nele trocava o
+# texto visível (medido em campo); app híbrido localiza pelo locator "cdp".
+function Find([string]$Id) { $script:Nodes | Where-Object { $_.Id -eq $Id } | Select-Object -First 1 }
+# v3.62.0: a tela do app é uma WebView e nenhum id do app chegou à árvore — só os do próprio Android. Com o uiautomator, nenhum
+# cenário vai achar id nenhum: é a configuração do alvo (locator "cdp"), não o app, o estado de partida nem o ambiente.
+$script:FrameworkIds = 'action_bar_root', 'content', 'statusBarBackground', 'navigationBarBackground', 'decor_content_parent', 'action_bar_container', 'action_bar', 'action_context_bar', 'parentPanel', 'action_mode_bar_stub'
+function Test-HybridWithoutIds($Nodes) {
+    $n = @($Nodes)
+    if (-not @($n | Where-Object { $_.Class -eq 'android.webkit.WebView' }).Count) { return $false }
+    return -not @($n | Where-Object { $_.Id -and $script:FrameworkIds -notcontains $_.Id }).Count
 }
 function Has([string]$Id) { [void](Dump); [bool](Find $Id) }
 function NodeText($n) {
@@ -402,6 +408,18 @@ function SelectOption([string]$Id, [string]$Opt) {
     $cre = if ($script:AdCfg -and $script:AdCfg.PSObject.Properties['selectConfirm'] -and $script:AdCfg.selectConfirm) { [string]$script:AdCfg.selectConfirm } else { '^(OK|Ok|Confirmar|Concluir|Pronto|Aplicar|Done)$' }
     if (& $pick) { $ok = $script:Nodes | Where-Object { $_.Text -match $cre -or $_.Desc -match $cre } | Select-Object -First 1; if ($ok) { TapNode $ok } }
 }
+# v3.62.0 (standards/scenario-language.md): "type" SUBSTITUI o valor. O adb input text insere no cursor — no campo que já tinha
+# texto, o valor final misturava os dois (medido em campo: "semeio N" + digitado + "OVA"). Agora: toca, vai ao fim do campo
+# (MOVE_END), apaga o texto atual (DEL × tamanho lido na árvore) e digita. O adb input text não envia caractere fora do ASCII:
+# FALHOU com o motivo, nunca o texto corrompido calado.
+function TypeText([string]$Id, [string]$Value) {
+    if ($Value -match '[^\x20-\x7E]') { throw "o uiautomator não digita fora do ASCII ('$Value' em $Id) — app híbrido: targets.android.locator = ""cdp"" digita qualquer texto" }
+    Tap $Id
+    [void](Dump); $cur = [string](NodeText (Find $Id)); $n = $cur.Length
+    if ($n -gt 0) { Sh input keyevent 123 | Out-Null; Sh ('input keyevent ' + ((1..$n | ForEach-Object { '67' }) -join ' ')) | Out-Null }
+    if ($Value) { Sh input text ($Value -replace ' ', '%s') | Out-Null }
+    Start-Sleep -Milliseconds 400; Sh input keyevent 111 | Out-Null
+}
 function SetSlider([string]$Id, [double]$Value, [double]$Min, [double]$Max) {
     if (-not (Reach $Id 6)) { throw "controle deslizante não encontrado: $Id" }; $n = Find $Id
     # a trilha começa ~30 px para dentro do nó: tocar na borda não muda o valor
@@ -444,6 +462,116 @@ function SetClock([string]$At) {
 }
 function Save-AndroidShot([string]$Path) { Sh screencap -p /sdcard/s.png | Out-Null; Adb pull /sdcard/s.png $Path | Out-Null }
 
+# ---------- localizador CDP (v3.62.0) ----------
+# targets.android.locator = "cdp": os verbos de tela vão ao android-cdp.js pela WebView do app. A conexão: o pid do app →
+# o socket webview_devtools_remote_<pid> (/proc/net/unix) → adb forward tcp:0 (porta livre escolhida pelo adb, nunca fixa:
+# a 9222 é também a do Chrome headless do Karma). O forward é refeito quando o pid muda (launch, restart, reset) e removido no
+# fim do accept (Clear-AndroidCdpForwards) e pelo target.ps1 -Kill.
+$script:CdpPort = 0; $script:CdpPid = 0; $script:Node = ''; $script:CdpSocketWaitSec = 10
+function Get-AndroidLocator {
+    if ($script:AdCfg -and $script:AdCfg.PSObject.Properties['locator'] -and $script:AdCfg.locator) { return ([string]$script:AdCfg.locator).Trim().ToLower() }
+    return 'uiautomator'
+}
+function Get-AndroidCdpCfg {
+    $c = if ($script:AdCfg -and $script:AdCfg.PSObject.Properties['cdp'] -and $script:AdCfg.cdp) { $script:AdCfg.cdp } else { $null }
+    $v = { param($k, $d) if ($c -and $c.PSObject.Properties[$k] -and $null -ne $c.$k -and "$($c.$k)" -ne '') { return $c.$k }; return $d }
+    return [ordered]@{
+        pageUrl = [string](& $v 'pageUrl' ''); readyExpr = [string](& $v 'readyExpr' "document.readyState === 'complete'"); readyTimeoutSec = [int](& $v 'readyTimeoutSec' 30)
+        failExpr = [string](& $v 'failExpr' ''); hiddenScopes = @(@(& $v 'hiddenScopes' @()) | ForEach-Object { [string]$_ } | Where-Object { $_ })
+        stepTimeoutSec = [int](& $v 'stepTimeoutSec' 60); callTimeoutMs = [int](& $v 'callTimeoutMs' 10000)
+    }
+}
+# O Node do transporte: 22 ou mais novo (fetch e WebSocket globais). $null = pronto; senão o motivo.
+function Test-AndroidCdpNode {
+    $c = Get-Command node -ErrorAction SilentlyContinue
+    if (-not $c) { return 'o targets.android.locator "cdp" precisa do Node.js 22 ou mais novo, e o node não está no PATH' }
+    $script:Node = $c.Source
+    $ver = ((& $script:Node -p 'process.versions.node' 2>$null) -join '').Trim()
+    if (-not ($ver -match '^(\d+)\.') -or [int]$Matches[1] -lt 22) { return "o targets.android.locator ""cdp"" precisa do Node.js 22 ou mais novo (WebSocket global); este é o $ver" }
+    return $null
+}
+function Get-AndroidAppPid {
+    if (-not $script:Pkg) { return 0 }
+    $o = ((Sh pidof $script:Pkg) -join ' ').Trim()
+    if ($o -match '^\d+') { return [int]$Matches[0] }
+    return 0
+}
+function Get-AndroidCdpSocket([int]$AppPid) {
+    $l = (@(Sh "cat /proc/net/unix | grep webview_devtools_remote_$AppPid") -join "`n")
+    $m = [regex]::Match($l, "@(webview_devtools_remote_$AppPid)(?!\d)")
+    if ($m.Success) { return $m.Groups[1].Value }
+    return ''
+}
+function Open-AndroidCdpForward([string]$Sock) {
+    $o = ((AdbT 20 @('forward', 'tcp:0', "localabstract:$Sock")) -join '').Trim()
+    if ($o -match '^\d+$') { return [int]$o }
+    throw "AMBIENTE: adb forward da WebView ($Sock) não devolveu a porta: $(if ($script:AdbTimeout) { $script:AdbTimeout } else { $o })"
+}
+function Close-AndroidCdpForward {
+    if ($script:CdpPort) { $null = AdbT 20 @('forward', '--remove', "tcp:$($script:CdpPort)") }
+    $script:CdpPort = 0; $script:CdpPid = 0
+}
+# Todo forward para a WebView deste aparelho (o que um accept que caiu deixou): o accept segura a trava do alvo, então nenhum
+# outro executor está usando. Devolve quantos removeu.
+function Clear-AndroidCdpForwards {
+    $script:CdpPort = 0; $script:CdpPid = 0; $n = 0
+    foreach ($l in @(AdbT 20 @('forward', '--list'))) {
+        $p = ([string]$l).Trim() -split '\s+'
+        if ($p.Count -lt 3 -or $p[2] -notmatch '^localabstract:webview_devtools_remote_' -or $p[1] -notmatch '^tcp:\d+$') { continue }
+        if ($script:Serial -and $p[0] -ne $script:Serial) { continue }
+        $null = AdbT 20 @('forward', '--remove', $p[1]); $n++
+    }
+    return $n
+}
+function Connect-AndroidCdp {
+    $appPid = Get-AndroidAppPid
+    if (-not $appPid) { throw "o app $($script:Pkg) não está rodando — o passo de tela pede o app aberto (launch antes)" }
+    if ($appPid -eq $script:CdpPid -and $script:CdpPort) { return }
+    Close-AndroidCdpForward
+    $t = [datetime]::UtcNow; $sock = ''
+    do { $sock = Get-AndroidCdpSocket $appPid; if ($sock) { break }; Start-Sleep -Milliseconds 500 } while (([datetime]::UtcNow - $t).TotalSeconds -lt $script:CdpSocketWaitSec)
+    if (-not $sock) { throw "CONFIGURAÇÃO: o APK não liga a depuração da WebView — o app $($script:Pkg) (pid $appPid) está aberto e não há o socket webview_devtools_remote_$appPid no aparelho. No Capacitor: android.webContentsDebuggingEnabled = true no capacitor.config, no build de debug; nos demais: WebView.setWebContentsDebuggingEnabled(true) no build de debug. Sem isso o locator cdp não enxerga a tela" }
+    $script:CdpPort = Open-AndroidCdpForward $sock; $script:CdpPid = $appPid
+}
+# Processo com prazo (a saída vai para o arquivo do próprio executor): estourou → encerrado, e o passo é AMBIENTE.
+function Invoke-NodeT([int]$Sec, [string[]]$A) {
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $script:Node; $psi.Arguments = (@($A | ForEach-Object { Format-AdbArg ([string]$_) }) -join ' ')
+    $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
+    # protocolo: node — prazo próprio (WaitForExit com limite); o executor não deixa filho: estourou, morre só ele.
+    $p = [System.Diagnostics.Process]::Start($psi)
+    $o = $p.StandardOutput.ReadToEndAsync(); $e = $p.StandardError.ReadToEndAsync()
+    $ok = $p.WaitForExit($Sec * 1000)
+    if (-not $ok) { try { $p.Kill() } catch { } }
+    [void]$p.WaitForExit(2000)
+    $err = ''; try { if ($e.Wait(1000)) { $err = [string]$e.Result } } catch { }
+    $p.Dispose()
+    return @{ TimedOut = -not $ok; Err = $err.Trim() }
+}
+function Invoke-AndroidCdpStep([string]$Verb, [string]$Rest) {
+    if (-not $script:Node) { $nm = Test-AndroidCdpNode; if ($nm) { throw "CONFIGURAÇÃO: $nm" } }
+    Connect-AndroidCdp
+    $c = Get-AndroidCdpCfg
+    $root = if ($Root) { $Root } else { (Get-Location).Path }
+    $sc = if ($script:AdCfg -and $script:AdCfg.PSObject.Properties['selectConfirm'] -and $script:AdCfg.selectConfirm) { [string]$script:AdCfg.selectConfirm } else { '^(OK|Ok|Confirmar|Concluir|Pronto|Aplicar|Done)$' }
+    $in = [ordered]@{ port = $script:CdpPort; verb = $Verb; rest = $Rest; attr = (Get-TestIdAttribute $root); hiddenScopes = @($c.hiddenScopes); pageUrl = $c.pageUrl
+                      readyExpr = $c.readyExpr; readyTimeoutSec = $c.readyTimeoutSec; failExpr = $c.failExpr; callTimeoutMs = $c.callTimeoutMs; selectConfirm = $sc
+                      scrollVia = 'adb'; pointer = 'touch'; adb = $script:Adb; serial = $script:Serial }
+    $tIn = [System.IO.Path]::GetTempFileName(); $tOut = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText($tIn, ($in | ConvertTo-Json -Depth 4 -Compress), (New-Object System.Text.UTF8Encoding($false)))
+        $sec = $c.stepTimeoutSec + $(if ($Verb -eq 'ready') { $c.readyTimeoutSec } else { 0 })
+        $r = Invoke-NodeT $sec @((Join-Path $PSScriptRoot 'android-cdp.js'), $tIn, $tOut)
+        if ($r.TimedOut) { throw "AMBIENTE: o executor cdp passou de $sec s no passo '$Verb $Rest' e foi encerrado (targets.android.cdp.stepTimeoutSec)" }
+        $o = $null; try { $o = [System.IO.File]::ReadAllText($tOut, [System.Text.Encoding]::UTF8) | ConvertFrom-Json } catch { }
+    } finally { Remove-Item -LiteralPath $tIn, $tOut -Force -ErrorAction SilentlyContinue }
+    if (-not $o) { throw "AMBIENTE: o executor cdp não devolveu resultado no passo '$Verb $Rest'$(if ($r.Err) { " ($(($r.Err -split "`n")[0]))" })" }
+    if ($o.PSObject.Properties['ok'] -and $o.ok) { return }
+    if ($o.PSObject.Properties['config'] -and $o.config) { throw "CONFIGURAÇÃO: $($o.config)" }
+    if ($o.PSObject.Properties['environment'] -and $o.environment) { throw "AMBIENTE: $($o.environment)" }
+    throw [string]$o.fail
+}
+
 # Um passo da linguagem de cenário. Ação que muda a tela esvazia o cache de listas.
 function Invoke-AndroidStep([string]$Verb, [string]$Rest, [string]$ShotBase) {
     if ($Verb -notmatch '^(assert-|shot$)') { $script:IdCache = @{} }
@@ -458,7 +586,7 @@ function Invoke-AndroidStep([string]$Verb, [string]$Rest, [string]$ShotBase) {
         'wait' { Start-Sleep -Seconds ([int]$Rest) }
         'font-scale' { Sh settings put system font_scale ([double]$Rest) | Out-Null; Start-Sleep -Milliseconds 800 }
         'tap' { Tap $Rest }
-        'type' { $k, $v = $Rest -split '\s*=\s*', 2; Tap $k; Sh input text ($v -replace ' ', '%s') | Out-Null; Start-Sleep -Milliseconds 400; Sh input keyevent 111 | Out-Null }
+        'type' { $k, $v = $Rest -split '\s*=\s*', 2; TypeText $k.Trim() ([string]$v) }
         'select' { $k, $v = $Rest -split '\s*=\s*', 2; SelectOption $k.Trim() ([string]$v).Trim() }
         # v3.53.7: massa de dados — o comando do projeto em targets.android.seeds.<nome>, com o aparelho e o pacote no ambiente.
         'seed' { $e = Invoke-TargetSeed $(if ($Root) { $Root } else { (Get-Location).Path }) 'android' $script:AdCfg $Rest.Trim() @{ ACCEPT_SERIAL = $script:Serial; ACCEPT_PACKAGE = $script:Pkg }; if ($e) { throw "AMBIENTE: $e" } }

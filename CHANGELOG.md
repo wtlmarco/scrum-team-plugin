@@ -13,6 +13,69 @@
 
 ---
 
+## v3.62.0 — 2026-11-16
+
+**Branch:** `feat/v3.62.0` a partir de `develop` (`432680e`, v3.61.0 mesclada) · **Processo:** v3.62 (a prova do app híbrido no aparelho é de primeira classe; a CONFIGURAÇÃO DO ALVO vai ao stakeholder) · **Plano:** `melhorias/plano-v3.62.0.md`
+
+Origem: item 25 de `note.md`, que absorveu o antigo item 2 e o sub-item do `content-desc` do item 8. Em app híbrido (WebView), o `accept` no alvo `android` não achava nenhum id. As WebViews atuais não publicam o id HTML no `uiautomator`, e o `aria-label` chega como `text`, não como `content-desc`, como medido em campo (Android 15, WebView 124). Por isso, cada Task com cenário no alvo virava decisão do Arquiteto e "prova por outro executor, com desvio registrado".
+
+Decisões do stakeholder em 16/11:
+- versão com plano;
+- `assert-count` e `assert-order` valem para a **lista inteira**;
+- revogada a espera pelo espelho do id no `aria-label`;
+- **correção genérica**, para qualquer app híbrido, com o que é de um projeto vindo por configuração.
+
+1. **`targets.android.locator = "cdp"`.** Os verbos de tela (`tap`, `type`, `select`, `slider` e `assert-*`) vão pelo DevTools Protocol da WebView. O ciclo de vida (instalar, `reset`, `seed`, `baseline`, `launch`, `back`, `clock`, `font-scale`, captura) continua no `android.ps1`.
+   - **Conexão:** pid do app → socket `webview_devtools_remote_<pid>` → `adb forward tcp:0`. A porta é livre e escolhida pelo `adb`, nunca a 9222, que é também a do Chrome headless do Karma.
+   - **Forward:** é refeito quando o pid muda e removido no fim do `accept` e pelo `target.ps1 -Kill`.
+   - **Chamadas:** uma chamada do Node por passo, com prazo (`targets.android.cdp.stepTimeoutSec`, e `callTimeoutMs` em cada chamada CDP). Medido: **368 ms por passo** (30 passos, Chromium de desktop), dentro do orçamento de 0,5 s do plano. O modo "cenário inteiro" não foi construído.
+   - **Configuração por projeto** (`targets.android.cdp`): `pageUrl` (regex da página do app no `/json`), `readyExpr` (app pronto depois de abrir), `failExpr` (tela de falha do próprio app → FALHOU), `hiddenScopes` (áreas do DOM fora da tela, como páginas em cache), `readyTimeoutSec`, `stepTimeoutSec`, `callTimeoutMs`. Nenhum app id, rota, seletor nem framework fixo no plugin.
+   - **Node 22+** (`fetch` e `WebSocket` globais), CDP cru, sem dependência. O executor nunca chama `Page.navigate`.
+2. **Uma implementação dos verbos de tela para todo alvo que fala CDP** (`targets/cdp-verbs.js`) e uma leitura do DOM (`targets/dom-probe.js`):
+   - o `web-runner.js` usa os mesmos verbos pela sessão CDP do Playwright, com clique de mouse;
+   - o `android-cdp.js` usa a WebView, com toque por dedo;
+   - a semântica está escrita uma vez em `standards/scenario-language.md` (novo).
+3. **CONFIGURAÇÃO DO ALVO** (`accept` exit 4, campo `configuration` no `result.json`, mensagem que diz o que corrigir):
+   - APK sem a depuração da WebView (nomeia o `android.webContentsDebuggingEnabled` do Capacitor e o `WebView.setWebContentsDebuggingEnabled` dos demais);
+   - Node < 22;
+   - mais de uma página sem `cdp.pageUrl`;
+   - com o `uiautomator`, a tela do app ser uma WebView sem nenhum id do app. Isso é conferido **antes do 1º cenário** e substitui o `Test-IdsHidden` / IDS NÃO PUBLICADOS da v3.57.1, que só disparava depois de 2 cenários falharem.
+
+   O `run.ps1 done -Result env` leva a configuração ao stakeholder: 🔴 "configuração do alvo", rota `configuracao-do-alvo`, sem reparo, sem dev, sem Arquiteto e sem reabertura automática. O `run.deviceProofFallback` não se aplica a ela. Um `result.json` antigo com IDS NÃO PUBLICADOS é lido como configuração.
+4. **Remendos retirados:**
+   - o comentário C2 do `android.ps1` (o id HTML "chega como resource-id puro"), que é falso;
+   - o recurso ao `content-desc` no `Find` (v3.57.1);
+   - o texto "outro executor, com desvio registrado" do `accept`;
+   - o ramo IDS NÃO PUBLICADOS do `run.ps1`;
+   - no modelo `guards.json`, o nome de container de um projeto, que virou `meu-emulador`.
+5. **Mudança visível para projetos existentes**, que é correção de semântica (§4 do plano):
+   - no `web`, `assert-absent` não conta elemento não renderizado; id repetido vale pelo primeiro renderizado; `type` em web component acha o campo interno; `tap` faz hit-test e reprova toque coberto;
+   - no `android/uiautomator`, `type` **substitui** o valor (`MOVE_END` + `DEL` × tamanho + texto, antes inseria no cursor) e recusa texto fora do ASCII com o motivo, em vez de corrompê-lo calado.
+
+6. **Decisões do stakeholder no fecho (formulário de 16/11):**
+   - **Guia e rituais:** o `how-to.md` ensina o `locator: "cdp"` e a CONFIGURAÇÃO DO ALVO. O `rituals/team-init.md` o propõe para stack híbrida. O `rituals/team-update.md` ganhou o passo **7o**, que propõe o `locator` ao projeto híbrido existente sem gravar sem o formulário.
+   - **Tela do próprio Android com `cdp`:** é provada por teste (`standards/scenario-language.md` §3). O modo misto é o item 26 de `note.md`.
+   - **Nome de projeto como procedência:** neutralizado para "projeto piloto" nos documentos do plugin (97 menções). Os changelogs e os comentários de script ficam como histórico.
+
+**Testes novos:**
+- `tests/parity.js`, com a página neutra `tests/fixtures/parity/index.html` e 15 cenários em `parity.scn`. Cobre: `type` em campo com texto, web component com `textarea` em shadow root, página em cache com id repetido, `display: contents`, camada cobrindo o toque, lista de 40 itens fora da janela, faixa horizontal, `select` nativo e de botões, `slider`, texto fora do ASCII, `display: none`, `checkbox` e id inexistente. Roda pelo CDP num Edge/Chrome headless com toque emulado (o caminho do `locator: cdp`, sem emulador) e pelo `web-runner.js` quando `PARITY_PLAYWRIGHT_ROOT` resolve o Playwright. Medido em 3 rodadas seguidas: **cdp 15/15 · web 15/15**. Na suíte, sem Playwright, o web sai NÃO EXECUTADO, nunca verde.
+- No `run-check-tests.ps1`:
+  - localizador CDP (pid, socket, forward `tcp:0`, mesmo pid não refaz, pid novo refaz, limpeza só deste aparelho);
+  - configuração com os padrões;
+  - socket ausente = CONFIGURAÇÃO;
+  - app fechado = falha do passo;
+  - `Test-HybridWithoutIds`;
+  - `type` do `uiautomator`;
+  - `Find` sem `content-desc`;
+  - `accept` parado na configuração (exit 4 e `configuration`);
+  - `done -Result env` com `configuration` e com o IDS NÃO PUBLICADOS antigo;
+  - `deviceProofFallback` sem efeito sobre a configuração;
+  - o caso `ocultos` agora é ESTADO DE PARTIDA.
+
+**Medido no desktop:** Edge headless não rola a página na vertical por gesto de toque (`dispatchTouchEvent` nem `synthesizeScrollGesture`), mas rola pela roda do mouse. A rolagem tenta, em ordem, gesto do sistema (`adb`, no aparelho) → arrasto → gesto sintetizado → roda, e confere a posição.
+
+**Não testado em sessão real:** o `locator: cdp` num emulador com um app híbrido de verdade. O critério de campo está no plano, §7: `accept -Target android` com `type` que substitui e `assert-contains` lido do campo, `run.ps1 done` fechando pelo `result.json` sem decisão do Arquiteto, nenhum `NÃO EXERCITADA (ambiente)` por id e um id dinâmico confirmado em execução (o antigo item 2).
+
 ## v3.61.0 — 2026-11-16
 
 **Branch:** `feat/v3.61.0` a partir de `develop` (`586731b`, v3.60.1 mesclada) · **Processo:** v3.61 (sprint 0: o backlog funcional abre sobre documentação conforme e ambiente de testes provado)

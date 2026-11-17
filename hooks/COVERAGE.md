@@ -99,9 +99,9 @@ O stakeholder escolhe o modelo de cada papel em `.team-project/models.json` (opc
 | **G20** | `Stop` | sessão principal | `sprint-run.md` §Ordem da fila (paradas legítimas) | **barra** (exit 2, o motivo volta à sessão, que continua) o fim de turno com `.team-project/.active-run` da trilha `sprint` e **Task elegível** no quadro (⬜ ou em voo, com as dependências ✅). **Libera:** agente em voo há menos de 3 h (`.team-project/.active-agents`, gravado pela PreToolUse no `Agent` e limpo pela SubagentStop; v3.52.2: qualquer agente **desta sessão**, sem olhar `bg` — ver §v3.52.2), limite de uso da conta e erro de API sintético (v3.51.4), turno do toque de cache, `stop_hook_active` com 3 bloqueios em 10 min (registra `liberado após 3 bloqueios`) | a trilha `fix` (v1); parada com `.active-run` já apagado (é como as paradas legítimas encerram); quadro com tabela fora do formato (sem coluna `ID` ou "Depende de") |
 | **G3 · H1** | `PreToolUse` · `AskUserQuestion` | sessão | R22 · H1 ([`roles/scrum-master/templates/stakeholder-question.md`](../roles/scrum-master/templates/stakeholder-question.md)) | além do "Pedir mais contexto" por último, **nega** o formulário sem **exemplo prático** — "exemplo", "por exemplo", "ex.:", "e.g." — na pergunta ou na descrição de uma opção | a qualidade do exemplo e a linguagem sem sigla (julgamento do SM na retrospectiva); pergunta em prosa fora do formulário |
 
-## v3.51.4 — o que o SunScape (P+) e o garden mostraram
+## v3.51.4 — o que o SunScape (P+) e o projeto piloto mostraram
 
-Medido no `guards.log` do braço `sunscape-P-r1` (30 negações da G14 em ~3 h de run, várias de comando de leitura) e no relatório do garden (sprint 2). Os casos reais viraram testes em `run-guard-tests.ps1`.
+Medido no `guards.log` do braço `sunscape-P-r1` (30 negações da G14 em ~3 h de run, várias de comando de leitura) e no relatório do projeto piloto (sprint 2). Os casos reais viraram testes em `run-guard-tests.ps1`.
 
 | Guarda | O que mudou | O que **não** cobre |
 |---|---|---|
@@ -142,7 +142,7 @@ Medido no sprint 3 do piloto (3.52.0) e no spike de 2026-10-26: o `Agent` não t
 | **G7** | o `task-runner` dispara `developer`, `architect`, `operator`, `quality-assurance`; os demais papéis seguem só com o `operator` | — |
 | **G8** | `ownership.json`: papel `task-runner` (executor de Task) e a linha "Registro do run" — `sprints/*/run-log.md` e `fixes/B-*/run-log.md`, escritores SM e executor; todo outro arquivo de `.team-project/` e todo código-fonte são negados ao executor | o conteúdo da linha (o executor escreve só a dele por contrato, não por guarda) |
 | **G14** | o executor roda os scripts do run (`run.ps1 start/done/next`, `dispatch.ps1`) como as outras conferências do plugin — liberados pela regra de `${CLAUDE_PLUGIN_ROOT}/scripts/checks/` | — |
-| **G14** | (v3.57.2) o `developer` e o `task-runner` não rodam direto a suíte nem a cobertura do projeto: o trecho que começa pelo comando de `verify.suite`, `verify.coverage` ou `quality.coverage` do `guards.json` (sem `Set-Location` e sem argumentos) é negado com a rota do `verify.ps1` — no sprint 5 do garden, a suíte rodada direto não deixou `verify.lock` e o `next`/`start`/`done` dispararam 3 devs e 3 suítes na mesma Task | comando com o mesmo núcleo do `verify.focused` (não dá para separar o focado da suíte); o `operator` (execução longa é dele); a suíte escrita de outra forma (outro script que a chama) |
+| **G14** | (v3.57.2) o `developer` e o `task-runner` não rodam direto a suíte nem a cobertura do projeto: o trecho que começa pelo comando de `verify.suite`, `verify.coverage` ou `quality.coverage` do `guards.json` (sem `Set-Location` e sem argumentos) é negado com a rota do `verify.ps1` — no sprint 5 do projeto piloto, a suíte rodada direto não deixou `verify.lock` e o `next`/`start`/`done` dispararam 3 devs e 3 suítes na mesma Task | comando com o mesmo núcleo do `verify.focused` (não dá para separar o focado da suíte); o `operator` (execução longa é dele); a suíte escrita de outra forma (outro script que a chama) |
 | **G7** | (v3.57.3) todo `Agent` ao `operator` — da sessão e de papel — começa pela linha `Chamador: <papel> <ID>`, e o papel é o de quem dispara (`sessão` para a sessão; `executor` ou `task-runner`; `dev`, `arc`, `qa`, `ux`, `sm`, `po`); sem a linha ou com outro papel, nega com a linha certa. A G16 grava o `caller` no `usage.jsonl` e o `consumption.ps1` o usa antes da descoberta pelo horário | o ID na linha não é conferido (só o papel) |
 | **G14** | (v3.57.3) depois de `Set-Location`/`cd`/`Push-Location` para uma pasta **dentro** do projeto, o caminho relativo dos trechos seguintes é lido a partir dela contra a lista (`node scripts/x.mjs` em `source` = `node source/scripts/x.mjs` do `runCommands`); `Pop-Location`, pasta fora do projeto ou com variável voltam à leitura da raiz | só caminho com `/`/`\` ou nome de arquivo com extensão é reescrito; `..` não é normalizado (não libera, só deixa de casar) |
 | **G18** | `bench.foreground` sem efeito (não há `run_in_background` no `Agent`); comportamento de agente assíncrono sob `claude -p` **a medir** | ver a linha da G18 |
@@ -151,7 +151,7 @@ O `models.json` (G17) **não** aceita o `task-runner`: é instrumento do run, co
 
 ## v3.52.3 — espera de comando e consumo do agente cortado
 
-Medido no sprint 4 do garden (3.52.2): o harness move para segundo plano o comando que passa de 600 s ("moved to the background") e o aviso de conclusão **chega** ao subagente; negado o sono pela G14, o dev sondou o log (51 chamadas de espera). O agente cortado pelo limite semanal nunca recebeu SubagentStop (13,8 mi fora do `usage.jsonl`). Casos em `run-guard-tests.ps1` (marcados v3.52.3) e `run-check-tests.ps1` (bloco 13).
+Medido no sprint 4 do projeto piloto (3.52.2): o harness move para segundo plano o comando que passa de 600 s ("moved to the background") e o aviso de conclusão **chega** ao subagente; negado o sono pela G14, o dev sondou o log (51 chamadas de espera). O agente cortado pelo limite semanal nunca recebeu SubagentStop (13,8 mi fora do `usage.jsonl`). Casos em `run-guard-tests.ps1` (marcados v3.52.3) e `run-check-tests.ps1` (bloco 13).
 
 | Guarda | O que mudou | O que **não** cobre |
 |---|---|---|
@@ -170,7 +170,7 @@ Não é guarda: o `UserPromptSubmit` (`hooks/prompt-submit.ps1`) reconhece `/tea
 
 ## v3.53.1 — teto do dev, agente vivo de outra sessão, medição por Task
 
-Medido no fim do sprint 4 do garden (3.52.2 → 3.53.0): 6 instâncias de dev com 61 a 159 chamadas e pico até 242 mil de contexto (34 % do US$ dos subagentes); uma segunda sessão aberta no mesmo projeto pôs dois devs no mesmo emulador (o limite "um run por projeto de cada vez" da v3.52.2). Casos em `run-guard-tests.ps1` (bloco v3.53.1) e `run-check-tests.ps1` (bloco 14).
+Medido no fim do sprint 4 do projeto piloto (3.52.2 → 3.53.0): 6 instâncias de dev com 61 a 159 chamadas e pico até 242 mil de contexto (34 % do US$ dos subagentes); uma segunda sessão aberta no mesmo projeto pôs dois devs no mesmo emulador (o limite "um run por projeto de cada vez" da v3.52.2). Casos em `run-guard-tests.ps1` (bloco v3.53.1) e `run-check-tests.ps1` (bloco 14).
 
 | Guarda | O que mudou | O que **não** cobre |
 |---|---|---|
@@ -181,13 +181,13 @@ Medido no fim do sprint 4 do garden (3.52.2 → 3.53.0): 6 instâncias de dev co
 | **G14** | git só de leitura: `cat-file`, `ls-tree`, `rev-list`, `show-ref`, `merge-base`, `describe`, `name-rev`, `worktree list`, `remote -v`, `tag -l/--list`, `config --get/--list`, `stash show` | `git worktree add/remove` e todo git que escreve; comandos do projeto (`docker compose run`, `node`, `aapt`) seguem em `runCommands` |
 | **G16** | `works` do dev e do executor = só a Task do disparo (outra citada no prompt é referência); campo `plugin` (versão do plugin) em cada linha do `usage.jsonl` | Arquiteto, QA e `operator` seguem rateando entre as Tasks citadas (plano por História, validação do sprint) |
 
-**v3.53.5 (sprint 5 do garden):** a G20 barrou 43 fins de turno num dia, todos na T-042 (a primeira elegível do quadro), enquanto o `run.ps1 next` mandava esperar a T-061, cujo reparo do alvo estava parado havia 81 min num `adb emu kill`. Casos em `run-guard-tests.ps1` (bloco v3.53.5) e `run-check-tests.ps1` (blocos 16e e 16f).
+**v3.53.5 (sprint 5 do projeto piloto):** a G20 barrou 43 fins de turno num dia, todos na T-042 (a primeira elegível do quadro), enquanto o `run.ps1 next` mandava esperar a T-061, cujo reparo do alvo estava parado havia 81 min num `adb emu kill`. Casos em `run-guard-tests.ps1` (bloco v3.53.5) e `run-check-tests.ps1` (blocos 16e e 16f).
 
 | Guarda | O que mudou | O que **não** cobre |
 |---|---|---|
 | **G20** | segue a decisão "esperar" do `run.ps1 next` (`.team-project/.next-verdict`, gravada quando há agente vivo ou comando da Task rodando, apagada no começo de cada `next`) por 30 min; a Task citada é a do `.active-task` quando ela está elegível | decisão com mais de 30 min (barra de novo, e a sessão roda o `next`, que mostra o sinal de vida); espera que não passa pelo `next` (a sessão nunca o rodou) |
 
-**v3.53.6 (sprint 5 do garden):** o operator fez o reparo do emulador passo a passo porque a G14 recusava o comando de `targets.android.repair` e o `target.ps1` chamado pelo caminho; a Task voltou sem prova. Casos em `run-guard-tests.ps1` (bloco v3.53.6).
+**v3.53.6 (sprint 5 do projeto piloto):** o operator fez o reparo do emulador passo a passo porque a G14 recusava o comando de `targets.android.repair` e o `target.ps1` chamado pelo caminho; a Task voltou sem prova. Casos em `run-guard-tests.ps1` (bloco v3.53.6).
 
 | Guarda | O que mudou | O que **não** cobre |
 |---|---|---|
@@ -202,7 +202,7 @@ Medido no fim do sprint 4 do garden (3.52.2 → 3.53.0): 6 instâncias de dev co
 
 ## v3.58.3 — formulário só pela rota do `run.ps1`
 
-No sprint 6 do garden, 22 formulários chegaram ao stakeholder durante o `sprint run`. Doze não tinham rota no roteiro: o cenário que só se prova por teste e que o `next` manda marcar "sem formulário", o nome de teste que falta (🔺 GAP ao Arquiteto), a Task bloqueada com a fila ainda andando (a T-089 gerou 6 formulários, ~2h30, por uma linha de teste), "tento de novo?" e "retomo?". A G3 confere a forma da pergunta; nenhuma guarda conferia se a pergunta cabia na janela de R25 (c).
+No sprint 6 do projeto piloto, 22 formulários chegaram ao stakeholder durante o `sprint run`. Doze não tinham rota no roteiro: o cenário que só se prova por teste e que o `next` manda marcar "sem formulário", o nome de teste que falta (🔺 GAP ao Arquiteto), a Task bloqueada com a fila ainda andando (a T-089 gerou 6 formulários, ~2h30, por uma linha de teste), "tento de novo?" e "retomo?". A G3 confere a forma da pergunta; nenhuma guarda conferia se a pergunta cabia na janela de R25 (c).
 
 | Guarda | Evento · ferramenta | Papel | Regra | Decisão | O que **não** cobre |
 |---|---|---|---|---|---|

@@ -1,0 +1,79 @@
+# Paridade dos executores (v3.62.0): os mesmos cenários, os mesmos vereditos no web (Playwright) e no CDP (toque por dedo).
+# Título começando com [FALHOU] = o veredito esperado é FALHOU; os demais, PASSOU. Atributo de teste: id; hiddenScopes: .p-cache.
+
+scenario PAR-01 type substitui o valor do campo que já tem texto
+open
+type p.campo = novo valor
+assert-text p.campo = novo valor
+
+scenario PAR-02 type e leitura num web component com o campo em shadow root
+open
+type p.livre = nota nova
+assert-text p.livre = nota nova
+
+scenario PAR-03 página em cache: id repetido, ausente e contagem ignoram o escopo escondido
+open
+assert-text p.repetido = visível
+assert-absent p.so-cache
+assert-count p.item. = 40
+
+scenario PAR-04 display contents tem a caixa dos filhos
+open
+assert-exists p.contents
+assert-text p.contents = conteúdo sem caixa própria
+
+scenario PAR-05 [FALHOU] toque num botão coberto por outra camada
+open
+tap p.botao-coberto
+assert-text p.lido = coberto
+
+scenario PAR-06 toque livre chega ao botão
+open
+tap p.botao-livre
+assert-text p.lido = livre
+
+scenario PAR-07 lista inteira e elemento fora da janela
+open
+assert-count p.item. = 40
+assert-order p.item. = 1,20,40
+tap p.longe
+assert-text p.lido = longe
+
+scenario PAR-08 faixa horizontal rolável
+open
+tap p.fim-da-faixa
+assert-text p.lido = faixa
+
+scenario PAR-09 select nativo pelo rótulo
+open
+select p.nativo = Couve
+assert-text p.nativo = Couve
+
+scenario PAR-10 seletor feito de botões, pelo texto visível
+open
+select p.combo = Pepino
+assert-text p.combo = Pepino
+
+scenario PAR-11 slider pelo toque no ponto proporcional
+open
+slider p.nivel 7 0 10
+assert-text p.nivel = 7
+
+scenario PAR-12 type fora do ASCII
+open
+type p.campo = ação, maçã — ✓
+assert-text p.campo = ação, maçã — ✓
+
+scenario PAR-13 elemento com display none é ausente
+open
+assert-absent p.escondido
+assert-exists p.titulo
+
+scenario PAR-14 caixa de seleção marcada pelo toque
+open
+tap p.marca
+assert-checked p.marca = true
+
+scenario PAR-15 [FALHOU] id que não existe
+open
+assert-exists p.nao-existe
