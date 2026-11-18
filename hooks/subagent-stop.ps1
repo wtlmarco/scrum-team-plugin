@@ -15,7 +15,8 @@ $ErrorActionPreference = 'Stop'
 # ID de trabalho no texto: Task, Correção, bloco ou História — o primeiro que aparece.
 # v3.52.2 (note.md item 15): Q-S<n>[a-z]? (correção do portão) é Task.
 function Get-WorkId([string]$Text) {
-    $m = [regex]::Match($Text, '(?<![\w-])(Q-S\d+[a-z]?|T-\d+[a-z]?|F-\d+|B-\d+|H-\d+)(?![\w])')
+    # v3.63.0: o portão do sprint (S<n>) e o achado dele (S<n>-F<k>) também são trabalho — antes caíam em n/a · sprint-<n>.
+    $m = [regex]::Match($Text, '(?<![\w-])(Q-S\d+[a-z]?|T-\d+[a-z]?|S\d+-F\d+|F-\d+|B-\d+|H-\d+|S\d+)(?![\w])')
     if ($m.Success) { return $m.Value }
     return $null
 }
@@ -228,6 +229,7 @@ try {
         round         = $round + 1
         work          = if ($work) { $work } else { 'n/a' }
         works         = $works
+        gate_round    = $(if ($work -match '^S(\d+)(-F\d+)?$') { $gp = Join-Path $projectDir ".team-project/sprints/$($Matches[1])/gate.json"; if (Test-Path -LiteralPath $gp) { try { [int](Get-Content -LiteralPath $gp -Raw -Encoding UTF8 | ConvertFrom-Json).round } catch { 0 } } else { 0 } } else { 0 })   # v3.63.0
         model         = (@($models.Keys) -join ',')
         start         = $start.ToString('yyyy-MM-ddTHH:mm:ss')
         duration_s    = $duration

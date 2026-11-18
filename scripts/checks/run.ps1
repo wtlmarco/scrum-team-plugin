@@ -49,6 +49,7 @@ param(
     [int]$For = 0,            # v3.57.1 · wait: segundos de espera com conferência dentro do script (0 = uma conferência só)
     [int]$Every = 30,         # v3.57.1 · wait: intervalo entre as conferências
     [ValidateSet('', 'aparência', 'aparencia', 'desenho', 'produto', 'processo', 'ambiente')][string]$Nature = '',   # v3.57.1 · done -Result gap: a natureza que o executor lê no GAP sem **Natureza:**
+    [ValidateSet('', 'appearance', 'design', 'scenario', 'screen', 'requirement', 'process', 'environment')][string]$Cause = '',   # v3.63.0 · done -Result gap: a causa (o -Nature segue aceito com os nomes antigos)
     [string]$Because = '',        # v3.60.1 · prove: o motivo (vai ao plano, ao device-pending.md e ao run-log) · pause: o motivo da pausa
     [string]$Root = (Get-Location).Path
 )
@@ -57,6 +58,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib.ps1')
 . (Join-Path $PSScriptRoot '..\..\hooks\common.ps1')
 . (Join-Path $PSScriptRoot 'external-plan.ps1')
+. (Join-Path $PSScriptRoot 'gate.ps1')   # v3.63.0: o passo do portão do QA
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $todoMk = [char]::ConvertFromUtf32(0x2B1C); $redMk = [char]::ConvertFromUtf32(0x1F534)
@@ -858,6 +860,7 @@ try {
             exit 2
         }
         $preqNote = $preq.Lines
+        if (-not (Get-TaskWait $Root $T.Id)) { foreach ($sa in @(Remove-StaleAgents $Root $T.Id)) { $sm0 = "registro ignorado: $(([string]$sa.type) -replace '^.*:', '') $([string]$sa.agent_id) sem ação há $([int]((Get-AgentIdleHours $sa) * 60)) min — saiu do .active-agents (foi para o .interrupted)"; Out "run start: $sm0"; Add-RunLog $S $n $T.Id $sm0 'sem sinal de vida há 20 min ou mais e sem comando da Task vivo' '.team-project/.interrupted' } }   # v3.63.0
         $liveDev = @(Select-LiveAgents @(Get-LiveAgents $Root $T.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -eq 'developer' }) $T.Id)
         if ($liveDev.Count) {
             $a = $liveDev[0]; $idle = [int]((Get-AgentIdleHours $a) * 60)
@@ -999,16 +1002,17 @@ try {
             # mais barato. Agora: processo e ambiente entram (ciclo completo, como antes); vale a linha **Natureza:**, senão a
             # palavra na linha do 🔺; sem nenhuma, o done RECUSA (exit 2) antes de qualquer efeito e o executor classifica pelo
             # texto do GAP com -Nature — sem dev novo só por uma linha. O run-log grava "🔺 GAP [<natureza>]" para a contagem.
-            $natRe = '(apar[êe]ncia|desenho|produto|processo|ambiente)'
-            $natM = $null; if (Test-Path -LiteralPath $dvp) { $natM = @([regex]::Matches((Read-Text $dvp), "(?im)^\*\*Natureza:\*\*\s*$natRe") | Select-Object -Last 1) | Select-Object -First 1 }
-            $natRaw = if ($natM) { $natM.Groups[1].Value } elseif ($gl.Count -and $gl[0] -match "(?i)\b$natRe\b") { $Matches[1] } elseif ($Nature) { $Nature } else { '' }
-            $natSrc = if ($natM) { 'dev' } elseif ($natRaw -and -not $Nature) { 'linha do 🔺' } elseif ($natRaw) { 'executor (-Nature)' } else { '' }
-            $nat = if ($natRaw -like 'apar*') { 'aparência' } else { $natRaw.ToLowerInvariant() }
+            # v3.63.0: a linha é **Cause:** (code · design · scenario · screen · requirement · environment · appearance · process); **Natureza:** e os nomes antigos seguem aceitos (sinônimos).
+            $natRe = '(code|design|scenario|screen|requirement|environment|appearance|process|apar[êe]ncia|desenho|produto|processo|ambiente)'
+            $natM = $null; if (Test-Path -LiteralPath $dvp) { $natM = @([regex]::Matches((Read-Text $dvp), "(?im)^\*\*(?:Cause|Natureza):\*\*\s*$natRe\b") | Select-Object -Last 1) | Select-Object -First 1 }
+            $natRaw = if ($natM) { $natM.Groups[1].Value } elseif ($gl.Count -and $gl[0] -match "(?i)\b$natRe\b") { $Matches[1] } elseif ($Cause) { $Cause } elseif ($Nature) { $Nature } else { '' }
+            $natSrc = if ($natM) { 'dev' } elseif ($natRaw -and -not $Nature -and -not $Cause) { 'linha do 🔺' } elseif ($natRaw) { 'executor (-Cause)' } else { '' }
+            $nat = ConvertTo-Cause $natRaw; if ($nat -eq 'code') { $nat = 'design' }   # o GAP do dev nunca é 'code' (o código é dele): vale como desenho
             if (-not $nat) {
                 $gline0 = if ($gl.Count) { ($gl[0] -replace '^[#>*\-\s]+', '') } else { '(nenhuma linha com 🔺 no relatório)' }
-                Out "run: o 🔺 GAP da $($T.Id) veio sem natureza (nem **Natureza:** no relatório, nem a palavra na linha do 🔺): $gline0"
-                Out "  executor: leia o GAP em .team-project/sprints/$n/delivery/$($T.Id).md e rode de novo: run.ps1 done -Task $($T.Id) -Result gap -Nature <aparencia | desenho | produto | processo | ambiente>  (sem acento)"
-                Out "  aparência = medida ou marcação (espaço, alinhamento, quebra, tamanho, rótulo); desenho = o plano não serve (estrutura, contrato, fluxo); produto = muda o que o usuário vê ou faz; processo = regra do time ou do plugin em conflito (cartão × plano, comando negado, ordem do verify); ambiente = alvo, emulador, prazo, ferramenta ou massa de dados. Na dúvida entre duas, a mais pesada."
+                Out "run: o 🔺 GAP da $($T.Id) veio sem causa (nem **Cause:** no relatório, nem a palavra na linha do 🔺): $gline0"
+                Out "  executor: leia o GAP em .team-project/sprints/$n/delivery/$($T.Id).md e rode de novo: run.ps1 done -Task $($T.Id) -Result gap -Cause <appearance | design | scenario | screen | requirement | process | environment>"
+                Out "  appearance = medida ou marcação (espaço, alinhamento, quebra, tamanho, rótulo) · design = o plano não serve (estrutura, contrato, fluxo) · scenario = o .scn está errado ou desatualizado · screen = a tela não previa o caso (estado, layout, fluxo) · requirement = regra ou critério confuso, mudança de escopo · process = regra do time ou do plugin em conflito (cartão × plano, comando negado, ordem do verify) · environment = alvo, emulador, prazo de comando, ferramenta ou massa de dados"
                 exit 2
             }
             # v3.51.4 (garden item 22): Task que a sessão já marcou 🟪 volta a 🟨 — ela segue na construção até o GAP se resolver.
@@ -1025,17 +1029,28 @@ try {
                 Out "  executor: não dispare Arquiteto nem start. Devolva à sessão a linha `"$($T.Id) 🔺 GAP → external plan $($gp.Name)`" — o run.ps1 next mostra o pacote ao stakeholder e só reconstrói a Task quando a decisão voltar (plan.ps1 ok)."
                 exit 0
             }
-            if ($nat -eq 'produto') {
-                Set-AskRoute $Root 'gap-produto' $T.Id $(if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP de produto' })
-                Add-RunLog $S $n $T.Id "🔺 GAP [produto · $natSrc] → stakeholder (formulário); o Arquiteto só registra a decisão depois" $(if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }) "sprints/$n/delivery/$($T.Id).md"
-                Out "run: $($T.Id) com 🔺 GAP de natureza PRODUTO — a decisão é do STAKEHOLDER, não do Arquiteto (mexe no que o usuário vê ou faz):"
-                Out "  sessão: leve ao stakeholder num formulário (com exemplo prático — G3) a pergunta e as opções do GAP em .team-project/sprints/$n/delivery/$($T.Id).md; decidido, o Arquiteto só registra no plano (/arc question, parecer curto) e o dev volta por run.ps1 start -Task $($T.Id)."
-                Out "  executor: não dispare Arquiteto nem start. Devolva à sessão a linha `"$($T.Id) 🔺 GAP produto → stakeholder`"."
+            # v3.63.0: requisito vai ao PO (o canal do stakeholder: o que for dele, ele devolve em STAKEHOLDER:), tela ao UX e
+            # cenário ao QA — antes, 'produto' ia direto ao formulário do stakeholder e a especificação da tela ficava sem o caso.
+            $ownG = @{ requirement = @('product-owner', '/po', 'REQUISITO', 'o PO'); screen = @('user-experience', '/ux', 'TELA', 'o UX'); scenario = @('quality-assurance', '/qa', 'CENÁRIO', 'o QA') }
+            if ($ownG.ContainsKey($nat)) {
+                $o = $ownG[$nat]; $gline = if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }
+                if ($nat -eq 'requirement') { Set-AskRoute $Root 'gap-produto' $T.Id $gline }
+                Add-RunLog $S $n $T.Id "🔺 GAP [$nat · $natSrc] → $($o[1]) em instância nova$(if ($nat -ne 'scenario') { '; o Arquiteto registra a decisão no plano (parecer curto)' }); o dev volta pelo start" $gline "sprints/$n/delivery/$($T.Id).md"
+                Out "run: $($T.Id) com 🔺 GAP de causa $($o[2]) — quem decide é $($o[3]), não o Arquiteto (v3.63.0):"
+                Out "  $(Get-AgentLine $o[0])"
+                $taskG = switch ($nat) {
+                    'requirement' { "decida o 🔺 GAP de requisito da $($T.Id) (regra, critério ou escopo). O que é decisão do stakeholder (muda o que o usuário vê ou faz, ou o escopo), devolva na primeira linha STAKEHOLDER: <a pergunta e as opções> — a sessão leva em formulário" }
+                    'screen' { "decida o 🔺 GAP de tela da $($T.Id): acrescente na especificação da tela o caso que faltou (estado, layout, fluxo) e diga em 3 linhas o que o dev deve fazer" }
+                    default { "o dev da $($T.Id) achou o cenário errado ou desatualizado: corrija o .scn (só o cenário citado) e rode $plugin/accept.ps1 -ParseOnly" }
+                }
+                Out "  prompt: `"$($o[1]) — $taskG. O GAP está em .team-project/sprints/$n/delivery/$($T.Id).md (a seção mais recente) e o plano em .team-project/sprints/$n/$($T.Plan). Volte em até 15 linhas.`""
+                Out $(if ($nat -eq 'scenario') { "  depois: dev em instância NOVA — run.ps1 start -Task $($T.Id) e rode run.ps1 done de novo" } else { "  depois: Arquiteto em instância NOVA, PARECER CURTO, registra a decisão no plano (/arc question); dev em instância NOVA — run.ps1 start -Task $($T.Id) e rode run.ps1 done de novo" })
+                Out "  executor: se a volta começa por STAKEHOLDER:, devolva à sessão a linha `"$($T.Id) 🔺 GAP $nat → stakeholder`" (ela leva em formulário); senão, siga o depois"
                 exit 0
             }
-            $gapPre = if ($nat -eq 'aparência') { 'PARECER CURTO (GAP de aparência ou marcação): responda só a medida ou a marcação, aplicando o envelope do plano quando houver, em até 8 linhas, e registre no plano apenas o trecho que a decisão muda; se ao ler for decisão de produto, diga "produto" e pare. ' } else { '' }
-            if ($nat -eq 'aparência') { Out "run: GAP de natureza APARÊNCIA — parecer curto do Arquiteto (até 8 linhas), não o ciclo completo." }
-            else { Out "run: GAP de natureza $($nat.ToUpperInvariant()) ($natSrc) — ciclo completo do Arquiteto." }
+            $gapPre = if ($nat -eq 'appearance') { 'PARECER CURTO (GAP de aparência ou marcação): responda só a medida ou a marcação, aplicando o envelope do plano quando houver, em até 8 linhas, e registre no plano apenas o trecho que a decisão muda; se ao ler for decisão de produto, diga "produto" e pare. ' } else { '' }
+            if ($nat -eq 'appearance') { Out "run: GAP de causa APPEARANCE — parecer curto do Arquiteto (até 8 linhas), não o ciclo completo." }
+            else { Out "run: GAP de causa $($nat.ToUpperInvariant()) ($natSrc) — ciclo completo do Arquiteto." }
             Add-RunLog $S $n $T.Id "🔺 GAP [$nat · $natSrc] → Arquiteto em instância nova (/arc question); a decisão fica no plano (R9)" $(if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }) "sprints/$n/delivery/$($T.Id).md"
             Out "run: $($T.Id) com 🔺 GAP — Arquiteto em instância NOVA (o cache de 5 min do anterior já venceu; C1), modo /arc question (rota gravada no run-log.md):"
             Out "  $(Get-AgentLine 'architect')"
@@ -1468,6 +1483,9 @@ try {
     if ($next) {
         # v3.53.1 (plugin-report do sprint 4 do garden, item 3): executor ou dev desta Task ainda vivo — de outra sessão aberta
         # no mesmo projeto, ou desta, antes do aviso de volta. Redisparar punha dois devs no mesmo emulador.
+        # v3.63.0 (Q-S6d do piloto, 17/11): o registro sem sinal de vida da Task sai do .active-agents com uma linha — antes o next
+        # o ignorava calado, o "## Agora" o mostrava "trabalhando" e alguém renomeou o arquivo à mão. Só sem comando da Task vivo.
+        if (-not (Get-TaskWait $Root $next.Id)) { foreach ($sa in @(Remove-StaleAgents $Root $next.Id)) { $sm0 = "registro ignorado: $(([string]$sa.type) -replace '^.*:', '') $([string]$sa.agent_id) sem ação desde $(try { ([datetime]::Parse([string]$(if ($sa.at) { $sa.at } else { $sa.desde }))).ToString('HH:mm') } catch { '?' }) ($([int]((Get-AgentIdleHours $sa) * 60)) min) — saiu do .active-agents (foi para o .interrupted)"; Out "  $sm0"; Add-RunLog $S $n $next.Id $sm0 'sem sinal de vida há 20 min ou mais e sem comando da Task vivo' '.team-project/.interrupted' } }
         $liveA = @(Select-LiveAgents @(Get-LiveAgents $Root $next.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -in 'task-runner', 'developer' }) $next.Id)
         if ($liveA.Count) {
             $a = @($liveA | Sort-Object { [string]$_.at } -Descending)[0]
@@ -1541,55 +1559,9 @@ try {
         exit 3
     }
 
-    # 3 · validação do sprint: o operator mede (quality + todos os cenários), o QA julga.
-    $sid = "S$n"
-    $qr = Join-Path ((Get-VerifyDir $Root $sid) -replace '[\\/]verify[\\/]', '/quality/') 'result.json'
-    $ar = Join-Path ((Get-VerifyDir $Root $sid) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'
-    $tree = Get-WorkTree $Root
-    $fresh = { param($p) if (-not (Test-Path -LiteralPath $p)) { return $false }; try { $j = Read-Text $p | ConvertFrom-Json; return (-not $tree -or -not $j.tree -or [string]$j.tree -eq $tree) } catch { return $false } }
-    $val = Join-Path $S 'validation.md'; $vv = Get-VerdictOf $val
-    # v3.52.2 (C6): ⚠️ com "**Decisão do PO:** aceito com dívida — …" passa o portão; ❌ nunca.
-    $poDebt = ($vv -eq $E.Warn) -and (Test-PoDebt $val)
-    if ($vv -ne $E.Done -and -not $poDebt) {
-        if (-not (& $fresh $qr) -or ((Get-TargetsConfig $Root) -and -not (& $fresh $ar))) {
-            Out "PRÓXIMA AÇÃO: validação do sprint $n — medir (operator, comandos longos fora das instâncias caras; C3)"
-            Say 'Todas as partes do sprint estão prontas. Começou a revisão final: rodando todos os testes do app.'
-            Out "  $(Get-AgentLine 'operator')"
-            Out ("  prompt: `"Chamador: sessão $sid — Rode na raiz: $plugin/quality.ps1 -Id $sid" + $(if (Get-TargetsConfig $Root) { " e $plugin/accept.ps1 -Task $sid (todos os cenários)" } else { '' }) + ". Exit 4 = ambiente: rode target.ps1 -Repair uma vez e repita. Devolva os caminhos dos result.md e as linhas de resumo.`"")
-            Out "  depois: run.ps1 next"
-            exit 0
-        }
-        if ($null -eq $vv -or $vv -eq '') {
-            Out "PRÓXIMA AÇÃO: validação do sprint $n — julgar (QA, uma passada só; portão da Review)"
-            Say 'Revisão final: a qualidade está avaliando tudo o que foi entregue no sprint.'
-            Out "  $(Get-AgentLine 'quality-assurance')"
-            # v3.60.1: as Tasks fechadas pela prova por teste (run.ps1 prove) entram no julgamento — a conferência no aparelho é aqui.
-            $dpRel = if (Test-Path -LiteralPath (Join-Path $S 'device-pending.md')) { ", a lista de prova no aparelho pendente .team-project/sprints/$n/device-pending.md (cada linha: o cenário passou no accept do sprint ou fica como dívida no validation.md, com a Task e o motivo)" } else { '' }
-            Out ("  prompt: `"/qa sprint $n — leia .team-project/quality/$n/$sid/result.md" + $(if (Get-TargetsConfig $Root) { " e .team-project/accept/$n/$sid/result.md (com as capturas)" } else { '' }) + "$dpRel, os planos e o diff do sprint. Julgue SOLID, clean code, aderência à arquitetura e aos planos, padrões e segurança, citando standards/ (Q<n>). Escreva .team-project/sprints/$n/validation.md (template sprint-validation) com o veredito e os achados (Volta para: dev | Arquiteto). Não rode build nem o app. Volte em até 15 linhas.`"")
-            exit 0
-        }
-        # v3.52.2 (note.md item 15, C5): medição mais nova que o validation.md = a correção fechou e o operator mediu de novo
-        # → o QA revisa o veredito (rodada nova no mesmo arquivo). Senão, a correção vira Task Q-S<n> no quadro.
-        $measAt = @($qr, $ar | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { (Get-Item -LiteralPath $_).LastWriteTime } | Sort-Object -Descending)
-        if ($measAt.Count -and $measAt[0] -gt (Get-Item -LiteralPath $val).LastWriteTime) {
-            $round = @([regex]::Matches((Read-Text $val), '(?m)^\*\*Veredito[^*\r\n]*:\*\*')).Count + 1
-            Out "PRÓXIMA AÇÃO: validação do sprint $n — revisar o veredito (QA, instância nova; a medição é mais nova que o validation.md)"
-            Say 'Revisão final: a qualidade está conferindo as correções.'
-            Out "  $(Get-AgentLine 'quality-assurance')"
-            Out ("  prompt: `"/qa sprint $n — a correção do portão fechou e o operator mediu de novo: leia .team-project/quality/$n/$sid/result.md" + $(if (Get-TargetsConfig $Root) { " e .team-project/accept/$n/$sid/result.md" } else { '' }) + ", os achados e o diff das Tasks Q-S$n. Acrescente no fim de .team-project/sprints/$n/validation.md a linha **Veredito (rodada $round):** ✅ | ⚠️ | ❌ com o estado de cada achado — não apague a rodada anterior. Não rode build nem o app. Volte em até 15 linhas.`"")
-            Out "  depois: run.ps1 next"
-            exit 0
-        }
-        $qs = @($tasks | Where-Object { $_.Id -match "^Q-S$n([a-z]?)$" } | ForEach-Object { $_.Id })
-        $qid = if (-not $qs.Count) { "Q-S$n" } else { $sfx = @($qs | ForEach-Object { if ($_ -match '([a-z])$') { [int][char]$Matches[1] } else { [int][char]'a' } } | Sort-Object -Descending)[0]; "Q-S$n" + [char]($sfx + 1) }
-        Out "PRÓXIMA AÇÃO: abrir $qid — correção do portão (validation.md: veredito $vv, sem decisão do PO)"
-        Say $(if ($vv -eq $E.Warn) { 'A revisão final encontrou pontos a melhorar. O dono do produto decide se aceita como pendência para depois; se não, abro uma tarefa de correção.' } else { 'A revisão final encontrou problemas que precisam de correção antes da apresentação; abrindo uma tarefa de correção.' })
-        Out "  1. a sessão grava a linha da $qid no quadro, seção '## Correção do portão — sprint $n' (a tabela das Histórias: ID, Task, Est., Dono, Depende de, Plano, Evidência, Cenários…), marcador $todoMk, com os achados 'Volta para: dev' do validation.md"
-        Out "  2. achado com 'Volta para: Arquiteto' → /arc question (instância nova) com o caminho do validation.md"
-        Out "  3. depois: run.ps1 next — o Arquiteto escreve o plano de correção (template fix-plan ou plano enxuto) e o executor de Task conduz a $qid; fechada, o operator mede de novo e o QA revisa o veredito. O ✅ das Tasks originais não muda (R25)"
-        if ($vv -eq $E.Warn) { Set-AskRoute $Root 'portao' $sid 'veredito ⚠️ do portão: o PO aceita como dívida (formulário)'; Out "  ⚠️ que o PO aceita como dívida (formulário): a sessão grava no validation.md **Decisão do PO:** aceito com dívida — <motivo e onde a dívida está registrada>; com ela o portão passa (❌ nunca passa)" }
-        exit 0
-    }
+    # 3 · validação do sprint — o portão do QA por marcos (v3.63.0, gate.ps1): mede só o que venceu, ambiente não vira
+    # veredito, a causa de cada achado decide o dono e a prova de cada rodada fica em sprints/<n>/proof/.
+    Invoke-GateStep
     # 5 · consolidação dos documentos vivos (A5) e 6 · Review.
     $cons = Join-Path $S 'docs-consolidation.md'
     if (-not (Test-Path -LiteralPath $cons) -or (Read-Text $cons) -notmatch '(?m)^\*\*Estado:\*\*\s*feita') {

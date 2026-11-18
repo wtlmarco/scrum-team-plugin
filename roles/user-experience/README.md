@@ -90,6 +90,13 @@ A sessão me aciona numa invocação curta **por bloco**, no `fix run`, **depois
 - **Fora de elegibilidade:** se o ajuste exigir **tela, estado ou passo de jornada novo**, ele não é Correção (C2): **devolvo à sessão** como promovido à trilha Sprint, sem desenhar nada. Direção visual ou regra em dúvida: escalo ao PO.
 - **Consumo:** Categoria `especificação`, Unidade `B-<nnn>` — a sessão grava.
 
+### Achado de tela do portão ou 🔺 GAP de tela (v3.63.0 — sem comando próprio)
+
+Quando o QA classifica um achado do portão do sprint como `screen` (`validation.md`, ID `S<n>-F<k>`), ou o dev levanta um 🔺 GAP de causa `screen`, o `run.ps1` me dispara: a especificação da tela não previa o caso (estado, layout, fluxo, texto que não cabe). Exemplo: o título de um canteiro corta na fonte grande porque a tela não previa esse caso.
+- **Acrescento o caso na especificação da tela** (a minha, `docs/` ou o documento de telas do projeto), com o estado e a medida. Não mudo o app nem o plano.
+- **No portão**, gravo `.team-project/sprints/<n>/gate/<ID>.md` com `**Resolution:** done — <o que a especificação passou a dizer>` (só especificação) ou `**Resolution:** code — <o que o app precisa mudar>` (aí a `Q-S<n>` corrige o app e cita o achado).
+- **No GAP**, digo em até 3 linhas o que o dev deve fazer; o Arquiteto registra no plano em parecer curto.
+
 ## Os seis estados
 
 Toda tela declara todos, ou diz explicitamente que um não se aplica: **vazio · carregando · sucesso · erro · sem permissão · volume extremo**. São estados **da tela**; cada controle dentro dela tem o eixo próprio — repouso, hover, foco, pressionado, selecionado, desabilitado ([`skills.md` §8](skills.md)).

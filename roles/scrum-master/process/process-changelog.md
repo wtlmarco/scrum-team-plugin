@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.60`](process-changelog-archive.md) | A ficha leva os trechos (o Arquiteto do plano lê uma vez e escreve) e o kanban acompanha o prazo: previsão por parte, farol e burndown visual, com o registro técnico no consumo (SM + Arquiteto) — 15/11/2026 · *com addendum v3.60.1* |
 | [`v3.59`](process-changelog-archive.md) | Acompanhar o sprint em palavras simples: a fala da sessão, o Resumo do quadro e o /team-status para quem é de negócio, com o técnico sob pedido (SM + PO + Arquiteto) — 14/11/2026 · *com addendum v3.59.2* |
 | [`v3.58`](process-changelog-archive.md) | Security Engineer: pentest e secure code review sob demanda, com o laço que leva o achado ao standard do Arquiteto (SM + Arquiteto + Security Engineer) — 12/11/2026 · *com addendum v3.58.3* |
 | [`v3.57`](process-changelog-archive.md) | O sprint real: protocolo de espera, sessão medida e reiniciada pelo teto, suíte só pelo verify, Arquiteto com contexto enxuto e o que o sprint 5 do garden não tinha onde pôr (SM + Arquiteto + Dev + QA) — 07/11/2026 · *com addenda v3.57.1 a v3.57.3* |
@@ -101,6 +102,49 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.63 — O portão do QA por marcos: ambiente não vira veredito, a rodada nova mede e julga só o que venceu, cada achado tem causa e dono, e a prova de cada rodada fica no sprint (SM + QA + PO + UX + Arquiteto + Dev) — 17/11/2026
+
+**Instrução:** (stakeholder, 17/11/2026) "Avalie se o processo de QA desde que inicia possui marcos do processo sobre as diversas validações que realiza pois uma falha em um deles não necessariamente poderá reiniciar todo o processo do zero"; "existe na falha dos cenários uma marcação do motivo para talvez resolvê-lo a nível de UX, PO, Arquiteto ou dev?"; "o Kanban, consumption precisam controlar também essa tarefa além de dentro do sprint guardar as evidências das entregas". Formulários do mesmo dia: tudo numa 3.63.0; nomes em inglês; o portão vira item controlado; guardar o resultado e as capturas, sem os logs brutos. Plano em `melhorias/plano-v3.63.0.md`.
+**Medido (garden, S6, 15–17/11):** 3 rodadas do portão reprovadas, quase todas por ambiente, e 4 Tasks de correção (Q-S6 a Q-S6d); cada rodada refez a qualidade inteira e os 49 cenários, também depois de correções só na ferramenta de prova; o `validation.md` citava `accept/6/S6/result.md` das rodadas 1 e 2, e só existia o da última; o "Volta para" só tinha dev e Arquiteto, em texto livre; a medição e o julgamento do portão caíram em `n/a · sprint-6` no consumo (~2,1 mi de tokens); o "## Agora" mostrou como trabalhando agentes encerrados havia 37 min.
+**Classificação:** instrumento (`gate.ps1`; `accept.ps1 -Resume`; `Get-ProductionTree`, `gate.json`, `proof/`; G16 e registro de agentes) · formato de documento (`validation.md` com `## Frentes` e `## Achados`: ID `S<n>-F<k>`, `Cause`, `State`; `**Cause:**` no GAP; `gate/<ID>.md` com `**Resolution:**`) · rota (a causa decide o dono: PO, UX, Arquiteto, QA, `Q-S<n>`, reparo) · cerimônia (rodada focada do QA).
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `sprint-run.md` | passos 4 e 5 da tabela · §Validação do sprint · Gap (natureza → causa) | o portão por marcos (medir só o que venceu, ambiente fora do veredito, prova guardada, causa com dono em ordem fixa, rodada focada); a `Q-S<n>` cita os IDs; quadro e consumo do portão |
+| `quality-assurance/templates/sprint-validation.md` · `quality-assurance/README.md` · `agents/quality-assurance.md` | modelo inteiro · `/qa sprint <n>` passos 1, 2, 4 e 5 | tabelas `## Frentes` e `## Achados` com valores fixos em inglês; ID que não se reaproveita; a prova citada por `proof/`; rodada focada sem reabrir frente mantida |
+| `developer/templates/gap.md` · `agents/developer.md` · `agents/task-runner.md` | linha do GAP · rota | `**Cause:**` com `appearance`, `design`, `scenario`, `screen`, `requirement`, `process`, `environment` (os nomes antigos são sinônimos); `screen` → UX, `requirement` → PO, `scenario` → QA |
+| `user-experience/README.md` · `agents/user-experience.md` | achado ou GAP de tela | o UX acrescenta o caso na especificação da tela e grava a resolução |
+| `product-owner/README.md` · `agents/product-owner.md` | achado ou GAP de requisito | o PO decide o que é dele e devolve em `STAKEHOLDER:` o que é do stakeholder; resolução `done`, `code` ou `debt` |
+| `scrum-master/templates/sprint-backlog.md` | linha da `Q-S<n>` | os IDs dos achados que ela corrige |
+| `standards/scenario-language.md` | §6 (nova) | `-Resume`: identidade do app, hash do cenário, o que o `result.json` passa a trazer |
+| `how-to.md` · `hooks/COVERAGE.md` | `/team-status` · pastas · bloco v3.63.0 | a revisão final no `/team-status` e no `kanban.md`; a pasta `proof/`; G16 com o portão; o registro sem sinal; o que o `host_pid` prova |
+
+### Por quê
+O portão tinha marcos grossos: a medição valia pela árvore inteira, então qualquer correção refazia tudo, e o aceite que caía no ambiente virava veredito do QA e correção do dev. A falha de um marco reiniciava os outros. E o achado só tinha dois destinos, então o que era da tela ou do critério voltava ao dev, e a especificação continuava sem o caso.
+
+### Conflitos com o processo vigente
+Nenhum com regra. Muda a rota da natureza `produto` do GAP (v3.57.0: ia direto ao formulário do stakeholder) — agora passa pelo PO, que é o canal do stakeholder (R22). O "cenário não exercitado reprova o portão" da v3.51 fica: o que muda é que o ambiente é reparado antes de o QA julgar.
+
+### Como saberemos que funcionou
+No próximo portão de um projeto com alvo: nenhuma `Q-S<n>` aberta por ambiente; a rodada 2 roda só os cenários que falharam, não rodaram ou mudaram; nenhuma frente de código rejulgada depois de correção só em ferramenta de prova; todo caminho de prova citado no `validation.md` existe no fim do sprint; o consumo separa o custo de cada rodada do portão.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.60 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.63, v3.62, v3.61 | ✅ |
+| Comportamento | `run-check-tests.ps1`, casos marcados v3.63.0 | ver `CHANGELOG.md` v3.63.0 | ✅ |
+| Entrega | `release.ps1` (C3) | R17 e R18 ok | ✅ |
+
+### Parte mecânica (implementada pela sessão principal, citada aqui)
+`scripts/checks/gate.ps1` (novo), `run.ps1` (portão, `done -Cause`, registro ignorado), `accept.ps1` (`-Resume`), `lib.ps1` (árvore de produção, `gate.json`, achados, prova, causas), `quality.ps1`, `close.ps1` (`proof/<ID>/`), `kanban.ps1`, `team-view.ps1`, `consumption.ps1`, `hooks/subagent-stop.ps1`, `hooks/common.ps1`. Detalhe e suítes no `CHANGELOG.md` v3.63.0.
+
+### Decidido pelo stakeholder (formulários de 17/11)
+- Uma entrega só (3.63.0), com os marcos do QA, as causas com dono, o controle no quadro e no consumo e a prova guardada.
+- Identificadores novos em inglês; o texto para pessoas continua em português.
+- Guardar o resultado e as capturas de cada rodada e de cada Task, sem os logs brutos.
+
+---
 ## v3.62 — A prova do app híbrido no aparelho é de primeira classe: o id é lido pelo CDP e a configuração do alvo vai ao stakeholder, não ao Arquiteto (SM + Arquiteto + QA) — 16/11/2026
 
 **Instrução:** (stakeholder, 16/11/2026, sobre o item 25 de `note.md`, depois de análise no garden) versão com plano; `assert-count` e `assert-order` valem para a lista inteira; revogada a espera pelo espelho do id no `aria-label`; correção genérica para qualquer app híbrido. Depois: "aplicar a fase G do plano-v3.62.0".
@@ -209,58 +253,3 @@ No próximo projeto que fizer o onboarding: o sprint 0 fecha com até 2 devoluç
 
 ### Pendente do stakeholder
 Nada.
-
----
-
-## v3.60 — A ficha leva os trechos (o Arquiteto do plano lê uma vez e escreve) e o kanban acompanha o prazo: previsão por parte, farol e burndown visual, com o registro técnico no consumo (SM + Arquiteto) — 15/11/2026 · *com addendum v3.60.1*
-
-**Instrução:** (stakeholder, 14–15/11/2026, sobre a H-M do garden dividida em 3 Tasks) "Não seria melhor o Desenvolvedor Haiku receber as 3 tarefas de uma mesma vez"; depois "avalie talvez a possibilidade de em somente uma interação com o Arquiteto ele já gerar os 3 planos sem precisar reler tudo de novo … assim mantemos o benefício da divisão menor para evitar os erros do Haiku e otimizamos o Arquiteto", "consegue fazer uma simulação para ver qual seria o modo mais otimizado" e "pode implementar essa melhoria em uma branch feat". A divisão para o dev fica como está.
-**Medido (sprint 6 do garden, H-M, plugin 3.58.2):** os 3 planos (T-092 a T-094) custaram US$ 9,02 em 125 chamadas; 111 delas e 84 % do custo foram exploração antes do primeiro `Write` (~75 buscas, leituras em pedaços — o `migracoes.spec.ts` foi aberto 7 vezes). O que os 3 leram em comum era pouco (template, `context.md`, `.scn`); o template, ~35 mil caracteres, era lido inteiro na 1ª chamada e reenviado em todas as outras. A ficha apontava 4 arquivos; o plano leu ~11. O breakdown do S6 já trazia as linhas medidas na Planning.
-**Simulação** (calibrada nas 3 conversas: reconstrói US$ 8,95 dos 9,02): um Arquiteto para a História, explorando, US$ 13,57; o atual com o template enxuto, 8,05; um por Task com os trechos no recorte e o guia, 4,37 a 6,85 (base 5,67); um para a História com os trechos, 5,24 a 9,28, com contexto acima de 260 mil.
-**Classificação:** formato (ficha com faixa `caminho:a-b` e seção `§`; recorte com os trechos e o guia de escrita) · comportamento de agente (o Arquiteto do plano abre a ficha e o `context.md` numa chamada, não abre o template inteiro e pede o que faltar numa chamada só)
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `templates/breakdown.md` | abertura · regras 2, 3 e 6 | a ficha aponta a faixa que o plano usa (`caminho:a-b`, `:c-d` na mesma linha) e a seção da fonte (`§2.5`, `§2–§7`, `§"título"`); quem copia é o script; faixa fora do arquivo se corrige antes do plano |
-| `templates/implementation-plan.md` | regra 28 | o recorte traz os trechos, o resumo da dependência e o guia; a regra inteira só pela linha que o guia dá; o que faltar, numa chamada |
-| `agents/architect.md` · `roles/architect/README.md` | Plano pela ficha · Preparo · Ficha por Task | a abertura nova; a medição e a simulação |
-| `workflow-sprint.md` | Planning, passo 4 | código com faixa, fontes com seção |
-| `sprint-run.md` | Como o SM verifica · O que fica onde · Marcador | indicador da v3.60; a Série e o Registro no `consumption.md`, sob a trava dele |
-| `working-rules.md` (R24) · `artifact-ownership.md` · `workflow-sprint.md` §5f | — | a Série e o Registro no `consumption.md` do sprint; o Burndown visual no `kanban.md` |
-| `templates/kanban.md` · `templates/consumption.md` | estrutura e §Como preencher | o Kanban com a previsão, a seção Burndown e as regras do prazo; as quatro seções técnicas no consumo |
-
-### Por quê
-O custo de uma instância é chamadas × contexto: cada chamada reenvia a conversa inteira. A exploração do plano refazia a busca que a Planning já tinha feito. Juntar os planos numa instância não resolve: o que se poupa (prompt e template uma vez) é menor que carregar a exploração da Task anterior em todas as chamadas da seguinte — foi o H-K1 do sprint 4 (US$ 16,3) que levou à v3.53. Trazer os trechos prontos tira as chamadas sem crescer a instância, e o dev continua recebendo Task de até 6 arquivos.
-
-**As linhas andam com o código** (stakeholder, 15/11: "uma tarefa pode modificar o código e assim as referências irão quebrar"): a ficha é da Planning, e no garden 6 de 60 faixas tinham andado até o plano (`migracoes.ts:1131`, 80 linhas). O `run.ps1 next` traduz a faixa pelo `git diff` desde o início do sprint (ou desde a correção da ficha), copia no lugar novo, diz quanto andou e por qual Task, e marca ⚠ quando o próprio trecho mudou. A seção (`§`) se acha pelo título. O pacote do plano externo recebe os mesmos trechos, e o roteiro dele (`external-plan.md`) passa a mandar citar as linhas de hoje, não as da ficha.
-
-**Acompanhamento** (stakeholder, 15/11: "passar do Kanban para consumption: Série, Registro de Transições, Rodada a Rodada, Espera de Comando"; "estimativa de tempo de cada tarefa … do Sprint e um farol No Prazo, Atrasado e adiantado"; "um gráfico Burndown visual"): as quatro seções técnicas vão ao `consumption.md` (R24 passa a apontar para lá; a Série nasce no `kanban.md` na Planning e o `kanban.ps1` a leva no run); o `kanban.md` ganha a previsão de cada parte pelo ritmo medido no sprint, a linha **Prazo** com o farol no Resumo e a seção **Burndown** (gráfico Mermaid e tabela). Prazo: fim da Janela · duração do sprint · a estimativa em dias.
-
-### Conflitos com o processo vigente
-Nenhum com regra. A ficha continua só apontando (regra 1 do breakdown). R24 muda o arquivo, não a regra: uma transição continua sendo uma linha no Registro e uma na Série, no mesmo arquivo e no mesmo momento. O template continua a única fonte do formato: o guia é gerado dele a cada recorte, e sem as marcas de forma o prompt volta a mandar abrir o template. Ficha antiga, com `caminho:linha`, segue valendo, com janela de 40 linhas.
-
-### Como saberemos que funcionou
-Sprint 7 do garden: ~10 chamadas por plano (eram 33 a 50); US$ do plano por Task perto de 2 (era 2,3 a 3,5); `**Li além da ficha:**` com até 2 arquivos; reprovações do `plan.ps1` e 🔺 GAPs de plano por Task não maiores que no S6. Plano que não barateia, ou GAP de plano que sobe, volta ao `/review`.
-
-### Verificação
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Arquivamento de entrada | bloco v3.57 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.60, v3.59, v3.58 | ✅ |
-| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.60.0 | ✅ |
-
-### Parte mecânica (implementada pela sessão principal, citada aqui)
-`lib.ps1`: `Get-FichaCodeRefs`, `Get-FichaSourceRefs`, `Get-MdSectionSpan`, `Get-FichaExcerpts`, `Get-FichaBadRanges`, `Get-PlanGuide`; `Get-Ficha` devolve as faixas e as seções. `run.ps1`: o recorte ganha os trechos e o guia, a faixa fora do arquivo vai à correção da ficha, e o prompt do Arquiteto do plano muda (sem guia, o de antes).
-
-### Addendum v3.60.1 — o time decide o que o stakeholder já respondeu (SM + Arquiteto + QA) — 2026-11-15
-
-**Instrução:** (stakeholder, 15/11/2026) "analise o sprint 6 do garden e veja todas as paradas que aguardaram minha interação… quais ainda podem ser tratadas para o próprio PO, SM ou Arquiteto tomarem as decisões"; depois, "pode aplicar as propostas".
-**Medido (garden, S6, de 14/11 15h a 15/11):** a prova no aparelho que não roda (ids não publicados, estado de partida) foi ao stakeholder 4 vezes com a mesma resposta, e na T-090 duas vezes, porque a decisão não chegou ao plano; "arquivos soltos" de outra Task, 3 formulários e 4 voltas do dev; Docker desligado, 4 formulários; "encurtar ou dividir" um plano que passou de 30 KB com as decisões de GAP; pausar exigiu apagar o `.active-run` pelo Explorador; uma rota da G24 deixou passar outras perguntas.
-**Classificação:** instrumento (`run.ps1 prove` e `pause`; política e pré-requisitos no `guards.json`; retrato dos arquivos alheios; teto do plano sem as decisões de GAP) · regra (G24: uma pergunta por rota; o update não retoma o run).
-
-| Documento | Seção | Mudança |
-|---|---|---|
-| `sprint-run.md` | Paradas legítimas · Pausa segura | pausa por `run.ps1 pause`; prova por teste por `run.ps1 prove` ou pela política; a rota vale para um formulário |
-| `stakeholder-question.md` | Antes de perguntar | oito linhas novas de "quem decide" (prova no aparelho, decisão que não chegou ao plano, plano > 30 KB, arquivos alheios, id dinâmico, serviço desligado, pausa, atualização) |
-| `team-update.md` | 9. Feche | o update não retoma o run nem pergunta "retomar agora?" |
-| `deliverables/team-project/guards.json` | `_exemplos` | `run.deviceProofFallback` e `run.prereqs` |

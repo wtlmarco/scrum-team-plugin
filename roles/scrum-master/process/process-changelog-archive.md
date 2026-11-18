@@ -8,6 +8,61 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.60 — A ficha leva os trechos (o Arquiteto do plano lê uma vez e escreve) e o kanban acompanha o prazo: previsão por parte, farol e burndown visual, com o registro técnico no consumo (SM + Arquiteto) — 15/11/2026 · *com addendum v3.60.1*
+
+**Instrução:** (stakeholder, 14–15/11/2026, sobre a H-M do garden dividida em 3 Tasks) "Não seria melhor o Desenvolvedor Haiku receber as 3 tarefas de uma mesma vez"; depois "avalie talvez a possibilidade de em somente uma interação com o Arquiteto ele já gerar os 3 planos sem precisar reler tudo de novo … assim mantemos o benefício da divisão menor para evitar os erros do Haiku e otimizamos o Arquiteto", "consegue fazer uma simulação para ver qual seria o modo mais otimizado" e "pode implementar essa melhoria em uma branch feat". A divisão para o dev fica como está.
+**Medido (sprint 6 do garden, H-M, plugin 3.58.2):** os 3 planos (T-092 a T-094) custaram US$ 9,02 em 125 chamadas; 111 delas e 84 % do custo foram exploração antes do primeiro `Write` (~75 buscas, leituras em pedaços — o `migracoes.spec.ts` foi aberto 7 vezes). O que os 3 leram em comum era pouco (template, `context.md`, `.scn`); o template, ~35 mil caracteres, era lido inteiro na 1ª chamada e reenviado em todas as outras. A ficha apontava 4 arquivos; o plano leu ~11. O breakdown do S6 já trazia as linhas medidas na Planning.
+**Simulação** (calibrada nas 3 conversas: reconstrói US$ 8,95 dos 9,02): um Arquiteto para a História, explorando, US$ 13,57; o atual com o template enxuto, 8,05; um por Task com os trechos no recorte e o guia, 4,37 a 6,85 (base 5,67); um para a História com os trechos, 5,24 a 9,28, com contexto acima de 260 mil.
+**Classificação:** formato (ficha com faixa `caminho:a-b` e seção `§`; recorte com os trechos e o guia de escrita) · comportamento de agente (o Arquiteto do plano abre a ficha e o `context.md` numa chamada, não abre o template inteiro e pede o que faltar numa chamada só)
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `templates/breakdown.md` | abertura · regras 2, 3 e 6 | a ficha aponta a faixa que o plano usa (`caminho:a-b`, `:c-d` na mesma linha) e a seção da fonte (`§2.5`, `§2–§7`, `§"título"`); quem copia é o script; faixa fora do arquivo se corrige antes do plano |
+| `templates/implementation-plan.md` | regra 28 | o recorte traz os trechos, o resumo da dependência e o guia; a regra inteira só pela linha que o guia dá; o que faltar, numa chamada |
+| `agents/architect.md` · `roles/architect/README.md` | Plano pela ficha · Preparo · Ficha por Task | a abertura nova; a medição e a simulação |
+| `workflow-sprint.md` | Planning, passo 4 | código com faixa, fontes com seção |
+| `sprint-run.md` | Como o SM verifica · O que fica onde · Marcador | indicador da v3.60; a Série e o Registro no `consumption.md`, sob a trava dele |
+| `working-rules.md` (R24) · `artifact-ownership.md` · `workflow-sprint.md` §5f | — | a Série e o Registro no `consumption.md` do sprint; o Burndown visual no `kanban.md` |
+| `templates/kanban.md` · `templates/consumption.md` | estrutura e §Como preencher | o Kanban com a previsão, a seção Burndown e as regras do prazo; as quatro seções técnicas no consumo |
+
+### Por quê
+O custo de uma instância é chamadas × contexto: cada chamada reenvia a conversa inteira. A exploração do plano refazia a busca que a Planning já tinha feito. Juntar os planos numa instância não resolve: o que se poupa (prompt e template uma vez) é menor que carregar a exploração da Task anterior em todas as chamadas da seguinte — foi o H-K1 do sprint 4 (US$ 16,3) que levou à v3.53. Trazer os trechos prontos tira as chamadas sem crescer a instância, e o dev continua recebendo Task de até 6 arquivos.
+
+**As linhas andam com o código** (stakeholder, 15/11: "uma tarefa pode modificar o código e assim as referências irão quebrar"): a ficha é da Planning, e no garden 6 de 60 faixas tinham andado até o plano (`migracoes.ts:1131`, 80 linhas). O `run.ps1 next` traduz a faixa pelo `git diff` desde o início do sprint (ou desde a correção da ficha), copia no lugar novo, diz quanto andou e por qual Task, e marca ⚠ quando o próprio trecho mudou. A seção (`§`) se acha pelo título. O pacote do plano externo recebe os mesmos trechos, e o roteiro dele (`external-plan.md`) passa a mandar citar as linhas de hoje, não as da ficha.
+
+**Acompanhamento** (stakeholder, 15/11: "passar do Kanban para consumption: Série, Registro de Transições, Rodada a Rodada, Espera de Comando"; "estimativa de tempo de cada tarefa … do Sprint e um farol No Prazo, Atrasado e adiantado"; "um gráfico Burndown visual"): as quatro seções técnicas vão ao `consumption.md` (R24 passa a apontar para lá; a Série nasce no `kanban.md` na Planning e o `kanban.ps1` a leva no run); o `kanban.md` ganha a previsão de cada parte pelo ritmo medido no sprint, a linha **Prazo** com o farol no Resumo e a seção **Burndown** (gráfico Mermaid e tabela). Prazo: fim da Janela · duração do sprint · a estimativa em dias.
+
+### Conflitos com o processo vigente
+Nenhum com regra. A ficha continua só apontando (regra 1 do breakdown). R24 muda o arquivo, não a regra: uma transição continua sendo uma linha no Registro e uma na Série, no mesmo arquivo e no mesmo momento. O template continua a única fonte do formato: o guia é gerado dele a cada recorte, e sem as marcas de forma o prompt volta a mandar abrir o template. Ficha antiga, com `caminho:linha`, segue valendo, com janela de 40 linhas.
+
+### Como saberemos que funcionou
+Sprint 7 do garden: ~10 chamadas por plano (eram 33 a 50); US$ do plano por Task perto de 2 (era 2,3 a 3,5); `**Li além da ficha:**` com até 2 arquivos; reprovações do `plan.ps1` e 🔺 GAPs de plano por Task não maiores que no S6. Plano que não barateia, ou GAP de plano que sobe, volta ao `/review`.
+
+### Verificação
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.57 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.60, v3.59, v3.58 | ✅ |
+| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.60.0 | ✅ |
+
+### Parte mecânica (implementada pela sessão principal, citada aqui)
+`lib.ps1`: `Get-FichaCodeRefs`, `Get-FichaSourceRefs`, `Get-MdSectionSpan`, `Get-FichaExcerpts`, `Get-FichaBadRanges`, `Get-PlanGuide`; `Get-Ficha` devolve as faixas e as seções. `run.ps1`: o recorte ganha os trechos e o guia, a faixa fora do arquivo vai à correção da ficha, e o prompt do Arquiteto do plano muda (sem guia, o de antes).
+
+### Addendum v3.60.1 — o time decide o que o stakeholder já respondeu (SM + Arquiteto + QA) — 2026-11-15
+
+**Instrução:** (stakeholder, 15/11/2026) "analise o sprint 6 do garden e veja todas as paradas que aguardaram minha interação… quais ainda podem ser tratadas para o próprio PO, SM ou Arquiteto tomarem as decisões"; depois, "pode aplicar as propostas".
+**Medido (garden, S6, de 14/11 15h a 15/11):** a prova no aparelho que não roda (ids não publicados, estado de partida) foi ao stakeholder 4 vezes com a mesma resposta, e na T-090 duas vezes, porque a decisão não chegou ao plano; "arquivos soltos" de outra Task, 3 formulários e 4 voltas do dev; Docker desligado, 4 formulários; "encurtar ou dividir" um plano que passou de 30 KB com as decisões de GAP; pausar exigiu apagar o `.active-run` pelo Explorador; uma rota da G24 deixou passar outras perguntas.
+**Classificação:** instrumento (`run.ps1 prove` e `pause`; política e pré-requisitos no `guards.json`; retrato dos arquivos alheios; teto do plano sem as decisões de GAP) · regra (G24: uma pergunta por rota; o update não retoma o run).
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `sprint-run.md` | Paradas legítimas · Pausa segura | pausa por `run.ps1 pause`; prova por teste por `run.ps1 prove` ou pela política; a rota vale para um formulário |
+| `stakeholder-question.md` | Antes de perguntar | oito linhas novas de "quem decide" (prova no aparelho, decisão que não chegou ao plano, plano > 30 KB, arquivos alheios, id dinâmico, serviço desligado, pausa, atualização) |
+| `team-update.md` | 9. Feche | o update não retoma o run nem pergunta "retomar agora?" |
+| `deliverables/team-project/guards.json` | `_exemplos` | `run.deviceProofFallback` e `run.prereqs` |
+
+---
+
 ## v3.59 — Acompanhar o sprint em palavras simples: a fala da sessão, o Resumo do quadro e o /team-status para quem é de negócio, com o técnico sob pedido (SM + PO + Arquiteto) — 14/11/2026 · *com addendum v3.59.2*
 
 **Instrução:** (stakeholder, 14/11/2026) "precisamos melhorar as frases de conversação e posicionamento na sessão do orquestrador e no kanban para facilitar o acompanhamento … frases simples e mais diretas que deem clareza do que está acontecendo para alguém de negócio entender, sem termos técnicos, que podem ser solicitados caso necessário"; avaliação aprovada por inteiro ("pode fazer todas").

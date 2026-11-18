@@ -635,6 +635,11 @@ try {
         if ($recFs) { Exit-FileLock $recFs $bdPath }
         Exit-FileLock $lockFs $lockPath
         try { $null = & (Join-Path $PSScriptRoot 'kanban.ps1') -Root $Root 2>&1 } catch { }   # v3.51.2: o Kanban (Markdown) acompanha o fechamento
+        # v3.63.0 (decisão do stakeholder de 17/11): a prova da Task fica no sprint — o resultado e as capturas do verify e do
+        # accept, sem os logs brutos. Antes, a rodada seguinte da mesma Task sobrescrevia a prova que o relatório citava.
+        $pvd = Get-VerifyDir $Root $Task; $pk = 0
+        foreach ($pp in @(@($pvd, 'verify'), @(($pvd -replace '[\\/]verify[\\/]', '/accept/'), 'accept'))) { $pk += Copy-Proof $pp[0] (Join-Path $S "proof/$Task/$($pp[1])") }
+        $proofNote = if ($pk) { " · prova em sprints/$n/proof/$Task/ ($pk arquivo(s), sem logs)" } else { '' }
 
         # 3 · o -Post confere o que acabou de ser gravado
         [Console]::Out.WriteLine('')
@@ -642,7 +647,7 @@ try {
         $postOut = & powershell -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath -Task $Task -Post -Root $Root 2>&1 | Out-String
         $postCode = $LASTEXITCODE
         $r24 = ([regex]::Match($postOut, '(?m)^\| R24 \|[^\n]*')).Value
-        [Console]::Out.WriteLine("**-Apply:** quadro $from → $($E.Done) · Registro e Série gravados (estimativa $('{0:0.##}' -f $est) baixada; restante $('{0:0.##}' -f $restante))$regNote · -Post: $r24")
+        [Console]::Out.WriteLine("**-Apply:** quadro $from → $($E.Done) · Registro e Série gravados (estimativa $('{0:0.##}' -f $est) baixada; restante $('{0:0.##}' -f $restante))$regNote$proofNote · -Post: $r24")
 
         # 4 · entrada de status pré-preenchida (templates/status-entry.md) — a frase do produto é da sessão
         $title = Clean-Cell (Get-Cell $taskRow (Find-Col $taskTable 'Task'))

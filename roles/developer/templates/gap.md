@@ -6,7 +6,7 @@ Levantado pelo dev quando o plano — ou a seção de standard que ele citou —
 🔺 GAP — <ID da Task | F-<nnn> na trilha fix> — passo <n> do plano
 
 **Tipo:** plano | standard
-**Natureza:** aparência | desenho | produto | processo | ambiente   *(v3.57.0; v3.57.1: obrigatória, e processo e ambiente entram — o que decide quem responde; abaixo)*
+**Cause:** appearance | design | scenario | screen | requirement | process | environment   *(v3.63.0: a mesma lista do achado do portão; até a v3.62 era **Natureza:**, e os nomes antigos seguem aceitos — o que decide quem responde; abaixo)*
 **Origem (sugestão):** previsão | conhecimento | requisito | ambiente | processo   (o Arquiteto confirma)
 **O que o plano diz:** <trecho literal>
 **O que encontrei no código:** <arquivo:linha> — <o fato observado>
@@ -33,21 +33,25 @@ Levantado pelo dev quando o plano — ou a seção de standard que ele citou —
 | `ambiente` | o ambiente real (emulador, APK, servidor, rede) se comporta diferente do que o plano mediu | o emulador sobe sem a WebView atualizada |
 | `processo` | a regra, a guarda ou o script do plugin mandou o que o plano proíbe | o cartão mandou rodar um cenário que o plano tirou |
 
-## A natureza do GAP — quem responde (v3.57.0)
+## A causa do GAP — quem responde (v3.57.0 · lista única desde a v3.63.0)
 
-Num sprint de campo (o 5º de um projeto), 4 de 5 GAPs de uma Task de interface eram decisões pequenas de medida ou de marcação, e cada um custou um Arquiteto novo mais um dev novo. A natureza que **você** marca decide a rota; na dúvida entre duas, marque a mais pesada.
+Num sprint de campo (o 5º de um projeto), 4 de 5 GAPs de uma Task de interface eram decisões pequenas de medida ou de marcação, e cada um custou um Arquiteto novo mais um dev novo. A causa que **você** marca decide a rota; na dúvida entre duas, marque a mais pesada. É a mesma lista que o QA usa nos achados do portão (`roles/quality-assurance/templates/sprint-validation.md`), mais `appearance` e `process`, que só existem no GAP.
 
-| Natureza | Quando | Quem responde |
+| Cause | Quando | Quem responde |
 |---|---|---|
-| `aparência` | uma **medida** (espaçamento, alinhamento, quebra de linha, tamanho) que cai fora do envelope do plano, ou uma **marcação** simples (rótulo acessível, identificador) — a decisão é uma regra de estilo ou um atributo | o Arquiteto, em **parecer curto** (até 8 linhas, sem reescrever o plano) |
-| `desenho` | estrutura, fluxo, contrato, arquivo fora da lista, teste que não faz sentido — o resto dos GAPs | o Arquiteto, ciclo completo (como hoje) |
-| `produto` | muda o que o usuário vê ou faz: regra de produto, texto de tela, empilhar ou esconder um controle | o **stakeholder** (formulário); o Arquiteto só registra depois |
-| `processo` | regra do time ou do plugin em conflito: o cartão manda o que o plano proíbe, comando negado pela guarda, ordem do `verify`, gate que reprova o que não devia | o Arquiteto, ciclo completo |
-| `ambiente` | alvo, emulador, prazo de comando, ferramenta ou massa de dados se comportam diferente do que o plano mediu | o Arquiteto, ciclo completo |
+| `appearance` | uma **medida** (espaçamento, alinhamento, quebra de linha, tamanho) que cai fora do envelope do plano, ou uma **marcação** simples (rótulo acessível, identificador) — a decisão é uma regra de estilo ou um atributo | o Arquiteto, em **parecer curto** (até 8 linhas, sem reescrever o plano) |
+| `design` | estrutura, fluxo, contrato, arquivo fora da lista, teste que não faz sentido — o resto dos GAPs | o Arquiteto, ciclo completo |
+| `screen` | a especificação da tela não previa o caso: estado, layout, fluxo, texto que não cabe | o **UX** acrescenta o caso na especificação; o Arquiteto só registra no plano (parecer curto) |
+| `requirement` | muda o que o usuário vê ou faz, ou o critério não diz: regra de produto, critério ambíguo, mudança de escopo | o **PO** decide (o que for do stakeholder, ele leva em formulário); o Arquiteto só registra no plano |
+| `scenario` | o `.scn` da Task está errado ou desatualizado (id que mudou, passo que o critério não pede) | o **QA** corrige o cenário; você volta pelo `start`, sem Arquiteto |
+| `process` | regra do time ou do plugin em conflito: o cartão manda o que o plano proíbe, comando negado pela guarda, ordem do `verify`, gate que reprova o que não devia | o Arquiteto, ciclo completo |
+| `environment` | alvo, emulador, prazo de comando, ferramenta ou massa de dados se comportam diferente do que o plano mediu | o Arquiteto, ciclo completo |
 
-**CONFIGURAÇÃO DO ALVO não é GAP (v3.62.0).** O `accept` que sai com exit 4 e o campo `configuration` no `result.json` — app híbrido com `locator: "uiautomator"` (todo passo dá "tag não encontrada" numa tela de WebView), APK sem a depuração da WebView, Node < 22, mais de uma página sem `cdp.pageUrl` — não é 🔺 GAP, não é `ambiente` da Task e não é decisão do Arquiteto: o alvo, como está declarado, não prova nada, e o `guards.json` e o build são do stakeholder. Paro e digo, como em todo exit 4 (sem GAP no relatório); a rota do `run.ps1 done -Result env` leva a configuração ao stakeholder. Não troco de executor, não busco por texto ou `content-desc`, não copio o id para o `aria-label` (`${CLAUDE_PLUGIN_ROOT}/standards/test-ids.md` §6). O `result.json` do `accept` com `locator: "cdp"` e os cenários PASSOU é a prova da Task.
+**Nomes antigos (até a v3.62):** `**Natureza:**` com `aparência`, `desenho`, `produto`, `processo`, `ambiente` ainda é lido — `produto` vale como `requirement`.
 
-**A linha é obrigatória (v3.57.1).** Naquele sprint de campo ela veio em 2 de 22 GAPs — a lista não tinha `processo` nem `ambiente`, que eram a maioria — e sem ela não se mede quantos GAPs são de aparência (a decisão de mandá-los a um modelo mais barato depende disso). Sem a linha nem a palavra na linha do 🔺, o `run.ps1 done -Result gap` recusa e o executor da Task classifica pelo seu texto.
+**CONFIGURAÇÃO DO ALVO não é GAP (v3.62.0).** O `accept` que sai com exit 4 e o campo `configuration` no `result.json` — app híbrido com `locator: "uiautomator"` (todo passo dá "tag não encontrada" numa tela de WebView), APK sem a depuração da WebView, Node < 22, mais de uma página sem `cdp.pageUrl` — não é 🔺 GAP, não é `environment` da Task e não é decisão do Arquiteto: o alvo, como está declarado, não prova nada, e o `guards.json` e o build são do stakeholder. Paro e digo, como em todo exit 4 (sem GAP no relatório); a rota do `run.ps1 done -Result env` leva a configuração ao stakeholder. Não troco de executor, não busco por texto ou `content-desc`, não copio o id para o `aria-label` (`${CLAUDE_PLUGIN_ROOT}/standards/test-ids.md` §6). O `result.json` do `accept` com `locator: "cdp"` e os cenários PASSOU é a prova da Task.
+
+**A linha é obrigatória (v3.57.1).** Naquele sprint de campo ela veio em 2 de 22 GAPs — a lista não tinha `processo` nem `ambiente`, que eram a maioria — e sem ela não se mede quantos GAPs são de aparência (a decisão de mandá-los a um modelo mais barato depende disso). Sem a linha nem a palavra na linha do 🔺, o `run.ps1 done -Result gap` recusa e o executor da Task classifica pelo seu texto (`-Cause`).
 
 **Com envelope no plano** (`**Envelope de medidas**`, que o cartão traz): meça o caso, aplique o caso medido e registre a medida e a escolha no relatório (R9) — isso **não é GAP**. GAP de aparência só quando a medida cai **fora** do envelope.
 

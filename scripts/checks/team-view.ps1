@@ -144,11 +144,23 @@ try {
                     $by = ''
                     if ($a.PSObject.Properties['parent'] -and [string]$a.parent) { $pa = @($agents | Where-Object { [string]$_.agent_id -eq [string]$a.parent } | Select-Object -First 1); if ($pa.Count) { $by = ' (chamado pelo ' + (Get-PlainRole ([string]$pa[0].type)) + ')' } }
                     $ds = try { ([datetime]::Parse([string]$a.desde)).ToString('HH:mm') } catch { '?' }
-                    $o += "  - $(Get-PlainRole ([string]$a.type))$by — $(if ($a.work) { Get-PlainLabel $pn ([string]$a.work) } else { 'apoio ao time' }): $(Get-PlainAction ([string]$a.last)) (desde $ds)"
+                    # v3.63.0: sem ação há 20 min ou mais e sem filho ativo = provavelmente encerrado (o run.ps1 já não o conta como vivo).
+                    $idleA = { param($x) try { ((Get-Date) - [datetime]::Parse([string]$(if ($x.at) { $x.at } else { $x.desde }))).TotalMinutes } catch { 1e6 } }
+                    $kidLive = @($agents | Where-Object { $_.PSObject.Properties['parent'] -and [string]$_.parent -eq [string]$a.agent_id -and (& $idleA $_) -lt 20 }).Count
+                    $act = if ((& $idleA $a) -ge 20 -and -not $kidLive) { "sem sinal desde $(try { ([datetime]::Parse([string]$(if ($a.at) { $a.at } else { $a.desde }))).ToString('HH:mm') } catch { '?' }) — provavelmente encerrado" } else { Get-PlainAction ([string]$a.last) }
+                    $o += "  - $(Get-PlainRole ([string]$a.type))$by — $(if ($a.work) { Get-PlainLabel $pn ([string]$a.work) } else { 'apoio ao time' }): $act (desde $ds)"
                 }
             } else { $o += 'Agora: ninguém do time está trabalhando neste momento.' }
             if ($ex -and $ex.Stopped -and $run) { $o += "Atenção: nada roda para $(Get-PlainLabel $pn $ex.Id) há $(Format-Time ($ex.Quiet * 60)), com o sprint em andamento — para retomar, digite /sm sprint run." }
             foreach ($s in @($sum | Where-Object { $_.K -ne 'Andamento' })) { $o += "$($s.K): $($s.V)" }
+            # v3.63.0: a revisão final do sprint (o portão do QA) — rodada, situação e os achados abertos por quem resolve.
+            $gs = Get-GateSummary $S $n
+            if ($gs) {
+                $gv = if ($gs.Verdict -eq $E.Done) { 'aprovada' } elseif ($gs.Verdict -eq $E.Warn) { 'aprovada com ressalva' } elseif ($gs.Verdict -eq $E.Fail) { 'reprovada' } else { 'em julgamento' }
+                $gOpen = @($gs.Findings | Where-Object { $_.State -eq 'aberto' })
+                $gWho = @($gOpen | Group-Object Owner | ForEach-Object { "$($_.Count) com $($_.Name)" })
+                $o += "Revisão final: rodada $([Math]::Max(1, $gs.Round)), $gv$(if ($gOpen.Count) { " · $($gOpen.Count) achado(s) aberto(s) ($($gWho -join ', '))" })$(if ($gs.EnvAttempts) { " · o aparelho de teste falhou $($gs.EnvAttempts) vez(es) seguida(s)" })"
+            }
             $o += ''; $o += 'Quadro:'
             $doneLog = @(Get-PlainDoneLog $S | ForEach-Object { $_.Id })
             foreach ($st in $script:PlainStages) {

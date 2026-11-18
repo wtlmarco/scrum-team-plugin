@@ -336,7 +336,11 @@ try {
                 if ($role -eq 'qa') { $seenQa[$work] = $true }
                 if ($role -eq 'dev') { $seenDev[$work] = $true }
             }
+            # v3.63.0: a 2ª rodada do portão em diante (gate_round, gravado pela G16 do gate.json) é retrabalho — o custo de refazer.
+            $gr = if ($u.PSObject.Properties['gate_round']) { [int]$u.gate_round } else { 0 }
+            if ($work -match '^S\d+(-F\d+)?$' -and $gr -ge 2) { $cat = 'retrabalho' }
             $unit = if ($isBlock) { if ($work -match '^[FB]-\d+$') { $work } else { ($dest -replace '^.*/fixes/(B-\d+)/.*$', '$1') } }
+                    elseif ($work -match '^S\d+$') { 'validação do sprint' } elseif ($work -match '^S\d+-F\d+$') { 'correção do portão' }   # v3.63.0
                     elseif ($storyMap.ContainsKey($work)) { $storyMap[$work] } elseif ($work -match '^H-\d+$') { $work } elseif ($sm.Success) { "sprint-$($sm.Groups[1].Value)" } else { 'n/a' }
             $note = @()
             if (-not $isBlock -and $work -match '^F-\d+$') { $note += 'triagem;' }   # F-ID fora do bloco só na triagem (R33 · C4 item 7)
@@ -352,7 +356,7 @@ try {
                 Head = ('| {0} | {1} | {2} | {3} | {4} | {5} | {6} | {7:N0} | {8} | ' -f ([string]$u.start).Replace('T', ' ').Substring(0, 16), $role, (Get-ShortModel ([string]$u.model)), $cmd, $work, $cat, $unit, [int64]$u.processed, (Format-Duration ([int]$u.duration_s)))
                 Note = ($note -join ' '); Line = ''; QKey = [string]$u._qk; QS = $qs; QE = $qe; Work = $work
                 Role = $role; AgentId = [string]$u.agent_id; Caller = $(if ($role -eq 'operator' -and $caller.ContainsKey([string]$u.agent_id)) { $caller[[string]$u.agent_id] } else { '' })
-                Model = (Get-ShortModel ([string]$u.model)); Tokens = [int64]$u.processed; Seconds = [int]$u.duration_s; Notified = [int64]$u.final_context; Q5 = $null; QW = $null
+                Model = (Get-ShortModel ([string]$u.model)); Tokens = [int64]$u.processed; Seconds = [int]$u.duration_s; Notified = [int64]$u.final_context; Q5 = $null; QW = $null; GateRound = $gr
             }
         }
 
@@ -522,6 +526,15 @@ try {
                 if (-not $Session) { $sec += '', '*(Sem `-Session` a sessão principal também gasta nesses intervalos — calibre pelo número do `close`.)*' }
             } else { $sec += 'nenhum intervalo com um modelo só ativo — sem calibração ainda.' }
             $quotaSummary = 'cota 5h ' + (Format-Pct $t5) + ' · semana ' + (Format-Pct $tW)
+        }
+        # v3.63.0: o portão por rodada — tokens e tempo do QA, do operator e dos donos dos achados em cada rodada (S<n>, S<n>-F<k>).
+        $gateRows = @($measured | Where-Object { $_.Work -match '^S\d+(-F\d+)?$' })
+        if ($gateRows.Count) {
+            $sec += '', '### Por rodada do portão', '', '| Rodada | Papel | Rodadas | Σ tokens | Duração | Categoria |', '|---|---|---|---|---|---|'
+            foreach ($g in @($gateRows | Group-Object { '{0:D2}|{1}' -f [int]$_.GateRound, $_.Role } | Sort-Object Name)) {
+                $gk = $g.Name -split '\|', 2; $gt = [int64](($g.Group | Measure-Object Tokens -Sum).Sum); $gs = [int](($g.Group | Measure-Object Seconds -Sum).Sum)
+                $sec += ('| {0} | {1} | {2} | {3:N0} | {4} | {5} |' -f $(if ([int]$gk[0]) { [int]$gk[0] } else { '—' }), $gk[1], $g.Count, $gt, (Format-Duration $gs), $(if ([int]$gk[0] -ge 2) { 'retrabalho' } else { '—' }))
+            }
         }
         $ci = -1; for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^##\s+Cota da assinatura') { $ci = $i; break } }
         if ($ci -ge 0) {
