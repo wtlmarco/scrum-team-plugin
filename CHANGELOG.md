@@ -13,6 +13,35 @@
 
 ---
 
+## v3.63.2 — 2026-11-18
+
+**Branch:** `fix/v3.63.2` a partir de `develop` (`6c8edb6`, v3.63.1 mesclada) · **Processo:** addendum v3.63.1, item "dois projetos, um emulador" (`process-changelog.md`)
+
+Origem: pergunta do stakeholder no mesmo dia, depois da v3.63.1: como impedir que dois projetos da mesma máquina usem o mesmo emulador ao mesmo tempo.
+
+**Sintoma.**
+- A trava do alvo é por projeto (`.team-project/.target-lock`): um projeto não via a trava do outro.
+- Dois projetos apontando para o mesmo emulador entravam os dois, e os testes dos dois quebravam.
+- O reparo de um (reiniciar o emulador) derrubava no meio o teste do outro.
+- O `-Who` da v3.63.1 só avisava do accept de outro projeto.
+
+**Correção** (`lib.ps1`, `target.ps1`, `gate.ps1`):
+- **A trava do aparelho.** Fica em `%LOCALAPPDATA%\team-plugin\device-locks\<serial>.json`, comum a todos os projetos da máquina.
+  - É tomada no mesmo ponto da trava do projeto (`Enter-TargetLock`), então cobre o accept, o reparo, a conferência e o `-Release`.
+  - Usa as mesmas regras: criação atômica, dono vivo que anda não perde a trava, dono morto ou PID reaproveitado é assumido.
+  - Com o aparelho ocupado, a trava do projeto é devolvida e a mensagem diz o projeto dono, o processo, desde quando e o sinal de vida.
+- **Qual é o aparelho.** É o `guards.json → targets.android.serial`. Sem ele, o único aparelho conectado (`adb devices`). Sem aparelho único, o aparelho padrão da máquina. O alvo web não tem trava de aparelho: cada projeto sobe o seu site.
+- **O portão** (`Get-TargetBusy`) também vê o aparelho com outro projeto: espera o que anda; parado, leva ao stakeholder com o `-Kill -Root` daquele projeto.
+- O `target.ps1 -Who` mostra o aparelho e quem o segura.
+- **Rodar os dois ao mesmo tempo:** cada projeto declara o seu aparelho em `targets.android.serial` (`how-to.md`).
+- A suíte de testes usa uma pasta de travas própria e um serial fixo (`TEAM_DEVICE_LOCK_DIR`, `TEAM_TEST_DEVICE_SERIAL`): nenhum teste toca a trava real da máquina.
+
+**Arquivos:** `scripts/checks/lib.ps1`, `target.ps1`, `gate.ps1`; `how-to.md`; `roles/scrum-master/process/sprint-run.md` e `process-changelog.md`; testes em `scripts/checks/tests/run-check-tests.ps1` (casos v3.63.2).
+
+**Suítes:** `run-check-tests.ps1` 660 casos, 0 falharam · `run-guard-tests.ps1` 362 casos, 0 falharam.
+
+---
+
 ## v3.63.1 — 2026-11-18
 
 **Branch:** `fix/v3.63.1` a partir de `develop` (`0626656`, v3.63.0 mesclada) · **Processo:** addendum v3.63.1 (`process-changelog.md`)

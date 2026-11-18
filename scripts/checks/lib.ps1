@@ -767,36 +767,99 @@ function Enter-TargetLock([string]$Root, [string]$Target, [string]$Owner, [int]$
     $lk = [ordered]@{ target = $Target; owner = $Owner; pid = $PID; created = (Get-ProcessCreated $PID); desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') }
     if ($Dir) { $lk.dir = (($Dir.Replace($Root, '').TrimStart('\', '/')) -replace '\\', '/') }
     $bytes = (New-Object System.Text.UTF8Encoding($false)).GetBytes(($lk | ConvertTo-Json -Compress))
-    # v3.63.1 (sprint 6 do projeto piloto, 18/11): a trava é criada de forma ATÔMICA (CreateNew) — antes, "existe? não → grava"
-    # deixava dois accepts que partiam juntos entrarem os dois. E a trava de um dono VIVO que ainda anda nunca é tomada: antes,
-    # passadas 3 h ela valia como abandonada, e um aceite de 49 cenários passa disso.
+    $h = Enter-LockFile $lp $bytes $StaleHours { param($x) Get-TargetLockDir $Root $x }
+    if ($h -and $h.Busy) {
+        $l = $h.Lock; $pu = $h.Pulse
+        return "o alvo $([string]$l.target) está em uso por '$([string]$l.owner)' (PID $([int]$l.pid), desde $([string]$l.desde); $($pu.Text)): " + $(if ($pu.Stalled) { "o processo parece travado — encerre com target.ps1 -Target $([string]$l.target) -Kill (encerra o dono da trava e a árvore dele; decisão do stakeholder)" } else { 'espere terminar — dois automatizadores no mesmo alvo quebram os dois (quem usa o alvo: target.ps1 -Target ' + [string]$l.target + ' -Who)' })
+    }
+    if ($h) { return "a trava do alvo ($lp) foi tomada por outro executor ao mesmo tempo — rode de novo" }
+    # v3.63.2: a trava do APARELHO, comum a todos os projetos da máquina. A do projeto (.team-project/.target-lock) não via outro
+    # projeto: dois projetos com o mesmo emulador entravam os dois, e o reparo de um (reiniciar o emulador) derrubava o teste do
+    # outro. Tomada aqui, ela cobre o accept, o reparo, a conferência e o -Release de uma vez. Aparelho ocupado: devolve a trava
+    # do projeto e diz qual projeto o usa.
+    $key = Get-DeviceKey $Root $Target
+    if ($key) {
+        $dp = Get-DeviceLockPath $key
+        $dk = [ordered]@{ device = $key; target = $Target; owner = $Owner; pid = $PID; created = $lk.created; desde = $lk.desde; root = $Root }
+        if ($Dir) { $dk.dirAbs = $Dir }
+        $hd = Enter-LockFile $dp ((New-Object System.Text.UTF8Encoding($false)).GetBytes(($dk | ConvertTo-Json -Compress))) $StaleHours { param($x) if ($x.PSObject.Properties['dirAbs']) { [string]$x.dirAbs } else { '' } }
+        if ($hd) {
+            Exit-TargetLock $Root
+            if (-not $hd.Busy) { return "a trava do aparelho $key foi tomada por outro executor ao mesmo tempo — rode de novo" }
+            $l = $hd.Lock; $pu = $hd.Pulse; $other = [string]$l.root
+            $same = $other -and ($other.TrimEnd('\', '/') -ieq ([string]$Root).TrimEnd('\', '/'))
+            return "o aparelho $key está em uso por $(if ($same) { 'este mesmo projeto' } else { "OUTRO projeto ($other)" }) — '$([string]$l.owner)' (PID $([int]$l.pid), desde $([string]$l.desde); $($pu.Text)): " + $(if ($same) { 'espere terminar (quem usa o alvo: target.ps1 -Target ' + $Target + ' -Who)' } elseif ($pu.Stalled) { "o processo parece travado — quem o encerra é a sessão daquele projeto (target.ps1 -Target $Target -Kill na pasta dele); decisão do stakeholder" } else { "espere terminar — dois projetos no mesmo aparelho quebram os dois. Para rodar os dois ao mesmo tempo, cada projeto declara o seu aparelho em guards.json → targets.android.serial" })
+        }
+    }
+    return $null
+}
+# v3.63.1/v3.63.2: toma um arquivo de trava de forma ATÔMICA (CreateNew) — antes, "existe? não → grava" deixava dois accepts que
+# partiam juntos entrarem os dois. A trava de um dono VIVO que ainda anda nunca é tomada (antes, passadas 3 h ela valia como
+# abandonada, e um aceite de 49 cenários passa disso); dono morto, PID reaproveitado, trava ilegível, ou parada há mais de
+# $StaleHours h sem sinal de vida = trava velha, assumida. $DirOf: a pasta que o dono grava (o sinal de vida lê o progress.json
+# dela). $null = tomou · @{ Busy = $true; Lock; Pulse } = ocupada · @{ Busy = $false } = disputa sem vencedor.
+function Enter-LockFile([string]$Path, [byte[]]$Bytes, [int]$StaleHours, [scriptblock]$DirOf) {
+    New-Item -ItemType Directory -Force (Split-Path $Path) | Out-Null
     for ($try = 0; $try -lt 4; $try++) {
         try {
-            $fs = [System.IO.File]::Open($lp, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
-            try { $fs.Write($bytes, 0, $bytes.Length) } finally { $fs.Dispose() }
+            $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+            try { $fs.Write($Bytes, 0, $Bytes.Length) } finally { $fs.Dispose() }
             return $null
         } catch [System.IO.IOException] { }
-        $l = $null; try { $l = Read-Text $lp | ConvertFrom-Json } catch { }
+        $l = $null; try { $l = Read-Text $Path | ConvertFrom-Json } catch { }
         if (-not $l) {
             # Recém-criada por outro executor e ainda sem o conteúdo: espera um instante antes de achá-la ilegível.
-            $fresh = try { ((Get-Date) - (Get-Item -LiteralPath $lp).LastWriteTime).TotalSeconds -lt 10 } catch { $false }
+            $fresh = try { ((Get-Date) - (Get-Item -LiteralPath $Path).LastWriteTime).TotalSeconds -lt 10 } catch { $false }
             if ($fresh -and $try -lt 3) { Start-Sleep -Milliseconds 400; continue }
         } elseif ([int]$l.pid -eq $PID) {
-            [System.IO.File]::WriteAllBytes($lp, $bytes); return $null
+            [System.IO.File]::WriteAllBytes($Path, $Bytes); return $null
         } elseif (Test-TargetLockHolderAlive $l) {
-            # v3.53.5: com o sinal de vida — parado, diz como sair em vez de "espere".
-            # v3.63.1 (pedido 6): o sinal lê também a pasta do dono (o progress.json do accept) — só a CPU dava "parece travado"
-            # a um accept que ainda gravava progresso.
-            $pu = Get-WaitPulse ([int]$l.pid) ([string]$l.desde) (Get-TargetLockDir $Root $l)
+            # v3.53.5: com o sinal de vida; v3.63.1 (pedido 6): lendo também a pasta do dono.
+            $pu = Get-WaitPulse ([int]$l.pid) ([string]$l.desde) (& $DirOf $l)
             $age = try { ((Get-Date) - [datetime]::ParseExact([string]$l.desde, 'yyyy-MM-dd HH:mm:ss', $null)).TotalHours } catch { 999 }
-            if (-not ($pu.Stalled -and $age -ge $StaleHours)) {
-                return "o alvo $([string]$l.target) está em uso por '$([string]$l.owner)' (PID $([int]$l.pid), desde $([string]$l.desde); $($pu.Text)): " + $(if ($pu.Stalled) { "o processo parece travado — encerre com target.ps1 -Target $([string]$l.target) -Kill (encerra o dono da trava e a árvore dele; decisão do stakeholder)" } else { 'espere terminar — dois automatizadores no mesmo alvo quebram os dois (quem usa o alvo: target.ps1 -Target ' + [string]$l.target + ' -Who)' })
-            }
+            if (-not ($pu.Stalled -and $age -ge $StaleHours)) { return [pscustomobject]@{ Busy = $true; Lock = $l; Pulse = $pu } }
         }
-        # Dono morto, PID reaproveitado, trava ilegível, ou parada há mais de $StaleHours h sem sinal de vida: a trava é velha.
-        Remove-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
     }
-    return "a trava do alvo ($lp) foi tomada por outro executor ao mesmo tempo — rode de novo"
+    return [pscustomobject]@{ Busy = $false }
+}
+# v3.63.2: onde ficam as travas de aparelho — uma pasta da máquina, comum a todos os projetos (TEAM_DEVICE_LOCK_DIR troca: testes).
+function Get-DeviceLockDir {
+    if ($env:TEAM_DEVICE_LOCK_DIR) { return $env:TEAM_DEVICE_LOCK_DIR }
+    $base = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { [System.IO.Path]::GetTempPath() }
+    return (Join-Path $base 'team-plugin\device-locks')
+}
+function Get-DeviceLockPath([string]$Key) { return (Join-Path (Get-DeviceLockDir) ((($Key -replace '[^\w.\-]', '_')) + '.json')) }
+# v3.63.2: o aparelho do alvo — o que dois projetos disputariam. android: guards.json → targets.android.serial; sem ele, o único
+# aparelho conectado (adb devices); sem aparelho único, "android" (o aparelho padrão da máquina — os projetos sem serial
+# disputam o mesmo). web: nenhum (cada projeto sobe o seu site). TEAM_TEST_DEVICE_SERIAL troca a leitura do adb (testes).
+function Get-DeviceKey([string]$Root, [string]$Target) {
+    if ($Target -ne 'android') { return '' }
+    $tc = Get-TargetsConfig $Root
+    $a = if ($tc -and $tc.PSObject.Properties['android']) { $tc.android } else { $null }
+    if ($a -and $a.PSObject.Properties['serial'] -and $a.serial) { return ([string]$a.serial).Trim() }
+    if ($env:TEAM_TEST_DEVICE_SERIAL) { return $env:TEAM_TEST_DEVICE_SERIAL }
+    $sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } elseif ($env:ANDROID_SDK_ROOT) { $env:ANDROID_SDK_ROOT } elseif ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'Android\Sdk' } else { '' }
+    $adb = if ($sdk -and (Test-Path -LiteralPath (Join-Path $sdk 'platform-tools\adb.exe'))) { Join-Path $sdk 'platform-tools\adb.exe' } else { $c = Get-Command adb -ErrorAction SilentlyContinue; if ($c) { $c.Source } else { '' } }
+    if ($adb) {
+        try {
+            $r = Invoke-Bounded $Root "& '$($adb -replace "'", "''")' devices" 15
+            $on = @(([string]$r.out -split "`r?`n") | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^(\S+)\s+device$' } | ForEach-Object { ($_ -split '\s+')[0] })
+            if ($on.Count -eq 1) { return $on[0] }
+        } catch { }
+    }
+    return 'android'
+}
+# v3.63.2: quem segura a trava do aparelho deste projeto agora (o dono vivo), ou $null.
+function Get-DeviceLockHolder([string]$Root, [string]$Target) {
+    $key = Get-DeviceKey $Root $Target
+    if (-not $key) { return $null }
+    $dp = Get-DeviceLockPath $key
+    if (-not (Test-Path -LiteralPath $dp)) { return $null }
+    $l = $null; try { $l = Read-Text $dp | ConvertFrom-Json } catch { }
+    if (-not $l -or [int]$l.pid -eq $PID -or -not (Test-TargetLockHolderAlive $l)) { return $null }
+    $other = [string]$l.root
+    return [pscustomobject]@{ Key = $key; Lock = $l; Path = $dp; Foreign = -not ($other -and ($other.TrimEnd('\', '/') -ieq ([string]$Root).TrimEnd('\', '/'))) }
 }
 # v3.63.1: o dono da trava está vivo de verdade — o processo existe e, quando a trava guarda a hora de criação, ela bate (PID
 # reaproveitado pelo Windows não conta como vivo).
@@ -817,13 +880,25 @@ function Get-TargetLockDir([string]$Root, $Lock) {
 # dono morto ou a própria sessão). Plugin = o dono é um script do plugin (accept, target.ps1) que o target.ps1 -Kill encerra.
 function Get-TargetBusy([string]$Root) {
     $lp = Join-Path $Root '.team-project/.target-lock'
-    if (-not (Test-Path -LiteralPath $lp)) { return $null }
-    $l = $null; try { $l = Read-Text $lp | ConvertFrom-Json } catch { }
-    if (-not $l -or [int]$l.pid -eq $PID -or -not (Get-Process -Id ([int]$l.pid) -ErrorAction SilentlyContinue)) { return $null }
-    $own = Test-TargetLockOwnerProcess $l
-    $pu = Get-WaitPulse ([int]$l.pid) ([string]$l.desde) (Get-TargetLockDir $Root $l)
-    return [pscustomobject]@{ Owner = [string]$l.owner; Target = [string]$l.target; Pid = [int]$l.pid; Desde = [string]$l.desde; Pulse = $pu; Plugin = $own
-        Text = "'$([string]$l.owner)' (PID $([int]$l.pid), desde $([string]$l.desde)) — $($pu.Text)" }
+    $l = $null; if (Test-Path -LiteralPath $lp) { try { $l = Read-Text $lp | ConvertFrom-Json } catch { } }
+    if ($l -and [int]$l.pid -ne $PID -and (Get-Process -Id ([int]$l.pid) -ErrorAction SilentlyContinue)) {
+        $own = Test-TargetLockOwnerProcess $l
+        $pu = Get-WaitPulse ([int]$l.pid) ([string]$l.desde) (Get-TargetLockDir $Root $l)
+        return [pscustomobject]@{ Owner = [string]$l.owner; Target = [string]$l.target; Pid = [int]$l.pid; Desde = [string]$l.desde; Pulse = $pu; Plugin = $own; Foreign = $false; Project = [string]$Root
+            Text = "'$([string]$l.owner)' (PID $([int]$l.pid), desde $([string]$l.desde)) — $($pu.Text)" }
+    }
+    # v3.63.2: a trava deste projeto está livre, mas o APARELHO pode estar com outro projeto da máquina.
+    $tc = Get-TargetsConfig $Root
+    if ($tc -and $tc.PSObject.Properties['android']) {
+        $dh = Get-DeviceLockHolder $Root 'android'
+        if ($dh) {
+            $d = $dh.Lock
+            $pu = Get-WaitPulse ([int]$d.pid) ([string]$d.desde) $(if ($d.PSObject.Properties['dirAbs']) { [string]$d.dirAbs } else { '' })
+            return [pscustomobject]@{ Owner = [string]$d.owner; Target = 'android'; Pid = [int]$d.pid; Desde = [string]$d.desde; Pulse = $pu; Plugin = (Test-TargetLockOwnerProcess $d); Foreign = $dh.Foreign; Project = [string]$d.root
+                Text = "'$([string]$d.owner)' $(if ($dh.Foreign) { "do OUTRO projeto $([string]$d.root) " })no aparelho $($dh.Key) (PID $([int]$d.pid), desde $([string]$d.desde)) — $($pu.Text)" }
+        }
+    }
+    return $null
 }
 # O processo da trava é mesmo o script do plugin que a tomou: a hora de criação bate (quando gravada) e a linha de comando é
 # do accept.ps1 ou do target.ps1. PID reaproveitado pelo Windows ou processo de fora → $false (não é tocado).
@@ -1117,6 +1192,13 @@ function Set-AskRoute([string]$Root, [string]$Rota, [string]$Task = '', [string]
 function Exit-TargetLock([string]$Root) {
     $lp = Join-Path $Root '.team-project/.target-lock'
     if (Test-Path -LiteralPath $lp) { try { $l = Read-Text $lp | ConvertFrom-Json; if ([int]$l.pid -eq $PID) { Remove-Item -LiteralPath $lp -Force } } catch { Remove-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue } }
+    # v3.63.2: e a trava do aparelho que ESTE processo tomou (só a dele; a de outro processo ou projeto fica).
+    $dd = Get-DeviceLockDir
+    if (Test-Path -LiteralPath $dd) {
+        foreach ($f in @(Get-ChildItem -LiteralPath $dd -File -Filter '*.json' -ErrorAction SilentlyContinue)) {
+            try { $d = Read-Text $f.FullName | ConvertFrom-Json; if ($d -and [int]$d.pid -eq $PID) { Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue } } catch { }
+        }
+    }
 }
 
 # Sprint corrente (v3.51.4): a linha "Sprint corrente" do README §2. O modelo grava "| **Sprint corrente** | **<n>** — …";
