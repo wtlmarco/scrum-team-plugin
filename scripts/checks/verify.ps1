@@ -142,6 +142,31 @@ function Invoke-Logged([string]$Key, [string]$Cmd, [string]$Log) {
         $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon -PidFile $pidFile
         if (-not $r.suspended) { $r.warnings = @($r.warnings) + @("$Key`: $first — rodada repetida e válida") }
     }
+    # v3.63.1 (pedido 8 do sprint 6 do projeto piloto, Q-S6d): o navegador da suíte caiu no meio ("Disconnected … no message in
+    # 120000 ms" do Karma) — duas vezes seguidas, e a rodada reprovava como suíte vermelha. Agora a queda é repetida UMA vez,
+    # com a memória conferida antes (abaixo de verify.minFreeMB, o emulador local que a suíte não usa é desligado). Caiu de
+    # novo: no MESMO ponto (o mesmo "Executed N of M") é um teste que trava o navegador — o código, sem ambiente (exit 1);
+    # em pontos diferentes é carga ou memória da máquina — ambiente (exit 4), com a memória medida e o que é do projeto.
+    if ($r.Contains('disconnect') -and $r.disconnect) {
+        $d1 = $r.disconnect; $first = [string]$r.environment
+        if ($r.Contains('kept')) { $script:daemonPids += @($r.kept) }
+        $minF = if ($verify -and $verify.PSObject.Properties['minFreeMB'] -and $null -ne $verify.minFreeMB) { [int]$verify.minFreeMB } else { 6144 }
+        $free1 = Get-FreeMemoryMB; $relT = ''
+        if ($minF -gt 0 -and $free1 -ge 0 -and $free1 -lt $minF) { $rel = Invoke-TargetRelease $Root; if ($rel.Ran) { $relT = " · alvo: $($rel.Text)" }; if ($rel.Freed) { Start-Sleep -Seconds 3 } }
+        [Console]::Out.WriteLine("verify: $Key — $first; memória livre $free1 MB$relT — repetindo a rodada uma vez")
+        $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon -PidFile $pidFile
+        if (-not ($r.Contains('disconnect') -and $r.disconnect)) { $r.warnings = @($r.warnings) + @("$Key`: $first — rodada repetida e válida") }
+        else {
+            $d2 = $r.disconnect; $free2 = Get-FreeMemoryMB; $top = Get-TopMemoryText 5
+            if ($d1.At -gt 0 -and $d1.At -eq $d2.At) {
+                $r.environment = $null
+                $r.decisive = @($r.decisive) + @("o navegador da suíte caiu duas vezes no MESMO ponto (depois do teste $($d2.At) de $($d2.Total)): um teste — o seguinte a esse na ordem da suíte — ou o código que ele chama trava o navegador; não é ambiente")
+            } else {
+                $r.environment = "o navegador da suíte caiu nas 2 rodadas ($($d2.Text)), em pontos diferentes (depois do teste $($d1.At) e do $($d2.At) de $($d2.Total)) — carga ou memória da máquina, não um teste; memória livre $free2 MB$(if ($top) { "; maiores consumidores: $top" }). O prazo do runner (Karma: browserNoActivityTimeout, browserDisconnectTolerance) e as flags do navegador (--disable-dev-shm-usage) são configuração do projeto: vão por Task, com o Arquiteto; fechar o que não é da construção é do stakeholder"
+            }
+        }
+    }
+    if ($r.Contains('disconnect')) { $r.Remove('disconnect') }
     $r.Remove('suspended')
     foreach ($w in @($r.warnings)) { if ($w -and $script:hygieneWarnings -notcontains $w) { $script:hygieneWarnings += $w } }
     $r.Remove('warnings')

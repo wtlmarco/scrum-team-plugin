@@ -462,6 +462,63 @@ function SetClock([string]$At) {
 }
 function Save-AndroidShot([string]$Path) { Sh screencap -p /sdcard/s.png | Out-Null; Adb pull /sdcard/s.png $Path | Out-Null }
 
+# ---------- v3.63.1 · identidade do app instalado, registro do aparelho e sinal da falha ----------
+# Sprint 6 do projeto piloto (18/11): o -Resume leu "apk:?" — o APK foi instalado pelo comando do projeto (build num volume do
+# Docker), sem arquivo local para o hash — e rodou todos os cenários. A identidade agora é a do app INSTALADO no aparelho: o
+# SHA-1 do base.apk (pm path → sha1sum; igual ao hash do arquivo local quando foi ele o instalado). Sem sha1sum no aparelho,
+# a versão e a hora da última instalação (mudam a cada install). '' = não deu para ler.
+function Get-AndroidInstalledIdentity {
+    if (-not $script:Pkg) { return '' }
+    $paths = @(Sh pm path $script:Pkg | ForEach-Object { [string]$_ } | Where-Object { $_ -match '^package:\S+\.apk\s*$' } | ForEach-Object { ($_ -replace '^package:', '').Trim() })
+    $base = @(@($paths | Where-Object { $_ -match '/base\.apk$' }) + $paths) | Select-Object -First 1
+    if ($base) {
+        foreach ($tool in 'sha1sum', 'toybox sha1sum') {
+            $o = ((Sh "$tool $base") -join ' ').Trim()
+            if ($o -match '^([0-9a-f]{40})\b') { return $Matches[1].Substring(0, 12) }
+        }
+    }
+    $d = (@(Sh dumpsys package $script:Pkg) -join "`n")
+    $vc = [regex]::Match($d, 'versionCode=(\d+)'); $lu = [regex]::Match($d, 'lastUpdateTime=([\d\- :]+)')
+    if ($vc.Success -and $lu.Success) { return "v$($vc.Groups[1].Value)@$(($lu.Groups[1].Value.Trim()) -replace '\D', '')" }
+    return ''
+}
+# O registro do aparelho de UM cenário: limpo no começo (main, system e crash), gravado na falha — o veredito do diagnóstico
+# tem prova (crash, ANR, WebView que caiu) em vez de só a captura.
+function Clear-AndroidLog { $null = AdbT 15 @('logcat', '-c') }
+function Save-AndroidLog([string]$Path) {
+    $main = @(AdbT 30 @('logcat', '-d', '-v', 'threadtime', '-t', '3000'))
+    $crash = @(AdbT 15 @('logcat', '-d', '-b', 'crash', '-v', 'threadtime'))
+    try {
+        New-Item -ItemType Directory -Force (Split-Path $Path) | Out-Null
+        [System.IO.File]::WriteAllText($Path, ("# logcat -d (até 3000 linhas, desde o começo do cenário)`n" + ($main -join "`n") + "`n`n# logcat -b crash`n" + ($crash -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
+    } catch { }
+    return @{ Main = $main; Crash = $crash }
+}
+# O que aconteceu com o APP quando o passo falhou — sinal separado do foco: o app reiniciado também fica sem foco por
+# instantes, e "foco: nenhum" sozinho não prova ambiente. Kind: crash · anr · closed (o processo sumiu) · restarted (pid novo,
+# sem crash) · webview-recreated (mesmo pid, a página caiu) · system-window (outra janela em foco) · '' (nada a dizer).
+function Get-AndroidFailSignal([int]$PidBefore, [string]$Detail, $Log) {
+    $pkg = [string]$script:Pkg; $q = [regex]::Escape($pkg)
+    $all = @(@($Log.Main) + @($Log.Crash) | ForEach-Object { [string]$_ })
+    $now = Get-AndroidAppPid
+    $crashL = @($all | Where-Object { $_ -match "Process: $q\b" -or ($_ -match 'FATAL EXCEPTION' -and $_ -match $q) })
+    if (-not $crashL.Count -and @($Log.Crash | Where-Object { [string]$_ -match $q }).Count) { $crashL = @($Log.Crash | Where-Object { [string]$_ -match $q }) }
+    if ($crashL.Count) {
+        $ex = @($all | Where-Object { $_ -match '(?:Exception|Error)(?::|\s*$)' -and $_ -match 'AndroidRuntime' -and $_ -notmatch 'FATAL EXCEPTION|Process:' }) | Select-Object -First 1
+        return [pscustomobject]@{ kind = 'crash'; text = "o app fechou com erro (crash no registro)$(if ($ex) { ': ' + (([string]$ex -replace '^.*AndroidRuntime:\s*', '').Trim()) })" }
+    }
+    if (@($all | Where-Object { $_ -match "ANR in $q\b" }).Count) { return [pscustomobject]@{ kind = 'anr'; text = 'o app parou de responder (ANR no registro)' } }
+    if (-not $now) { return [pscustomobject]@{ kind = 'closed'; text = "o processo do app não está rodando$(if ($PidBefore) { " (era o pid $PidBefore)" }), sem crash no registro" } }
+    if ($PidBefore -and $now -ne $PidBefore) { return [pscustomobject]@{ kind = 'restarted'; text = "o app foi reiniciado (pid $PidBefore → $now), sem crash no registro" } }
+    $wv = @($all | Where-Object { $_ -match '(?i)render(er)? process (crash|gone|kill)|onRenderProcessGone|webview.*(crash|died)' }) | Select-Object -First 1
+    if ($wv -or $Detail -match 'conexão com a página caiu') { return [pscustomobject]@{ kind = 'webview-recreated'; text = "a WebView foi recriada no mesmo processo (pid $now)$(if ($wv) { ': ' + ([string]$wv).Trim() } else { ' — a página do DevTools fechou' })" } }
+    $f = [string](Get-FocusLine)
+    if ($f -and $f -notmatch 'mCurrentFocus=null' -and $pkg -and $f -notmatch [regex]::Escape("$pkg/")) { return [pscustomobject]@{ kind = 'system-window'; text = "outra janela em foco: $(($f -replace '^.*mCurrentFocus=', '').Trim())" } }
+    # O app roda e nenhuma janela tem o foco: ambíguo (app reabrindo, atividade recriada, tela sem janela) — vai ao diagnóstico.
+    if ($Detail -match 'não ficou na frente') { return [pscustomobject]@{ kind = 'no-focus'; text = "o app está rodando (pid $now) e nenhuma janela dele ficou em foco — sem crash, ANR nem janela do sistema no registro" } }
+    return [pscustomobject]@{ kind = ''; text = '' }
+}
+
 # ---------- localizador CDP (v3.62.0) ----------
 # targets.android.locator = "cdp": os verbos de tela vão ao android-cdp.js pela WebView do app. A conexão: o pid do app →
 # o socket webview_devtools_remote_<pid> (/proc/net/unix) → adb forward tcp:0 (porta livre escolhida pelo adb, nunca fixa:

@@ -9,7 +9,8 @@
 #   … -Dir <pasta> -Kill: encerra a rodada viva da pasta (só ela e os filhos dela).
 # Saída: a última parte da saída do comando e o caminho do log (<Dir>/output.log, saída inteira com stderr).
 # Exit: o do comando quando ele terminou (a linha diz "terminou · exit N") · 3 = RODANDO (rode o mesmo comando de novo, no
-# mesmo turno) · 4 = a rodada caiu sem resultado ou o WMI não a criou (ambiente) · 5 = outro comando roda nesta pasta · 2 = uso.
+# mesmo turno) · 4 = a rodada caiu sem resultado ou o WMI não a criou (ambiente) · 5 = outro comando roda nesta pasta, ou
+# (v3.63.1) o comando é um accept e o alvo já está com outro accept vivo — a saída diz a pasta da rodada dele · 2 = uso.
 param(
     [Parameter(Mandatory = $true)][string]$Dir,
     [string]$Command = '',
@@ -42,6 +43,21 @@ try {
     if ($job -and $job.State -eq 'dead') { $note = "a rodada anterior deste comando (pid $($job.Pid), desde $($job.At)) caiu sem resultado; abro outra"; Clear-DetachedJob $full; $job = $null }
     if ($job -and $job.State -eq 'running') { & $out "detach: acompanhando a rodada que já roda (pid $($job.Pid), desde $($job.At), há $([int]$job.Minutes) min) — mesmo comando; não abro outra." }
     elseif (-not $job) {
+        # v3.63.1 (sprint 6 do projeto piloto, 18/11): antes de abrir uma rodada NOVA de accept, confere o alvo. A sessão disparava
+        # um operator novo a cada queda, cada um numa pasta de job nova, e a lista de processos parecia mostrar "três accepts".
+        # O accept de outra pasta já recusaria pela trava, mas a rodada aberta só para recusar confunde quem olha e gasta o
+        # operator. Com o alvo nas mãos de outro accept vivo: não abre; diz a pasta da rodada dele, que o MESMO comando nela
+        # volta a acompanhar.
+        if ($Command -match '(?i)[\\/]accept\.ps1\b' -and $Command -notmatch '(?i)-ParseOnly\b') {
+            $tb = Get-TargetBusy $Root
+            if ($tb -and [string]$tb.Owner -match '^accept ') {
+                $u = Get-TargetUsers $Root; $hd = ''
+                $cur = @($u.Accepts | Where-Object { $_.Pid -eq $u.LockPid }) | Select-Object -First 1
+                for ($i = 0; $i -lt 4 -and $cur -and -not $hd; $i++) { $par = @($u.Wrappers | Where-Object { $_.Pid -eq $cur.Parent }) | Select-Object -First 1; if ($par -and $par.Dir) { $hd = $par.Dir }; $cur = $par }
+                & $out "detach: OCUPADO — o alvo $($tb.Target) já está com $($tb.Text). Não abro outra rodada de accept: dois no mesmo aparelho quebram os dois. $(if ($hd) { "A rodada dele roda em $hd — o MESMO comando com -Dir nessa pasta volta a acompanhá-la." } else { 'Espere ele terminar.' }) Quem usa o alvo: target.ps1 -Target $($tb.Target) -Who$(if ($tb.Pulse.Stalled) { "; parado: target.ps1 -Target $($tb.Target) -Kill (decisão do stakeholder)" })."
+                exit 5
+            }
+        }
         if ($note) { & $out "detach: $note." }
         # Código de saída real (o do último nativo; cmdlet que falha sem código = 1), como o Invoke-ProjectCommand.
         $wrapped = '$global:LASTEXITCODE = 0; ' + $Command + '; if (-not $?) { if ($LASTEXITCODE) { exit $LASTEXITCODE } else { exit 1 } }; exit $LASTEXITCODE'
