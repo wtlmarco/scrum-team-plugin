@@ -10,6 +10,9 @@
 # -Unlock apaga a trava de dono único (.team-project/.target-lock) deixada por um executor que caiu (v3.63.1: recusa, exit 4,
 # quando o dono está vivo). -Who (v3.63.1, só leitura) diz quem usa o alvo: o dono da trava, cada accept no aparelho, os
 # invólucros e quem só acompanha; -KillDuplicates encerra só o accept que não é o dono da trava.
+# v3.63.2: além da trava do projeto, a trava do APARELHO (%LOCALAPPDATA%\team-plugin\device-locks\<serial>.json), comum a
+# todos os projetos da máquina — o -Who diz quando o emulador está com outro projeto. Dois projetos ao mesmo tempo: cada um
+# declara o seu aparelho em guards.json → targets.android.serial.
 # -Release (v3.58.4) desliga o emulador local que a construção não está usando (memória); o accept seguinte o religa.
 # -Kill (v3.57.0) encerra o que o run registrou em .target-<alvo>.json; v3.63.1: e o dono da trava do alvo (o accept.ps1 ou o
 # target.ps1 do plugin, reconhecido pela hora de criação e pela linha de comando), com a árvore dele.
@@ -43,6 +46,13 @@ try {
             $g = if ([string]$u.Lock.owner -match '^accept (\S+)$') { Get-AcceptProgress $Root $Matches[1] } else { $null }
             & $o "  trava: '$([string]$u.Lock.owner)' PID $([int]$u.Lock.pid), desde $([string]$u.Lock.desde) — $(if ($u.LockPid) { "vivo · $($pu.Text)" } else { 'dono morto ou PID reaproveitado: trava velha (o próximo accept a assume)' })$(if ($g -and $g.Pid -eq $u.LockPid) { " · cenários: $($g.Passed) passaram, $($g.Failed) falharam de $($g.Total)" })"
         } else { & $o '  trava: nenhuma — nenhum executor do plugin segura o alvo' }
+        # v3.63.2: a trava do aparelho, comum aos projetos da máquina.
+        $dKey = Get-DeviceKey $Root $Target
+        if ($dKey) {
+            $dh = Get-DeviceLockHolder $Root $Target
+            if ($dh) { $d = $dh.Lock; & $o "  aparelho $($dKey): em uso por '$([string]$d.owner)' PID $([int]$d.pid), desde $([string]$d.desde) — $(if ($dh.Foreign) { "OUTRO projeto ($([string]$d.root)): este projeto não entra no aparelho enquanto ele roda" } else { 'este projeto' })" }
+            else { & $o "  aparelho $($dKey): livre para este projeto (nenhum outro projeto da máquina o segura)" }
+        }
         foreach ($a in $u.Accepts) { & $o "  accept (usa o aparelho): PID $($a.Pid)$(if ($a.Task) { " · -Task $($a.Task)" }) · desde $($a.Since)$(if ($a.Pid -eq $u.LockPid) { ' · dono da trava' } elseif ($a.Mine -eq $true -and $u.LockPid) { ' · DUPLICADO (deste projeto, não é o dono da trava)' } elseif ($a.Mine -eq $false) { ' · de OUTRO projeto (no mesmo emulador também atrapalha; não é encerrado por aqui)' } else { ' · projeto não identificado (não é encerrado por aqui)' })" }
         foreach ($w in $u.Wrappers) { & $o "  invólucro (não usa o aparelho por si): PID $($w.Pid) · desde $($w.Since)$(if ($w.Dir) { " · $($w.Dir)" })" }
         foreach ($w in $u.Watchers) { & $o "  acompanhando (detach.ps1, não usa o aparelho; encerrá-lo não muda o teste): PID $($w.Pid) · desde $($w.Since)$(if ($w.Dir) { " · $($w.Dir)" })" }

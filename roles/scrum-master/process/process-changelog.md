@@ -159,6 +159,8 @@ No próximo portão de um projeto com alvo: nenhuma `Q-S<n>` aberta por ambiente
 
 **Quem usa o aparelho** (mesmo dia: a sessão e o plugin leram um accept, o invólucro e os observadores da mesma rodada como "três accepts", e dois observadores foram encerrados): `target.ps1 -Who` mostra quem usa o alvo, sem adivinhar por lista de processos; `-KillDuplicates` encerra só o duplicado deste projeto; a trava é atômica, não é tomada de dono vivo que anda e o `-Unlock` recusa com o dono vivo.
 
+**Dois projetos, um emulador** (v3.63.2, mesmo dia, pergunta do stakeholder): a trava do aparelho, comum aos projetos da máquina (`%LOCALAPPDATA%\team-plugin\device-locks`), tomada junto com a do projeto — o accept, o reparo e o `-Release` de um projeto não entram no aparelho que outro usa; o `next` espera ou leva ao stakeholder. Os dois ao mesmo tempo: um `targets.android.serial` por projeto.
+
 **O navegador da suíte que cai no meio** (Karma "no message in 120000 ms", Q-S6d, duas quedas seguidas no `verify full`): não é teste reprovado. O `verify` repete a rodada uma vez, com a memória conferida. Caiu de novo no mesmo teste: um teste trava o navegador — código, vai ao dev. Caiu em pontos diferentes: carga ou memória — ambiente, com a medida; o prazo do runner e as flags do navegador são do projeto (Task, com o Arquiteto).
 
 ---
