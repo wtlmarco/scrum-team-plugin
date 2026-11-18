@@ -63,3 +63,36 @@ O gesto vai a um ponto do rolador que não tem outro rolador por cima. O executo
 | CONFIGURAÇÃO DO ALVO (exit 4, `configuration` no `result.json`) | o alvo, como está declarado, não prova nada: APK sem a depuração da WebView, Node < 22, mais de uma página sem `cdp.pageUrl`, ou app híbrido com o `uiautomator` | o stakeholder (o `guards.json` e o build são dele). Sem reparo, sem dev e sem Arquiteto |
 
 O `result.json` do `accept` com `locator: "cdp"` é **prova de primeira classe** no portão: a Task fecha por ele, sem decisão do Arquiteto e sem linha de desvio no `run-log.md`.
+
+## 5. Executor do projeto (v3.62.3)
+
+O projeto que já tem executor de cenários próprio (um script que lê os mesmos `.scn`, uma suíte de UI) não o roda **fora** do `accept.ps1`. No sprint 6 do projeto piloto, a Q-S6d dispensou o aceite e provou 49 cenários por um script do projeto: fora da trava do alvo, sem progresso que a sessão lesse, sem saber qual APK estava no emulador e com a prova fora de `.team-project/accept/`.
+
+O plano da Task declara o executor no cabeçalho:
+
+```
+**Aceite:** comando — `<comando com {scn}, {out}, {only}, {task}>`
+```
+
+O `accept.ps1 -Task <ID>` lê a linha e faz o que faz sempre — trava do alvo, pré-voo e reparo, APK mais velho que o código, instalação, `targets.<alvo>.baseline` depois de instalar. No lugar do executor interno, chama o comando **um `.scn` por vez**, na raiz do projeto, num PowerShell filho:
+
+| Marcador | Vira (um argumento inteiro, já entre aspas — não ponha aspas em volta) |
+|---|---|
+| `{scn}` (obrigatório) | o caminho do `.scn` |
+| `{out}` | a pasta da prova desse arquivo: `.team-project/accept/<seg>/<ID>/cmd/<arquivo>` — as capturas vão aqui (`<SC-ID>*.png`) |
+| `{only}` | os cenários da Task nesse arquivo, separados por vírgula; sem ele não há repetição |
+| `{task}` | o ID da Task |
+
+O comando também recebe `ACCEPT_TASK`, `ACCEPT_TARGET`, `ACCEPT_SERIAL`, `ACCEPT_PACKAGE`, `ACCEPT_SCENARIOS`, `ACCEPT_ONLY` e `ACCEPT_OUT` no ambiente.
+
+**O que o executor devolve:** uma linha por cenário na saída, `<SC-ID> PASSOU|FALHOU|NÃO EXERCITADO [detalhe]` (o ID pode vir entre colchetes, como o `accept.ps1` imprime; a última linha do cenário vale), e o código de saída:
+
+| Exit do executor | O `accept` |
+|---|---|
+| 0, 1, 3 | lê as linhas; cenário da Task sem linha conta como **FALHOU** |
+| 2 sem nenhuma linha | para com exit 2 (uso ou cenário malformado) |
+| 4, ou o tempo por arquivo esgotado (`targets.<alvo>.commandTimeoutMin`; padrão 5 min por cenário, mínimo 10) | FALHA DE AMBIENTE (exit 4), com a última linha da saída |
+
+Cenário que FALHOU é repetido uma vez, sozinho, quando o comando tem `{only}`, como no executor interno. O `accept` grava `progress.json` a cada arquivo e, no fim, o `result.json` e o `result.md` de sempre, com `executor: "comando"`, o comando e cada chamada (`runs`: arquivo, cenários, exit, segundos, log). O `close.ps1`, o `/team-status` e o portão do QA o leem como qualquer accept.
+
+**Sem o localizador do plugin:** a tela é do executor — o pré-voo do `locator` não roda, e o `reset` de um cenário não reaplica o `baseline` (só a instalação o aplica). O comando passa pelo mesmo filtro da **Verificação:** — instalação, rede, push e destrutivo reprovam no `plan.ps1` e no `accept.ps1`. `**Aceite:** não roda` fica para cenário provado pelos testes do plano; o que cita um script do projeto reprova (regra 34).

@@ -155,6 +155,21 @@ Nos próximos sprints com app híbrido: nenhum 🔺 GAP ambiente por id não enc
 | `agents/task-runner.md` | passo 3 | `ESPERANDO` do dev: não esperar o aviso; o `done` diz o passo (dev novo reencontra a rodada) |
 | `hooks/COVERAGE.md` | G14 · bloco v3.62.2 | `run_in_background` negado a todo papel; o comando de dentro do `detach.ps1` conferido |
 
+
+### Addendum v3.62.3 — o executor de cenários do projeto roda pelo `accept.ps1` (Arquiteto + Dev + QA + operator) — 2026-11-17
+
+**Instrução:** (stakeholder, 17/11/2026, sobre a Q-S6d do garden: "hoje não há como acompanhar o aceite pela pasta de resultados") "Vamos fazer a correção na versão 3.62.3". Formulário do mesmo dia: o script do projeto roda **pelo plugin**; o resultado vem **das linhas** da saída; o estado de partida é **do plugin**.
+**Medido (garden, S6, Q-S6d, 17/11):** o plano declarou `**Aceite:** não roda` citando o D-16 ("o `accept.ps1` no android não acha id do app") e mandou o operator provar os 49 cenários pelo `prova-cdp.mjs` numa pasta de job. O `guards.json` do projeto já declarava `locator: cdp` desde a v3.62.0. A prova correu sem trava do alvo, sem `progress.json` e sem conferir o APK instalado, e ficou fora de `.team-project/accept/`.
+**Classificação:** formato (``**Aceite:** comando — `<cmd>` ``, contrato do executor em `standards/scenario-language.md` §5) · regra (34: `não roda` citando script do projeto reprova; cenário provado fora do `accept` não é evidência de aceite) · instrumento (`accept.ps1`, `plan.ps1`, cartão do `run.ps1`).
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `standards/scenario-language.md` | §5 (nova) | executor do projeto: marcadores, ambiente, linhas de resultado, códigos de saída, repetição, o que o `accept` grava |
+| `roles/architect/templates/implementation-plan.md` · `external-plan.md` | cabeçalho · regra 34 do checklist | linha `**Aceite:** comando`; `não roda` só para cenário provado pelos testes do plano |
+| `roles/architect/plan-rules-why.md` | 34 | o caso da Q-S6d e por que o `não roda` com script reprova |
+| `agents/developer.md` | passo 12 | a prova é o `accept.ps1` do cartão; o executor direto não vale |
+| `agents/operator.md` | regras | pedido de rodar o executor do projeto como prova vai pelo `accept.ps1 -Task` |
+| `agents/quality-assurance.md` | evidência do `verify` | cenário provado fora do `accept` não é evidência de aceite; `não roda` com script é achado de processo |
 ---
 
 ## v3.61 — Sprint 0: o backlog funcional abre sobre documentação conforme e ambiente de testes provado — o onboarding pergunta onde está a documentação e decide o sprint 0 (SM + PO + Arquiteto + QA) — 16/11/2026

@@ -392,7 +392,21 @@ try {
     $scnNone = [regex]::Match($text, '(?im)^\*\*Cen[áa]rios:\*\*\s*nenhum\b').Success
     $acRe = '(?:\baccept(?:\.ps1)?\b|\baceite\b)'
     $waive = @(($text -split "`r?`n") | Where-Object { ($_ -match "(?i)$acRe.*\bn[ãa]o\s+rod(a|ar|ado|e)\b" -or $_ -match "(?i)\bn[ãa]o\s+rod(a|ar)\b.*$acRe" -or $_ -match "(?i)$acRe[``*:\s]*dispensad[oa]\b") -and $_ -notmatch '(?i)^\*\*(?:Aceite|Accept):\*\*' })
-    if ($acLine.Success) { $av = ($acLine.Value -replace '\*\*', '' -replace '\s+', ' ').Trim(); if ($av.Length -gt 90) { $av = $av.Substring(0, 90) + '…' }; Add-Result 'aceite' 'ok' "linha do cabeçalho: $av" }
+    # v3.62.3 (sprint 6 do projeto piloto, Q-S6d): "**Aceite:** comando — `<cmd>`" — o executor de cenários do projeto roda
+    # PELO accept.ps1 (trava, pré-voo, APK, progresso, result.json). O "não roda" que cita um script do projeto é o aceite por
+    # outro executor, fora de tudo isso: a Q-S6d provou 49 cenários assim, sem progresso e sem saber qual APK estava no alvo.
+    $pa = Get-PlanAccept $text
+    $plugScripts = @(Get-ChildItem -LiteralPath $PSScriptRoot -File -ErrorAction SilentlyContinue | ForEach-Object { $_.Name.ToLowerInvariant() })
+    $extScripts = if ($pa -and $pa.Mode -eq 'não roda') { @([regex]::Matches($pa.Raw, '[\w./\\-]+\.(?:m?js|cjs|ts|ps1|py|sh|rb)\b') | ForEach-Object { $_.Value } | Where-Object { $plugScripts -notcontains ([System.IO.Path]::GetFileName($_)).ToLowerInvariant() } | Select-Object -Unique) } else { @() }
+    if ($pa -and $pa.Mode -eq 'comando') {
+        $bad = @(Split-CommandSegments $pa.Command | ForEach-Object { $w = Get-ForbiddenCommandReason $_; if ($w) { "$_ ($w)" } })
+        if ($bad.Count) { Add-Result 'aceite' 'falhou' ("**Aceite:** comando que o run nunca roda: " + ($bad -join '; ') + " — instalação, rede, push e destrutivo ficam fora (regra 34)") }
+        elseif (-not $pa.Command.Contains('{scn}')) { Add-Result 'aceite' 'falhou' "**Aceite:** comando sem {scn} (``$($pa.Command)``) — o accept.ps1 chama o executor um arquivo de cenários por vez: {scn} o arquivo, {out} a pasta da prova, {only} os cenários da Task nele, {task} o ID (regra 34)" }
+        elseif ($scnNone) { Add-Result 'aceite' 'falhou' '**Aceite:** comando com **Cenários:** nenhum — não há cenário para o executor rodar (regra 34)' }
+        else { Add-Result 'aceite' 'ok' ("executor do projeto ``$($pa.Command)`` — o accept.ps1 o roda um .scn por vez" + $(if (-not $pa.Command.Contains('{out}')) { ' · ATENÇÃO: sem {out}, as capturas ficam fora da pasta do accept' } else { '' })) }
+    }
+    elseif ($extScripts.Count) { Add-Result 'aceite' 'falhou' "**Aceite:** não roda e os cenários se provam por $($extScripts -join ', ') — é o aceite por outro executor, fora da trava do alvo, do progresso e da prova do accept; declare ``**Aceite:** comando — ``<comando com {scn} e {out}>```` e o accept.ps1 roda o executor (``não roda`` é só para cenário provado pelos testes do plano) (regra 34)" }
+    elseif ($acLine.Success) { $av = ($acLine.Value -replace '\*\*', '' -replace '\s+', ' ').Trim(); if ($av.Length -gt 90) { $av = $av.Substring(0, 90) + '…' }; Add-Result 'aceite' 'ok' "linha do cabeçalho: $av" }
     elseif ($scnNone -or -not $waive.Count) { Add-Result 'aceite' 'n-a' $(if ($scnNone) { '**Cenários:** nenhum' } else { 'o plano não dispensa o aceite' }) }
     else {
         $w0 = ($waive[0].Trim() -replace '\s+', ' '); if ($w0.Length -gt 100) { $w0 = $w0.Substring(0, 100) + '…' }

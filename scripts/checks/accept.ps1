@@ -23,6 +23,13 @@
 # stakeholder): o APK sem a depuração da WebView, Node < 22, mais de uma página sem cdp.pageUrl, ou — com o uiautomator — a
 # tela do app ser uma WebView sem nenhum id do app (antes do 1º cenário; substitui o IDS NÃO PUBLICADOS da v3.57.1).
 # A semântica de cada verbo, igual em todo alvo: standards/scenario-language.md.
+# v3.62.3 (sprint 6 do projeto piloto, Q-S6d): EXECUTOR DO PROJETO — o plano da Task declara ``**Aceite:** comando — `<cmd>` ``
+# (ou -Command, fora do run). O accept faz tudo o que faz sempre (trava do alvo, pré-voo e reparo, APK velho, instalação,
+# targets.<alvo>.baseline) e, no lugar do executor interno, roda o comando um .scn por vez: {scn} o arquivo, {out} a pasta da
+# prova (accept/<seg>/<ID>/cmd/<arquivo>), {only} os cenários da Task nele, {task} o ID (cada um vira um argumento entre
+# aspas). O resultado vem das linhas "<SC-ID> PASSOU|FALHOU|NÃO EXERCITADO [detalhe]" da saída; exit 2 do comando = uso
+# (exit 2), exit 4 ou tempo esgotado = ambiente (exit 4). Cenário da Task sem linha conta como FALHOU. progress.json a cada
+# arquivo, result.json/result.md de sempre (executor "comando"). Sem o localizador do plugin: a tela é do executor.
 #
 # Linguagem (uma instrução por linha; '#' comenta; texto com espaço vai depois do '='):
 #   scenario <ID> <título>             começa um cenário          reset                  apaga os dados do app (web: sessão nova)
@@ -50,6 +57,7 @@ param(
     [switch]$NoRetry,
     [switch]$NoRepair,
     [switch]$ParseOnly,
+    [string]$Command = '',
     [string]$Root = (Get-Location).Path
 )
 
@@ -61,6 +69,7 @@ $verbs = 'reset', 'launch', 'open', 'restart', 'back', 'clock', 'wait', 'tap', '
 # v3.62.0: os verbos de tela — com targets.android.locator = "cdp", vão ao android-cdp.js; os demais são do ciclo de vida.
 $screenVerbs = 'tap', 'type', 'select', 'slider', 'assert-text', 'assert-contains', 'assert-exists', 'assert-absent', 'assert-checked', 'assert-count', 'assert-order'
 $script:Locator = 'uiautomator'
+$script:ExtCmd = ''; $script:ExtFrom = ''   # v3.62.3: o executor do projeto (o **Aceite:** comando do plano ou -Command)
 
 # Lê os cenários dos arquivos; erro de sintaxe vem com arquivo:linha.
 # v3.56.0 (H1, sprint 5 do garden #32): cada erro leva o id do cenário (Sc; '' = erro do arquivo) — com -Only, só contam
@@ -136,6 +145,87 @@ function Write-AcceptProgress([string]$Dir, $Results, [int]$Total) {
     $streak = 0; for ($i = $rs.Count - 1; $i -ge 0; $i--) { if ($rs[$i].status -eq 'PASSOU') { break }; $streak++ }
     $o = [ordered]@{ task = $Task; pid = $PID; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); total = $Total; passed = $pass; failed = $rs.Count - $pass; streak = $streak; last = $(if ($rs.Count) { $rs[-1] } else { $null }) }
     try { [System.IO.File]::WriteAllText((Join-Path $Dir 'progress.json'), ($o | ConvertTo-Json -Depth 4), $utf8) } catch { }
+}
+
+# v3.62.3: uma chamada do executor do projeto para um .scn ($Ids = os cenários da Task nele). Devolve @{ Code; Lines; Log;
+# Seconds; Environment; Out }. O tempo limite é por arquivo: targets.<alvo>.commandTimeoutMin, ou 5 min por cenário (mín. 10).
+function Invoke-AcceptCommandRun([string]$Dir, [string]$File, [string[]]$Ids, [string]$Name, $Cfg) {
+    $out = Join-Path $Dir "cmd/$Name"; New-Item -ItemType Directory -Force $out | Out-Null
+    $cmd = Expand-AcceptCommand $script:ExtCmd @{ scn = $File; out = $out; only = ($Ids -join ','); task = $Task }
+    $log = Join-Path $Dir "cmd/$Name.log"
+    $tmo = if ($Cfg -and $Cfg.PSObject.Properties['commandTimeoutMin'] -and [double]$Cfg.commandTimeoutMin -gt 0) { [double]$Cfg.commandTimeoutMin } else { [Math]::Max(10, 5 * @($Ids).Count) }
+    $envX = [pscustomobject]@{ ACCEPT_TASK = $Task; ACCEPT_TARGET = $script:Tgt; ACCEPT_SERIAL = [string]$script:Serial; ACCEPT_PACKAGE = [string]$script:Pkg; ACCEPT_SCENARIOS = $File; ACCEPT_ONLY = ($Ids -join ','); ACCEPT_OUT = $out }
+    $x = Invoke-ProjectCommand $Root "accept-$Name" $cmd $log $tmo $envX
+    $text = if (Test-Path -LiteralPath $log) { Read-LogText $log } else { '' }
+    $envFail = $null
+    if ([int]$x.exit -eq 124) { $envFail = "o executor do projeto passou de $tmo min em $Name (targets.$($script:Tgt).commandTimeoutMin) — árvore encerrada" }
+    elseif ($x.suspended) { $envFail = [string]$x.environment }
+    elseif ([int]$x.exit -eq 4) { $last = @(($text -split "`r?`n") | Where-Object { $_.Trim() -and $_ -notmatch '^EXIT=' }) | Select-Object -Last 1; $envFail = "o executor do projeto saiu 4 (ambiente) em $Name$(if ($last) { ": $($last.Trim())" })" }
+    return @{ Code = [int]$x.exit; Lines = (Read-AcceptCommandLines $text); Log = ($log.Substring($Root.Length + 1) -replace '\\', '/'); Seconds = [int]$x.seconds; Environment = $envFail; Out = $out }
+}
+# v3.62.3: a captura do cenário na pasta da prova do executor (a primeira <ID>*.png, a de falha antes) — '' sem ela.
+function Find-AcceptShot([string]$Out, [string]$Id) {
+    $fs = @(Get-ChildItem -LiteralPath $Out -Recurse -File -Filter "$Id*.png" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "^$([regex]::Escape($Id))(\D|$)" } | Sort-Object @{ e = { if ($_.Name -match 'falha') { 0 } else { 1 } } }, FullName)
+    if (-not $fs.Count) { return '' }
+    return ($fs[0].FullName.Replace($Root, '').TrimStart('\', '/') -replace '\\', '/')
+}
+# v3.62.3: o aceite pelo executor do projeto — um .scn por vez, na ordem dos blocos. Mesmo contrato de saída do executor
+# interno (result.json, result.md, progress.json; exit 0/1/2/4), com executor "comando", o comando e cada chamada (runs).
+function Invoke-AcceptCommand([string]$Dir, $Blocks, $Cfg) {
+    $files = @(); foreach ($b in $Blocks) { if ($files -notcontains [string]$b.file) { $files += [string]$b.file } }
+    $results = @(); $runs = @(); $envFail = $null; $usage = ''
+    $cd = Join-Path $Dir 'cmd'; if (Test-Path -LiteralPath $cd) { Remove-Item -LiteralPath $cd -Recurse -Force -ErrorAction SilentlyContinue }   # captura de rodada anterior não vira prova desta
+    Write-AcceptProgress $Dir $results $Blocks.Count
+    $canRetry = (-not $NoRetry) -and $script:ExtCmd.Contains('{only}')
+    foreach ($f in $files) {
+        $ids = @($Blocks | Where-Object { [string]$_.file -eq $f } | ForEach-Object { [string]$_.id })
+        $name = [System.IO.Path]::GetFileNameWithoutExtension($f)
+        [Console]::Out.WriteLine("accept: executor do projeto — $name ($($ids.Count) cenário(s))")
+        $r1 = Invoke-AcceptCommandRun $Dir $f $ids $name $Cfg
+        $runs += [ordered]@{ file = ($f.Replace($Root, '').TrimStart('\', '/') -replace '\\', '/'); only = ($ids -join ','); exit = $r1.Code; seconds = $r1.Seconds; log = $r1.Log }
+        if ($r1.Code -eq 2 -and -not $r1.Lines.Count) { $usage = "o executor do projeto saiu 2 (uso ou cenário malformado) em $name — confira o comando do **Aceite:** e o log $($r1.Log)"; break }
+        $r2 = $null
+        $bad = @($ids | Where-Object { $r1.Lines.Contains($_) -and $r1.Lines[$_].status -eq 'FALHOU' })
+        if (-not $r1.Environment -and $canRetry -and $bad.Count) {
+            # Repete uma vez os que falharam (o alvo oscila), como o executor interno; o relatório guarda as duas tentativas.
+            $r2 = Invoke-AcceptCommandRun $Dir $f $bad "$name-r2" $Cfg
+            $runs += [ordered]@{ file = ($f.Replace($Root, '').TrimStart('\', '/') -replace '\\', '/'); only = ($bad -join ','); exit = $r2.Code; seconds = $r2.Seconds; log = $r2.Log }
+        }
+        foreach ($b in @($Blocks | Where-Object { [string]$_.file -eq $f })) {
+            $id = [string]$b.id; $note = ''
+            if ($r1.Lines.Contains($id)) { $st = $r1.Lines[$id].status; $det = $r1.Lines[$id].detail; $shotDir = $r1.Out }
+            elseif ($r1.Environment) { continue }   # não rodou: a interrupção por ambiente diz quantos ficaram de fora
+            else { $st = 'FALHOU'; $det = "o executor do projeto não devolveu linha para este cenário (exit $($r1.Code); log $($r1.Log))"; $shotDir = $r1.Out }
+            if ($r2 -and $bad -contains $id) {
+                if ($r2.Lines.Contains($id)) {
+                    $note = if ($r2.Lines[$id].status -eq 'PASSOU') { "passou na 2ª tentativa; 1ª: $det" } else { 'falhou nas 2 tentativas' }
+                    $st = $r2.Lines[$id].status; $det = $(if ($st -eq 'PASSOU') { '' } else { $r2.Lines[$id].detail }); $shotDir = $r2.Out
+                } elseif (-not $r2.Environment) { $note = "2ª tentativa sem linha para este cenário (exit $($r2.Code))" }
+            }
+            $row = [ordered]@{ id = $id; title = $b.title; status = $st; detail = $det; note = $note; shot = (Find-AcceptShot $shotDir $id) }
+            $results += $row
+            [Console]::Out.WriteLine(("[{0}] {1}  {2}{3}{4}" -f $id, $st, $b.title, $(if ($det) { "  -> $det" } else { '' }), $(if ($note) { "  ($note)" } else { '' })))
+        }
+        Write-AcceptProgress $Dir $results $Blocks.Count
+        if ($r1.Environment) { $envFail = $r1.Environment; break }
+        if ($r2 -and $r2.Environment) { $envFail = $r2.Environment; break }
+    }
+    if ($script:Tgt -eq 'web') { Stop-WebServer }
+    $ok = @($results | Where-Object { $_.status -eq 'PASSOU' }).Count
+    $miss = $Blocks.Count - $results.Count
+    $md = "# Aceite $Task · alvo $script:Tgt · executor do projeto · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n**Comando** ($script:ExtFrom): ``$script:ExtCmd```n`n$ok de $($results.Count) cenário(s) passaram" + $(if ($usage) { "; **interrompido:** $usage" } elseif ($envFail) { "; **interrompido por falha de ambiente:** $envFail ($miss cenário(s) não rodaram)" } else { '' }) + ".`n`n| Cenário | Resultado | Detalhe | Prova (captura) |`n|---|---|---|---|`n"
+    foreach ($r in $results) { $md += "| $($r.id) $($r.title) | $($r.status) | $((@($r.detail, $r.note) | Where-Object { $_ }) -join ' · ' -replace '\|', '/') | $($r.shot) |`n" }
+    $md += "`n| Arquivo | Cenários | Exit | Segundos | Log |`n|---|---|---|---|---|`n"
+    foreach ($u in $runs) { $md += "| $($u.file) | $($u.only) | $($u.exit) | $($u.seconds) | $($u.log) |`n" }
+    [System.IO.File]::WriteAllText((Join-Path $Dir 'result.md'), $md, $utf8)
+    $envAll = if ($usage) { $null } else { $envFail }
+    [System.IO.File]::WriteAllText((Join-Path $Dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $null; executor = 'comando'; command = $script:ExtCmd; commandFrom = $script:ExtFrom; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); environment = $envAll; startState = $null; passed = $ok; total = $results.Count; results = $results; runs = $runs } | ConvertTo-Json -Depth 6), $utf8)
+    $rel = ($Dir.Substring($Root.Length + 1) -replace '\\', '/')
+    if ($usage) { [Console]::Out.WriteLine("accept $Task · $usage · $rel/result.md"); return 2 }
+    if ($envFail) { [Console]::Out.WriteLine("accept $Task · FALHA DE AMBIENTE ($script:Tgt): $envFail · $ok de $($results.Count) antes da interrupção, $miss não rodaram · $rel/result.md"); return 4 }
+    [Console]::Out.WriteLine("accept $Task · alvo $script:Tgt · executor do projeto · $ok de $($results.Count) cenário(s) passaram · $rel/result.md")
+    if ($ok -lt $results.Count) { return 1 }
+    return 0
 }
 
 # Um cenário, do zero, no alvo. Devolve status/detalhe/captura, ou environment quando o alvo quebrou.
@@ -223,8 +313,9 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
         $be = Invoke-AcceptBaseline
         if ($be) { [Console]::Out.WriteLine("accept: FALHA DE AMBIENTE ($script:Tgt) — $be. Não é defeito do app."); return 4 }
         if ($Cfg -and $Cfg.PSObject.Properties['baseline'] -and $Cfg.baseline) { [Console]::Out.WriteLine("accept: estado de partida aplicado (targets.android.baseline '$([string]$Cfg.baseline)')") }
-        # v3.62.0: pré-voo do localizador.
-        if ($script:Locator -eq 'cdp') {
+        # v3.62.0: pré-voo do localizador. v3.62.3: com o executor do projeto, a tela é dele — sem o pré-voo do localizador.
+        if ($script:ExtCmd) { }
+        elseif ($script:Locator -eq 'cdp') {
             $nm = Test-AndroidCdpNode; if ($nm) { return (Write-AcceptConfig $dir $nm @()) }
             $cl = Clear-AndroidCdpForwards; if ($cl) { [Console]::Out.WriteLine("accept: $cl forward(s) da WebView de uma execução anterior removido(s)") }
         } else {
@@ -235,6 +326,7 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
             if ($hy) { return (Write-AcceptConfig $dir 'app híbrido: a tela do app é uma WebView e o uiautomator não recebe nenhum id do app (a WebView não publica o id HTML) — declare guards.json → targets.android.locator = "cdp" (standards/test-ids.md §6)' @()) }
         }
     }
+    if ($script:ExtCmd) { New-Item -ItemType Directory -Force $dir | Out-Null; return (Invoke-AcceptCommand $dir $Blocks $Cfg) }   # v3.62.3
 
     $script:Shots = Join-Path $dir 'shots'; New-Item -ItemType Directory -Force $script:Shots | Out-Null
     $results = @(); $envFail = $null; $startState = $null
@@ -317,7 +409,18 @@ try {
         if (-not (Get-TargetSeeds $tcB.android).Contains([string]$tcB.android.baseline)) { $parsed.Errors += "targets.android.baseline '$([string]$tcB.android.baseline)' não é uma massa de targets.android.seeds — o estado de partida é o nome de uma massa declarada" }
     }
     if ($parsed.Errors.Count) { [Console]::Out.WriteLine("accept: $($parsed.Errors.Count) erro(s) nos cenários"); foreach ($e in $parsed.Errors) { [Console]::Out.WriteLine("  $e") }; exit 2 }
-    if ($ParseOnly) { [Console]::Out.WriteLine("accept: $($blocks.Count) cenário(s) válidos em $($files.Count) arquivo(s): $(($blocks | ForEach-Object { $_.id }) -join ', ')"); exit 0 }
+    # v3.62.3: o executor do projeto — -Command, ou a linha **Aceite:** comando do plano da Task.
+    if ($Command) { $script:ExtCmd = $Command.Trim(); $script:ExtFrom = '-Command' }
+    elseif ($Task -and $Task -ne 'avulso') {
+        $pp = Get-TaskPlanPath $Root $Task
+        if ($pp) { $pa = Get-PlanAccept (Read-Text $pp); if ($pa -and $pa.Mode -eq 'comando') { $script:ExtCmd = $pa.Command; $script:ExtFrom = "plano $(($pp.Replace($Root, '').TrimStart('\', '/')) -replace '\\', '/')" } }
+    }
+    if ($script:ExtCmd) {
+        $bad = @(Split-CommandSegments $script:ExtCmd | ForEach-Object { $w = Get-ForbiddenCommandReason $_; if ($w) { "$_ ($w)" } })
+        if ($bad.Count) { [Console]::Out.WriteLine("accept: o executor do projeto ($script:ExtFrom) tem trecho que o run nunca roda: $($bad -join '; ') — instalação, rede, push e destrutivo ficam fora"); exit 2 }
+        if (-not $script:ExtCmd.Contains('{scn}')) { [Console]::Out.WriteLine("accept: o executor do projeto ($script:ExtFrom) não recebe o arquivo de cenários — o comando leva {scn} (e {out} para a pasta da prova): ``$script:ExtCmd``"); exit 2 }
+    }
+    if ($ParseOnly) { [Console]::Out.WriteLine("accept: $($blocks.Count) cenário(s) válidos em $($files.Count) arquivo(s): $(($blocks | ForEach-Object { $_.id }) -join ', ')" + $(if ($script:ExtCmd) { " · executor do projeto ($script:ExtFrom): ``$script:ExtCmd``" } else { '' })); exit 0 }
 
     # ---------- alvo ----------
     $targets = Get-TargetsConfig $Root

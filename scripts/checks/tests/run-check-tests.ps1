@@ -2608,6 +2608,32 @@ Check 'v3.57.1 item 5: com a linha **Aceite:** do cabeçalho, a frase solta não
 Put $p $pl ($h7 + "`n" + $b7 + "**Envelope de medidas:** nenhum — teste`n`n" + $w8 + $f7)
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.57.1 item 5: com **Cenários:** nenhum não há aceite a dispensar (n-a)' @{ Code = 0; Out = $r.Out } 0 @('\| aceite \| n-a \| \*\*Cenários:\*\* nenhum')
+# v3.62.3 (sprint 6 do projeto piloto, Q-S6d): o executor do projeto pelo accept — "**Aceite:** comando — `<cmd>`" passa; o
+# "não roda" que prova os cenários por um script do projeto reprova e aponta o comando; comando sem {scn} ou proibido reprova.
+$h62 = { param($ac) $h8.Replace("**Layout novo:** não`n", "**Layout novo:** não`n$ac`n") + "`n" + $b7 + $f7 }
+Put $p $pl (& $h62 '**Aceite:** comando — `node tools/prova.mjs --cenarios {scn} --saida {out} --only {only}`')
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.62.3: **Aceite:** comando com {scn} e {out} → ok, o accept.ps1 roda o executor um .scn por vez' @{ Code = 0; Out = $r.Out } 0 @('\| aceite \| ok \| executor do projeto `node tools/prova\.mjs --cenarios \{scn\} --saida \{out\} --only \{only\}` — o accept\.ps1 o roda um \.scn por vez', '^(?![\s\S]*sem \{out\})')
+Put $p $pl (& $h62 '**Aceite:** não roda — o accept não acha id do app (D-16); os 49 se provam pelo `prova-cdp.mjs`, pelo operator')
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.62.3: **Aceite:** não roda que prova os cenários por script do projeto → reprova e aponta o **Aceite:** comando (o accept.ps1 citado não conta)' $r 1 @('\| aceite \| falhou \| \*\*Aceite:\*\* não roda e os cenários se provam por prova-cdp\.mjs — é o aceite por outro executor', 'declare `\*\*Aceite:\*\* comando — `<comando com \{scn\} e \{out\}>``', '^(?![\s\S]*se provam por accept\.ps1)')
+Put $p $pl (& $h62 '**Aceite:** comando — `node tools/prova.mjs --saida {out}`')
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.62.3: **Aceite:** comando sem {scn} → reprova (o accept chama um arquivo de cenários por vez)' $r 1 @('\| aceite \| falhou \| \*\*Aceite:\*\* comando sem \{scn\}')
+Put $p $pl (& $h62 '**Aceite:** comando — `npm install; node tools/prova.mjs --cenarios {scn}`')
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.62.3: **Aceite:** comando com instalação → reprova; sem {out}, o ok avisa' $r 1 @('\| aceite \| falhou \| \*\*Aceite:\*\* comando que o run nunca roda: npm install \(instalação\)')
+$ps62 = Join-Path $tmp 'plan-scenarios-v3623.ps1'
+[System.IO.File]::WriteAllText($ps62, @'
+param([string]$Lib)
+. $Lib
+$a = Get-PlanScenarios "**Cenários:** SC-014, SC-015 (teste)`r`n**Aceite:** comando — ``x {scn}```r`n"
+'T=' + ($a.Target -join ',') + ' X=' + ($a.Test -join ',') + ' C=' + $a.Command + ' W=' + [bool]$a.Waived
+$b = Get-PlanScenarios "**Cenários:** SC-014`n**Aceite:** não roda — testes do plano`n"
+'T2=' + ($b.Target -join ',') + ' W2=' + [bool]$b.Waived
+'@, (New-Object System.Text.UTF8Encoding($true)))
+$r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $ps62 -Lib (Join-Path $checks 'lib.ps1') 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
+Check 'v3.62.3: com **Aceite:** comando os cenários ficam no alvo (o cartão, o start e o close mandam o accept); com não roda, vão aos testes do plano' $r 0 @('T=SC-014 X=SC-015 C=x \{scn\} W=False', 'T2= W2=True')
 Put $p '.team-project/architect/decisions/S1.md' "# Decisões do sprint 1`n`n## D-1 — Emulador fora do ar`n**Vale para:** todas · **Origem:** 🔺 GAP da T-041 · 2026-11-02`nCom o alvo fora do ar depois do reparo, a Task vai a bloqueada com prova no alvo pendente.`n`n## D-2 — APK antes do accept`n**Vale para:** T-080 · **Origem:** 🔺 GAP da T-041`nReconstruir o APK com assembleDebug antes de todo accept da Task de ids de teste.`n"
 Put $p $pl ($h7 + "**Decisões do sprint:** D-1, D-9`n`n" + $b7 + "Reconstruir o APK com assembleDebug antes de todo accept da Task de ids de teste.`n`n### Premissas`n- P1 · src tem a.ts · medido: ``ls src`` → a.ts`n- P2 · a margem é 16 px · não exercitada: nasce no passo 2 · verifica: dev em passo 4`n" + $f7)
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
@@ -3338,7 +3364,10 @@ Check 'v3.62.2: rodada anterior que caiu sem gravar o resultado → a chamada di
 $env:TEAM_VERIFY_FRONT_SEC = '3'
 Put $pj 'src/calc.ts' "export const x = 4`n"
 $null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pj)
-Start-Sleep -Seconds 12
+# v3.62.3: espera a rodada terminar (job.exit) em vez de 12 s fixos — build + suíte de 9 s + o processo próprio levam ~15 s,
+# e o caso falhava sempre, também na develop.
+$t62 = [datetime]::UtcNow; while (-not (Test-Path -LiteralPath (Join-Path $jd62 'job.exit')) -and ([datetime]::UtcNow - $t62).TotalSeconds -lt 60) { Start-Sleep -Milliseconds 500 }
+Start-Sleep -Seconds 1
 $env:TEAM_VERIFY_FRONT_SEC = '60'
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $pj)
 Check 'v3.62.2: rodada terminada sem ninguém recolher, mesma árvore → o resultado é o dela, sem rodar de novo' $r 0 @('rodada deste pedido terminada às .* em processo próprio .* a mesma árvore; o resultado é o dela', 'tudo exit 0')
@@ -3540,6 +3569,75 @@ Check 'v3.61.0 C2: sprint 1 com pacote aprovado e o sprint 0 exigido → R35 fal
 $r = Invoke-Check 'foundation.ps1' @('dispense', '-By', 'Stakeholder', '-Because', 'documentação do cliente já auditada', '-Root', $f1)
 $r = Invoke-Check 'project.ps1' @('-Root', $f1)
 Check 'v3.61.0 C2: sprint 0 dispensado pelo stakeholder → R35 ok com o risco aceito' $r 0 @('\| R35 \| ok \| sprint 0 dispensado em .* por Stakeholder — documentação do cliente já auditada')
+
+# v3.62.3 (sprint 6 do projeto piloto, Q-S6d): o executor de cenários do projeto roda PELO accept.ps1 — "**Aceite:** comando"
+# no plano. Executor falso neutro (tools/fake.ps1): imprime "<SC-ID> PASSOU|FALHOU <detalhe>" e grava a captura em {out}.
+$fakeExec = @'
+param([string]$Scn, [string]$Out, [string]$Only = '')
+$c = $env:FAKE_CASE
+$ids = if ($Only) { @($Only -split ',') } else { @([regex]::Matches([IO.File]::ReadAllText($Scn), '(?m)^scenario\s+(\S+)') | ForEach-Object { $_.Groups[1].Value }) }
+if ($c -eq 'uso') { Write-Output 'uso: fake --cenarios <arquivo>'; exit 2 }
+if ($c -eq 'amb' -and $Scn -like '*b.scn') { Write-Output 'emulador fora do adb'; exit 4 }
+$r2 = $Out -like '*-r2'; $fail = $false; $k = 0
+foreach ($i in $ids) {
+    $k++
+    if ($c -eq 'semlinha' -and $k -eq 2) { continue }
+    if ($c -eq 'falha' -and $k -eq 1 -and -not $r2) { Write-Output "$i FALHOU tag nao encontrada: x"; New-Item -ItemType File -Force (Join-Path $Out "$i-falha.png") | Out-Null; $fail = $true; continue }
+    if ($c -eq 'falha2' -and $k -eq 1) { Write-Output "[$i] FALHOU  -> sempre"; $fail = $true; continue }
+    Write-Output "$i PASSOU"; New-Item -ItemType File -Force (Join-Path $Out "$i-final.png") | Out-Null
+}
+if ($fail) { exit 1 }; exit 0
+'@
+$pa = Join-Path $tmp 'v3623-accept'; New-Project $pa
+Put $pa 'tools/fake.ps1' $fakeExec
+Put $pa '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-001 Abre`nlaunch`nassert-exists a`n`nscenario SC-002 Conta`nlaunch`nassert-exists b`n"
+Put $pa '.team-project/quality-assurance/scenarios/b.scn' "scenario SC-003 Fecha`nlaunch`nassert-exists c`n"
+$port = Get-Random -Minimum 47100 -Maximum 47900
+Put $pa 'tools/srv.js' "require('http').createServer((q, s) => s.end('ok')).listen(Number(process.argv[2]), '127.0.0.1');"
+Put $pa '.team-project/guards.json' ('{ "targets": { "web": { "url": "http://127.0.0.1:' + $port + '", "start": "node tools/srv.js ' + $port + '", "startTimeoutSec": 30 } } }')
+Edit-File (Join-Path $pa '.team-project/sprints/1/plan/T-041-export.md') '# Plano de Implementação — T-041 Endpoint de exportação' ("# Plano de Implementação — T-041 Endpoint de exportação`n`n**Aceite:** comando — ``powershell -NoProfile -ExecutionPolicy Bypass -File tools/fake.ps1 -Scn {scn} -Out {out} -Only {only}``")
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Root', $pa)
+Check 'v3.62.3 accept -ParseOnly: o **Aceite:** comando do plano da Task aparece como o executor' $r 0 @('3 cenário\(s\) válidos em 2 arquivo', 'executor do projeto \(plano \.team-project/sprints/1/plan/T-041-export\.md\): `powershell -NoProfile -ExecutionPolicy Bypass -File tools/fake\.ps1 -Scn \{scn\} -Out \{out\} -Only \{only\}`')
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Command', 'node tools/prova.mjs --saida {out}', '-Root', $pa)
+Check 'v3.62.3 accept -Command sem {scn}: exit 2 antes de tocar no alvo' $r 2 @('não recebe o arquivo de cenários — o comando leva \{scn\}')
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-ParseOnly', '-Command', 'git push; node tools/prova.mjs {scn}', '-Root', $pa)
+Check 'v3.62.3 accept -Command com push: exit 2 (o run nunca roda)' $r 2 @('trecho que o run nunca roda: git push \(push\)')
+$env:FAKE_CASE = 'semlinha'
+$r = Invoke-Check 'accept.ps1' @('-Task', 'T-041', '-Root', $pa)
+$env:FAKE_CASE = $null
+$ad = Join-Path $pa '.team-project/accept/1/T-041'
+$rj = if (Test-Path -LiteralPath (Join-Path $ad 'result.json')) { [System.IO.File]::ReadAllText((Join-Path $ad 'result.json'), $utf8) -replace '\s+', ' ' } else { '' }
+$pj = if (Test-Path -LiteralPath (Join-Path $ad 'progress.json')) { [System.IO.File]::ReadAllText((Join-Path $ad 'progress.json'), $utf8) -replace '\s+', ' ' } else { '' }
+Check 'v3.62.3 accept pelo executor do projeto: sobe o alvo pelo reparo, roda um .scn por vez, cenário sem linha = FALHOU (exit 1), result.json/progress.json de sempre, trava devolvida' @{ Code = $r.Code; Out = "$($r.Out)`nRJ=$rj`nPJ=$pj`nLOCK=$(Test-Path (Join-Path $pa '.team-project/.target-lock'))" } 1 @('accept: executor do projeto — a \(2 cenário\(s\)\)', '\[SC-001\] PASSOU  Abre', '\[SC-002\] FALHOU  Conta  -> o executor do projeto não devolveu linha para este cenário \(exit 0; log \.team-project/accept/1/T-041/cmd/a\.log\)', '\[SC-003\] PASSOU  Fecha', 'executor do projeto · 2 de 3 cenário\(s\) passaram', 'RJ=.*"executor": "comando".*"commandFrom": "plano \.team-project/sprints/1/plan/T-041-export\.md".*"passed": 2, "total": 3', 'RJ=.*cmd/a/SC-001-final\.png', 'RJ=.*"runs": \[ \{ "file": "\.team-project/quality-assurance/scenarios/a\.scn", "only": "SC-001,SC-002", "exit": 0', 'PJ=.*"total": 3, "passed": 2, "failed": 1', 'LOCK=False')
+# As funções do accept com o comando falso direto (sem alvo): repetição do que falhou, ambiente (exit 4) e uso (exit 2).
+$hs6 = Join-Path $tmp 'accept-comando.ps1'
+[System.IO.File]::WriteAllText($hs6, @'
+param([string]$Accept, [string]$Lib, [string]$Root, [string]$Case)
+$ErrorActionPreference = 'Stop'
+. $Lib
+$utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'T-041'; $NoRetry = $false; $NoRepair = $true; $Apk = ''
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-AcceptCommand', 'Invoke-AcceptCommandRun', 'Find-AcceptShot', 'Write-AcceptProgress') { . ([scriptblock]::Create($f.Extent.Text)) } }
+$script:Tgt = 'web'; $script:Serial = ''; $script:Pkg = ''
+function Stop-WebServer { }
+$env:FAKE_CASE = $Case
+$script:ExtCmd = 'powershell -NoProfile -ExecutionPolicy Bypass -File tools/fake.ps1 -Scn {scn} -Out {out} -Only {only}'; $script:ExtFrom = 'teste'
+$a = Join-Path $Root 'cen a.scn'; $b = Join-Path $Root 'b.scn'
+$blocks = @(@{ id = 'SC-1'; title = 'um'; steps = @(); file = $a }, @{ id = 'SC-2'; title = 'dois'; steps = @(); file = $a }, @{ id = 'SC-3'; title = 'tres'; steps = @(); file = $b })
+$d = Join-Path $Root '.team-project/accept/1/T-041'; New-Item -ItemType Directory -Force $d | Out-Null
+$code = Invoke-AcceptCommand $d $blocks $null | Select-Object -Last 1
+"CODE=$code"
+'RESULT=' + ([System.IO.File]::ReadAllText((Join-Path $d 'result.json')) -replace '\s+', ' ')
+'@, (New-Object System.Text.UTF8Encoding($true)))
+$hc = { param($case) $pp = Join-Path $tmp "comando-$case"; Put $pp 'tools/fake.ps1' $fakeExec; Put $pp 'cen a.scn' "scenario SC-1 um`n"; Put $pp 'b.scn' "scenario SC-3 tres`n"; $ErrorActionPreference = 'Continue'; Push-Location $pp; try { $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $hs6 -Accept (Join-Path $checks 'accept.ps1') -Lib (Join-Path $checks 'lib.ps1') -Root $pp -Case $case 2>&1 | Out-String } finally { Pop-Location }; @{ Code = $LASTEXITCODE; Out = $o } }
+$r = & $hc 'falha'
+Check 'v3.62.3: cenário que falha no executor do projeto é repetido uma vez só ele ({only}); passou na 2ª → PASSOU com a nota' $r 0 @('CODE=0', '\[SC-1\] PASSOU  um  \(passou na 2ª tentativa; 1ª: tag nao encontrada: x\)', '"only": "SC-1", "exit": 0', 'cen a-r2/SC-1-final\.png')
+$r = & $hc 'falha2'
+Check 'v3.62.3: falhou nas 2 tentativas → FALHOU (exit 1); a linha com colchetes e "->" também vale' $r 0 @('CODE=1', '\[SC-1\] FALHOU  um  -> sempre  \(falhou nas 2 tentativas\)')
+$r = & $hc 'amb'
+Check 'v3.62.3: executor do projeto sai 4 → FALHA DE AMBIENTE (exit 4) com a última linha, os que rodaram no result.json e quantos ficaram de fora' $r 0 @('CODE=4', 'FALHA DE AMBIENTE \(web\): o executor do projeto saiu 4 \(ambiente\) em b: emulador fora do adb · 2 de 2 antes da interrupção, 1 não rodaram', '"environment": "o executor do projeto saiu 4')
+$r = & $hc 'uso'
+Check 'v3.62.3: executor do projeto sai 2 sem linha nenhuma → exit 2 (uso), sem environment' $r 0 @('CODE=2', 'saiu 2 \(uso ou cenário malformado\) em cen a', '"environment": null')
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
