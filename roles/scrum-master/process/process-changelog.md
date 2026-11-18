@@ -144,6 +144,23 @@ No próximo portão de um projeto com alvo: nenhuma `Q-S<n>` aberta por ambiente
 - Identificadores novos em inglês; o texto para pessoas continua em português.
 - Guardar o resultado e as capturas de cada rodada e de cada Task, sem os logs brutos.
 
+### Addendum v3.63.1 — toda falha de cenário do aceite passa pelo diagnóstico, com a prova do aparelho, e o alvo preso não prende o run (SM + QA + Arquiteto) — 2026-11-18
+
+**Instrução:** (stakeholder, 18/11/2026, sessão `/sm sprint run` do projeto piloto) "Esse erro não era previsto tratar pelo plugin retornando ao dev, ao UX ou ao PO para indicar qual botão acionar e onde ele está?" — com a lista de pedidos do sprint 6 (diagnóstico automático em toda falha de cenário; "app não ficou na frente" com motivo e registro do aparelho; foco e WebView recriada como sinais separados; identidade do app no `-Resume`; órfão de accept no travamento do operator; sonda de travamento pelo progresso; escalonamento do laço de reparo).
+**Medido (piloto, S6, 18/11):** um operator travou 600 s e foi encerrado pelo watchdog; o `accept.ps1 -Task S6 -Resume` que ele disparou (PID 15292, de 06:13 a 08:22) segurou o alvo, o reparo recusou "em uso por accept S6", o `target.ps1 -Kill` disse "nada registrado" e o `next` repetiu "reparar e repetir" — o accept recusado não gravava `result.json`, então a contagem do portão nunca subia. Depois, o SC-118 falhou duas vezes ("a conexão com a página caiu", a captura na aba Geral, não na Estufa) e o cenário seguinte parou em "não ficou na frente, foco: nenhum"; o `next` tratou como ambiente, sem diagnóstico; o diagnóstico pedido à mão saiu AMBIENTE sem registro do aparelho. O `-Resume` leu "apk:?" (o APK instalado pelo comando do projeto, sem arquivo local) e rodou todos.
+**Classificação:** rota (falha de cenário → diagnóstico antes do ambiente e antes do QA; PLANO → QA ou Arquiteto com o elemento e onde; o alvo preso → esperar ou stakeholder na primeira vez; o navegador da suíte que cai duas vezes no mesmo teste → dev) · instrumento (registro do aparelho e sinal do app no `accept`; identidade do app instalado; trava com hora de criação e pasta; `target.ps1 -Kill` encerra o dono da trava; o `verify` repete a rodada em que o navegador caiu).
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `sprint-run.md` | §Validação do sprint, item 2 | o diagnóstico antes do reparo e do julgamento; AMBIENTE só com prova; o alvo preso por outro processo; a 3ª repetição do mesmo `result.json` vai ao stakeholder |
+| `agents/operator.md` | regra 9 | o diagnóstico vale para toda falha de cenário (Task e portão); lê o registro do aparelho e o sinal; grava `Cenário:`, `Motivo:`, `Elemento:`, `Onde:` e `Dono:`; o órfão sai por `target.ps1 -Kill` |
+| `standards/scenario-language.md` | §6 | a identidade do `-Resume` é a do app instalado no aparelho; `signal`, `log` e `environmentSignal` no `result.json` |
+| `sprint-run.md` · `agents/operator.md` | §Validação do sprint, item 2 · regra 9 | quem usa o aparelho por `target.ps1 -Who`; duplicado por `-KillDuplicates`; a trava atômica e o `-Unlock` que recusa dono vivo |
+
+**Quem usa o aparelho** (mesmo dia: a sessão e o plugin leram um accept, o invólucro e os observadores da mesma rodada como "três accepts", e dois observadores foram encerrados): `target.ps1 -Who` mostra quem usa o alvo, sem adivinhar por lista de processos; `-KillDuplicates` encerra só o duplicado deste projeto; a trava é atômica, não é tomada de dono vivo que anda e o `-Unlock` recusa com o dono vivo.
+
+**O navegador da suíte que cai no meio** (Karma "no message in 120000 ms", Q-S6d, duas quedas seguidas no `verify full`): não é teste reprovado. O `verify` repete a rodada uma vez, com a memória conferida. Caiu de novo no mesmo teste: um teste trava o navegador — código, vai ao dev. Caiu em pontos diferentes: carga ou memória — ambiente, com a medida; o prazo do runner e as flags do navegador são do projeto (Task, com o Arquiteto).
+
 ---
 ## v3.62 — A prova do app híbrido no aparelho é de primeira classe: o id é lido pelo CDP e a configuração do alvo vai ao stakeholder, não ao Arquiteto (SM + Arquiteto + QA) — 16/11/2026
 

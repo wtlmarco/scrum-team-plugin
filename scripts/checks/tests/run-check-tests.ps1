@@ -443,6 +443,32 @@ $env:TEAM_TEST_CLOCK_SKEW_MIN_ONCE = '540'
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
 Remove-Item Env:\TEAM_TEST_CLOCK_SKEW_MIN_ONCE -ErrorAction SilentlyContinue
 Check 'v3.57.0 item 8: suspensão do sistema na 1ª rodada → o verify repete, passa (exit 0) e registra a suspensão, sem reprovar a suíte' $r 0 @('tudo exit 0', 'atenção: build: suspensão do sistema detectada: o relógio andou 5\d\d min contra o prazo de 9 min .* rodada repetida e válida')
+# v3.63.1 (pedido 8 do sprint 6 do projeto piloto, Q-S6d): o navegador da suíte cai no meio — a suíte falsa imprime as linhas do
+# Karma; KMODE: once = cai só na 1ª rodada · diff = cai nas 2, em pontos diferentes · same = cai nas 2 no mesmo teste.
+# Num projeto próprio: o $p segue com o full verde que os casos abaixo reaproveitam.
+$pOrig = $p; $p = Join-Path $tmp 'karma-queda'; New-Project $p
+$ErrorActionPreference = 'Continue'; & git -C $p init -q 2>$null; Put $p 'src/a.ts' "x`n"; Put $p '.gitignore' "coverage/`n.team-project/`n"; & git -C $p add -A 2>$null; & git -C $p -c user.email=t@t -c user.name=t commit -qm init 2>$null; $ErrorActionPreference = 'Stop'
+Put $p '.team-project/karma-fake.ps1' @'
+$c = '.team-project/kn.txt'; $n = 1 + [int](Get-Content $c -ErrorAction SilentlyContinue); Set-Content $c $n
+if ($env:KMODE -eq 'once' -and $n -gt 1) { 'Chrome Headless 120.0 (Windows 10): Executed 2926 of 2926 SUCCESS (61 secs / 58 secs)'; 'Tests: 2926 passed'; New-Item -ItemType Directory -Force coverage | Out-Null; Set-Content coverage/l.info x; exit 0 }
+$at = if ($env:KMODE -eq 'same') { 1840 } else { 1830 + $n }
+"Chrome Headless 120.0 (Windows 10): Executed $at of 2926 SUCCESS (40 secs / 38 secs)"
+"18 11 2026 08:00:00.000:WARN [Chrome Headless 120.0 (Windows 10)]: Disconnected (0 times) because no message in 120000 ms."
+'Chrome Headless 120.0 (Windows 10) ERROR'
+exit 1
+'@
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output \"Build succeeded. 0 Warning(s)\"", "minFreeMB": 0, "suite": "powershell -NoProfile -ExecutionPolicy Bypass -File .team-project/karma-fake.ps1" } }'
+$kr = { param($mode) Remove-Item -LiteralPath (Join-Path $p '.team-project/kn.txt') -Force -ErrorAction SilentlyContinue; $env:KMODE = $mode; $x = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Fresh', '-Root', $p); Remove-Item Env:\KMODE -ErrorAction SilentlyContinue; $x }
+$r = & $kr 'once'
+Check 'v3.63.1 pedido 8: o navegador da suíte cai na 1ª rodada (Karma: no message in 120000 ms) → o verify repete uma vez, passa e registra a queda' $r 0 @('verify: suite — o navegador da suíte caiu no meio \(.*Disconnected \(0 times\) because no message in 120000 ms.*\) depois do teste 1831 de 2926 .* repetindo a rodada uma vez', 'tudo exit 0', 'atenção: suite: o navegador da suíte caiu no meio .* rodada repetida e válida')
+$r = & $kr 'diff'
+Check 'v3.63.1 pedido 8: caiu nas 2 rodadas em pontos diferentes → FALHA DE AMBIENTE (exit 4) com a memória medida e o que é configuração do projeto' $r 4 @('FALHA DE AMBIENTE em 1 comando', 'ambiente \(suite\): o navegador da suíte caiu nas 2 rodadas .* em pontos diferentes \(depois do teste 1831 e do 1832 de 2926\)', 'memória livre -?\d+ MB', 'browserNoActivityTimeout', 'não é defeito do código')
+$r = & $kr 'same'
+Check 'v3.63.1 pedido 8: caiu nas 2 rodadas no MESMO teste → não é ambiente: um teste trava o navegador (exit 1, sem FALHA DE AMBIENTE)' $r 1 @('1 comando\(s\) com falha', 'suite: exit 1 .* caiu duas vezes no MESMO ponto \(depois do teste 1840 de 2926\)', '^(?![\s\S]*FALHA DE AMBIENTE)')
+$eKeep = $e   # o lib.ps1 carregado aqui grava $script:E (os marcadores) — e a suíte usa $e: restaurado logo abaixo
+$r = & { $o = & { . (Join-Path $checks 'lib.ps1'); $a = Get-RunnerDisconnect "Executed 5 of 9`nChromeHeadless was not killed in 2000 ms`nChrome Headless 120 (Windows 10) crashed"; $b = Get-RunnerDisconnect "Executed 9 of 9 (1 FAILED)`nTOTAL: 1 FAILED, 8 SUCCESS"; "A=$($a.Text)|$($a.At)/$($a.Total) B=$(if ($b) { 'caiu' } else { 'nada' })" }; @{ Code = 0; Out = "$o" } }
+Check 'v3.63.1 pedido 8: Get-RunnerDisconnect reconhece o Chrome que fechou e não confunde teste reprovado com queda do navegador' $r 0 @('A=Chrome Headless 120 \(Windows 10\) crashed\|5/9', 'B=nada')
+$e = $eKeep; $p = $pOrig
 # v3.57.0 (item 12): o build tem prazo próprio (verify.buildTimeoutMinutes); a suíte segue o verify.timeoutMinutes.
 Put $p '.team-project/guards.json' '{ "verify": { "buildTimeoutMinutes": 0.05, "build": "Start-Sleep 8; Write-Output ok", "suite": "Write-Output \"Tests: 12 passed\"; New-Item -ItemType Directory -Force coverage | Out-Null; Set-Content coverage/l.info x" } }'
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
@@ -3237,6 +3263,9 @@ $mk = { Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-
 $a = & $mk; $b = & $mk; $c = & $mk
 Start-Sleep 2
 $null = Register-Detached $Proj 'android' @($a.Id) 'teste'
+# v3.63.1: sem o SDK no ambiente — o -Kill do android limpa os adb forward da WebView, e o adb real da máquina (um accept de
+# projeto rodando no emulador) perderia o forward dele no meio de um cenário (medido em 18/11: a suíte removeu o forward do piloto).
+$env:ANDROID_HOME = Join-Path $Proj 'sem-sdk'; $env:ANDROID_SDK_ROOT = ''; $env:PATH = (@($env:PATH -split ';') | Where-Object { $_ -and $_ -notmatch '(?i)platform-tools|Android\\Sdk' }) -join ';'
 $f = Join-Path $Proj '.team-project/.target-android.json'
 $j = [System.IO.File]::ReadAllText($f) | ConvertFrom-Json
 $j.procs = @($j.procs) + @([pscustomobject]@{ pid = $c.Id; created = '2001-01-01T00:00:00.0000000+00:00' })
@@ -3664,6 +3693,7 @@ function Get-AgentLine([string]$Role) { return "Agent: team:$Role" }
 function Get-VerdictOf([string]$Path) { if (-not (Test-Path -LiteralPath $Path)) { return $null }; $ms = @([regex]::Matches((Read-Text $Path), '(?m)^\*\*Veredito[^*\r\n]*:\*\*(.*)$')); if (-not $ms.Count) { return '' }; $mk = Get-VerdictMark $ms[$ms.Count - 1].Groups[1].Value; if ($mk) { return $mk } else { return '' } }
 function Test-PoDebt([string]$Path) { return $false }
 function Add-RunLog { param($S, $n, $Item, $Decision, $Why, $Evidence) [Console]::Out.WriteLine("RUNLOG: $Item | $Decision") }
+function Get-WatcherLine { return 'WATCHER-LINE' }
 Invoke-GateStep
 'GATE-RETURNED'
 '@, (New-Object System.Text.UTF8Encoding($true)))
@@ -3810,6 +3840,172 @@ $gone2 = @(Remove-StaleAgents $Root 'T-001'); 'GONE2=' + (($gone2 | ForEach-Obje
 $ps63 = Join-Path $tmp 'v3630-stale'; New-Project $ps63; Put $ps63 '.team-project/sprints/1/kanban.md' "# Kanban`n`n## Kanban`n`nx`n"
 $r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $sh63 -Common (Join-Path $checks '../../hooks/common.ps1') -Lib (Join-Path $checks 'lib.ps1') -Root $ps63 2>&1 | Out-String; @{ Code = 0; Out = $o } }
 Check 'v3.63.0 I: registro sem sinal há 37 min aparece como "provavelmente encerrado" e sai para o .interrupted; o pai com filho vivo fica' $r 0 @('NOW=.*sem sinal desde \d\d:\d\d — provavelmente encerrado', 'GONE=aExec,aDev\r?\n', 'GONE2=\r?\n', 'LEFT=bExec,bDev\r?\n', 'INT=aExec,aDev')
+
+# ======================= v3.63.1 · diagnóstico automático da falha de cenário, prova no aparelho, alvo preso =======================
+# Origem: pedidos do sprint 6 do projeto piloto (18/11). O portão com o gate-h.ps1 da v3.63.0, num projeto git próprio.
+$pg64 = Join-Path $tmp 'v3640-gate'
+Put $pg64 '.team-project/README.md' "| | |`n|---|---|`n| **Sprint corrente** | **1** — x |`n"
+Put $pg64 '.team-project/sprints/1/sprint-backlog.md' "# SB`n`n## História H-1 — x`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $ok63 T-001 | a | 1 | dev | — | — | — | SC-1 |`n"
+Put $pg64 '.team-project/guards.json' '{ "targets": { "web": { "url": "http://127.0.0.1:9" } } }'
+Put $pg64 '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-1 um`nlaunch`nassert-exists a`n"
+Put $pg64 'src/a.ts' "export const a = 1`n"
+$ErrorActionPreference = 'Continue'; & git -C $pg64 init -q 2>$null; Put $pg64 '.gitignore' ".team-project/`n"; & git -C $pg64 add -A 2>$null; & git -C $pg64 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+$prod64 = & $lib63 "Get-ProductionTree '$pg64'"; $scn64 = & $lib63 "Get-ScenarioSetHash (Get-SprintScenarioFiles '$pg64')"
+$ad64 = Join-Path $pg64 '.team-project/accept/1/S1'; $dg64 = '.team-project/operator/1/S1-alvo/diagnostico.md'
+Put $pg64 '.team-project/quality/1/S1/result.json' (@{ id = 'S1'; at = '2026-11-18 08:00:00'; prod = $prod64; rows = @() } | ConvertTo-Json)
+$acc64 = { param($at, $envT, $sig, $rows) Put $ad64 'result.json' (@{ task = 'S1'; at = $at; prod = $prod64; scenariosHash = $scn64; environment = $envT; environmentSignal = $sig; passed = 0; total = @($rows).Count; results = @($rows) } | ConvertTo-Json -Depth 5); Start-Sleep -Milliseconds 30 }
+& $acc64 '2026-11-18 08:10:00' $null $null @(@{ id = 'SC-1'; status = 'FALHOU'; detail = "passo 'tap tab-estufa': a conexão com a página caiu"; shot = '.team-project/accept/1/S1/shots/SC-1-falha.png'; signal = 'webview-recreated'; signalText = 'a WebView foi recriada no mesmo processo'; log = '.team-project/accept/1/S1/logs/SC-1-1-logcat.txt' })
+$r = & $g63 $pg64
+Check 'v3.63.1 pedido 1: cenário FALHOU no aceite do portão → o operator diagnostica (capturas, registro do aparelho, sinal) antes do QA julgar, pedindo o elemento e onde' $r 0 @('diagnosticar a falha do aceite antes de o julgamento do QA', 'team:operator', 'cenário\(s\) que falharam: SC-1', 'accept/1/S1/logs/\*-logcat\.txt', "'Elemento: <o id", "'Onde: <tela, aba e posição", "'Dono: QA'", 'operator/1/S1-alvo/diagnostico\.md', 'AMBIENTE SÓ com prova', '^(?![\s\S]*team:quality-assurance)')
+Put $pg64 $dg64 "Veredito: PLANO`nCenário: SC-1`nMotivo: WebView recriada`nElemento: tab-estufa`nOnde: barra inferior, 3ª aba`nDono: QA`n"
+$r = & $g63 $pg64
+Check 'v3.63.1 pedido 1: com o diagnóstico da rodada, o QA julga com o veredito, o elemento e onde (PLANO → scenario com Dono QA)' $r 0 @('julgar \(QA, rodada 1', 'veredito PLANO; elemento: tab-estufa; onde: barra inferior, 3ª aba', 'PLANO → Cause scenario \(Dono QA\)')
+& $acc64 '2026-11-18 08:20:00' 'o app br.x não ficou na frente em 3 aberturas de 15 s (foco: nenhum)' @{ kind = 'no-focus'; text = 'o app está rodando (pid 4242) e nenhuma janela dele ficou em foco'; scenario = 'SC-1' } @()
+$r = & $g63 $pg64
+Check 'v3.63.1 pedidos 2 e 3: "app não ficou na frente" com sinal do app não é ambiente sozinho — diagnóstico antes do reparo (o diagnóstico anterior é de outra rodada)' $r 0 @('diagnosticar a falha do aceite antes de tratar como ambiente', 'interrupção com sinal do app: no-focus: o app está rodando \(pid 4242\)', '^(?![\s\S]*reparar o alvo)')
+Put $pg64 $dg64 "Veredito: APP`nCenário: SC-1`nMotivo: app reiniciado`nElemento: tab-estufa`nOnde: aba Estufa`n"
+$r = & $g63 $pg64
+Check 'v3.63.1 pedido 1: diagnóstico APP da interrupção → a rodada vale como medição e vai ao QA (achado code), sem reparo' $r 0 @('julgar \(QA, rodada 1', 'veredito APP', 'APP → achado com Cause code', '^(?![\s\S]*reparar o alvo)')
+& $acc64 '2026-11-18 08:30:00' 'o app br.x não ficou na frente' @{ kind = 'system-window'; text = 'outra janela em foco: Window{1 u0 Application Not Responding: com.android.systemui}'; scenario = 'SC-1' } @()
+$r = & $g63 $pg64
+Check 'v3.63.1: interrupção com janela do sistema (prova de ambiente) → reparo e retomada direto, sem diagnóstico' $r 0 @('reparar o alvo e repetir o aceite', '^(?![\s\S]*diagnosticar a falha)')
+$r = & $g63 $pg64
+$r2 = & $g63 $pg64
+Check 'v3.63.1 pedido 7: o mesmo result.json pedindo reparo de novo (o aceite não rodou depois) → na 3ª vez, stakeholder em vez de repetir' @{ Code = $r2.Code; Out = "1: $($r.Out)`n2: $($r2.Out)" } 0 @('1: [\s\S]*reparar o alvo e repetir o aceite', '2: [\s\S]*formulário ao stakeholder — o aceite do portão do sprint 1 parou no ambiente — e o aceite não rodou de novo depois de 2 pedidos de reparo', 'target\.ps1 -Target web -Kill encerra o dono da trava')
+# Alvo preso (pedidos 5 e 7): um accept.ps1 "órfão" de mentira (o nome do script conta: é o que o -Kill reconhece) e um processo de fora.
+$fk64 = Join-Path $tmp 'v3640-fake'; Put $fk64 'accept.ps1' "Start-Sleep -Seconds 90`n"
+$orf = Start-Process powershell -ArgumentList @('-NoProfile', '-File', (Join-Path $fk64 'accept.ps1')) -PassThru -WindowStyle Hidden
+Start-Sleep -Milliseconds 1500
+$orfC = & $lib63 "Get-ProcessCreated $($orf.Id)"
+$lk64 = { param($procId, $created) Put $pg64 '.team-project/.target-lock' ('{"target":"web","owner":"accept S1","pid":' + $procId + ',"created":"' + $created + '","desde":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '","dir":".team-project/accept/1/S1"}') }
+& $lk64 $orf.Id $orfC
+$r = & $g63 $pg64
+Check 'v3.63.1 pedido 7: alvo em uso pelo accept do plugin que anda → esperar (watcher), sem reparo nem outro aceite' $r 3 @('PRÓXIMA AÇÃO: esperar — o alvo web está em uso por .accept S1. \(PID \d+', 'WATCHER-LINE', '^(?![\s\S]*reparar o alvo)')
+$fora = Start-Process powershell -ArgumentList @('-NoProfile', '-Command', 'Start-Sleep -Seconds 90') -PassThru -WindowStyle Hidden
+Start-Sleep -Milliseconds 800
+& $lk64 $fora.Id ''
+$r = & $g63 $pg64
+Check 'v3.63.1 pedido 7: alvo preso por processo que não é do plugin → stakeholder na primeira vez (encerrar à mão e -Unlock), sem repetir' $r 0 @('formulário ao stakeholder — o alvo web está preso por', 'não é um script do plugin reconhecível', 'target\.ps1 -Target web -Unlock', 'RUNLOG: S1 \| portão: alvo preso')
+$r = Invoke-Check 'target.ps1' @('-Target', 'web', '-Kill', '-Root', $pg64)
+$foraVivo = -not $fora.HasExited
+Check 'v3.63.1 pedido 5: target.ps1 -Kill não toca o dono da trava que não é do plugin' @{ Code = $r.Code; Out = "$($r.Out)`nvivo=$foraVivo" } 0 @('não é um script do plugin reconhecível .* não tocado', 'vivo=True')
+try { $fora.Kill() } catch { }
+& $lk64 $orf.Id $orfC
+$r = Invoke-Check 'target.ps1' @('-Target', 'web', '-Kill', '-Root', $pg64)
+$null = $orf.WaitForExit(5000)
+Check 'v3.63.1 pedido 5: target.ps1 -Kill encerra o accept órfão que segura a trava (e a árvore dele) e apaga a trava' @{ Code = $r.Code; Out = "$($r.Out)`nsaiu=$($orf.HasExited) trava=$(Test-Path -LiteralPath (Join-Path $pg64 '.team-project/.target-lock'))" } 0 @("encerrado o dono da trava 'accept S1' \(PID $($orf.Id)", 'saiu=True trava=False', '^(?![\s\S]*nada registrado)')
+$orf2 = Start-Process powershell -ArgumentList @('-NoProfile', '-File', (Join-Path $fk64 'accept.ps1')) -PassThru -WindowStyle Hidden
+Start-Sleep -Milliseconds 1500
+& $lk64 $orf2.Id '2001-01-01T00:00:00.0000000-03:00'
+$r = Invoke-Check 'target.ps1' @('-Target', 'web', '-Kill', '-Root', $pg64)
+Check 'v3.63.1 pedido 5: PID reaproveitado (hora de criação diferente da trava) não é tocado pelo -Kill' @{ Code = $r.Code; Out = "$($r.Out)`nvivo=$(-not $orf2.HasExited)" } 0 @('não tocado', 'vivo=True')
+try { $orf2.Kill() } catch { }
+Remove-Item -LiteralPath (Join-Path $pg64 '.team-project/.target-lock') -Force -ErrorAction SilentlyContinue
+# Quem usa o alvo (sprint 6 do piloto, 18/11: um accept, o invólucro e as cópias do detach.ps1 que acompanhavam a mesma rodada
+# foram lidos como "três accepts", e dois observadores foram encerrados como duplicados). Dono da trava, duplicado deste projeto
+# e um observador; um accept de outro projeto que esteja rodando na máquina aparece como de outro projeto e nunca é tocado.
+Put $fk64 'detach.ps1' "Start-Sleep -Seconds 90`n"
+$mkA = { Start-Process powershell -ArgumentList @('-NoProfile', '-File', (Join-Path $fk64 'accept.ps1'), '-Task', 'S1', '-Root', $pg64) -PassThru -WindowStyle Hidden }
+$accA = & $mkA; $accB = & $mkA
+$watW = Start-Process powershell -ArgumentList @('-NoProfile', '-File', (Join-Path $fk64 'detach.ps1'), '-Dir', (Join-Path $pg64 '.team-project\operator\1\S1-accept'), '-Command', '"powershell -NoProfile -File accept.ps1 -Task S1"') -PassThru -WindowStyle Hidden
+Start-Sleep -Milliseconds 1800
+& $lk64 $accA.Id (& $lib63 "Get-ProcessCreated $($accA.Id)")
+$r = Invoke-Check 'target.ps1' @('-Target', 'android', '-Who', '-Root', $pg64)
+Check 'v3.63.1: target.ps1 -Who separa o dono da trava, o accept duplicado deste projeto e quem só acompanha (detach.ps1)' $r 0 @("trava: 'accept S1' PID $($accA.Id).* vivo", "accept \(usa o aparelho\): PID $($accA.Id) · -Task S1 .*dono da trava", "accept \(usa o aparelho\): PID $($accB.Id) · -Task S1 .*DUPLICADO \(deste projeto", "acompanhando \(detach\.ps1, não usa o aparelho; encerrá-lo não muda o teste\): PID $($watW.Id)", 'conclusão: DUPLICADO — 2 accepts no aparelho; o dono da trava é o PID', '-KillDuplicates')
+$r = Invoke-Check 'target.ps1' @('-Target', 'android', '-Unlock', '-Root', $pg64)
+Check 'v3.63.1: target.ps1 -Unlock recusa (exit 4) a trava de um dono vivo — sem ela, o próximo accept entraria ao lado dele' @{ Code = $r.Code; Out = "$($r.Out)`ntrava=$(Test-Path -LiteralPath (Join-Path $pg64 '.team-project/.target-lock'))" } 4 @("trava NÃO removida — o dono 'accept S1' \(PID $($accA.Id)", 'trava=True')
+$r = Invoke-Check 'target.ps1' @('-Target', 'android', '-KillDuplicates', '-Root', $pg64)
+Start-Sleep -Milliseconds 800; $accA.Refresh(); $accB.Refresh(); $watW.Refresh()
+Check 'v3.63.1: target.ps1 -KillDuplicates encerra só o duplicado deste projeto — o dono da trava e quem acompanha ficam' @{ Code = $r.Code; Out = "$($r.Out)`ndono=$(-not $accA.HasExited) dup=$(-not $accB.HasExited) obs=$(-not $watW.HasExited)" } 0 @("duplicado encerrado: accept S1 PID $($accB.Id)", 'dono=True dup=False obs=True')
+# A trava de um dono vivo que ainda anda não é tomada nem depois de 3 h (um aceite de 49 cenários passa disso); parado há mais de 3 h, sim.
+$adW = Join-Path $pg64 '.team-project/accept/1/S9'   # pasta própria: a accept/1/S1 é a do diagnóstico, logo abaixo
+Put $pg64 '.team-project/.target-lock' ('{"target":"android","owner":"accept S1","pid":' + $accA.Id + ',"created":"' + (& $lib63 "Get-ProcessCreated $($accA.Id)") + '","desde":"' + (Get-Date).AddHours(-5).ToString('yyyy-MM-dd HH:mm:ss') + '","dir":".team-project/accept/1/S9"}')
+Put $adW 'progress.json' '{ "pid": 1, "passed": 3, "total": 49 }'
+$e1 = & $lib63 "`$m = Enter-TargetLock '$pg64' 'android' 'accept S1' 3 '$adW'; if (`$m) { 'M1=' + `$m } else { 'M1=tomou' }"
+Get-ChildItem -LiteralPath $adW -Recurse -File | ForEach-Object { $_.LastWriteTime = (Get-Date).AddMinutes(-30) }
+$e2 = & $lib63 "`$m = Enter-TargetLock '$pg64' 'android' 'accept S1' 3 '$adW'; if (`$m) { 'M2=' + `$m } else { 'M2=tomou' }"
+Check 'v3.63.1: a trava de um dono vivo que grava progresso não é tomada depois de 3 h; parado (sem arquivo, filho nem CPU) há mais de 3 h, sim' @{ Code = 0; Out = "$e1`n$e2" } 0 @("M1=o alvo android está em uso por 'accept S1'", 'M2=tomou')
+& $lk64 $accA.Id (& $lib63 "Get-ProcessCreated $($accA.Id)")
+$r = Invoke-Check 'detach.ps1' @('-Dir', '.team-project/operator/1/outra', '-Root', $pg64, '-WaitSeconds', '5', '-Command', "powershell -NoProfile -File $(Join-Path $fk64 'accept.ps1') -Task S1")
+Check 'v3.63.1: detach.ps1 não abre uma rodada nova de accept com o alvo nas mãos de outro accept vivo (exit 5, sem job)' @{ Code = $r.Code; Out = "$($r.Out)`njob=$(Test-Path -LiteralPath (Join-Path $pg64 '.team-project/operator/1/outra/job.json'))" } 5 @("detach: OCUPADO — o alvo web já está com 'accept S1' \(PID $($accA.Id)", 'Não abro outra rodada de accept', 'job=False')
+foreach ($x in @($accA, $accB, $watW)) { try { $x.Kill() } catch { } }
+Remove-Item -LiteralPath (Join-Path $pg64 '.team-project/.target-lock') -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $adW -Recurse -Force -ErrorAction SilentlyContinue
+# Pedido 6: a trava grava a hora de criação e a pasta do dono; o sinal de vida do alvo preso lê o progress.json dela.
+$r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -Command ". '$(Join-Path $checks 'lib.ps1')'; `$null = Enter-TargetLock '$pg64' 'web' 'accept S1' 3 '$ad64'; Get-Content -Raw '$(Join-Path $pg64 '.team-project/.target-lock')'" 2>&1 | Out-String; @{ Code = 0; Out = $o } }
+Check 'v3.63.1 pedidos 5 e 6: a trava do accept grava created e a pasta do accept (accept/1/S1)' $r 0 @('"created":"\d{4}-', '"dir":".team-project/accept/1/S1"')
+Remove-Item -LiteralPath (Join-Path $pg64 '.team-project/.target-lock') -Force -ErrorAction SilentlyContinue
+# Leitura do diagnóstico: só o da rodada (mais novo que o result.json) vale; Dono e Elemento lidos.
+$rdx64 = "`$d = Read-AcceptDiagnosis '$(Join-Path $pg64 $dg64)' '$(Join-Path $ad64 'result.json')'; if (`$d) { 'D=' + `$d.Verdict + '/' + `$d.Owner + '/' + `$d.Element + '/' + `$d.Where } else { 'D=nenhum' }"
+$d1 = & $lib63 $rdx64
+Start-Sleep -Milliseconds 30; Put $pg64 $dg64 "Veredito: PLANO`nElemento: btn-x`nOnde: topo`nDono: Arquiteto`n"
+$d2 = & $lib63 $rdx64
+Check 'v3.63.1: Read-AcceptDiagnosis ignora o diagnóstico mais velho que a rodada e lê veredito, dono, elemento e onde' @{ Code = 0; Out = "1:$d1 2:$d2" } 0 @('1:D=nenhum', '2:D=PLANO/Arquiteto/btn-x/topo')
+
+# Sinal da falha no android (pedidos 2 e 3): Get-AndroidFailSignal com o pid e o foco simulados.
+$sg64 = Join-Path $tmp 'android-signal.ps1'
+[System.IO.File]::WriteAllText($sg64, @'
+param([string]$Android)
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($Android, [ref]$null, [ref]$null)
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Get-AndroidFailSignal', 'Get-AndroidInstalledIdentity') { . ([scriptblock]::Create($f.Extent.Text)) } }
+$script:Pkg = 'br.x'
+function Get-AndroidAppPid { return [int]$env:PID_NOW }
+function Get-FocusLine { return $env:FOCUS }
+$t = { param($before, $now, $focus, $detail, $main, $crash) $env:PID_NOW = "$now"; $env:FOCUS = $focus; $s = Get-AndroidFailSignal $before $detail @{ Main = @($main); Crash = @($crash) }; "$($s.kind)|$($s.text)" }
+'A=' + (& $t 100 0 '' 'x' @('11-18 08:22:31 E AndroidRuntime: FATAL EXCEPTION: main', '11-18 08:22:31 E AndroidRuntime: Process: br.x, PID: 100', '11-18 08:22:31 E AndroidRuntime: java.lang.IllegalStateException: boom') @())
+'B=' + (& $t 100 222 '  mCurrentFocus=Window{a u0 br.x/br.x.MainActivity}' 'x' @() @())
+'C=' + (& $t 100 100 '  mCurrentFocus=Window{a u0 br.x/br.x.MainActivity}' "passo 'tap a': a conexão com a página caiu (a WebView foi recriada ou o app fechou)" @() @())
+'D=' + (& $t 0 4242 '  mCurrentFocus=null' 'o app br.x não ficou na frente em 3 aberturas de 15 s (foco: nenhum)' @() @())
+'E=' + (& $t 0 4242 '  mCurrentFocus=Window{b u0 Application Not Responding: com.android.systemui}' 'o app br.x não ficou na frente' @() @())
+'F=' + (& $t 100 0 '' 'x' @() @())
+'G=' + (& $t 100 100 '' 'x' @('11-18 08:22 E ActivityManager: ANR in br.x (br.x/.MainActivity)') @())
+# Identidade do app instalado: pm path → sha1sum do base.apk; sem sha1sum, versão + última instalação.
+function Sh { $c = ($args -join ' '); if ($c -like 'pm path*') { return @('package:/data/app/~~q/br.x-1/base.apk', 'package:/data/app/~~q/br.x-1/split_config.arm64.apk') }; if ($c -like 'sha1sum*' -and $env:NO_SHA -ne '1') { return @('0123456789abcdef0123456789abcdef01234567  /data/app/~~q/br.x-1/base.apk') }; if ($c -like 'dumpsys package*') { return @('    versionCode=7 minSdk=24', '    lastUpdateTime=2026-11-18 06:10:02') }; return @('sha1sum: not found') }
+'I1=' + (Get-AndroidInstalledIdentity)
+$env:NO_SHA = '1'; 'I2=' + (Get-AndroidInstalledIdentity)
+'@, (New-Object System.Text.UTF8Encoding($true)))
+$r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $sg64 -Android (Join-Path $checks 'targets/android.ps1') 2>&1 | Out-String; @{ Code = 0; Out = $o } }
+Check 'v3.63.1 pedidos 2 e 3: o sinal separa crash, app reiniciado, WebView recriada, sem foco, janela do sistema, app fechado e ANR' $r 0 @('A=crash\|o app fechou com erro \(crash no registro\): java\.lang\.IllegalStateException: boom', 'B=restarted\|o app foi reiniciado \(pid 100 → 222\)', 'C=webview-recreated\|a WebView foi recriada no mesmo processo \(pid 100\)', 'D=no-focus\|o app está rodando \(pid 4242\)', 'E=system-window\|outra janela em foco: Window\{b u0 Application Not Responding', 'F=closed\|o processo do app não está rodando \(era o pid 100\)', 'G=anr\|')
+Check 'v3.63.1 pedido 4: a identidade do -Resume é a do app instalado no aparelho (sha1 do base.apk; sem sha1sum, versão + última instalação)' $r 0 @('I1=0123456789ab\r?\n', 'I2=v7@20261118061002')
+# Invoke-Once (pedido 2): o app que fecha com erro ao abrir é FALHOU do cenário, com o registro; a janela do sistema segue ambiente.
+$io64 = Join-Path $tmp 'accept-once.ps1'
+[System.IO.File]::WriteAllText($io64, @'
+param([string]$Accept, [string]$Lib, [string]$Root)
+$ErrorActionPreference = 'Stop'
+. $Lib
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Once', 'Get-AcceptFailEvidence', 'Invoke-AcceptBaseline') { . ([scriptblock]::Create($f.Extent.Text)) } }
+$screenVerbs = @('tap'); $script:Tgt = 'android'; $script:Locator = 'uiautomator'; $script:Attempt = @{}; $script:AdbTimeout = ''; $script:BaseCfg = $null
+$script:Shots = Join-Path $Root '.team-project/accept/1/T-1/shots'; New-Item -ItemType Directory -Force $script:Shots | Out-Null
+function Clear-AndroidLog { }
+function Save-AndroidLog([string]$Path) { New-Item -ItemType Directory -Force (Split-Path $Path) | Out-Null; [System.IO.File]::WriteAllText($Path, 'log'); return @{ Main = @(); Crash = @() } }
+function Save-AndroidShot([string]$Path) { }
+function Get-AndroidAppPid { return 77 }
+function Get-AndroidFailSignal($b, $d, $l) { return [pscustomobject]@{ kind = $env:SIG; text = "sinal $env:SIG" } }
+function Invoke-AndroidStep($v, $r, $b) { if ($v -eq 'launch') { throw 'AMBIENTE: o app br.x não ficou na frente em 3 aberturas de 15 s (foco: nenhum)' } }
+$b = @{ id = 'SC-9'; title = 't'; steps = @('launch', 'assert-exists a') }
+$env:SIG = 'crash'; $o = Invoke-Once $b; "CRASH status=$($o.status) env=$($o.environment) sig=$($o.signal.kind) log=$($o.signal.log) detail=$($o.detail)"
+$env:SIG = 'system-window'; $o = Invoke-Once $b; "SYS status=$($o.status) env=$($o.environment) sig=$($o.signal.kind) log=$($o.signal.log)"
+'@, (New-Object System.Text.UTF8Encoding($true)))
+$po64 = Join-Path $tmp 'v3640-once'; Put $po64 '.team-project/README.md' "| **Sprint corrente** | **1** — x |`n"
+$r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $io64 -Accept (Join-Path $checks 'accept.ps1') -Lib (Join-Path $checks 'lib.ps1') -Root $po64 2>&1 | Out-String; @{ Code = 0; Out = $o } }
+Check 'v3.63.1 pedido 2: o app que fecha com erro ao abrir é FALHOU do cenário (não ambiente), com o registro do aparelho; a janela do sistema segue ambiente, com o sinal' $r 0 @('CRASH status=FALHOU env= sig=crash log=\.team-project/accept/1/T-1/logs/SC-9-1-logcat\.txt detail=passo .launch.: sinal crash — o app br\.x não ficou na frente', 'SYS status= env=o app br\.x não ficou na frente .* sig=system-window log=\.team-project/accept/1/T-1/logs/SC-9-2-logcat\.txt')
+# done -Result env da Task (pedido 1): com cenário falhado no result.json → diagnóstico antes da rota de ambiente; APP → dev; PLANO/QA → /qa.
+$pe64 = Join-Path $tmp 'v3640-env'; New-Project $pe64
+Put $pe64 '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+Put $pe64 '.team-project/accept/1/T-041/result.json' '{ "environment": "o app br.x não ficou na frente (foco: nenhum)", "environmentSignal": { "kind": "no-focus", "text": "o app está rodando e nenhuma janela dele ficou em foco", "scenario": "SC-119" }, "results": [ { "id": "SC-118", "status": "FALHOU", "detail": "a conexão com a página caiu", "shot": "x" } ] }'
+Start-Sleep -Milliseconds 30
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pe64)
+Check 'v3.63.1 pedido 1: done -Result env com cenário falhado e sinal do app → operator diagnostica antes da rota de ambiente (sem reparo)' $r 0 @('Antes de tratar como ambiente, o operator diagnostica', 'team:operator', 'cenário\(s\) que falharam: SC-118 · interrupção com sinal do app: no-focus', 'operator/1/T-041-alvo/diagnostico\.md', 'done -Task T-041 -Result env de novo', '^(?![\s\S]*target\.ps1 -Target android -Repair)')
+Put $pe64 '.team-project/operator/1/T-041-alvo/diagnostico.md' "Veredito: PLANO`nCenário: SC-118`nElemento: tab-estufa`nOnde: barra inferior, 3ª aba`nDono: QA`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pe64)
+Check 'v3.63.1 pedido 1: diagnóstico PLANO com Dono QA → o QA corrige o .scn com o elemento e onde ele fica; o dev volta pelo start' $r 0 @('diagnosticou PLANO na prova da T-041 · elemento: tab-estufa · onde: barra inferior, 3ª aba', 'team:quality-assurance', 'corrija só o\(s\) cenário\(s\) citado\(s\)', 'run\.ps1 start -Task T-041', '^(?![\s\S]*-Repair)')
+Put $pe64 '.team-project/operator/1/T-041-alvo/diagnostico.md' "Veredito: APP`nCenário: SC-118`nMotivo: o app perdeu a aba ao recriar a WebView`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pe64)
+Check 'v3.63.1 pedido 1: diagnóstico APP → dev em instância nova com o diagnóstico (defeito, não ambiente)' $r 0 @('diagnosticou APP na prova da T-041', 'run\.ps1 start -Task T-041', '^(?![\s\S]*-Repair)')
+Put $pe64 '.team-project/operator/1/T-041-alvo/diagnostico.md' "Veredito: AMBIENTE`nMotivo: janela do sistema`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pe64)
+Check 'v3.63.1: diagnóstico AMBIENTE → a rota de ambiente de sempre (reparo)' $r 0 @('FALHA DE AMBIENTE \(D4\)', 'target\.ps1 -Target android -Repair')
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output

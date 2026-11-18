@@ -9,6 +9,9 @@
 #   E/F · validation.md com a tabela de achados (ID S<n>-F<k>, Cause, State); a causa decide o dono, na ordem fixa
 #       requirement → screen → design → scenario → code. Sem a tabela, o caminho de antes (Q-S<n> pelos "Volta para: dev").
 #   H · a prova que o QA julga é copiada para sprints/<n>/proof/S<n>/round-<k>/ antes de cada rodada.
+# v3.63.1 (sprint 6 do projeto piloto, 18/11): toda falha de cenário do aceite passa pelo diagnóstico do operator (AMBIENTE ·
+#   APP · PLANO) antes de virar ambiente ou de ir ao QA; o alvo preso por outro processo espera (o dono anda) ou vai ao
+#   stakeholder na primeira vez (parado), com o target.ps1 -Kill; o mesmo result.json pedindo reparo pela 3ª vez também.
 # Sai com exit quando há o que fazer; volta sem sair com o portão passado (✅, ou ⚠️ com a decisão do PO).
 
 function Invoke-GateStep {
@@ -29,6 +32,12 @@ function Invoke-GateStep {
     $aCfg = if ($aj -and $aj.PSObject.Properties['configuration'] -and $aj.configuration) { [string]$aj.configuration } else { '' }
     $aEnv = if ($aj -and -not $aCfg -and $aj.environment) { [string]$aj.environment } else { '' }
     $aScnOk = (-not $aj) -or -not ($aj.PSObject.Properties['scenariosHash'] -and $aj.scenariosHash) -or ([string]$aj.scenariosHash -eq $scnNow)
+    # v3.63.1 (sprint 6 do projeto piloto, pedido 1): o diagnóstico do operator sobre a falha de cenário desta rodada do aceite.
+    $diagRel = ".team-project/operator/$n/$sid-alvo/diagnostico.md"
+    $need = if ($hasTarget -and $aj -and (& $sameBase $aj) -and $aScnOk) { Get-AcceptDiagnosisNeed $aj } else { $null }
+    $diag = if ($need -and $need.Need) { Read-AcceptDiagnosis (Join-Path $Root $diagRel) $ar } else { $null }
+    # A interrupção que o diagnóstico atribuiu ao app ou ao plano não é ambiente: a rodada vale como medição e vai ao QA.
+    if ($aEnv -and $diag -and $diag.Verdict -in 'APP', 'PLANO') { $aEnv = '' }
     $aFresh = (-not $hasTarget) -or ($aj -and (& $sameBase $aj) -and $aScnOk -and -not $aEnv -and -not $aCfg)
     $gate = Get-GateState $S
     $val = Join-Path $S 'validation.md'; $vv = Get-VerdictOf $val
@@ -36,20 +45,64 @@ function Invoke-GateStep {
     $poDebt = ($vv -eq $E.Warn) -and (Test-PoDebt $val)
     if ($vv -eq $E.Done -or $poDebt) { return }
     $short = { param($t) $x = (([string]$t -replace '["|]', "'") -replace '\s+', ' ').Trim(); if ($x.Length -gt 200) { $x.Substring(0, 200) + '…' } else { $x } }
+    $accRel = ".team-project/$(($aDir.Substring($Root.Length).TrimStart('\', '/')) -replace '\\', '/' -replace '^\.team-project/', '')"
+    $diagAsk = {
+        param([string]$Why)
+        Out "PRÓXIMA AÇÃO: validação do sprint $n — diagnosticar a falha do aceite antes de $Why (operator; v3.63.1: toda falha de cenário passa pelo diagnóstico — AMBIENTE · APP · PLANO)"
+        Say 'Revisão final: um teste no aparelho falhou; estou vendo nas capturas e no registro do aparelho se o problema é do app, do teste ou do aparelho.'
+        Out "  $(Get-AgentLine 'operator')"
+        Out "  prompt: `"$(Get-AcceptDiagPrompt "sessão $sid" $sid $accRel $diagRel $tn $plugin $need)`""
+        Out '  depois: run.ps1 next — o next lê o veredito: AMBIENTE → reparo e retomada do aceite · APP → o QA registra o achado como code (vai ao dev) · PLANO → o QA registra como scenario (Dono QA: o .scn) ou design (Dono Arquiteto), com o elemento e onde ele fica na tela'
+        exit 0
+    }
+    $diagTxt = if ($diag) { ", o diagnóstico do operator $diagRel (veredito $($diag.Verdict)$(if ($diag.Element) { "; elemento: $($diag.Element)" })$(if ($diag.Where) { "; onde: $($diag.Where)" }): APP → achado com Cause code; PLANO → Cause scenario (Dono QA) ou design (Dono Arquiteto), com o elemento e onde ele fica na tela na coluna Onde; AMBIENTE → Cause environment)" } else { '' }
+
+    # ---------- v3.63.1 · o alvo preso por outro processo (pedidos 5 e 7) ----------
+    # Sprint 6 do projeto piloto (18/11): o operator travou, o watchdog o encerrou e o accept que ele disparou seguiu vivo segurando
+    # o alvo. O reparo recusava ("em uso por accept S6"), o accept recusava sem gravar result.json, e o next repetia "reparar e
+    # repetir" para sempre. Com o alvo em uso: o dono que anda → esperar (watcher); parado, ou processo que não é do plugin →
+    # stakeholder na PRIMEIRA vez, com o target.ps1 -Kill (que encerra o dono da trava e a árvore dele).
+    if ($hasTarget) {
+        $tb = Get-TargetBusy $Root
+        if ($tb -and $tb.Plugin -and -not $tb.Pulse.Stalled) {
+            Set-NextVerdict $Root 'esperar' $sid "alvo em uso: $($tb.Text)"
+            Out "PRÓXIMA AÇÃO: esperar — o alvo $($tb.Target) está em uso por $($tb.Text). Não dispare reparo nem outro aceite: os dois recusam o alvo em uso (e dois automatizadores no mesmo alvo quebram os dois)."
+            Out (Get-WatcherLine)
+            exit 3
+        }
+        if ($tb) {
+            $whyB = & $short "alvo $($tb.Target) preso por $($tb.Text)"
+            Set-AskRoute $Root 'ambiente' $sid $whyB
+            Add-RunLog $S $n $sid "portão: alvo preso por '$($tb.Owner)' (PID $($tb.Pid)) → stakeholder na primeira vez (formulário); sem reparo nem aceite repetidos" $whyB "accept/$n/$sid/"
+            Out "PRÓXIMA AÇÃO: formulário ao stakeholder — o alvo $($tb.Target) está preso por $($tb.Text)"
+            Out "  não repare nem repita o aceite: os dois recusam o alvo em uso (v3.63.1). Opções ao stakeholder: $(if ($tb.Plugin) { "encerrar o processo parado — $plugin/target.ps1 -Target $($tb.Target) -Kill (encerra o dono da trava e a árvore dele) e run.ps1 next (o aceite retoma com -Resume)" } else { "o processo não é um script do plugin reconhecível pela trava — ele o encerra à mão e a sessão roda $plugin/target.ps1 -Target $($tb.Target) -Unlock e run.ps1 next" }); ou seguir esperando."
+            Say 'A revisão final parou porque um teste anterior ficou preso no aparelho de teste. Preciso de você para decidir se encerro esse teste e retomo.'
+            exit 0
+        }
+    }
 
     # ---------- A · o accept que parou no ambiente não é medição ----------
     if ($hasTarget -and $aj -and ($aCfg -or $aEnv) -and (& $sameBase $aj) -and $aScnOk) {
+        # v3.63.1: a interrupção com sinal do app (reiniciado, WebView recriada, sem foco, fechado) ou cenário que falhou antes
+        # dela vai ao diagnóstico ANTES do reparo — "app não ficou na frente" sozinho não é prova de ambiente.
+        if (-not $aCfg -and $need -and $need.Need -and -not $diag) { & $diagAsk 'tratar como ambiente' }
         if (-not $aCfg -and [string]$gate.env.at -ne [string]$aj.at) { $gate.env.attempts = [int]$gate.env.attempts + 1; $gate.env.at = [string]$aj.at; Set-GateState $S $gate }
+        # v3.63.1 (pedido 7): o mesmo result.json pedindo reparo de novo = o aceite não rodou depois do último pedido (alvo
+        # recusado, operator encerrado) — na 2ª repetição vai ao stakeholder, em vez de repetir para sempre.
+        if (-not $aCfg) { if ([string]$gate.env.sentAt -eq [string]$aj.at) { $gate.env.sent = [int]$gate.env.sent + 1 } else { $gate.env.sent = 1; $gate.env.sentAt = [string]$aj.at }; Set-GateState $S $gate }
         $why = & $short $(if ($aCfg) { "CONFIGURAÇÃO DO ALVO: $aCfg" } else { $aEnv })
-        if ($aCfg -or [int]$gate.env.attempts -ge 2) {
+        $stuck = (-not $aCfg) -and [int]$gate.env.sent -ge 3
+        if ($stuck) { $why = & $short "o aceite não rodou de novo depois de 2 pedidos de reparo e repetição (o result.json é o mesmo, de $([string]$aj.at)): $aEnv" }
+        if ($aCfg -or [int]$gate.env.attempts -ge 2 -or $stuck) {
+            $how = if ($aCfg) { '(configuração do alvo)' } elseif ($stuck) { '— e o aceite não rodou de novo depois de 2 pedidos de reparo' } else { "pela $($gate.env.attempts)ª vez seguida, depois do reparo" }
             Set-AskRoute $Root 'ambiente' $sid $why
             if ([string]$gate.env.asked -ne [string]$aj.at) {
-                Add-RunLog $S $n $sid "portão: o aceite parou no ambiente $(if ($aCfg) { '(configuração do alvo)' } else { "pela $($gate.env.attempts)ª vez seguida" }) → stakeholder (formulário); sem QA, sem Q-S$n, sem Arquiteto" $why "accept/$n/$sid/result.md"
+                Add-RunLog $S $n $sid "portão: o aceite parou no ambiente $how → stakeholder (formulário); sem QA, sem Q-S$n, sem Arquiteto" $why "accept/$n/$sid/result.md"
                 $gate['env']['asked'] = [string]$aj.at; Set-GateState $S $gate
             }
-            Out "PRÓXIMA AÇÃO: formulário ao stakeholder — o aceite do portão do sprint $n parou no ambiente $(if ($aCfg) { '(configuração do alvo)' } else { "pela $($gate.env.attempts)ª vez seguida, depois do reparo" }): $why"
-            Out "  não é veredito: o QA não julga, nenhuma Q-S$n abre e o Arquiteto não entra (v3.63.0). Opções ao stakeholder: ele repara o alvo ou ajusta guards.json / a massa de dados e a sessão roda run.ps1 next (o aceite retoma com -Resume); ou segue esperando."
-            Say "A revisão final parou porque o aparelho de teste não funcionou$(if ($aCfg) { ' como está configurado' } else { ' duas vezes seguidas' }). Não é defeito do app: preciso de você para decidir como seguir."
+            Out "PRÓXIMA AÇÃO: formulário ao stakeholder — o aceite do portão do sprint $n parou no ambiente ${how}: $why"
+            Out "  não é veredito: o QA não julga, nenhuma Q-S$n abre e o Arquiteto não entra (v3.63.0). Opções ao stakeholder: ele repara o alvo ou ajusta guards.json / a massa de dados e a sessão roda run.ps1 next (o aceite retoma com -Resume); ou segue esperando.$(if ($stuck) { " Se o alvo segue preso por um processo, $plugin/target.ps1 -Target $tn -Kill encerra o dono da trava (v3.63.1)." })"
+            Say "A revisão final parou porque o aparelho de teste não funcionou$(if ($aCfg) { ' como está configurado' } elseif ($stuck) { ' e o teste não conseguiu rodar de novo' } else { ' duas vezes seguidas' }). Não é defeito do app: preciso de você para decidir como seguir."
             exit 0
         }
         Out "PRÓXIMA AÇÃO: validação do sprint $n — reparar o alvo e repetir o aceite (operator; o aceite parou no ambiente, não é veredito — v3.63.0)"
@@ -60,7 +113,7 @@ function Invoke-GateStep {
         Out "  depois: run.ps1 next"
         exit 0
     }
-    if ([int]$gate.env.attempts) { $gate.env.attempts = 0; $gate.env.at = ''; Set-GateState $S $gate }
+    if ([int]$gate.env.attempts -or [int]$gate.env.sent) { $gate.env.attempts = 0; $gate.env.at = ''; $gate.env.sent = 0; $gate.env.sentAt = ''; Set-GateState $S $gate }
 
     # ---------- C/D · medir só o que venceu ----------
     if (-not $qFresh -or -not $aFresh) {
@@ -73,10 +126,14 @@ function Invoke-GateStep {
         Out "PRÓXIMA AÇÃO: validação do sprint $n — medir (operator, comandos longos fora das instâncias caras; C3): $($whyM -join ' · ')"
         Say $(if (-not $qj -and -not $aj) { 'Todas as partes do sprint estão prontas. Começou a revisão final: rodando todos os testes do app.' } else { 'Revisão final: medindo de novo só o que a correção mudou.' })
         Out "  $(Get-AgentLine 'operator')"
-        Out ("  prompt: `"Chamador: sessão $sid — Rode na raiz: " + ($cmds -join ' e ') + $(if (-not $aFresh) { ' (o -Resume reaproveita os cenários que já passaram com o mesmo app instalado e o mesmo texto de cenário)' } else { '' }) + ". Exit 4 = ambiente: rode target.ps1 -Repair uma vez e repita. Devolva os caminhos dos result.md e as linhas de resumo.`"")
+        Out ("  prompt: `"Chamador: sessão $sid — Rode na raiz: " + ($cmds -join ' e ') + $(if (-not $aFresh) { ' (o -Resume reaproveita os cenários que já passaram com o mesmo app instalado e o mesmo texto de cenário)' } else { '' }) + ". Exit 4 = ambiente: rode target.ps1 -Repair uma vez e repita — salvo quando a linha do accept traz 'sinal do app' ou 'em uso por' (não repita: devolva a linha; o next leva ao diagnóstico ou ao stakeholder). Devolva os caminhos dos result.md e as linhas de resumo.`"")
         Out "  depois: run.ps1 next"
         exit 0
     }
+
+    # v3.63.1 (pedido 1): cenário que falhou nesta rodada do aceite → o diagnóstico antes do QA julgar; o veredito vai ao prompt
+    # do QA, que registra o achado com a causa que ele aponta (APP → code; PLANO → scenario ou design, com o elemento e onde).
+    if ($need -and $need.Need -and -not $diag) { & $diagAsk 'o julgamento do QA' }
 
     # A rodada em curso e a prova que o QA vai julgar (H).
     $verdicts = if (Test-Path -LiteralPath $val) { @([regex]::Matches((Read-Text $val), '(?m)^\*\*Veredito[^*\r\n]*:\*\*')).Count } else { 0 }
@@ -101,7 +158,7 @@ function Invoke-GateStep {
         Say 'Revisão final: a qualidade está avaliando tudo o que foi entregue no sprint.'
         Out "  prova da rodada: .team-project/$proofRel/ ($k arquivo(s), sem logs brutos)"
         Out "  $(Get-AgentLine 'quality-assurance')"
-        Out "  prompt: `"/qa sprint $n — leia $proofTxt$dpRel, os planos e o diff do sprint. Julgue SOLID, clean code, aderência à arquitetura e aos planos, padrões e segurança, citando standards/ (Q<n>). Escreva .team-project/sprints/$n/validation.md com o veredito e $fmt — cada achado com UMA causa, que decide o dono; cite a prova pelos caminhos de proof/. Não rode build nem o app. Volte em até 15 linhas.`""
+        Out "  prompt: `"/qa sprint $n — leia $proofTxt$dpRel$diagTxt, os planos e o diff do sprint. Julgue SOLID, clean code, aderência à arquitetura e aos planos, padrões e segurança, citando standards/ (Q<n>). Escreva .team-project/sprints/$n/validation.md com o veredito e $fmt — cada achado com UMA causa, que decide o dono; cite a prova pelos caminhos de proof/. Não rode build nem o app. Volte em até 15 linhas.`""
         exit 0
     }
 
@@ -128,7 +185,7 @@ function Invoke-GateStep {
         Out "  prova da rodada: .team-project/$proofRel/ ($k arquivo(s))"
         Out "  $(Get-AgentLine 'quality-assurance')"
         $resTxt = if (Test-Path -LiteralPath (Join-Path $S 'gate')) { ', as resoluções dos donos em .team-project/sprints/' + $n + '/gate/' } else { '' }
-        Out "  prompt: `"/qa sprint $n — rodada $roundNow, focada: leia $proofTxt$resTxt e o diff das Tasks Q-S$n. Julgue SÓ as frentes $(if ($stale.Count) { $stale -join ', ' } else { '(nenhuma — a base de todas é a mesma)' }) e os achados $(if ($openF.Count) { $openF -join ', ' } else { '(nenhum aberto)' }); $(if ($kept.Count) { "as frentes $($kept -join ', ') ficam como estavam (a base delas não mudou) — não as reabra" } else { 'todas as frentes venceram' }). Acrescente no fim de .team-project/sprints/$n/validation.md a seção ## Rodada $roundNow com a tabela | ID | State | Evidência | (State open|fixed|debt|wontfix; achado novo com ID novo e Cause) e a linha **Veredito (rodada $roundNow):** ✅ | ⚠️ | ❌ — não apague a rodada anterior. Não rode build nem o app. Volte em até 15 linhas.`""
+        Out "  prompt: `"/qa sprint $n — rodada $roundNow, focada: leia $proofTxt$resTxt$diagTxt e o diff das Tasks Q-S$n. Julgue SÓ as frentes $(if ($stale.Count) { $stale -join ', ' } else { '(nenhuma — a base de todas é a mesma)' }) e os achados $(if ($openF.Count) { $openF -join ', ' } else { '(nenhum aberto)' }); $(if ($kept.Count) { "as frentes $($kept -join ', ') ficam como estavam (a base delas não mudou) — não as reabra" } else { 'todas as frentes venceram' }). Acrescente no fim de .team-project/sprints/$n/validation.md a seção ## Rodada $roundNow com a tabela | ID | State | Evidência | (State open|fixed|debt|wontfix; achado novo com ID novo e Cause) e a linha **Veredito (rodada $roundNow):** ✅ | ⚠️ | ❌ — não apague a rodada anterior. Não rode build nem o app. Volte em até 15 linhas.`""
         Out "  depois: run.ps1 next"
         exit 0
     }

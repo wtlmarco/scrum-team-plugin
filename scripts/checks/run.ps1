@@ -976,7 +976,10 @@ try {
                     Add-RunLog $S $n $T.Id '🔺 GAP da prova no alvo → operator diagnostica pelas capturas antes do Arquiteto' ($g0[0] -replace '^[#>*\-\s]+', '') $diagRel
                     Out "run: $($T.Id) com 🔺 GAP na prova no alvo — antes do Arquiteto, o operator olha as capturas da falha (centavos; o Opus só entra se for plano):"
                     Out "  $(Get-AgentLine 'operator')"
-                    Out "  prompt: `"Chamador: executor $($T.Id) — Diagnostique a falha da prova no alvo da $($T.Id). Leia $accRel/result.md e abra com Read as capturas *-falha.png que ele cita; rode $plugin/target.ps1 -Target $tn (só a conferência, sem -Repair). Grave $diagRel com a primeira linha 'Veredito: AMBIENTE', 'Veredito: APP' ou 'Veredito: PLANO' e até 5 linhas do que viu nas capturas e no detalhe [tela · ids · textos] da falha. AMBIENTE = o app não estava aberto ou estava noutra tela (tela inicial do Android, página deixada por outro cenário), diálogo do sistema, alvo travado ou ocupado. APP = a tela certa estava aberta e o elemento, o texto ou o valor do cenário não estava lá. PLANO = o cenário ou o contrato de ids pede o que nenhuma Task cria, ou o cenário não prova o critério; não deu para ver, PLANO dizendo o que faltou. Não altere código, cenário nem plano; não rode accept nem verify. Volte com a linha do veredito.`""
+                    # v3.63.1: o mesmo roteiro do diagnóstico do portão — as capturas, o registro do aparelho e o sinal do app; com
+                    # APP ou PLANO, o elemento a tocar e onde ele fica na tela.
+                    $ajG = $null; $arG = Join-Path $Root "$accRel/result.json"; if (Test-Path -LiteralPath $arG) { try { $ajG = Read-Text $arG | ConvertFrom-Json } catch { } }
+                    Out "  prompt: `"$(Get-AcceptDiagPrompt "executor $($T.Id)" $T.Id $accRel $diagRel $tn $plugin (Get-AcceptDiagnosisNeed $ajG))`""
                     Out "  depois: run.ps1 done -Task $($T.Id) -Result gap de novo — o done lê o veredito: AMBIENTE → reparo e dev novo · APP → dev novo com o diagnóstico · PLANO → Arquiteto"
                     exit 0
                 }
@@ -1107,6 +1110,43 @@ try {
                 Out "  1. $plugin/mark.ps1 -Task $($T.Id) -To blocked -Reason `"estado de partida — $stS`" (sem a etiqueta da prova pendente: o run.ps1 next não a reabre sozinho)"
                 Out "  2. devolva `"$($T.Id) 🔴 bloqueada: estado de partida · a fila segue`". A sessão leva ao stakeholder num formulário (R22), com a captura $(if ($shS) { $shS } else { "de accept/$n/$($T.Id)/shots/" }): declarar o estado de partida (guards.json → targets.android.baseline = o nome de uma massa de targets.android.seeds) ou o QA ajustar o cenário; depois mark.ps1 -Task $($T.Id) -To qa e o accept pelo operator. Decidido 'provar por teste': run.ps1 prove -Task $($T.Id) -By stakeholder -Because `"<motivo>`" (e ofereça gravar a política em guards.json → run.deviceProofFallback = `"teste`")."
                 exit 0
+            }
+            # v3.63.1 (sprint 6 do projeto piloto, pedido 1): o accept que parou por ambiente com sinal do app (reiniciado, WebView
+            # recriada, sem foco, fechado) ou com cenário que falhou antes da interrupção passa pelo diagnóstico ANTES da rota de
+            # ambiente — "app não ficou na frente" sozinho não é prova de ambiente. AMBIENTE → segue abaixo; APP → dev com o
+            # diagnóstico; PLANO → o QA (o .scn) ou o Arquiteto (contrato de ids, plano), com o elemento e onde ele fica.
+            $needE = Get-AcceptDiagnosisNeed $ass
+            $sameE = $ass -and (-not $ass.tree -or [string]$ass.tree -eq [string](Get-WorkTree $Root))
+            if ($needE.Need -and $sameE) {
+                $dE = Read-AcceptDiagnosis $diagP $arjS
+                $accRelE = (((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/').Substring($Root.Length + 1) -replace '\\', '/')
+                if (-not $dE) {
+                    $tnE = @($names | Where-Object { $_ -in 'android', 'web' })[0]
+                    Add-RunLog $S $n $T.Id 'accept parou com sinal do app ou cenário falhado → operator diagnostica antes da rota de ambiente' $(if ($needE.Signal) { $needE.Signal } else { "falharam: $(@($needE.Failed) -join ', ')" }) $diagRel
+                    Out "run: $($T.Id) — o accept parou$(if ($needE.Signal) { " com sinal do app ($($needE.Signal))" })$(if (@($needE.Failed).Count) { " e $(@($needE.Failed) -join ', ') falhou(aram)" }). Antes de tratar como ambiente, o operator diagnostica pelas capturas e pelo registro do aparelho (v3.63.1):"
+                    Out "  $(Get-AgentLine 'operator')"
+                    Out "  prompt: `"$(Get-AcceptDiagPrompt "executor $($T.Id)" $T.Id ".team-project/$($accRelE -replace '^\.team-project/', '')" $diagRel $tnE $plugin $needE)`""
+                    Out "  depois: run.ps1 done -Task $($T.Id) -Result env de novo — o done lê o veredito: AMBIENTE → reparo e dev novo · APP → dev novo com o diagnóstico · PLANO → o QA (o .scn) ou o Arquiteto, com o elemento e onde ele fica"
+                    exit 0
+                }
+                $elw = "$(if ($dE.Element) { " · elemento: $($dE.Element)" })$(if ($dE.Where) { " · onde: $($dE.Where)" })"
+                if ($dE.Verdict -eq 'APP') {
+                    $null = Update-DevCounter $T $S 'fail'
+                    $card = Write-Handoff $T $S $n
+                    Add-RunLog $S $n $T.Id "operator: APP na prova no alvo$elw → dev em instância nova com o diagnóstico (não é ambiente)" 'veredito do operator pelas capturas e pelo registro do aparelho' $diagRel
+                    Out "run: o operator diagnosticou APP na prova da $($T.Id)$elw — defeito do código, não do alvo. Dev em instância NOVA: run.ps1 start -Task $($T.Id) (o cartão .team-project/$card aponta o diagnóstico $diagRel) e rode run.ps1 done de novo"
+                    exit 0
+                }
+                if ($dE.Verdict -eq 'PLANO') {
+                    $toQa = $dE.Owner -eq 'QA'
+                    Add-RunLog $S $n $T.Id "operator: PLANO na prova no alvo$elw → $(if ($toQa) { '/qa corrige o .scn' } else { '/arc question' }) em instância nova; o dev volta pelo start" 'veredito do operator pelas capturas e pelo registro do aparelho' $diagRel
+                    Out "run: o operator diagnosticou PLANO na prova da $($T.Id)$elw — nem o código nem o alvo: $(if ($toQa) { 'o cenário' } else { 'o contrato de ids ou o plano' }) (v3.63.1):"
+                    Out "  $(Get-AgentLine $(if ($toQa) { 'quality-assurance' } else { 'architect' }))"
+                    if ($toQa) { Out "  prompt: `"/qa — o cenário da $($T.Id) não prova o critério como está: leia o diagnóstico $diagRel (veredito PLANO$elw) e corrija só o(s) cenário(s) citado(s) no .scn — o passo que toca o elemento certo, na tela e na posição que o diagnóstico diz (e a volta à tela depois de recriar a WebView ou reabrir o app, se for o caso); rode $plugin/accept.ps1 -ParseOnly. Volte em até 10 linhas.`"" }
+                    else { Out "  prompt: `"/arc question — decida a falha da prova no alvo da $($T.Id) pelo diagnóstico $diagRel (veredito PLANO$elw) e o plano .team-project/sprints/$n/$($T.Plan): o elemento que o cenário pede e onde ele fica na tela. Registre a decisão no plano (R9) com o Edit, delta, com **Origem:** e **Lição:**; rode plan.ps1 -Plan .team-project/sprints/$n/$($T.Plan). Não escreva código. Volte em até 15 linhas.`"" }
+                    Out "  depois: dev em instância NOVA — run.ps1 start -Task $($T.Id) e rode run.ps1 done de novo"
+                    exit 0
+                }
             }
             Add-RunLog $S $n $T.Id "queda de ambiente ($($ec.env) neste bloco) → reparo do alvo e dev em instância nova" 'o dev parou por ambiente (exit 4 do verify/accept, rede, energia); não conta para o escalonamento (R27)' "sprints/$n/delivery/$($T.Id).md"
             Out "run: $($T.Id) parou por FALHA DE AMBIENTE (D4) — não é defeito do código; nenhum papel caro é chamado. Registrada ($($ec.env) neste bloco); não conta para o escalonamento do dev (R27)."

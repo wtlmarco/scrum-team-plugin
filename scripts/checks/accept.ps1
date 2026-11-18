@@ -30,6 +30,11 @@
 # aspas). O resultado vem das linhas "<SC-ID> PASSOU|FALHOU|NÃO EXERCITADO [detalhe]" da saída; exit 2 do comando = uso
 # (exit 2), exit 4 ou tempo esgotado = ambiente (exit 4). Cenário da Task sem linha conta como FALHOU. progress.json a cada
 # arquivo, result.json/result.md de sempre (executor "comando"). Sem o localizador do plugin: a tela é do executor.
+# v3.63.1 (sprint 6 do projeto piloto, 18/11): a PROVA DA FALHA no android — o registro do aparelho de cada falha
+# (logs/<ID>-<tentativa>-logcat.txt, com o buffer de crash) e o SINAL do app em cada linha (signal: crash · anr · closed ·
+# restarted · webview-recreated · system-window · no-focus). O app que fechou com erro ou não respondeu ao abrir é FALHOU
+# do cenário, não ambiente; a interrupção por ambiente grava environmentSignal no result.json, e o run.ps1 manda ao
+# diagnóstico do operator antes do reparo. A identidade do -Resume é a do app instalado no aparelho (o hash do base.apk).
 #
 # Linguagem (uma instrução por linha; '#' comenta; texto com espaço vai depois do '='):
 #   scenario <ID> <título>             começa um cenário          reset                  apaga os dados do app (web: sessão nova)
@@ -72,6 +77,7 @@ $screenVerbs = 'tap', 'type', 'select', 'slider', 'assert-text', 'assert-contain
 $script:Locator = 'uiautomator'
 $script:ExtCmd = ''; $script:ExtFrom = ''   # v3.62.3: o executor do projeto (o **Aceite:** comando do plano ou -Command)
 $script:AppId = ''; $script:ScnFiles = @()   # v3.63.0: identidade do app provado e os .scn lidos (retomada e portão)
+$script:Attempt = @{}   # v3.63.1: tentativa de cada cenário (nome do registro do aparelho de cada falha)
 
 # Lê os cenários dos arquivos; erro de sintaxe vem com arquivo:linha.
 # v3.56.0 (H1, sprint 5 do garden #32): cada erro leva o id do cenário (Sc; '' = erro do arquivo) — com -Only, só contam
@@ -183,8 +189,15 @@ function New-ReusedRow($Prev, $Block) {
 }
 # v3.63.0: identidade do app que o accept prova — android: o APK instalado (hash do arquivo); web: targets.web.appSources
 # (máscaras) ou a árvore de produção.
+# v3.63.1 (sprint 6 do projeto piloto, pedido 4): android — o app INSTALADO no aparelho (Get-AndroidInstalledIdentity: o hash do
+# base.apk, igual ao do arquivo quando foi ele o instalado); o arquivo local só quando o aparelho não responde. Antes só o
+# arquivo local contava, e o APK instalado pelo comando do projeto (sem arquivo no disco do Windows) dava "apk:?".
 function Get-AppIdentity([string]$Apk, $Cfg) {
-    if ($script:Tgt -eq 'android') { $h = Get-FileHash12 $Apk; return $(if ($h) { "apk:$h" } else { 'apk:?' }) }
+    if ($script:Tgt -eq 'android') {
+        $h = ''; if (Get-Command Get-AndroidInstalledIdentity -ErrorAction SilentlyContinue) { try { $h = Get-AndroidInstalledIdentity } catch { $h = '' } }
+        if (-not $h) { $h = Get-FileHash12 $Apk }
+        return $(if ($h) { "apk:$h" } else { 'apk:?' })
+    }
     $src = @(if ($Cfg -and $Cfg.PSObject.Properties['appSources']) { @($Cfg.appSources) | Where-Object { $_ } | ForEach-Object { [string]$_ } })
     $t = Get-ProductionTree $Root $src
     return $(if ($t) { "web:$t" } else { 'web:?' })
@@ -231,7 +244,15 @@ function Invoke-AcceptCommand([string]$Dir, $Blocks, $Cfg) {
         $name = [System.IO.Path]::GetFileNameWithoutExtension($f)
         if (-not $ids.Count) { Write-AcceptProgress $Dir $results $Blocks.Count; continue }
         [Console]::Out.WriteLine("accept: executor do projeto — $name ($($ids.Count) cenário(s))")
+        # v3.63.1: o registro do aparelho da chamada (android) — gravado quando algum cenário falha ou o executor sai por ambiente.
+        $andr = $script:Tgt -eq 'android' -and (Get-Command Save-AndroidLog -ErrorAction SilentlyContinue)
+        $logOf = @{}
+        if ($andr) { try { Clear-AndroidLog } catch { } }
         $r1 = Invoke-AcceptCommandRun $Dir $f $ids $name $Cfg
+        if ($andr -and ($r1.Environment -or @($ids | Where-Object { -not $r1.Lines.Contains($_) -or $r1.Lines[$_].status -eq 'FALHOU' }).Count)) {
+            $lp1 = Join-Path $Dir "logs/$name-logcat.txt"; try { $null = Save-AndroidLog $lp1 } catch { }
+            if (Test-Path -LiteralPath $lp1) { foreach ($i in $ids) { $logOf[$i] = ($lp1.Replace($Root, '').TrimStart('\', '/') -replace '\\', '/') } }
+        }
         $runs += [ordered]@{ file = ($f.Replace($Root, '').TrimStart('\', '/') -replace '\\', '/'); only = ($ids -join ','); exit = $r1.Code; seconds = $r1.Seconds; log = $r1.Log }
         if ($r1.Code -eq 2 -and -not $r1.Lines.Count) { $usage = "o executor do projeto saiu 2 (uso ou cenário malformado) em $name — confira o comando do **Aceite:** e o log $($r1.Log)"; break }
         $r2 = $null
@@ -253,6 +274,7 @@ function Invoke-AcceptCommand([string]$Dir, $Blocks, $Cfg) {
                 } elseif (-not $r2.Environment) { $note = "2ª tentativa sem linha para este cenário (exit $($r2.Code))" }
             }
             $row = [ordered]@{ id = $id; title = $b.title; status = $st; detail = $det; note = $note; shot = (Find-AcceptShot $shotDir $id); hash = (Get-ScenarioHash $b) }
+            if ($st -ne 'PASSOU' -and $logOf.ContainsKey($id)) { $row.log = $logOf[$id] }   # v3.63.1
             $results += $row
             [Console]::Out.WriteLine(("[{0}] {1}  {2}{3}{4}" -f $id, $st, $b.title, $(if ($det) { "  -> $det" } else { '' }), $(if ($note) { "  ($note)" } else { '' })))
         }
@@ -264,7 +286,7 @@ function Invoke-AcceptCommand([string]$Dir, $Blocks, $Cfg) {
     $ok = @($results | Where-Object { $_.status -eq 'PASSOU' }).Count
     $miss = $Blocks.Count - $results.Count
     $md = "# Aceite $Task · alvo $script:Tgt · executor do projeto · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n**Comando** ($script:ExtFrom): ``$script:ExtCmd```n`n$ok de $($results.Count) cenário(s) passaram" + $(if ($usage) { "; **interrompido:** $usage" } elseif ($envFail) { "; **interrompido por falha de ambiente:** $envFail ($miss cenário(s) não rodaram)" } else { '' }) + ".`n`n| Cenário | Resultado | Detalhe | Prova (captura) |`n|---|---|---|---|`n"
-    foreach ($r in $results) { $md += "| $($r.id) $($r.title) | $($r.status) | $((@($r.detail, $r.note) | Where-Object { $_ }) -join ' · ' -replace '\|', '/') | $($r.shot) |`n" }
+    foreach ($r in $results) { $lg = if ($r.Contains('log') -and $r.log) { " · registro $($r.log)" } else { '' }; $md += "| $($r.id) $($r.title) | $($r.status) | $((@($r.detail, $r.note) | Where-Object { $_ }) -join ' · ' -replace '\|', '/')$lg | $($r.shot) |`n" }
     $md += "`n| Arquivo | Cenários | Exit | Segundos | Log |`n|---|---|---|---|---|`n"
     foreach ($u in $runs) { $md += "| $($u.file) | $($u.only) | $($u.exit) | $($u.seconds) | $($u.log) |`n" }
     [System.IO.File]::WriteAllText((Join-Path $Dir 'result.md'), $md, $utf8)
@@ -287,6 +309,11 @@ function Invoke-Once($Block) {
     }
     $base = Join-Path $script:Shots $Block.id; $status = 'PASSOU'; $detail = ''
     $cdp = $script:Locator -eq 'cdp'
+    # v3.63.1 (pedidos 2 e 3): o registro do aparelho deste cenário começa limpo, e o pid do app é anotado a cada passo de ciclo
+    # de vida — na falha, o sinal diz se o app fechou com erro, foi reiniciado, teve a WebView recriada ou perdeu o foco.
+    $script:Attempt[[string]$Block.id] = 1 + [int]$script:Attempt[[string]$Block.id]
+    try { Clear-AndroidLog } catch { }
+    $pidRef = 0; $sig = $null
     foreach ($s in $Block.steps) {
         $verb, $rest = ($s -split '\s+', 2); if ($null -eq $rest) { $rest = '' }
         try {
@@ -297,17 +324,39 @@ function Invoke-Once($Block) {
                 Invoke-AndroidStep $verb $rest $base | Out-Null
                 if ($cdp -and $verb -in 'launch', 'open', 'restart', 'font-scale') { Invoke-AndroidCdpStep 'ready' '' }
             }
+            if ($verb -in 'launch', 'open', 'restart', 'reset', 'font-scale') { try { $pidRef = Get-AndroidAppPid } catch { } }
             if ($verb -eq 'reset') { $be = Invoke-AcceptBaseline; if ($be) { return @{ environment = $be } } }   # v3.54.2
         }
         catch {
             $m = $_.Exception.Message
             if ($m -like 'CONFIGURAÇÃO:*') { return @{ config = ($m -replace '^CONFIGURAÇÃO:\s*', '').Trim() } }
-            if ($m -like 'AMBIENTE:*') { return @{ environment = $m.Substring(9).Trim() } }
+            if ($m -like 'AMBIENTE:*') {
+                $em = $m.Substring(9).Trim()
+                # O alvo que não responde (adb sem resposta, tela em branco) não tem registro a ler: só somaria prazos.
+                if ($script:AdbTimeout -or $em -match 'sem resposta|em branco|não devolveu') { return @{ environment = $em } }
+                $sig = Get-AcceptFailEvidence ([string]$Block.id) $pidRef $em
+                # v3.63.1: o app que fechou com erro (ou parou de responder) ao abrir não é o alvo — é falha do cenário, com a prova.
+                if ($sig.kind -notin 'crash', 'anr') { Save-AndroidShot "$base-falha.png"; return @{ environment = $em; signal = $sig; shot = "$base-falha.png" } }
+                $status = 'FALHOU'; $detail = "passo '$s': $($sig.text) — $em"; break
+            }
             $status = 'FALHOU'; $detail = "passo '$s': $m"; break
         }
     }
+    if ($status -ne 'PASSOU' -and -not $sig) { $sig = Get-AcceptFailEvidence ([string]$Block.id) $pidRef $detail }
+    if ($sig -and $sig.kind -and $detail -notmatch [regex]::Escape([string]$sig.text)) { $detail += " · sinal: $($sig.text)" }
     $shot = "$base-$(if ($status -eq 'PASSOU') { 'final' } else { 'falha' }).png"; Save-AndroidShot $shot
-    return @{ status = $status; detail = $detail; shot = $shot }
+    return @{ status = $status; detail = $detail; shot = $shot; signal = $sig }
+}
+# v3.63.1: a prova da falha no aparelho — o registro (logs/<ID>-<tentativa>-logcat.txt na pasta do accept) e o sinal do app.
+# @{ kind; text; log } (kind '' quando nada se pôde dizer; o log fica mesmo assim).
+function Get-AcceptFailEvidence([string]$Id, [int]$PidRef, [string]$Detail) {
+    $n = [int]$script:Attempt[$Id]; if ($n -lt 1) { $n = 1 }
+    $lp = Join-Path (Split-Path $script:Shots) "logs/$Id-$n-logcat.txt"
+    $sg = $null; $lg = $null
+    try { $lg = Save-AndroidLog $lp } catch { }
+    try { $sg = Get-AndroidFailSignal $PidRef $Detail $(if ($lg) { $lg } else { @{ Main = @(); Crash = @() } }) } catch { }
+    $rel = if (Test-Path -LiteralPath $lp) { ($lp.Replace($Root, '').TrimStart('\', '/') -replace '\\', '/') } else { '' }
+    return [pscustomobject]@{ kind = $(if ($sg) { [string]$sg.kind } else { '' }); text = $(if ($sg) { [string]$sg.text } else { '' }); log = $rel }
 }
 
 # Corpo com a trava já tomada. Devolve o código de saída.
@@ -380,9 +429,12 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
     if ($script:ExtCmd) { New-Item -ItemType Directory -Force $dir | Out-Null; return (Invoke-AcceptCommand $dir $Blocks $Cfg) }   # v3.62.3
 
     $script:Shots = Join-Path $dir 'shots'; New-Item -ItemType Directory -Force $script:Shots | Out-Null
-    $results = @(); $envFail = $null; $startState = $null
+    $results = @(); $envFail = $null; $startState = $null; $envSig = $null
     $reuse = Get-AcceptReuse $dir $Blocks   # v3.63.0: antes do progress.json, que a rodada nova regrava
     Write-AcceptProgress $dir $results $Blocks.Count
+    # v3.63.1: a interrupção por ambiente leva o sinal do app (e o cenário, o registro e a captura) ao result.json — o next
+    # manda ao diagnóstico antes de tratar como ambiente.
+    $takeEnv = { param($r, $b) $script:envSigTmp = if ($r.signal -and $r.signal.kind) { [ordered]@{ kind = [string]$r.signal.kind; text = [string]$r.signal.text; scenario = [string]$b.id; log = [string]$r.signal.log; shot = $(if ($r.shot) { ([string]$r.shot).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/' } else { '' }) } } else { $null } }
     foreach ($b in $Blocks) {
         if ($reuse.ContainsKey([string]$b.id)) {
             $row = New-ReusedRow $reuse[[string]$b.id] $b; $results += $row
@@ -390,17 +442,18 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
         }
         $r1 = Invoke-Once $b
         if ($r1.config) { return (Write-AcceptConfig $dir ([string]$r1.config) $results) }   # v3.62.0
-        if ($r1.environment) { $envFail = $r1.environment; break }
+        if ($r1.environment) { $envFail = $r1.environment; & $takeEnv $r1 $b; $envSig = $script:envSigTmp; break }
         $final = $r1; $note = ''
         # Repete uma vez do zero (o alvo oscila); o relatório guarda as duas tentativas.
         if ($r1.status -ne 'PASSOU' -and -not $NoRetry) {
             $r2 = Invoke-Once $b
             if ($r2.config) { return (Write-AcceptConfig $dir ([string]$r2.config) $results) }
-            if ($r2.environment) { $envFail = $r2.environment; break }
+            if ($r2.environment) { $envFail = $r2.environment; & $takeEnv $r2 $b; $envSig = $script:envSigTmp; break }
             $final = $r2; $note = if ($r2.status -eq 'PASSOU') { "passou na 2ª tentativa; 1ª: $($r1.detail)" } else { 'falhou nas 2 tentativas' }
         }
         $shotRel = if ($final.shot) { ([string]$final.shot).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/' } else { '' }
         $row = [ordered]@{ id = $b.id; title = $b.title; status = $final.status; detail = $final.detail; note = $note; shot = $shotRel; hash = (Get-ScenarioHash $b) }
+        if ($final.signal -and $final.status -ne 'PASSOU') { $row.signal = [string]$final.signal.kind; $row.signalText = [string]$final.signal.text; $row.log = [string]$final.signal.log }   # v3.63.1
         $results += $row
         [Console]::Out.WriteLine(("[{0}] {1}  {2}{3}{4}" -f $b.id, $row.status, $b.title, $(if ($row.detail) { "  -> $($row.detail)" } else { '' }), $(if ($note) { "  ($note)" } else { '' })))
         Write-AcceptProgress $dir $results $Blocks.Count
@@ -422,13 +475,14 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
     if ($script:Tgt -eq 'web') { Stop-WebServer }
 
     $ok = @($results | Where-Object { $_.status -eq 'PASSOU' }).Count
-    $md = "# Aceite $Task · alvo $script:Tgt · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n$ok de $($results.Count) cenário(s) passaram" + $(if ($startState) { "; **interrompido no estado de partida:** $envFail" } elseif ($envFail) { "; **interrompido por falha de ambiente:** $envFail" } else { '' }) + ".`n`n| Cenário | Resultado | Detalhe | Prova (captura) |`n|---|---|---|---|`n"
-    foreach ($r in $results) { $md += "| $($r.id) $($r.title) | $($r.status) | $((@($r.detail, $r.note) | Where-Object { $_ }) -join ' · ' -replace '\|', '/') | $($r.shot) |`n" }
+    $sigMd = if ($envSig) { " **Sinal do app** ($($envSig.scenario)): $($envSig.text)$(if ($envSig.log) { " · registro $($envSig.log)" })$(if ($envSig.shot) { " · captura $($envSig.shot)" }) — vai ao diagnóstico antes de ser tratado como ambiente." } else { '' }
+    $md = "# Aceite $Task · alvo $script:Tgt · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n$ok de $($results.Count) cenário(s) passaram" + $(if ($startState) { "; **interrompido no estado de partida:** $envFail" } elseif ($envFail) { "; **interrompido por falha de ambiente:** $envFail" } else { '' }) + ".$sigMd`n`n| Cenário | Resultado | Detalhe | Prova (captura) |`n|---|---|---|---|`n"
+    foreach ($r in $results) { $lg = if ($r.Contains('log') -and $r.log) { " · registro $($r.log)" } else { '' }; $md += "| $($r.id) $($r.title) | $($r.status) | $((@($r.detail, $r.note) | Where-Object { $_ }) -join ' · ' -replace '\|', '/')$lg | $($r.shot) |`n" }
     [System.IO.File]::WriteAllText((Join-Path $dir 'result.md'), $md, $utf8)
-    [System.IO.File]::WriteAllText((Join-Path $dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $(if ($script:Tgt -eq 'android') { $script:Locator } else { $null }); at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); prod = (Get-ProductionTree $Root); app = $script:AppId; scenariosHash = (Get-ScenarioSetHash $script:ScnFiles); environment = $envFail; startState = $startState; passed = $ok; total = $results.Count; results = $results } | ConvertTo-Json -Depth 6), $utf8)
+    [System.IO.File]::WriteAllText((Join-Path $dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $(if ($script:Tgt -eq 'android') { $script:Locator } else { $null }); at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); prod = (Get-ProductionTree $Root); app = $script:AppId; scenariosHash = (Get-ScenarioSetHash $script:ScnFiles); environment = $envFail; environmentSignal = $envSig; startState = $startState; passed = $ok; total = $results.Count; results = $results } | ConvertTo-Json -Depth 6), $utf8)
     $rel = ($dir.Substring($Root.Length + 1) -replace '\\', '/')
     if ($startState) { [Console]::Out.WriteLine("accept $Task · $envFail · $rel/result.md"); return 4 }
-    if ($envFail) { [Console]::Out.WriteLine("accept $Task · FALHA DE AMBIENTE ($script:Tgt): $envFail · $ok de $($results.Count) antes da interrupção · $rel/result.md"); return 4 }
+    if ($envFail) { [Console]::Out.WriteLine("accept $Task · FALHA DE AMBIENTE ($script:Tgt): $envFail$(if ($envSig) { " · sinal do app: $($envSig.text) (vai ao diagnóstico)" }) · $ok de $($results.Count) antes da interrupção · $rel/result.md"); return 4 }
     [Console]::Out.WriteLine("accept $Task · alvo $script:Tgt · $ok de $($results.Count) cenário(s) passaram · $rel/result.md")
     if ($ok -lt $results.Count) { return 1 }
     return 0
@@ -497,7 +551,8 @@ try {
     else { . (Join-Path $PSScriptRoot 'targets/web.ps1'); $init = Initialize-Web $cfg $Root; $health = { Test-WebHealth }; $repair = { Repair-Web } }
     if ($init) { [Console]::Out.WriteLine("accept: FALHA DE AMBIENTE ($Target) — $init"); exit 4 }
 
-    $lock = Enter-TargetLock $Root $Target "accept $Task"
+    # v3.63.1: com a pasta do accept — o sinal de vida do alvo preso lê o progress.json dela, e o -Kill reconhece o processo.
+    $lock = Enter-TargetLock $Root $Target "accept $Task" 3 ((Get-VerifyDir $Root $Task) -replace '[\\/]verify[\\/]', '/accept/')
     if ($lock) { [Console]::Out.WriteLine("accept: FALHA DE AMBIENTE — $lock"); exit 4 }
     try { $code = Invoke-Accept $blocks $cfg $health $repair | Select-Object -Last 1 }
     finally {
