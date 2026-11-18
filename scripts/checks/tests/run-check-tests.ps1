@@ -203,6 +203,9 @@ $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('team-checks-' + [guid]::New
 # v3.53.6: o registro da cota (status line) é global, no perfil — os testes apontam para um caminho no temp que não existe;
 # quem testa a cota troca a variável no próprio caso. Nenhum teste grava em %USERPROFILE%\.claude.
 $env:TEAM_QUOTA_LOG = Join-Path $tmp 'sem-cota/quota-log.jsonl'
+# v3.63.2: a trava de aparelho é da máquina (%LOCALAPPDATA%\team-plugin\device-locks) e o serial padrão vem do adb — os testes
+# usam uma pasta própria e um serial fixo: nenhum teste toca a trava real nem disputa o emulador de um projeto rodando.
+$env:TEAM_DEVICE_LOCK_DIR = Join-Path $tmp 'device-locks'; $env:TEAM_TEST_DEVICE_SERIAL = 'emulator-teste'
 $rows = @(); $fail = 0
 # v3.57.0: o tempo de cada caso (do Check anterior a este) entra na linha, e os mais lentos saem no fim — a suíte passou de ~570 s
 # para ~1000 s sem que nenhum caso falhasse, e sem o tempo por caso não havia como achar de onde veio.
@@ -3936,6 +3939,34 @@ $r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -Exec
 Check 'v3.63.1 pedidos 5 e 6: a trava do accept grava created e a pasta do accept (accept/1/S1)' $r 0 @('"created":"\d{4}-', '"dir":".team-project/accept/1/S1"')
 Remove-Item -LiteralPath (Join-Path $pg64 '.team-project/.target-lock') -Force -ErrorAction SilentlyContinue
 # Leitura do diagnóstico: só o da rodada (mais novo que o result.json) vale; Dono e Elemento lidos.
+# ======================= v3.63.2 · a trava do aparelho, comum aos projetos da máquina =======================
+# Dois projetos com o mesmo emulador: a trava de cada projeto não via o outro, e os dois entravam (e o reparo de um derrubava o
+# teste do outro). pA segura o aparelho (um processo vivo com a linha de comando de um accept); pB tenta entrar.
+$pA = Join-Path $tmp 'v3632-proj-a'; $pB = Join-Path $tmp 'v3632-proj-b'
+Put $pA '.team-project/guards.json' '{ "targets": { "android": { "package": "br.a" } } }'
+Put $pB '.team-project/guards.json' '{ "targets": { "android": { "package": "br.b" } } }'
+$dlk = Join-Path $env:TEAM_DEVICE_LOCK_DIR 'emulator-teste.json'
+$holdA = Start-Process powershell -ArgumentList @('-NoProfile', '-File', (Join-Path $fk64 'accept.ps1'), '-Task', 'T-1', '-Root', $pA) -PassThru -WindowStyle Hidden
+Start-Sleep -Milliseconds 1500
+$holdC = & $lib63 "Get-ProcessCreated $($holdA.Id)"
+Put (Split-Path $dlk) 'emulator-teste.json' ('{"device":"emulator-teste","target":"android","owner":"accept T-1","pid":' + $holdA.Id + ',"created":"' + $holdC + '","desde":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '","root":"' + ($pA -replace '\\', '\\') + '"}')
+$r = & { $o = & $lib63 "`$m = Enter-TargetLock '$pB' 'android' 'accept T-2'; if (`$m) { 'M=' + `$m } else { 'M=tomou' }; 'PROJ=' + (Test-Path '$(Join-Path $pB '.team-project/.target-lock')')"; @{ Code = 0; Out = "$o" } }
+Check 'v3.63.2: o projeto B não entra no aparelho que o projeto A usa — a mensagem diz o projeto, e a trava do projeto B é devolvida' $r 0 @('M=o aparelho emulator-teste está em uso por OUTRO projeto \(.*v3632-proj-a\) — .accept T-1. \(PID \d+', 'targets\.android\.serial', 'PROJ=False')
+$r = Invoke-Check 'target.ps1' @('-Target', 'android', '-Who', '-Root', $pB)
+Check 'v3.63.2: target.ps1 -Who no projeto B mostra o aparelho com o OUTRO projeto' $r 0 @("aparelho emulator-teste: em uso por 'accept T-1' PID $($holdA.Id).* OUTRO projeto \(.*v3632-proj-a\)")
+$r = & { $o = & $lib63 "`$b = Get-TargetBusy '$pB'; 'F=' + `$b.Foreign + ' P=' + `$b.Plugin + ' T=' + `$b.Text"; @{ Code = 0; Out = "$o" } }
+Check 'v3.63.2: Get-TargetBusy do projeto B vê o aparelho com o outro projeto (o portão espera o que anda e leva ao stakeholder o parado)' $r 0 @('F=True P=True T=.accept T-1. do OUTRO projeto .*v3632-proj-a.* no aparelho emulator-teste')
+Put $pB '.team-project/guards.json' '{ "targets": { "android": { "package": "br.b", "serial": "emulator-5556" } } }'
+$r = & { $o = & $lib63 "`$m = Enter-TargetLock '$pB' 'android' 'accept T-2'; 'M=' + `$(if (`$m) { `$m } else { 'tomou' }); 'D=' + (Test-Path '$(Join-Path $env:TEAM_DEVICE_LOCK_DIR 'emulator-5556.json')'); Exit-TargetLock '$pB'; 'DEPOIS=' + (Test-Path '$(Join-Path $env:TEAM_DEVICE_LOCK_DIR 'emulator-5556.json')') + '/' + (Test-Path '$(Join-Path $pB '.team-project/.target-lock')')"; @{ Code = 0; Out = "$o" } }
+Check 'v3.63.2: com o seu aparelho declarado (targets.android.serial), o projeto B entra ao lado do A; o Exit-TargetLock devolve as duas travas' $r 0 @('M=tomou', 'D=True', 'DEPOIS=False/False')
+try { $holdA.Kill(); $null = $holdA.WaitForExit(5000) } catch { }
+Put $pB '.team-project/guards.json' '{ "targets": { "android": { "package": "br.b" } } }'
+$r = & { $o = & $lib63 "`$m = Enter-TargetLock '$pB' 'android' 'accept T-2'; 'M=' + `$(if (`$m) { `$m } else { 'tomou' }); 'ROOT=' + ((Get-Content -Raw '$dlk' | ConvertFrom-Json).root)"; @{ Code = 0; Out = "$o" } }
+Check 'v3.63.2: trava do aparelho de um dono morto é assumida pelo outro projeto' $r 0 @('M=tomou', 'ROOT=.*v3632-proj-b')
+Remove-Item -LiteralPath $dlk, (Join-Path $pB '.team-project/.target-lock') -Force -ErrorAction SilentlyContinue
+$r = & { $o = & $lib63 "`$env:TEAM_TEST_DEVICE_SERIAL = ''; 'WEB=' + (Get-DeviceKey '$pg64' 'web') + '|'; 'SERIAL=' + (Get-DeviceKey '$pB' 'android')"; @{ Code = 0; Out = "$o" } }
+Check 'v3.63.2: o alvo web não tem trava de aparelho (cada projeto sobe o seu site); sem serial nem aparelho único, o aparelho padrão da máquina' $r 0 @('WEB=\|', 'SERIAL=\S+')
+
 $rdx64 = "`$d = Read-AcceptDiagnosis '$(Join-Path $pg64 $dg64)' '$(Join-Path $ad64 'result.json')'; if (`$d) { 'D=' + `$d.Verdict + '/' + `$d.Owner + '/' + `$d.Element + '/' + `$d.Where } else { 'D=nenhum' }"
 $d1 = & $lib63 $rdx64
 Start-Sleep -Milliseconds 30; Put $pg64 $dg64 "Veredito: PLANO`nElemento: btn-x`nOnde: topo`nDono: Arquiteto`n"
