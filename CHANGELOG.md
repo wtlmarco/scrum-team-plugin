@@ -13,6 +13,44 @@
 
 ---
 
+## v3.63.0 — 2026-11-17
+
+**Branch:** `feat/v3.63.0` a partir de `develop` (`a613c4f`, v3.62.3 mesclada) · **Processo:** v3.63 (o portão do QA por marcos) · **Plano:** `melhorias/plano-v3.63.0.md`
+
+Origem: sprint 6 do garden (15–17/11). O stakeholder pediu marcos no portão do QA, para que a falha de uma validação não reinicie tudo; um motivo em cada falha de cenário, que leve a correção ao UX, ao PO, ao Arquiteto ou ao dev; o portão controlado no quadro e no consumo; e a prova de cada entrega guardada no sprint.
+
+**Sintoma.**
+- O portão reprovou em 3 rodadas seguidas, quase todas por ambiente, e abriu 4 Tasks de correção (Q-S6 a Q-S6d).
+- Cada rodada refez a qualidade inteira e os 49 cenários, também depois de correções só na ferramenta de prova.
+- O `validation.md` citava a prova das rodadas 1 e 2, e só existia a da última.
+- O achado só podia voltar ao dev ou ao Arquiteto, em texto livre.
+- A medição e o julgamento do portão caíram em `n/a · sprint-6` no consumo, e o "## Agora" mostrou como trabalhando agentes encerrados havia 37 min.
+
+**Correção:**
+- **Portão por marcos** (`scripts/checks/gate.ps1`, novo; chamado pelo `run.ps1 next`; estado em `sprints/<n>/gate.json`).
+  - **A · ambiente não é veredito:** o `accept` com `environment` não conta como medição; o `next` manda `target.ps1 -Repair` e `accept.ps1 -Task S<n> -Resume`; na 2ª vez seguida, ou com `configuration`, formulário ao stakeholder — sem QA, `Q-S<n>` nem Arquiteto.
+  - **C · base por frente:** a **árvore de produção** (`Get-ProductionTree`: os arquivos versionados menos os de teste e menos o novo `guards.json → quality.toolingPaths`) e o **conjunto de cenários** (`Get-ScenarioSetHash`). O `quality.ps1` e o `accept.ps1` gravam `prod`; o `accept`, também `app` e `scenariosHash`. O `result.json` antigo, sem `prod`, compara a árvore inteira, como antes.
+  - **D · rodada focada:** o operator recebe só o comando vencido; o QA recebe as frentes a julgar, as que ficam como estavam e os achados abertos.
+  - **E/F · causa com dono:** o `validation.md` traz `## Frentes` e `## Achados` (ID `S<n>-F<k>`, `Cause`, `State`; `Read-ValidationFindings`). Rota em série: `requirement` → PO · `screen` → UX · `design` → Arquiteto · `scenario` → QA · `code` → `Q-S<n>` (que cita os IDs) · `environment` → reparo. Cada dono grava `sprints/<n>/gate/<ID>.md` com `**Resolution:** done | code | debt`. Causa fora da lista volta ao QA só para classificar; dono disparado 2 vezes sem resolução vai ao stakeholder. Sem a tabela nova, o caminho de antes.
+  - **H · prova da rodada:** antes de cada rodada, `Copy-Proof` leva o resultado e as capturas para `sprints/<n>/proof/S<n>/round-<k>/`, sem os logs brutos; o QA lê e cita de lá.
+- **B · `accept.ps1 -Resume`:** reaproveita o PASSOU da rodada anterior com a mesma identidade do app (android: hash do APK; web: `targets.web.appSources` ou a árvore de produção) e o mesmo texto do cenário; roda o resto. O `progress.json` guarda todas as linhas, para retomar depois de uma queda. Vale no executor do projeto (com `{only}`). Identidade ilegível roda todos.
+- **Causa no GAP do dev** (`run.ps1 done -Result gap`): a linha `**Cause:**` (a mesma lista, mais `appearance` e `process`); `-Cause` ao lado do `-Nature`, e os nomes antigos são sinônimos. `requirement` vai ao PO (antes, `produto` ia direto ao formulário), `screen` ao UX e `scenario` ao QA.
+- **Prova da Task** (`close.ps1 -Apply` com ✅): `sprints/<n>/proof/<ID>/{verify,accept}/`, sem logs.
+- **Quadro e consumo:**
+  - `kanban.md` com a seção `## Validação do sprint` (`Format-GateSection`, em palavras simples), e o `/team-status` com a linha "Revisão final".
+  - A G16 reconhece `S<n>` e `S<n>-F<k>` e grava `gate_round`; o `consumption.ps1` dá as unidades "validação do sprint" e "correção do portão", trata a 2ª rodada como retrabalho e escreve a tabela "Por rodada do portão".
+- **Registro de agentes** (`hooks/common.ps1` `Test-AgentStale`, `Remove-StaleAgents`): o registro sem ação há 20 min ou mais, e sem filho vivo, aparece como "sem sinal desde HH:mm — provavelmente encerrado" no "## Agora" e no `/team-status`. O `next` e o `start` o tiram do `.active-agents` para o `.interrupted`, com uma linha e o `run-log.md`.
+- **Papéis e documentos:** `sprint-run.md`, `sprint-validation.md`, README e agentes do QA, PO, UX, dev e executor, `gap.md`, `sprint-backlog.md`, `scenario-language.md` §6, `how-to.md`, `hooks/COVERAGE.md`; o bloco v3.63 no changelog do processo (v3.60 relocada para o arquivo).
+
+**Testes novos** (`run-check-tests.ps1`, marcados v3.63.0): 20 casos do portão, do `-Resume`, do quadro, do consumo, do `Get-WorkId` e do registro de agentes, mais 2 de GAP (`screen` → UX, `scenario` → QA). Os casos de GAP da v3.57 passaram aos nomes novos, com os antigos como sinônimos.
+
+**Suítes:** check 625 casos — 617 verdes na rodada completa; os 8 restantes eram os roteiros antigos do `accept` (v3.54.2, v3.62.0, v3.62.3), que extraem uma lista fixa de funções e não carregavam as do `-Resume`: com as funções na lista, os blocos deles rodaram de novo em 13/13 · guard 362/0 · release C3 ok.
+
+**Fica de fora:**
+- O aviso no `close.ps1` de prova citada que não existe (plano §2.7): a cópia para `proof/` tira a causa; fica para quando o campo mostrar um caso.
+- O aceite do sprint pelo executor do projeto (`targets.<alvo>.command`), como na v3.62.3.
+
+---
 ## v3.62.3 — 2026-11-17
 
 **Branch:** `fix/v3.62.3` a partir de `develop` (`ce69149`, v3.62.2 mesclada) · **Processo:** addendum v3.62.3 (o executor de cenários do projeto roda pelo `accept.ps1`)

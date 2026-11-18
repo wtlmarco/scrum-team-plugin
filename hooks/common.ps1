@@ -304,6 +304,35 @@ function Test-AgentHostAlive($Agent) {
     if (-not $p) { return $false }
     try { return ($p.StartTime.ToString('yyyy-MM-dd HH:mm:ss') -eq [string]$Agent.host_start) } catch { return $true }   # sem acesso ao início: existe
 }
+# v3.63.0 (sprint 6 do projeto piloto, Q-S6d, 17/11): registro sem sinal de vida — mais de $MaxIdleMin min sem ação de
+# ferramenta, ou o processo hospedeiro encerrado — e sem filho vivo no registro. O run.ps1 já não o contava como vivo
+# (Get-LiveAgents), mas o "## Agora" e o /team-status o mostravam "trabalhando" 37 min depois de ele sumir, e alguém renomeou o
+# .active-agents à mão. O host_pid é o processo do Claude Code que hospeda a SESSÃO: vivo, prova que a sessão existe, não o agente.
+function Test-AgentStale($Agent, $List = @(), [int]$MaxIdleMin = 20) {
+    $idle = (Get-AgentIdleHours $Agent) * 60
+    if ($idle -lt $MaxIdleMin -and (Test-AgentHostAlive $Agent) -ne $false) { return $false }
+    $id = [string]$Agent.agent_id
+    if ($id -and @(@($List) | Where-Object { $_.PSObject.Properties['parent'] -and [string]$_.parent -eq $id -and -not (Test-AgentStale $_ @() $MaxIdleMin) }).Count) { return $false }
+    return $true
+}
+# v3.63.0: tira do .active-agents os registros sem sinal de vida do item (todos, com $Work vazio) e os leva ao .interrupted,
+# como a SessionStart faz com os da sessão anterior. Devolve os registros removidos (quem chama diz e grava no run-log).
+function Remove-StaleAgents([string]$ProjectDir, [string]$Work = '', [int]$MaxIdleMin = 20) {
+    $script:StaleRemoved = @()
+    $null = Invoke-ActiveAgentsLocked $ProjectDir {
+        $all = @(Get-ActiveAgents $ProjectDir)
+        $st = @($all | Where-Object { (-not $Work -or [string]$_.work -eq $Work) -and (Test-AgentStale $_ $all $MaxIdleMin) })
+        if ($st.Count) {
+            $ip = Join-Path $ProjectDir '.team-project/.interrupted'
+            $prev = @(); if (Test-Path -LiteralPath $ip) { try { $prev = @((Get-Content -LiteralPath $ip -Raw -Encoding UTF8 | ConvertFrom-Json) | ForEach-Object { $_ }) } catch { $prev = @() } }
+            $recs = @($st | ForEach-Object { [pscustomobject][ordered]@{ type = [string]$_.type; work = [string]$_.work; parent = [string]$_.parent; desde = [string]$_.desde; last = [string]$_.last; at = [string]$_.at; session = [string]$_.session; agent_id = $(if ($_.PSObject.Properties['agent_id']) { [string]$_.agent_id } else { '' }); transcript = ''; session_transcript = ''; reason = "sem sinal de vida há $MaxIdleMin min ou mais" } })
+            [System.IO.File]::WriteAllText($ip, (ConvertTo-Json -InputObject @($prev + $recs) -Depth 3 -Compress), (New-Object System.Text.UTF8Encoding($false)))
+            Set-ActiveAgents $ProjectDir @($all | Where-Object { $st -notcontains $_ })
+        }
+        $script:StaleRemoved = $st
+    }
+    return @($script:StaleRemoved)
+}
 # Agentes do item ainda vivos: processo hospedeiro vivo (ou desconhecido) e sinal de vida há menos de $MaxIdleMin minutos
 # (um verify full fica até ~10 min sem ação de ferramenta). Agente cortado sem SubagentStop sai daqui ao passar do prazo.
 function Get-LiveAgents([string]$ProjectDir, [string]$Work, [int]$MaxIdleMin = 20) {
@@ -352,7 +381,7 @@ function Test-AgentOnlyWaiting([string]$ProjectDir, $Agent) {
 }
 function Add-ActiveAgent([string]$ProjectDir, [string]$Type, [string]$Description, [string]$Session = '', [string]$Parent = '') {
     # v3.52.2 (note.md item 15): Q-S<n> (correção do portão) também é item de trabalho.
-    $work = ''; $wm = [regex]::Match($Description, '(?<![\w-])(Q-S\d+[a-z]?|T-\d+[a-z]?|F-\d+|B-\d+|H-\d+)(?![\w])'); if ($wm.Success) { $work = $wm.Value }
+    $work = ''; $wm = [regex]::Match($Description, '(?<![\w-])(Q-S\d+[a-z]?|T-\d+[a-z]?|S\d+-F\d+|F-\d+|B-\d+|H-\d+|S\d+)(?![\w])'); if ($wm.Success) { $work = $wm.Value }
     $now = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
     # v3.52.2 (note.md itens 2-4): sem "bg" (todo agente é assíncrono); session = sessão que disparou, parent = agente que disparou.
     # v3.53.1: host_pid/host_start = o processo do Claude Code que hospeda o agente (Get-HostProcess).
@@ -390,7 +419,7 @@ function Update-ActiveAgent([string]$ProjectDir, [string]$AgentId, [string]$Type
                 elseif (@($r.children) -contains $AgentId) { $parent = [string]$r.agent_id }
             }
             if ($null -eq $desc) { return }   # agente que nunca parou: o registro dele não é deste hook
-            $wm = [regex]::Match($desc, '(?<![\w-])(Q-S\d+[a-z]?|T-\d+[a-z]?|F-\d+|B-\d+|H-\d+)(?![\w])')
+            $wm = [regex]::Match($desc, '(?<![\w-])(Q-S\d+[a-z]?|T-\d+[a-z]?|S\d+-F\d+|F-\d+|B-\d+|H-\d+|S\d+)(?![\w])')
             if (-not $hpRead) { $hp = Get-HostProcess; $hpRead = $true }
             $now = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
             $l += [pscustomobject][ordered]@{ type = $Type; description = "$desc (retomado)"; desde = $now; session = $Session; parent = $parent; agent_id = $AgentId
@@ -470,6 +499,7 @@ function Write-NowSection([string]$ProjectDir, $List) {
                 $at = try { ([datetime]::Parse([string]$(if ($a.at) { $a.at } else { $a.desde }))).ToString('HH:mm') } catch { '?' }
                 $since = try { ([datetime]::Parse([string]$a.desde)).ToString('HH:mm') } catch { '?' }
                 $doing = (Get-PlainAction ([string]$a.last)) -replace '\|', '/'
+                if (Test-AgentStale $a @($List)) { $doing = "sem sinal desde $at — provavelmente encerrado" }   # v3.63.0
                 # v3.52.2 (note.md itens 2 e 4): todo agente é assíncrono; o filho mostra quem o chamou.
                 $by = ''
                 if ($a.PSObject.Properties['parent'] -and [string]$a.parent) { $pa = @(@($List) | Where-Object { [string]$_.agent_id -eq [string]$a.parent } | Select-Object -First 1); if ($pa.Count) { $by = ' (chamado pelo ' + (Get-PlainRole ([string]$pa[0].type)) + ')' } }

@@ -27,6 +27,13 @@ Bloqueio que aparece durante o sprint **não sobe direto ao stakeholder**. Eu e 
 
 O GAP que a QA confirma em `pending.md` fora da Sprint Review, e que **não bloqueia** História em voo, chega a mim pelo ID que ela aponta na seção de roteamentos do veredito. Eu **não investigo nem reproduzo** o que a QA já confirmou (R9) — abro a linha correspondente em "GAPs não-bloqueantes" do Product Backlog ([`templates/product-backlog.md`](templates/product-backlog.md)), citando esse ID, **no mesmo ciclo da confirmação** (R12 · R30). Dali em diante o item concorre com o resto do backlog por valor × risco, como qualquer outro, e entra na Planning seguinte se for priorizado. **GAP que bloqueia História já no sprint não passa por aqui** — vira Task da mesma História, no sprint corrente; o mecanismo é do SM ([`workflow-sprint.md` §5e](../scrum-master/process/workflow-sprint.md) "Durante o sprint", R25).
 
+## Achado de requisito do portão ou 🔺 GAP de requisito (v3.63.0)
+
+Quando o QA classifica um achado do portão do sprint como `requirement` (`validation.md`, ID `S<n>-F<k>`), ou o dev levanta um 🔺 GAP de causa `requirement` (até a v3.62, "produto", que ia direto ao formulário do stakeholder), o `run.ps1` me dispara **antes** de qualquer correção: critério ambíguo, regras em conflito, mudança de escopo.
+- **Decido o que é meu** (o critério esclarecido, a regra que vale) e **devolvo o que é do stakeholder** na primeira linha da resposta: `STAKEHOLDER: <a pergunta e as opções>` — a sessão leva em formulário (R22) e grava a resolução com a resposta dele.
+- **No portão**, gravo `.team-project/sprints/<n>/gate/<ID>.md` com `**Resolution:** done | code | debt — <o que decidi>`: `done` = resolvido sem mudar o app (critério esclarecido, cenário ou especificação ajustados); `code` = o app precisa mudar (a `Q-S<n>` cita o achado); `debt` = aceito como dívida, com a linha no Product Backlog.
+- **No GAP**, a decisão vai em até 15 linhas; o Arquiteto a registra no plano em parecer curto.
+
 ## Roteiro por modo
 
 ### `/po status` — o modo mais usado

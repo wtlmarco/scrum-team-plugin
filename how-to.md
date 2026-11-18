@@ -286,6 +286,7 @@ Detalhe técnico (comandos, tempos, registro): /team-status detalhe
 - **Em andamento · Parado · A seguir:** o que está em construção ou em teste; o que parou e por quê, em uma frase; as próximas duas partes da fila.
 - **Precisa de você:** o que depende de você agora. Pode ser retomar o sprint pausado, responder a pergunta aberta na conversa do sprint ou uma das decisões da lista de pendências (`.team-project/README.md` §7, sem as já resolvidas).
 - **Quadro:** cada etapa com as suas partes. Etapas: em construção · em teste · paradas · sendo planejadas · na fila · prontas.
+- **Revisão final** (v3.63.0): aparece quando o sprint chega à revisão da qualidade, antes da apresentação — a rodada, se passou, e os pontos abertos com quem os resolve. Exemplo: `Revisão final: rodada 2, reprovada · 2 achado(s) aberto(s) (1 com UX, 1 com desenvolvedor)`. No `kanban.md`, a seção **Validação do sprint** traz cada ponto em uma linha: o que é, a causa (código do app, desenho técnico, teste, tela, regra ou critério, aparelho) e quem resolve. Quando o aparelho de teste falha, a revisão **não** reprova: o time religa o aparelho e retoma os testes de onde pararam; se falhar de novo, a pergunta vem para você.
 
 **`/team-status detalhe`** (ou `/team-status técnico`, `/team-status 5 detalhe`) mostra a visão técnica, a mesma de antes da v3.59.0:
 
@@ -551,6 +552,7 @@ Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — a nã
 │       ├── stories/                 as Histórias como você as aprovou (congeladas)
 │       ├── plan/                    um Plano de Implementação por Task
 │       ├── evidence/                a evidência de cada Task: comando e saída real
+│       ├── proof/                   a prova guardada: resultado e capturas de cada Task e de cada rodada da revisão final (sem os registros brutos — v3.63.0)
 │       ├── consumption.md           tokens e duração por invocação (inclui o operator)
 │       ├── kanban.md                Kanban, rodadas (tokens e tempo), burndown e controle das Tasks
 │       ├── review.md                a Sprint Review e a sua decisão por História

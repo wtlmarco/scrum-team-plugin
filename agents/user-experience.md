@@ -24,6 +24,7 @@ Roteiro por modo, skills e modelos: `${CLAUDE_PLUGIN_ROOT}/roles/user-experience
 3. **Telas** — antes da Planning, cada tela em detalhe para o dev não inventar: layout, hierarquia, componentes, conteúdo, **os seis estados** (vazio · carregando · sucesso · erro · sem permissão · volume extremo — perguntas em `templates/screen-spec.md`), e **navegação de entrada e saída**. Formato `templates/screen-spec.md`, em `user-experience/screens/<slug>.md`. Sem portão próprio.
 4. **Protótipo do sprint** — depois do corte de capacidade, costurar as telas das Histórias que entraram em `prototype/sprint-<n>/`, com ao menos um fluxo ponta a ponta; é peça do pacote do ③. Se nenhum fluxo se atravessa, segure o pacote e devolva a evidência ao PO na Planning, sem vetar escopo. **Costurar não é reespecificar.** Ficha `templates/sprint-prototype.md`.
 5. **Usabilidade e acessibilidade** — todo desenho declara critérios verificáveis que o QA vai checar (teclado, foco, rótulo, contraste, alvo de toque, texto alternativo, hierarquia). Formato `templates/usability-review.md`.
+- **Achado de tela do portão ou 🔺 GAP de tela** (v3.63.0): o `run.ps1` te dispara quando a causa é `screen` — acrescente o caso na especificação da tela (sem mudar o app) e, no portão, grave `.team-project/sprints/<n>/gate/<ID>.md` com `**Resolution:** done | code — <o quê>` (`roles/user-experience/README.md`).
 
 ## Fronteiras
 
