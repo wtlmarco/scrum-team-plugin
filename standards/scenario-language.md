@@ -96,3 +96,12 @@ O comando também recebe `ACCEPT_TASK`, `ACCEPT_TARGET`, `ACCEPT_SERIAL`, `ACCEP
 Cenário que FALHOU é repetido uma vez, sozinho, quando o comando tem `{only}`, como no executor interno. O `accept` grava `progress.json` a cada arquivo e, no fim, o `result.json` e o `result.md` de sempre, com `executor: "comando"`, o comando e cada chamada (`runs`: arquivo, cenários, exit, segundos, log). O `close.ps1`, o `/team-status` e o portão do QA o leem como qualquer accept.
 
 **Sem o localizador do plugin:** a tela é do executor — o pré-voo do `locator` não roda, e o `reset` de um cenário não reaplica o `baseline` (só a instalação o aplica). O comando passa pelo mesmo filtro da **Verificação:** — instalação, rede, push e destrutivo reprovam no `plan.ps1` e no `accept.ps1`. `**Aceite:** não roda` fica para cenário provado pelos testes do plano; o que cita um script do projeto reprova (regra 34).
+## 6. Retomada do aceite — `-Resume` (v3.63.0)
+
+`accept.ps1 -Task <ID> -Resume` não repete o que já está provado. Ele lê a rodada anterior da mesma pasta (o `progress.json` ou o `result.json`, o mais novo) e **reaproveita a linha PASSOU** de cada cenário quando duas coisas são iguais:
+- **a identidade do app que o accept prova:** no `android`, o hash do APK instalado; no `web`, o hash dos arquivos de `targets.web.appSources` (máscaras, opcional) ou, sem ela, a árvore de produção;
+- **o texto do cenário** (o id e os passos — o campo `hash` de cada linha do `result.json`).
+
+Roda só os que faltaram, falharam ou mudaram. A linha reaproveitada sai com `reused: true` e a nota "reaproveitado: passou em <hora> com o mesmo app e o mesmo cenário" — a hora é a da prova original, mesmo depois de várias retomadas. App diferente, ou identidade que não pôde ser lida (`web:?`, `apk:?`), roda todos e diz por quê. Com o executor do projeto (§5), a retomada vale quando o comando tem `{only}`; sem ele, o arquivo inteiro roda de novo.
+
+O `progress.json` guarda todas as linhas da rodada, e não só a última: a queda no cenário 30 de 49 deixa os 29 primeiros para a retomada. O `result.json` traz também `app`, `prod` (a árvore de produção) e `scenariosHash` (o conjunto de `.scn`) — é por eles que o portão do sprint sabe se a medição venceu (`sprint-run.md` §Validação do sprint).

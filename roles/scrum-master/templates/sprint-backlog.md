@@ -60,7 +60,7 @@ Legenda de estado: ⬜ a fazer · 🟦 plano · 🟨 construção · 🟪 QA · 
 
 | ID | Task | Est. | Trilha | Dono | Depende de | Plano | Evidência | Cenários | Critério de pronto | Para o stakeholder |
 |---|---|---|---|---|---|---|---|---|---|---|
-| ⬜ Q-S<n> | <os achados "Volta para: dev" do `validation.md`, em uma linha> | <n> | plena | dev | <IDs ou —> | [`plan/Q-S<n>-<slug>.md`](plan/) | [`delivery/Q-S<n>.md`](delivery/) | <os cenários do sprint que o achado reprovou> | <o que o ajuste corrige, em palavras do produto — ex.: "títulos cortados na letra Grande"> |
+| ⬜ Q-S<n> | <os IDs dos achados que ela corrige — S<n>-F<k> de causa `code` ou resolvidos como `code` — e o que corrigem, em uma linha (v3.63.0: é pelos IDs que o portão sabe o que ela corrige)> | <n> | plena | dev | <IDs ou —> | [`plan/Q-S<n>-<slug>.md`](plan/) | [`delivery/Q-S<n>.md`](delivery/) | <os cenários do sprint que o achado reprovou> | <o que o ajuste corrige, em palavras do produto — ex.: "títulos cortados na letra Grande"> |
 
 ---
 

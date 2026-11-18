@@ -165,6 +165,27 @@ function Format-CommandWait([string]$Tp, [string]$N, [string]$Nl, [string]$Level
     return ((@($head) + @('', '| Task | Chamadas | focused | full | mutation | Total |', '|---|---|---|---|---|---|') + $rows + '') -join $Nl) + $Nl
 }
 
+# v3.63.0: a revisão final do sprint (o portão do QA) no kanban.md — rodada, veredito, frentes e achados por dono, em
+# palavras simples. Antes, o portão não aparecia no quadro: só a Q-S<n> quando virava Task.
+function Format-GateSection([string]$S, [string]$n, [string]$Nl) {
+    $g = Get-GateSummary $S $n
+    if (-not $g) { return '' }
+    $vt = if ($g.Verdict -eq $E.Done) { "$($E.Done) aprovada" } elseif ($g.Verdict -eq $E.Warn) { "$($E.Warn) aprovada com ressalva" } elseif ($g.Verdict -eq $E.Fail) { "$($E.Fail) reprovada" } else { 'em julgamento' }
+    $o = @('## Validação do sprint', '*(A revisão final do sprint pela qualidade, antes da apresentação. Regravada a cada rodada do time — não editar à mão.)*', '',
+           "- **Rodada:** $([Math]::Max(1, $g.Round)) · **Situação:** $vt$(if ($g.Judged -and $g.Round -gt $g.Judged) { " (rodada $($g.Round) em julgamento)" })")
+    if ($g.EnvAttempts) { $o += "- **Aparelho de teste:** o teste parou no ambiente $($g.EnvAttempts) vez(es) seguida(s) — não é defeito do app$(if ($g.EnvAttempts -ge 2) { '; a decisão está com você' } else { '; religando e retomando de onde parou' })" }
+    if ($g.Proof) { $o += "- **Prova guardada:** ``$($g.Proof)``" }
+    if ($g.Fronts.Count) {
+        $o += '', '| Frente | Situação |', '|---|---|'
+        foreach ($k in $g.Fronts.Keys) { $st = [string]$g.Fronts[$k]; $o += "| $k | $(switch ($st) { 'pass' { "$($E.Done) aprovada" } 'fail' { "$($E.Fail) reprovada" } 'stale' { 'a revisar' } default { $st } }) |" }
+    }
+    $openF = @($g.Findings | Where-Object { $_.State -eq 'aberto' })
+    if (@($g.Findings).Count) {
+        $o += '', "**Achados:** $(@($g.Findings).Count) · abertos: $($openF.Count)", '', '| Achado | O que é | Causa | Quem resolve | Situação |', '|---|---|---|---|---|'
+        foreach ($f in @($g.Findings)) { $tx = (([string]$f.Text -replace '\|', '/') -replace '\s+', ' ').Trim(); if ($tx.Length -gt 90) { $tx = $tx.Substring(0, 90) + '…' }; $o += "| $($f.Id) | $tx | $($f.Cause) | $($f.Owner) | $($f.State) |" }
+    }
+    return (($o + '') -join $Nl) + $Nl
+}
 # Troca a seção "## <título>" (até o próximo "## ") ou a insere antes da seção indicada; sem ela (ou sem $Before), no fim.
 function Set-Section([string]$Text, [string]$Heading, [string]$New, [string]$Before) {
     $sec = [regex]::Match($Text, '(?ms)^##\s+' + $Heading + '\s*\r?\n.*?(?=^##\s|\z)')
@@ -247,7 +268,7 @@ function Set-KanbanOrder([string]$Text, [string]$Nl) {
         $end = if ($i + 1 -lt $hs.Count) { $hs[$i + 1].Index } else { $Text.Length }
         $secs += [pscustomobject]@{ Name = $hs[$i].Groups[1].Value; Body = $Text.Substring($hs[$i].Index, $end - $hs[$i].Index).TrimEnd() + $Nl + $Nl }
     }
-    $front = @('^Resumo$', '^Agora$', '^Kanban$', '^Burndown$', '^Controle', '^Fechamento')   # v3.60.0: Burndown
+    $front = @('^Resumo$', '^Agora$', '^Kanban$', '^Burndown$', '^Valida[çc][ãa]o do sprint$', '^Controle', '^Fechamento')   # v3.60.0: Burndown · v3.63.0: Validação do sprint
     $back = @('^Detalhe t[ée]cnico', '^Linha de base', '^S[ée]rie', '^Registro de transi', '^Rodadas')
     $pick = { param($res) foreach ($re in $res) { foreach ($s in $secs) { if ($s.Name -match $re) { $s } } } }
     $f = @(& $pick $front); $b = @(& $pick $back)
@@ -335,6 +356,7 @@ try {
             if ($text -match '(?m)^##\s+Kanban\s*$') {
                 $text = Set-Section $text 'Kanban' ("## Kanban$nl*(Onde está cada parte do sprint e, nas abertas, quanto falta e quando termina, pelo ritmo medido no sprint. Regravado a cada mudança de etapa e a cada rodada do time — não editar à mão.)*$nl$nl" + (Format-PlainBoard $tasks $nl) + "$nl$nl") 'Linha de base'
                 $text = Set-Section $text 'Burndown' (Format-Burndown $sc $nl) 'Controle'
+                $gsec = Format-GateSection $S $n $nl; if ($gsec) { $text = Set-Section $text 'Validação do sprint' $gsec 'Controle' }   # v3.63.0
             }
             $text = Set-Section $text 'Rodadas' ((Format-Rounds $rounds $nl (Get-MarkHistory $recText) -NoList:$hasCons) + $(if (-not $hasCons) { Format-CommandWait $tp $n $nl } else { '' })) 'Linha de base'
             # v3.59.0: o "## Resumo" em palavras simples, no topo (antes do "## Agora"), e o registro técnico no fim.

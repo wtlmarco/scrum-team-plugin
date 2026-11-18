@@ -58,6 +58,7 @@ param(
     [switch]$NoRepair,
     [switch]$ParseOnly,
     [string]$Command = '',
+    [switch]$Resume,   # v3.63.0: retoma — reaproveita o PASSOU da rodada anterior com o mesmo app instalado e o mesmo cenário
     [string]$Root = (Get-Location).Path
 )
 
@@ -70,6 +71,7 @@ $verbs = 'reset', 'launch', 'open', 'restart', 'back', 'clock', 'wait', 'tap', '
 $screenVerbs = 'tap', 'type', 'select', 'slider', 'assert-text', 'assert-contains', 'assert-exists', 'assert-absent', 'assert-checked', 'assert-count', 'assert-order'
 $script:Locator = 'uiautomator'
 $script:ExtCmd = ''; $script:ExtFrom = ''   # v3.62.3: o executor do projeto (o **Aceite:** comando do plano ou -Command)
+$script:AppId = ''; $script:ScnFiles = @()   # v3.63.0: identidade do app provado e os .scn lidos (retomada e portão)
 
 # Lê os cenários dos arquivos; erro de sintaxe vem com arquivo:linha.
 # v3.56.0 (H1, sprint 5 do garden #32): cada erro leva o id do cenário (Sc; '' = erro do arquivo) — com -Only, só contam
@@ -143,8 +145,49 @@ function Get-FailScreen([string]$Detail) {
 function Write-AcceptProgress([string]$Dir, $Results, [int]$Total) {
     $rs = @($Results); $pass = @($rs | Where-Object { $_.status -eq 'PASSOU' }).Count
     $streak = 0; for ($i = $rs.Count - 1; $i -ge 0; $i--) { if ($rs[$i].status -eq 'PASSOU') { break }; $streak++ }
-    $o = [ordered]@{ task = $Task; pid = $PID; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); total = $Total; passed = $pass; failed = $rs.Count - $pass; streak = $streak; last = $(if ($rs.Count) { $rs[-1] } else { $null }) }
-    try { [System.IO.File]::WriteAllText((Join-Path $Dir 'progress.json'), ($o | ConvertTo-Json -Depth 4), $utf8) } catch { }
+    # v3.63.0: todas as linhas da rodada e a identidade do app — o -Resume retoma de uma rodada que caiu sem result.json.
+    $o = [ordered]@{ task = $Task; pid = $PID; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); app = $script:AppId; total = $Total; passed = $pass; failed = $rs.Count - $pass; streak = $streak; last = $(if ($rs.Count) { $rs[-1] } else { $null }); results = @($rs) }
+    try { [System.IO.File]::WriteAllText((Join-Path $Dir 'progress.json'), ($o | ConvertTo-Json -Depth 5), $utf8) } catch { }
+}
+# v3.63.0: impressão de um cenário (id + passos) — o PASSOU só é reaproveitado com o mesmo texto do cenário.
+function Get-ScenarioHash($Block) { return (Get-TextHash ([string]$Block.id + "`n" + (@($Block.steps) -join "`n"))) }
+# v3.63.0 (item B do plano): o que o -Resume reaproveita — as linhas PASSOU da rodada anterior (progress.json ou result.json,
+# o mais novo) com a MESMA identidade do app instalado e o mesmo texto do cenário. Antes, a queda no cenário 30 de 49 fazia a
+# rodada seguinte começar do 1. @{ id → linha anterior } (vazio sem -Resume, sem rodada anterior ou com outro app).
+function Get-AcceptReuse([string]$Dir, $Blocks) {
+    $out = @{}
+    if (-not $Resume) { return $out }
+    $prev = $null
+    foreach ($f in @('progress.json', 'result.json' | ForEach-Object { Join-Path $Dir $_ } | Where-Object { Test-Path -LiteralPath $_ } | Sort-Object { (Get-Item -LiteralPath $_).LastWriteTime } -Descending)) {
+        try { $j = Read-Text $f | ConvertFrom-Json; if (@($j.results).Count) { $prev = $j; break } } catch { }
+    }
+    if (-not $prev) { [Console]::Out.WriteLine('accept -Resume: nenhuma rodada anterior com resultado — roda todos'); return $out }
+    $pa = if ($prev.PSObject.Properties['app']) { [string]$prev.app } else { '' }
+    if ([string]$script:AppId -match ':\?$') { [Console]::Out.WriteLine("accept -Resume: a identidade do app instalado não pôde ser lida ($($script:AppId)) — sem ela não há como provar que é o mesmo app; roda todos"); return $out }
+    if (-not $pa -or $pa -ne [string]$script:AppId) { [Console]::Out.WriteLine("accept -Resume: o app instalado mudou ($(if ($pa) { $pa } else { 'rodada anterior sem identidade' }) → $($script:AppId)) — roda todos"); return $out }
+    $byId = @{}; foreach ($b in @($Blocks)) { $byId[[string]$b.id] = $b }
+    foreach ($r in @($prev.results)) {
+        $id = [string]$r.id
+        if ([string]$r.status -ne 'PASSOU' -or -not $byId.ContainsKey($id)) { continue }
+        if (-not $r.PSObject.Properties['hash'] -or [string]$r.hash -ne (Get-ScenarioHash $byId[$id])) { continue }
+        # A hora da prova original: a do PASSOU que já era reaproveitado, senão a da rodada anterior.
+        $r | Add-Member -NotePropertyName provedAt -NotePropertyValue $(if ($r.PSObject.Properties['provedAt'] -and $r.provedAt) { [string]$r.provedAt } else { [string]$prev.at }) -Force
+        $out[$id] = $r
+    }
+    [Console]::Out.WriteLine("accept -Resume: $($out.Count) cenário(s) PASSOU reaproveitado(s) da rodada de $([string]$prev.at) (mesmo app $($script:AppId)); $(@($Blocks).Count - $out.Count) a rodar")
+    return $out
+}
+# v3.63.0: a linha reaproveitada, no formato da rodada (o detalhe diz de quando é a prova).
+function New-ReusedRow($Prev, $Block) {
+    return [ordered]@{ id = [string]$Block.id; title = $Block.title; status = 'PASSOU'; detail = ''; note = "reaproveitado: passou em $([string]$Prev.provedAt) com o mesmo app e o mesmo cenário"; shot = [string]$Prev.shot; hash = (Get-ScenarioHash $Block); reused = $true; provedAt = [string]$Prev.provedAt }
+}
+# v3.63.0: identidade do app que o accept prova — android: o APK instalado (hash do arquivo); web: targets.web.appSources
+# (máscaras) ou a árvore de produção.
+function Get-AppIdentity([string]$Apk, $Cfg) {
+    if ($script:Tgt -eq 'android') { $h = Get-FileHash12 $Apk; return $(if ($h) { "apk:$h" } else { 'apk:?' }) }
+    $src = @(if ($Cfg -and $Cfg.PSObject.Properties['appSources']) { @($Cfg.appSources) | Where-Object { $_ } | ForEach-Object { [string]$_ } })
+    $t = Get-ProductionTree $Root $src
+    return $(if ($t) { "web:$t" } else { 'web:?' })
 }
 
 # v3.62.3: uma chamada do executor do projeto para um .scn ($Ids = os cenários da Task nele). Devolve @{ Code; Lines; Log;
@@ -174,12 +217,19 @@ function Find-AcceptShot([string]$Out, [string]$Id) {
 function Invoke-AcceptCommand([string]$Dir, $Blocks, $Cfg) {
     $files = @(); foreach ($b in $Blocks) { if ($files -notcontains [string]$b.file) { $files += [string]$b.file } }
     $results = @(); $runs = @(); $envFail = $null; $usage = ''
-    $cd = Join-Path $Dir 'cmd'; if (Test-Path -LiteralPath $cd) { Remove-Item -LiteralPath $cd -Recurse -Force -ErrorAction SilentlyContinue }   # captura de rodada anterior não vira prova desta
+    $reuse = Get-AcceptReuse $Dir $Blocks   # v3.63.0: antes do progress.json, que a rodada nova regrava
+    $cd = Join-Path $Dir 'cmd'; if (-not $reuse.Count -and (Test-Path -LiteralPath $cd)) { Remove-Item -LiteralPath $cd -Recurse -Force -ErrorAction SilentlyContinue }   # captura de rodada anterior não vira prova desta (na retomada, a dos reaproveitados fica)
     Write-AcceptProgress $Dir $results $Blocks.Count
     $canRetry = (-not $NoRetry) -and $script:ExtCmd.Contains('{only}')
     foreach ($f in $files) {
-        $ids = @($Blocks | Where-Object { [string]$_.file -eq $f } | ForEach-Object { [string]$_.id })
+        $fileBlocks = @($Blocks | Where-Object { [string]$_.file -eq $f })
+        # v3.63.0: com -Resume e {only}, só os que não foram reaproveitados; sem {only} o executor roda o arquivo inteiro.
+        $canOnly = $script:ExtCmd.Contains('{only}')
+        $reusedHere = @($fileBlocks | Where-Object { $canOnly -and $reuse.ContainsKey([string]$_.id) })
+        foreach ($b in $reusedHere) { $row = New-ReusedRow $reuse[[string]$b.id] $b; $results += $row; [Console]::Out.WriteLine(("[{0}] PASSOU  {1}  ({2})" -f $b.id, $b.title, $row.note)) }
+        $ids = @($fileBlocks | Where-Object { $reusedHere -notcontains $_ } | ForEach-Object { [string]$_.id })
         $name = [System.IO.Path]::GetFileNameWithoutExtension($f)
+        if (-not $ids.Count) { Write-AcceptProgress $Dir $results $Blocks.Count; continue }
         [Console]::Out.WriteLine("accept: executor do projeto — $name ($($ids.Count) cenário(s))")
         $r1 = Invoke-AcceptCommandRun $Dir $f $ids $name $Cfg
         $runs += [ordered]@{ file = ($f.Replace($Root, '').TrimStart('\', '/') -replace '\\', '/'); only = ($ids -join ','); exit = $r1.Code; seconds = $r1.Seconds; log = $r1.Log }
@@ -191,7 +241,7 @@ function Invoke-AcceptCommand([string]$Dir, $Blocks, $Cfg) {
             $r2 = Invoke-AcceptCommandRun $Dir $f $bad "$name-r2" $Cfg
             $runs += [ordered]@{ file = ($f.Replace($Root, '').TrimStart('\', '/') -replace '\\', '/'); only = ($bad -join ','); exit = $r2.Code; seconds = $r2.Seconds; log = $r2.Log }
         }
-        foreach ($b in @($Blocks | Where-Object { [string]$_.file -eq $f })) {
+        foreach ($b in @($fileBlocks | Where-Object { $ids -contains [string]$_.id })) {
             $id = [string]$b.id; $note = ''
             if ($r1.Lines.Contains($id)) { $st = $r1.Lines[$id].status; $det = $r1.Lines[$id].detail; $shotDir = $r1.Out }
             elseif ($r1.Environment) { continue }   # não rodou: a interrupção por ambiente diz quantos ficaram de fora
@@ -202,7 +252,7 @@ function Invoke-AcceptCommand([string]$Dir, $Blocks, $Cfg) {
                     $st = $r2.Lines[$id].status; $det = $(if ($st -eq 'PASSOU') { '' } else { $r2.Lines[$id].detail }); $shotDir = $r2.Out
                 } elseif (-not $r2.Environment) { $note = "2ª tentativa sem linha para este cenário (exit $($r2.Code))" }
             }
-            $row = [ordered]@{ id = $id; title = $b.title; status = $st; detail = $det; note = $note; shot = (Find-AcceptShot $shotDir $id) }
+            $row = [ordered]@{ id = $id; title = $b.title; status = $st; detail = $det; note = $note; shot = (Find-AcceptShot $shotDir $id); hash = (Get-ScenarioHash $b) }
             $results += $row
             [Console]::Out.WriteLine(("[{0}] {1}  {2}{3}{4}" -f $id, $st, $b.title, $(if ($det) { "  -> $det" } else { '' }), $(if ($note) { "  ($note)" } else { '' })))
         }
@@ -219,7 +269,7 @@ function Invoke-AcceptCommand([string]$Dir, $Blocks, $Cfg) {
     foreach ($u in $runs) { $md += "| $($u.file) | $($u.only) | $($u.exit) | $($u.seconds) | $($u.log) |`n" }
     [System.IO.File]::WriteAllText((Join-Path $Dir 'result.md'), $md, $utf8)
     $envAll = if ($usage) { $null } else { $envFail }
-    [System.IO.File]::WriteAllText((Join-Path $Dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $null; executor = 'comando'; command = $script:ExtCmd; commandFrom = $script:ExtFrom; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); environment = $envAll; startState = $null; passed = $ok; total = $results.Count; results = $results; runs = $runs } | ConvertTo-Json -Depth 6), $utf8)
+    [System.IO.File]::WriteAllText((Join-Path $Dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $null; executor = 'comando'; command = $script:ExtCmd; commandFrom = $script:ExtFrom; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); prod = (Get-ProductionTree $Root); app = $script:AppId; scenariosHash = (Get-ScenarioSetHash $script:ScnFiles); environment = $envAll; startState = $null; passed = $ok; total = $results.Count; results = $results; runs = $runs } | ConvertTo-Json -Depth 6), $utf8)
     $rel = ($Dir.Substring($Root.Length + 1) -replace '\\', '/')
     if ($usage) { [Console]::Out.WriteLine("accept $Task · $usage · $rel/result.md"); return 2 }
     if ($envFail) { [Console]::Out.WriteLine("accept $Task · FALHA DE AMBIENTE ($script:Tgt): $envFail · $ok de $($results.Count) antes da interrupção, $miss não rodaram · $rel/result.md"); return 4 }
@@ -326,12 +376,18 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
             if ($hy) { return (Write-AcceptConfig $dir 'app híbrido: a tela do app é uma WebView e o uiautomator não recebe nenhum id do app (a WebView não publica o id HTML) — declare guards.json → targets.android.locator = "cdp" (standards/test-ids.md §6)' @()) }
         }
     }
+    $script:AppId = Get-AppIdentity $(if ($script:Tgt -eq 'android') { $appApk } else { '' }) $Cfg   # v3.63.0
     if ($script:ExtCmd) { New-Item -ItemType Directory -Force $dir | Out-Null; return (Invoke-AcceptCommand $dir $Blocks $Cfg) }   # v3.62.3
 
     $script:Shots = Join-Path $dir 'shots'; New-Item -ItemType Directory -Force $script:Shots | Out-Null
     $results = @(); $envFail = $null; $startState = $null
+    $reuse = Get-AcceptReuse $dir $Blocks   # v3.63.0: antes do progress.json, que a rodada nova regrava
     Write-AcceptProgress $dir $results $Blocks.Count
     foreach ($b in $Blocks) {
+        if ($reuse.ContainsKey([string]$b.id)) {
+            $row = New-ReusedRow $reuse[[string]$b.id] $b; $results += $row
+            [Console]::Out.WriteLine(("[{0}] PASSOU  {1}  ({2})" -f $b.id, $b.title, $row.note)); Write-AcceptProgress $dir $results $Blocks.Count; continue
+        }
         $r1 = Invoke-Once $b
         if ($r1.config) { return (Write-AcceptConfig $dir ([string]$r1.config) $results) }   # v3.62.0
         if ($r1.environment) { $envFail = $r1.environment; break }
@@ -344,7 +400,7 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
             $final = $r2; $note = if ($r2.status -eq 'PASSOU') { "passou na 2ª tentativa; 1ª: $($r1.detail)" } else { 'falhou nas 2 tentativas' }
         }
         $shotRel = if ($final.shot) { ([string]$final.shot).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/' } else { '' }
-        $row = [ordered]@{ id = $b.id; title = $b.title; status = $final.status; detail = $final.detail; note = $note; shot = $shotRel }
+        $row = [ordered]@{ id = $b.id; title = $b.title; status = $final.status; detail = $final.detail; note = $note; shot = $shotRel; hash = (Get-ScenarioHash $b) }
         $results += $row
         [Console]::Out.WriteLine(("[{0}] {1}  {2}{3}{4}" -f $b.id, $row.status, $b.title, $(if ($row.detail) { "  -> $($row.detail)" } else { '' }), $(if ($note) { "  ($note)" } else { '' })))
         Write-AcceptProgress $dir $results $Blocks.Count
@@ -369,7 +425,7 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
     $md = "# Aceite $Task · alvo $script:Tgt · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n$ok de $($results.Count) cenário(s) passaram" + $(if ($startState) { "; **interrompido no estado de partida:** $envFail" } elseif ($envFail) { "; **interrompido por falha de ambiente:** $envFail" } else { '' }) + ".`n`n| Cenário | Resultado | Detalhe | Prova (captura) |`n|---|---|---|---|`n"
     foreach ($r in $results) { $md += "| $($r.id) $($r.title) | $($r.status) | $((@($r.detail, $r.note) | Where-Object { $_ }) -join ' · ' -replace '\|', '/') | $($r.shot) |`n" }
     [System.IO.File]::WriteAllText((Join-Path $dir 'result.md'), $md, $utf8)
-    [System.IO.File]::WriteAllText((Join-Path $dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $(if ($script:Tgt -eq 'android') { $script:Locator } else { $null }); at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); environment = $envFail; startState = $startState; passed = $ok; total = $results.Count; results = $results } | ConvertTo-Json -Depth 6), $utf8)
+    [System.IO.File]::WriteAllText((Join-Path $dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $(if ($script:Tgt -eq 'android') { $script:Locator } else { $null }); at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); prod = (Get-ProductionTree $Root); app = $script:AppId; scenariosHash = (Get-ScenarioSetHash $script:ScnFiles); environment = $envFail; startState = $startState; passed = $ok; total = $results.Count; results = $results } | ConvertTo-Json -Depth 6), $utf8)
     $rel = ($dir.Substring($Root.Length + 1) -replace '\\', '/')
     if ($startState) { [Console]::Out.WriteLine("accept $Task · $envFail · $rel/result.md"); return 4 }
     if ($envFail) { [Console]::Out.WriteLine("accept $Task · FALHA DE AMBIENTE ($script:Tgt): $envFail · $ok de $($results.Count) antes da interrupção · $rel/result.md"); return 4 }
@@ -385,6 +441,7 @@ try {
     $files = @($pats | ForEach-Object { $pp = if ([System.IO.Path]::IsPathRooted($_)) { $_ } else { Join-Path $Root $_ }; Get-ChildItem -Path $pp -File -ErrorAction SilentlyContinue } | Sort-Object FullName -Unique | ForEach-Object { $_.FullName })
     if (-not $files.Count) { [Console]::Error.WriteLine("accept: nenhum arquivo de cenário em $($pats -join ', ')"); exit 2 }
     $parsed = Read-Scenarios $files
+    $script:ScnFiles = @($files)   # v3.63.0
     $onlyList = @($Only -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
     $blocks = @($parsed.Blocks | Where-Object { -not $onlyList.Count -or $onlyList -contains $_.id })
     $sel = Select-ScenarioErrors $parsed.Errors $onlyList

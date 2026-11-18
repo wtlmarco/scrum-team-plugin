@@ -112,7 +112,7 @@ try {
     $md = "# Qualidade · $Id · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n| Regra | O que | Resultado | Número / linha decisiva | Log |`n|---|---|---|---|---|`n"
     foreach ($r in $rows) { $md += "| $($r.regra) | $($r.nome) | $($r.resultado) | $(([string]$r.linha) -replace '\|', '/') | $($r.log) |`n" }
     [System.IO.File]::WriteAllText((Join-Path $dir 'result.md'), $md, $utf8)
-    [System.IO.File]::WriteAllText((Join-Path $dir 'result.json'), ([ordered]@{ id = $Id; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = $treeNow; rows = $rows } | ConvertTo-Json -Depth 5), $utf8)
+    [System.IO.File]::WriteAllText((Join-Path $dir 'result.json'), ([ordered]@{ id = $Id; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = $treeNow; prod = (Get-ProductionTree $Root); rows = $rows } | ConvertTo-Json -Depth 5), $utf8)
     $rel = $dir.Substring($Root.Length + 1) -replace '\\', '/'
     $bad = @($rows | Where-Object { $_.resultado -eq 'falhou' })
     $unm = @($rows | Where-Object { $_.resultado -eq 'não medido' })

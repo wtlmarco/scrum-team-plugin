@@ -2381,3 +2381,185 @@ function Get-SessionGauge([string]$Path) {
     foreach ($k in 'input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens') { $vm = [regex]::Match($lastLine, '"' + $k + '"\s*:\s*(\d+)'); if ($vm.Success) { $ctx += [int64]$vm.Groups[1].Value } }
     return @{ Calls = $ids.Count; LastContext = $ctx }
 }
+
+# ============================ v3.63.0 · portão do QA por marcos ============================
+# Origem: sprint 6 do projeto piloto (15–17/11/2026) — 3 rodadas do portão reprovadas, quase todas por ambiente; cada
+# rodada refez a qualidade inteira e os 49 cenários; o validation.md citava prova que a rodada seguinte apagou.
+# O mesmo filtro de arquivo de teste do plan.ps1 (regra dos arquivos tocados).
+$script:TestPathRe = '(^|/)(tests?|specs?|__tests__)/|(^|/)test_[^/]+$|[._-](test|tests|spec|specs)\.[^/]+$|tests?\.[^/.]+$'
+# Causa de um achado do portão ou de um 🔺 GAP do dev — uma lista só (nomes em inglês, decisão do stakeholder de 17/11).
+$script:Causes = @('code', 'design', 'scenario', 'screen', 'requirement', 'environment', 'appearance', 'process')
+$script:CauseOwner = @{ code = 'developer'; design = 'architect'; scenario = 'quality-assurance'; screen = 'user-experience'; requirement = 'product-owner'; environment = 'operator'; appearance = 'architect'; process = 'architect' }
+# Ordem das rotas no portão (série R1): decisão de produto e de tela antes, porque muda o que o dev vai corrigir.
+$script:CauseOrder = @('requirement', 'screen', 'design', 'scenario', 'code')
+# Causa a partir do texto (o valor em inglês ou o nome antigo em português — sinônimos para relatório anterior à v3.63.0).
+# '' quando não é nenhuma.
+function ConvertTo-Cause([string]$Value) {
+    $v = ((([string]$Value) -replace '[`*]', '').Trim().ToLowerInvariant() -split '[\s·—–,;:(]')[0]
+    if ($v -match '^(code|c[óo]digo)$') { return 'code' }
+    if ($v -match '^(design|desenho)$') { return 'design' }
+    if ($v -match '^(scenario|cen[áa]rio)$') { return 'scenario' }
+    if ($v -match '^(screen|tela)$') { return 'screen' }
+    if ($v -match '^(requirement|requisito|produto)$') { return 'requirement' }
+    if ($v -match '^(environment|ambiente)$') { return 'environment' }
+    if ($v -match '^(appearance|apar[êe]ncia)$') { return 'appearance' }
+    if ($v -match '^(process|processo)$') { return 'process' }
+    return ''
+}
+# Máscara de caminho (src/**, *.mjs, pasta/arquivo) → regex sobre o caminho relativo com '/'. Sem curinga = a pasta ou o arquivo.
+function ConvertTo-GlobRegex([string]$Glob) {
+    $g = (([string]$Glob -replace '\\', '/').Trim() -replace '^\./', '').TrimEnd('/')
+    if (-not $g) { return $null }
+    if ($g -notmatch '[*?]') { return '^' + [regex]::Escape($g) + '(/|$)' }
+    $sb = New-Object System.Text.StringBuilder
+    for ($i = 0; $i -lt $g.Length; $i++) {
+        $c = $g[$i]
+        if ($c -eq '*' -and $i + 1 -lt $g.Length -and $g[$i + 1] -eq '*') {
+            if ($i + 2 -lt $g.Length -and $g[$i + 2] -eq '/') { [void]$sb.Append('(.*/)?'); $i += 2 } else { [void]$sb.Append('.*'); $i++ }
+        } elseif ($c -eq '*') { [void]$sb.Append('[^/]*') }
+        elseif ($c -eq '?') { [void]$sb.Append('[^/]') }
+        else { [void]$sb.Append([regex]::Escape([string]$c)) }
+    }
+    return '^' + $sb.ToString() + '$'
+}
+# Ferramenta de prova e scripts do projeto que não são produto (guards.json → quality.toolingPaths): mudar só eles não vence
+# o julgamento de código nem a qualidade medida (Q-S6c do piloto mexeu só em source/scripts/alvo/ e o portão refez tudo).
+function Get-ToolingPaths([string]$Root) {
+    $gp = Join-Path $Root '.team-project/guards.json'
+    if (-not (Test-Path -LiteralPath $gp)) { return @() }
+    try { $q = (Read-Text $gp | ConvertFrom-Json).quality; if ($q -and $q.PSObject.Properties['toolingPaths']) { return @(@($q.toolingPaths) | Where-Object { $_ } | ForEach-Object { [string]$_ }) } } catch { }
+    return @()
+}
+# Impressão da árvore DE PRODUÇÃO: a de Get-WorkTree sem os arquivos de teste e sem quality.toolingPaths — ou, com -Only,
+# só os arquivos dessas máscaras (targets.web.appSources). 'prod:<12>' (ou 'only:<12>'); $null fora de um repositório git.
+function Get-ProductionTree([string]$Root, [string[]]$Only = @()) {
+    $tree = Get-WorkTree $Root
+    if (-not $tree) { return $null }
+    $ErrorActionPreference = 'Continue'
+    $top = & git -C $Root rev-parse --show-toplevel 2>$null
+    $lines = @(& git -C $top -c core.quotePath=false ls-tree -r --full-tree $tree 2>$null)
+    $onlyRe = @($Only | Where-Object { $_ } | ForEach-Object { ConvertTo-GlobRegex $_ } | Where-Object { $_ })
+    $toolRe = @(Get-ToolingPaths $Root | ForEach-Object { ConvertTo-GlobRegex $_ } | Where-Object { $_ })
+    $keep = foreach ($ln in $lines) {
+        $p = ([string]$ln -split "`t", 2)[1]; if (-not $p) { continue }
+        if ($onlyRe.Count) { if (@($onlyRe | Where-Object { $p -match $_ }).Count) { $ln } ; continue }
+        if ($p -match $script:TestPathRe) { continue }
+        if (@($toolRe | Where-Object { $p -match $_ }).Count) { continue }
+        $ln
+    }
+    return ($(if ($onlyRe.Count) { 'only:' } else { 'prod:' }) + (Get-TextHash (@($keep) -join "`n")))
+}
+function Get-TextHash([string]$Text) {
+    $sha = New-Object System.Security.Cryptography.SHA1Managed
+    try { return ([System.BitConverter]::ToString($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes([string]$Text))) -replace '-', '').Substring(0, 12).ToLowerInvariant() } finally { $sha.Dispose() }
+}
+function Get-FileHash12([string]$Path) {
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '' }
+    $sha = New-Object System.Security.Cryptography.SHA1Managed; $fs = [System.IO.File]::OpenRead($Path)
+    try { return ([System.BitConverter]::ToString($sha.ComputeHash($fs)) -replace '-', '').Substring(0, 12).ToLowerInvariant() } finally { $fs.Dispose(); $sha.Dispose() }
+}
+# Impressão do conjunto de arquivos de cenário (nome + conteúdo) — o QA corrigir um .scn vence a frente funcional.
+function Get-ScenarioSetHash([string[]]$Files) {
+    $parts = foreach ($f in @($Files | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) } | Sort-Object)) { [System.IO.Path]::GetFileName($f) + "`n" + (Read-Text $f) }
+    return (Get-TextHash (@($parts) -join "`n----`n"))
+}
+function Get-SprintScenarioFiles([string]$Root) { return @(Get-ChildItem -Path (Join-Path $Root '.team-project/quality-assurance/scenarios') -Filter '*.scn' -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }) }
+# Estado do portão do sprint (sprints/<n>/gate.json) — escrito só pelo run.ps1; o validation.md continua do QA.
+#   round       a rodada do QA em curso (0 = nenhum julgamento disparado)
+#   judged      as bases que o QA julgou na última rodada disparada: prod (árvore de produção), scn (cenários), accept/quality (hora do result.json)
+#   env         tentativas de reparo do alvo do portão (attempts) e a hora do accept que as contou (at)
+#   proof       a última rodada copiada para sprints/<n>/proof/
+#   routed      achado → vezes que o dono foi disparado sem gravar a resolução
+function Get-GateState([string]$S) {
+    $st = [ordered]@{ round = 0; judged = $null; env = [ordered]@{ attempts = 0; at = ''; asked = '' }; proof = 0; routed = [ordered]@{} }
+    $p = Join-Path $S 'gate.json'
+    if (Test-Path -LiteralPath $p) {
+        try {
+            $j = Read-Text $p | ConvertFrom-Json
+            if ($j.PSObject.Properties['round']) { $st.round = [int]$j.round }
+            if ($j.PSObject.Properties['judged'] -and $j.judged) { $st.judged = [ordered]@{}; foreach ($pp in $j.judged.PSObject.Properties) { $st.judged[$pp.Name] = [string]$pp.Value } }
+            if ($j.PSObject.Properties['env'] -and $j.env) { $st.env.attempts = [int]$j.env.attempts; $st.env.at = [string]$j.env.at; if ($j.env.PSObject.Properties['asked']) { $st.env.asked = [string]$j.env.asked } }
+            if ($j.PSObject.Properties['proof']) { $st.proof = [int]$j.proof }
+            if ($j.PSObject.Properties['routed'] -and $j.routed) { foreach ($pp in $j.routed.PSObject.Properties) { $st.routed[$pp.Name] = [int]$pp.Value } }
+        } catch { }
+    }
+    return $st
+}
+function Set-GateState([string]$S, $State) {
+    [System.IO.File]::WriteAllText((Join-Path $S 'gate.json'), ($State | ConvertTo-Json -Depth 5), (New-Object System.Text.UTF8Encoding($false)))
+}
+# Achados e frentes do validation.md no formato da v3.63.0 — tabela com as colunas ID e Cause (ou State) e linhas S<n>-F<k>;
+# a ÚLTIMA ocorrência de cada ID vale (a tabela da rodada nova só traz ID e State). Frentes: tabela com Front e State.
+# @{ HasTable; Findings = [ordered] id → @{ id; task; text; cause; state }; Fronts = [ordered] front → state }.
+function Read-ValidationFindings([string]$Path) {
+    $out = @{ HasTable = $false; Findings = [ordered]@{}; Fronts = [ordered]@{} }
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return $out }
+    $col = { param($t, $name) for ($i = 0; $i -lt $t.Header.Count; $i++) { if ($t.Header[$i] -ieq $name) { return $i } }; return -1 }
+    foreach ($t in (Get-Tables (Read-Text $Path))) {
+        $fi = & $col $t 'Front'; $si = & $col $t 'State'
+        if ($fi -ge 0 -and $si -ge 0) {
+            foreach ($row in $t.Rows) { $fn = (Clean-Cell (Get-Cell $row $fi)).ToLowerInvariant(); if ($fn -match '^[a-z]+$') { $out.Fronts[$fn] = (Clean-Cell (Get-Cell $row $si)).ToLowerInvariant() } }
+            continue
+        }
+        $ii = & $col $t 'ID'; $ci = & $col $t 'Cause'
+        if ($ii -lt 0 -or ($ci -lt 0 -and $si -lt 0)) { continue }
+        if ($ci -ge 0) { $out.HasTable = $true }
+        $ti = & $col $t 'Task'; $ai = & $col $t 'Achado'
+        foreach ($row in $t.Rows) {
+            $id = Clean-Cell (Get-Cell $row $ii); if ($id -notmatch '^S\d+-F\d+$') { continue }
+            if (-not $out.Findings.Contains($id)) { $out.Findings[$id] = @{ id = $id; task = ''; text = ''; cause = ''; state = 'open' } }
+            $f = $out.Findings[$id]
+            if ($ti -ge 0 -and (Clean-Cell (Get-Cell $row $ti))) { $f.task = Clean-Cell (Get-Cell $row $ti) }
+            if ($ai -ge 0 -and (Clean-Cell (Get-Cell $row $ai))) { $f.text = Clean-Cell (Get-Cell $row $ai) }
+            if ($ci -ge 0) { $cv = Clean-Cell (Get-Cell $row $ci); if ($cv) { $f.cause = ConvertTo-Cause $cv; if (-not $f.cause) { $f.cause = "?$cv" } } }
+            if ($si -ge 0) { $sv = (Clean-Cell (Get-Cell $row $si)).ToLowerInvariant(); if ($sv) { $f.state = ($sv -split '[\s·—–(]')[0] } }
+        }
+    }
+    return $out
+}
+# A resolução que o dono gravou para um achado (sprints/<n>/gate/<ID>.md, linha **Resolution:** done|code|debt — <texto>).
+# @{ value; text; at } ou $null.
+function Get-FindingResolution([string]$S, [string]$Id) {
+    $p = Join-Path $S "gate/$Id.md"
+    if (-not (Test-Path -LiteralPath $p)) { return $null }
+    $m = [regex]::Match((Read-Text $p), '(?im)^\*\*Resolution:\*\*\s*(done|code|debt)\b\s*[—–-]?\s*([^\r\n]*)')
+    if (-not $m.Success) { return @{ value = ''; text = ''; at = (Get-Item -LiteralPath $p).LastWriteTime } }
+    return @{ value = $m.Groups[1].Value.ToLowerInvariant(); text = $m.Groups[2].Value.Trim(); at = (Get-Item -LiteralPath $p).LastWriteTime }
+}
+# Prova guardada (decisão do stakeholder de 17/11): result.json, result.md, progress.json e as capturas (.png de shots/ e de
+# cmd/ do executor do projeto) de uma pasta de medição para a pasta do sprint, sem os logs brutos. Devolve quantos arquivos.
+function Copy-Proof([string]$Src, [string]$Dst) {
+    if (-not (Test-Path -LiteralPath $Src -PathType Container)) { return 0 }
+    $k = 0
+    # A base vem do próprio Get-Item: o caminho pedido pode ter "/" misturado ou o nome curto do Windows (MARCOA~1), e o recorte
+    # pelo tamanho dele cortava errado (a prova saía em accept/accept/1/S1/).
+    $base = (Get-Item -LiteralPath $Src).FullName.TrimEnd('\', '/')
+    foreach ($f in @(Get-ChildItem -LiteralPath $base -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -in 'result.json', 'result.md', 'progress.json' -or $_.Extension -ieq '.png' })) {
+        $rel = $f.FullName.Substring($base.Length).TrimStart('\', '/')
+        $to = Join-Path $Dst $rel
+        New-Item -ItemType Directory -Force (Split-Path $to) | Out-Null
+        Copy-Item -LiteralPath $f.FullName -Destination $to -Force; $k++
+    }
+    return $k
+}
+# v3.63.0: nomes simples para quem acompanha (kanban.md, /team-status) — causas, donos e frentes.
+$script:CausePlain = @{ code = 'código do app'; design = 'desenho técnico'; scenario = 'teste (cenário)'; screen = 'tela'; requirement = 'regra ou critério'; environment = 'aparelho ou ambiente'; appearance = 'medida ou marcação'; process = 'processo do time' }
+$script:OwnerPlain = @{ developer = 'desenvolvedor'; architect = 'arquiteto'; 'quality-assurance' = 'qualidade'; 'user-experience' = 'UX'; 'product-owner' = 'dono do produto'; operator = 'operador do aparelho' }
+$script:FrontPlain = [ordered]@{ functional = 'funcional (testes no aparelho)'; measured = 'qualidade medida'; review = 'revisão do código'; security = 'segurança' }
+$script:FindingStatePlain = @{ open = 'aberto'; fixed = 'resolvido'; debt = 'aceito como dívida'; wontfix = 'não será feito' }
+# Resumo do portão para quem acompanha: $null antes do portão (sem validation.md nem gate.json).
+# @{ Round; Verdict (marca); Fronts = [ordered] nome simples → estado; Findings = lista @{ Id; Text; Cause; Owner; State }; EnvAttempts; Proof }
+function Get-GateSummary([string]$S, [string]$n) {
+    $val = Join-Path $S 'validation.md'; $gp = Join-Path $S 'gate.json'
+    if (-not (Test-Path -LiteralPath $val) -and -not (Test-Path -LiteralPath $gp)) { return $null }
+    $g = Get-GateState $S
+    $vf = Read-ValidationFindings $val
+    $vm = $null; $vr = 0
+    if (Test-Path -LiteralPath $val) { $ms = @([regex]::Matches((Read-Text $val), '(?m)^\*\*Veredito[^*\r\n]*:\*\*(.*)$')); $vr = $ms.Count; if ($ms.Count) { $vm = Get-VerdictMark $ms[$ms.Count - 1].Groups[1].Value } }
+    $fr = [ordered]@{}; foreach ($k in $script:FrontPlain.Keys) { if ($vf.Fronts.Contains($k)) { $fr[$script:FrontPlain[$k]] = $vf.Fronts[$k] } }
+    $fs = @(foreach ($f in $vf.Findings.Values) {
+        $c = [string]$f.cause; $o = if ($script:CauseOwner.ContainsKey($c)) { $script:CauseOwner[$c] } else { '' }
+        [pscustomobject]@{ Id = $f.id; Text = [string]$f.text; Cause = $(if ($script:CausePlain.ContainsKey($c)) { $script:CausePlain[$c] } else { 'sem causa' }); Owner = $(if ($o -and $script:OwnerPlain.ContainsKey($o)) { $script:OwnerPlain[$o] } else { '—' }); State = $(if ($script:FindingStatePlain.ContainsKey([string]$f.state)) { $script:FindingStatePlain[[string]$f.state] } else { [string]$f.state }) }
+    })
+    return [pscustomobject]@{ Round = [Math]::Max([int]$g.round, $vr); Judged = $vr; Verdict = $vm; Fronts = $fr; Findings = $fs; EnvAttempts = [int]$g.env.attempts; Proof = $(if ([int]$g.proof) { "sprints/$n/proof/S$n/round-$([int]$g.proof)/" } else { '' }) }
+}

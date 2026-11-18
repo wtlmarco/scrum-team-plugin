@@ -1291,10 +1291,10 @@ $dgp = Join-Path $p '.team-project/sprints/1/delivery/T-041.md'
 function Put-Gap([string]$Nat) { Put $p '.team-project/sprints/1/delivery/T-041.md' ("## Entrega — T-041`n`n🔺 GAP — T-041 — passo 2 do plano`n`n**Tipo:** plano`n" + $(if ($Nat) { "**Natureza:** $Nat`n" } else { '' }) + "**O que encontrei no código:** a.ts:3 — x`n") }
 Put-Gap 'aparência'
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
-Check 'v3.57.0 item 9: GAP natureza aparência → parecer curto do Arquiteto (prompt com PARECER CURTO, até 8 linhas)' $r 0 @('GAP de natureza APARÊNCIA — parecer curto do Arquiteto', 'prompt: "PARECER CURTO \(GAP de aparência ou marcação\)', 'em até 8 linhas', 'Arquiteto em instância NOVA')
+Check 'v3.57.0 item 9 (v3.63.0: causa appearance, com o nome antigo como sinônimo): GAP de aparência → parecer curto do Arquiteto (prompt com PARECER CURTO, até 8 linhas)' $r 0 @('GAP de causa APPEARANCE — parecer curto do Arquiteto', 'prompt: "PARECER CURTO \(GAP de aparência ou marcação\)', 'em até 8 linhas', 'Arquiteto em instância NOVA')
 Put-Gap 'produto'
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
-Check 'v3.57.0 item 9: GAP natureza produto → decisão do STAKEHOLDER (formulário), sem disparar o Arquiteto' $r 0 @('GAP de natureza PRODUTO — a decisão é do STAKEHOLDER', 'não dispare Arquiteto nem start', '^(?![\s\S]*prompt:)', '^(?![\s\S]*Arquiteto em instância NOVA)')
+Check 'v3.63.0 (antes v3.57.0 item 9): GAP produto (sinônimo de requirement) → o PO decide, e o que for do stakeholder ele devolve em STAKEHOLDER: — não vai direto ao formulário nem ao ciclo do Arquiteto' $r 0 @('GAP de causa REQUISITO — quem decide é o PO', 'team:product-owner', 'STAKEHOLDER: <a pergunta e as opções>', 'depois: Arquiteto em instância NOVA, PARECER CURTO', '^(?![\s\S]*prompt: "Decida o 🔺 GAP)')
 Put-Gap 'desenho'
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
 Check 'v3.57.0 item 9: GAP natureza desenho → ciclo completo do Arquiteto, sem parecer curto' $r 0 @('Arquiteto em instância NOVA', 'prompt: "Decida o 🔺 GAP da T-041', '^(?![\s\S]*PARECER CURTO)')
@@ -1302,12 +1302,19 @@ $gcf = Join-Path $p '.team-project/sprints/1/handoff/T-041-gap.md'
 Check 'v3.57.2 item 23: o Arquiteto decide pelo recorte (o GAP, o cabeçalho e os passos citados) e muda o plano por delta (Edit)' @{ Code = $r.Code; Out = $r.Out + "`n" + $(if (Test-Path -LiteralPath $gcf) { [System.IO.File]::ReadAllText($gcf, $utf8) } else { 'sem recorte' }) } 0 @('pelo RECORTE \.team-project/sprints/1/handoff/T-041-gap\.md', 'Abra o plano inteiro .* só se o recorte não bastar', 'com o Edit, no lugar do texto que ela derruba', '## O GAP \(relatório do dev\)', '🔺 GAP — T-041 — passo 2 do plano', '## Cabeçalho do plano')
 Put-Gap ''
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
-Check 'v3.57.1 item 6: GAP sem natureza (nem **Natureza:** nem a palavra na linha do 🔺) → recusa antes de qualquer efeito (exit 2) e o executor classifica com -Nature' $r 2 @('veio sem natureza', 'done -Task T-041 -Result gap -Nature <aparencia \| desenho \| produto \| processo \| ambiente>', 'processo = regra do time', '^(?![\s\S]*Arquiteto em instância NOVA)')
+Check 'v3.57.1 item 6 (v3.63.0: -Cause): GAP sem causa (nem **Cause:** nem a palavra na linha do 🔺) → recusa antes de qualquer efeito (exit 2) e o executor classifica com -Cause' $r 2 @('veio sem causa', 'done -Task T-041 -Result gap -Cause <appearance \| design \| scenario \| screen \| requirement \| process \| environment>', 'process = regra do time', '^(?![\s\S]*Arquiteto em instância NOVA)')
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Nature', 'aparencia', '-Root', $p)
-Check 'v3.57.1 item 6: -Nature do executor vale quando o dev não marcou (aparência → parecer curto) e o run-log grava a natureza e quem a deu' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/run-log.md'), $utf8) } 0 @('GAP de natureza APARÊNCIA', '🔺 GAP \[aparência · executor \(-Nature\)\]')
+Check 'v3.57.1 item 6: -Nature do executor vale quando o dev não marcou (aparência → parecer curto) e o run-log grava a natureza e quem a deu' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/run-log.md'), $utf8) } 0 @('GAP de causa APPEARANCE', '🔺 GAP \[appearance · executor \(-Cause\)\]')
 Put $p '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`n### 🔺 GAP (ambiente / massa): a massa base não tem lote COLHIDO`n"
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
-Check 'v3.57.1 item 6: a palavra na linha do 🔺 ("🔺 GAP (ambiente / massa)", como os devs do garden escreviam) vale como natureza' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/run-log.md'), $utf8) } 0 @('GAP de natureza AMBIENTE \(linha do 🔺\)', '🔺 GAP \[ambiente · linha do 🔺\]')
+Check 'v3.57.1 item 6: a palavra na linha do 🔺 ("🔺 GAP (ambiente / massa)", como os devs do garden escreviam) vale como natureza' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/run-log.md'), $utf8) } 0 @('GAP de causa ENVIRONMENT \(linha do 🔺\)', '🔺 GAP \[environment · linha do 🔺\]')
+# v3.63.0: **Cause:** screen vai ao UX (a especificação da tela ganha o caso), scenario ao QA (corrige o .scn, sem Arquiteto).
+Put $p '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`n🔺 GAP — T-041 — passo 2 do plano`n`n**Cause:** screen`n**O que encontrei no código:** a.ts:3 — o título não cabe na fonte grande`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.63.0: GAP de causa screen → o UX acrescenta o caso na especificação da tela; o Arquiteto só registra (parecer curto)' $r 0 @('GAP de causa TELA — quem decide é o UX', 'team:user-experience', 'acrescente na especificação da tela o caso que faltou', 'depois: Arquiteto em instância NOVA, PARECER CURTO')
+Put $p '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`n🔺 GAP — T-041 — passo 2 do plano`n`n**Cause:** scenario`n**O que encontrei no código:** SC-014 usa um id que não existe mais`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $p)
+Check 'v3.63.0: GAP de causa scenario → o QA corrige o .scn e o dev volta, sem o Arquiteto' $r 0 @('GAP de causa CENÁRIO — quem decide é o QA', 'team:quality-assurance', 'corrija o \.scn', 'depois: dev em instância NOVA — run.ps1 start -Task T-041', '^(?![\s\S]*PARECER CURTO)')
 
 # 11d. run.ps1 next com o sinal de limite de uso e a estimativa do que falta (note.md 2 e 11).
 $p = Join-Path $tmp 'limite'; New-Project $p
@@ -1605,7 +1612,7 @@ $p = Join-Path $tmp 'gap-log'; New-Project $p
 Put $p '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`n🔺 GAP: o plano manda rodar accept sem .scn`n"
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Nature', 'processo', '-Root', $p)
 $rl = Join-Path $p '.team-project/sprints/1/run-log.md'
-Check 'item 10: rota do GAP no run-log.md (pelo done); v3.53.7: decisão comum uma vez em architect/decisions, citada nos planos' @{ Code = $r.Code; Out = $r.Out + "`n" + $(if (Test-Path -LiteralPath $rl) { [System.IO.File]::ReadAllText($rl, $utf8) } else { 'sem run-log' }) } 0 @('grave-a UMA vez como D-<k> em \.team-project/architect/decisions/S1\.md', 'não copie o texto em plano nenhum', '\| Quando \| Item \| Decisão \| Porquê \| Evidência \|', '\| T-041 \| 🔺 GAP \[processo · executor \(-Nature\)\] → Arquiteto em instância nova .* \| 🔺 GAP: o plano manda rodar accept sem \.scn \| sprints/1/delivery/T-041\.md \|')
+Check 'item 10: rota do GAP no run-log.md (pelo done); v3.53.7: decisão comum uma vez em architect/decisions, citada nos planos' @{ Code = $r.Code; Out = $r.Out + "`n" + $(if (Test-Path -LiteralPath $rl) { [System.IO.File]::ReadAllText($rl, $utf8) } else { 'sem run-log' }) } 0 @('grave-a UMA vez como D-<k> em \.team-project/architect/decisions/S1\.md', 'não copie o texto em plano nenhum', '\| Quando \| Item \| Decisão \| Porquê \| Evidência \|', '\| T-041 \| 🔺 GAP \[process · executor \(-Cause\)\] → Arquiteto em instância nova .* \| 🔺 GAP: o plano manda rodar accept sem \.scn \| sprints/1/delivery/T-041\.md \|')
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
 Check 'item 10: queda de ambiente também vira linha do run-log.md' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText($rl, $utf8) } 0 @('\| T-041 \| queda de ambiente \(1 neste bloco\)')
 
@@ -2512,7 +2519,7 @@ $ErrorActionPreference = 'Stop'
 . $Lib
 $utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'T-041'; $NoRetry = $true; $NoRepair = $true; $Apk = ''
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
-foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Get-FailScreen', 'Write-AcceptConfig', 'Write-AcceptProgress', 'Invoke-AcceptBaseline') { . ([scriptblock]::Create($f.Extent.Text)) } }
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Get-FailScreen', 'Write-AcceptConfig', 'Write-AcceptProgress', 'Invoke-AcceptBaseline', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AppIdentity') { . ([scriptblock]::Create($f.Extent.Text)) } }
 $script:Tgt = 'web'; $script:ran = 0; $script:Locator = 'uiautomator'
 function Stop-WebServer { }
 function Invoke-Once($Block) {
@@ -3617,7 +3624,7 @@ $ErrorActionPreference = 'Stop'
 . $Lib
 $utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'T-041'; $NoRetry = $false; $NoRepair = $true; $Apk = ''
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
-foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-AcceptCommand', 'Invoke-AcceptCommandRun', 'Find-AcceptShot', 'Write-AcceptProgress') { . ([scriptblock]::Create($f.Extent.Text)) } }
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-AcceptCommand', 'Invoke-AcceptCommandRun', 'Find-AcceptShot', 'Write-AcceptProgress', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash') { . ([scriptblock]::Create($f.Extent.Text)) } }
 $script:Tgt = 'web'; $script:Serial = ''; $script:Pkg = ''
 function Stop-WebServer { }
 $env:FAKE_CASE = $Case
@@ -3638,6 +3645,171 @@ $r = & $hc 'amb'
 Check 'v3.62.3: executor do projeto sai 4 → FALHA DE AMBIENTE (exit 4) com a última linha, os que rodaram no result.json e quantos ficaram de fora' $r 0 @('CODE=4', 'FALHA DE AMBIENTE \(web\): o executor do projeto saiu 4 \(ambiente\) em b: emulador fora do adb · 2 de 2 antes da interrupção, 1 não rodaram', '"environment": "o executor do projeto saiu 4')
 $r = & $hc 'uso'
 Check 'v3.62.3: executor do projeto sai 2 sem linha nenhuma → exit 2 (uso), sem environment' $r 0 @('CODE=2', 'saiu 2 \(uso ou cenário malformado\) em cen a', '"environment": null')
+
+$ok63 = [char]::ConvertFromUtf32(0x2705); $fail63 = [char]::ConvertFromUtf32(0x274C); New-Item -ItemType Directory -Force $tmp | Out-Null
+# ======================= v3.63.0 · portão do QA por marcos, causa com dono, controle e prova guardada =======================
+# O passo do portão (gate.ps1) com as funções do run.ps1 simuladas, num projeto git de verdade (a árvore de produção é do git).
+$gh63 = Join-Path $tmp 'gate-h.ps1'
+[System.IO.File]::WriteAllText($gh63, @'
+param([string]$Checks, [string]$Root)
+$ErrorActionPreference = 'Stop'
+. (Join-Path $Checks 'lib.ps1')
+. (Join-Path $Checks 'gate.ps1')
+$utf8 = New-Object System.Text.UTF8Encoding($false)
+$n = '1'; $S = Join-Path $Root '.team-project/sprints/1'; $plugin = '${CLAUDE_PLUGIN_ROOT}/scripts/checks'; $todoMk = [char]::ConvertFromUtf32(0x2B1C)
+$tasks = @(); if (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md')) { $tasks = @(Get-SprintTasks $S) }
+function Out([string]$s) { [Console]::Out.WriteLine($s) }
+function Say([string]$s) { [Console]::Out.WriteLine("PARA O STAKEHOLDER: $s") }
+function Get-AgentLine([string]$Role) { return "Agent: team:$Role" }
+function Get-VerdictOf([string]$Path) { if (-not (Test-Path -LiteralPath $Path)) { return $null }; $ms = @([regex]::Matches((Read-Text $Path), '(?m)^\*\*Veredito[^*\r\n]*:\*\*(.*)$')); if (-not $ms.Count) { return '' }; $mk = Get-VerdictMark $ms[$ms.Count - 1].Groups[1].Value; if ($mk) { return $mk } else { return '' } }
+function Test-PoDebt([string]$Path) { return $false }
+function Add-RunLog { param($S, $n, $Item, $Decision, $Why, $Evidence) [Console]::Out.WriteLine("RUNLOG: $Item | $Decision") }
+Invoke-GateStep
+'GATE-RETURNED'
+'@, (New-Object System.Text.UTF8Encoding($true)))
+$g63 = { param($pp) $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $gh63 -Checks $checks -Root $pp 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
+$lib63 = { param($expr) $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -Command ". '$(Join-Path $checks 'lib.ps1')'; $expr" 2>&1 | Out-String; $o.Trim() }
+$pg = Join-Path $tmp 'v3630-gate'
+Put $pg '.team-project/README.md' "| | |`n|---|---|`n| **Sprint corrente** | **1** — x |`n"
+Put $pg '.team-project/sprints/1/sprint-backlog.md' "# SB`n`n## História H-1 — x`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $ok63 T-001 | a | 1 | dev | — | — | — | SC-1 |`n"
+Put $pg '.team-project/guards.json' '{ "targets": { "web": { "url": "http://127.0.0.1:9" } }, "quality": { "toolingPaths": ["tools/**"] } }'
+Put $pg '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-1 um`nlaunch`nassert-exists a`n"
+Put $pg 'src/a.ts' "export const a = 1`n"; Put $pg 'tools/p.mjs' "x`n"
+$ErrorActionPreference = 'Continue'; & git -C $pg init -q 2>$null; Put $pg '.gitignore' ".team-project/`n"; & git -C $pg add -A 2>$null; & git -C $pg -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+$prod63 = & $lib63 "Get-ProductionTree '$pg'"
+$scn63 = & $lib63 "Get-ScenarioSetHash (Get-SprintScenarioFiles '$pg')"
+$r = & $g63 $pg
+Check 'v3.63.0 portão sem medição: o operator mede a qualidade e o aceite com -Resume' $r 0 @('medir \(operator.*qualidade: sem medição · aceite: sem medição', 'accept\.ps1 -Task S1 -Resume')
+$qd63 = Join-Path $pg '.team-project/quality/1/S1'; $ad63 = Join-Path $pg '.team-project/accept/1/S1'
+Put $qd63 'result.json' (@{ id = 'S1'; at = '2026-11-17 10:00:00'; prod = $prod63; rows = @() } | ConvertTo-Json)
+Put $ad63 'result.json' (@{ task = 'S1'; at = '2026-11-17 10:05:00'; prod = $prod63; scenariosHash = $scn63; environment = 'massa base não carregou (exit 7)'; results = @() } | ConvertTo-Json)
+$r = & $g63 $pg
+Check 'v3.63.0 A: aceite que parou no ambiente não é medição — reparo e repetição com -Resume, sem QA nem Q-S' $r 0 @('reparar o alvo e repetir o aceite', 'target\.ps1 -Target web -Repair e, pronto, .*accept\.ps1 -Task S1 -Resume', '^(?![\s\S]*team:quality-assurance)', '^(?![\s\S]*abrir Q-S)')
+Put $ad63 'result.json' (@{ task = 'S1'; at = '2026-11-17 10:20:00'; prod = $prod63; scenariosHash = $scn63; environment = 'massa base não carregou (exit 7)'; results = @() } | ConvertTo-Json)
+$r = & $g63 $pg
+Check 'v3.63.0 A: a 2ª falha de ambiente seguida vai ao stakeholder (formulário), uma linha no run-log, sem QA' $r 0 @('formulário ao stakeholder — o aceite do portão do sprint 1 parou no ambiente pela 2ª vez seguida', 'RUNLOG: S1 \| portão: o aceite parou no ambiente', '^(?![\s\S]*team:quality-assurance)')
+Put $ad63 'result.json' (@{ task = 'S1'; at = '2026-11-17 10:30:00'; prod = $prod63; scenariosHash = $scn63; configuration = 'APK sem a depuração da WebView'; environment = 'CONFIGURAÇÃO DO ALVO: x'; results = @() } | ConvertTo-Json)
+$r = & $g63 $pg
+Check 'v3.63.0 A: configuração do alvo vai direto ao stakeholder' $r 0 @('formulário ao stakeholder — .*\(configuração do alvo\)')
+Put $ad63 'result.json' (@{ task = 'S1'; at = '2026-11-17 10:40:00'; prod = $prod63; scenariosHash = $scn63; environment = $null; passed = 1; total = 1; results = @(@{ id = 'SC-1'; status = 'PASSOU'; shot = '' }) } | ConvertTo-Json -Depth 4)
+Put $ad63 'shots/SC-1-final.png' 'png'; Put $ad63 'run.log' 'log bruto'
+$r = & $g63 $pg
+$gj63 = [System.IO.File]::ReadAllText((Join-Path $pg '.team-project/sprints/1/gate.json'), $utf8) -replace '\s+', ' '
+$pf63 = (@(Get-ChildItem (Join-Path $pg '.team-project/sprints/1/proof') -Recurse -File | ForEach-Object { $_.Name }) | Sort-Object) -join ','
+Check 'v3.63.0 H: rodada 1 — a prova (resultado e captura, sem o log bruto) vai a proof/S1/round-1 e o QA a lê de lá; gate.json com a rodada e as bases' @{ Code = $r.Code; Out = "$($r.Out)`nGJ=$gj63`nPF=$pf63" } 0 @('julgar \(QA, rodada 1', 'proof/S1/round-1/quality/result\.md e \.team-project/sprints/1/proof/S1/round-1/accept/result\.md', 'Cause code\|design\|scenario\|screen\|requirement\|environment', 'GJ=.*"round": 1.*"judged".*"prod": "prod:', 'PF=result\.json,result\.json,SC-1-final\.png')
+Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado — 2026-11-17`n`n## Frentes`n| Front | State | Round | Proof |`n|---|---|---|---|`n| functional | pass | 1 | x |`n| review | fail | 1 | x |`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F1 | T-001 | critério ambíguo | x | requirement | PO | open |`n| S1-F2 | T-001 | título corta na fonte grande | x | screen | UX | open |`n| S1-F3 | T-001 | soma errada | a.ts:1 | code | dev | open |`n"
+$r = & $g63 $pg
+Check 'v3.63.0 F: requisito primeiro — o PO decide (STAKEHOLDER: para o que for do stakeholder) e grava a resolução' $r 0 @('requisito: S1-F1 → /po', 'team:product-owner', 'STAKEHOLDER: <a pergunta e as opções>', 'gate/<ID>\.md com a linha \*\*Resolution:\*\* done\|code\|debt', '^(?![\s\S]*abrir Q-S)')
+Put $pg '.team-project/sprints/1/gate/S1-F1.md' "**Resolution:** done — critério esclarecido`n"
+$r = & $g63 $pg
+Check 'v3.63.0 F: depois do PO, a tela vai ao UX (a especificação ganha o caso)' $r 0 @('tela: S1-F2 → /ux', 'team:user-experience', 'Acrescente o caso que faltou')
+Put $pg '.team-project/sprints/1/gate/S1-F2.md' "**Resolution:** code — precisa mudar o layout`n"
+$r = & $g63 $pg
+Check 'v3.63.0 F: o código (e a tela que o UX resolveu como code) vira uma Q-S que cita os IDs' $r 0 @('abrir Q-S1 — correção do portão: S1-F2, S1-F3 \(causa code\)', 'com os IDs S1-F2, S1-F3 na coluna Task')
+Edit-File (Join-Path $pg '.team-project/sprints/1/sprint-backlog.md') "| SC-1 |`n" ("| SC-1 |`n`n## Correção do portão — sprint 1`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $ok63 Q-S1 | corrige S1-F2 e S1-F3 | 1 | dev | — | — | — | SC-1 |`n")
+Put $pg 'tools/p.mjs' "y`n"
+$prod63b = & $lib63 "Get-ProductionTree '$pg'"
+Check 'v3.63.0 C: mudar só quality.toolingPaths não muda a árvore de produção (o julgamento de código não vence)' @{ Code = 0; Out = "A=$prod63 B=$prod63b" } 0 @("A=$([regex]::Escape($prod63)) B=$([regex]::Escape($prod63))$")
+$r = & $g63 $pg
+Check 'v3.63.0 D: Q-S fechada sem mudar produção — rodada 2 focada: nenhuma frente de código a julgar, só os achados abertos' $r 0 @('revisar o veredito \(QA, instância nova, rodada 2 focada\)', 'frentes a julgar: nenhuma \(só os achados\) · ficam como estavam: functional, measured, review, security · achados abertos: S1-F1, S1-F2, S1-F3', 'proof/S1/round-2/')
+Put $pg 'src/a.ts' "export const a = 2`n"
+$r = & $g63 $pg
+Check 'v3.63.0 C/D: código de produção mudou — mede de novo a qualidade e o aceite (este com -Resume)' $r 0 @('medir .*qualidade: o código de produção mudou · aceite: o código de produção mudou', 'Revisão final: medindo de novo só o que a correção mudou')
+Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F9 | T-001 | x | x | bug | ? | open |`n"
+$prod63c = & $lib63 "Get-ProductionTree '$pg'"
+Put $qd63 'result.json' (@{ id = 'S1'; at = '2026-11-17 12:00:00'; prod = $prod63c; rows = @() } | ConvertTo-Json)
+Put $ad63 'result.json' (@{ task = 'S1'; at = '2026-11-17 12:05:00'; prod = $prod63c; scenariosHash = $scn63; environment = $null; passed = 1; total = 1; results = @(@{ id = 'SC-1'; status = 'PASSOU' }) } | ConvertTo-Json -Depth 4)
+$r = & $g63 $pg
+Check 'v3.63.0 E: causa fora da lista → o QA só classifica (sem causa não há dono)' $r 0 @('o QA classifica S1-F9 \(\?bug\)', 'Dê a cada um UMA causa')
+Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado`n`n| # | Task | Achado | Onde | Volta para | Estado |`n|---|---|---|---|---|---|`n| 1 | T-001 | x | y | dev | aberto |`n"
+$r = & $g63 $pg
+Check 'v3.63.0 E: validation.md no formato antigo (sem a tabela com Cause) → o caminho de antes (Q-S pelos "Volta para: dev")' $r 0 @('abrir Q-S1b — correção do portão .*formato anterior à v3.63.0', "achados 'Volta para: dev'")
+Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $ok63 aprovado`n"
+$r = & $g63 $pg
+Check 'v3.63.0: portão aprovado → o passo volta sem sair (segue a consolidação)' $r 0 @('GATE-RETURNED')
+# Quadro: a seção da validação no kanban.md.
+Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado`n`n## Frentes`n| Front | State | Round | Proof |`n|---|---|---|---|`n| functional | fail | 1 | x |`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F1 | T-001 | critério ambíguo | x | requirement | PO | open |`n| S1-F3 | T-001 | soma errada | a.ts:1 | code | dev | fixed |`n"
+$kh63 = Join-Path $tmp 'gate-kanban.ps1'
+[System.IO.File]::WriteAllText($kh63, @'
+param([string]$Checks, [string]$Root)
+. (Join-Path $Checks 'lib.ps1')
+$ast = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $Checks 'kanban.ps1'), [ref]$null, [ref]$null)
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -eq 'Format-GateSection') { . ([scriptblock]::Create($f.Extent.Text)) } }
+Format-GateSection (Join-Path $Root '.team-project/sprints/1') '1' "`n"
+'@, (New-Object System.Text.UTF8Encoding($true)))
+$r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $kh63 -Checks $checks -Root $pg 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
+Check 'v3.63.0 G: kanban.md — seção Validação do sprint com a situação, as frentes e cada achado com causa e quem resolve, em palavras simples' $r 0 @('## Validação do sprint', '\*\*Situação:\*\* .* reprovada', '\| funcional \(testes no aparelho\) \| .* reprovada \|', '\| S1-F1 \| critério ambíguo \| regra ou critério \| dono do produto \| aberto \|', '\| S1-F3 \| soma errada \| código do app \| desenvolvedor \| resolvido \|', 'Prova guardada:\*\* `sprints/1/proof/S1/round-')
+# Retomada do aceite (B): o executor interno com Invoke-Once falso, num projeto git (a identidade do app web é a árvore).
+$rh63 = Join-Path $tmp 'accept-resume.ps1'
+[System.IO.File]::WriteAllText($rh63, @'
+param([string]$Accept, [string]$Lib, [string]$Root)
+$ErrorActionPreference = 'Stop'
+. $Lib
+$utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'T-041'; $NoRetry = $true; $NoRepair = $true; $Apk = ''; $Resume = $false
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Write-AcceptProgress', 'Get-FailScreen', 'Write-AcceptConfig', 'Invoke-AcceptBaseline', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AppIdentity') { . ([scriptblock]::Create($f.Extent.Text)) } }
+$script:Tgt = 'web'; $script:Serial = ''; $script:Pkg = ''; $script:Locator = 'uiautomator'; $script:ScnFiles = @(); $script:ExtCmd = ''
+function Stop-WebServer { }
+$script:ran = @()
+function Invoke-Once($Block) { $script:ran += $Block.id; if ($env:FAIL_ID -and $Block.id -eq $env:FAIL_ID) { return @{ status = 'FALHOU'; detail = 'x'; shot = '' } }; return @{ status = 'PASSOU'; detail = ''; shot = '' } }
+$blocks = @(1..4 | ForEach-Object { @{ id = "SC-10$_"; title = "c$_"; steps = @("assert-exists a$_"); file = (Join-Path $Root 'a.scn') } })
+$env:FAIL_ID = 'SC-103'; $c1 = Invoke-Accept $blocks $null { $null } { $null } | Select-Object -Last 1; "R1 CODE=$c1 RAN=$($script:ran -join ',')"
+$script:ran = @(); $Resume = $true; $env:FAIL_ID = ''
+$c2 = Invoke-Accept $blocks $null { $null } { $null } | Select-Object -Last 1; "R2 CODE=$c2 RAN=$($script:ran -join ',')"
+$blocks[1].steps = @('assert-exists mudou'); $script:ran = @()
+$c3 = Invoke-Accept $blocks $null { $null } { $null } | Select-Object -Last 1; "R3 CODE=$c3 RAN=$($script:ran -join ',')"
+'@, (New-Object System.Text.UTF8Encoding($true)))
+$pr63 = Join-Path $tmp 'v3630-resume'; Put $pr63 '.team-project/README.md' "| **Sprint corrente** | **1** — x |`n"; Put $pr63 'src.ts' "x`n"
+$ErrorActionPreference = 'Continue'; & git -C $pr63 init -q 2>$null; Put $pr63 '.gitignore' ".team-project/`n"; & git -C $pr63 add -A 2>$null; & git -C $pr63 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+$r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $rh63 -Accept (Join-Path $checks 'accept.ps1') -Lib (Join-Path $checks 'lib.ps1') -Root $pr63 2>&1 | Out-String; @{ Code = 0; Out = $o } }
+Check 'v3.63.0 B: accept -Resume roda só o que falhou (mesmo app, mesmo cenário) e depois só o cenário cujo texto mudou; a hora da prova original fica' $r 0 @('R1 CODE=1 RAN=SC-101,SC-102,SC-103,SC-104', 'R2 CODE=0 RAN=SC-103\r?\n', 'R3 CODE=0 RAN=SC-102\r?\n', '\[SC-101\] PASSOU  c1  \(reaproveitado: passou em \S+ \S+ com o mesmo app e o mesmo cenário\)')
+$pr63b = Join-Path $tmp 'v3630-resume-semgit'; Put $pr63b '.team-project/README.md' "| **Sprint corrente** | **1** — x |`n"
+$r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $rh63 -Accept (Join-Path $checks 'accept.ps1') -Lib (Join-Path $checks 'lib.ps1') -Root $pr63b 2>&1 | Out-String; @{ Code = 0; Out = $o } }
+Check 'v3.63.0 B: sem identidade do app (web:?) o -Resume não reaproveita nada — roda todos' $r 0 @('a identidade do app instalado não pôde ser lida \(web:\?\)', 'R2 CODE=0 RAN=SC-101,SC-102,SC-103,SC-104')
+# Consumo (G): o portão (S<n>) e o achado (S<n>-F<k>) com unidade própria; a 2ª rodada do portão é retrabalho.
+$pc63 = Join-Path $tmp 'v3630-consumo'; New-Project $pc63
+$dst63 = '.team-project/sprints/1/consumption.md'
+Put $pc63 '.team-project/usage.jsonl' (@(
+    ('{"agent_id":"q1","role":"quality-assurance","description":"/qa sprint 1","round":1,"work":"S1","gate_round":1,"model":"claude-sonnet-4-5","start":"2026-09-03T10:00:00","duration_s":120,"calls":10,"processed":300000,"final_context":50000,"cache_read":250000,"output":4000,"first_context":15000,"peak_context":50000,"children":[],"dest":"' + $dst63 + '","dest_note":""}'),
+    ('{"agent_id":"o2","role":"operator","description":"medir S1","round":1,"work":"S1","gate_round":2,"model":"claude-haiku-4-5","start":"2026-09-03T12:00:00","duration_s":60,"calls":3,"processed":40000,"final_context":12000,"cache_read":30000,"output":500,"first_context":9000,"peak_context":12000,"children":[],"dest":"' + $dst63 + '","dest_note":""}'),
+    ('{"agent_id":"p1","role":"product-owner","description":"/po S1-F1","round":1,"work":"S1-F1","gate_round":1,"model":"claude-sonnet-4-5","start":"2026-09-03T11:00:00","duration_s":60,"calls":3,"processed":50000,"final_context":12000,"cache_read":30000,"output":500,"first_context":9000,"peak_context":12000,"children":[],"dest":"' + $dst63 + '","dest_note":""}')
+) -join "`n")
+$r = Invoke-Check 'consumption.ps1' @('-Root', $pc63)
+$r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $pc63 $dst63))
+Check 'v3.63.0 G: consumo — S1 na unidade "validação do sprint", S1-F1 em "correção do portão", a 2ª rodada do portão como retrabalho, e a tabela por rodada' $r 0 @('\| operator \| haiku[^|]*\| `Agent` · medir S1 \| S1 \| retrabalho \| validação do sprint \|', '\| po \| sonnet[^|]*\| `Agent` · /po S1-F1 \| S1-F1 \| [^|]+ \| correção do portão \|', '### Por rodada do portão', '\| 2 \| operator \| 1 \| 40\.000 \| [^|]+ \| retrabalho \|')
+# O hook reconhece o portão e o achado como trabalho, sem casar a Q-S.
+$wh63 = Join-Path $tmp 'workid.ps1'
+[System.IO.File]::WriteAllText($wh63, @'
+param([string]$Hook)
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($Hook, [ref]$null, [ref]$null)
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -eq 'Get-WorkId') { . ([scriptblock]::Create($f.Extent.Text)) } }
+'A=' + (Get-WorkId 'Chamador: sessão S6 — Rode na raiz') + ' B=' + (Get-WorkId '/po — decida S6-F2 (T-001)') + ' C=' + (Get-WorkId 'Executor da Q-S6d') + ' D=' + (Get-WorkId 'leia .team-project/sprints/6/proof/S6/round-2/')
+'@, (New-Object System.Text.UTF8Encoding($true)))
+$r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $wh63 -Hook (Join-Path $checks '../../hooks/subagent-stop.ps1') 2>&1 | Out-String; @{ Code = 0; Out = $o } }
+Check 'v3.63.0 G: Get-WorkId do hook — S6 e S6-F2 são trabalho; Q-S6d continua Q-S6d' $r 0 @('A=S6 B=S6-F2 C=Q-S6d D=S6')
+# Registro de agentes (I): sem sinal há 37 min e sem filho vivo sai do .active-agents para o .interrupted; o "## Agora" diz.
+$sh63 = Join-Path $tmp 'stale.ps1'
+[System.IO.File]::WriteAllText($sh63, @'
+param([string]$Common, [string]$Lib, [string]$Root)
+. $Lib; . $Common
+$old = (Get-Date).AddMinutes(-37).ToString('yyyy-MM-dd HH:mm:ss'); $now = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
+$list = @(
+    [pscustomobject]@{ type = 'team:task-runner'; description = 'Executor da Q-S1'; desde = $old; session = 's'; parent = ''; agent_id = 'aExec'; work = 'Q-S1'; last = 'Agent'; at = $old },
+    [pscustomobject]@{ type = 'team:developer'; description = 'dev Q-S1'; desde = $old; session = 's'; parent = 'aExec'; agent_id = 'aDev'; work = 'Q-S1'; last = 'powershell'; at = $old },
+    [pscustomobject]@{ type = 'team:task-runner'; description = 'Executor da T-001'; desde = $old; session = 's'; parent = ''; agent_id = 'bExec'; work = 'T-001'; last = 'aguardando filho'; at = $old },
+    [pscustomobject]@{ type = 'team:developer'; description = 'dev T-001'; desde = $now; session = 's'; parent = 'bExec'; agent_id = 'bDev'; work = 'T-001'; last = 'powershell'; at = $now })
+[System.IO.File]::WriteAllText((Join-Path $Root '.team-project/.active-agents'), (ConvertTo-Json -InputObject $list -Depth 3 -Compress), (New-Object System.Text.UTF8Encoding($false)))
+Write-NowSection $Root $list
+$kb = [System.IO.File]::ReadAllText((Join-Path $Root '.team-project/sprints/1/kanban.md'))
+'NOW=' + (([regex]::Match($kb, '(?ms)^## Agora.*?(?=^## )')).Value -replace '\s+', ' ')
+$gone = @(Remove-StaleAgents $Root 'Q-S1'); 'GONE=' + (($gone | ForEach-Object { $_.agent_id }) -join ',')
+$gone2 = @(Remove-StaleAgents $Root 'T-001'); 'GONE2=' + (($gone2 | ForEach-Object { $_.agent_id }) -join ',')
+'LEFT=' + ((@(Get-ActiveAgents $Root) | ForEach-Object { $_.agent_id }) -join ',')
+'INT=' + ((@((Get-Content (Join-Path $Root '.team-project/.interrupted') -Raw | ConvertFrom-Json) | ForEach-Object { $_ }) | ForEach-Object { $_.agent_id }) -join ',')
+'@, (New-Object System.Text.UTF8Encoding($true)))
+$ps63 = Join-Path $tmp 'v3630-stale'; New-Project $ps63; Put $ps63 '.team-project/sprints/1/kanban.md' "# Kanban`n`n## Kanban`n`nx`n"
+$r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $sh63 -Common (Join-Path $checks '../../hooks/common.ps1') -Lib (Join-Path $checks 'lib.ps1') -Root $ps63 2>&1 | Out-String; @{ Code = 0; Out = $o } }
+Check 'v3.63.0 I: registro sem sinal há 37 min aparece como "provavelmente encerrado" e sai para o .interrupted; o pai com filho vivo fica' $r 0 @('NOW=.*sem sinal desde \d\d:\d\d — provavelmente encerrado', 'GONE=aExec,aDev\r?\n', 'GONE2=\r?\n', 'LEFT=bExec,bDev\r?\n', 'INT=aExec,aDev')
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
