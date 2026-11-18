@@ -13,6 +13,55 @@
 
 ---
 
+## v3.63.1 — 2026-11-18
+
+**Branch:** `fix/v3.63.1` a partir de `develop` (`0626656`, v3.63.0 mesclada) · **Processo:** addendum v3.63.1 (`process-changelog.md`)
+
+Origem: pedidos do stakeholder do projeto piloto no sprint 6 (18/11, sessão `/sm sprint run`). A pergunta central foi: "Esse erro não era previsto tratar pelo plugin retornando ao dev, ao UX ou ao PO para indicar qual botão acionar e onde ele está?" Era previsto. A v3.63.0 levava o achado ao dono, mas a falha de cenário que saía como ambiente nunca chegava a ser achado.
+
+**Sintoma.**
+- Um operator travou 600 s e foi encerrado pelo watchdog. O `accept.ps1 -Task S6 -Resume` que ele disparou ficou órfão segurando o alvo.
+- O reparo recusou com "em uso por accept S6", e o `target.ps1 -Kill` disse "nada registrado".
+- O `next` repetiu "reparar e repetir o aceite" sem fim: o accept recusado pela trava não grava `result.json`, então a contagem do portão nunca subia.
+- O SC-118 falhou duas vezes ("a conexão com a página caiu"; a captura mostrava a aba Geral, não a Estufa). O cenário seguinte parou em "app não ficou na frente, foco: nenhum".
+- O `next` tratou como ambiente, sem diagnóstico. O diagnóstico pedido à mão saiu AMBIENTE sem registro do aparelho, e a revisão parou à espera do stakeholder.
+- O `-Resume` leu "apk:?" (o APK foi instalado pelo comando do projeto, sem arquivo local) e rodou todos os cenários.
+
+**Correção** (os números são os dos pedidos):
+- **1 · Diagnóstico automático** (`gate.ps1`, `run.ps1 done -Result env`). Toda falha de cenário do aceite passa pelo operator antes de virar ambiente ou de ir ao QA: um FALHOU, ou a interrupção com sinal do app.
+  - O prompt é um só (`Get-AcceptDiagPrompt`). Pede as capturas, o registro do aparelho e o sinal, e as linhas `Veredito`, `Cenário`, `Motivo`, `Elemento`, `Onde` e `Dono`. AMBIENTE só vale com prova.
+  - No portão: AMBIENTE → reparo e retomada · APP → o QA registra o achado `code` · PLANO → `scenario` (Dono QA) ou `design` (Dono Arquiteto). O elemento e o onde vão para o prompt do QA.
+  - Na Task: APP → dev novo com o diagnóstico · PLANO → `/qa` corrige o `.scn` ou `/arc question` · AMBIENTE → a rota de ambiente de sempre. O `done -Result gap` usa o mesmo prompt.
+- **2 e 3 · Prova e sinal no android** (`accept.ps1`, `targets/android.ps1`).
+  - O registro do aparelho começa limpo em cada cenário. Na falha, vai a `logs/<ID>-<tentativa>-logcat.txt`, com o buffer de crash; com o executor do projeto, um por arquivo.
+  - O sinal é separado do foco: `crash`, `anr`, `closed`, `restarted`, `webview-recreated`, `system-window` ou `no-focus`.
+  - O app que fecha com erro ou não responde ao abrir é FALHOU do cenário, não ambiente.
+  - A interrupção grava `environmentSignal`. O registro entra na prova da rodada (`Copy-Proof`).
+- **4 · Identidade do app instalado.** O `-Resume` lê o hash do `base.apk` no aparelho (`pm path` + `sha1sum`), igual ao do arquivo quando foi ele o instalado. Sem `sha1sum`: versão e hora da última instalação. Sem resposta do aparelho: o arquivo local.
+- **5 · O órfão.** A trava do alvo grava a hora de criação e a pasta do dono. O `target.ps1 -Kill` encerra o dono da trava, com a árvore dele, quando é o `accept.ps1` ou o `target.ps1` do plugin (reconhecido pela hora de criação e pela linha de comando). PID reaproveitado ou processo de fora não é tocado.
+- **6 · Sonda de travamento.** O sinal de vida do alvo preso lê a pasta do dono (o `progress.json` do accept), além da CPU e dos descendentes recentes. O "parece travado" de antes vinha só da CPU.
+- **7 · O laço de reparo.** Com o alvo em uso, o portão espera (pelo watcher) o accept do plugin que ainda anda. Se o dono está parado, ou não é um processo do plugin, vai ao stakeholder na primeira vez. O mesmo `result.json` pedindo reparo pela 3ª vez também vai ao stakeholder.
+- **8 · O navegador da suíte que cai no meio** (`lib.ps1` `Get-RunnerDisconnect`, `verify.ps1`). Caso: o Karma com "Disconnected … because no message in 120000 ms", ou o Chrome que fecha ou não é capturado (Q-S6d: duas quedas seguidas no `verify full`, reprovadas como suíte vermelha).
+  - Agora a queda é reconhecida como "não é teste reprovado", com o ponto em que caiu (o último "Executed N of M").
+  - O verify repete a rodada uma vez, conferindo a memória antes: abaixo de `verify.minFreeMB`, desliga o emulador que a suíte não usa.
+  - Caiu de novo **no mesmo teste**: um teste trava o navegador. É falha do código (exit 1), com o suspeito apontado.
+  - Caiu **em pontos diferentes**: é carga ou memória da máquina. Fica como ambiente (exit 4), com a memória livre e os maiores consumidores. O prazo do runner (`browserNoActivityTimeout`, `browserDisconnectTolerance`) e as flags do navegador são configuração do projeto e vão por Task, com o Arquiteto.
+
+- **Quem usa o aparelho, e a trava que não deixa dois entrarem** (`lib.ps1`, `target.ps1`). Pedido do stakeholder no mesmo dia, depois de a sessão do piloto e o próprio plugin contarem "três accepts no aparelho". Eram um accept, o invólucro da rodada desacoplada e cópias do `detach.ps1` que só acompanhavam a mesma rodada; dois observadores foram encerrados como duplicados.
+  - `target.ps1 -Who` (só leitura) separa o dono da trava (com o sinal de vida e os cenários), cada accept que usa o aparelho, os invólucros e quem só acompanha. O accept de outro projeto na máquina aparece como tal e nunca é tocado.
+  - `-KillDuplicates` encerra só o accept deste projeto que não é o dono da trava. O projeto de cada accept vem do `-Root`, da pasta da rodada que o lançou ou do `progress.json` deste projeto.
+  - A trava é criada de forma atômica (`CreateNew`): dois accepts que partem juntos não entram os dois.
+  - A trava de um dono vivo que ainda grava progresso não é tomada nem depois de 3 h. Parado há mais de 3 h, sim.
+  - O `-Unlock` recusa (exit 4) quando o dono está vivo.
+  - O accept dentro do invólucro codificado (`-EncodedCommand`) é reconhecido pelo `-Kill`.
+  - O `detach.ps1` confere o alvo antes de abrir uma rodada nova de accept. Com outro accept vivo segurando o alvo, não abre (exit 5, `OCUPADO`) e diz a pasta da rodada dele, que o mesmo comando volta a acompanhar. O operator que cai e é disparado de novo não empilha rodadas.
+
+**Arquivos:** `scripts/checks/accept.ps1`, `targets/android.ps1`, `gate.ps1`, `run.ps1`, `lib.ps1`, `target.ps1`, `verify.ps1`; `agents/operator.md`; `roles/scrum-master/process/sprint-run.md` e `process-changelog.md`; `standards/scenario-language.md`; testes em `scripts/checks/tests/run-check-tests.ps1` (casos v3.63.1).
+
+**Suítes:** `run-check-tests.ps1` 654 casos, 0 falharam · `run-guard-tests.ps1` 362 casos, 0 falharam. A suíte de checks deixou de tocar o adb real da máquina: o teste do `-Kill` da v3.57.0 removia o `adb forward` da WebView de um accept de projeto rodando no emulador.
+
+---
+
 ## v3.63.0 — 2026-11-17
 
 **Branch:** `feat/v3.63.0` a partir de `develop` (`a613c4f`, v3.62.3 mesclada) · **Processo:** v3.63 (o portão do QA por marcos) · **Plano:** `melhorias/plano-v3.63.0.md`

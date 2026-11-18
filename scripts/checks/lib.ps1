@@ -207,6 +207,29 @@ function Get-EnvFailure([string]$Text) {
     return $null
 }
 
+# v3.63.1 (pedido 8 do sprint 6 do projeto piloto, Q-S6d): o NAVEGADOR da suíte caiu no meio — o Karma imprime "Disconnected
+# (0 times) because no message in 120000 ms", o Chrome fecha ("crashed") ou não é capturado. Caiu duas vezes seguidas no
+# verify full e reprovou como suíte vermelha, sem teste reprovado. Devolve @{ Text (a linha); At (o último "Executed N"); Total }
+# ou $null. O At separa as duas causas na 2ª queda: no MESMO ponto é um teste que trava o navegador; em pontos diferentes,
+# carga ou memória da máquina.
+$script:RunnerDisconnectRe = @(
+    '(?i)\bDisconnected\b[^\r\n]*\bno message in \d+\s*ms',
+    '(?i)\bDisconnected reconnect failed',
+    '(?i)\b(Chrome(\s?Headless)?|Chromium|Firefox(\s?Headless)?|Edge(\s?Headless)?)\b[^\r\n]*\b(crashed|have not captured in \d+\s*ms)'
+)
+function Get-RunnerDisconnect([string]$Text) {
+    if (-not $Text) { return $null }
+    $line = ''
+    foreach ($re in $script:RunnerDisconnectRe) { $m = [regex]::Match($Text, "[^\r\n]*(?:$re)[^\r\n]*"); if ($m.Success) { $line = $m.Value.Trim(); break } }
+    if (-not $line) { return $null }
+    $line = $line -replace '^\S+\s+\S+\s+\S+\s+[\d:.]+:', '' -replace '\s+', ' '   # sem o carimbo de data do Karma
+    if ($line.Length -gt 200) { $line = $line.Substring(0, 200) + '…' }
+    $ex = @([regex]::Matches($Text, '\bExecuted (\d+) of (\d+)'))
+    $at = if ($ex.Count) { [int]$ex[-1].Groups[1].Value } else { 0 }
+    $tot = if ($ex.Count) { [int]$ex[-1].Groups[2].Value } else { 0 }
+    return [pscustomobject]@{ Text = $line.Trim(); At = $at; Total = $tot }
+}
+
 # v3.62.1: o log do comando pode continuar aberto por um descendente ÓRFÃO alguns segundos depois de o comando sair. Caso
 # medido: o daemon de uso único do Gradle — sobe quando org.gradle.jvmargs difere da JVM cliente, o padrão de projeto Android —
 # herda a saída redirecionada e só a solta depois do gradlew; a espera fixa de 200 ms perdia a corrida e o verify caía com
@@ -282,7 +305,12 @@ function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [strin
     $envFail = if ($suspended) { "suspensão do sistema detectada: o relógio andou $([int]$wallMin) min contra o prazo de $limit min — a rodada não vale como prova (o runner pode ter perdido a conexão); repita" }
                elseif ($timedOut) { "tempo esgotado ($limit min): o comando não devolveu o controle — confira modo de observação ou processo que não termina (tool-hygiene.json)" }
                elseif ($code -ne 0) { Get-EnvFailure ([System.IO.File]::ReadAllText($Log, $u8)) } else { $null }
-    $r = [ordered]@{ key = $Key; command = $Cmd; exit = $code; seconds = [int]$sw.Elapsed.TotalSeconds; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive; environment = $envFail; hygiene = @($hy.Tools); warnings = @($hy.Warnings); suspended = $suspended }
+    # v3.63.1 (pedido 8): o navegador da suíte que caiu no meio não é teste reprovado — ambiente, com o ponto em que caiu; o
+    # verify.ps1 repete a rodada uma vez e, na 2ª queda, separa o teste que trava o navegador da máquina sem memória.
+    $disc = $null
+    if (-not $envFail -and $code -ne 0) { $disc = Get-RunnerDisconnect (Read-LogText $Log) }
+    if ($disc) { $envFail = "o navegador da suíte caiu no meio ($($disc.Text))$(if ($disc.At) { " depois do teste $($disc.At) de $($disc.Total)" }) — não é teste reprovado" }
+    $r = [ordered]@{ key = $Key; command = $Cmd; exit = $code; seconds = [int]$sw.Elapsed.TotalSeconds; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive; environment = $envFail; hygiene = @($hy.Tools); warnings = @($hy.Warnings); suspended = $suspended; disconnect = $disc }
     if ($KeepDescendants) { $r.kept = $kept }
     return $r
 }
@@ -731,23 +759,181 @@ function Test-ExternalTask($Planner, [string]$Id) {
 
 # Trava de dono único do alvo (v3.51, D3): .team-project/.target-lock. Dois automatizadores no mesmo aparelho quebram os
 # dois (medido no benchmark: 33 cenários falharam por isso). Devolve $null se pegou a trava, senão o motivo.
-function Enter-TargetLock([string]$Root, [string]$Target, [string]$Owner, [int]$StaleHours = 3) {
+function Enter-TargetLock([string]$Root, [string]$Target, [string]$Owner, [int]$StaleHours = 3, [string]$Dir = '') {
     $lp = Join-Path $Root '.team-project/.target-lock'
-    if (Test-Path -LiteralPath $lp) {
-        try { $l = Read-Text $lp | ConvertFrom-Json } catch { $l = $null }
-        if ($l -and [int]$l.pid -ne $PID) {
-            $alive = [bool](Get-Process -Id ([int]$l.pid) -ErrorAction SilentlyContinue)
+    New-Item -ItemType Directory -Force (Split-Path $lp) | Out-Null
+    # v3.63.1 (pedido 5): a hora de criação e a pasta do dono — o target.ps1 -Kill reconhece o processo (PID reaproveitado não é
+    # tocado) e encerra a árvore do accept que ficou órfão quando o agente que o disparou foi encerrado.
+    $lk = [ordered]@{ target = $Target; owner = $Owner; pid = $PID; created = (Get-ProcessCreated $PID); desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') }
+    if ($Dir) { $lk.dir = (($Dir.Replace($Root, '').TrimStart('\', '/')) -replace '\\', '/') }
+    $bytes = (New-Object System.Text.UTF8Encoding($false)).GetBytes(($lk | ConvertTo-Json -Compress))
+    # v3.63.1 (sprint 6 do projeto piloto, 18/11): a trava é criada de forma ATÔMICA (CreateNew) — antes, "existe? não → grava"
+    # deixava dois accepts que partiam juntos entrarem os dois. E a trava de um dono VIVO que ainda anda nunca é tomada: antes,
+    # passadas 3 h ela valia como abandonada, e um aceite de 49 cenários passa disso.
+    for ($try = 0; $try -lt 4; $try++) {
+        try {
+            $fs = [System.IO.File]::Open($lp, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+            try { $fs.Write($bytes, 0, $bytes.Length) } finally { $fs.Dispose() }
+            return $null
+        } catch [System.IO.IOException] { }
+        $l = $null; try { $l = Read-Text $lp | ConvertFrom-Json } catch { }
+        if (-not $l) {
+            # Recém-criada por outro executor e ainda sem o conteúdo: espera um instante antes de achá-la ilegível.
+            $fresh = try { ((Get-Date) - (Get-Item -LiteralPath $lp).LastWriteTime).TotalSeconds -lt 10 } catch { $false }
+            if ($fresh -and $try -lt 3) { Start-Sleep -Milliseconds 400; continue }
+        } elseif ([int]$l.pid -eq $PID) {
+            [System.IO.File]::WriteAllBytes($lp, $bytes); return $null
+        } elseif (Test-TargetLockHolderAlive $l) {
+            # v3.53.5: com o sinal de vida — parado, diz como sair em vez de "espere".
+            # v3.63.1 (pedido 6): o sinal lê também a pasta do dono (o progress.json do accept) — só a CPU dava "parece travado"
+            # a um accept que ainda gravava progresso.
+            $pu = Get-WaitPulse ([int]$l.pid) ([string]$l.desde) (Get-TargetLockDir $Root $l)
             $age = try { ((Get-Date) - [datetime]::ParseExact([string]$l.desde, 'yyyy-MM-dd HH:mm:ss', $null)).TotalHours } catch { 999 }
-            if ($alive -and $age -lt $StaleHours) {
-                # v3.53.5: com o sinal de vida — parado, diz como sair em vez de "espere" por até 3 h.
-                $pu = Get-WaitPulse ([int]$l.pid) ([string]$l.desde)
-                return "o alvo $([string]$l.target) está em uso por '$([string]$l.owner)' (PID $([int]$l.pid), desde $([string]$l.desde); $($pu.Text)): " + $(if ($pu.Stalled) { "o processo parece travado — encerre o PID $([int]$l.pid) (decisão do stakeholder) e rode target.ps1 -Target $([string]$l.target) -Unlock" } else { 'espere terminar — dois automatizadores no mesmo alvo quebram os dois' })
+            if (-not ($pu.Stalled -and $age -ge $StaleHours)) {
+                return "o alvo $([string]$l.target) está em uso por '$([string]$l.owner)' (PID $([int]$l.pid), desde $([string]$l.desde); $($pu.Text)): " + $(if ($pu.Stalled) { "o processo parece travado — encerre com target.ps1 -Target $([string]$l.target) -Kill (encerra o dono da trava e a árvore dele; decisão do stakeholder)" } else { 'espere terminar — dois automatizadores no mesmo alvo quebram os dois (quem usa o alvo: target.ps1 -Target ' + [string]$l.target + ' -Who)' })
             }
         }
+        # Dono morto, PID reaproveitado, trava ilegível, ou parada há mais de $StaleHours h sem sinal de vida: a trava é velha.
+        Remove-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue
     }
-    New-Item -ItemType Directory -Force (Split-Path $lp) | Out-Null
-    [System.IO.File]::WriteAllText($lp, ([ordered]@{ target = $Target; owner = $Owner; pid = $PID; desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
-    return $null
+    return "a trava do alvo ($lp) foi tomada por outro executor ao mesmo tempo — rode de novo"
+}
+# v3.63.1: o dono da trava está vivo de verdade — o processo existe e, quando a trava guarda a hora de criação, ela bate (PID
+# reaproveitado pelo Windows não conta como vivo).
+function Test-TargetLockHolderAlive($Lock) {
+    if (-not $Lock -or [int]$Lock.pid -le 0) { return $false }
+    if (-not (Get-Process -Id ([int]$Lock.pid) -ErrorAction SilentlyContinue)) { return $false }
+    if ($Lock.PSObject.Properties['created'] -and $Lock.created) { $c = Get-ProcessCreated ([int]$Lock.pid); if ($c -and $c -ne [string]$Lock.created) { return $false } }
+    return $true
+}
+# v3.63.1: a pasta que o dono da trava grava (o accept: accept/<seg>/<ID>/, onde fica o progress.json) — '' sem ela.
+function Get-TargetLockDir([string]$Root, $Lock) {
+    if (-not $Lock) { return '' }
+    if ($Lock.PSObject.Properties['dir'] -and $Lock.dir) { return (Join-Path $Root ([string]$Lock.dir)) }
+    if ([string]$Lock.owner -match '^accept (\S+)$') { return ((Get-VerifyDir $Root $Matches[1]) -replace '([\\/]\.team-project[\\/])verify([\\/])', '$1accept$2') }
+    return ''
+}
+# v3.63.1 (sprint 6 do projeto piloto, pedidos 5 e 7): quem segura o alvo agora, com o sinal de vida. $null = livre (sem trava,
+# dono morto ou a própria sessão). Plugin = o dono é um script do plugin (accept, target.ps1) que o target.ps1 -Kill encerra.
+function Get-TargetBusy([string]$Root) {
+    $lp = Join-Path $Root '.team-project/.target-lock'
+    if (-not (Test-Path -LiteralPath $lp)) { return $null }
+    $l = $null; try { $l = Read-Text $lp | ConvertFrom-Json } catch { }
+    if (-not $l -or [int]$l.pid -eq $PID -or -not (Get-Process -Id ([int]$l.pid) -ErrorAction SilentlyContinue)) { return $null }
+    $own = Test-TargetLockOwnerProcess $l
+    $pu = Get-WaitPulse ([int]$l.pid) ([string]$l.desde) (Get-TargetLockDir $Root $l)
+    return [pscustomobject]@{ Owner = [string]$l.owner; Target = [string]$l.target; Pid = [int]$l.pid; Desde = [string]$l.desde; Pulse = $pu; Plugin = $own
+        Text = "'$([string]$l.owner)' (PID $([int]$l.pid), desde $([string]$l.desde)) — $($pu.Text)" }
+}
+# O processo da trava é mesmo o script do plugin que a tomou: a hora de criação bate (quando gravada) e a linha de comando é
+# do accept.ps1 ou do target.ps1. PID reaproveitado pelo Windows ou processo de fora → $false (não é tocado).
+function Test-TargetLockOwnerProcess($Lock) {
+    if (-not $Lock -or [int]$Lock.pid -le 0) { return $false }
+    $c = $null; try { $c = Get-CimInstance Win32_Process -Filter "ProcessId=$([int]$Lock.pid)" -ErrorAction Stop } catch { }
+    if (-not $c) { return $false }
+    if ($Lock.PSObject.Properties['created'] -and $Lock.created -and $c.CreationDate -and $c.CreationDate.ToString('o') -ne [string]$Lock.created) { return $false }
+    return ((Get-ProcessCommandText ([string]$c.CommandLine)) -match '(?i)[\\/](accept|target)\.ps1\b')
+}
+# v3.63.1: a linha de comando legível — o PowerShell com -EncodedCommand (a rodada desacoplada, o Invoke-ProjectCommand) leva o
+# comando em Base64; aqui ele volta a texto, para reconhecer o accept que roda dentro do invólucro.
+function Get-ProcessCommandText([string]$CommandLine) {
+    $m = [regex]::Match([string]$CommandLine, '(?i)-(?:EncodedCommand|enc|e)\s+([A-Za-z0-9+/=]{8,})')
+    if (-not $m.Success) { return [string]$CommandLine }
+    try { return ([string]$CommandLine) + ' ' + [System.Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($m.Groups[1].Value)) } catch { return [string]$CommandLine }
+}
+# v3.63.1 (sprint 6 do projeto piloto, 18/11): QUEM USA O ALVO, sem adivinhar por lista de processos. A sessão e o plugin contaram
+# "três accepts no aparelho" pelos processos cuja linha de comando cita accept.ps1 — e eram um accept, o invólucro da rodada
+# desacoplada e cópias do detach.ps1 que só ACOMPANHAM a mesma rodada (não tocam o aparelho); a sessão encerrou dois deles
+# achando que eram duplicados. Aqui cada processo ganha o papel: accept (roda cenários no aparelho) · invólucro (a rodada
+# desacoplada que espera o accept) · acompanhando (detach.ps1 que reencontrou a rodada). Duplicado = accept vivo que NÃO é o
+# dono da trava. Só leitura. @{ Lock; Accepts; Wrappers; Watchers; Duplicates }.
+function Get-TargetUsers([string]$Root) {
+    $lp = Join-Path $Root '.team-project/.target-lock'
+    $l = $null; if (Test-Path -LiteralPath $lp) { try { $l = Read-Text $lp | ConvertFrom-Json } catch { } }
+    $lockPid = if ($l -and (Test-TargetLockHolderAlive $l)) { [int]$l.pid } else { 0 }
+    $all = @(); try { $all = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object { $_.Name -match '^(?i)(powershell|pwsh)(\.exe)?$' -and $_.ProcessId -ne $PID }) } catch { }
+    $accepts = @(); $wrappers = @(); $watchers = @()
+    foreach ($p in $all) {
+        $raw = [string]$p.CommandLine; $txt = Get-ProcessCommandText $raw
+        $row = [pscustomobject]@{ Pid = [int]$p.ProcessId; Parent = [int]$p.ParentProcessId; Since = $(if ($p.CreationDate) { $p.CreationDate.ToString('yyyy-MM-dd HH:mm:ss') } else { '' }); Text = $txt; Task = ''; Dir = '' }
+        $tm = [regex]::Match($txt, '(?i)accept\.ps1\b[^;\r\n]*?-Task\s+(\S+)'); if ($tm.Success) { $row.Task = $tm.Groups[1].Value.Trim('"', "'") }
+        $dm = [regex]::Match($raw, '(?i)-Dir\s+"?([^"]+?)"?(\s+-|$)'); if ($dm.Success) { $row.Dir = $dm.Groups[1].Value }
+        if ($raw -match '(?i)[\\/]detach\.ps1\b') { if ($txt -match '(?i)accept\.ps1') { $watchers += $row }; continue }
+        if ($raw -match '(?i)[\\/]detached-run\.ps1\b') { $wrappers += $row; continue }
+        if ($txt -notmatch '(?i)[\\/]accept\.ps1\b' -or $txt -match '(?i)-ParseOnly\b') { continue }
+        # O host codificado cujo filho é o próprio accept (-File accept.ps1) é invólucro; o accept é o processo mais fundo.
+        if ($raw -notmatch '(?i)[\\/]accept\.ps1\b') { $wrappers += $row; continue }
+        $accepts += $row
+    }
+    # O host codificado que roda o accept direto (& accept.ps1, sem um filho -File accept.ps1) é ele mesmo o accept.
+    foreach ($w in @($wrappers | Where-Object { $_.Text -match '(?i)[\\/]accept\.ps1\b' -and $_.Text -notmatch '(?i)[\\/]detached-run\.ps1\b' })) {
+        if (-not @($accepts | Where-Object { $_.Parent -eq $w.Pid }).Count) { $accepts += $w; $wrappers = @($wrappers | Where-Object { $_.Pid -ne $w.Pid }) }
+    }
+    # Invólucro e observador de OUTRO projeto (a pasta da rodada fora desta raiz) não são deste alvo. O accept fica sempre: o
+    # aparelho é da máquina, e o accept de outro projeto no mesmo emulador também quebra este.
+    $rootN = ([string]$Root).TrimEnd('\', '/').Replace('/', '\')
+    $under = { param([string]$p) $p -and $p.Replace('/', '\').TrimEnd('\').StartsWith($rootN, [StringComparison]::OrdinalIgnoreCase) }
+    $mine = { param($r) -not $r.Dir -or (& $under $r.Dir) }
+    $wrappers = @($wrappers | Where-Object { & $mine $_ }); $watchers = @($watchers | Where-Object { & $mine $_ })
+    # De que projeto é cada accept: o -Root da linha de comando, a pasta da rodada que o lançou (-Dir de um ancestral) ou o
+    # progress.json deste projeto com o PID dele. Sem nenhum dos três, "não identificado" — listado, nunca encerrado por aqui.
+    $byPid = @{}; foreach ($p in $all) { $byPid[[int]$p.ProcessId] = $p }
+    $progPids = @(); $ad = Join-Path $Root '.team-project/accept'
+    if (Test-Path -LiteralPath $ad) { foreach ($f in @(Get-ChildItem -LiteralPath $ad -Recurse -File -Filter 'progress.json' -ErrorAction SilentlyContinue)) { try { $progPids += [int](Read-Text $f.FullName | ConvertFrom-Json).pid } catch { } } }
+    foreach ($a in $accepts) {
+        $own = $null
+        if ($a.Pid -eq $lockPid) { $own = $true }
+        else {
+            $rm = [regex]::Match($a.Text, '(?i)-Root\s+(?:"([^"]+)"|''([^'']+)''|(\S+))')
+            if ($rm.Success) { $own = & $under ("$($rm.Groups[1].Value)$($rm.Groups[2].Value)$($rm.Groups[3].Value)") }
+            else {
+                $cur = $a.Parent
+                for ($i = 0; $i -lt 5 -and $null -eq $own -and $byPid.ContainsKey($cur); $i++) {
+                    $dm = [regex]::Match([string]$byPid[$cur].CommandLine, '(?i)-Dir\s+"?([^"]+?)"?(\s+-|$)')
+                    if ($dm.Success) { $own = & $under $dm.Groups[1].Value }
+                    $cur = [int]$byPid[$cur].ParentProcessId
+                }
+                if ($null -eq $own -and $progPids -contains $a.Pid) { $own = $true }
+            }
+        }
+        $a | Add-Member -NotePropertyName Mine -NotePropertyValue $own -Force
+    }
+    # O invólucro sem pasta (o host codificado) é do projeto do accept que roda embaixo dele.
+    $wrappers = @($wrappers | Where-Object { $w = $_; $w.Dir -or @($accepts | Where-Object { $_.Parent -eq $w.Pid -and $_.Mine -eq $true }).Count })
+    $dups = @($accepts | Where-Object { $lockPid -and $_.Pid -ne $lockPid -and $_.Mine -eq $true })
+    return [pscustomobject]@{ Lock = $l; LockPid = $lockPid; Accepts = $accepts; Wrappers = $wrappers; Watchers = $watchers; Duplicates = $dups }
+}
+# v3.63.1: encerra SÓ os duplicados — o accept vivo que não é o dono da trava (com a árvore dele e o invólucro da rodada dele).
+# O dono da trava e quem só acompanha ficam. Devolve as linhas do que fez.
+function Stop-TargetDuplicates([string]$Root) {
+    $u = Get-TargetUsers $Root
+    $out = @()
+    if (-not $u.LockPid) { return @('nenhum dono vivo da trava — sem referência para dizer qual é o duplicado; nada encerrado (veja target.ps1 -Who)') }
+    if (-not $u.Duplicates.Count) { return @("nenhum duplicado: só o dono da trava (PID $($u.LockPid)) roda cenários no aparelho") }
+    foreach ($d in $u.Duplicates) {
+        $chain = @($u.Wrappers | Where-Object { $_.Pid -eq $d.Parent }); $wrap = @($chain | ForEach-Object { $w = $_; @($u.Wrappers | Where-Object { $_.Pid -eq $w.Parent }) + $w })
+        $n = Stop-ProcessTree $d.Pid
+        foreach ($w in $wrap) { if ($w) { Stop-Process -Id $w.Pid -Force -ErrorAction SilentlyContinue } }
+        $out += "duplicado encerrado: accept $(if ($d.Task) { $d.Task } else { '?' }) PID $($d.Pid) (desde $($d.Since)) e $([int]$n) processo(s) da árvore dele$(if ($wrap.Count) { "; invólucro(s) $((@($wrap | ForEach-Object { $_.Pid })) -join ', ')" })"
+    }
+    return $out
+}
+# v3.63.1 (pedido 5): encerra o dono da trava — só o accept.ps1 ou o target.ps1 do plugin, reconhecido pela hora de criação e
+# pela linha de comando — com a árvore dele (os adb, node e executores do projeto que ele disparou), e apaga a trava.
+# @{ Stopped; Text } (Stopped $false = nada a encerrar ou processo de fora, que não é tocado).
+function Stop-TargetLockHolder([string]$Root) {
+    $lp = Join-Path $Root '.team-project/.target-lock'
+    if (-not (Test-Path -LiteralPath $lp)) { return [pscustomobject]@{ Stopped = $false; Text = '' } }
+    $l = $null; try { $l = Read-Text $lp | ConvertFrom-Json } catch { }
+    if (-not $l -or [int]$l.pid -eq $PID) { return [pscustomobject]@{ Stopped = $false; Text = '' } }
+    if (-not (Get-Process -Id ([int]$l.pid) -ErrorAction SilentlyContinue)) {
+        Remove-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue
+        return [pscustomobject]@{ Stopped = $false; Text = "trava de '$([string]$l.owner)' (PID $([int]$l.pid)) sem processo vivo — removida" }
+    }
+    if (-not (Test-TargetLockOwnerProcess $l)) { return [pscustomobject]@{ Stopped = $false; Text = "a trava é de '$([string]$l.owner)' (PID $([int]$l.pid)), que não é um script do plugin reconhecível (hora de criação ou linha de comando não batem) — não tocado" } }
+    $k = Stop-ProcessTree ([int]$l.pid)
+    Remove-Item -LiteralPath $lp -Force -ErrorAction SilentlyContinue
+    return [pscustomobject]@{ Stopped = $true; Text = "encerrado o dono da trava '$([string]$l.owner)' (PID $([int]$l.pid), desde $([string]$l.desde)) e $([int]$k) processo(s) da árvore dele; trava removida" }
 }
 # v3.53.3 (sprint 5 do garden): comando da Task que ainda roda — verify (verify.lock da pasta da Task, processo vivo) ou
 # accept (trava do alvo com dono "accept <ID>", processo vivo). Comando que passa de ~3 min vai para segundo plano e o dev
@@ -2471,14 +2657,17 @@ function Get-SprintScenarioFiles([string]$Root) { return @(Get-ChildItem -Path (
 #   proof       a última rodada copiada para sprints/<n>/proof/
 #   routed      achado → vezes que o dono foi disparado sem gravar a resolução
 function Get-GateState([string]$S) {
-    $st = [ordered]@{ round = 0; judged = $null; env = [ordered]@{ attempts = 0; at = ''; asked = '' }; proof = 0; routed = [ordered]@{} }
+    $st = [ordered]@{ round = 0; judged = $null; env = [ordered]@{ attempts = 0; at = ''; asked = ''; sent = 0; sentAt = '' }; proof = 0; routed = [ordered]@{} }
     $p = Join-Path $S 'gate.json'
     if (Test-Path -LiteralPath $p) {
         try {
             $j = Read-Text $p | ConvertFrom-Json
             if ($j.PSObject.Properties['round']) { $st.round = [int]$j.round }
             if ($j.PSObject.Properties['judged'] -and $j.judged) { $st.judged = [ordered]@{}; foreach ($pp in $j.judged.PSObject.Properties) { $st.judged[$pp.Name] = [string]$pp.Value } }
-            if ($j.PSObject.Properties['env'] -and $j.env) { $st.env.attempts = [int]$j.env.attempts; $st.env.at = [string]$j.env.at; if ($j.env.PSObject.Properties['asked']) { $st.env.asked = [string]$j.env.asked } }
+            if ($j.PSObject.Properties['env'] -and $j.env) {
+                $st.env.attempts = [int]$j.env.attempts; $st.env.at = [string]$j.env.at; if ($j.env.PSObject.Properties['asked']) { $st.env.asked = [string]$j.env.asked }
+                if ($j.env.PSObject.Properties['sent']) { $st.env.sent = [int]$j.env.sent; $st.env.sentAt = [string]$j.env.sentAt }   # v3.63.1
+            }
             if ($j.PSObject.Properties['proof']) { $st.proof = [int]$j.proof }
             if ($j.PSObject.Properties['routed'] -and $j.routed) { foreach ($pp in $j.routed.PSObject.Properties) { $st.routed[$pp.Name] = [int]$pp.Value } }
         } catch { }
@@ -2487,6 +2676,47 @@ function Get-GateState([string]$S) {
 }
 function Set-GateState([string]$S, $State) {
     [System.IO.File]::WriteAllText((Join-Path $S 'gate.json'), ($State | ConvertTo-Json -Depth 5), (New-Object System.Text.UTF8Encoding($false)))
+}
+
+# ---------- v3.63.1 · diagnóstico automático da falha de cenário do aceite ----------
+# Sprint 6 do projeto piloto (18/11): o SC-118 falhou duas vezes ("a conexão com a página caiu", a captura na aba errada), o
+# cenário seguinte parou em "app não ficou na frente, foco: nenhum" e o accept saiu 4 — o next tratou como ambiente, sem
+# diagnóstico, e a revisão parou à espera do stakeholder. Toda falha de cenário passa pelo operator (AMBIENTE · APP · PLANO)
+# ANTES de virar ambiente ou veredito: APP vai ao dev como defeito; PLANO volta ao dono do cenário (QA) ou ao Arquiteto com o
+# elemento a tocar e onde ele fica na tela. Só a interrupção sem sinal do app (alvo fora do ar, janela do sistema) segue
+# direto para o reparo.
+# O result.json do accept pede diagnóstico? @{ Need; Failed (ids FALHOU); Signal (o sinal da interrupção, '' sem) }.
+function Get-AcceptDiagnosisNeed($Aj) {
+    $out = [pscustomobject]@{ Need = $false; Failed = @(); Signal = '' }
+    if (-not $Aj) { return $out }
+    if ($Aj.PSObject.Properties['configuration'] -and $Aj.configuration) { return $out }   # configuração do alvo: vai ao stakeholder
+    if ($Aj.PSObject.Properties['startState'] -and $Aj.startState) { return $out }         # estado de partida: idem
+    $out.Failed = @(@($Aj.results) | Where-Object { $_ -and [string]$_.status -eq 'FALHOU' } | ForEach-Object { [string]$_.id })
+    $sg = if ($Aj.PSObject.Properties['environmentSignal'] -and $Aj.environmentSignal) { $Aj.environmentSignal } else { $null }
+    if ($sg -and [string]$sg.kind -and [string]$sg.kind -ne 'system-window') { $out.Signal = "$([string]$sg.kind): $([string]$sg.text)" }
+    $out.Need = [bool]($out.Failed.Count -or $out.Signal)
+    return $out
+}
+# O diagnóstico gravado DEPOIS do result.json do accept (o da rodada): @{ Verdict; Owner (QA|Arquiteto|''); Element; Where;
+# Lines } ou $null (sem diagnóstico, ou mais velho que a rodada).
+function Read-AcceptDiagnosis([string]$DiagPath, [string]$ResultPath) {
+    if (-not (Test-Path -LiteralPath $DiagPath)) { return $null }
+    if ($ResultPath -and (Test-Path -LiteralPath $ResultPath) -and (Get-Item -LiteralPath $DiagPath).LastWriteTime -lt (Get-Item -LiteralPath $ResultPath).LastWriteTime) { return $null }
+    $t = Read-Text $DiagPath
+    $vm = [regex]::Match($t, '(?im)^\W*Veredito\W*\s*(AMBIENTE|APP|PLANO)')
+    if (-not $vm.Success) { return $null }
+    $line = { param($k) $m = [regex]::Match($t, "(?im)^\W*$k\W*:\s*(.+)$"); if ($m.Success) { $m.Groups[1].Value.Trim().TrimEnd('*').Trim() } else { '' } }
+    $own = & $line 'Dono'
+    $ownN = if ($own -match '(?i)arquitet|architect') { 'Arquiteto' } elseif ($own -match '(?i)\bQA\b|quality|cen[áa]rio') { 'QA' } else { '' }
+    return [pscustomobject]@{ Verdict = $vm.Groups[1].Value.ToUpperInvariant(); Owner = $ownN; Element = (& $line 'Elemento'); Where = (& $line 'Onde'); Reason = (& $line 'Motivo') }
+}
+# O prompt do operator para o diagnóstico (Task e portão). $Caller = "executor T-041" | "sessão S6".
+function Get-AcceptDiagPrompt([string]$Caller, [string]$Id, [string]$AccRel, [string]$DiagRel, [string]$Tn, [string]$Plugin, $Need) {
+    $what = @()
+    if ($Need -and @($Need.Failed).Count) { $what += "cenário(s) que falharam: $(@($Need.Failed) -join ', ')" }
+    if ($Need -and $Need.Signal) { $what += "interrupção com sinal do app: $($Need.Signal)" }
+    $foco = if ($what.Count) { " ($($what -join ' · '))" } else { '' }
+    return "Chamador: $Caller — Diagnostique a falha da prova no alvo da $Id$foco. Leia $AccRel/result.md e result.json (o campo signal de cada cenário e o environmentSignal), abra com Read as capturas *-falha.png que ele cita e o registro do aparelho de cada falha ($AccRel/logs/*-logcat.txt: FATAL EXCEPTION, ANR, crash da WebView); rode $Plugin/target.ps1 -Target $Tn (só a conferência, sem -Repair). Grave $DiagRel com as linhas: 'Veredito: AMBIENTE | APP | PLANO', 'Cenário: <ID>', 'Motivo: <crash | ANR | app reiniciado | WebView recriada | janela do sistema | tela errada | elemento ausente | valor errado>', e, com APP ou PLANO, 'Elemento: <o id a tocar ou a conferir>', 'Onde: <tela, aba e posição na captura — ex.: aba Estufa, 2º cartão, botão à direita>' e, com PLANO, 'Dono: QA' (o .scn está errado ou não volta à tela depois de recriar a WebView ou reabrir o app) ou 'Dono: Arquiteto' (o contrato de ids ou o plano pede o que nenhuma Task cria); depois até 5 linhas do que viu. APP = a tela certa estava aberta e o elemento, o texto ou o valor faltou, ou o registro mostra crash/ANR do app, ou o app perdeu o estado que devia manter. PLANO = o cenário supõe o que o app legitimamente não faz (estado que a plataforma zera ao recriar a WebView ou reabrir o app) ou pede o que nenhuma Task cria; não deu para ver, PLANO dizendo o que faltou. AMBIENTE SÓ com prova: janela do sistema na captura ou no foco, alvo fora do ar, tela em branco, outro automatizador — app reiniciado ou foco 'nenhum' sozinhos NÃO são prova de ambiente. Não altere código, cenário nem plano; não rode accept nem verify. Volte com a linha do veredito."
 }
 # Achados e frentes do validation.md no formato da v3.63.0 — tabela com as colunas ID e Cause (ou State) e linhas S<n>-F<k>;
 # a ÚLTIMA ocorrência de cada ID vale (a tabela da rodada nova só traz ID e State). Frentes: tabela com Front e State.
@@ -2534,7 +2764,8 @@ function Copy-Proof([string]$Src, [string]$Dst) {
     # A base vem do próprio Get-Item: o caminho pedido pode ter "/" misturado ou o nome curto do Windows (MARCOA~1), e o recorte
     # pelo tamanho dele cortava errado (a prova saía em accept/accept/1/S1/).
     $base = (Get-Item -LiteralPath $Src).FullName.TrimEnd('\', '/')
-    foreach ($f in @(Get-ChildItem -LiteralPath $base -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -in 'result.json', 'result.md', 'progress.json' -or $_.Extension -ieq '.png' })) {
+    # v3.63.1: o registro do aparelho de cada falha (logs/*-logcat.txt) é prova do veredito, não log bruto do comando.
+    foreach ($f in @(Get-ChildItem -LiteralPath $base -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -in 'result.json', 'result.md', 'progress.json' -or $_.Extension -ieq '.png' -or $_.Name -match '-logcat\.txt$' })) {
         $rel = $f.FullName.Substring($base.Length).TrimStart('\', '/')
         $to = Join-Path $Dst $rel
         New-Item -ItemType Directory -Force (Split-Path $to) | Out-Null
