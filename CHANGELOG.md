@@ -13,6 +13,47 @@
 
 ---
 
+## v3.62.3 — 2026-11-17
+
+**Branch:** `fix/v3.62.3` a partir de `develop` (`ce69149`, v3.62.2 mesclada) · **Processo:** addendum v3.62.3 (o executor de cenários do projeto roda pelo `accept.ps1`)
+
+Origem: sprint 6 do garden, Q-S6d (17/11). O stakeholder estranhou não conseguir acompanhar o aceite.
+
+**Sintoma.** O plano da Q-S6d declarou `**Aceite:** não roda` e mandou provar os 49 cenários por um script do projeto (`prova-cdp.mjs`, que lê os mesmos `.scn`), rodado pelo operator numa pasta de job. A prova ficou fora da trava do alvo e sem `progress.json`. Ninguém sabia qual APK estava no emulador, e as capturas e o resultado ficaram fora de `.team-project/accept/`, onde o `close.ps1`, o `/team-status` e o QA procuram. A sessão chegou a dizer que "a QA precisa aceitar esse formato".
+
+**Causa.** O plano só sabia dizer `não roda`, e esse modo leva os cenários aos testes do plano: o `close.ps1` deu `R7-aceite n-a` e nada conferiu o alvo. O motivo citado (D-16, "o `accept.ps1` no android não acha id do app") era do `uiautomator`. Desde a v3.62.0 o `accept` tem `locator: cdp`, e o `guards.json` do garden já o declarava.
+
+**Correção:**
+- **``**Aceite:** comando — `<cmd>` ``** (`lib.ps1` `Get-PlanAccept`, `Expand-AcceptCommand`, `Read-AcceptCommandLines`; `accept.ps1` `Invoke-AcceptCommand`, `Invoke-AcceptCommandRun`, `Find-AcceptShot`, `-Command`).
+  - O `accept.ps1 -Task <ID>` lê a linha do plano e faz o de sempre: trava, pré-voo e reparo, APK velho, instalação e `targets.<alvo>.baseline` depois de instalar (decisão do stakeholder: o preparo é do plugin).
+  - No lugar do executor interno, chama o comando um `.scn` por vez. `{scn}` é o arquivo, `{out}` a pasta da prova (`accept/<seg>/<ID>/cmd/<arquivo>`), `{only}` os cenários da Task nele e `{task}` o ID. Cada um vira um argumento entre aspas.
+  - O resultado vem das linhas `<SC-ID> PASSOU|FALHOU|NÃO EXERCITADO [detalhe]` da saída (decisão do stakeholder: pelas linhas — o executor do garden já imprime assim). Cenário da Task sem linha conta como FALHOU.
+  - Exit 2 sem linha = uso (exit 2). Exit 4 ou tempo esgotado por arquivo (`targets.<alvo>.commandTimeoutMin`, padrão 5 min por cenário, mínimo 10) = FALHA DE AMBIENTE (exit 4).
+  - O que falhou é repetido uma vez, sozinho, quando há `{only}`.
+  - `progress.json` a cada arquivo; `result.json`/`result.md` de sempre, com `executor: "comando"`, o comando e `runs` (arquivo, cenários, exit, segundos, log). O `close.ps1` e o `/team-status` o leem sem mudança.
+  - O comando passa pelo filtro da regra 35: instalação, rede, push e destrutivo saem com exit 2. Sem `{scn}`, exit 2.
+- **Cenários no alvo** (`Get-PlanScenarios`, `Get-SprintTasks` `AcceptCommand`): com `comando`, os cenários ficam no alvo. O cartão e o `start` mandam o `accept.ps1` e dizem que ele roda o executor do plano — e que o executor direto não vale.
+- **Regra 34** (`plan.ps1`): `**Aceite:** comando` sem `{scn}`, com comando proibido ou com `**Cenários:** nenhum` reprova; sem `{out}`, avisa. `**Aceite:** não roda` que cita um script do projeto (`*.mjs`, `*.js`, `*.ps1`, `*.py`…; os scripts do plugin não contam) reprova e aponta o `comando`.
+- **CRLF** (`Get-PlanVerification`, `Get-PlanAccept`): a linha do cabeçalho seguida de `\r\n` não era lida (o `$` do .NET não casa antes do `\r`). Achado nos testes desta entrega; a **Verificação:** tinha a mesma falha.
+- **Papéis e contrato:** `standards/scenario-language.md` §5 (executor do projeto), modelo de plano e `external-plan.md`, `plan-rules-why.md` (34), `developer.md`, `operator.md`, `quality-assurance.md` (cenário provado fora do `accept` não é evidência de aceite).
+
+**Testes novos** (`run-check-tests.ps1`, marcados v3.62.3):
+- regra 34: `comando` ok; `não roda` com `prova-cdp.mjs` reprova (com `accept.ps1` não); sem `{scn}` reprova; com `npm install` reprova; com `comando` os cenários ficam no alvo;
+- `accept -ParseOnly` mostra o executor do plano; `-Command` sem `{scn}` ou com `git push` sai 2 antes do alvo;
+- ponta a ponta no alvo web: o reparo sobe o servidor, um `.scn` por vez, cenário sem linha = FALHOU (exit 1), `result.json` com `executor`, `commandFrom` e `runs`, `progress.json`, trava devolvida;
+- repetição só do que falhou (passou na 2ª, falhou nas 2), exit 4 do executor com a última linha e quantos ficaram de fora, exit 2 sem linha.
+
+**Teste corrigido:** o caso da v3.62.2 "rodada terminada sem ninguém recolher" esperava 12 s fixos por uma rodada que leva ~15 s (build, suíte de 9 s e o processo próprio) e falhava sempre, também na `develop`. Agora espera o `job.exit` da rodada (até 60 s).
+
+**Suítes:** check 603 casos (602 na rodada completa; o 603º é o caso acima, verde depois do ajuste, com o bloco da v3.62.2 inteiro em 10/10) · guard 362/0 · release C3 ok.
+
+`melhorias/`: cinco planos e relatórios antigos saem da pasta (limpeza do stakeholder).
+
+**Fica de fora:**
+- O aceite do sprint inteiro pela sessão (`run.ps1`, portão do QA) não lê plano de Task e continua no executor interno. Um projeto cujo executor interno não serve ainda não tem `targets.<alvo>.command` no `guards.json`.
+- O garden: trocar o `não roda` da Q-S6d por ``**Aceite:** comando — `Set-Location source; node scripts/alvo/prova-cdp.mjs --task {task} --cenarios {scn} --only {only} --saida {out}` `` (ou rodar o `accept` com o `locator: cdp` que ele já declara) é decisão do projeto.
+
+---
 ## v3.62.2 — 2026-11-17
 
 **Branch:** `fix/v3.62.2` a partir de `develop` (`5ae0188`, v3.62.1 mesclada) · **Processo:** addendum v3.62.2 (comando longo em processo próprio; ninguém encerra o turno para esperar um comando)

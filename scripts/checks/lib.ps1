@@ -988,6 +988,9 @@ function Get-PlanScenarios([string]$PlanText) {
     # <motivo>" ou uma linha de Aceite/Decisão que diga "o aceite não roda" — vale mais que a lista de cenários no alvo: o
     # cartão, o start e o next mandavam rodar o accept numa Task cujo plano dizia o contrário, e o dev abria GAP de processo.
     # Os cenários passam a ser provados pelos testes do plano (lista Test); o motivo vai ao cartão.
+    # v3.62.3: "**Aceite:** comando — `<cmd>`" não dispensa — o accept.ps1 roda o executor do projeto; os cenários ficam no alvo.
+    $pa = Get-PlanAccept $PlanText
+    if ($pa -and $pa.Mode -eq 'comando') { return @{ None = $false; Target = $tg; Test = @($all | Where-Object { $tg -notcontains $_ }); Command = $pa.Command } }
     $wv = [regex]::Match([string]$PlanText, '(?im)^[ \t]*(?:[-*][ \t]+)?(?:\*\*)?(?:Aceite|Accept)\b[^\r\n:]*:[^\r\n]*?n[ãa]o[ \t]+roda\b[^\r\n]*$')
     if (-not $wv.Success) { $wv = [regex]::Match([string]$PlanText, '(?im)^[ \t]*(?:[-*][ \t]+)?(?:\*\*)?Decis[ãa]o\b[^\r\n]*\b(?:accept|aceite)\b[^\r\n]*n[ãa]o[ \t]+roda\b[^\r\n]*$') }
     if ($wv.Success) {
@@ -1005,12 +1008,47 @@ function Get-PlanScenarios([string]$PlanText) {
 #                             result.json de sempre.
 # Sem a linha: $null (verify full padrão). Linha fora dos dois formatos: Mode 'inválida'.
 function Get-PlanVerification([string]$PlanText) {
-    $m = [regex]::Match([string]$PlanText, '(?im)^\*\*Verifica[çc][ãa]o:\*\*[ \t]*([^\r\n]*)$')
+    $m = [regex]::Match([string]$PlanText, '(?im)^\*\*Verifica[çc][ãa]o:\*\*[ \t]*([^\r\n]*)')   # v3.62.3: sem "$" — com CRLF, o "$" não casa antes do \r
     if (-not $m.Success) { return $null }
     $v = $m.Groups[1].Value.Trim()
     if ($v -match '^(?i)dispensad[ao]\s*[—–-]\s*(\S.*)$') { return [pscustomobject]@{ Mode = 'dispensada'; Reason = $Matches[1].Trim(); Command = ''; Raw = $v } }
     if ($v -match '^(?i)comando\s*[—–-]\s*`([^`]+)`(.*)$') { return [pscustomobject]@{ Mode = 'comando'; Command = $Matches[1].Trim(); Reason = ($Matches[2] -replace '^\s*[—–-]\s*', '').Trim(); Raw = $v } }
     return [pscustomobject]@{ Mode = 'inválida'; Reason = ''; Command = ''; Raw = $v }
+}
+# v3.62.3 (sprint 6 do projeto piloto, Q-S6d): a linha **Aceite:** do cabeçalho do plano, o mesmo desenho da **Verificação:**.
+#   "comando — `<cmd>`"   o projeto tem executor de cenários próprio: o accept.ps1 continua sendo o caminho do aceite (trava
+#                         do alvo, pré-voo, APK, instalação, estado de partida, progresso, result.json) e chama o executor um
+#                         .scn por vez — {scn} o arquivo, {out} a pasta da prova, {only} os cenários da Task nele, {task} o ID.
+#   "não roda — <motivo>" os cenários se provam pelos testes do plano (Get-PlanScenarios).
+# Antes, o plano só sabia dizer "não roda": a Q-S6d dispensou o aceite e provou os 49 cenários por um script do projeto,
+# fora da trava, sem progresso, sem saber qual APK estava no emulador e com a prova fora de .team-project/accept/.
+# $null sem a linha; Mode 'comando' | 'não roda' | 'roda' | 'outra'.
+function Get-PlanAccept([string]$PlanText) {
+    $m = [regex]::Match([string]$PlanText, '(?im)^\*\*(?:Aceite|Accept):\*\*[ \t]*([^\r\n]*)')   # sem "$": o plano com CRLF
+    if (-not $m.Success) { return $null }
+    $v = $m.Groups[1].Value.Trim()
+    if ($v -match '^(?i)comando\s*[—–-]\s*`([^`]+)`(.*)$') { return [pscustomobject]@{ Mode = 'comando'; Command = $Matches[1].Trim(); Reason = ($Matches[2] -replace '^\s*[—–-]\s*', '').Trim(); Raw = $v } }
+    $mode = if ($v -match '^(?i)n[ãa]o\s+roda\b') { 'não roda' } elseif ($v -match '^(?i)roda\b') { 'roda' } else { 'outra' }
+    return [pscustomobject]@{ Mode = $mode; Command = ''; Reason = ($v -replace '^(?i)(n[ãa]o\s+)?roda\s*[—–-]?\s*', '').Trim(); Raw = $v }
+}
+# v3.62.3: o comando do **Aceite:** com os marcadores trocados — cada valor entre aspas simples do PowerShell (o comando roda
+# num PowerShell filho; caminho com espaço ou acento passa inteiro). Quem escreve o comando NÃO põe aspas em volta do marcador.
+function Expand-AcceptCommand([string]$Cmd, [hashtable]$Values) {
+    $out = $Cmd
+    foreach ($k in $Values.Keys) { $out = $out.Replace("{$k}", "'" + (([string]$Values[$k]) -replace "'", "''") + "'") }
+    return $out
+}
+# v3.62.3: as linhas de resultado que o executor do projeto imprime — "<SC-ID> PASSOU|FALHOU|NÃO EXERCITADO [detalhe]" (com ou
+# sem colchetes no ID, como o próprio accept.ps1 imprime). A última linha de cada cenário vale. Tolera o "Ã" que a saída do
+# processo filho perde na página de código (NÃƒO, N?O). Devolve [ordered] id → @{ status; detail }.
+function Read-AcceptCommandLines([string]$Text) {
+    $res = [ordered]@{}
+    foreach ($m in [regex]::Matches([string]$Text, '(?m)^[ \t]*\[?(SC-\d+[a-z]?)\]?[ \t]+(PASSOU|FALHOU|N\S{1,3}O[ \t]+EXERCITADO)\b[ \t]*([^\r\n]*)')) {
+        $st = [string]$m.Groups[2].Value; if ($st -notin 'PASSOU', 'FALHOU') { $st = 'NÃO EXERCITADO' }
+        $d = ([string]$m.Groups[3].Value).Trim() -replace '^->\s*', ''
+        $res[[string]$m.Groups[1].Value] = @{ status = $st; detail = $d }
+    }
+    return $res
 }
 # v3.56.0 (H2): os arquivos .scn que definem os cenários pedidos (caminho relativo à raiz, '/'), para o -Scenarios do accept
 # em vez da máscara de todos os arquivos — um cenário inválido de outra História não entra na leitura.
@@ -1354,20 +1392,20 @@ function Get-SprintTasks([string]$S) {
         # v3.56.0 (H2, sprint 5 do garden #28, #33, #38, #41, #44, #50, #54): com plano legível, os cenários da Task são os do
         # plano (**Cenários:**, que o plan.ps1 confere — regra 23); o backlog vale só antes de haver plano. O cartão, o start e
         # o next mandavam rodar o accept com a lista antiga do backlog depois que o GAP tirou um cenário do plano.
-        $bScn = $scn; $bTst = $tst; $from = 'backlog'; $waiver = ''; $pver = $null
+        $bScn = $scn; $bTst = $tst; $from = 'backlog'; $waiver = ''; $pver = $null; $acmd = ''
         if ($pp -and $pp -notmatch '^plan/?$') {
             $pf = Join-Path $S $pp
             if (Test-Path -LiteralPath $pf -PathType Leaf) {
                 $ptx = Read-Text $pf
                 $ps = Get-PlanScenarios $ptx
-                if ($ps) { $scn = @($ps.Target); $tst = @($ps.Test); $from = 'plano'; if ($ps.Waived) { $waiver = [string]$ps.Reason } }
+                if ($ps) { $scn = @($ps.Target); $tst = @($ps.Test); $from = 'plano'; if ($ps.Waived) { $waiver = [string]$ps.Reason }; if ($ps.Command) { $acmd = [string]$ps.Command } }
                 $pver = Get-PlanVerification $ptx   # v3.57.3: o cartão diz como a Task se verifica
             }
         }
         $div = ($from -eq 'plano') -and ((@($bScn | Sort-Object) -join ',') -ne (@($scn | Sort-Object) -join ',') -or (@($bTst | Sort-Object) -join ',') -ne (@($tst | Sort-Object) -join ','))
         # v3.57.3 (capacidade): a estimativa da coluna Est., em número (vírgula ou ponto); sem número, $null.
         $em = [regex]::Match((Clean-Cell (& $col 'Est')), '\d+(?:[.,]\d+)?'); $est = if ($em.Success) { [double]($em.Value -replace ',', '.') } else { $null }
-        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn; TestScenarios = $tst; ScenariosFrom = $from; BacklogScenarios = @($bScn + $bTst); ScenariosDiverge = [bool]$div; AcceptWaiver = $waiver; Verification = $pver; Est = $est }
+        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn; TestScenarios = $tst; ScenariosFrom = $from; BacklogScenarios = @($bScn + $bTst); ScenariosDiverge = [bool]$div; AcceptWaiver = $waiver; AcceptCommand = $acmd; Verification = $pver; Est = $est }
     }
     return $tasks
 }
