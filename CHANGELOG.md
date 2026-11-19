@@ -13,6 +13,33 @@
 
 ---
 
+## v3.64.4 — 2026-11-19
+
+**Branch:** `fix/v3.64.4` a partir de `develop` (`2a3c1ca`, v3.64.3 mesclada)
+
+Origem: sprint 6 do projeto piloto, 19/11, 11:14. A Q-S6e foi a 🟨 com o plano emendado (decisão 147: render spec, espera do Karma, emulador desligado). O disparo do executor dizia "se o dev voltou com a entrega, comece por `run.ps1 done`", e havia relatório no `delivery/`, só que de antes da emenda. O executor começou pelo `done`, que leu a prova antiga: a suíte reprovada como "ambiente" e o accept como "não rodado". Pela regra D3 da v3.64.0, mandou o operator rodar o `verify full`. Às 11:16, o operator media o código que a emenda mandava mudar, com o render spec e o `karma.conf.js` intactos no disco.
+
+**Depois da emenda, o dev vem primeiro** (`run.ps1`):
+- **`next`:** ao levar a Task replanejada a 🟨, deixa `handoff/<ID>-replanned.md`, com a decisão e a hora da emenda.
+- **Disparo do executor:** com essa marca mais nova que o `delivery/<ID>.md`, manda começar pelo `run.ps1 start` (dev em instância nova pelo cartão), e não pelo `done`.
+- **`done`:** com a marca mais nova que o último relatório, recusa fechar ou medir, sem operator. Manda `run.ps1 start` e registra no run-log. O relatório novo do dev libera o `done` e apaga a marca.
+
+**O tamanho do plano emendado segue a regra do `start`** (`run.ps1 next`, corrige a v3.64.3):
+- **Antes:** a v3.64.3 deixava o plano emendado só acima do teto "seguir como a Task em construção". O `run.ps1 start` recusa esse plano com a construção começada (v3.54.1), e no piloto o resultado foi um aviso de "segue" seguido da recusa.
+- **Agora:** a reprovação por tamanho vai ao Arquiteto com o prompt de substituição da v3.54.1: trocar o texto que a decisão derrubou pela decisão, sem acrescentar ao lado e sem cortar o que vale. Foi esse prompt que destravou o piloto (31.840 → 30.928 bytes, `plan.ps1` ok).
+- **Por que o laço da v3.64.2:** o prompt genérico ("corrija até passar") fazia o Arquiteto ler "cortar", e ele recusava.
+- **Reprovação repetida:** continua saindo para o degrau 1, como na v3.64.3.
+
+**Textos:** `agents/task-runner.md` e `sprint-run.md`.
+
+**Testes:** 4 casos novos em `run-check-tests.ps1`, e 1 caso da v3.64.3 com a expectativa nova (Arquiteto com o prompt de substituição, e não 🟨):
+- a marca ao levar a 🟨;
+- o `done` recusado com o relatório de antes da emenda;
+- o disparo mandando começar pelo `start`;
+- o relatório novo liberando o `done` e apagando a marca.
+
+**Suítes** (`run-all-tests.ps1`, 8 processos): 1.072 casos, 0 falharam, em 689 s.
+
 ## v3.64.3 — 2026-11-19
 
 **Branch:** `fix/v3.64.3` a partir de `develop` (`78b88f5`, v3.64.2 mesclada)

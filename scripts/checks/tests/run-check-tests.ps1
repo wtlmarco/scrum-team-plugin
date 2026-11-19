@@ -2617,7 +2617,7 @@ $null = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'build', '-Reopen', '
 (Get-Item -LiteralPath $rp642).LastWriteTime = (Get-Date).AddMinutes(-10)
 Edit-File $pf643 '## 9. Onde parar' ("## 8. Notas do Arquiteto`n" + (('- a emenda da espera do Karma, com o motivo e o que fica de fora ' * 6 + "`n") * 90) + "`n## 9. Onde parar")
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $pk641)
-Check 'v3.64.3: plano emendado que só passa do teto de tamanho → segue a 🟨 com aviso, sem pedir o Arquiteto de novo nem dividir' @{ Code = $r.Code; Out = $r.Out + "`nRP=$(Test-Path -LiteralPath $rp642)" } 0 @('aviso: o plano emendado da T-041 passa do teto de tamanho', 'mark: T-041 🟦 → 🟨', 'RP=False', '^(?![\s\S]*não passa no plan\.ps1)', '^(?![\s\S]*emendar o plano da T-041)')
+Check 'v3.64.3/v3.64.4: plano emendado acima do teto de tamanho → Arquiteto substitui o texto que a decisão derrubou (regra do start, v3.54.1), sem cortar nem dividir; a Task não vai a 🟨' @{ Code = $r.Code; Out = $r.Out + "`nRP=" + [System.IO.File]::ReadAllText($rp642, $utf8) } 0 @('não passa no plan\.ps1 — Arquiteto \(instância nova\) corrige e regrava', 'substitua no plano o texto que a decisão derrubou', 'não a acrescente ao lado e não corte o que segue valendo', 'RP=[\s\S]*- plan\.ps1 reprovou em [^\r\n]*\| tamanho \| falhou', '^(?![\s\S]*mark: T-041 🟦 → 🟨)', '^(?![\s\S]*team:developer)')
 $null = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'blocked', '-Reason', 'ambiente: suíte caiu outra vez', '-Root', $pk641)
 $null = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'build', '-Reopen', 'replan', '-Decision', 'mudar a espera de novo', '-Root', $pk641)
 (Get-Item -LiteralPath $rp642).LastWriteTime = (Get-Date).AddMinutes(-10)
@@ -2628,6 +2628,25 @@ Check 'v3.64.3: plano emendado que reprova por outra regra → a reprovação va
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $pk641)
 $ar643 = $(try { (Get-Content -LiteralPath (Join-Path $pk641 '.team-project/.ask-route') -Raw -Encoding UTF8) } catch { '' })
 Check 'v3.64.3: a mesma reprovação pela 2ª vez → degrau 1 (PO + Arquiteto), rota de bloqueio, sem outro Arquiteto igual nem dev' @{ Code = $r.Code; Out = $r.Out + "`nrota=$ar643" } 0 @('reprovou IGUAL pela 2ª vez no plan\.ps1 — degrau 1', 'rota=.*"rota":"bloqueio"', '^(?![\s\S]*team:architect)', '^(?![\s\S]*team:developer)')
+# v3.64.4 (sprint 6 do projeto piloto, Q-S6e): depois da emenda, o relatório e a prova são de antes dela — o dev vem primeiro.
+Put $pk641 '.team-project/sprints/1/plan/T-041-export.md' "# Plano de Implementação — T-041 Endpoint de exportação`n`n**Cenários:** nenhum — interno`n**Risco:** infraestrutura`n`n**Arquivos tocados:** ``src/a.ts```n``tests/a.spec.ts```n`n**Arquivos protegidos:** nenhum`n`n## 3. Ambiente`n`n| Pré-requisito | Comando de medição | Saída real |`n|---|---|---|`n| Node 20 | node --version | v20.11.0 |`n`n## 6. Testes`nsem prova: x`n`n### Comandos da Task`n- nenhum além da lista base`n`n**Plano corrigido durante a execução:** 2026-11-19 — a decisão substituiu o passo que ela derrubou`n`n## 9. Onde parar`n- **Pré-requisito ausente** — 🔺 GAP`n"
+(Get-Item -LiteralPath $pf643).LastWriteTime = (Get-Date).AddMinutes(6)
+Put $pk641 '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041 (antes da emenda)`n`nverify full: suite exit 1`n"
+(Get-Item -LiteralPath (Join-Path $pk641 '.team-project/sprints/1/delivery/T-041.md')).LastWriteTime = (Get-Date).AddMinutes(-20)
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pk641)
+$rd644 = Join-Path $pk641 '.team-project/sprints/1/handoff/T-041-replanned.md'
+Check 'v3.64.4: o plano emendado leva a 🟨 e deixa a marca handoff/<ID>-replanned.md' @{ Code = $r.Code; Out = $r.Out + "`nRD=" + $(if (Test-Path -LiteralPath $rd644) { [System.IO.File]::ReadAllText($rd644, $utf8) } else { 'ausente' }) } 0 @('mark: T-041 🟦 → 🟨', 'RD=# Replanejar a T-041', '\*\*Plano emendado:\*\* \d{4}-\d\d-\d\d')
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'ok', '-Root', $pk641)
+Check 'v3.64.4: done com o relatório de antes da emenda → recusa e manda o dev em instância nova (start), sem fechar nem medir' $r 0 @('o plano foi emendado com a decisão do stakeholder depois do último relatório do dev', 'run\.ps1 start -Task T-041', 'nenhum operator', '^(?![\s\S]*team:operator)', '^(?![\s\S]*falta RODAR a prova)')
+Edit-File (Join-Path $pk641 '.team-project/sprints/1/sprint-backlog.md') '[`plan/T-041a-x.md`](plan/)' '[`plan/T-041a-x.md`](plan/T-041a-x.md)'
+Put $pk641 '.team-project/sprints/1/plan/T-041a-x.md' ([System.IO.File]::ReadAllText($pf643, $utf8) -replace 'T-041 Endpoint de exportação', 'T-041a Variante')
+(Get-Item -LiteralPath (Join-Path $pk641 '.team-project/sprints/1/delivery/T-041.md')).LastWriteTime = (Get-Date).AddMinutes(-20)
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pk641)
+Check 'v3.64.4: o disparo do executor depois da emenda manda começar pelo start, não pelo done' $r 0 @('construir T-041', 'comece por run\.ps1 start — o dev em instância nova aplica a emenda', 'Não comece por run\.ps1 done', '^(?![\s\S]*se o dev voltou com a entrega, comece por run\.ps1 done)')
+Put $pk641 '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041 (com a emenda)`n`nverify full: tudo exit 0`n"
+(Get-Item -LiteralPath (Join-Path $pk641 '.team-project/sprints/1/delivery/T-041.md')).LastWriteTime = (Get-Date).AddMinutes(10)
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'ok', '-Root', $pk641)
+Check 'v3.64.4: o relatório novo, depois da emenda, libera o done e apaga a marca' @{ Code = 0; Out = $r.Out + "`nRD=$(Test-Path -LiteralPath $rd644)" } 0 @('RD=False', '^(?![\s\S]*o plano foi emendado com a decisão do stakeholder depois do último relatório)')
 Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "IDS NÃO PUBLICADOS: …", "startState": "br.x/br.x.MainActivity · textos: Cultiva", "results": [ { "id": "SC-165", "status": "FALHOU", "shot": ".team-project/accept/1/T-041/shots/SC-165-falha.png" } ] }'
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
 Check 'v3.62.0: done -Result env com o IDS NÃO PUBLICADOS de um result.json antigo → CONFIGURAÇÃO DO ALVO (locator cdp), sem reparo, sem baseline, sem aria-label' $r 0 @('CONFIGURAÇÃO DO ALVO: app híbrido.*targets\.android\.locator = .cdp.', 'mark\.ps1 -Task T-041 -To blocked -Reason "configuração do alvo — ', 'T-041 🔴 bloqueada: configuração do alvo', '^(?![\s\S]*-Repair)', '^(?![\s\S]*targets\.android\.baseline)', '^(?![\s\S]*aria-label)')

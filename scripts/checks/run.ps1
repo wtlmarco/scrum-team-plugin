@@ -1066,6 +1066,21 @@ try {
             Out "run: ESPERANDO — a $($T.Id) ainda tem $busy rodando. O dev encerrou o turno para esperar esse comando (foi para segundo plano) e volta sozinho com o resultado. Não rode start, reparo nem Arquiteto: encerre o turno; o aviso da volta dele te acorda e aí rode run.ps1 done de novo."
             exit 3
         }
+        # v3.64.4 (sprint 6 do projeto piloto, Q-S6e): o plano foi emendado com a decisão do stakeholder e o dev ainda não
+        # entregou depois disso. No piloto, o executor começou pelo done com o relatório de antes da emenda, o done leu a prova
+        # antiga como "não rodada" e o operator mediu de novo o código que a emenda mandava mudar (o render spec e o
+        # karma.conf.js intactos). O relatório mais novo que a emenda libera o done e apaga a marca.
+        $rdM = Join-Path $S "handoff/$($T.Id)-replanned.md"
+        if (Test-Path -LiteralPath $rdM) {
+            $dvR = Join-Path $S "delivery/$($T.Id).md"
+            if (-not (Test-Path -LiteralPath $dvR) -or (Get-Item -LiteralPath $dvR).LastWriteTime -le (Get-Item -LiteralPath $rdM).LastWriteTime) {
+                Add-RunLog $S $n $T.Id 'done recusado: o plano foi emendado depois do último relatório do dev → dev em instância nova pelo cartão (sem fechar nem medir)' 'handoff/<ID>-replanned.md mais novo que delivery/<ID>.md (v3.64.4)' "sprints/$n/handoff/$($T.Id)-replanned.md"
+                Out "run: $($T.Id) — o plano foi emendado com a decisão do stakeholder depois do último relatório do dev (.team-project/sprints/$n/handoff/$($T.Id)-replanned.md): a evidência que existe é de antes da emenda. Não feche nem meça (nenhum operator)."
+                Out "  dev em instância NOVA: run.ps1 start -Task $($T.Id) — o cartão traz o plano emendado; o dev aplica a emenda e roda a prova. Depois, run.ps1 done."
+                exit 0
+            }
+            Remove-Item -LiteralPath $rdM -Force -ErrorAction SilentlyContinue
+        }
         # v3.53.3 (sprint 5 do garden): GAP da prova no alvo vai primeiro ao operator (haiku), que olha as capturas da falha.
         # Os 3 GAPs de alvo da T-041 foram ao Arquiteto (Opus, US$ 2,26) e o diagnóstico saiu errado ("APK sem os ids"): a
         # captura mostrava a tela inicial do Android. O done lê o veredito do operator: AMBIENTE → reparo · APP → dev · PLANO → Arquiteto.
@@ -1524,14 +1539,13 @@ try {
             $pc = Invoke-Child 'plan.ps1' @('-Plan', $rs.Plan, '-Root', $Root)
             if ($pc.Code -ne 0) {
                 # v3.64.3 (sprint 6 do projeto piloto, Q-S6e): o plano emendado reprovava só pelo tamanho (31,8 KB contra 30) e o
-                # next repetia "Arquiteto corrige até passar" — o plan.ps1 diz para não cortar, e a divisão só vale para a Task
-                # no preparo ("a que está em construção segue", v3.53.6) e nunca para a Q-S. Só o tamanho: segue, como a Task
-                # em construção. Outra reprovação: fica no handoff e o Arquiteto regrava; a mesma pela 2ª vez sai do laço.
+                # next repetia "Arquiteto corrige até passar" — o Arquiteto lia "cortar" e recusava (o plan.ps1 diz para não
+                # encurtar). A reprovação fica no handoff e o Arquiteto regrava; a mesma pela 2ª vez sai do laço.
+                # v3.64.4: o tamanho não "segue" — o run.ps1 start recusa plano acima do teto com construção começada (v3.54.1) e
+                # a regra dele é a que vale: o Arquiteto SUBSTITUI o texto que a decisão derrubou (no piloto, 31,8 → 30,2 KB, ok).
                 $failRows = @(($pc.Out -split "`r?`n") | Where-Object { $_ -match '^\s*\|\s*[^|]+?\s*\|\s*falhou\s*\|' } | ForEach-Object { ($_ -replace '\s+', ' ').Trim() })
                 $failNames = @($failRows | ForEach-Object { if ($_ -match '^\|\s*([^|]+?)\s*\|') { $Matches[1] } })
-                if ($failNames.Count -and -not @($failNames | Where-Object { $_ -ne 'tamanho' }).Count) {
-                    Out "  aviso: o plano emendado da $($rt.Id) passa do teto de tamanho ($(($failRows[0] -split '\|')[3].Trim() -replace '\s*:.*$', '')) — segue, como a Task em construção (só a Task no preparo se divide; o dev lê o cartão e o bloco, não o plano inteiro)"
-                } else {
+                $sizeFail = $failNames -contains 'tamanho'
                     $sig = (@($failRows | ForEach-Object { $_ -replace '\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?', '<data>' }) | Sort-Object) -join ' · '
                     $mt = Read-Text $rs.Marker
                     $seen = @([regex]::Matches($mt, '(?m)^- plan\.ps1 reprovou em \d{4}-\d{2}-\d{2} \d{2}:\d{2}: (.*)$') | Where-Object { $_.Groups[1].Value.Trim() -eq $sig }).Count
@@ -1547,14 +1561,18 @@ try {
                     Out "PRÓXIMA AÇÃO: o plano emendado da $($rt.Id) não passa no plan.ps1 — Arquiteto (instância nova) corrige e regrava; a reprovação ficou em $mRel; nenhum dev antes"
                     Out "  $(Get-AgentLine 'architect')"
                     Out "  plan.ps1: $sig"
-                    Out "  prompt: `"/arc question — o plano $pRel da $($rt.Id), emendado com a decisão de $mRel, reprova no plan.ps1 (as linhas estão no fim do mesmo arquivo). Corrija só o que reprova, sem desfazer a decisão; o tamanho acima do teto não se corta. Rode $plugin/plan.ps1 -Plan $pRel e volte em até 10 linhas.`""
+                    $sizeTxt = if ($sizeFail) { " O tamanho passou do teto com a emenda: substitua no plano o texto que a decisão derrubou (passo, premissa, teste, NÃO fazer ou arquivo superado) pela decisão — não a acrescente ao lado e não corte o que segue valendo; a construção já começou, a Task não se divide (v3.54.1)." } else { '' }
+                    Out "  prompt: `"/arc question — o plano $pRel da $($rt.Id), emendado com a decisão de $mRel, reprova no plan.ps1 (as linhas estão no fim do mesmo arquivo). Corrija só o que reprova, sem desfazer a decisão.$sizeTxt Rode $plugin/plan.ps1 -Plan $pRel até passar e volte em até 10 linhas.`""
                     Out "  depois: run.ps1 next"
                     exit 0
-                }
             }
             if ($rt.Mark -ne $E.Build) { $mo = Set-Mark $rt.Id 'build' 'sessão (run.ps1 next — plano emendado)'; if ($mo) { Out "  $mo" } }
+            # v3.64.4 (sprint 6 do projeto piloto, Q-S6e): a evidência e o relatório que existem são de antes da emenda — a
+            # marca handoff/<ID>-replanned.md faz o disparo começar pelo start e o done recusar até o dev entregar de novo.
+            $rdText = (Read-Text $rs.Marker).TrimEnd() + "`n`n**Plano emendado:** $(Get-Date -Format 'yyyy-MM-dd HH:mm') — o próximo relatório do dev, depois desta linha, aplica a emenda; até ele, o run.ps1 done recusa.`n"
+            [System.IO.File]::WriteAllText((Join-Path $S "handoff/$($rt.Id)-replanned.md"), $rdText, (New-Object System.Text.UTF8Encoding($false)))
             Remove-Item -LiteralPath $rs.Marker -Force -ErrorAction SilentlyContinue
-            Add-RunLog $S $n $rt.Id 'plano emendado pelo Arquiteto com a decisão do stakeholder → 🟨; o executor retoma pelo cartão' $(if ($pc.Code -ne 0) { 'plan.ps1 só acima do teto de tamanho: segue como a Task em construção (v3.64.3)' } else { 'plan.ps1 verde depois do handoff/<ID>-replan.md (v3.64.2)' }) "sprints/$n/$($rt.Plan)"
+            Add-RunLog $S $n $rt.Id 'plano emendado pelo Arquiteto com a decisão do stakeholder → 🟨; o executor retoma pelo cartão' 'plan.ps1 verde depois do handoff/<ID>-replan.md (v3.64.2)' "sprints/$n/$($rt.Plan)"
             $tasks = @(Get-SprintTasks $S)
             continue
         }
@@ -1804,7 +1822,10 @@ try {
             exit 3
         }
         $dv = Join-Path $S "delivery/$($next.Id).md"
-        $resume = if ($cur -and (Test-Path -LiteralPath $dv)) { " A Task já está em $($next.Mark) com relatório em .team-project/sprints/$n/delivery/$($next.Id).md: se o dev voltou com a entrega, comece por run.ps1 done; se caiu no meio, run.ps1 start retoma pelo cartão." } else { '' }
+        $rdN = Join-Path $S "handoff/$($next.Id)-replanned.md"
+        # v3.64.4: plano emendado depois do último relatório — o relatório é de antes da emenda; começar pelo done mediria o código velho.
+        $replannedN = (Test-Path -LiteralPath $rdN) -and (-not (Test-Path -LiteralPath $dv) -or (Get-Item -LiteralPath $dv).LastWriteTime -le (Get-Item -LiteralPath $rdN).LastWriteTime)
+        $resume = if ($replannedN) { " O plano foi emendado com a decisão do stakeholder depois do último relatório (.team-project/sprints/$n/handoff/$($next.Id)-replanned.md): comece por run.ps1 start — o dev em instância nova aplica a emenda pelo cartão. Não comece por run.ps1 done: o relatório que existe é de antes da emenda." } elseif ($cur -and (Test-Path -LiteralPath $dv)) { " A Task já está em $($next.Mark) com relatório em .team-project/sprints/$n/delivery/$($next.Id).md: se o dev voltou com a entrega, comece por run.ps1 done; se caiu no meio, run.ps1 start retoma pelo cartão." } else { '' }
         Set-AskRoute $Root ''   # v3.58.3 (G24): a fila anda — nenhuma decisão do stakeholder pendente nesta rodada
         Out "PRÓXIMA AÇÃO: construir $($next.Id) — $($next.Title) (executor de Task)"
         Say "Construindo $(Get-RunLabel $next.Id)."
