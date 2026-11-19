@@ -60,7 +60,7 @@ O gesto vai a um ponto do rolador que não tem outro rolador por cima. O executo
 | PASSOU | todos os passos passaram | — |
 | FALHOU (exit 1) | o app ou o cenário: elemento ausente, valor diferente, toque coberto, tela de falha do app | o dev (app) ou o QA (cenário) |
 | FALHA DE AMBIENTE (exit 4) | o alvo caiu: emulador, servidor, DevTools sem resposta | reparo e repetição |
-| CONFIGURAÇÃO DO ALVO (exit 4, `configuration` no `result.json`) | o alvo, como está declarado, não prova nada: APK sem a depuração da WebView, Node < 22, mais de uma página sem `cdp.pageUrl`, ou app híbrido com o `uiautomator` | o stakeholder (o `guards.json` e o build são dele). Sem reparo, sem dev e sem Arquiteto |
+| CONFIGURAÇÃO DO ALVO (exit 4, `configuration` no `result.json`) | o alvo, como está declarado, não prova nada: APK sem a depuração da WebView, Node < 22, mais de uma página sem `cdp.pageUrl`, `cdp.pageUrl` que não casa nenhuma página carregada, ou app híbrido com o `uiautomator` | o stakeholder (o `guards.json` e o build são dele). Sem reparo, sem dev e sem Arquiteto |
 
 O `result.json` do `accept` com `locator: "cdp"` é **prova de primeira classe** no portão: a Task fecha por ele, sem decisão do Arquiteto e sem linha de desvio no `run-log.md`.
 

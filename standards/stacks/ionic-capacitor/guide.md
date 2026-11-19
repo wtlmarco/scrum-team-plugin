@@ -24,11 +24,13 @@
 - **`targets.android.cdp`** — o que esta stack costuma declarar (exemplo; ajuste ao app):
   ```json
   "cdp": {
+    "pageUrl": "^https://localhost(/|$)",
     "hiddenScopes": [".ion-page-hidden"],
     "readyExpr": "document.readyState === 'complete' && !!document.querySelector('ion-app.hydrated')",
     "failExpr": "!!document.querySelector('[id=\"app.erro\"]')"
   }
   ```
+  - `pageUrl`: a **origem** do app — `https://localhost` no Capacitor 3+ (`http://localhost` se o `capacitor.config` declara `server.androidScheme: "http"`). Nunca a rota de uma tela: o `ion-router` muda a URL a cada aba, e a tela se prova pelo id da raiz ([`../../test-ids.md`](../../test-ids.md) §6, v3.64.5).
   - `hiddenScopes: [".ion-page-hidden"]`: o `ion-router-outlet` guarda no DOM as páginas anteriores da navegação com essa classe. Sem a chave, um id repetido na página em cache conta no `assert-count` e falseia o `assert-absent`.
   - `readyExpr`: o app pronto depois do `launch` — aqui, o `ion-app` hidratado. `failExpr`: a tela de falha do **próprio app**, pelo id que ela leva (vira FALHOU, não ambiente).
 - **Valor de campo:** `ion-input` e `ion-textarea` guardam o valor na propriedade `value` do host. O `assert-text`/`assert-contains` o lê dali, e o `type` acha o campo interno — sem regra própria da stack (`scenario-language.md` §2). O id fica no host (IONIC-1).

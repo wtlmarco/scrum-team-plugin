@@ -2726,6 +2726,35 @@ Check 'v3.62.0: tag ausente nos 2 primeiros na mesma tela → ESTADO DE PARTIDA 
 # desktop: o caminho do locator "cdp" sem emulador) e pelo web-runner (Playwright, quando PARITY_PLAYWRIGHT_ROOT o resolve).
 $r = & { $ErrorActionPreference = 'Continue'; $o = & node (Join-Path $PSScriptRoot 'parity.js') 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
 Check 'v3.62.0: paridade — os 15 cenários (type que substitui, web component, página em cache, display contents, toque coberto, lista inteira, faixa horizontal, select, slider, fora do ASCII) dão o veredito esperado pelo CDP; web junto quando há Playwright' $r 0 @('paridade: cdp 15/15 · web (15/15|NÃO EXECUTADO)', '^(?![\s\S]*DIVERGE)')
+# v3.64.5: a página do app se acha pela origem, não pela rota da tela — o pageUrl da tela inicial segue valendo depois da
+# troca de rota (Capacitor https e http, rota por #, Cordova file://); sem nenhuma página que case, CONFIGURAÇÃO com as URLs vistas.
+$cdpJs = (Join-Path $checks 'targets/android-cdp.js') -replace '\\', '/'
+$pk = @"
+const { choosePage, pageKey, openSession } = require('$cdpJs');
+const pg = (id, url) => ({ id, url, type: 'page' });
+const pick = (pages, re) => { const p = choosePage(pages, re); return p ? p.id : 'null'; };
+console.log('PK1=' + pageKey('https://localhost/tabs/geral?x=1#y') + '|' + pageKey('http://localhost/') + '|' + pageKey('file:///android_asset/www/index.html#/tabs/geral') + '|' + pageKey('https://localhost/#/pedido/42'));
+console.log('PK2=' + pick([pg('a', 'https://localhost/tabs/geral')], '^https://localhost/$'));
+console.log('PK3=' + pick([pg('a', 'http://localhost/tabs/geral')], '^http://localhost(/|$)'));
+console.log('PK4=' + pick([pg('a', 'file:///android_asset/www/index.html#/tabs/geral')], 'index\\.html$'));
+console.log('PK5=' + pick([pg('a', 'https://localhost/'), pg('b', 'https://localhost/tabs/geral')], 'tabs/geral'));
+console.log('PK6=' + pick([pg('a', 'https://outra.com/')], '^https://localhost/$'));
+const http = require('http');
+const srv = http.createServer((q, s) => { s.setHeader('content-type', 'application/json'); s.end(JSON.stringify([{ id: 'a', type: 'page', url: 'https://outra.com/login' }, { id: 'b', type: 'page', url: 'about:blank' }])); });
+srv.listen(0, '127.0.0.1', async () => {
+  try { await openSession({ port: srv.address().port, pageUrl: '^https://localhost/$', callTimeoutMs: 2000, pageWaitMs: 600 }); console.log('PK7=sem erro'); }
+  catch (e) { console.log('PK7=' + e.kind + '|' + e.message); }
+  const s2 = http.createServer((q, s) => { s.end('[]'); }).listen(0, '127.0.0.1', async () => {
+    try { await openSession({ port: s2.address().port, pageUrl: '^https://localhost/$', callTimeoutMs: 2000, pageWaitMs: 600 }); console.log('PK8=sem erro'); }
+    catch (e) { console.log('PK8=' + (e.kind || 'fail') + '|' + e.message); }
+    srv.close(); s2.close();
+  });
+});
+"@
+$pkf = Join-Path $tmp 'v3645-pagekey.js'; [System.IO.File]::WriteAllText($pkf, $pk, (New-Object System.Text.UTF8Encoding($false)))
+$r = & { $ErrorActionPreference = 'Continue'; $o = & node $pkf 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
+Check 'v3.64.5: a página do app pela URL sem a rota — o pageUrl da tela inicial acha o app em outra aba; Capacitor https/http, rota por #, Cordova file://; a URL inteira tem precedência' $r 0 @('PK1=https://localhost/\|http://localhost/\|file:///android_asset/www/index\.html\|https://localhost/\r?\n', 'PK2=a\b', 'PK3=a\b', 'PK4=a\b', 'PK5=b\b', 'PK6=null')
+Check 'v3.64.5: nenhuma página casa o pageUrl → CONFIGURAÇÃO com as URLs vistas (sem about:blank); sem página nenhuma, segue "o app fechou"' $r 0 @('PK7=config\|nenhuma página do /json casa targets\.android\.cdp\.pageUrl \(\^https://localhost/\$\): https://outra\.com/login — o pageUrl é a regex da origem', 'PK8=fail\|a página do app não está no /json')
 $r = & $ha 'config'
 Check 'v3.62.0: cenário que para na CONFIGURAÇÃO DO ALVO → exit 4, configuration no result.json com os cenários já rodados, sem rodar o resto' $r 0 @('CODE=4 RAN=2', 'CONFIGURAÇÃO DO ALVO \(web\): o APK não liga a depuração da WebView', '"configuration":\s*"o APK não liga a depuração da WebView"', '"environment":\s*"CONFIGURAÇÃO DO ALVO: ', '"passed":\s*1')
 
