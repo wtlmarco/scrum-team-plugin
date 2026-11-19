@@ -418,10 +418,22 @@ function Set-SafePoint($T, [string]$n) {
 }
 
 # Marcador pelo mark.ps1 (v3.51.4): devolve a linha do mark, ou $null se ele recusou (a Task já estava lá).
-function Set-Mark([string]$Id, [string]$To, [string]$By) {
-    $r = Invoke-Child 'mark.ps1' @('-Task', $Id, '-To', $To, '-By', $By, '-Root', $Root)
+function Set-Mark([string]$Id, [string]$To, [string]$By, [string]$Reopen = '') {
+    $a = @('-Task', $Id, '-To', $To, '-By', $By, '-Root', $Root); if ($Reopen) { $a += @('-Reopen', $Reopen) }
+    $r = Invoke-Child 'mark.ps1' $a
     if ($r.Code -eq 0) { return (($r.Out -split "`r?`n") | Where-Object { $_ -match '^mark:' } | Select-Object -First 1) }
     return $null
+}
+# v3.64.2 (sprint 6 do projeto piloto, Q-S6e): a Task que saiu de 🔴 por uma decisão do stakeholder que muda o plano
+# (mark.ps1 -Reopen replan) deixa handoff/<ID>-replan.md. Enquanto o plano não é regravado depois dele, ela não constrói: o
+# Arquiteto emenda primeiro. No piloto, "Ajustar a espera — o Arquiteto ajusta" foi direto ao dev, que repetiu o verify que já
+# tinha caído três vezes, com o plano ainda proibindo mexer no karma.conf.js.
+function Get-ReplanState($T, [string]$S) {
+    $mf = Join-Path $S "handoff/$($T.Id)-replan.md"
+    if (-not (Test-Path -LiteralPath $mf)) { return $null }
+    $pf = Get-PlanFull $T $S
+    $amended = [bool]($pf -and (Get-Item -LiteralPath $pf).LastWriteTime -gt (Get-Item -LiteralPath $mf).LastWriteTime)
+    return [pscustomobject]@{ Marker = $mf; Plan = $pf; Amended = $amended }
 }
 # v3.60.1 (sprint 6 do garden, T-090): a decisão "provar por teste" é aplicada pelo script, inteira, numa chamada. No garden a
 # sessão gravou a decisão no quadro e no README, mas o plano (que manda nos cenários desde a v3.56.0) seguiu com SC-264/265
@@ -472,7 +484,7 @@ function Invoke-ProveByTest($T, [string]$Because, [string]$By) {
         [System.IO.File]::AppendAllText($dp, "| $($T.Id) | $(if ($ids.Count) { $ids -join ', ' } else { '—' }) | $(& $cellF $Because) | $(& $cellF $By) | $(Get-Date -Format 'yyyy-MM-dd HH:mm') |`n", $utf8)
         $lines += "validação: $($T.Id) em sprints/$n/device-pending.md"
     }
-    if ($T.Mark -eq $redMk) { $mo = Set-Mark $T.Id 'build' 'SM (prova por teste)'; if ($mo) { $lines += $mo } }
+    if ($T.Mark -eq $redMk) { $mo = Set-Mark $T.Id 'build' 'SM (prova por teste)' 'resume'; if ($mo) { $lines += $mo } }   # o script já aplicou a decisão no plano
     Add-RunLog $S $n $T.Id "prova por teste: $(if ($ids.Count) { ($ids -join ', ') + ' (teste)' } else { 'nenhum cenário de tela' }); a conferência no aparelho vai à validação do sprint" "$Because — decidido por $By" "sprints/$n/device-pending.md"
     Set-AskRoute $Root ''
     return $lines
@@ -895,6 +907,9 @@ try {
     if ($Action -eq 'start') {
         if (-not $T) { [Console]::Error.WriteLine('run start pede -Task.'); exit 2 }
         $pf = Get-PlanFull $T $S; if (-not $pf) { [Console]::Error.WriteLine("run: $($T.Id) sem plano — o preparo da construção vem antes (run.ps1 next)."); exit 2 }
+        # v3.64.2: a decisão do stakeholder que muda o plano espera o Arquiteto — o dev não começa sobre o plano de antes.
+        $rpS = Get-ReplanState $T $S
+        if ($rpS -and -not $rpS.Amended) { [Console]::Error.WriteLine("run start: $($T.Id) tem decisão do stakeholder para replanejar (.team-project/sprints/$n/handoff/$($T.Id)-replan.md) e o plano ainda não foi emendado depois dela — o dev não começa. Executor: devolva à sessão `"$($T.Id) ⏸ replanejar`"; o run.ps1 next dispara o Arquiteto."); exit 2 }
         # v3.54.1 (carta do sprint 5 do garden, item 2): plano acima do teto não vai ao dev. Na T-063 a decisão do 🔺 GAP levou o
         # plano a 30,1 KB e o dev seguiu com o plan.ps1 reprovado — a divisão (regra 22) só olhava Task antes da construção.
         # Com construção começada (relatório em delivery/), a Task não se divide: o código dela está no meio; o Arquiteto troca
@@ -1181,7 +1196,7 @@ try {
                 Add-RunLog $S $n $T.Id "accept: configuração do alvo ($cS) → 🔴 sem reparo nem reabertura automática; decisão do stakeholder" 'configuration no result.json do accept' "accept/$n/$($T.Id)/result.md"
                 Out "run: $($T.Id) — o accept parou na CONFIGURAÇÃO DO ALVO: $cS. Não é defeito do código, nem queda do alvo, nem decisão do Arquiteto: o reparo não resolve e o dev não depura."
                 Out "  1. $plugin/mark.ps1 -Task $($T.Id) -To blocked -Reason `"configuração do alvo — $cS`""
-                Out "  2. devolva `"$($T.Id) 🔴 bloqueada: configuração do alvo · a fila segue`". A sessão leva ao stakeholder num formulário (R22) a correção que a mensagem aponta (guards.json → targets.android, ou o build de debug do app — são dele); corrigido, mark.ps1 -Task $($T.Id) -To qa e o accept pelo operator."
+                Out "  2. devolva `"$($T.Id) 🔴 bloqueada: configuração do alvo · a fila segue`". A sessão leva ao stakeholder num formulário (R22) a correção que a mensagem aponta (guards.json → targets.android, ou o build de debug do app — são dele); corrigido, mark.ps1 -Task $($T.Id) -To qa -Reopen resume e o accept pelo operator."
                 exit 0
             }
             if ($ass -and $ass.PSObject.Properties['startState'] -and $ass.startState) {
@@ -1371,7 +1386,7 @@ try {
         }
         # v3.64.0 (item 2 A): a prova registrada que valeu pelo R7 vai ao relatório, para quem lê (o QA no portão).
         if ($pre -match '\|\s*R7\s*\|\s*ok\s*\|\s*pela prova registrada') { $pb = Add-ProofBlock $T $S; if ($pb) { Out "  $pb" } }
-        if ($T.Mark -ne $E.QA) { $mo = Set-Mark $T.Id 'qa' 'sessão (run.ps1 done)'; if ($mo) { Out "  $mo" } }
+        if ($T.Mark -ne $E.QA) { $mo = Set-Mark $T.Id 'qa' 'sessão (run.ps1 done)' $(if ($T.Mark -eq $redMk) { 'resume' } else { '' }); if ($mo) { Out "  $mo" } }   # a evidência passou: fecha
         $cr = Invoke-Child 'close.ps1' @('-Task', $T.Id, '-Apply', '-Root', $Root); $c = $cr.Out
         $code = $cr.Code
         if ($code -eq 0) {
@@ -1498,6 +1513,37 @@ try {
     $gapWait = @((Get-PackState).gaps.Keys)
     $defined = Get-Defined $Root
     $hasTargets = [bool](Get-TargetsConfig $Root)
+    # v3.64.2: a decisão do stakeholder que muda o plano (mark.ps1 -Reopen replan) — o Arquiteto emenda antes de qualquer dev;
+    # emendado e com o plan.ps1 verde, a Task vai a 🟨 e a fila segue (o executor retoma pelo cartão).
+    foreach ($rt in @($tasks | Where-Object { $_.Mark -ne $E.Done -and $_.Mark -ne $redMk })) {
+        $rs = Get-ReplanState $rt $S
+        if (-not $rs) { continue }
+        $mRel = ".team-project/sprints/$n/handoff/$($rt.Id)-replan.md"
+        $pRel = if ($rs.Plan) { ".team-project/sprints/$n/$($rt.Plan)" } else { '' }
+        if ($rs.Amended) {
+            $pc = Invoke-Child 'plan.ps1' @('-Plan', $rs.Plan, '-Root', $Root)
+            if ($pc.Code -ne 0) {
+                Out "PRÓXIMA AÇÃO: o plano emendado da $($rt.Id) não passa no plan.ps1 — Arquiteto (mesma instância, ou nova com $mRel) corrige até passar; nenhum dev antes"
+                Out "  $(Get-AgentLine 'architect')"
+                Out "  plan.ps1: $(((($pc.Out -split "`r?`n") | Where-Object { $_ -match 'falhou' } | Select-Object -First 3) -join ' · ') -replace '\s+', ' ')"
+                Out "  depois: run.ps1 next"
+                exit 0
+            }
+            if ($rt.Mark -ne $E.Build) { $mo = Set-Mark $rt.Id 'build' 'sessão (run.ps1 next — plano emendado)'; if ($mo) { Out "  $mo" } }
+            Remove-Item -LiteralPath $rs.Marker -Force -ErrorAction SilentlyContinue
+            Add-RunLog $S $n $rt.Id 'plano emendado pelo Arquiteto com a decisão do stakeholder → 🟨; o executor retoma pelo cartão' 'plan.ps1 verde depois do handoff/<ID>-replan.md (v3.64.2)' "sprints/$n/$($rt.Plan)"
+            $tasks = @(Get-SprintTasks $S)
+            continue
+        }
+        if (-not $rs.Plan) { Out "  $($rt.Id): decisão para replanejar em $mRel, mas a Task não tem plano — o preparo da construção escreve o plano (o Arquiteto lê a decisão)"; continue }
+        Set-AskRoute $Root ''
+        Out "PRÓXIMA AÇÃO: emendar o plano da $($rt.Id) com a decisão do stakeholder (Arquiteto, instância nova) — a decisão muda o que o plano manda; nenhum dev antes (v3.64.2)"
+        Say "$(Get-RunLabel $rt.Id): o arquiteto está ajustando o plano com a sua decisão antes de o time voltar a construir."
+        Out "  $(Get-AgentLine 'architect')"
+        Out "  prompt: `"/arc question — leia $mRel (o bloqueio e a decisão do stakeholder) e emende o plano $pRel da $($rt.Id) para aplicá-la: passos, **Arquivos tocados:**, o que o plano proibia e agora permite (NÃO fazer, Onde parar e perguntar) e **Cenários:** se mudam; registre em **Plano corrigido durante a execução:** com a data e a decisão. Não escreva código. Rode $plugin/plan.ps1 -Plan $pRel até passar e volte em até 10 linhas.`""
+        Out "  depois: run.ps1 next — com o plano regravado e o plan.ps1 verde, a $($rt.Id) vai a 🟨 e o executor retoma pelo cartão"
+        exit 0
+    }
     $open = @($tasks | Where-Object { $_.Mark -ne $E.Done -and $_.Mark -ne $redMk })
     $doneIds = @($tasks | Where-Object { $_.Mark -eq $E.Done } | ForEach-Object { $_.Id })
     $deferred = Get-DeferredScenarios $Root
@@ -1522,7 +1568,7 @@ try {
         foreach ($ht in $heldT) {
             $lf = Get-AcceptLastFailure $Root $ht.Id
             Set-AskRoute $Root 'vaivem-alvo' $ht.Id $(if ($lf) { $lf } else { 'caiu de novo na prova no alvo' })
-            Out "  $($ht.Id) 🔴: já reaberta pelo alvo de volta e caiu de novo na prova no alvo — o next não a reabre outra vez (vaivém). Leve ao stakeholder num formulário (R22)$(if ($lf) { " com a última falha: $lf" }): reabrir (mark.ps1 -Task $($ht.Id) -To qa e o accept pelo operator) depois de preparar o estado de partida ou o alvo, ou seguir bloqueada. A fila continua."
+            Out "  $($ht.Id) 🔴: já reaberta pelo alvo de volta e caiu de novo na prova no alvo — o next não a reabre outra vez (vaivém). Leve ao stakeholder num formulário (R22)$(if ($lf) { " com a última falha: $lf" }): reabrir (mark.ps1 -Task $($ht.Id) -To qa -Reopen resume e o accept pelo operator) depois de preparar o estado de partida ou o alvo, ou seguir bloqueada. A fila continua."
         }
         if ($tpT.Count) {
             $tn = @((Get-TargetsConfig $Root).PSObject.Properties | ForEach-Object { $_.Name })[0]

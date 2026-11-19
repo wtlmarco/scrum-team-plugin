@@ -98,7 +98,7 @@ function Invoke-GateStep {
         Set-AskRoute $Root $(if ($envR) { 'ambiente' } else { 'bloqueio' }) (($Red | ForEach-Object { $_.Id }) -join ',') "Task em 🔴 no portão: $why"
         Out "PRÓXIMA AÇÃO: destravar $ids (🔴) — $Ctx$why"
         Say $(if ($envR) { 'A revisão final está parada porque uma correção parou num problema do ambiente de teste. Preciso de você para resolver o ambiente; depois ela retoma de onde parou.' } else { 'A revisão final está esperando uma correção que parou. Preciso destravá-la para seguir.' })
-        Out "  o motivo está em Bloqueios e riscos abertos (kanban.md); ambiente → o stakeholder repara (formulário, com a linha de Bloqueios) e a sessão roda $plugin/mark.ps1 -Task <ID> -To build e run.ps1 next (o executor retoma pelo cartão); decisão → degrau 1 (PO + Arquiteto), depois o formulário (R22). Não abra outra Q-S$n."
+        Out "  o motivo está em Bloqueios e riscos abertos (kanban.md); ambiente → formulário ao stakeholder, com a linha de Bloqueios. A resposta decide como a Task sai de 🔴: reparo fora do repositório (máquina, emulador, configuração dele) → $plugin/mark.ps1 -Task <ID> -To build -Reopen resume e run.ps1 next (o executor retoma pelo cartão); decisão que muda o que o plano manda (configuração de teste, guards.json, arquivo fora do plano, algo que ele proíbe) → $plugin/mark.ps1 -Task <ID> -To build -Reopen replan -Decision `"<a resposta>`" e run.ps1 next (o Arquiteto emenda o plano antes do dev, v3.64.2); decisão → degrau 1 (PO + Arquiteto), depois o formulário (R22). Não abra outra Q-S$n."
         exit 0
     }
 
