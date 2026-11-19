@@ -13,6 +13,44 @@
 
 ---
 
+## v3.64.2 — 2026-11-19
+
+**Branch:** `fix/v3.64.2` a partir de `develop` (`cc437f9`, v3.64.1 mesclada)
+
+Origem: sprint 6 do projeto piloto, 19/11. A Q-S6e estava em 🔴 pela queda do Karma no `verify full`, e o stakeholder respondeu ao formulário "Ajustar a espera — o Arquiteto ajusta a espera e a forma de reconhecer o navegador pronto". A sessão fez `mark.ps1 -To build`, e o executor disparou um dev novo. O plano ainda dizia "NÃO mexer no `karma.conf.js`", e o dev repetiu os ~11 min do mesmo `verify full` que já tinha caído três vezes. O texto que mandava fazer isso era da própria v3.64.1: "o stakeholder repara → `mark.ps1 -To build` → o executor retoma".
+
+**Sair de 🔴 diz como** (`mark.ps1 -Reopen`):
+- **`resume`:** o reparo foi fora do repositório (máquina, emulador, configuração do stakeholder) ou o ajuste já está feito. A Task retoma como está.
+- **`replan -Decision "<a resposta>"`:** a decisão muda o que o plano manda (configuração de teste, `guards.json`, arquivo fora de **Arquivos tocados:**, algo que o plano proíbe). A Task vai a 🟦, e a decisão fica em `sprints/<n>/handoff/<ID>-replan.md` com a linha de Bloqueios.
+- **Sem `-Reopen`:** o `mark.ps1` recusa e nada é gravado.
+- **Ficam de fora** as reaberturas que já têm dono: a "prova no alvo pendente", que o `next` reabre sozinho, e o "estado de partida", que volta a 🟪.
+- **Chamadas do próprio `run.ps1`:** a "provar por teste" e o `done` que fecha pela evidência passam `resume`.
+
+**O Arquiteto antes do dev** (`run.ps1`):
+- **`next`:** com `handoff/<ID>-replan.md` e o plano ainda não regravado depois dele, dispara o Arquiteto (`/arc question`, instância nova) para emendar o plano com a decisão e rodar o `plan.ps1`. Emendado e verde, o `next` leva a Task a 🟨, apaga o handoff, registra no run-log e segue a fila. Emendado, mas com o `plan.ps1` reprovando, o Arquiteto corrige antes de qualquer dev.
+- **`start`:** recusa o dev enquanto a emenda não vem. O executor devolve `<ID> ⏸ replanejar` (`agents/task-runner.md`).
+
+**Textos:** a rota do bloqueio do portão (`gate.ps1`), a linha de Bloqueios (`mark.ps1`), a configuração do alvo e o vaivém do alvo (`run.ps1`) e o roteiro (`sprint-run.md`) citam as duas formas.
+
+**Testes:** 8 casos novos em `run-check-tests.ps1`:
+- a recusa sem `-Reopen`;
+- `replan` sem `-Decision`;
+- a reabertura que já tem dono;
+- `replan` levando a 🟦 com o handoff;
+- o `start` recusando;
+- o `next` disparando o Arquiteto e não o dev;
+- o plano emendado levando a 🟨.
+
+Um caso da v3.64.1 passou a conferir o texto novo da linha de Bloqueios.
+
+**Suítes** (`run-all-tests.ps1`, 8 processos): 1.065 casos, 0 falharam, em 631 s de parede.
+
+A rodada completa anterior teve 2 falhas fora desta entrega, ambas em mutação do `verify`:
+- `v3.57.0 A6`: "sem repositório git na raiz", num projeto que faz `git init` no mesmo trecho.
+- `garden 28`: "rode -Mode full antes", logo depois de um `verify full` cujo resultado o caso descarta.
+
+Sozinhos, os dois trechos passaram, e passaram também na rodada seguinte. Ficam como intermitência sob carga, com a causa exata não provada.
+
 ## v3.64.1 — 2026-11-19
 
 **Branch:** `fix/v3.64.1` a partir de `develop` (`c42b301`, v3.64.0 mesclada)
