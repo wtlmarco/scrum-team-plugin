@@ -187,9 +187,15 @@ function Invoke-Check([string]$Script, [string[]]$Arguments) {
         }
     }
     $ErrorActionPreference = 'Continue'   # no 5.1, stderr de processo filho com 2>&1 viraria exceção
+    $tl0 = Get-TimeoutMark
     $out = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $checks $Script) @Arguments 2>&1 | Out-String
-    return @{ Code = $LASTEXITCODE; Out = $out }
+    $code = $LASTEXITCODE
+    # v3.64.1: a sentinela encerrou esta chamada pelo prazo — o caso falha dizendo isso, e a suíte segue.
+    $tl1 = Get-TimeoutMark
+    if ($tl1.Length -gt $tl0.Length) { $code = 124; $out += "`nTEMPO ESGOTADO (sentinela, $($env:TEAM_TEST_CHECK_TIMEOUT_S) s): $($tl1.Substring($tl0.Length).Trim())" }
+    return @{ Code = $code; Out = $out }
 }
+function Get-TimeoutMark { if ($script:timeoutLog -and (Test-Path -LiteralPath $script:timeoutLog)) { return [System.IO.File]::ReadAllText($script:timeoutLog) }; return '' }
 
 function Edit-File([string]$Path, [string]$From, [string]$To) {
     $t = [System.IO.File]::ReadAllText($Path, $utf8); [System.IO.File]::WriteAllText($Path, $t.Replace($From, $To), $utf8)
@@ -209,6 +215,12 @@ $env:TEAM_DEVICE_LOCK_DIR = Join-Path $tmp 'device-locks'; $env:TEAM_TEST_DEVICE
 # v3.64.0 (item 7): a máquina medida (CPU, emuladores, servidores do adb) também é fixa — nenhum teste depende do que roda de
 # verdade na máquina; os casos do item 7 trocam a medida no próprio caso.
 $env:TEAM_TEST_ADB_PORTS = '5037'; $env:TEAM_TEST_MACHINE_LOAD = '{"cpu":10,"emulators":[],"adbPorts":[5037],"others":[]}'; $env:TEAM_TEST_HEAVY_POLL_S = '1'
+# v3.64.1: prazo por chamada de script de um caso (TEAM_TEST_CHECK_TIMEOUT_S, padrão 240 s) — a sentinela encerra a árvore de
+# quem passa dele e o caso falha com TEMPO ESGOTADO; antes, um verify preso segurou a suíte por 29 min.
+if (-not $env:TEAM_TEST_CHECK_TIMEOUT_S) { $env:TEAM_TEST_CHECK_TIMEOUT_S = '240' }
+New-Item -ItemType Directory -Force $tmp | Out-Null
+$script:timeoutLog = Join-Path $tmp 'timeouts.log'
+$script:watchdog = Start-Process powershell -WindowStyle Hidden -PassThru -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'check-watchdog.ps1'), '-Parent', $PID, '-TimeoutSec', $env:TEAM_TEST_CHECK_TIMEOUT_S, '-Log', $script:timeoutLog)
 $rows = @(); $fail = 0
 # v3.57.0: o tempo de cada caso (do Check anterior a este) entra na linha, e os mais lentos saem no fim — a suíte passou de ~570 s
 # para ~1000 s sem que nenhum caso falhasse, e sem o tempo por caso não havia como achar de onde veio.
@@ -221,6 +233,116 @@ function Check([string]$Name, $Result, [int]$Code, [string[]]$Expect) {
     $script:rows += [pscustomobject]@{ Caso = $Name; Exit = $Result.Code; Ok = $(if ($ok) { 'ok' } else { 'FALHOU' }); Seg = $seg }
 }
 
+# v3.64.1: constantes e ajudantes que vários trechos usam ficam aqui, no preâmbulo — cada bloco da suíte roda sozinho
+# (run-all-tests.ps1, em paralelo) e não pode depender de uma definição feita no meio de outro bloco.
+$warn = [char]::ConvertFromUtf32(0x26A0); $x = [char]::ConvertFromUtf32(0x274C)
+$ck = [char]::ConvertFromUtf32(0x2714)
+$bdText = "# Quebra — Sprint 1`n`n## H-014 Exportar`n`n### Decisões comuns — H-014`n- ``export_job`` — tabela dos pedidos · T-041, T-041a`n`n### Ficha T-041a — Variante`n**Código a ler:**`n- ``src/a.ts:3`` — padrão a espelhar (``IExporter``)`n`n**Fontes:** ``docs/sdd/03-architecture.md`` §4 · ``standards/implementation-principles.md`` §2 · ``IExporter```n**Nomes comuns:** ``export_job```n**Arquivos previstos:** 2`n`n## H-020 Outra`n`n### Ficha T-099 — fora`n**Nomes comuns:** ``outro```n"
+function New-FixBlock([string]$Dir) {
+    Put $Dir 'docs/implementation/pending.md' "# GAPs`n`n## GAP-007 — exportação perde a última linha`n"
+    Put $Dir '.team-project/fixes.md' @"
+# Correções — trilha fix (R33)
+
+## Correções
+| F-ID | Data | Tipo | Relato (1 linha) | C1–C4 (PO) | Reproduzido (QA) | C5–C8 (Arq) | Bloco | Estado | Veredito | Promovida para | Reaberta em |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| F-001 | 2026-09-03 | defeito | exportação perde a última linha | ok | GAP-007 | ok | B-001 | em bloco | | | |
+| F-002 | 2026-09-03 | ajuste | mensagem de erro do filtro | ok | n/a | ok | B-001 | em bloco | | | |
+| F-003 | 2026-09-03 | defeito | ordem das colunas | ok | GAP-008 | C5 caiu | B-001 | promovida | | Product Backlog H-020 | |
+| F-004 | 2026-09-03 | defeito | rodapé do relatório | ok | GAP-009 | | B-001 | devolvida | | devolvida — área distante | |
+"@
+    Put $Dir '.team-project/fixes/F-001.md' @"
+# F-001 · exportação perde a última linha
+**Tipo:** defeito · **Triada em:** 2026-09-03
+**História do aceite:** H-014 + sprint 1 — ver pending.md
+## Elegibilidade funcional
+- C1 $ck · nenhum requisito novo
+- C2 $ck · nenhuma tela nova
+- C3 $ck · H-014 não está em voo
+- C4 $ck · sem dado sensível
+## Reprodução
+**Entrada no pending.md:** GAP-007 · **Causa:** src/Export.cs:42
+## Destino
+**Bloco:** B-001 · **Estado:** em bloco
+"@
+    Put $Dir '.team-project/fixes/F-002.md' @"
+# F-002 · mensagem de erro do filtro
+**Tipo:** ajuste · **Triada em:** 2026-09-03
+## Elegibilidade funcional
+- C1 $ck · altera só RF-12
+- C2 $ck · mensagem de campo existente
+- C3 $ck · fora de História em voo
+- C4 $ck · sem dado sensível
+## Destino
+**Bloco:** B-001 · **Estado:** em bloco
+"@
+    Put $Dir '.team-project/fixes/F-003.md' @"
+# F-003 · ordem das colunas
+**Tipo:** defeito · **Triada em:** 2026-09-03
+## Destino
+**Bloco:** B-001 · **Estado:** promovida
+**Critério que caiu:** C5 — muda o contrato da API de exportação
+"@
+    $fsec = { param($id, $prod)
+@"
+## $id · correção
+**Tipo:** defeito · **Ficha:** fixes/$id.md
+### Elegibilidade técnica
+- C5 $ck · sem contrato
+- C6 $ck · 1 arquivo
+- C7 $ck · sem dependência
+- C8 $ck · causa localizada
+### Arquivos
+- produção: $prod
+- teste: tests/${id}Tests.cs
+### Revalidação
+n/a — sem mudança
+"@ }
+    Put $Dir '.team-project/fixes/B-001/plan.md' ("# B-001 · mini-planos`n**Data:** 2026-09-03 10:00 · **Correções:** F-001, F-002, F-003`n`n" + (& $fsec 'F-001' '`src/Export Final.cs`') + "`n" + (& $fsec 'F-002' 'src/Filter.cs') + "`n## F-003 · ordem`n**Critério que caiu:** C5 — muda o contrato`n")
+    $vsec = { param($id)
+@"
+## QA — $id correção — 2026-09-04
+**Veredito:** $($e.ok)
+**Commit:** n/a — sem git
+### Teste de regressão
+**Antes:** exit 1
+> dotnet test --filter $id
+Failed: 1
+**Depois:** exit 0
+> dotnet test --filter $id
+Passed: 1
+### Escopo
+**Fora do plano:** nada
+### Documentos vivos (R12)
+**Estado:** atualizados
+"@ }
+    Put $Dir '.team-project/fixes/B-001/verdict.md' ("# B-001 · veredito`n**Trilha:** fix · **Executado em:** 2026-09-04 10:00`n`n" + (& $vsec 'F-001') + "`n" + (& $vsec 'F-002'))
+}
+Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+$e0 = $e
+$gh63 = Join-Path $tmp 'gate-h.ps1'
+[System.IO.File]::WriteAllText($gh63, @'
+param([string]$Checks, [string]$Root)
+$ErrorActionPreference = 'Stop'
+. (Join-Path $Checks 'lib.ps1')
+. (Join-Path $Checks 'gate.ps1')
+$utf8 = New-Object System.Text.UTF8Encoding($false)
+$n = '1'; $S = Join-Path $Root '.team-project/sprints/1'; $plugin = '${CLAUDE_PLUGIN_ROOT}/scripts/checks'; $todoMk = [char]::ConvertFromUtf32(0x2B1C)
+$tasks = @(); if (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md')) { $tasks = @(Get-SprintTasks $S) }
+function Out([string]$s) { [Console]::Out.WriteLine($s) }
+function Say([string]$s) { [Console]::Out.WriteLine("PARA O STAKEHOLDER: $s") }
+function Get-AgentLine([string]$Role) { return "Agent: team:$Role" }
+function Get-VerdictOf([string]$Path) { if (-not (Test-Path -LiteralPath $Path)) { return $null }; $ms = @([regex]::Matches((Read-Text $Path), '(?m)^\*\*Veredito[^*\r\n]*:\*\*(.*)$')); if (-not $ms.Count) { return '' }; $mk = Get-VerdictMark $ms[$ms.Count - 1].Groups[1].Value; if ($mk) { return $mk } else { return '' } }
+function Test-PoDebt([string]$Path) { return $false }
+function Add-RunLog { param($S, $n, $Item, $Decision, $Why, $Evidence) [Console]::Out.WriteLine("RUNLOG: $Item | $Decision") }
+function Get-WatcherLine { return 'WATCHER-LINE' }
+Invoke-GateStep
+'GATE-RETURNED'
+'@, (New-Object System.Text.UTF8Encoding($true)))
+$g63 = { param($pp) $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $gh63 -Checks $checks -Root $pp 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
+$lib63 = { param($expr) $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -Command ". '$(Join-Path $checks 'lib.ps1')'; $expr" 2>&1 | Out-String; $o.Trim() }
+
+# ==== início dos casos ==== (run-all-tests.ps1 divide daqui até o fim em blocos independentes; o que vem antes é o preâmbulo de cada bloco)
 # 1. Caminho feliz: nada falha.
 $p = Join-Path $tmp 'feliz'; New-Project $p
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
@@ -269,7 +391,6 @@ $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'C1 veredito ⚠: R7 falhou, exit 1' $r 1 @('\| R7 \| falhou')
 
 # 4b. Veredito ✅ com o histórico das rodadas na mesma linha → R7 ok (o primeiro marcador decide); ⚠ antes do ✅ → falha.
-$warn = [char]::ConvertFromUtf32(0x26A0); $x = [char]::ConvertFromUtf32(0x274C)
 $p = Join-Path $tmp 'r7hist'; New-Project $p
 Edit-File (Join-Path $p '.team-project/sprints/1/evidence/T-041.md') ("**Veredito:** " + $e.ok) ("**Veredito:** " + $e.ok + " Aprovado na 3ª rodada (antes $warn e $x)")
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
@@ -839,7 +960,6 @@ Check 'v3.57.7 regra 23: ID sem definição nem declaração (teste) no .scn con
 
 # 5d2. v3.53 (note.md itens 7 e 8): Task com ficha no breakdown → um Arquiteto por Task, que abre só o recorte da ficha.
 $p = Join-Path $tmp 'ficha'; New-Project $p
-$bdText = "# Quebra — Sprint 1`n`n## H-014 Exportar`n`n### Decisões comuns — H-014`n- ``export_job`` — tabela dos pedidos · T-041, T-041a`n`n### Ficha T-041a — Variante`n**Código a ler:**`n- ``src/a.ts:3`` — padrão a espelhar (``IExporter``)`n`n**Fontes:** ``docs/sdd/03-architecture.md`` §4 · ``standards/implementation-principles.md`` §2 · ``IExporter```n**Nomes comuns:** ``export_job```n**Arquivos previstos:** 2`n`n## H-020 Outra`n`n### Ficha T-099 — fora`n**Nomes comuns:** ``outro```n"
 Put $p '.team-project/architect/breakdown/S1.md' $bdText
 $fc = Join-Path $p '.team-project/sprints/1/handoff/T-041a-ficha.md'
 # v3.53.2: a ficha se confere ANTES do Arquiteto — caminho que não existe (o nome de classe em Fontes não é caminho).
@@ -1086,8 +1206,9 @@ Check 'C1 duas em construção: R1 falhou' $r 0 @('\| R1 \| falhou.*T-041.*T-041
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $tmp)
 Check 'C1 sem .team-project: exit 2' $r 2 @()
 
-# 8. C2 no projeto feliz (sem git: R31 n-a).
-$p = Join-Path $tmp 'feliz'
+# 8. C2 no projeto feliz (sem git: R31 n-a). v3.64.1: um projeto próprio no mesmo estado do "feliz" do caso 1 (New-Project e
+# o fechamento da T-041), para o trecho rodar sozinho num bloco do run-all-tests.ps1.
+$p = Join-Path $tmp 'feliz-c2'; New-Project $p; Close-T041 $p
 if (Test-Path (Join-Path $checks 'project.ps1')) {
     $r = Invoke-Check 'project.ps1' @('-Root', $p)
     Check 'C2 feliz: R14 ok, R21 ok, R31 n-a' $r 0 @('\| R14 \| ok', '\| R21 \| ok', '\| R31 \| n-a')
@@ -1124,87 +1245,6 @@ if (Test-Path (Join-Path $checks 'project.ps1')) {
 }
 
 # 10. C4 (fix.ps1): bloco B-001 com um defeito, um ajuste e uma promovida.
-$ck = [char]::ConvertFromUtf32(0x2714)
-function New-FixBlock([string]$Dir) {
-    Put $Dir 'docs/implementation/pending.md' "# GAPs`n`n## GAP-007 — exportação perde a última linha`n"
-    Put $Dir '.team-project/fixes.md' @"
-# Correções — trilha fix (R33)
-
-## Correções
-| F-ID | Data | Tipo | Relato (1 linha) | C1–C4 (PO) | Reproduzido (QA) | C5–C8 (Arq) | Bloco | Estado | Veredito | Promovida para | Reaberta em |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| F-001 | 2026-09-03 | defeito | exportação perde a última linha | ok | GAP-007 | ok | B-001 | em bloco | | | |
-| F-002 | 2026-09-03 | ajuste | mensagem de erro do filtro | ok | n/a | ok | B-001 | em bloco | | | |
-| F-003 | 2026-09-03 | defeito | ordem das colunas | ok | GAP-008 | C5 caiu | B-001 | promovida | | Product Backlog H-020 | |
-| F-004 | 2026-09-03 | defeito | rodapé do relatório | ok | GAP-009 | | B-001 | devolvida | | devolvida — área distante | |
-"@
-    Put $Dir '.team-project/fixes/F-001.md' @"
-# F-001 · exportação perde a última linha
-**Tipo:** defeito · **Triada em:** 2026-09-03
-**História do aceite:** H-014 + sprint 1 — ver pending.md
-## Elegibilidade funcional
-- C1 $ck · nenhum requisito novo
-- C2 $ck · nenhuma tela nova
-- C3 $ck · H-014 não está em voo
-- C4 $ck · sem dado sensível
-## Reprodução
-**Entrada no pending.md:** GAP-007 · **Causa:** src/Export.cs:42
-## Destino
-**Bloco:** B-001 · **Estado:** em bloco
-"@
-    Put $Dir '.team-project/fixes/F-002.md' @"
-# F-002 · mensagem de erro do filtro
-**Tipo:** ajuste · **Triada em:** 2026-09-03
-## Elegibilidade funcional
-- C1 $ck · altera só RF-12
-- C2 $ck · mensagem de campo existente
-- C3 $ck · fora de História em voo
-- C4 $ck · sem dado sensível
-## Destino
-**Bloco:** B-001 · **Estado:** em bloco
-"@
-    Put $Dir '.team-project/fixes/F-003.md' @"
-# F-003 · ordem das colunas
-**Tipo:** defeito · **Triada em:** 2026-09-03
-## Destino
-**Bloco:** B-001 · **Estado:** promovida
-**Critério que caiu:** C5 — muda o contrato da API de exportação
-"@
-    $fsec = { param($id, $prod)
-@"
-## $id · correção
-**Tipo:** defeito · **Ficha:** fixes/$id.md
-### Elegibilidade técnica
-- C5 $ck · sem contrato
-- C6 $ck · 1 arquivo
-- C7 $ck · sem dependência
-- C8 $ck · causa localizada
-### Arquivos
-- produção: $prod
-- teste: tests/${id}Tests.cs
-### Revalidação
-n/a — sem mudança
-"@ }
-    Put $Dir '.team-project/fixes/B-001/plan.md' ("# B-001 · mini-planos`n**Data:** 2026-09-03 10:00 · **Correções:** F-001, F-002, F-003`n`n" + (& $fsec 'F-001' '`src/Export Final.cs`') + "`n" + (& $fsec 'F-002' 'src/Filter.cs') + "`n## F-003 · ordem`n**Critério que caiu:** C5 — muda o contrato`n")
-    $vsec = { param($id)
-@"
-## QA — $id correção — 2026-09-04
-**Veredito:** $($e.ok)
-**Commit:** n/a — sem git
-### Teste de regressão
-**Antes:** exit 1
-> dotnet test --filter $id
-Failed: 1
-**Depois:** exit 0
-> dotnet test --filter $id
-Passed: 1
-### Escopo
-**Fora do plano:** nada
-### Documentos vivos (R12)
-**Estado:** atualizados
-"@ }
-    Put $Dir '.team-project/fixes/B-001/verdict.md' ("# B-001 · veredito`n**Trilha:** fix · **Executado em:** 2026-09-04 10:00`n`n" + (& $vsec 'F-001') + "`n" + (& $vsec 'F-002'))
-}
 
 $p = Join-Path $tmp 'fix'; New-Project $p; New-FixBlock $p
 $r = Invoke-Check 'fix.ps1' @('-Block', 'B-001', '-Root', $p)
@@ -2069,7 +2109,6 @@ Check 'v3.53.5: adb sem resposta é encerrado no prazo (2 s, não 30) e o comand
 
 # 17. v3.53.4 — plano externo (guards.json → "run": { "planner": "external" }): pacote por História, retorno conferido
 # pelo plan.ps1, correção, GAP em pacote e o piloto por lista de Tasks.
-Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 $zipList = { param($z) $za = [System.IO.Compression.ZipFile]::OpenRead($z); try { ($za.Entries | ForEach-Object { $_.FullName }) -join "`n" } finally { $za.Dispose() } }
 $zipMake = { param($z, $entries) $fs = [System.IO.File]::Open($z, [System.IO.FileMode]::Create); try { $za = New-Object System.IO.Compression.ZipArchive($fs, [System.IO.Compression.ZipArchiveMode]::Create); try { foreach ($k in $entries.Keys) { $w = New-Object System.IO.StreamWriter($za.CreateEntry($k).Open(), $utf8); try { $w.Write($entries[$k]) } finally { $w.Dispose() } } } finally { $za.Dispose() } } finally { $fs.Dispose() } }
 # v3.57.7 (sprint 6 do garden): a lista "O que a conferência recusa" do roteiro externo ficou atrás do plan.ps1 três entregas
@@ -2544,6 +2583,12 @@ $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root
 Check 'v3.54.2: done -Result env com startState → sem reparo, bloqueio "estado de partida" (sem a etiqueta), formulário com baseline' $r 0 @('ESTADO DE PARTIDA: br\.x/\.IntroActivity', 'mark\.ps1 -Task T-041 -To blocked -Reason "estado de partida — br\.x/\.IntroActivity', 'T-041 🔴 bloqueada: estado de partida', 'targets\.android\.baseline', 'SC-117-falha\.png', '^(?![\s\S]*-Repair)', '^(?![\s\S]*prova no alvo pendente)')
 $r = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'blocked', '-Reason', 'estado de partida — br.x/.IntroActivity', '-Root', $p)
 Check 'v3.54.2: bloqueio por estado de partida vai ao stakeholder e não diz que o next reabre' @{ Code = $r.Code; Out = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/sprint-backlog.md'), $utf8) } 0 @('T-041 \| estado de partida — br\.x/\.IntroActivity \| escalado ao stakeholder.*reabre com mark\.ps1 -To qa')
+# v3.64.1 (sprint 6 do projeto piloto, Q-S6e): só a etiqueta da prova no alvo pendente leva a promessa de reabrir pelo next.
+$pk641 = Join-Path $tmp 'v3641-mark'; New-Project $pk641
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'blocked', '-Reason', 'ambiente: suíte Karma cai com Chrome Headless desconectado', '-Root', $pk641)
+$r2 = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'blocked', '-Reason', 'prova no alvo pendente — nenhum emulador', '-Root', $pk641)
+$sb641 = [System.IO.File]::ReadAllText((Join-Path $pk641 '.team-project/sprints/1/sprint-backlog.md'), $utf8)
+Check 'v3.64.1: bloqueio de ambiente sem a etiqueta da prova no alvo → "reabre com mark.ps1 -To build depois do reparo" (o next não o reabre); com a etiqueta, a promessa fica' @{ Code = $r.Code + $r2.Code; Out = $sb641 } 0 @('T-041 \| ambiente: suíte Karma[^\r\n]*reabre com mark\.ps1 -To build depois do reparo', 'T-041a \| prova no alvo pendente — nenhum emulador[^\r\n]*o run\.ps1 next reabre quando o alvo responder', '^(?![\s\S]*T-041 \| ambiente: suíte Karma[^\r\n]*quando o alvo responder)')
 Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "IDS NÃO PUBLICADOS: …", "startState": "br.x/br.x.MainActivity · textos: Cultiva", "results": [ { "id": "SC-165", "status": "FALHOU", "shot": ".team-project/accept/1/T-041/shots/SC-165-falha.png" } ] }'
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
 Check 'v3.62.0: done -Result env com o IDS NÃO PUBLICADOS de um result.json antigo → CONFIGURAÇÃO DO ALVO (locator cdp), sem reparo, sem baseline, sem aria-label' $r 0 @('CONFIGURAÇÃO DO ALVO: app híbrido.*targets\.android\.locator = .cdp.', 'mark\.ps1 -Task T-041 -To blocked -Reason "configuração do alvo — ', 'T-041 🔴 bloqueada: configuração do alvo', '^(?![\s\S]*-Repair)', '^(?![\s\S]*targets\.android\.baseline)', '^(?![\s\S]*aria-label)')
@@ -2643,7 +2688,6 @@ Check 'v3.53.7: massa declarada e select com opção passam o -ParseOnly' $r 0 @
 $sc = '{ "seeds": { "ok": "if ($env:ACCEPT_TARGET -eq ''android'' -and $env:ACCEPT_SEED -eq ''ok'' -and $env:ACCEPT_PACKAGE -eq ''br.x'') { exit 0 } else { exit 9 }", "ruim": "Write-Output ''tabela canteiros nao existe''; exit 3" } }' | ConvertFrom-Json
 # o lib.ps1 grava $script:E (marcadores), que é o $e dos testes (o PowerShell não diferencia maiúsculas) mesmo
 # carregado num escopo filho — guarda e devolve o $e.
-$e0 = $e
 $sr = & { . (Join-Path $checks 'lib.ps1'); @{ s1 = (Invoke-TargetSeed $p 'android' $sc 'ok' @{ ACCEPT_PACKAGE = 'br.x' }); s2 = (Invoke-TargetSeed $p 'android' $sc 'ruim'); s3 = (Invoke-TargetSeed $p 'android' $sc 'nenhuma') } }
 $s1 = $sr.s1; $s2 = $sr.s2; $s3 = $sr.s3; $e = $e0
 Check 'v3.53.7: Invoke-TargetSeed — carregou (com o ambiente), falhou (exit e saída) e não declarada' @{ Code = 0; Out = "S1=[$s1]`nS2=[$s2]`nS3=[$s3]" } 0 @('S1=\[\]', "S2=\[massa de dados 'ruim' não carregou \(exit 3\): tabela canteiros nao existe\]", "S3=\[massa de dados 'nenhuma' não declarada")
@@ -2894,6 +2938,10 @@ $r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $p)
 Check 'v3.55.0 F2: start com comandos que a G14 não libera para antes do dev e lista os prefixos faltantes de todos os planos da História' $r 2 @('PARADA ÚNICA', 'docker compose run\s+\(T-041', 'aapt dump badging\s+\(T-041', 'UM formulário', 'run\.ps1 allow -Commands', '^(?![\s\S]*dispatch: developer)')
 $r = Invoke-Check 'run.ps1' @('allow', '-Commands', 'npm install left-pad', '-Root', $p)
 Check 'v3.55.0 F2: allow recusa comando de instalação (não entra no run)' $r 2 @('instalação, rede, push e destrutivo não entram no run')
+# v3.64.1 (sprint 6 do projeto piloto, 19/11): o script do plugin não vai a runCommands, nem pelo nome nem pelo caminho do cache.
+$r = Invoke-Check 'run.ps1' @('allow', '-Commands', "& 'C:\Users\x\.claude\plugins\cache\team\team\3.64.0\accept.ps1'; verify.ps1", '-Root', $p)
+$gj641 = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/guards.json'), $utf8)
+Check 'v3.64.1: allow recusa script do plugin (caminho do cache com a versão, ou o nome solto) e não grava nada' @{ Code = $r.Code; Out = $r.Out + "`n" + $gj641 } 2 @('script do plugin não vai a runCommands', 'a mensagem da G14 traz o certo', '^(?![\s\S]*plugins\\cache[^\r\n]*"\s*\])', '^(?![\s\S]*"verify\.ps1")')
 $r = Invoke-Check 'run.ps1' @('allow', '-Commands', 'docker compose run', '-Deny', 'aapt dump badging', '-By', 'Marco', '-Root', $p)
 $gjAfter = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/guards.json'), $utf8)
 $rlAfter = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/run-log.md'), $utf8)
@@ -3728,27 +3776,6 @@ Check 'v3.62.3: executor do projeto sai 2 sem linha nenhuma → exit 2 (uso), se
 $ok63 = [char]::ConvertFromUtf32(0x2705); $fail63 = [char]::ConvertFromUtf32(0x274C); New-Item -ItemType Directory -Force $tmp | Out-Null
 # ======================= v3.63.0 · portão do QA por marcos, causa com dono, controle e prova guardada =======================
 # O passo do portão (gate.ps1) com as funções do run.ps1 simuladas, num projeto git de verdade (a árvore de produção é do git).
-$gh63 = Join-Path $tmp 'gate-h.ps1'
-[System.IO.File]::WriteAllText($gh63, @'
-param([string]$Checks, [string]$Root)
-$ErrorActionPreference = 'Stop'
-. (Join-Path $Checks 'lib.ps1')
-. (Join-Path $Checks 'gate.ps1')
-$utf8 = New-Object System.Text.UTF8Encoding($false)
-$n = '1'; $S = Join-Path $Root '.team-project/sprints/1'; $plugin = '${CLAUDE_PLUGIN_ROOT}/scripts/checks'; $todoMk = [char]::ConvertFromUtf32(0x2B1C)
-$tasks = @(); if (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md')) { $tasks = @(Get-SprintTasks $S) }
-function Out([string]$s) { [Console]::Out.WriteLine($s) }
-function Say([string]$s) { [Console]::Out.WriteLine("PARA O STAKEHOLDER: $s") }
-function Get-AgentLine([string]$Role) { return "Agent: team:$Role" }
-function Get-VerdictOf([string]$Path) { if (-not (Test-Path -LiteralPath $Path)) { return $null }; $ms = @([regex]::Matches((Read-Text $Path), '(?m)^\*\*Veredito[^*\r\n]*:\*\*(.*)$')); if (-not $ms.Count) { return '' }; $mk = Get-VerdictMark $ms[$ms.Count - 1].Groups[1].Value; if ($mk) { return $mk } else { return '' } }
-function Test-PoDebt([string]$Path) { return $false }
-function Add-RunLog { param($S, $n, $Item, $Decision, $Why, $Evidence) [Console]::Out.WriteLine("RUNLOG: $Item | $Decision") }
-function Get-WatcherLine { return 'WATCHER-LINE' }
-Invoke-GateStep
-'GATE-RETURNED'
-'@, (New-Object System.Text.UTF8Encoding($true)))
-$g63 = { param($pp) $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $gh63 -Checks $checks -Root $pp 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
-$lib63 = { param($expr) $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -Command ". '$(Join-Path $checks 'lib.ps1')'; $expr" 2>&1 | Out-String; $o.Trim() }
 $pg = Join-Path $tmp 'v3630-gate'
 Put $pg '.team-project/README.md' "| | |`n|---|---|`n| **Sprint corrente** | **1** — x |`n"
 Put $pg '.team-project/sprints/1/sprint-backlog.md' "# SB`n`n## História H-1 — x`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $ok63 T-001 | a | 1 | dev | — | — | — | SC-1 |`n"
@@ -3824,6 +3851,21 @@ Edit-File $sb64 '| corrige a rodada 2 |' '| corrige a rodada 2 e S1-F5 |'
 Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F5 | T-001 | R`$0.00 em vez de 0,00 | vendas | code | dev | open |`n"
 $r = & $g63 $pg
 Check 'v3.64.0 item 8 B: o achado já está na Q-S1b, que está 🔴 → a rota do bloqueio dela (exit 0), nunca "esperar" (exit 3)' $r 0 @('destravar Q-S1b \(🔴\) .*Q-S1b: ambiente: suíte caiu com a máquina ocupada', 'Não abra outra Q-S1', '^(?![\s\S]*PRÓXIMA AÇÃO: esperar)')
+# v3.64.1 (sprint 6 do projeto piloto, 18/11): a Q-S6e em 🔴 pelo Karma, o código parcial dela na árvore e o portão mediu de novo.
+(Get-Item -LiteralPath (Join-Path $qd63 'result.json')).LastWriteTime = (Get-Date).AddMinutes(10)
+$r = & $g63 $pg
+Check 'v3.64.1: medição mais nova que o veredito com a Q-S1b 🔴 → a rota do bloqueio dela antes da rodada focada (o QA não julga código de correção parada)' $r 0 @('destravar Q-S1b \(🔴\)', '^(?![\s\S]*revisar o veredito)', '^(?![\s\S]*team:quality-assurance)')
+Put $pg 'src/a.ts' "export const a = 3`n"
+$r = & $g63 $pg
+$ar641 = $(try { (Get-Content -LiteralPath (Join-Path $pg '.team-project/.ask-route') -Raw -Encoding UTF8) } catch { '' })
+Check 'v3.64.1: produção mudou com a Q-S1b 🔴 → sem medir (nenhum operator, quality nem accept): a rota do bloqueio dela, com o motivo e o mark -To build; rota ambiente ao stakeholder' @{ Code = $r.Code; Out = $r.Out + "`nrota=$ar641" } 0 @('destravar Q-S1b \(🔴\) — a medição do portão do sprint espera', 'Q-S1b: ambiente: suíte caiu com a máquina ocupada', 'mark\.ps1 -Task <ID> -To build', 'rota=.*"rota":"ambiente"', '^(?![\s\S]*team:operator)', '^(?![\s\S]*accept\.ps1 -Task S1 -Resume)', '^(?![\s\S]*quality\.ps1)')
+Edit-File $sb64 "| $ok63 T-001 | a |" "| $([char]::ConvertFromUtf32(0x1F534)) T-001 | a |"
+Edit-File $sb64 "| $([char]::ConvertFromUtf32(0x1F534)) Q-S1b |" "| $ok63 Q-S1b |"
+$r = & $g63 $pg
+Check 'v3.64.1: Task original em 🔴 (sem correção parada) também segura a medição' $r 0 @('destravar T-001 \(🔴\) — a medição do portão do sprint espera', 'T-001: motivo não registrado', '^(?![\s\S]*team:operator)')
+Edit-File $sb64 "| $([char]::ConvertFromUtf32(0x1F534)) T-001 | a |" "| $ok63 T-001 | a |"
+Edit-File $sb64 "| $ok63 Q-S1b |" "| $([char]::ConvertFromUtf32(0x1F534)) Q-S1b |"
+Put $pg 'src/a.ts' "export const a = 2`n"
 Edit-File $sb64 "| corrige a rodada 2 e S1-F5 | 1 | dev | — | ``plan/Q-S1b.md`` | — | SC-1 |`n" "| corrige a rodada 2 e S1-F5 | 1 | dev | — | ``plan/Q-S1b.md`` | — | SC-1 |`n| $([char]::ConvertFromUtf32(0x2B1C)) Q-S1c | substitui a Q-S1b | 1 | dev | — | ``plan/Q-S1c.md`` | — | SC-1 |`n"
 Put $pg '.team-project/sprints/1/plan/Q-S1c.md' "# Plano — Q-S1c`n`n**Corrige:** Q-S1b`n"
 Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F5 | T-001 | R`$0.00 em vez de 0,00 | vendas | code | dev | open |`n"
@@ -4180,6 +4222,8 @@ Check 'v3.64.0 item 6 D: "a árvore mudou depois do verify" diz o arquivo que mu
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p64b)
 Check 'v3.64.0 item 5 B: plano com **Aceite:** não roda → o R7 pede só a saída do verify e cita o plano; R12 "n/a" no modo dev vale como a consolidar' $r 1 @('\| R7 \| falhou \| delivery/T-041\.md sem a saída colada do verify na seção mais recente \(plano: \*\*Aceite:\*\* não roda\)', '\| R12 \| ok \| Estado: n/a')
 
+# ==== fim dos casos ====
+try { Stop-Process -Id $script:watchdog.Id -Force -ErrorAction SilentlyContinue } catch { }
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output
 foreach ($sl in @($rows | Sort-Object Seg -Descending | Select-Object -First 12)) { $sn = [string]$sl.Caso; Write-Output ("lento: {0,5} s  {1}" -f $sl.Seg, $(if ($sn.Length -gt 120) { $sn.Substring(0, 120) } else { $sn })) }

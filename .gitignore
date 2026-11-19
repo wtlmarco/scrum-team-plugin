@@ -2,3 +2,6 @@
 # Aqui é onde o plugin é habilitado em modo desenvolvimento (marketplace por diretório
 # apontando para este próprio clone), para o /review rodar contra a árvore de trabalho.
 .claude/settings.local.json
+
+# v3.64.1: blocos temporários do run-all-tests.ps1 (apagados ao fim da rodada)
+scripts/checks/tests/.bloco-*.ps1
