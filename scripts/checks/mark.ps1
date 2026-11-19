@@ -10,12 +10,23 @@
 #   -Reason (v3.53.6, sprint 5 do garden, item 9; só com -To blocked): grava a linha em "Bloqueios e riscos abertos" (kanban.md,
 #        ou o quadro antigo) com o motivo na Natureza e o degrau nomeado. "prova no alvo pendente — <motivo>" é a etiqueta que o
 #        run.ps1 next lê para reabrir a Task quando o alvo voltar; ao sair de 🔴, a linha vira "prova no alvo retomada em <data>".
+#   -Reopen (v3.64.2, sprint 6 do projeto piloto, Q-S6e): obrigatório para tirar a Task de 🔴, salvo as duas reaberturas
+#        que já têm dono ("prova no alvo pendente", que o run.ps1 next reabre, e "estado de partida", que volta a 🟪):
+#        · resume — retoma como está: o stakeholder reparou fora do repositório (máquina, emulador, configuração dele) ou o
+#          script já aplicou o ajuste; nada no plano muda.
+#        · replan -Decision "<a decisão>" — a decisão muda o que o plano manda (configuração de teste, guards.json, arquivo
+#          fora de **Arquivos tocados:**, algo que o plano proíbe): a Task vai a 🟦, a decisão fica em
+#          sprints/<n>/handoff/<ID>-replan.md e o run.ps1 next manda o Arquiteto emendar o plano antes de qualquer dev.
+#        No piloto, "Ajustar a espera — o Arquiteto ajusta" virou -To build: o dev novo repetiu o verify que já tinha caído três
+#        vezes, com o plano ainda proibindo mexer no karma.conf.js.
 # Saída: uma linha. Exit 0 · 2 = erro de uso ou de leitura (nada é gravado).
 param(
     [Parameter(Mandatory = $true)][string]$Task,
     [Parameter(Mandatory = $true)][string]$To,
     [string]$By = '',
     [string]$Reason = '',
+    [ValidateSet('', 'resume', 'replan')][string]$Reopen = '',
+    [string]$Decision = '',
     [string]$Root = (Get-Location).Path
 )
 
@@ -93,6 +104,22 @@ try {
     }
     if ($row -lt 0) { [Console]::Error.WriteLine("mark: $Task sem linha com marcador no quadro ($boardPath)."); exit 2 }
     if ($from -eq $target) { [Console]::Error.WriteLine("mark: $Task já está $target."); exit 2 }
+    # v3.64.2: sair de 🔴 diz como — retomar como está ou replanejar com o Arquiteto antes do dev.
+    $replanWhy = ''
+    if ($from -eq $red -and $target -ne $red) {
+        $bk = Get-BlockLines $S
+        $lastWhy = if ($bk.ContainsKey($Task)) { [string]@($bk[$Task])[-1] } else { '' }
+        $owned = ($lastWhy.IndexOf($script:TargetPendingTag, [StringComparison]::OrdinalIgnoreCase) -ge 0) -or ($lastWhy -match '(?i)estado de partida')
+        if (-not $owned -and -not $Reopen) {
+            [Console]::Error.WriteLine("mark: $Task sai de 🔴 ($(if ($lastWhy) { "Bloqueios: $lastWhy" } else { 'sem linha em Bloqueios' })) — diga como: -Reopen resume (o reparo foi fora do repositório, ou o ajuste já está feito; nada no plano muda) ou -Reopen replan -Decision `"<a decisão do stakeholder>`" (a decisão muda o que o plano manda — configuração de teste, guards.json, arquivo fora de **Arquivos tocados:**, algo que o plano proíbe —: a Task vai a 🟦 e o run.ps1 next manda o Arquiteto emendar o plano antes do dev). Nada gravado.")
+            exit 2
+        }
+        if ($Reopen -eq 'replan') {
+            if (-not $Decision.Trim()) { [Console]::Error.WriteLine('mark: -Reopen replan pede -Decision "<a decisão do stakeholder>" — é o que o Arquiteto lê para emendar o plano. Nada gravado.'); exit 2 }
+            $target = $E.Plan; $replanWhy = $lastWhy
+            if (-not $PSBoundParameters.ContainsKey('By')) { $By = 'Arquiteto · replanejar' }
+        }
+    }
     $ix = $bl[$row].IndexOf($from)
     $bl[$row] = $bl[$row].Substring(0, $ix) + $target + $bl[$row].Substring($ix + $from.Length)
 
@@ -148,7 +175,7 @@ try {
             $cells = @(foreach ($h in $hd) {
                 if ($h -eq '#') { "$($k + 1)" } elseif ($h -match '(?i)^Task') { $Task } elseif ($h -match '(?i)Natureza') { $why }
                 elseif ($h -match '(?i)Degrau') { if ($envy) { "escalado ao stakeholder em $day" } else { "par PO+Arquiteto desde $day" } }
-                elseif ($h -match '(?i)Quem') { if ($startSt) { 'stakeholder (estado de partida do app: baseline ou cenário) — reabre com mark.ps1 -To qa' } elseif ($tpTag) { 'stakeholder (ambiente) — o run.ps1 next reabre quando o alvo responder' } elseif ($envy) { 'stakeholder (ambiente) — reabre com mark.ps1 -To build depois do reparo' } else { 'PO + Arquiteto' } }
+                elseif ($h -match '(?i)Quem') { if ($startSt) { 'stakeholder (estado de partida do app: baseline ou cenário) — reabre com mark.ps1 -To qa' } elseif ($tpTag) { 'stakeholder (ambiente) — o run.ps1 next reabre quando o alvo responder' } elseif ($envy) { 'stakeholder (ambiente) — reparo fora do repositório: mark.ps1 -To build -Reopen resume; decisão que muda o plano: -Reopen replan -Decision "…" (Arquiteto antes do dev)' } else { 'PO + Arquiteto' } }
                 elseif ($h -match '(?i)Desde') { $day } else { '' } })
             $tl.Insert($be + 1, '| ' + ($cells -join ' | ') + ' |')
             $blkTxt = "; Bloqueios: linha $($k + 1) em $bw"
@@ -174,6 +201,14 @@ try {
     if ($sepChart) { [System.IO.File]::WriteAllText($chartPath, ($kLines -join $knl), $utf8) }
     if ($recFs) { Exit-FileLock $recFs $bdPath }
     [Console]::Out.WriteLine("mark: $Task $from → $target · quadro, Série e Registro gravados (Registro em $where; por quem: $By)$blkTxt")
+    if ($Reopen -eq 'replan') {
+        $rpf = Join-Path $S "handoff/$Task-replan.md"
+        New-Item -ItemType Directory -Force (Split-Path $rpf) | Out-Null
+        $rpt = @("# Replanejar a $Task — decisão do stakeholder ($now)", '', "**Bloqueio:** $(if ($replanWhy) { $replanWhy } else { 'sem linha em Bloqueios' })", "**Decisão:** $($Decision.Trim())", "**Por quem:** $By", '',
+            'O run.ps1 next manda o Arquiteto emendar o plano com esta decisão antes de qualquer dev. Com o plano regravado depois deste arquivo e o plan.ps1 verde, a Task vai a 🟨 e o executor retoma pelo cartão.') -join "`n"
+        [System.IO.File]::WriteAllText($rpf, $rpt + "`n", $utf8)
+        [Console]::Out.WriteLine("mark: decisão gravada em sprints/$($m.Groups[1].Value)/handoff/$Task-replan.md — run.ps1 next dispara o Arquiteto para emendar o plano")
+    }
     # v3.64.0 (item 6 A): a Task parou (🔴) com código no disco → checkpoint só do escopo do plano, para não travar a próxima.
     if ($target -eq $red -and $from -ne $red) {
         try {

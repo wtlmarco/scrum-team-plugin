@@ -37,8 +37,11 @@ T-041 ✅ fechada · commit <sha | cópia> · <k> rodadas
 T-041 🔴 bloqueada: <motivo em uma linha · degrau>
 T-041 ⏸ ambiente: <motivo em uma linha>
 T-041 ⏸ limite de uso
+T-041 ⏸ replanejar
 T-041 🔺 GAP → external plan T-041-gap
 ```
+
+`⏸ replanejar` (v3.64.2): o `run.ps1 start` recusou porque a Task tem decisão do stakeholder para replanejar (`handoff/<ID>-replan.md`) e o plano ainda não foi emendado. Não dispare o dev nem o Arquiteto: devolva a linha. Quem dispara o Arquiteto é o `run.ps1 next`, na sessão.
 
 No `fix run`, o mesmo com a F-ID: `F-012 ✅ veredito do QA · commit <sha | cópia> · <k> rodadas` · `F-012 🔴 promovida: C<n> — <motivo>` · `F-012 ⏸ ambiente: …` · `F-012 ⏸ limite de uso` · `F-012 🔺 GAP → external plan F-012-gap`. `<k>` = disparos de papel que você fez. **Nada além da linha** — o conteúdo está nos arquivos dos papéis.
 
