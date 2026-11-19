@@ -19,12 +19,22 @@ async function listPages(port, ms) {
   const r = await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(ms) });
   return (await r.json()).filter((p) => p.type === 'page');
 }
-// A página do app: a que casa pageUrl; sem pageUrl, a única que não é about:blank. Mais de uma sem pageUrl = configuração.
+// A URL da página sem a rota (v3.64.5): o app de página única muda a URL a cada navegação (/tabs/geral, #/pedido/42), e a rota
+// é o estado da TELA — quem diz a tela é o id da raiz (test-ids.md §3). http(s): a origem + "/"; file:// e outros: sem ?query e
+// #hash (no Cordova, file:///android_asset/www/index.html#/rota → …/index.html; a origem de file:// é "null" e não serve).
+function pageKey(url) {
+  const u = String(url || '');
+  try { const o = new URL(u); if (o.protocol === 'http:' || o.protocol === 'https:') return `${o.origin}/`; } catch (e) { /* */ }
+  return u.replace(/[?#].*$/, '');
+}
+// A página do app: a que casa pageUrl pela URL inteira e, sem nenhuma assim, pela URL sem a rota (v3.64.5: o pageUrl escrito na
+// tela inicial, como ^https://localhost/$, continua achando o app depois que ele troca de rota). Sem pageUrl, a única que não é
+// about:blank. Mais de uma sem pageUrl = configuração.
 function choosePage(pages, pageUrl, targetId) {
   if (targetId) return pages.find((p) => p.id === targetId) || null;
   if (pageUrl) {
     let re; try { re = new RegExp(pageUrl); } catch (e) { throw err('config', `targets.android.cdp.pageUrl não é uma expressão regular válida (${pageUrl})`); }
-    return pages.find((p) => re.test(p.url)) || null;
+    return pages.find((p) => re.test(p.url)) || pages.find((p) => re.test(pageKey(p.url))) || null;
   }
   const c = pages.filter((p) => p.url && p.url !== 'about:blank');
   if (c.length > 1) throw err('config', `a WebView tem ${c.length} páginas (${c.map((p) => p.url).join(' · ')}) — declare qual é a do app em guards.json → targets.android.cdp.pageUrl (expressão regular)`);
@@ -41,13 +51,15 @@ function connect(url, ms) {
 // Sessão sobre o WebSocket da página, com prazo em cada chamada (cfg.callTimeoutMs, padrão 10 s).
 async function openSession(cfg) {
   const ms = cfg.callTimeoutMs || 10000, wait = cfg.pageWaitMs != null ? cfg.pageWaitMs : ms, t0 = Date.now();
-  let page = null, last = '';
+  let page = null, last = '', seen = [];
   do {
-    try { page = choosePage(await listPages(cfg.port, ms), cfg.pageUrl, cfg.targetId); last = ''; } catch (e) { if (e.kind === 'config') throw e; last = String(e.message); }
+    try { const pages = await listPages(cfg.port, ms); seen = pages.map((p) => p.url).filter((u) => u && u !== 'about:blank'); page = choosePage(pages, cfg.pageUrl, cfg.targetId); last = ''; } catch (e) { if (e.kind === 'config') throw e; last = String(e.message); }
     if (page) break; await sleep(400);
   } while (Date.now() - t0 < wait);
   if (!page) {
     if (last) throw err('environment', `o DevTools da WebView não respondeu na porta ${cfg.port} (${last})`);
+    // v3.64.5: a WebView tem página carregada e nenhuma casa o pageUrl → é a configuração, com as URLs vistas (a prova vem junto).
+    if (cfg.pageUrl && !cfg.targetId && seen.length) throw err('config', `nenhuma página do /json casa targets.android.cdp.pageUrl (${cfg.pageUrl}): ${[...new Set(seen)].join(' · ')} — o pageUrl é a regex da origem do app (ex.: ^https://localhost(/|$)), não da rota de uma tela`);
     throw new Error('a página do app não está no /json do DevTools (o app fechou ou não carregou a WebView)');
   }
   const ws = await connect(`ws://127.0.0.1:${cfg.port}/devtools/page/${page.id}`, ms);
@@ -63,7 +75,7 @@ async function openSession(cfg) {
 }
 function closeSession(s) { try { s.ws.close(); } catch (e) { /* */ } }
 
-module.exports = { openSession, closeSession, choosePage };
+module.exports = { openSession, closeSession, choosePage, pageKey };
 
 if (require.main === module) {
   const [, , inFile, outFile] = process.argv;

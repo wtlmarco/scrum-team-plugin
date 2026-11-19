@@ -13,6 +13,20 @@
 
 ---
 
+## v3.64.5 — 2026-11-19
+
+**Branch:** `fix/v3.64.5` a partir de `develop` (`963e2ab`, v3.64.4 mesclada)
+
+Origem: projeto piloto, 19/11. Os 13 cenários do `accept` com `locator: "cdp"` caíram em "a página do app não está no /json do DevTools", com o app aberto no emulador. O `pageUrl` do projeto era `^https://localhost/$`, escolhido na tela inicial. Ao abrir uma aba, o app troca a rota (`/tabs/...`), e nenhuma página casava mais. A mensagem dizia "o app fechou", e a causa ficou como hipótese.
+
+**A página se identifica pela origem; a tela, pelo id da raiz** (`android-cdp.js`):
+- **Escolha da página:** o `pageUrl` casa a URL inteira e, sem nenhuma assim, a URL sem a rota: origem + `/` em `http(s)`; sem `?` e `#` em `file://` (Cordova; a origem de `file://` é `"null"`). O `pageUrl` escrito na tela inicial continua achando o app em outra tela, sem mudar o `guards.json`.
+- **Nenhuma página que case:** com página carregada na WebView e nenhuma casando o `pageUrl`, sai CONFIGURAÇÃO DO ALVO com as URLs vistas no `/json`. A prova vem na mensagem. Sem página nenhuma, continua "o app fechou ou não carregou a WebView".
+- **Por que no plugin:** todo app de página única em WebView (Ionic, Angular, React, Vue; Capacitor ou Cordova) muda a URL ao navegar. A rota é o estado da tela, e quem diz a tela é o id da raiz (`test-ids.md` §3), o mesmo que a arquitetura, o plano, o código e o QA citam pelo `ids-map.md`.
+
+**Textos:** `test-ids.md` §6 (a regra e o novo caso de CONFIGURAÇÃO), o `guards.json` modelo, o guia `ionic-capacitor` (`pageUrl: "^https://localhost(/|$)"`), o `team-init.md` (o `pageUrl` vem do guia, sem perguntar por uma tela), `scenario-language.md`, `stakeholder-question.md` e `sprint-run.md`.
+
+**Testes:** 2 casos novos em `run-check-tests.ps1` (Capacitor `https` e `http`, rota por `#`, Cordova `file://`, precedência da URL inteira, CONFIGURAÇÃO com as URLs vistas, sem página).
 ## v3.64.4 — 2026-11-19
 
 **Branch:** `fix/v3.64.4` a partir de `develop` (`2a3c1ca`, v3.64.3 mesclada)
