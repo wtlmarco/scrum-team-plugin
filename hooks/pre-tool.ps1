@@ -609,6 +609,28 @@ function Test-PluginCheck([string]$Seg) {
     return $false
 }
 
+# v3.64.1 (sprint 6 do projeto piloto, 19/11): o operator chamou "& '<plugin>\3.64.0\accept.ps1'" — sem o scripts\checks\ —, a
+# G14 negou com "fora da lista" e a sessão gravou o caminho (com a versão) em runCommands, o que não destrava nada. O script do
+# plugin chamado num caminho que não é o das conferências, com um homônimo em <plugin>/scripts/checks/: devolve o caminho certo.
+function Get-PluginScriptMisroute([string]$Seg) {
+    $m = [regex]::Match($Seg.Trim(), '(?i)(?:"([^"]+\.ps1)"|''([^'']+\.ps1)''|(\S+\.ps1))(?=\s|$)')
+    if (-not $m.Success) { return '' }
+    $p = $m.Groups[1].Value + $m.Groups[2].Value + $m.Groups[3].Value
+    if ($env:CLAUDE_PLUGIN_ROOT) { $p = [regex]::Replace($p, '^(?i)\$\{?env:CLAUDE_PLUGIN_ROOT\}?', { param($x) $env:CLAUDE_PLUGIN_ROOT.TrimEnd('\', '/') }) }
+    $name = [System.IO.Path]::GetFileName(($p -replace '/', '\'))
+    if (-not $name -or $p -match '\$') { return '' }
+    foreach ($r in @($env:CLAUDE_PLUGIN_ROOT, (Split-Path $PSScriptRoot -Parent))) {
+        if ([string]::IsNullOrWhiteSpace($r)) { continue }
+        $right = Join-Path $r "scripts/checks/$name"
+        if (-not (Test-Path -LiteralPath $right -PathType Leaf)) { continue }
+        # o nome solto (accept.ps1) ou um caminho que cita a pasta do plugin (ou o cache de plugins) — nunca um script do projeto
+        $inPlugin = $false
+        try { $full = Normalize-PathText ([System.IO.Path]::GetFullPath($p)); $inPlugin = $full.StartsWith((Normalize-PathText ([System.IO.Path]::GetFullPath($r))).TrimEnd('/') + '/') } catch { }
+        if ($inPlugin -or $p -match '(?i)[\\/]plugins[\\/]cache[\\/]' -or $p -eq $name) { return $name }
+    }
+    return ''
+}
+
 # v3.62.2: o detach.ps1 roda um comando do projeto em processo próprio — a G14 confere o comando de DENTRO (-Command "<…>")
 # como se ele viesse sozinho; sem isso, o detach seria uma porta para qualquer comando. -Kill sem -Command passa.
 function Test-DetachInner([string]$Seg) {
@@ -900,6 +922,8 @@ function Test-G14([object]$ToolInput) {
         $badSeg = if ($script:badSegInner) { [string]$script:badSegInner } else { [string]$script:badSeg }
         # v3.53.6 (item 6): também nas formas "& <caminho>" e "<caminho>" direto.
         $plugCheck = ($badSeg -match '(?i)[\\/]scripts[\\/]checks[\\/][\w-]+\.ps1') -and ($badSeg -match '^(?i)(&|powershell|pwsh|["'']?(\.{0,2}[\\/]|[a-z]:[\\/]))')   # antes do corte
+        $misroute = Get-PluginScriptMisroute (Restore-Quoted $badSeg)   # v3.64.1: antes do corte
+        $isPs1 = $badSeg -match '(?i)\.ps1\b'                            # v3.64.1: antes do corte (o caminho longo perdia o .ps1)
         if ($badSeg.Length -gt 80) { $badSeg = $badSeg.Substring(0, 80) + '…' }
         # v3.52.3 (note.md item 3): a ferramenta move para segundo plano o comando que passa de 600 s, e o aviso de conclusão
         # CHEGA ao papel — negado o sono, o dev do garden passou a sondar o log (Get-Date + Get-Content a cada ~5 s, 51 chamadas).
@@ -907,9 +931,10 @@ function Test-G14([object]$ToolInput) {
         elseif ($badSeg -match '^(?i)(\S*[\\/])?adb(\.exe)?\b') { $why = "``adb`` direto (``$badSeg``) — o alvo se confere e se repara pelo ``target.ps1 -Target android`` (com ``-Repair`` reinicia e espera o emulador), e os cenários rodam pelo ``accept.ps1``; inspeção da tela é do operator pela pasta do job" }
         elseif ($badSeg -match '^(?i)(robocopy|xcopy)\b') { $why = "cópia em massa (``$badSeg``) — réplica do projeto para medir ou provar é trabalho do operator, na pasta do job (R28)" }
         elseif ($badSeg -match '^(?i)cmd(\.exe)?\s+/[ck]\b') { $why = "``cmd /c`` (``$badSeg``) — a G14 lê o comando de dentro quando ele vem entre aspas duplas (cmd /c ""<comando> > <log>""); o trecho de dentro não está na lista ou o destino não se resolve no projeto" }
+        elseif ($misroute) { $why = "caminho errado do script do plugin (``$badSeg``) — o $misroute fica em ``scripts/checks/``: rode ``& `"`${CLAUDE_PLUGIN_ROOT}/scripts/checks/$misroute`" …`` (ou ``powershell -File`` com o mesmo caminho), que a G14 já libera. Não peça run allow: script do plugin não vai a runCommands (v3.64.1)" }
         elseif ($plugCheck) { $why = "script de conferência fora da pasta do plugin (``$badSeg``) — só os de `${CLAUDE_PLUGIN_ROOT}/scripts/checks/ passam; use o caminho que o roteiro cita" }
         elseif ($badSeg -match '(?i)-ExecutionPolicy\b') { $why = "``-ExecutionPolicy`` (``$badSeg``) — a opção só passa na forma ``powershell -File `${CLAUDE_PLUGIN_ROOT}/scripts/checks/<script>.ps1``, e esses scripts já rodam os comandos do projeto com Bypass por dentro (verify.ps1, accept.ps1, target.ps1, run.ps1: não repita a opção). Script do próprio papel, no scratchpad ou em .team-project/: rode ``powershell -File <script>`` sem ``-ExecutionPolicy``. Comando longo vai ao operator (R28); o que falta na lista volta à sessão como '<ID> 🔺 comando: <prefixo>'" }
-        elseif ($badSeg -match '(?i)\.ps1\b') { $why = "script (``$badSeg``) — passa o script que o próprio papel gravou no scratchpad ou em .team-project/, quando cada linha dele passaria pela G14 e cada destino de escrita é dele; o trecho do script que não passaria é o motivo — rode-o sozinho para ver" }
+        elseif ($isPs1) { $why = "script (``$badSeg``) — passa o script que o próprio papel gravou no scratchpad ou em .team-project/, quando cada linha dele passaria pela G14 e cada destino de escrita é dele; o trecho do script que não passaria é o motivo — rode-o sozinho para ver" }
         elseif ($badSeg -match '^__metodo_(\w+)') { $why = "fora da lista operacional do run — chamada de método .$($Matches[1])() sobre o resultado de um comando; a G14 só libera propriedade (.Count, .Length, .Lines) — para escrever ou apagar, use o cmdlet" }
         else { $why = "fora da lista operacional do run — o trecho recusado é ``$badSeg``" + $(if ($badSeg -ne $cmd.Trim()) { ' (os outros trechos do comando composto passaram; rode esse trecho sozinho ou troque a forma)' } else { '' }) }
     }

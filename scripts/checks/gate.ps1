@@ -17,6 +17,8 @@
 #   "**Corrige:** <Q-S>" substitui a antiga; Q-S em 🔴 vai à rota do bloqueio, não a "esperar"; o diagnóstico do operator mais
 #   novo que o veredito pede a rodada focada; checkpoint das Tasks abertas antes de medir; a suíte só reaproveitada por inputs
 #   roda de fato (verify -Fresh) antes da qualidade; outro projeto com a máquina (trava pesada) → esperar.
+# v3.64.1 (sprint 6 do projeto piloto, 18/11): Task em 🔴 segura a medição (rota do bloqueio dela, sem operator), e a rota do
+#   bloqueio da correção em 🔴 vem antes da rodada focada.
 # Sai com exit quando há o que fazer; volta sem sair com o portão passado (✅, ou ⚠️ com a decisão do PO).
 
 function Invoke-GateStep {
@@ -61,6 +63,57 @@ function Invoke-GateStep {
         exit 0
     }
     $diagTxt = if ($diag) { ", o diagnóstico do operator $diagRel (veredito $($diag.Verdict)$(if ($diag.Element) { "; elemento: $($diag.Element)" })$(if ($diag.Where) { "; onde: $($diag.Where)" }): APP → achado com Cause code; PLANO → Cause scenario (Dono QA) ou design (Dono Arquiteto), com o elemento e onde ele fica na tela na coluna Onde; AMBIENTE → Cause environment)" } else { '' }
+
+    $qsRows = @($tasks | Where-Object { $_.Id -match "^Q-S$n([a-z]?)$" })
+    # v3.64.0 (item 8 B; sprint 6 do projeto piloto, 18/11): a correção que outra substituiu (o plano da nova declara
+    # **Corrige:** <a antiga>) conta como encerrada — no piloto, a Q-S6d em 🔴, que a Q-S6e corrige, segurava o portão.
+    $supersededBy = @{}
+    foreach ($q in $qsRows) {
+        if (-not $q.Plan -or $q.Plan -match '^plan/?$') { continue }
+        $qp = Join-Path $S $q.Plan; if (-not (Test-Path -LiteralPath $qp -PathType Leaf)) { continue }
+        $cm = [regex]::Match((Read-Text $qp), '(?m)^\*\*Corrige:\*\*([^\r\n]*)')
+        if ($cm.Success) { foreach ($m in [regex]::Matches($cm.Groups[1].Value, "Q-S$n[a-z]?(?![\w-])")) { if ($m.Value -ne $q.Id) { $supersededBy[$m.Value] = $q.Id } } }
+    }
+    $redQ = [char]::ConvertFromUtf32(0x1F534)
+    # O motivo do 🔴 de uma Task: a última linha dela em "Bloqueios e riscos abertos" (kanban.md, ou o quadro antigo).
+    $blockWhy = {
+        param([string]$Id)
+        foreach ($f in @((Join-Path $S 'kanban.md'), (Join-Path $S 'sprint-backlog.md'))) {
+            if (-not (Test-Path -LiteralPath $f)) { continue }
+            foreach ($t in (Get-Tables (Read-Text $f))) {
+                $ni = -1; $ti = -1; for ($i = 0; $i -lt $t.Header.Count; $i++) { if ($t.Header[$i] -match '^Natureza') { $ni = $i }; if ($t.Header[$i] -match '^Task') { $ti = $i } }
+                if ($ni -lt 0 -or $ti -lt 0) { continue }
+                $hit = @($t.Rows | Where-Object { (Get-Cell $_ $ti) -match "(?<![\w-])$([regex]::Escape($Id))(?![\w-])" })
+                if ($hit.Count) { return (& $short (Clean-Cell (Get-Cell $hit[-1] $ni))) }
+            }
+        }
+        return 'motivo não registrado em Bloqueios e riscos abertos'
+    }
+    # A rota do bloqueio das Tasks em 🔴 (v3.64.0 item 8 B; v3.64.1 também antes de medir).
+    $redRoute = {
+        param($Red, [string]$Ctx)
+        $ids = ($Red | ForEach-Object { $_.Id }) -join ', '
+        $why = (($Red | ForEach-Object { "$($_.Id): $(& $blockWhy $_.Id)" }) -join '; ')
+        $envR = -not @($Red | Where-Object { (& $blockWhy $_.Id) -notmatch '(?i)alvo|ambiente|emulador|aparelho|estado de partida|karma|navegador|browser' }).Count
+        Set-AskRoute $Root $(if ($envR) { 'ambiente' } else { 'bloqueio' }) (($Red | ForEach-Object { $_.Id }) -join ',') "Task em 🔴 no portão: $why"
+        Out "PRÓXIMA AÇÃO: destravar $ids (🔴) — $Ctx$why"
+        Say $(if ($envR) { 'A revisão final está parada porque uma correção parou num problema do ambiente de teste. Preciso de você para resolver o ambiente; depois ela retoma de onde parou.' } else { 'A revisão final está esperando uma correção que parou. Preciso destravá-la para seguir.' })
+        Out "  o motivo está em Bloqueios e riscos abertos (kanban.md); ambiente → o stakeholder repara (formulário, com a linha de Bloqueios) e a sessão roda $plugin/mark.ps1 -Task <ID> -To build e run.ps1 next (o executor retoma pelo cartão); decisão → degrau 1 (PO + Arquiteto), depois o formulário (R22). Não abra outra Q-S$n."
+        exit 0
+    }
+
+    # ---------- v3.64.1 · Task em 🔴 segura a medição ----------
+    # Sprint 6 do projeto piloto (18/11): a Q-S6e parou em 🔴 pelo Karma (verify full), o $open do run.ps1 não conta Task em
+    # 🔴, a fila parecia vazia e o portão mediu de novo o aceite (21 cenários) sobre o código parcial da correção — a regra da
+    # rota do bloqueio só vinha depois do veredito. Medir com uma Task parada não traz informação ao portão: com o que venceu
+    # e uma Task em 🔴 (que nenhuma outra substitui), vai à rota do bloqueio dela, sem operator. A Task com "prova no alvo
+    # pendente" fica de fora: o run.ps1 next a reabre sozinho quando o alvo volta (v3.53.6), e o aceite do portão com o alvo
+    # fora já vai ao reparo e ao stakeholder (A).
+    $tpHold = @(Get-TargetPendingIds $S)
+    $redHold = @($tasks | Where-Object { $_.Mark -eq $redQ -and -not $supersededBy.ContainsKey($_.Id) -and $tpHold -notcontains $_.Id } | Sort-Object Id -Unique)
+    if ($redHold.Count -and (-not $qFresh -or -not $aFresh)) {
+        & $redRoute $redHold 'a medição do portão do sprint espera: medir com Task em 🔴 roda o aceite sobre código que não fechou. '
+    }
 
     # ---------- v3.63.1 · o alvo preso por outro processo (pedidos 5 e 7) ----------
     # Sprint 6 do projeto piloto (18/11): o operator travou, o watchdog o encerrou e o accept que ele disparou seguiu vivo segurando
@@ -185,36 +238,11 @@ function Invoke-GateStep {
 
     $vf = Read-ValidationFindings $val
     $valAt = (Get-Item -LiteralPath $val).LastWriteTime
-    $qsRows = @($tasks | Where-Object { $_.Id -match "^Q-S$n([a-z]?)$" })
     $boardTxt = if (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md')) { Read-Text (Join-Path $S 'sprint-backlog.md') } else { '' }
-    # A correção substituída (abaixo) não cobre achado: o que só ela citava vai à correção aberta.
+    # A correção substituída (acima) não cobre achado: o que só ela citava vai à correção aberta.
     $qsOf = { param($fid) @($qsRows | Where-Object { -not $supersededBy.ContainsKey($_.Id) } | Where-Object { $q = $_; @(($boardTxt -split "`r?`n") | Where-Object { $_ -match '^\s*\|' -and $_.Contains($q.Id) -and $_.Contains($fid) }).Count }) }
-    # v3.64.0 (item 8 B; sprint 6 do projeto piloto, 18/11): a correção que outra substituiu (o plano da nova declara
-    # **Corrige:** <a antiga>) conta como encerrada — no piloto, a Q-S6d em 🔴, que a Q-S6e corrige, segurava o portão.
-    $supersededBy = @{}
-    foreach ($q in $qsRows) {
-        if (-not $q.Plan -or $q.Plan -match '^plan/?$') { continue }
-        $qp = Join-Path $S $q.Plan; if (-not (Test-Path -LiteralPath $qp -PathType Leaf)) { continue }
-        $cm = [regex]::Match((Read-Text $qp), '(?m)^\*\*Corrige:\*\*([^\r\n]*)')
-        if ($cm.Success) { foreach ($m in [regex]::Matches($cm.Groups[1].Value, "Q-S$n[a-z]?(?![\w-])")) { if ($m.Value -ne $q.Id) { $supersededBy[$m.Value] = $q.Id } } }
-    }
     $qsOpen = @($qsRows | Where-Object { $_.Mark -ne $E.Done -and -not $supersededBy.ContainsKey($_.Id) })
     foreach ($k in $supersededBy.Keys) { if (@($qsRows | Where-Object { $_.Id -eq $k -and $_.Mark -ne $E.Done }).Count) { Out "  nota: a $k conta como substituída pela $($supersededBy[$k]) (o plano dela declara **Corrige:** $k) — não segura o portão" } }
-    $redQ = [char]::ConvertFromUtf32(0x1F534)
-    # O motivo do 🔴 de uma Task: a última linha dela em "Bloqueios e riscos abertos" (kanban.md, ou o quadro antigo).
-    $blockWhy = {
-        param([string]$Id)
-        foreach ($f in @((Join-Path $S 'kanban.md'), (Join-Path $S 'sprint-backlog.md'))) {
-            if (-not (Test-Path -LiteralPath $f)) { continue }
-            foreach ($t in (Get-Tables (Read-Text $f))) {
-                $ni = -1; $ti = -1; for ($i = 0; $i -lt $t.Header.Count; $i++) { if ($t.Header[$i] -match '^Natureza') { $ni = $i }; if ($t.Header[$i] -match '^Task') { $ti = $i } }
-                if ($ni -lt 0 -or $ti -lt 0) { continue }
-                $hit = @($t.Rows | Where-Object { (Get-Cell $_ $ti) -match "(?<![\w-])$([regex]::Escape($Id))(?![\w-])" })
-                if ($hit.Count) { return (& $short (Clean-Cell (Get-Cell $hit[-1] $ni))) }
-            }
-        }
-        return 'motivo não registrado em Bloqueios e riscos abertos'
-    }
     # v3.64.0 (item 8 B): achados novos para uma correção já aberta — a linha dela ganha os IDs e o Arquiteto emenda o plano
     # (o plano foi escrito para outros achados: no piloto, a Q-S6e só podia tocar a ferramenta do alvo, e os achados de código
     # pediam o app). Nunca uma Q-S nova ao lado da aberta.
@@ -341,18 +369,12 @@ function Invoke-GateStep {
     if ($nm.Count -and $nm[0].At -gt $valAt) { $newer += $(if ($nm[0].Diag) { 'diagnóstico novo do aceite' } else { 'medição nova' }) }
     if (@($open | Where-Object { $r = Get-FindingResolution $S $_.id; $r -and $r.value -and $r.at -gt $valAt }).Count) { $newer += 'resoluções dos donos' }
     if (@($codeF | ForEach-Object { & $qsOf $_.id } | Where-Object { $_.Mark -eq $E.Done }).Count) { $newer += 'Q-S fechada' }
-    if ($newer.Count -or -not $open.Count) { & $revise $(if ($newer.Count) { $newer -join ' · ' } else { 'nenhum achado aberto, veredito ainda não aprovado' }) }
     # v3.64.0 (item 8 B): a correção que cobre os achados está em 🔴 — ela só reabre por ação de alguém; "esperar" deixaria o
-    # watcher olhando uma Task parada. Vai à rota do bloqueio dela.
+    # watcher olhando uma Task parada. Vai à rota do bloqueio dela. v3.64.1: ANTES da rodada focada — a medição ou a resolução
+    # mais nova que o veredito mandava o QA julgar de novo o código parcial da correção parada, e esta rota nunca chegava.
     $redCover = @($codeF | ForEach-Object { & $qsOf $_.id } | Where-Object { $_.Mark -eq $redQ -and -not $supersededBy.ContainsKey($_.Id) } | Sort-Object Id -Unique)
-    if ($redCover.Count) {
-        $why = (($redCover | ForEach-Object { "$($_.Id): $(& $blockWhy $_.Id)" }) -join '; ')
-        Set-AskRoute $Root 'bloqueio' (($redCover | ForEach-Object { $_.Id }) -join ',') "correção do portão em 🔴: $why"
-        Out "PRÓXIMA AÇÃO: destravar $(($redCover | ForEach-Object { $_.Id }) -join ', ') (🔴) — os achados abertos do portão do sprint $n dependem dela(s): $why"
-        Say 'A revisão final está esperando uma correção que parou. Preciso destravá-la para seguir.'
-        Out "  o motivo está em Bloqueios e riscos abertos (kanban.md); ambiente → reparo e run.ps1 next (a Task reabre); decisão → degrau 1 (PO + Arquiteto), depois o formulário (R22). Não abra outra Q-S$n."
-        exit 0
-    }
+    if ($redCover.Count) { & $redRoute $redCover "os achados abertos do portão do sprint $n dependem dela(s): " }
+    if ($newer.Count -or -not $open.Count) { & $revise $(if ($newer.Count) { $newer -join ' · ' } else { 'nenhum achado aberto, veredito ainda não aprovado' }) }
     Out "PRÓXIMA AÇÃO: esperar — os achados abertos do portão do sprint $n já têm dono: $(($open | ForEach-Object { "$($_.id) ($($_.cause))" }) -join ', '); a Q-S$n que os corrige ainda não fechou"
     exit 3
 }

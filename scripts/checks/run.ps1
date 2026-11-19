@@ -875,6 +875,12 @@ try {
         if (-not $al.Count -and -not $dn.Count) { [Console]::Error.WriteLine('run allow pede -Commands "<prefixo>;<prefixo>" (liberar) e/ou -Deny "<prefixo>" (negar) — a decisão do formulário único.'); exit 2 }
         $bad = @($al | Where-Object { Get-ForbiddenCommandReason $_ })
         if ($bad.Count) { [Console]::Error.WriteLine("run allow: instalação, rede, push e destrutivo não entram no run (G14) — $($bad -join '; ') não vai a runCommands; a Task vai a bloqueio (degrau 1)."); exit 2 }
+        # v3.64.1 (sprint 6 do projeto piloto, 19/11): script do plugin não vai a runCommands — a G14 libera os de
+        # ${CLAUDE_PLUGIN_ROOT}/scripts/checks/ pelo caminho, e a entrada ("accept.ps1", ou o caminho do cache com a versão) não
+        # destrava nada: a recusa era o caminho errado, e o caminho com a versão quebra no próximo update.
+        $ckNames = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.ps1' -File | ForEach-Object { $_.Name.ToLowerInvariant() })
+        $plug = @($al | Where-Object { $x = $_ -replace '["'']', ''; $leaf = @([regex]::Matches($x, '(?i)[^\s\\/&]+\.ps1') | ForEach-Object { $_.Value.ToLowerInvariant() }); @($leaf | Where-Object { $ckNames -contains $_ }).Count -and ($x -match '(?i)[\\/]plugins[\\/]cache[\\/]|CLAUDE_PLUGIN_ROOT|scripts[\\/]checks' -or $x -match '^(?i)(&\s*)?[\w-]+\.ps1(\s|$)') })
+        if ($plug.Count) { [Console]::Error.WriteLine("run allow: script do plugin não vai a runCommands — $($plug -join '; '). A G14 já libera `${CLAUDE_PLUGIN_ROOT}/scripts/checks/<script>.ps1 pelo caminho; a recusa era o caminho (sem scripts/checks/, ou fora da pasta do plugin) — a mensagem da G14 traz o certo. Nada gravado."); exit 2 }
         $added = @(Add-RunCommands $Root $al)
         $asked = Get-AskedCommands $S
         $ap = Join-Path $S 'commands-asked.json'
