@@ -13,6 +13,57 @@
 
 ---
 
+## v3.64.0 — 2026-11-18
+
+**Branch:** `feat/v3.64.0` a partir de `develop` (`74a03a9`, v3.63.2 mesclada) · **Processo:** v3.64 (`process-changelog.md`) · **Plano:** `melhorias/plano-v3.64.0.md` (decisões D1–D8 do stakeholder, 18/11)
+
+Origem: análise do sprint 6 do projeto piloto pedida pelo stakeholder em 18/11 ("tudo que gerou retrabalho") e duas paradas do mesmo dia — a Q-S6e no Karma e o portão que mandava abrir a Q-S6f. O retrabalho que o próprio processo criava: 58 instâncias de dev só para a evidência (17 repetindo a anterior igual), cartões que contradiziam o plano, código de Task parada travando a seguinte, a máquina dividida com outro projeto sem trava nenhuma e o portão preso no formato antigo do `validation.md`.
+
+**Item 2 · a evidência que o script já sabe** (`close.ps1`, `run.ps1 done`):
+- O R7 do dev vale pela **prova registrada**: com o verify full verde na árvore de agora (ou o plano dispensando o full e o accept registrado), a saída não precisa ser colada; o `done` copia `### Prova registrada` para o relatório.
+- Sem a seção `### Documentos vivos (R12)`, o `done` a escreve ("a consolidar", com o `**Documentos vivos:**` do plano) e confere de novo no mesmo processo. No modo dev, "n/a" e "nenhum" valem como "a consolidar".
+- R7-margem: a linha fora do formato que a leitura tolerante entende vira **aviso** (D2); as travas seguem bloqueantes.
+- **A rota da reprovação segue a natureza** de cada linha: prova não rodada → **operator** roda o comando, sem dev e sem contar como falha de papel (D3) · prova vermelha ou escopo → dev em instância normal, que pode mudar código · sem verify configurado → dev só para a evidência · só ambiente → rota de ambiente.
+- **Repetição idêntica para** na 2ª vez (D4): a mesma assinatura na mesma árvore vai ao Arquiteto (ou ao stakeholder, se for ambiente), sem outro dev nem operator (`handoff/<T-ID>-evidencia.json`).
+
+**Item 5 · o cartão que não contradiz o plano** (`run.ps1` `Write-Handoff`, `close.ps1`):
+- O cartão separa **"O que o plano manda"** (as linhas `**Verificação:**`, `**Aceite:**` e `**Cenários:**` copiadas do plano) de **"O que já rodou"** (`**Verify registrado:**`, `**Accept registrado:**`). Antes, a linha **Verificação:** do cartão dizia o estado ("sem verify") com a etiqueta da ordem do plano.
+- "Não mude código" saiu do cartão; o "Só completar a evidência" fica para a saída que só o dev tem.
+- A mensagem do R7 fala só do que o plano manda rodar (com `**Aceite:** não roda`, só do verify) e cita a linha do plano.
+
+**Item 6 · a árvore com dono** (`lib.ps1`, `mark.ps1`, `run.ps1`, `gate.ps1`, `close.ps1`):
+- **Checkpoint** (D1): a Task que sai da construção sem fechar — 🔴 pelo `mark.ps1`, a pausa do run, a espera de um GAP — vai num commit só do escopo do plano, `<T-ID> (checkpoint, sem fechar): …` com `Task-State: parcial`. O marcador não muda.
+- No `start`, o pendente do escopo de **outra** Task aberta vai num checkpoint dela; o que não tem dono aparece como aviso e no run-log.
+- `guards.json → treeIgnore`: sobras que não são código saem da impressão da árvore e dos pendentes.
+- "A árvore mudou depois do verify" passa a dizer os arquivos que mudaram (`Get-TreeDiff`).
+- Antes de medir, o portão faz o checkpoint das Tasks abertas e mostra o pendente que sobra.
+
+**Item 7 · a máquina dividida entre projetos** (`verify.ps1`, `lib.ps1`, `quality.ps1`, `gate.ps1`, `machine-lock.ps1` novo):
+- **Diagnóstico da queda da suíte**: em pontos diferentes, o `verify` mede a CPU, o ritmo contra a última suíte verde e os emuladores, servidores do adb e travas de outros projetos. Máquina ocupada → "máquina ocupada", esperar e repetir, sem Task; só com a máquina livre ele aponta a configuração do projeto.
+- **Trava de trabalho pesado** (D6), comum aos projetos da máquina (`device-locks/machine-heavy.json`): a suíte do verify full espera até `machine.heavyWaitMin` (padrão 30) e sai como ambiente; o accept e o reparo do android a tomam pelo `Enter-TargetLock` (reentrante no mesmo projeto); o portão espera. Scripts de fora do plugin: `machine-lock.ps1 -Take/-Release/-Who`.
+- **Porta por projeto, adb único** (D8): com dois servidores do adb na máquina ou a porta do emulador fora do padrão (par, 5554–5584), a trava do alvo recusa com a causa e a proposta da primeira porta livre; o plugin não desliga nada de outro projeto.
+- **Reaproveitar pelo que o comando lê** (D7): `guards.json → verify.<chave>` aceita `{ "command", "inputs" }`; o último verde de cada comando fica em `result.json → lastGreen` (uma rodada vermelha não o apaga) e é reaproveitado quando nada dos `inputs` mudou; a cobertura acompanha a suíte. A Q11 da revisão final não aceita a cobertura reaproveitada por inputs, e o portão roda `verify -Mode full -Fresh` antes da qualidade quando só ela existe.
+
+**Item 8 · o portão preso no formato antigo** (`gate.ps1`):
+- A rodada focada pede a tabela `| ID | Task | Achado | Onde | Cause | Owner | State | Evidência |` e, no formato anterior à v3.63.0, a conversão dos achados antigos abertos.
+- Nenhuma `Q-S<n>` nova com outra aberta: os achados vão à aberta e o Arquiteto emenda o plano dela (`/arc question`, `plan.ps1`). `**Corrige:** <Q-S>` no plano faz a antiga contar como substituída.
+- A correção que cobre os achados em 🔴 vai à rota do bloqueio dela, nunca a "esperar".
+- O `diagnostico.md` do operator mais novo que o `validation.md` pede a rodada focada.
+
+**O que mudou em relação ao plano:**
+- **Sobra sem dono no `start`** é aviso e linha no run-log, sem parada ao SM: o checkpoint e o `treeIgnore` já resolvem o que travou o piloto, e a parada reprovaria o início de Tasks em projetos com qualquer arquivo solto.
+- **Árvore pendente no portão** é checkpoint e aviso, sem recusar a medição.
+- A trava pesada vale para o alvo **android** (o servidor web local de um projeto não pesa como emulador).
+- A "correção substituída" é lida do plano a cada `next` (nota na saída), sem gravar no quadro.
+
+**Arquivos:** `scripts/checks/lib.ps1`, `run.ps1`, `gate.ps1`, `close.ps1`, `verify.ps1`, `quality.ps1`, `mark.ps1`, `machine-lock.ps1` (novo); `agents/task-runner.md`; `roles/developer/templates/delivery-report.md`; `roles/quality-assurance/templates/sprint-validation.md`; `roles/scrum-master/process/sprint-run.md`, `process-changelog.md` e `process-changelog-archive.md`; `deliverables/team-project/guards.json`; `how-to.md`; testes em `scripts/checks/tests/run-check-tests.ps1` (casos v3.64.0).
+
+**Testes novos** (`run-check-tests.ps1`, marcados v3.64.0): 5 do portão (item 8), 8 da evidência e do cartão (itens 2 e 5), 3 da árvore (item 6), 11 da máquina (item 7, com a D8). Dois casos antigos mudaram de expectativa pela decisão: o cartão do v3.57.2 não traz mais "não mude código", e a linha de margem lida do v3.55.0 vira aviso (D2). A suíte fixa a medida da máquina (`TEAM_TEST_MACHINE_LOAD`, `TEAM_TEST_ADB_PORTS`): nenhum caso depende do que roda de verdade nela.
+
+**Suítes:** `run-check-tests.ps1` 687 casos, 0 falharam · `run-guard-tests.ps1` 362 casos, 0 falharam. A primeira rodada completa teve 1 falha (C5: o portão abria Q-S em vez da rodada focada — no PowerShell 5.1 um `PSCustomObject` sozinho não tem `.Count`); corrigida em `gate.ps1` antes do commit.
+
+---
+
 ## v3.63.2 — 2026-11-18
 
 **Branch:** `fix/v3.63.2` a partir de `develop` (`6c8edb6`, v3.63.1 mesclada) · **Processo:** addendum v3.63.1, item "dois projetos, um emulador" (`process-changelog.md`)

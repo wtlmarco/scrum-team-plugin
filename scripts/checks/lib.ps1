@@ -131,6 +131,59 @@ function Get-IdPattern([string]$Id) { return '(?<![\w-])' + [regex]::Escape($Id)
 # v3.52.2 (note.md item 13): sem os documentos de desenho (docs/, o SDD) — o SDD editado depois do full (hoje pela
 # consolidação do Arquiteto) reprovava o R7-verify. Pasta de guards.json → sourceRoots dentro de docs/ continua na impressão. Ficam fora só os documentos:
 # build, testes e configuração fora de sourceRoots seguem na impressão (sem eles, a evidência ficaria velha sem aviso).
+# v3.64.0 (item 6 B): os globs de guards.json → treeIgnore (vazio por padrão).
+function Get-TreeIgnore([string]$Root) {
+    $gp = Join-Path $Root '.team-project/guards.json'
+    if (-not (Test-Path -LiteralPath $gp)) { return @() }
+    try { $j = Read-Text $gp | ConvertFrom-Json } catch { return @() }
+    if (-not $j.PSObject.Properties['treeIgnore']) { return @() }
+    return @(@($j.treeIgnore) | Where-Object { $_ } | ForEach-Object { ([string]$_ -replace '\\', '/').Trim().TrimStart('/') })
+}
+function Test-TreeIgnored([string]$Root, [string]$Rel) {
+    $p = ($Rel -replace '\\', '/').TrimStart('/')
+    foreach ($g in @(Get-TreeIgnore $Root)) { $rx = ConvertTo-GlobRegex $g; if ($rx -and $p -match $rx) { return $true } }
+    return $false
+}
+# v3.64.0 (item 6 D): os arquivos que mudaram entre duas impressões de árvore (os objetos do write-tree ficam no repositório
+# até o gc). $null quando uma delas não se lê.
+function Get-TreeDiff([string]$Root, [string]$From, [string]$To) {
+    if (-not $From -or -not $To) { return $null }
+    $ErrorActionPreference = 'Continue'
+    $out = @(& git -C $Root -c core.quotePath=false diff --name-only $From $To 2>$null)
+    if ($LASTEXITCODE -ne 0) { return $null }
+    return @($out | Where-Object { $_ })
+}
+# v3.64.0 (item 6 A, decisão D1): a Task sai da construção sem fechar (🔴, pausa, espera de GAP) com o código no disco → um
+# commit só do escopo do plano, "<T-ID> (checkpoint, sem fechar): <título>" com o trailer "Task-State: parcial". O marcador não
+# muda, e o fechamento faz o commit final de sempre. No sprint 6 do piloto, a T-090 parada travou a T-093 até um commit à mão.
+# $T: um item do Get-SprintTasks. Devolve uma linha (ou '' quando não havia o que guardar).
+function Save-TaskCheckpoint([string]$Root, [string]$S, $T, [string]$Why) {
+    $ErrorActionPreference = 'Continue'
+    $null = & git -C $Root rev-parse --is-inside-work-tree 2>$null
+    if ($LASTEXITCODE -ne 0) { return '' }
+    if (-not $T.Plan -or $T.Plan -match '^plan/?$') { return '' }
+    $pf = Join-Path $S $T.Plan; if (-not (Test-Path -LiteralPath $pf -PathType Leaf)) { return '' }
+    $pt = Read-Text $pf
+    $scope = @(Get-PlanScope $pt) + @(Get-Mutations $pt | ForEach-Object { ($_.Test -replace '\\', '/') -replace '^\./', '' })
+    $dvp = Join-Path $S "delivery/$($T.Id).md"
+    if ($scope.Count -and (Test-Path -LiteralPath $dvp)) { $scope += @(Get-MarginAdjustments (Read-Text $dvp) | Where-Object { $_.Kind -eq 'stub' } | ForEach-Object { $_.File }) }
+    $scope = @($scope | Where-Object { $_ -and $_ -notmatch '^\.team-project(/|$)' -and $_ -notmatch '[<>*?]' } | Select-Object -Unique)
+    if (-not $scope.Count) { return '' }
+    foreach ($f in $scope) { $null = & git -C $Root add -A -- ":(literal)$f" 2>$null }
+    $staged = @(& git -C $Root diff --cached --name-only -- @($scope | ForEach-Object { ":(literal)$_" }) 2>$null | Where-Object { $_ })
+    if (-not $staged.Count) { return '' }
+    $subj = "$($T.Id) (checkpoint, sem fechar): $($T.Title)"
+    if ($subj.Length -gt 72) { $cut = $subj.LastIndexOf(' ', 70); if ($cut -lt 20) { $cut = 70 }; $subj = $subj.Substring(0, $cut).TrimEnd(' ', ',', ';', ':', '-', '—') + '…' }
+    $mf = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText($mf, "$subj`n`n$Why`n`nTask-State: parcial`n", (New-Object System.Text.UTF8Encoding($false)))
+        $o = & git -C $Root commit -q -F $mf -- @($staged | ForEach-Object { ":(literal)$_" }) 2>&1 | Out-String
+        $code = $LASTEXITCODE
+    } finally { Remove-Item -LiteralPath $mf -Force -ErrorAction SilentlyContinue }
+    if ($code -ne 0) { return "checkpoint da $($T.Id): o commit falhou ($(($o -replace '\s+', ' ').Trim())) — o código segue no disco" }
+    $sha = ([string](& git -C $Root rev-parse --short HEAD 2>$null)).Trim()
+    return "checkpoint da $($T.Id): $sha ($($staged.Count) arquivo(s) do plano, sem fechar — $Why)"
+}
 function Get-WorkTree([string]$Root) {
     $ErrorActionPreference = 'Continue'   # no 5.1, stderr do git (aviso de CRLF) viraria exceção com 'Stop'
     $top = & git -C $Root rev-parse --show-toplevel 2>$null
@@ -148,6 +201,9 @@ function Get-WorkTree([string]$Root) {
         & git -C $top add -A -- . ':(exclude).team-project' ':(exclude)docs' 2>$null
         & git -C $top rm -r -q --cached --ignore-unmatch -- docs 2>$null | Out-Null   # o docs/ do HEAD também sai
         foreach ($k in $keep) { & git -C $top add -A -- $(if ($k -match '[*?]') { ":(glob)$k" } else { $k }) 2>$null }
+        # v3.64.0 (item 6 B): guards.json → treeIgnore — sobras do projeto que não são código (um .zip na raiz, um script de
+        # máquina) saem da impressão da árvore: mexer nelas não deixa o verify velho.
+        foreach ($g in @(Get-TreeIgnore $Root)) { & git -C $top rm -r -q --cached --ignore-unmatch -- ":(glob)$g" 2>$null | Out-Null }
         $tree = & git -C $top write-tree 2>$null
         if ($LASTEXITCODE -ne 0) { return $null }
         return ([string]$tree).Trim()
@@ -791,7 +847,46 @@ function Enter-TargetLock([string]$Root, [string]$Target, [string]$Owner, [int]$
             return "o aparelho $key está em uso por $(if ($same) { 'este mesmo projeto' } else { "OUTRO projeto ($other)" }) — '$([string]$l.owner)' (PID $([int]$l.pid), desde $([string]$l.desde); $($pu.Text)): " + $(if ($same) { 'espere terminar (quem usa o alvo: target.ps1 -Target ' + $Target + ' -Who)' } elseif ($pu.Stalled) { "o processo parece travado — quem o encerra é a sessão daquele projeto (target.ps1 -Target $Target -Kill na pasta dele); decisão do stakeholder" } else { "espere terminar — dois projetos no mesmo aparelho quebram os dois. Para rodar os dois ao mesmo tempo, cada projeto declara o seu aparelho em guards.json → targets.android.serial" })
         }
     }
+    # v3.64.0 (item 7 B): o accept, o reparo e o boot do emulador são trabalho pesado — com outro projeto segurando a máquina,
+    # a trava do alvo volta e a mensagem diz quem a usa (o portão espera, como o alvo em uso).
+    if ($Target -eq 'android') {
+        # v3.64.0 (decisão D8): um servidor do adb por máquina e uma porta de emulador por projeto. Dois servidores se conectam
+        # aos mesmos emuladores e um derruba o outro ("adb protocol fault", piloto, 18/11 19:22) — o plugin para com a causa e
+        # não desliga nada de outro projeto. A porta declarada é par, entre 5554 e 5584 (o par console/adb do emulador).
+        $adbP = @(Get-AdbServerPorts)
+        if ($adbP.Count -gt 1) { Exit-TargetLock $Root; return "dois servidores do adb na máquina (portas $($adbP -join ', ')): eles disputam os mesmos emuladores e um derruba o outro. Um servidor só por máquina (a porta padrão, 5037); cada projeto fala com o seu emulador pelo serial (guards.json → targets.android.serial). O plugin não desliga o de outro projeto: quem o subiu o encerra" }
+        $serialBad = Test-AndroidSerialPort $Root
+        if ($serialBad) { Exit-TargetLock $Root; return $serialBad }
+        $hv = Enter-HeavyLock $Root $Owner
+        if ($hv) { Exit-TargetLock $Root; return $hv }
+    }
     return $null
+}
+# v3.64.0 (D8): as portas dos servidores do adb vivos na máquina (o processo "adb … server", -P <porta> ou a padrão 5037).
+# TEAM_TEST_ADB_PORTS ("5037,5557") troca a leitura nos testes; sem processo legível, @().
+function Get-AdbServerPorts {
+    if ($null -ne $env:TEAM_TEST_ADB_PORTS) { return @(([string]$env:TEAM_TEST_ADB_PORTS -split '[,; ]+') | Where-Object { $_ } | ForEach-Object { [int]$_ }) }
+    try { $ps = @(Get-CimInstance Win32_Process -Filter "Name='adb.exe'" -ErrorAction Stop) } catch { return @() }
+    return @($ps | Where-Object { [string]$_.CommandLine -match '(?i)\bserver\b' } | ForEach-Object { if ([string]$_.CommandLine -match '(?i)-P\s*(\d+)') { [int]$Matches[1] } else { 5037 } } | Select-Object -Unique)
+}
+# v3.64.0 (D8): a porta do emulador declarada (targets.android.serial = emulator-<porta>) é par e fica entre 5554 e 5584; sem
+# declaração, a proposta da primeira par livre que nenhuma trava de aparelho usa (não grava: o /team update grava com o aval).
+# Devolve a recusa, ou $null. Serial de aparelho físico (sem "emulator-") não é conferido.
+function Test-AndroidSerialPort([string]$Root) {
+    $tc = Get-TargetsConfig $Root; $a = if ($tc -and $tc.PSObject.Properties['android']) { $tc.android } else { $null }
+    if (-not ($a -and $a.PSObject.Properties['serial'] -and $a.serial)) { return $null }
+    $s = ([string]$a.serial).Trim()
+    if ($s -notmatch '^emulator-(\d+)$') { return $null }
+    $port = [int]$Matches[1]
+    if ($port -lt 5554 -or $port -gt 5584 -or ($port % 2)) { return "guards.json → targets.android.serial = ${s}: a porta do emulador é par e fica entre 5554 e 5584 (o par console/adb). Proposta: $(Get-FreeEmulatorSerial $Root) — o /team update grava com o aval do stakeholder" }
+    return $null
+}
+function Get-FreeEmulatorSerial([string]$Root) {
+    $used = @()
+    $dd = Get-DeviceLockDir
+    if (Test-Path -LiteralPath $dd) { foreach ($f in @(Get-ChildItem -LiteralPath $dd -File -Filter 'emulator-*.json' -ErrorAction SilentlyContinue)) { if ($f.BaseName -match '^emulator-(\d+)$') { $used += [int]$Matches[1] } } }
+    for ($p = 5554; $p -le 5584; $p += 2) { if ($used -notcontains $p) { return "emulator-$p" } }
+    return 'nenhuma porta par livre entre 5554 e 5584'
 }
 # v3.63.1/v3.63.2: toma um arquivo de trava de forma ATÔMICA (CreateNew) — antes, "existe? não → grava" deixava dois accepts que
 # partiam juntos entrarem os dois. A trava de um dono VIVO que ainda anda nunca é tomada (antes, passadas 3 h ela valia como
@@ -898,7 +993,73 @@ function Get-TargetBusy([string]$Root) {
                 Text = "'$([string]$d.owner)' $(if ($dh.Foreign) { "do OUTRO projeto $([string]$d.root) " })no aparelho $($dh.Key) (PID $([int]$d.pid), desde $([string]$d.desde)) — $($pu.Text)" }
         }
     }
+    # v3.64.0 (item 7 B): a trava de trabalho pesado com OUTRO projeto vivo — o portão espera (Heavy), como o alvo em uso.
+    $hp = Get-HeavyLockPath
+    if (Test-Path -LiteralPath $hp) {
+        $hl = $null; try { $hl = Read-Text $hp | ConvertFrom-Json } catch { }
+        if ($hl -and ([string]$hl.root).TrimEnd('\', '/') -ine ([string]$Root).TrimEnd('\', '/') -and (Test-TargetLockHolderAlive $hl)) {
+            $pu = Get-WaitPulse ([int]$hl.pid) ([string]$hl.desde) ''
+            return [pscustomobject]@{ Owner = [string]$hl.owner; Target = 'máquina'; Pid = [int]$hl.pid; Desde = [string]$hl.desde; Pulse = $pu; Plugin = (Test-TargetLockOwnerProcess $hl); Foreign = $true; Heavy = $true; Project = [string]$hl.root
+                Text = "'$([string]$hl.owner)' do OUTRO projeto $([string]$hl.root), trabalho pesado na máquina (PID $([int]$hl.pid), desde $([string]$hl.desde)) — $($pu.Text)" }
+        }
+    }
     return $null
+}
+# ---------- v3.64.0 (item 7 B, decisão D6) · a trava de trabalho pesado, comum aos projetos da máquina ----------
+# A suíte do verify full, o accept e o boot/reparo do emulador de projetos DIFERENTES não rodam juntos: no sprint 6 do piloto
+# (18/11, 19:21) outro projeto subiu um emulador com GPU por software no meio da suíte do Karma, a suíte ficou 2,6× mais lenta
+# e o navegador caiu. Dentro do mesmo projeto a trava é reentrante (o accept que chama o reparo não se bloqueia). Mesma pasta
+# das travas de aparelho (v3.63.2) — o Exit-TargetLock já solta o que o processo tomou.
+function Get-HeavyLockPath { return (Join-Path (Get-DeviceLockDir) 'machine-heavy.json') }
+function Enter-HeavyLock([string]$Root, [string]$Owner, [int]$HolderPid = $PID, [int]$StaleHours = 3) {
+    $lk = [ordered]@{ kind = 'heavy'; owner = $Owner; pid = $HolderPid; created = (Get-ProcessCreated $HolderPid); desde = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); root = $Root }
+    $h = Enter-LockFile (Get-HeavyLockPath) ((New-Object System.Text.UTF8Encoding($false)).GetBytes(($lk | ConvertTo-Json -Compress))) $StaleHours { param($x) '' }
+    if (-not $h) { return $null }
+    if (-not $h.Busy) { return 'a trava de trabalho pesado da máquina foi tomada por outro processo ao mesmo tempo — rode de novo' }
+    $l = $h.Lock
+    if (([string]$l.root).TrimEnd('\', '/') -ieq ([string]$Root).TrimEnd('\', '/')) { return $null }   # mesmo projeto: reentrante
+    return "a máquina está em uso por OUTRO projeto ($([string]$l.root)) — '$([string]$l.owner)' (PID $([int]$l.pid), desde $([string]$l.desde); $($h.Pulse.Text)): trabalho pesado de projetos diferentes roda um por vez (suíte, aceite, boot de emulador)"
+}
+function Exit-HeavyLock([int]$HolderPid = $PID) {
+    $p = Get-HeavyLockPath
+    if (Test-Path -LiteralPath $p) { try { $l = Read-Text $p | ConvertFrom-Json; if ([int]$l.pid -eq $HolderPid) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue } } catch { } }
+}
+# Espera a trava até $WaitMin (guards.json → machine.heavyWaitMin, padrão 30), reconferindo a cada 30 s. $null = tomada.
+function Wait-HeavyLock([string]$Root, [string]$Owner, [double]$WaitMin = -1, [int]$HolderPid = $PID) {
+    if ($WaitMin -lt 0) {
+        $WaitMin = 30
+        $gp = Join-Path $Root '.team-project/guards.json'
+        if (Test-Path -LiteralPath $gp) { try { $mj = (Read-Text $gp | ConvertFrom-Json).machine; if ($mj -and $null -ne $mj.heavyWaitMin) { $WaitMin = [double]$mj.heavyWaitMin } } catch { } }
+    }
+    $poll = if ($env:TEAM_TEST_HEAVY_POLL_S) { [int]$env:TEAM_TEST_HEAVY_POLL_S } else { 30 }
+    $end = (Get-Date).AddMinutes($WaitMin); $said = $false
+    while ($true) {
+        $b = Enter-HeavyLock $Root $Owner $HolderPid
+        if (-not $b) { return $null }
+        if ((Get-Date) -ge $end) { return $b }
+        if (-not $said) { [Console]::Out.WriteLine("esperando a máquina (até $WaitMin min): $b"); $said = $true }
+        Start-Sleep -Seconds $poll
+    }
+}
+# v3.64.0 (item 7 A): o retrato da máquina na hora de uma queda — CPU (duas amostras), emuladores com o AVD, servidores do adb
+# com a porta e as travas vivas de OUTROS projetos. TEAM_TEST_MACHINE_LOAD (JSON) troca a medida nos testes.
+function Get-MachineLoad([string]$Root) {
+    if ($env:TEAM_TEST_MACHINE_LOAD) { try { $t = $env:TEAM_TEST_MACHINE_LOAD | ConvertFrom-Json; return [pscustomobject]@{ Cpu = [int]$t.cpu; Emulators = @($t.emulators); AdbPorts = @($t.adbPorts); Others = @($t.others) } } catch { } }
+    $cpu = -1
+    try { $a = @(1..2 | ForEach-Object { if ($_ -gt 1) { Start-Sleep -Milliseconds 800 }; (Get-CimInstance Win32_Processor -ErrorAction Stop | Measure-Object LoadPercentage -Average).Average }); $cpu = [int](($a | Measure-Object -Average).Average) } catch { }
+    $procs = @(); try { $procs = @(Get-CimInstance Win32_Process -ErrorAction Stop | Select-Object Name, ProcessId, CommandLine) } catch { }
+    $emus = @($procs | Where-Object { $_.Name -match '^(?i)(qemu-system|emulator)' -and $_.CommandLine -match '-avd\s+(\S+)' } | ForEach-Object { if ($_.CommandLine -match '-avd\s+"?([^\s"]+)') { $Matches[1] } } | Select-Object -Unique)
+    $adb = @($procs | Where-Object { $_.Name -match '^(?i)adb(\.exe)?$' -and $_.CommandLine -match '(?i)\bserver\b' } | ForEach-Object { if ($_.CommandLine -match '(?i)-P\s*(\d+)') { [int]$Matches[1] } else { 5037 } } | Select-Object -Unique)
+    $others = @()
+    $dd = Get-DeviceLockDir
+    if (Test-Path -LiteralPath $dd) {
+        foreach ($f in @(Get-ChildItem -LiteralPath $dd -File -Filter '*.json' -ErrorAction SilentlyContinue)) {
+            try { $l = Read-Text $f.FullName | ConvertFrom-Json } catch { continue }
+            if (-not $l -or -not $l.root -or ([string]$l.root).TrimEnd('\', '/') -ieq ([string]$Root).TrimEnd('\', '/')) { continue }
+            if (Test-TargetLockHolderAlive $l) { $others += "$([string]$l.owner) de $([string]$l.root)" }
+        }
+    }
+    return [pscustomobject]@{ Cpu = $cpu; Emulators = $emus; AdbPorts = $adb; Others = $others }
 }
 # O processo da trava é mesmo o script do plugin que a tomou: a hora de criação bate (quando gravada) e a linha de comando é
 # do accept.ps1 ou do target.ps1. PID reaproveitado pelo Windows ou processo de fora → $false (não é tocado).
@@ -2287,7 +2448,7 @@ function Get-GitPendingFiles([string]$Root) {
     try {
         $null = & git -C $Root rev-parse --is-inside-work-tree 2>$null
         if ($LASTEXITCODE -ne 0) { return @() }
-        return @(& git -C $Root status --porcelain -uall 2>$null | ForEach-Object { $gs = ([string]$_).Substring([Math]::Min(3, ([string]$_).Length)); if ($gs -match ' -> ') { $gs = ($gs -split ' -> ')[-1] }; $gs.Trim('"') } | Where-Object { $_ -and $_ -notmatch '^\.team-project/' })
+        return @(& git -C $Root status --porcelain -uall 2>$null | ForEach-Object { $gs = ([string]$_).Substring([Math]::Min(3, ([string]$_).Length)); if ($gs -match ' -> ') { $gs = ($gs -split ' -> ')[-1] }; $gs.Trim('"') } | Where-Object { $_ -and $_ -notmatch '^\.team-project/' -and -not (Test-TreeIgnored $Root $_) })   # v3.64.0: treeIgnore não é pendente
     } finally { $ErrorActionPreference = $eap }
 }
 function Save-ForeignSnapshot([string]$Root, [string]$S, [string]$Id) {

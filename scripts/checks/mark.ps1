@@ -170,6 +170,13 @@ try {
     if ($sepChart) { [System.IO.File]::WriteAllText($chartPath, ($kLines -join $knl), $utf8) }
     if ($recFs) { Exit-FileLock $recFs $bdPath }
     [Console]::Out.WriteLine("mark: $Task $from → $target · quadro, Série e Registro gravados (Registro em $where; por quem: $By)$blkTxt")
+    # v3.64.0 (item 6 A): a Task parou (🔴) com código no disco → checkpoint só do escopo do plano, para não travar a próxima.
+    if ($target -eq $red -and $from -ne $red) {
+        try {
+            $tk = @(Get-SprintTasks $S | Where-Object { $_.Id -eq $Task })[0]
+            if ($tk) { $ck = Save-TaskCheckpoint $Root $S $tk "parada em 🔴$(if ($Reason) { ": $Reason" })"; if ($ck) { [Console]::Out.WriteLine("mark: $ck") } }
+        } catch { [Console]::Out.WriteLine("mark: checkpoint não gravado ($($_.Exception.Message)) — o código segue no disco") }
+    }
     }
     try { $null = & (Join-Path $PSScriptRoot 'kanban.ps1') -Root $Root 2>&1 } catch { }   # v3.51.2: o Kanban (Markdown) acompanha a transição
     exit 0

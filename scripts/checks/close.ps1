@@ -67,7 +67,7 @@ try {
     # v3.51 (A3): sem evidência do QA por Task, a Task fecha pela EVIDÊNCIA DO DEV — o relatório de entrega (delivery/<T-ID>.md,
     # a seção mais recente), o verify full, a mutação e os cenários da Task rodados no alvo (accept). O veredito do QA vira o
     # portão do sprint (sprint-run.md §Validação do sprint), uma passada só antes da Review.
-    $devMode = $false; $dvPath = Join-Path $S "delivery/$Task.md"
+    $devMode = $false; $dvPath = Join-Path $S "delivery/$Task.md"; $r7DevPending = $false
     if ($null -eq $ev -and (Test-Path -LiteralPath $dvPath)) {
         $devMode = $true; $ev = Read-Text $dvPath
         $bms = @([regex]::Matches($ev, '(?ms)^## .*?(?=^## |\z)'))
@@ -82,8 +82,9 @@ try {
         # antes só a 1ª linha valia, e a saída certa colada sem o comando no topo custava uma rodada extra do dev.
         $okCmd = $false
         foreach ($cb in [regex]::Matches($evBlock, '(?ms)^```[^\n]*\n(.*?)^```')) { if ($cb.Groups[1].Value -match '(?m)^\s*(>\s*\S|(?:\S*[\\/])?(verify|accept)(\.ps1)?\s)') { $okCmd = $true; break } }
-        if (-not $okCmd) { Add-Result 'R7' 'falhou' "delivery/$Task.md sem a saída colada do verify ou do accept na seção mais recente" }
-        else { Add-Result 'R7' 'ok' "evidência do dev (v3.51): delivery/$Task.md; o veredito do QA é o portão do sprint" }
+        # v3.64.0 (item 2 A): sem a saída colada, o R7 do dev se decide depois do R7-verify — a prova registrada no result.json
+        # vale como a colada (no sprint 6 do piloto, 13 reprovações pediam ao dev a cópia do que o R7-verify já conferia).
+        if ($okCmd) { Add-Result 'R7' 'ok' "evidência do dev (v3.51): delivery/$Task.md; o veredito do QA é o portão do sprint" } else { $r7DevPending = $true }
     } else {
         $vm = [regex]::Match($evBlock, '(?m)^\*\*Veredito:\*\*(.*)$')
         $v = if ($vm.Success) { $vm.Groups[1].Value } else { '' }
@@ -120,12 +121,12 @@ try {
     $gj = $null; $gp = Join-Path $tp 'guards.json'
     if (Test-Path -LiteralPath $gp) { try { $gj = Read-Text $gp | ConvertFrom-Json } catch { } }
     $hasVerify = $null -ne $gj -and $null -ne $gj.verify -and @($gj.verify.PSObject.Properties | Where-Object { $_.Value }).Count -gt 0
-    $vr = Join-Path (Get-VerifyDir $Root $Task) 'result.json'; $vfull = $null
+    $vr = Join-Path (Get-VerifyDir $Root $Task) 'result.json'; $vfull = $null; $r7vOk = $false; $r7vWaived = $false
     if (-not $hasVerify) { Add-Result 'R7-verify' 'n-a' 'guards.json sem comandos em "verify" — evidência só pelo veredito e pelo operator' }
     # v3.57.3 (lições de GAP 8, 9 e 11 do sprint 5 do garden; decisão do stakeholder de 10/11): Task de laudo ou que só mexe em
     # configuração de teste declara no plano a dispensa do full — antes toda Task com verify configurado rodava a suíte inteira
     # (12 min no garden) ou abria GAP de processo. O QA revisa a dispensa no portão.
-    elseif ($pver -and $pver.Mode -eq 'dispensada') { Add-Result 'R7-verify' 'n-a' "o plano dispensa o verify full (**Verificação:** dispensada — $($pver.Reason)); o QA revisa a dispensa no portão" }
+    elseif ($pver -and $pver.Mode -eq 'dispensada') { $r7vWaived = $true; Add-Result 'R7-verify' 'n-a' "o plano dispensa o verify full (**Verificação:** dispensada — $($pver.Reason)); o QA revisa a dispensa no portão" }
     else {
         if (Test-Path -LiteralPath $vr) { try { $vfull = (Read-Text $vr | ConvertFrom-Json).full } catch { } }
         $now = Get-WorkTree $Root
@@ -133,8 +134,30 @@ try {
         if ($null -eq $vfull) { Add-Result 'R7-verify' 'falhou' "sem verify full em $vrel — o dev roda verify.ps1 -Mode full no fim da Task" }
         elseif (@($vfull.commands | Where-Object { [int]$_.exit -ne 0 }).Count) { Add-Result 'R7-verify' 'falhou' ("verify full com falha: " + ((@($vfull.commands | Where-Object { [int]$_.exit -ne 0 }) | ForEach-Object { "$($_.key) exit $($_.exit)" }) -join ', ')) }
         elseif (-not $now) { Add-Result 'R7-verify' 'n-a' 'sem git: a árvore não se compara' }
-        elseif ([string]$vfull.tree -ne $now) { Add-Result 'R7-verify' 'falhou' ("a árvore mudou depois do verify full de $($vfull.at) (" + ([string]$vfull.tree).Substring(0, 12) + " → " + $now.Substring(0, 12) + ") — rode -Mode full de novo e o QA confere") }
-        else { Add-Result 'R7-verify' 'ok' ("verify full de $($vfull.at): " + (@($vfull.commands | ForEach-Object { "$($_.key) 0" }) -join ', ') + "; árvore igual (" + $now.Substring(0, 12) + ")") }
+        elseif ([string]$vfull.tree -ne $now) {
+            # v3.64.0 (item 6 D): diz O QUE mudou — antes só os hashes, e a saída era rodar de novo a suíte inteira sem saber se a
+            # mudança era da Task ou de uma sobra (no piloto, 5 vezes; a suíte leva 14 a 25 min).
+            $chgT = Get-TreeDiff $Root ([string]$vfull.tree) $now
+            $chgTxt = if ($null -eq $chgT) { '' } elseif (-not $chgT.Count) { ': nenhum arquivo listado' } else { ': ' + ((@($chgT | Select-Object -First 6)) -join ', ') + $(if ($chgT.Count -gt 6) { " e mais $($chgT.Count - 6)" } else { '' }) + " — se não é da Task: commit da dona, ou guards.json → treeIgnore" }
+            Add-Result 'R7-verify' 'falhou' ("a árvore mudou depois do verify full de $($vfull.at) (" + ([string]$vfull.tree).Substring(0, 12) + " → " + $now.Substring(0, 12) + ")$chgTxt — rode -Mode full de novo e o QA confere")
+        }
+        else { $r7vOk = $true; Add-Result 'R7-verify' 'ok' ("verify full de $($vfull.at): " + (@($vfull.commands | ForEach-Object { "$($_.key) 0" }) -join ', ') + "; árvore igual (" + $now.Substring(0, 12) + ")") }
+    }
+    # v3.64.0 (item 2 A e item 5 B): o R7 do dev sem a saída colada. Com o verify full verde na árvore de agora (ou o plano
+    # dispensando o full e o accept registrado), a prova registrada vale — o run.ps1 done a copia para o relatório. Sem ela, a
+    # mensagem fala só do que o PLANO manda rodar (antes, "do verify ou do accept" mesmo com **Aceite:** não roda).
+    if ($r7DevPending) {
+        $pacc = if ($planPath) { Get-PlanAccept (Read-Text $planPath) } else { $null }
+        $accRj = Join-Path ((Get-VerifyDir $Root $Task) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'
+        $accReg = Test-Path -LiteralPath $accRj
+        if ($r7vOk) { Add-Result 'R7' 'ok' "pela prova registrada: verify full em $($vfull.at) (result.json) — o run.ps1 done a copia para delivery/$Task.md; o veredito do QA é o portão do sprint" }
+        elseif ($r7vWaived -and $accReg) { Add-Result 'R7' 'ok' "pela prova registrada: accept (result.json) — o plano dispensa o verify full; o veredito do QA é o portão do sprint" }
+        else {
+            $accRuns = -not ($pacc -and $pacc.Mode -eq 'não roda') -and [bool](Get-TargetsConfig $Root)
+            $what = if ($r7vWaived) { 'do accept' } elseif ($accRuns) { 'do verify ou do accept' } else { 'do verify' }
+            $src = if ($pacc -and $pacc.Mode -eq 'não roda') { " (plano: **Aceite:** não roda)" } elseif ($r7vWaived) { " (plano: **Verificação:** dispensada)" } else { '' }
+            Add-Result 'R7' 'falhou' "delivery/$Task.md sem a saída colada $what na seção mais recente$src"
+        }
     }
 
     # ---------- R12 · documentos vivos ----------
@@ -145,7 +168,9 @@ try {
         $sm = [regex]::Match($r12, '(?m)^\*\*Estado:\*\*\s*(.+)$')
         $st = if ($sm.Success) { $sm.Groups[1].Value.Trim() } else { '' }
         if ($st -match 'atualizados' -and $st -notmatch 'pendentes') { Add-Result 'R12' 'ok' "Estado: $st" }
-        elseif ($devMode -and $st -match 'a consolidar') { Add-Result 'R12' 'ok' "Estado: $st (consolidação única no fim do sprint, A5)" }
+        # v3.64.0 (item 2 A): no modo dev, "n/a — o Arquiteto consolida…" e "nenhum" dizem o mesmo que "a consolidar" (T-091 do
+        # piloto: 2 reprovações por isso).
+        elseif ($devMode -and ($st -match 'a consolidar' -or $st -match '^(?i)(n/?a|nenhum)\b')) { Add-Result 'R12' 'ok' "Estado: $st (consolidação única no fim do sprint, A5)" }
         else { Add-Result 'R12' 'falhou' ("Estado: " + $(if ($st) { $st } else { '(vazio)' })) }
     }
 
@@ -254,14 +279,16 @@ try {
     }
     if (-not $adj.Count -and -not $stubUndecl.Count) { Add-Result 'R7-margem' 'n-a' 'nenhum ajuste na margem no relatório do dev' }
     else {
-        $iss = @(); $okA = @()
+        $iss = @(); $okA = @(); $warnA = @()
         foreach ($u in $stubUndecl) { $iss += "$u (teste fora da lista que monta $(Test-MountingSpec $Root $u $scopeA)) foi alterado sem linha '- A<k> · stub · ``$u`` · <a dependência nova>' em ### Ajustes na margem — registre ou desfaça" }
         $tm = if ($plan) { @(Get-TaskMutations $Root $planPath $plan $Task) } else { @() }
         $vmi = @{}; if ($hasVerify -and (Test-Path -LiteralPath $vr)) { try { foreach ($it in @((Read-Text $vr | ConvertFrom-Json).mutation.items)) { $vmi[[string]$it.id] = [string]$it.result } } catch { } }
         foreach ($a in $adj) {
             if ($a.Bad) {
-                $iss += "linha fora do formato '- A<k> · teste|css|stub|fixture · ``<arquivo>`` · <o que mudou>[ · regra: <onde>]': $($a.Bad)"
-                if (-not $a.Id) { continue }   # v3.55.0 (A1): lida pela leitura tolerante, segue com as travas do ajuste
+                # v3.64.0 (item 2 A, decisão D2): a linha que a leitura tolerante entendeu é aviso; só a ilegível reprova. As
+                # travas do ajuste continuam abaixo.
+                if (-not $a.Id) { $iss += "linha fora do formato '- A<k> · teste|css|stub|fixture · ``<arquivo>`` · <o que mudou>[ · regra: <onde>]': $($a.Bad)"; continue }
+                $warnA += "linha $($a.Id) fora do formato (lida assim mesmo): $($a.Bad)"
             }
             # v3.54.1: stub — o teste fica fora da lista por definição; vale se ele monta um arquivo do plano. O verify full
             # verde (R7-verify) prova que ele passa; o QA confere na frente 2 que só o stub mudou.
@@ -292,7 +319,8 @@ try {
             if ($bad.Count) { $iss += "$($a.Id): a(s) mutação(ões) $($bad -join ', ') do teste $($a.File) não foram pegas na árvore final — o ajuste pode ter afrouxado o teste" }
             else { $okA += "$($a.Id) teste ($((@($mine | ForEach-Object { $_.Id })) -join ', ') pegas)" }
         }
-        if ($iss.Count) { Add-Result 'R7-margem' 'falhou' ($iss -join '; ') } else { Add-Result 'R7-margem' 'ok' ("$($okA.Count) ajuste(s) na margem com as travas: " + ($okA -join '; ') + ' — o QA confere cada um na frente 2') }
+        $warnTxt = if ($warnA.Count) { ' · aviso: ' + ($warnA -join '; ') } else { '' }
+        if ($iss.Count) { Add-Result 'R7-margem' 'falhou' (($iss -join '; ') + $warnTxt) } else { Add-Result 'R7-margem' 'ok' ("$($okA.Count) ajuste(s) na margem com as travas: " + ($okA -join '; ') + ' — o QA confere cada um na frente 2' + $warnTxt) }
     }
 
     # ---------- R16 · standards citados com seção (informativo) ----------

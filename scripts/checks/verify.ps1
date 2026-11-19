@@ -107,7 +107,16 @@ $utf8 = New-Object System.Text.UTF8Encoding($false)
 function Get-Commands($Verify, [string]$Key) {
     $v = $Verify.PSObject.Properties[$Key]
     if ($null -eq $v -or $null -eq $v.Value) { return @() }
-    return @(@($v.Value) | Where-Object { $_ -and ([string]$_).Trim() } | ForEach-Object { [string]$_ })
+    # v3.64.0 (item 7 C): além do texto, o objeto { "command": "…", "inputs": [globs] } — o que o comando lê.
+    return @(@($v.Value) | ForEach-Object { if ($_ -is [pscustomobject] -and $_.PSObject.Properties['command']) { [string]$_.command } else { [string]$_ } } | Where-Object { $_ -and $_.Trim() })
+}
+# v3.64.0 (item 7 C): os globs de "inputs" do comando <Key> (o i-ésimo, 1 = o primeiro) — @() sem declaração.
+function Get-CommandInputs($Verify, [string]$Key, [int]$Index = 1) {
+    $v = $Verify.PSObject.Properties[$Key]
+    if ($null -eq $v -or $null -eq $v.Value) { return @() }
+    $it = @(@($v.Value) | Where-Object { $_ })[$Index - 1]
+    if ($it -is [pscustomobject] -and $it.PSObject.Properties['inputs']) { return @(@($it.inputs) | Where-Object { $_ } | ForEach-Object { ([string]$_ -replace '\\', '/').Trim() }) }
+    return @()
 }
 
 # Roda um comando do projeto num PowerShell filho, com o código de saída real, saída inteira no log. Devolve o resultado.
@@ -133,6 +142,19 @@ function Invoke-Logged([string]$Key, [string]$Cmd, [string]$Log) {
     $skew = 0.0; if ($env:TEAM_TEST_CLOCK_SKEW_MIN_ONCE -and -not $script:skewUsed) { $skew = [double]$env:TEAM_TEST_CLOCK_SKEW_MIN_ONCE; $script:skewUsed = $true }
     $tmo = Get-CommandTimeout $Key
     $pidFile = Join-Path $dir 'running.json'   # v3.57.3: o registro que o -Kill e a rodada seguinte leem
+    # v3.64.0 (item 7 B, decisão D6): a suíte é trabalho pesado — com OUTRO projeto da máquina segurando a trava, ela espera
+    # (guards.json → machine.heavyWaitMin, padrão 30 min); passou do prazo, é ambiente ("máquina ocupada"), sem rodar.
+    $heavyMine = $false
+    if ($Key -match '^suite\d*$') {
+        $hb = Wait-HeavyLock $Root "verify $Task $Key"
+        if ($hb) {
+            $rb = [ordered]@{ key = $Key; command = $Cmd; exit = 4; seconds = 0; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = 0; decisive = @("máquina ocupada: $hb"); environment = "máquina ocupada — $hb. Não é defeito do código nem configuração do projeto: a suíte roda quando o outro projeto terminar (repita o verify)"; hygiene = @() }
+            [System.IO.File]::WriteAllText($Log, "máquina ocupada: $hb`nEXIT=4`n", $utf8)
+            return $rb
+        }
+        $heavyMine = $true
+    }
+    try {
     $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon -ClockSkewMin $skew -PidFile $pidFile
     # Suspensão do sistema no meio do comando: a rodada não vale como prova — repete UMA vez (protocolo de espera, regra 5) e
     # registra a suspensão. Suspensa de novo, fica como falha de ambiente (exit 4): não é defeito do código.
@@ -162,10 +184,30 @@ function Invoke-Logged([string]$Key, [string]$Cmd, [string]$Log) {
                 $r.environment = $null
                 $r.decisive = @($r.decisive) + @("o navegador da suíte caiu duas vezes no MESMO ponto (depois do teste $($d2.At) de $($d2.Total)): um teste — o seguinte a esse na ordem da suíte — ou o código que ele chama trava o navegador; não é ambiente")
             } else {
-                $r.environment = "o navegador da suíte caiu nas 2 rodadas ($($d2.Text)), em pontos diferentes (depois do teste $($d1.At) e do $($d2.At) de $($d2.Total)) — carga ou memória da máquina, não um teste; memória livre $free2 MB$(if ($top) { "; maiores consumidores: $top" }). O prazo do runner (Karma: browserNoActivityTimeout, browserDisconnectTolerance) e as flags do navegador (--disable-dev-shm-usage) são configuração do projeto: vão por Task, com o Arquiteto; fechar o que não é da construção é do stakeholder"
+                # v3.64.0 (item 7 A): antes de culpar a configuração, a máquina — o ritmo contra a última suíte verde, a CPU e o que
+                # outros projetos rodam. No piloto (18/11) a mensagem mandou abrir Task de Karma com a suíte 2,6× mais lenta e o
+                # emulador de outro projeto ligado; a mesma configuração tinha passado 3138/3138 na véspera.
+                $ml = Get-MachineLoad $Root
+                $pace = if ($d2.At -gt 0 -and [int]$r.seconds -gt 0) { [double]$r.seconds / [int]$d2.At } else { 0 }
+                $lgP = 0; try { if ($lgPrev -and $lgPrev.PSObject.Properties[$Key] -and $lgPrev.$Key.secondsPerTest) { $lgP = [double]$lgPrev.$Key.secondsPerTest } } catch { }
+                $ratio = if ($lgP -gt 0 -and $pace -gt 0) { [Math]::Round($pace / $lgP, 1) } else { 0 }
+                $tgA = Get-TargetsConfig $Root; $ownEmu = if ($tgA -and $tgA.PSObject.Properties['android']) { 1 } else { 0 }
+                $busy = @()
+                if ($ratio -ge 2) { $busy += "ritmo $($ratio.ToString([Globalization.CultureInfo]::GetCultureInfo('pt-BR')))× o da última suíte verde" }
+                if ([int]$ml.Cpu -ge 85) { $busy += "CPU $($ml.Cpu)%" }
+                if (@($ml.Emulators).Count -gt $ownEmu) { $busy += "emulador(es) ligado(s): $(@($ml.Emulators) -join ', ')" }
+                if (@($ml.AdbPorts).Count -gt 1) { $busy += "$(@($ml.AdbPorts).Count) servidores do adb (portas $(@($ml.AdbPorts) -join ', '))" }
+                if (@($ml.Others).Count) { $busy += "outro projeto com trava viva: $(@($ml.Others) -join '; ')" }
+                $where = "depois do teste $($d1.At) e do $($d2.At) de $($d2.Total)"
+                if ($busy.Count) {
+                    $r.environment = "máquina ocupada quando o navegador da suíte caiu nas 2 rodadas ($($d2.Text); em pontos diferentes, $where): $($busy -join ' · '). Não é configuração do projeto nem defeito do código: espere a máquina ficar livre (ou feche o que não é deste projeto) e repita o verify — não abra Task"
+                } else {
+                    $r.environment = "o navegador da suíte caiu nas 2 rodadas ($($d2.Text)), em pontos diferentes ($where), com a máquina livre (CPU $($ml.Cpu)%$(if ($ratio -gt 0) { ", ritmo $($ratio.ToString([Globalization.CultureInfo]::GetCultureInfo('pt-BR')))× o da última verde" }), nenhum emulador ou projeto alheio); memória livre $free2 MB$(if ($top) { "; maiores consumidores: $top" }). O prazo do runner (Karma: browserNoActivityTimeout, browserDisconnectTolerance) e as flags do navegador (--disable-dev-shm-usage) são configuração do projeto: vão por Task, com o Arquiteto, com estas medidas"
+                }
             }
         }
     }
+    } finally { if ($heavyMine) { Exit-HeavyLock } }
     if ($r.Contains('disconnect')) { $r.Remove('disconnect') }
     $r.Remove('suspended')
     foreach ($w in @($r.warnings)) { if ($w -and $script:hygieneWarnings -notcontains $w) { $script:hygieneWarnings += $w } }
@@ -915,6 +957,42 @@ try {
         }
         $jobs = $keepJobs
     }
+    # v3.64.0 (item 7 C, decisão D7): o verde de um comando que declara "inputs" vale enquanto nada do que ele lê mudou desde a
+    # última rodada verde dele (lastGreen, que uma rodada vermelha não apaga). No sprint 6 do piloto, a Q-S6e rodou os 3138
+    # testes do Karma duas vezes por dois arquivos da ferramenta do alvo, que a suíte nem carrega. A cobertura acompanha a suíte.
+    # A revisão final não aceita esse verde (quality.ps1, Q11) e roda a suíte de fato. -Fresh roda tudo.
+    $lgPrev = if ($prev -and $prev.PSObject.Properties['lastGreen'] -and $prev.lastGreen) { $prev.lastGreen } else { $null }
+    if ($Mode -eq 'full' -and -not $Fresh -and $lgPrev -and $tree) {
+        $keepJobs = @(); $suiteFrom = @{}
+        foreach ($j in $jobs) {
+            $lg = $lgPrev.PSObject.Properties[$j.Key]; $lg = if ($lg) { $lg.Value } else { $null }
+            $base = $j.Key -replace '\d+$', ''; $idx = if ($j.Key -match '(\d+)$') { [int]$Matches[1] } else { 1 }
+            $ok = $false; $chg = @()
+            if ($lg -and [string]$lg.command -eq [string]$j.Cmd -and $lg.tree) {
+                if ($base -eq 'coverage') {
+                    $ok = @($suiteFrom.Values | Where-Object { $_ -eq [string]$lg.tree }).Count -gt 0
+                } else {
+                    $inp = @(Get-CommandInputs $verify $base $idx)
+                    if ($inp.Count) {
+                        $chg = Get-TreeDiff $Root ([string]$lg.tree) $tree
+                        if ($null -ne $chg) {
+                            $rxs = @($inp | ForEach-Object { ConvertTo-GlobRegex $_ } | Where-Object { $_ })
+                            $ok = -not @($chg | Where-Object { $p = $_; @($rxs | Where-Object { $p -match $_ }).Count }).Count
+                        }
+                    }
+                }
+            }
+            if ($ok) {
+                $h = [ordered]@{}; foreach ($pp in $lg.PSObject.Properties) { if ($pp.Name -notin 'tree', 'at', 'secondsPerTest') { $h[$pp.Name] = $pp.Value } }
+                $h['reused'] = [string]$lg.at; $h['reusedBy'] = 'inputs'; $h['reusedTree'] = [string]$lg.tree
+                $h['changedOutside'] = @($chg | Select-Object -First 6)
+                $results += $h; $reused += $j.Key
+                if ($base -eq 'suite') { $suiteFrom[$j.Key] = [string]$lg.tree }
+                [Console]::Out.WriteLine("  $($j.Key): reaproveitado do verde de $($lg.at) — nada do que ele lê (inputs) mudou$(if (@($chg).Count) { "; mudaram fora: $((@($chg) | Select-Object -First 4) -join ', ')" })")
+            } else { $keepJobs += $j }
+        }
+        $jobs = $keepJobs
+    }
     # v3.59.1: os ids de teste (estáticos, ~2 s) conferidos ANTES da suíte — na T-081 a suíte de 620 s rodou e o full reprovou
     # só pelo testids; corrigido o id, outra suíte inteira.
     $tidLines = @(); $tid = $null
@@ -987,6 +1065,22 @@ try {
 
     $res = [ordered]@{ task = $Task; full = $null; focused = $null; mutation = $null; full_partial = $null }
     if ($prev) { foreach ($k in 'full', 'focused', 'mutation') { if ($prev.PSObject.Properties[$k]) { $res[$k] = $prev.$k } } }
+    # v3.64.0 (item 7 A e C): o último verde de cada comando do full — árvore, hora, resultado e o ritmo (segundos por teste).
+    # Uma rodada vermelha não o apaga; o reaproveitado por inputs não o renova.
+    $lgNew = [ordered]@{}
+    if ($lgPrev) { foreach ($pp in $lgPrev.PSObject.Properties) { $lgNew[$pp.Name] = $pp.Value } }
+    if ($Mode -eq 'full' -and $tree) {
+        foreach ($rr in @($results)) {
+            $rk = [string]$rr.key
+            if (-not $rk -or $rk -eq 'testids' -or [int]$rr.exit -ne 0 -or $rr.environment -or $rr.reused) { continue }
+            $e1 = [ordered]@{}; foreach ($kk in @($rr.Keys)) { $e1[$kk] = $rr[$kk] }
+            $e1['tree'] = $tree; $e1['at'] = $run.at
+            $tot = 0; foreach ($dl in @($rr.decisive)) { $mm = [regex]::Match([string]$dl, 'Executed (\d+) of (\d+)'); if ($mm.Success) { $tot = [int]$mm.Groups[2].Value } }
+            if ($tot -gt 0 -and [int]$rr.seconds -gt 0) { $e1['secondsPerTest'] = [Math]::Round([double]$rr.seconds / $tot, 3) }
+            $lgNew[$rk] = $e1
+        }
+    }
+    if ($lgNew.Count) { $res['lastGreen'] = $lgNew }
     if ($pendingJobs.Count) { $res.full_partial = [ordered]@{ tree = $tree; commands = $results; pending = $pendingJobs } }
     else { $res[$Mode] = $run }
     [System.IO.File]::WriteAllText($resPath, ($res | ConvertTo-Json -Depth 8), $utf8)

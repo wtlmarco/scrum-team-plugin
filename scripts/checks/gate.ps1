@@ -12,6 +12,11 @@
 # v3.63.1 (sprint 6 do projeto piloto, 18/11): toda falha de cenário do aceite passa pelo diagnóstico do operator (AMBIENTE ·
 #   APP · PLANO) antes de virar ambiente ou de ir ao QA; o alvo preso por outro processo espera (o dono anda) ou vai ao
 #   stakeholder na primeira vez (parado), com o target.ps1 -Kill; o mesmo result.json pedindo reparo pela 3ª vez também.
+# v3.64.0 (sprint 6 do projeto piloto, 18/11): o portão preso no formato antigo — a rodada focada pede a tabela com Cause e a
+#   conversão dos achados antigos; nenhuma Q-S<n> nova com outra aberta (os achados vão a ela, e o Arquiteto emenda o plano);
+#   "**Corrige:** <Q-S>" substitui a antiga; Q-S em 🔴 vai à rota do bloqueio, não a "esperar"; o diagnóstico do operator mais
+#   novo que o veredito pede a rodada focada; checkpoint das Tasks abertas antes de medir; a suíte só reaproveitada por inputs
+#   roda de fato (verify -Fresh) antes da qualidade; outro projeto com a máquina (trava pesada) → esperar.
 # Sai com exit quando há o que fazer; volta sem sair com o portão passado (✅, ou ⚠️ com a decisão do PO).
 
 function Invoke-GateStep {
@@ -64,7 +69,7 @@ function Invoke-GateStep {
     # stakeholder na PRIMEIRA vez, com o target.ps1 -Kill (que encerra o dono da trava e a árvore dele).
     if ($hasTarget) {
         $tb = Get-TargetBusy $Root
-        if ($tb -and $tb.Plugin -and -not $tb.Pulse.Stalled) {
+        if ($tb -and ($tb.Plugin -or ($tb.PSObject.Properties['Heavy'] -and $tb.Heavy)) -and -not $tb.Pulse.Stalled) {   # v3.64.0: outro projeto com a máquina, andando → esperar
             Set-NextVerdict $Root 'esperar' $sid "alvo em uso: $($tb.Text)"
             Out "PRÓXIMA AÇÃO: esperar — o alvo $($tb.Target) está em uso por $($tb.Text). Não dispare reparo nem outro aceite: os dois recusam o alvo em uso (e dois automatizadores no mesmo alvo quebram os dois)."
             Out (Get-WatcherLine)
@@ -118,11 +123,27 @@ function Invoke-GateStep {
     # ---------- C/D · medir só o que venceu ----------
     if (-not $qFresh -or -not $aFresh) {
         $cmds = @(); $whyM = @()
+        # v3.64.0 (item 7 C, decisão D7): a suíte desta árvore só existe reaproveitada por "inputs" → a revisão final a roda de
+        # fato antes da qualidade (a Q11 não aceita a reaproveitada).
+        if (-not $qFresh -and $tree) {
+            $realS = $false; $inpS = $false
+            foreach ($vf0 in @(Get-ChildItem -LiteralPath (Join-Path $Root '.team-project/verify') -Recurse -Filter 'result.json' -File -ErrorAction SilentlyContinue)) {
+                try { $vj0 = Read-Text $vf0.FullName | ConvertFrom-Json } catch { continue }
+                if (-not $vj0.full -or [string]$vj0.full.tree -ne $tree) { continue }
+                foreach ($c0 in @($vj0.full.commands | Where-Object { [string]$_.key -match '^suite\d*$' -and [int]$_.exit -eq 0 })) { if ($c0.PSObject.Properties['reusedBy'] -and [string]$c0.reusedBy -eq 'inputs') { $inpS = $true } else { $realS = $true } }
+            }
+            if ($inpS -and -not $realS) { $cmds += "$plugin/verify.ps1 -Task $sid -Mode full -Fresh"; $whyM += 'suíte: só reaproveitada por inputs nesta árvore (a revisão final roda de fato)' }
+        }
         if (-not $qFresh) { $cmds += "$plugin/quality.ps1 -Id $sid"; $whyM += $(if ($qj) { 'qualidade: o código de produção mudou' } else { 'qualidade: sem medição' }) }
         if (-not $aFresh) {
             $cmds += "$plugin/accept.ps1 -Task $sid -Resume"
             $whyM += $(if (-not $aj) { 'aceite: sem medição' } elseif (-not $aScnOk) { 'aceite: os cenários mudaram' } else { 'aceite: o código de produção mudou' })
         }
+        # v3.64.0 (item 6 C): antes de medir, o código das Tasks não fechadas vai num checkpoint (só o escopo de cada plano), e o
+        # que sobrar pendente aparece — no piloto, o portão mediu as ferramentas da Q-S6d sem commit (achado S6-F4-2).
+        foreach ($ot in @($tasks | Where-Object { $_.Mark -ne $E.Done })) { $ckG = Save-TaskCheckpoint $Root $S $ot 'antes da medição do portão'; if ($ckG) { Out "  $ckG" } }
+        $pendG = @(Get-GitPendingFiles $Root | Where-Object { $_ -notmatch '^docs/' })
+        if ($pendG.Count) { Out "  atenção: pendente sem commit no disco, que a medição inclui: $(($pendG | Select-Object -First 5) -join ', ')$(if ($pendG.Count -gt 5) { " e mais $($pendG.Count - 5)" }) — commit da dona, chore, ou guards.json → treeIgnore" }
         Out "PRÓXIMA AÇÃO: validação do sprint $n — medir (operator, comandos longos fora das instâncias caras; C3): $($whyM -join ' · ')"
         Say $(if (-not $qj -and -not $aj) { 'Todas as partes do sprint estão prontas. Começou a revisão final: rodando todos os testes do app.' } else { 'Revisão final: medindo de novo só o que a correção mudou.' })
         Out "  $(Get-AgentLine 'operator')"
@@ -166,7 +187,48 @@ function Invoke-GateStep {
     $valAt = (Get-Item -LiteralPath $val).LastWriteTime
     $qsRows = @($tasks | Where-Object { $_.Id -match "^Q-S$n([a-z]?)$" })
     $boardTxt = if (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md')) { Read-Text (Join-Path $S 'sprint-backlog.md') } else { '' }
-    $qsOf = { param($fid) @($qsRows | Where-Object { $q = $_; @(($boardTxt -split "`r?`n") | Where-Object { $_ -match '^\s*\|' -and $_.Contains($q.Id) -and $_.Contains($fid) }).Count }) }
+    # A correção substituída (abaixo) não cobre achado: o que só ela citava vai à correção aberta.
+    $qsOf = { param($fid) @($qsRows | Where-Object { -not $supersededBy.ContainsKey($_.Id) } | Where-Object { $q = $_; @(($boardTxt -split "`r?`n") | Where-Object { $_ -match '^\s*\|' -and $_.Contains($q.Id) -and $_.Contains($fid) }).Count }) }
+    # v3.64.0 (item 8 B; sprint 6 do projeto piloto, 18/11): a correção que outra substituiu (o plano da nova declara
+    # **Corrige:** <a antiga>) conta como encerrada — no piloto, a Q-S6d em 🔴, que a Q-S6e corrige, segurava o portão.
+    $supersededBy = @{}
+    foreach ($q in $qsRows) {
+        if (-not $q.Plan -or $q.Plan -match '^plan/?$') { continue }
+        $qp = Join-Path $S $q.Plan; if (-not (Test-Path -LiteralPath $qp -PathType Leaf)) { continue }
+        $cm = [regex]::Match((Read-Text $qp), '(?m)^\*\*Corrige:\*\*([^\r\n]*)')
+        if ($cm.Success) { foreach ($m in [regex]::Matches($cm.Groups[1].Value, "Q-S$n[a-z]?(?![\w-])")) { if ($m.Value -ne $q.Id) { $supersededBy[$m.Value] = $q.Id } } }
+    }
+    $qsOpen = @($qsRows | Where-Object { $_.Mark -ne $E.Done -and -not $supersededBy.ContainsKey($_.Id) })
+    foreach ($k in $supersededBy.Keys) { if (@($qsRows | Where-Object { $_.Id -eq $k -and $_.Mark -ne $E.Done }).Count) { Out "  nota: a $k conta como substituída pela $($supersededBy[$k]) (o plano dela declara **Corrige:** $k) — não segura o portão" } }
+    $redQ = [char]::ConvertFromUtf32(0x1F534)
+    # O motivo do 🔴 de uma Task: a última linha dela em "Bloqueios e riscos abertos" (kanban.md, ou o quadro antigo).
+    $blockWhy = {
+        param([string]$Id)
+        foreach ($f in @((Join-Path $S 'kanban.md'), (Join-Path $S 'sprint-backlog.md'))) {
+            if (-not (Test-Path -LiteralPath $f)) { continue }
+            foreach ($t in (Get-Tables (Read-Text $f))) {
+                $ni = -1; $ti = -1; for ($i = 0; $i -lt $t.Header.Count; $i++) { if ($t.Header[$i] -match '^Natureza') { $ni = $i }; if ($t.Header[$i] -match '^Task') { $ti = $i } }
+                if ($ni -lt 0 -or $ti -lt 0) { continue }
+                $hit = @($t.Rows | Where-Object { (Get-Cell $_ $ti) -match "(?<![\w-])$([regex]::Escape($Id))(?![\w-])" })
+                if ($hit.Count) { return (& $short (Clean-Cell (Get-Cell $hit[-1] $ni))) }
+            }
+        }
+        return 'motivo não registrado em Bloqueios e riscos abertos'
+    }
+    # v3.64.0 (item 8 B): achados novos para uma correção já aberta — a linha dela ganha os IDs e o Arquiteto emenda o plano
+    # (o plano foi escrito para outros achados: no piloto, a Q-S6e só podia tocar a ferramenta do alvo, e os achados de código
+    # pediam o app). Nunca uma Q-S nova ao lado da aberta.
+    $toOpenQ = {
+        param([string]$What, [string]$IdsTxt)
+        $q = @($qsOpen | Sort-Object { $_.Id } -Descending)[0]
+        $planQ = if ($q.Plan -and $q.Plan -notmatch '^plan/?$') { ".team-project/sprints/$n/$($q.Plan)" } else { '(sem plano ainda)' }
+        Out "PRÓXIMA AÇÃO: incluir $What na $($q.Id) — a correção do portão já aberta ($($q.Mark)); não abra outra Q-S$n (v3.64.0)"
+        Say 'A revisão final encontrou problemas no app; eles vão para a correção que já está aberta, e o arquiteto ajusta o plano dela.'
+        Out "  1. a sessão acrescenta $IdsTxt na coluna Task da linha da $($q.Id) no quadro (é por eles que o portão sabe o que ela corrige)"
+        Out "  2. $(Get-AgentLine 'architect') — prompt: `"/arc question — emende o plano $planQ da $($q.Id) para cobrir $IdsTxt (leia .team-project/sprints/$n/validation.md, só esses achados$(if ($diag) { ", e o diagnóstico $diagRel" })): passos, **Arquivos tocados:** e **Cenários:**; registre em **Plano corrigido durante a execução:**. Depois rode $plugin/plan.ps1 -Plan $planQ e volte em até 10 linhas.`""
+        Out "  3. depois: run.ps1 next$(if ($q.Mark -eq $redQ) { " — a $($q.Id) está 🔴 ($(& $blockWhy $q.Id)): o next leva ao destravamento dela" })"
+        exit 0
+    }
 
     # A rodada focada (D): o que mudou desde a última rodada disparada — só essas frentes e os achados abertos vão ao QA.
     $revise = {
@@ -185,15 +247,22 @@ function Invoke-GateStep {
         Out "  prova da rodada: .team-project/$proofRel/ ($k arquivo(s))"
         Out "  $(Get-AgentLine 'quality-assurance')"
         $resTxt = if (Test-Path -LiteralPath (Join-Path $S 'gate')) { ', as resoluções dos donos em .team-project/sprints/' + $n + '/gate/' } else { '' }
-        Out "  prompt: `"/qa sprint $n — rodada $roundNow, focada: leia $proofTxt$resTxt$diagTxt e o diff das Tasks Q-S$n. Julgue SÓ as frentes $(if ($stale.Count) { $stale -join ', ' } else { '(nenhuma — a base de todas é a mesma)' }) e os achados $(if ($openF.Count) { $openF -join ', ' } else { '(nenhum aberto)' }); $(if ($kept.Count) { "as frentes $($kept -join ', ') ficam como estavam (a base delas não mudou) — não as reabra" } else { 'todas as frentes venceram' }). Acrescente no fim de .team-project/sprints/$n/validation.md a seção ## Rodada $roundNow com a tabela | ID | State | Evidência | (State open|fixed|debt|wontfix; achado novo com ID novo e Cause) e a linha **Veredito (rodada $roundNow):** ✅ | ⚠️ | ❌ — não apague a rodada anterior. Não rode build nem o app. Volte em até 15 linhas.`""
+        Out "  prompt: `"/qa sprint $n — rodada $roundNow, focada: leia $proofTxt$resTxt$diagTxt e o diff das Tasks Q-S$n. Julgue SÓ as frentes $(if ($stale.Count) { $stale -join ', ' } else { '(nenhuma — a base de todas é a mesma)' }) e os achados $(if ($openF.Count) { $openF -join ', ' } else { '(nenhum aberto)' }); $(if ($kept.Count) { "as frentes $($kept -join ', ') ficam como estavam (a base delas não mudou) — não as reabra" } else { 'todas as frentes venceram' }). Acrescente no fim de .team-project/sprints/$n/validation.md a seção ## Rodada $roundNow com a tabela | ID | Task | Achado | Onde | Cause | Owner | State | Evidência | (ID S$n-F<k>; Cause code|design|scenario|screen|requirement|environment, UMA por achado, na coluna — não dentro do ID; State open|fixed|debt|wontfix)$(if (-not $vf.HasTable) { " — o validation.md ainda está no formato anterior à v3.63.0 (achados sem a coluna Cause): reescreva nessa tabela CADA achado antigo ainda aberto, com ID S$n-F<k> novo e uma causa (o que já foi resolvido fica como está)" }) e a linha **Veredito (rodada $roundNow):** ✅ | ⚠️ | ❌ — não apague a rodada anterior. Não rode build nem o app. Volte em até 15 linhas.`""
         Out "  depois: run.ps1 next"
         exit 0
     }
 
     # ---------- validation.md no formato anterior à v3.63.0: o caminho de antes ----------
+    # v3.64.0 (item 8 C): o diagnóstico do operator sobre o aceite também é informação nova para o veredito — no piloto, o das
+    # 20:16 separava APP e PLANO, e o validation.md das 15:38 seguia valendo porque só o result.json contava.
+    $diagAbs = Join-Path $Root $diagRel
+    $measFiles = @($qr, $ar, $diagAbs | Where-Object { Test-Path -LiteralPath $_ })
+    $newestMeas = { @($measFiles | ForEach-Object { [pscustomobject]@{ At = (Get-Item -LiteralPath $_).LastWriteTime; Diag = ($_ -eq $diagAbs) } } | Sort-Object At -Descending) }
     if (-not $vf.HasTable) {
-        $measAt = @($qr, $ar | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { (Get-Item -LiteralPath $_).LastWriteTime } | Sort-Object -Descending)
-        if ($measAt.Count -and $measAt[0] -gt $valAt) { & $revise 'a medição é mais nova que o validation.md' }
+        $nm = @(& $newestMeas)
+        if ($nm.Count -and $nm[0].At -gt $valAt) { & $revise $(if ($nm[0].Diag) { 'o diagnóstico do aceite é mais novo que o validation.md' } else { 'a medição é mais nova que o validation.md' }) }
+        # v3.64.0 (item 8 B): com uma correção aberta, os achados vão para ela.
+        if ($qsOpen.Count) { & $toOpenQ "os achados 'Volta para: dev' do validation.md" "os números dos achados 'Volta para: dev' da última rodada do validation.md" }
         $qs = @($qsRows | ForEach-Object { $_.Id })
         $qid = if (-not $qs.Count) { "Q-S$n" } else { $sfx = @($qs | ForEach-Object { if ($_ -match '([a-z])$') { [int][char]$Matches[1] } else { [int][char]'a' } } | Sort-Object -Descending)[0]; "Q-S$n" + [char]($sfx + 1) }
         Out "PRÓXIMA AÇÃO: abrir $qid — correção do portão (validation.md: veredito $vv, sem decisão do PO; formato anterior à v3.63.0, sem a tabela de achados com Cause)"
@@ -255,6 +324,7 @@ function Invoke-GateStep {
     # code: os achados de código e os que o dono resolveu como 'code' — cada um citado por uma Q-S<n> do quadro.
     $codeF = @($open | Where-Object { $_.cause -eq 'code' -or ((Get-FindingResolution $S $_.id) -and (Get-FindingResolution $S $_.id).value -eq 'code') })
     $uncovered = @($codeF | Where-Object { -not @(& $qsOf $_.id).Count })
+    if ($uncovered.Count -and $qsOpen.Count) { & $toOpenQ "$(($uncovered | ForEach-Object { $_.id }) -join ', ') (causa code)" "os IDs $(($uncovered | ForEach-Object { $_.id }) -join ', ')" }
     if ($uncovered.Count) {
         $qs = @($qsRows | ForEach-Object { $_.Id })
         $qid = if (-not $qs.Count) { "Q-S$n" } else { $sfx = @($qs | ForEach-Object { if ($_ -match '([a-z])$') { [int][char]$Matches[1] } else { [int][char]'a' } } | Sort-Object -Descending)[0]; "Q-S$n" + [char]($sfx + 1) }
@@ -267,11 +337,22 @@ function Invoke-GateStep {
     }
     # Tudo roteado: há resolução, Q-S fechada ou medição nova depois do veredito → o QA revisa (rodada focada).
     $newer = @()
-    $measAt = @($qr, $ar | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { (Get-Item -LiteralPath $_).LastWriteTime } | Sort-Object -Descending)
-    if ($measAt.Count -and $measAt[0] -gt $valAt) { $newer += 'medição nova' }
+    $nm = @(& $newestMeas)
+    if ($nm.Count -and $nm[0].At -gt $valAt) { $newer += $(if ($nm[0].Diag) { 'diagnóstico novo do aceite' } else { 'medição nova' }) }
     if (@($open | Where-Object { $r = Get-FindingResolution $S $_.id; $r -and $r.value -and $r.at -gt $valAt }).Count) { $newer += 'resoluções dos donos' }
     if (@($codeF | ForEach-Object { & $qsOf $_.id } | Where-Object { $_.Mark -eq $E.Done }).Count) { $newer += 'Q-S fechada' }
     if ($newer.Count -or -not $open.Count) { & $revise $(if ($newer.Count) { $newer -join ' · ' } else { 'nenhum achado aberto, veredito ainda não aprovado' }) }
+    # v3.64.0 (item 8 B): a correção que cobre os achados está em 🔴 — ela só reabre por ação de alguém; "esperar" deixaria o
+    # watcher olhando uma Task parada. Vai à rota do bloqueio dela.
+    $redCover = @($codeF | ForEach-Object { & $qsOf $_.id } | Where-Object { $_.Mark -eq $redQ -and -not $supersededBy.ContainsKey($_.Id) } | Sort-Object Id -Unique)
+    if ($redCover.Count) {
+        $why = (($redCover | ForEach-Object { "$($_.Id): $(& $blockWhy $_.Id)" }) -join '; ')
+        Set-AskRoute $Root 'bloqueio' (($redCover | ForEach-Object { $_.Id }) -join ',') "correção do portão em 🔴: $why"
+        Out "PRÓXIMA AÇÃO: destravar $(($redCover | ForEach-Object { $_.Id }) -join ', ') (🔴) — os achados abertos do portão do sprint $n dependem dela(s): $why"
+        Say 'A revisão final está esperando uma correção que parou. Preciso destravá-la para seguir.'
+        Out "  o motivo está em Bloqueios e riscos abertos (kanban.md); ambiente → reparo e run.ps1 next (a Task reabre); decisão → degrau 1 (PO + Arquiteto), depois o formulário (R22). Não abra outra Q-S$n."
+        exit 0
+    }
     Out "PRÓXIMA AÇÃO: esperar — os achados abertos do portão do sprint $n já têm dono: $(($open | ForEach-Object { "$($_.id) ($($_.cause))" }) -join ', '); a Q-S$n que os corrige ainda não fechou"
     exit 3
 }

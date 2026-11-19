@@ -206,6 +206,9 @@ $env:TEAM_QUOTA_LOG = Join-Path $tmp 'sem-cota/quota-log.jsonl'
 # v3.63.2: a trava de aparelho é da máquina (%LOCALAPPDATA%\team-plugin\device-locks) e o serial padrão vem do adb — os testes
 # usam uma pasta própria e um serial fixo: nenhum teste toca a trava real nem disputa o emulador de um projeto rodando.
 $env:TEAM_DEVICE_LOCK_DIR = Join-Path $tmp 'device-locks'; $env:TEAM_TEST_DEVICE_SERIAL = 'emulator-teste'
+# v3.64.0 (item 7): a máquina medida (CPU, emuladores, servidores do adb) também é fixa — nenhum teste depende do que roda de
+# verdade na máquina; os casos do item 7 trocam a medida no próprio caso.
+$env:TEAM_TEST_ADB_PORTS = '5037'; $env:TEAM_TEST_MACHINE_LOAD = '{"cpu":10,"emulators":[],"adbPorts":[5037],"others":[]}'; $env:TEAM_TEST_HEAVY_POLL_S = '1'
 $rows = @(); $fail = 0
 # v3.57.0: o tempo de cada caso (do Check anterior a este) entra na linha, e os mais lentos saem no fim — a suíte passou de ~570 s
 # para ~1000 s sem que nenhum caso falhasse, e sem o tempo por caso não havia como achar de onde veio.
@@ -468,6 +471,50 @@ $r = & $kr 'diff'
 Check 'v3.63.1 pedido 8: caiu nas 2 rodadas em pontos diferentes → FALHA DE AMBIENTE (exit 4) com a memória medida e o que é configuração do projeto' $r 4 @('FALHA DE AMBIENTE em 1 comando', 'ambiente \(suite\): o navegador da suíte caiu nas 2 rodadas .* em pontos diferentes \(depois do teste 1831 e do 1832 de 2926\)', 'memória livre -?\d+ MB', 'browserNoActivityTimeout', 'não é defeito do código')
 $r = & $kr 'same'
 Check 'v3.63.1 pedido 8: caiu nas 2 rodadas no MESMO teste → não é ambiente: um teste trava o navegador (exit 1, sem FALHA DE AMBIENTE)' $r 1 @('1 comando\(s\) com falha', 'suite: exit 1 .* caiu duas vezes no MESMO ponto \(depois do teste 1840 de 2926\)', '^(?![\s\S]*FALHA DE AMBIENTE)')
+# ----- v3.64.0 · item 7: a máquina dividida entre projetos -----
+$mlKeep = $env:TEAM_TEST_MACHINE_LOAD
+$env:TEAM_TEST_MACHINE_LOAD = '{"cpu":91,"emulators":["horta-api35","bench-a01-api29"],"adbPorts":[5037,5557],"others":["setup-android de C:\\outro"]}'
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output \"Build succeeded. 0 Warning(s)\"", "minFreeMB": 0, "suite": "powershell -NoProfile -ExecutionPolicy Bypass -File .team-project/karma-fake.ps1" }, "targets": { "android": { "package": "br.x" } } }'
+$r = & $kr 'diff'
+Check 'v3.64.0 item 7 A: queda em pontos diferentes com a máquina ocupada (CPU, emulador e adb de outro projeto) → "máquina ocupada", sem mandar abrir Task de configuração' $r 4 @('FALHA DE AMBIENTE em 1 comando', 'máquina ocupada quando o navegador da suíte caiu', 'CPU 91%', 'emulador\(es\) ligado\(s\): horta-api35, bench-a01-api29', '2 servidores do adb \(portas 5037, 5557\)', 'outro projeto com trava viva: setup-android de C:\\outro', 'não abra Task', '^(?![\s\S]*vão por Task)')
+$env:TEAM_TEST_MACHINE_LOAD = $mlKeep
+Put $p '.team-project/guards.json' '{ "verify": { "build": "Write-Output \"Build succeeded. 0 Warning(s)\"", "minFreeMB": 0, "suite": { "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .team-project/karma-fake.ps1", "inputs": ["src/**"] } } }'
+Remove-Item -LiteralPath (Join-Path $p '.team-project/kn.txt') -Force -ErrorAction SilentlyContinue; $env:KMODE = 'once'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+Check 'v3.64.0 item 7 C: suíte declarada como objeto { command, inputs } roda e fica como último verde (lastGreen)' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/verify/1/T-041/result.json'), $utf8) } 0 @('tudo exit 0', '"lastGreen":\s*\{[\s\S]*"suite":')
+Put $p 'tools/x.mjs' "y`n"
+$kn0 = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/kn.txt')).Trim()
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$kn1 = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/kn.txt')).Trim()
+Check 'v3.64.0 item 7 C: mudou só arquivo fora dos inputs da suíte → a suíte é reaproveitada do último verde (não roda), com a lista do que mudou fora' @{ Code = $r.Code; Out = $r.Out + "`nKN=$kn0/$kn1`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/verify/1/T-041/result.json'), $utf8) } 0 @('suite: reaproveitado do verde de .* nada do que ele lê \(inputs\) mudou; mudaram fora: tools/x\.mjs', "KN=$kn0/$kn0", '"reusedBy":\s*"inputs"')
+Put $p 'src/a.ts' "y`n"
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$kn2 = [System.IO.File]::ReadAllText((Join-Path $p '.team-project/kn.txt')).Trim()
+Check 'v3.64.0 item 7 C: mudou arquivo dos inputs → a suíte roda de novo' @{ Code = $r.Code; Out = $r.Out + "`nKN=$kn0/$kn2" } 0 @('^(?![\s\S]*suite: reaproveitado do verde)', "KN=$kn0/(?!$kn0\b)\d+")
+Remove-Item Env:\KMODE -ErrorAction SilentlyContinue
+# Trava pesada (B): outro projeto vivo segura a máquina → a suíte espera o prazo (0 aqui) e sai como ambiente, sem rodar.
+$hlk = Join-Path $env:TEAM_DEVICE_LOCK_DIR 'machine-heavy.json'
+New-Item -ItemType Directory -Force (Split-Path $hlk) | Out-Null
+[System.IO.File]::WriteAllText($hlk, (@{ kind = 'heavy'; owner = 'setup-android bench'; pid = $PID; desde = '2026-11-18 19:21:00'; root = 'C:\outro-projeto' } | ConvertTo-Json -Compress), $utf8)
+Put $p '.team-project/guards.json' '{ "machine": { "heavyWaitMin": 0 }, "verify": { "build": "Write-Output \"Build succeeded. 0 Warning(s)\"", "minFreeMB": 0, "suite": "powershell -NoProfile -ExecutionPolicy Bypass -File .team-project/karma-fake.ps1" } }'
+$r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Fresh', '-Root', $p)
+Check 'v3.64.0 item 7 B: outro projeto segura a trava pesada → a suíte não roda e sai como ambiente "máquina ocupada", com o dono' $r 4 @('FALHA DE AMBIENTE em 1 comando', 'máquina ocupada — a máquina está em uso por OUTRO projeto \(C:\\outro-projeto\) — .setup-android bench.', 'trabalho pesado de projetos diferentes roda um por vez')
+$r = Invoke-Check 'machine-lock.ps1' @('-Who')
+Check 'v3.64.0 item 7 B: machine-lock.ps1 -Who diz quem segura a máquina' $r 0 @("machine-lock: em uso por 'setup-android bench' de C:\\outro-projeto")
+$r = Invoke-Check 'machine-lock.ps1' @('-Take', '-Owner', 'eu', '-WaitMin', '0', '-Root', $p)
+Check 'v3.64.0 item 7 B: machine-lock.ps1 -Take com a máquina de outro projeto → exit 3 com quem a usa' $r 3 @('machine-lock: ocupada — a máquina está em uso por OUTRO projeto')
+Remove-Item -LiteralPath $hlk -Force
+$r = Invoke-Check 'machine-lock.ps1' @('-Take', '-Owner', 'eu', '-WaitMin', '0', '-HolderPid', "$PID", '-Root', $p)
+$r2 = Invoke-Check 'machine-lock.ps1' @('-Release', '-HolderPid', "$PID")
+Check 'v3.64.0 item 7 B: machine-lock.ps1 -Take livre → tomada; -Release solta' @{ Code = $r.Code + $r2.Code; Out = $r.Out + $r2.Out + "`nFILE=" + (Test-Path -LiteralPath $hlk) } 0 @("machine-lock: tomada por 'eu'", 'machine-lock: solta', 'FILE=False')
+# D8: dois servidores do adb e a porta do emulador fora do padrão → a trava do alvo recusa, com a causa.
+$lt = { param($ports, $serial) $ErrorActionPreference = 'Continue'; Put $p '.team-project/guards.json' ('{ "targets": { "android": { "package": "br.x"' + $(if ($serial) { ", `"serial`": `"$serial`"" }) + ' } } }'); $o = & powershell -NoProfile -Command "`$env:TEAM_TEST_ADB_PORTS='$ports'; . '$(Join-Path $checks 'lib.ps1')'; `$m = Enter-TargetLock '$p' 'android' 'teste'; if (`$m) { 'RECUSA: ' + `$m } else { 'TOMADA'; Exit-TargetLock '$p' }" 2>&1 | Out-String; @{ Code = 0; Out = $o } }
+$r = & $lt '5037,5557' ''
+Check 'v3.64.0 D8: dois servidores do adb → a trava do alvo recusa com a causa e não desliga nenhum' $r 0 @('RECUSA: dois servidores do adb na máquina \(portas 5037, 5557\)', 'O plugin não desliga o de outro projeto')
+$r = & $lt '5037' 'emulator-5555'
+Check 'v3.64.0 D8: porta do emulador ímpar → recusa com a proposta da primeira par livre (sem gravar)' $r 0 @('RECUSA: guards\.json → targets\.android\.serial = emulator-5555: a porta do emulador é par', 'Proposta: emulator-55\d\d')
+$r = & $lt '5037' 'emulator-5556'
+Check 'v3.64.0 D8: um servidor do adb e a porta par declarada → a trava do alvo é tomada' $r 0 @('TOMADA')
 $eKeep = $e   # o lib.ps1 carregado aqui grava $script:E (os marcadores) — e a suíte usa $e: restaurado logo abaixo
 $r = & { $o = & { . (Join-Path $checks 'lib.ps1'); $a = Get-RunnerDisconnect "Executed 5 of 9`nChromeHeadless was not killed in 2000 ms`nChrome Headless 120 (Windows 10) crashed"; $b = Get-RunnerDisconnect "Executed 9 of 9 (1 FAILED)`nTOTAL: 1 FAILED, 8 SUCCESS"; "A=$($a.Text)|$($a.At)/$($a.Total) B=$(if ($b) { 'caiu' } else { 'nada' })" }; @{ Code = 0; Out = "$o" } }
 Check 'v3.63.1 pedido 8: Get-RunnerDisconnect reconhece o Chrome que fechou e não confunde teste reprovado com queda do navegador' $r 0 @('A=Chrome Headless 120 \(Windows 10\) crashed\|5/9', 'B=nada')
@@ -1302,7 +1349,7 @@ $r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p '.team-project/
 Check 'run done sem evidência: não fecha, não marca 🟪, volta ao dev' $r 0 @('ainda não fecha', 'R7 \| falhou', "\| $($e.build) T-041 \|")
 # v3.57.2 (note.md item 22): o que falta vai ao cartão do dev novo com a ordem de só completar a evidência, e a rota ao run-log.
 $hc = Join-Path $p '.team-project/sprints/1/handoff/T-041.md'; $rlg = Join-Path $p '.team-project/sprints/1/run-log.md'
-Check 'v3.57.2 item 22: done reprovado por evidência → cartão com "Só completar a evidência" (sem mudar código), arquivo do que falta e a rota no run-log' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($hc, $utf8) + "`n" + [System.IO.File]::ReadAllText($rlg, $utf8) + "`nEVF=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/sprints/1/handoff/T-041-evidencia.md')) } 0 @('falta EVIDÊNCIA, não código', 'dev em instância NOVA só para a evidência', '\*\*Só completar a evidência\*\* \(o done reprovou; não mude código.*R7 \| falhou', 'evidência incompleta → dev em instância nova SÓ para completar a evidência', 'EVF=True')
+Check 'v3.57.2 item 22: done reprovado por evidência → cartão com "Só completar a evidência" (sem mudar código), arquivo do que falta e a rota no run-log' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($hc, $utf8) + "`n" + [System.IO.File]::ReadAllText($rlg, $utf8) + "`nEVF=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/sprints/1/handoff/T-041-evidencia.md')) } 0 @('falta EVIDÊNCIA, não código', 'dev em instância NOVA só para a evidência', '\*\*Só completar a evidência\*\* \(o done reprovou: rode os comandos de prova que faltam.*R7 \| falhou', 'evidência incompleta → dev em instância nova SÓ para completar a evidência', 'EVF=True', '^(?![\s\S]*não mude código)')
 Put $p '.team-project/sprints/1/delivery/T-041.md' ("## Entrega — T-041`n`n### Verificação`n```````n> verify.ps1 -Mode full`nverify full T-041 · tudo exit 0`n```````n`n### Documentos vivos (R12)`n**Estado:** a consolidar`n")
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'ok', '-Root', $p)
 Check 'run done ok: 🟨 → 🟪 pelo mark, depois -Apply com -Post R24 ok (garden 19)' $r 0 @("mark: T-041 $($e.build) → $($e.qa)", 'fechada pela evidência do dev', 'PONTO SEGURO')
@@ -2802,7 +2849,7 @@ Edit-File $dvp "- A7 · fixture · ``tests/check.ps1`` · content-desc trocado p
 # v3.55.0 (A1): linha fora do formato (sem crases) não esconde as outras travas — a saída traz o formato E a falta de mutação.
 [System.IO.File]::AppendAllText($dvp, "- A5 · teste · tests/other.ps1 · mudou a referência`n", $utf8)
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
-Check 'v3.55.0: A1 — linha sem crases devolve o formato e a falta de mutação numa única saída' $r 1 @('\| R7-margem \| falhou.*linha fora do formato.*tests/other\.ps1.*A5: o teste tests/other\.ps1 não tem mutação no plano')
+Check 'v3.55.0: A1 — linha sem crases devolve o formato e a falta de mutação numa única saída (v3.64.0: o formato lido vira aviso; a trava segue reprovando)' $r 1 @('\| R7-margem \| falhou.*A5: o teste tests/other\.ps1 não tem mutação no plano.*aviso: linha A5 fora do formato \(lida assim mesmo\).*tests/other\.ps1')
 Edit-File $dvp "- A5 · teste · tests/other.ps1 · mudou a referência`n" ''
 # v3.55.0 (A2): plano com "sem prova:" — ajuste de teste vai direto ao GAP, com a mensagem que diz isso.
 Edit-File (Join-Path $p $pl) '## 3. Ambiente' "sem prova: teste node:test fora do verificador`n`n## 3. Ambiente"
@@ -3757,6 +3804,32 @@ Check 'v3.63.0 E: causa fora da lista → o QA só classifica (sem causa não h�
 Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado`n`n| # | Task | Achado | Onde | Volta para | Estado |`n|---|---|---|---|---|---|`n| 1 | T-001 | x | y | dev | aberto |`n"
 $r = & $g63 $pg
 Check 'v3.63.0 E: validation.md no formato antigo (sem a tabela com Cause) → o caminho de antes (Q-S pelos "Volta para: dev")' $r 0 @('abrir Q-S1b — correção do portão .*formato anterior à v3.63.0', "achados 'Volta para: dev'")
+# ----- v3.64.0 · item 8: o portão preso no formato antigo (sprint 6 do projeto piloto, 18/11) -----
+$dg64 = Join-Path $pg '.team-project/operator/1/S1-alvo/diagnostico.md'
+Put $pg '.team-project/operator/1/S1-alvo/diagnostico.md' "Veredito: PLANO`nCenário: SC-1`nMotivo: valor errado`n"
+$r = & $g63 $pg
+Check 'v3.64.0 item 8 C/A: diagnóstico mais novo que o validation.md antigo → rodada focada no formato novo, com Cause na coluna e a conversão dos achados antigos abertos' $r 0 @('revisar o veredito .*o diagnóstico do aceite é mais novo que o validation\.md', '\| ID \| Task \| Achado \| Onde \| Cause \| Owner \| State \| Evidência \|', 'não dentro do ID', 'formato anterior à v3\.63\.0 .*reescreva nessa tabela CADA achado antigo ainda aberto', '^(?![\s\S]*abrir Q-S)')
+Remove-Item -LiteralPath $dg64 -Force
+$sb64 = Join-Path $pg '.team-project/sprints/1/sprint-backlog.md'
+Edit-File $sb64 "| $ok63 Q-S1 | corrige S1-F2 e S1-F3 | 1 | dev | — | — | — | SC-1 |`n" ("| $ok63 Q-S1 | corrige S1-F2 e S1-F3 | 1 | dev | — | — | — | SC-1 |`n| $([char]::ConvertFromUtf32(0x1F534)) Q-S1b | corrige a rodada 2 | 1 | dev | — | ``plan/Q-S1b.md`` | — | SC-1 |`n")
+Put $pg '.team-project/sprints/1/plan/Q-S1b.md' "# Plano — Q-S1b`n`n**Corrige:** Q-S1`n"
+Put $pg '.team-project/sprints/1/kanban.md' "# K`n`n### Bloqueios e riscos abertos`n`n| # | Task / História | Natureza | Degrau | Quem destrava | Desde |`n|---|---|---|---|---|---|`n| 1 | Q-S1b | ambiente: suíte caiu com a máquina ocupada | stakeholder | stakeholder | 2026-11-18 |`n"
+Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado`n`n| # | Task | Achado | Onde | Volta para | Estado |`n|---|---|---|---|---|---|`n| 1 | T-001 | x | y | dev | aberto |`n"
+$r = & $g63 $pg
+Check 'v3.64.0 item 8 B: formato antigo com uma correção aberta (Q-S1b 🔴) → os achados vão para ela e o Arquiteto emenda o plano; nenhuma Q-S nova' $r 0 @("incluir os achados 'Volta para: dev' do validation\.md na Q-S1b", 'não abra outra Q-S1', 'emende o plano \.team-project/sprints/1/plan/Q-S1b\.md', 'plan\.ps1 -Plan', 'está 🔴 \(ambiente: suíte caiu com a máquina ocupada\)', '^(?![\s\S]*abrir Q-S1c)')
+Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F5 | T-001 | R`$0.00 em vez de 0,00 | vendas | code | dev | open |`n"
+$r = & $g63 $pg
+Check 'v3.64.0 item 8 B: achado code sem Q-S que o cite, com a Q-S1b aberta → incluir na Q-S1b (não abrir Q-S1c)' $r 0 @('incluir S1-F5 \(causa code\) na Q-S1b', 'os IDs S1-F5 na coluna Task da linha da Q-S1b', '^(?![\s\S]*abrir Q-S1c)')
+Edit-File $sb64 '| corrige a rodada 2 |' '| corrige a rodada 2 e S1-F5 |'
+Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F5 | T-001 | R`$0.00 em vez de 0,00 | vendas | code | dev | open |`n"
+$r = & $g63 $pg
+Check 'v3.64.0 item 8 B: o achado já está na Q-S1b, que está 🔴 → a rota do bloqueio dela (exit 0), nunca "esperar" (exit 3)' $r 0 @('destravar Q-S1b \(🔴\) .*Q-S1b: ambiente: suíte caiu com a máquina ocupada', 'Não abra outra Q-S1', '^(?![\s\S]*PRÓXIMA AÇÃO: esperar)')
+Edit-File $sb64 "| corrige a rodada 2 e S1-F5 | 1 | dev | — | ``plan/Q-S1b.md`` | — | SC-1 |`n" "| corrige a rodada 2 e S1-F5 | 1 | dev | — | ``plan/Q-S1b.md`` | — | SC-1 |`n| $([char]::ConvertFromUtf32(0x2B1C)) Q-S1c | substitui a Q-S1b | 1 | dev | — | ``plan/Q-S1c.md`` | — | SC-1 |`n"
+Put $pg '.team-project/sprints/1/plan/Q-S1c.md' "# Plano — Q-S1c`n`n**Corrige:** Q-S1b`n"
+Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F5 | T-001 | R`$0.00 em vez de 0,00 | vendas | code | dev | open |`n"
+$r = & $g63 $pg
+Check 'v3.64.0 item 8 B: a Q-S1c declara **Corrige:** Q-S1b → a Q-S1b conta como substituída; o achado que só ela citava vai à Q-S1c' $r 0 @('a Q-S1b conta como substituída pela Q-S1c', 'incluir S1-F5 \(causa code\) na Q-S1c', '^(?![\s\S]*destravar Q-S1b)')
+Remove-Item -LiteralPath (Join-Path $pg '.team-project/sprints/1/kanban.md') -Force
 Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $ok63 aprovado`n"
 $r = & $g63 $pg
 Check 'v3.63.0: portão aprovado → o passo volta sem sair (segue a consolidação)' $r 0 @('GATE-RETURNED')
@@ -4037,6 +4110,75 @@ Check 'v3.63.1 pedido 1: diagnóstico APP → dev em instância nova com o diagn
 Put $pe64 '.team-project/operator/1/T-041-alvo/diagnostico.md' "Veredito: AMBIENTE`nMotivo: janela do sistema`n"
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pe64)
 Check 'v3.63.1: diagnóstico AMBIENTE → a rota de ambiente de sempre (reparo)' $r 0 @('FALHA DE AMBIENTE \(D4\)', 'target\.ps1 -Target android -Repair')
+
+# ======================= v3.64.0 · itens 2 e 5: a evidência que o script já sabe e o cartão que não contradiz o plano =======================
+$p64 = Join-Path $tmp 'v3640-done'; New-Project $p64
+Remove-Item -LiteralPath (Join-Path $p64 '.team-project/sprints/1/evidence/T-041.md') -Force
+Edit-File (Join-Path $p64 '.team-project/sprints/1/sprint-backlog.md') "| $($e.qa) T-041 |" "| $($e.build) T-041 |"
+Edit-File (Join-Path $p64 '.team-project/sprints/1/burndown.md') "| T-041 | $($e.build) → $($e.qa) | 2026-09-03 15:00 | QA |" ''
+Remove-Line (Join-Path $p64 '.team-project/sprints/1/burndown.md') "| 2 | 2026-09-03 15:00 | T-041 $($e.build) → $($e.qa) | 2 | 2 |"
+Put $p64 '.team-project/guards.json' '{ "verify": { "suite": "echo ok" } }'
+Put $p64 'src/a.ts' "export const a = 1`n"
+$ErrorActionPreference = 'Continue'; & git -C $p64 init -q 2>$null; Put $p64 '.gitignore' ".team-project/`n"; & git -C $p64 add -A 2>$null; & git -C $p64 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+$pl64 = Join-Path $p64 '.team-project/sprints/1/plan/T-041-export.md'
+[System.IO.File]::WriteAllText($pl64, [System.IO.File]::ReadAllText($pl64, $utf8).Replace("## 3. Ambiente", "**Verificação:** comando — ``npm test```n**Aceite:** não roda — sem alvo neste projeto`n**Documentos vivos:** ``docs/api.md```n`n## 3. Ambiente"), $utf8)
+$tree64 = & powershell -NoProfile -Command ". '$(Join-Path $checks 'lib.ps1')'; Get-WorkTree '$p64'"
+$vr64 = Join-Path $p64 '.team-project/verify/1/T-041/result.json'
+$dv64 = Join-Path $p64 '.team-project/sprints/1/delivery/T-041.md'
+Put $p64 '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`nrodei a suíte e passou`n"
+# B: sem verify full → só um comando falta: o operator roda, sem dev.
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'ok', '-Root', $p64)
+Check 'v3.64.0 item 2 B: prova não rodada (sem verify full) → o operator roda o comando, sem dev e sem "não mude código"' $r 0 @('falta RODAR a prova', 'team:operator', 'verify\.ps1 -Task T-041 -Mode full', 'evidência mecânica preenchida pelo script: R12', '^(?![\s\S]*run\.ps1 start -Task T-041)', '^(?![\s\S]*não mude código)')
+Check 'v3.64.0 item 2 A: a seção R12 que o dev não escreveu sai do cabeçalho do plano (a consolidar, com os documentos)' @{ Code = 0; Out = [System.IO.File]::ReadAllText($dv64, $utf8) } 0 @('### Documentos vivos \(R12\)\r?\n\*\*Estado:\*\* a consolidar\r?\n\*\*Documentos:\*\* `docs/api\.md` \(do cabeçalho do plano\)')
+# C: a mesma reprovação na mesma árvore, de novo → Arquiteto, sem outro operator.
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'ok', '-Root', $p64)
+Check 'v3.64.0 item 2 C: a mesma reprovação na mesma árvore pela 2ª vez → Arquiteto (/arc question); nem dev nem operator' $r 0 @('reprovou IGUAL pela 2ª vez', 'Arquiteto em instância nova \(/arc question\)', '^(?![\s\S]*team:operator)')
+# Vermelha: suíte com falha → dev em instância normal, que pode mudar código.
+Put $p64 '.team-project/verify/1/T-041/result.json' (@{ task = 'T-041'; full = @{ at = '2026-11-18 10:00:00'; tree = "$tree64".Trim(); commands = @(@{ key = 'suite'; command = 'echo ok'; exit = 1; environment = $null }) } } | ConvertTo-Json -Depth 5)
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'ok', '-Root', $p64)
+$cd64 = Join-Path $p64 '.team-project/sprints/1/handoff/T-041.md'
+Check 'v3.64.0 item 2 B: suíte vermelha → dev em instância nova pelo cartão, que pode mudar código ("O done reprovou", sem "não mude código")' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($cd64, $utf8) } 0 @('o done reprovou \(a Task segue', 'run\.ps1 start -Task T-041', '\*\*O done reprovou\*\* \(corrija o que falhou', '^(?![\s\S]*não mude código)', '^(?![\s\S]*Só completar a evidência)')
+Check 'v3.64.0 item 5 A: o cartão separa o que o plano manda (cópia literal) do que já rodou (etiquetas próprias)' @{ Code = 0; Out = [System.IO.File]::ReadAllText($cd64, $utf8) } 0 @('\*\*O que o plano manda\*\* \(cópia do cabeçalho de `sprints/1/plan/T-041-export\.md`\): \*\*Verificação:\*\* comando — `npm test` · \*\*Aceite:\*\* não roda — sem alvo neste projeto', '\*\*O que já rodou:\*\* \*\*Verify registrado:\*\* full em 2026-11-18 10:00:00: suite exit 1 · \*\*Accept registrado:\*\* nenhum ainda', '^(?![\s\S]*sem verify)')
+# A: verify verde na árvore de agora, sem a saída colada → o R7 vale pela prova registrada e o done fecha, copiando o resumo.
+Put $p64 '.team-project/verify/1/T-041/result.json' (@{ task = 'T-041'; full = @{ at = '2026-11-18 10:05:00'; tree = "$tree64".Trim(); commands = @(@{ key = 'suite'; command = 'echo ok'; exit = 0; environment = $null }) } } | ConvertTo-Json -Depth 5)
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p64)
+Check 'v3.64.0 item 2 A: sem a saída colada, com o verify full verde na árvore de agora → R7 ok pela prova registrada' $r 0 @('\| R7 \| ok \| pela prova registrada: verify full em 2026-11-18 10:05:00')
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'ok', '-Root', $p64)
+Check 'v3.64.0 item 2 A: o done fecha e copia a prova registrada para o relatório (o QA lê no portão)' @{ Code = $r.Code; Out = $r.Out + "`n" + [System.IO.File]::ReadAllText($dv64, $utf8) } 0 @('prova registrada copiada para delivery/T-041\.md', 'fechada pela evidência do dev', '### Prova registrada \(gerada pelo run\.ps1 — não editar\)', '> verify full · árvore \S{12} · 2026-11-18 10:05:00', 'suite 0')
+# Item 5 B: sem verify registrado e o plano com **Aceite:** não roda → a mensagem do R7 fala só do verify, citando o plano.
+$p64b = Join-Path $tmp 'v3640-r7'; New-Project $p64b
+Remove-Item -LiteralPath (Join-Path $p64b '.team-project/sprints/1/evidence/T-041.md') -Force
+Put $p64b '.team-project/guards.json' '{ "verify": { "suite": "echo ok" }, "targets": { "web": { "url": "http://127.0.0.1:9" } } }'
+$pl64b = Join-Path $p64b '.team-project/sprints/1/plan/T-041-export.md'
+[System.IO.File]::WriteAllText($pl64b, [System.IO.File]::ReadAllText($pl64b, $utf8).Replace("## 3. Ambiente", "**Aceite:** não roda — laudo`n`n## 3. Ambiente"), $utf8)
+Put $p64b '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`nrodei`n`n### Documentos vivos (R12)`n**Estado:** n/a — o Arquiteto consolida no fim`n"
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p64b)
+# ----- v3.64.0 · item 6: a árvore com dono -----
+$p66 = Join-Path $tmp 'v3640-tree'; New-Project $p66
+Remove-Item -LiteralPath (Join-Path $p66 '.team-project/sprints/1/evidence/T-041.md') -Force
+Edit-File (Join-Path $p66 '.team-project/sprints/1/sprint-backlog.md') "| $($e.qa) T-041 |" "| $($e.build) T-041 |"
+Put $p66 '.team-project/guards.json' '{ "verify": { "suite": "echo ok" }, "treeIgnore": ["*.zip"] }'
+$pl66 = Join-Path $p66 '.team-project/sprints/1/plan/T-041-export.md'
+[System.IO.File]::WriteAllText($pl66, [System.IO.File]::ReadAllText($pl66, $utf8).Replace("## 3. Ambiente", "**Arquivos tocados:** ``src/a.ts```n`n## 3. Ambiente"), $utf8)
+Put $p66 'src/a.ts' "export const a = 1`n"; Put $p66 'src/b.ts' "export const b = 1`n"
+$ErrorActionPreference = 'Continue'; & git -C $p66 init -q 2>$null; Put $p66 '.gitignore' ".team-project/`n"; & git -C $p66 add -A 2>$null; & git -C $p66 -c user.email=t@t -c user.name=t commit -qm i 2>$null; & git -C $p66 config user.email t@t; & git -C $p66 config user.name t; $ErrorActionPreference = 'Stop'
+$wt66 = { param($pp) (& powershell -NoProfile -Command ". '$(Join-Path $checks 'lib.ps1')'; Get-WorkTree '$pp'; '|'; (Get-GitPendingFiles '$pp') -join ','" | Out-String) }
+$t66a = & $wt66 $p66
+Put $p66 'horta_backup.zip' 'zip'
+$t66b = & $wt66 $p66
+Check 'v3.64.0 item 6 B: arquivo em guards.json → treeIgnore fica fora da impressão da árvore e dos pendentes' @{ Code = 0; Out = "A=$($t66a -replace '\s+', ' ') B=$($t66b -replace '\s+', ' ')" } 0 @('^A=(\S+) \| *B=\1 \|')
+Put $p66 'src/a.ts' "export const a = 2`n"
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'blocked', '-Reason', 'ambiente: emulador fora do ar', '-Root', $p66)
+$log66 = & git -C $p66 log -1 --format='%s%n%b' 2>$null | Out-String
+Check 'v3.64.0 item 6 A: Task em 🟨 vai a 🔴 com código do plano no disco → checkpoint só do escopo, com Task-State: parcial; o marcador fica 🔴' @{ Code = $r.Code; Out = $r.Out + "`nLOG=" + $log66 + "`nBOARD=" + [System.IO.File]::ReadAllText((Join-Path $p66 '.team-project/sprints/1/sprint-backlog.md'), $utf8) } 0 @('mark: checkpoint da T-041: \S+ \(1 arquivo\(s\) do plano, sem fechar — parada em 🔴: ambiente: emulador fora do ar\)', 'LOG=T-041 \(checkpoint, sem fechar\): Endpoint de exportação', 'Task-State: parcial', "\| $([char]::ConvertFromUtf32(0x1F534)) T-041 \|")
+$t66c = (& powershell -NoProfile -Command ". '$(Join-Path $checks 'lib.ps1')'; Get-WorkTree '$p66'" | Out-String).Trim()
+Put $p66 '.team-project/verify/1/T-041/result.json' (@{ task = 'T-041'; full = @{ at = '2026-11-18 11:00:00'; tree = $t66c; commands = @(@{ key = 'suite'; command = 'echo ok'; exit = 0 }) } } | ConvertTo-Json -Depth 5)
+Put $p66 'src/b.ts' "export const b = 2`n"
+Put $p66 '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`nx`n`n### Documentos vivos (R12)`n**Estado:** a consolidar`n"
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p66)
+Check 'v3.64.0 item 6 D: "a árvore mudou depois do verify" diz o arquivo que mudou' $r 1 @('\| R7-verify \| falhou \| a árvore mudou depois do verify full de 2026-11-18 11:00:00 \(\S+ → \S+\): src/b\.ts — se não é da Task')
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p64b)
+Check 'v3.64.0 item 5 B: plano com **Aceite:** não roda → o R7 pede só a saída do verify e cita o plano; R12 "n/a" no modo dev vale como a consolidar' $r 1 @('\| R7 \| falhou \| delivery/T-041\.md sem a saída colada do verify na seção mais recente \(plano: \*\*Aceite:\*\* não roda\)', '\| R12 \| ok \| Estado: n/a')
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize | Out-String -Width 200 | Write-Output

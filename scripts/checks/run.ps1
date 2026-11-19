@@ -637,6 +637,60 @@ function Write-GapCut($T, [string]$S, [string]$n) {
     return "sprints/$n/handoff/$($T.Id)-gap.md"
 }
 
+# v3.64.0 (item 2 B): a natureza de uma linha "| R7… | falhou |" do close — quem resolve. vermelha (a prova roda e reprova:
+# código ou teste) · escopo (arquivo fora do plano, ajuste sem trava) · dev (relatório ausente, R12 com documento pendente) ·
+# faltando (a prova não rodou, ou rodou sobre outra árvore: um comando resolve) · colar (sem verify configurado, a saída que só
+# o dev tem) · ambiente (o verify ou o accept pararam no ambiente).
+function Get-EvidenceNature([string]$Line, [string]$TaskId) {
+    if ($Line -match '\|\s*R7-verify\s*\|') {
+        if ($Line -match 'com falha') {
+            $vrN = Join-Path (Get-VerifyDir $Root $TaskId) 'result.json'
+            try { $fN = (Read-Text $vrN | ConvertFrom-Json).full; $badN = @($fN.commands | Where-Object { [int]$_.exit -ne 0 }); if ($badN.Count -and -not @($badN | Where-Object { -not $_.environment -and [string]$_.key -notmatch '^coverage\d*$' }).Count) { return 'ambiente' } } catch { }
+            return 'vermelha'
+        }
+        return 'faltando'
+    }
+    if ($Line -match '\|\s*R7-mutação\s*\|') { if ($Line -match 'não pegas') { return 'vermelha' }; return 'faltando' }
+    if ($Line -match '\|\s*R7-margem\s*\|') { return 'escopo' }
+    if ($Line -match '\|\s*R7-aceite\s*\|') { if ($Line -match 'ambiente') { return 'ambiente' }; if ($Line -match 'falharam') { return 'vermelha' }; return 'faltando' }
+    if ($Line -match '\|\s*R7\s*\|' -and $Line -match 'sem a saída colada') { return 'colar' }
+    return 'dev'
+}
+# v3.64.0 (item 2 A): o que o script já sabe vai ao relatório do dev — hoje, a seção "### Documentos vivos (R12)" que faltou,
+# com a lista do **Documentos vivos:** do plano e o estado "a consolidar" (no modo dev, a consolidação é uma só no fim do
+# sprint, A5). Só no modo dev (sem evidence/ do QA). Devolve o que escreveu.
+function Add-MechanicalEvidence($T, [string]$S, [string]$CloseOut) {
+    $done = @()
+    $dvp = Join-Path $S "delivery/$($T.Id).md"
+    if (-not (Test-Path -LiteralPath $dvp) -or (Test-Path -LiteralPath (Join-Path $S "evidence/$($T.Id).md"))) { return $done }
+    if ($CloseOut -match '\|\s*R12\s*\|\s*falhou\s*\|\s*evidência sem "### Documentos vivos \(R12\)"') {
+        $pf = Get-PlanFull $T $S; $docs = ''
+        if ($pf) { $dm = [regex]::Match((Read-Text $pf), '(?m)^\*\*Documentos vivos:\*\*[ \t]*([^\r\n]*)'); if ($dm.Success) { $docs = $dm.Groups[1].Value.Trim() } }
+        $add = "`n`n### Documentos vivos (R12)`n**Estado:** a consolidar`n**Documentos:** $(if ($docs) { "$docs (do cabeçalho do plano)" } else { 'nenhum declarado no plano' })`n_(seção escrita pelo run.ps1 done, v3.64.0 — o dev não a escreveu; a consolidação é a do fim do sprint, A5)_`n"
+        $lk = Enter-FileLock $dvp
+        try { [System.IO.File]::WriteAllText($dvp, (Read-Text $dvp).TrimEnd() + $add, $utf8) } finally { Exit-FileLock $lk $dvp }
+        $done += 'R12 (Documentos vivos: a consolidar)'
+    }
+    return $done
+}
+# v3.64.0 (item 2 A): o R7 do dev valeu pela prova registrada — o resumo do result.json vai ao fim do relatório, para o QA ler
+# no portão sem abrir o JSON. Uma vez por árvore.
+function Add-ProofBlock($T, [string]$S) {
+    $dvp = Join-Path $S "delivery/$($T.Id).md"
+    $vrP = Join-Path (Get-VerifyDir $Root $T.Id) 'result.json'
+    if (-not (Test-Path -LiteralPath $dvp) -or -not (Test-Path -LiteralPath $vrP)) { return $null }
+    try { $vj = Read-Text $vrP | ConvertFrom-Json } catch { return $null }
+    $lines = @('### Prova registrada (gerada pelo run.ps1 — não editar)', '```')
+    if ($vj.full) { $tr = [string]$vj.full.tree; $lines += "> verify full · árvore $(if ($tr.Length -ge 12) { $tr.Substring(0, 12) } else { $tr }) · $($vj.full.at)"; $lines += ((@($vj.full.commands | ForEach-Object { "$($_.key) $($_.exit)$(if ($_.reused) { ' (reaproveitado)' })" })) -join ' · ') }
+    $arP = Join-Path ((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'
+    if (Test-Path -LiteralPath $arP) { try { $aj = Read-Text $arP | ConvertFrom-Json; $lines += "> accept · $($aj.passed) de $($aj.total) · $($aj.at)" } catch { } }
+    $lines += '```'
+    $txt = Read-Text $dvp
+    if ($vj.full -and $txt.Contains("árvore $(([string]$vj.full.tree).Substring(0, [Math]::Min(12, ([string]$vj.full.tree).Length)))") -and $txt.Contains('### Prova registrada')) { return $null }
+    $lk = Enter-FileLock $dvp
+    try { [System.IO.File]::WriteAllText($dvp, $txt.TrimEnd() + "`n`n" + ($lines -join "`n") + "`n", $utf8) } finally { Exit-FileLock $lk $dvp }
+    return "prova registrada copiada para delivery/$($T.Id).md (R7 pelo result.json)"
+}
 function Write-Handoff($T, [string]$S, [string]$n) {
     $dir = Join-Path $S 'handoff'; New-Item -ItemType Directory -Force $dir | Out-Null
     $pf = Get-PlanFull $T $S; $planRel = if ($pf) { "sprints/$n/$($T.Plan)" } else { '(sem plano)' }
@@ -652,10 +706,15 @@ function Write-Handoff($T, [string]$S, [string]$n) {
         }
         $gaps = @([regex]::Matches($dt, '(?m)^.*🔺.*$') | ForEach-Object { $_.Value.Trim() } | Select-Object -Last 3)
     }
-    $vr = Join-Path (Get-VerifyDir $Root $T.Id) 'result.json'; $vtxt = 'sem verify'
+    # v3.64.0 (item 5 A): "o que já rodou" tem etiqueta própria — antes a linha **Verificação:** do cartão dizia o ESTADO
+    # ("sem verify" = ainda não rodou) com a mesma etiqueta da ORDEM no plano, e o dev leu "não rode" (T-083, T-093 do piloto).
+    $vr = Join-Path (Get-VerifyDir $Root $T.Id) 'result.json'; $vtxt = 'nenhum ainda'
     if (Test-Path -LiteralPath $vr) { try { $v = (Read-Text $vr | ConvertFrom-Json).full; if ($v) { $bad = @($v.commands | Where-Object { [int]$_.exit -ne 0 }); $vtxt = "full em $($v.at): " + $(if ($bad.Count) { ($bad | ForEach-Object { "$($_.key) exit $($_.exit)" }) -join ', ' } else { 'verde' }) } } catch { } }
+    # O que o plano manda: as linhas do cabeçalho, copiadas, sem frase do run.
+    $planOrders = @()
+    if ($pf) { foreach ($lab in 'Verifica[çc][ãa]o', 'Aceite', 'Cen[áa]rios') { $om = [regex]::Match($pt, "(?m)^\*\*$($lab):\*\*[^\r\n]*"); if ($om.Success) { $planOrders += $om.Value.TrimEnd() } } }
     $dgRel = "operator/$n/$($T.Id)-alvo/diagnostico.md"; $dg = Join-Path $Root ".team-project/$dgRel"
-    $ar = Join-Path ((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'; $atxt = 'sem accept'
+    $ar = Join-Path ((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'; $atxt = 'nenhum ainda'
     if (Test-Path -LiteralPath $ar) { try { $a = Read-Text $ar | ConvertFrom-Json; $atxt = if ($a.environment) { "falha de ambiente: $($a.environment)" } else { "$($a.passed) de $($a.total) em $($a.at)" } } catch { } }
     $rem = if ($pf -and $stop) { Get-RemainingSteps $pt $stop $Block } else { $null }
     # v3.53.7: as decisões do sprint que valem para a Task (todas, as que a citam e as que o plano cita), uma linha cada.
@@ -678,9 +737,16 @@ function Write-Handoff($T, [string]$S, [string]$n) {
             # v3.56.0 (H2): a lista é a do plano quando ele existe (o backlog só antes dele) e o -Scenarios aponta o .scn da História.
             ("**Cenários$(if ($T.ScenariosFrom -eq 'plano') { ' (do plano)' }):** " + $(if (-not $T.Scenarios.Count) { if ($T.AcceptWaiver) { "o accept não roda nesta Task — o plano declara: $($T.AcceptWaiver); os cenários se provam pelos testes do plano (não rode o accept.ps1)" } else { 'nenhum no alvo' } } elseif (Get-TargetsConfig $Root) { "$($T.Scenarios -join ', ') — ``accept.ps1 -Task $($T.Id)$(Get-AcceptArgs $T)``" + $(if ($T.AcceptCommand) { " (v3.62.3: o accept roda o executor do projeto que o plano declara, ``$($T.AcceptCommand)`` — não rode o executor direto: fora do accept a prova não vale)" } else { '' }) } else { "$($T.Scenarios -join ', ') — sem alvo de execução: o accept não roda; os cenários se provam pelos testes do plano" }) + $(if ($T.TestScenarios.Count) { " · por teste do plano, sem accept: $($T.TestScenarios -join ', ')" } else { '' })),
             ("**Última entrega:** $last" + $(if ($stop) { " · parou: $((($stop -split "`r?`n")[0]).Trim())" } else { '' })),
-            # v3.57.2 (note.md item 22): o done reprovou por evidência — a ordem desta instância é só completar a evidência.
-            $(if (Test-Path -LiteralPath (Join-Path $dir "$($T.Id)-evidencia.md")) { "**Só completar a evidência** (o done reprovou; não mude código — rode os comandos de prova que faltam e cole a saída no relatório): " + ((@([System.IO.File]::ReadAllLines((Join-Path $dir "$($T.Id)-evidencia.md")) | Where-Object { $_ -match '^- ' }) | ForEach-Object { $_.Substring(2) }) -join ' · ') } else { $null }),
-            "**Verificação:** $vtxt · **Cenários no alvo:** $atxt",
+            # v3.57.2 (note.md item 22): o done reprovou — o que reprovou vai ao cartão. v3.64.0 (item 2 B, item 5 C): "não mude
+            # código" saiu; com a prova vermelha o dev corrige (modo: dev), e "só a evidência" fica para a saída que só ele tem.
+            $(if (Test-Path -LiteralPath (Join-Path $dir "$($T.Id)-evidencia.md")) {
+                $evl = @([System.IO.File]::ReadAllLines((Join-Path $dir "$($T.Id)-evidencia.md")))
+                $evItems = ((@($evl | Where-Object { $_ -match '^- ' }) | ForEach-Object { $_.Substring(2) }) -join ' · ')
+                if ($evl.Count -and $evl[0] -match 'modo: dev') { "**O done reprovou** (corrija o que falhou — código, teste ou relatório, dentro do plano — e rode a prova de novo): $evItems" }
+                else { "**Só completar a evidência** (o done reprovou: rode os comandos de prova que faltam e cole a saída no relatório): $evItems" }
+            } else { $null }),
+            ("**O que o plano manda** (cópia do cabeçalho de ``$planRel``): " + $(if ($planOrders.Count) { $planOrders -join ' · ' } else { 'o plano não tem as linhas **Verificação:**, **Aceite:** nem **Cenários:**' })),
+            "**O que já rodou:** **Verify registrado:** $vtxt · **Accept registrado:** $atxt",
             "**GAPs:** $(if ($gaps.Count) { $gaps -join ' · ' } else { 'nenhum' })",
             $(if ($dl.Count) { "**Decisões do sprint** (``architect/decisions/S$n.md`` — valem como o plano; não abra o arquivo):`n" + ($dl -join "`n") } else { $null }),
             $(if ($kl.Count) { "**Conhecimento do projeto** (``architect/knowledge.md`` — o que sprints anteriores ensinaram sobre os arquivos desta Task; vale como o plano; não abra o arquivo):`n" + ($kl -join "`n") } else { $null }),
@@ -795,6 +861,8 @@ try {
         $live = @(Get-ActiveAgents $Root | Where-Object { (Get-AgentIdleHours $_) * 60 -lt 30 })
         Add-RunLog $S $n 'run' "pausa a pedido de $By$(if ($ar0) { " ($([string]$ar0.trilha) run $([string]$ar0.id))" })" $(if ($Because) { $Because } else { 'pedido do stakeholder (parada d)' }) '.active-run apagado pelo run.ps1 pause'
         Out "run pause: $(if ($ar0) { "o $([string]$ar0.trilha) run $([string]$ar0.id) está pausado" } else { 'não havia run ativo (.active-run ausente)' }) — .active-run e .ask-route apagados; registrado no run-log.md."
+        # v3.64.0 (item 6 A): o que está em construção ganha checkpoint (só o escopo do plano) — a pausa não deixa código solto.
+        foreach ($bt in @($tasks | Where-Object { $_.Mark -eq $E.Build })) { $ck = Save-TaskCheckpoint $Root $S $bt 'pausa do run'; if ($ck) { Out "  $ck"; Add-RunLog $S $n $bt.Id $ck 'pausa do run (v3.64.0)' 'git' } }
         if ($live.Count) { Out "  ainda em voo: $(($live | ForEach-Object { "$([string]$_.type -replace '^.*:', '') ($([string]$_.work))" }) -join ', ') — ele termina o que está fazendo; a retomada lê o que ele gravou." }
         Say 'O sprint está pausado. Para continuar, é só digitar /sm sprint run — ele retoma de onde parou.'
         exit 0
@@ -911,6 +979,24 @@ try {
             }
         }
         Set-AskRoute $Root ''   # v3.58.3 (G24): dev em voo — a rota ao stakeholder que havia já foi decidida ou superada
+        # v3.64.0 (item 6 B): antes do retrato dos alheios, o pendente que é do escopo de OUTRA Task aberta vai num checkpoint dela
+        # (no piloto, os arquivos da T-090 parada travaram a T-093). O que não tem dono nenhum fica como aviso e no run-log, uma
+        # vez por Task: commit como chore, apagar, ou guards.json → treeIgnore.
+        $ownScope = @(); $pfS = Get-PlanFull $T $S; if ($pfS) { $ownScope = @(Get-PlanScope (Read-Text $pfS)) }
+        $pendS = @(Get-GitPendingFiles $Root | Where-Object { $ownScope -notcontains $_ })
+        if ($pendS.Count -and -not (Test-Path -LiteralPath (Join-Path $S "delivery/$($T.Id).md"))) {
+            foreach ($ot in @($tasks | Where-Object { $_.Id -ne $T.Id -and $_.Mark -ne $E.Done })) {
+                $pfO = Get-PlanFull $ot $S; if (-not $pfO) { continue }
+                $scO = @(Get-PlanScope (Read-Text $pfO))
+                if (@($pendS | Where-Object { $scO -contains $_ }).Count) { $ckO = Save-TaskCheckpoint $Root $S $ot "arquivos pendentes dela no início da $($T.Id)"; if ($ckO) { Out "run start: $ckO"; Add-RunLog $S $n $ot.Id $ckO "início da $($T.Id) (v3.64.0)" 'git' } }
+            }
+            $orphan = @(Get-GitPendingFiles $Root | Where-Object { $ownScope -notcontains $_ -and $_ -notmatch '^docs/' })
+            if ($orphan.Count) {
+                $orTxt = "$(($orphan | Select-Object -First 5) -join ', ')$(if ($orphan.Count -gt 5) { " e mais $($orphan.Count - 5)" })"
+                Out "run start: sobra sem dono no disco: $orTxt — não é de nenhuma Task aberta. O dev não a toca; quem decide (SM): commit como chore, apagar, ou declarar em guards.json → treeIgnore (fica fora da impressão da árvore)"
+                Add-RunLog $S $n $T.Id "sobra sem dono no início da Task: $orTxt" 'aviso ao SM (v3.64.0): commit como chore, apagar ou treeIgnore' 'git status'
+            }
+        }
         $foreignNow = Save-ForeignSnapshot $Root $S $T.Id   # v3.60.1: o que já estava alterado antes da Task não é dela (close R7-margem)
         $card = Write-Handoff $T $S $n
         Write-ScenarioDivergence $T $S $n
@@ -1021,6 +1107,8 @@ try {
             # v3.51.4 (garden item 22): Task que a sessão já marcou 🟪 volta a 🟨 — ela segue na construção até o GAP se resolver.
             if ($T.Mark -eq $E.QA) { $mo = Set-Mark $T.Id 'build' 'sessão (run.ps1 done -Result gap)'; if ($mo) { Out "  $mo" } }
             $null = Update-DevCounter $T $S 'fail'   # v3.52.2 (item 14): GAP encerra a instância por falha de papel
+            # v3.64.0 (item 6 A): a Task espera a decisão do GAP — o código dela vai num checkpoint (só o escopo do plano).
+            $ckG = Save-TaskCheckpoint $Root $S $T 'espera a decisão do 🔺 GAP'; if ($ckG) { Out "  $ckG" }
             $card = Write-Handoff $T $S $n
             # v3.53.4: Task do plano externo — a decisão do GAP vai num pacote, não ao Arquiteto Opus; a Task espera o retorno.
             $plx = Get-RunPlanner $Root
@@ -1179,8 +1267,17 @@ try {
         # v3.51.4 (garden item 19): confere ANTES (close.ps1 sem -Apply); fechando, a Task passa por 🟪 (verificação) e só então
         # o -Apply grava o ✅ — antes o -Post reprovava o R24 ("Registro sem a linha → 🟪") com a Task já ✅ e a estimativa baixada.
         $pr = Invoke-Child 'close.ps1' @('-Task', $T.Id, '-Root', $Root); $pre = $pr.Out
+        # v3.64.0 (item 2 A): a parte mecânica da evidência o script escreve — a seção dos documentos vivos que o dev não
+        # escreveu sai do cabeçalho do plano, e o close confere de novo no mesmo processo, sem agente.
         if ($pr.Code -ne 0) {
-            $null = Update-DevCounter $T $S 'fail'   # v3.52.2 (item 14): evidência reprovada é falha de papel
+            $filled = @(Add-MechanicalEvidence $T $S $pre)
+            if ($filled.Count) {
+                foreach ($f in $filled) { Out "  evidência mecânica preenchida pelo script: $f" }
+                Add-RunLog $S $n $T.Id "evidência mecânica preenchida pelo script: $($filled -join ', ')" 'sem agente (v3.64.0)' "sprints/$n/delivery/$($T.Id).md"
+                $pr = Invoke-Child 'close.ps1' @('-Task', $T.Id, '-Root', $Root); $pre = $pr.Out
+            }
+        }
+        if ($pr.Code -ne 0) {
             $bad = @($pre -split "`r?`n" | Where-Object { $_ -match '\|\s*(R7[\w-]*|R12)\s*\|\s*falhou' } | ForEach-Object { ($_ -replace '\s+', ' ').Trim() })
             if (-not $bad.Count) { $bad = @(($pre -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 2) -join ' ') }
             # v3.60.1 (sprint 6 do garden, T-090: 4 "evidência incompleta" seguidas pelo mesmo R7-aceite): o único reprovado é o
@@ -1196,24 +1293,83 @@ try {
                 Out ($rr.Out.TrimEnd())
                 exit $rr.Code
             }
-            # v3.57.2 (note.md item 22, ocorrência 12 do sprint 5 do garden): o executor recebia só "dev novo com o que falta" — o
-            # dev novo reabria o trabalho, e a nota ficava no retorno do executor, não no run-log. Agora o que falta vai a um
-            # arquivo que o cartão traz com a ordem exclusiva (completar a evidência, sem mudar código) e a rota fica no run-log.
+            # v3.64.0 (item 2 B e C): a reprovação vai a quem resolve, pela natureza de cada linha — antes toda reprovação virava
+            # "dev novo, só a evidência, não mude código" (58 vezes no sprint 6 do piloto, 17 repetindo a anterior igual, e com a
+            # suíte vermelha o dev não podia mudar código). Natureza: vermelha/escopo/dev → dev normal · faltando → operator
+            # roda o comando, sem dev · colar (sem verify configurado) → dev só para a evidência · ambiente → rota de ambiente.
+            $nat = @($bad | ForEach-Object { Get-EvidenceNature $_ $T.Id })
             $evf = Join-Path $S "handoff/$($T.Id)-evidencia.md"
             New-Item -ItemType Directory -Force (Split-Path $evf) | Out-Null
+            # Repetição idêntica (decisão D4): a mesma reprovação na mesma árvore pela 2ª vez não dispara mais ninguém igual.
+            $sig = (@($bad | ForEach-Object { ($_ -replace '\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?', '<data>' -replace '\b[0-9a-f]{7,40}\b', '<hash>') }) | Sort-Object) -join "`n"
+            $treeNow = [string](Get-WorkTree $Root)
+            $sigP = Join-Path $S "handoff/$($T.Id)-evidencia.json"
+            $prevSig = $null; if (Test-Path -LiteralPath $sigP) { try { $prevSig = Read-Text $sigP | ConvertFrom-Json } catch { } }
+            if ($prevSig -and [string]$prevSig.sig -eq $sig -and [string]$prevSig.tree -eq $treeNow) {
+                $allEnv = -not @($nat | Where-Object { $_ -ne 'ambiente' }).Count
+                Add-RunLog $S $n $T.Id "a mesma reprovação do done pela 2ª vez na mesma árvore → $(if ($allEnv) { 'stakeholder (formulário)' } else { 'Arquiteto (/arc question)' }); sem outro dev nem operator" (($bad | Select-Object -First 2) -join ' · ') "sprints/$n/handoff/$($T.Id)-evidencia.md"
+                Out "run: $($T.Id) — o done reprovou IGUAL pela 2ª vez, na mesma árvore (v3.64.0, decisão D4): outro dev ou outra rodada pararia no mesmo ponto."
+                foreach ($b in $bad) { Out "  $b" }
+                if ($allEnv) {
+                    Set-AskRoute $Root 'ambiente' $T.Id (($bad | Select-Object -First 1) -replace '\s+', ' ')
+                    Out "PRÓXIMA AÇÃO: formulário ao stakeholder — a prova da $($T.Id) parou no ambiente duas vezes iguais; ele repara o ambiente ou decide. Não dispare dev nem operator."
+                } else {
+                    Out "PRÓXIMA AÇÃO: Arquiteto em instância nova (/arc question) com as duas reprovações iguais (.team-project/sprints/$n/handoff/$($T.Id)-evidencia.md): decidir o que muda — o plano, a prova ou a Task. Não dispare outro dev nem operator; depois, run.ps1 start -Task $($T.Id)."
+                }
+                exit 0
+            }
+            [System.IO.File]::WriteAllText($sigP, (@{ sig = $sig; tree = $treeNow; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), $utf8)
+            $allEnvNow = -not @($nat | Where-Object { $_ -ne 'ambiente' }).Count
+            if ($allEnvNow) {
+                $rr = Invoke-Child 'run.ps1' @('done', '-Task', $T.Id, '-Result', 'env', '-By', $By, '-Root', $Root)
+                Out "run: $($T.Id) — só falha de ambiente na prova (o accept parou no ambiente). Rota de ambiente:"
+                Out ($rr.Out.TrimEnd())
+                exit $rr.Code
+            }
+            $devNat = @($nat | Where-Object { $_ -in 'vermelha', 'escopo', 'dev' }).Count -gt 0
+            $needOp = @($nat | Where-Object { $_ -eq 'faltando' }).Count -gt 0
+            if (-not $devNat -and $needOp) {
+                # Prova não rodada (decisão D3): um comando, sem dev — não conta como falha de papel.
+                $cmds = @()
+                if (@($bad | Where-Object { $_ -match '\|\s*R7-verify\s*\|' }).Count) { $cmds += "$plugin/verify.ps1 -Task $($T.Id) -Mode full" }
+                if (@($bad | Where-Object { $_ -match '\|\s*R7-mutação\s*\|' }).Count) { $cmds += "$plugin/verify.ps1 -Task $($T.Id) -Mode mutation" }
+                if (@($bad | Where-Object { $_ -match '\|\s*R7-aceite\s*\|' }).Count) { $cmds += "$plugin/accept.ps1 -Task $($T.Id)$(Get-AcceptArgs $T)" }
+                Remove-Item -LiteralPath $evf -Force -ErrorAction SilentlyContinue
+                Add-RunLog $S $n $T.Id 'prova não rodada → operator roda o comando (sem dev; não conta como falha de papel)' (($bad | Select-Object -First 2) -join ' · ') "verify/$n/$($T.Id)/"
+                Out "run: $($T.Id) ainda não fecha — falta RODAR a prova, não escrever nem corrigir (a Task segue em 🟨):"
+                foreach ($b in $bad) { Out "  $b" }
+                Out "PRÓXIMA AÇÃO: operator roda a prova que falta (v3.64.0, decisão D3) — não dispare dev."
+                Out "  $(Get-AgentLine 'operator')"
+                Out "  prompt: `"Chamador: executor da $($T.Id) — Rode na raiz, nesta ordem: $($cmds -join ' e depois ') (o verify longo segue em processo próprio, v3.62.2). Devolva as linhas de resumo de cada um.`""
+                Out "  depois: run.ps1 done -Task $($T.Id) -Result ok"
+                exit 0
+            }
+            $null = Update-DevCounter $T $S 'fail'   # v3.52.2 (item 14): evidência reprovada é falha de papel
+            if ($devNat) {
+                [System.IO.File]::WriteAllText($evf, (@("# O done da $($T.Id) reprovou em $(Get-Date -Format 'yyyy-MM-dd HH:mm') — modo: dev", '') + @($bad | ForEach-Object { "- $_" })) -join "`n", $utf8)
+                Add-RunLog $S $n $T.Id 'reprovou no done → dev em instância nova pelo cartão (pode mudar código e teste dentro do plano)' (($bad | Select-Object -First 2) -join ' · ') "sprints/$n/handoff/$($T.Id)-evidencia.md"
+                $card = Write-Handoff $T $S $n
+                Out "run: $($T.Id) ainda não fecha — o done reprovou (a Task segue em 🟨):"
+                foreach ($b in $bad) { Out "  $b" }
+                Out "  dev em instância NOVA: run.ps1 start -Task $($T.Id) — o cartão .team-project/$card traz o que reprovou; o dev corrige (código, teste ou relatório, dentro do plano) e roda a prova de novo. Depois, run.ps1 done de novo."
+                exit 0
+            }
+            # Sem verify configurado e sem a saída colada: só o dev tem a prova — dev novo só para a evidência.
             [System.IO.File]::WriteAllText($evf, (@("# O que falta na evidência da $($T.Id) — o done reprovou em $(Get-Date -Format 'yyyy-MM-dd HH:mm')", '') + @($bad | ForEach-Object { "- $_" })) -join "`n", $utf8)
-            Add-RunLog $S $n $T.Id 'evidência incompleta → dev em instância nova SÓ para completar a evidência (sem mudar código)' (($bad | Select-Object -First 2) -join ' · ') "sprints/$n/handoff/$($T.Id)-evidencia.md"
+            Add-RunLog $S $n $T.Id 'evidência incompleta → dev em instância nova SÓ para completar a evidência' (($bad | Select-Object -First 2) -join ' · ') "sprints/$n/handoff/$($T.Id)-evidencia.md"
             $card = Write-Handoff $T $S $n
             Out "run: $($T.Id) ainda não fecha — falta EVIDÊNCIA, não código (a Task segue em 🟨):"
             foreach ($b in $bad) { Out "  $b" }
-            Out "  dev em instância NOVA só para a evidência: run.ps1 start -Task $($T.Id) — o cartão .team-project/$card traz o que falta e a ordem: rodar os comandos de prova que faltam e colar a saída no relatório, sem mudar código. Depois, run.ps1 done de novo."
+            Out "  dev em instância NOVA só para a evidência: run.ps1 start -Task $($T.Id) — o cartão .team-project/$card traz o que falta: rodar os comandos de prova que faltam e colar a saída no relatório. Depois, run.ps1 done de novo."
             exit 0
         }
+        # v3.64.0 (item 2 A): a prova registrada que valeu pelo R7 vai ao relatório, para quem lê (o QA no portão).
+        if ($pre -match '\|\s*R7\s*\|\s*ok\s*\|\s*pela prova registrada') { $pb = Add-ProofBlock $T $S; if ($pb) { Out "  $pb" } }
         if ($T.Mark -ne $E.QA) { $mo = Set-Mark $T.Id 'qa' 'sessão (run.ps1 done)'; if ($mo) { Out "  $mo" } }
         $cr = Invoke-Child 'close.ps1' @('-Task', $T.Id, '-Apply', '-Root', $Root); $c = $cr.Out
         $code = $cr.Code
         if ($code -eq 0) {
-            Remove-Item -LiteralPath (Join-Path $S "handoff/$($T.Id)-evidencia.md") -Force -ErrorAction SilentlyContinue   # v3.57.2 (item 22)
+            Remove-Item -LiteralPath (Join-Path $S "handoff/$($T.Id)-evidencia.md"), (Join-Path $S "handoff/$($T.Id)-evidencia.json") -Force -ErrorAction SilentlyContinue   # v3.57.2 (item 22); v3.64.0: e a assinatura da repetição
             # v3.57.2 (note.md item 21): a sessão principal entra no consumo a cada Task fechada, não só no close do sprint — o
             # consumption.ps1 -Session existia, mas nenhum script o chamava, e o sprint 5 do garden ficou com ≈ 1/3 do custo fora
             # da conta. Script, sem token; falha não impede o fechamento.
