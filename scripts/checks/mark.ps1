@@ -141,10 +141,14 @@ try {
             $day = Get-Date -Format 'yyyy-MM-dd'; $why = (($Reason -replace '\|', '/') -replace '\s+', ' ').Trim()
             $envy = $why -match '(?i)alvo|ambiente|emulador|aparelho|estado de partida'
             $startSt = $why -match '(?i)estado de partida'   # v3.54.2: o next não reabre; o stakeholder decide
+            # v3.64.1 (sprint 6 do projeto piloto, Q-S6e): o next só reabre sozinho a linha com a etiqueta da prova no alvo
+            # pendente (Get-TargetPendingIds). "ambiente: suíte Karma…" levava a promessa e ficava em 🔴 para sempre — e o alvo
+            # responder não prova que o Karma roda.
+            $tpTag = $why.IndexOf($script:TargetPendingTag, [StringComparison]::OrdinalIgnoreCase) -ge 0
             $cells = @(foreach ($h in $hd) {
                 if ($h -eq '#') { "$($k + 1)" } elseif ($h -match '(?i)^Task') { $Task } elseif ($h -match '(?i)Natureza') { $why }
                 elseif ($h -match '(?i)Degrau') { if ($envy) { "escalado ao stakeholder em $day" } else { "par PO+Arquiteto desde $day" } }
-                elseif ($h -match '(?i)Quem') { if ($startSt) { 'stakeholder (estado de partida do app: baseline ou cenário) — reabre com mark.ps1 -To qa' } elseif ($envy) { 'stakeholder (ambiente) — o run.ps1 next reabre quando o alvo responder' } else { 'PO + Arquiteto' } }
+                elseif ($h -match '(?i)Quem') { if ($startSt) { 'stakeholder (estado de partida do app: baseline ou cenário) — reabre com mark.ps1 -To qa' } elseif ($tpTag) { 'stakeholder (ambiente) — o run.ps1 next reabre quando o alvo responder' } elseif ($envy) { 'stakeholder (ambiente) — reabre com mark.ps1 -To build depois do reparo' } else { 'PO + Arquiteto' } }
                 elseif ($h -match '(?i)Desde') { $day } else { '' } })
             $tl.Insert($be + 1, '| ' + ($cells -join ' | ') + ' |')
             $blkTxt = "; Bloqueios: linha $($k + 1) em $bw"

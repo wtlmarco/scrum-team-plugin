@@ -7,6 +7,14 @@ $root  = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $hooks = Join-Path $root 'hooks'
 $tmp   = Join-Path ([System.IO.Path]::GetTempPath()) ('team-guards-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 
+# v3.64.1: prazo por caso (TEAM_TEST_CHECK_TIMEOUT_S, padrão 240 s) — a sentinela encerra o hook preso e o caso falha com
+# TEMPO ESGOTADO, em vez de segurar a suíte.
+if (-not $env:TEAM_TEST_CHECK_TIMEOUT_S) { $env:TEAM_TEST_CHECK_TIMEOUT_S = '240' }
+New-Item -ItemType Directory -Force $tmp | Out-Null
+$timeoutLog = Join-Path $tmp 'timeouts.log'
+$watchdog = Start-Process powershell -WindowStyle Hidden -PassThru -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'check-watchdog.ps1'), '-Parent', $PID, '-TimeoutSec', $env:TEAM_TEST_CHECK_TIMEOUT_S, '-Log', $timeoutLog)
+function Get-TimeoutMark { if (Test-Path -LiteralPath $timeoutLog) { return [System.IO.File]::ReadAllText($timeoutLog) }; return '' }
+
 # Projeto falso, com git e .team-project/ (o G1 consulta o stage).
 $proj = Join-Path $tmp 'projeto'
 New-Item -ItemType Directory -Force (Join-Path $proj '.team-project') | Out-Null
@@ -1038,6 +1046,15 @@ $cases = @(
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "& `"$proj\scripts\checks\target.ps1`" -Target android" } } },
     @{ Name = 'G14 (v3.53.6): & de um .ps1 qualquer entre aspas não passa mais como expressão'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = "& `"$proj\tools\limpa.ps1`"" } } },
+    # ---------- v3.64.1 (sprint 6 do projeto piloto, 19/11) — G14: script do plugin no caminho errado ----------
+    @{ Name = 'G14 (v3.64.1): & "<plugin>\accept.ps1" (sem scripts\checks\) negado com o caminho certo, sem mandar ao run allow'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'caminho errado do script do plugin*o accept.ps1 fica em*scripts/checks/accept.ps1*Não peça run allow'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = "& '$root\accept.ps1' -Task S6 -Resume" } } },
+    @{ Name = 'G14 (v3.64.1): powershell -File "<plugin>\accept.ps1" também recebe o caminho certo'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'caminho errado do script do plugin'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = "powershell -NoProfile -File '$root\accept.ps1' -Task S6 -Resume" } } },
+    @{ Name = 'G14 (v3.64.1): accept.ps1 do PROJETO não é confundido com o do plugin (segue a regra do script do papel)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'passa o script que o próprio papel gravou'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = "& '$proj\tools\accept.ps1' -Task S6" } } },
+    @{ Name = 'G14 (v3.64.1): o caminho certo do accept.ps1 do plugin segue liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = "& '$root\scripts\checks\accept.ps1' -Task S6 -Resume" } } },
     @{ Name = 'G14 (v3.53.6): o reparo declarado em targets.android.repair liberado, trecho a trecho'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; tool_input = @{ command = 'docker restart horta-emulador; adb connect localhost:5555' } } },
     @{ Name = 'G14 (v3.53.6): docker fora do reparo declarado: negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
@@ -1146,8 +1163,12 @@ $rows = @(); $fail = 0
 foreach ($c in $cases) {
     if ($c.Setup) { & $c.Setup }
     $envs = if ($c.Env) { $c.Env } else { @{} }
+    $tl0 = Get-TimeoutMark
     $r = Invoke-Hook $c.Script $c.Payload $envs ([string]$c.Raw)
-    $ok = ($r.Code -eq $c.Expect)
+    $tl1 = Get-TimeoutMark
+    $timedOut = $tl1.Length -gt $tl0.Length
+    if ($timedOut) { $r.Err = "TEMPO ESGOTADO (sentinela, $($env:TEAM_TEST_CHECK_TIMEOUT_S) s) " + $r.Err }
+    $ok = ($r.Code -eq $c.Expect) -and -not $timedOut
     if ($ok -and $c.ContainsKey('ExpectOut')) {
         if ($c.ExpectOut -eq '') { $ok = [string]::IsNullOrWhiteSpace($r.Out) } else { $ok = $r.Out -like "*$($c.ExpectOut)*" }
     }
@@ -1160,6 +1181,7 @@ foreach ($c in $cases) {
     $rows += [pscustomobject]@{ Caso = $c.Name; Esperado = $c.Expect; Obtido = $r.Code; Ok = $(if ($ok) { 'ok' } else { 'FALHOU' }); Mensagem = $detail }
 }
 
+try { Stop-Process -Id $watchdog.Id -Force -ErrorAction SilentlyContinue } catch { }
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 $rows | Format-Table -AutoSize -Wrap | Out-String -Width 220 | Write-Output
 Write-Output ("{0} casos · {1} falharam" -f $cases.Count, $fail)

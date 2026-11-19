@@ -13,6 +13,63 @@
 
 ---
 
+## v3.64.1 — 2026-11-19
+
+**Branch:** `fix/v3.64.1` a partir de `develop` (`c42b301`, v3.64.0 mesclada)
+
+Origem: sprint 6 do projeto piloto, 18–19/11. A Q-S6e (correção da rodada 4) parou em 🔴 porque a suíte do Karma caiu no `verify full` (Chrome Headless desconectado), e o accept dos 21 cenários nunca rodou. Na retomada, o `run.ps1 next` mandou o operator medir o portão de novo (`quality.ps1` e `accept.ps1 -Resume`) sobre o código parcial da correção, em vez de levar ao destravamento dela. O stakeholder perguntou: "se o problema está nas evidências faltantes, por que não se recomeça o trabalho nesse ponto?"
+
+**Task em 🔴 segura a medição** (`gate.ps1`):
+- O `$open` do `run.ps1` não conta as Tasks em 🔴, então a fila parecia vazia e o portão começava. A medição dependia só de a árvore de produção ter mudado.
+- Agora, com algo a medir e uma Task em 🔴 que nenhuma outra substitui (`**Corrige:**`), o portão vai à rota do bloqueio dela, sem operator. Vale para a correção do portão e para a Task original.
+- A rota grava `.ask-route`: `ambiente` quando o motivo é de ambiente (formulário ao stakeholder), `bloqueio` nos outros casos (degrau 1). A saída traz o motivo de Bloqueios e o caminho de volta (`mark.ps1 -Task <ID> -To build` e `run.ps1 next`).
+
+**A rota do bloqueio vem antes da rodada focada** (`gate.ps1` §F):
+- A medição ou a resolução mais nova que o veredito mandava o QA julgar de novo, e a regra "Q-S em 🔴 vai à rota do bloqueio" (v3.64.0) nunca era alcançada. A ordem agora é: a rota do bloqueio, depois a rodada focada.
+
+**A linha de Bloqueios só promete o que o next faz** (`mark.ps1`):
+- "o run.ps1 next reabre quando o alvo responder" só aparece com a etiqueta "prova no alvo pendente", a única que o `next` reabre sozinho.
+- Os outros motivos de ambiente (ex.: "ambiente: suíte Karma…") recebem "reabre com mark.ps1 -To build depois do reparo". O alvo responder não prova que o Karma roda.
+
+**A G14 diz o caminho certo do script do plugin** (`hooks/pre-tool.ps1`, `run.ps1 allow`). Em 19/11, o operator chamou `& '<plugin>\3.64.0\accept.ps1' -Task S6 -Resume`, sem o `scripts\checks\`, e esse arquivo não existe. A G14 negou com a mensagem genérica "fora da lista operacional", porque o trecho era cortado em 80 caracteres antes do teste de `.ps1`. A sessão concluiu que faltava autorização e gravou o caminho do cache, com a versão, em `runCommands`. Isso não destravou nada: a mesma chamada foi negada de novo.
+- **Script do plugin no caminho errado:** quando o nome existe em `<plugin>/scripts/checks/` e o caminho é a pasta do plugin, o cache de plugins ou o nome solto, a recusa traz o caminho certo e diz para não pedir `run allow`. O script homônimo do projeto não é confundido com o do plugin.
+- **Mensagem de `.ps1`:** o teste de `.ps1` da mensagem é feito antes do corte.
+- **`run.ps1 allow`:** recusa script do plugin (pelo caminho do cache, por `${CLAUDE_PLUGIN_ROOT}`, por `scripts/checks` ou pelo nome solto) e não grava nada.
+- **O que não muda:** a regra de liberação. Só passa `${CLAUDE_PLUGIN_ROOT}/scripts/checks/<script>.ps1`. Casar pelo nome base liberaria qualquer `accept.ps1` do projeto.
+
+**As suítes em paralelo, com prazo por caso** (`scripts/checks/tests/`). Pedido do stakeholder em 19/11: a rodada de base levou mais de uma hora (692 casos em sequência; soma dos casos 3.579 s). Dois casos do `verify full` desprendido seguraram 1.369 s e 389 s sozinhos, e a suíte de guardas só começava depois da de conferências.
+- **`run-all-tests.ps1` (novo):** roda as duas suítes ao mesmo tempo.
+  - A de conferências é dividida em blocos independentes, cada um num processo com o próprio `$tmp`.
+  - A de guardas roda inteira ao lado, porque os casos dela dividem o mesmo projeto falso.
+  - O pool tem `-Workers` processos (padrão: núcleos − 1, de 2 a 8), e o bloco mais pesado entra primeiro.
+  - A saída traz as falhas, com a saída do caso, os casos mais lentos, o tempo de cada bloco, o tempo de parede e "N casos · F falharam".
+- **`suite-blocks.ps1` (novo):** acha os cortes pela árvore sintática da suíte. Nenhum valor atravessa um corte: variável, função definida no corpo, variável de ambiente e pasta do `$tmp` citada pelo nome. Os cortes são recalculados a cada rodada, então caso novo não precisa de marca. As constantes e os ajudantes que vários trechos usavam (`$warn`, `$ck`, `$bdText`, `New-FixBlock`, `$e0` e o harness do portão `$gh63`/`$g63`/`$lib63`) foram para o preâmbulo. O caso 8 (C2 no projeto feliz) ganhou um projeto próprio, no mesmo estado do caso 1.
+- **`-Only '<regex>'`:** roda só os blocos com algum caso cujo nome casa. A suíte de guardas entra inteira, e só se algum caso dela casar. Serve para a rodada focada durante o desenvolvimento. Sem `-Only`, roda tudo: é a conferência antes do commit.
+- **Prazo por caso:** a `check-watchdog.ps1` (nova) sobe no preâmbulo das duas suítes, também quando rodam sozinhas. A cada 3 s, encerra a árvore do processo filho que passou de `TEAM_TEST_CHECK_TIMEOUT_S` (padrão 240 s; `-CheckTimeoutSec` no `run-all-tests.ps1`), e o caso falha com "TEMPO ESGOTADO".
+- **Equilíbrio dos blocos:** os tempos de cada caso ficam em `%LOCALAPPDATA%\team-plugin\test-times.json` e equilibram os blocos da rodada seguinte.
+- Os dois arquivos de suíte seguem rodando sozinhos, como antes.
+
+**Testes:**
+- 5 checagens novas em `run-check-tests.ps1`:
+  - a medição segurada com a Q-S em 🔴 e com a Task original em 🔴;
+  - a rota do bloqueio antes da rodada focada;
+  - o texto de Bloqueios com e sem a etiqueta;
+  - o `allow` que recusa script do plugin.
+- 4 checagens novas em `run-guard-tests.ps1`:
+  - o caminho errado com `&` e com `powershell -File`;
+  - o homônimo do projeto;
+  - o caminho certo, que segue liberado.
+- Um caso antigo mudou de expectativa: a Task com "prova no alvo pendente" fica fora da trava da medição, porque o `next` a reabre sozinho (v3.53.6 item 9c, inalterado).
+
+**Suítes** (`run-all-tests.ps1`, 8 processos): 1.058 casos, 0 falharam (`run-check-tests.ps1` 692 e `run-guard-tests.ps1` 366), em 548 s de parede, contra mais de 1 h em sequência. Agora o caminho crítico é a suíte de guardas (540 s).
+
+Problemas que a 1ª rodada em paralelo achou e foram corrigidos antes do commit:
+- A sentinela encerrava o `conhost.exe` da própria suíte, que é filho dela e vive o tempo todo, e o bloco morria sem log. Agora ela o ignora.
+- O `Add-Type` do `ZipFile` ficava num bloco e o uso dele em outro. A carga foi para o preâmbulo, e o `suite-blocks.ps1` recusa `Add-Type` no corpo.
+- A suíte de guardas, com a saída redirecionada, escrevia na página OEM. Agora roda com UTF-8.
+
+Na rodada de base em sequência, 3 casos do `verify full` desprendido falharam por demora (1.369 s e 389 s). Rodados de novo sozinhos, e depois na suíte completa, passaram.
+
 ## v3.64.0 — 2026-11-18
 
 **Branch:** `feat/v3.64.0` a partir de `develop` (`74a03a9`, v3.63.2 mesclada) · **Processo:** v3.64 (`process-changelog.md`) · **Plano:** `melhorias/plano-v3.64.0.md` (decisões D1–D8 do stakeholder, 18/11)
