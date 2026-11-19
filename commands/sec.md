@@ -19,8 +19,6 @@ Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta 
 
 O agente lê por conta própria `.team-project/README.md`, `.team-project/security-engineer/context.md` e os standards de segurança.
 
-Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar (o hook G16 mede o Security Engineer e o `operator` que ele chamou; a sessão roda o script).
-
-Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão (o agente não tem a ferramenta).
+O consumo é medido pelo hook G16 (o Security Engineer e o `operator` que ele chamou); não há linha a gravar à mão. Pergunta ao stakeholder é da sessão (o agente não tem `AskUserQuestion`).
 
 Ao receber o relatório, repasse ao stakeholder o sumário e o ponteiro do diretório (`.team-project/security/<data>/`). Para cada achado, indique o canal de volta pela seção "Roteamento" do relatório: achado de código → PO (`/qa bug` para crítico/alto, Product Backlog para o resto); achado de causa sistêmica (standard ausente/fraco) → `/review` (Arquiteto). O Security Engineer **não** fecha Task nem corrige.

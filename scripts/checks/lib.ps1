@@ -854,7 +854,7 @@ function Enter-TargetLock([string]$Root, [string]$Target, [string]$Owner, [int]$
         # aos mesmos emuladores e um derruba o outro ("adb protocol fault", piloto, 18/11 19:22) — o plugin para com a causa e
         # não desliga nada de outro projeto. A porta declarada é par, entre 5554 e 5584 (o par console/adb do emulador).
         $adbP = @(Get-AdbServerPorts)
-        if ($adbP.Count -gt 1) { Exit-TargetLock $Root; return "dois servidores do adb na máquina (portas $($adbP -join ', ')): eles disputam os mesmos emuladores e um derruba o outro. Um servidor só por máquina (a porta padrão, 5037); cada projeto fala com o seu emulador pelo serial (guards.json → targets.android.serial). O plugin não desliga o de outro projeto: quem o subiu o encerra" }
+        if ($adbP.Count -gt 1) { Exit-TargetLock $Root; return "dois servidores do adb na máquina (portas $($adbP -join ', ')): eles disputam os mesmos emuladores e um derruba o outro. Um servidor só por máquina (o plugin não fixa a porta dele: vale o único que estiver no ar); cada projeto fala com o seu emulador pelo serial (guards.json → targets.android.serial). O plugin não desliga o de outro projeto: quem o subiu o encerra" }
         $serialBad = Test-AndroidSerialPort $Root
         if ($serialBad) { Exit-TargetLock $Root; return $serialBad }
         $hv = Enter-HeavyLock $Root $Owner
@@ -867,10 +867,20 @@ function Enter-TargetLock([string]$Root, [string]$Target, [string]$Owner, [int]$
 function Get-AdbServerPorts {
     if ($null -ne $env:TEAM_TEST_ADB_PORTS) { return @(([string]$env:TEAM_TEST_ADB_PORTS -split '[,; ]+') | Where-Object { $_ } | ForEach-Object { [int]$_ }) }
     try { $ps = @(Get-CimInstance Win32_Process -Filter "Name='adb.exe'" -ErrorAction Stop) } catch { return @() }
-    return @($ps | Where-Object { [string]$_.CommandLine -match '(?i)\bserver\b' } | ForEach-Object { if ([string]$_.CommandLine -match '(?i)-P\s*(\d+)') { [int]$Matches[1] } else { 5037 } } | Select-Object -Unique)
+    return @($ps | Where-Object { [string]$_.CommandLine -match '(?i)\bserver\b' } | ForEach-Object { Get-AdbServerPortFromCommandLine ([string]$_.CommandLine) } | Select-Object -Unique)
 }
-# v3.64.0 (D8): a porta do emulador declarada (targets.android.serial = emulator-<porta>) é par e fica entre 5554 e 5584; sem
-# declaração, a proposta da primeira par livre que nenhuma trava de aparelho usa (não grava: o /team update grava com o aval).
+# v3.65.0: a porta de um servidor do adb pela linha de comando. O adb atual sobe o servidor como "adb -L tcp:<porta> fork-server
+# server" (ANDROID_ADB_SERVER_PORT vira -L tcp:<porta>); só o -P era lido, e todo servidor contava como 5037 — dois servidores
+# (5037 e 5038) viravam um só e a D8 não recusava. Sem porta na linha, a padrão 5037.
+function Get-AdbServerPortFromCommandLine([string]$CommandLine) {
+    if ($CommandLine -match '(?i)-L\s+tcp:(?:[^:\s]+:)?(\d+)') { return [int]$Matches[1] }
+    if ($CommandLine -match '(?i)-P\s*(\d+)') { return [int]$Matches[1] }
+    return 5037
+}
+# v3.64.0 (D8): a porta do emulador declarada (targets.android.serial = emulator-<porta>) é par e fica entre 5554 e 5584; fora
+# disso, a recusa traz a proposta da primeira par livre que nenhuma trava de aparelho usa (não grava: o /team update grava com o
+# aval). Sem serial declarado não há o que conferir aqui ($null): com mais de um aparelho no adb, o Initialize-Android já recusa e
+# pede o serial (v3.65.0, A2-03: o comentário prometia a proposta também sem declaração).
 # Devolve a recusa, ou $null. Serial de aparelho físico (sem "emulator-") não é conferido.
 function Test-AndroidSerialPort([string]$Root) {
     $tc = Get-TargetsConfig $Root; $a = if ($tc -and $tc.PSObject.Properties['android']) { $tc.android } else { $null }
@@ -2655,7 +2665,7 @@ function Test-LessonStrict([string]$Root, [string]$Sprint) {
 function Get-PlanGapDecisions([string]$PlanText) {
     $out = @(); $cur = $null
     foreach ($line in ([string]$PlanText -split "`r?`n")) {
-        if ($line -match '^\*\*Decis[ãa]o do (?:🔺\s*)?GAP\b[^*]*:\*\*') { if ($cur) { $out += $cur }; $cur = [pscustomobject]@{ Head = $line.Trim(); Text = $line }; continue }
+        if ($line -match '^\*\*Decis[ãa]o do (?:(?:🔺\s*)?GAP|stakeholder)\b[^*]*:\*\*') { if ($cur) { $out += $cur }; $cur = [pscustomobject]@{ Head = $line.Trim(); Text = $line }; continue }
         if (-not $cur) { continue }
         if (-not $line.Trim() -or $line -match '^#') { $out += $cur; $cur = $null; continue }
         $cur.Text += "`n" + $line

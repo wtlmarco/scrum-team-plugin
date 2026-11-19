@@ -216,8 +216,10 @@ try {
     # v3.60.1 (sprint 6 do garden, T-090): as decisões de 🔺 GAP ("**Decisão do GAP …:**") não contam — a Task já construída
     # que cresceu com elas não vai à divisão nem ao stakeholder.
     $kbc = Get-PlanCoreKb $text; $kb = $kbc.Kb
-    $gapTxt = if ($kbc.Gap -gt 0) { " (+$($kbc.Gap) KB de decisões de 🔺 GAP, fora da conta; arquivo com $($kbc.Total) KB)" } else { '' }
-    if ($kb -gt $script:PlanMaxKb) { Add-Result 'tamanho' 'falhou' "$kb KB$gapTxt, acima de $($script:PlanMaxKb) KB: Task grande — NÃO corte nem encurte o plano (cortar relê a conversa a cada edição e não traz informação nova). A Task vai à divisão: o run.ps1 next a divide com os blocos deste plano como base e cada Task nova ganha plano próprio (regra 22). As decisões de 🔺 GAP (**Decisão do GAP …:**) não contam para o teto" }
+    $gapTxt = if ($kbc.Gap -gt 0) { " (+$($kbc.Gap) KB de decisões de 🔺 GAP e do stakeholder, fora da conta; arquivo com $($kbc.Total) KB)" } else { '' }
+    # v3.65.0 (A3-03): a mensagem diz os DOIS casos. O Arquiteto que emenda um plano com a construção começada lê esta linha
+    # no handoff; só "a Task vai à divisão" contradizia o prompt do next (substituir; a Task não se divide).
+    if ($kb -gt $script:PlanMaxKb) { Add-Result 'tamanho' 'falhou' "$kb KB$gapTxt, acima de $($script:PlanMaxKb) KB (regra 22). Antes da construção: Task grande — NÃO corte nem encurte o plano (cortar relê a conversa a cada edição e não traz informação nova); a Task vai à divisão: o run.ps1 next a divide com os blocos deste plano como base e cada Task nova ganha plano próprio. Construção começada (plano emendado por decisão do stakeholder, Q-S ou GAP): a Task não se divide — substitua no plano o texto que a decisão derrubou pela decisão, sem acrescentar ao lado e sem cortar o que segue valendo. As decisões (**Decisão do GAP …:**, **Decisão do stakeholder …:**) não contam para o teto" }
     else { Add-Result 'tamanho' 'ok' "$kb KB$gapTxt" }
 
     # ---------- 23 · cenários ao lado do plano (v3.51) ----------

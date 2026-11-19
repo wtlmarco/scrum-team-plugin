@@ -71,6 +71,35 @@ Achado dentro do seu alcance: corrija e registre no changelog. Achado no documen
 - **O SM é o curador:** consolida o changelog, remove duplicidade, aponta contradição entre mudanças de papéis diferentes e leva ao stakeholder o que ficou inconsistente.
 - **Mudança de comportamento de agente só entra em vigor após reiniciar a sessão** — diga isso ao stakeholder ao reportar.
 
+## Regras do repositório-fonte (R17–R19)
+
+Numeradas na sequência das [regras de trabalho](../roles/scrum-master/process/working-rules.md), mas só valem aqui, no clone do plugin; o instrumento das três é o C3 (`scripts/checks/release.ps1`), que a rodada completa da suíte (`scripts/checks/tests/run-all-tests.ps1`, sem `-Only`) também roda.
+
+### R17. Entrada de changelog do processo tem teto e forma fixa
+
+Cada entrada de [`process-changelog.md`](../roles/scrum-master/process/process-changelog.md) registra a **decisão**, não a deliberação, nos campos do modelo [`process-change.md`](../roles/scrum-master/templates/process-change.md). Alvo ~150 linhas / ~6 KB; **barreira** de **10 KB** para rodada que move até **dois papéis**, **+2,5 KB por papel adicional**, teto absoluto de **20 KB**; acima dela a entrada não é registrada sem mover o excedente. Papel "movido" conta pelo documento que mudou, não por quem segurou a caneta (o Arquiteto aplicando em `roles/developer/*` move o dev). O arquivo vivo mantém **no máximo três entradas**; as anteriores vão, íntegras, a `process-changelog-archive.md`. Uma rodada de `/review` é **uma** entrada (a unidade é a decisão, não o autor); o teto se cumpre cortando o que a regra exclui, não fatiando a decisão.
+
+- **Fica:** instrução literal, classificação, tabela do que mudou, o modo de falha que evita, quem passa a ser cobrado de forma diferente, o indicador de sucesso, uma linha por conflito, roteamentos e pendências do stakeholder.
+- **Não fica:** a derivação de uma resolução de conflito, o passo a passo da reavaliação, exemplos trabalhados (a reavaliação vai na resposta do `/review`). Análise que precisa sobreviver vira nota de racional no documento normativo que ela governa.
+- Correção de entrada antiga é **addendum datado**, nunca reescrita.
+
+**Evita:** a inflação do próprio changelog, sem custar rastreabilidade: corta-se a deliberação repetida, nunca a decisão nem o porquê dela.
+**SM verifica:** tamanho por bloco `## vX.Y`, em bytes UTF-8 com decodificação explícita (`Get-Content` sem `-Encoding utf8` infla ~7,5%); a entrada declara quantos papéis moveu. **Instrumento:** C3.
+
+### R18. Entrega do plugin é ramificada, versionada e registrada
+
+Toda mudança que chega às instalações passa por uma **entrega**: branch (`fix/` ou `feat/`) a partir de `develop` — ou empilhada sobre a branch de uma entrega anterior ainda não mesclada, quando há dependência —, PR para `develop`, `version` de `.claude-plugin/plugin.json` em `vMAJOR.MINOR.PATCH`, o banner "Versão atual" no topo do `README.md` (raiz) na mesma versão e uma entrada no topo de `CHANGELOG.md` com o que foi entregue, a branch (e a base, se empilhada) e como verificar. `develop` é a linha de integração; `main` é a estável e recebe `develop` por decisão do stakeholder. Entrega com entrada nova de `process-changelog.md` sai como `vX.Y.0`; `PATCH` é correção sobre a mesma linha. Roteiro: [`workflow-processo.md` §5d](../roles/scrum-master/process/workflow-processo.md).
+
+**Evita:** mudança direto em `develop` sem entrega rastreável ou reversível por versão; `CHANGELOG.md`, `plugin.json` e `process-changelog.md` derivando entre si; o `README.md` anunciando versão que a entrega já superou.
+**SM verifica:** todo merge em `develop` tem bump de `version` **e** entrada nova no topo de `CHANGELOG.md`; `version` = entrada do topo = banner do `README.md`; toda entrada nova de `process-changelog.md` tem par em `CHANGELOG.md` na mesma linha `vX.Y`, ou a divergência está registrada; nenhuma entrada de `CHANGELOG.md` nega mudança de processo quando carrega uma. **Instrumento:** C3.
+
+### R19. O `/review` produz evidência do que aplicou
+
+Todo `/review` que edita fecha com o **bloco de evidência** na entrada do changelog (o quinto passo acima): comando e saída por classe de mudança, não a afirmação de que foi feito. `grep` zerado prova que a string sumiu, não que o sentido fechou: leia cada ocorrência nova no contexto.
+
+**Evita:** o `/review` declarar como concluído o que não fez ou fez pela metade (entrada arquivada truncada, substituição aplicada em 1 de 5 arquivos).
+**SM verifica:** entrada sem bloco de evidência não fecha o `/review` — o SM devolve ao papel; na curadoria, reexecuta por amostragem um comando do bloco, e saída diferente da registrada é achado de processo.
+
 ## Modos auxiliares (conduzidos pelo Agent `scrum-master`)
 
 - **`/review note`** — processa a fila **Abertas** de `RAIZ/note.md`, uma Task por vez: o SM classifica e roteia cada um ao papel dono, que aplica por este contrato. Task aplicado sai de `note.md` e passa a viver no changelog do processo.

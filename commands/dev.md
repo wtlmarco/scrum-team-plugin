@@ -16,9 +16,7 @@ Com o plano em mãos, **grave `.team-project/.active-task`** — `{ "trilha": "s
 
 O contrato de trabalho e o formato do 🔺 GAP estão no próprio agente (`agents/developer.md`) e não se repetem aqui. Pedido `/dev review …` → o caminho é **`/review …`**.
 
-Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar.
-
-Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, 'pedir mais contexto' por último (`working-rules.md` R22).
+O consumo é medido pelo hook G16; não há linha a gravar à mão. Pergunta ao stakeholder é da sessão (o agente não tem `AskUserQuestion`).
 
 Ao receber o retorno do dev (o relatório de entrega completo fica em `.team-project/sprints/<n>/delivery/<ID>.md`, v3.49):
 - **🔺 GAP** → leve-o ao Arquiteto (`/arc question`), passando o caminho do relatório, e devolva a decisão ao dev; não resolva você. Arquiteto parado há mais de 5 min: instância nova (`sprint-run.md` §Retomada). No run, quem leva o GAP é o executor de Task. Peça a decisão **registrada no plano**, não a reprodução do passo (R9); conferir afirmação do dev é do QA (R7).

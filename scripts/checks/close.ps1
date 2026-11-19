@@ -213,7 +213,7 @@ try {
         if ($capR -and $capR.Board -gt $capR.Capacity) { $r4 += "o quadro passa da capacidade: $(Format-SprintCapacity $capR)" }
     }
     $esc = if ($evBlock) { Get-Section $evBlock '^###\s+Escopo' } else { $null }
-    if ($null -eq $esc -and $devMode) { $r4 += 'escopo do dev: "Não fiz (fora do plano)" no relatório; o diff × plano é do portão do QA' }
+    if ($null -eq $esc -and $devMode) { $r4 += 'escopo do dev: "Não fiz (fora do plano)" no relatório; os arquivos mudados × plano na linha R4-arquivos' }
     elseif ($null -eq $esc) { $r4 += 'falhou: evidência sem "### Escopo"' }
     else {
         $fm = [regex]::Match($esc, '(?m)^\*\*Fora do plano:\*\*\s*(.+)$')
@@ -229,7 +229,7 @@ try {
         }
     }
     if ($r4 | Where-Object { $_ -like 'falhou*' }) { Add-Result 'R4' 'falhou' (($r4 | ForEach-Object { $_ -replace '^falhou: ', '' }) -join '; ') }
-    else { Add-Result 'R4' 'ok' (($r4 -join '; ') + ' (o diff × plano é conferido pelo QA na frente 2)') }
+    else { Add-Result 'R4' 'ok' (($r4 -join '; ') + ' (os arquivos mudados × plano: linha R4-arquivos; o QA confere no portão)') }
 
     Add-Result 'R5' 'n-a' 'formato não mecânico: "Parei no passo" vive no relatório do dev, na conversa'
 
@@ -321,6 +321,34 @@ try {
         }
         $warnTxt = if ($warnA.Count) { ' · aviso: ' + ($warnA -join '; ') } else { '' }
         if ($iss.Count) { Add-Result 'R7-margem' 'falhou' (($iss -join '; ') + $warnTxt) } else { Add-Result 'R7-margem' 'ok' ("$($okA.Count) ajuste(s) na margem com as travas: " + ($okA -join '; ') + ' — o QA confere cada um na frente 2' + $warnTxt) }
+    }
+
+    # ---------- R4 · arquivos mudados × plano (v3.65.0, decisão Q1 do stakeholder em 19/11) ----------
+    # A G9 nega a edição fora do escopo, mas PowerShell e Bash passam por heurística: o C1 confere o que ficou no disco. Fora
+    # da conta: o escopo do plano, os arquivos da margem declarada (e o stub não declarado, que o R7-margem já reprova), o que
+    # já estava alterado quando a Task começou (alheios), o treeIgnore e o desvio aceito com data. Como o R4, não bloqueia o
+    # close: a linha vai à tabela e o QA decide no portão — o falso positivo (um documento vivo fora da lista) não trava a Task.
+    if (-not $plan) { Add-Result 'R4-arquivos' 'n-a' 'sem plano' }
+    elseif (-not $scopeA.Count) { Add-Result 'R4-arquivos' 'n-a' 'plano sem **Arquivos tocados:** legível' }
+    else {
+        $eapD = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        $null = & git -C $Root rev-parse --is-inside-work-tree 2>$null; $inGit = ($LASTEXITCODE -eq 0)
+        $chgD = if ($inGit) { @(& git -C $Root status --porcelain -uall 2>$null | ForEach-Object { $gs = ([string]$_).Substring([Math]::Min(3, ([string]$_).Length)); if ($gs -match ' -> ') { $gs = ($gs -split ' -> ')[-1] }; $gs.Trim('"') }) } else { @() }
+        $ErrorActionPreference = $eapD
+        if (-not $inGit) { Add-Result 'R4-arquivos' 'n-a' 'projeto sem git: a conferência dos arquivos fica com o QA' }
+        else {
+            $marginF = @(@($adj | ForEach-Object { $_.File }) + @($stubUndecl))
+            $foreignD = @(Get-ForeignUnchanged $Root $S $Task)
+            $acceptedF = @()
+            if ($esc) {
+                $amD = [regex]::Match($esc, '(?m)^\*\*Desvio aceito:\*\*\s*(.+)$')
+                $fmD = [regex]::Match($esc, '(?m)^\*\*Fora do plano:\*\*\s*(.+)$')
+                if ($amD.Success -and $fmD.Success -and -not (Test-Placeholder $amD.Groups[1].Value) -and (Get-FirstDate $amD.Groups[1].Value)) { $acceptedF = @([regex]::Matches($fmD.Groups[1].Value, '`([^`]+)`') | ForEach-Object { ($_.Groups[1].Value.Trim() -replace '\\', '/') -replace '^\./', '' }) }
+            }
+            $outF = @($chgD | Where-Object { $_ -and $_ -notmatch '^\.team-project/' -and $scopeA -notcontains $_ -and $marginF -notcontains $_ -and $foreignD -notcontains $_ -and $acceptedF -notcontains $_ -and -not (Test-TreeIgnored $Root $_) })
+            if ($outF.Count) { Add-Result 'R4-arquivos' 'falhou' ("$($outF.Count) arquivo(s) alterado(s) fora de **Arquivos tocados:**, sem margem declarada nem desvio aceito: " + ((@($outF | Select-Object -First 8) | ForEach-Object { "``$_``" }) -join ', ') + $(if ($outF.Count -gt 8) { " (+$($outF.Count - 8))" } else { '' }) + ' — desfaça, ou registre em **Fora do plano:** com **Desvio aceito:** (o QA decide no portão)') }
+            else { Add-Result 'R4-arquivos' 'ok' "$(@($chgD | Where-Object { $_ -notmatch '^\.team-project/' }).Count) arquivo(s) pendente(s), todos no plano, na margem declarada, alheios à Task ou no treeIgnore" }
+        }
     }
 
     # ---------- R16 · standards citados com seção (informativo) ----------

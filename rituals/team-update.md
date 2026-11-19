@@ -25,6 +25,7 @@ Busque `https://raw.githubusercontent.com/wtlmarco/scrum-team-plugin/main/.claud
 ## 5. Compare (semver)
 
 - instalada ≥ corrente → "já está na versão mais recente (`vX.Y.Z`)"; pare.
+- instalada < v3.50 → veja §Versão mínima suportada, antes do passo 7; pare.
 - instalada < corrente → busque `https://raw.githubusercontent.com/wtlmarco/scrum-team-plugin/main/CHANGELOG.md` e mostre as entradas entre as duas versões. Peça confirmação para aplicar — **exceto (v3.58.3)** quando as duas condições valem: o stakeholder **digitou** o `/team update` nesta sessão (o comando é o pedido) **e** todas as entradas entre as duas versões são correção da mesma linha (mesmo `MAJOR.MINOR`) com `**Processo:** nenhum`. Aí aplique direto (passo 7), diga em três linhas o que mudou e registre na §7 como resolvido. Qualquer entrada com processo, migração ou `MINOR` novo mantém a confirmação. No sprint 6 do projeto piloto, seis formulários de atualização (3.57.4 a 3.58.2) foram respondidos em segundos, sempre na opção recomendada.
 
 ## 6. Avalie o impacto de mudança de processo sobre os deliverables já escritos
@@ -59,147 +60,9 @@ claude plugin marketplace update team
 claude plugin update team@team
 ```
 
-## 7a. Migração estrutural da v3.20 — o registro de execução passa a ser por sprint
+## Versão mínima suportada: v3.50
 
-> Passo **único desta versão**. Roda depois de aplicar (passo 7) e **antes** da reconciliação de modelos (passo 8), e só quando a versão instalada for anterior à `v3.20.0`.
-
-A v3.20 **move artefatos que o projeto já tem em disco**. Projeto que atualiza sem migrar fica com o time procurando arquivos onde eles não estão mais.
-
-**O que move, de onde para onde:**
-
-| De | Para | Dono |
-|---|---|---|
-| `.team-project/scrum-master/sprints/<n>/` | `.team-project/sprints/<n>/` | SM |
-| `.team-project/scrum-master/sprint-backlog.md` | `.team-project/sprints/<corrente>/sprint-backlog.md` | SM |
-| `.team-project/scrum-master/consumption-log.md` | `.team-project/sprints/<corrente>/consumption.md` | SM |
-| `consumption-log-archive.md`, seções `## Sprint <n>` | `.team-project/sprints/<n>/consumption.md`, uma por sprint | SM |
-| `.team-project/architect/plans/<T-ID>-*.md` | `.team-project/sprints/<n>/plan/` — o sprint em que a Task foi executada | Arquiteto |
-| Histórias detalhadas, por sprint | `.team-project/sprints/<n>/stories/H-nnn.md` (cópia congelada; o Product Backlog **continua** a fonte viva) | PO |
-| `.team-project/quality-assurance/evidence.md` | fatiado em `.team-project/sprints/<n>/evidence/<T-ID>.md` | QA |
-| a parte de linha de base de `evidence.md` | `.team-project/quality-assurance/baseline.md` — **fora** da pasta do sprint | QA |
-
-**O que NÃO move, e por quê:** `pending.md` (registro de GAPs), `03-code-map.md`, o Product Backlog, o SDD, as ADRs e o protótipo funcional do ① — todos somam ou evoluem através dos sprints, e fatiá-los quebraria a leitura que o time faz deles.
-
-**Sprints já fechados — migra o caminho, preserva o conteúdo.** São registros imutáveis: mova o diretório **sem uma vírgula alterada** dentro dos arquivos, e **não** reconcilie a estrutura deles contra os modelos novos — o `review.md` de um sprint antigo não ganha a seção de bloqueios por degrau, porque aquele sprint não os teve. Reescrever destruiria o histórico que eles existem para provar. Sprint fechado que tem `sprint-backlog-snapshot.md`: renomeie para `sprint-backlog.md` — o snapshot **era** o backlog fechado.
-
-**Sprint em andamento — conclui no formato antigo.** Mover o chão sob um sprint vivo quebra os ponteiros que o time está usando naquele instante: o dev tem o caminho do plano, o QA tem o caminho da evidência. **Regra:** o sprint corrente termina onde começou; a migração dele acontece no `/sm sprint close`, junto com o fechamento da pasta. O primeiro sprint a nascer no formato novo é o seguinte.
-
-**O que o `update` PROPÕE em vez de aplicar** — contém conteúdo local, e a regra de nunca apagar sem aprovação vale igual:
-
-- o **fatiamento de `evidence.md`** por Task, e a separação da linha de base — a divisão depende de como o projeto escreveu o arquivo;
-- a **atribuição de cada plano** de `architect/plans/` ao sprint certo — exige cruzar Task × sprint;
-- a **criação de `sprints/<n>/stories/`** a partir do Product Backlog — o congelamento retroativo é uma decisão, não uma cópia mecânica.
-
-Para os três, apresente o mapeamento proposto, arquivo por arquivo, e espere aprovação.
-
-**Depois de migrar, obrigatoriamente:** declare a linha **"Sprint corrente"** em `.team-project/README.md` §2, com o número e o caminho do `sprint-backlog.md`. Com o quadro dentro da pasta numerada, essa linha é o **único índice** — sem ela, nenhum papel acha o quadro vivo.
-
-**Verificação do passo:** nenhuma ocorrência de `scrum-master/sprints`, `architect/plans`, `quality-assurance/evidence.md` ou `consumption-log` sobra em `.team-project/` fora de sprints fechados; e `.team-project/README.md` §2 aponta um `sprint-backlog.md` que existe.
-
-## 7b. Migração da v3.35 — o processo sai do git e o consumo fora de sprint ganha registro próprio
-
-> Roda depois de aplicar (passo 7), antes da reconciliação (passo 8), e só quando a versão instalada for anterior à `v3.35.0`. A v3.35 (R31) tira o **`.team-project/` inteiro** do git do projeto: o repositório passa a receber só o produto (código e `docs/`), e o estado da gestão fica **local**.
->
-> **Os passos 1 a 4 só valem em repositório git — projeto que não é repositório git: pule-os e vá ao 5.** **Cada passo destrutivo (2, 3 e o push do 3) exige confirmação explícita do stakeholder NO MOMENTO da execução, neste projeto.** Aprovação antecipada, genérica ou "de quando rodar o update" não vale: **uma pergunta por passo destrutivo**, em `AskUserQuestion` pela sessão (R22: opções descritas, recomendação, "pedir mais contexto" por último), mostrando o comando e o efeito; execute só depois do "sim" e então passe ao próximo. Sem o "sim", registre o passo como pendente e siga.
-
-1. **`.gitignore` (a).** Se o `.gitignore` da raiz não tem a linha `.team-project/`, **acrescente-a** — só acrescente, nunca reescreva o arquivo.
-2. **Desrastrear (b).** Se `git ls-files .team-project` não está vazio: **confirme**, rode `git rm -r --cached .team-project` (tira do índice e **mantém os arquivos locais**) e faça o commit (por exemplo, `chore: tira .team-project do git (R31)`). **A guarda G1 bloqueia esse commit** — ela nega todo commit com arquivo de `.team-project/` no stage, inclusive remoção: antes do commit, acrescente `"G1"` a `disabled` em `.team-project/guards.json` (crie-o a partir do modelo se não existir — passo 7c); depois do commit, **tire `"G1"` de `disabled`** e confira. Conferida a saída, siga.
-3. **Limpar o histórico (c).** Só se `git log --all -- .team-project` não está vazio. **Confirme o passo inteiro antes de começar** e, de novo, **antes do push**.
-   1. **Backup obrigatório, antes de qualquer coisa:** (i) copie a pasta `.team-project/` local para fora do repositório; (ii) faça o clone espelho `git clone --mirror <origem> <destino>.git`. Confira que os dois existem; sem eles, **não prossiga**.
-   2. **Meça:** `git count-objects -vH` (antes).
-   3. **Ferramenta:** `git filter-repo --path .team-project --invert-paths`, num clone novo do repositório (o `filter-repo` recusa clone com trabalho em andamento; só use `--force` depois do backup). Se `git filter-repo --version` falhar, **diga como instalar** — `python -m pip install git-filter-repo` (ou `pipx install git-filter-repo`) — ou ofereça a alternativa: BFG Repo-Cleaner (`bfg --delete-folders .team-project`, exige Java). `git filter-branch` não é recomendado (lento, frágil). O `filter-repo` remove o remote `origin`: reponha-o.
-   4. **Push (confirmação própria):** `git push --force --all` e `git push --force --tags`. Avise antes: **quem colaborou precisa re-clonar ou rebasear**; o **GitHub pode manter objetos em cache e em PRs antigas** (`refs/pull/*`) e forks, e a remoção completa pode exigir o suporte do GitHub.
-4. **Verificação (d).** `git log --all -- .team-project` vazio; `git ls-files .team-project` vazio; `git check-ignore -v .team-project/README.md` devolve a regra; `git count-objects -vH` (depois) comparado com o (antes) do passo 3.2. Registre os números no resumo do passo 9.
-5. **`.team-project/consumption.md`** (qualquer projeto): se não existir, crie a partir de `roles/scrum-master/templates/consumption.md` (cabeçalho "Consumo — fora de sprint", tabela vazia, sem "Totais do sprint").
-6. **Subseção antiga** (qualquer projeto): se `.team-project/scrum-master/context.md` tem "Consumo pré-sprint (prepare · sdd)" com linhas, **proponha** movê-las (conteúdo e Nota `pre-sprint;` preservados) para o arquivo novo e remover a subseção; espere aprovação — é conteúdo local.
-
-**Verificação do passo:** os itens do passo 4 (repositório git), mais `.team-project/consumption.md` existente e `context.md` sem a subseção antiga.
-
-## 7c. Guardas da v3.39 — `guards.json`
-
-> Roda quando a versão instalada for anterior à `v3.39.0`, em qualquer projeto.
-
-1. **`.team-project/guards.json`:** se não existir, crie a partir de `${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/guards.json`. Se existir, é **estrutura + conteúdo local**: chave nova do modelo entra; `disabled` e os valores do projeto nunca são sobrescritos (passo 8).
-2. **Diga ao stakeholder**, em três linhas: as guardas (G1 commit com `.team-project/`, G2 escrita na cópia instalada, G3 formulário sem "Pedir mais contexto" por último, G4 aviso de saída grande) **só valem depois de reiniciar a sessão**; uma guarda com falso positivo é desligada em `disabled`, na hora; cada disparo custa de 0,6 a 0,8 s (`hooks/COVERAGE.md`).
-3. **Sonda da fase 2 (opcional, uma sessão):** com `"probe": true`, o `guards.log` registra o `agent_type` recebido e o tempo de cada disparo; rode um `/po status` e um `/dev` de calibração e leve o log ao `/review`. Depois, `"probe": false`.
-
-**Verificação do passo:** `.team-project/guards.json` existe e é JSON válido (`Get-Content .team-project/guards.json -Raw | ConvertFrom-Json`); depois de reiniciar, `/hooks` lista `SessionStart`, `PreToolUse` e `PostToolUse` do plugin, e a sessão abre com a linha "Guardas do time: ativas …".
-
-## 7d. Contato remoto da v3.41 — campos da §1 e protótipo num arquivo só
-
-> Roda quando a versão instalada for anterior à `v3.41.0`, em qualquer projeto.
-
-1. **`.team-project/README.md` §1:** se faltarem, acrescente as três linhas **vazias** — `**Identificador remoto:**`, `**Conta remota:**`, `**Verificação remota:**`. **Nunca invente o identificador**: ele é escolhido pelo stakeholder no `/team remote`. Com o campo vazio, nada muda no projeto (a guarda G3 só exige o prefixo `[<ID> · …]` quando há identificador).
-2. **Diga ao stakeholder**, em duas linhas: para responder pelo celular, rode `/team remote` uma vez neste projeto; sem ele, tudo segue como antes, no terminal.
-3. **Protótipo funcional e do sprint num `index.html` único** (para publicar como artifact privado): se `.team-project/user-experience/prototype/` tiver `flows/` ou `assets/`, **não mexa** — avise que o UX consolida num arquivo só no próximo ciclo do protótipo (`/ux prototype`). Não é decisão do stakeholder: não vai para a §7.
-
-**Verificação do passo:** `Select-String -Path .team-project/README.md -Pattern '^\*\*Identificador remoto:\*\*'` devolve uma linha.
-
-## 7e. Guardas por papel da v3.42 — chaves novas do `guards.json`
-
-> Roda quando a versão instalada for anterior à `v3.42.0`, em qualquer projeto.
-
-1. **`.team-project/guards.json`:** acrescente as chaves que faltarem com o valor do modelo (`${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/guards.json`) — `protectedPaths`, `sourceRoots`, `testSkipPatterns`. **Nunca sobrescreva** `disabled` nem valor já escolhido pelo projeto (passo 8).
-2. **Pergunte ao stakeholder** (`AskUserQuestion`, R22) **só se** o código-fonte do projeto não é "tudo fora de `.team-project/` e `docs/`" (por exemplo, `docs/` com código, ou documentação de produto em outra pasta): ofereça preencher `sourceRoots` com os globs do código. Caso comum: nada a perguntar.
-3. **Diga ao stakeholder**, em três linhas: as guardas por papel (G5 gate, G6 teste ignorado, G7 `Agent` só ao `operator`, G8 dono do arquivo, G9 escopo do dev, G11 pasta do job) **só valem depois de reiniciar a sessão** e não se aplicam à sessão principal dele; a G8 **nega** código ao Arquiteto fora de spike declarado em `.active-spike` (v3.44 — até a v3.43 ela perguntava); o `/dev` à mão passa a gravar `.team-project/.active-task` antes de disparar o dev (`hooks/COVERAGE.md`).
-
-**Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).protectedPaths` devolve a lista; depois de reiniciar, a linha "Guardas do time: ativas …" lista G5–G9 e G11.
-
-## 7f. Run sem trava da v3.44 — `runCommands`
-
-> Roda quando a versão instalada for anterior à `v3.44.0`, em qualquer projeto; o `/team init` também o executa (passo 4a).
-
-1. **`runCommands` no `.team-project/guards.json`:** se a chave falta, acrescente-a com os **prefixos** dos comandos de build, teste, lint e cobertura que `.team-project/developer/context.md` (e o `README.md` §ambiente) declaram — como estão escritos, sem argumento de arquivo: `dotnet build`, `dotnet test`, `npm run lint`, `npx ng test`… Se a chave já existe, só acrescente o que faltar; nunca remova valor do projeto. **Nada de instalação, rede, push ou comando destrutivo** (`npm install`, `git push`, `rm`): esses não entram no run (a G14 os nega, e a falta vira bloqueio da Task). **A lista vive só aqui:** o plugin não escreve permissão nas configurações do Claude Code (`.claude/settings*.json`) — dentro do run quem libera é a G14, lendo esta chave; fora do run vale o pedido de permissão normal, com o stakeholder presente.
-2. **Um formulário só** (`AskUserQuestion`, R22): mostre os prefixos propostos para `runCommands` — *aplicar · ajustar a lista · pedir mais contexto*. Sem resposta, não aplique: o run segue funcionando, mas comando do projeto fica com o pedido de permissão do harness.
-3. **Diga ao stakeholder**, em três linhas: o `sprint run` e o `fix run` gravam `.team-project/.active-run` e, com ele, a **G14** libera o operacional dos papéis e nega com a rota o que está fora da lista — **nenhum pedido de permissão parado no meio da fila**; a **G8** passa a **negar** código ao Arquiteto fora de spike declarado (`.active-spike`); a **G15** grava no `guards.log` todo pedido de permissão do harness (`hooks/COVERAGE.md`). Valem depois de reiniciar a sessão.
-
-**Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).runCommands` devolve a lista; depois de reiniciar, `/hooks` lista `Notification` e a linha "Guardas do time" traz G14 e G15.
-
-## 7g. Consumo medido da v3.45 — `usage.jsonl` e o `consumption.ps1`
-
-> Roda quando a versão instalada for anterior à `v3.45.0`, em qualquer projeto. Nada a migrar em disco: o `usage.jsonl` nasce na primeira parada de subagente depois de reiniciar.
-
-1. **Não reescreva as linhas antigas** do `consumption.md` aberto: elas trazem o número da notificação (contexto final), e o script as mantém; os Totais passam a somá-las só na coluna "Σ notificação" ([`templates/consumption.md`](../roles/scrum-master/templates/consumption.md)). Se o `## Totais` do registro aberto tem o cabeçalho antigo (5 colunas), deixe — o script o reescreve no formato novo na primeira execução.
-2. **Diga ao stakeholder**, em três linhas: o hook **G16** mede cada subagente no transcript dele e grava em `.team-project/usage.jsonl`; a sessão **não transcreve mais número** — roda `scripts/checks/consumption.ps1`, que escreve as linhas e os Totais; a coluna Tokens passa a ser o **processado** (o número da notificação, que era o anotado até aqui, é só o contexto final — de 5 a 6 vezes menor, medido). O C1 passa a contar os jobs do `operator` **por Task** (`operator/<n>/<T-ID>…/`). Vale depois de reiniciar a sessão.
-
-**Verificação do passo:** depois de reiniciar, `/hooks` lista `SubagentStop` e a linha "Guardas do time" traz G16; depois do primeiro subagente, `Get-Content .team-project/usage.jsonl -Tail 1` mostra a rodada.
-
-## 7h. Evidência mecânica da v3.45.1 — `verify` no `guards.json`
-
-> Roda quando a versão instalada for anterior à `v3.45.1`, em qualquer projeto; o `/team init` também o executa (passo 4a). Pede repositório git na raiz do projeto (a impressão digital da árvore é o tree do git); sem git, deixe `verify` vazio — a verificação segue pelo `operator`.
-
-1. **`verify` no `.team-project/guards.json`:** se a chave falta, acrescente-a; se existe, só preencha o que estiver vazio. Cinco chaves, cada uma um comando (ou uma lista, para mais de uma unidade implantável), **como `.team-project/developer/context.md` os escreve**: `focused` — o teste de um conjunto de arquivos, com `{tests}` onde entram os caminhos (`npx jest {tests}`, `dotnet test --filter …`); `lint`; `build`; `suite` — a suíte inteira; `coverage` — o gate de cobertura da unidade (o que sai com código ≠ 0 abaixo do limiar). **v3.55.0:** `focused` também aceita lista de objetos `{ "command": "…{tests}…", "paths": ["glob"], "testRoot": "…", "testItem": "…" }` — projeto com dois runners (Karma e `node:test`) declara cada um com o `paths` dos seus testes, e o item sem `paths` é o padrão; a mutação usa o comando do teste. Comando que o projeto não tem fica `""`. Os mesmos prefixos entram em `runCommands` (7f), se faltarem. **Opcionais (v3.47.1):** `testRoot` — a pasta onde o `focused` roda, quando não é a raiz (`"source/"`: o prefixo sai do `{tests}`); `testItem` (v3.48.1) — o molde de cada teste no `{tests}` quando o runner não recebe caminho de arquivo: `{path}` (padrão) ou `{class}`, o nome qualificado da classe (Gradle: `"focused": "./gradlew testDebugUnitTest {tests}"` com `"testItem": "--tests {class}"`); `inconclusive` — padrões (regex) que, no log, dizem que o teste **não rodou** (somam aos embutidos: `Executed 0 of 0`, `Disconnected`, `No tests found`, `error TS…`, `error CS…`, `Compilation failed/error`, `cannot find symbol`…); `caught` — o padrão de teste reprovado que tem de aparecer para a mutação contar (ex.: `FAILED`). Sem eles, os embutidos valem.
-2. **Um formulário só** (`AskUserQuestion`, R22), junto com o de 7f quando os dois rodam: mostre os cinco comandos — *aplicar · ajustar · pedir mais contexto*. Sem resposta, deixe `verify` vazio: o C1 trata como não configurado (`R7-verify n-a`) e tudo segue como antes.
-3. **Diga ao stakeholder**, em três linhas: o dev roda `scripts/checks/verify.ps1` (focado durante o bloco, completo no fim) e o resultado fica em `.team-project/verify/<n>/<T-ID>/result.json`, amarrado à **impressão digital da árvore** (arquivo novo não rastreado incluído); o QA **não reexecuta** a suíte quando a árvore é a mesma (`-Mode check`) e só a roda de novo quando mudou; o C1 **não fecha** a Task com o `verify` vermelho ou de uma árvore que mudou depois dele.
-
-**Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).verify` devolve os comandos; `powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/verify.ps1" -Task T-000 -Mode full` roda e grava `.team-project/verify/…/T-000/result.json` (apague a pasta depois).
-
-## 7i. Primeiro sprint do piloto — v3.48
-
-> Roda quando a versão instalada for anterior à `v3.48.0`, em qualquer projeto.
-
-1. **Registro de transições no lugar:** sprint aberto com `## Registro de transições` no `sprint-backlog.md` (quadro anterior à v3.44.1) — mova a seção inteira, tabela e linhas, para o fim do `kanban.md` do mesmo sprint, sem reescrever linha. O C1 lê e o `close.ps1 -Apply` grava nos dois lugares, mas o modelo é o `kanban.md`.
-2. **`verify.focused` com contorno de pasta:** comando que tira o prefixo do caminho à mão (`-replace '^source/'`, `Set-Location <pasta>` antes do `{tests}`) — proponha trocar por `testRoot` (7h) no mesmo formulário de 7f/7h; sem resposta, deixe como está.
-3. **Coluna nova no quadro aberto:** acrescente `Decisão do stakeholder` à tabela "Entradas fora da Planning" do `sprint-backlog.md` aberto (célula vazia nas linhas existentes).
-4. **Diga ao stakeholder**, em três linhas: o relatório do `operator` passa a ser **gravado pelo hook G16** a partir da resposta dele (o harness recusa relatório gravado por subagente — era a falha de R28/R26 em toda Task com `operator`); o `.active-task` ilegível faz a G9 **negar** (antes o hook caía e o dev escrevia sem guarda); a G14 deixa de negar escrita com caminho entre aspas, conferência com `2>&1`, `Get-Process`, `npm --prefix` e `[Math]::…`, e o `>` dentro de texto deixa de virar destino (G8/G9). Valem depois de reiniciar a sessão.
-
-**Verificação do passo:** `Select-String .team-project/sprints/*/sprint-backlog.md -Pattern '^## Registro de transi'` não devolve nada no sprint aberto; depois do primeiro `operator`, a pasta do job tem `report.md` com a linha `<!-- G16: resposta do operator`.
-
-## 7j. Retorno curto, relatório em arquivo e retomada do Arquiteto — v3.49
-
-> Roda quando a versão instalada for anterior à `v3.49.0`, em qualquer projeto.
-
-1. **Nada a migrar no disco.** `sprints/<n>/delivery/`, `fixes/B-<nnn>/delivery.md` e `architect/breakdown/` nascem sob demanda. Sprint aberto com Task em 🟨: o dev grava o relatório no arquivo a partir da próxima rodada, e a rodada anterior fica na conversa.
-2. **Diga ao stakeholder**, em três linhas:
-   - no `run`, cada papel devolve à sessão só o retorno curto (R28), e o relatório do dev fica em `delivery/`;
-   - o Arquiteto parado há mais de 5 min é aberto em instância nova para o GAP, em vez de retomado;
-   - o toque de cache da v3.49 foi retirado na v3.52 — a sessão não cria `CronCreate` durante o `run`.
-
-   Valem depois de reiniciar a sessão.
-3. **Registro de consumo aberto:** não edite. Na primeira rodada medida, a G16 roda o `consumption.ps1` e ele reescreve os `## Totais` no formato novo: uma linha por papel e modelo (modelo com versão: `haiku 4.5`), as colunas **Instâncias** e **Rodadas** no lugar de "Nº de invocações", e `não medido — só notificação` onde só há linha à mão. As linhas medidas antigas passam a mostrar o modelo com versão; as linhas à mão ficam como estão.
-4. **Nada a instalar para os scripts da sessão:** `mark.ps1`, `dispatch.ps1` e o `consumption.ps1 -Session` vêm com o plugin. A sessão do `run` passa a usá-los pelo `sprint-run.md`. A sessão só entra no registro a partir das rodadas gravadas pela G16 da v3.49, que traz o caminho do transcript.
-
-**Verificação do passo:** depois do primeiro dev do `run`, `Test-Path .team-project/sprints/<n>/delivery/<T-ID>.md` devolve `True`.
+Os passos de migração das versões v3.20 a v3.49 (antigas §7a a §7j) saíram na v3.65.0 (decisão do stakeholder, 19/11/2026). **Instalada abaixo de v3.50:** não aplique o update sobre ela — diga ao stakeholder que o projeto precisa de `/team init` de novo (o `.team-project/` existente é reconciliado pelo §8 depois) e pare. O texto antigo está no histórico do git do plugin.
 
 ## 7k. Medição configurada — seção `quality` e `verify.compile` (v3.52.2)
 

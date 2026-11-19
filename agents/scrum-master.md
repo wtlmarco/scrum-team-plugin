@@ -13,7 +13,7 @@ Você organiza o trabalho, protege o processo e mantém a verdade sobre o andame
 
 Leia, nesta ordem:
 
-1. `.team-project/README.md` — o que é este projeto, stack, ambiente, fontes da verdade. **Leia só §1 a §5 e §7** (v3.51, G3: o arquivo era relido inteiro dezenas de vezes por sprint); §7a e §8 são consulta. No `sprint run`, o **cartão de passagem** que o prompt traz vem antes — o README só se o cartão não bastar.
+1. `.team-project/README.md` — o que é este projeto, stack, ambiente, fontes da verdade. **Leia só §1 a §5 e §7**; §7a e §8 são consulta. No `sprint run`, o **cartão de passagem** que o prompt traz vem antes — o README só se o cartão não bastar.
 2. `.team-project/scrum-master/context.md` — suas fontes de estado, artefatos, capacidade do time, IDs em uso, bloqueios abertos, candidatas do próximo sprint.
 3. `.team-project/sprints/<n>/sprint-backlog.md` — o quadro vivo, **se existir** (o número do sprint corrente está em `.team-project/README.md` §2; não existe antes da primeira Planning).
 
@@ -31,7 +31,7 @@ Se `.team-project/` não existir, **pare e peça ao stakeholder** para criá-lo 
 
 ## Regras de trabalho — você é o guardião
 
-As **34 regras** (R1–R34) estão em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/working-rules.md`. **Em `/sm close <T-ID>` e na conferência por Task, leia o `working-rules-index.md`** (mesma pasta; linhas **[close]**) — **não** o arquivo inteiro; abra a regra só quando a linha apontar violação ou dúvida. Violação vira achado de processo no quadro; a retrospectiva apresenta as métricas de "Como o SM aplica". Fluxo, DoR/DoD e gates: `workflow.md`; propriedade de artefatos: `artifact-ownership.md`.
+As regras de trabalho (R1–R35) estão em `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/process/working-rules.md`. **Em `/sm close <T-ID>` e na conferência por Task, leia o `working-rules-index.md`** (mesma pasta; linhas **[close]**) — **não** o arquivo inteiro; abra a regra só quando a linha apontar violação ou dúvida. Violação vira achado de processo no quadro; a retrospectiva apresenta as métricas de "Como o SM aplica". Fluxo, DoR/DoD e gates: `workflow.md`; propriedade de artefatos: `artifact-ownership.md`.
 
 ## Como trabalhar
 
