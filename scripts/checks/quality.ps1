@@ -54,7 +54,9 @@ try {
         foreach ($f in @(Get-ChildItem -LiteralPath (Join-Path $Root '.team-project/verify') -Recurse -Filter 'result.json' -File -ErrorAction SilentlyContinue)) {
             try { $j = Read-Text $f.FullName | ConvertFrom-Json } catch { continue }
             if (-not $j.full -or [string]$j.full.tree -ne $treeNow) { continue }
-            $cv = @(@($j.full.commands) | Where-Object { [string]$_.key -match '^coverage\d*$' -and $_.log -and (Test-Path -LiteralPath (Join-Path $Root ([string]$_.log))) })
+            # v3.64.0 (item 7 C, decisão D7): a revisão final só aceita a cobertura de uma suíte RODADA de fato nesta árvore — a
+            # reaproveitada por "inputs" (verify.ps1) não vale aqui, para um inputs declarado errado não levar verde velho à Review.
+            $cv = @(@($j.full.commands) | Where-Object { [string]$_.key -match '^coverage\d*$' -and $_.log -and (Test-Path -LiteralPath (Join-Path $Root ([string]$_.log))) -and -not ($_.PSObject.Properties['reusedBy'] -and [string]$_.reusedBy -eq 'inputs') })
             if (-not $cv.Count) { continue }
             if (-not $best -or [string]$j.full.at -gt [string]$best.At) { $best = [pscustomobject]@{ Task = $f.Directory.Name; At = [string]$j.full.at; Cmds = $cv } }
         }

@@ -55,7 +55,7 @@ Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere c
 - A<k> · css · `<arquivo>` · <o que mudou> · regra: <onde a regra do projeto já diz o valor — standard §, token, spec do UX>
 - A<k> · stub · `<teste que já existia, fora da lista>` · <a dependência nova do arquivo do plano que ele monta e o stub/provider acrescentado> *(v3.54.1)*
 - A<k> · fixture · `<arquivo de teste da Task>` · <o que mudou na fixture> · regra: <standards/… § do padrão de ids | caminho do dump real em .team-project/operator/…> *(v3.55.0: a fixture só vai para o que a regra ou o dump dizem)*
-*(plano com `sem prova:` → ajuste de teste não entra aqui: é 🔺 GAP direto, v3.55.0. Linha fora do formato não esconde as outras travas: o `close` devolve tudo numa saída só.)*
+*(plano com `sem prova:` → ajuste de teste não entra aqui: é 🔺 GAP direto, v3.55.0. Linha fora do formato não esconde as outras travas: o `close` devolve tudo numa saída só. v3.64.0: a linha fora do formato que o `close` consegue ler vira aviso; só a ilegível reprova.)*
 *(o `close` confere: o teste ajustado tem mutação no plano, pega na árvore final; o CSS cita a regra; o stub é teste existente que cita um arquivo de **Arquivos tocados:** e todo teste assim alterado tem a linha. O "Deve falhar se…" do plano não muda.)*
 
 ### Aceite no alvo *(v3.51 — os cenários da Task, `accept.ps1`)*
@@ -68,6 +68,7 @@ Fecha toda execução de `/dev <ID>`. É o ponto de partida do QA, que confere c
 ### Documentos vivos (R12)
 **Estado:** a consolidar | atualizados | n/a — <motivo>
 - <documento> §<seção> — <o que muda> *(o Arquiteto consolida uma vez no fim do sprint — A5)*
+*(v3.64.0: sem esta seção, o `run.ps1 done` a escreve com "a consolidar" e o `**Documentos vivos:**` do plano. Com o verify full verde na árvore de agora, a saída do verify não precisa ser colada aqui: o `done` copia a seção `### Prova registrada` do `result.json`. O que só você sabe — o que mudou e por quê, a falha e a causa — continua seu.)*
 
 ### Execução delegada
 *(uma linha por chamada ao `operator` — o índice dos jobs (R28); o pedido dizia "chamado por dev · Task <T-ID>" e o `report.md` do job é o ponteiro da §Verificação. Tokens e duração o hook G16 mede; não copio número nem gravo em `consumption.md`. Sem chamada: "nenhuma".)*
