@@ -73,9 +73,11 @@ O que a ferramenta não mede, com `arquivo:linha` e a seção de `standards/` qu
 
 ## Rodada 2
 
-| ID | State | Evidência |
-|---|---|---|
-| S<n>-F1 | fixed · open · debt · wontfix | <o que mudou e onde está a prova> |
+| ID | Task | Achado | Onde | Cause | Owner | State | Evidência |
+|---|---|---|---|---|---|---|---|
+| S<n>-F1 | <T-ID> | <o achado> | <arquivo:linha ou tela> | code · design · scenario · screen · requirement · environment | <dono> | fixed · open · debt · wontfix | <o que mudou e onde está a prova> |
+
+*(v3.64.0: a tabela da rodada é a mesma dos achados — a causa na coluna Cause, nunca dentro do ID; o `run.ps1 next` só lê achado com `S<n>-F<k>` no ID e a causa na coluna. `validation.md` anterior à v3.63.0, sem a coluna Cause: reescreva aqui cada achado antigo ainda aberto, com ID novo e uma causa.)*
 
 **Veredito (rodada 2):** ✅ | ⚠️ | ❌ — <aaaa-mm-dd hh:mm>
 ```

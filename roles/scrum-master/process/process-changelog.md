@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.61`](process-changelog-archive.md) | Sprint 0: o backlog funcional abre sobre documentação conforme e ambiente de testes provado — o onboarding pergunta onde está a documentação e decide o sprint 0 (SM + PO + Arquiteto + QA) — 16/11/2026 |
 | [`v3.60`](process-changelog-archive.md) | A ficha leva os trechos (o Arquiteto do plano lê uma vez e escreve) e o kanban acompanha o prazo: previsão por parte, farol e burndown visual, com o registro técnico no consumo (SM + Arquiteto) — 15/11/2026 · *com addendum v3.60.1* |
 | [`v3.59`](process-changelog-archive.md) | Acompanhar o sprint em palavras simples: a fala da sessão, o Resumo do quadro e o /team-status para quem é de negócio, com o técnico sob pedido (SM + PO + Arquiteto) — 14/11/2026 · *com addendum v3.59.2* |
 | [`v3.58`](process-changelog-archive.md) | Security Engineer: pentest e secure code review sob demanda, com o laço que leva o achado ao standard do Arquiteto (SM + Arquiteto + Security Engineer) — 12/11/2026 · *com addendum v3.58.3* |
@@ -102,6 +103,25 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.64 — A evidência que o script já sabe, o cartão que só diz o que o plano diz, a árvore e a máquina com dono e o portão que não duplica correção (SM + Arquiteto + Dev + QA) — 18/11/2026
+
+**Instrução:** (stakeholder, 18/11/2026) "consegue fazer uma análise no projeto garden para identificar tudo que gerou retrabalho durante o sprint 6"; depois "monte o plano de correção dos itens 2, 5 e 6", "inclua no plano v3.64.0" (a parada da Q-S6e no Karma), "inclua somente o necessário para resolver no plugin" (o portão que mandava abrir a Q-S6f) e "pode construir". Decisões D1–D8 em formulário, no mesmo dia (`melhorias/plano-v3.64.0.md` §8).
+**Medido (piloto, S6, 11 a 18/11):** 58 reprovações do `done` viraram "dev novo, só a evidência, não mude código" — 9 eram só papel, 18 só um comando, 17 repetiam a anterior igual, e com a suíte vermelha o dev não podia mudar código; o cartão dizia "**Verificação:** sem verify" (o estado) e o dev leu "não rode" (T-083, T-093); a T-090 parada em 🔴 deixou 6 arquivos no disco e a T-093 só fechou com um commit à mão (`6e84fcf`); às 19:21 de 18/11 outro projeto da máquina subiu um servidor do adb próprio e um emulador no meio da suíte do Karma — o emulador do piloto caiu e a suíte ficou 2,6× mais lenta — e o diagnóstico mandou abrir Task de configuração; o `validation.md` começado antes da v3.63.0 nunca chegou ao caminho por causa, e o `next` mandou abrir a Q-S6f com a Q-S6e aberta para os mesmos 21 cenários.
+**Classificação:** rota (a reprovação do `done` segue a natureza — script, operator, dev, ambiente; repetição idêntica escalona; uma `Q-S<n>` por vez; Q-S em 🔴 vai ao bloqueio) · instrumento (prova registrada e R12 escritos pelo script; checkpoint; `treeIgnore`; diagnóstico da máquina; trava pesada e `machine-lock.ps1`; `inputs` e `lastGreen`) · formato de documento (cartão em duas seções; tabela da rodada com `Cause`).
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `agents/task-runner.md` | O ciclo, passo 4a | a reprovação do `done` pela natureza: mecânica o script preenche · prova não rodada → operator, sem dev · vermelha ou escopo → dev normal, que pode mudar código · a mesma reprovação pela 2ª vez → Arquiteto (ou stakeholder, ambiente) |
+| `roles/developer/templates/delivery-report.md` | Documentos vivos · Ajustes na margem | sem a seção R12, o `done` a escreve; com o verify verde, a saída não precisa ser colada (`### Prova registrada`); a linha de margem que se lê é aviso |
+| `roles/quality-assurance/templates/sprint-validation.md` | Rodada 2 | a tabela da rodada é a dos achados (com `Cause` na coluna); o formato antigo converte os achados abertos |
+| `sprint-run.md` | §Validação do sprint · Correção do portão | uma `Q-S<n>` por vez, achados novos à aberta com o plano emendado pelo Arquiteto, `**Corrige:**` substitui, 🔴 vai ao bloqueio, o diagnóstico do operator é informação nova; checkpoint antes de medir; a suíte reaproveitada por `inputs` roda de fato na revisão final |
+| `how-to.md` | Alvos | um servidor do adb por máquina e uma porta de emulador por projeto; trabalho pesado um por vez (`machine-lock.ps1` para scripts do projeto); `inputs` da suíte; `treeIgnore` e o checkpoint |
+
+### Pendente do stakeholder
+Nada.
+
+---
 ## v3.63 — O portão do QA por marcos: ambiente não vira veredito, a rodada nova mede e julga só o que venceu, cada achado tem causa e dono, e a prova de cada rodada fica no sprint (SM + QA + PO + UX + Arquiteto + Dev) — 17/11/2026
 
 **Instrução:** (stakeholder, 17/11/2026) "Avalie se o processo de QA desde que inicia possui marcos do processo sobre as diversas validações que realiza pois uma falha em um deles não necessariamente poderá reiniciar todo o processo do zero"; "existe na falha dos cenários uma marcação do motivo para talvez resolvê-lo a nível de UX, PO, Arquiteto ou dev?"; "o Kanban, consumption precisam controlar também essa tarefa além de dentro do sprint guardar as evidências das entregas". Formulários do mesmo dia: tudo numa 3.63.0; nomes em inglês; o portão vira item controlado; guardar o resultado e as capturas, sem os logs brutos. Plano em `melhorias/plano-v3.63.0.md`.
@@ -233,42 +253,3 @@ Nos próximos sprints com app híbrido: nenhum 🔺 GAP ambiente por id não enc
 | `agents/developer.md` | passo 12 | a prova é o `accept.ps1` do cartão; o executor direto não vale |
 | `agents/operator.md` | regras | pedido de rodar o executor do projeto como prova vai pelo `accept.ps1 -Task` |
 | `agents/quality-assurance.md` | evidência do `verify` | cenário provado fora do `accept` não é evidência de aceite; `não roda` com script é achado de processo |
----
-
-## v3.61 — Sprint 0: o backlog funcional abre sobre documentação conforme e ambiente de testes provado — o onboarding pergunta onde está a documentação e decide o sprint 0 (SM + PO + Arquiteto + QA) — 16/11/2026
-
-**Instrução:** (stakeholder, 16/11/2026, depois de perguntar como usar QA, Sec, Arquiteto e PO em tarefas avulsas) "Não poderíamos considerar o processo de onboarding o questionamento da onde está a documentação, se não existir propor criá-la disparando uma atividade de sprint 0 para isso com a criação da documentação e do ambiente de testes, se existir o sprint 0 irá revisá-la e adequá-la aos pontos de boas práticas de qualidade tanto arquitetural quanto funcional e somente assim iniciar um backlog funcional. Avalie."; avaliação com cinco ajustes aceita: "Sim, implemente a v3.61.0 numa branch feat".
-**Medido (garden, sprints 4–6):** 84% do custo do plano no S6 veio antes da primeira escrita — exploração do código que a documentação não respondia; as paradas do S6 por ambiente (emulador, Docker, prova no aparelho) aconteceram no meio do run, com Task em construção. No onboarding, documentação funcional ausente ia ao `brainstorm`, que descobre o que construir, não o que existe; a documentação técnica e o ambiente de testes não eram conferidos.
-**Classificação:** regra (R35; R14 ajustada) · cerimônia (sprint 0: `plan`, `run`, `review`, `area`) · formato de documento (quadro do sprint 0, conformidade do QA, plano de ambiente) · instrumento (`foundation.ps1`; G25; C2 R35)
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `working-rules.md` · `working-rules-index.md` | R14 · R35 (nova) · Resumo | o onboarding decide o sprint 0; R35: SDD `00`–`06` nos modelos, conferido pelo QA contra o código, e ambiente provado antes do primeiro `prepare`; dispensa só pelo stakeholder |
-| `workflow-sprint0.md` (novo) | — | `plan` (assess → init → formulário do escopo → approve), `run` (laço `foundation.ps1 next`), `review` (formulário único → close), `area` |
-| `workflow-ritos.md` | §5a passo 3 · condição de saída · rastreio de pendências | "onde está a documentação, e ela serve?": tabela do `assess` e rota; projeto com código vai ao sprint 0, sem código ao brainstorm |
-| `workflow-sprint.md` | prepare, passo 1 | a candidata cai numa área documentada; o requisito aceito no sprint 0 vale como ① e ② |
-| `templates/foundation.md` · `quality-assurance/templates/conformance.md` · `architect/templates/foundation-env-plan.md` (novos) | — | o quadro, a conformidade por documento (régua + amostra `arquivo:linha` + verificabilidade) e o plano de ambiente com o `guards.json` proposto |
-| `templates/project-context.md` · `deliverables/team-project/README.md` · `artifact-ownership.md` §1e | §2 · §8 · A pasta do sprint 0 | a linha `Sprint 0 (fundação)`; as sequências de início; `sprints/0/` e os donos |
-| `team-update.md` | 7n (novo) | projeto em andamento não ganha a linha: adotar é `/sm sprint0 plan` |
-
-### Por quê
-O backlog nascia sobre documentação que ninguém tinha conferido contra o código: o QA sem requisito verificável para escrever cenário, o Arquiteto pagando a exploração a cada plano, o sprint parando por ambiente que devia estar pronto antes da primeira Task. Os cinco ajustes da avaliação seguram o outro extremo: **liberar por área** (o transversal e a 1ª onda, o resto quando o backlog chegar — `area`), **régua verificável** (os modelos do SDD, não "boas práticas" em aberto), **documentar como é** (má prática vira dívida no backlog, o sprint 0 não refatora), **ambiente com condição de pronto objetiva** (`verify`, `run.prereqs`, baseline, um cenário no alvo) e **mecânica própria** — o executor de Task só dispara dev e a G8 não deixa o dev escrever o SDD, então o sprint 0 tem quadro e script próprios, fora do índice "Sprint corrente".
-
-### Conflitos com o processo vigente
-R14 dizia "documentação funcional ausente aciona o brainstorm": vale agora só para projeto sem código. R15 cobra o ① antes do `03`–`05`: o documento aceito no sprint 0 fica fora (o C2 o isenta pela data do aceite). A v3.34 (parte 2) recusou um "sprint 0" para o plano de calibração (quebraria o índice do sprint corrente): este não entra no índice. R20 (Task sob História) não se aplica: o quadro do sprint 0 é de itens `S0-nn`, sem Task de entrega.
-
-### Como saberemos que funcionou
-No próximo projeto que fizer o onboarding: o sprint 0 fecha com até 2 devoluções por item; o 1º sprint funcional não para por ambiente; o custo de exploração do plano (antes do 1º `Write`) cai abaixo de 50% (era 84% no S6 do garden). Sprint 0 com mais de 3 itens 🔴, ou mais longo que o 1º sprint funcional, volta ao `/review`.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Arquivamento de entrada | bloco v3.58 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.61, v3.60, v3.59 | ✅ |
-| Entrega | `release.ps1` (C3); `run-check-tests.ps1`; `run-guard-tests.ps1` | ver CHANGELOG v3.61.0 | ✅ |
-
-### Parte mecânica (implementada pela sessão principal, citada aqui)
-`foundation.ps1` (novo): `assess`, `init`, `approve`, `next`, `check [-Item]`, `area`, `close`, `dispense`, `gate`. `prompt-submit.ps1`: G25 bloqueia `/sm sprint prepare|plan` com o sprint 0 exigido e não concluído; G21 conhece `sm sprint0 <modo>`. `project.ps1`: R35 e a isenção da R15. `commands/sm.md`: modo `sprint0` e pré-condições.
-
-### Pendente do stakeholder
-Nada.

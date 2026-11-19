@@ -89,7 +89,11 @@ Falhou qualquer uma: **pare e reporte** — não peça nada ao stakeholder aqui.
 2. O **Arquiteto** escreve o plano de correção em `plan/Q-S<n>-<slug>.md` (modelo [`fix-plan.md`](../../architect/templates/fix-plan.md) ou o plano enxuto), passa pelo `plan.ps1`; o **executor de Task** a conduz como qualquer Task (dev, GAP, `run.ps1 done`, commit `Q-S<n>: …`).
 3. Fechada a `Q-S<n>`, o `operator` mede de novo **só o que ela venceu** e o QA, em instância nova, faz a rodada focada.
 
-**`validation.md` no formato anterior** (tabela com "Volta para", sem `Cause`): o `next` segue o caminho de antes — `Q-S<n>` pelos achados "Volta para: dev", "Volta para: Arquiteto" a `/arc question`.
+**`validation.md` no formato anterior** (tabela com "Volta para", sem `Cause`): o `next` segue o caminho de antes — `Q-S<n>` pelos achados "Volta para: dev", "Volta para: Arquiteto" a `/arc question`. **v3.64.0:** o caminho antigo não é permanente — a rodada focada pede a tabela `| ID | Task | Achado | Onde | Cause | Owner | State | Evidência |` e a conversão dos achados antigos abertos, e daí em diante vale o caminho por causa.
+
+**Uma correção do portão por vez (v3.64.0).** Com uma `Q-S<n>` aberta (fora de ✅), nenhuma outra é aberta: os achados novos vão à aberta (a linha dela ganha os IDs) e o **Arquiteto emenda o plano dela** (`/arc question`, `plan.ps1`), porque ele foi escrito para outros achados. A `Q-S<n>` cujo plano declara `**Corrige:** <outra Q-S>` faz a outra contar como substituída — não segura o portão. Com a correção que cobre os achados em 🔴, o `next` vai à rota do bloqueio dela, nunca a "esperar". O **diagnóstico do operator** (`operator/<n>/S<n>-alvo/diagnostico.md`) mais novo que o `validation.md` é informação nova: o QA faz a rodada focada com ele (APP → `code`; PLANO → `scenario` ou `design`).
+
+**A máquina na revisão final (v3.64.0).** Antes de medir, o código das Tasks não fechadas vai num checkpoint e o pendente que sobrar aparece na saída. A suíte que só existe reaproveitada por `inputs` (verify, item 7 C) é rodada de fato (`verify.ps1 -Mode full -Fresh`) antes da qualidade — a Q11 não aceita a reaproveitada.
 
 **No quadro e no consumo (v3.63.0).** O `kanban.md` ganha a seção `## Validação do sprint` (rodada, situação, frentes e cada achado com a causa e quem resolve, em palavras simples), e o `/team-status` uma linha. No consumo, `S<n>` tem a unidade "validação do sprint" e `S<n>-F<k>` a "correção do portão"; a 2ª rodada do portão em diante é retrabalho, e o `consumption.md` traz a tabela "Por rodada do portão".
 
