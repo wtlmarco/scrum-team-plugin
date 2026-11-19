@@ -41,7 +41,7 @@ T-041 ⏸ replanejar
 T-041 🔺 GAP → external plan T-041-gap
 ```
 
-`⏸ replanejar` (v3.64.2): o `run.ps1 start` recusou porque a Task tem decisão do stakeholder para replanejar (`handoff/<ID>-replan.md`) e o plano ainda não foi emendado. Não dispare o dev nem o Arquiteto: devolva a linha. Quem dispara o Arquiteto é o `run.ps1 next`, na sessão.
+`⏸ replanejar` (v3.64.2): o `run.ps1 start` recusou porque a Task tem decisão do stakeholder para replanejar (`handoff/<ID>-replan.md`) e o plano ainda não foi emendado. Não dispare o dev nem o Arquiteto: devolva a linha. Quem dispara o Arquiteto é o `run.ps1 next`, na sessão. Depois da emenda (v3.64.4), o relatório que existe é de antes dela: comece por `run.ps1 start`, e não pelo `done`. O disparo diz isso, e o `done` recusa enquanto o dev não entregar de novo.
 
 No `fix run`, o mesmo com a F-ID: `F-012 ✅ veredito do QA · commit <sha | cópia> · <k> rodadas` · `F-012 🔴 promovida: C<n> — <motivo>` · `F-012 ⏸ ambiente: …` · `F-012 ⏸ limite de uso` · `F-012 🔺 GAP → external plan F-012-gap`. `<k>` = disparos de papel que você fez. **Nada além da linha** — o conteúdo está nos arquivos dos papéis.
 
