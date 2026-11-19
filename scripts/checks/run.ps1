@@ -1523,15 +1523,38 @@ try {
         if ($rs.Amended) {
             $pc = Invoke-Child 'plan.ps1' @('-Plan', $rs.Plan, '-Root', $Root)
             if ($pc.Code -ne 0) {
-                Out "PRÓXIMA AÇÃO: o plano emendado da $($rt.Id) não passa no plan.ps1 — Arquiteto (mesma instância, ou nova com $mRel) corrige até passar; nenhum dev antes"
-                Out "  $(Get-AgentLine 'architect')"
-                Out "  plan.ps1: $(((($pc.Out -split "`r?`n") | Where-Object { $_ -match 'falhou' } | Select-Object -First 3) -join ' · ') -replace '\s+', ' ')"
-                Out "  depois: run.ps1 next"
-                exit 0
+                # v3.64.3 (sprint 6 do projeto piloto, Q-S6e): o plano emendado reprovava só pelo tamanho (31,8 KB contra 30) e o
+                # next repetia "Arquiteto corrige até passar" — o plan.ps1 diz para não cortar, e a divisão só vale para a Task
+                # no preparo ("a que está em construção segue", v3.53.6) e nunca para a Q-S. Só o tamanho: segue, como a Task
+                # em construção. Outra reprovação: fica no handoff e o Arquiteto regrava; a mesma pela 2ª vez sai do laço.
+                $failRows = @(($pc.Out -split "`r?`n") | Where-Object { $_ -match '^\s*\|\s*[^|]+?\s*\|\s*falhou\s*\|' } | ForEach-Object { ($_ -replace '\s+', ' ').Trim() })
+                $failNames = @($failRows | ForEach-Object { if ($_ -match '^\|\s*([^|]+?)\s*\|') { $Matches[1] } })
+                if ($failNames.Count -and -not @($failNames | Where-Object { $_ -ne 'tamanho' }).Count) {
+                    Out "  aviso: o plano emendado da $($rt.Id) passa do teto de tamanho ($(($failRows[0] -split '\|')[3].Trim() -replace '\s*:.*$', '')) — segue, como a Task em construção (só a Task no preparo se divide; o dev lê o cartão e o bloco, não o plano inteiro)"
+                } else {
+                    $sig = (@($failRows | ForEach-Object { $_ -replace '\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?', '<data>' }) | Sort-Object) -join ' · '
+                    $mt = Read-Text $rs.Marker
+                    $seen = @([regex]::Matches($mt, '(?m)^- plan\.ps1 reprovou em \d{4}-\d{2}-\d{2} \d{2}:\d{2}: (.*)$') | Where-Object { $_.Groups[1].Value.Trim() -eq $sig }).Count
+                    if ($seen) {
+                        Set-AskRoute $Root 'bloqueio' $rt.Id "plano emendado da $($rt.Id) reprova igual pela 2ª vez no plan.ps1"
+                        Add-RunLog $S $n $rt.Id 'plano emendado reprovou igual pela 2ª vez no plan.ps1 → degrau 1 (PO + Arquiteto); sem outro Arquiteto igual' $sig "sprints/$n/handoff/$($rt.Id)-replan.md"
+                        Out "PRÓXIMA AÇÃO: o plano emendado da $($rt.Id) reprovou IGUAL pela 2ª vez no plan.ps1 — degrau 1 (PO + Arquiteto decidem o que muda: o plano, a regra ou a Task); sem solução, formulário ao stakeholder (R22). Não dispare outro Arquiteto igual nem dev (v3.64.3)."
+                        Out "  plan.ps1: $sig"
+                        Say "$(Get-RunLabel $rt.Id): o plano ajustado ainda não passa na conferência. O dono do produto e o arquiteto vão decidir; se não resolverem, trago a decisão para você."
+                        exit 0
+                    }
+                    [System.IO.File]::AppendAllText($rs.Marker, "- plan.ps1 reprovou em $(Get-Date -Format 'yyyy-MM-dd HH:mm'): $sig`n", (New-Object System.Text.UTF8Encoding($false)))
+                    Out "PRÓXIMA AÇÃO: o plano emendado da $($rt.Id) não passa no plan.ps1 — Arquiteto (instância nova) corrige e regrava; a reprovação ficou em $mRel; nenhum dev antes"
+                    Out "  $(Get-AgentLine 'architect')"
+                    Out "  plan.ps1: $sig"
+                    Out "  prompt: `"/arc question — o plano $pRel da $($rt.Id), emendado com a decisão de $mRel, reprova no plan.ps1 (as linhas estão no fim do mesmo arquivo). Corrija só o que reprova, sem desfazer a decisão; o tamanho acima do teto não se corta. Rode $plugin/plan.ps1 -Plan $pRel e volte em até 10 linhas.`""
+                    Out "  depois: run.ps1 next"
+                    exit 0
+                }
             }
             if ($rt.Mark -ne $E.Build) { $mo = Set-Mark $rt.Id 'build' 'sessão (run.ps1 next — plano emendado)'; if ($mo) { Out "  $mo" } }
             Remove-Item -LiteralPath $rs.Marker -Force -ErrorAction SilentlyContinue
-            Add-RunLog $S $n $rt.Id 'plano emendado pelo Arquiteto com a decisão do stakeholder → 🟨; o executor retoma pelo cartão' 'plan.ps1 verde depois do handoff/<ID>-replan.md (v3.64.2)' "sprints/$n/$($rt.Plan)"
+            Add-RunLog $S $n $rt.Id 'plano emendado pelo Arquiteto com a decisão do stakeholder → 🟨; o executor retoma pelo cartão' $(if ($pc.Code -ne 0) { 'plan.ps1 só acima do teto de tamanho: segue como a Task em construção (v3.64.3)' } else { 'plan.ps1 verde depois do handoff/<ID>-replan.md (v3.64.2)' }) "sprints/$n/$($rt.Plan)"
             $tasks = @(Get-SprintTasks $S)
             continue
         }

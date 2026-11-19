@@ -13,6 +13,28 @@
 
 ---
 
+## v3.64.3 — 2026-11-19
+
+**Branch:** `fix/v3.64.3` a partir de `develop` (`78b88f5`, v3.64.2 mesclada)
+
+Origem: sprint 6 do projeto piloto, 19/11. O Arquiteto emendou o plano da Q-S6e com a decisão 147, e o `plan.ps1` reprovou só pelo tamanho (31,8 KB contra o teto de 30 KB). O passo de replanejar da v3.64.2 tratava qualquer reprovação como "Arquiteto corrige até passar", e o `next` repetiu a mesma ação três vezes. Não havia saída:
+- o `plan.ps1` manda não cortar plano grande;
+- a divisão automática só vale para a Task no preparo ("a que está em construção segue", v3.53.6) e nunca roda para as correções do portão (Q-S), cujo ramo no preparo vem antes dela.
+
+A sessão do piloto pausou o run e propôs dividir a Q-S6e à mão. Isso desfaria a amarração da Q-S com o portão: o nome `Q-S<n>` + letra, os IDs dos achados e a cadeia `**Corrige:**`.
+
+**O plano emendado que não passa** (`run.ps1 next`, passo de replanejar):
+- **Só o tamanho:** a Task segue para 🟨 com aviso, como a Task em construção. O dev lê o cartão e o bloco, não o plano inteiro. O run-log registra o motivo.
+- **Outra reprovação:** as linhas reprovadas ficam no fim do `handoff/<ID>-replan.md`, e o Arquiteto, em instância nova, corrige só o que reprova, sem desfazer a decisão nem cortar o tamanho, e regrava o plano.
+- **A mesma reprovação de novo** (assinatura sem datas): rota de bloqueio, degrau 1 (PO + Arquiteto) e, sem solução, formulário (R22). Sem outro Arquiteto igual nem dev.
+
+**Testes:** 3 casos novos em `run-check-tests.ps1`:
+- o plano emendado só acima do teto vai a 🟨 sem pedir o Arquiteto;
+- a reprovação por outra regra vai ao handoff e ao Arquiteto;
+- a mesma reprovação pela 2ª vez vai ao degrau 1.
+
+**Suítes** (`run-all-tests.ps1`, 8 processos): 1.068 casos, 1 falhou, em 582 s. A falha foi a paridade do CDP da v3.62.0 ("paridade: erro — fetch failed", com o Chrome headless sob carga), fora desta entrega. Rodado sozinho, o trecho passou (5 casos, 0 falharam). É a 3ª intermitência sob carga em três rodadas, depois do `verify` A6 e do garden 28 na v3.64.2.
+
 ## v3.64.2 — 2026-11-19
 
 **Branch:** `fix/v3.64.2` a partir de `develop` (`cc437f9`, v3.64.1 mesclada)

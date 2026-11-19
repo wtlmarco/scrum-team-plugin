@@ -2610,6 +2610,24 @@ Edit-File (Join-Path $pk641 '.team-project/sprints/1/plan/T-041-export.md') '## 
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $pk641)
 $sb642 = [System.IO.File]::ReadAllText((Join-Path $pk641 '.team-project/sprints/1/sprint-backlog.md'), $utf8)
 Check 'v3.64.2: plano emendado e plan.ps1 verde → a Task vai a 🟨, a decisão sai do handoff e a fila segue (aqui, o preparo da T-041a)' @{ Code = $r.Code; Out = $r.Out + "`nRP=$(Test-Path -LiteralPath $rp642)`nB=" + $sb642 } 0 @('mark: T-041 🟦 → 🟨', 'por quem: sessão \(run\.ps1 next — plano emendado\)', 'RP=False', 'B=[\s\S]*🟨 T-041 \|', '^(?![\s\S]*emendar o plano da T-041)', '^(?![\s\S]*não passa no plan\.ps1)')
+# v3.64.3 (sprint 6 do projeto piloto, Q-S6e): o plano emendado acima do teto de tamanho não prende a Task num laço.
+$pf643 = Join-Path $pk641 '.team-project/sprints/1/plan/T-041-export.md'
+$null = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'blocked', '-Reason', 'ambiente: suíte caiu de novo', '-Root', $pk641)
+$null = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'build', '-Reopen', 'replan', '-Decision', 'mudar a espera', '-Root', $pk641)
+(Get-Item -LiteralPath $rp642).LastWriteTime = (Get-Date).AddMinutes(-10)
+Edit-File $pf643 '## 9. Onde parar' ("## 8. Notas do Arquiteto`n" + (('- a emenda da espera do Karma, com o motivo e o que fica de fora ' * 6 + "`n") * 90) + "`n## 9. Onde parar")
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pk641)
+Check 'v3.64.3: plano emendado que só passa do teto de tamanho → segue a 🟨 com aviso, sem pedir o Arquiteto de novo nem dividir' @{ Code = $r.Code; Out = $r.Out + "`nRP=$(Test-Path -LiteralPath $rp642)" } 0 @('aviso: o plano emendado da T-041 passa do teto de tamanho', 'mark: T-041 🟦 → 🟨', 'RP=False', '^(?![\s\S]*não passa no plan\.ps1)', '^(?![\s\S]*emendar o plano da T-041)')
+$null = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'blocked', '-Reason', 'ambiente: suíte caiu outra vez', '-Root', $pk641)
+$null = Invoke-Check 'mark.ps1' @('-Task', 'T-041', '-To', 'build', '-Reopen', 'replan', '-Decision', 'mudar a espera de novo', '-Root', $pk641)
+(Get-Item -LiteralPath $rp642).LastWriteTime = (Get-Date).AddMinutes(-10)
+Edit-File $pf643 '**Risco:** infraestrutura' '**Risco:** a decidir'
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pk641)
+Check 'v3.64.3: plano emendado que reprova por outra regra → a reprovação vai ao handoff e o Arquiteto corrige (nenhum dev)' @{ Code = $r.Code; Out = $r.Out + "`nRP=" + [System.IO.File]::ReadAllText($rp642, $utf8) } 0 @('não passa no plan\.ps1 — Arquiteto \(instância nova\) corrige e regrava', 'team:architect', 'RP=[\s\S]*- plan\.ps1 reprovou em \d{4}-\d\d-\d\d \d\d:\d\d: \| risco \| falhou', '^(?![\s\S]*team:developer)')
+(Get-Item -LiteralPath $pf643).LastWriteTime = (Get-Date).AddMinutes(5)
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pk641)
+$ar643 = $(try { (Get-Content -LiteralPath (Join-Path $pk641 '.team-project/.ask-route') -Raw -Encoding UTF8) } catch { '' })
+Check 'v3.64.3: a mesma reprovação pela 2ª vez → degrau 1 (PO + Arquiteto), rota de bloqueio, sem outro Arquiteto igual nem dev' @{ Code = $r.Code; Out = $r.Out + "`nrota=$ar643" } 0 @('reprovou IGUAL pela 2ª vez no plan\.ps1 — degrau 1', 'rota=.*"rota":"bloqueio"', '^(?![\s\S]*team:architect)', '^(?![\s\S]*team:developer)')
 Put $p '.team-project/accept/1/T-041/result.json' '{ "environment": "IDS NÃO PUBLICADOS: …", "startState": "br.x/br.x.MainActivity · textos: Cultiva", "results": [ { "id": "SC-165", "status": "FALHOU", "shot": ".team-project/accept/1/T-041/shots/SC-165-falha.png" } ] }'
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $p)
 Check 'v3.62.0: done -Result env com o IDS NÃO PUBLICADOS de um result.json antigo → CONFIGURAÇÃO DO ALVO (locator cdp), sem reparo, sem baseline, sem aria-label' $r 0 @('CONFIGURAÇÃO DO ALVO: app híbrido.*targets\.android\.locator = .cdp.', 'mark\.ps1 -Task T-041 -To blocked -Reason "configuração do alvo — ', 'T-041 🔴 bloqueada: configuração do alvo', '^(?![\s\S]*-Repair)', '^(?![\s\S]*targets\.android\.baseline)', '^(?![\s\S]*aria-label)')
