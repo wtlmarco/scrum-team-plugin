@@ -77,3 +77,16 @@ assert-checked p.marca = true
 scenario PAR-15 [FALHOU] id que não existe
 open
 assert-exists p.nao-existe
+
+scenario PAR-16 toque que fecha o alerta: o elemento some e o toque conta
+open
+tap p.abre-alerta
+tap p.alerta.ok
+assert-text p.lido = alerta fechado
+assert-absent p.alerta.ok
+
+scenario PAR-17 alvo ainda deslizando: o toque espera ele parar
+open
+tap p.desliza
+tap p.movel
+assert-text p.lido = parado

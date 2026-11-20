@@ -13,6 +13,28 @@
 
 ---
 
+## v3.65.1 — 2026-11-20
+
+**Branch:** `fix/v3.65.1` a partir de `develop` (`5c3965f`, v3.65.0 mesclada)
+
+Origem: ocorrências de plugin do portão do sprint 6 do garden (`architect/decisions/S6.md`: D-19, D-20, D-29, D-30).
+
+**O toque que fecha o alerta conta** (`dom-probe.js`, `cdp-verbs.js`; S6-F2, S6-F3, D-30): o `armed` procurava o elemento de novo 250 ms depois do toque. Quando o toque fecha o alerta ou troca a página, ele já saiu da tela e o passo FALHAVA com "não chegou a ele", com o toque certo (SC-128 gravou os 33 semeios). Agora o `arm` guarda o elemento e o ouvinte guarda o caminho do pointerdown no próprio evento, e o `armed` confere por eles.
+
+**O toque espera o alvo parar** (`cdp-verbs.js`; S6-F5, D-30): o `tap` media a caixa assim que o elemento entrava na janela. Com rolagem que ainda desliza (inércia) ou tela entrando com animação, o toque parava o deslize sem virar clique, ou caía no vizinho. Agora espera a caixa ficar igual em duas leituras seguidas (até 2 s) e rola de novo se a espera o tirou da janela.
+
+**Q9 conta o marcador, não a palavra** (`quality.ps1`; S6-F11, D-19): `\b(TODO|FIXME)\b` casava "cobre TODO o app" e "ANO TODO". Agora conta `TODO`/`FIXME` logo depois da abertura do comentário (`//`, `/*`, `#`, `*`, `<!--`, `--`) ou seguido de `:`, `(` ou `[`. `quality.todoPattern` troca a regra.
+
+**Q11 lê cada módulo** (`quality.ps1`; S6-F12, D-20): com o `coveragePattern` do projeto, toda ocorrência conta e vale a menor, e a linha diz qual ("o menor de 4 ('módulo raiz: 85.00%')"). O padrão do plugin segue lendo só a primeira. O D-20 não precisa mais do padrão com `\A` e lookahead: basta `m.dulo\s+\S+:\s+(\d+(?:\.\d+)?)%`.
+
+Textos: `guards.json` modelo (`todoPattern` e as duas chaves em `_exemplos`), `team-update.md` 7k.
+
+Testes: paridade com PAR-16 (botão que fecha o próprio alerta) e PAR-17 (alvo ainda deslizando), os dois FALHOU no executor anterior; 4 casos novos do `quality.ps1`.
+
+**Fica com o projeto** (S6-F12): gravar o `coveragePattern` e dar ferramenta a Q1, Q6, Q8 e à formatação do Q7.
+
+---
+
 ## v3.65.0 — 2026-11-19
 
 **Branch:** `feat/v3.65.0` a partir de `develop` (`4d6d7d4`, v3.64.5 mesclada) · **Processo:** v3.65 (`process-changelog.md`) · **Plano:** `melhorias/plano-v3.65.0.md` (decisões Q1–Q4 do stakeholder, 19/11)
