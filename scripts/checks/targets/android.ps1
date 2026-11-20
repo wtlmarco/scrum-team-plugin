@@ -466,6 +466,30 @@ function SetClock([string]$At) {
     Sh settings put global auto_time 0 | Out-Null; Sh settings put global auto_time_zone 0 | Out-Null
     Sh ("date " + $when.ToString('MMddHHmmyyyy') + ".00") | Out-Null; Start-Sleep -Milliseconds 500
 }
+# v3.65.3 (garden SC-204): o app que não trata a troca de fonte tem a tela recriada pelo Android, e a WebView carrega uma página
+# nova. Medido no aparelho do garden: a página velha ainda respondia o readyExpr como pronta até 1,1–1,3 s depois do comando, e o
+# passo esperava 0,8 s — o "ready" seguinte passava na página velha, e o toque seguinte caía no splash ("coberto"). Agora, com
+# o valor mudado e o DevTools ligado, espera até 3 s a lista de páginas do /json mudar; o ready do accept espera a nova. Valor
+# igual ao atual não recria nada e não espera.
+function Get-AndroidCdpPageIds {
+    if (-not $script:CdpPort) { return $null }
+    try { return @((Invoke-RestMethod -Uri "http://127.0.0.1:$($script:CdpPort)/json/list" -TimeoutSec 2) | Where-Object { $_.type -eq 'page' } | ForEach-Object { [string]$_.id } | Sort-Object) -join ',' } catch { return $null }
+}
+function Set-AndroidFontScale([double]$Scale) {
+    $cur = ((Sh settings get system font_scale) -join '').Trim()
+    $same = $false; $c = 0.0
+    if ([double]::TryParse($cur, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$c)) { $same = [math]::Abs($c - $Scale) -lt 0.001 }
+    $before = if ($same) { $null } else { Get-AndroidCdpPageIds }
+    Sh settings put system font_scale $Scale.ToString([Globalization.CultureInfo]::InvariantCulture) | Out-Null
+    Start-Sleep -Milliseconds 800
+    if ($same -or $null -eq $before) { return }
+    $t = [datetime]::UtcNow
+    while (([datetime]::UtcNow - $t).TotalMilliseconds -lt 2200) {
+        $now = Get-AndroidCdpPageIds
+        if ($null -ne $now -and $now -ne $before) { return }
+        Start-Sleep -Milliseconds 200
+    }
+}
 function Save-AndroidShot([string]$Path) { Sh screencap -p /sdcard/s.png | Out-Null; Adb pull /sdcard/s.png $Path | Out-Null }
 
 # ---------- v3.63.1 · identidade do app instalado, registro do aparelho e sinal da falha ----------
@@ -647,7 +671,7 @@ function Invoke-AndroidStep([string]$Verb, [string]$Rest, [string]$ShotBase) {
         'back' { Sh input keyevent 4 | Out-Null; Start-Sleep -Milliseconds 600 }
         'clock' { SetClock $Rest }
         'wait' { Start-Sleep -Seconds ([int]$Rest) }
-        'font-scale' { Sh settings put system font_scale ([double]$Rest) | Out-Null; Start-Sleep -Milliseconds 800 }
+        'font-scale' { Set-AndroidFontScale ([double]$Rest) }
         'tap' { Tap $Rest }
         'type' { $k, $v = $Rest -split '\s*=\s*', 2; TypeText $k.Trim() ([string]$v) }
         'select' { $k, $v = $Rest -split '\s*=\s*', 2; SelectOption $k.Trim() ([string]$v).Trim() }

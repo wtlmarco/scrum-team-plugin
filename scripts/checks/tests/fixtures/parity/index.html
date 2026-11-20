@@ -29,6 +29,25 @@
   <span id="p.lido">—</span>
 </section>
 
+<!-- v3.65.3 (garden SC-161): o rolador vive no shadow root do host e o conteúdo chega por <slot>; o campo é um componente de
+     slot emulado que esconde o <input> dele de children/childNodes. O campo e o botão começam fora da área do rolador. -->
+<section>
+  <painel-rolo id="p.rolo"><div style="height: 300px">espaço</div><campo-escopo id="p.rolo.campo"><input value=""></campo-escopo><button id="p.rolo.botao" onclick="lido('rolo')">rolo</button></painel-rolo>
+</section>
+
+<!-- v3.65.3 (garden SC-204): faixa de pílulas com rolagem; tocar a última e depois a primeira traz a faixa de volta à borda -->
+<section>
+  <div id="p.pilulas" style="width: 240px; overflow-x: auto; white-space: nowrap; border: 1px solid #999"><button id="p.pilula.1" style="width: 110px" onclick="lido('pilula 1')">1</button><button style="width: 110px">2</button><button style="width: 110px">3</button><button style="width: 110px">4</button><button style="width: 110px">5</button><button style="width: 110px">6</button><button id="p.pilula.7" style="width: 110px" onclick="lido('pilula 7')">7</button></div>
+</section>
+
+<!-- v3.65.3 (garden SC-204): o 1º toque chega (pointerdown, touchend) e não vira clique no alvo — uma película o cobre por
+     150 ms e fica com o clique, como a rolagem em curso no aparelho. E o botão que age no touchend e cancela o clique de
+     propósito: o toque conta uma vez, sem repetir. -->
+<section class="camada">
+  <button id="p.engole" onclick="lido('engole ' + (++engoleN))">engole</button>
+  <button id="p.cancela" style="margin-left: 120px">cancela</button>
+</section>
+
 <!-- página em cache: o mesmo id fora da tela, dentro de um escopo declarado em hiddenScopes -->
 <section class="p-cache"><span id="p.repetido">em cache</span><span id="p.so-cache">só no cache</span><div id="p.item.cache">x</div></section>
 <section><span id="p.repetido">visível</span></section>
@@ -85,6 +104,23 @@
     constructor() { super(); const r = this.attachShadow({ mode: 'open' }); r.innerHTML = '<textarea rows="2">nota antiga</textarea>'; this._t = r.querySelector('textarea'); }
     get value() { return this._t.value; }
   });
+  // Rolador no shadow root, conteúdo projetado por <slot> (como ion-content → .inner-scroll).
+  customElements.define('painel-rolo', class extends HTMLElement {
+    constructor() { super(); this.attachShadow({ mode: 'open' }).innerHTML = '<div style="height: 120px; overflow-y: auto; border: 1px solid #999"><slot></slot></div>'; }
+  });
+  // Slot emulado (como o Stencil "scoped"): children e childNodes só devolvem o conteúdo projetado — nenhum, aqui.
+  customElements.define('campo-escopo', class extends HTMLElement {
+    get children() { return document.createDocumentFragment().children; }
+    get childNodes() { return document.createDocumentFragment().childNodes; }
+  });
+  let engoleN = 0, cancelaN = 0, peliculaUsada = false;
+  document.getElementById('p.engole').addEventListener('pointerdown', (e) => {
+    if (peliculaUsada) return; peliculaUsada = true;
+    const r = e.currentTarget.getBoundingClientRect(), p = document.createElement('div');
+    p.style.cssText = `position: fixed; left: ${r.left}px; top: ${r.top}px; width: ${r.width}px; height: ${r.height}px`;
+    document.body.appendChild(p); setTimeout(() => p.remove(), 150);
+  });
+  document.getElementById('p.cancela').addEventListener('touchend', (e) => { e.preventDefault(); lido('cancela ' + (++cancelaN)); });
   const lista = document.getElementById('p.lista');
   for (let i = 1; i <= 40; i++) { const d = document.createElement('div'); d.id = 'p.item.' + i; d.textContent = 'item ' + i; lista.appendChild(d); }
   function lido(v) { document.getElementById('p.lido').textContent = v; }
