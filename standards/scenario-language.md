@@ -17,15 +17,15 @@
 
 | Verbo | Semântica |
 |---|---|
-| `tap <id>` | Acha o elemento e rola até ele ficar na tela. Faz o **hit-test** do centro: o ponto tem de cair no elemento ou num descendente dele, senão é FALHOU "coberto por …". Depois, **toque real** (dedo no aparelho, clique de mouse no web) e conferência de que o `pointerdown` chegou ao elemento. Nunca `el.click()` |
+| `tap <id>` | Acha o elemento, rola até ele ficar na tela e **espera ele parar** (a caixa igual em duas leituras, até 2 s; v3.65.1). Faz o **hit-test** do centro: o ponto tem de cair no elemento ou num descendente dele, senão é FALHOU "coberto por …". Depois, **toque real** (dedo no aparelho, clique de mouse no web) e conferência de que o `pointerdown` chegou ao elemento **guardado antes do toque**, pelo caminho do próprio evento: o toque que fecha o alerta, troca a página ou redesenha a lista conta (v3.65.1). Nunca `el.click()` |
 | `type <id> = <texto>` | **Substitui o valor.** Toca o elemento como no `tap` e acha o editável: o próprio campo, um `contenteditable` ou o primeiro `input`/`textarea` descendente, inclusive em shadow root aberto. Seleciona todo o conteúdo e insere o texto, que troca a seleção. No `uiautomator`, o transporte é outro: vai ao fim do campo, apaga o texto atual e digita. Ali, texto fora do ASCII é FALHOU com o motivo, nunca o texto corrompido |
 | `select <id> = <opção>` | Num `<select>` nativo, escolhe a opção pelo rótulo visível, porque o seletor nativo abre fora da página. Num controle de outro tipo: toca, espera a opção **pelo texto visível** fora do controle, toca a opção e, se o seletor continuar aberto, toca o botão que casa `selectConfirm` |
 | `slider <id> <v> <min> <max>` | Toque real no ponto proporcional da caixa. Depois lê o valor: diferente de `<v>` em mais de um passo do controle é FALHOU com o valor lido |
-| `assert-text <id> = <t>` / `assert-contains` | Lê o elemento: num campo (`input`, `textarea`, `select`), o **valor**. Num web component com propriedade `value`, esse valor. Num elemento sem texto próprio com um único campo dentro, o valor desse campo. Fora isso, o texto renderizado (`innerText`) aparado. Espera até 4 s o elemento aparecer |
+| `assert-text <id> = <t>` / `assert-contains` | Lê o elemento: num campo (`input`, `textarea`, `select`), o **valor**. Num web component com propriedade `value`, esse valor. Num elemento sem texto próprio com um único campo dentro, o valor desse campo. Fora isso, o texto renderizado (`innerText`) aparado. Espera até 4 s o elemento aparecer e **relê o valor até ele bater, por até 5 s** (v3.65.2); a falha traz a última leitura |
 | `assert-exists <id>` | Existe renderizado. Espera até 8 s; se ainda não estiver no DOM (lista virtualizada), rola a página do topo ao fim procurando |
-| `assert-absent <id>` | **Nenhum** elemento renderizado com o id. Um elemento dentro de `hiddenScopes`, ou não renderizado, conta como ausente |
-| `assert-checked <id> = <bool>` | O `checked` do campo, senão o `aria-checked`, senão o `checked` do primeiro campo de dentro |
-| `assert-count <prefixo> = <n>` | **Lista inteira** (decisão do stakeholder de 16/11/2026): todos os elementos renderizados cujo id começa pelo prefixo, dentro ou fora da janela. Quando a página rola, também os que aparecem do topo ao fim (lista virtualizada). Os de `hiddenScopes` não contam. O prefixo inclui o ponto final (`test-ids.md` §3) |
+| `assert-absent <id>` | **Nenhum** elemento renderizado com o id. Um elemento dentro de `hiddenScopes`, ou não renderizado, conta como ausente. Relê por até 5 s até ele sumir (v3.65.2) |
+| `assert-checked <id> = <bool>` | O `checked` do campo, senão o `aria-checked`, senão o `checked` do primeiro campo de dentro. Relê por até 5 s (v3.65.2) |
+| `assert-count <prefixo> = <n>` | **Lista inteira** (decisão do stakeholder de 16/11/2026): todos os elementos renderizados cujo id começa pelo prefixo, dentro ou fora da janela. Quando a página rola, também os que aparecem do topo ao fim (lista virtualizada). Os de `hiddenScopes` não contam. O prefixo inclui o ponto final (`test-ids.md` §3). Relê a lista por até 5 s até a contagem bater (v3.65.2) |
 | `assert-order <prefixo> = a,b,c` | A mesma lista do `assert-count`, na ordem do documento (ou de aparição, na lista virtualizada). Os itens pedidos aparecem nessa ordem |
 
 **Rolagem:**
@@ -46,6 +46,8 @@ O gesto vai a um ponto do rolador que não tem outro rolador por cima. O executo
 | `seed <nome>` | comando de `targets.<alvo>.seeds.<nome>` | o mesmo |
 | `wait <s>` · `shot <nome>` | espera · captura da tela | espera · captura da página |
 
+**`wait` é para o tempo do próprio app** (v3.65.2): um prazo, um temporizador, uma animação que o critério mede. Não serve para esperar a tela responder a um toque: o `tap` espera o elemento aparecer e parar, e os asserts releem até o valor bater. Cada `wait 2` depois de um toque soma 2 s a todo cenário, a toda tentativa e a toda rodada.
+
 **Prontidão (só `cdp`):**
 - O app está pronto quando a expressão JS `targets.android.cdp.readyExpr` é verdadeira. O padrão é `document.readyState === 'complete'`.
 - Se `targets.android.cdp.failExpr` for verdadeira na prontidão ou em qualquer passo, é FALHOU: o app está na **tela de falha dele mesmo**, e isso não é ambiente.
@@ -60,6 +62,10 @@ O gesto vai a um ponto do rolador que não tem outro rolador por cima. O executo
 | PASSOU | todos os passos passaram | — |
 | FALHOU (exit 1) | o app ou o cenário: elemento ausente, valor diferente, toque coberto, tela de falha do app | o dev (app) ou o QA (cenário) |
 | FALHA DE AMBIENTE (exit 4) | o alvo caiu: emulador, servidor, DevTools sem resposta | reparo e repetição |
+
+**Segunda tentativa** (v3.65.2). O cenário que FALHOU é repetido uma vez, do zero, só quando a falha pode ser oscilação do alvo: toque que não chegou ou caiu coberto, conexão com a página que caiu, ou qualquer falha com sinal do app (crash, reinício, WebView recriada, outra janela). Não se repete a falha que já veio depois da espera: id que não está na tela depois da espera e da busca, rolagem que não traz o elemento, e valor lido diferente (`assert-*`). A linha sai com a nota "não repetido: <classe>". Medido no portão do sprint 6 do garden: 38 repetições salvaram 3, todas de toque, e as 22 dessas três classes não salvaram nenhuma. `-NoRetry` desliga a segunda tentativa de todo cenário.
+
+**Tempo** (v3.65.2). Cada linha do `result.json` traz `seconds` (as tentativas somadas) e `stepMs` (o tempo de cada passo da última tentativa). O `timing` da rodada traz o total, as execuções e, por verbo, quantas vezes, a soma e a média, do mais caro ao mais barato. O `result.md` mostra o resumo e os segundos de cada cenário.
 | CONFIGURAÇÃO DO ALVO (exit 4, `configuration` no `result.json`) | o alvo, como está declarado, não prova nada: APK sem a depuração da WebView, Node < 22, mais de uma página sem `cdp.pageUrl`, `cdp.pageUrl` que não casa nenhuma página carregada, ou app híbrido com o `uiautomator` | o stakeholder (o `guards.json` e o build são dele). Sem reparo, sem dev e sem Arquiteto |
 
 O `result.json` do `accept` com `locator: "cdp"` é **prova de primeira classe** no portão: a Task fecha por ele, sem decisão do Arquiteto e sem linha de desvio no `run-log.md`.
@@ -93,7 +99,7 @@ O comando também recebe `ACCEPT_TASK`, `ACCEPT_TARGET`, `ACCEPT_SERIAL`, `ACCEP
 | 2 sem nenhuma linha | para com exit 2 (uso ou cenário malformado) |
 | 4, ou o tempo por arquivo esgotado (`targets.<alvo>.commandTimeoutMin`; padrão 5 min por cenário, mínimo 10) | FALHA DE AMBIENTE (exit 4), com a última linha da saída |
 
-Cenário que FALHOU é repetido uma vez, sozinho, quando o comando tem `{only}`, como no executor interno. O `accept` grava `progress.json` a cada arquivo e, no fim, o `result.json` e o `result.md` de sempre, com `executor: "comando"`, o comando e cada chamada (`runs`: arquivo, cenários, exit, segundos, log). O `close.ps1`, o `/team-status` e o portão do QA o leem como qualquer accept.
+Cenário que FALHOU é repetido uma vez, sozinho, quando o comando tem `{only}`, pela mesma regra da segunda tentativa do executor interno (§4). O `accept` grava `progress.json` a cada arquivo e, no fim, o `result.json` e o `result.md` de sempre, com `executor: "comando"`, o comando e cada chamada (`runs`: arquivo, cenários, exit, segundos, log). O `close.ps1`, o `/team-status` e o portão do QA o leem como qualquer accept.
 
 **Sem o localizador do plugin:** a tela é do executor — o pré-voo do `locator` não roda, e o `reset` de um cenário não reaplica o `baseline` (só a instalação o aplica). O comando passa pelo mesmo filtro da **Verificação:** — instalação, rede, push e destrutivo reprovam no `plan.ps1` e no `accept.ps1`. `**Aceite:** não roda` fica para cenário provado pelos testes do plano; o que cita um script do projeto reprova (regra 34).
 ## 6. Retomada do aceite — `-Resume` (v3.63.0)
