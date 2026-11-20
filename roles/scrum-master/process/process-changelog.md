@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.62`](process-changelog-archive.md) | A prova do app híbrido no aparelho é de primeira classe: o id é lido pelo CDP e a configuração do alvo vai ao stakeholder, não ao Arquiteto (SM + Arquiteto + QA) — 16/11/2026 |
 | [`v3.61`](process-changelog-archive.md) | Sprint 0: o backlog funcional abre sobre documentação conforme e ambiente de testes provado — o onboarding pergunta onde está a documentação e decide o sprint 0 (SM + PO + Arquiteto + QA) — 16/11/2026 |
 | [`v3.60`](process-changelog-archive.md) | A ficha leva os trechos (o Arquiteto do plano lê uma vez e escreve) e o kanban acompanha o prazo: previsão por parte, farol e burndown visual, com o registro técnico no consumo (SM + Arquiteto) — 15/11/2026 · *com addendum v3.60.1* |
 | [`v3.59`](process-changelog-archive.md) | Acompanhar o sprint em palavras simples: a fala da sessão, o Resumo do quadro e o /team-status para quem é de negócio, com o técnico sob pedido (SM + PO + Arquiteto) — 14/11/2026 · *com addendum v3.59.2* |
@@ -103,6 +104,54 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.65 — Revisão geral: uma fonte por regra, o plano grande com precedência escrita e o normativo sem história (SM + Arquiteto + Dev) — 19/11/2026
+
+**Instrução:** (stakeholder, 19/11/2026, depois do `/review audit` da v3.64.5) corrigir tudo agora, antes do benchmark: achados A1-xx a A4-xx do relatório de auditoria (80), plano em `melhorias/plano-v3.65.0.md`.
+**Classificação:** regra · fluxo · propriedade de artefato · formato de documento · comportamento de agente (proposto e aplicado pelo stakeholder, Q3).
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `process/sprint-run.md` | §Plano acima de 30 KB (nova) | **Fonte única** da regra do plano grande, com a precedência: antes da construção a Task se divide pelos blocos do plano; construção começada (plano emendado por decisão do stakeholder, da Q-S ou de GAP) a Task não se divide, o Arquiteto substitui o texto derrubado pela decisão, sem acrescentar ao lado nem cortar o que vale, e roda o `plan.ps1` até passar; reprovação repetida sobe ao degrau 1. As paradas, o bloqueio e a retomada apontam para ela (A3-01..04, A3-16) |
+| `process/sprint-run.md` | §Uma correção do portão por vez, §Disparo e espera, constantes | Os parágrafos cumulativos viram regras curtas com a precedência explícita e sem marca de versão (A3-20). A decisão do stakeholder que emenda o plano vai ao bloco `**Decisão do stakeholder (<data> · replan\|portão):**` com Origem e Lição, fora do teto, e a `architect/decisions/S<n>.md` se vale para mais de uma Task; **nunca** a `**Plano corrigido durante a execução:**`, que é só erro do próprio plano e métrica do benchmark (A2-01). O executor com `accept` ou reparo vivos devolve `⏸ esperando: <comando>` e para; a sessão segue o `next` e o redispara (A3-09). História, medições e o piloto da ficha saem (A4-10); a regra de sessão do run fica só na R29 (A4-01); a lista "quem decide" só na tabela de `stakeholder-question.md`, sem o dado "12 de 22" (A4-02, A4-03); fim do ttoque de cache (A4-09); siglas de plano (A4-16) |
+| `process/working-rules.md` | R4 · R5 · R14 · R15 | R4: o C1 confere `git diff --name-only` × lista do plano (Q1; `close.ps1` pelo stakeholder/sessão) e a margem do dev aponta para `agents/developer.md` (A1-01, A4-04). Texto igual ao que o código confere: R5 (C1 `n-a` fixo), R14 (sem conferência de data), R15 (a metade ② não tem aplicação) (A1-08, A1-12, A1-13) |
+| `process/working-rules.md` | R28 · R29 | R28: o portão roda `verify -Mode full -Fresh` (cobertura só por `inputs`), o dev tem o `detach.ps1`, o Security Engineer entra na G7, o layout do job aponta para `agents/operator.md` (A3-11, A3-12, A1-14, A4-06). R29 passa a ser a fonte da regra de sessão e lista o sprint 0 (A1-18) |
+| `process/working-rules.md` | geral | "Evita:" em uma frase sem o caso medido; racionais e notas vX.Y saem (o caso vai a este changelog); sai o "Resumo em uma tela" e a R34 duplicada (A4-07, A4-12, A1-22); R17–R19 saem do normativo e viram ponteiro para `rituals/review-contract.md` (A4-11) |
+| `process/artifact-ownership.md` · `hooks/ownership.json` | §1 · §1e | Donos de `gate/`, `proof/`, `gate.json`, `lessons.md`, `architect/breakdown/`, `.ask-route`, `.stakeholder-seen` e `scripts/**`; árvore e tabela de §1e completas (handoff, validation, docs-consolidation, pack); listas de guardas e rituais sem enumeração; fronteira: a previsão do quadro é do SM, o plano de entrega e o prazo ao stakeholder são do PO (A3-14, A3-15, A4-18..21) |
+| `templates/stakeholder-question.md` · `README.md` do SM · `templates/benchmark.md` | tabela "a decisão é dele?" · contagem · métrica | Sair de 🔴 é `mark.ps1 -Reopen resume\|replan` (A2-05); R1–R35 (A3-13); a métrica "Plano corrigido" só conta erro do próprio plano |
+| `roles/architect/*` (Arquiteto) | README · `implementation-plan.md` regras 22 e 29 · `external-plan.md` | A regra do plano grande e o bloco de decisão do stakeholder com Origem e Lição, iguais às de `sprint-run.md`; `plan-rules-why.md` removido com os 2 ponteiros (−25,2 KB) e notas de versão fora das regras do template (A3-04, A2-01, A4-15, A4-23) |
+| `roles/developer/*` (Arquiteto aplica) | `templates/gap.md` · README | CONFIGURAÇÃO DO ALVO com o `cdp.pageUrl` que não casa nenhuma página; G14 nega `Start-Sleep` com ou sem `runCommands` (A3-18, A1-03) |
+
+### Por quê
+A mesma regra morava em quatro ou cinco lugares (script, mensagem, `agents/*`, roteiro, modelo externo) e cada correção atingia só os que o incidente tocava; o parágrafo cumulativo deixava duas versões divergirem sem mostrar a precedência. Cada regra tocada fica com **uma fonte** e ponteiros de uma linha. O normativo que todo papel carrega perdeu a história (casos medidos, racionais, marcas de versão), que o changelog guarda. Casos medidos que saíram do texto: sprint 6 do piloto com 12 de 22 formulários sem rota (A4-03); sessão do run a ~800 mil tokens e 13 pontos seguros sem `/clear` (R29); 303M tokens em 20 subagentes e 123 retornos de 5,5 KB (R28); 48 `Start-Sleep` e US$ 3,68 no P-r1 (G22); 84% do custo do plano antes da primeira escrita (R35); inflação do changelog de 1,4 KB (v1.0) a 17,1 KB (v1.8) (R17).
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| SM | Aplica a R4 com o diff × plano do C1; confere o executor `⏸ esperando` e a precedência do plano grande; mantém o dono de `gate/`, `proof/`, `lessons.md` e dos marcadores do run |
+| Arquiteto | Plano acima de 30 KB com construção começada: substitui, não corta nem divide; decisão do stakeholder no bloco próprio, nunca em "Plano corrigido durante a execução" |
+| Dev | A margem do dev vive só em `agents/developer.md`; `detach.ps1` para comando próprio acima de ~2 min |
+| PO · UX · QA | Escrevem a resolução do achado do portão em `gate/<ID>.md`, agora com linha na matriz |
+
+### Conflitos com o processo vigente
+Nenhum aberto: a R4 (diff × plano) segue a decisão Q1; o resto preserva o sentido das regras (cortou-se história, repetição e caso medido).
+
+### Como saberemos que funcionou
+Nenhuma Task em construção dividida e nenhum plano emendado com o texto antigo ao lado da decisão; zero decisão do stakeholder em "Plano corrigido" nos planos do braço P; `working-rules.md` + `sprint-run.md` abaixo de 170 KB (de 189 KB) e a nova rodada de `/review audit` com zero achado aberto nas frentes tocadas.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Extração/remoção | `git cat-file -s HEAD:<arquivo>` × `(Get-Item <arquivo>).Length` | working-rules 118118→102173 B · sprint-run 73364→66500 B · artifact-ownership 64177→67136 B (+linhas de dono) · index 13885→14267 B | ✅ |
+| Substituição de padrão | `Select-String '34 regras\|R1–R34\|R30-R34\|12 de 22\|Resumo em uma tela\|toque de cache'` nos documentos do SM, fora dos changelogs | 0 ocorrências; `v3\.\d` em `sprint-run.md`: 0 (cada "(v3.x)" removido lido no contexto) | ✅ |
+| Arquivamento | `diff` do bloco v3.62 do vivo (antes) × arquivo | zero linhas fora do separador | ✅ |
+| Conferência | `scripts/checks/release.ps1` | R17 ok · ps1-5.1 ok · ownership ok (72 regras) · órfãos ok · R18 falha só pela versão (README L3, de outro papel) | ✅ |
+
+### Pendente do stakeholder
+`rituals/review-contract.md` §Regras do repositório-fonte (R17–R19, texto pronto): a guarda G8 negou a escrita ao SM; sem ele, o ponteiro da R17–R19 em `working-rules.md` aponta para a seção a criar. `close.ps1` (C1 × diff do plano, Q1) e os `agents/*` são do stakeholder.
+
+---
+
 ## v3.64 — A evidência que o script já sabe, o cartão que só diz o que o plano diz, a árvore e a máquina com dono e o portão que não duplica correção (SM + Arquiteto + Dev + QA) — 18/11/2026
 
 **Instrução:** (stakeholder, 18/11/2026) "consegue fazer uma análise no projeto garden para identificar tudo que gerou retrabalho durante o sprint 6"; depois "monte o plano de correção dos itens 2, 5 e 6", "inclua no plano v3.64.0" (a parada da Q-S6e no Karma), "inclua somente o necessário para resolver no plugin" (o portão que mandava abrir a Q-S6f) e "pode construir". Decisões D1–D8 em formulário, no mesmo dia (`melhorias/plano-v3.64.0.md` §8).
@@ -183,73 +232,3 @@ No próximo portão de um projeto com alvo: nenhuma `Q-S<n>` aberta por ambiente
 
 **O navegador da suíte que cai no meio** (Karma "no message in 120000 ms", Q-S6d, duas quedas seguidas no `verify full`): não é teste reprovado. O `verify` repete a rodada uma vez, com a memória conferida. Caiu de novo no mesmo teste: um teste trava o navegador — código, vai ao dev. Caiu em pontos diferentes: carga ou memória — ambiente, com a medida; o prazo do runner e as flags do navegador são do projeto (Task, com o Arquiteto).
 
----
-## v3.62 — A prova do app híbrido no aparelho é de primeira classe: o id é lido pelo CDP e a configuração do alvo vai ao stakeholder, não ao Arquiteto (SM + Arquiteto + QA) — 16/11/2026
-
-**Instrução:** (stakeholder, 16/11/2026, sobre o item 25 de `note.md`, depois de análise no garden) versão com plano; `assert-count` e `assert-order` valem para a lista inteira; revogada a espera pelo espelho do id no `aria-label`; correção genérica para qualquer app híbrido. Depois: "aplicar a fase G do plano-v3.62.0".
-**Medido (garden, sprints 4 a 6):** no alvo `android` com WebView, todo cenário por id dava "tag não encontrada"; 10 das 18 decisões do Arquiteto do S6 e 8 itens do README §7 eram sobre o meio de prova; a Task fechava com `NÃO EXERCITADA (ambiente)` ou com "prova por outro executor, com desvio registrado". A premissa dos documentos (o id chega ao `uiautomator`, ou pelo `aria-label`) foi desmentida em Android 15 / WebView 124.
-**Classificação:** instrumento (`targets.android.locator = "cdp"`, `scenario-language.md`; parte mecânica no `CHANGELOG.md` v3.62.0) · rota (CONFIGURAÇÃO DO ALVO: exit 4 com `configuration` no `result.json` vai ao stakeholder) · formato de documento (standards e roteiros do dev, do Arquiteto e da QA)
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `sprint-run.md` | passo 4 (Gap) · Paradas legítimas · Falha de ambiente | a CONFIGURAÇÃO DO ALVO não é GAP: o `run.ps1 done -Result env` a leva ao stakeholder (🔴 "configuração do alvo", rota `configuracao-do-alvo`), sem `operator` de diagnóstico, reparo, dev, Arquiteto nem reabertura automática; o `deviceProofFallback` não se aplica; o `result.json` com `locator: "cdp"` é prova de primeira classe |
-| `templates/stakeholder-question.md` | Antes de perguntar | linha nova da configuração do alvo; "ids não publicados" sai da linha da prova que não roda |
-| `standards/test-ids.md` · `standards/scenario-language.md` (novo) · guias Angular, React, Ionic/Capacitor, Kotlin | §2, §4, §6 · índice · IONIC-3 | o id do app híbrido é lido pelo CDP; saem "Não há driver por CDP", o `[PARCIAL]` como limite e a evidência com caminho de um projeto; IONIC-3 recomenda `locator: cdp`, `hiddenScopes`, depuração da WebView e `readyExpr`/`failExpr`; os guias deixam de afirmar que o `uiautomator` lê o id; exemplos `horta.*` → `pedido.*` (Arquiteto) |
-| `roles/developer/{README,templates/gap}.md` · `roles/architect/templates/{implementation-plan,technical-decision}.md` | rota de GAP · P3 · ids | a CONFIGURAÇÃO DO ALVO sai da rota de GAP (não é GAP, nem ambiente da Task, nem decisão do Arquiteto) (Arquiteto) |
-| `roles/quality-assurance/README.md` | l. 58 e 116 | a tela da WebView de app híbrido é cenário executável com `locator: "cdp"`; saem o limite `[PARCIAL]` e o "🔺 GAP ao Arquiteto por WebView opaca"; "tag não encontrada" em híbrido com `uiautomator` é configuração do alvo; o `result.json` com cdp é prova de primeira classe no portão, sem desvio registrado (QA) |
-| `note.md` | item 25 · item 8 | o item 25 sai da fila (aplicado); ficam as provas de campo no item 8 |
-
-### Por quê
-O desvio institucionalizado custava uma decisão por Task: o `accept` só reconhecia o `uiautomator`, e a prova que funcionava (CDP) vivia num script do projeto e só entrava "por decisão". Dar ao plugin o executor que fala com a WebView tira o meio de prova da pauta do Arquiteto; separar a configuração do alvo da falha do app tira do dev, do operator e do Arquiteto um conserto que não é deles (o build e o `guards.json` são do stakeholder) e acaba com a ida repetida ao stakeholder pela mesma causa, agora com a mensagem que diz o que corrigir.
-
-### Conflitos com o processo vigente
-Nenhum com regra. Contraria o texto da v3.53.3 (GAP da prova no alvo vai ao `operator`) só para a configuração do alvo, que a v3.62.0 identifica antes do 1º cenário. A v3.60.1 (`run.deviceProofFallback`) segue valendo para estado de partida e serviço fora do ar, não para a configuração.
-
-### Como saberemos que funcionou
-Nos próximos sprints com app híbrido: nenhum 🔺 GAP ambiente por id não encontrado e nenhum de "WebView opaca"; nenhum `[PARCIAL]` por WebView; nenhuma decisão do Arquiteto sobre meio de prova; Tasks fechadas pelo `result.json` sem linha de desvio no `run-log.md`; a configuração do alvo chega ao stakeholder uma vez, com a correção dita. Prova de campo pendente em `note.md` item 8: `accept -Target android` com `locator: cdp` num app híbrido real, `done` fechando pelo `result.json`, zero `NÃO EXERCITADA` por id e id dinâmico confirmado em execução.
-
-### Evidência (R19)
-| Classe | Comando | Saída | Ok? |
-|---|---|---|---|
-| Arquivamento de entrada | bloco v3.59 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.62, v3.61, v3.60 | ✅ |
-| Substituição de padrão | `Grep` de `Não há driver por CDP\|horta\|desvio registrado\|outro executor` em `standards/` e `roles/{developer,architect}` | zero (conferido pelo Arquiteto) | ✅ |
-| Entrega | `release.ps1` (C3) | R17 e R18 ok | ✅ |
-
-### Parte mecânica (implementada pela sessão principal, citada aqui)
-`targets/android-cdp.js`, `cdp-verbs.js`, `dom-probe.js`; `android.ps1`, `accept.ps1` (exit 4 com `configuration`), `run.ps1` (rota `configuracao-do-alvo`), `web-runner.js` na semântica comum; teste de paridade. Detalhe e suítes no `CHANGELOG.md` v3.62.0.
-
-### Decidido pelo stakeholder (formulário de 16/11)
-- **Nome de projeto como procedência:** neutralizado para "projeto piloto" em todos os documentos do plugin (`standards/`, `roles/`, `agents/`, `rituals/`, `how-to.md`, `hooks/COVERAGE.md` e modelos). Data e sprint ficam, então a ligação com a medição continua rastreável. Os changelogs e os comentários de script ficam como histórico.
-- **Tela de fora do app com `locator: "cdp"`:** é provada por teste (`(teste)` no cenário), conforme `standards/scenario-language.md` §3. O modo misto (passos de tela do sistema pelo `uiautomator`) ficou como item 26 da fila do `/review`.
-- **Guia e rituais:** o `how-to.md` passou a ensinar o `locator: "cdp"`. O `team-init` o propõe para stack híbrida, e o `team-update` ganhou o passo 7o.
-
-### Addendum v3.62.2 — comando longo em processo próprio: ninguém encerra o turno para esperar um comando (SM + Dev + operator) — 2026-11-17
-
-**Instrução:** (stakeholder, 17/11/2026) "Preciso de uma solução definitiva para esse ponto pq travou o processo por diversas vezes, investigue"; depois, "implemente na versão fix 3.62.2".
-**Medido (garden, S6, Q-S6d, 16–17/11):** a suíte de 17–25 min passou dos 600 s da ferramenta, foi para segundo plano e o dev encerrou o turno com `ESPERANDO`. O Claude Code a encerrou junto ("it is terminated when you give your final response and no notification can follow that"), o aviso não veio, e o executor e a sessão esperaram até alguém digitar: 7 instâncias de dev numa Task, e uma suíte rodada à mão para escapar. Nas transcrições de 30 dias, a mesma chamada recebe ora o aviso, ora o encerramento, conforme a versão (2.1.308, 2.1.310, 2.1.325 e 2.1.326 encerram). Ensaio: o encerramento leva a árvore inteira; o processo criado pelo WMI sobrevive.
-**Classificação:** instrumento (`verify.ps1` e `detach.ps1` rodam o comando em processo próprio e só o acompanham; o `run.ps1` não espera rodada que não acorda ninguém) · regra (exit 3 = rode o mesmo comando no mesmo turno; nenhum papel encerra o turno esperando comando; `run_in_background` negado também ao operator).
-
-| Documento | Seção | Mudança |
-|---|---|---|
-| `sprint-run.md` | Disparo e espera, item 5 · Constantes · Ciclo do executor | o comando longo roda em processo próprio e é acompanhado no mesmo turno; a rodada do verify não depende do dev; o `ESPERANDO` sem comando acompanhável não segura o run; 480 s como constante |
-| `agents/developer.md` · `roles/developer/README.md` | passo 6 · Falhou, eu corrijo | exit 3 = rodando: o mesmo comando no mesmo turno; nunca encerrar o turno para esperar; comando longo fora do verify pelo `detach.ps1` |
-| `agents/operator.md` | Espera | comando longo pelo `detach.ps1`, acompanhado no mesmo turno; sem segundo plano |
-| `agents/task-runner.md` | passo 3 | `ESPERANDO` do dev: não esperar o aviso; o `done` diz o passo (dev novo reencontra a rodada) |
-| `hooks/COVERAGE.md` | G14 · bloco v3.62.2 | `run_in_background` negado a todo papel; o comando de dentro do `detach.ps1` conferido |
-
-
-### Addendum v3.62.3 — o executor de cenários do projeto roda pelo `accept.ps1` (Arquiteto + Dev + QA + operator) — 2026-11-17
-
-**Instrução:** (stakeholder, 17/11/2026, sobre a Q-S6d do garden: "hoje não há como acompanhar o aceite pela pasta de resultados") "Vamos fazer a correção na versão 3.62.3". Formulário do mesmo dia: o script do projeto roda **pelo plugin**; o resultado vem **das linhas** da saída; o estado de partida é **do plugin**.
-**Medido (garden, S6, Q-S6d, 17/11):** o plano declarou `**Aceite:** não roda` citando o D-16 ("o `accept.ps1` no android não acha id do app") e mandou o operator provar os 49 cenários pelo `prova-cdp.mjs` numa pasta de job. O `guards.json` do projeto já declarava `locator: cdp` desde a v3.62.0. A prova correu sem trava do alvo, sem `progress.json` e sem conferir o APK instalado, e ficou fora de `.team-project/accept/`.
-**Classificação:** formato (``**Aceite:** comando — `<cmd>` ``, contrato do executor em `standards/scenario-language.md` §5) · regra (34: `não roda` citando script do projeto reprova; cenário provado fora do `accept` não é evidência de aceite) · instrumento (`accept.ps1`, `plan.ps1`, cartão do `run.ps1`).
-
-| Documento | Seção | Mudança |
-|---|---|---|
-| `standards/scenario-language.md` | §5 (nova) | executor do projeto: marcadores, ambiente, linhas de resultado, códigos de saída, repetição, o que o `accept` grava |
-| `roles/architect/templates/implementation-plan.md` · `external-plan.md` | cabeçalho · regra 34 do checklist | linha `**Aceite:** comando`; `não roda` só para cenário provado pelos testes do plano |
-| `roles/architect/plan-rules-why.md` | 34 | o caso da Q-S6d e por que o `não roda` com script reprova |
-| `agents/developer.md` | passo 12 | a prova é o `accept.ps1` do cartão; o executor direto não vale |
-| `agents/operator.md` | regras | pedido de rodar o executor do projeto como prova vai pelo `accept.ps1 -Task` |
-| `agents/quality-assurance.md` | evidência do `verify` | cenário provado fora do `accept` não é evidência de aceite; `não roda` com script é achado de processo |

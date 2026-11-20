@@ -37,7 +37,7 @@ Confira cada item antes de devolver: plano recusado volta num pacote de correç�
 - `[lista]` `[dono]` `**Arquivos tocados:**` com cada caminho entre crases, um por linha, terminando numa linha em branco; todo arquivo de produção tem teste na lista (ou `sem teste: <arquivo> — <motivo>` na §6). Fora da lista: `.team-project/`, documento de desenho (`docs/sdd/` — vai em `**Documentos vivos:**`) e arquivo de gate (`.editorconfig`, CI, hooks de git).
 - `[protegidos]` `**Arquivos protegidos:** nenhum` (ou `ver §12`).
 - `[blocos]` Mais de 8 arquivos: um `### Bloco <k>` por grupo, cada um com `**Arquivos do bloco:**`, `**Depende de:**` e `**Pronto do bloco:**` com o comando e `exit 0`.
-- `[tamanho]` Até 30 KB por plano. Acima disso a Task se divide: não corte o plano para caber.
+- `[tamanho]` Até 30 KB por plano (os blocos `**Decisão do GAP …:**` e `**Decisão do stakeholder …:**` não contam). Acima disso: (a) **antes da construção** — não corte o plano para caber; a Task se divide pelos blocos do plano (o `run.ps1 next` faz a divisão); (b) **construção começada** (plano emendado por decisão do stakeholder, Q-S ou 🔺 GAP — o caso deste pacote quando ele traz um GAP) — a Task não se divide: substitua no plano o texto que a decisão derrubou pela decisão, sem acrescentar ao lado e sem cortar o que segue valendo, até o plano passar; se não passar, diga isso no retorno (a reprovação repetida sai para o degrau 1).
 - `[ambiente]` A §3 (ambiente medido) vem **antes** da §4, com a tabela `| Pré-requisito | Comando de medição | Saída real | … |`. O `context/environment.md` foi **medido pelo run ao montar este pacote**: copie as linhas que valem para a Task **como estão**, com a fonte. **Nunca invente uma saída**: pré-requisito que não está lá vira premissa `- P<k> · não exercitada: <motivo> · verifica: dev no passo 1`.
 - `[ambiente]` A §9 tem a parada `Pré-requisito ausente`.
 - `[comandos]` A §9 tem `### Comandos da Task` com os comandos de build, teste ou lint que a Task roda além da lista base, ou `- nenhum além da lista base`. Instalação, rede, push e comando destrutivo não entram.
@@ -58,7 +58,7 @@ Confira cada item antes de devolver: plano recusado volta num pacote de correç�
 - `[decisões]` **Decisão de 🔺 GAP (regra 29):** toda `**Decisão do GAP <T-ID> (<data>):** <a decisão>` no plano vem seguida, **logo abaixo e sem linha em branco no meio**, de duas linhas no começo da linha:
   `**Origem:** previsão | conhecimento | requisito | ambiente | processo`
   `**Lição:** projeto | stack:<nome> | plugin | nenhuma`
-  Sem elas, ou com valor fora da lista, o plano volta.
+  Sem elas, ou com valor fora da lista, o plano volta. A decisão do stakeholder que emenda o plano vai em `**Decisão do stakeholder (<data> · <origem>):** <a decisão>`, com as mesmas duas linhas logo abaixo.
 - `[verificação]` **Verificação (regra 35, opcional):** só quando o verify full padrão não serve — `**Verificação:** dispensada — <motivo>` (sem `**Mutações:**`) ou `` **Verificação:** comando — `<comando>` `` (sem instalação, rede, push ou comando destrutivo).
 
 Falta informação para decidir? Não invente: escreva `🔺 GAP: <o que falta>` na §9 do plano e siga com o resto. Se você mesmo decide um GAP no plano, use o formato `**Decisão do GAP …:**` acima, com **Origem:** e **Lição:**.

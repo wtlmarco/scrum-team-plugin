@@ -8,6 +8,78 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.62 — A prova do app híbrido no aparelho é de primeira classe: o id é lido pelo CDP e a configuração do alvo vai ao stakeholder, não ao Arquiteto (SM + Arquiteto + QA) — 16/11/2026
+
+**Instrução:** (stakeholder, 16/11/2026, sobre o item 25 de `note.md`, depois de análise no garden) versão com plano; `assert-count` e `assert-order` valem para a lista inteira; revogada a espera pelo espelho do id no `aria-label`; correção genérica para qualquer app híbrido. Depois: "aplicar a fase G do plano-v3.62.0".
+**Medido (garden, sprints 4 a 6):** no alvo `android` com WebView, todo cenário por id dava "tag não encontrada"; 10 das 18 decisões do Arquiteto do S6 e 8 itens do README §7 eram sobre o meio de prova; a Task fechava com `NÃO EXERCITADA (ambiente)` ou com "prova por outro executor, com desvio registrado". A premissa dos documentos (o id chega ao `uiautomator`, ou pelo `aria-label`) foi desmentida em Android 15 / WebView 124.
+**Classificação:** instrumento (`targets.android.locator = "cdp"`, `scenario-language.md`; parte mecânica no `CHANGELOG.md` v3.62.0) · rota (CONFIGURAÇÃO DO ALVO: exit 4 com `configuration` no `result.json` vai ao stakeholder) · formato de documento (standards e roteiros do dev, do Arquiteto e da QA)
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `sprint-run.md` | passo 4 (Gap) · Paradas legítimas · Falha de ambiente | a CONFIGURAÇÃO DO ALVO não é GAP: o `run.ps1 done -Result env` a leva ao stakeholder (🔴 "configuração do alvo", rota `configuracao-do-alvo`), sem `operator` de diagnóstico, reparo, dev, Arquiteto nem reabertura automática; o `deviceProofFallback` não se aplica; o `result.json` com `locator: "cdp"` é prova de primeira classe |
+| `templates/stakeholder-question.md` | Antes de perguntar | linha nova da configuração do alvo; "ids não publicados" sai da linha da prova que não roda |
+| `standards/test-ids.md` · `standards/scenario-language.md` (novo) · guias Angular, React, Ionic/Capacitor, Kotlin | §2, §4, §6 · índice · IONIC-3 | o id do app híbrido é lido pelo CDP; saem "Não há driver por CDP", o `[PARCIAL]` como limite e a evidência com caminho de um projeto; IONIC-3 recomenda `locator: cdp`, `hiddenScopes`, depuração da WebView e `readyExpr`/`failExpr`; os guias deixam de afirmar que o `uiautomator` lê o id; exemplos `horta.*` → `pedido.*` (Arquiteto) |
+| `roles/developer/{README,templates/gap}.md` · `roles/architect/templates/{implementation-plan,technical-decision}.md` | rota de GAP · P3 · ids | a CONFIGURAÇÃO DO ALVO sai da rota de GAP (não é GAP, nem ambiente da Task, nem decisão do Arquiteto) (Arquiteto) |
+| `roles/quality-assurance/README.md` | l. 58 e 116 | a tela da WebView de app híbrido é cenário executável com `locator: "cdp"`; saem o limite `[PARCIAL]` e o "🔺 GAP ao Arquiteto por WebView opaca"; "tag não encontrada" em híbrido com `uiautomator` é configuração do alvo; o `result.json` com cdp é prova de primeira classe no portão, sem desvio registrado (QA) |
+| `note.md` | item 25 · item 8 | o item 25 sai da fila (aplicado); ficam as provas de campo no item 8 |
+
+### Por quê
+O desvio institucionalizado custava uma decisão por Task: o `accept` só reconhecia o `uiautomator`, e a prova que funcionava (CDP) vivia num script do projeto e só entrava "por decisão". Dar ao plugin o executor que fala com a WebView tira o meio de prova da pauta do Arquiteto; separar a configuração do alvo da falha do app tira do dev, do operator e do Arquiteto um conserto que não é deles (o build e o `guards.json` são do stakeholder) e acaba com a ida repetida ao stakeholder pela mesma causa, agora com a mensagem que diz o que corrigir.
+
+### Conflitos com o processo vigente
+Nenhum com regra. Contraria o texto da v3.53.3 (GAP da prova no alvo vai ao `operator`) só para a configuração do alvo, que a v3.62.0 identifica antes do 1º cenário. A v3.60.1 (`run.deviceProofFallback`) segue valendo para estado de partida e serviço fora do ar, não para a configuração.
+
+### Como saberemos que funcionou
+Nos próximos sprints com app híbrido: nenhum 🔺 GAP ambiente por id não encontrado e nenhum de "WebView opaca"; nenhum `[PARCIAL]` por WebView; nenhuma decisão do Arquiteto sobre meio de prova; Tasks fechadas pelo `result.json` sem linha de desvio no `run-log.md`; a configuração do alvo chega ao stakeholder uma vez, com a correção dita. Prova de campo pendente em `note.md` item 8: `accept -Target android` com `locator: cdp` num app híbrido real, `done` fechando pelo `result.json`, zero `NÃO EXERCITADA` por id e id dinâmico confirmado em execução.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.59 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.62, v3.61, v3.60 | ✅ |
+| Substituição de padrão | `Grep` de `Não há driver por CDP\|horta\|desvio registrado\|outro executor` em `standards/` e `roles/{developer,architect}` | zero (conferido pelo Arquiteto) | ✅ |
+| Entrega | `release.ps1` (C3) | R17 e R18 ok | ✅ |
+
+### Parte mecânica (implementada pela sessão principal, citada aqui)
+`targets/android-cdp.js`, `cdp-verbs.js`, `dom-probe.js`; `android.ps1`, `accept.ps1` (exit 4 com `configuration`), `run.ps1` (rota `configuracao-do-alvo`), `web-runner.js` na semântica comum; teste de paridade. Detalhe e suítes no `CHANGELOG.md` v3.62.0.
+
+### Decidido pelo stakeholder (formulário de 16/11)
+- **Nome de projeto como procedência:** neutralizado para "projeto piloto" em todos os documentos do plugin (`standards/`, `roles/`, `agents/`, `rituals/`, `how-to.md`, `hooks/COVERAGE.md` e modelos). Data e sprint ficam, então a ligação com a medição continua rastreável. Os changelogs e os comentários de script ficam como histórico.
+- **Tela de fora do app com `locator: "cdp"`:** é provada por teste (`(teste)` no cenário), conforme `standards/scenario-language.md` §3. O modo misto (passos de tela do sistema pelo `uiautomator`) ficou como item 26 da fila do `/review`.
+- **Guia e rituais:** o `how-to.md` passou a ensinar o `locator: "cdp"`. O `team-init` o propõe para stack híbrida, e o `team-update` ganhou o passo 7o.
+
+### Addendum v3.62.2 — comando longo em processo próprio: ninguém encerra o turno para esperar um comando (SM + Dev + operator) — 2026-11-17
+
+**Instrução:** (stakeholder, 17/11/2026) "Preciso de uma solução definitiva para esse ponto pq travou o processo por diversas vezes, investigue"; depois, "implemente na versão fix 3.62.2".
+**Medido (garden, S6, Q-S6d, 16–17/11):** a suíte de 17–25 min passou dos 600 s da ferramenta, foi para segundo plano e o dev encerrou o turno com `ESPERANDO`. O Claude Code a encerrou junto ("it is terminated when you give your final response and no notification can follow that"), o aviso não veio, e o executor e a sessão esperaram até alguém digitar: 7 instâncias de dev numa Task, e uma suíte rodada à mão para escapar. Nas transcrições de 30 dias, a mesma chamada recebe ora o aviso, ora o encerramento, conforme a versão (2.1.308, 2.1.310, 2.1.325 e 2.1.326 encerram). Ensaio: o encerramento leva a árvore inteira; o processo criado pelo WMI sobrevive.
+**Classificação:** instrumento (`verify.ps1` e `detach.ps1` rodam o comando em processo próprio e só o acompanham; o `run.ps1` não espera rodada que não acorda ninguém) · regra (exit 3 = rode o mesmo comando no mesmo turno; nenhum papel encerra o turno esperando comando; `run_in_background` negado também ao operator).
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `sprint-run.md` | Disparo e espera, item 5 · Constantes · Ciclo do executor | o comando longo roda em processo próprio e é acompanhado no mesmo turno; a rodada do verify não depende do dev; o `ESPERANDO` sem comando acompanhável não segura o run; 480 s como constante |
+| `agents/developer.md` · `roles/developer/README.md` | passo 6 · Falhou, eu corrijo | exit 3 = rodando: o mesmo comando no mesmo turno; nunca encerrar o turno para esperar; comando longo fora do verify pelo `detach.ps1` |
+| `agents/operator.md` | Espera | comando longo pelo `detach.ps1`, acompanhado no mesmo turno; sem segundo plano |
+| `agents/task-runner.md` | passo 3 | `ESPERANDO` do dev: não esperar o aviso; o `done` diz o passo (dev novo reencontra a rodada) |
+| `hooks/COVERAGE.md` | G14 · bloco v3.62.2 | `run_in_background` negado a todo papel; o comando de dentro do `detach.ps1` conferido |
+
+
+### Addendum v3.62.3 — o executor de cenários do projeto roda pelo `accept.ps1` (Arquiteto + Dev + QA + operator) — 2026-11-17
+
+**Instrução:** (stakeholder, 17/11/2026, sobre a Q-S6d do garden: "hoje não há como acompanhar o aceite pela pasta de resultados") "Vamos fazer a correção na versão 3.62.3". Formulário do mesmo dia: o script do projeto roda **pelo plugin**; o resultado vem **das linhas** da saída; o estado de partida é **do plugin**.
+**Medido (garden, S6, Q-S6d, 17/11):** o plano declarou `**Aceite:** não roda` citando o D-16 ("o `accept.ps1` no android não acha id do app") e mandou o operator provar os 49 cenários pelo `prova-cdp.mjs` numa pasta de job. O `guards.json` do projeto já declarava `locator: cdp` desde a v3.62.0. A prova correu sem trava do alvo, sem `progress.json` e sem conferir o APK instalado, e ficou fora de `.team-project/accept/`.
+**Classificação:** formato (``**Aceite:** comando — `<cmd>` ``, contrato do executor em `standards/scenario-language.md` §5) · regra (34: `não roda` citando script do projeto reprova; cenário provado fora do `accept` não é evidência de aceite) · instrumento (`accept.ps1`, `plan.ps1`, cartão do `run.ps1`).
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `standards/scenario-language.md` | §5 (nova) | executor do projeto: marcadores, ambiente, linhas de resultado, códigos de saída, repetição, o que o `accept` grava |
+| `roles/architect/templates/implementation-plan.md` · `external-plan.md` | cabeçalho · regra 34 do checklist | linha `**Aceite:** comando`; `não roda` só para cenário provado pelos testes do plano |
+| `roles/architect/plan-rules-why.md` | 34 | o caso da Q-S6d e por que o `não roda` com script reprova |
+| `agents/developer.md` | passo 12 | a prova é o `accept.ps1` do cartão; o executor direto não vale |
+| `agents/operator.md` | regras | pedido de rodar o executor do projeto como prova vai pelo `accept.ps1 -Task` |
+| `agents/quality-assurance.md` | evidência do `verify` | cenário provado fora do `accept` não é evidência de aceite; `não roda` com script é achado de processo |
+
+---
+
 ## v3.61 — Sprint 0: o backlog funcional abre sobre documentação conforme e ambiente de testes provado — o onboarding pergunta onde está a documentação e decide o sprint 0 (SM + PO + Arquiteto + QA) — 16/11/2026
 
 **Instrução:** (stakeholder, 16/11/2026, depois de perguntar como usar QA, Sec, Arquiteto e PO em tarefas avulsas) "Não poderíamos considerar o processo de onboarding o questionamento da onde está a documentação, se não existir propor criá-la disparando uma atividade de sprint 0 para isso com a criação da documentação e do ambiente de testes, se existir o sprint 0 irá revisá-la e adequá-la aos pontos de boas práticas de qualidade tanto arquitetural quanto funcional e somente assim iniciar um backlog funcional. Avalie."; avaliação com cinco ajustes aceita: "Sim, implemente a v3.61.0 numa branch feat".

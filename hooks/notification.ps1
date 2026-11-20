@@ -21,5 +21,7 @@ try {
     Write-GuardLog $projectDir 'G15' $hookInput 'permissão' ("pedido de permissão do harness ($ctx): " + [string]$hookInput.message)
     exit 0
 } catch {
+    # v3.65.0 (A1-02): a falha aberta deixa rastro — o COVERAGE promete a linha `erro` no guards.log em todo despachante
+    try { Write-GuardLog $projectDir 'erro' $hookInput 'notification.ps1' $_.Exception.Message } catch { }
     exit 1
 }

@@ -84,7 +84,7 @@ Roteiro em [`rituals/benchmark.md`](../../../rituals/benchmark.md) §7. O modo p
 <!-- fluxos falhos · defeitos da revisão cega · regressões · rubrica de documentação (0–3 × 6) · sonda de manutenibilidade (tokens · tempo · fluxos novos · regressões) -->
 
 ## Assertividade e precisão do plano
-<!-- aceite de primeira · voltas 🟪→🟨 · GAPs por negação · planos reprovados · mutações não pegas · falso verde · linhas de "Plano corrigido durante a execução" -->
+<!-- aceite de primeira · voltas 🟪→🟨 · GAPs por negação · planos reprovados · mutações não pegas · falso verde · linhas de "Plano corrigido durante a execução" (só erro do próprio plano: a decisão do stakeholder vai ao bloco `**Decisão do stakeholder**`, fora desta métrica) -->
 
 ## Fix
 <!-- Correções fechadas na 1ª rodada (de 4, menos as não reproduzidas) · regressões · custo e tempo por Correção fechada -->

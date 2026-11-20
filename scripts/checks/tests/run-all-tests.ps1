@@ -131,6 +131,14 @@ foreach ($j in $done) {
     }
     foreach ($g in $got) { $times[[string]$g.Caso] = [double]$g.Seg }
 }
+# v3.65.0 (achado C3-R18 da revisão geral): a rodada inteira é a conferência antes do commit e inclui o C3 (release.ps1) —
+# da v3.64.0 à v3.64.5 seis entregas saíram com o C3 vermelho (README na versão antiga) porque nada o rodava.
+if (-not $Only) {
+    $relRoot = (Resolve-Path (Join-Path $here '..\..\..')).Path
+    $relOut = (& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $here '..\release.ps1') -Root $relRoot 2>&1 | Out-String)
+    $nCases++
+    if ($LASTEXITCODE -ne 0) { $nFail++; [void]$failOut.AppendLine("==== C3 (release.ps1) reprovou (exit $LASTEXITCODE)"); [void]$failOut.AppendLine($relOut.TrimEnd()) }
+}
 try { New-Item -ItemType Directory -Force (Split-Path $timesP) | Out-Null; [System.IO.File]::WriteAllText($timesP, ($times | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false))) } catch { }
 if ($nFail -gt 0) { [void]$failOut.AppendLine("logs dos blocos: $run (apague depois de ler)") } else { Remove-Item -Recurse -Force $run -ErrorAction SilentlyContinue }
 if ($failOut.Length) { Write-Output $failOut.ToString().TrimEnd() }

@@ -64,7 +64,7 @@ try {
     $talk = " Conversa com o stakeholder (R22): toda pergunta a ele — decisão, dado, confirmação ou próximo passo — sai já como formulário AskUserQuestion, na mesma resposta; nunca uma pergunta em texto para ele responder depois. Linguagem simples (termo técnico só se indispensável, e explicado), rótulos curtos, a opção recomendada primeiro e 'Pedir mais contexto' por último; para escrever a própria resposta ele usa o campo 'Outro' que o formulário já traz. Se ele pedir mais contexto: explique em texto curto e repita o formulário na mesma resposta. Decidida a pergunta, a linha dela sai da §7 do README na mesma resposta (R34) — pendência respondida que fica lá vira pergunta repetida na sessão seguinte. Durante o sprint run, formulário só quando o run.ps1 manda levar ao stakeholder (G24, R25 c); o resto se decide pelo roteiro."
     if (-not (Test-GuardEnabled $cfg 'G13')) { [Console]::Out.Write(($talk + $resume).Trim()); exit 0 }
 
-    $all = 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G11', 'G14', 'G15', 'G16', 'G17', 'G18', 'G19', 'G20', 'G21', 'G22', 'G23', 'G24'
+    $all = 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G11', 'G14', 'G15', 'G16', 'G17', 'G18', 'G19', 'G20', 'G21', 'G22', 'G23', 'G24', 'G25'   # v3.65.0 (A2-11): a G25 se desliga e não aparecia na linha
     $on= @($all | Where-Object { Test-GuardEnabled $cfg $_ })
     $off = @($all | Where-Object { -not (Test-GuardEnabled $cfg $_) })
     $line = "Guardas do time (hooks/COVERAGE.md): ativas " + ($(if ($on.Count) { $on -join ', ' } else { 'nenhuma' })) +
@@ -116,5 +116,7 @@ try {
     [Console]::Out.Write($line + $talk + $resume)
     exit 0
 } catch {
+    # v3.65.0 (A1-02): a falha aberta deixa rastro — o COVERAGE promete a linha `erro` no guards.log em todo despachante
+    try { Write-GuardLog $projectDir 'erro' $hookInput 'session-start.ps1' $_.Exception.Message } catch { }
     exit 1
 }

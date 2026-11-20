@@ -1127,7 +1127,7 @@ $cases = @(
                  Remove-Item -LiteralPath (Join-Path $proj '.team-project/.ask-route') -Force -ErrorAction SilentlyContinue
                  [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ "disabled": ["G24"] }', (New-Object System.Text.UTF8Encoding($false))) }
        Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessRun'; tool_input = @{ questions = @(@{ question = 'Sigo? Exemplo: x.'; header = 'Q'; multiSelect = $false; options = @((Opt 'Sim'), (Opt 'Pedir mais contexto')) }) } } },
-    @{ Name = 'SessionStart (v3.58.3): a retomada vale para o comando do run; outro comando diz em uma linha, sem formulário'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'G23, G24;*Retome agora, sem esperar o stakeholder: /sm sprint run*se ele pediu outro comando*sem formulário*formulário só quando o run.ps1 manda levar ao stakeholder (G24'
+    @{ Name = 'SessionStart (v3.58.3): a retomada vale para o comando do run; outro comando diz em uma linha, sem formulário'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'G23, G24, G25;*Retome agora, sem esperar o stakeholder: /sm sprint run*se ele pediu outro comando*sem formulário*formulário só quando o run.ps1 manda levar ao stakeholder (G24'
        Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ }', (New-Object System.Text.UTF8Encoding($false))) }
        Check = { foreach ($f in '.active-run', '.run-session', '.ask-route') { Remove-Item -LiteralPath (Join-Path $proj ".team-project/$f") -Force -ErrorAction SilentlyContinue }; $true }
        Payload = @{ hook_event_name = 'SessionStart'; source = 'startup' } },

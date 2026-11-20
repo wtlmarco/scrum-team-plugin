@@ -636,6 +636,23 @@ $r = & $lt '5037' 'emulator-5555'
 Check 'v3.64.0 D8: porta do emulador ímpar → recusa com a proposta da primeira par livre (sem gravar)' $r 0 @('RECUSA: guards\.json → targets\.android\.serial = emulator-5555: a porta do emulador é par', 'Proposta: emulator-55\d\d')
 $r = & $lt '5037' 'emulator-5556'
 Check 'v3.64.0 D8: um servidor do adb e a porta par declarada → a trava do alvo é tomada' $r 0 @('TOMADA')
+$r = & $lt '5037' ''
+Check 'v3.65.0 A2-03: sem serial declarado e um servidor do adb → nada a conferir na porta, a trava do alvo é tomada' $r 0 @('TOMADA')
+# v3.65.0 A2-07: fora do verify, o accept e o reparo do android tomam a trava pesada pelo Enter-TargetLock — outro projeto com
+# ela → recusa na hora (sem esperar o heavyWaitMin), com o dono, e devolve a trava do alvo e a do aparelho.
+$hlk65 = Join-Path $env:TEAM_DEVICE_LOCK_DIR 'machine-heavy.json'
+New-Item -ItemType Directory -Force (Split-Path $hlk65) | Out-Null
+[System.IO.File]::WriteAllText($hlk65, (@{ kind = 'heavy'; owner = 'accept S9'; pid = $PID; desde = '2026-11-19 09:00:00'; root = 'C:\outro-projeto' } | ConvertTo-Json -Compress), $utf8)
+$sw65 = [System.Diagnostics.Stopwatch]::StartNew(); $r = & $lt '5037' ''; $sw65.Stop()
+$left65 = @(Get-ChildItem -LiteralPath $env:TEAM_DEVICE_LOCK_DIR -File -Filter '*.json' | Where-Object { $_.Name -ne 'machine-heavy.json' }).Count
+Check 'v3.65.0 A2-07: outro projeto segura a trava pesada → a trava do alvo android recusa na hora, com o dono, e não fica com trava nenhuma' @{ Code = 0; Out = $r.Out + "`nRAPIDO=$($sw65.Elapsed.TotalSeconds -lt 30) ALVO=$(Test-Path -LiteralPath (Join-Path $p '.team-project/.target-lock')) APARELHO=$left65" } 0 @("RECUSA: a máquina está em uso por OUTRO projeto \(C:\\outro-projeto\) — 'accept S9'", 'RAPIDO=True ALVO=False APARELHO=0')
+[System.IO.File]::WriteAllText($hlk65, (@{ kind = 'heavy'; owner = 'verify T-041'; pid = $PID; desde = '2026-11-19 09:00:00'; root = $p } | ConvertTo-Json -Compress), $utf8)
+$r = & $lt '5037' ''
+Check 'v3.65.0 A2-07: a trava pesada do MESMO projeto não recusa (reentrante) — a trava do alvo é tomada' $r 0 @('TOMADA')
+Remove-Item -LiteralPath $hlk65 -Force -ErrorAction SilentlyContinue
+# v3.65.0: o adb atual sobe o servidor como "adb -L tcp:<porta> fork-server server" — só o -P era lido e todo servidor contava 5037.
+$o = & powershell -NoProfile -Command ". '$(Join-Path $checks 'lib.ps1')'; @('adb -L tcp:5037 fork-server server --reply-fd 704', 'adb -L tcp:5038 fork-server server --reply-fd 704', 'adb -P 5041 server nodaemon', 'adb fork-server server', 'adb -L tcp:localhost:5039 fork-server server') | ForEach-Object { 'P=' + (Get-AdbServerPortFromCommandLine `$_) }" 2>&1 | Out-String
+Check 'v3.65.0: porta do servidor do adb lida do -L tcp:<porta> (forma atual), do -P e, sem porta, a padrão' @{ Code = 0; Out = $o } 0 @('P=5037\s+P=5038\s+P=5041\s+P=5037\s+P=5039')
 $eKeep = $e   # o lib.ps1 carregado aqui grava $script:E (os marcadores) — e a suíte usa $e: restaurado logo abaixo
 $r = & { $o = & { . (Join-Path $checks 'lib.ps1'); $a = Get-RunnerDisconnect "Executed 5 of 9`nChromeHeadless was not killed in 2000 ms`nChrome Headless 120 (Windows 10) crashed"; $b = Get-RunnerDisconnect "Executed 9 of 9 (1 FAILED)`nTOTAL: 1 FAILED, 8 SUCCESS"; "A=$($a.Text)|$($a.At)/$($a.Total) B=$(if ($b) { 'caiu' } else { 'nada' })" }; @{ Code = 0; Out = "$o" } }
 Check 'v3.63.1 pedido 8: Get-RunnerDisconnect reconhece o Chrome que fechou e não confunde teste reprovado com queda do navegador' $r 0 @('A=Chrome Headless 120 \(Windows 10\) crashed\|5/9', 'B=nada')
@@ -1153,12 +1170,12 @@ $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.53.2: plano de 21 KB não reprova por tamanho (sem corte); sem **Cenários:** exit 1 (regra 23)' $r 1 @('\| tamanho \| ok', '\| cenários \| falhou.*sem \*\*Cenários')
 Put $p $pl ("# Plano`n**Cenários:** SC-001, SC-009`n**Risco:** interface simples`n**Layout novo:** não`n`n" + $head + ('x' * 32000))
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
-Check 'v3.53.6 item 1: plano acima de 30 KB reprova (exit 1) — Task grande à divisão, nunca corte nem correção (regra 22)' $r 1 @('\| tamanho \| falhou.*acima de 30 KB: Task grande — NÃO corte nem encurte', 'run\.ps1 next a divide com os blocos deste plano', "volte dizendo 'tamanho'", '^(?![\s\S]*volta ao Arquiteto com esta tabela)')
+Check 'v3.53.6 item 1: plano acima de 30 KB reprova (exit 1) — Task grande à divisão, nunca corte nem correção (regra 22)' $r 1 @('\| tamanho \| falhou.*acima de 30 KB \(regra 22\)\. Antes da construção: Task grande — NÃO corte nem encurte', 'run\.ps1 next a divide com os blocos deste plano', "volte dizendo 'tamanho'", 'Construção começada \(plano emendado por decisão do stakeholder, Q-S ou GAP\): a Task não se divide', '^(?![\s\S]*volta ao Arquiteto com esta tabela)')
 # v3.60.1 (sprint 6 do garden, T-090): as decisões de 🔺 GAP não contam para o teto — 27 KB de plano + 4 KB de decisões passa.
 $gapDec = "**Decisão do GAP T-001 (2026-11-15):** " + ('d' * 2000) + "`n**Origem:** processo`n**Lição:** nenhuma`n`n**Decisão do GAP T-001 (2026-11-15):** " + ('e' * 2000) + "`n**Origem:** ambiente`n**Lição:** projeto`n`n"
 Put $p $pl ("# Plano`n**Cenários:** SC-001, SC-009`n**Risco:** interface simples`n**Layout novo:** não`n`n" + $gapDec + $head + ('x' * 27000))
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
-Check 'v3.60.1: decisões de 🔺 GAP fora da conta do teto — 27 KB de plano + 4 KB de decisões passa, e a linha diz quanto ficou fora' $r 0 @('\| tamanho \| ok \| 2\d(?:[.,]\d)? KB \(\+4[.,]\d KB de decisões de 🔺 GAP, fora da conta; arquivo com 3\d(?:[.,]\d)? KB\)')
+Check 'v3.60.1: decisões de 🔺 GAP fora da conta do teto — 27 KB de plano + 4 KB de decisões passa, e a linha diz quanto ficou fora' $r 0 @('\| tamanho \| ok \| 2\d(?:[.,]\d)? KB \(\+4[.,]\d KB de decisões de 🔺 GAP e do stakeholder, fora da conta; arquivo com 3\d(?:[.,]\d)? KB\)')
 Put $p $pl ("# Plano`n**Cenários:** SC-001, SC-009`n**Risco:** interface simples`n**Layout novo:** não`n`n" + $gapDec + $head + ('x' * 31000))
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.60.1: plano acima do teto sem as decisões continua reprovando' $r 1 @('\| tamanho \| falhou.*\(\+4[.,]\d KB de decisões de 🔺 GAP')
@@ -1243,6 +1260,54 @@ if (Test-Path (Join-Path $checks 'project.ps1')) {
     $r = Invoke-Check 'project.ps1' @('-Root', $p)
     Check 'C2 navegação real com bench ligado: R15 segue a regra de sempre' $r 0 @('\| R15 \| n-a')
 }
+
+# v3.65.0 A1-09/A1-10: R15 e R31 do C2 num projeto git — o SDD técnico (03/04/05) comparado à navegação do ① pela data do
+# git log (autor); o .team-project/ fora do git, ignorado e sem citação no diretório de produto.
+$mk65c2 = { param($dir, $date)
+    New-Project $dir
+    Put $dir '.team-project/user-experience/prototype/ficha.md' "# Protótipo funcional`n`n**Navegado pelo stakeholder em:** 2026-09-01 · canal: terminal · declarada`n"
+    Put $dir 'docs/sdd/03-architecture.md' "# Arquitetura`n"; Put $dir '.gitignore' ".team-project/`n"
+    $ErrorActionPreference = 'Continue'
+    & git -C $dir init -q 2>$null; & git -C $dir config user.email t@t 2>$null; & git -C $dir config user.name t 2>$null
+    & git -C $dir add -A 2>$null; & git -C $dir commit -qm sdd "--date=$($date)T10:00:00" 2>$null
+}
+$p65a = Join-Path $tmp 'v3650-c2-antes'; & $mk65c2 $p65a '2026-08-20'
+$r = Invoke-Check 'project.ps1' @('-Root', $p65a)
+Check 'v3.65.0 A1-09: SDD técnico criado antes da navegação do ① (git log) → R15 falhou com o arquivo e a data' $r 0 @('\| R15 \| falhou \| SDD técnico antes da navegação do ① \(2026-09-01\): 03-architecture\.md em 2026-08-20')
+$p65b = Join-Path $tmp 'v3650-c2-depois'; & $mk65c2 $p65b '2026-09-05'
+$r = Invoke-Check 'project.ps1' @('-Root', $p65b)
+Check 'v3.65.0 A1-09: SDD técnico criado depois da navegação do ① → R15 ok' $r 0 @('\| R15 \| ok \| 1 documento\(s\) 03/04/05 criados depois do ① \(2026-09-01\)')
+Check 'v3.65.0 A1-10: .team-project/ ignorado, fora do git e docs/ sem citação → R31 ok' $r 0 @('\| R31 \| ok \| \.team-project/ fora do git e ignorado; docs/ sem referência')
+Put $p65b 'docs/sdd/guia.md' "Veja .team-project/README.md`n"
+$r = Invoke-Check 'project.ps1' @('-Root', $p65b)
+Check 'v3.65.0 A1-10: docs/ citando .team-project → R31 falhou com o arquivo' $r 0 @('\| R31 \| falhou \| docs/ cita \.team-project em 1 arquivo\(s\) \(ex\.: docs.sdd.guia\.md\)')
+Remove-Item -LiteralPath (Join-Path $p65b 'docs/sdd/guia.md') -Force
+Put $p65b '.gitignore' "node_modules/`n"
+$r = Invoke-Check 'project.ps1' @('-Root', $p65b)
+Check 'v3.65.0 A1-10: .gitignore sem a linha do .team-project/ → R31 falhou' $r 0 @('\| R31 \| falhou \| \.team-project/ não está no \.gitignore', '^(?![\s\S]*arquivo\(s\) de \.team-project/ no git)')
+Put $p65b '.gitignore' ".team-project/`n"
+$ErrorActionPreference = 'Continue'; & git -C $p65b add -f .team-project/README.md 2>$null; & git -C $p65b commit -qm rastreado 2>$null; $ErrorActionPreference = 'Stop'
+$r = Invoke-Check 'project.ps1' @('-Root', $p65b)
+Check 'v3.65.0 A1-10: arquivo de .team-project/ rastreado no git → R31 falhou com o exemplo' $r 0 @('\| R31 \| falhou \| 1 arquivo\(s\) de \.team-project/ no git \(ex\.: \.team-project/README\.md\)')
+
+# v3.65.0 A1-11: os ramos "falhou" do C1 que o caminho feliz não cobre — R8 (sem plano), R16 (sem standard com §), R26 (sem
+# as seções 3 e 9) e R25 (pacote incompleto, bloqueio sem degrau).
+$p65r8 = Join-Path $tmp 'v3650-c1-r8'; New-Project $p65r8
+Remove-Item -LiteralPath (Join-Path $p65r8 '.team-project/sprints/1/plan/T-041-export.md') -Force
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p65r8)
+Check 'v3.65.0 A1-11: sem plano da Task → R8 falhou; R16 e R26 n-a (sem plano)' $r 0 @('\| R8 \| falhou \| nenhum plano para T-041 em sprints/1/plan/', '\| R16 \| n-a \| sem plano', '\| R26 \| n-a \| sem plano')
+$p65c1 = Join-Path $tmp 'v3650-c1-plano'; New-Project $p65c1
+$pl65 = Join-Path $p65c1 '.team-project/sprints/1/plan/T-041-export.md'
+$t65 = [System.IO.File]::ReadAllText($pl65, $utf8) -replace '(?m)^- \*\*Standard aplicável:\*\*.*$', '- **Standard aplicável:** n/a — passo sem padrão' -replace '(?s)## 3\. Ambiente.*?(?=## 4\.)', '' -replace '(?s)## 9\..*$', ''
+[System.IO.File]::WriteAllText($pl65, $t65, $utf8)
+$sb65 = Join-Path $p65c1 '.team-project/sprints/1/sprint-backlog.md'
+Edit-File $sb65 '| **Aprovado por** | Stakeholder |' '| **Aprovado por** | <quem aprovou> |'
+Edit-File $sb65 ' · **fluxo ponta a ponta coberto:** exportar análise' ''
+Edit-File $sb65 '| par PO+Arquiteto desde 2026-09-02 |' '| esperando |'
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p65c1)
+Check 'v3.65.0 A1-11: plano sem citação de standards/ com § → R16 falhou' $r 0 @('\| R16 \| falhou \| nenhuma citação de standards/ com § numerado')
+Check 'v3.65.0 A1-11: plano sem as seções 3 e 9 → R26 falhou com as duas' $r 0 @('\| R26 \| falhou \| seção 3 \(ambiente medido\) ausente ou depois dos passos; seção 9 sem "Pré-requisito ausente"')
+Check 'v3.65.0 A1-11: pacote sem "Aprovado por", protótipo sem fluxo e bloqueio sem degrau → R25 falhou com os três' $r 0 @('\| R25 \| falhou \| Aprovado por não preenchido; Protótipo sem caminho, data de navegação ou fluxo ponta a ponta; bloqueio 1 sem degrau nomeado')
 
 # 10. C4 (fix.ps1): bloco B-001 com um defeito, um ajuste e uma promovida.
 
@@ -2966,6 +3031,19 @@ Check 'v3.54.1: stub de teste que não monta arquivo do plano é GAP; o declarad
 Edit-File $dvp "- A4 · stub · ``tests/other.ps1`` · x`n" ''
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'v3.54.1: margem stub com a linha fecha' $r 0 @('\| R7-margem \| ok.*3 ajuste\(s\).*A3 stub \(tests/calc\.render\.spec\.ts monta src/calc\.ts\)')
+# v3.65.0 (decisão Q1 do stakeholder): o C1 confere os arquivos mudados × o plano — o que escapou da G9 aparece na linha
+# R4-arquivos (reprova o R4, não trava o close: o QA decide no portão); a margem declarada não conta.
+Put $p 'src/extra.ts' "export const x = 1;`n"
+# a árvore mudou: sem o verify de novo, o R7-verify (que bloqueia) reprovaria antes — o caso mede só o R4-arquivos
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.65.0 Q1: arquivo alterado fora de **Arquivos tocados:** e fora da margem → R4-arquivos falhou com o caminho; o close não trava por ele' $r 0 @('\| R4-arquivos \| falhou \| \d+ arquivo\(s\) alterado\(s\) fora de \*\*Arquivos tocados:\*\*.*`src/extra\.ts`', '^(?![\s\S]*R4-arquivos[^\r\n]*tests/calc\.render\.spec\.ts)')
+Remove-Item -LiteralPath (Join-Path $p 'src/extra.ts') -Force
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
+Check 'v3.65.0 Q1: sem o arquivo fora do plano, a linha R4-arquivos não o cita' $r 0 @('\| R4-arquivos \| (ok|falhou)', '^(?![\s\S]*src/extra\.ts)')
 # v3.55.0 (A3): margem fixture — fecha com a regra do padrão de ids; sem regra e com dump inexistente não fecha.
 [System.IO.File]::AppendAllText($dvp, "- A7 · fixture · ``tests/check.ps1`` · content-desc trocado por text na fixture · regra: standards/test-ids.md §4 (id é o seletor)`n", $utf8)
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
@@ -4308,6 +4386,53 @@ $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p66)
 Check 'v3.64.0 item 6 D: "a árvore mudou depois do verify" diz o arquivo que mudou' $r 1 @('\| R7-verify \| falhou \| a árvore mudou depois do verify full de 2026-11-18 11:00:00 \(\S+ → \S+\): src/b\.ts — se não é da Task')
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p64b)
 Check 'v3.64.0 item 5 B: plano com **Aceite:** não roda → o R7 pede só a saída do verify e cita o plano; R12 "n/a" no modo dev vale como a consolidar' $r 1 @('\| R7 \| falhou \| delivery/T-041\.md sem a saída colada do verify na seção mais recente \(plano: \*\*Aceite:\*\* não roda\)', '\| R12 \| ok \| Estado: n/a')
+
+# ----- v3.65.0 A2-06: o checkpoint "sem fechar" na pausa do run e no início de outra Task -----
+$pc65 = Join-Path $tmp 'v3650-checkpoint'; New-Project $pc65
+$sbc65 = Join-Path $pc65 '.team-project/sprints/1/sprint-backlog.md'
+Edit-File $sbc65 "| $($e.qa) T-041 |" "| $($e.build) T-041 |"
+Edit-File $sbc65 '](plan/) |' '](plan/T-041a-x.md) |'
+$plc65 = Join-Path $pc65 '.team-project/sprints/1/plan/T-041-export.md'
+[System.IO.File]::WriteAllText($plc65, [System.IO.File]::ReadAllText($plc65, $utf8).Replace("## 3. Ambiente", "**Arquivos tocados:** ``src/a.ts```n`n## 3. Ambiente"), $utf8)
+Put $pc65 '.team-project/sprints/1/plan/T-041a-x.md' "# Plano de Implementação — T-041a Variante`n`n**Arquivos tocados:** ``src/b.ts```n`n### Comandos da Task`n- nenhum além da lista base`n"
+Put $pc65 'src/a.ts' "export const a = 1`n"; Put $pc65 'src/b.ts' "export const b = 1`n"
+$ErrorActionPreference = 'Continue'; & git -C $pc65 init -q 2>$null; Put $pc65 '.gitignore' ".team-project/`n"; & git -C $pc65 config user.email t@t; & git -C $pc65 config user.name t; & git -C $pc65 add -A 2>$null; & git -C $pc65 commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+Put $pc65 'src/a.ts' "export const a = 2`n"; Put $pc65 'src/b.ts' "export const b = 2`n"
+$r = Invoke-Check 'run.ps1' @('pause', '-Because', 'o stakeholder pediu', '-Root', $pc65)
+$ErrorActionPreference = 'Continue'; $lg65 = & git -C $pc65 log -1 --format='%s%n%b' 2>$null | Out-String; $st65 = & git -C $pc65 status --porcelain 2>$null | Out-String; $ErrorActionPreference = 'Stop'
+Check 'v3.65.0 A2-06: run.ps1 pause → checkpoint "sem fechar" só da Task em 🟨 e só do escopo do plano dela (a ⬜ fica pendente)' @{ Code = $r.Code; Out = $r.Out + "`nLOG=" + $lg65 + "`nST=" + $st65 } 0 @('checkpoint da T-041: \S+ \(1 arquivo\(s\) do plano, sem fechar — pausa do run\)', 'LOG=T-041 \(checkpoint, sem fechar\): Endpoint de exportação', 'Task-State: parcial', 'ST=\s*M src/b\.ts', '^(?![\s\S]*ST=[\s\S]*src/a\.ts)', '^(?![\s\S]*checkpoint da T-041a)')
+$r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-041', '-Root', $pc65)
+$ErrorActionPreference = 'Continue'; $lg65 = & git -C $pc65 log -1 --format='%s%n%b' 2>$null | Out-String; $st65 = & git -C $pc65 status --porcelain -- src 2>$null | Out-String; $ErrorActionPreference = 'Stop'
+Check 'v3.65.0 A2-06: run.ps1 start com pendente do escopo de OUTRA Task aberta → checkpoint dela antes do dev, com Task-State: parcial' @{ Code = $r.Code; Out = $r.Out + "`nLOG=" + $lg65 + "`nST=[" + $st65.Trim() + ']' } 0 @('run start: checkpoint da T-041a: \S+ \(1 arquivo\(s\) do plano, sem fechar — arquivos pendentes dela no início da T-041\)', 'LOG=T-041a \(checkpoint, sem fechar\): Variante', 'Task-State: parcial', 'ST=\[\]', 'dispatch: developer · T-041')
+
+# ----- v3.65.0 A2-06/A2-08: o portão antes de medir (checkpoint das abertas; suíte só reaproveitada por inputs → verify -Fresh)
+# e a Q11, que recusa a cobertura com reusedBy: inputs -----
+$pq65 = Join-Path $tmp 'v3650-gate'
+Put $pq65 '.team-project/README.md' "| | |`n|---|---|`n| **Sprint corrente** | **1** — x |`n"
+Put $pq65 '.team-project/sprints/1/sprint-backlog.md' "# SB`n`n## História H-1 — x`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $($e.ok) T-001 | a | 1 | dev | — | — | — | — |`n| $($e.qa) T-002 | b | 1 | dev | — | [plan/T-002.md](plan/T-002.md) | — | — |`n"
+Put $pq65 '.team-project/sprints/1/plan/T-002.md' "# Plano — T-002 b`n`n**Arquivos tocados:** ``src/b.ts```n"
+Put $pq65 '.team-project/guards.json' '{ "quality": { "coverage": "Write-Output \"Total coverage 42 %\"" } }'
+Put $pq65 'src/a.ts' "export const a = 1`n"; Put $pq65 'src/b.ts' "export const b = 1`n"
+$ErrorActionPreference = 'Continue'; & git -C $pq65 init -q 2>$null; Put $pq65 '.gitignore' ".team-project/`n"; & git -C $pq65 config user.email t@t; & git -C $pq65 config user.name t; & git -C $pq65 add -A 2>$null; & git -C $pq65 commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+Put $pq65 'src/b.ts' "export const b = 2`n"; Put $pq65 'tools/z.txt' "sobra`n"
+$r = & $g63 $pq65
+$ErrorActionPreference = 'Continue'; $lg65q = & git -C $pq65 log -1 --format='%s%n%b' 2>$null | Out-String; $ErrorActionPreference = 'Stop'
+Check 'v3.65.0 A2-06: portão antes de medir → checkpoint "sem fechar" da Task não fechada (escopo do plano) e o pendente sem dono avisado' @{ Code = $r.Code; Out = $r.Out + "`nLOG=" + $lg65q } 0 @('checkpoint da T-002: \S+ \(1 arquivo\(s\) do plano, sem fechar — antes da medição do portão\)', 'atenção: pendente sem commit no disco, que a medição inclui: tools/z\.txt', 'medir \(operator', 'LOG=T-002 \(checkpoint, sem fechar\): b', 'Task-State: parcial')
+Remove-Item -LiteralPath (Join-Path $pq65 'tools') -Recurse -Force
+$tr65 = & $lib63 "Get-WorkTree '$pq65'"
+Put $pq65 '.team-project/verify/1/T-001/coverage.log' "All files  |  91.5 %`n"
+$vr65 = { param($reused) $c = @(@{ key = 'suite'; command = 'echo ok'; exit = 0 }, @{ key = 'coverage'; command = 'echo cov'; exit = 0; log = '.team-project/verify/1/T-001/coverage.log' }); if ($reused) { foreach ($cc in $c) { $cc.reusedBy = 'inputs' } }; Put $pq65 '.team-project/verify/1/T-001/result.json' (@{ task = 'T-001'; full = @{ at = '2026-11-19 10:00:00'; tree = "$tr65".Trim(); commands = $c } } | ConvertTo-Json -Depth 5) }
+& $vr65 $true
+$r = & $g63 $pq65
+Check 'v3.65.0 A2-08: a suíte desta árvore só existe reaproveitada por inputs → o portão manda verify -Mode full -Fresh antes da qualidade' $r 0 @('verify\.ps1 -Task S1 -Mode full -Fresh e \S*quality\.ps1 -Id S1', 'suíte: só reaproveitada por inputs nesta árvore')
+$r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $pq65)
+Check 'v3.65.0 A2-08: Q11 recusa a cobertura reaproveitada por inputs — roda quality.coverage (42 %, falhou)' $r 1 @('Q11 falhou: .*42 % medido × limiar 80 %', '^(?![\s\S]*reaproveitada do verify full)')
+& $vr65 $false
+Remove-Item -LiteralPath (Join-Path $pq65 '.team-project/quality') -Recurse -Force -ErrorAction SilentlyContinue   # o quality.ps1 acima gravou a medição: sem ela, o portão mede de novo
+$r = & $g63 $pq65
+Check 'v3.65.0 A2-08: suíte rodada de fato nesta árvore → o portão mede só a qualidade, sem verify -Fresh' $r 0 @('medir \(operator', 'quality\.ps1 -Id S1', '^(?![\s\S]*-Mode full -Fresh)')
+$r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $pq65)
+Check 'v3.65.0 A2-08: Q11 com a cobertura rodada de fato no verify full da mesma árvore → reaproveitada (91.5 %)' $r 0 @('Q11 ok: .*reaproveitada do verify full da T-001 .*mesma árvore.*91\.5 % medido')
 
 # ==== fim dos casos ====
 try { Stop-Process -Id $script:watchdog.Id -Force -ErrorAction SilentlyContinue } catch { }

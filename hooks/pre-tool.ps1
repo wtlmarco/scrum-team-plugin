@@ -153,7 +153,7 @@ function Test-G24([object]$ToolInput) {
     Deny 'G24' $q ("R25 (c): durante o sprint run o formulário ao stakeholder só sai pela rota que o run.ps1 imprime (.team-project/.ask-route ausente ou vencida) — fim da fila, bloqueio sem Task elegível depois do par PO + Arquiteto, GAP de produto, estado de partida, ambiente sem reparo, travamento repetido, comandos dos planos, portão. Esta pergunta não tem rota; decida pelo roteiro, sem formulário: " +
         "cenário que só se prova por teste → '(teste)' na coluna Cenários e linha no run-log; nome de teste (id) que falta → 🔺 GAP ao Arquiteto (ele estende o plano); Task bloqueada (teste vermelho fora dela, premissa errada, conflito de plano) → mark.ps1 -To blocked e o par PO + Arquiteto decide — a fila segue nas independentes; " +
         "'sigo?', 'tento de novo?', 'retomo?' → rode run.ps1 next; estado de processo, arquivo ou log → leia você mesmo; devolução de plano externo recusada → diga em uma linha. Se o run.ps1 next mandar levar ao stakeholder, a rota fica gravada e o formulário passa. " +
-        "Cenário de tela que não roda neste alvo (ids não publicados, estado de partida) e já decidido 'provar por teste' → run.ps1 prove -Task <T-ID>; arquivo alterado por outra Task → não é da Task em curso (o close o ignora desde o start dela), siga; id dinâmico que falta → o Arquiteto declara no código (// testid-dinamico: <padrão>), sem formulário. " +
+        "Cenário de tela que não roda neste alvo (estado de partida) e já decidido 'provar por teste' → run.ps1 prove -Task <T-ID>; arquivo alterado por outra Task → não é da Task em curso (o close o ignora desde o start dela), siga; id dinâmico que falta → o Arquiteto declara no código (// testid-dinamico: <padrão>), sem formulário. " +
         "Se o stakeholder interrompeu e pediu a pergunta, é a parada (d): run.ps1 pause antes (sprint-run.md §Paradas legítimas).")
 }
 
@@ -918,11 +918,15 @@ function Test-G14([object]$ToolInput) {
         $script:g14Allowed = @($script:runBase) + @($cfg.runCommands) + @(Get-RepairCommands $script:projectDir)
         $script:badSeg = ''; $script:badSegInner = ''
         if (Test-CommandText $cmd 0) { return $true }
-        if (@($cfg.runCommands).Count -eq 0) { return $false }        # projeto sem runCommands: o harness decide, como antes
         $badSeg = if ($script:badSegInner) { [string]$script:badSegInner } else { [string]$script:badSeg }
+        # projeto sem runCommands: o harness decide, como antes — EXCETO as esperas e os atalhos que a G14 nega com rota
+        # (v3.65.0, A1-03: o COVERAGE, o roteiro do dev e o do watcher dizem que a G14 nega Start-Sleep com a rota; sem
+        # runCommands o comando caía no pedido de permissão do harness, que é a trava que a G14 existe para evitar).
+        $misroute = Get-PluginScriptMisroute (Restore-Quoted $badSeg)   # v3.64.1: antes do corte
+        # v3.65.0: o script do plugin no caminho errado também — sem runCommands, ia ao harness sem o caminho certo.
+        if (@($cfg.runCommands).Count -eq 0 -and -not $misroute -and $badSeg -notmatch '^(?i)(start-sleep|wait-process|robocopy|xcopy|(\S*[\\/])?adb(\.exe)?)\b') { return $false }
         # v3.53.6 (item 6): também nas formas "& <caminho>" e "<caminho>" direto.
         $plugCheck = ($badSeg -match '(?i)[\\/]scripts[\\/]checks[\\/][\w-]+\.ps1') -and ($badSeg -match '^(?i)(&|powershell|pwsh|["'']?(\.{0,2}[\\/]|[a-z]:[\\/]))')   # antes do corte
-        $misroute = Get-PluginScriptMisroute (Restore-Quoted $badSeg)   # v3.64.1: antes do corte
         $isPs1 = $badSeg -match '(?i)\.ps1\b'                            # v3.64.1: antes do corte (o caminho longo perdia o .ps1)
         if ($badSeg.Length -gt 80) { $badSeg = $badSeg.Substring(0, 80) + '…' }
         # v3.52.3 (note.md item 3): a ferramenta move para segundo plano o comando que passa de 600 s, e o aviso de conclusão
