@@ -80,19 +80,22 @@ async function step(ctx, verb, rest, shotBase) {
     ctx.fresh = async () => { if (ctx.context) await ctx.context.close(); ctx.context = await browser.newContext({ viewport: vp }); ctx.page = await ctx.context.newPage(); };
     await ctx.fresh();
     const shotBase = path.join(input.shotDir, sc.id);
-    let status = 'PASSOU', detail = '';
+    let status = 'PASSOU', detail = ''; const steps = [];   // v3.65.2: o tempo de cada passo (accept.ps1 → result.json timing)
     for (const s of sc.steps) {
       const i = s.indexOf(' '); const verb = i < 0 ? s : s.slice(0, i); const rest = i < 0 ? '' : s.slice(i + 1).trim();
+      const t0 = Date.now();
       try { await step(ctx, verb, rest, shotBase); }
       catch (e) {
+        steps.push({ v: verb, ms: Date.now() - t0 });
         if (e.environment || e.kind === 'environment' || e.kind === 'config') { envFail = String(e.message).split('\n')[0]; break; }
         status = 'FALHOU'; detail = `passo '${s}': ${String(e.message).split('\n')[0]}`; break;
       }
+      steps.push({ v: verb, ms: Date.now() - t0 });
     }
     if (envFail) { await ctx.context.close().catch(() => {}); break; }
     const shot = `${shotBase}-${status === 'PASSOU' ? 'final' : 'falha'}.png`;
     await ctx.page.screenshot({ path: shot, fullPage: true }).catch(() => {});
-    results.push({ id: sc.id, title: sc.title, status, detail, shot });
+    results.push({ id: sc.id, title: sc.title, status, detail, shot, steps });
     await ctx.context.close();
   }
   await browser.close();

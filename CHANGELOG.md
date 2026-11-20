@@ -13,6 +13,26 @@
 
 ---
 
+## v3.65.2 — 2026-11-20
+
+**Branch:** `fix/v3.65.2` a partir de `develop` (`80621a9`, v3.65.1 mesclada)
+
+Origem: o tempo do aceite no portão do sprint 6 do garden. A rodada 5 levou 80 min (49 cenários e 25 repetições) e a das 06:22 levou 50 min (23 cenários e 13 repetições). Cada execução de cenário levou de 65 a 85 s.
+
+**A segunda tentativa só para a falha que pode ser oscilação** (`accept.ps1`): nas duas rodadas, 38 repetições salvaram 3, todas de toque não reconhecido (corrigido na v3.65.1). As 22 de id ausente, rolagem que não traz o elemento e valor diferente não salvaram nenhuma: cerca de 25 a 30 min. Essas falhas não se repetem mais, e a linha sai com "não repetido: <classe>". Toque, conexão e toda falha com sinal do app continuam repetindo. A regra vale para o executor interno e para o executor do projeto (`{only}`).
+
+**Asserts que releem** (`cdp-verbs.js`, `android.ps1`): `assert-text`, `assert-contains`, `assert-absent`, `assert-checked`, `assert-count` e `assert-order` releem até o valor bater, por até 5 s, e a falha traz a última leitura. O cenário não precisa mais de `wait` fixo depois do toque (289 s deles nos 23 cenários da segunda rodada). A norma passa a dizer que `wait` é para o tempo do próprio app.
+
+**Tempo no resultado** (`accept.ps1`, `web-runner.js`): cada linha traz `seconds` e `stepMs`. O `timing` da rodada traz o total, as execuções e cada verbo (vezes, soma e média, do mais caro ao mais barato). O `result.md` mostra o resumo e os segundos de cada cenário. Com esse dado, dá para medir no aparelho o custo de um processo do Node por passo antes de mudar o executor.
+
+**S6-F4 (SC-123) é do executor e já estava corrigido na v3.65.1**: marcar "Todos" redesenha a lista e troca o nó tocado por outro com o mesmo id. O `armed` antigo achava o nó novo e dava "não chegou a ele (pointerdown em slot)", de forma intermitente. O PAR-20 reproduz a mensagem com o `dom-probe` da v3.65.0 e passa com o atual.
+
+Textos: `scenario-language.md` (o `tap` da v3.65.1, os asserts que releem, a regra do `wait`, a segunda tentativa e o tempo).
+
+Testes: paridade PAR-18 (a tela muda depois do toque, o assert espera), PAR-19 (o assert desiste no prazo) e PAR-20 (o toque redesenha a lista): cdp 20/20. Mais 3 casos do `accept.ps1`: a regra com as mensagens reais do garden, a repetição seletiva no laço e o tempo no resultado.
+
+---
+
 ## v3.65.1 — 2026-11-20
 
 **Branch:** `fix/v3.65.1` a partir de `develop` (`5c3965f`, v3.65.0 mesclada)
