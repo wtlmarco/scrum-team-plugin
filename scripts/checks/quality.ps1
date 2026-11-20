@@ -5,7 +5,8 @@
 # Uso (raiz do projeto): powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/quality.ps1" -Id <S1|B-003|T-041> [-Files <arquivos tocados>]
 #   -Files: só esses arquivos nas buscas por padrão (Q9, Q17) — o fix usa os arquivos tocados pela Correção.
 # Config (guards.json → quality), cada chave um comando (ou lista) que sai ≠ 0 quando a regra quebra:
-#   "coverage" (Q11, gate de 80 % por unidade) · "coverageThreshold" (80) · "coveragePattern" (regex com o % no grupo 1)
+#   "coverage" (Q11, gate de 80 % por unidade) · "coverageThreshold" (80) · "coveragePattern" (regex com o % no grupo 1;
+#   toda ocorrência conta e vale a menor — um percentual por módulo) · "todoPattern" (Q9: o que conta como marcador)
 #   "lint" e "format" (Q7) · "architecture" (Q1, teste da regra de dependência) · "metrics" (Q6, limites de §4.4)
 #   "duplication" (Q8) · "sourceRoots" (pastas de produção para Q9 e Q17; padrão: guards.json → sourceRoots ou src/)
 # Saída: tabela regra · resultado · número/linha decisiva; .team-project/quality/<sprint|B-nnn>/<Id>/result.md e .json.
@@ -76,14 +77,20 @@ try {
             if ($k -eq 'coverage') {
                 $pat = if ($q.coveragePattern) { [string]$q.coveragePattern } else { '(?i)(?:total|all files|line(?:s)?\s*coverage|cobertura|coverage)[^\d%\r\n]{0,40}?(\d+(?:[.,]\d+)?)\s*%' }
                 $txt = [System.IO.File]::ReadAllText((Join-Path $Root $r.log), $utf8)
-                $m = [regex]::Match($txt, $pat)
                 $thr = if ($q.coverageThreshold) { [double]$q.coverageThreshold } else { 80 }
-                $pct = if ($m.Success) { [double]($m.Groups[1].Value -replace ',', '.') } else { $null }
+                # v3.65.1 (garden S6-F12, D-20): com o coveragePattern do projeto, TODA ocorrência conta e vale a menor — o
+                # gate que imprime um percentual por módulo (Q11 é "em cada módulo") reprova pelo pior, e a linha diz qual.
+                # Com o padrão do plugin, só a primeira (ele casa textos soltos, como o limiar escrito no log).
+                $ms = @(if ($q.coveragePattern) { [regex]::Matches($txt, $pat) } else { $m1 = [regex]::Match($txt, $pat); if ($m1.Success) { $m1 } })
+                $low = $null
+                foreach ($m in $ms) { $v = [double]($m.Groups[1].Value -replace ',', '.'); if ($null -eq $low -or $v -lt $low.V) { $low = [pscustomobject]@{ V = $v; T = ($m.Value.Trim() -replace '\s+', ' ') } } }
+                $pct = if ($low) { $low.V } else { $null }
                 # Nada medido: o resumo do Istanbul com "Unknown%" e "( 0/0 )" (a suíte não rodou ou o gate lia outro resumo).
                 $empty = -not $r.environment -and ($txt -match '(?i)\bUnknown\s*%' -or $txt -match '\(\s*0\s*/\s*0\s*\)') -and ($null -eq $pct -or $pct -eq 0)
                 if ($empty) { $res = 'não medido'; $line = "a cobertura não mediu nada (Unknown% / 0 de 0, exit $($r.exit)) — o comando não gerou o resumo da suíte: confira guards.json → quality.coverage (ou rode o verify full, que a Q11 reaproveita); o QA julga, não é reprovação por código" }
                 elseif ($null -ne $pct) {
                     $line = "$pct % medido × limiar $thr % · exit $($r.exit)"
+                    if ($ms.Count -gt 1) { $t = $low.T; if ($t.Length -gt 80) { $t = $t.Substring(0, 80) + '…' }; $line += " · o menor de $($ms.Count) ('$t')" }
                     if ($res -eq 'ok' -and $pct -lt $thr) { $res = 'falhou'; $line += ' (abaixo do limiar)' }
                 } elseif ($res -eq 'ok') { $line += ' · percentual não lido da saída (ajuste quality.coveragePattern); vale o exit do gate' }
                 if ($c -isnot [string]) { $line = "$($c.from) · $line" }
@@ -97,6 +104,7 @@ try {
     $roots = if ($q -and $q.sourceRoots) { @($q.sourceRoots) } elseif ($g.sourceRoots -and @($g.sourceRoots).Count) { @($g.sourceRoots) } else { @('src') }
     $srcFiles = if ($Files.Count) { @($Files | ForEach-Object { [string]$_ -split ',' } | Where-Object { $_ } | ForEach-Object { Join-Path $Root $_.Trim() } | Where-Object { Test-Path -LiteralPath $_ }) }
                 else { @($roots | ForEach-Object { $d = Join-Path $Root $_; if (Test-Path -LiteralPath $d) { Get-ChildItem -LiteralPath $d -Recurse -File -Include *.kt, *.kts, *.java, *.cs, *.ts, *.tsx, *.js, *.jsx, *.py, *.go -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch '[\\/](build|bin|obj|node_modules|dist|generated)[\\/]' } | ForEach-Object { $_.FullName } } }) }
+    $todoPat = if ($q -and $q.PSObject.Properties['todoPattern'] -and $q.todoPattern) { [string]$q.todoPattern } else { '(//|/\*|#|^\s*\*|<!--|(^|\s)--)\s*(TODO|FIXME)\b|\b(TODO|FIXME)\s*[:(\[]' }
     $todo = @(); $supp = @()
     foreach ($f in $srcFiles) {
         $n = 0; $rel = $f.Substring($Root.Length + 1) -replace '\\', '/'
@@ -104,7 +112,10 @@ try {
             $n++
             # v3.57.2 (note.md item 16, ocorrência 9): só em maiúsculas — o -match ignora caixa e casava a palavra portuguesa "todo"
             # ("todo o card"): 59 achados falsos no portão do sprint 5 do garden.
-            if ($ln -cmatch '\b(TODO|FIXME)\b' -and $ln -notmatch '\b(TODO|FIXME)\b[^\r\n]*\b([A-Z]-\d+|[A-Z]{2,}-\d+)\b') { $todo += "${rel}:$n" }
+            # v3.65.1 (garden S6-F11, D-19): só o MARCADOR — TODO/FIXME logo depois da abertura do comentário (//, /*, #, *, <!--,
+            # --) ou seguido de ":", "(" ou "[". A palavra em caixa alta no meio da frase ("cobre TODO o app", "ANO TODO") não é
+            # pendência. quality.todoPattern troca a regra (com distinção de maiúsculas).
+            if ($ln -cmatch $todoPat -and $ln -notmatch '\b(TODO|FIXME)\b[^\r\n]*\b([A-Z]-\d+|[A-Z]{2,}-\d+)\b') { $todo += "${rel}:$n" }
             if ($ln -match '(@Suppress(Warnings)?\(|eslint-disable|#pragma warning disable|// ?NOSONAR|@SuppressLint\(|noqa)' -and $ln -notmatch '(--|—|:|porque|motivo|because|reason)\s*\S{3,}') { $supp += "${rel}:$n" }
         }
     }

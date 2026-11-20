@@ -89,15 +89,29 @@ async function reach(s, id, waitSec, needView) {
   if (!f.found) return null;
   return needView ? intoView(s, id, f) : f;
 }
+// v3.65.1 (garden S6-F5, D-30): o elemento parado na tela — a caixa igual em duas leituras seguidas (até 2 s). Rolagem com
+// inércia ou tela entrando com animação movem o alvo depois da medida; o toque num conteúdo que ainda desliza só o para (não
+// vira clique) ou cai no vizinho. Se a espera o tirou da janela, rola de novo.
+async function settle(s, id, f) {
+  for (let i = 0; i < 20; i++) {
+    await sleep(100);
+    const g = await probe(s, 'find', { id });
+    if (!g.found) return f;
+    const still = Math.abs(g.box.x - f.box.x) < 0.5 && Math.abs(g.box.y - f.box.y) < 0.5;
+    f = g; if (still) break;
+  }
+  return f.inView ? f : intoView(s, id, f);
+}
 // Toque real com prova: o centro tem de cair no elemento (senão FALHOU "coberto") e o pointerdown tem de chegar a ele.
 async function tapId(s, id) {
-  const f = await reach(s, id, 6, true);
+  let f = await reach(s, id, 6, true);
   if (!f) throw new Error(`tag não encontrada: ${id}`);
+  if (f.inView) f = await settle(s, id, f);
   if (!f.inView) throw new Error(`${id} existe, mas a rolagem não o trouxe à tela`);
   const x = f.box.x + f.box.w / 2, y = f.box.y + f.box.h / 2;
   const h = await probe(s, 'hit', { id, x, y });
   if (!h.ok) throw new Error(`toque em ${id} cairia em ${h.by} (coberto)`);
-  await probe(s, 'arm'); await press(s, x, y); await sleep(250);
+  await probe(s, 'arm', { id }); await press(s, x, y); await sleep(250);
   const a = await probe(s, 'armed', { id });
   if (!a.ok) throw new Error(`o toque em ${id} não chegou a ele (pointerdown ${a.got ? 'em ' + a.by : 'não disparou'})`);
   await sleep(200);

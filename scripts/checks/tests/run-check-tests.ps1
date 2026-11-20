@@ -2790,7 +2790,7 @@ Check 'v3.62.0: tag ausente nos 2 primeiros na mesma tela → ESTADO DE PARTIDA 
 # v3.62.0: paridade dos executores — a página neutra e os cenários de fixtures/parity pelo CDP (toque por dedo, Chromium de
 # desktop: o caminho do locator "cdp" sem emulador) e pelo web-runner (Playwright, quando PARITY_PLAYWRIGHT_ROOT o resolve).
 $r = & { $ErrorActionPreference = 'Continue'; $o = & node (Join-Path $PSScriptRoot 'parity.js') 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
-Check 'v3.62.0: paridade — os 15 cenários (type que substitui, web component, página em cache, display contents, toque coberto, lista inteira, faixa horizontal, select, slider, fora do ASCII) dão o veredito esperado pelo CDP; web junto quando há Playwright' $r 0 @('paridade: cdp 15/15 · web (15/15|NÃO EXECUTADO)', '^(?![\s\S]*DIVERGE)')
+Check 'v3.62.0: paridade — os 17 cenários (type que substitui, web component, página em cache, display contents, toque coberto, lista inteira, faixa horizontal, select, slider, fora do ASCII; v3.65.1: toque que fecha o alerta, alvo ainda deslizando) dão o veredito esperado pelo CDP; web junto quando há Playwright' $r 0 @('paridade: cdp 17/17 · web (17/17|NÃO EXECUTADO)', '^(?![\s\S]*DIVERGE)')
 # v3.64.5: a página do app se acha pela origem, não pela rota da tela — o pageUrl da tela inicial segue valendo depois da
 # troca de rota (Capacitor https e http, rota por #, Cordova file://); sem nenhuma página que case, CONFIGURAÇÃO com as URLs vistas.
 $cdpJs = (Join-Path $checks 'targets/android-cdp.js') -replace '\\', '/'
@@ -3699,6 +3699,24 @@ Check 'v3.57.3 item 2: Q11 "Unknown% ( 0/0 )" → não medido, com a causa; não
 Put $p '.team-project/guards.json' '{ "quality": { "coverage": "Write-Output \"Total coverage 42 %\"" } }'
 $r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $p)
 Check 'v3.57.3 item 2: Q11 medida abaixo do limiar segue reprovando' $r 1 @('Q11 falhou: .*42 % medido × limiar 80 % .*abaixo do limiar')
+# v3.65.1 (garden S6-F12, D-20): com o coveragePattern do projeto, toda ocorrência conta e vale a menor, com o módulo na linha.
+$covMods = 'OK módulo apresentacao: 89.63% de linhas — piso 88%\nOK módulo raiz: 85.00% de linhas — piso 84%\nOK módulo servicos: 93.84% de linhas — piso 92%'
+Put $p '.team-project/guards.json' ('{ "quality": { "coverage": "Write-Output \"' + $covMods + '\"", "coveragePattern": "m.dulo\\s+\\S+:\\s+(\\d+(?:\\.\\d+)?)%" } }')
+$r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $p)
+Check 'v3.65.1: Q11 com coveragePattern — o menor percentual entre os módulos (85 de 3), com a linha do módulo' $r 0 @('Q11 ok: .*— 85 % medido × limiar 80 % · exit 0 · o menor de 3 \(''m.dulo raiz: 85\.00%''\)')
+Put $p '.team-project/guards.json' ('{ "quality": { "coverage": "Write-Output \"' + ($covMods -replace '85\.00', '72.40') + '\"", "coveragePattern": "m.dulo\\s+\\S+:\\s+(\\d+(?:\\.\\d+)?)%" } }')
+$r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $p)
+Check 'v3.65.1: Q11 com coveragePattern — um módulo abaixo do limiar reprova, mesmo com o primeiro acima' $r 1 @('Q11 falhou: .*— 72\.4 % medido × limiar 80 % .*o menor de 3 \(''m.dulo raiz: 72\.40%''\).*abaixo do limiar')
+# v3.65.1 (garden S6-F11, D-19): Q9 conta só o marcador, não a palavra em caixa alta no meio da frase.
+$pt = Join-Path $tmp 'quality-todo'; New-Project $pt
+Put $pt '.team-project/guards.json' '{}'
+Put $pt 'src/a.ts' "// app.module.ts) e cobre TODO o app de uma vez`n// adicionar a opção ANO TODO`" — culturas`nexport const TODOS = 1`n"
+Put $pt 'src/b.ts' "const x = 1 // TODO melhorar`n/* FIXME vazamento */`n * TODO no bloco`n// pendente: TODO(lote) e FIXME: aqui`n# TODO em script`n// TODO T-041 com ID`n"
+$r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $pt)
+Check 'v3.65.1: Q9 — "cobre TODO o app", "ANO TODO" e TODOS não contam; o marcador (//, /*, *, #, TODO(, FIXME:) conta; com ID não' $r 1 @('Q9 falhou: .*— 5 sem ID: src/b\.ts:1, src/b\.ts:2, src/b\.ts:3, src/b\.ts:4, src/b\.ts:5', '^(?![\s\S]*src/a\.ts)')
+Put $pt '.team-project/guards.json' '{ "quality": { "todoPattern": "\\bXXX\\b" } }'
+$r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $pt)
+Check 'v3.65.1: Q9 — quality.todoPattern troca a regra do marcador' $r 0 @('Q9 ok')
 
 # Capacidade (kanban.ps1 -Capacity e o R4 do close).
 $sbv = Join-Path $p '.team-project/sprints/1/sprint-backlog.md'

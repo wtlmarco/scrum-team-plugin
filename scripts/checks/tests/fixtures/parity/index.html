@@ -56,6 +56,18 @@
   <input id="p.nivel" type="range" min="0" max="10" step="1" value="0">
 </section>
 
+<!-- v3.65.1: o botão do alerta o fecha no toque (o elemento sai da tela antes da conferência do pointerdown) -->
+<section>
+  <button id="p.abre-alerta" onclick="document.getElementById('p.alerta').style.display = 'block'">alerta</button>
+  <div id="p.alerta" style="display: none"><button id="p.alerta.ok" onclick="document.getElementById('p.alerta').style.display = 'none'; lido('alerta fechado')">OK</button></div>
+</section>
+
+<!-- v3.65.1: o alvo ainda desliza depois de aparecer (inércia, tela entrando): o toque espera ele parar -->
+<section class="camada">
+  <button id="p.desliza" onclick="desliza()">desliza</button>
+  <button id="p.movel" style="position: absolute; left: 300px; top: 0; width: 40px" onclick="lido(movendo ? 'em movimento' : 'parado')">m</button>
+</section>
+
 <section><button id="p.longe" onclick="lido('longe')">longe</button></section>
 
 <script>
@@ -67,6 +79,11 @@
   const lista = document.getElementById('p.lista');
   for (let i = 1; i <= 40; i++) { const d = document.createElement('div'); d.id = 'p.item.' + i; d.textContent = 'item ' + i; lista.appendChild(d); }
   function lido(v) { document.getElementById('p.lido').textContent = v; }
+  let movendo = false;
+  function desliza() {
+    const m = document.getElementById('p.movel'); let x = 300; movendo = true;
+    const t = setInterval(() => { x -= 2; m.style.left = x + 'px'; if (x <= 120) { clearInterval(t); movendo = false; } }, 16);
+  }
   function escolhe(v) { document.getElementById('p.combo').textContent = v; document.getElementById('p.opcoes').classList.remove('aberto'); }
 </script>
 </body>
