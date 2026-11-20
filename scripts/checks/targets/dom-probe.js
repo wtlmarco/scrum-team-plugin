@@ -135,9 +135,19 @@ function probe(op, args, cfg) {
       const el = find(args.id); if (!el) return { ok: false, by: 'nada (o elemento sumiu)' };
       const h = hitAt(args.x, args.y); return { ok: !!h && within(el, h), by: describe(h) };
     }
-    // Marca do pointerdown: um ouvinte em window (captura) guarda o alvo do próximo pointerdown — prova que o toque chegou.
-    case 'arm': { window.__teamPd = null; if (!window.__teamPdOn) { window.addEventListener('pointerdown', (e) => { window.__teamPd = e.composedPath()[0] || e.target; }, true); window.__teamPdOn = true; } return true; }
-    case 'armed': { const el = find(args.id); const t = window.__teamPd; return { got: !!t, ok: !!(el && t && within(el, t)), by: describe(t) }; }
+    // Marca do pointerdown: um ouvinte em window (captura) guarda o alvo e o caminho do próximo pointerdown — prova que o toque
+    // chegou. v3.65.1 (garden S6, D-30): o elemento do toque é guardado no arm e o caminho no próprio evento, e o armed confere
+    // por eles — o toque que fecha o alerta ou troca a página tira o elemento da tela antes da conferência, e procurá-lo de
+    // novo dava "não chegou a ele" com o toque certo.
+    case 'arm': {
+      window.__teamPd = null; window.__teamPdPath = null; window.__teamArmEl = args.id ? find(args.id) : null;
+      if (!window.__teamPdOn) { window.addEventListener('pointerdown', (e) => { const p = e.composedPath(); window.__teamPd = p[0] || e.target; window.__teamPdPath = p; }, true); window.__teamPdOn = true; }
+      return true;
+    }
+    case 'armed': {
+      const el = window.__teamArmEl || find(args.id); const t = window.__teamPd; const p = window.__teamPdPath || [];
+      return { got: !!t, ok: !!(el && t && (p.includes(el) || within(el, t))), by: describe(t) };
+    }
     case 'focused': { const el = find(args.id); const ed = el && editableOf(el); const a = deepActive(); return { ok: !!(ed && a === ed), editable: !!ed }; }
     // Exceção 1 da norma: seleciona TODO o conteúdo do editável (não grava valor) para o texto inserido substituí-lo.
     case 'select-all': {
