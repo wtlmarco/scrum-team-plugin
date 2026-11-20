@@ -16,8 +16,8 @@ Antes de abrir uma instância nova, confira com ListAgents se já existe, nesta 
 
 Leitura, limites e formato de resposta estão no próprio agente (`agents/architect.md`) e não se repetem aqui. Pedido `/arc review …` → o caminho é **`/review …`**.
 
-Registro de consumo: grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar.
+O consumo é medido pelo hook G16; não há linha a gravar à mão.
 
-Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, 'pedir mais contexto' por último (`working-rules.md` R22). O formulário do **portão ②** é disparado pelo **`/sm sdd`** (`workflow-sdd.md` §5h), não por este comando.
+O formulário do **portão ②** é disparado pelo **`/sm sdd`** (`workflow-sdd.md` §5h), não por este comando.
 
 Ao receber a resposta, repasse ao stakeholder o diagnóstico e o caminho do artefato gerado, e leve o que exige decisão dele em `AskUserQuestion` (R22), com a recomendação do Arquiteto marcada — não em prosa.

@@ -13,6 +13,38 @@
 
 ---
 
+## v3.65.0 — 2026-11-19
+
+**Branch:** `feat/v3.65.0` a partir de `develop` (`4d6d7d4`, v3.64.5 mesclada) · **Processo:** v3.65 (`process-changelog.md`) · **Plano:** `melhorias/plano-v3.65.0.md` (decisões Q1–Q4 do stakeholder, 19/11)
+
+Origem: revisão geral do plugin pedida pelo stakeholder em 19/11 (`/review audit` em quatro frentes — regras e guardas × código e teste, decisões v3.60–v3.64.5, regras que se encadeiam, excesso — mais o C3). 80 achados; o stakeholder escolheu corrigir todos nesta entrega, antes do benchmark da virada. Causa comum: a mesma regra morava em 4 a 5 lugares e cada correção atingia só os que o incidente tocou. Regra da entrega: cada regra tocada fica com uma fonte única, e o texto que o agente lê primeiro (contrato em `agents/*`, mensagem de reprovação) muda junto com o prompt.
+
+**A métrica do benchmark** (`run.ps1`, `gate.ps1`, `lib.ps1`, `knowledge.ps1`): a decisão do stakeholder ou da Q-S que emenda o plano ia para `**Plano corrigido durante a execução:**` — o campo da métrica "precisão do plano", só para erro do próprio plano. Agora vai no bloco `**Decisão do stakeholder (<data> · replan|portão):**`, com **Origem** e **Lição** como a decisão de GAP: fora do teto de 30 KB, conferido pela regra 29 do `plan.ps1` e colhido como lição.
+
+**Plano emendado acima de 30 KB — uma regra, com a precedência** (`plan.ps1`, `run.ps1`, `agents/architect.md`, `sprint-run.md`, `roles/architect/*`): antes da construção, não se corta e o `next` divide a Task; com a construção começada, a Task não se divide e o Arquiteto substitui o texto que a decisão derrubou. O contrato do Arquiteto e a mensagem do `plan.ps1` mandavam o contrário do prompt do `next` (a causa do laço da v3.64.2–v3.64.4). A reprovação do plano emendado não some mais do prompt depois da primeira vez.
+
+**ESPERANDO com accept ou reparo vivo** (`run.ps1 done`, `agents/task-runner.md`, `sprint-run.md`): sobrava a regra da v3.53.3, revogada na v3.62.2 ("encerre o turno; o aviso te acorda"). O executor devolve `<ID> ⏸ esperando: <comando>` e a sessão segue o protocolo de espera.
+
+**Redes que o texto prometia:**
+- **C1 × arquivos mudados (decisão Q1):** linha `R4-arquivos` no `close.ps1` — arquivo alterado fora de `**Arquivos tocados:**`, sem margem declarada, alheio, `treeIgnore` ou desvio aceito, reprova o R4 com o caminho. Como o R4, não trava o close: o QA decide no portão.
+- **Falha aberta com rastro:** `stop.ps1`, `session-start.ps1`, `prompt-submit.ps1` e `notification.ps1` gravam a linha `erro` no `guards.log`, como os outros três despachantes.
+- **G14 com `runCommands` vazio** nega com a rota `Start-Sleep`, `Wait-Process`, `adb` direto, `robocopy`/`xcopy` (antes caía no pedido de permissão do harness).
+- **C3 na suíte:** a rodada completa do `run-all-tests.ps1` roda o `release.ps1`; da v3.64.0 à v3.64.5 seis entregas saíram com o C3 vermelho (README na v3.63.2).
+
+**D8 (adb):** o adb atual sobe o servidor como `adb -L tcp:<porta> fork-server server`; só o `-P` era lido e todo servidor contava como 5037 — dois servidores (5037 e 5038) passavam como um e a D8 não recusava. `Get-AdbServerPortFromCommandLine` lê as duas formas. A mensagem deixa de dizer "a porta padrão, 5037" (o plugin não fixa a porta do servidor) e o comentário de `Test-AndroidSerialPort` diz o que o código faz sem `serial`.
+
+**Textos × código e donos:** `COVERAGE.md` em dia com as guardas (G4, G7, G9, G14, G19, G20, G21, G24, G3; 7 despachantes; sai a G12 nunca aplicada); `how-to.md`; G25 na linha de guardas do SessionStart; R4, R5, R14, R15, R28, R29 e a fronteira prazo SM × PO; `stakeholder-question.md` com `-Reopen`; donos de `gate/`, `proof/`, `lessons.md`, `breakdown/`, marcadores do run e `scripts/**` na matriz e no `ownership.json`; contagem R1–R35.
+
+**Excesso:** `working-rules.md` 115 → 100 KB (sem o "Resumo em uma tela"; "Evita:", racionais e notas de versão no changelog; R17–R19 em `rituals/review-contract.md`); `sprint-run.md` 72 → 65 KB (história e versões fora; regra de sessão e lista "quem decide" com fonte única); `rituals/team-update.md` 41 → 20 KB (decisão Q2: migrações v3.20–v3.49 saem, versão mínima suportada v3.50 — abaixo dela, `/team init` de novo); `roles/architect/plan-rules-why.md` removido (25 KB, só história, links quebrados); linhas genéricas de R22 e de consumo fora dos comandos; siglas de plano fora dos agentes; o ramo morto do "toque de cache" fora do `stop.ps1`.
+
+**Fora desta entrega** (`note.md` 27–30): critério de "emendado" pelo conteúdo, tabela de precedência do portão, a G14 por padrão de texto, e o empacotamento sem o histórico (decisão Q4: entrega própria — exige o plugin em `./plugin`).
+
+**Testes:** casos `v3.65.0` em `run-check-tests.ps1` (D8 sem serial, leitura da porta do adb, `R4-arquivos`, lacunas de cobertura da auditoria) e a expectativa da linha de guardas do SessionStart (G25) em `run-guard-tests.ps1`. Dois casos antigos do `plan.ps1` mudaram de expectativa (a mensagem do tamanho diz os dois casos; as decisões fora da conta incluem as do stakeholder). O rodapé do `plan.ps1` ("Plano não vai ao dev") também dizia só o caso "antes da construção" — corrigido junto.
+
+**Suítes** (`run-all-tests.ps1`, 8 processos, com o C3): 1.098 casos, 5 falharam na 1ª rodada — 3 de expectativa desta entrega (corrigidas) e 2 de tempo sob carga (`v3.53.2` OCUPADO e `item 5` perto do teto), que passam com a máquina sem a carga; os blocos dos 5 de novo: 47 casos, 0 falharam.
+
+---
+
 ## v3.64.5 — 2026-11-19
 
 **Branch:** `fix/v3.64.5` a partir de `develop` (`963e2ab`, v3.64.4 mesclada)

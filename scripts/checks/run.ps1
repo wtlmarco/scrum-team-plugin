@@ -1063,7 +1063,9 @@ try {
         $busy = if ($busyW) { $busyW.Text } else { $null }
         if ($busy) {
             Set-NextVerdict $Root 'esperar' $T.Id "comando: $busy"
-            Out "run: ESPERANDO — a $($T.Id) ainda tem $busy rodando. O dev encerrou o turno para esperar esse comando (foi para segundo plano) e volta sozinho com o resultado. Não rode start, reparo nem Arquiteto: encerre o turno; o aviso da volta dele te acorda e aí rode run.ps1 done de novo."
+            # v3.65.0 (A3-09): "o aviso da volta dele te acorda" era a regra da v3.53.3, revogada na v3.62.2 — o Claude Code encerra
+            # o comando do agente com o turno e nenhum aviso vem. Quem espera é a SESSÃO, pelo protocolo de espera (veredito acima).
+            Out "run: ESPERANDO — a $($T.Id) ainda tem $busy rodando. Não rode start, reparo nem Arquiteto e não espere aviso: nenhum vem (v3.62.2). Encerre o turno devolvendo esta linha à sessão — o run.ps1 next dela segue o protocolo de espera (watcher) e redispara o executor quando o comando terminar."
             exit 3
         }
         # v3.64.4 (sprint 6 do projeto piloto, Q-S6e): o plano foi emendado com a decisão do stakeholder e o dev ainda não
@@ -1578,10 +1580,21 @@ try {
         }
         if (-not $rs.Plan) { Out "  $($rt.Id): decisão para replanejar em $mRel, mas a Task não tem plano — o preparo da construção escreve o plano (o Arquiteto lê a decisão)"; continue }
         Set-AskRoute $Root ''
+        # v3.65.0 (A3-05): a 1ª reprovação do plano emendado fica no fim do marcador e o torna mais novo que o plano — o next
+        # seguinte cai aqui. A reprovação (e a regra do tamanho com a construção começada) não pode sumir do prompt.
+        $rej = @([regex]::Matches((Read-Text $rs.Marker), '(?m)^- plan\.ps1 reprovou em [^:]+:\d{2}: (.*)$') | ForEach-Object { $_.Groups[1].Value.Trim() }) | Select-Object -Last 1
+        $rejTxt = ''
+        if ($rej) {
+            $rejTxt = " O plano já emendado reprovou no plan.ps1 (a última reprovação está no fim de $mRel): corrija só o que reprova, sem desfazer a decisão."
+            if ($rej -match '\|\s*tamanho\s*\|') { $rejTxt += ' O tamanho passou do teto com a emenda: substitua no plano o texto que a decisão derrubou (passo, premissa, teste, NÃO fazer ou arquivo superado) pela decisão — não a acrescente ao lado e não corte o que segue valendo; a construção já começou, a Task não se divide.' }
+        }
         Out "PRÓXIMA AÇÃO: emendar o plano da $($rt.Id) com a decisão do stakeholder (Arquiteto, instância nova) — a decisão muda o que o plano manda; nenhum dev antes (v3.64.2)"
         Say "$(Get-RunLabel $rt.Id): o arquiteto está ajustando o plano com a sua decisão antes de o time voltar a construir."
         Out "  $(Get-AgentLine 'architect')"
-        Out "  prompt: `"/arc question — leia $mRel (o bloqueio e a decisão do stakeholder) e emende o plano $pRel da $($rt.Id) para aplicá-la: passos, **Arquivos tocados:**, o que o plano proibia e agora permite (NÃO fazer, Onde parar e perguntar) e **Cenários:** se mudam; registre em **Plano corrigido durante a execução:** com a data e a decisão. Não escreva código. Rode $plugin/plan.ps1 -Plan $pRel até passar e volte em até 10 linhas.`""
+        if ($rej) { Out "  plan.ps1: $rej" }
+        # v3.65.0 (A2-01): a decisão do stakeholder vai no bloco próprio do plano (fora do teto, como a decisão de GAP) — nunca em
+        # "Plano corrigido durante a execução", que é só erro do próprio plano (perfil executor) e é a métrica de precisão do plano.
+        Out "  prompt: `"/arc question — leia $mRel (o bloqueio e a decisão do stakeholder) e emende o plano $pRel da $($rt.Id) para aplicá-la: passos, **Arquivos tocados:**, o que o plano proibia e agora permite (NÃO fazer, Onde parar e perguntar) e **Cenários:** se mudam; registre a decisão no bloco **Decisão do stakeholder (<data> · replan):**, com **Origem:** e **Lição:** como na decisão de GAP — não em **Plano corrigido durante a execução:**, que é só erro do próprio plano.$rejTxt Não escreva código. Rode $plugin/plan.ps1 -Plan $pRel até passar e volte em até 10 linhas.`""
         Out "  depois: run.ps1 next — com o plano regravado e o plan.ps1 verde, a $($rt.Id) vai a 🟨 e o executor retoma pelo cartão"
         exit 0
     }

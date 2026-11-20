@@ -20,8 +20,10 @@
 # v3.62.0 (app híbrido): targets.android.locator = "cdp" — os verbos de tela (tap, type, select, slider, assert-*) vão ao
 # android-cdp.js pelo DevTools da WebView, e o resto do ciclo continua no android.ps1; o result.json desse modo é prova de
 # primeira classe. CONFIGURAÇÃO DO ALVO (exit 4, campo configuration no result.json, sem reparo — o run.ps1 done leva ao
-# stakeholder): o APK sem a depuração da WebView, Node < 22, mais de uma página sem cdp.pageUrl, ou — com o uiautomator — a
-# tela do app ser uma WebView sem nenhum id do app (antes do 1º cenário; substitui o IDS NÃO PUBLICADOS da v3.57.1).
+# stakeholder): o APK sem a depuração da WebView, Node < 22, mais de uma página sem cdp.pageUrl, cdp.pageUrl que não casa
+# nenhuma página carregada (a mensagem lista as URLs vistas; o pageUrl é a regex da origem do app, não da rota de uma tela —
+# v3.65.0), ou — com o uiautomator — a tela do app ser uma WebView sem nenhum id do app (antes do 1º cenário; substitui o IDS
+# NÃO PUBLICADOS da v3.57.1).
 # A semântica de cada verbo, igual em todo alvo: standards/scenario-language.md.
 # v3.62.3 (sprint 6 do projeto piloto, Q-S6d): EXECUTOR DO PROJETO — o plano da Task declara ``**Aceite:** comando — `<cmd>` ``
 # (ou -Command, fora do run). O accept faz tudo o que faz sempre (trava do alvo, pré-voo e reparo, APK velho, instalação,

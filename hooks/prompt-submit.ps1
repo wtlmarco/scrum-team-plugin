@@ -102,5 +102,7 @@ try {
     [Console]::Out.Write($out)
     exit 0
 } catch {
+    # v3.65.0 (A1-02): a falha aberta deixa rastro — o COVERAGE promete a linha `erro` no guards.log em todo despachante
+    try { Write-GuardLog $projectDir 'erro' $hookInput 'prompt-submit.ps1' $_.Exception.Message } catch { }
     exit 1
 }

@@ -72,10 +72,7 @@ try {
         $tail = @(Get-Content -LiteralPath $tr -Encoding UTF8 -Tail 40)
         $lastAsst = @($tail | Where-Object { $_ -match '"type":"assistant"' } | Select-Object -Last 1)
         if ($lastAsst.Count -and ($lastAsst[0] -match '<synthetic>' -or $lastAsst[0] -match '"isApiErrorMessage":true')) { Write-GuardLog $projectDir 'G20' $hookInput '' 'liberado: o turno acabou em erro de API (resposta sintética)'; exit 0 }
-        # Turno do toque de cache.
-        $lastUser = $null
-        foreach ($l in $tail) { if ($l -match '"type":"user"') { $lastUser = $l } }
-        if ($lastUser -and $lastUser -match '\[toque de cache\]') { exit 0 }
+        # v3.65.0 (A4-09): saiu o ramo do "toque de cache" (CronCreate), retirado na v3.52 — nada mais gera esse turno.
     }
 
     # Task elegível: ⬜ (ou 🟦/🟨/🟪 em voo) com as dependências todas ✅.
@@ -115,5 +112,7 @@ try {
     [Console]::Error.WriteLine("[G20] O sprint run está em andamento (.active-run, sprint $([string]$run.id)) e a Task $($t.Id) está elegível. Encerrar o turno aqui não é parada legítima (sprint-run.md §Ordem da fila): siga — rode run.ps1 next e faça a PRÓXIMA AÇÃO que ele imprimir (dev de volta: run.ps1 done -Task <ID> -Result ok|gap|env|teto). Só encerre por (a) fim da fila → formulário de autorização da Review, (b) Task marcada 🔴 sem elegível restante → formulário de R22, (c) pré-condição falha, (d) interrupção do stakeholder, (e) pausa pedida pelo stakeholder entre Tasks (sprint-run.md §Pausa segura) — nesses casos apague o .active-run antes; (f) ponto seguro: o run.ps1 done que fecha a Task grava .team-project/.safe-point e libera o fim de turno sem apagar o .active-run. Para esperar um agente: dispare e encerre o turno; o aviso reabre a sessão.")
     exit 2
 } catch {
+    # v3.65.0 (A1-02): a falha aberta deixa rastro — o COVERAGE promete a linha `erro` no guards.log em todo despachante
+    try { Write-GuardLog $projectDir 'erro' $hookInput 'stop.ps1' $_.Exception.Message } catch { }
     exit 1
 }

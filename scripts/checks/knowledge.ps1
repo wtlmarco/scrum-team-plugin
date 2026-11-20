@@ -123,7 +123,7 @@ foreach ($d in @(Get-SprintDecisions $Root $Sprint)) {
 foreach ($pf in @(Get-ChildItem -LiteralPath (Join-Path $S 'plan') -Filter '*.md' -File -ErrorAction SilentlyContinue | Sort-Object Name)) {
     $tid = ([regex]::Match($pf.Name, '^' + $taskRe)).Value; $ptxt = Read-Text $pf.FullName
     foreach ($g in @(Get-PlanGapDecisions $ptxt)) {
-        $hm = [regex]::Match($g.Head, '^\*\*(Decis[ãa]o do (?:🔺\s*)?GAP\b[^*]*):\*\*\s*(.*)$')
+        $hm = [regex]::Match($g.Head, '^\*\*(Decis[ãa]o do (?:(?:🔺\s*)?GAP|stakeholder)\b[^*]*):\*\*\s*(.*)$')   # v3.65.0: a decisão do stakeholder que emenda o plano também
         $label = if ($hm.Success) { $hm.Groups[1].Value.Trim() } else { 'Decisão do GAP' }
         $first = if ($hm.Success) { $hm.Groups[2].Value.Trim() } else { '' }
         $rest = @(($g.Text -split "`r?`n") | Select-Object -Skip 1 | Where-Object { $_.Trim() -and $_ -notmatch $script:EntryMetaRe } | ForEach-Object { $_.Trim() })

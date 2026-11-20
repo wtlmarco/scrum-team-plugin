@@ -35,6 +35,6 @@ Identifique o modo pelo primeiro termo. **Sem termo reconhecido, não dispare ag
 
 - **Nenhum modo dispara agente**; por isso não há linha de consumo nem retentativa aqui (R27 e o registro vivem nos modos do `/sm`). Consulta e roteamento **não escrevem em disco**.
 - Nenhuma afirmação de "funciona" sem saída real de comando; o que não foi exercitado é declarado como tal.
-- Pergunta ao stakeholder em `init`/`update`/`remote` → `AskUserQuestion` pela sessão, "pedir mais contexto" por último (`working-rules.md` R22). Com **Identificador remoto** no `README.md` §1, a pergunta começa com `[<ID> · <onde> · <ponto>]` e a pendência vai antes para a §7 (R34 — a guarda G3 confere).
+- Pergunta ao stakeholder em `init`/`update`/`remote`: com **Identificador remoto** no `README.md` §1, a pergunta começa com `[<ID> · <onde> · <ponto>]` e a pendência vai antes para a §7 (R34 — a guarda G3 confere).
 
 Ao final, repasse a consolidação e a próxima ação recomendada; o que exige decisão do stakeholder vai em `AskUserQuestion` (R22), não em lista de prosa.

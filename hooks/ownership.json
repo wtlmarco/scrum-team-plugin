@@ -297,12 +297,40 @@
                                       ".team-project/.target-lock",
                                       ".team-project/.active-agents",
                                       ".team-project/.target-web.json",
-                                      ".team-project/.target-android.json"
+                                      ".team-project/.target-android.json",
+                                      ".team-project/.ask-route",
+                                      ".team-project/.stakeholder-seen"
                                   ],
                         "writers":  [
 
                                     ],
-                        "matriz":  "Trava do alvo e agentes em voo (`.team-project/.target-lock`, `.team-project/.active-agents`, `.team-project/.target-web.json`, `.team-project/.target-android.json`)",
+                        "matriz":  "Trava do alvo e agentes em voo (`.team-project/.target-lock`, `.team-project/.active-agents`, `.team-project/.target-web.json`, `.team-project/.target-android.json`, `.team-project/.ask-route`, `.team-project/.stakeholder-seen`)",
+                        "dono":  "SM"
+                    },
+                    {
+                        "paths":  [
+                                      ".team-project/sprints/*/gate/**"
+                                  ],
+                        "writers":  [
+                                        "product-owner",
+                                        "user-experience",
+                                        "architect",
+                                        "quality-assurance"
+                                    ],
+                        "matriz":  "Resolução dos achados do portão (`.team-project/sprints/<n>/gate/`)",
+                        "dono":  "SM"
+                    },
+                    {
+                        "paths":  [
+                                      ".team-project/sprints/*/proof/**",
+                                      ".team-project/sprints/*/gate.json",
+                                      ".team-project/sprints/*/device-pending.md",
+                                      ".team-project/sprints/*/.docs-check.json"
+                                  ],
+                        "writers":  [
+
+                                    ],
+                        "matriz":  "Estado e prova do portão",
                         "dono":  "SM"
                     },
                     {
@@ -805,13 +833,12 @@
                          {
                              "paths":  [
                                            "hooks/**",
-                                           "scripts/checks/**",
-                                           "scripts/metrics/**"
+                                           "scripts/**"
                                        ],
                              "writers":  [
 
                                          ],
-                             "matriz":  "`hooks/` e `scripts/checks/`",
+                             "matriz":  "`hooks/` e `scripts/`",
                              "dono":  "stakeholder"
                          },
                          {

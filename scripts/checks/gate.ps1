@@ -253,7 +253,7 @@ function Invoke-GateStep {
         Out "PRÓXIMA AÇÃO: incluir $What na $($q.Id) — a correção do portão já aberta ($($q.Mark)); não abra outra Q-S$n (v3.64.0)"
         Say 'A revisão final encontrou problemas no app; eles vão para a correção que já está aberta, e o arquiteto ajusta o plano dela.'
         Out "  1. a sessão acrescenta $IdsTxt na coluna Task da linha da $($q.Id) no quadro (é por eles que o portão sabe o que ela corrige)"
-        Out "  2. $(Get-AgentLine 'architect') — prompt: `"/arc question — emende o plano $planQ da $($q.Id) para cobrir $IdsTxt (leia .team-project/sprints/$n/validation.md, só esses achados$(if ($diag) { ", e o diagnóstico $diagRel" })): passos, **Arquivos tocados:** e **Cenários:**; registre em **Plano corrigido durante a execução:**. Depois rode $plugin/plan.ps1 -Plan $planQ e volte em até 10 linhas.`""
+        Out "  2. $(Get-AgentLine 'architect') — prompt: `"/arc question — emende o plano $planQ da $($q.Id) para cobrir $IdsTxt (leia .team-project/sprints/$n/validation.md, só esses achados$(if ($diag) { ", e o diagnóstico $diagRel" })): passos, **Arquivos tocados:** e **Cenários:**; registre a inclusão no bloco **Decisão do stakeholder (<data> · portão):**, com **Origem:** e **Lição:** como na decisão de GAP — não em **Plano corrigido durante a execução:**, que é só erro do próprio plano (v3.65.0). Depois rode $plugin/plan.ps1 -Plan $planQ e volte em até 10 linhas.`""
         Out "  3. depois: run.ps1 next$(if ($q.Mark -eq $redQ) { " — a $($q.Id) está 🔴 ($(& $blockWhy $q.Id)): o next leva ao destravamento dela" })"
         exit 0
     }

@@ -23,9 +23,7 @@ Pedido `/ux review …` → responda que o caminho é **`/review …`**: nenhum 
 
 ## Registro de consumo
 
-Grave conforme `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/consumption.md` §Como gravar.
-
-Pergunta ou portão na forma de R22 → `AskUserQuestion` pela sessão, "pedir mais contexto" por último (`working-rules.md` R22). O agente não tem a ferramenta.
+O consumo é medido pelo hook G16; não há linha a gravar à mão. Pergunta ao stakeholder é da sessão (o agente não tem `AskUserQuestion`).
 
 **Decisão de portão sobre protótipo.** A **navegação** é do stakeholder e "aprovar" a **declara** (D2 · R34); a decisão sai em `AskUserQuestion` — aprovar · aprovar com ajuste · reprovar · pedir mais contexto. Registre na ficha a declaração, a data, o canal (celular | terminal), URL e rótulo da versão quando houve link, a decisão e o ajuste pedido. O rótulo `**Navegado pelo stakeholder em:**` e a data logo após ficam como estão (o C2 os lê).
 - **`prototype` (①):** formulário sobre o SDD funcional + protótipo, só dentro do `/sm sdd` (etapa 2); avulso, a decisão fica pendente. A ficha é o registro único.
