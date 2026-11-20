@@ -102,18 +102,39 @@ async function settle(s, id, f) {
   }
   return f.inView ? f : intoView(s, id, f);
 }
-// Toque real com prova: o centro tem de cair no elemento (senão FALHOU "coberto") e o pointerdown tem de chegar a ele.
-async function tapId(s, id) {
+// v3.65.3 (garden SC-204): a tela sem rolagem — nenhum evento de scroll há QUIET_MS (até 2 s). A caixa do alvo para antes da
+// rolagem quando o rolador bate na borda (a inércia continua sem mover nada), e o toque nesse meio-tempo só para a rolagem.
+const QUIET_MS = 250;
+async function quiet(s) {
+  const t0 = Date.now();
+  for (;;) { const q = await probe(s, 'quiet'); if (q >= QUIET_MS || Date.now() - t0 > 2000) return; await sleep(Math.max(50, QUIET_MS - q)); }
+}
+async function pressId(s, id) {
+  await quiet(s);
   let f = await reach(s, id, 6, true);
   if (!f) throw new Error(`tag não encontrada: ${id}`);
   if (f.inView) f = await settle(s, id, f);
   if (!f.inView) throw new Error(`${id} existe, mas a rolagem não o trouxe à tela`);
+  await quiet(s);
   const x = f.box.x + f.box.w / 2, y = f.box.y + f.box.h / 2;
   const h = await probe(s, 'hit', { id, x, y });
   if (!h.ok) throw new Error(`toque em ${id} cairia em ${h.by} (coberto)`);
   await probe(s, 'arm', { id }); await press(s, x, y); await sleep(250);
   const a = await probe(s, 'armed', { id });
   if (!a.ok) throw new Error(`o toque em ${id} não chegou a ele (pointerdown ${a.got ? 'em ' + a.by : 'não disparou'})`);
+  return a;
+}
+// Toque real com prova: o centro tem de cair no elemento (senão FALHOU "coberto") e o pointerdown tem de chegar a ele.
+// v3.65.3: e tem de virar clique. Toque que chegou, terminou sem o app cancelar e não virou clique, com o elemento ainda na
+// página, foi engolido pelo navegador (rolagem em curso): espera a tela parar e toca de novo, uma vez. Se o app cancelou o
+// clique (defaultPrevented no fim do toque) ou o elemento saiu da página no toque, o toque conta como antes.
+async function tapId(s, id) {
+  let a = await pressId(s, id);
+  const swallowed = (r) => !r.clicked && r.up && !r.upPrevented && r.connected;
+  if (swallowed(a)) {
+    a = await pressId(s, id);
+    if (swallowed(a)) throw new Error(`o toque em ${id} chegou (pointerdown), mas não virou clique em 2 toques — a tela ainda rolava ou outro gesto o consumiu`);
+  }
   await sleep(200);
 }
 async function pressBox(s, b) { await press(s, b.x + b.w / 2, b.y + b.h / 2); await sleep(350); }

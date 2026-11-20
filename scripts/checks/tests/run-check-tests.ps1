@@ -2790,7 +2790,7 @@ Check 'v3.62.0: tag ausente nos 2 primeiros na mesma tela → ESTADO DE PARTIDA 
 # v3.62.0: paridade dos executores — a página neutra e os cenários de fixtures/parity pelo CDP (toque por dedo, Chromium de
 # desktop: o caminho do locator "cdp" sem emulador) e pelo web-runner (Playwright, quando PARITY_PLAYWRIGHT_ROOT o resolve).
 $r = & { $ErrorActionPreference = 'Continue'; $o = & node (Join-Path $PSScriptRoot 'parity.js') 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
-Check 'v3.62.0: paridade — os 20 cenários (type que substitui, web component, página em cache, display contents, toque coberto, lista inteira, faixa horizontal, select, slider, fora do ASCII; v3.65.1: toque que fecha o alerta, alvo ainda deslizando; v3.65.2: assert que relê até bater e que desiste no prazo, toque que redesenha a lista) dão o veredito esperado pelo CDP; web junto quando há Playwright' $r 0 @('paridade: cdp 20/20 · web (20/20|NÃO EXECUTADO)', '^(?![\s\S]*DIVERGE)')
+Check 'v3.62.0: paridade — os 24 cenários (type que substitui, web component, página em cache, display contents, toque coberto, lista inteira, faixa horizontal, select, slider, fora do ASCII; v3.65.1: toque que fecha o alerta, alvo ainda deslizando; v3.65.2: assert que relê até bater e que desiste no prazo, toque que redesenha a lista; v3.65.3: rolador no shadow root com conteúdo por slot e campo de slot emulado, faixa de pílulas ida e volta, toque engolido que se repete e clique cancelado pelo app que não se repete) dão o veredito esperado pelo CDP; web junto quando há Playwright' $r 0 @('paridade: cdp 24/24 · web (24/24|NÃO EXECUTADO)', '^(?![\s\S]*DIVERGE)')
 # v3.64.5: a página do app se acha pela origem, não pela rota da tela — o pageUrl da tela inicial segue valendo depois da
 # troca de rota (Capacitor https e http, rota por #, Cordova file://); sem nenhuma página que case, CONFIGURAÇÃO com as URLs vistas.
 $cdpJs = (Join-Path $checks 'targets/android-cdp.js') -replace '\\', '/'
@@ -2896,6 +2896,17 @@ Check 'v3.62.3: **Aceite:** comando com {scn} e {out} → ok, o accept.ps1 roda 
 Put $p $pl (& $h62 '**Aceite:** não roda — o accept não acha id do app (D-16); os 49 se provam pelo `prova-cdp.mjs`, pelo operator')
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.62.3: **Aceite:** não roda que prova os cenários por script do projeto → reprova e aponta o **Aceite:** comando (o accept.ps1 citado não conta)' $r 1 @('\| aceite \| falhou \| \*\*Aceite:\*\* não roda e os cenários se provam por prova-cdp\.mjs — é o aceite por outro executor', 'declare `\*\*Aceite:\*\* comando — `<comando com \{scn\} e \{out\}>``', '^(?![\s\S]*se provam por accept\.ps1)')
+# v3.65.3 (garden Q-S6g): o "roda" que prova pelo script do projeto também reprova; o "roda" que só diz quem roda (ou cita o
+# accept.ps1) passa; linha fora das três formas reprova com elas.
+Put $p $pl (& $h62 '**Aceite:** roda — operator, pelo dev, no passo 1, pelo executor do projeto (`prova-cdp.mjs --only SC-122,SC-147,SC-161`)')
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.65.3: **Aceite:** roda que prova os cenários pelo script do projeto → reprova e aponta o **Aceite:** comando' $r 1 @('\| aceite \| falhou \| \*\*Aceite:\*\* roda e os cenários se provam por prova-cdp\.mjs — é o aceite por outro executor', 'o close exige o do accept\.ps1', 'declare `\*\*Aceite:\*\* comando — `<comando com \{scn\} e \{out\}>``')
+Put $p $pl (& $h62 '**Aceite:** roda — operator, pelo dev, no passo 5 (`accept.ps1 -Task T-041 -Only SC-210`)')
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.65.3: **Aceite:** roda que cita só o accept.ps1 → ok' @{ Code = 0; Out = $r.Out } 0 @('\| aceite \| ok \| linha do cabeçalho: Aceite: roda — operator', '^(?![\s\S]*\| aceite \| falhou)')
+Put $p $pl (& $h62 '**Aceite:** pendente para o QA (D-4) — o dev não roda o accept')
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.65.3: **Aceite:** fora das três formas → reprova com as formas que os scripts leem' $r 1 @('\| aceite \| falhou \| \*\*Aceite:\*\* "pendente para o QA \(D-4\)', 'fora das três formas', '`roda — <quem roda>`', '`não roda — <motivo>`', '`comando — `<cmd com \{scn\}>``')
 Put $p $pl (& $h62 '**Aceite:** comando — `node tools/prova.mjs --saida {out}`')
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.62.3: **Aceite:** comando sem {scn} → reprova (o accept chama um arquivo de cenários por vez)' $r 1 @('\| aceite \| falhou \| \*\*Aceite:\*\* comando sem \{scn\}')
@@ -3154,6 +3165,33 @@ $r = & $hn 'local'
 Check 'v3.54.1: serial local (emulator-5554) sem aparelho → sem adb connect, mensagem de antes' $r 0 @('HEALTH=\[nenhum emulador ou aparelho conectado', '^(?![\s\S]*connect localhost)')
 $r = & $hn 'reparo'
 Check 'v3.54.1: reparo de serial de rede religa em laço até o aparelho voltar (não wait-for-device)' $r 0 @('WAIT=\[\] TRIES=3', '^(?![\s\S]*wait-for-device)')
+
+# v3.65.3 (garden SC-204): font-scale com o valor mudado espera a WebView trocar de página (o app recriado) antes do ready;
+# valor igual, ou sem DevTools ligado, não espera. O valor vai ao aparelho com ponto decimal, em qualquer cultura.
+$hs5 = Join-Path $tmp 'android-fonte.ps1'
+[System.IO.File]::WriteAllText($hs5, @'
+param([string]$Adapter, [string]$Case)
+$ErrorActionPreference = 'Stop'
+. $Adapter
+[Threading.Thread]::CurrentThread.CurrentCulture = [Globalization.CultureInfo]'pt-BR'
+$script:Serial = 'emulator-5554'; $script:CdpPort = if ($Case -eq 'semcdp') { $null } else { 9555 }
+function Start-Sleep { }
+$script:log = New-Object Collections.Generic.List[string]; $script:polls = 0
+function AdbT([int]$Sec, [string[]]$A) { $k = @($A) -join ' '; $script:log.Add($k); if ($k -eq 'shell settings get system font_scale') { if ($Case -eq 'igual') { return @('0.85') }; return @('1.0') }; return @() }
+function Invoke-RestMethod { $script:polls++; $id = if ($Case -eq 'muda' -and $script:polls -ge 3) { 'NOVA' } else { 'VELHA' }; return @([pscustomobject]@{ type = 'page'; id = $id }) }
+$t = [datetime]::UtcNow; Set-AndroidFontScale 0.85; $ms = ([datetime]::UtcNow - $t).TotalMilliseconds
+"POLLS=$($script:polls) RAPIDO=$($ms -lt 1500)"
+'LOG=' + ($script:log -join ' | ')
+'@, $utf8)
+$hf = { param($case) $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $hs5 -Adapter (Join-Path $checks 'targets/android.ps1') -Case $case 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
+$r = & $hf 'muda'
+Check 'v3.65.3: font-scale com valor novo espera a página do /json mudar e volta assim que muda (valor com ponto decimal)' $r 0 @('POLLS=3 RAPIDO=True', 'settings put system font_scale 0\.85')
+$r = & $hf 'naorecria'
+Check 'v3.65.3: font-scale com valor novo num app que não recria a página espera o prazo e segue' $r 0 @('POLLS=([5-9]|\d{2,})\b', 'settings put system font_scale 0\.85')
+$r = & $hf 'igual'
+Check 'v3.65.3: font-scale com o valor atual não consulta o /json' $r 0 @('POLLS=0 RAPIDO=True', 'settings put system font_scale 0\.85')
+$r = & $hf 'semcdp'
+Check 'v3.65.3: font-scale sem DevTools ligado (uiautomator) segue como antes' $r 0 @('POLLS=0 RAPIDO=True')
 
 # v3.54.2 (carta do sprint 5 do garden, item 4): Task sem marcador (recém-entrada no Sprint Backlog) aparece em ⬜ A fazer;
 # a 🔴 traz o motivo curto ao lado.

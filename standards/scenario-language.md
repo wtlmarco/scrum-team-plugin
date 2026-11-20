@@ -11,13 +11,14 @@
   - ele tem caixa com área. Com `display: contents`, a caixa é a união da dos filhos.
 - **`hiddenScopes`:** seletores CSS das áreas que o framework guarda no DOM sem estarem na tela, como as páginas anteriores da navegação. A configuração fica em `targets.web.hiddenScopes` ou `targets.android.cdp.hiddenScopes`. O padrão é vazio, e o valor de cada stack está no guia dela, em `stacks/<stack>/guide.md`.
 - **Na tela:** renderizado, com o centro dentro da janela **e** dentro de todo ancestral que corta o conteúdo (`overflow` diferente de `visible`).
+- **Ancestral:** pela árvore composta, a que o navegador desenha (v3.65.3). O conteúdo projetado num web component sobe pelo `<slot>` em que aparece, depois pelo shadow root, depois pelo host. Assim entram o rolador e os recortes que o componente guarda no shadow root, como o `.inner-scroll` do `ion-content` no Ionic. **Filhos e descendentes** são lidos pelo acessor nativo do DOM. Um componente com slot emulado (Stencil "scoped", como o `ion-input`) troca `children` para devolver só o conteúdo projetado, e o campo que ele desenhou sumiria da leitura.
 - **Achar `<id>`:** o **primeiro elemento renderizado**, na ordem do documento, com o atributo igual a `<id>`. Id repetido fora de `hiddenScopes` não é erro do executor: vale o primeiro renderizado.
 
 ## 2. Verbos de tela
 
 | Verbo | Semântica |
 |---|---|
-| `tap <id>` | Acha o elemento, rola até ele ficar na tela e **espera ele parar** (a caixa igual em duas leituras, até 2 s; v3.65.1). Faz o **hit-test** do centro: o ponto tem de cair no elemento ou num descendente dele, senão é FALHOU "coberto por …". Depois, **toque real** (dedo no aparelho, clique de mouse no web) e conferência de que o `pointerdown` chegou ao elemento **guardado antes do toque**, pelo caminho do próprio evento: o toque que fecha o alerta, troca a página ou redesenha a lista conta (v3.65.1). Nunca `el.click()` |
+| `tap <id>` | Acha o elemento, rola até ele ficar na tela e **espera ele parar** (a caixa igual em duas leituras, até 2 s; v3.65.1). Faz o **hit-test** do centro: o ponto tem de cair no elemento ou num descendente dele, senão é FALHOU "coberto por …". Depois, **toque real** (dedo no aparelho, clique de mouse no web) e conferência de que o `pointerdown` chegou ao elemento **guardado antes do toque**, pelo caminho do próprio evento: o toque que fecha o alerta, troca a página ou redesenha a lista conta (v3.65.1). Antes do toque, **espera a tela parar de rolar** (nenhum evento de `scroll` há 250 ms, até 2 s). Depois, confere que o toque **virou clique** (v3.65.3). O toque que chegou e terminou sem o app cancelar o clique, sem virar clique e com o elemento ainda na página foi usado pelo navegador para parar uma rolagem: o executor espera e toca de novo, uma vez, e o segundo sem clique é FALHOU com o motivo. O app que cancela o clique de propósito (`preventDefault` no fim do toque) e o elemento que sai da página no toque contam como antes. Nunca `el.click()` |
 | `type <id> = <texto>` | **Substitui o valor.** Toca o elemento como no `tap` e acha o editável: o próprio campo, um `contenteditable` ou o primeiro `input`/`textarea` descendente, inclusive em shadow root aberto. Seleciona todo o conteúdo e insere o texto, que troca a seleção. No `uiautomator`, o transporte é outro: vai ao fim do campo, apaga o texto atual e digita. Ali, texto fora do ASCII é FALHOU com o motivo, nunca o texto corrompido |
 | `select <id> = <opção>` | Num `<select>` nativo, escolhe a opção pelo rótulo visível, porque o seletor nativo abre fora da página. Num controle de outro tipo: toca, espera a opção **pelo texto visível** fora do controle, toca a opção e, se o seletor continuar aberto, toca o botão que casa `selectConfirm` |
 | `slider <id> <v> <min> <max>` | Toque real no ponto proporcional da caixa. Depois lê o valor: diferente de `<v>` em mais de um passo do controle é FALHOU com o valor lido |
@@ -42,7 +43,7 @@ O gesto vai a um ponto do rolador que não tem outro rolador por cima. O executo
 | `launch` · `open [/caminho]` · `restart` | fecha e abre o app na tela inicial. Com `cdp`, depois espera a prontidão | abre ou recarrega a página |
 | `back` | tecla voltar | voltar do navegador |
 | `clock <aaaa-mm-dd hh:mm>` | data do aparelho | relógio do Playwright |
-| `font-scale <f>` | escala de fonte do sistema. Com `cdp`, espera a prontidão de novo, porque a WebView é recriada | CSS no `html` |
+| `font-scale <f>` | escala de fonte do sistema. Com `cdp`, espera a prontidão de novo, porque a WebView é recriada. Com o valor mudado, espera antes a WebView trocar de página, até 3 s (v3.65.3: a página velha ainda respondia pronta por 1,1 a 1,3 s, e o toque seguinte caía no splash). Valor igual ao atual não espera | CSS no `html` |
 | `seed <nome>` | comando de `targets.<alvo>.seeds.<nome>` | o mesmo |
 | `wait <s>` · `shot <nome>` | espera · captura da tela | espera · captura da página |
 

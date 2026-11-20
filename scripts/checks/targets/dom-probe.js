@@ -14,8 +14,16 @@ function probe(op, args, cfg) {
   const attr = (cfg && cfg.attr) || 'data-testid';
   const scopes = (cfg && cfg.hiddenScopes) || [];
 
-  // Pai "composto": atravessa o shadow root aberto até o host.
-  const up = (n) => (n.parentElement ? n.parentElement : (n.parentNode && n.parentNode.host) || null);
+  // Pai "composto": o <slot> em que o nó é projetado, senão o pai, senão o host do shadow root aberto.
+  // v3.65.3 (garden SC-161, SC-122, SC-147): pelo pai de luz, o conteúdo projetado num web component pulava o rolador e os
+  // recortes que ficam no shadow root do host (no Ionic, ion-content → slot → .inner-scroll): a rolagem media a posição do
+  // documento, que não rola, e desistia com a tela já rolada ("a rolagem não o trouxe à tela").
+  const up = (n) => n.assignedSlot || n.parentElement || (n.parentNode && n.parentNode.host) || null;
+  // Filhos pelo acessor nativo de Element: componentes com slot emulado (Stencil "scoped", como o ion-input) trocam children e
+  // childNodes para devolver só o conteúdo projetado — o <input> que o próprio componente desenhou some da leitura (v3.65.3,
+  // garden SC-161: "sem campo editável" num campo na tela).
+  const nativeChildren = Object.getOwnPropertyDescriptor(Element.prototype, 'children').get;
+  const kidsOf = (n) => Array.from(n.nodeType === 1 ? nativeChildren.call(n) : n.children);
   const roots = () => {
     const out = [document];
     const walk = (root) => { for (const el of root.querySelectorAll('*')) if (el.shadowRoot) { out.push(el.shadowRoot); walk(el.shadowRoot); } };
@@ -37,7 +45,7 @@ function probe(op, args, cfg) {
     const cs = getComputedStyle(el);
     let r = cs.display === 'contents' ? null : el.getBoundingClientRect();
     if (r && r.width > 0 && r.height > 0) return { x: r.left, y: r.top, w: r.width, h: r.height };
-    const kids = Array.from(el.children).concat(el.shadowRoot ? Array.from(el.shadowRoot.children) : []);
+    const kids = kidsOf(el).concat(el.shadowRoot ? kidsOf(el.shadowRoot) : []);
     let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
     for (const k of kids) { if (getComputedStyle(k).display === 'none') continue; const b = box(k); if (b) { x1 = Math.min(x1, b.x); y1 = Math.min(y1, b.y); x2 = Math.max(x2, b.x + b.w); y2 = Math.max(y2, b.y + b.h); } }
     if (x2 > x1 && y2 > y1) return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
@@ -65,7 +73,7 @@ function probe(op, args, cfg) {
   const find = (id) => withAttr((v) => v === id).find(rendered) || null;
   const describe = (el) => el ? `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.getAttribute && el.getAttribute(attr) && attr !== 'id' ? `[${attr}=${el.getAttribute(attr)}]` : ''}${typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : ''}` : 'nada';
   const isField = (el) => ['input', 'textarea', 'select'].includes(el.tagName.toLowerCase());
-  const descendantsDeep = (el) => { const out = []; const walk = (n) => { for (const c of n.children) { out.push(c); if (c.shadowRoot) walk(c.shadowRoot); walk(c); } }; if (el.shadowRoot) walk(el.shadowRoot); walk(el); return out; };
+  const descendantsDeep = (el) => { const out = []; const walk = (n) => { for (const c of kidsOf(n)) { out.push(c); if (c.shadowRoot) walk(c.shadowRoot); walk(c); } }; if (el.shadowRoot) walk(el.shadowRoot); walk(el); return out; };
   // O editável do elemento: ele mesmo (campo ou contenteditable) ou o primeiro input/textarea descendente, inclusive em shadow root.
   const editableOf = (el) => {
     if (['input', 'textarea'].includes(el.tagName.toLowerCase()) || el.isContentEditable) return el;
@@ -139,14 +147,33 @@ function probe(op, args, cfg) {
     // chegou. v3.65.1 (garden S6, D-30): o elemento do toque é guardado no arm e o caminho no próprio evento, e o armed confere
     // por eles — o toque que fecha o alerta ou troca a página tira o elemento da tela antes da conferência, e procurá-lo de
     // novo dava "não chegou a ele" com o toque certo.
+    // v3.65.3 (garden SC-204): o arm também guarda o click e o fim do toque (touchend/mouseup, na fase de bolha em window, depois
+    // dos ouvintes do app: defaultPrevented diz se o app cancelou o clique de propósito). Medido no aparelho: o toque numa faixa
+    // que ainda rolava teve pointerdown e touchend no alvo, sem cancelamento, e nenhum click — o navegador usou o toque para
+    // parar a rolagem.
     case 'arm': {
       window.__teamPd = null; window.__teamPdPath = null; window.__teamArmEl = args.id ? find(args.id) : null;
+      window.__teamClickPath = null; window.__teamUp = null;
       if (!window.__teamPdOn) { window.addEventListener('pointerdown', (e) => { const p = e.composedPath(); window.__teamPd = p[0] || e.target; window.__teamPdPath = p; }, true); window.__teamPdOn = true; }
+      if (!window.__teamClickOn) {
+        window.addEventListener('click', (e) => { window.__teamClickPath = e.composedPath(); }, true);
+        const up = (e) => { window.__teamUp = { prevented: !!(e.defaultPrevented || (window.__teamUp && window.__teamUp.prevented)) }; };
+        window.addEventListener('touchend', up, false); window.addEventListener('mouseup', up, false);
+        window.__teamClickOn = true;
+      }
       return true;
     }
     case 'armed': {
       const el = window.__teamArmEl || find(args.id); const t = window.__teamPd; const p = window.__teamPdPath || [];
-      return { got: !!t, ok: !!(el && t && (p.includes(el) || within(el, t))), by: describe(t) };
+      const cp = window.__teamClickPath; const u = window.__teamUp;
+      return { got: !!t, ok: !!(el && t && (p.includes(el) || within(el, t))), by: describe(t), clicked: !!(el && cp && (cp.includes(el) || (cp[0] && within(el, cp[0])))),
+        up: !!u, upPrevented: !!(u && u.prevented), connected: !!(el && el.isConnected) };
+    }
+    // Rolagem em curso (v3.65.3): ms desde o último evento de scroll em qualquer rolador (captura em window). Na 1ª chamada o
+    // ouvinte nasce e a resposta é 0 — quem espera observa pelo menos uma janela antes de dar a tela por parada.
+    case 'quiet': {
+      if (!window.__teamScrollOn) { window.__teamLastScroll = performance.now(); window.addEventListener('scroll', () => { window.__teamLastScroll = performance.now(); }, { capture: true, passive: true }); window.__teamScrollOn = true; return 0; }
+      return Math.round(performance.now() - window.__teamLastScroll);
     }
     case 'focused': { const el = find(args.id); const ed = el && editableOf(el); const a = deepActive(); return { ok: !!(ed && a === ed), editable: !!ed }; }
     // Exceção 1 da norma: seleciona TODO o conteúdo do editável (não grava valor) para o texto inserido substituí-lo.
@@ -173,7 +200,7 @@ function probe(op, args, cfg) {
         if ((n.innerText || n.textContent || '').trim() !== args.text) continue;
         if (ctl && within(ctl, n)) continue;
         if (!rendered(n)) continue;
-        if (Array.from(n.children).some((c) => (c.innerText || '').trim() === args.text && rendered(c))) continue;
+        if (kidsOf(n).some((c) => (c.innerText || '').trim() === args.text && rendered(c))) continue;
         hit = n;
       }
       return hit ? { found: true, box: box(hit), inView: inClip(hit, box(hit)) } : { found: false };

@@ -106,3 +106,27 @@ open
 tap p.redesenha.opcao
 assert-text p.lido = redesenhado
 assert-text p.redesenha.opcao = todos ✓
+
+scenario PAR-21 rolador no shadow root com o conteúdo por slot e campo que esconde os filhos: rola, digita e toca
+open
+type p.rolo.campo = 7
+assert-text p.rolo.campo = 7
+tap p.rolo.botao
+assert-text p.lido = rolo
+
+scenario PAR-22 faixa de pílulas: tocar a última e depois a primeira, que volta a faixa até a borda
+open
+tap p.pilula.7
+assert-text p.lido = pilula 7
+tap p.pilula.1
+assert-text p.lido = pilula 1
+
+scenario PAR-23 toque que chega e não vira clique (engolido): o executor espera e toca de novo, uma vez
+open
+tap p.engole
+assert-text p.lido = engole 1
+
+scenario PAR-24 o app age no fim do toque e cancela o clique: o toque conta uma vez, sem repetir
+open
+tap p.cancela
+assert-text p.lido = cancela 1
