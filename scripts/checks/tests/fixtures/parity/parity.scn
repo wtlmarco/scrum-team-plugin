@@ -90,3 +90,19 @@ open
 tap p.desliza
 tap p.movel
 assert-text p.lido = parado
+
+scenario PAR-18 a tela muda depois do toque: o assert relê até bater, sem wait no cenário
+open
+tap p.atrasa
+assert-text p.lido = gravado
+assert-absent p.aviso
+
+scenario PAR-19 [FALHOU] valor que nunca chega: o assert desiste no prazo, com a última leitura
+open
+assert-text p.lido = nunca
+
+scenario PAR-20 toque que redesenha a lista: o nó tocado é trocado por outro com o mesmo id e o toque conta
+open
+tap p.redesenha.opcao
+assert-text p.lido = redesenhado
+assert-text p.redesenha.opcao = todos ✓

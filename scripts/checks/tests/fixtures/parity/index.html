@@ -68,6 +68,15 @@
   <button id="p.movel" style="position: absolute; left: 300px; top: 0; width: 40px" onclick="lido(movendo ? 'em movimento' : 'parado')">m</button>
 </section>
 
+<!-- v3.65.2: a tela muda 1,5 s depois do toque (gravação, lista que recarrega): o assert espera, sem "wait" no cenário -->
+<section>
+  <button id="p.atrasa" onclick="setTimeout(() => { lido('gravado'); document.getElementById('p.aviso').remove(); }, 1500)">atrasa</button>
+  <span id="p.aviso">gravando</span>
+</section>
+
+<!-- v3.65.2 (garden S6-F4): o toque redesenha a lista — o nó tocado sai e entra outro com o MESMO id -->
+<section id="p.redesenha"><button id="p.redesenha.opcao" onclick="redesenha()"><span>todos</span></button></section>
+
 <section><button id="p.longe" onclick="lido('longe')">longe</button></section>
 
 <script>
@@ -79,6 +88,10 @@
   const lista = document.getElementById('p.lista');
   for (let i = 1; i <= 40; i++) { const d = document.createElement('div'); d.id = 'p.item.' + i; d.textContent = 'item ' + i; lista.appendChild(d); }
   function lido(v) { document.getElementById('p.lido').textContent = v; }
+  function redesenha() {
+    const s = document.getElementById('p.redesenha'); lido('redesenhado');
+    s.innerHTML = '<button id="p.redesenha.opcao" onclick="redesenha()"><span>todos ✓</span></button>';
+  }
   let movendo = false;
   function desliza() {
     const m = document.getElementById('p.movel'); let x = 300; movendo = true;

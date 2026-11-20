@@ -259,6 +259,9 @@ function Invoke-AcceptCommand([string]$Dir, $Blocks, $Cfg) {
         if ($r1.Code -eq 2 -and -not $r1.Lines.Count) { $usage = "o executor do projeto saiu 2 (uso ou cenário malformado) em $name — confira o comando do **Aceite:** e o log $($r1.Log)"; break }
         $r2 = $null
         $bad = @($ids | Where-Object { $r1.Lines.Contains($_) -and $r1.Lines[$_].status -eq 'FALHOU' })
+        # v3.65.2: como o executor interno, repete só a falha que pode ser oscilação do alvo (Get-AcceptNoRetryKind).
+        $noRe = @{}; foreach ($i in $bad) { $nk = Get-AcceptNoRetryKind ([string]$r1.Lines[$i].detail) ''; if ($nk) { $noRe[$i] = $nk } }
+        $bad = @($bad | Where-Object { -not $noRe.ContainsKey($_) })
         if (-not $r1.Environment -and $canRetry -and $bad.Count) {
             # Repete uma vez os que falharam (o alvo oscila), como o executor interno; o relatório guarda as duas tentativas.
             $r2 = Invoke-AcceptCommandRun $Dir $f $bad "$name-r2" $Cfg
@@ -274,7 +277,7 @@ function Invoke-AcceptCommand([string]$Dir, $Blocks, $Cfg) {
                     $note = if ($r2.Lines[$id].status -eq 'PASSOU') { "passou na 2ª tentativa; 1ª: $det" } else { 'falhou nas 2 tentativas' }
                     $st = $r2.Lines[$id].status; $det = $(if ($st -eq 'PASSOU') { '' } else { $r2.Lines[$id].detail }); $shotDir = $r2.Out
                 } elseif (-not $r2.Environment) { $note = "2ª tentativa sem linha para este cenário (exit $($r2.Code))" }
-            }
+            } elseif ($canRetry -and $noRe.ContainsKey($id)) { $note = "não repetido: $($noRe[$id])" }
             $row = [ordered]@{ id = $id; title = $b.title; status = $st; detail = $det; note = $note; shot = (Find-AcceptShot $shotDir $id); hash = (Get-ScenarioHash $b) }
             if ($st -ne 'PASSOU' -and $logOf.ContainsKey($id)) { $row.log = $logOf[$id] }   # v3.63.1
             $results += $row
@@ -307,7 +310,9 @@ function Invoke-Once($Block) {
     if ($script:Tgt -eq 'web') {
         $o = Invoke-WebScenarios @($Block) $script:Shots
         if ($o.environment) { return @{ environment = [string]$o.environment } }
-        $r = @($o.results)[0]; return @{ status = [string]$r.status; detail = [string]$r.detail; shot = [string]$r.shot }
+        $r = @($o.results)[0]; $script:Executions++
+        $ms = @(); foreach ($t in @($r.steps)) { if ($t -and $t.v) { Add-AcceptStepTime ([string]$t.v) ([double]$t.ms); $ms += [int]$t.ms } }   # v3.65.2
+        return @{ status = [string]$r.status; detail = [string]$r.detail; shot = [string]$r.shot; stepMs = $ms }
     }
     $base = Join-Path $script:Shots $Block.id; $status = 'PASSOU'; $detail = ''
     $cdp = $script:Locator -eq 'cdp'
@@ -315,9 +320,10 @@ function Invoke-Once($Block) {
     # de vida — na falha, o sinal diz se o app fechou com erro, foi reiniciado, teve a WebView recriada ou perdeu o foco.
     $script:Attempt[[string]$Block.id] = 1 + [int]$script:Attempt[[string]$Block.id]
     try { Clear-AndroidLog } catch { }
-    $pidRef = 0; $sig = $null
+    $pidRef = 0; $sig = $null; $script:Executions++; $stepMs = @()
     foreach ($s in $Block.steps) {
         $verb, $rest = ($s -split '\s+', 2); if ($null -eq $rest) { $rest = '' }
+        $sw = [System.Diagnostics.Stopwatch]::StartNew()   # v3.65.2: o tempo do passo, também quando ele falha
         try {
             # v3.62.0: com o locator "cdp", o passo de tela vai pela WebView; abrir o app (e a fonte nova, que recria a WebView)
             # espera a prontidão declarada (targets.android.cdp.readyExpr) e confere a tela de falha do app (failExpr).
@@ -343,11 +349,40 @@ function Invoke-Once($Block) {
             }
             $status = 'FALHOU'; $detail = "passo '$s': $m"; break
         }
+        finally { $sw.Stop(); Add-AcceptStepTime $verb $sw.Elapsed.TotalMilliseconds; $stepMs += [int]$sw.Elapsed.TotalMilliseconds }
     }
     if ($status -ne 'PASSOU' -and -not $sig) { $sig = Get-AcceptFailEvidence ([string]$Block.id) $pidRef $detail }
     if ($sig -and $sig.kind -and $detail -notmatch [regex]::Escape([string]$sig.text)) { $detail += " · sinal: $($sig.text)" }
     $shot = "$base-$(if ($status -eq 'PASSOU') { 'final' } else { 'falha' }).png"; Save-AndroidShot $shot
-    return @{ status = $status; detail = $detail; shot = $shot; signal = $sig }
+    return @{ status = $status; detail = $detail; shot = $shot; signal = $sig; stepMs = $stepMs }
+}
+# v3.65.2 (garden, portão do S6): a 2ª tentativa só para a falha que pode ser oscilação do alvo. Em duas rodadas, 38
+# repetições salvaram 3 — todas do toque não reconhecido, corrigido na v3.65.1 —, e as 22 de id ausente, rolagem e valor
+# diferente não salvaram nenhuma: dobravam o tempo do cenário. Essas falhas já vêm depois da espera (o passo espera o id, a
+# rolagem tenta de novo e o assert relê o valor até o prazo), então repetir o cenário mede a mesma coisa. Com sinal do app
+# (crash, reinício, WebView recriada, outra janela), repete: o evento pode ter causado a falha. '' = repete; senão, a classe.
+function Get-AcceptNoRetryKind([string]$Detail, [string]$SignalKind) {
+    if ($SignalKind) { return '' }
+    if ($Detail -match 'tag não encontrada|tag ausente|controle deslizante não encontrado|tag presente \(esperada ausente\)') { return 'o id não está na tela, depois da espera e da busca' }
+    if ($Detail -match 'existe, mas a rolagem não o trouxe') { return 'a rolagem não traz o elemento à tela' }
+    if ($Detail -match "esperado '|' não contém '|esperado \d+ itens|ordem diferente|marcado = |ficou em .+, esperado|opção '.+' não existe") { return 'o valor lido é outro, depois da espera' }
+    return ''
+}
+# v3.65.2: o tempo de cada passo, somado por verbo na rodada (result.json → timing) — a base para decidir onde o aceite gasta.
+$script:VerbTime = @{}; $script:Executions = 0
+function Add-AcceptStepTime([string]$Verb, [double]$Ms) {
+    if ($null -eq $script:VerbTime) { $script:VerbTime = @{} }
+    if (-not $script:VerbTime.ContainsKey($Verb)) { $script:VerbTime[$Verb] = @{ n = 0; ms = 0.0 } }
+    $script:VerbTime[$Verb].n++; $script:VerbTime[$Verb].ms += $Ms
+}
+function Get-AcceptTiming([double]$Seconds) {
+    $by = [ordered]@{}; if ($null -eq $script:VerbTime) { $script:VerbTime = @{} }
+    foreach ($k in @($script:VerbTime.Keys | Sort-Object { - $script:VerbTime[$_].ms })) { $v = $script:VerbTime[$k]; $by[$k] = [ordered]@{ n = $v.n; seconds = [Math]::Round($v.ms / 1000, 1); avgMs = [int]($v.ms / [Math]::Max(1, $v.n)) } }
+    return [ordered]@{ seconds = [Math]::Round($Seconds, 1); executions = [int]$script:Executions; byVerb = $by }
+}
+function Format-AcceptTiming($T, [int]$Scenarios) {
+    $top = @($T.byVerb.Keys | Select-Object -First 5 | ForEach-Object { "$_ $($T.byVerb[$_].n)× · $($T.byVerb[$_].seconds) s (média $([Math]::Round($T.byVerb[$_].avgMs / 1000, 1)) s)" })
+    return "**Tempo:** $([Math]::Round($T.seconds / 60, 1)) min · $($T.executions) execução(ões) de $Scenarios cenário(s) rodado(s)$(if ($top.Count) { ' · por verbo: ' + ($top -join ' · ') })"
 }
 # v3.63.1: a prova da falha no aparelho — o registro (logs/<ID>-<tentativa>-logcat.txt na pasta do accept) e o sinal do app.
 # @{ kind; text; log } (kind '' quando nada se pôde dizer; o log fica mesmo assim).
@@ -364,6 +399,7 @@ function Get-AcceptFailEvidence([string]$Id, [int]$PidRef, [string]$Detail) {
 # Corpo com a trava já tomada. Devolve o código de saída.
 function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
     $dir = (Get-VerifyDir $Root $Task) -replace '[\\/]verify[\\/]', '/accept/'
+    $script:RunClock = [System.Diagnostics.Stopwatch]::StartNew()   # v3.65.2: o tempo da rodada, do pré-voo ao fim
     $fresh = $false; $freshOk = $false; $script:BaseCfg = $Cfg
     if ($script:Tgt -eq 'android') {
         # v3.51.1: sem targets.android.package/apk, o executor descobre o APK construído e o applicationId dele.
@@ -442,22 +478,28 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
             $row = New-ReusedRow $reuse[[string]$b.id] $b; $results += $row
             [Console]::Out.WriteLine(("[{0}] PASSOU  {1}  ({2})" -f $b.id, $b.title, $row.note)); Write-AcceptProgress $dir $results $Blocks.Count; continue
         }
+        $scw = [System.Diagnostics.Stopwatch]::StartNew()
         $r1 = Invoke-Once $b
         if ($r1.config) { return (Write-AcceptConfig $dir ([string]$r1.config) $results) }   # v3.62.0
         if ($r1.environment) { $envFail = $r1.environment; & $takeEnv $r1 $b; $envSig = $script:envSigTmp; break }
         $final = $r1; $note = ''
-        # Repete uma vez do zero (o alvo oscila); o relatório guarda as duas tentativas.
+        # Repete uma vez do zero a falha que pode ser oscilação do alvo (v3.65.2: só ela); o relatório guarda as duas tentativas.
         if ($r1.status -ne 'PASSOU' -and -not $NoRetry) {
-            $r2 = Invoke-Once $b
-            if ($r2.config) { return (Write-AcceptConfig $dir ([string]$r2.config) $results) }
-            if ($r2.environment) { $envFail = $r2.environment; & $takeEnv $r2 $b; $envSig = $script:envSigTmp; break }
-            $final = $r2; $note = if ($r2.status -eq 'PASSOU') { "passou na 2ª tentativa; 1ª: $($r1.detail)" } else { 'falhou nas 2 tentativas' }
+            $nk = Get-AcceptNoRetryKind ([string]$r1.detail) $(if ($r1.signal) { [string]$r1.signal.kind } else { '' })
+            if ($nk) { $note = "não repetido: $nk" }
+            else {
+                $r2 = Invoke-Once $b
+                if ($r2.config) { return (Write-AcceptConfig $dir ([string]$r2.config) $results) }
+                if ($r2.environment) { $envFail = $r2.environment; & $takeEnv $r2 $b; $envSig = $script:envSigTmp; break }
+                $final = $r2; $note = if ($r2.status -eq 'PASSOU') { "passou na 2ª tentativa; 1ª: $($r1.detail)" } else { 'falhou nas 2 tentativas' }
+            }
         }
         $shotRel = if ($final.shot) { ([string]$final.shot).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/' } else { '' }
-        $row = [ordered]@{ id = $b.id; title = $b.title; status = $final.status; detail = $final.detail; note = $note; shot = $shotRel; hash = (Get-ScenarioHash $b) }
+        $row = [ordered]@{ id = $b.id; title = $b.title; status = $final.status; detail = $final.detail; note = $note; shot = $shotRel; hash = (Get-ScenarioHash $b)
+                           seconds = [Math]::Round($scw.Elapsed.TotalSeconds, 1); stepMs = @($final.stepMs) }   # v3.65.2: as tentativas somadas; o passo a passo, da última
         if ($final.signal -and $final.status -ne 'PASSOU') { $row.signal = [string]$final.signal.kind; $row.signalText = [string]$final.signal.text; $row.log = [string]$final.signal.log }   # v3.63.1
         $results += $row
-        [Console]::Out.WriteLine(("[{0}] {1}  {2}{3}{4}" -f $b.id, $row.status, $b.title, $(if ($row.detail) { "  -> $($row.detail)" } else { '' }), $(if ($note) { "  ($note)" } else { '' })))
+        [Console]::Out.WriteLine(("[{0}] {1}  {2}{3}{4}  [{5} s]" -f $b.id, $row.status, $b.title, $(if ($row.detail) { "  -> $($row.detail)" } else { '' }), $(if ($note) { "  ($note)" } else { '' }), ([string]$row.seconds)))
         Write-AcceptProgress $dir $results $Blocks.Count
         # v3.54.2 (carta do sprint 5 do garden, item 3): os 2 primeiros cenários falharam na MESMA tela e nenhum passou — o app
         # não está no estado de partida que eles esperam (introdução, login, base vazia). Rodar o resto só gasta ~7 min por
@@ -477,11 +519,13 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
     if ($script:Tgt -eq 'web') { Stop-WebServer }
 
     $ok = @($results | Where-Object { $_.status -eq 'PASSOU' }).Count
+    $timing = Get-AcceptTiming $(if ($script:RunClock) { $script:RunClock.Elapsed.TotalSeconds } else { 0 })   # v3.65.2
+    $ranN = @($results | Where-Object { -not $_.reused }).Count
     $sigMd = if ($envSig) { " **Sinal do app** ($($envSig.scenario)): $($envSig.text)$(if ($envSig.log) { " · registro $($envSig.log)" })$(if ($envSig.shot) { " · captura $($envSig.shot)" }) — vai ao diagnóstico antes de ser tratado como ambiente." } else { '' }
-    $md = "# Aceite $Task · alvo $script:Tgt · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n$ok de $($results.Count) cenário(s) passaram" + $(if ($startState) { "; **interrompido no estado de partida:** $envFail" } elseif ($envFail) { "; **interrompido por falha de ambiente:** $envFail" } else { '' }) + ".$sigMd`n`n| Cenário | Resultado | Detalhe | Prova (captura) |`n|---|---|---|---|`n"
-    foreach ($r in $results) { $lg = if ($r.Contains('log') -and $r.log) { " · registro $($r.log)" } else { '' }; $md += "| $($r.id) $($r.title) | $($r.status) | $((@($r.detail, $r.note) | Where-Object { $_ }) -join ' · ' -replace '\|', '/')$lg | $($r.shot) |`n" }
+    $md = "# Aceite $Task · alvo $script:Tgt · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n$ok de $($results.Count) cenário(s) passaram" + $(if ($startState) { "; **interrompido no estado de partida:** $envFail" } elseif ($envFail) { "; **interrompido por falha de ambiente:** $envFail" } else { '' }) + ".$sigMd`n`n$(Format-AcceptTiming $timing $ranN)`n`n| Cenário | Resultado | Detalhe | Prova (captura) | s |`n|---|---|---|---|---|`n"
+    foreach ($r in $results) { $lg = if ($r.Contains('log') -and $r.log) { " · registro $($r.log)" } else { '' }; $md += "| $($r.id) $($r.title) | $($r.status) | $((@($r.detail, $r.note) | Where-Object { $_ }) -join ' · ' -replace '\|', '/')$lg | $($r.shot) | $(if ($r.Contains('seconds')) { $r.seconds }) |`n" }
     [System.IO.File]::WriteAllText((Join-Path $dir 'result.md'), $md, $utf8)
-    [System.IO.File]::WriteAllText((Join-Path $dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $(if ($script:Tgt -eq 'android') { $script:Locator } else { $null }); at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); prod = (Get-ProductionTree $Root); app = $script:AppId; scenariosHash = (Get-ScenarioSetHash $script:ScnFiles); environment = $envFail; environmentSignal = $envSig; startState = $startState; passed = $ok; total = $results.Count; results = $results } | ConvertTo-Json -Depth 6), $utf8)
+    [System.IO.File]::WriteAllText((Join-Path $dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $(if ($script:Tgt -eq 'android') { $script:Locator } else { $null }); at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); prod = (Get-ProductionTree $Root); app = $script:AppId; scenariosHash = (Get-ScenarioSetHash $script:ScnFiles); environment = $envFail; environmentSignal = $envSig; startState = $startState; passed = $ok; total = $results.Count; timing = $timing; results = $results } | ConvertTo-Json -Depth 6), $utf8)
     $rel = ($dir.Substring($Root.Length + 1) -replace '\\', '/')
     if ($startState) { [Console]::Out.WriteLine("accept $Task · $envFail · $rel/result.md"); return 4 }
     if ($envFail) { [Console]::Out.WriteLine("accept $Task · FALHA DE AMBIENTE ($script:Tgt): $envFail$(if ($envSig) { " · sinal do app: $($envSig.text) (vai ao diagnóstico)" }) · $ok de $($results.Count) antes da interrupção · $rel/result.md"); return 4 }

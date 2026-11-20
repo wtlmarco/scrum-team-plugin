@@ -118,6 +118,14 @@ async function tapId(s, id) {
 }
 async function pressBox(s, b) { await press(s, b.x + b.w / 2, b.y + b.h / 2); await sleep(350); }
 
+// v3.65.2 (garden, portão do S6): o assert relê até o valor bater ou ASSERT_WAIT_MS — o app atualiza a tela depois do toque
+// (gravação, animação, lista que recarrega), e o cenário compensava com "wait 2" fixo depois de cada toque. A falha sai com
+// a última leitura. A 2ª tentativa do cenário não repete o valor diferente: a espera já está aqui (accept.ps1).
+const ASSERT_WAIT_MS = 5000;
+async function until(check, gapMs = 300) {
+  const t0 = Date.now();
+  for (;;) { const r = await check(); if (r.ok || Date.now() - t0 >= ASSERT_WAIT_MS) return r; await sleep(gapMs); }
+}
 async function evalBool(s, expr) { const r = await probe(s, 'eval', { expr }); if (!r.ok) throw err('config', `expressão inválida (${expr}): ${r.error}`); return r.value; }
 async function checkFail(s) { if (s.cfg.failExpr && (await evalBool(s, s.cfg.failExpr))) throw new Error(`o app está na tela de falha dele (failExpr: ${s.cfg.failExpr})`); }
 
@@ -185,26 +193,30 @@ async function runStep(s, verb, rest) {
     case 'assert-text': case 'assert-contains': {
       const [k, v] = split(rest);
       if (!(await reach(s, k, 4, false))) throw new Error(`tag não encontrada: ${k}`);
-      const a = (await probe(s, 'read', { id: k })).text;
-      if (verb === 'assert-text' ? a !== v : !a.includes(v)) throw new Error(verb === 'assert-text' ? `esperado '${v}', obtido '${a}' em ${k}` : `'${a}' não contém '${v}' em ${k}`);
+      const r = await until(async () => { const x = await probe(s, 'read', { id: k }); const a = x.found ? x.text : ''; return { ok: x.found && (verb === 'assert-text' ? a === v : a.includes(v)), a }; });
+      if (!r.ok) throw new Error(verb === 'assert-text' ? `esperado '${v}', obtido '${r.a}' em ${k}` : `'${r.a}' não contém '${v}' em ${k}`);
       return;
     }
     case 'assert-exists': if (!(await reach(s, rest, 8, false))) throw new Error(`tag ausente: ${rest}`); return;
-    case 'assert-absent': if ((await probe(s, 'find', { id: rest })).found) throw new Error(`tag presente (esperada ausente): ${rest}`); return;
+    case 'assert-absent': if (!(await until(async () => ({ ok: !(await probe(s, 'find', { id: rest })).found }))).ok) throw new Error(`tag presente (esperada ausente): ${rest}`); return;
     case 'assert-checked': {
       const [k, v] = split(rest); if (!(await reach(s, k, 4, false))) throw new Error(`tag ausente: ${k}`);
-      const c = (await probe(s, 'checked', { id: k })).checked; if (c !== /^(true|sim|1)$/.test(v)) throw new Error(`${k} marcado = ${c}, esperado ${v}`);
+      const want = /^(true|sim|1)$/.test(v);
+      const r = await until(async () => { const c = (await probe(s, 'checked', { id: k })).checked; return { ok: c === want, c }; });
+      if (!r.ok) throw new Error(`${k} marcado = ${r.c}, esperado ${v}`);
       return;
     }
+    // A lista inteira custa rolar do topo ao fim: relê com intervalo maior.
     case 'assert-count': {
-      const [k, v] = split(rest); const got = await collectIds(s, k);
-      if (got.length !== Number(v)) throw new Error(`esperado ${v} itens '${k}*' na lista inteira, obtido ${got.length}: [${got.join(',')}]`);
+      const [k, v] = split(rest);
+      const r = await until(async () => { const got = await collectIds(s, k); return { ok: got.length === Number(v), got }; }, 800);
+      if (!r.ok) throw new Error(`esperado ${v} itens '${k}*' na lista inteira, obtido ${r.got.length}: [${r.got.join(',')}]`);
       return;
     }
     case 'assert-order': {
-      const [k, v] = split(rest); const got = await collectIds(s, k); const want = v.split(/\s*,\s*/);
-      const idx = want.map((w) => got.indexOf(w));
-      if (idx.includes(-1) || idx.some((x, i) => i && x < idx[i - 1])) throw new Error(`ordem diferente: esperado [${v}], lista [${got.join(',')}]`);
+      const [k, v] = split(rest); const want = v.split(/\s*,\s*/);
+      const r = await until(async () => { const got = await collectIds(s, k); const idx = want.map((w) => got.indexOf(w)); return { ok: !(idx.includes(-1) || idx.some((x, i) => i && x < idx[i - 1])), got }; }, 800);
+      if (!r.ok) throw new Error(`ordem diferente: esperado [${v}], lista [${r.got.join(',')}]`);
       return;
     }
     default: throw new Error(`passo '${verb}' não é verbo de tela`);

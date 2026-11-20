@@ -374,6 +374,12 @@ function Reach([string]$Id, [int]$Sec = 4) {
     foreach ($i in 1..40) { Sh input swipe 360 1250 360 750 1100 | Out-Null; Start-Sleep -Milliseconds 350; if (Has $Id) { return $true } }
     $false
 }
+# v3.65.2: relê a condição até ela valer ou 5 s (o app atualiza a tela depois do toque). $true = valeu.
+function Wait-Assert([scriptblock]$Check, [int]$GapMs = 400) {
+    $t = Get-Date
+    do { if (& $Check) { return $true }; Start-Sleep -Milliseconds $GapMs } while (((Get-Date) - $t).TotalSeconds -lt 5)
+    return [bool](& $Check)
+}
 function TapNode($n) { Sh input tap ([int](($n.X1 + $n.X2) / 2)) ([int](($n.Y1 + $n.Y2) / 2)) | Out-Null; Start-Sleep -Milliseconds 500 }
 function Tap([string]$Id) { if (-not (Reach $Id 6)) { throw "tag não encontrada: $Id$(Get-ScreenHint)" }; Start-Sleep -Milliseconds 300; [void](Dump); TapNode (Find $Id) }
 function TextOf([string]$Id) { [void](Dump); $n = Find $Id; if (-not $n -and (Reach $Id 1)) { $n = Find $Id }; NodeText $n }
@@ -649,12 +655,13 @@ function Invoke-AndroidStep([string]$Verb, [string]$Rest, [string]$ShotBase) {
         'seed' { $e = Invoke-TargetSeed $(if ($Root) { $Root } else { (Get-Location).Path }) 'android' $script:AdCfg $Rest.Trim() @{ ACCEPT_SERIAL = $script:Serial; ACCEPT_PACKAGE = $script:Pkg }; if ($e) { throw "AMBIENTE: $e" } }
         'slider' { $p = $Rest -split '\s+'; SetSlider $p[0] ([double]$p[1]) ([double]$p[2]) ([double]$p[3]) }
         'shot' { Save-AndroidShot "$ShotBase-$Rest.png" }
-        'assert-text' { $k, $v = $Rest -split '\s*=\s*', 2; $a = TextOf $k; if ($a -ne $v) { throw "esperado '$v', obtido '$a' em $k" } }
-        'assert-contains' { $k, $v = $Rest -split '\s*=\s*', 2; $a = TextOf $k; if (-not ($a -like "*$v*")) { throw "'$a' não contém '$v' em $k" } }
+        # v3.65.2: o assert relê até o valor bater ou 5 s (Wait-Assert), como o executor cdp — sem "wait" fixo no cenário.
+        'assert-text' { $k, $v = $Rest -split '\s*=\s*', 2; if (-not (Wait-Assert { $script:wa = TextOf $k; $script:wa -eq $v })) { throw "esperado '$v', obtido '$($script:wa)' em $k" } }
+        'assert-contains' { $k, $v = $Rest -split '\s*=\s*', 2; if (-not (Wait-Assert { $script:wa = TextOf $k; $script:wa -like "*$v*" })) { throw "'$($script:wa)' não contém '$v' em $k" } }
         'assert-exists' { if (-not (Reach $Rest 8)) { throw "tag ausente: $Rest$(Get-ScreenHint)" } }
-        'assert-absent' { if (Has $Rest) { throw "tag presente (esperada ausente): $Rest" } }
-        'assert-checked' { $k, $v = $Rest -split '\s*=\s*', 2; if (-not (Reach $k 4)) { throw "tag ausente: $k" }; $c = [bool](Find $k).Checked; if ($c -ne ($v -match '^(true|sim|1)$')) { throw "$k marcado = $c, esperado $v" } }
-        'assert-count' { $k, $v = $Rest -split '\s*=\s*', 2; $ids = @(CollectIds $k); if ($ids.Count -ne [int]$v) { throw "esperado $v itens '$k*' na lista inteira, obtido $($ids.Count): [$($ids -join ',')]" } }
+        'assert-absent' { if (-not (Wait-Assert { -not (Has $Rest) })) { throw "tag presente (esperada ausente): $Rest" } }
+        'assert-checked' { $k, $v = $Rest -split '\s*=\s*', 2; if (-not (Reach $k 4)) { throw "tag ausente: $k" }; $want = $v -match '^(true|sim|1)$'; if (-not (Wait-Assert { [void](Dump); $script:wa = [bool](Find $k).Checked; $script:wa -eq $want })) { throw "$k marcado = $($script:wa), esperado $v" } }
+        'assert-count' { $k, $v = $Rest -split '\s*=\s*', 2; if (-not (Wait-Assert { $script:IdCache = @{}; $script:wa = @(CollectIds $k); $script:wa.Count -eq [int]$v } 800)) { $ids = @($script:wa); throw "esperado $v itens '$k*' na lista inteira, obtido $($ids.Count): [$($ids -join ',')]" } }
         'assert-order' { $k, $v = $Rest -split '\s*=\s*', 2; $got = @(CollectIds $k); $want = @($v -split '\s*,\s*'); $idx = @($want | ForEach-Object { [array]::IndexOf($got, $_) }); if ($idx -contains -1 -or ($idx -join ',') -ne (($idx | Sort-Object) -join ',')) { throw "ordem diferente: esperado [$v], lista [$($got -join ',')]" } }
         default { throw "passo '$Verb' não existe no alvo android" }
     }

@@ -2763,7 +2763,7 @@ $ErrorActionPreference = 'Stop'
 . $Lib
 $utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'T-041'; $NoRetry = $true; $NoRepair = $true; $Apk = ''
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
-foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Get-FailScreen', 'Write-AcceptConfig', 'Write-AcceptProgress', 'Invoke-AcceptBaseline', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AppIdentity') { . ([scriptblock]::Create($f.Extent.Text)) } }
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Get-FailScreen', 'Write-AcceptConfig', 'Write-AcceptProgress', 'Invoke-AcceptBaseline', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AppIdentity', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming') { . ([scriptblock]::Create($f.Extent.Text)) } }
 $script:Tgt = 'web'; $script:ran = 0; $script:Locator = 'uiautomator'
 function Stop-WebServer { }
 function Invoke-Once($Block) {
@@ -2790,7 +2790,7 @@ Check 'v3.62.0: tag ausente nos 2 primeiros na mesma tela → ESTADO DE PARTIDA 
 # v3.62.0: paridade dos executores — a página neutra e os cenários de fixtures/parity pelo CDP (toque por dedo, Chromium de
 # desktop: o caminho do locator "cdp" sem emulador) e pelo web-runner (Playwright, quando PARITY_PLAYWRIGHT_ROOT o resolve).
 $r = & { $ErrorActionPreference = 'Continue'; $o = & node (Join-Path $PSScriptRoot 'parity.js') 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
-Check 'v3.62.0: paridade — os 17 cenários (type que substitui, web component, página em cache, display contents, toque coberto, lista inteira, faixa horizontal, select, slider, fora do ASCII; v3.65.1: toque que fecha o alerta, alvo ainda deslizando) dão o veredito esperado pelo CDP; web junto quando há Playwright' $r 0 @('paridade: cdp 17/17 · web (17/17|NÃO EXECUTADO)', '^(?![\s\S]*DIVERGE)')
+Check 'v3.62.0: paridade — os 20 cenários (type que substitui, web component, página em cache, display contents, toque coberto, lista inteira, faixa horizontal, select, slider, fora do ASCII; v3.65.1: toque que fecha o alerta, alvo ainda deslizando; v3.65.2: assert que relê até bater e que desiste no prazo, toque que redesenha a lista) dão o veredito esperado pelo CDP; web junto quando há Playwright' $r 0 @('paridade: cdp 20/20 · web (20/20|NÃO EXECUTADO)', '^(?![\s\S]*DIVERGE)')
 # v3.64.5: a página do app se acha pela origem, não pela rota da tela — o pageUrl da tela inicial segue valendo depois da
 # troca de rota (Capacitor https e http, rota por #, Cordova file://); sem nenhuma página que case, CONFIGURAÇÃO com as URLs vistas.
 $cdpJs = (Join-Path $checks 'targets/android-cdp.js') -replace '\\', '/'
@@ -3934,7 +3934,7 @@ $ErrorActionPreference = 'Stop'
 . $Lib
 $utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'T-041'; $NoRetry = $false; $NoRepair = $true; $Apk = ''
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
-foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-AcceptCommand', 'Invoke-AcceptCommandRun', 'Find-AcceptShot', 'Write-AcceptProgress', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash') { . ([scriptblock]::Create($f.Extent.Text)) } }
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-AcceptCommand', 'Invoke-AcceptCommandRun', 'Find-AcceptShot', 'Write-AcceptProgress', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming') { . ([scriptblock]::Create($f.Extent.Text)) } }
 $script:Tgt = 'web'; $script:Serial = ''; $script:Pkg = ''
 function Stop-WebServer { }
 $env:FAKE_CASE = $Case
@@ -4078,7 +4078,7 @@ $ErrorActionPreference = 'Stop'
 . $Lib
 $utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'T-041'; $NoRetry = $true; $NoRepair = $true; $Apk = ''; $Resume = $false
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
-foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Write-AcceptProgress', 'Get-FailScreen', 'Write-AcceptConfig', 'Invoke-AcceptBaseline', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AppIdentity') { . ([scriptblock]::Create($f.Extent.Text)) } }
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Write-AcceptProgress', 'Get-FailScreen', 'Write-AcceptConfig', 'Invoke-AcceptBaseline', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AppIdentity', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming') { . ([scriptblock]::Create($f.Extent.Text)) } }
 $script:Tgt = 'web'; $script:Serial = ''; $script:Pkg = ''; $script:Locator = 'uiautomator'; $script:ScnFiles = @(); $script:ExtCmd = ''
 function Stop-WebServer { }
 $script:ran = @()
@@ -4097,6 +4097,51 @@ Check 'v3.63.0 B: accept -Resume roda só o que falhou (mesmo app, mesmo cenári
 $pr63b = Join-Path $tmp 'v3630-resume-semgit'; Put $pr63b '.team-project/README.md' "| **Sprint corrente** | **1** — x |`n"
 $r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $rh63 -Accept (Join-Path $checks 'accept.ps1') -Lib (Join-Path $checks 'lib.ps1') -Root $pr63b 2>&1 | Out-String; @{ Code = 0; Out = $o } }
 Check 'v3.63.0 B: sem identidade do app (web:?) o -Resume não reaproveita nada — roda todos' $r 0 @('a identidade do app instalado não pôde ser lida \(web:\?\)', 'R2 CODE=0 RAN=SC-101,SC-102,SC-103,SC-104')
+# v3.65.2 (garden, portão do S6): a 2ª tentativa só para a falha que pode ser oscilação; o tempo por verbo no resultado.
+$rh652 = Join-Path $tmp 'accept-retry.ps1'
+[System.IO.File]::WriteAllText($rh652, @'
+param([string]$Accept, [string]$Lib, [string]$Root)
+$ErrorActionPreference = 'Stop'
+. $Lib
+$utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'T-041'; $NoRetry = $false; $NoRepair = $true; $Apk = ''; $Resume = $false
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Write-AcceptProgress', 'Get-FailScreen', 'Write-AcceptConfig', 'Invoke-AcceptBaseline', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AppIdentity', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming') { . ([scriptblock]::Create($f.Extent.Text)) } }
+# As mensagens reais das rodadas 5 e 6 do garden: '' = repete.
+$cases = [ordered]@{
+    'ausente' = "passo 'assert-exists manejo-semeio.semeios': tag ausente: manejo-semeio.semeios"
+    'naoachou' = "passo 'tap administracao.menu.parametrizacoes': tag não encontrada: administracao.menu.parametrizacoes"
+    'rolagem' = "passo 'type semeio.obs = Naoperder': semeio.obs existe, mas a rolagem não o trouxe à tela"
+    'contagem' = "passo 'assert-count estufa.encerrar. = 0': esperado 0 itens 'estufa.encerrar.*' na lista inteira, obtido 15: [a,b]"
+    'contem' = "passo 'assert-contains vendas.resumo.receita-realizada = 0,00': 'Receita Realizada 10,00' não contém '0,00' em vendas.resumo.receita-realizada"
+    'toque' = "passo 'tap manejo-confirmacao.cancelar': o toque em manejo-confirmacao.cancelar não chegou a ele (pointerdown em span.alert-button-inner)"
+    'coberto' = "passo 'tap a': toque em a cairia em div.tampa (coberto)"
+    'conexao' = "passo 'tap a': a conexão com a página caiu"
+}
+foreach ($k in $cases.Keys) { "KIND $k=[$(Get-AcceptNoRetryKind $cases[$k] '')]" }
+"KIND sinal=[$(Get-AcceptNoRetryKind $cases['ausente'] 'restarted')]"
+$script:Tgt = 'web'; $script:Serial = ''; $script:Pkg = ''; $script:Locator = 'uiautomator'; $script:ScnFiles = @(); $script:ExtCmd = ''
+function Stop-WebServer { }
+$script:ran = @()
+function Invoke-Once($Block) {
+    $script:ran += $Block.id; $script:Executions++; Add-AcceptStepTime 'tap' 1200; Add-AcceptStepTime 'assert-text' 300
+    $d = @{ 'SC-201' = $cases['ausente']; 'SC-202' = $cases['toque']; 'SC-203' = $cases['ausente'] }[$Block.id]
+    if (-not $d) { return @{ status = 'PASSOU'; detail = ''; shot = ''; stepMs = @(1200, 300) } }
+    return @{ status = 'FALHOU'; detail = $d; shot = ''; stepMs = @(1200); signal = $(if ($Block.id -eq 'SC-203') { [pscustomobject]@{ kind = 'restarted'; text = 'o app foi reiniciado' } }) }
+}
+$blocks = @(1..4 | ForEach-Object { @{ id = "SC-20$_"; title = "c$_"; steps = @("tap a$_", "assert-text a$_ = x"); file = (Join-Path $Root 'a.scn') } })
+$c = Invoke-Accept $blocks $null { $null } { $null } | Select-Object -Last 1
+"CODE=$c RAN=$($script:ran -join ',')"
+$d = Join-Path $Root '.team-project/accept/1/T-041'
+'MD=' + ([System.IO.File]::ReadAllText((Join-Path $d 'result.md')) -replace '\r?\n', ' ¶ ')
+$j = [System.IO.File]::ReadAllText((Join-Path $d 'result.json')) | ConvertFrom-Json
+"TIMING exec=$($j.timing.executions) tap=$($j.timing.byVerb.tap.n)/$($j.timing.byVerb.tap.avgMs) first=$(@($j.timing.byVerb.PSObject.Properties.Name)[0]) row4=$(@($j.results)[3].stepMs -join ',')"
+'@, (New-Object System.Text.UTF8Encoding($true)))
+$pr652 = Join-Path $tmp 'v3652-retry'; Put $pr652 '.team-project/README.md' "| **Sprint corrente** | **1** — x |`n"; Put $pr652 'src.ts' "x`n"
+$ErrorActionPreference = 'Continue'; & git -C $pr652 init -q 2>$null; Put $pr652 '.gitignore' ".team-project/`n"; & git -C $pr652 add -A 2>$null; & git -C $pr652 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+$r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $rh652 -Accept (Join-Path $checks 'accept.ps1') -Lib (Join-Path $checks 'lib.ps1') -Root $pr652 2>&1 | Out-String; @{ Code = 0; Out = $o } }
+Check 'v3.65.2: não repete id ausente, rolagem e valor diferente (as mensagens do garden); repete toque, coberto, conexão e a falha com sinal do app' $r 0 @('KIND ausente=\[o id não está na tela', 'KIND naoachou=\[o id não está na tela', 'KIND rolagem=\[a rolagem não traz', 'KIND contagem=\[o valor lido é outro', 'KIND contem=\[o valor lido é outro', 'KIND toque=\[\]', 'KIND coberto=\[\]', 'KIND conexao=\[\]', 'KIND sinal=\[\]')
+Check 'v3.65.2: no laço do accept, o id ausente roda uma vez com a nota; o toque e a falha com sinal repetem' $r 0 @('CODE=1 RAN=SC-201,SC-202,SC-202,SC-203,SC-203,SC-204\r?\n', '\[SC-201\] FALHOU .*\(não repetido: o id não está na tela, depois da espera e da busca\)  \[\d+(\.\d+)? s\]', '\[SC-202\] FALHOU .*\(falhou nas 2 tentativas\)', '\[SC-203\] FALHOU .*\(falhou nas 2 tentativas\)')
+Check 'v3.65.2: o tempo da rodada no result.md e no result.json — execuções, soma e média por verbo (o mais caro primeiro) e o passo a passo de cada cenário' $r 0 @('\*\*Tempo:\*\* [\d.,]+ min · 6 execução\(ões\) de 4 cenário\(s\) rodado\(s\) · por verbo: tap 6× · 7\.2 s \(média 1\.2 s\) · assert-text 6×', '\| Prova \(captura\) \| s \|', 'TIMING exec=6 tap=6/1200 first=tap row4=1200,300')
 # Consumo (G): o portão (S<n>) e o achado (S<n>-F<k>) com unidade própria; a 2ª rodada do portão é retrabalho.
 $pc63 = Join-Path $tmp 'v3630-consumo'; New-Project $pc63
 $dst63 = '.team-project/sprints/1/consumption.md'
@@ -4303,7 +4348,7 @@ param([string]$Accept, [string]$Lib, [string]$Root)
 $ErrorActionPreference = 'Stop'
 . $Lib
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
-foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Once', 'Get-AcceptFailEvidence', 'Invoke-AcceptBaseline') { . ([scriptblock]::Create($f.Extent.Text)) } }
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Once', 'Get-AcceptFailEvidence', 'Invoke-AcceptBaseline', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming') { . ([scriptblock]::Create($f.Extent.Text)) } }
 $screenVerbs = @('tap'); $script:Tgt = 'android'; $script:Locator = 'uiautomator'; $script:Attempt = @{}; $script:AdbTimeout = ''; $script:BaseCfg = $null
 $script:Shots = Join-Path $Root '.team-project/accept/1/T-1/shots'; New-Item -ItemType Directory -Force $script:Shots | Out-Null
 function Clear-AndroidLog { }
