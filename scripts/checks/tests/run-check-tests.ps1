@@ -1170,12 +1170,12 @@ $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.53.2: plano de 21 KB não reprova por tamanho (sem corte); sem **Cenários:** exit 1 (regra 23)' $r 1 @('\| tamanho \| ok', '\| cenários \| falhou.*sem \*\*Cenários')
 Put $p $pl ("# Plano`n**Cenários:** SC-001, SC-009`n**Risco:** interface simples`n**Layout novo:** não`n`n" + $head + ('x' * 32000))
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
-Check 'v3.53.6 item 1: plano acima de 30 KB reprova (exit 1) — Task grande à divisão, nunca corte nem correção (regra 22)' $r 1 @('\| tamanho \| falhou.*acima de 30 KB: Task grande — NÃO corte nem encurte', 'run\.ps1 next a divide com os blocos deste plano', "volte dizendo 'tamanho'", '^(?![\s\S]*volta ao Arquiteto com esta tabela)')
+Check 'v3.53.6 item 1: plano acima de 30 KB reprova (exit 1) — Task grande à divisão, nunca corte nem correção (regra 22)' $r 1 @('\| tamanho \| falhou.*acima de 30 KB \(regra 22\)\. Antes da construção: Task grande — NÃO corte nem encurte', 'run\.ps1 next a divide com os blocos deste plano', "volte dizendo 'tamanho'", 'Construção começada \(plano emendado por decisão do stakeholder, Q-S ou GAP\): a Task não se divide', '^(?![\s\S]*volta ao Arquiteto com esta tabela)')
 # v3.60.1 (sprint 6 do garden, T-090): as decisões de 🔺 GAP não contam para o teto — 27 KB de plano + 4 KB de decisões passa.
 $gapDec = "**Decisão do GAP T-001 (2026-11-15):** " + ('d' * 2000) + "`n**Origem:** processo`n**Lição:** nenhuma`n`n**Decisão do GAP T-001 (2026-11-15):** " + ('e' * 2000) + "`n**Origem:** ambiente`n**Lição:** projeto`n`n"
 Put $p $pl ("# Plano`n**Cenários:** SC-001, SC-009`n**Risco:** interface simples`n**Layout novo:** não`n`n" + $gapDec + $head + ('x' * 27000))
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
-Check 'v3.60.1: decisões de 🔺 GAP fora da conta do teto — 27 KB de plano + 4 KB de decisões passa, e a linha diz quanto ficou fora' $r 0 @('\| tamanho \| ok \| 2\d(?:[.,]\d)? KB \(\+4[.,]\d KB de decisões de 🔺 GAP, fora da conta; arquivo com 3\d(?:[.,]\d)? KB\)')
+Check 'v3.60.1: decisões de 🔺 GAP fora da conta do teto — 27 KB de plano + 4 KB de decisões passa, e a linha diz quanto ficou fora' $r 0 @('\| tamanho \| ok \| 2\d(?:[.,]\d)? KB \(\+4[.,]\d KB de decisões de 🔺 GAP e do stakeholder, fora da conta; arquivo com 3\d(?:[.,]\d)? KB\)')
 Put $p $pl ("# Plano`n**Cenários:** SC-001, SC-009`n**Risco:** interface simples`n**Layout novo:** não`n`n" + $gapDec + $head + ('x' * 31000))
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.60.1: plano acima do teto sem as decisões continua reprovando' $r 1 @('\| tamanho \| falhou.*\(\+4[.,]\d KB de decisões de 🔺 GAP')
@@ -3034,9 +3034,14 @@ Check 'v3.54.1: margem stub com a linha fecha' $r 0 @('\| R7-margem \| ok.*3 aju
 # v3.65.0 (decisão Q1 do stakeholder): o C1 confere os arquivos mudados × o plano — o que escapou da G9 aparece na linha
 # R4-arquivos (reprova o R4, não trava o close: o QA decide no portão); a margem declarada não conta.
 Put $p 'src/extra.ts' "export const x = 1;`n"
+# a árvore mudou: sem o verify de novo, o R7-verify (que bloqueia) reprovaria antes — o caso mede só o R4-arquivos
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'v3.65.0 Q1: arquivo alterado fora de **Arquivos tocados:** e fora da margem → R4-arquivos falhou com o caminho; o close não trava por ele' $r 0 @('\| R4-arquivos \| falhou \| \d+ arquivo\(s\) alterado\(s\) fora de \*\*Arquivos tocados:\*\*.*`src/extra\.ts`', '^(?![\s\S]*R4-arquivos[^\r\n]*tests/calc\.render\.spec\.ts)')
 Remove-Item -LiteralPath (Join-Path $p 'src/extra.ts') -Force
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
+$null = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'mutation', '-Plan', $pl, '-Root', $p)
 $r = Invoke-Check 'close.ps1' @('-Task', 'T-041', '-Root', $p)
 Check 'v3.65.0 Q1: sem o arquivo fora do plano, a linha R4-arquivos não o cita' $r 0 @('\| R4-arquivos \| (ok|falhou)', '^(?![\s\S]*src/extra\.ts)')
 # v3.55.0 (A3): margem fixture — fecha com a regra do padrão de ids; sem regra e com dump inexistente não fecha.
@@ -4423,6 +4428,7 @@ Check 'v3.65.0 A2-08: a suíte desta árvore só existe reaproveitada por inputs
 $r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $pq65)
 Check 'v3.65.0 A2-08: Q11 recusa a cobertura reaproveitada por inputs — roda quality.coverage (42 %, falhou)' $r 1 @('Q11 falhou: .*42 % medido × limiar 80 %', '^(?![\s\S]*reaproveitada do verify full)')
 & $vr65 $false
+Remove-Item -LiteralPath (Join-Path $pq65 '.team-project/quality') -Recurse -Force -ErrorAction SilentlyContinue   # o quality.ps1 acima gravou a medição: sem ela, o portão mede de novo
 $r = & $g63 $pq65
 Check 'v3.65.0 A2-08: suíte rodada de fato nesta árvore → o portão mede só a qualidade, sem verify -Fresh' $r 0 @('medir \(operator', 'quality\.ps1 -Id S1', '^(?![\s\S]*-Mode full -Fresh)')
 $r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $pq65)

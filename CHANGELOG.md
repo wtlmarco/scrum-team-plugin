@@ -39,7 +39,9 @@ Origem: revisão geral do plugin pedida pelo stakeholder em 19/11 (`/review audi
 
 **Fora desta entrega** (`note.md` 27–30): critério de "emendado" pelo conteúdo, tabela de precedência do portão, a G14 por padrão de texto, e o empacotamento sem o histórico (decisão Q4: entrega própria — exige o plugin em `./plugin`).
 
-**Testes:** casos `v3.65.0` em `run-check-tests.ps1` (D8 sem serial, leitura da porta do adb, `R4-arquivos`, lacunas de cobertura da auditoria) e a expectativa da linha de guardas do SessionStart (G25) em `run-guard-tests.ps1`.
+**Testes:** casos `v3.65.0` em `run-check-tests.ps1` (D8 sem serial, leitura da porta do adb, `R4-arquivos`, lacunas de cobertura da auditoria) e a expectativa da linha de guardas do SessionStart (G25) em `run-guard-tests.ps1`. Dois casos antigos do `plan.ps1` mudaram de expectativa (a mensagem do tamanho diz os dois casos; as decisões fora da conta incluem as do stakeholder). O rodapé do `plan.ps1` ("Plano não vai ao dev") também dizia só o caso "antes da construção" — corrigido junto.
+
+**Suítes** (`run-all-tests.ps1`, 8 processos, com o C3): 1.098 casos, 5 falharam na 1ª rodada — 3 de expectativa desta entrega (corrigidas) e 2 de tempo sob carga (`v3.53.2` OCUPADO e `item 5` perto do teto), que passam com a máquina sem a carga; os blocos dos 5 de novo: 47 casos, 0 falharam.
 
 ---
 

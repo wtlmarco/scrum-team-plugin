@@ -513,7 +513,7 @@ try {
 
     Write-Results ("Plano · " + (Split-Path $path -Leaf))
     # v3.53.6 (item 1): reprovado por tamanho, o plano não volta para correção (nem das outras linhas): a Task se divide.
-    if (@($script:Results | Where-Object { $_.Regra -eq 'tamanho' -and $_.Resultado -eq 'falhou' }).Count) { [Console]::Out.WriteLine(''); [Console]::Out.WriteLine("**Plano não vai ao dev — Task grande ($kb KB):** não corte, não encurte nem corrija as outras linhas; deixe o plano como está e volte dizendo 'tamanho'. O run.ps1 next divide a Task com os blocos deste plano como base."); exit 1 }
+    if (@($script:Results | Where-Object { $_.Regra -eq 'tamanho' -and $_.Resultado -eq 'falhou' }).Count) { [Console]::Out.WriteLine(''); [Console]::Out.WriteLine("**Plano não vai ao dev — Task grande ($kb KB):** antes da construção, não corte, não encurte nem corrija as outras linhas; deixe o plano como está e volte dizendo 'tamanho' — o run.ps1 next divide a Task com os blocos deste plano como base. Construção começada (plano emendado por decisão do stakeholder, Q-S ou GAP): a Task não se divide — substitua o texto que a decisão derrubou pela decisão e rode o plan.ps1 de novo (v3.65.0)."); exit 1 }
     if (@($script:Results | Where-Object { $_.Resultado -eq 'falhou' }).Count) { [Console]::Out.WriteLine(''); [Console]::Out.WriteLine('**Plano não vai ao dev:** volta ao Arquiteto com esta tabela.'); exit 1 }
     exit 0
 } catch {
