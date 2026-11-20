@@ -14,7 +14,7 @@
 ---
 
 ## v3.65.3 — 2026-11-20
-**Branch:** `fix/v3.65.3` empilhada sobre `fix/v3.65.2` (`f30df63`, ainda não mesclada)
+**Branch:** `fix/v3.65.3` a partir de `develop` (`c79d91c`, v3.65.2 mesclada)
 Origem: SC-161, SC-122 e SC-147 do aceite do sprint 6 do garden. As três falhas foram dadas como defeito do app ("sem campo editável" e "a rolagem não o trouxe à tela"), com o elemento visível na captura. O portão travou a Task porque a decisão de provar por outro caminho não estava no plano.
 **Ancestral pela árvore composta** (`dom-probe.js`, `up`): o executor subia pelo pai de luz. Num conteúdo projetado por `<slot>`, ele pulava o rolador e os recortes que ficam no shadow root do host (no Ionic, `ion-content` → `slot` → `.inner-scroll`). Com isso, o plano de rolagem escolhia o documento, que não rola, e media a posição dele: o gesto rolava a tela, a posição medida não mudava, e o executor desistia com a tela já rolada. Agora o pai é o `assignedSlot`, depois o pai, depois o host. Medido no aparelho do garden, a tela Novo Manejo: `upChain` ia de `form` direto a `ion-content`, e a cadeia composta passa por `slot > div.inner-scroll`.
 **Filhos pelo acessor nativo** (`dom-probe.js`, `kidsOf`): o Stencil "scoped" (o `ion-input` do Ionic) troca `children` e `childNodes` no protótipo do componente para devolver só o conteúdo projetado. O `<input>` desenhado pelo componente sumia da leitura: `children` dava 0, e o acessor de `Element.prototype` dava 1. A busca do editável, a caixa por filhos, a leitura do valor e o `find-text` passam a usar o acessor de `Element.prototype`.
