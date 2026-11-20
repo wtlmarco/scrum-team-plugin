@@ -399,7 +399,10 @@ try {
     # outro executor, fora de tudo isso: a Q-S6d provou 49 cenários assim, sem progresso e sem saber qual APK estava no alvo.
     $pa = Get-PlanAccept $text
     $plugScripts = @(Get-ChildItem -LiteralPath $PSScriptRoot -File -ErrorAction SilentlyContinue | ForEach-Object { $_.Name.ToLowerInvariant() })
-    $extScripts = if ($pa -and $pa.Mode -eq 'não roda') { @([regex]::Matches($pa.Raw, '[\w./\\-]+\.(?:m?js|cjs|ts|ps1|py|sh|rb)\b') | ForEach-Object { $_.Value } | Where-Object { $plugScripts -notcontains ([System.IO.Path]::GetFileName($_)).ToLowerInvariant() } | Select-Object -Unique) } else { @() }
+    # v3.65.3 (garden Q-S6g): "**Aceite:** roda — operator, … pelo executor do projeto (`prova-cdp.mjs --only …`)" também é
+    # o aceite por outro executor — o close leu "roda", exigiu o result.json do accept.ps1 padrão e a Task travou no portão com
+    # a decisão do Arquiteto (D-31) escrita onde nenhum script lê.
+    $extScripts = if ($pa -and $pa.Mode -in 'não roda', 'roda') { @([regex]::Matches($pa.Raw, '[\w./\\-]+\.(?:m?js|cjs|ts|ps1|py|sh|rb)\b') | ForEach-Object { $_.Value } | Where-Object { $plugScripts -notcontains ([System.IO.Path]::GetFileName($_)).ToLowerInvariant() } | Select-Object -Unique) } else { @() }
     if ($pa -and $pa.Mode -eq 'comando') {
         $bad = @(Split-CommandSegments $pa.Command | ForEach-Object { $w = Get-ForbiddenCommandReason $_; if ($w) { "$_ ($w)" } })
         if ($bad.Count) { Add-Result 'aceite' 'falhou' ("**Aceite:** comando que o run nunca roda: " + ($bad -join '; ') + " — instalação, rede, push e destrutivo ficam fora (regra 34)") }
@@ -407,7 +410,8 @@ try {
         elseif ($scnNone) { Add-Result 'aceite' 'falhou' '**Aceite:** comando com **Cenários:** nenhum — não há cenário para o executor rodar (regra 34)' }
         else { Add-Result 'aceite' 'ok' ("executor do projeto ``$($pa.Command)`` — o accept.ps1 o roda um .scn por vez" + $(if (-not $pa.Command.Contains('{out}')) { ' · ATENÇÃO: sem {out}, as capturas ficam fora da pasta do accept' } else { '' })) }
     }
-    elseif ($extScripts.Count) { Add-Result 'aceite' 'falhou' "**Aceite:** não roda e os cenários se provam por $($extScripts -join ', ') — é o aceite por outro executor, fora da trava do alvo, do progresso e da prova do accept; declare ``**Aceite:** comando — ``<comando com {scn} e {out}>```` e o accept.ps1 roda o executor (``não roda`` é só para cenário provado pelos testes do plano) (regra 34)" }
+    elseif ($extScripts.Count) { Add-Result 'aceite' 'falhou' "**Aceite:** $($pa.Mode) e os cenários se provam por $($extScripts -join ', ') — é o aceite por outro executor, fora da trava do alvo, do progresso e da prova do accept, e o close exige o do accept.ps1; declare ``**Aceite:** comando — ``<comando com {scn} e {out}>```` e o accept.ps1 roda o executor (``não roda`` é só para cenário provado pelos testes do plano; ``roda`` é o executor do plugin) (regra 34)" }
+    elseif ($pa -and $pa.Mode -eq 'outra') { $av = ($pa.Raw -replace '\s+', ' ').Trim(); if ($av.Length -gt 90) { $av = $av.Substring(0, 90) + '…' }; Add-Result 'aceite' 'falhou' "**Aceite:** ""$av"" fora das três formas que o cartão, o accept e o close leem: ``roda — <quem roda>`` (o executor do plugin), ``não roda — <motivo>`` (cenários pelos testes do plano) ou ``comando — ``<cmd com {scn}>```` (o executor do projeto, pelo accept.ps1) (regra 34)" }
     elseif ($acLine.Success) { $av = ($acLine.Value -replace '\*\*', '' -replace '\s+', ' ').Trim(); if ($av.Length -gt 90) { $av = $av.Substring(0, 90) + '…' }; Add-Result 'aceite' 'ok' "linha do cabeçalho: $av" }
     elseif ($scnNone -or -not $waive.Count) { Add-Result 'aceite' 'n-a' $(if ($scnNone) { '**Cenários:** nenhum' } else { 'o plano não dispensa o aceite' }) }
     else {
