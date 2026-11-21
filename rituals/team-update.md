@@ -127,6 +127,16 @@ Os passos de migração das versões v3.20 a v3.49 (antigas §7a a §7j) saíram
 
 **Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).targets.android.locator` devolve `cdp` (aprovado) ou nada (mantido, com a escolha dita ao stakeholder).
 
+## 7p. Prontidão pelo sinal do app, não da rede (v3.65.6)
+
+> Roda quando a versão instalada for anterior à `v3.65.6` **e** o `targets.android.cdp.readyExpr` do `guards.json` contém `readyState === 'complete'` (ou `== 'complete'`). Sem `readyExpr` declarado, o padrão novo vale sozinho: pule, dizendo isso em uma linha. O `guards.json` é do stakeholder: **o passo propõe; nunca grava sem o formulário.**
+
+1. **Mostre** o `readyExpr` atual e a troca: só a parte `document.readyState === 'complete'` vira `document.readyState !== 'loading'`, e o resto da expressão fica igual. Explique em uma linha: o `complete` espera todo recurso da página, inclusive fonte e imagem de fora, e um pedido que não termina segura a abertura com o app já na tela (`scenario-language.md` §3).
+2. **Formulário** (`AskUserQuestion`, R22, "pedir mais contexto" por último). Opções: *trocar como mostrado · manter como está · pedir mais contexto*.
+3. **Aprovado:** grave a troca em `targets.android.cdp.readyExpr`. O passo não edita código. Se o app carrega recurso de fora na abertura e o projeto se declara offline, registre a pendência em `.team-project/README.md` §7 para o Arquiteto do projeto.
+
+**Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).targets.android.cdp.readyExpr` não contém `'complete'` (aprovado) ou segue igual (mantido, com a escolha dita ao stakeholder).
+
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
 Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.

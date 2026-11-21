@@ -13,6 +13,25 @@
 
 ---
 
+## v3.65.6 — 2026-11-21
+**Branch:** `fix/v3.65.6` a partir de `develop` (`3273e6a`, v3.65.5 mesclada)
+Origem: portão do sprint 6 do garden. Três cenários do aparelho (SC-161 e mais dois) pararam na abertura com "o app não ficou pronto em 30 s", e as capturas mostravam a tela pronta. As rodadas 10 e 11 terminaram sem diagnóstico, e a primeira pergunta ao stakeholder recomendou dar mais tempo. Medido no emulador, numa sonda pelo DevTools da WebView: a abertura normal falhou 6 de 6 vezes, com `readyState: interactive`, as fontes em `loading`, o `ion-app` hidratado e o splash fora. Com as fontes do Google bloqueadas, ficou pronta 3 de 3 vezes em 2,5 a 3 s. O pedido a `fonts.gstatic.com` ficava pendente, sem terminar nem dar erro, e o `readyState` nunca chegava a `complete`.
+**A prontidão padrão é o DOM lido** (`cdp-verbs.js`, `android.ps1`): o padrão do `readyExpr` passa de `document.readyState === 'complete'` a `document.readyState !== 'loading'`. O `complete` só é verdadeiro quando todo recurso da página terminou, e isso inclui fonte, imagem e endereço de fora. Era uma condição de rede, e não do app. Quem diz que o app está pronto é o sinal dele, no `readyExpr` do projeto. O exemplo do guia do Ionic, que o garden copiou, e o modelo do `guards.json` saem do `complete`.
+**O retrato da página quando a prontidão estoura** (`cdp-verbs.js`, `readyDiag` e `splitAnd`): a falha traz:
+- a parte do `readyExpr` que ficou falsa, das partes ligadas por `&&` no nível de fora;
+- o `readyState`;
+- o estado das fontes e as famílias que ainda carregam;
+- os endereços de outra origem que não terminaram (o `src` das `@font-face` que carregam, imagem incompleta, folha de estilo sem regra).
+
+Antes, a mensagem só trazia a expressão inteira e a URL.
+**`/team update` propõe a troca** (`team-update.md`, passo 7p): o projeto com `readyState === 'complete'` no `readyExpr` recebe a proposta por formulário, e nada é gravado sem aprovação. Projeto sem `readyExpr` declarado ganha o padrão novo sozinho.
+Fica para o garden, decisão do Arquiteto do projeto: o `index.html` carrega as fontes do Google, e a regra do projeto é funcionar offline.
+Fica para depois: o executor `web` (`web-runner.js`) abre a página com `waitUntil: 'networkidle'`, e um pedido de fora que não termina o seguraria do mesmo jeito.
+Textos: `scenario-language.md` §3 (a prontidão é sinal do app, não da rede, e o retrato da falha), guia do Ionic/Capacitor (IONIC-3), `guards.json` modelo.
+Testes: `parity.js --ready`, sobre a página `fixtures/parity/pendente.html`, com uma fonte de outra origem que o teste segura pelo `Fetch` e nunca entrega. O padrão passa; o `complete` estoura e a mensagem aponta só a parte do `readyState`, as fontes `loading` e o host. Também as partes por `&&` respeitando parênteses, colchetes e textos. O CD5 passa a esperar o padrão novo.
+
+---
+
 ## v3.65.5 — 2026-11-21
 **Branch:** `fix/v3.65.5` a partir de `develop` (`55970c1`, v3.65.4 mesclada)
 Origem: portão do sprint 6 do garden. Três rodadas focadas (8, 9 e 10) julgaram os mesmos três achados (S6-F7, S6-F10, S6-F15) sem que nenhum `.scn` mudasse, e a sessão só parou na terceira, para perguntar ao stakeholder. Os ajustes dos cenários estavam descritos nas resoluções e no `validation.md`, mas nenhuma rota do portão os mandava aplicar.
