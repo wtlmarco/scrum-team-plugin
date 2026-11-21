@@ -50,7 +50,9 @@ O gesto vai a um ponto do rolador que não tem outro rolador por cima. O executo
 **`wait` é para o tempo do próprio app** (v3.65.2): um prazo, um temporizador, uma animação que o critério mede. Não serve para esperar a tela responder a um toque: o `tap` espera o elemento aparecer e parar, e os asserts releem até o valor bater. Cada `wait 2` depois de um toque soma 2 s a todo cenário, a toda tentativa e a toda rodada.
 
 **Prontidão (só `cdp`):**
-- O app está pronto quando a expressão JS `targets.android.cdp.readyExpr` é verdadeira. O padrão é `document.readyState === 'complete'`.
+- O app está pronto quando a expressão JS `targets.android.cdp.readyExpr` é verdadeira. O padrão é `document.readyState !== 'loading'`, ou seja, o DOM já foi lido.
+- **A prontidão é um sinal do app, não da rede** (v3.65.6). Não use `document.readyState === 'complete'`. Ele só é verdadeiro quando terminou **todo** recurso da página: fonte, imagem, endereço de fora. Um pedido que não termina segura a abertura com o app já na tela. No garden, foi uma fonte do Google no emulador. Declare o que o próprio app faz ao terminar de abrir: o framework hidratado, a tela de abertura fora.
+- Quando a prontidão estoura o prazo, a falha traz o retrato da página: a parte do `readyExpr` que ficou falsa (as partes ligadas por `&&`), o `readyState`, as fontes que ainda carregam e os endereços de outra origem que não terminaram.
 - Se `targets.android.cdp.failExpr` for verdadeira na prontidão ou em qualquer passo, é FALHOU: o app está na **tela de falha dele mesmo**, e isso não é ambiente.
 - O executor **nunca** navega a WebView por código, porque recarregar a WebView derruba o app híbrido.
 

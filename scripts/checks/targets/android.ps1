@@ -563,7 +563,7 @@ function Get-AndroidCdpCfg {
     $c = if ($script:AdCfg -and $script:AdCfg.PSObject.Properties['cdp'] -and $script:AdCfg.cdp) { $script:AdCfg.cdp } else { $null }
     $v = { param($k, $d) if ($c -and $c.PSObject.Properties[$k] -and $null -ne $c.$k -and "$($c.$k)" -ne '') { return $c.$k }; return $d }
     return [ordered]@{
-        pageUrl = [string](& $v 'pageUrl' ''); readyExpr = [string](& $v 'readyExpr' "document.readyState === 'complete'"); readyTimeoutSec = [int](& $v 'readyTimeoutSec' 30)
+        pageUrl = [string](& $v 'pageUrl' ''); readyExpr = [string](& $v 'readyExpr' "document.readyState !== 'loading'"); readyTimeoutSec = [int](& $v 'readyTimeoutSec' 30)
         failExpr = [string](& $v 'failExpr' ''); hiddenScopes = @(@(& $v 'hiddenScopes' @()) | ForEach-Object { [string]$_ } | Where-Object { $_ })
         stepTimeoutSec = [int](& $v 'stepTimeoutSec' 60); callTimeoutMs = [int](& $v 'callTimeoutMs' 10000)
     }
