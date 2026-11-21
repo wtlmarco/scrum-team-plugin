@@ -1208,6 +1208,13 @@ function Get-TaskWait([string]$Root, [string]$Id) {
             }
         }
     }
+    # v3.65.8 (garden S6, 19:18 → 19:32): a medição de qualidade (quality.lock na pasta dela, processo vivo) — sem a trava, o
+    # portão mandava medir de novo por cima da que rodava, e a sonda dizia "terminou".
+    $ql = Get-QualityLock $Root $Id
+    if ($ql) {
+        $pu = Get-WaitPulse ([int]$ql.pid) ([string]$ql.at) $ql.Dir
+        return [pscustomobject]@{ Text = "quality (pid $([int]$ql.pid), desde $([string]$ql.at)) — $($pu.Text)"; Pulse = $pu; Kill = "quality.ps1 -Id $Id -Kill"; Mode = 'quality' }
+    }
     $tl = Join-Path $Root '.team-project/.target-lock'
     if (Test-Path -LiteralPath $tl) {
         $t = $null; try { $t = Read-Text $tl | ConvertFrom-Json } catch { }
@@ -1236,6 +1243,20 @@ function Get-TaskWait([string]$Root, [string]$Id) {
     return $null
 }
 function Get-TaskBusy([string]$Root, [string]$Id) { $w = Get-TaskWait $Root $Id; if ($w) { return $w.Text }; return $null }
+
+# v3.65.8: a trava da medição de qualidade do <Id> (quality/<seg>/<Id>/quality.lock), só quando o processo dela vive (mesmo
+# PID e mesma hora de criação; o processo saindo tem StartTime vazio). @{ pid; started; at; Dir; Path } ou $null.
+function Get-QualityDir([string]$Root, [string]$Id) { return ((Get-VerifyDir $Root $Id) -replace '[\\/]verify[\\/]', '/quality/') }
+function Get-QualityLock([string]$Root, [string]$Id) {
+    $d = Get-QualityDir $Root $Id; $lp = Join-Path $d 'quality.lock'
+    if (-not (Test-Path -LiteralPath $lp)) { return $null }
+    $l = $null; try { $l = Read-Text $lp | ConvertFrom-Json } catch { }
+    if (-not $l -or -not $l.pid -or [int]$l.pid -eq $PID) { return $null }
+    $p = Get-Process -Id ([int]$l.pid) -ErrorAction SilentlyContinue
+    $pStart = if ($p) { try { $p.StartTime } catch { $null } } else { $null }
+    if (-not $p -or ($l.started -and -not ($pStart -and $pStart.ToString('o') -eq [string]$l.started))) { return $null }
+    return [pscustomobject]@{ pid = [int]$l.pid; started = [string]$l.started; at = [string]$l.at; Dir = $d; Path = $lp }
+}
 
 # v3.54.2 (carta do sprint 5 do garden, item 3): progresso do accept da Task (progress.json, gravado a cada cenário; sem
 # ele, o result.json do fim). @{ Pid; Total; Passed; Failed; Streak; Last; LastText } ou $null. LastText = "SC-117 — <detalhe>
@@ -1286,7 +1307,7 @@ function Get-WaitPulse([int]$ProcId, [string]$Desde = '', [string]$Dir = '') {
     }
     $wmin = $null
     if ($Dir -and (Test-Path -LiteralPath $Dir)) {
-        $lw = @(Get-ChildItem -LiteralPath $Dir -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'verify.lock' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
+        $lw = @(Get-ChildItem -LiteralPath $Dir -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -notin 'verify.lock', 'quality.lock' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
         if ($lw.Count) { $wmin = [Math]::Max(0, ($now - $lw[0].LastWriteTime).TotalMinutes) }
     }
     # v3.58.1: a CPU acima é a dos processos VIVOS da árvore — não é cumulativa: o filho que termina leva a CPU dele junto
@@ -2933,8 +2954,9 @@ function Get-SprintScenarioFiles([string]$Root) { return @(Get-ChildItem -Path (
 #   env         tentativas de reparo do alvo do portão (attempts) e a hora do accept que as contou (at)
 #   proof       a última rodada copiada para sprints/<n>/proof/
 #   routed      achado → vezes que o dono foi disparado sem gravar a resolução
+#   stall       v3.65.8: medições do portão encerradas por POSSÍVEL TRAVAMENTO (regra 5: a 1ª sem formulário, a 2ª ao stakeholder)
 function Get-GateState([string]$S) {
-    $st = [ordered]@{ round = 0; judged = $null; env = [ordered]@{ attempts = 0; at = ''; asked = ''; sent = 0; sentAt = '' }; proof = 0; routed = [ordered]@{} }
+    $st = [ordered]@{ round = 0; judged = $null; env = [ordered]@{ attempts = 0; at = ''; asked = ''; sent = 0; sentAt = '' }; proof = 0; routed = [ordered]@{}; stall = 0 }
     $p = Join-Path $S 'gate.json'
     if (Test-Path -LiteralPath $p) {
         try {
@@ -2947,6 +2969,7 @@ function Get-GateState([string]$S) {
             }
             if ($j.PSObject.Properties['proof']) { $st.proof = [int]$j.proof }
             if ($j.PSObject.Properties['routed'] -and $j.routed) { foreach ($pp in $j.routed.PSObject.Properties) { $st.routed[$pp.Name] = [int]$pp.Value } }
+            if ($j.PSObject.Properties['stall']) { $st.stall = [int]$j.stall }   # v3.65.8
         } catch { }
     }
     return $st

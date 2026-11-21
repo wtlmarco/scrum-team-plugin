@@ -16,11 +16,15 @@
 # coverage…) — uma fonte só, sem rodar a suíte outra vez. Sem ele, roda quality.coverage; saída que não mediu nada
 # ("Unknown%", "( 0/0 )" — o comando apontava para outro gate) vira "não medido", com a causa, e não reprova o portão: o QA
 # julga, como a regra não configurada.
+# v3.65.8 (garden S6, 19:18 → 19:32): uma medição por <Id> de cada vez (quality.lock na pasta dela). A segunda chamada sai
+# com exit 5 e a linha "em uso por" enquanto a primeira vive; o run.ps1 next lê a trava (Get-TaskWait) e manda esperar em
+# vez de medir de novo. -Kill encerra a medição viva e a árvore dela (o POSSÍVEL TRAVAMENTO da regra 5) e apaga a trava.
 
 param(
     [Parameter(Mandatory = $true)][string]$Id,
     [string[]]$Files = @(),
     [double]$TimeoutMinutes = 0,
+    [switch]$Kill,
     [string]$Root = (Get-Location).Path
 )
 
@@ -37,9 +41,40 @@ $rules = [ordered]@{
     duplication  = @{ Q = 'Q8'; Name = 'duplicação abaixo do limite (§4.3)' }
 }
 
+$script:qLock = $null
+# A saída solta a trava antes (o finally com exit dentro do try devolvia -1 e deixava a trava).
+function Exit-Quality([int]$Code) { if ($script:qLock) { Remove-Item -LiteralPath $script:qLock -Force -ErrorAction SilentlyContinue }; exit $Code }
 try {
+    if ($Kill) {
+        $kl = Get-QualityLock $Root $Id
+        $klp = Join-Path (Get-QualityDir $Root $Id) 'quality.lock'
+        if ($kl) {
+            $kids = Stop-ProcessTree ([int]$kl.pid)
+            Stop-Process -Id ([int]$kl.pid) -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $klp -Force -ErrorAction SilentlyContinue
+            [Console]::Out.WriteLine("quality -Kill ${Id}: medição encerrada (pid $($kl.pid), desde $($kl.at)) com $([int]$kids) processo(s) filho(s); trava removida")
+        } else {
+            Remove-Item -LiteralPath $klp -Force -ErrorAction SilentlyContinue
+            [Console]::Out.WriteLine("quality -Kill ${Id}: nada a encerrar (nenhuma medição viva)")
+        }
+        exit 0
+    }
+    # A trava: CreateNew é atômico; a de processo que já saiu é resto e sai.
+    $qd0 = Get-QualityDir $Root $Id; New-Item -ItemType Directory -Force $qd0 | Out-Null
+    $qlp = Join-Path $qd0 'quality.lock'
+    for ($try = 0; $try -lt 2 -and -not $script:qLock; $try++) {
+        try {
+            $fs = [System.IO.File]::Open($qlp, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+            $b = $utf8.GetBytes((([ordered]@{ pid = $PID; started = (Get-Process -Id $PID).StartTime.ToString('o'); at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') }) | ConvertTo-Json -Compress))
+            $fs.Write($b, 0, $b.Length); $fs.Close(); $script:qLock = $qlp
+        } catch [System.IO.IOException] {
+            $other = Get-QualityLock $Root $Id
+            if ($other) { [Console]::Out.WriteLine("quality ${Id}: já roda — em uso por quality (pid $($other.pid), desde $($other.at)); não repita: o run.ps1 next manda esperar"); exit 5 }
+            Remove-Item -LiteralPath $qlp -Force -ErrorAction SilentlyContinue
+        }
+    }
     $gp = Join-Path $Root '.team-project/guards.json'
-    if (-not (Test-Path -LiteralPath $gp)) { [Console]::Error.WriteLine('quality: .team-project/guards.json não existe — rode na raiz do projeto ou passe -Root.'); exit 2 }
+    if (-not (Test-Path -LiteralPath $gp)) { [Console]::Error.WriteLine('quality: .team-project/guards.json não existe — rode na raiz do projeto ou passe -Root.'); Exit-Quality 2 }
     $g = Read-Text $gp | ConvertFrom-Json
     $q = if ($g.PSObject.Properties['quality']) { $g.quality } else { $null }
     $limitMin = if ($TimeoutMinutes -gt 0) { $TimeoutMinutes } elseif ($q -and $q.timeoutMinutes) { [double]$q.timeoutMinutes } else { 9 }
@@ -131,10 +166,10 @@ try {
     $unm = @($rows | Where-Object { $_.resultado -eq 'não medido' })
     [Console]::Out.WriteLine("quality $Id · " + $(if ($envFail.Count) { 'FALHA DE AMBIENTE' } elseif ($bad.Count) { "$($bad.Count) regra(s) falharam" } else { 'regras configuradas ok' }) + $(if ($unm.Count) { " · ATENÇÃO: $(@($unm | ForEach-Object { $_.regra }) -join ', ') não medida(s) — o QA julga" } else { '' }) + " · $rel/result.md")
     foreach ($r in $rows) { [Console]::Out.WriteLine("  $($r.regra) $($r.resultado): $($r.nome) — $($r.linha)") }
-    if ($envFail.Count) { exit 4 }
-    if ($bad.Count) { exit 1 }
-    exit 0
+    if ($envFail.Count) { Exit-Quality 4 }
+    if ($bad.Count) { Exit-Quality 1 }
+    Exit-Quality 0
 } catch {
     [Console]::Error.WriteLine("quality: erro — $($_.Exception.Message)")
-    exit 2
+    Exit-Quality 2
 }
