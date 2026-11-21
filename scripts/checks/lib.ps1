@@ -2599,6 +2599,30 @@ function Get-SprintDecisions([string]$Root, [string]$Sprint) {
     }
     return $out
 }
+# v3.65.4 (regra 34 do plan.ps1): as decisões do sprint que chegam ao plano — citadas em **Decisões:** ou com o ID da Task no
+# **Vale para** (o "todas" sozinho não basta: é regra condicional) — e mudam como o aceite se prova. Devolve uma frase por
+# decisão: "a D-<k> prova os cenários por <script>" (frase de prova — "se provam pelo", "provado pelo", "prova pelo", "prova
+# cruzada", "executor do projeto" — e um script que não é do plugin, no título ou no corpo) ou "a D-<k> dispensa o aceite".
+# Medido nas decisões dos sprints 5 e 6 do garden: só as que mandam provar por script do projeto ou dispensar o aceite.
+function Get-AcceptDecisionHits([string]$Root, [string]$PlanPath, [string]$PlanText) {
+    $sm = [regex]::Match(([string]$PlanPath -replace '\\', '/'), '/sprints/(\d+)/plan/([^/]+)$')
+    if (-not $sm.Success) { return @() }
+    $tid = ([regex]::Match($sm.Groups[2].Value, '^' + $script:TaskIdRe)).Value
+    $refs = @(Get-PlanDecisionRefs $PlanText)
+    $plug = @(Get-ChildItem -LiteralPath $PSScriptRoot -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch '[\\/]tests[\\/]' } | ForEach-Object { $_.Name.ToLowerInvariant() })
+    $proofRe = '(?i)(\bse\s+prova[mr]?\s+pel[oa]\b|\bprovad[oa]s?\s+pel[oa]\b|\bprova\s+cruzada\b|\bexecutor\s+do\s+projeto\b|\bprova\s+pel[oa]\b)'
+    $acRe = '(?:\baccept(?:\.ps1)?\b|\baceite\b)'
+    $out = @()
+    foreach ($d in @(Get-SprintDecisions $Root $sm.Groups[1].Value)) {
+        if (-not (($refs -contains $d.Id) -or ($tid -and @($d.Ids) -contains $tid))) { continue }
+        $all = $d.Title + "`n" + $d.Body
+        $sc = @([regex]::Matches($all, '[\w./\\-]+\.(?:mjs|cjs|js|ps1|py|sh|rb)\b') | ForEach-Object { $_.Value } | Where-Object { $plug -notcontains ([System.IO.Path]::GetFileName($_)).ToLowerInvariant() } | Select-Object -Unique)
+        if ($sc.Count -and $all -match $proofRe) { $out += "a $($d.Id) prova os cenários por $($sc[0])"; continue }
+        $wv = @($all -split "`r?`n" | Where-Object { $_ -match "(?i)$acRe.*\bn[ãa]o\s+rod(a|ar|e)\b" -or $_ -match "(?i)\bn[ãa]o\s+rod(a|ar)\b.*$acRe" -or $_ -match "(?i)$acRe[``*:\s]*dispensad[oa]\b" })
+        if ($wv.Count) { $out += "a $($d.Id) dispensa o aceite" }
+    }
+    return $out
+}
 # Recorte das decisões do sprint para o Arquiteto do plano (ficha da Task, pacote externo): título, a quem vale e a regra
 # curta — ele cita em **Decisões do sprint:** em vez de decidir de novo ou copiar. '' sem decisões.
 function Get-DecisionsDigest([string]$Root, [string]$Sprint) {

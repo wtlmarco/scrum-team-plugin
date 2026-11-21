@@ -2931,6 +2931,23 @@ Check 'v3.53.7: decisão do sprint inexistente citada e texto de decisão copiad
 Put $p $pl ($h7 + "**Decisões do sprint:** D-1, D-2`n`n" + $b7 + "### Premissas`n- P1 · src tem a.ts · medido: ``ls src`` → a.ts`n- P2 · a margem é 16 px · não exercitada: nasce no passo 2 · verifica: dev em passo 4`n" + $f7)
 $r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
 Check 'v3.53.7: plano que só cita as decisões passa' $r 0 @('\| decisões \| ok.*cita D-1, D-2; 2 decisão\(ões\) no sprint, 0 K no projeto, nenhuma copiada', '\| herdados \| n-a')
+# v3.65.4 (regra 34): a decisão do sprint que chega à Task (citada, ou com a Task no Vale para) e prova os cenários por
+# script do projeto, ou dispensa o aceite, sem a linha **Aceite:** no plano → reprova; com a linha, ou decisão só "todas"
+# não citada, ou script do plugin, não.
+$dec65 = "# Decisões do sprint 1`n`n## D-1 — Emulador fora do ar`n**Vale para:** todas · **Origem:** 🔺 GAP da T-041 · 2026-11-02`nCom o alvo fora do ar depois do reparo, a Task vai a bloqueada com prova no alvo pendente.`n`n## D-2 — APK antes do accept`n**Vale para:** T-080 · **Origem:** 🔺 GAP da T-041`nReconstruir o APK com assembleDebug antes de todo accept da Task de ids de teste.`n"
+Put $p '.team-project/architect/decisions/S1.md' ($dec65 + "`n## D-3 — Prova cruzada pelo executor do projeto`n**Vale para:** todas (prova pelo ``tools/prova.mjs``)`nO achado se dá por provado quando os passos dele passam.`n`n## D-4 — Alvo fora na Task de exportação`n**Vale para:** T-080`nCom o emulador fora, o dev não roda o accept; a prova é a captura.`n`n## D-5 — Rodada do aceite`n**Vale para:** todas`nOs cenários se provam pelo ``accept.ps1 -Only`` com os que falharam.`n")
+$h654 = { param($extra) "# Plano`n**Cenários:** SC-014`n**Risco:** regra de negócio`n**Layout novo:** não`n$extra`n" + $b7 + $f7 }
+Put $p $pl (& $h654 '**Decisões:** D-3')
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.65.4: plano sem **Aceite:** que cita decisão de prova por script do projeto → reprova e aponta a linha' $r 1 @('\| aceite \| falhou \| o plano não tem a linha \*\*Aceite:\*\* e a D-3 prova os cenários por tools/prova\.mjs', 'a D-4 dispensa o aceite', '`\*\*Aceite:\*\* comando — `<cmd com \{scn\} e \{out\}>``')
+Put $p $pl (& $h654 "**Decisões:** D-3`n**Aceite:** comando — ``node tools/prova.mjs {scn} {out}``")
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.65.4: com **Aceite:** comando, a decisão de prova por script do projeto não reprova' @{ Code = 0; Out = $r.Out } 0 @('\| aceite \| ok \| executor do projeto', '^(?![\s\S]*\| aceite \| falhou)')
+Put $p '.team-project/architect/decisions/S1.md' ($dec65 + "`n## D-3 — Prova cruzada pelo executor do projeto`n**Vale para:** todas (prova pelo ``tools/prova.mjs``)`nO achado se dá por provado quando os passos dele passam.`n`n## D-5 — Rodada do aceite`n**Vale para:** todas`nOs cenários se provam pelo ``accept.ps1 -Only`` com os que falharam.`n")
+Put $p $pl (& $h654 '**Decisões:** D-5')
+$r = Invoke-Check 'plan.ps1' @('-Plan', $pl, '-Root', $p)
+Check 'v3.65.4: decisão "todas" não citada e decisão que só cita script do plugin não reprovam' @{ Code = 0; Out = $r.Out } 0 @('\| aceite \| n-a \| o plano não dispensa o aceite')
+Put $p '.team-project/architect/decisions/S1.md' $dec65
 # v3.55.0 (A4): plano que corrige outra Task traz "### Testes herdados"; plano comum não é afetado.
 $prem = "### Premissas`n- P1 · src tem a.ts · medido: ``ls src`` → a.ts`n- P2 · a margem é 16 px · não exercitada: nasce no passo 2 · verifica: dev em passo 4`n"
 Put $p $pl ($h7 + "**Corrige:** T-040`n`n" + $b7 + $prem + $f7)
