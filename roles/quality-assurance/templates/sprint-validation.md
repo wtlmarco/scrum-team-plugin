@@ -99,6 +99,10 @@ Exemplo: o título de um canteiro corta na fonte grande porque a tela não previ
 
 **Resolução do dono:** cada dono grava `.team-project/sprints/<n>/gate/<ID>.md` com a linha `**Resolution:** done | code | debt — <o que decidiu ou mudou>` (`debt` só o PO). É por ela que o `run.ps1` sabe que pode seguir para a próxima causa.
 
+- **A resolução vale até a rodada seguinte (v3.65.5).** Se a rodada nova mantém o achado `open`, a resolução gravada antes dela não se sustentou, e o achado volta ao dono com ela no prompt, para corrigir de outro jeito. Duas tentativas sem resolver levam ao stakeholder.
+- **Correção em duas partes.** Quando o app muda (`code`) e o `.scn` precisa mudar depois, o dono acrescenta `**Scenario:** <os SC e o que muda em cada um>`. Fechada a `Q-S<n>`, o `run.ps1` manda o QA aplicar essa parte **antes** da rodada nova. O QA edita só os cenários citados, roda `accept.ps1 -ParseOnly` e acrescenta `**Scenario applied:** <data> — <o que mudou>`, sem apagar a `**Resolution:**`. Sem a linha `**Scenario:**`, conta o texto da resolução que manda o QA mexer num `SC-<n>` ou num `.scn`.
+- **Sem mudança, sem rodada.** A `Q-S<n>` fechada só pede rodada nova uma vez. Achado `code` que segue aberto depois da rodada que já a julgou pede correção nova, e o QA não julga de novo o mesmo app com o mesmo `.scn`.
+
 ## Regras
 
 - **Uma passada, o incremento inteiro, na rodada 1.** O QA olha o todo, não Task a Task; o diff do sprint e os planos são a base da aderência.
