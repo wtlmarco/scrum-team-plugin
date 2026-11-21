@@ -697,6 +697,34 @@ $cases = @(
                  [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/sprints/7/sprint-backlog.md'), "## História H-1 — x`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2B1C)) T-3 | c | T-9 |`n", (New-Object System.Text.UTF8Encoding($false)))
                  Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.log') -Force -ErrorAction SilentlyContinue }
        Payload = @{ hook_event_name = 'Stop' } },
+    # ---------- v3.65.7 — G20 lê a ação pendente do next (.next-verdict "agir"): o portão sem Task elegível não para calado ----------
+    @{ Name = 'v3.65.7 G20: sem Task elegível e sem ação pendente, libera e deixa a linha no guards.log'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/.next-verdict') -Force -ErrorAction SilentlyContinue
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/.ask-route') -Force -ErrorAction SilentlyContinue
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.log') -Force -ErrorAction SilentlyContinue }
+       Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw -Encoding UTF8) -like '*G20*liberado: nenhuma Task elegível no quadro e nenhuma ação pendente do next*' }
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'v3.65.7 G20: o next mandou disparar o operator no portão (sem Task elegível) e nenhum agente está em voo — barra com a ação'; Script = 'stop.ps1'; Expect = 2; ExpectErr = 'ação pendente: disparar team:operator — validação do sprint 7'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.next-verdict') ('{"acao":"agir","task":"","motivo":"disparar team:operator — validação do sprint 7 — medir","at":"' + (Get-Date).AddMinutes(-38).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw -Encoding UTF8) -like '*G20*bloqueio: ação pendente do run.ps1 next sem agente em voo*' }
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'v3.65.7 G20: a mesma ação pendente com o agente disparado e em voo — espera legítima'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') ('[{"type":"team:operator","description":"Operator mede S7","desde":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '"}]') -Encoding UTF8 }
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'v3.65.7 G20: o agente voltou (fora do registro) e a ação segue pendente — barra até o run.ps1 next'; Script = 'stop.ps1'; Expect = 2; ExpectErr = 'Se ele já voltou, rode run.ps1 next'
+       Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue }
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'v3.65.7 G20: a rota ao stakeholder gravada depois da ação pendente libera (a decisão é dele)'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') ('{"rota":"ambiente","task":"S7","motivo":"x","at":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Check = { $ok = (Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw -Encoding UTF8) -like '*G20*liberado: a rota ao stakeholder (ambiente) veio depois da ação pendente*'
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/.ask-route') -Force -ErrorAction SilentlyContinue; $ok }
+       Payload = @{ hook_event_name = 'Stop' } },
+    @{ Name = 'v3.65.7 G20: rota ao stakeholder mais velha que a ação pendente não libera'; Script = 'stop.ps1'; Expect = 2; ExpectErr = 'ação pendente'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') ('{"rota":"ambiente","task":"S7","motivo":"x","at":"' + (Get-Date).AddHours(-2).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Check = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.ask-route') -Force -ErrorAction SilentlyContinue
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/.next-verdict') -Force -ErrorAction SilentlyContinue; $true }
+       Payload = @{ hook_event_name = 'Stop' } },
     # ---------- v3.51.4 — negações reais do SunScape (note.md itens 3, 4, 5, 10) e do garden (itens 5, 6, 25) ----------
     @{ Name = 'G14 texto com $( ) entre aspas: subexpressões conferidas, rótulos não viram trecho (tests=, node:)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "1", "desde": "2026-10-06 10:00" }' -Encoding UTF8

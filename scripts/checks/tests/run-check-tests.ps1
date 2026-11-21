@@ -2150,7 +2150,8 @@ Remove-Item -LiteralPath (Join-Path $p '.team-project/.active-run') -Force
 $r = Invoke-Check 'team-view.ps1' @('-View', 'status', '-Detail', '-Root', $p)
 Check 'v3.53.5: /team-status — run pausado não soa como PARADA' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'PARADA') { "`nALARME" } else { '' }) } 0 @('run pausado: nada roda para a T-041', '^(?![\s\S]*ALARME)')
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
-Check 'v3.53.5: next sem espera apaga o .next-verdict; v3.58.3: o "construir" apaga a rota ao stakeholder (.ask-route)' @{ Code = $r.Code; Out = $r.Out + "`nverdict=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.next-verdict')) + "`nroute=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.ask-route')) } 0 @('verdict=False', 'PRÓXIMA AÇÃO: construir T-041', 'route=False')
+$nvP = Join-Path $p '.team-project/.next-verdict'
+Check 'v3.53.5: next sem espera não deixa decisão de esperar (v3.65.7: deixa a ação pendente "agir" do construir, com o executor); v3.58.3: o "construir" apaga a rota ao stakeholder (.ask-route)' @{ Code = $r.Code; Out = $r.Out + "`nverdict=" + $(if (Test-Path -LiteralPath $nvP) { [System.IO.File]::ReadAllText($nvP) } else { 'nenhum' }) + "`nroute=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.ask-route')) } 0 @('verdict=\{"acao":"agir","task":"","motivo":"disparar team:task-runner — construir T-041', '^(?![\s\S]*"acao":"esperar")', 'PRÓXIMA AÇÃO: construir T-041', 'route=False')
 Check 'v3.59.0: next "construir" — a fala ao stakeholder com o nome da parte e o código no fim' $r 0 @('PARA O STAKEHOLDER: Construindo Exportar o resultado da análise — parte 1 de 2 \(T-041\)\.')
 
 # 16f. v3.53.5 — adaptador android: prazo no adb (o processo é encerrado) e a recusa de abrir um segundo emulador.
@@ -2619,6 +2620,9 @@ Edit-File $psb "| $($e.qa) T-041 |" "| $($e.ok) T-041 |"
 Put $p '.team-project/guards.json' '{ "targets": { "web": { "url": "http://127.0.0.1:9", "startTimeoutSec": 3 } } }'
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'v3.53.6 item 9c: alvo ainda fora → a Task segue 🔴 e a fila continua (sem esperar)' @{ Code = $r.Code; Out = $r.Out + $(if ($r.Out -match 'team:operator.*accept\.ps1 -Task T-041a') { "`nREABRIU" } else { '' }) } 0 @('alvo web ainda fora \(.*não responde', 'T-041a segue\(m\) 🔴 com a prova no alvo pendente', 'PRÓXIMA AÇÃO: validação do sprint 1', '^(?![\s\S]*REABRIU)')
+# v3.65.7 (garden S6): o next que manda disparar grava a ação pendente que a G20 lê — no portão não há Task elegível.
+$nvF = Join-Path $p '.team-project/.next-verdict'
+Check 'v3.65.7: o next que manda medir o portão grava .next-verdict "agir" com o agente e a PRÓXIMA AÇÃO' @{ Code = 0; Out = $(if (Test-Path -LiteralPath $nvF) { [System.IO.File]::ReadAllText($nvF) } else { 'sem .next-verdict' }) } 0 @('"acao":"agir"', '"motivo":"disparar team:operator — validação do sprint 1')
 $port = Get-Random -Minimum 41000 -Maximum 49000
 $srv = Start-Job -ArgumentList $port -ScriptBlock { param($port)
     $l = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $port); $l.Start()
