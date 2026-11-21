@@ -19,6 +19,9 @@
 #   roda de fato (verify -Fresh) antes da qualidade; outro projeto com a máquina (trava pesada) → esperar.
 # v3.64.1 (sprint 6 do projeto piloto, 18/11): Task em 🔴 segura a medição (rota do bloqueio dela, sem operator), e a rota do
 #   bloqueio da correção em 🔴 vem antes da rodada focada.
+# v3.65.5 (sprint 6 do projeto piloto, 21/11): a resolução vale até a rodada seguinte (o achado que segue aberto volta ao dono);
+#   a parte do .scn de uma resolução code vai ao QA quando a Q-S fecha, antes da rodada nova; a Q-S fechada só pede rodada
+#   focada uma vez (gate.json → judged.qs).
 # Sai com exit quando há o que fazer; volta sem sair com o portão passado (✅, ou ⚠️ com a decisão do PO).
 
 function Invoke-GateStep {
@@ -218,7 +221,8 @@ function Invoke-GateStep {
         $k = Copy-Proof $qDir (Join-Path $pd 'quality'); if ($hasTarget) { $k += Copy-Proof $aDir (Join-Path $pd 'accept') }
         $gate.proof = $roundNow
         $gate.round = $roundNow
-        $gate.judged = [ordered]@{ prod = [string]$prodNow; scn = [string]$scnNow; accept = $(if ($aj) { [string]$aj.at } else { '' }); quality = $(if ($qj) { [string]$qj.at } else { '' }) }
+        # v3.65.5: as Q-S fechadas que esta rodada já julga — "Q-S fechada" só é novidade para a rodada seguinte se não estiver aqui.
+        $gate.judged = [ordered]@{ prod = [string]$prodNow; scn = [string]$scnNow; accept = $(if ($aj) { [string]$aj.at } else { '' }); quality = $(if ($qj) { [string]$qj.at } else { '' }); qs = (@($qsRows | Where-Object { $_.Mark -eq $E.Done } | ForEach-Object { $_.Id }) -join ',') }
         Set-GateState $S $gate
         return $k
     }
@@ -242,6 +246,35 @@ function Invoke-GateStep {
     # A correção substituída (acima) não cobre achado: o que só ela citava vai à correção aberta.
     $qsOf = { param($fid) @($qsRows | Where-Object { -not $supersededBy.ContainsKey($_.Id) } | Where-Object { $q = $_; @(($boardTxt -split "`r?`n") | Where-Object { $_ -match '^\s*\|' -and $_.Contains($q.Id) -and $_.Contains($fid) }).Count }) }
     $qsOpen = @($qsRows | Where-Object { $_.Mark -ne $E.Done -and -not $supersededBy.ContainsKey($_.Id) })
+    # v3.65.5 (sprint 6 do projeto piloto, 21/11): a Q-S fechada que uma rodada já julgou não é novidade — no piloto, a Q-S6h
+    # fechada fazia toda chamada do next abrir outra rodada focada (rodadas 9 e 10 sem nada mudado). A fonte é o gate.json
+    # (judged.qs, gravado a cada rodada); o gate.json anterior à v3.65.5 não tem a lista, e vale o relatório de entrega da Q-S
+    # (delivery/<ID>.md) mais velho que o validation.md.
+    $judgedQs = $null   # (atribuição direta: um if que devolve @() vazio daria $null, e a lista vazia contaria como ausente)
+    if ($gate.judged -and $gate.judged.Contains('qs')) { $judgedQs = @(([string]$gate.judged.qs) -split ',' | Where-Object { $_ }) }
+    $qsJudged = {
+        param($q)
+        if ($null -ne $judgedQs) { return ($judgedQs -contains $q.Id) }
+        $dv = Join-Path $S "delivery/$($q.Id).md"
+        return ((Test-Path -LiteralPath $dv) -and (Get-Item -LiteralPath $dv).LastWriteTime -lt $valAt)
+    }
+    # A correção que ainda vale para o achado: aberta, ou fechada e ainda não julgada.
+    $qsLive = { param($fid) @(& $qsOf $fid | Where-Object { $_.Mark -ne $E.Done -or -not (& $qsJudged $_) }) }
+    # v3.65.5: a resolução vale até a rodada seguinte. O achado que segue aberto num validation.md mais novo que o gate/<ID>.md
+    # foi julgado depois dela e não se resolveu (no piloto, o "done" do S6-F7 segurou o achado por duas rodadas). Ela passa a
+    # "stale" e o achado volta ao dono. A exceção é a resolução code com a parte do cenário ainda não aplicada: a correção não
+    # foi inteira, e quem a testou testou só a metade.
+    $effRes = {
+        param([string]$Id)
+        $r = Get-FindingResolution $S $Id
+        if (-not $r -or -not $r.value) { return $r }
+        $r.stale = $false
+        if ($r.at -ge $valAt) { return $r }
+        if ($r.value -eq 'code' -and (Get-FindingScenarioPart $S $Id).need) { return $r }
+        $r.stale = $true
+        return $r
+    }
+    $resolved = { param([string]$Id) $r = & $effRes $Id; [bool]($r -and $r.value -and -not $r.stale) }
     foreach ($k in $supersededBy.Keys) { if (@($qsRows | Where-Object { $_.Id -eq $k -and $_.Mark -ne $E.Done }).Count) { Out "  nota: a $k conta como substituída pela $($supersededBy[$k]) (o plano dela declara **Corrige:** $k) — não segura o portão" } }
     # v3.64.0 (item 8 B): achados novos para uma correção já aberta — a linha dela ganha os IDs e o Arquiteto emenda o plano
     # (o plano foi escrito para outros achados: no piloto, a Q-S6e só podia tocar a ferramenta do alvo, e os achados de código
@@ -312,7 +345,7 @@ function Invoke-GateStep {
         exit 0
     }
     # Ambiente que o QA ainda registrou (A): reparo e repetição do aceite — nunca Q-S<n>.
-    $envF = @($open | Where-Object { $_.cause -eq 'environment' -and -not (Get-FindingResolution $S $_.id) })
+    $envF = @($open | Where-Object { $_.cause -eq 'environment' -and -not (& $resolved $_.id) })
     if ($envF.Count -and $hasTarget) {
         Out "PRÓXIMA AÇÃO: validação do sprint $n — $(($envF | ForEach-Object { $_.id }) -join ', ') de ambiente: reparar o alvo e repetir o aceite (operator); não abre Q-S$n"
         Out "  $(Get-AgentLine 'operator')"
@@ -322,19 +355,21 @@ function Invoke-GateStep {
     }
     $owners = @{ requirement = @('product-owner', '/po', 'requisito'); screen = @('user-experience', '/ux', 'tela'); design = @('architect', '/arc question', 'desenho'); scenario = @('quality-assurance', '/qa', 'cenário') }
     foreach ($c in @($script:CauseOrder | Where-Object { $_ -ne 'code' })) {
-        $items = @($open | Where-Object { $_.cause -eq $c -and -not ((Get-FindingResolution $S $_.id) -and (Get-FindingResolution $S $_.id).value) })
+        $items = @($open | Where-Object { $_.cause -eq $c -and -not (& $resolved $_.id) })
         if (-not $items.Count) { continue }
         $o = $owners[$c]
         foreach ($it in $items) { $gate.routed[$it.id] = [int]$(if ($gate.routed.Contains($it.id)) { $gate.routed[$it.id] } else { 0 }) + 1 }
         Set-GateState $S $gate
         $again = @($items | Where-Object { [int]$gate.routed[$_.id] -gt 2 })
         if ($again.Count) {
-            Set-AskRoute $Root 'portao' $sid "$($o[2]): $($o[1]) disparado 2 vezes sem gravar a resolução de $(($again | ForEach-Object { $_.id }) -join ', ')"
-            Out "PRÓXIMA AÇÃO: formulário ao stakeholder — $(($again | ForEach-Object { $_.id }) -join ', ') ($($o[2])) sem resolução depois de 2 disparos de $($o[1]): decidir à mão (gravar .team-project/sprints/$n/gate/<ID>.md) ou aceitar como dívida"
+            Set-AskRoute $Root 'portao' $sid "$($o[2]): $($o[1]) disparado 2 vezes sem uma resolução que se sustente para $(($again | ForEach-Object { $_.id }) -join ', ')"
+            Out "PRÓXIMA AÇÃO: formulário ao stakeholder — $(($again | ForEach-Object { $_.id }) -join ', ') ($($o[2])) sem resolução que se sustente depois de 2 disparos de $($o[1]) (sem gravar, ou a rodada seguinte manteve o achado aberto): decidir à mão (gravar .team-project/sprints/$n/gate/<ID>.md) ou aceitar como dívida"
             exit 0
         }
-        $list = ($items | ForEach-Object { "$($_.id) ($($_.task)): $(& $short $_.text)" }) -join '; '
-        $resLine = "grave, para cada achado, .team-project/sprints/$n/gate/<ID>.md com a linha **Resolution:** done|code$(if ($c -eq 'requirement') { '|debt' }) — <o que decidiu ou mudou> (done = resolvido sem mudar o app; code = o app precisa mudar, e a Q-S$n vai citar o achado$(if ($c -eq 'requirement') { '; debt = aceito como dívida, com o lugar no Product Backlog' }))"
+        # v3.65.5: a resolução que a rodada seguinte desmentiu vai no prompt — o dono não repete a mesma correção.
+        $staleTxt = { param($id) $r = & $effRes $id; if ($r -and $r.value -and $r.stale) { " [a resolução anterior ($($r.value): $(& $short $r.text)) não se sustentou: a última rodada do validation.md manteve o achado aberto — corrija de outro jeito]" } else { '' } }
+        $list = ($items | ForEach-Object { "$($_.id) ($($_.task)): $(& $short $_.text)$(& $staleTxt $_.id)" }) -join '; '
+        $resLine = "grave, para cada achado, .team-project/sprints/$n/gate/<ID>.md com a linha **Resolution:** done|code$(if ($c -eq 'requirement') { '|debt' }) — <o que decidiu ou mudou> (done = resolvido sem mudar o app; code = o app precisa mudar, e a Q-S$n vai citar o achado$(if ($c -eq 'requirement') { '; debt = aceito como dívida, com o lugar no Product Backlog' })). Com code, se depois da mudança do app o .scn também precisa mudar, acrescente a linha **Scenario:** <os SC e o que muda em cada um> — o portão manda o QA aplicá-la quando a Q-S$n fechar, antes da rodada nova (v3.65.5)"
         Out "PRÓXIMA AÇÃO: validação do sprint $n — $($o[2]): $(($items | ForEach-Object { $_.id }) -join ', ') → $($o[1]) (instância nova; ordem requirement → screen → design → scenario → code)"
         Say $(switch ($c) { 'requirement' { 'A revisão final achou um ponto de regra ou de critério: o dono do produto vai decidir.' } 'screen' { 'A revisão final achou um caso que a tela não previa: o UX vai ajustar a especificação da tela.' } 'design' { 'A revisão final achou um ponto de desenho técnico: o arquiteto vai decidir.' } default { 'A revisão final achou um teste desatualizado: a qualidade vai corrigir o teste.' } })
         if ($c -eq 'requirement') { Set-AskRoute $Root 'portao' $sid 'achado de requisito do portão: o PO decide; o que for do stakeholder vem em formulário' }
@@ -350,8 +385,30 @@ function Invoke-GateStep {
         exit 0
     }
     # code: os achados de código e os que o dono resolveu como 'code' — cada um citado por uma Q-S<n> do quadro.
-    $codeF = @($open | Where-Object { $_.cause -eq 'code' -or ((Get-FindingResolution $S $_.id) -and (Get-FindingResolution $S $_.id).value -eq 'code') })
-    $uncovered = @($codeF | Where-Object { -not @(& $qsOf $_.id).Count })
+    $codeF = @($open | Where-Object { $_.cause -eq 'code' -or ($(& $resolved $_.id) -and (& $effRes $_.id).value -eq 'code') })
+    # v3.65.5 · a metade do teste: a resolução code que também muda o .scn, com a(s) Q-S que a cobrem fechada(s) → o QA aplica a
+    # parte do cenário ANTES da rodada nova (no piloto, o S6-F10 e o S6-F15 ficaram com o app pronto e o .scn antigo).
+    $scnHalf = @($codeF | Where-Object { $cov = @(& $qsOf $_.id); $cov.Count -and -not @($cov | Where-Object { $_.Mark -ne $E.Done }).Count -and (Get-FindingScenarioPart $S $_.id).need })
+    if ($scnHalf.Count) {
+        foreach ($it in $scnHalf) { $k5 = "$($it.id)/scn"; $gate.routed[$k5] = [int]$(if ($gate.routed.Contains($k5)) { $gate.routed[$k5] } else { 0 }) + 1 }
+        Set-GateState $S $gate
+        $againS = @($scnHalf | Where-Object { [int]$gate.routed["$($_.id)/scn"] -gt 2 })
+        if ($againS.Count) {
+            Set-AskRoute $Root 'portao' $sid "cenário: /qa disparado 2 vezes sem aplicar a parte do .scn de $(($againS | ForEach-Object { $_.id }) -join ', ')"
+            Out "PRÓXIMA AÇÃO: formulário ao stakeholder — $(($againS | ForEach-Object { $_.id }) -join ', ') (parte do cenário da correção) sem a linha **Scenario applied:** depois de 2 disparos do /qa: aplicar à mão (o .scn e a linha no gate/<ID>.md) ou aceitar como dívida"
+            exit 0
+        }
+        $listS = ($scnHalf | ForEach-Object { $qq = (@(& $qsOf $_.id) | ForEach-Object { $_.Id }) -join ', '; "$($_.id) ($($_.task); o app já mudou na $qq): $(& $short (Get-FindingScenarioPart $S $_.id).text)" }) -join '; '
+        Out "PRÓXIMA AÇÃO: validação do sprint $n — cenário: aplicar a parte do .scn de $(($scnHalf | ForEach-Object { $_.id }) -join ', ') → /qa (instância nova; a correção do app fechou, o teste ainda é o antigo — sem isso a rodada nova julgaria o mesmo .scn, v3.65.5)"
+        Say 'A correção no app ficou pronta; agora a qualidade ajusta os testes que dependiam dela, antes de testar de novo.'
+        Out "  $(Get-AgentLine 'quality-assurance')"
+        Out "  prompt: `"/qa — aplique a parte do cenário da correção do portão do sprint ${n}: $listS. Só os cenários citados; rode $plugin/accept.ps1 -ParseOnly. Depois acrescente em .team-project/sprints/$n/gate/<ID>.md, sem apagar a linha **Resolution:**, a linha **Scenario applied:** <data> — <os SC e o que mudou em cada um>. O operator mede de novo só o que mudou. Volte em até 10 linhas.`""
+        Out "  depois: run.ps1 next"
+        exit 0
+    }
+    # v3.65.5: a Q-S que fechou e já foi julgada não cobre mais o achado code que segue aberto — ele precisa de correção nova.
+    # O achado com resolução code que ainda vale (gravada ou completada depois da última rodada) segue coberto pela Q-S dele.
+    $uncovered = @($codeF | Where-Object { if (& $resolved $_.id) { -not @(& $qsOf $_.id).Count } else { -not @(& $qsLive $_.id).Count } })
     if ($uncovered.Count -and $qsOpen.Count) { & $toOpenQ "$(($uncovered | ForEach-Object { $_.id }) -join ', ') (causa code)" "os IDs $(($uncovered | ForEach-Object { $_.id }) -join ', ')" }
     if ($uncovered.Count) {
         $qs = @($qsRows | ForEach-Object { $_.Id })
@@ -368,7 +425,9 @@ function Invoke-GateStep {
     $nm = @(& $newestMeas)
     if ($nm.Count -and $nm[0].At -gt $valAt) { $newer += $(if ($nm[0].Diag) { 'diagnóstico novo do aceite' } else { 'medição nova' }) }
     if (@($open | Where-Object { $r = Get-FindingResolution $S $_.id; $r -and $r.value -and $r.at -gt $valAt }).Count) { $newer += 'resoluções dos donos' }
-    if (@($codeF | ForEach-Object { & $qsOf $_.id } | Where-Object { $_.Mark -eq $E.Done }).Count) { $newer += 'Q-S fechada' }
+    # v3.65.5: só a Q-S fechada que nenhuma rodada julgou ainda — antes contava toda Q-S ✅, e o next abria rodada após rodada
+    # com o mesmo app e o mesmo .scn.
+    if (@($codeF | ForEach-Object { & $qsOf $_.id } | Where-Object { $_.Mark -eq $E.Done -and -not (& $qsJudged $_) }).Count) { $newer += 'Q-S fechada' }
     # v3.64.0 (item 8 B): a correção que cobre os achados está em 🔴 — ela só reabre por ação de alguém; "esperar" deixaria o
     # watcher olhando uma Task parada. Vai à rota do bloqueio dela. v3.64.1: ANTES da rodada focada — a medição ou a resolução
     # mais nova que o veredito mandava o QA julgar de novo o código parcial da correção parada, e esta rota nunca chegava.

@@ -4113,6 +4113,58 @@ Remove-Item -LiteralPath (Join-Path $pg '.team-project/sprints/1/kanban.md') -Fo
 Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $ok63 aprovado`n"
 $r = & $g63 $pg
 Check 'v3.63.0: portão aprovado → o passo volta sem sair (segue a consolidação)' $r 0 @('GATE-RETURNED')
+# ----- v3.65.5 · sprint 6 do projeto piloto (21/11): rodadas focadas sem nada mudado e a metade do teste sem dono -----
+# S1-F1 (design) resolvido como code, com a parte do .scn ainda não aplicada; S1-F2 (scenario) com um "done" que a rodada
+# seguinte desmentiu; S1-F3 (code) com a Q-S1 fechada e já julgada. As resoluções são de antes do validation.md.
+$p655 = Join-Path $tmp 'v3655-gate'
+Put $p655 '.team-project/README.md' "| | |`n|---|---|`n| **Sprint corrente** | **1** — x |`n"
+Put $p655 '.team-project/sprints/1/sprint-backlog.md' "# SB`n`n## História H-1 — x`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $ok63 T-001 | a | 1 | dev | — | — | — | SC-1 |`n`n## Correção do portão — sprint 1`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $ok63 Q-S1 | corrige S1-F1 e S1-F3 | 1 | dev | — | — | — | SC-1 |`n"
+Put $p655 '.team-project/guards.json' '{ "targets": { "web": { "url": "http://127.0.0.1:9" } } }'
+Put $p655 '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-1 um`nlaunch`nassert-exists a`n"
+Put $p655 'src/a.ts' "export const a = 1`n"
+$ErrorActionPreference = 'Continue'; & git -C $p655 init -q 2>$null; Put $p655 '.gitignore' ".team-project/`n"; & git -C $p655 add -A 2>$null; & git -C $p655 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+$prod655 = & $lib63 "Get-ProductionTree '$p655'"
+$scn655 = & $lib63 "Get-ScenarioSetHash (Get-SprintScenarioFiles '$p655')"
+Put $p655 '.team-project/quality/1/S1/result.json' (@{ id = 'S1'; at = '2026-11-21 01:00:00'; prod = $prod655; rows = @() } | ConvertTo-Json)
+Put $p655 '.team-project/accept/1/S1/result.json' (@{ task = 'S1'; at = '2026-11-21 01:05:00'; prod = $prod655; scenariosHash = $scn655; environment = $null; passed = 1; total = 1; results = @(@{ id = 'SC-1'; status = 'PASSOU' }) } | ConvertTo-Json -Depth 4)
+$gj655 = { param($qs) Put $p655 '.team-project/sprints/1/gate.json' (([ordered]@{ round = 2; judged = [ordered]@{ prod = $prod655; scn = $scn655; accept = '2026-11-21 01:05:00'; quality = '2026-11-21 01:00:00'; qs = $qs }; env = [ordered]@{ attempts = 0; at = ''; asked = ''; sent = 0; sentAt = '' }; proof = 2; routed = [ordered]@{ 'S1-F1' = 1; 'S1-F2' = 1 } }) | ConvertTo-Json -Depth 5) }
+& $gj655 'Q-S1'
+$g655 = Join-Path $p655 '.team-project/sprints/1/gate'
+Put $p655 '.team-project/sprints/1/gate/S1-F1.md' "**Resolution:** code — o app ganha o id manutencao.menu.x; o QA troca no SC-1 o toque por manutencao.menu.x`n"
+Put $p655 '.team-project/sprints/1/gate/S1-F2.md' "**Resolution:** done — open da rota repetido com wait 3`n"
+foreach ($f655 in 'S1-F1', 'S1-F2') { (Get-Item -LiteralPath (Join-Path $g655 "$f655.md")).LastWriteTime = (Get-Date).AddHours(-2) }
+$v655 = "# V`n**Veredito:** $fail63 reprovado`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F1 | T-001 | id do menu não existe | SC-1 | design | Arquiteto | open |`n| S1-F2 | T-001 | app volta na aba errada | SC-1 | scenario | QA | open |`n| S1-F3 | T-001 | soma errada | a.ts:1 | code | dev | open |`n`n**Veredito (rodada 2):** $fail63 reprovado`n"
+Put $p655 '.team-project/sprints/1/validation.md' $v655
+$r = & $g63 $p655
+Check 'v3.65.5: "done" que a rodada seguinte desmentiu não segura o achado — volta ao QA com a resolução anterior no prompt' $r 0 @('cenário: S1-F2 → /qa', 'a resolução anterior \(done: open da rota repetido com wait 3\) não se sustentou', '^(?![\s\S]*S1-F1 → /arc)', '^(?![\s\S]*revisar o veredito)')
+Put $p655 '.team-project/sprints/1/gate/S1-F2.md' "**Resolution:** done — navegação pela aba Estufa em vez do open`n"
+$r = & $g63 $p655
+Check 'v3.65.5: resolução code com a parte do .scn não aplicada e a Q-S1 fechada → o QA aplica a metade do teste antes da rodada nova' $r 0 @('aplicar a parte do \.scn de S1-F1 → /qa', 'o app já mudou na Q-S1', 'o QA troca no SC-1', '\*\*Scenario applied:\*\*', '^(?![\s\S]*revisar o veredito)', '^(?![\s\S]*abrir Q-S1b)')
+$sp655 = & $lib63 "`$x = Get-FindingScenarioPart '$(Join-Path $p655 '.team-project/sprints/1')' 'S1-F3'; 'need=' + `$x.need"
+Put $p655 '.team-project/sprints/1/gate/S1-F1.md' "**Resolution:** code — o app ganha o id manutencao.menu.x; o QA troca no SC-1 o toque por manutencao.menu.x`n**Scenario applied:** 2026-11-21 — SC-1 toca manutencao.menu.x`n"
+$r = & $g63 $p655
+Check 'v3.65.5: code puro com a Q-S1 fechada e já julgada (gate.json judged.qs) → correção nova; o achado com a parte do .scn recém-aplicada segue com a Q-S1' @{ Code = $r.Code; Out = "$($r.Out)`n$sp655" } 0 @('abrir Q-S1b — correção do portão: S1-F3 \(causa code\)', '^(?![\s\S]*abrir Q-S1b — correção do portão: S1-F1)', '^(?![\s\S]*revisar o veredito)', 'need=False')
+Edit-File (Join-Path $p655 '.team-project/sprints/1/sprint-backlog.md') '| corrige S1-F1 e S1-F3 |' '| corrige S1-F1 |'
+Edit-File (Join-Path $p655 '.team-project/sprints/1/validation.md') '| S1-F3 | T-001 | soma errada | a.ts:1 | code | dev | open |' '| S1-F3 | T-001 | soma errada | a.ts:1 | code | dev | fixed |'
+foreach ($f655 in 'S1-F1', 'S1-F2') { (Get-Item -LiteralPath (Join-Path $g655 "$f655.md")).LastWriteTime = (Get-Date).AddHours(-2) }
+Edit-File (Join-Path $p655 '.team-project/sprints/1/validation.md') '| S1-F2 | T-001 | app volta na aba errada | SC-1 | scenario | QA | open |' '| S1-F2 | T-001 | app volta na aba errada | SC-1 | scenario | QA | fixed |'
+$r = & $g63 $p655
+Check 'v3.65.5: code com o .scn já aplicado e a rodada seguinte mantendo o achado aberto → volta ao dono (Arquiteto), sem rodada nova' $r 0 @('desenho: S1-F1 → /arc question', 'a resolução anterior \(code: .*\) não se sustentou', '^(?![\s\S]*revisar o veredito)')
+# A Q-S fechada só é novidade uma vez: fora de judged.qs → rodada focada; dentro → nada novo (antes, toda chamada abria rodada).
+Put $p655 '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F3 | T-001 | soma errada | a.ts:1 | code | dev | open |`n"
+Edit-File (Join-Path $p655 '.team-project/sprints/1/sprint-backlog.md') '| corrige S1-F1 |' '| corrige S1-F3 |'
+& $gj655 ''
+$r = & $g63 $p655
+Check 'v3.65.5: Q-S1 fechada que nenhuma rodada julgou (fora de judged.qs) → rodada focada, e a rodada grava a Q-S1 em judged.qs' @{ Code = $r.Code; Out = $r.Out + "`nGJ=" + ([System.IO.File]::ReadAllText((Join-Path $p655 '.team-project/sprints/1/gate.json'), $utf8) -replace '\s+', ' ') } 0 @('revisar o veredito .*Q-S fechada', 'GJ=.*"qs": "Q-S1"')
+$r = & $g63 $p655
+Check 'v3.65.5: a mesma Q-S1, agora em judged.qs, não abre outra rodada (o achado code aberto pede correção nova)' $r 0 @('abrir Q-S1b — correção do portão: S1-F3', '^(?![\s\S]*revisar o veredito)')
+# gate.json anterior à v3.65.5 (sem judged.qs): vale o delivery/<Q-S>.md mais velho que o validation.md.
+$gjOld = [System.IO.File]::ReadAllText((Join-Path $p655 '.team-project/sprints/1/gate.json'), $utf8) -replace ',\s*"qs":\s*"[^"]*"', ''
+Put $p655 '.team-project/sprints/1/gate.json' $gjOld
+Put $p655 '.team-project/sprints/1/delivery/Q-S1.md' "# Entrega Q-S1`n"
+(Get-Item -LiteralPath (Join-Path $p655 '.team-project/sprints/1/delivery/Q-S1.md')).LastWriteTime = (Get-Date).AddHours(-3)
+$r = & $g63 $p655
+Check 'v3.65.5: gate.json sem judged.qs e delivery da Q-S1 mais velho que o validation.md → a Q-S1 conta como julgada' $r 0 @('abrir Q-S1b — correção do portão: S1-F3', '^(?![\s\S]*revisar o veredito)')
 # Quadro: a seção da validação no kanban.md.
 Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado`n`n## Frentes`n| Front | State | Round | Proof |`n|---|---|---|---|`n| functional | fail | 1 | x |`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F1 | T-001 | critério ambíguo | x | requirement | PO | open |`n| S1-F3 | T-001 | soma errada | a.ts:1 | code | dev | fixed |`n"
 $kh63 = Join-Path $tmp 'gate-kanban.ps1'
