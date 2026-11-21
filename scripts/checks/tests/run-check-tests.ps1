@@ -1776,7 +1776,9 @@ Put $p '.team-project/verify/1/T-041/verify.lock' '{"pid":999999,"started":"2001
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-Root', $p)
 Check 'item 4: trava de processo morto sai; a rodada roda e apaga a própria trava' @{ Code = $r.Code; Out = $r.Out + "`nTRAVA=" + (Test-Path -LiteralPath $lk) } 0 @('tudo exit 0', 'TRAVA=False')
 # v3.53.2: -WaitBusySeconds espera a rodada viva acabar na mesma chamada e segue (o dev novo não pausa o run).
-$sleeper = Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-Sleep -Seconds 7' -PassThru -WindowStyle Hidden
+# v3.65.9: a rodada viva dura 20 s (eram 7): com 8 blocos em paralelo o verify levava mais de 7 s para subir, achava a trava
+# já solta e o caso falhava sem "esperou" (3 rodadas completas seguidas).
+$sleeper = Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-Sleep -Seconds 20' -PassThru -WindowStyle Hidden
 Put $p '.team-project/verify/1/T-041/verify.lock' ('{"pid":' + $sleeper.Id + ',"started":"' + $sleeper.StartTime.ToString('o') + '","mode":"full","at":"2026-10-27 10:00:00"}')
 Put $p 'src/calc.ts' "export const x = 21`n"
 $r = Invoke-Check 'verify.ps1' @('-Task', 'T-041', '-Mode', 'full', '-MaxMinutes', '30', '-WaitBusySeconds', '60', '-Root', $p)
@@ -4097,7 +4099,7 @@ $ko658 = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $check
 Start-Sleep 1
 Check 'v3.65.8: quality.ps1 -Kill encerra a medição viva e apaga a trava' @{ Code = $LASTEXITCODE; Out = "$ko658`nVIVO=$([bool](Get-Process -Id $sl658.Id -ErrorAction SilentlyContinue)) LOCK=$(Test-Path -LiteralPath $ql658)" } 0 @("quality -Kill S1: medição encerrada \(pid $($sl658.Id)", 'VIVO=False LOCK=False')
 $r = & $g63 $pg
-Check 'v3.65.8: sem medição viva, o portão volta a medir (o operator)' $r 0 @('medir .*qualidade: o código de produção mudou', 'Agent: team:operator')
+Check 'v3.65.8: sem medição viva, o portão volta a medir (o operator); v3.65.9: o quality vai pelo detach.ps1' $r 0 @('medir .*qualidade: o código de produção mudou', 'Agent: team:operator', 'rode-o pelo .*detach\.ps1 -Dir \.team-project/operator/1/S1-quality')
 $qKeep658 = [System.IO.File]::ReadAllText((Join-Path $qd63 'result.json'), $utf8)
 $qo658 = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $checks 'quality.ps1') -Id S1 -Root $pg 2>&1 | Out-String
 Check 'v3.65.8: a medição que termina solta a própria trava' @{ Code = $LASTEXITCODE; Out = "$qo658`nLOCK=$(Test-Path -LiteralPath $ql658)" } 0 @('quality S1 · ', 'LOCK=False')
@@ -4180,6 +4182,55 @@ Remove-Item -LiteralPath (Join-Path $pg '.team-project/sprints/1/kanban.md') -Fo
 Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $ok63 aprovado`n"
 $r = & $g63 $pg
 Check 'v3.63.0: portão aprovado → o passo volta sem sair (segue a consolidação)' $r 0 @('GATE-RETURNED')
+# ----- v3.65.9 · L1: o contador do dono conta disparos, zera com progresso e escala ao Arquiteto antes do stakeholder -----
+# Garden S6 (21/11, 19:44): routed 4 para S6-F10/S6-F15 com 2 disparos reais do QA, cada rodada caindo num ponto diferente,
+# e o formulário foi direto ao stakeholder. Cada "rodada" aqui: aceite (t), diagnóstico (t+1), resolução (t+2), validation (t+3).
+$p659 = Join-Path $tmp 'v3659-gate'
+Put $p659 '.team-project/README.md' "| | |`n|---|---|`n| **Sprint corrente** | **1** — x |`n"
+Put $p659 '.team-project/sprints/1/sprint-backlog.md' "# SB`n`n## História H-1 — x`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $ok63 T-001 | a | 1 | dev | — | — | — | SC-1 |`n"
+Put $p659 '.team-project/guards.json' '{ "targets": { "web": { "url": "http://127.0.0.1:9" } } }'
+Put $p659 '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-1 um`nlaunch`nassert-exists a`n"
+Put $p659 'src/a.ts' "export const a = 1`n"
+$ErrorActionPreference = 'Continue'; & git -C $p659 init -q 2>$null; Put $p659 '.gitignore' ".team-project/`n"; & git -C $p659 add -A 2>$null; & git -C $p659 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+$prod659 = & $lib63 "Get-ProductionTree '$p659'"
+$scn659 = & $lib63 "Get-ScenarioSetHash (Get-SprintScenarioFiles '$p659')"
+Put $p659 '.team-project/quality/1/S1/result.json' (@{ id = 'S1'; at = '2026-11-21 01:00:00'; prod = $prod659; rows = @() } | ConvertTo-Json)
+$s659 = Join-Path $p659 '.team-project/sprints/1'
+$round659 = {
+    param([int]$K, [string]$Det)
+    $base = (Get-Date).AddHours(-6).AddMinutes($K * 10); $at = $base.ToString('yyyy-MM-dd HH:mm:ss')
+    $ar = Join-Path $p659 '.team-project/accept/1/S1/result.json'
+    Put $p659 '.team-project/accept/1/S1/result.json' (@{ task = 'S1'; at = $at; prod = $prod659; scenariosHash = $scn659; environment = $null; passed = 0; total = 1; results = @(@{ id = 'SC-1'; status = 'FALHOU'; detail = $Det; shot = '' }) } | ConvertTo-Json -Depth 4)
+    (Get-Item -LiteralPath $ar).LastWriteTime = $base
+    $dg = Join-Path $p659 '.team-project/operator/1/S1-alvo/diagnostico.md'
+    Put $p659 '.team-project/operator/1/S1-alvo/diagnostico.md' "Veredito: PLANO`n`nCenário: SC-1`nMotivo: elemento ausente`nDono: QA`n"
+    (Get-Item -LiteralPath $dg).LastWriteTime = $base.AddMinutes(1)
+    if ($K -gt 1) { $gf = Join-Path $s659 'gate/S1-F1.md'; Put $p659 '.team-project/sprints/1/gate/S1-F1.md' "**Resolution:** done — tentativa $($K - 1) no .scn`n"; (Get-Item -LiteralPath $gf).LastWriteTime = $base.AddMinutes(2) }
+    $gp = Join-Path $s659 'gate.json'
+    $gj = if (Test-Path -LiteralPath $gp) { [System.IO.File]::ReadAllText($gp, $utf8) | ConvertFrom-Json } else { [pscustomobject]@{ round = 0; judged = [pscustomobject]@{ prod = $prod659; scn = $scn659; accept = ''; quality = '2026-11-21 01:00:00'; qs = '' }; proof = 0 } }
+    $gj.round = $K; $gj.proof = $K; $gj.judged.accept = $at
+    [System.IO.File]::WriteAllText($gp, ($gj | ConvertTo-Json -Depth 6), $utf8)
+    $vp = Join-Path $s659 'validation.md'
+    Put $p659 '.team-project/sprints/1/validation.md' ("# V`n" + (@(1..$K) | ForEach-Object { "**Veredito (rodada $_):** $fail63 reprovado`n" }) + "`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F1 | T-001 | SC-1 não acha o botão | SC-1 | scenario | QA | open |`n")
+    (Get-Item -LiteralPath $vp).LastWriteTime = $base.AddMinutes(3)
+}
+$rt659 = { $j = [System.IO.File]::ReadAllText((Join-Path $s659 'gate.json'), $utf8) | ConvertFrom-Json; "ROUTED=$($j.routed.'S1-F1') ESC=$(if ($j.PSObject.Properties['escalated'] -and $j.escalated.PSObject.Properties['S1-F1']) { 'sim' } else { 'nao' })" }
+& $round659 1 "passo 'tap a.b': tag não encontrada: a.b"
+$r = & $g63 $p659; $r = & $g63 $p659; $r = & $g63 $p659
+Check 'v3.65.9 L1: o next repetido 3 vezes na mesma rodada é UM disparo do QA (routed 1)' @{ Code = $r.Code; Out = "$($r.Out)`n$(& $rt659)" } 0 @('cenário: S1-F1 → /qa', 'ROUTED=1 ESC=nao', '^(?![\s\S]*formulário ao stakeholder)')
+& $round659 2 "passo 'tap a.b': tag não encontrada: a.b"
+$r = & $g63 $p659
+Check 'v3.65.9 L1: a rodada seguinte com a MESMA falha conta o 2º disparo (ainda o QA)' @{ Code = $r.Code; Out = "$($r.Out)`n$(& $rt659)" } 0 @('cenário: S1-F1 → /qa', 'ROUTED=2', '^(?![\s\S]*formulário ao stakeholder)')
+& $round659 3 "passo 'tap a.b': tag não encontrada: a.b"
+$r = & $g63 $p659; $r2 = & $g63 $p659
+Check 'v3.65.9 L1: 3ª rodada na mesma falha → Arquiteto (degrau 1), sem formulário; o next repetido reimprime o Arquiteto' @{ Code = $r.Code; Out = "$($r.Out)`n----`n$($r2.Out)`n$(& $rt659)" } 0 @('S1-F1 \(cenário\) voltou depois de 2 resoluções de /qa → /arc question \(degrau 1', 'Agent: team:architect', 'RUNLOG: S1 \| portão: S1-F1 \(cenário\) voltou', '----[\s\S]*→ /arc question \(degrau 1', 'ROUTED=3 ESC=sim', '^(?![\s\S]*formulário ao stakeholder)')
+& $round659 4 "passo 'tap a.b': tag não encontrada: a.b"
+$r = & $g63 $p659
+Check 'v3.65.9 L1: voltou na mesma falha DEPOIS do Arquiteto → aí sim o formulário' $r 0 @('formulário ao stakeholder — S1-F1 \(cenário\) .*e da decisão do Arquiteto \(degrau 1\)')
+& $round659 5 "passo 'tap c.d': tag não encontrada: c.d"
+$r = & $g63 $p659
+Check 'v3.65.9 L1: a falha mudou de passo (progresso) → a conta volta a 1 e o achado volta ao QA, sem formulário' @{ Code = $r.Code; Out = "$($r.Out)`n$(& $rt659)" } 0 @('cenário: S1-F1 → /qa', 'ROUTED=1 ESC=nao', '^(?![\s\S]*formulário ao stakeholder)')
+
 # ----- v3.65.5 · sprint 6 do projeto piloto (21/11): rodadas focadas sem nada mudado e a metade do teste sem dono -----
 # S1-F1 (design) resolvido como code, com a parte do .scn ainda não aplicada; S1-F2 (scenario) com um "done" que a rodada
 # seguinte desmentiu; S1-F3 (code) com a Q-S1 fechada e já julgada. As resoluções são de antes do validation.md.

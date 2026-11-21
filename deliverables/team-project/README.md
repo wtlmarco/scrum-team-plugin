@@ -84,16 +84,17 @@ O registro de execução é organizado **por sprint**, não por papel (R25): a p
 
 ## As três classes de reconciliação
 
-O `/team update` compara a versão instalada com a da origem e, quando há versão nova, **também confere o que foi instanciado a partir destes modelos** ([`rituals/team-update.md`](../../rituals/team-update.md) §8). Cada linha do manifesto cai numa das três:
+O `/team update` compara a versão instalada com a da origem e, quando há versão nova, **também confere o que foi instanciado a partir destes modelos** ([`rituals/team-update.md`](../../rituals/team-update.md) §8). Cada linha do manifesto cai numa destas classes:
 
 | Classe | O que é | O que o `update` faz |
 |---|---|---|
 | **Cópia literal** | O arquivo no projeto **é** o modelo, sem conteúdo local (`how-to.md`) | Substitui, avisando |
-| **Estrutura + conteúdo local** | Cabeçalho, colunas e seções vêm do modelo; as linhas são do projeto (`sprint-backlog`, `product-backlog`, `evidence`, `consumption`, `guards.json`, `README` §8) | **Mostra o delta da estrutura e pede aprovação** — nunca sobrescreve conteúdo do projeto |
+| **Estrutura + conteúdo local** | Cabeçalho, colunas e seções vêm do modelo; as linhas são do projeto (`sprint-backlog`, `product-backlog`, `evidence`, `consumption`, `guards.json`) | **Mostra o delta da estrutura e pede aprovação** — nunca sobrescreve conteúdo do projeto |
+| **Texto do plugin** (v3.65.9) | Bloco fixo do modelo dentro de um arquivo do projeto (`README` §8 "Como usar o time neste projeto") e valor que o próprio plugin gravou com o padrão dele (`readyExpr` com `readyState === 'complete'`, passo 7p) | **Igual ao que o plugin escreveu: troca sem formulário, avisando em uma linha.** Editado pelo time: conflito, mostra os dois lados |
 | **Só conteúdo local** | O modelo só disse o que escrever, uma vez (os seis `context.md`) | Não toca; lista como "conferir manualmente" se o modelo mudou muito |
 | **Histórico imutável** | Registro de um sprint **já fechado** (`sprints/<n>/` encerrado) | **Não toca, nunca** — nem estrutura. Modelo novo vale do próximo sprint em diante |
 
-**Regra que sustenta as quatro:** o `update` **nunca apaga conteúdo escrito pelo time** sem o stakeholder aprovar. Delta de estrutura é proposta, não aplicação — e sobre sprint fechado nem proposta existe.
+**Regra que sustenta todas:** o `update` **nunca apaga conteúdo escrito pelo time** sem o stakeholder aprovar (o texto do plugin não é do time). Delta de estrutura é proposta, não aplicação — e sobre sprint fechado nem proposta existe.
 
 ## Como manter este manifesto
 

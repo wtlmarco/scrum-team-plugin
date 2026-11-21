@@ -282,6 +282,14 @@ $cases = @(
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = "powershell -NoProfile -File `"$root\scripts\checks\detach.ps1`" -Dir .team-project/operator/1/T-001-x -Command `"npm test; git push`"" } } },
     @{ Name = 'G14 v3.62.2: detach.ps1 sem -Command entre aspas: nega'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = "powershell -NoProfile -File `"$root\scripts\checks\detach.ps1`" -Dir .team-project/operator/1/T-001-x -Command npm" } } },
+    # v3.65.9 (garden S6, 19:18): o operator passou o script do plugin ao detach com aspas escapadas por crase e o caminho numa
+    # variável do comando de fora; a G14 partia o texto na primeira `" e o operator rodou o quality direto (órfão).
+    @{ Name = 'G14 v3.65.9: detach.ps1 com script do plugin entre aspas escapadas (`") e $root do comando de fora: liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = ('$root = "' + ($root -replace '\\', '/') + '"; powershell -NoProfile -File "$root/scripts/checks/detach.ps1" -Dir .team-project/operator/1/S1-quality -Command "powershell -NoProfile -File `"$root/scripts/checks/quality.ps1`" -Id S1"') } } },
+    @{ Name = 'G14 v3.65.9: detach.ps1 com aspas escapadas e comando de dentro fora da lista: nega pelo trecho de dentro'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'git push'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = ('powershell -NoProfile -File "' + ($root -replace '\\', '/') + '/scripts/checks/detach.ps1" -Dir .team-project/operator/1/x -Command "git push `"origin`" main"') } } },
+    @{ Name = 'G14 v3.65.9: detach.ps1 com script FORA do plugin entre aspas escapadas: nega'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G14'
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = ('powershell -NoProfile -File "' + ($root -replace '\\', '/') + '/scripts/checks/detach.ps1" -Dir .team-project/operator/1/x -Command "powershell -File `"C:/temp/evil.ps1`""') } } },
     @{ Name = 'G14 v3.62.2: detach.ps1 -Kill: liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = "powershell -NoProfile -File `"$root\scripts\checks\detach.ps1`" -Dir .team-project/operator/1/T-001-x -Kill" } } },
     @{ Name = 'G14 dev Edit no escopo liberado'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
