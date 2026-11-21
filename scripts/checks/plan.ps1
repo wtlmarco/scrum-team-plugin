@@ -413,10 +413,18 @@ try {
     elseif ($extScripts.Count) { Add-Result 'aceite' 'falhou' "**Aceite:** $($pa.Mode) e os cenários se provam por $($extScripts -join ', ') — é o aceite por outro executor, fora da trava do alvo, do progresso e da prova do accept, e o close exige o do accept.ps1; declare ``**Aceite:** comando — ``<comando com {scn} e {out}>```` e o accept.ps1 roda o executor (``não roda`` é só para cenário provado pelos testes do plano; ``roda`` é o executor do plugin) (regra 34)" }
     elseif ($pa -and $pa.Mode -eq 'outra') { $av = ($pa.Raw -replace '\s+', ' ').Trim(); if ($av.Length -gt 90) { $av = $av.Substring(0, 90) + '…' }; Add-Result 'aceite' 'falhou' "**Aceite:** ""$av"" fora das três formas que o cartão, o accept e o close leem: ``roda — <quem roda>`` (o executor do plugin), ``não roda — <motivo>`` (cenários pelos testes do plano) ou ``comando — ``<cmd com {scn}>```` (o executor do projeto, pelo accept.ps1) (regra 34)" }
     elseif ($acLine.Success) { $av = ($acLine.Value -replace '\*\*', '' -replace '\s+', ' ').Trim(); if ($av.Length -gt 90) { $av = $av.Substring(0, 90) + '…' }; Add-Result 'aceite' 'ok' "linha do cabeçalho: $av" }
-    elseif ($scnNone -or -not $waive.Count) { Add-Result 'aceite' 'n-a' $(if ($scnNone) { '**Cenários:** nenhum' } else { 'o plano não dispensa o aceite' }) }
-    else {
+    elseif ($scnNone) { Add-Result 'aceite' 'n-a' '**Cenários:** nenhum' }
+    elseif ($waive.Count) {
         $w0 = ($waive[0].Trim() -replace '\s+', ' '); if ($w0.Length -gt 100) { $w0 = $w0.Substring(0, 100) + '…' }
         Add-Result 'aceite' 'falhou' "o plano dispensa o aceite fora da linha **Aceite:** ($($waive.Count) linha(s), ex.: ""$w0"") — declare ``**Aceite:** não roda — <motivo>`` no cabeçalho (ou ``**Aceite:** roda — <quem roda>``, se o aceite roda e a frase fala de outra coisa): é a única linha que o cartão, o start e o next leem (regra 34)"
+    }
+    else {
+        # v3.65.4: a decisão do sprint que chega a esta Task (citada em **Decisões:** ou com a Task no **Vale para**) e manda
+        # provar os cenários por script do projeto, ou dispensa o aceite, sem a linha **Aceite:** no plano — o close exigiria o
+        # accept.ps1 padrão e a Task travaria no portão, como a Q-S6g do garden com a D-31.
+        $dh = @(Get-AcceptDecisionHits $Root $path $text)
+        if ($dh.Count) { Add-Result 'aceite' 'falhou' ("o plano não tem a linha **Aceite:** e " + ($dh -join '; ') + " — a decisão não chega ao cartão, ao accept nem ao close; declare no cabeçalho ``**Aceite:** comando — ``<cmd com {scn} e {out}>```` (executor do projeto), ``**Aceite:** não roda — <motivo>`` (testes do plano) ou ``**Aceite:** roda — <quem roda>``, se a decisão não vale para esta Task (regra 34)") }
+        else { Add-Result 'aceite' 'n-a' 'o plano não dispensa o aceite' }
     }
 
     # ---------- 35 · como a Task se verifica (v3.57.3, decisão do stakeholder de 10/11) ----------
