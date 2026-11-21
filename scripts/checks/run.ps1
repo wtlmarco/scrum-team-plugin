@@ -64,7 +64,8 @@ $utf8 = New-Object System.Text.UTF8Encoding($false)
 $todoMk = [char]::ConvertFromUtf32(0x2B1C); $redMk = [char]::ConvertFromUtf32(0x1F534)
 $plugin = '${CLAUDE_PLUGIN_ROOT}/scripts/checks'
 
-function Out([string]$s) { [Console]::Out.WriteLine($s) }
+function Out([string]$s) { if ($s.StartsWith('PRÓXIMA AÇÃO:')) { $script:LastAction = $s.Substring(13).Trim() }; [Console]::Out.WriteLine($s) }
+$script:InNext = $false; $script:LastAction = ''
 
 # v3.59.0 (pedido do stakeholder, 14/11/2026: frases simples e diretas, sem termo técnico): cada PRÓXIMA AÇÃO do next vem
 # com a linha PARA O STAKEHOLDER: — o que está acontecendo, em palavras de negócio, com o nome da parte (plain.ps1) e o
@@ -205,6 +206,10 @@ function Get-AgentLine([string]$Role) {
     $model = if ($mc.State -eq 'ok' -and $mc.Models.ContainsKey($Role)) { "model `"$($mc.Models[$Role])`" (models.json)" } else { "model do agente ($dm)" }
     # v3.52.2 (note.md item 2, C1): o Agent não tem mais run_in_background — toda chamada volta "lançado" e o resultado
     # chega por aviso. Quem dispara encerra o turno e é acordado pelo aviso; ninguém espera com Start-Sleep nem sonda o disco.
+    # v3.65.7 (garden S6, 7:56 → 8:34): o next que manda disparar grava a ação pendente (.next-verdict "agir"). A G20 barra o
+    # fim de turno com ela e sem agente desta sessão em voo — no portão não há Task elegível, e a sessão que só escreveu o aviso
+    # parava sem ninguém ver. Uma decisão "esperar" ou "reiniciar" gravada depois, no mesmo next, a substitui.
+    if ($script:InNext) { Set-NextVerdict $Root 'agir' '' ("disparar team:$Role" + $(if ($script:LastAction) { " — $($script:LastAction)" } else { '' })) }
     return "Agent: subagent_type `"team:$Role`" · $model — dispare e encerre o turno; o aviso traz a volta"
 }
 # Contador de instâncias do dev por Task e bloco (v3.52.2, note.md item 14): sprints/<n>/handoff/<ID>.json. "fail" conta só
@@ -1434,6 +1439,7 @@ try {
     # ---------- next ----------
     # v3.53.5: a decisão de esperar vale só até o next seguinte — ele a regrava se a espera continua (G20 lê .next-verdict).
     Set-NextVerdict $Root ''
+    $script:InNext = $true   # v3.65.7: daqui em diante, toda linha de disparo grava a ação pendente (Get-AgentLine)
     $script:RunNews = Get-RunNews   # v3.59.0: o que ficou pronto ou parou desde o next anterior abre a fala ao stakeholder
     # v3.51.4: o run parou por limite de uso da conta (.usage-limit, gravado pela G16 ou pelo Stop) — diz o motivo e segue.
     $lim = Join-Path $tp '.usage-limit'
