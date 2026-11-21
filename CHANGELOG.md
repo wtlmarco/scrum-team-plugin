@@ -14,7 +14,7 @@
 ---
 
 ## v3.65.7 — 2026-11-21
-**Branch:** `fix/v3.65.7`, empilhada sobre `fix/v3.65.6` (`2aec342`, ainda não mesclada)
+**Branch:** `fix/v3.65.7` a partir de `fix/v3.65.6` (`2aec342`, mesclada em `develop` pelo PR #205)
 Origem: portão do sprint 6 do garden. Às 7:56, o `run.ps1 next` mandou o operator medir de novo o aceite com `-Resume`. A sessão escreveu o aviso ao stakeholder ("Revisão final: medindo de novo…") e encerrou o turno sem disparar o agente. O time ficou parado até 8:34, quando o stakeholder perguntou "como estamos". A G20 existe para barrar esse fim de turno, mas só olhava a fila de Tasks. No portão, todas estavam ✅: sem Task elegível, ela liberava calada, sem linha no `guards.log`.
 **A ação pendente do `next`** (`run.ps1`, `Get-AgentLine`): o `next` que imprime a linha `Agent:` grava `.team-project/.next-verdict` com a ação `agir` e o motivo `disparar team:<papel> — <PRÓXIMA AÇÃO>`. O ponto é único e cobre todos os disparos do `next`: fila, portão, consolidação e Review. Uma decisão "esperar" ou "reiniciar" gravada depois, no mesmo `next`, a substitui. O `next` seguinte apaga a decisão no começo, como antes.
 **A G20 lê a ação** (`hooks/stop.ps1`): com `agir` e nenhum agente desta sessão em voo, ela barra o fim do turno, com ou sem Task elegível. A mensagem traz a ação: dispare o agente que o `next` imprimiu ou, se ele já voltou, rode o `next`. A rota ao stakeholder (`.ask-route`) gravada no mesmo instante da ação ou depois dela libera. O alívio de 3 bloqueios em 10 min continua valendo. A liberação por "nenhuma Task elegível" passa a deixar linha no `guards.log`.
