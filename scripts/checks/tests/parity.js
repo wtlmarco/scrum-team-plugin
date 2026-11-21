@@ -5,12 +5,14 @@
 //         (Edge ou Chrome, headless) com toque emulado e tela de celular: é o caminho do alvo android com locator "cdp", sem
 //         emulador;
 //   web — o targets/web-runner.js (Playwright). Sem o Playwright resolvível, sai NÃO EXECUTADO com o motivo — nunca verde.
-// Uso: node parity.js [--bench N]   (PARITY_BROWSER = caminho do navegador; PARITY_PLAYWRIGHT_ROOT = pasta com o playwright)
+// Uso: node parity.js [--bench N | --ready]   (PARITY_BROWSER = caminho do navegador; PARITY_PLAYWRIGHT_ROOT = pasta com o playwright)
+//   --ready (v3.65.6): a prontidão com um recurso de fora que nunca termina (fixtures/parity/pendente.html) — o padrão passa,
+//   o readyState 'complete' estoura o prazo com o retrato da página; e as partes do readyExpr por &&. Linhas R1..R3.
 // Saída: uma linha por cenário e o resumo; exit 0 = todos os executados batem com o esperado · 1 = algum diverge · 4 = sem navegador.
 'use strict';
 const fs = require('fs'), os = require('os'), path = require('path'), cp = require('child_process'), url = require('url');
 const { openSession, closeSession } = require('../targets/android-cdp');
-const { runStep, SCREEN_VERBS, sleep } = require('../targets/cdp-verbs');
+const { runStep, SCREEN_VERBS, sleep, splitAnd } = require('../targets/cdp-verbs');
 
 const here = __dirname, fx = path.join(here, 'fixtures', 'parity');
 const page = url.pathToFileURL(path.join(fx, 'index.html')).href;
@@ -82,6 +84,21 @@ function runWeb(scs) {
   if (!exe) { console.log('paridade: NÃO EXECUTADO — nenhum Edge ou Chrome (PARITY_BROWSER)'); process.exit(4); }
   const b = await startBrowser(exe); let bad = 0;
   try {
+    if (process.argv.includes('--ready')) {
+      const id = await newTarget(b.port);
+      const s = await openSession({ port: b.port, targetId: id, attr: 'id', callTimeoutMs: 10000, readyTimeoutSec: 3 });
+      try {
+        // Segura todo pedido a fontes.pendente.test: o Fetch pausa e o teste nunca o continua (um pedido que não termina).
+        await s.call('Fetch.enable', { patterns: [{ urlPattern: '*pendente.test*' }] });
+        await s.call('Page.navigate', { url: url.pathToFileURL(path.join(fx, 'pendente.html')).href }); await sleep(300);
+        try { await runStep(s, 'ready', ''); console.log('R1=ok'); } catch (e) { console.log(`R1=falhou ${e.message}`); }
+        s.cfg.readyExpr = "document.readyState === 'complete' && !!document.getElementById('p.app')";
+        try { await runStep(s, 'ready', ''); console.log('R2=pronto'); } catch (e) { console.log(`R2=${e.message}`); }
+      } finally { closeSession(s); await closeTarget(b.port, id); }
+      const cases = ["a && b", "a", "f(x && y) && '&&' && [1 && 2]", "a && (b || c) && \"x && y\"", "a &&"];
+      console.log('R3=' + cases.map((c) => JSON.stringify(splitAnd(c))).join(' | '));
+      return;
+    }
     if (bench) {
       // Sobrecarga do passo pelo caminho do alvo android: um processo do Node por passo (abre o /json e o WebSocket e fecha).
       const id = await newTarget(b.port); const s0 = await openSession({ port: b.port, targetId: id }); await s0.call('Page.navigate', { url: page }); await sleep(800); closeSession(s0);

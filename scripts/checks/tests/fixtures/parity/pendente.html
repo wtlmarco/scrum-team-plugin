@@ -1,0 +1,16 @@
+<!doctype html>
+<!-- v3.65.6: página com uma fonte de outra origem que o teste segura (Fetch) e nunca entrega, como a fonte do Google no
+     emulador do garden. O DOM está lido e o app "pronto" (p.app), mas o readyState não chega a 'complete'. -->
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>pendente</title>
+  <style>
+    @font-face { font-family: 'Letra Pendente'; src: url('https://fontes.pendente.test/letra.woff2') format('woff2'); }
+    p.app { font-family: 'Letra Pendente', sans-serif; }
+  </style>
+</head>
+<body>
+  <p class="app" id="p.app">app pronto</p>
+</body>
+</html>

@@ -16,6 +16,56 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const err = (kind, msg) => { const e = new Error(msg); e.kind = kind; return e; };
 const split = (rest) => { const i = rest.indexOf('='); return i < 0 ? [rest.trim(), ''] : [rest.slice(0, i).trim(), rest.slice(i + 1).trim()]; };
 const SCREEN_VERBS = ['tap', 'type', 'select', 'slider', 'assert-text', 'assert-contains', 'assert-exists', 'assert-absent', 'assert-checked', 'assert-count', 'assert-order'];
+// Prontidão padrão (v3.65.6): o DOM lido. 'complete' esperava todo recurso da página — fonte, imagem, endereço de fora — e um
+// pedido que não termina (garden S6: fonts.gstatic.com no emulador) segurava a abertura com o app já na tela. Quem diz que o app
+// está pronto é o sinal do próprio app, no readyExpr do projeto.
+const DEFAULT_READY = "document.readyState !== 'loading'";
+
+// As partes de um readyExpr ligadas por && no nível de fora (fora de parênteses, colchetes, chaves e textos). Uma parte só = [].
+function splitAnd(expr) {
+  const parts = []; let depth = 0, q = '', start = 0;
+  for (let i = 0; i < expr.length; i++) {
+    const c = expr[i];
+    if (q) { if (c === '\\') i++; else if (c === q) q = ''; continue; }
+    if (c === "'" || c === '"' || c === '`') q = c;
+    else if ('([{'.includes(c)) depth++;
+    else if (')]}'.includes(c)) depth--;
+    else if (c === '&' && expr[i + 1] === '&' && depth === 0) { parts.push(expr.slice(start, i).trim()); start = i + 2; i++; }
+  }
+  parts.push(expr.slice(start).trim());
+  return parts.length > 1 && parts.every(Boolean) ? parts : [];
+}
+
+// Retrato da página quando a prontidão estoura o prazo: a parte do readyExpr que ficou falsa, o readyState, as fontes ainda
+// carregando e os endereços de outra origem que não terminaram. Diz se a espera é do app ou de um recurso que não chega.
+async function readyDiag(s, ex) {
+  const parts = splitAnd(ex);
+  const src = `(() => {
+    const o = { href: location.href, title: document.title, rs: document.readyState, fonts: document.fonts ? document.fonts.status : '', parts: [], families: [], hosts: [] };
+    for (const p of ${JSON.stringify(parts)}) { let v; try { v = !!(0, eval)(p); } catch (e) { v = 'erro: ' + String(e && e.message || e).split('\\n')[0]; } o.parts.push(v); }
+    const urls = [];
+    if (document.fonts) {
+      const loading = new Set(); document.fonts.forEach((f) => { if (f.status === 'loading') loading.add(f.family.replace(/["']/g, '')); });
+      o.families = [...loading];
+      for (const sh of document.styleSheets) { let rules; try { rules = sh.cssRules; } catch (e) { continue; }
+        for (const r of rules || []) if (r.type === 5 && loading.has(String(r.style.getPropertyValue('font-family')).replace(/["']/g, '').trim()))
+          for (const m of String(r.style.getPropertyValue('src')).matchAll(/url\\(["']?([^"')]+)/g)) urls.push(m[1]); }
+    }
+    for (const i of document.images) if (!i.complete && i.currentSrc) urls.push(i.currentSrc);
+    for (const l of document.querySelectorAll('link[rel~=stylesheet]')) if (!l.sheet && l.href) urls.push(l.href);
+    for (const u of urls) { try { const x = new URL(u, location.href); if (x.origin !== location.origin && !o.hosts.includes(x.host)) o.hosts.push(x.host); } catch (e) { /* */ } }
+    return o;
+  })()`;
+  let d = null;
+  try { const r = await s.call('Runtime.evaluate', { expression: src, returnByValue: true }); d = r.result && r.result.value; } catch (e) { /* a página não responde: fica só o prazo */ }
+  if (!d) return '';
+  const bits = [`página ${d.href} · ${d.title}`];
+  const falsas = parts.map((p, i) => [p, d.parts[i]]).filter(([, v]) => v !== true).map(([p, v]) => (typeof v === 'string' ? `${p} (${v})` : p));
+  if (falsas.length) bits.push(`falsa: ${falsas.join(' · ')}`);
+  bits.push(`readyState ${d.rs}${d.fonts ? ` · fontes ${d.fonts}` : ''}${d.families.length ? ` (${d.families.join(', ')})` : ''}`);
+  if (d.hosts.length) bits.push(`a página espera recurso de fora que não terminou: ${d.hosts.join(', ')}`);
+  return bits.join(' — ');
+}
 
 async function probe(s, op, args) {
   const pc = { attr: s.cfg.attr || 'data-testid', hiddenScopes: s.cfg.hiddenScopes || [] };
@@ -172,11 +222,11 @@ async function runStep(s, verb, rest) {
   if (verb !== 'ready') await checkFail(s);
   switch (verb) {
     case 'ready': {
-      const lim = (s.cfg.readyTimeoutSec || 30) * 1000, t0 = Date.now(); const ex = s.cfg.readyExpr || "document.readyState === 'complete'";
+      const lim = (s.cfg.readyTimeoutSec || 30) * 1000, t0 = Date.now(); const ex = s.cfg.readyExpr || DEFAULT_READY;
       for (;;) {
         await checkFail(s);
         if (await evalBool(s, ex)) return;
-        if (Date.now() - t0 > lim) { const u = await s.call('Runtime.evaluate', { expression: 'location.href + " · " + document.title', returnByValue: true }); throw new Error(`o app não ficou pronto em ${lim / 1000} s (readyExpr: ${ex}) — página ${u.result.value}`); }
+        if (Date.now() - t0 > lim) { const d = await readyDiag(s, ex); throw new Error(`o app não ficou pronto em ${lim / 1000} s (readyExpr: ${ex})${d ? ` — ${d}` : ''}`); }
         await sleep(400);
       }
     }
@@ -244,4 +294,4 @@ async function runStep(s, verb, rest) {
   }
 }
 
-module.exports = { runStep, probe, SCREEN_VERBS, sleep, err };
+module.exports = { runStep, probe, SCREEN_VERBS, sleep, err, splitAnd, DEFAULT_READY };
