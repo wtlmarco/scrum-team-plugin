@@ -13,6 +13,15 @@
 
 ---
 
+## v3.65.4 — 2026-11-20
+**Branch:** `fix/v3.65.4` a partir de `develop` (`fb9aa45`, v3.65.3 mesclada)
+Origem: a brecha que a v3.65.3 deixou na regra 34. Ela confere a própria linha `**Aceite:**`. Um plano **sem** a linha, com cenários, que cita uma decisão do sprint mandando provar por script do projeto ficava calado, e o `close.ps1` exigiria o `accept.ps1` padrão. A Q-S6g do garden só não caiu aqui porque tinha a linha.
+**A decisão do sprint que muda o aceite precisa da linha no plano** (`plan.ps1`, regra 34; `lib.ps1`, `Get-AcceptDecisionHits`): o plano sem `**Aceite:**`, com cenários e sem frase de dispensa no próprio texto, agora é conferido contra as decisões do sprint que chegam a ele. Chegam as citadas em **Decisões:** e as que têm a Task no **Vale para**; um "todas" sozinho não basta, porque é regra condicional. A decisão conta quando prova os cenários por um script que não é do plugin, com frase de prova no título ou no corpo ("se provam pelo", "provado pelo", "prova pelo", "prova cruzada", "executor do projeto"), ou quando dispensa o aceite. Nesse caso o plano reprova e aponta as três formas da linha. Medido no garden: nas decisões dos sprints 5 e 6, o critério pega a D-5 e a D-24 do S5 e a D-31 do S6, todas de prova por script do projeto, e nenhuma decisão que só cita o `capturar.mjs`, o `karma.conf.js` ou um script do plugin. Nos 46 planos sem a linha e com cenários, reprova só a T-042 do sprint 5, que cita a D-5 e a D-24 e é o mesmo caso da Q-S6g, um sprint antes.
+Textos: `implementation-plan.md` (regra 34) e `technical-decision.md`.
+Testes: 3 casos da regra 34 (decisão citada de prova por script e decisão com a Task no Vale para que dispensa o aceite: reprova; com `**Aceite:** comando`: ok; decisão "todas" não citada e decisão que só cita o `accept.ps1`: n-a).
+
+---
+
 ## v3.65.3 — 2026-11-20
 **Branch:** `fix/v3.65.3` a partir de `develop` (`c79d91c`, v3.65.2 mesclada)
 Origem: SC-161, SC-122 e SC-147 do aceite do sprint 6 do garden. As três falhas foram dadas como defeito do app ("sem campo editável" e "a rolagem não o trouxe à tela"), com o elemento visível na captura. O portão travou a Task porque a decisão de provar por outro caminho não estava no plano.
