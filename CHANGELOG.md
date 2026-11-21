@@ -13,6 +13,18 @@
 
 ---
 
+## v3.65.5 — 2026-11-21
+**Branch:** `fix/v3.65.5` a partir de `develop` (`55970c1`, v3.65.4 mesclada)
+Origem: portão do sprint 6 do garden. Três rodadas focadas (8, 9 e 10) julgaram os mesmos três achados (S6-F7, S6-F10, S6-F15) sem que nenhum `.scn` mudasse, e a sessão só parou na terceira, para perguntar ao stakeholder. Os ajustes dos cenários estavam descritos nas resoluções e no `validation.md`, mas nenhuma rota do portão os mandava aplicar.
+**A resolução vale até a rodada seguinte** (`gate.ps1`): o achado que segue `open` num `validation.md` mais novo que o `gate/<ID>.md` volta ao dono. A resolução anterior vai no prompt ("não se sustentou… corrija de outro jeito"), e o disparo conta para o limite de 2, que leva ao stakeholder. Antes, o `done` do S6-F7 (o `open` da rota repetido com `wait 3`), desmentido pela rodada 9, segurava o achado para sempre.
+**A metade do teste depois da `Q-S`** (`gate.ps1`; `lib.ps1`, `Get-FindingScenarioPart`): a resolução `code` que também muda o `.scn` passa a ter a linha `**Scenario:** <SC e o que muda>`. Sem ela, conta o texto que manda o QA mexer num `SC-<n>` ou num `.scn`, como no S6-F10 ("o QA troca nos SC-264 e SC-265…") e no S6-F15 ("depois o QA acrescenta ao SC-161…"). Com as `Q-S` que cobrem o achado fechadas, o QA aplica essa parte antes da rodada nova e grava `**Scenario applied:**`. Enquanto ela falta, a resolução não conta como desmentida: a rodada testou só a metade da correção.
+**Sem mudança, sem rodada** (`gate.ps1`): "Q-S fechada" só pede rodada focada uma vez. O `gate.json` guarda em `judged.qs` as `Q-S` que cada rodada já julgou; sem a lista (o `gate.json` de antes desta versão), vale o `delivery/<Q-S>.md` mais velho que o `validation.md`. Antes, toda `Q-S` ✅ que cobria um achado aberto contava como novidade em toda chamada do `next`, e foi isso que abriu as rodadas 9 e 10. O achado `code` que segue aberto depois da rodada que já julgou a `Q-S` vai a uma correção nova.
+Medido no garden (só leitura): o S6-F7 volta ao QA com a resolução desmentida; o S6-F10 (`Q-S6f`) e o S6-F15 (`Q-S6h`) vão à rota da metade do teste.
+Textos: `sprint-validation.md` (resolução do dono) e `sprint-run.md` (passos 5 e 6 do portão).
+Testes: 7 casos. Cobrem o `done` desmentido que volta ao QA, a metade do `.scn` pendente que vai ao QA antes da rodada, o `code` puro com a `Q-S` já julgada que pede correção nova, o `code` com o `.scn` aplicado e desmentido que volta ao Arquiteto, a `Q-S` fora e dentro de `judged.qs`, e o `gate.json` sem `judged.qs` com o `delivery` antigo.
+
+---
+
 ## v3.65.4 — 2026-11-20
 **Branch:** `fix/v3.65.4` a partir de `develop` (`fb9aa45`, v3.65.3 mesclada)
 Origem: a brecha que a v3.65.3 deixou na regra 34. Ela confere a própria linha `**Aceite:**`. Um plano **sem** a linha, com cenários, que cita uma decisão do sprint mandando provar por script do projeto ficava calado, e o `close.ps1` exigiria o `accept.ps1` padrão. A Q-S6g do garden só não caiu aqui porque tinha a linha.

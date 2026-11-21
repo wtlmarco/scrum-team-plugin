@@ -3033,6 +3033,27 @@ function Get-FindingResolution([string]$S, [string]$Id) {
     if (-not $m.Success) { return @{ value = ''; text = ''; at = (Get-Item -LiteralPath $p).LastWriteTime } }
     return @{ value = $m.Groups[1].Value.ToLowerInvariant(); text = $m.Groups[2].Value.Trim(); at = (Get-Item -LiteralPath $p).LastWriteTime }
 }
+# v3.65.5 (sprint 6 do projeto piloto, 21/11): a parte do cenário de uma resolução `code` — o app muda na Q-S<n> e DEPOIS o
+# QA ajusta o .scn. No piloto, o S6-F10 e o S6-F15 diziam "o QA troca nos SC-264…" e "depois o QA acrescenta ao SC-161…",
+# a Q-S fechou e ninguém aplicou a metade do teste. Fonte: a linha **Scenario:** <SC e o que muda> do gate/<ID>.md; sem ela,
+# o texto da resolução que manda o QA mexer num SC-<n> ou num .scn. Aplicada = a linha **Scenario applied:** que o QA grava.
+# @{ need; text; applied } — need: há parte do cenário e ela ainda não foi aplicada.
+function Get-FindingScenarioPart([string]$S, [string]$Id) {
+    $out = @{ need = $false; text = ''; applied = $false }
+    $p = Join-Path $S "gate/$Id.md"
+    if (-not (Test-Path -LiteralPath $p)) { return $out }
+    $t = Read-Text $p
+    $r = Get-FindingResolution $S $Id
+    if (-not $r -or $r.value -ne 'code') { return $out }
+    $out.applied = [regex]::IsMatch($t, '(?im)^\*\*Scenario applied:\*\*')
+    $ln = [regex]::Match($t, '(?im)^\*\*Scenario:\*\*\s*([^\r\n]*)')
+    if ($ln.Success) {
+        $v = $ln.Groups[1].Value.Trim()
+        if ($v -and $v -notmatch '^(?i)(nenhum|nenhuma|none|n/?a|—|-)(\b|\s|$)') { $out.text = $v }
+    } elseif ($r.text -match '(?i)\bQA\b[^.;]{0,120}?(SC-\d+|\.scn\b)') { $out.text = $r.text }
+    $out.need = [bool]$out.text -and -not $out.applied
+    return $out
+}
 # Prova guardada (decisão do stakeholder de 17/11): result.json, result.md, progress.json e as capturas (.png de shots/ e de
 # cmd/ do executor do projeto) de uma pasta de medição para a pasta do sprint, sem os logs brutos. Devolve quantos arquivos.
 function Copy-Proof([string]$Src, [string]$Dst) {
