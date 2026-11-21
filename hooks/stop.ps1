@@ -5,6 +5,7 @@
 # também não é parada: a notificação reabre a sessão (.active-agents, gravado pela PreToolUse). v3.52.2 (note.md item 2): todo
 # agente é assíncrono — vale qualquer agente desta sessão, sem olhar "bg".
 # v3.53.5: a decisão "esperar" do run.ps1 next (.next-verdict, 30 min) também libera; a Task em construção é a citada.
+# v3.65.7: a decisão "agir" (o next mandou disparar um agente) barra sem agente em voo, com ou sem Task elegível.
 # Medido no piloto: 4 paradas fora do contrato e ~24,5 h de fila parada. Exit 2 devolve o motivo à sessão, que continua.
 # Qualquer exceção → exit 1 (falha aberta, D5). Cobertura e limites: hooks/COVERAGE.md.
 
@@ -74,6 +75,18 @@ try {
         if ($lastAsst.Count -and ($lastAsst[0] -match '<synthetic>' -or $lastAsst[0] -match '"isApiErrorMessage":true')) { Write-GuardLog $projectDir 'G20' $hookInput '' 'liberado: o turno acabou em erro de API (resposta sintética)'; exit 0 }
         # v3.65.0 (A4-09): saiu o ramo do "toque de cache" (CronCreate), retirado na v3.52 — nada mais gera esse turno.
     }
+    # v3.65.7 (garden S6: o next mandou o operator medir às 7:56, a sessão só escreveu o aviso e o time ficou parado até 8:34):
+    # o next que imprime um disparo grava a ação pendente (.next-verdict "agir"). Sem agente desta sessão em voo (já liberado
+    # acima), o fim de turno é barrado em qualquer fase — portão, consolidação, Review —, não só com Task elegível no quadro.
+    # O agente que voltou também não libera: o passo seguinte é o run.ps1 next, que regrava a decisão. A rota ao stakeholder
+    # gravada depois da ação (.ask-route) libera: a decisão é dele.
+    if ($null -ne $nv -and [string]$nv.acao -eq 'agir') {
+        $ar = Get-Marker $projectDir '.ask-route'
+        if ($null -ne $ar -and [string]$ar.at -ge [string]$nv.at) { Write-GuardLog $projectDir 'G20' $hookInput ([string]$ar.task) "liberado: a rota ao stakeholder ($([string]$ar.rota)) veio depois da ação pendente"; exit 0 }
+        Write-GuardLog $projectDir 'G20' $hookInput ([string]$nv.task) "bloqueio: ação pendente do run.ps1 next sem agente em voo ($([string]$nv.motivo))"
+        [Console]::Error.WriteLine("[G20] O sprint run está em andamento (.active-run, sprint $([string]$run.id)) e o run.ps1 next deixou uma ação pendente: $([string]$nv.motivo). Nenhum agente desta sessão está em voo, então encerrar o turno aqui deixa o time parado. Se o agente ainda não foi disparado, dispare-o agora com o prompt que o next imprimiu e encerre o turno (o aviso reabre a sessão). Se ele já voltou, rode run.ps1 next e faça a PRÓXIMA AÇÃO que ele imprimir. Só encerre por parada legítima (sprint-run.md §Ordem da fila): fim da fila, bloqueio sem elegível, pré-condição falha, interrupção ou pausa pedida pelo stakeholder — nesses casos apague o .active-run antes.")
+        exit 2
+    }
 
     # Task elegível: ⬜ (ou 🟦/🟨/🟪 em voo) com as dependências todas ✅.
     $board = Join-Path $tp "sprints/$([string]$run.id)/sprint-backlog.md"
@@ -97,7 +110,7 @@ try {
     }
     $closed = @($rows | Where-Object { $_.Cell.Contains($done) } | ForEach-Object { $_.Id })
     $eligible = @($rows | Where-Object { $c = $_.Cell; ($open | Where-Object { $c.Contains($_) }).Count -gt 0 -and @($_.Deps | Where-Object { $closed -notcontains $_ }).Count -eq 0 })
-    if (-not $eligible.Count) { exit 0 }
+    if (-not $eligible.Count) { Write-GuardLog $projectDir 'G20' $hookInput '' 'liberado: nenhuma Task elegível no quadro e nenhuma ação pendente do next'; exit 0 }
     $t = $eligible[0]
     # v3.53.5: a Task em construção (.active-task) vem antes, como no run.ps1 next — a G20 citava a T-042 (primeira do
     # quadro) enquanto o next construía a T-061.
