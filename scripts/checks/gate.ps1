@@ -50,7 +50,42 @@ function Invoke-GateStep {
     if ($aEnv -and $diag -and $diag.Verdict -in 'APP', 'PLANO') { $aEnv = '' }
     # v3.65.10: o accept recusou o app do aparelho (de antes do código) — a rodada não é medição.
     $aStale = if ($hasTarget -and $aj -and $aj.PSObject.Properties['staleApp'] -and $aj.staleApp) { [string]$aj.staleApp } else { '' }
-    $aFresh = (-not $hasTarget) -or ($aj -and (& $sameBase $aj) -and $aScnOk -and -not $aEnv -and -not $aCfg -and -not $aStale)
+    # v3.65.11 (garden S6, 21/11 21:13 → 22/11 02:21): o aceite do portão rodou com o app 731dfab5, de antes da correção da
+    # Q-S6h. As correções Q-S6i, j e k não mudaram a produção (prod f564a31 nas quatro rodadas) e cada uma provou o SC-161 com o
+    # app novo (eb971aea). O portão só media de novo quando a produção mudava, e o QA julgou a mesma rodada das 21:13 três vezes,
+    # com três correções inúteis. Com a MESMA produção, uma correção fechada que passou um cenário que falhou no aceite do portão:
+    #   · app diferente, a correção mais nova → a medição é velha: o operator mede de novo (aBehind), sem correção nova;
+    #   · app diferente, o portão mais novo → o aparelho voltou a um app que não é o provado: o caminho do app velho (v3.65.10);
+    #   · o mesmo app → contradição (estado, massa, oscilação, cenário): o Arquiteto decide a causa antes de outra correção.
+    $aBehind = $null; $aContra = $null
+    if ($hasTarget -and $aj -and -not $aStale -and $aj.PSObject.Properties['prod'] -and $aj.prod -and [string]$aj.app -match '^apk:[0-9a-f]') {
+        $failG = @(@($aj.results) | Where-Object { [string]$_.status -ne 'PASSOU' } | ForEach-Object { [string]$_.id })
+        $best = $null
+        foreach ($q in @($tasks | Where-Object { $_.Id -match "^Q-S$n[a-z]?$" -and $_.Mark -eq $E.Done })) {
+            $qa = & $readJ (Join-Path ((Get-VerifyDir $Root $q.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json')
+            if (-not $qa -or [string]$qa.target -ne 'android' -or [string]$qa.app -notmatch '^apk:[0-9a-f]' -or [string]$qa.prod -ne [string]$aj.prod) { continue }
+            if (($qa.PSObject.Properties['staleApp'] -and $qa.staleApp) -or $qa.environment) { continue }
+            $sc = @(@($qa.results) | Where-Object { [string]$_.status -eq 'PASSOU' -and $failG -contains [string]$_.id } | ForEach-Object { [string]$_.id })
+            if (-not $sc.Count) { continue }
+            if (-not $best -or [string]$qa.at -gt [string]$best.At) { $best = [pscustomobject]@{ Q = $q.Id; App = [string]$qa.app; At = [string]$qa.at; Sc = $sc } }
+        }
+        if ($best -and $best.App -ne [string]$aj.app) {
+            if ($best.At -gt [string]$aj.at) { $aBehind = $best }
+            else { $aStale = "o aceite do portão ($([string]$aj.at)) rodou com o app $([string]$aj.app), mas a $($best.Q) provou $($best.Sc -join ', ') com o app $($best.App), da mesma produção — o aparelho não tem o app provado" }
+        } elseif ($best) { $aContra = $best }
+    }
+    # v3.65.11 (item 2 da revisão do QA; garden S6: a Q-S6i fechou com a árvore idêntica à da medição do portão, e20d96b): a
+    # correção que fechou sem mudar nada — a árvore de agora é a da medição, e uma Q-S fechou depois dela sem rodada que a
+    # julgasse — não corrigiu nada; a falha pode não se reproduzir. O operator mede de novo uma vez por Q-S (com o mesmo app, o
+    # -Resume só repete o que falhou), em vez de o QA julgar a mesma prova.
+    $gate0 = Get-GateState $S
+    $judged0 = if ($gate0.judged -and $gate0.judged.Contains('qs')) { @(([string]$gate0.judged.qs) -split ',' | Where-Object { $_ }) } else { @() }
+    $noopDone = if ($gate0.Contains('noop') -and $gate0.noop) { @(([string]$gate0.noop) -split ',' | Where-Object { $_ }) } else { @() }
+    $aNoop = @()
+    if ($hasTarget -and $aj -and -not $aStale -and -not $aBehind -and $tree -and $aj.tree -and [string]$aj.tree -eq $tree -and $gate0.judged) {
+        $aNoop = @($tasks | Where-Object { $_.Id -match "^Q-S$n[a-z]?$" -and $_.Mark -eq $E.Done -and $judged0 -notcontains $_.Id -and $noopDone -notcontains $_.Id } | ForEach-Object { $_.Id })
+    }
+    $aFresh = (-not $hasTarget) -or ($aj -and (& $sameBase $aj) -and $aScnOk -and -not $aEnv -and -not $aCfg -and -not $aStale -and -not $aBehind -and -not $aNoop.Count)
     $gate = Get-GateState $S
     $val = Join-Path $S 'validation.md'; $vv = Get-VerdictOf $val
     # v3.52.2 (C6): ⚠️ com "**Decisão do PO:** aceito com dívida — …" passa o portão; ❌ nunca.
@@ -259,21 +294,44 @@ function Invoke-GateStep {
         if (-not $qFresh) { $cmds += "$plugin/quality.ps1 -Id $sid"; $whyM += $(if ($qj) { 'qualidade: o código de produção mudou' } else { 'qualidade: sem medição' }) }
         if (-not $aFresh) {
             $cmds += "$plugin/accept.ps1 -Task $sid -Resume"
-            $whyM += $(if (-not $aj) { 'aceite: sem medição' } elseif (-not $aScnOk) { 'aceite: os cenários mudaram' } else { 'aceite: o código de produção mudou' })
+            $whyM += $(if (-not $aj) { 'aceite: sem medição' } elseif (-not $aScnOk) { 'aceite: os cenários mudaram' } elseif ($aBehind -and (& $sameBase $aj)) { "aceite: o app mudou desde a medição — a $($aBehind.Q) provou $($aBehind.Sc -join ', ') com o app $($aBehind.App) ($($aBehind.At)), e o aceite do portão ($([string]$aj.at)) rodou com $([string]$aj.app), da mesma produção (v3.65.11)" } elseif ($aNoop.Count) { "aceite: a $($aNoop -join ', ') fechou sem mudar nada desde a medição ($([string]$aj.at)) — a falha pode não se reproduzir; medir de novo uma vez, sem QA sobre a mesma prova (v3.65.11)" } else { 'aceite: o código de produção mudou' })
+        }
+        if ($aNoop.Count -and -not $aBehind) {
+            $gate['noop'] = (@($noopDone) + @($aNoop) | Select-Object -Unique) -join ','; Set-GateState $S $gate
+            Add-RunLog $S $n $sid "portão: a $($aNoop -join ', ') fechou sem mudar nada desde a medição → a falha não se reproduz? o operator mede de novo uma vez, sem rodada do QA nem correção nova (v3.65.11)" "árvore $tree igual à da medição de $([string]$aj.at)" "accept/$n/$sid/result.json"
         }
         # v3.64.0 (item 6 C): antes de medir, o código das Tasks não fechadas vai num checkpoint (só o escopo de cada plano), e o
         # que sobrar pendente aparece — no piloto, o portão mediu as ferramentas da Q-S6d sem commit (achado S6-F4-2).
         foreach ($ot in @($tasks | Where-Object { $_.Mark -ne $E.Done })) { $ckG = Save-TaskCheckpoint $Root $S $ot 'antes da medição do portão'; if ($ckG) { Out "  $ckG" } }
         $pendG = @(Get-GitPendingFiles $Root | Where-Object { $_ -notmatch '^docs/' })
         if ($pendG.Count) { Out "  atenção: pendente sem commit no disco, que a medição inclui: $(($pendG | Select-Object -First 5) -join ', ')$(if ($pendG.Count -gt 5) { " e mais $($pendG.Count - 5)" }) — commit da dona, chore, ou guards.json → treeIgnore" }
-        if (-not $aFresh) { $adnG = Get-ApkDeclarationNote $Root; if ($adnG) { Out "  atenção (guards.json, do stakeholder; v3.65.10): $adnG" } }
+        if (-not $aFresh) {
+            $adnG = Get-ApkDeclarationNote $Root
+            # v3.65.11: com o APK sem declaração e uma pasta só de APKs no disco, a declaração se infere — a sessão a grava antes
+            # de medir, sem formulário (o valor é onde o build do projeto deixa o APK); sem ela, o aceite usa o app que estiver
+            # no aparelho e a medição pode julgar um app de antes da correção.
+            $infG = if ($adnG -and $tn -eq 'android') { Get-ApkCandidateText $Root } else { '' }
+            if ($infG) {
+                Add-RunLog $S $n $sid 'portão: APK do projeto sem declaração e inferível do disco → a sessão declara antes de medir, sem formulário (v3.65.11)' $infG '.team-project/guards.json'
+                Out "PRÓXIMA AÇÃO: validação do sprint $n — declarar o APK do projeto antes de medir o aceite (a sessão; sem formulário — v3.65.11)"
+                Say 'Antes de testar de novo, o time anota onde fica a versão do app gerada neste projeto, para o teste sempre instalar a versão certa.'
+                Out "  sem declaração: $adnG"
+                Out "  1. a sessão grava em .team-project/guards.json, dentro de targets.android, as chaves do $infG (Edit só dessas chaves; o resto do arquivo fica como está)"
+                Out "  2. diz ao stakeholder, em uma linha, o que gravou e como desfazer (apagar as duas chaves)"
+                Out "  3. depois: run.ps1 next — o aceite passa a instalar e conferir o APK do build"
+                exit 0
+            }
+            if ($adnG) { Out "  atenção (guards.json, do stakeholder; v3.65.10): $adnG" }
+        }
         Out "PRÓXIMA AÇÃO: validação do sprint $n — medir (operator, comandos longos fora das instâncias caras; C3): $($whyM -join ' · ')"
-        Say $(if (-not $qj -and -not $aj) { 'Todas as partes do sprint estão prontas. Começou a revisão final: rodando todos os testes do app.' } else { 'Revisão final: medindo de novo só o que a correção mudou.' })
+        $behindNow = $aBehind -and $qFresh -and (& $sameBase $aj) -and $aScnOk
+        Say $(if (-not $qj -and -not $aj) { 'Todas as partes do sprint estão prontas. Começou a revisão final: rodando todos os testes do app.' } elseif ($behindNow) { 'Revisão final: a correção já passou no teste dela com a versão nova do app; estou repetindo a revisão com essa mesma versão.' } elseif ($aNoop.Count -and $qFresh) { 'Revisão final: a correção terminou sem precisar mudar nada; estou repetindo o teste que falhou para ver se o problema ainda acontece.' } else { 'Revisão final: medindo de novo só o que a correção mudou.' })
+        if ($behindNow) { Add-RunLog $S $n $sid "portão: a $($aBehind.Q) provou $($aBehind.Sc -join ', ') com outro app ($($aBehind.App)) que o da medição ($([string]$aj.app)), na mesma produção → o operator mede de novo, sem correção nova nem formulário (v3.65.11)" "medição de $([string]$aj.at) × $($aBehind.Q) de $($aBehind.At)" "accept/$n/$sid/result.json" }
         Out "  $(Get-AgentLine 'operator')"
         # v3.65.9 (garden S6, 19:18): o quality passa dos 2 min da ferramenta — direto, ele ia para segundo plano e o operator
         # devolvia com a medição ainda viva. Pelo detach.ps1 ele roda em processo próprio e a chamada volta com exit 3.
         $qDet = if (-not $qFresh) { " O quality.ps1 passa de 2 min: rode-o pelo $plugin/detach.ps1 -Dir .team-project/operator/$n/$sid-quality -Command com o quality entre aspas escapadas por crase (exit 3 = ainda roda: chame o MESMO comando de novo, no mesmo turno; exit 5 'em uso por' = já há uma medição viva: devolva a linha)." } else { '' }
-        Out ("  prompt: `"Chamador: sessão $sid — Rode na raiz: " + ($cmds -join ' e ') + $(if (-not $aFresh) { ' (o -Resume reaproveita os cenários que já passaram com o mesmo app instalado e o mesmo texto de cenário)' } else { '' }) + ".$qDet Exit 4 = ambiente: rode target.ps1 -Repair uma vez e repita — salvo quando a linha do accept traz 'sinal do app' ou 'em uso por' (não repita: devolva a linha; o next leva ao diagnóstico ou ao stakeholder). Devolva os caminhos dos result.md e as linhas de resumo.`"")
+        Out ("  prompt: `"Chamador: sessão $sid — Rode na raiz: " + ($cmds -join ' e ') + $(if (-not $aFresh) { ' (o -Resume reaproveita os cenários que já passaram com o mesmo app instalado e o mesmo texto de cenário)' } else { '' }) + $(if ($aBehind) { " — o app a medir é o que a $($aBehind.Q) provou ($($aBehind.App)): com targets.android.apk declarado, o accept instala o APK do build; se o result.json novo trouxer outro app, devolva a linha (não instale à mão)" } else { '' }) + ".$qDet Exit 4 = ambiente: rode target.ps1 -Repair uma vez e repita — salvo quando a linha do accept traz 'sinal do app' ou 'em uso por' (não repita: devolva a linha; o next leva ao diagnóstico ou ao stakeholder). Devolva os caminhos dos result.md e as linhas de resumo.`"")
         Out "  depois: run.ps1 next"
         exit 0
     }
@@ -298,7 +356,7 @@ function Invoke-GateStep {
     }
     $proofTxt = ".team-project/$proofRel/quality/result.md" + $(if ($hasTarget) { " e .team-project/$proofRel/accept/result.md (com as capturas em .team-project/$proofRel/accept/)" } else { '' })
     $dpRel = if (Test-Path -LiteralPath (Join-Path $S 'device-pending.md')) { ", a lista de prova no aparelho pendente .team-project/sprints/$n/device-pending.md (cada linha: o cenário passou no accept do sprint ou fica como dívida no validation.md, com a Task e o motivo)" } else { '' }
-    $fmt = "o modelo sprint-validation (v3.63.0): a tabela ## Frentes (Front functional|measured|review|security · State pass|fail · Round · Proof) e a tabela ## Achados (ID S$n-F<k> · Task · Achado · Onde · Cause code|design|scenario|screen|requirement|environment · Owner · State open)"
+    $fmt = "o modelo sprint-validation (v3.63.0): a tabela ## Frentes (Front functional|measured|review|security · State pass|fail · Round · Proof) e a tabela ## Achados (ID S$n-F<k> · Task · Achado · Onde · Cause code|design|scenario|screen|requirement|environment · Owner · State open). Prova que não vale (o app do aceite não é o que a correção provou, ou a medição é de antes dela) é Cause environment com 'prova velha' no Achado — nunca code, e nunca só no texto do veredito, que o script não lê (v3.65.11)"
 
     if ($null -eq $vv -or $vv -eq '') {
         $k = & $copyProof
@@ -399,13 +457,25 @@ function Invoke-GateStep {
         foreach ($fr in 'measured', 'review', 'security') { if ($codeStale) { $stale += $fr } else { $kept += $fr } }
         $openF = @($vf.Findings.Values | Where-Object { $_.state -eq 'open' } | ForEach-Object { $_.id })
         $k = & $copyProof
+        # v3.65.11 (item 4 da revisão do QA; garden S6: 15 rodadas, cada instância nova relendo as 324 linhas do validation.md):
+        # a rodada focada lê o resumo dos achados abertos e o último veredito, não o arquivo inteiro.
+        $sumRel = "$proofRel/abertos.md"
+        $lastV = @([regex]::Matches((Read-Text $val), '(?m)^\*\*Veredito[^\r\n]*$'))
+        $sumMd = "# Rodada $roundNow — o que julgar`n`n**Último veredito:** $(if ($lastV.Count) { ($lastV[$lastV.Count - 1].Value -replace '^\*\*Veredito[^*]*:\*\*\s*', '').Trim() } else { '—' })`n`n## Achados abertos`n`n| ID | Task | Achado | Cause | Resolução do dono |`n|---|---|---|---|---|`n"
+        foreach ($fo in @($vf.Findings.Values | Where-Object { $_.state -eq 'open' })) {
+            $rz = Get-FindingResolution $S $fo.id
+            $sumMd += "| $($fo.id) | $($fo.task) | $(([string]$fo.text) -replace '\|', '/') | $($fo.cause) | $(if ($rz -and $rz.value) { "$($rz.value): $((& $short $rz.text) -replace '\|', '/') (gate/$($fo.id).md)" } else { '—' }) |`n"
+        }
+        if (-not $openF.Count) { $sumMd += "| — | — | nenhum achado aberto | — | — |`n" }
+        New-Item -ItemType Directory -Force (Join-Path $S "proof/$sid/round-$roundNow") | Out-Null
+        [System.IO.File]::WriteAllText((Join-Path $S "proof/$sid/round-$roundNow/abertos.md"), $sumMd, (New-Object System.Text.UTF8Encoding($false)))
         Out "PRÓXIMA AÇÃO: validação do sprint $n — revisar o veredito (QA, instância nova, rodada $roundNow focada): $Reason"
         Say 'Revisão final: a qualidade está conferindo só o que a correção mudou.'
         Out "  frentes a julgar: $(if ($stale.Count) { $stale -join ', ' } else { 'nenhuma (só os achados)' }) · ficam como estavam: $(if ($kept.Count) { $kept -join ', ' } else { '—' }) · achados abertos: $(if ($openF.Count) { $openF -join ', ' } else { 'nenhum' })"
-        Out "  prova da rodada: .team-project/$proofRel/ ($k arquivo(s))"
+        Out "  prova da rodada: .team-project/$proofRel/ ($k arquivo(s)) · resumo dos achados abertos: .team-project/$sumRel"
         Out "  $(Get-AgentLine 'quality-assurance')"
         $resTxt = if (Test-Path -LiteralPath (Join-Path $S 'gate')) { ', as resoluções dos donos em .team-project/sprints/' + $n + '/gate/' } else { '' }
-        Out "  prompt: `"/qa sprint $n — rodada $roundNow, focada: leia $proofTxt$resTxt$diagTxt e o diff das Tasks Q-S$n. Julgue SÓ as frentes $(if ($stale.Count) { $stale -join ', ' } else { '(nenhuma — a base de todas é a mesma)' }) e os achados $(if ($openF.Count) { $openF -join ', ' } else { '(nenhum aberto)' }); $(if ($kept.Count) { "as frentes $($kept -join ', ') ficam como estavam (a base delas não mudou) — não as reabra" } else { 'todas as frentes venceram' }). Acrescente no fim de .team-project/sprints/$n/validation.md a seção ## Rodada $roundNow com a tabela | ID | Task | Achado | Onde | Cause | Owner | State | Evidência | (ID S$n-F<k>; Cause code|design|scenario|screen|requirement|environment, UMA por achado, na coluna — não dentro do ID; State open|fixed|debt|wontfix)$(if (-not $vf.HasTable) { " — o validation.md ainda está no formato anterior à v3.63.0 (achados sem a coluna Cause): reescreva nessa tabela CADA achado antigo ainda aberto, com ID S$n-F<k> novo e uma causa (o que já foi resolvido fica como está)" }) e a linha **Veredito (rodada $roundNow):** ✅ | ⚠️ | ❌ — não apague a rodada anterior. Não rode build nem o app. Volte em até 15 linhas.`""
+        Out "  prompt: `"/qa sprint $n — rodada $roundNow, focada: leia .team-project/$sumRel (os achados abertos, as resoluções e o último veredito — não releia o validation.md inteiro: para acrescentar a rodada, leia só as últimas 30 linhas dele), $proofTxt$resTxt$diagTxt e o diff das Tasks Q-S$n. Julgue SÓ as frentes $(if ($stale.Count) { $stale -join ', ' } else { '(nenhuma — a base de todas é a mesma)' }) e os achados $(if ($openF.Count) { $openF -join ', ' } else { '(nenhum aberto)' }); $(if ($kept.Count) { "as frentes $($kept -join ', ') ficam como estavam (a base delas não mudou) — não as reabra" } else { 'todas as frentes venceram' }). Acrescente no fim de .team-project/sprints/$n/validation.md a seção ## Rodada $roundNow com a tabela | ID | Task | Achado | Onde | Cause | Owner | State | Evidência | (ID S$n-F<k>; Cause code|design|scenario|screen|requirement|environment, UMA por achado, na coluna — não dentro do ID; State open|fixed|debt|wontfix; prova que não vale — o app do aceite não é o que a correção provou, ou a medição é de antes dela — é Cause environment com 'prova velha' no Achado, nunca code nem só no texto do veredito, v3.65.11)$(if (-not $vf.HasTable) { " — o validation.md ainda está no formato anterior à v3.63.0 (achados sem a coluna Cause): reescreva nessa tabela CADA achado antigo ainda aberto, com ID S$n-F<k> novo e uma causa (o que já foi resolvido fica como está)" }) e a linha **Veredito (rodada $roundNow):** ✅ | ⚠️ | ❌ — não apague a rodada anterior. Não rode build nem o app. Volte em até 15 linhas.`""
         Out "  depois: run.ps1 next"
         exit 0
     }
@@ -524,6 +594,26 @@ function Invoke-GateStep {
     # v3.65.5: a Q-S que fechou e já foi julgada não cobre mais o achado code que segue aberto — ele precisa de correção nova.
     # O achado com resolução code que ainda vale (gravada ou completada depois da última rodada) segue coberto pela Q-S dele.
     $uncovered = @($codeF | Where-Object { if (& $resolved $_.id) { -not @(& $qsOf $_.id).Count } else { -not @(& $qsLive $_.id).Count } })
+    # v3.65.11: o achado de código cujo cenário passou na correção fechada e falhou no portão, com o mesmo app e a mesma
+    # produção, não é código — outra correção repetiria o ciclo. O Arquiteto decide a causa uma vez (estado de partida, massa,
+    # oscilação, cenário); a resolução dele governa o que vem depois.
+    if ($aContra) {
+        # Também o achado coberto pela correção recém-fechada: a rodada do QA julgaria a mesma prova (no garden, a rodada 14).
+        $ctr = @($codeF | Where-Object { $f = $_; $ids = @([regex]::Matches("$($f.text) $($f.task)", 'SC-\d+') | ForEach-Object { $_.Value }); @($ids | Where-Object { $aContra.Sc -contains $_ }).Count -and -not $gate.escalated.Contains("$($f.id)/contra") })
+        if ($ctr.Count) {
+            foreach ($it in $ctr) { $gate.escalated["$($it.id)/contra"] = [string]$aj.at }
+            Set-GateState $S $gate
+            $idsC = ($ctr | ForEach-Object { $_.id }) -join ', '
+            $qaRel = ".team-project/$((((Get-VerifyDir $Root $aContra.Q) -replace '[\\/]verify[\\/]', '/accept/').Substring($Root.Length).TrimStart('\', '/') -replace '\\', '/') -replace '^\.team-project/', '')/result.md"
+            Add-RunLog $S $n $sid "portão: $idsC — $($aContra.Sc -join ', ') passou na $($aContra.Q) e falhou no portão com o mesmo app ($($aContra.App)) e a mesma produção → Arquiteto (degrau 1), sem correção nova (v3.65.11)" "$($aContra.Q) de $($aContra.At) × portão de $([string]$aj.at)" "accept/$n/$sid/result.json"
+            Out "PRÓXIMA AÇÃO: validação do sprint $n — ${idsC}: o mesmo app passou na $($aContra.Q) e falhou no portão → /arc question (degrau 1, instância nova); não abra Q-S$n (v3.65.11)"
+            Say 'Revisão final: o mesmo teste passou na correção e falhou na revisão, com a mesma versão do app. O arquiteto vai ver a causa antes de qualquer nova correção.'
+            Out "  $(Get-AgentLine 'architect')"
+            Out "  prompt: `"/arc question — degrau 1 do portão do sprint ${n}: $idsC ($($aContra.Sc -join ', ')) passou no aceite da $($aContra.Q) ($qaRel, $($aContra.At)) e falhou no aceite do portão (.team-project/$proofRel/accept/result.md e .team-project/accept/$n/$sid/result.md, $([string]$aj.at)), com o mesmo app ($($aContra.App)) e a mesma produção. Mudar o código de novo não muda esse resultado. Compare as duas rodadas (estado de partida, massa, ordem dos cenários, oscilação do alvo, texto do cenário) e grave, sem apagar o que já está lá, a linha **Resolution:** done|code — <a causa e o porquê> em .team-project/sprints/$n/gate/<ID>.md; done com a causa fora do app (o portão mede de novo ou o QA ajusta o cenário), code só se o app precisa mudar. Volte em até 10 linhas.`""
+            Out "  depois: run.ps1 next"
+            exit 0
+        }
+    }
     if ($uncovered.Count -and $qsOpen.Count) { & $toOpenQ "$(($uncovered | ForEach-Object { $_.id }) -join ', ') (causa code)" "os IDs $(($uncovered | ForEach-Object { $_.id }) -join ', ')" }
     if ($uncovered.Count) {
         $qs = @($qsRows | ForEach-Object { $_.Id })
@@ -548,6 +638,30 @@ function Invoke-GateStep {
     # mais nova que o veredito mandava o QA julgar de novo o código parcial da correção parada, e esta rota nunca chegava.
     $redCover = @($codeF | ForEach-Object { & $qsOf $_.id } | Where-Object { $_.Mark -eq $redQ -and -not $supersededBy.ContainsKey($_.Id) } | Sort-Object Id -Unique)
     if ($redCover.Count) { & $redRoute $redCover "os achados abertos do portão do sprint $n dependem dela(s): " }
+    # v3.65.11 (item 1 da revisão do QA; garden S6, rodada 14): a única novidade é uma Q-S fechada que não mudou a produção nem
+    # os cenários, e a prova funcional é a mesma que a última rodada julgou. Para um achado de cenário (cita SC-<n>), o QA
+    # julgaria a mesma captura e manteria o achado — e o portão abriria outra correção. O Arquiteto decide a causa uma vez.
+    $jg = $gate.judged
+    $sameProof = $jg -and [string]$jg.prod -eq [string]$prodNow -and [string]$jg.scn -eq [string]$scnNow -and (-not $hasTarget -or [string]$jg.accept -eq $(if ($aj) { [string]$aj.at } else { '' }))
+    if ($sameProof -and $newer.Count -eq 1 -and $newer[0] -eq 'Q-S fechada') {
+        $np = @($codeF | Where-Object {
+            $f = $_
+            [regex]::IsMatch("$($f.text) $($f.task)", 'SC-\d+') -and -not $gate.escalated.Contains("$($f.id)/semprova") -and @(& $qsOf $f.id | Where-Object { $_.Mark -eq $E.Done -and -not (& $qsJudged $_) }).Count
+        })
+        if ($np.Count) {
+            foreach ($it in $np) { $gate.escalated["$($it.id)/semprova"] = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') }
+            Set-GateState $S $gate
+            $idsN = ($np | ForEach-Object { $_.id }) -join ', '
+            $qN = (@($np | ForEach-Object { & $qsOf $_.id } | Where-Object { $_.Mark -eq $E.Done -and -not (& $qsJudged $_) } | ForEach-Object { $_.Id }) | Sort-Object -Unique) -join ', '
+            Add-RunLog $S $n $sid "portão: $idsN — a $qN fechou sem mudar a produção nem os cenários, e a prova é a mesma da última rodada → Arquiteto (degrau 1), sem rodada do QA sobre a mesma prova (v3.65.11)" "prod $prodNow · aceite de $(if ($aj) { [string]$aj.at })" "sprints/$n/gate.json"
+            Out "PRÓXIMA AÇÃO: validação do sprint $n — ${idsN}: a $qN fechou sem mudar o app nem os cenários → /arc question (degrau 1, instância nova); sem rodada do QA sobre a mesma prova e sem outra Q-S$n (v3.65.11)"
+            Say 'Revisão final: a correção terminou sem mudar o app, então testar de novo daria o mesmo resultado. O arquiteto vai ver a causa antes de qualquer nova correção.'
+            Out "  $(Get-AgentLine 'architect')"
+            Out "  prompt: `"/arc question — degrau 1 do portão do sprint ${n}: $idsN segue aberto, e a $qN fechou sem mudar a produção nem os cenários (a prova do portão é a mesma da última rodada: .team-project/sprints/$n/proof/$sid/). Leia o achado em .team-project/sprints/$n/validation.md (só ele), o relatório de entrega (.team-project/sprints/$n/delivery/<Q-S>.md) e o diagnóstico do operator $diagRel, se houver. Decida a causa (código que a correção não tocou, cenário, estado de partida, ambiente) e grave, sem apagar o que já está lá, **Resolution:** done|code — <a causa e o porquê> em .team-project/sprints/$n/gate/<ID>.md; code diz o que o app precisa mudar, que a correção seguinte cita. Volte em até 10 linhas.`""
+            Out "  depois: run.ps1 next"
+            exit 0
+        }
+    }
     if ($newer.Count -or -not $open.Count) { & $revise $(if ($newer.Count) { $newer -join ' · ' } else { 'nenhum achado aberto, veredito ainda não aprovado' }) }
     Out "PRÓXIMA AÇÃO: esperar — os achados abertos do portão do sprint $n já têm dono: $(($open | ForEach-Object { "$($_.id) ($($_.cause))" }) -join ', '); a Q-S$n que os corrige ainda não fechou"
     exit 3
