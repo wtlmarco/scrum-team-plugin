@@ -65,11 +65,18 @@ function probe(op, args, cfg) {
     for (let n = up(el); n; n = up(n)) {
       if (n.nodeType !== 1 || n === document.documentElement || n === document.body) continue;
       const cs = getComputedStyle(n); if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
-      const r = n.getBoundingClientRect(); x1 = Math.max(x1, r.left); y1 = Math.max(y1, r.top); x2 = Math.min(x2, r.right); y2 = Math.min(y2, r.bottom);
+      // v3.65.13: a área de conteúdo (sem borda nem barra de rolagem): o centro em cima da barra contava como "na tela", e o
+      // hit-test dava "coberto" pelo próprio rolador.
+      const r = n.getBoundingClientRect(), l = r.left + n.clientLeft, t = r.top + n.clientTop;
+      const w = n.clientWidth || r.width, h = n.clientHeight || r.height;
+      x1 = Math.max(x1, l); y1 = Math.max(y1, t); x2 = Math.min(x2, l + w); y2 = Math.min(y2, t + h);
     }
     return { x1, y1, x2, y2 };
   };
-  const inClip = (el, b) => { if (!b) return false; const c = clipOf(el), cx = b.x + b.w / 2, cy = b.y + b.h / 2; return cx >= c.x1 && cx <= c.x2 && cy >= c.y1 && cy <= c.y2; };
+  // v3.65.13: folga da borda — o centro a 3 px da borda de uma faixa caía na barra de rolagem sobreposta, e o toque ia à faixa.
+  // A rolagem busca o centro a 12 px da borda (ou a metade do elemento, se ele é menor); sem para onde rolar, vale o centro dentro.
+  const marginOf = (b) => Math.min(12, b.w / 2, b.h / 2);
+  const inClip = (el, b, m) => { if (!b) return false; const c = clipOf(el), cx = b.x + b.w / 2, cy = b.y + b.h / 2, k = m || 0; return cx >= c.x1 + k && cx <= c.x2 - k && cy >= c.y1 + k && cy <= c.y2 - k; };
   const find = (id) => withAttr((v) => v === id).find(rendered) || null;
   const describe = (el) => el ? `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.getAttribute && el.getAttribute(attr) && attr !== 'id' ? `[${attr}=${el.getAttribute(attr)}]` : ''}${typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : ''}` : 'nada';
   const isField = (el) => ['input', 'textarea', 'select'].includes(el.tagName.toLowerCase());
@@ -129,7 +136,7 @@ function probe(op, args, cfg) {
     case 'find': {
       const all = withAttr((v) => v === args.id); const el = all.find(rendered) || null;
       if (!el) return { found: false, count: all.length };
-      const b = box(el); return { found: true, box: b, inView: inClip(el, b), count: all.length };
+      const b = box(el); return { found: true, box: b, inView: inClip(el, b), comfy: inClip(el, b, b ? marginOf(b) : 0), count: all.length };
     }
     case 'read': { const el = find(args.id); return el ? { found: true, text: valueOf(el) } : { found: false }; }
     case 'checked': {
@@ -214,18 +221,52 @@ function probe(op, args, cfg) {
     }
     case 'value-num': { const el = find(args.id); if (!el) return { found: false }; const v = Number(isField(el) || el.tagName.includes('-') ? el.value : NaN); const st = Number(el.step || (el.getAttribute && el.getAttribute('step')) || 1); return { found: true, value: v, step: Number.isFinite(st) && st > 0 ? st : 1 }; }
     // Onde rolar para trazer o elemento à janela: o rolador do eixo, a caixa dele e para que lado.
+    // v3.65.13 (garden SC-142): o eixo e o rolador vêm da posição do elemento E da do rolador. Antes, o elemento fora da janela
+    // na horizontal escolhia o eixo x, mesmo com a faixa que o contém fora da tela pelo alto (lista rolada para baixo): o gesto
+    // ia para um ponto fora da janela e o navegador o recusava ("Position out of bounds"). Agora: fora na vertical, rola a
+    // vertical primeiro (a faixa volta à vista; a horizontal vem no passo seguinte). O rolador é o mais próximo que aparece na
+    // janela (área visível dentro dos recortes de cima) e ainda tem para onde ir naquele lado — a faixa de pílulas mais alta
+    // que ela mesma também "rola" na vertical, alguns pixels, e não traz nada. O rolador escolhido fica em
+    // window.__teamPlanS (marca, como a do pointerdown) para o scroll-pos medir o mesmo.
     case 'scroll-plan': {
       const el = args.id ? find(args.id) : null;
       if (el) {
-        const b = box(el), c = clipOf(el); const axis = b.x + b.w / 2 < c.x1 || b.x + b.w / 2 > c.x2 ? 'x' : 'y';
-        const s = scroller(el, axis); const sb = scrollBox(s);
-        const dir = axis === 'x' ? (b.x + b.w / 2 > sb.x + sb.w / 2 ? 1 : -1) : (b.y + b.h / 2 > sb.y + sb.h / 2 ? 1 : -1);
-        return { axis, dir, box: sb, at: pointFor(s, sb, axis), pos: axis === 'x' ? s.scrollLeft : s.scrollTop };
+        const b = box(el), c = clipOf(el), cx = b.x + b.w / 2, cy = b.y + b.h / 2, m = marginOf(b);
+        const outY = cy < c.y1 + m || cy > c.y2 - m, outX = cx < c.x1 + m || cx > c.x2 - m;
+        const pick = (axis) => {
+          for (let n = up(el); n; n = up(n)) {
+            if (n.nodeType !== 1 || n === document.body) continue;
+            const doc = n === document.documentElement || n === document.scrollingElement;
+            if (!canScroll(n, axis)) continue;
+            const t = doc ? (document.scrollingElement || document.documentElement) : n;
+            let sb = scrollBox(t);
+            if (!doc) { const k = clipOf(t), x1 = Math.max(sb.x, k.x1), y1 = Math.max(sb.y, k.y1), x2 = Math.min(sb.x + sb.w, k.x2), y2 = Math.min(sb.y + sb.h, k.y2); sb = { x: x1, y: y1, w: x2 - x1, h: y2 - y1 }; }
+            if (sb.w <= 1 || sb.h <= 1) continue;
+            const dir = axis === 'x' ? (cx > sb.x + sb.w / 2 ? 1 : -1) : (cy > sb.y + sb.h / 2 ? 1 : -1);
+            const pos = axis === 'x' ? t.scrollLeft : t.scrollTop, max = axis === 'x' ? t.scrollWidth - t.clientWidth : t.scrollHeight - t.clientHeight;
+            if (dir > 0 ? pos >= max - 1 : pos <= 0) continue;
+            return { t, sb, dir, pos };
+          }
+          return null;
+        };
+        const order = outY ? ['y', 'x'] : outX ? ['x', 'y'] : ['y'];
+        for (const axis of order) {
+          if (axis === 'x' && !outX) continue;
+          const p = pick(axis); if (!p) continue;
+          window.__teamPlanS = p.t;
+          return { axis, dir: p.dir, box: p.sb, at: pointFor(p.t, p.sb, axis), pos: p.pos };
+        }
+        window.__teamPlanS = null;
+        return { none: true, axis: outY ? 'y' : 'x', why: 'nenhum rolador na tela com para onde ir' };
       }
-      const s = mainScroller(); const sb = scrollBox(s);
+      const s = mainScroller(); const sb = scrollBox(s); window.__teamPlanS = s;
       return { axis: 'y', dir: args.dir || 1, box: sb, at: pointFor(s, sb, 'y'), pos: s.scrollTop, atEnd: s.scrollTop + s.clientHeight >= s.scrollHeight - 2, atTop: s.scrollTop <= 0 };
     }
-    case 'scroll-pos': { const el = args.id ? find(args.id) : null; const s = el ? scroller(el, args.axis) : mainScroller(); return args.axis === 'x' ? s.scrollLeft : s.scrollTop; }
+    case 'scroll-pos': {
+      const ps = window.__teamPlanS;
+      const el = args.id ? find(args.id) : null; const s = ps && ps.isConnected ? ps : el ? scroller(el, args.axis) : mainScroller();
+      return args.axis === 'x' ? s.scrollLeft : s.scrollTop;
+    }
     case 'eval': { try { return { ok: true, value: !!(0, eval)(args.expr) }; } catch (e) { return { ok: false, error: String(e && e.message || e) }; } }
     default: throw new Error(`dom-probe: operação desconhecida ${op}`);
   }

@@ -421,6 +421,8 @@ function Invoke-GateStep {
         param([string]$Id)
         $r = Get-FindingResolution $S $Id
         if (-not $r -or -not $r.value) { return $r }
+        # v3.65.13: a pergunta do PO ao stakeholder ainda sem resposta — a resolução de antes não vale mais.
+        if ((Get-FindingEscalation $S $Id).pending) { $r.value = ''; return $r }
         $r.stale = $false
         if ($r.at -ge $valAt) { return $r }
         if ($r.value -eq 'code' -and (Get-FindingScenarioPart $S $Id).need) { return $r }
@@ -453,6 +455,7 @@ function Invoke-GateStep {
         $moved = $fs -and $gate.routedFail.Contains($Key) -and [string]$gate.routedFail[$Key] -and [string]$gate.routedFail[$Key] -ne $fs
         $gate.routed[$Key] = $(if ($moved) { 1 } else { $cur + 1 })
         if ($moved -and $gate.escalated.Contains($Key)) { $gate.escalated.Remove($Key) }
+        if ($moved -and $gate.escalated.Contains("$Key/po")) { $gate.escalated.Remove("$Key/po") }   # v3.65.13: o degrau 2 também recomeça
         $gate.routedAt[$Key] = $disp; $gate.routedFail[$Key] = $fs
     }
     foreach ($k in $supersededBy.Keys) { if (@($qsRows | Where-Object { $_.Id -eq $k -and $_.Mark -ne $E.Done }).Count) { Out "  nota: a $k conta como substituída pela $($supersededBy[$k]) (o plano dela declara **Corrige:** $k) — não segura o portão" } }
@@ -500,7 +503,7 @@ function Invoke-GateStep {
         Out "  prova da rodada: .team-project/$proofRel/ ($k arquivo(s)) · resumo dos achados abertos: .team-project/$sumRel"
         Out "  $(Get-AgentLine 'quality-assurance')"
         $resTxt = if (Test-Path -LiteralPath (Join-Path $S 'gate')) { ', as resoluções dos donos em .team-project/sprints/' + $n + '/gate/' } else { '' }
-        Out "  prompt: `"/qa sprint $n — rodada $roundNow, focada: leia .team-project/$sumRel (os achados abertos, as resoluções e o último veredito — não releia o validation.md inteiro: para acrescentar a rodada, leia só as últimas 30 linhas dele), $proofTxt$resTxt$diagTxt e o diff das Tasks Q-S$n. Julgue SÓ as frentes $(if ($stale.Count) { $stale -join ', ' } else { '(nenhuma — a base de todas é a mesma)' }) e os achados $(if ($openF.Count) { $openF -join ', ' } else { '(nenhum aberto)' }); $(if ($kept.Count) { "as frentes $($kept -join ', ') ficam como estavam (a base delas não mudou) — não as reabra" } else { 'todas as frentes venceram' }). Acrescente no fim de .team-project/sprints/$n/validation.md a seção ## Rodada $roundNow com a tabela | ID | Task | Achado | Onde | Cause | Owner | State | Evidência | (ID S$n-F<k>; Cause code|design|scenario|screen|requirement|environment, UMA por achado, na coluna — não dentro do ID; State open|fixed|debt|wontfix; prova que não vale — o app do aceite não é o que a correção provou, ou a medição é de antes dela — é Cause environment com 'prova velha' no Achado, nunca code nem só no texto do veredito, v3.65.11)$(if (-not $vf.HasTable) { " — o validation.md ainda está no formato anterior à v3.63.0 (achados sem a coluna Cause): reescreva nessa tabela CADA achado antigo ainda aberto, com ID S$n-F<k> novo e uma causa (o que já foi resolvido fica como está)" }) e a linha **Veredito (rodada $roundNow):** ✅ | ⚠️ | ❌ — não apague a rodada anterior. Não rode build nem o app. Volte em até 15 linhas.`""
+        Out "  prompt: `"/qa sprint $n — rodada $roundNow, focada: leia .team-project/$sumRel (os achados abertos, as resoluções e o último veredito — não releia o validation.md inteiro: para acrescentar a rodada, leia só as últimas 30 linhas dele), $proofTxt$resTxt$diagTxt e o diff das Tasks Q-S$n. Julgue SÓ as frentes $(if ($stale.Count) { $stale -join ', ' } else { '(nenhuma — a base de todas é a mesma)' }) e os achados $(if ($openF.Count) { $openF -join ', ' } else { '(nenhum aberto)' }); $(if ($kept.Count) { "as frentes $($kept -join ', ') ficam como estavam (a base delas não mudou) — não as reabra" } else { 'todas as frentes venceram' }). Acrescente no fim de .team-project/sprints/$n/validation.md a seção ## Rodada $roundNow com a tabela | ID | Task | Achado | Onde | Cause | Owner | State | Evidência | (ID S$n-F<k>; Cause code|design|scenario|screen|requirement|environment|executor (executor = a ferramenta de prova do plugin falhou, não o app nem o .scn), UMA por achado, na coluna — não dentro do ID; State open|fixed|debt|wontfix; prova que não vale — o app do aceite não é o que a correção provou, ou a medição é de antes dela — é Cause environment com 'prova velha' no Achado, nunca code nem só no texto do veredito, v3.65.11)$(if (-not $vf.HasTable) { " — o validation.md ainda está no formato anterior à v3.63.0 (achados sem a coluna Cause): reescreva nessa tabela CADA achado antigo ainda aberto, com ID S$n-F<k> novo e uma causa (o que já foi resolvido fica como está)" }) e a linha **Veredito (rodada $roundNow):** ✅ | ⚠️ | ❌ — não apague a rodada anterior. Não rode build nem o app. Volte em até 15 linhas.`""
         Out "  depois: run.ps1 next"
         exit 0
     }
@@ -533,7 +536,7 @@ function Invoke-GateStep {
     if ($bad.Count) {
         Out "PRÓXIMA AÇÃO: validação do sprint $n — o QA classifica $(($bad | ForEach-Object { "$($_.id) ($(if ($_.cause) { $_.cause } else { 'sem causa' }))" }) -join ', ') (instância nova; sem a causa não há dono)"
         Out "  $(Get-AgentLine 'quality-assurance')"
-        Out "  prompt: `"/qa sprint $n — em .team-project/sprints/$n/validation.md, os achados $(($bad | ForEach-Object { $_.id }) -join ', ') estão sem causa válida. Dê a cada um UMA causa na coluna Cause da tabela de achados: code (o app não faz o que a especificação diz), design (o plano está errado), scenario (o .scn está errado), screen (a tela não previa o caso), requirement (o critério está confuso ou mudou), environment (alvo, massa, configuração). Só isso: não refaça o julgamento nem rode nada. Volte em até 5 linhas.`""
+        Out "  prompt: `"/qa sprint $n — em .team-project/sprints/$n/validation.md, os achados $(($bad | ForEach-Object { $_.id }) -join ', ') estão sem causa válida. Dê a cada um UMA causa na coluna Cause da tabela de achados: code (o app não faz o que a especificação diz), design (o plano está errado), scenario (o .scn está errado), screen (a tela não previa o caso), requirement (o critério está confuso ou mudou), environment (alvo, massa, configuração), executor (a ferramenta de prova do plugin falhou: o toque recusado, 'Position out of bounds', o elemento na tela que o executor não alcança). Só isso: não refaça o julgamento nem rode nada. Volte em até 5 linhas.`""
         exit 0
     }
     # Ambiente que o QA ainda registrou (A): reparo e repetição do aceite — nunca Q-S<n>.
@@ -545,7 +548,13 @@ function Invoke-GateStep {
         Out "  depois: run.ps1 next"
         exit 0
     }
-    $owners = @{ requirement = @('product-owner', '/po', 'requisito'); screen = @('user-experience', '/ux', 'tela'); design = @('architect', '/arc question', 'desenho'); scenario = @('quality-assurance', '/qa', 'cenário') }
+    $owners = @{ requirement = @('product-owner', '/po', 'requisito'); screen = @('user-experience', '/ux', 'tela'); design = @('architect', '/arc question', 'desenho'); scenario = @('quality-assurance', '/qa', 'cenário'); executor = @('quality-assurance', '/qa', 'executor do plugin') }
+    # v3.65.13 (garden SC-142: o teste não voltava ao topo da lista, e a sessão perguntou ao stakeholder qual passo usar). Os
+    # contornos de um cenário que não chega ao elemento, em ordem — "não há como" só depois de passar por eles, citando os verbos
+    # de standards/scenario-language.md que conferiu.
+    $contornos = "Antes de dizer que não há como, passe por estes contornos, em ordem: (1) abra a captura *-falha.png e a mensagem do passo — o elemento está fora da tela, coberto, desabilitado ou em outra tela? (2) volte a tela ao estado inicial antes do passo (restart; back; tocar em outra aba e voltar) — o estado vem dos passos anteriores; (3) reordene os passos, ou divida o cenário em dois, cada um partindo da tela inicial; (4) prepare o estado com seed, em vez de navegar até ele. Quem disser que a linguagem não permite cita os verbos de standards/scenario-language.md que conferiu"
+    # Escolher entre passos de teste não é pergunta do stakeholder: o que não muda o produto, o time decide (R9).
+    $toPoLine = "Se nenhuma saída técnica serve e a decisão é de produto (aceitar o caso sem prova como dívida, adiar, mudar a tela), não leve ao stakeholder: grave em gate/<ID>.md a linha **Para o PO:** <a decisão e as opções> — o portão leva ao PO, que decide ou sobe só o que muda o produto"
     foreach ($c in @($script:CauseOrder | Where-Object { $_ -ne 'code' })) {
         $items = @($open | Where-Object { $_.cause -eq $c -and -not (& $resolved $_.id) })
         if (-not $items.Count) { continue }
@@ -568,12 +577,35 @@ function Invoke-GateStep {
                 Out "PRÓXIMA AÇÃO: validação do sprint $n — $ids9 ($($o[2])) voltou depois de 2 resoluções de $($o[1]) → /arc question (degrau 1, instância nova; o stakeholder só se voltar de novo — v3.65.9)"
                 Say 'Revisão final: um teste continua falhando depois de duas correções. O arquiteto vai olhar a causa de novo antes de qualquer pergunta a você.'
                 Out "  $(Get-AgentLine 'architect')"
-                Out "  prompt: `"/arc question — degrau 1 do portão do sprint ${n}: $ids9 ($($o[2])) voltou abertos depois de 2 resoluções de $($o[1]). Leia o histórico das resoluções ($hist), os achados em .team-project/sprints/$n/validation.md, a prova em .team-project/sprints/$n/proof/$sid/ e o diagnóstico do operator $diagRel, se houver. Decida a causa de verdade (a do validation.md pode estar errada: ambiente, código, desenho ou cenário) e o que muda. Grave, sem apagar o que já está lá, a linha **Resolution:** done|code — <a decisão e o porquê> em cada gate/<ID>.md; com code, a linha **Scenario:** se o .scn também muda. O que for decisão do stakeholder (escopo, o que o usuário vê, aceitar dívida), devolva na primeira linha STAKEHOLDER: <a pergunta e as opções>. Volte em até 15 linhas.`""
+                Out "  prompt: `"/arc question — degrau 1 do portão do sprint ${n}: $ids9 ($($o[2])) voltou abertos depois de 2 resoluções de $($o[1]). Leia o histórico das resoluções ($hist), os achados em .team-project/sprints/$n/validation.md, a prova em .team-project/sprints/$n/proof/$sid/ e o diagnóstico do operator $diagRel, se houver. Decida a causa de verdade (a do validation.md pode estar errada: ambiente, código, desenho, cenário ou executor — a ferramenta de prova do plugin; executor vai também como ocorrência em .team-project/note.md) e o que muda. $(if ($c -in 'scenario', 'executor') { "$contornos. " })Grave, sem apagar o que já está lá, a linha **Resolution:** done|code — <a decisão e o porquê> em cada gate/<ID>.md; com code, a linha **Scenario:** se o .scn também muda. $toPoLine. Volte em até 15 linhas.`""
                 Out "  depois: run.ps1 next"
                 exit 0
             }
-            Set-AskRoute $Root 'portao' $sid "$($o[2]): $($o[1]) disparado 2 vezes sem uma resolução que se sustente para $(($again | ForEach-Object { $_.id }) -join ', ')$(if ($c -notin 'design', 'requirement') { ', nem depois do Arquiteto' })"
-            Out "PRÓXIMA AÇÃO: formulário ao stakeholder — $(($again | ForEach-Object { $_.id }) -join ', ') ($($o[2])) sem resolução que se sustente depois de 2 disparos de $($o[1])$(if ($c -notin 'design', 'requirement') { ' e da decisão do Arquiteto (degrau 1)' }) (a rodada seguinte manteve o achado aberto, na mesma falha): decidir à mão (gravar .team-project/sprints/$n/gate/<ID>.md) ou aceitar como dívida"
+            # v3.65.13 · degrau 2: o PO, antes do stakeholder (R9: dev → Arquiteto; funcional → PO; estratégico → stakeholder).
+            # Uma vez por achado; o achado de requisito já tem o PO como dono. O mesmo disparo (next repetido antes de ele gravar)
+            # reimprime o dele.
+            $toPo = @($again | Where-Object { $c -ne 'requirement' -and -not (Get-FindingEscalation $S $_.id).pending -and (-not $gate.escalated.Contains("$($_.id)/po") -or [string]$gate.escalated["$($_.id)/po"] -eq [string]$gate.routedAt[$_.id]) })
+            if ($toPo.Count) {
+                foreach ($it in $toPo) { $gate.escalated["$($it.id)/po"] = [string]$gate.routedAt[$it.id] }
+                Set-GateState $S $gate
+                $idsP = ($toPo | ForEach-Object { $_.id }) -join ', '
+                $histP = ($toPo | ForEach-Object { "$($_.id): .team-project/sprints/$n/gate/$($_.id).md" }) -join '; '
+                Add-RunLog $S $n $sid "portão: $idsP ($($o[2])) voltou depois de $($o[1])$(if ($c -ne 'design') { ' e do Arquiteto' }) → PO (degrau 2), antes do stakeholder" (& $short (($toPo | ForEach-Object { "$($_.id): $($_.text)" }) -join '; ')) "sprints/$n/gate.json"
+                Out "PRÓXIMA AÇÃO: validação do sprint $n — $idsP ($($o[2])) sem resolução que se sustente depois de $($o[1])$(if ($c -ne 'design') { ' e do Arquiteto' }) → /po (degrau 2, instância nova; o stakeholder só com o que muda o produto — v3.65.13)"
+                Say 'Revisão final: um ponto continua aberto depois das correções técnicas. O dono do produto decide o que fazer com ele antes de qualquer pergunta a você.'
+                Out "  $(Get-AgentLine 'product-owner')"
+                Out "  prompt: `"/po — degrau 2 do portão do sprint ${n}: $idsP ($($o[2])) voltou abertos depois de $($o[1])$(if ($c -ne 'design') { ' e da decisão do Arquiteto' }). Leia o histórico ($histP — inclusive a linha **Para o PO:**, se houver) e só esses achados em .team-project/sprints/$n/validation.md. Decida o que é do produto dentro do que o stakeholder já aprovou: aceitar o caso como dívida (**Resolution:** debt — <o motivo e o lugar no Product Backlog>) ou mandar fazer de outro jeito (**Resolution:** done — <a decisão>). Só sobe ao stakeholder o estratégico — muda o escopo, o que o usuário vê fora do que foi aprovado, o prazo, ou um risco que você não pode assumir: aí grave **Stakeholder:** <a pergunta, com as opções> — **Muda para o usuário:** <o que muda em cada opção>. Escolher entre dois passos de teste, um contorno ou a ferramenta de prova não muda o produto: decida você. Grave em cada gate/<ID>.md, sem apagar o que está lá. Volte em até 10 linhas.`""
+                Out "  depois: run.ps1 next"
+                exit 0
+            }
+            $askA = @($again | ForEach-Object { $e = Get-FindingEscalation $S $_.id; if ($e.pending) { "$($_.id): $($e.ask) (muda para o usuário: $($e.impact))" } })
+            Set-AskRoute $Root 'portao' $sid $(if ($askA.Count) { "o PO subiu ao stakeholder: $($askA -join '; ')" } else { "$($o[2]): $($o[1]) disparado 2 vezes sem uma resolução que se sustente para $(($again | ForEach-Object { $_.id }) -join ', ')$(if ($c -ne 'requirement') { ', nem depois do PO' })" })
+            if ($askA.Count) {
+                Out "PRÓXIMA AÇÃO: formulário ao stakeholder — a pergunta que o PO subiu (degrau 3: muda o produto): $($askA -join '; ')"
+                Out "  formulário: parta da pergunta do PO e do que muda para o usuário em cada opção; grave a resposta em .team-project/sprints/$n/gate/<ID>.md (**Resolution:** done|code|debt — <a decisão do stakeholder>)"
+                exit 0
+            }
+            Out "PRÓXIMA AÇÃO: formulário ao stakeholder — $(($again | ForEach-Object { $_.id }) -join ', ') ($($o[2])) sem resolução que se sustente depois de 2 disparos de $($o[1])$(if ($c -notin 'design', 'requirement') { ', da decisão do Arquiteto (degrau 1)' })$(if ($c -ne 'requirement') { ' e da do PO (degrau 2)' }) (a rodada seguinte manteve o achado aberto, na mesma falha): decidir à mão (gravar .team-project/sprints/$n/gate/<ID>.md) ou aceitar como dívida"
             exit 0
         }
         # v3.65.5: a resolução que a rodada seguinte desmentiu vai no prompt — o dono não repete a mesma correção.
@@ -581,14 +613,15 @@ function Invoke-GateStep {
         $list = ($items | ForEach-Object { "$($_.id) ($($_.task)): $(& $short $_.text)$(& $staleTxt $_.id)" }) -join '; '
         $resLine = "grave, para cada achado, .team-project/sprints/$n/gate/<ID>.md com a linha **Resolution:** done|code$(if ($c -eq 'requirement') { '|debt' }) — <o que decidiu ou mudou> (done = resolvido sem mudar o app; code = o app precisa mudar, e a Q-S$n vai citar o achado$(if ($c -eq 'requirement') { '; debt = aceito como dívida, com o lugar no Product Backlog' })). Com code, se depois da mudança do app o .scn também precisa mudar, acrescente a linha **Scenario:** <os SC e o que muda em cada um> — o portão manda o QA aplicá-la quando a Q-S$n fechar, antes da rodada nova (v3.65.5)"
         Out "PRÓXIMA AÇÃO: validação do sprint $n — $($o[2]): $(($items | ForEach-Object { $_.id }) -join ', ') → $($o[1]) (instância nova; ordem requirement → screen → design → scenario → code)"
-        Say $(switch ($c) { 'requirement' { 'A revisão final achou um ponto de regra ou de critério: o dono do produto vai decidir.' } 'screen' { 'A revisão final achou um caso que a tela não previa: o UX vai ajustar a especificação da tela.' } 'design' { 'A revisão final achou um ponto de desenho técnico: o arquiteto vai decidir.' } default { 'A revisão final achou um teste desatualizado: a qualidade vai corrigir o teste.' } })
+        Say $(switch ($c) { 'requirement' { 'A revisão final achou um ponto de regra ou de critério: o dono do produto vai decidir.' } 'screen' { 'A revisão final achou um caso que a tela não previa: o UX vai ajustar a especificação da tela.' } 'design' { 'A revisão final achou um ponto de desenho técnico: o arquiteto vai decidir.' } 'executor' { 'A revisão final achou uma falha da ferramenta de teste do time, não do app: a qualidade registra para corrigir a ferramenta e contorna no teste.' } default { 'A revisão final achou um teste desatualizado: a qualidade vai corrigir o teste.' } })
         if ($c -eq 'requirement') { Set-AskRoute $Root 'portao' $sid 'achado de requisito do portão: o PO decide; o que for do stakeholder vem em formulário' }
         Out "  $(Get-AgentLine $o[0])"
         $task = switch ($c) {
             'requirement' { "decida cada achado de requisito do portão do sprint ${n}: $list. O que é decisão do stakeholder (muda o que o usuário vê ou faz, ou o escopo), devolva na primeira linha STAKEHOLDER: <a pergunta e as opções> — a sessão leva em formulário e grava a resolução com a resposta" }
             'screen' { "revise a especificação da tela de cada achado do portão do sprint ${n}: $list. Acrescente o caso que faltou (estado, layout, fluxo) na especificação da tela, sem mudar o app" }
             'design' { "decida cada achado de desenho do portão do sprint ${n}: $list. A decisão fica registrada (architect/decisions/S$n.md); correção no app vai na Q-S$n, com o plano de correção" }
-            default { "corrija o .scn de cada achado de cenário do portão do sprint ${n}: $list. Só o cenário citado; rode $plugin/accept.ps1 -ParseOnly; o operator mede de novo só esse cenário" }
+            'executor' { "a ferramenta de prova do plugin falhou nestes achados do portão do sprint ${n} (o app e o .scn não são a causa): $list. Primeiro registre cada um em .team-project/note.md como ocorrência de plugin (o SC, o passo, a mensagem do executor e o que a captura mostra — o /review leva ao plugin). Depois contorne no .scn, só no cenário citado, sem perder o que ele prova. $contornos. Rode $plugin/accept.ps1 -ParseOnly; o operator mede de novo só esse cenário. $toPoLine" }
+            default { "corrija o .scn de cada achado de cenário do portão do sprint ${n}: $list. Só o cenário citado; rode $plugin/accept.ps1 -ParseOnly; o operator mede de novo só esse cenário. $contornos. Se a falha é da própria ferramenta (o toque recusado, 'Position out of bounds', o elemento na tela que o executor não alcança), a causa é executor: troque a Cause no validation.md e registre em .team-project/note.md. $toPoLine" }
         }
         Out "  prompt: `"$($o[1]) — $task. Leia .team-project/sprints/$n/validation.md (só os achados citados) e a prova em .team-project/sprints/$n/proof/$sid/. Depois, $resLine. Volte em até 15 linhas.`""
         Out "  depois: run.ps1 next"
