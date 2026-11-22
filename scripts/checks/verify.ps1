@@ -1118,9 +1118,10 @@ try {
             if ($apkA) {
                 $stA = Get-ApkStaleness $apkA $Root
                 $relA = { param($x) ([string]$x).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/' }
+                if ($stA.Twin) { [Console]::Out.WriteLine("  atenção: o APK $(([string]$apkA).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/') é byte a byte igual a $(([string]$stA.Twin).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/'), de $($stA.TwinTime.ToString('yyyy-MM-dd HH:mm:ss')): cópia de um build anterior, não um build novo (v3.65.10)") }
                 if ($stA.Stale) { [Console]::Out.WriteLine("  atenção: o APK $(& $relA $stA.ApkFull) é de $($stA.ApkTime.ToString('yyyy-MM-dd HH:mm:ss')) e $(& $relA $stA.File) mudou em $($stA.FileTime.ToString('yyyy-MM-dd HH:mm:ss')): o comando 'build' não regerou o APK — rode $($stA.Task) (ou ponha no verify.build do guards.json) antes do accept, que recusa APK velho (exit 2)") }
                 elseif ($stA.Note) { [Console]::Out.WriteLine("  atenção: $($stA.Note)") }
-            }
+            } else { $adnV = Get-ApkDeclarationNote $Root ''; if ($adnV) { [Console]::Out.WriteLine("  atenção (v3.65.10): $adnV") } }
         }
     }
     if ($after -ne $tree) { [Console]::Out.WriteLine("  atenção: os comandos alteraram a árvore (antes $($tree.Substring(0, 12)), depois $(([string]$after).Substring(0, [Math]::Min(12, ([string]$after).Length)))) — arquivo gerado fora do .gitignore; a evidência vale para a árvore de antes") }

@@ -668,11 +668,15 @@ function Get-ProjectApk([string]$Root) {
 # v3.57.1 (note.md item 4): com targets.android.apkSources (pastas e arquivos relativos à raiz — no app híbrido, o código web:
 # "source/src", "source/capacitor.config.ts"), a comparação é com essas fontes, sem inferir o módulo; teste (*.spec.*, *.test.*,
 # pastas test/__tests__/e2e) e node_modules não entram. Sem a chave, o APK fora de build/outputs dá Note pedindo a declaração.
+# v3.65.10 (item D): com uma cópia byte a byte igual e mais velha na mesma pasta, a idade é a da cópia — o APK novo é sobra
+# de um build anterior, não um build novo (Twin = a cópia).
 function Get-ApkStaleness([string]$Apk, [string]$Root = '') {
-    $r = @{ Stale = $false; Note = '' }
+    $r = @{ Stale = $false; Note = ''; Twin = '' }
     if (-not $Apk -or -not (Test-Path -LiteralPath $Apk -PathType Leaf)) { return $r }
     $full = (Resolve-Path -LiteralPath $Apk).Path
     $apkTime = (Get-Item -LiteralPath $full).LastWriteTime
+    $tw = Get-ApkTwin $full
+    if ($tw) { $r.Twin = $tw.FullName; $r.TwinTime = $tw.LastWriteTime; $apkTime = $tw.LastWriteTime }
     $srcCfg = if ($Root) { @(Get-AndroidTargetValue $Root 'apkSources' | Where-Object { $_ }) } else { @() }
     if ($srcCfg.Count) {
         $cands = @()
@@ -712,6 +716,98 @@ function Get-ApkStaleness([string]$Apk, [string]$Root = '') {
         $r.Task = if ($full -match '[\\/]release[\\/]') { 'assembleRelease' } else { 'assembleDebug' }
     }
     return $r
+}
+
+# ---------- v3.65.10 · o app no aparelho é o código da árvore? ----------
+# Sprint 6 do garden (20–21/11): o guards.json não declara targets.android.apk; o build roda num volume do Docker e o APK vai a
+# source/dist/. O accept não achava APK local, não instalava nem conferia nada, e não dizia isso: as rodadas 6 a 12 do aceite
+# rodaram sobre o mesmo app (apk:731dfab5b3fd, o APK da Q-S6f), e a Q-S6h passou a ✅ sem que o aparelho tivesse a mudança.
+
+# Cópia byte a byte igual e mais velha do APK, na mesma pasta (FileInfo ou $null). No garden, o Q-S6d-debug.apk era o
+# Q-S6-debug.apk copiado: o "build novo" era o de antes.
+function Get-ApkTwin([string]$Apk) {
+    if (-not $Apk -or -not (Test-Path -LiteralPath $Apk -PathType Leaf)) { return $null }
+    $me = Get-Item -LiteralPath $Apk; $h = ''
+    $twins = foreach ($o in @(Get-ChildItem -LiteralPath $me.DirectoryName -Filter '*.apk' -File -ErrorAction SilentlyContinue | Where-Object { $_.FullName -ne $me.FullName -and $_.Length -eq $me.Length -and $_.LastWriteTime -lt $me.LastWriteTime })) {
+        if (-not $h) { $h = Get-FileHash12 $me.FullName }
+        if ((Get-FileHash12 $o.FullName) -eq $h) { $o }
+    }
+    return (@($twins) | Sort-Object LastWriteTime | Select-Object -First 1)
+}
+# Aviso quando o alvo android não tem APK local a instalar e conferir ('' sem aviso). $Resolved = o APK que o accept usaria
+# ($null = procurar como o accept procura: targets.android.apk, depois **/build/outputs/apk/).
+function Get-ApkDeclarationNote([string]$Root, $Resolved = $null) {
+    $tc = Get-TargetsConfig $Root
+    if (-not ($tc -and $tc.PSObject.Properties['android'] -and $tc.android)) { return '' }
+    if ($null -eq $Resolved) { $Resolved = Get-ProjectApk $Root }
+    if ($Resolved) { return '' }
+    $decl = [string](Get-AndroidTargetValue $Root 'apk')
+    $how = 'o app que está no aparelho não é reinstalado nem conferido com o build da árvore, e a prova pode rodar sobre um app de antes da mudança'
+    if ($decl) { return "targets.android.apk '$decl' não casa nenhum arquivo, e não há APK em **/build/outputs/apk/: $how — confira o caminho (a máscara vale só no nome do arquivo) ou rode o build antes" }
+    return "nenhum APK local (targets.android.apk não declarado e nada em **/build/outputs/apk/): $how. Declare no guards.json targets.android.apk (onde o build deixa o APK; aceita máscara no nome, vale o mais novo) e, com o APK fora de <módulo>/build/outputs, targets.android.apkSources (as fontes que entram nele)"
+}
+# O app instalado é o mesmo de uma rodada anterior do aceite, e o código do app mudou desde então? Conferência sem depender de
+# declaração: a identidade é o hash do base.apk (accept.ps1 Get-AppIdentity) e cada result.json guarda a árvore (tree). Vale a
+# rodada MAIS ANTIGA com a mesma identidade — o app foi construído antes dela, então o que mudou depois não está nele.
+# O que conta: os arquivos de produção (sem teste, sem quality.toolingPaths); com targets.android.apkSources, só eles; com o
+# APK em <módulo>/build/outputs, só o módulo. O APK local mais novo que todos esses arquivos foi reconstruído depois da mudança
+# (build que deu os mesmos bytes): não é app velho. @{ Stale; Since; Dir; Files; Count }.
+function Get-InstalledAppStaleness([string]$Root, [string]$AppId, [string]$Apk = '') {
+    $r = @{ Stale = $false; Since = ''; Dir = ''; Files = @(); Count = 0 }
+    if (-not $AppId -or $AppId -notmatch '^apk:' -or $AppId -match ':\?$') { return $r }
+    $now = Get-WorkTree $Root
+    if (-not $now) { return $r }
+    $first = $null
+    foreach ($f in @(Get-ChildItem -LiteralPath (Join-Path $Root '.team-project/accept') -Recurse -Filter 'result.json' -File -ErrorAction SilentlyContinue)) {
+        try { $j = Read-Text $f.FullName | ConvertFrom-Json } catch { continue }
+        if ([string]$j.target -ne 'android' -or [string]$j.app -ne $AppId -or -not $j.tree) { continue }
+        if ($j.PSObject.Properties['staleApp'] -and $j.staleApp) { continue }   # a rodada recusada não provou nada
+        if (-not $first -or [string]$j.at -lt [string]$first.J.at) { $first = @{ J = $j; F = $f.FullName } }
+    }
+    if (-not $first -or [string]$first.J.tree -eq [string]$now) { return $r }
+    $ErrorActionPreference = 'Continue'
+    $top = (& git -C $Root rev-parse --show-toplevel 2>$null); if (-not $top) { return $r }
+    $names = @(& git -C $top -c core.quotePath=false diff-tree -r --name-only ([string]$first.J.tree) $now 2>$null)
+    if ($LASTEXITCODE -ne 0) { return $r }   # a árvore antiga saiu do repositório: sem como comparar
+    $pre = ''
+    $rootFull = ((Resolve-Path -LiteralPath $Root).Path -replace '\\', '/').TrimEnd('/'); $topFull = (([string]$top) -replace '\\', '/').TrimEnd('/')
+    if ($rootFull.Length -gt $topFull.Length -and $rootFull.StartsWith($topFull, [StringComparison]::OrdinalIgnoreCase)) { $pre = $rootFull.Substring($topFull.Length + 1) + '/' }
+    $src = @(Get-AndroidTargetValue $Root 'apkSources' | Where-Object { $_ } | ForEach-Object { ConvertTo-GlobRegex ([string]$_) } | Where-Object { $_ })
+    $modRe = ''
+    if (-not $src.Count -and $Apk) {
+        $mm = [regex]::Match((([string]$Apk) -replace '\\', '/'), '^(.*)/build/outputs/apk/')
+        if ($mm.Success -and $mm.Groups[1].Value.StartsWith($rootFull, [StringComparison]::OrdinalIgnoreCase) -and $mm.Groups[1].Value.Length -gt $rootFull.Length) { $modRe = '^' + [regex]::Escape($mm.Groups[1].Value.Substring($rootFull.Length + 1)) + '/' }
+    }
+    $toolRe = @(Get-ToolingPaths $Root | ForEach-Object { ConvertTo-GlobRegex $_ } | Where-Object { $_ })
+    $hit = foreach ($p0 in $names) {
+        $p = ([string]$p0).Trim(); if (-not $p) { continue }
+        if ($pre) { if (-not $p.StartsWith($pre, [StringComparison]::OrdinalIgnoreCase)) { continue }; $p = $p.Substring($pre.Length) }
+        if ($p -match '^\.team-project/' -or $p -match $script:TestPathRe) { continue }
+        if (@($toolRe | Where-Object { $p -match $_ }).Count) { continue }
+        if ($src.Count) { if (-not @($src | Where-Object { $p -match $_ }).Count) { continue } }
+        elseif ($modRe -and $p -notmatch $modRe) { continue }
+        $p
+    }
+    $hit = @($hit)
+    if (-not $hit.Count) { return $r }
+    if ($Apk -and (Test-Path -LiteralPath $Apk -PathType Leaf)) {
+        $apkT = (Get-Item -LiteralPath $Apk).LastWriteTime; $tw = Get-ApkTwin $Apk; if ($tw) { $apkT = $tw.LastWriteTime }
+        $times = @($hit | ForEach-Object { $fp = Join-Path $Root $_; if (Test-Path -LiteralPath $fp -PathType Leaf) { (Get-Item -LiteralPath $fp).LastWriteTime } })
+        if ($times.Count -and $apkT -gt (($times | Sort-Object -Descending)[0]).AddSeconds(2)) { return $r }
+    }
+    $r.Stale = $true; $r.Since = [string]$first.J.at; $r.Count = $hit.Count; $r.Files = @($hit | Select-Object -First 5)
+    $r.Dir = ((Split-Path $first.F -Parent).Substring($Root.Length).TrimStart('\', '/') -replace '\\', '/')
+    return $r
+}
+# O frescor do app que o accept prova, no result.json (o diagnóstico lê): conferido = o APK local foi comparado com as fontes e
+# é ele que está no aparelho. Sem isso, um elemento ausente pode ser o app de antes da mudança — não é APP (operator, regra 9).
+# '' = frescor conferido ou result.json sem o campo (anterior à v3.65.10, ou alvo web); senão, o motivo.
+function Get-AcceptFreshGap($Aj) {
+    if (-not $Aj -or [string]$Aj.target -ne 'android') { return '' }
+    if (-not ($Aj.PSObject.Properties['fresh'] -and $Aj.fresh)) { return '' }
+    if ($Aj.fresh.checked) { return '' }
+    $why = [string]$Aj.fresh.reason
+    return "o app no aparelho ($([string]$Aj.fresh.installed)) não foi conferido com o build da árvore$(if ($why) { ": $why" })"
 }
 
 # Alvos de execução (v3.51, D3): guards.json → targets ({ "android": {…}, "web": {…} }). $null sem a chave.
@@ -2959,7 +3055,7 @@ function Get-SprintScenarioFiles([string]$Root) { return @(Get-ChildItem -Path (
 #   routedFail  v3.65.9: achado → a falha dos cenários dele naquele disparo; falha que mudou zera a conta (progresso)
 #   escalated   v3.65.9: achado → o disparo em que foi ao Arquiteto (degrau 1), antes do stakeholder
 function Get-GateState([string]$S) {
-    $st = [ordered]@{ round = 0; judged = $null; env = [ordered]@{ attempts = 0; at = ''; asked = ''; sent = 0; sentAt = '' }; proof = 0; routed = [ordered]@{}; stall = 0; routedAt = [ordered]@{}; routedFail = [ordered]@{}; escalated = [ordered]@{} }
+    $st = [ordered]@{ round = 0; judged = $null; env = [ordered]@{ attempts = 0; at = ''; asked = ''; sent = 0; sentAt = '' }; proof = 0; routed = [ordered]@{}; stall = 0; routedAt = [ordered]@{}; routedFail = [ordered]@{}; escalated = [ordered]@{}; staleApp = $null }
     $p = Join-Path $S 'gate.json'
     if (Test-Path -LiteralPath $p) {
         try {
@@ -2973,6 +3069,7 @@ function Get-GateState([string]$S) {
             if ($j.PSObject.Properties['proof']) { $st.proof = [int]$j.proof }
             if ($j.PSObject.Properties['routed'] -and $j.routed) { foreach ($pp in $j.routed.PSObject.Properties) { $st.routed[$pp.Name] = [int]$pp.Value } }
             if ($j.PSObject.Properties['stall']) { $st.stall = [int]$j.stall }   # v3.65.8
+            if ($j.PSObject.Properties['staleApp'] -and $j.staleApp) { $st.staleApp = [ordered]@{ app = [string]$j.staleApp.app; at = [string]$j.staleApp.at; times = [int]$j.staleApp.times } }   # v3.65.10
             foreach ($mk in 'routedAt', 'routedFail', 'escalated') { if ($j.PSObject.Properties[$mk] -and $j.$mk) { foreach ($pp in $j.$mk.PSObject.Properties) { $st[$mk][$pp.Name] = [string]$pp.Value } } }   # v3.65.9
         } catch { }
     }
@@ -3012,7 +3109,13 @@ function Read-AcceptDiagnosis([string]$DiagPath, [string]$ResultPath) {
     $line = { param($k) $m = [regex]::Match($t, "(?im)^\W*$k\W*:\s*(.+)$"); if ($m.Success) { $m.Groups[1].Value.Trim().TrimEnd('*').Trim() } else { '' } }
     $own = & $line 'Dono'
     $ownN = if ($own -match '(?i)arquitet|architect') { 'Arquiteto' } elseif ($own -match '(?i)\bQA\b|quality|cen[áa]rio') { 'QA' } else { '' }
-    return [pscustomobject]@{ Verdict = $vm.Groups[1].Value.ToUpperInvariant(); Owner = $ownN; Element = (& $line 'Elemento'); Where = (& $line 'Onde'); Reason = (& $line 'Motivo') }
+    $out = [pscustomobject]@{ Verdict = $vm.Groups[1].Value.ToUpperInvariant(); Owner = $ownN; Element = (& $line 'Elemento'); Where = (& $line 'Onde'); Reason = (& $line 'Motivo'); FreshGap = '' }
+    # v3.65.10 (item C): APP só com o app do aparelho conferido com o build da árvore — sem isso, vale PLANO com o Arquiteto.
+    if ($out.Verdict -eq 'APP' -and $ResultPath -and (Test-Path -LiteralPath $ResultPath)) {
+        $gap = ''; try { $gap = Get-AcceptFreshGap (Read-Text $ResultPath | ConvertFrom-Json) } catch { }
+        if ($gap) { $out.Verdict = 'PLANO'; $out.Owner = 'Arquiteto'; $out.FreshGap = $gap; $out.Reason = "build não conferido — $gap (o operator disse APP: $($out.Reason))" }
+    }
+    return $out
 }
 # O prompt do operator para o diagnóstico (Task e portão). $Caller = "executor T-041" | "sessão S6".
 function Get-AcceptDiagPrompt([string]$Caller, [string]$Id, [string]$AccRel, [string]$DiagRel, [string]$Tn, [string]$Plugin, $Need) {
@@ -3020,7 +3123,7 @@ function Get-AcceptDiagPrompt([string]$Caller, [string]$Id, [string]$AccRel, [st
     if ($Need -and @($Need.Failed).Count) { $what += "cenário(s) que falharam: $(@($Need.Failed) -join ', ')" }
     if ($Need -and $Need.Signal) { $what += "interrupção com sinal do app: $($Need.Signal)" }
     $foco = if ($what.Count) { " ($($what -join ' · '))" } else { '' }
-    return "Chamador: $Caller — Diagnostique a falha da prova no alvo da $Id$foco. Leia $AccRel/result.md e result.json (o campo signal de cada cenário e o environmentSignal), abra com Read as capturas *-falha.png que ele cita e o registro do aparelho de cada falha ($AccRel/logs/*-logcat.txt: FATAL EXCEPTION, ANR, crash da WebView); rode $Plugin/target.ps1 -Target $Tn (só a conferência, sem -Repair). Grave $DiagRel com as linhas: 'Veredito: AMBIENTE | APP | PLANO', 'Cenário: <ID>', 'Motivo: <crash | ANR | app reiniciado | WebView recriada | janela do sistema | tela errada | elemento ausente | valor errado>', e, com APP ou PLANO, 'Elemento: <o id a tocar ou a conferir>', 'Onde: <tela, aba e posição na captura — ex.: aba Estufa, 2º cartão, botão à direita>' e, com PLANO, 'Dono: QA' (o .scn está errado ou não volta à tela depois de recriar a WebView ou reabrir o app) ou 'Dono: Arquiteto' (o contrato de ids ou o plano pede o que nenhuma Task cria); depois até 5 linhas do que viu. APP = a tela certa estava aberta e o elemento, o texto ou o valor faltou, ou o registro mostra crash/ANR do app, ou o app perdeu o estado que devia manter. PLANO = o cenário supõe o que o app legitimamente não faz (estado que a plataforma zera ao recriar a WebView ou reabrir o app) ou pede o que nenhuma Task cria; não deu para ver, PLANO dizendo o que faltou. AMBIENTE SÓ com prova: janela do sistema na captura ou no foco, alvo fora do ar, tela em branco, outro automatizador — app reiniciado ou foco 'nenhum' sozinhos NÃO são prova de ambiente. Não altere código, cenário nem plano; não rode accept nem verify. Volte com a linha do veredito."
+    return "Chamador: $Caller — Diagnostique a falha da prova no alvo da $Id$foco. Leia $AccRel/result.md e result.json (o campo signal de cada cenário e o environmentSignal), abra com Read as capturas *-falha.png que ele cita e o registro do aparelho de cada falha ($AccRel/logs/*-logcat.txt: FATAL EXCEPTION, ANR, crash da WebView); rode $Plugin/target.ps1 -Target $Tn (só a conferência, sem -Repair). Grave $DiagRel com as linhas: 'Veredito: AMBIENTE | APP | PLANO', 'Cenário: <ID>', 'Motivo: <crash | ANR | app reiniciado | WebView recriada | janela do sistema | tela errada | elemento ausente | valor errado>', e, com APP ou PLANO, 'Elemento: <o id a tocar ou a conferir>', 'Onde: <tela, aba e posição na captura — ex.: aba Estufa, 2º cartão, botão à direita>' e, com PLANO, 'Dono: QA' (o .scn está errado ou não volta à tela depois de recriar a WebView ou reabrir o app) ou 'Dono: Arquiteto' (o contrato de ids ou o plano pede o que nenhuma Task cria), e a linha 'App: <fresh.installed do result.json> · build: <fresh.build.path e fresh.build.hash, ou sem APK local> · frescor: conferido | não conferido'; depois até 5 linhas do que viu. APP só com o campo fresh.checked = true no result.json (alvo android): com fresh.checked = false, o elemento ausente pode ser o app de antes da mudança — grave 'Veredito: PLANO', 'Dono: Arquiteto' e 'Motivo: build não conferido — <fresh.reason>' (v3.65.10; o run trata APP sem frescor como PLANO). APP =a tela certa estava aberta e o elemento, o texto ou o valor faltou, ou o registro mostra crash/ANR do app, ou o app perdeu o estado que devia manter. PLANO = o cenário supõe o que o app legitimamente não faz (estado que a plataforma zera ao recriar a WebView ou reabrir o app) ou pede o que nenhuma Task cria; não deu para ver, PLANO dizendo o que faltou. AMBIENTE SÓ com prova: janela do sistema na captura ou no foco, alvo fora do ar, tela em branco, outro automatizador — app reiniciado ou foco 'nenhum' sozinhos NÃO são prova de ambiente. Não altere código, cenário nem plano; não rode accept nem verify. Volte com a linha do veredito."
 }
 # Achados e frentes do validation.md no formato da v3.63.0 — tabela com as colunas ID e Cause (ou State) e linhas S<n>-F<k>;
 # a ÚLTIMA ocorrência de cada ID vale (a tabela da rodada nova só traz ID e State). Frentes: tabela com Front e State.

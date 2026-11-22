@@ -2486,6 +2486,7 @@ $hg = Join-Path $Work '.team-project'; New-Item -ItemType Directory -Force $hg |
 Set-Content -LiteralPath (Join-Path $hg 'guards.json') '{ "targets": { "android": { "package": "br.x", "apk": "source/dist/app-*-debug.apk", "apkSources": ["source/src", "source/capacitor.config.ts"] } } }' -Encoding UTF8
 $a1 = Join-Path $Work 'source/dist/app-T-001-debug.apk'; $a2 = Join-Path $Work 'source/dist/app-T-002-debug.apk'; $ts = Join-Path $Work 'source/src/app/tela.ts'; $sp = Join-Path $Work 'source/src/app/tela.spec.ts'; $cc = Join-Path $Work 'source/capacitor.config.ts'
 foreach ($f in $a1, $a2, $ts, $sp, $cc) { New-Item -ItemType Directory -Force (Split-Path $f) | Out-Null; Set-Content -LiteralPath $f 'x' }
+Set-Content -LiteralPath $a2 'build T-002'   # v3.65.10: dois builds de verdade (igual byte a byte, o segundo seria cópia do primeiro)
 (Get-Item $a1).LastWriteTime = (Get-Date).AddMinutes(-60); (Get-Item $a2).LastWriteTime = (Get-Date).AddMinutes(-30); (Get-Item $ts).LastWriteTime = (Get-Date).AddMinutes(-45); (Get-Item $cc).LastWriteTime = (Get-Date).AddMinutes(-50); (Get-Item $sp).LastWriteTime = (Get-Date)
 $pa = Get-ProjectApk $Work; "AP4=$(Split-Path $pa -Leaf)"
 $s = Get-ApkStaleness $pa $Work; "AP5=$($s.Stale)|$($s.Note)"
@@ -2769,7 +2770,7 @@ $ErrorActionPreference = 'Stop'
 . $Lib
 $utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'T-041'; $NoRetry = $true; $NoRepair = $true; $Apk = ''
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
-foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Get-FailScreen', 'Write-AcceptConfig', 'Write-AcceptProgress', 'Invoke-AcceptBaseline', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AppIdentity', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming') { . ([scriptblock]::Create($f.Extent.Text)) } }
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Get-FailScreen', 'Write-AcceptConfig', 'Write-AcceptProgress', 'Invoke-AcceptBaseline', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AppIdentity', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming', 'Format-AcceptFresh', 'Test-AcceptFresh', 'Write-AcceptStale') { . ([scriptblock]::Create($f.Extent.Text)) } }
 $script:Tgt = 'web'; $script:ran = 0; $script:Locator = 'uiautomator'
 function Stop-WebServer { }
 function Invoke-Once($Block) {
@@ -3999,7 +4000,7 @@ $ErrorActionPreference = 'Stop'
 . $Lib
 $utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'T-041'; $NoRetry = $false; $NoRepair = $true; $Apk = ''
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
-foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-AcceptCommand', 'Invoke-AcceptCommandRun', 'Find-AcceptShot', 'Write-AcceptProgress', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming') { . ([scriptblock]::Create($f.Extent.Text)) } }
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-AcceptCommand', 'Invoke-AcceptCommandRun', 'Find-AcceptShot', 'Write-AcceptProgress', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming', 'Format-AcceptFresh', 'Test-AcceptFresh', 'Write-AcceptStale') { . ([scriptblock]::Create($f.Extent.Text)) } }
 $script:Tgt = 'web'; $script:Serial = ''; $script:Pkg = ''
 function Stop-WebServer { }
 $env:FAKE_CASE = $Case
@@ -4303,7 +4304,7 @@ $ErrorActionPreference = 'Stop'
 . $Lib
 $utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'T-041'; $NoRetry = $true; $NoRepair = $true; $Apk = ''; $Resume = $false
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
-foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Write-AcceptProgress', 'Get-FailScreen', 'Write-AcceptConfig', 'Invoke-AcceptBaseline', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AppIdentity', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming') { . ([scriptblock]::Create($f.Extent.Text)) } }
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Write-AcceptProgress', 'Get-FailScreen', 'Write-AcceptConfig', 'Invoke-AcceptBaseline', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AppIdentity', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming', 'Format-AcceptFresh', 'Test-AcceptFresh', 'Write-AcceptStale') { . ([scriptblock]::Create($f.Extent.Text)) } }
 $script:Tgt = 'web'; $script:Serial = ''; $script:Pkg = ''; $script:Locator = 'uiautomator'; $script:ScnFiles = @(); $script:ExtCmd = ''
 function Stop-WebServer { }
 $script:ran = @()
@@ -4330,7 +4331,7 @@ $ErrorActionPreference = 'Stop'
 . $Lib
 $utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'T-041'; $NoRetry = $false; $NoRepair = $true; $Apk = ''; $Resume = $false
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
-foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Write-AcceptProgress', 'Get-FailScreen', 'Write-AcceptConfig', 'Invoke-AcceptBaseline', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AppIdentity', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming') { . ([scriptblock]::Create($f.Extent.Text)) } }
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Accept', 'Write-AcceptProgress', 'Get-FailScreen', 'Write-AcceptConfig', 'Invoke-AcceptBaseline', 'Get-AcceptReuse', 'New-ReusedRow', 'Get-ScenarioHash', 'Get-AppIdentity', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming', 'Format-AcceptFresh', 'Test-AcceptFresh', 'Write-AcceptStale') { . ([scriptblock]::Create($f.Extent.Text)) } }
 # As mensagens reais das rodadas 5 e 6 do garden: '' = repete.
 $cases = [ordered]@{
     'ausente' = "passo 'assert-exists manejo-semeio.semeios': tag ausente: manejo-semeio.semeios"
@@ -4573,7 +4574,7 @@ param([string]$Accept, [string]$Lib, [string]$Root)
 $ErrorActionPreference = 'Stop'
 . $Lib
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
-foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Once', 'Get-AcceptFailEvidence', 'Invoke-AcceptBaseline', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming') { . ([scriptblock]::Create($f.Extent.Text)) } }
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Invoke-Once', 'Get-AcceptFailEvidence', 'Invoke-AcceptBaseline', 'Get-AcceptNoRetryKind', 'Add-AcceptStepTime', 'Get-AcceptTiming', 'Format-AcceptTiming', 'Format-AcceptFresh', 'Test-AcceptFresh', 'Write-AcceptStale') { . ([scriptblock]::Create($f.Extent.Text)) } }
 $screenVerbs = @('tap'); $script:Tgt = 'android'; $script:Locator = 'uiautomator'; $script:Attempt = @{}; $script:AdbTimeout = ''; $script:BaseCfg = $null
 $script:Shots = Join-Path $Root '.team-project/accept/1/T-1/shots'; New-Item -ItemType Directory -Force $script:Shots | Out-Null
 function Clear-AndroidLog { }
@@ -4721,6 +4722,118 @@ $r = & $g63 $pq65
 Check 'v3.65.0 A2-08: suíte rodada de fato nesta árvore → o portão mede só a qualidade, sem verify -Fresh' $r 0 @('medir \(operator', 'quality\.ps1 -Id S1', '^(?![\s\S]*-Mode full -Fresh)')
 $r = Invoke-Check 'quality.ps1' @('-Id', 'S1', '-Root', $pq65)
 Check 'v3.65.0 A2-08: Q11 com a cobertura rodada de fato no verify full da mesma árvore → reaproveitada (91.5 %)' $r 0 @('Q11 ok: .*reaproveitada do verify full da T-001 .*mesma árvore.*91\.5 % medido')
+
+# ======================= v3.65.10 · o app no aparelho é o código da árvore? =======================
+# Origem: sprint 6 do garden (20–21/11). Sem targets.android.apk, o accept não achava APK local e seguia calado: as rodadas 6
+# a 12 rodaram sobre o APK da Q-S6f (apk:731dfab5b3fd), "tag não encontrada" virou APP e a Q-S6h passou a ✅ sem a mudança.
+$ok10 = [char]::ConvertFromUtf32(0x2705); $pa10 = Join-Path $tmp 'v36510-fresh'
+Put $pa10 '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+Put $pa10 'source/src/tela.ts' "export const t = 1`n"; Put $pa10 'server/api.ts' "export const s = 1`n"
+$ErrorActionPreference = 'Continue'; & git -C $pa10 init -q 2>$null; Put $pa10 '.gitignore' ".team-project/`ndist/`n"; & git -C $pa10 add -A 2>$null; & git -C $pa10 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+$tr10 = (& $lib63 "Get-WorkTree '$pa10'").Trim()
+$acc10 = { param($rel, $app, $tree, $at) Put $pa10 $rel (@{ task = 'T-001'; target = 'android'; at = $at; tree = $tree; app = $app; passed = 1; total = 1; results = @(@{ id = 'SC-1'; status = 'PASSOU' }) } | ConvertTo-Json -Depth 5) }
+& $acc10 '.team-project/accept/1/T-001/result.json' 'apk:731dfab5b3fd' $tr10 '2026-11-20 11:10:00'
+$hsE = "`$h = Get-InstalledAppStaleness '$pa10' 'apk:731dfab5b3fd'; 'S=' + `$h.Stale + '|' + `$h.Since + '|' + (`$h.Files -join ',') + '|' + `$h.Dir"
+$a1 = & $lib63 $hsE
+Put $pa10 'source/src/tela.spec.ts' "test`n"
+$a2 = & $lib63 $hsE
+Put $pa10 'source/src/tela.ts' "export const t = 2 // manejo-semeio.insumos.unidade`n"
+$a3 = & $lib63 $hsE
+$a4 = & $lib63 "`$h = Get-InstalledAppStaleness '$pa10' 'apk:0000aaaa1111'; 'S=' + `$h.Stale"
+# Só o servidor mudou, com targets.android.apkSources = o código web: não é app velho.
+Edit-File (Join-Path $pa10 'source/src/tela.ts') 'export const t = 2 // manejo-semeio.insumos.unidade' 'export const t = 1'
+Put $pa10 'server/api.ts' "export const s = 2`n"
+$a5 = & $lib63 $hsE
+Put $pa10 '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x", "apkSources": ["source/src"] } } }'
+$a6 = & $lib63 $hsE
+Put $pa10 'server/api.ts' "export const s = 1`n"
+Check 'v3.65.10 A: o mesmo app de uma rodada anterior e o código do app mudado desde ela → app velho (teste e servidor fora das apkSources não contam); outro app, não' @{ Code = 0; Out = "A1=$a1`nA2=$a2`nA3=$a3`nA4=$a4`nA5=$a5`nA6=$a6" } 0 @('A1=S=False\|', 'A2=S=False\|', 'A3=S=True\|2026-11-20 11:10:00\|source/src/tela\.ts\|\.team-project/accept/1/T-001', 'A4=S=False', 'A5=S=True\|.*server/api\.ts', 'A6=S=False\|')
+# O APK local reconstruído depois da mudança (mesmos bytes) não é app velho; a cópia igual mais velha conta pela data dela (D).
+Put $pa10 'source/src/tela.ts' "export const t = 3`n"
+New-Item -ItemType Directory -Force (Join-Path $pa10 'dist') | Out-Null
+$apkA = Join-Path $pa10 'dist/app-Q-S6-debug.apk'; [System.IO.File]::WriteAllBytes($apkA, [byte[]](1..200)); (Get-Item $apkA).LastWriteTime = (Get-Date).AddMinutes(-30)
+$apkB = Join-Path $pa10 'dist/app-Q-S6d-debug.apk'; [System.IO.File]::WriteAllBytes($apkB, [byte[]](1..200)); (Get-Item $apkB).LastWriteTime = (Get-Date).AddMinutes(5)
+(Get-Item (Join-Path $pa10 'source/src/tela.ts')).LastWriteTime = (Get-Date).AddMinutes(-10)
+$d1 = & $lib63 "`$s = Get-ApkStaleness '$apkB' '$pa10'; 'ST=' + `$s.Stale + '|' + (Split-Path `$s.Twin -Leaf) + '|' + (Split-Path `$s.File -Leaf)"
+$d2 = & $lib63 "`$h = Get-InstalledAppStaleness '$pa10' 'apk:731dfab5b3fd' '$apkB'; 'S=' + `$h.Stale"
+[System.IO.File]::WriteAllBytes($apkB, [byte[]](1..201)); (Get-Item $apkB).LastWriteTime = (Get-Date).AddMinutes(5)
+$d3 = & $lib63 "`$s = Get-ApkStaleness '$apkB' '$pa10'; 'ST=' + `$s.Stale + '|tw=' + `$s.Twin; `$h = Get-InstalledAppStaleness '$pa10' 'apk:731dfab5b3fd' '$apkB'; 'S=' + `$h.Stale"
+Check 'v3.65.10 D: o APK igual byte a byte a uma cópia mais velha conta pela cópia (mais velho que o código); o APK novo de verdade, depois da mudança, não é velho' @{ Code = 0; Out = "D1=$d1`nD2=$d2`nD3=$d3" } 0 @('D1=ST=True\|app-Q-S6-debug\.apk\|tela\.ts', 'D2=S=True', 'D3=ST=False\|tw=\s*S=False')
+Remove-Item -LiteralPath (Join-Path $pa10 'dist') -Recurse -Force
+# B: o aviso quando não há APK local.
+$b1 = & $lib63 "'N=' + (Get-ApkDeclarationNote '$pa10')"
+Put $pa10 '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x", "apk": "dist/app-*-debug.apk", "apkSources": ["source/src"] } } }'
+$b2 = & $lib63 "'N=' + (Get-ApkDeclarationNote '$pa10')"
+Put (Join-Path $tmp 'v36510-web') '.team-project/guards.json' '{ "targets": { "web": { "url": "http://127.0.0.1:9" } } }'; $b3 = & $lib63 "'N=' + (Get-ApkDeclarationNote '$(Join-Path $tmp 'v36510-web')')"
+Check 'v3.65.10 B: alvo android sem APK local → aviso (sem declaração, pede apk e apkSources; com máscara que não casa, diz isso); alvo web, nada' @{ Code = 0; Out = "B1=$b1`nB2=$b2`nB3=$b3" } 0 @('B1=N=nenhum APK local \(targets\.android\.apk não declarado.*declare no guards\.json targets\.android\.apk', "B2=N=targets\.android\.apk 'dist/app-\*-debug\.apk' não casa nenhum arquivo", 'B3=N=\s*$')
+Put $pa10 '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+# A e C pelo accept: Test-AcceptFresh com as funções do accept.ps1 (sem aparelho).
+$hs10 = Join-Path $tmp 'accept-fresh.ps1'
+[System.IO.File]::WriteAllText($hs10, @'
+param([string]$Accept, [string]$Lib, [string]$Root, [string]$App)
+$ErrorActionPreference = 'Stop'
+. $Lib
+$utf8 = New-Object System.Text.UTF8Encoding($false); $Task = 'S1'
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($Accept, [ref]$null, [ref]$null)
+foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)) { if ($f.Name -in 'Test-AcceptFresh', 'Write-AcceptStale', 'Format-AcceptFresh') { . ([scriptblock]::Create($f.Extent.Text)) } }
+$script:Tgt = 'android'; $script:AppId = $App; $script:Installed = $false; $script:ScnFiles = @()
+$script:ApkDeclNote = Get-ApkDeclarationNote $Root ''
+$d = Join-Path $Root '.team-project/accept/1/S1'
+$c = Test-AcceptFresh $d '' $null
+"CODE=$c"
+'FRESH=' + (($script:Fresh | ConvertTo-Json -Compress))
+'MD=' + (Format-AcceptFresh)
+if (Test-Path (Join-Path $d 'result.json')) { 'RESULT=' + ([System.IO.File]::ReadAllText((Join-Path $d 'result.json')) -replace '\s+', ' ') }
+'@, (New-Object System.Text.UTF8Encoding($true)))
+$af10 = { param($app) $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $hs10 -Accept (Join-Path $checks 'accept.ps1') -Lib (Join-Path $checks 'lib.ps1') -Root $pa10 -App $app 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
+$r = & $af10 'apk:731dfab5b3fd'
+Check 'v3.65.10 A: o accept recusa o app instalado igual ao de uma rodada anterior com o código mudado (exit 2, staleApp no result.json, sem cenários)' $r 0 @('o app instalado \(apk:731dfab5b3fd\) é o mesmo da rodada de 2026-11-20 11:10:00 \(\.team-project/accept/1/T-001\), e o código do app mudou desde ela \(1 arquivo\(s\): source/src/tela\.ts\)', 'Reconstrua o APK e instale-o', 'CODE=2', 'RESULT=.*"staleApp":\s*"o app instalado', 'RESULT=.*"total":\s*0')
+$r = & $af10 'apk:5555bbbb6666'
+Check 'v3.65.10 B/C: app novo sem APK local → segue (exit 0) com o frescor NÃO conferido, o motivo e o aviso — o elemento ausente não vira APP' $r 0 @('atenção — frescor do app não conferido \(apk:5555bbbb6666\): sem APK local \(o aviso acima\)', 'CODE=0', 'FRESH=\{"checked":false,"installed":"apk:5555bbbb6666","build":null,"reason":"nenhum APK local', 'MD=\s*\*\*App no aparelho:\*\* apk:5555bbbb6666 · sem APK local · frescor: \*\*não conferido\*\*')
+# C: o diagnóstico APP sem frescor conferido vale PLANO com o Arquiteto; com frescor (ou result.json antigo, sem o campo), APP.
+$rc10 = Join-Path $pa10 '.team-project/accept/1/S2/result.json'; $dc10 = Join-Path $pa10 '.team-project/operator/1/S2-alvo/diagnostico.md'
+$c10 = { param($fresh) $o = [ordered]@{ task = 'S2'; target = 'android'; at = '2026-11-21 10:00:00'; app = 'apk:731dfab5b3fd'; results = @() }; if ($null -ne $fresh) { $o.fresh = [ordered]@{ checked = $fresh; installed = 'apk:731dfab5b3fd'; build = $null; reason = 'nenhum APK local' } }; Put $pa10 '.team-project/accept/1/S2/result.json' ($o | ConvertTo-Json -Depth 5); Start-Sleep -Milliseconds 50; Put $pa10 '.team-project/operator/1/S2-alvo/diagnostico.md' "Veredito: APP`nCenário: SC-161`nMotivo: elemento ausente`nElemento: manejo-semeio.insumos.unidade`n"; (& $lib63 "`$d = Read-AcceptDiagnosis '$dc10' '$rc10'; `$d.Verdict + '|' + `$d.Owner + '|' + `$d.Reason") }
+$cA = & $c10 $false; $cB = & $c10 $true; $cC = & $c10 $null
+Check 'v3.65.10 C: diagnóstico APP com fresh.checked false → PLANO, Dono Arquiteto, "build não conferido"; com frescor conferido ou sem o campo, APP' @{ Code = 0; Out = "C1=$cA`nC2=$cB`nC3=$cC" } 0 @('C1=PLANO\|Arquiteto\|build não conferido — o app no aparelho \(apk:731dfab5b3fd\) não foi conferido com o build da árvore: nenhum APK local \(o operator disse APP: elemento ausente\)', 'C2=APP\|\|elemento ausente', 'C3=APP\|')
+$pr10 = & $lib63 "Get-AcceptDiagPrompt 'sessão S1' 'S1' '.team-project/accept/1/S1' 'x/diagnostico.md' 'android' 'P' `$null"
+Check 'v3.65.10 C: o prompt do diagnóstico pede a linha App/build/frescor e diz que APP só vale com fresh.checked = true' @{ Code = 0; Out = $pr10 } 0 @("'App: <fresh\.installed", 'APP só com o campo fresh\.checked = true', "'Motivo: build não conferido")
+# C no done da Task: -Result gap e -Result env com APP sem frescor → PLANO, ao Arquiteto (não ao dev).
+$pt10 = Join-Path $tmp 'v36510-done'; New-Project $pt10
+Put $pt10 '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+Put $pt10 '.team-project/accept/1/T-041/result.json' '{ "target": "android", "app": "apk:731dfab5b3fd", "fresh": { "checked": false, "installed": "apk:731dfab5b3fd", "build": null, "reason": "nenhum APK local" }, "results": [ { "id": "SC-161", "status": "FALHOU", "detail": "tag não encontrada: manejo-semeio.insumos.unidade", "shot": "x" } ] }'
+Start-Sleep -Milliseconds 50
+Put $pt10 '.team-project/sprints/1/delivery/T-041.md' "## Entrega`n`n🔺 GAP (aceite/alvo): tag não encontrada: manejo-semeio.insumos.unidade`n"
+Start-Sleep -Milliseconds 50
+Put $pt10 '.team-project/operator/1/T-041-alvo/diagnostico.md' "Veredito: APP`nCenário: SC-161`nMotivo: elemento ausente`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'gap', '-Root', $pt10)
+Check 'v3.65.10 C: done -Result gap com APP e o frescor do app não conferido → vale PLANO (Arquiteto), não dev novo' $r 0 @('diagnosticou APP na prova da T-041, mas o app no aparelho \(apk:731dfab5b3fd\) não foi conferido com o build da árvore: nenhum APK local', 'Vale PLANO: o Arquiteto decide', '^(?![\s\S]*defeito do código, não do alvo nem do plano)')
+Put $pt10 '.team-project/accept/1/T-041/result.json' '{ "target": "android", "app": "apk:731dfab5b3fd", "environment": "o app br.x não ficou na frente (foco: nenhum)", "environmentSignal": { "kind": "no-focus", "text": "nenhuma janela dele ficou em foco", "scenario": "SC-161" }, "fresh": { "checked": false, "installed": "apk:731dfab5b3fd", "build": null, "reason": "nenhum APK local" }, "results": [ { "id": "SC-161", "status": "FALHOU", "detail": "tag não encontrada: manejo-semeio.insumos.unidade", "shot": "x" } ] }'
+Start-Sleep -Milliseconds 50
+Put $pt10 '.team-project/operator/1/T-041-alvo/diagnostico.md' "Veredito: APP`nCenário: SC-161`nMotivo: elemento ausente`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pt10)
+Check 'v3.65.10 C: done -Result env com APP e o frescor não conferido → PLANO ao Arquiteto, que decide reconstruir e reinstalar antes de mudar código' $r 0 @('o operator disse APP, mas o app no aparelho \(apk:731dfab5b3fd\) não foi conferido', 'team:architect', 'decida reconstruir e reinstalar o APK e repetir o accept', '^(?![\s\S]*defeito do código, não do alvo)')
+# O portão: o accept recusado manda reconstruir e reinstalar (operator), não medir de novo nem julgar; recusado de novo, ao stakeholder.
+$pg10 = Join-Path $tmp 'v36510-gate'
+Put $pg10 '.team-project/README.md' "| | |`n|---|---|`n| **Sprint corrente** | **1** — x |`n"
+Put $pg10 '.team-project/sprints/1/sprint-backlog.md' "# SB`n`n## História H-1 — x`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $ok10 T-001 | a | 1 | dev | — | — | — | SC-1 |`n"
+Put $pg10 '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+Put $pg10 '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-1 um`nlaunch`nassert-exists a`n"
+Put $pg10 'src/a.ts' "export const a = 1`n"
+$ErrorActionPreference = 'Continue'; & git -C $pg10 init -q 2>$null; Put $pg10 '.gitignore' ".team-project/`n"; & git -C $pg10 add -A 2>$null; & git -C $pg10 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+$prod10 = & $lib63 "Get-ProductionTree '$pg10'"; $scn10 = & $lib63 "Get-ScenarioSetHash (Get-SprintScenarioFiles '$pg10')"
+Put $pg10 '.team-project/quality/1/S1/result.json' (@{ id = 'S1'; at = '2026-11-21 08:00:00'; prod = $prod10; rows = @() } | ConvertTo-Json)
+$st10 = { param($at) Put $pg10 '.team-project/accept/1/S1/result.json' (@{ task = 'S1'; target = 'android'; at = $at; prod = $prod10; scenariosHash = $scn10; app = 'apk:731dfab5b3fd'; staleApp = 'o app instalado (apk:731dfab5b3fd) é o mesmo da rodada de 2026-11-20 11:10:00, e o código do app mudou desde ela'; environment = $null; passed = 0; total = 0; results = @() } | ConvertTo-Json -Depth 5) }
+& $st10 '2026-11-21 09:00:00'
+$r = & $g63 $pg10
+Check 'v3.65.10: portão com o accept recusado (app de antes do código) → reconstruir e reinstalar pelo build do projeto e repetir o aceite; sem QA nem nova medição por cima' $r 0 @('reconstruir e reinstalar o app, depois repetir o aceite', 'team:operator', 'Gere o APK pelo build do projeto', 'confira que o hash do APK novo é outro', 'accept\.ps1 -Task S1 -Resume', '^(?![\s\S]*team:quality-assurance)', '^(?![\s\S]*formulário)')
+$r = & $g63 $pg10
+Check 'v3.65.10: o mesmo result.json recusado no next seguinte → o mesmo pedido, sem formulário (o aceite não rodou de novo)' $r 0 @('reconstruir e reinstalar o app', '^(?![\s\S]*formulário)')
+& $st10 '2026-11-21 09:30:00'
+$r = & $g63 $pg10
+Check 'v3.65.10: recusado de novo, com o mesmo app, depois do pedido → formulário ao stakeholder (o build não regerou o APK)' $r 0 @('formulário ao stakeholder — o aceite do portão do sprint 1 recusou de novo o app do aparelho \(apk:731dfab5b3fd\)', 'targets\.android\.apk')
+Remove-Item -LiteralPath (Join-Path $pg10 '.team-project/accept') -Recurse -Force
+$r = & $g63 $pg10
+Check 'v3.65.10 B: portão que vai medir o aceite com alvo android sem APK local → o aviso da declaração junto do pedido de medir' $r 0 @('atenção \(guards\.json, do stakeholder; v3\.65\.10\): nenhum APK local', 'medir \(operator')
 
 # ==== fim dos casos ====
 try { Stop-Process -Id $script:watchdog.Id -Force -ErrorAction SilentlyContinue } catch { }

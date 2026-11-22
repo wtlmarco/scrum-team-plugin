@@ -13,6 +13,21 @@
 
 ---
 
+## v3.65.10 — 2026-11-21
+**Branch:** `fix/v3.65.10` a partir de `develop` (`e5fedf7`)
+Origem: relato do sprint 6 do garden sobre o SC-161 ("tag não encontrada: manejo-semeio.insumos.unidade"). O operator classificou como APP e abriu a Q-S6i. O Arquiteto achou outra causa: o app no aparelho era o APK da Q-S6f (`apk:731dfab5b3fd` em todas as rodadas de 6 a 12), e o id entrou no código depois dele (`9a2c2e2`). O `guards.json` não declara `targets.android.apk`. Sem APK local, o accept não instalava nem conferia nada e também não avisava. Assim, várias rodadas de correção rodaram sobre o app antigo, e a Q-S6h passou a ✅ sem a mudança no aparelho.
+**A · App velho reconhecido sem depender de declaração** (`lib.ps1` `Get-InstalledAppStaleness`, `accept.ps1` `Test-AcceptFresh`).
+- O accept olha as rodadas anteriores (`.team-project/accept/**/result.json`) e pega a mais antiga com a mesma identidade do app instalado (o hash do `base.apk`). Se o código do app mudou desde a árvore dessa rodada (`git diff-tree`), o accept recusa com exit 2 e grava `staleApp` no `result.json`, sem rodar cenários.
+- Contam os arquivos de produção (sem teste e sem `quality.toolingPaths`). Com `apkSources` declarado, contam só eles. Com o APK em `<módulo>/build/outputs`, conta só o módulo.
+- Um APK local mais novo que todas essas mudanças foi reconstruído e deu os mesmos bytes, então não é tratado como app velho.
+**B · Aviso no lugar do silêncio** (`Get-ApkDeclarationNote`). Com `targets.android` e sem APK local, o aviso pede `targets.android.apk` e `apkSources`. Se a máscara de `apk` não casa nenhum arquivo, o aviso diz isso. Ele aparece no accept, no `verify full`, no `next` ao construir uma Task com cenários e no portão antes de medir o aceite.
+**C · Elemento ausente só vira APP com o app conferido** (`result.json → fresh`, `Read-AcceptDiagnosis`, `run.ps1 done`, `operator.md` regra 9).
+- O `result.json` e o `result.md` passam a levar o app instalado, o APK local (caminho, hash, data) e se o frescor foi conferido. Conferido quer dizer que o APK local foi comparado com as fontes e que é ele que está no aparelho.
+- Um APP sem frescor conferido vale como PLANO, com o Arquiteto e o motivo "build não conferido". Isso vale no portão e no `done -Result gap|env`. O prompt do diagnóstico pede a linha `App: · build: · frescor:`.
+**D · Cópia de sobra não conta como build novo** (`Get-ApkTwin`). O APK igual byte a byte a uma cópia mais velha na mesma pasta é tratado como sobra de um build anterior: a idade dele passa a ser a da cópia, e o accept e o `verify full` avisam.
+**Portão** (`gate.ps1`, `gate.json → staleApp`). Com a rodada recusada, o operator reconstrói pelo build que o projeto declara, confere se o hash mudou, instala e repete o aceite. Se o mesmo app for recusado de novo depois desse pedido, o caso vai ao stakeholder.
+Casos em `run-check-tests.ps1` (marcados v3.65.10).
+
 ## v3.65.9 — 2026-11-21
 **Branch:** `fix/v3.65.9` a partir de `fix/v3.65.8` (`d9183d3`, ainda sem merge)
 Origem: revisão das 8 interrupções do stakeholder no garden em 21/11. Só 2 eram decisões dele (atualizar o plugin; o zip com dados fora do git). As outras vinham de quatro lacunas do processo. A quinta (a medição viva) foi resolvida na v3.65.8.
