@@ -882,10 +882,18 @@ try {
 
     # v3.60.1: pausa a pedido do stakeholder — o .active-run sai pelo script (sprint-run.md §Paradas legítimas, parada d).
     if ($Action -eq 'pause') {
+        # v3.65.12 (garden S6, 22/11 08:35): a sessão pausou o run por conta própria, depois de duas reconstruções iguais, e o
+        # run-log registrou "pedido do stakeholder (parada d)" — o motivo padrão. A pausa é só do stakeholder: sem -Because com o
+        # pedido dele, recusa e manda ao next, que dá o dono do problema.
+        if (-not $Because.Trim()) {
+            Out "run pause: recusado — falta -Because `"<o pedido do stakeholder, nas palavras dele>`". A pausa é só a pedido do stakeholder (sprint-run.md §Paradas legítimas, d/e); a sessão não pausa por iniciativa própria."
+            Out "  problema técnico (build, app, aparelho, teste repetido) é do time: rode run.ps1 next, que diz a quem ele vai. Só o que o next manda levar ao stakeholder vira pergunta."
+            exit 2
+        }
         $ar0 = Get-Marker $Root '.active-run'
         foreach ($f in '.active-run', '.ask-route', '.safe-point') { Remove-Item -LiteralPath (Join-Path $tp $f) -Force -ErrorAction SilentlyContinue }
         $live = @(Get-ActiveAgents $Root | Where-Object { (Get-AgentIdleHours $_) * 60 -lt 30 })
-        Add-RunLog $S $n 'run' "pausa a pedido de $By$(if ($ar0) { " ($([string]$ar0.trilha) run $([string]$ar0.id))" })" $(if ($Because) { $Because } else { 'pedido do stakeholder (parada d)' }) '.active-run apagado pelo run.ps1 pause'
+        Add-RunLog $S $n 'run' "pausa a pedido de $By$(if ($ar0) { " ($([string]$ar0.trilha) run $([string]$ar0.id))" })" $Because '.active-run apagado pelo run.ps1 pause'
         Out "run pause: $(if ($ar0) { "o $([string]$ar0.trilha) run $([string]$ar0.id) está pausado" } else { 'não havia run ativo (.active-run ausente)' }) — .active-run e .ask-route apagados; registrado no run-log.md."
         # v3.64.0 (item 6 A): o que está em construção ganha checkpoint (só o escopo do plano) — a pausa não deixa código solto.
         foreach ($bt in @($tasks | Where-Object { $_.Mark -eq $E.Build })) { $ck = Save-TaskCheckpoint $Root $S $bt 'pausa do run'; if ($ck) { Out "  $ck"; Add-RunLog $S $n $bt.Id $ck 'pausa do run (v3.64.0)' 'git' } }

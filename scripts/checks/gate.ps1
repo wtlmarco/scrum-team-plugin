@@ -183,25 +183,50 @@ function Invoke-GateStep {
     # Garden S6 (20–21/11): as rodadas 6 a 12 do aceite rodaram sobre o APK da Q-S6f, e a Q-S6h passou a ✅ sem a mudança no
     # aparelho. O accept agora recusa (exit 2, staleApp no result.json): reconstruir e reinstalar, depois medir. O mesmo app
     # recusado de novo depois do pedido vai ao stakeholder (o build é do projeto e não regerou o APK).
+    # v3.65.12 (garden S6, 22/11 08:18–08:35): o operator reconstruiu, o APK saiu igual, ele devolveu a linha sem repetir o
+    # aceite — o result.json ficou o mesmo, a conta não subiu e o next pediu a mesma reconstrução de novo. A sessão parou e
+    # levou ao stakeholder cache, volume e hash. O pedido já feito para este aceite (asked) conta como a 2ª vez; a 2ª vez vai
+    # ao Arquiteto (o build é do time: causa, conserto, nova geração e o aceite), e o stakeholder só se o mesmo aceite
+    # continuar recusado depois dele — com uma escolha em palavras simples, sem detalhe de build.
     if ($aStale -and (& $sameBase $aj)) {
-        $sa = [string]$aj.app
+        $sa = [string]$aj.app; $at = [string]$aj.at
         $prevSa = $gate.staleApp
-        $times = if ($prevSa -and [string]$prevSa.app -eq $sa -and [string]$prevSa.at -ne [string]$aj.at) { [int]$prevSa.times + 1 } elseif ($prevSa -and [string]$prevSa.app -eq $sa) { [int]$prevSa.times } else { 1 }
-        $gate['staleApp'] = [ordered]@{ app = $sa; at = [string]$aj.at; times = $times }; Set-GateState $S $gate
+        $same = $prevSa -and [string]$prevSa.app -eq $sa
+        $times = if ($same -and [string]$prevSa.at -ne $at) { [int]$prevSa.times + 1 } elseif ($same) { [int]$prevSa.times } else { 1 }
+        $asked = if ($same) { [string]$prevSa.asked } else { '' }
+        $arc = if ($same) { [string]$prevSa.arc } else { '' }
+        $again = $times -ge 2 -or $asked -eq $at   # recusado de novo, ou o pedido deste aceite já foi feito e nada mudou
         $whyS = & $short $aStale
-        if ($times -ge 2) {
-            Set-AskRoute $Root 'ambiente' $sid $whyS
-            Add-RunLog $S $n $sid 'portão: o app do aparelho segue sendo o de antes do código depois do pedido de reconstruir → stakeholder (formulário)' $whyS "accept/$n/$sid/result.md"
-            Out "PRÓXIMA AÇÃO: formulário ao stakeholder — o aceite do portão do sprint $n recusou de novo o app do aparelho ($sa): $whyS"
-            Out "  não é veredito nem ambiente: o build do projeto não gerou um APK novo, ou ele não foi instalado. Opções ao stakeholder: ele confere o build (e declara em guards.json targets.android.apk, onde o APK fica, e targets.android.apkSources, para o accept instalar e conferir) e a sessão roda run.ps1 next; ou segue esperando."
-            Say 'A revisão final parou porque o app instalado no aparelho de teste ainda é uma versão antiga, mesmo depois de reconstruir. Preciso de você para conferir como o app é gerado.'
+        if ($again -and $arc) {
+            if ($arc -eq $at -or $times -ge 3) {
+                $gate['staleApp'] = [ordered]@{ app = $sa; at = $at; times = $times; asked = $asked; arc = $arc }; Set-GateState $S $gate
+                Set-AskRoute $Root 'ambiente' $sid $whyS
+                Add-RunLog $S $n $sid 'portão: o app recusado continua depois do Arquiteto → stakeholder (formulário, texto simples)' $whyS "accept/$n/$sid/result.md"
+                Out "PRÓXIMA AÇÃO: formulário ao stakeholder — o Arquiteto já tratou a geração do app e o aceite do portão do sprint $n continua recusando o app ($whyS)"
+                Out "  o formulário parte da linha PARA O STAKEHOLDER, sem build, cache, hash nem arquivo. Opções: seguir esperando; ou ver com o time agora."
+                Say 'A revisão final está parada: a versão do app usada nos testes não está saindo com as últimas correções, e o time já tentou resolver. Preciso que você diga se seguimos esperando ou se quer ver isso com o time agora.'
+                exit 0
+            }
+        }
+        if ($again) {
+            $gate['staleApp'] = [ordered]@{ app = $sa; at = $at; times = $times; asked = $asked; arc = $at }; Set-GateState $S $gate
+            Add-RunLog $S $n $sid 'portão: a reconstrução pedida não deu um app com o código da árvore → Arquiteto (o build é do time, não do stakeholder — v3.65.12)' $whyS "accept/$n/$sid/result.md"
+            Out "PRÓXIMA AÇÃO: validação do sprint $n — a reconstrução pedida não deu um app com o código da árvore → /arc question (instância nova); não leve ao stakeholder (v3.65.12)"
+            Say 'A revisão final parou porque a versão nova do app não saiu com as últimas correções. O arquiteto vai achar a causa e gerar o app de novo; você não precisa fazer nada.'
+            Out "  recusado: $whyS"
+            Out "  $(Get-AgentLine 'architect')"
+            $lApk = Get-ProjectApk $Root
+            $lTxt = if ($lApk) { "o APK local é $(([string]$lApk).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/') (hash $(Get-FileHash12 $lApk))" } else { 'não há APK local' }
+            Out "  prompt: `"/arc question — portão do sprint ${n}: o aceite recusou o app ($whyS) e a reconstrução pedida ao operator não deu um app novo (.team-project/accept/$n/$sid/result.md, $at); $lTxt. Primeiro confira se a recusa procede: o conteúdo do arquivo citado no motivo, e de tudo o que entra no app, mudou depois do APK? (git: a cópia de trabalho contra o último commit, e os commits posteriores ao APK; arquivo de teste não entra no app.) (1) NÃO mudou: o app está certo e a recusa é alarme falso da conferência do plugin. Grave .team-project/apk-attest.json, um objeto JSON com os campos hash (o hash acima), by (architect), why (a prova em uma frase) e at (agora) — vale só para esses bytes, acrescente a .team-project/note.md um item 'defeito do plugin: o accept recusou como velho um APK com o código da árvore — <a prova>' (o /review o leva ao plugin), rode $plugin/accept.ps1 -Task $sid -Resume (ele instala o APK declarado). (2) MUDOU: ache a causa no caminho da fonte ao APK — a fonte que o build lê é a da árvore (build em container: a pasta montada; cópia de pasta), saída reaproveitada (cache do build, pasta de saída antiga), o APK copiado de outro, a declaração targets.android.apk/apkSources no guards.json. Conserte o que for do ambiente do build (limpar a saída ou o cache, refazer a cópia), com o operator para os comandos longos; o que for mudança de código do projeto vira Plano, não conserto. Depois gere o APK e rode $plugin/accept.ps1 -Task $sid -Resume (ele instala o APK declarado e recusa sozinho o app velho). Nos dois casos, nada vai ao stakeholder. Volte em até 10 linhas: qual dos dois, a prova, o que mudou, o hash do APK e a linha de resumo do accept.`""
+            Out "  depois: run.ps1 next"
             exit 0
         }
+        $gate['staleApp'] = [ordered]@{ app = $sa; at = $at; times = $times; asked = $at; arc = $arc }; Set-GateState $S $gate
         Out "PRÓXIMA AÇÃO: validação do sprint $n — reconstruir e reinstalar o app, depois repetir o aceite (operator; o aceite recusou o app do aparelho, não é veredito — v3.65.10)"
         Say 'A revisão final parou porque o app instalado no aparelho de teste é de antes das últimas correções. Estou gerando o app de novo e retomando os testes.'
         Out "  recusado: $whyS"
         Out "  $(Get-AgentLine 'operator')"
-        Out "  prompt: `"Chamador: sessão $sid — O aceite recusou o app do aparelho: $whyS. Gere o APK pelo build do projeto (o comando que o CLAUDE.md, o README ou o guards.json do projeto declaram para gerar o APK; sem comando declarado, não invente: devolva a linha), confira que o hash do APK novo é outro (o mesmo hash = o build não regerou: devolva a linha), instale-o no aparelho e rode $plugin/accept.ps1 -Task $sid -Resume. Devolva o caminho do APK, o hash, o caminho do result.md e a linha de resumo.`""
+        Out "  prompt: `"Chamador: sessão $sid — O aceite recusou o app do aparelho: $whyS. Gere o APK pelo build do projeto (o comando que o CLAUDE.md, o README ou o guards.json do projeto declaram para gerar o APK; sem comando declarado, não invente: devolva a linha), instale-o no aparelho e rode $plugin/accept.ps1 -Task $sid -Resume, mesmo com o hash igual ao de antes (o accept confere o app pelo conteúdo das fontes e recusa sozinho o velho; não decida por ele). Devolva o caminho do APK, o hash, o caminho do result.md e a linha de resumo.`""
         Out "  depois: run.ps1 next"
         exit 0
     }
