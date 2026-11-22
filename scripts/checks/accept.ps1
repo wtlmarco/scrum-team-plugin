@@ -369,10 +369,21 @@ function Invoke-Once($Block) {
     $script:Attempt[[string]$Block.id] = 1 + [int]$script:Attempt[[string]$Block.id]
     try { Clear-AndroidLog } catch { }
     $pidRef = 0; $sig = $null; $script:Executions++; $stepMs = @()
+    # v3.65.13 (garden SC-142): cada cenário parte da tela inicial do app, como no web (página nova por cenário). O cenário que
+    # chega ao primeiro passo de tela sem launch, open nem restart começava onde o anterior parou; agora o executor abre o app
+    # do zero antes desse passo. Assim "voltar ao estado inicial" tem sempre o mesmo sentido.
+    $opened = $false
     foreach ($s in $Block.steps) {
         $verb, $rest = ($s -split '\s+', 2); if ($null -eq $rest) { $rest = '' }
         $sw = [System.Diagnostics.Stopwatch]::StartNew()   # v3.65.2: o tempo do passo, também quando ele falha
         try {
+            if ($verb -in 'launch', 'open', 'restart') { $opened = $true }
+            elseif (-not $opened -and ($screenVerbs -contains $verb -or $verb -eq 'back')) {
+                Invoke-AndroidStep 'launch' '' $base | Out-Null
+                if ($cdp) { Invoke-AndroidCdpStep 'ready' '' }
+                try { $pidRef = Get-AndroidAppPid } catch { }
+                $opened = $true
+            }
             # v3.62.0: com o locator "cdp", o passo de tela vai pela WebView; abrir o app (e a fonte nova, que recria a WebView)
             # espera a prontidão declarada (targets.android.cdp.readyExpr) e confere a tela de falha do app (failExpr).
             if ($cdp -and $screenVerbs -contains $verb) { Invoke-AndroidCdpStep $verb $rest }

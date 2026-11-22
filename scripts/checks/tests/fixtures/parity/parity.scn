@@ -130,3 +130,16 @@ scenario PAR-24 o app age no fim do toque e cancela o clique: o toque conta uma 
 open
 tap p.cancela
 assert-text p.lido = cancela 1
+
+scenario PAR-25 filtro à direita numa faixa que saiu da tela pelo alto (lista rolada até o fim): rola a tela até a faixa, depois a faixa
+open
+tap p.tela.fim
+assert-text p.lido = fim da tela
+tap p.filtro.5
+assert-text p.lido = filtro 5
+
+scenario PAR-26 primeiro filtro com a faixa fora da tela pelo alto: a tela volta, não a faixa
+open
+tap p.tela.fim
+tap p.filtro.1
+assert-text p.lido = filtro 1

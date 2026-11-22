@@ -368,10 +368,41 @@ function ScrollTop {
     Start-Sleep -Milliseconds 1200
 }
 function WaitFor([string]$Id, [int]$Sec = 20) { $t = Get-Date; do { if (Has $Id) { return $true }; Start-Sleep -Milliseconds 400 } while (((Get-Date) - $t).TotalSeconds -lt $Sec); $false }
+# v3.65.13 (garden SC-142, a mesma falha do executor cdp): o elemento que está na árvore com o centro fora da tela (Compose e
+# listas que medem itens fora da janela) contava como alcançado — o Reach não rolava e o toque ia para fora da tela. Agora
+# "alcançado" = o centro dentro da tela (wm size; sem a medida, vale estar na árvore).
+$script:ScreenWH = $null
+function Get-ScreenWH {
+    if ($null -eq $script:ScreenWH) {
+        $m = [regex]::Matches(((Sh wm size) -join ' '), '(\d+)x(\d+)')
+        $script:ScreenWH = if ($m.Count) { @([int]$m[$m.Count - 1].Groups[1].Value, [int]$m[$m.Count - 1].Groups[2].Value) } else { @(0, 0) }
+    }
+    return $script:ScreenWH
+}
+function OnScreen($n) {
+    if (-not $n) { return $false }
+    $wh = Get-ScreenWH; if (-not $wh[0]) { return $true }
+    $cx = ($n.X1 + $n.X2) / 2; $cy = ($n.Y1 + $n.Y2) / 2
+    return ($cx -gt 0 -and $cx -lt $wh[0] -and $cy -gt 0 -and $cy -lt $wh[1])
+}
+function Visible([string]$Id) { [void](Dump); OnScreen (Find $Id) }
+# Na árvore com a linha dele na tela e o centro fora só na horizontal (faixa que rola de lado): rola a faixa na altura dele.
+function ReachSideways([string]$Id) {
+    $n = Find $Id; $wh = Get-ScreenWH
+    if (-not $n -or -not $wh[0]) { return $false }
+    $cy = [int](($n.Y1 + $n.Y2) / 2); if ($cy -le 0 -or $cy -ge $wh[1]) { return $false }
+    $dir = if ((($n.X1 + $n.X2) / 2) -ge $wh[0]) { 1 } else { -1 }
+    $a = [int]($wh[0] * 0.75); $b = [int]($wh[0] * 0.25)
+    foreach ($i in 1..8) {
+        if ($dir -gt 0) { Sh input swipe $a $cy $b $cy 500 | Out-Null } else { Sh input swipe $b $cy $a $cy 500 | Out-Null }
+        Start-Sleep -Milliseconds 350; if (Visible $Id) { return $true }
+    }
+    return $false
+}
 function Reach([string]$Id, [int]$Sec = 4) {
-    if (WaitFor $Id $Sec) { return $true }   # v3.51.1: a espera inteira antes de rolar (primeira abertura depois de instalar é lenta)
-    foreach ($i in 1..12) { Sh input swipe 360 600 360 1250 800 | Out-Null; Start-Sleep -Milliseconds 350; if (Has $Id) { return $true } }
-    foreach ($i in 1..40) { Sh input swipe 360 1250 360 750 1100 | Out-Null; Start-Sleep -Milliseconds 350; if (Has $Id) { return $true } }
+    if (WaitFor $Id $Sec) { if ((Visible $Id) -or (ReachSideways $Id)) { return $true } }   # v3.51.1: a espera inteira antes de rolar (primeira abertura depois de instalar é lenta)
+    foreach ($i in 1..12) { Sh input swipe 360 600 360 1250 800 | Out-Null; Start-Sleep -Milliseconds 350; if ((Visible $Id) -or (ReachSideways $Id)) { return $true } }
+    foreach ($i in 1..40) { Sh input swipe 360 1250 360 750 1100 | Out-Null; Start-Sleep -Milliseconds 350; if ((Visible $Id) -or (ReachSideways $Id)) { return $true } }
     $false
 }
 # v3.65.2: relê a condição até ela valer ou 5 s (o app atualiza a tela depois do toque). $true = valeu.
@@ -381,7 +412,14 @@ function Wait-Assert([scriptblock]$Check, [int]$GapMs = 400) {
     return [bool](& $Check)
 }
 function TapNode($n) { Sh input tap ([int](($n.X1 + $n.X2) / 2)) ([int](($n.Y1 + $n.Y2) / 2)) | Out-Null; Start-Sleep -Milliseconds 500 }
-function Tap([string]$Id) { if (-not (Reach $Id 6)) { throw "tag não encontrada: $Id$(Get-ScreenHint)" }; Start-Sleep -Milliseconds 300; [void](Dump); TapNode (Find $Id) }
+function Tap([string]$Id) {
+    if (-not (Reach $Id 6)) {
+        # v3.65.13: na árvore e fora da tela é outra falha — e o contorno é do cenário (voltar ao estado inicial da tela).
+        if (Find $Id) { throw "$Id existe, mas a rolagem não o trouxe à tela — se um passo anterior deixou a tela num estado em que ele não aparece, volte ao estado inicial da tela antes (restart, back ou outra aba e volta)$(Get-ScreenHint)" }
+        throw "tag não encontrada: $Id$(Get-ScreenHint)"
+    }
+    Start-Sleep -Milliseconds 300; [void](Dump); TapNode (Find $Id)
+}
 function TextOf([string]$Id) { [void](Dump); $n = Find $Id; if (-not $n -and (Reach $Id 1)) { $n = Find $Id }; NodeText $n }
 # Lista completa de ids com um prefixo, na ordem: lista rolável só mostra os itens visíveis na árvore.
 function CollectIds([string]$Prefix) {
