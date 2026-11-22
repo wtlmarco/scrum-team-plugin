@@ -176,6 +176,42 @@ function Invoke-GateStep {
     }
     if ([int]$gate.env.attempts -or [int]$gate.env.sent) { $gate.env.attempts = 0; $gate.env.at = ''; $gate.env.sent = 0; $gate.env.sentAt = ''; Set-GateState $S $gate }
 
+    # ---------- v3.65.8 · a medição que já roda não é medida de novo ----------
+    # Garden S6 (21/11, 19:18 → 19:32): o quality.ps1 do portão rodava e o next mandava medir outra vez, porque só olhava o
+    # result.json; a sonda dizia "terminou" (a espera não tinha Task) e a G20 barrava o turno. A sessão, sem caminho, abriu
+    # formulário ao stakeholder — e a medição terminou sozinha. Estado de processo tem resposta do next, sem stakeholder:
+    # andando → esperar (watcher); POSSÍVEL TRAVAMENTO → encerrar e retomar sozinho na 1ª vez (regra 5), formulário na 2ª.
+    if (-not $qFresh -or -not $aFresh) {
+        $mw = Get-TaskWait $Root $sid
+        if ($mw -and -not $mw.Pulse.Stalled) {
+            Set-NextVerdict $Root 'esperar' $sid "medição do portão em curso: $($mw.Text)"
+            Out "PRÓXIMA AÇÃO: esperar — a medição do portão do sprint $n já roda: $($mw.Text)"
+            Say 'Revisão final: a medição ainda está rodando. O time espera ela terminar e segue sozinho, sem precisar de você.'
+            Out "  não dispare outra medição nem encerre esta: medir por cima duplica o trabalho, e o resultado desta chega sozinho (v3.65.8)."
+            Out (Get-WatcherLine)
+            exit 3
+        }
+        if ($mw) {
+            if ([int]$gate.stall -lt 1) {
+                $gate.stall = [int]$gate.stall + 1; Set-GateState $S $gate
+                Set-NextVerdict $Root ''
+                Add-RunLog $S $n $sid 'portão: POSSÍVEL TRAVAMENTO da medição → encerrada e retomada sem formulário (protocolo de espera, regra 5: 1ª vez)' $mw.Text "sprints/$n/gate.json"
+                Out "PRÓXIMA AÇÃO: encerrar e retomar — POSSÍVEL TRAVAMENTO na medição do portão do sprint ${n}: $($mw.Text)"
+                Say 'Revisão final: a medição travou. O time vai encerrá-la e recomeçar sozinho, sem precisar de você.'
+                Out "  primeira vez neste portão: sem formulário (regra 5 — uma tentativa automática; a segunda vai ao stakeholder)."
+                Out "  1. encerre só a medição travada: $plugin/$($mw.Kill)"
+                Out "  2. run.ps1 next (ele manda medir de novo; o aceite retoma com -Resume)"
+                exit 0
+            }
+            Set-AskRoute $Root 'travamento' $sid $mw.Text
+            Set-NextVerdict $Root 'esperar' $sid "medição do portão parada: $($mw.Text)"
+            Out "PRÓXIMA AÇÃO: formulário ao stakeholder — a medição do portão do sprint $n travou de novo: $($mw.Text)"
+            Say 'Revisão final: a medição travou pela segunda vez. Preciso de você para decidir se encerro e recomeço, ou espero mais.'
+            Out "  já houve um encerramento automático neste portão (regra 5): leve ao stakeholder num formulário (R22) — encerrar ($plugin/$($mw.Kill)) e run.ps1 next, ou seguir esperando."
+            exit 3
+        }
+    } elseif ([int]$gate.stall) { $gate.stall = 0; Set-GateState $S $gate }
+
     # ---------- C/D · medir só o que venceu ----------
     if (-not $qFresh -or -not $aFresh) {
         $cmds = @(); $whyM = @()

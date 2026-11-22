@@ -4068,6 +4068,65 @@ Check 'v3.63.0 D: Q-S fechada sem mudar produção — rodada 2 focada: nenhuma 
 Put $pg 'src/a.ts' "export const a = 2`n"
 $r = & $g63 $pg
 Check 'v3.63.0 C/D: código de produção mudou — mede de novo a qualidade e o aceite (este com -Resume)' $r 0 @('medir .*qualidade: o código de produção mudou · aceite: o código de produção mudou', 'Revisão final: medindo de novo só o que a correção mudou')
+
+# ---------- v3.65.8 · a medição do portão que já roda não é medida de novo, nem vira pergunta ao stakeholder ----------
+# Garden S6 (21/11, 19:18 → 19:32): o quality.ps1 rodava, o next mandava medir outra vez, a sonda dizia "terminou" e a sessão,
+# sem caminho que a G20 aceitasse, perguntou ao stakeholder se esperava. Estado de processo tem resposta do next.
+$keep658 = @{}; foreach ($f in '.next-verdict', '.ask-route') { $fp = Join-Path $pg ".team-project/$f"; $keep658[$f] = if (Test-Path -LiteralPath $fp) { [System.IO.File]::ReadAllText($fp, $utf8) } else { $null } }
+$gjKeep658 = [System.IO.File]::ReadAllText((Join-Path $pg '.team-project/sprints/1/gate.json'), $utf8)
+$run658 = Join-Path $checks 'run.ps1'; $nvP658 = Join-Path $pg '.team-project/.next-verdict'; $arP658 = Join-Path $pg '.team-project/.ask-route'
+$wait658 = { $ErrorActionPreference = 'Continue'; $o = (& powershell -NoProfile -ExecutionPolicy Bypass -File $run658 wait -Root $pg 2>&1 | ForEach-Object { "$_" }) -join ' '; "WAIT=$LASTEXITCODE $o" }
+$nv658 = { if (Test-Path -LiteralPath $nvP658) { 'NV=' + [System.IO.File]::ReadAllText($nvP658, $utf8) } else { 'NV=nenhum' } }
+$sl658 = Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-Sleep 120' -PassThru -WindowStyle Hidden
+Start-Sleep 2
+$ql658 = Join-Path $qd63 'quality.lock'
+$lock658 = { param([int]$AgoMin) [System.IO.File]::WriteAllText($ql658, ([ordered]@{ pid = $sl658.Id; started = $sl658.StartTime.ToString('o'); at = (Get-Date).AddMinutes(-$AgoMin).ToString('yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), $utf8) }
+& $lock658 1
+$r = & $g63 $pg
+Check 'v3.65.8: a medição de qualidade do portão já roda → esperar com o watcher; sem operator, sem formulário; a G20 libera (esperar) e a sonda diz vivo' @{ Code = $r.Code; Out = "$($r.Out)`n$(& $nv658)`n$(& $wait658)" } 3 @('PRÓXIMA AÇÃO: esperar — a medição do portão do sprint 1 já roda: quality \(pid', 'WATCHER-LINE', 'sem precisar de você', 'NV=.*"acao":"esperar".*"task":"S1"', 'WAIT=3 wait: vivo — S1 · quality \(pid', '^(?![\s\S]*Agent: team:operator)', '^(?![\s\S]*formulário ao stakeholder)')
+$qo658 = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $checks 'quality.ps1') -Id S1 -Root $pg 2>&1 | Out-String
+Check 'v3.65.8: o quality.ps1 com a medição viva recusa a segunda (exit 5, "em uso por") e não apaga a trava dela' @{ Code = $LASTEXITCODE; Out = "$qo658`nLOCK=$(Test-Path -LiteralPath $ql658)" } 5 @('quality S1: já roda — em uso por quality \(pid', 'LOCK=True')
+& $lock658 20
+foreach ($f in @(Get-ChildItem -LiteralPath $qd63 -File)) { $f.LastWriteTime = (Get-Date).AddMinutes(-30) }
+$r = & $g63 $pg
+$gs658 = [System.IO.File]::ReadAllText((Join-Path $pg '.team-project/sprints/1/gate.json'), $utf8) -replace '\s+', ' '
+Check 'v3.65.8: POSSÍVEL TRAVAMENTO da medição, 1ª vez → encerrar (quality.ps1 -Kill) e retomar sozinho, sem formulário (regra 5)' @{ Code = $r.Code; Out = "$($r.Out)`nGJ=$gs658" } 0 @('PRÓXIMA AÇÃO: encerrar e retomar — POSSÍVEL TRAVAMENTO na medição do portão do sprint 1', 'quality\.ps1 -Id S1 -Kill', 'RUNLOG: S1 \| portão: POSSÍVEL TRAVAMENTO', 'GJ=.*"stall": 1', '^(?![\s\S]*formulário ao stakeholder)', '^(?![\s\S]*Agent: team:operator)')
+$r = & $g63 $pg
+Check 'v3.65.8: POSSÍVEL TRAVAMENTO de novo → aí sim o formulário (rota travamento), com a decisão "esperar" gravada' @{ Code = $r.Code; Out = "$($r.Out)`n$(& $nv658)`nAR=$(if (Test-Path -LiteralPath $arP658) { [System.IO.File]::ReadAllText($arP658, $utf8) })" } 3 @('formulário ao stakeholder — a medição do portão do sprint 1 travou de novo', 'AR=.*"rota":"travamento"', 'NV=.*"acao":"esperar"')
+$ko658 = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $checks 'quality.ps1') -Id S1 -Kill -Root $pg 2>&1 | Out-String
+Start-Sleep 1
+Check 'v3.65.8: quality.ps1 -Kill encerra a medição viva e apaga a trava' @{ Code = $LASTEXITCODE; Out = "$ko658`nVIVO=$([bool](Get-Process -Id $sl658.Id -ErrorAction SilentlyContinue)) LOCK=$(Test-Path -LiteralPath $ql658)" } 0 @("quality -Kill S1: medição encerrada \(pid $($sl658.Id)", 'VIVO=False LOCK=False')
+$r = & $g63 $pg
+Check 'v3.65.8: sem medição viva, o portão volta a medir (o operator)' $r 0 @('medir .*qualidade: o código de produção mudou', 'Agent: team:operator')
+$qKeep658 = [System.IO.File]::ReadAllText((Join-Path $qd63 'result.json'), $utf8)
+$qo658 = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $checks 'quality.ps1') -Id S1 -Root $pg 2>&1 | Out-String
+Check 'v3.65.8: a medição que termina solta a própria trava' @{ Code = $LASTEXITCODE; Out = "$qo658`nLOCK=$(Test-Path -LiteralPath $ql658)" } 0 @('quality S1 · ', 'LOCK=False')
+[System.IO.File]::WriteAllText((Join-Path $qd63 'result.json'), $qKeep658, $utf8)
+
+# Contrato (v3.65.8): para cada comando do plugin em voo no portão, o next não dispara o operator por cima dele nem abre
+# formulário na primeira vez — grava "esperar", que a G20 aceita (run-guard-tests, G20 v3.53.5). Comando novo do portão que
+# rode longo entra nesta tabela.
+$vd658 = Join-Path $pg '.team-project/verify/1/S1'; New-Item -ItemType Directory -Force $vd658 | Out-Null
+$inflight658 = @(
+    @{ Name = 'verify do sprint (verify.lock)'; Path = (Join-Path $vd658 'verify.lock'); Body = { param($pp) [ordered]@{ pid = $pp.Id; started = $pp.StartTime.ToString('o'); mode = 'full'; at = (Get-Date).AddMinutes(-1).ToString('yyyy-MM-dd HH:mm:ss') } } },
+    @{ Name = 'accept do sprint (.target-lock)'; Path = (Join-Path $pg '.team-project/.target-lock'); Body = { param($pp) [ordered]@{ target = 'web'; owner = 'accept S1'; pid = $pp.Id; desde = (Get-Date).AddMinutes(-1).ToString('yyyy-MM-dd HH:mm:ss') } } },
+    @{ Name = 'quality do sprint (quality.lock)'; Path = $ql658; Body = { param($pp) [ordered]@{ pid = $pp.Id; started = $pp.StartTime.ToString('o'); at = (Get-Date).AddMinutes(-1).ToString('yyyy-MM-dd HH:mm:ss') } } }
+)
+foreach ($c658 in $inflight658) {
+    # A linha de comando cita accept.ps1: o dono da trava do alvo precisa parecer script do plugin (Test-TargetLockOwnerProcess);
+    # processo estranho com o alvo vai ao stakeholder de propósito (v3.63.1).
+    $pp658 = Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-Sleep 60; # \fake\accept.ps1' -PassThru -WindowStyle Hidden
+    Start-Sleep 2
+    [System.IO.File]::WriteAllText($c658.Path, ((& $c658.Body $pp658) | ConvertTo-Json -Compress), $utf8)
+    Remove-Item -LiteralPath $nvP658, $arP658 -Force -ErrorAction SilentlyContinue
+    $r = & $g63 $pg
+    Check "v3.65.8 contrato: $($c658.Name) em voo → esperar, sem operator por cima e sem formulário" @{ Code = $r.Code; Out = "$($r.Out)`n$(& $nv658)" } 3 @('PRÓXIMA AÇÃO: esperar', 'NV=.*"acao":"esperar"', '^(?![\s\S]*Agent: team:operator)', '^(?![\s\S]*formulário ao stakeholder)')
+    Stop-Process -Id $pp658.Id -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $c658.Path -Force -ErrorAction SilentlyContinue
+}
+Stop-Process -Id $sl658.Id -Force -ErrorAction SilentlyContinue
+foreach ($f in $keep658.Keys) { $fp = Join-Path $pg ".team-project/$f"; if ($null -ne $keep658[$f]) { [System.IO.File]::WriteAllText($fp, $keep658[$f], $utf8) } else { Remove-Item -LiteralPath $fp -Force -ErrorAction SilentlyContinue } }
+[System.IO.File]::WriteAllText((Join-Path $pg '.team-project/sprints/1/gate.json'), $gjKeep658, $utf8)
 Put $pg '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F9 | T-001 | x | x | bug | ? | open |`n"
 $prod63c = & $lib63 "Get-ProductionTree '$pg'"
 Put $qd63 'result.json' (@{ id = 'S1'; at = '2026-11-17 12:00:00'; prod = $prod63c; rows = @() } | ConvertTo-Json)
