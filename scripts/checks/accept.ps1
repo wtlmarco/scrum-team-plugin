@@ -82,7 +82,7 @@ $screenVerbs = 'tap', 'type', 'select', 'slider', 'assert-text', 'assert-contain
 $script:Locator = 'uiautomator'
 $script:ExtCmd = ''; $script:ExtFrom = ''   # v3.62.3: o executor do projeto (o **Aceite:** comando do plano ou -Command)
 $script:AppId = ''; $script:ScnFiles = @()   # v3.63.0: identidade do app provado e os .scn lidos (retomada e portão)
-$script:Fresh = $null; $script:Installed = $false; $script:ApkDeclNote = ''   # v3.65.10: o frescor do app provado (android) — result.json → fresh
+$script:Fresh = $null; $script:Installed = $false; $script:ApkDeclNote = ''; $script:ApkAttest = $null   # v3.65.10: o frescor do app provado (android) — result.json → fresh
 $script:Attempt = @{}   # v3.63.1: tentativa de cada cenário (nome do registro do aparelho de cada falha)
 
 # Lê os cenários dos arquivos; erro de sintaxe vem com arquivo:linha.
@@ -170,9 +170,11 @@ function Test-AcceptFresh([string]$Dir, [string]$AppApk, $St) {
         elseif ($St -and $St.Note) { $why = [string]$St.Note }
         else { $checked = $true }
     } else { $why = if ($script:ApkDeclNote) { [string]$script:ApkDeclNote } else { 'nenhum APK local para comparar' } }
-    $script:Fresh = [ordered]@{ checked = $checked; installed = [string]$script:AppId; build = $build; reason = $why }
+    $script:Fresh = [ordered]@{ checked = $checked; installed = [string]$script:AppId; build = $build; reason = $why; attest = $(if ($script:ApkAttest) { [string]$script:ApkAttest.why } else { $null }) }
     if ($checked) { return 0 }
     $hs = Get-InstalledAppStaleness $Root ([string]$script:AppId) $AppApk
+    $attI = Get-ApkAttest $Root $inst   # v3.65.12: o Arquiteto atestou o app instalado — vale como conferido
+    if ($attI) { $script:Fresh.checked = $true; $script:Fresh.reason = ''; $script:Fresh.attest = [string]$attI.why; [Console]::Out.WriteLine("accept: o app instalado ($($script:AppId)) foi atestado pelo Arquiteto como o código da árvore ($([string]$attI.why)) — segue (v3.65.12)"); return 0 }
     if ($hs.Stale) {
         $script:Fresh.reason = "o mesmo app da rodada de $($hs.Since) e o código mudou desde ela"
         return (Write-AcceptStale $Dir "o app instalado ($($script:AppId)) é o mesmo da rodada de $($hs.Since) ($($hs.Dir)), e o código do app mudou desde ela ($($hs.Count) arquivo(s): $($hs.Files -join ', ')$(if ($hs.Count -gt $hs.Files.Count) { ', …' })) — o aparelho não tem a mudança. Reconstrua o APK e instale-o antes do accept. Não é falha de ambiente nem defeito do app. (Se esses arquivos não entram no APK, declare targets.android.apkSources com as fontes que entram; com o build no disco, targets.android.apk deixa o accept instalar e conferir o APK.)")
@@ -185,7 +187,7 @@ function Test-AcceptFresh([string]$Dir, [string]$AppApk, $St) {
 function Format-AcceptFresh {
     $f = $script:Fresh; if (-not $f) { return '' }
     $b = if ($f.build) { "build $($f.build.path) (apk:$($f.build.hash), $($f.build.at))" } else { 'sem APK local' }
-    return "`n`n**App no aparelho:** $($f.installed) · $b · frescor: $(if ($f.checked) { 'conferido' } else { "**não conferido** — $($f.reason)" })"
+    return "`n`n**App no aparelho:** $($f.installed) · $b · frescor: $(if ($f.checked -and $f.Contains('attest') -and $f.attest) { "conferido pelo Arquiteto — $($f.attest)" } elseif ($f.checked) { 'conferido' } else { "**não conferido** — $($f.reason)" })"
 }
 # A tela em que o passo falhou, do "[tela: … · ids: … · textos: …]" do adaptador android ('' sem ela).
 function Get-FailScreen([string]$Detail) {
@@ -459,6 +461,11 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
         $relX = { param($x) ([string]$x).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/' }
         # v3.65.10 (item D): o APK igual byte a byte a uma cópia mais velha é sobra de build anterior (a idade conta pela cópia).
         if ($st.Twin) { [Console]::Out.WriteLine("accept: atenção — $(& $relX $appApk) é byte a byte igual a $(& $relX $st.Twin) (de $($st.TwinTime.ToString('yyyy-MM-dd HH:mm:ss'))): cópia de um build anterior, não um build novo — a idade do APK conta pela cópia") }
+        if ($st.Stale) {
+            # v3.65.12: o Arquiteto atestou estes bytes (a recusa era alarme falso da conferência) → segue com o APK.
+            $att = Get-ApkAttest $Root (Get-FileHash12 $appApk)
+            if ($att) { $script:ApkAttest = $att; $st.Stale = $false; [Console]::Out.WriteLine("accept: o APK $(& $relX $appApk) foi atestado pelo Arquiteto como o código da árvore ($([string]$att.why)) — segue, sem a recusa por idade (v3.65.12)") }
+        }
         if ($st.Stale) {
             $fr = & $relX $st.File
             $ar = & $relX $st.ApkFull

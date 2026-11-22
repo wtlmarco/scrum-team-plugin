@@ -670,6 +670,57 @@ function Get-ProjectApk([string]$Root) {
 # pastas test/__tests__/e2e) e node_modules não entram. Sem a chave, o APK fora de build/outputs dá Note pedindo a declaração.
 # v3.65.10 (item D): com uma cópia byte a byte igual e mais velha na mesma pasta, a idade é a da cópia — o APK novo é sobra
 # de um build anterior, não um build novo (Twin = a cópia).
+# v3.65.12 (garden S6, 22/11 08:18): o lista-insumos.component.html tinha a data de 02:18, mas o conteúdo era o do commit de
+# 21/11 00:14, anterior ao APK. O accept recusou o APK como velho, e o build, certo, deu os mesmos bytes duas vezes: fonte
+# igual, APK igual. Uma data mais nova não é mudança. Dos arquivos com data posterior ao APK, ficam só os que o git diz que
+# mudaram depois dele: alterado na cópia de trabalho, não rastreado, ou num commit posterior. Sem git, ficam todos.
+function Get-ContentChangedSince([string]$Root, $Files, [datetime]$Since) {
+    $Files = @($Files | Where-Object { $_ })
+    if (-not $Files.Count -or -not $Root) { return $Files }
+    $ErrorActionPreference = 'Continue'
+    $top = (& git -C $Root rev-parse --show-toplevel 2>$null)
+    if ($LASTEXITCODE -ne 0 -or -not $top) { return $Files }
+    $topFull = (([string]$top) -replace '\\', '/').TrimEnd('/')
+    $rel = @{}
+    foreach ($f in $Files) {
+        $p = ($f.FullName -replace '\\', '/')
+        if (-not $p.StartsWith($topFull + '/', [StringComparison]::OrdinalIgnoreCase)) { return $Files }
+        $rel[$p.Substring($topFull.Length + 1).ToLowerInvariant()] = $f
+    }
+    $paths = @($rel.Keys)
+    $changed = New-Object 'System.Collections.Generic.HashSet[string]'
+    $known = New-Object 'System.Collections.Generic.HashSet[string]'
+    # Em lotes, para a linha de comando não estourar.
+    for ($i = 0; $i -lt $paths.Count; $i += 200) {
+        $chunk = @($paths[$i..([Math]::Min($i + 199, $paths.Count - 1))])
+        $tracked = @(& git -C $top -c core.quotePath=false ls-files -- @chunk 2>$null)
+        if ($LASTEXITCODE -ne 0) { return $Files }
+        foreach ($t in $tracked) { [void]$known.Add(([string]$t).ToLowerInvariant()) }
+        foreach ($l in @(& git -C $top -c core.quotePath=false status --porcelain --untracked-files=all -- @chunk 2>$null)) {
+            $s = [string]$l; if ($s.Length -lt 4) { continue }
+            $q = $s.Substring(3); if ($q -match ' -> (.+)$') { $q = $Matches[1] }
+            [void]$changed.Add($q.Trim('"').ToLowerInvariant())
+        }
+        foreach ($l in @(& git -C $top -c core.quotePath=false log --since ($Since.ToString('yyyy-MM-ddTHH:mm:ss')) --format= --name-only -- @chunk 2>$null)) {
+            $q = ([string]$l).Trim(); if ($q) { [void]$changed.Add($q.ToLowerInvariant()) }
+        }
+    }
+    # Fora do git (ignorado): sem como saber o conteúdo, vale a data.
+    return @($paths | Where-Object { $changed.Contains($_) -or -not $known.Contains($_) } | ForEach-Object { $rel[$_] })
+}
+# v3.65.12: a palavra do Arquiteto quando a conferência do plugin erra. Se ele confirma que o APK tem o código da árvore (a
+# recusa era alarme falso), grava .team-project/apk-attest.json { "hash": "<12 hex do APK>", "by": "architect", "why": "...",
+# "at": "..." } e o accept segue com esse APK. A atestação vale só para aqueles bytes: build novo, hash novo, conferência normal.
+# $null sem atestação para o hash.
+function Get-ApkAttest([string]$Root, [string]$Hash) {
+    $Hash = ([string]$Hash) -replace '^apk:', ''
+    if (-not $Root -or $Hash -notmatch '^[0-9a-f]{12}$') { return $null }
+    $p = Join-Path $Root '.team-project/apk-attest.json'
+    if (-not (Test-Path -LiteralPath $p -PathType Leaf)) { return $null }
+    try { $j = Read-Text $p | ConvertFrom-Json } catch { return $null }
+    if (-not $j -or ([string]$j.hash).ToLowerInvariant() -ne $Hash -or -not ([string]$j.why).Trim()) { return $null }
+    return $j
+}
 function Get-ApkStaleness([string]$Apk, [string]$Root = '') {
     $r = @{ Stale = $false; Note = ''; Twin = '' }
     if (-not $Apk -or -not (Test-Path -LiteralPath $Apk -PathType Leaf)) { return $r }
@@ -690,8 +741,9 @@ function Get-ApkStaleness([string]$Apk, [string]$Root = '') {
             })
         }
         if (-not $cands.Count) { $r.Note = "idade do APK não conferida: nenhum arquivo em targets.android.apkSources ($($srcCfg -join ', '))"; return $r }
-        $newest = $cands | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-        if ($newest.LastWriteTime -gt $apkTime.AddSeconds(2)) {
+        $newer = @(Get-ContentChangedSince $Root @($cands | Where-Object { $_.LastWriteTime -gt $apkTime.AddSeconds(2) }) $apkTime)   # v3.65.12
+        $newest = $newer | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if ($newest) {
             $r.Stale = $true; $r.File = $newest.FullName; $r.FileTime = $newest.LastWriteTime; $r.ApkTime = $apkTime; $r.Module = $Root; $r.ApkFull = $full
             $r.Task = 'o build que gera o APK'
         }
@@ -710,8 +762,9 @@ function Get-ApkStaleness([string]$Apk, [string]$Root = '') {
         })
     }
     if (-not $cands.Count) { $r.Note = "idade do APK não conferida: nenhum código-fonte em $mod"; return $r }
-    $newest = $cands | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if ($newest.LastWriteTime -gt $apkTime.AddSeconds(2)) {
+    $newer = @(Get-ContentChangedSince $(if ($Root) { $Root } else { $mod }) @($cands | Where-Object { $_.LastWriteTime -gt $apkTime.AddSeconds(2) }) $apkTime)   # v3.65.12
+    $newest = $newer | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($newest) {
         $r.Stale = $true; $r.File = $newest.FullName; $r.FileTime = $newest.LastWriteTime; $r.ApkTime = $apkTime; $r.Module = $mod; $r.ApkFull = $full
         $r.Task = if ($full -match '[\\/]release[\\/]') { 'assembleRelease' } else { 'assembleDebug' }
     }
@@ -3124,6 +3177,8 @@ function Get-SprintScenarioFiles([string]$Root) { return @(Get-ChildItem -Path (
 #   routedAt    v3.65.9: achado → o disparo contado por último (rodada do validation.md | hora do gate/<ID>.md); o next repetido não soma
 #   routedFail  v3.65.9: achado → a falha dos cenários dele naquele disparo; falha que mudou zera a conta (progresso)
 #   escalated   v3.65.9: achado → o disparo em que foi ao Arquiteto (degrau 1), antes do stakeholder
+#   staleApp    v3.65.10: o app recusado (app, at, times); v3.65.12: asked = o accept cuja reconstrução foi pedida, arc = o
+#               accept que foi ao Arquiteto (o impasse do build é do time; o stakeholder só depois dele)
 function Get-GateState([string]$S) {
     $st = [ordered]@{ round = 0; judged = $null; env = [ordered]@{ attempts = 0; at = ''; asked = ''; sent = 0; sentAt = '' }; proof = 0; routed = [ordered]@{}; stall = 0; routedAt = [ordered]@{}; routedFail = [ordered]@{}; escalated = [ordered]@{}; staleApp = $null; noop = '' }
     $p = Join-Path $S 'gate.json'
@@ -3139,7 +3194,7 @@ function Get-GateState([string]$S) {
             if ($j.PSObject.Properties['proof']) { $st.proof = [int]$j.proof }
             if ($j.PSObject.Properties['routed'] -and $j.routed) { foreach ($pp in $j.routed.PSObject.Properties) { $st.routed[$pp.Name] = [int]$pp.Value } }
             if ($j.PSObject.Properties['stall']) { $st.stall = [int]$j.stall }   # v3.65.8
-            if ($j.PSObject.Properties['staleApp'] -and $j.staleApp) { $st.staleApp = [ordered]@{ app = [string]$j.staleApp.app; at = [string]$j.staleApp.at; times = [int]$j.staleApp.times } }   # v3.65.10
+            if ($j.PSObject.Properties['staleApp'] -and $j.staleApp) { $st.staleApp = [ordered]@{ app = [string]$j.staleApp.app; at = [string]$j.staleApp.at; times = [int]$j.staleApp.times; asked = $(if ($j.staleApp.PSObject.Properties['asked']) { [string]$j.staleApp.asked } else { '' }); arc = $(if ($j.staleApp.PSObject.Properties['arc']) { [string]$j.staleApp.arc } else { '' }) } }   # v3.65.10; v3.65.12: asked/arc
             if ($j.PSObject.Properties['noop'] -and $j.noop) { $st.noop = [string]$j.noop }   # v3.65.11: Q-S sem mudança já medidas de novo
             foreach ($mk in 'routedAt', 'routedFail', 'escalated') { if ($j.PSObject.Properties[$mk] -and $j.$mk) { foreach ($pp in $j.$mk.PSObject.Properties) { $st[$mk][$pp.Name] = [string]$pp.Value } } }   # v3.65.9
         } catch { }

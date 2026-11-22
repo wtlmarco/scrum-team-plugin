@@ -2748,6 +2748,8 @@ $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root
 Check 'v3.60.1: com run.deviceProofFallback = teste, ESTADO DE PARTIDA → prova por teste sem formulário nem 🔴; o executor fecha' @{ Code = $r.Code; Out = $r.Out + "`nrota=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.ask-route')) + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/run-log.md'), $utf8) } 0 @('Política do projeto \(guards\.json → run\.deviceProofFallback = teste\)', 'run\.ps1 done -Task T-041 -Result ok', 'Não abra formulário', 'rota=False', 'prova por teste: SC-014 \(teste\)', '^(?![\s\S]*mark\.ps1 -Task T-041 -To blocked)')
 # Pausa pelo script (o Remove-Item do .active-run foi negado no garden).
 Put $p '.team-project/.active-run' '{ "trilha": "sprint", "id": "1", "desde": "2026-11-15 10:00" }'
+$r = Invoke-Check 'run.ps1' @('pause', '-Root', $p)
+Check 'v3.65.12: run.ps1 pause sem -Because → recusado (exit 2), o .active-run fica e nada vai ao run-log como pedido do stakeholder' @{ Code = $r.Code; Out = $r.Out + "`nrun=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.active-run')) } 2 @('run pause: recusado — falta -Because', 'problema técnico .* é do time: rode run\.ps1 next', 'run=True')
 $r = Invoke-Check 'run.ps1' @('pause', '-Because', 'o stakeholder pediu', '-Root', $p)
 Check 'v3.60.1: run.ps1 pause apaga o .active-run e registra no run-log' @{ Code = $r.Code; Out = $r.Out + "`nrun=" + (Test-Path -LiteralPath (Join-Path $p '.team-project/.active-run')) + "`n" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/sprints/1/run-log.md'), $utf8) } 0 @('run pause: o sprint run 1 está pausado', '/sm sprint run', 'run=False', 'pausa a pedido de stakeholder \(sprint run 1\) \| o stakeholder pediu')
 # Pré-requisito do ambiente (Docker no garden): sobe pelo start declarado; sem start, falha com o motivo.
@@ -4788,6 +4790,16 @@ if (Test-Path (Join-Path $d 'result.json')) { 'RESULT=' + ([System.IO.File]::Rea
 $af10 = { param($app) $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $hs10 -Accept (Join-Path $checks 'accept.ps1') -Lib (Join-Path $checks 'lib.ps1') -Root $pa10 -App $app 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
 $r = & $af10 'apk:731dfab5b3fd'
 Check 'v3.65.10 A: o accept recusa o app instalado igual ao de uma rodada anterior com o código mudado (exit 2, staleApp no result.json, sem cenários)' $r 0 @('o app instalado \(apk:731dfab5b3fd\) é o mesmo da rodada de 2026-11-20 11:10:00 \(\.team-project/accept/1/T-001\), e o código do app mudou desde ela \(1 arquivo\(s\): source/src/tela\.ts\)', 'Reconstrua o APK e instale-o', 'CODE=2', 'RESULT=.*"staleApp":\s*"o app instalado', 'RESULT=.*"total":\s*0')
+# v3.65.12: o Arquiteto atestou estes bytes (alarme falso da conferência) → o accept segue; atestação de outro hash não vale.
+$at12 = Join-Path $pa10 '.team-project/apk-attest.json'
+Put $pa10 '.team-project/apk-attest.json' '{ "hash": "731dfab5b3fd", "by": "architect", "why": "o conteúdo que entra no app não mudou desde o APK", "at": "2026-11-22 09:30" }'
+Remove-Item -LiteralPath (Join-Path $pa10 '.team-project/accept/1/S1/result.json') -Force -ErrorAction SilentlyContinue
+$r = & $af10 'apk:731dfab5b3fd'
+Check 'v3.65.12: app instalado atestado pelo Arquiteto (o mesmo hash) → o accept segue (exit 0), sem a recusa, conferido pelo Arquiteto' $r 0 @('CODE=0', 'atestado pelo Arquiteto como o código da árvore', 'FRESH=\{"checked":true,.*"attest":"o conteúdo que entra no app não mudou', 'MD=\s*\*\*App no aparelho:\*\* apk:731dfab5b3fd · sem APK local · frescor: conferido pelo Arquiteto', '^(?![\s\S]*Reconstrua o APK)')
+Put $pa10 '.team-project/apk-attest.json' '{ "hash": "999999999999", "by": "architect", "why": "outro build", "at": "2026-11-22 09:30" }'
+$r = & $af10 'apk:731dfab5b3fd'
+Check 'v3.65.12: atestação de outro hash não vale → a recusa de sempre (exit 2)' $r 0 @('CODE=2', 'Reconstrua o APK e instale-o')
+Remove-Item -LiteralPath $at12 -Force
 $r = & $af10 'apk:5555bbbb6666'
 Check 'v3.65.10 B/C: app novo sem APK local → segue (exit 0) com o frescor NÃO conferido, o motivo e o aviso — o elemento ausente não vira APP' $r 0 @('atenção — frescor do app não conferido \(apk:5555bbbb6666\): sem APK local \(o aviso acima\)', 'CODE=0', 'FRESH=\{"checked":false,"installed":"apk:5555bbbb6666","build":null,"reason":"nenhum APK local', 'MD=\s*\*\*App no aparelho:\*\* apk:5555bbbb6666 · sem APK local · frescor: \*\*não conferido\*\*')
 # C: o diagnóstico APP sem frescor conferido vale PLANO com o Arquiteto; com frescor (ou result.json antigo, sem o campo), APP.
@@ -4812,6 +4824,28 @@ Start-Sleep -Milliseconds 50
 Put $pt10 '.team-project/operator/1/T-041-alvo/diagnostico.md' "Veredito: APP`nCenário: SC-161`nMotivo: elemento ausente`n"
 $r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pt10)
 Check 'v3.65.10 C: done -Result env com APP e o frescor não conferido → PLANO ao Arquiteto, que decide reconstruir e reinstalar antes de mudar código' $r 0 @('o operator disse APP, mas o app no aparelho \(apk:731dfab5b3fd\) não foi conferido', 'team:architect', 'decida reconstruir e reinstalar o APK e repetir o accept', '^(?![\s\S]*defeito do código, não do alvo)')
+# v3.65.12 (garden S6, 22/11): a data mais nova que o APK sem mudança de conteúdo não é app velho; conteúdo mudado (na cópia
+# de trabalho ou num commit posterior) e arquivo fora do git, sim.
+$pc12 = Join-Path $tmp 'v36512-conteudo'
+Put $pc12 'source/src/tela.html' "<p>a</p>`n"; Put $pc12 'source/dist/app-debug.apk' 'APK1'
+$ErrorActionPreference = 'Continue'; & git -C $pc12 init -q 2>$null; & git -C $pc12 add -A 2>$null; & git -C $pc12 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+Put $pc12 '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x", "apk": "source/dist/app-*.apk", "apkSources": ["source/src"] } } }'
+$apk12 = Join-Path $pc12 'source/dist/app-debug.apk'; $tela12 = Join-Path $pc12 'source/src/tela.html'
+# O APK depois do commit; a fonte com a data mais nova que o APK e o mesmo conteúdo do commit (o caso do garden).
+(Get-Item $apk12).LastWriteTime = (Get-Date).AddMinutes(1); (Get-Item $tela12).LastWriteTime = (Get-Date).AddMinutes(5)
+$c1 = & $lib63 "`$s = Get-ApkStaleness '$apk12' '$pc12'; 'S=' + `$s.Stale"
+Set-Content -LiteralPath $tela12 "<p>b</p>" -Encoding UTF8; (Get-Item $tela12).LastWriteTime = (Get-Date).AddMinutes(5)
+$c2 = & $lib63 "`$s = Get-ApkStaleness '$apk12' '$pc12'; 'S=' + `$s.Stale + '|' + (Split-Path `$s.File -Leaf)"
+$ErrorActionPreference = 'Continue'; & git -C $pc12 checkout -q -- source/src/tela.html 2>$null; $ErrorActionPreference = 'Stop'
+Put $pc12 'source/src/nova.ts' "export const n = 1`n"; (Get-Item (Join-Path $pc12 'source/src/nova.ts')).LastWriteTime = (Get-Date).AddMinutes(5); (Get-Item $tela12).LastWriteTime = (Get-Date).AddMinutes(5)
+$c3 = & $lib63 "`$s = Get-ApkStaleness '$apk12' '$pc12'; 'S=' + `$s.Stale + '|' + (Split-Path `$s.File -Leaf)"
+Check 'v3.65.12: idade do APK pelo conteúdo — fonte só com a data mais nova não é app velho; conteúdo mudado ou arquivo novo, sim' @{ Code = 0; Out = "C1=$c1`nC2=$c2`nC3=$c3" } 0 @('C1=S=False', 'C2=S=True\|tela\.html', 'C3=S=True\|nova\.ts')
+$h12 = & $lib63 "Get-FileHash12 '$apk12'"
+Put $pc12 '.team-project/apk-attest.json' "{ `"hash`": `"$h12`", `"by`": `"architect`", `"why`": `"prova`", `"at`": `"agora`" }"
+$c4 = & $lib63 "'A=' + [bool](Get-ApkAttest '$pc12' '$h12') + '|B=' + [bool](Get-ApkAttest '$pc12' 'apk:$h12') + '|C=' + [bool](Get-ApkAttest '$pc12' '000000000000')"
+Put $pc12 '.team-project/apk-attest.json' "{ `"hash`": `"$h12`", `"by`": `"architect`", `"why`": `"`", `"at`": `"agora`" }"
+$c5 = & $lib63 "'D=' + [bool](Get-ApkAttest '$pc12' '$h12')"
+Check 'v3.65.12: atestação do Arquiteto vale só para o hash dela (com ou sem apk:) e só com a prova (why)' @{ Code = 0; Out = "$c4`n$c5" } 0 @('A=True\|B=True\|C=False', 'D=False')
 # O portão: o accept recusado manda reconstruir e reinstalar (operator), não medir de novo nem julgar; recusado de novo, ao stakeholder.
 $pg10 = Join-Path $tmp 'v36510-gate'
 Put $pg10 '.team-project/README.md' "| | |`n|---|---|`n| **Sprint corrente** | **1** — x |`n"
@@ -4825,12 +4859,21 @@ Put $pg10 '.team-project/quality/1/S1/result.json' (@{ id = 'S1'; at = '2026-11-
 $st10 = { param($at) Put $pg10 '.team-project/accept/1/S1/result.json' (@{ task = 'S1'; target = 'android'; at = $at; prod = $prod10; scenariosHash = $scn10; app = 'apk:731dfab5b3fd'; staleApp = 'o app instalado (apk:731dfab5b3fd) é o mesmo da rodada de 2026-11-20 11:10:00, e o código do app mudou desde ela'; environment = $null; passed = 0; total = 0; results = @() } | ConvertTo-Json -Depth 5) }
 & $st10 '2026-11-21 09:00:00'
 $r = & $g63 $pg10
-Check 'v3.65.10: portão com o accept recusado (app de antes do código) → reconstruir e reinstalar pelo build do projeto e repetir o aceite; sem QA nem nova medição por cima' $r 0 @('reconstruir e reinstalar o app, depois repetir o aceite', 'team:operator', 'Gere o APK pelo build do projeto', 'confira que o hash do APK novo é outro', 'accept\.ps1 -Task S1 -Resume', '^(?![\s\S]*team:quality-assurance)', '^(?![\s\S]*formulário)')
+Check 'v3.65.10: portão com o accept recusado (app de antes do código) → reconstruir e reinstalar pelo build do projeto e repetir o aceite; sem QA nem nova medição por cima' $r 0 @('reconstruir e reinstalar o app, depois repetir o aceite', 'team:operator', 'Gere o APK pelo build do projeto', 'mesmo com o hash igual ao de antes', 'accept\.ps1 -Task S1 -Resume', '^(?![\s\S]*team:quality-assurance)', '^(?![\s\S]*formulário)')
+# v3.65.12 (garden S6, 22/11): o operator devolveu "o mesmo hash" sem repetir o aceite — o mesmo result.json não pede a mesma
+# reconstrução de novo (era o laço): vai ao Arquiteto, sem formulário.
 $r = & $g63 $pg10
-Check 'v3.65.10: o mesmo result.json recusado no next seguinte → o mesmo pedido, sem formulário (o aceite não rodou de novo)' $r 0 @('reconstruir e reinstalar o app', '^(?![\s\S]*formulário)')
-& $st10 '2026-11-21 09:30:00'
+Check 'v3.65.12: o mesmo result.json recusado depois do pedido de reconstruir → Arquiteto (o build é do time), sem formulário nem novo pedido ao operator' $r 0 @('a reconstrução pedida não deu um app com o código da árvore → /arc question', 'team:architect', 'Primeiro confira se a recusa procede', 'alarme falso da conferência do plugin\. Grave \.team-project/apk-attest\.json', '\.team-project/note\.md um item .defeito do plugin', 'Ache a causa no caminho da fonte ao APK', 'accept\.ps1 -Task S1 -Resume', 'nada vai ao stakeholder', 'você não precisa fazer nada', '^(?![\s\S]*formulário)', '^(?![\s\S]*team:operator)')
 $r = & $g63 $pg10
-Check 'v3.65.10: recusado de novo, com o mesmo app, depois do pedido → formulário ao stakeholder (o build não regerou o APK)' $r 0 @('formulário ao stakeholder — o aceite do portão do sprint 1 recusou de novo o app do aparelho \(apk:731dfab5b3fd\)', 'targets\.android\.apk')
+Check 'v3.65.12: o mesmo aceite recusado depois do Arquiteto → formulário ao stakeholder em texto simples (sem build, cache, hash nem arquivo na fala)' $r 0 @('formulário ao stakeholder — o Arquiteto já tratou a geração do app', 'PARA O STAKEHOLDER: .*A revisão final está parada: a versão do app usada nos testes não está saindo com as últimas correções', '^(?![\s\S]*PARA O STAKEHOLDER:[^\r\n]*(apk|hash|cache|build|APK))')
+# Recusado de novo por um aceite novo (o operator repetiu o aceite): a 2ª recusa vai ao Arquiteto, a 3ª ao stakeholder.
+Remove-Item -LiteralPath (Join-Path $pg10 '.team-project/sprints/1/gate.json') -Force -ErrorAction SilentlyContinue
+& $st10 '2026-11-21 10:00:00'; $r = & $g63 $pg10
+Check 'v3.65.12: nova recusa, 1ª vez → operator reconstrói e repete o aceite' $r 0 @('team:operator', '^(?![\s\S]*team:architect)')
+& $st10 '2026-11-21 10:30:00'; $r = & $g63 $pg10
+Check 'v3.65.12: recusado de novo por um aceite novo depois do pedido → Arquiteto, não o stakeholder' $r 0 @('/arc question', 'team:architect', '^(?![\s\S]*formulário)')
+& $st10 '2026-11-21 11:00:00'; $r = & $g63 $pg10
+Check 'v3.65.12: recusado ainda depois do Arquiteto (aceite novo) → formulário ao stakeholder' $r 0 @('formulário ao stakeholder — o Arquiteto já tratou a geração do app', '^(?![\s\S]*team:operator)')
 Remove-Item -LiteralPath (Join-Path $pg10 '.team-project/accept') -Recurse -Force
 $r = & $g63 $pg10
 Check 'v3.65.10 B: portão que vai medir o aceite com alvo android sem APK local → o aviso da declaração junto do pedido de medir' $r 0 @('atenção \(guards\.json, do stakeholder; v3\.65\.10\): nenhum APK local', 'medir \(operator')
