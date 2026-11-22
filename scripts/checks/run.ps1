@@ -83,7 +83,11 @@ function Get-RunStory([string]$Story) {
     if ($nm -and $nm -ne $t0.Id) { return "$nm ($Story)" }
     return $Story
 }
-function Say([string]$Text) { Out "PARA O STAKEHOLDER: $($script:RunNews)$Text"; $script:RunNews = '' }
+function Say([string]$Text) {
+    Out "PARA O STAKEHOLDER: $($script:RunNews)$Text"; $script:RunNews = ''
+    # v3.65.11: a rota ao stakeholder desta chamada leva este texto — o formulário parte dele (stakeholder-question.md).
+    if ($script:AskRouteNew) { Add-AskRoutePlain $Text; Out "  formulário: parta do texto acima (gravado em .team-project/.ask-route → plain) — sem código de tarefa, hash, nome de arquivo ou de comando; a G3 recusa esses termos" }
+}
 # O que passou a ✅ ou a 🔴 no Registro de transições desde o next anterior (.team-project/.stakeholder-seen guarda quantas
 # linhas já foram ditas). Na primeira vez, só marca — não despeja o sprint inteiro.
 function Get-RunNews {
@@ -1866,7 +1870,15 @@ try {
         Out "PRÓXIMA AÇÃO: construir $($next.Id) — $($next.Title) (executor de Task)"
         Say "Construindo $(Get-RunLabel $next.Id)."
         # v3.65.10 (item B): o alvo android sem APK local a instalar e conferir é dito, não calado.
-        if ($next.Scenarios.Count) { $adn = Get-ApkDeclarationNote $Root; if ($adn) { Out "  atenção (guards.json, do stakeholder): $adn" } }
+        # v3.65.11: com uma pasta só de APKs no disco, a declaração se infere — a sessão a grava antes do disparo, sem formulário.
+        if ($next.Scenarios.Count) {
+            $adn = Get-ApkDeclarationNote $Root
+            if ($adn) {
+                $inf = Get-ApkCandidateText $Root
+                if ($inf) { Out "  antes do disparo (sem formulário; v3.65.11): a sessão grava em .team-project/guards.json, dentro de targets.android, as chaves do $inf e diz ao stakeholder em uma linha o que gravou e como desfazer — sem elas o accept prova o app que estiver no aparelho" }
+                else { Out "  atenção (guards.json, do stakeholder): $adn" }
+            }
+        }
         Out "  $(Get-AgentLine 'task-runner')"
         Out "  prompt: `"Conduza a $($next.Id) até fechar ou parar, pelo ciclo do agents/task-runner.md: run.ps1 start -Task $($next.Id), dev, run.ps1 done -Task $($next.Id) -Result ok|gap|env|teto (gap: Arquiteto e start de novo; teto: start de novo).$resume Volte em UMA linha.`""
         Out "  ao voltar: run.ps1 next"

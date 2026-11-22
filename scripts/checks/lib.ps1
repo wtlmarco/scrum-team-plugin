@@ -746,6 +746,62 @@ function Get-ApkDeclarationNote([string]$Root, $Resolved = $null) {
     if ($decl) { return "targets.android.apk '$decl' não casa nenhum arquivo, e não há APK em **/build/outputs/apk/: $how — confira o caminho (a máscara vale só no nome do arquivo) ou rode o build antes" }
     return "nenhum APK local (targets.android.apk não declarado e nada em **/build/outputs/apk/): $how. Declare no guards.json targets.android.apk (onde o build deixa o APK; aceita máscara no nome, vale o mais novo) e, com o APK fora de <módulo>/build/outputs, targets.android.apkSources (as fontes que entram nele)"
 }
+# v3.65.11 (garden S6: sem targets.android.apk, o aceite do portão usou o app que estava no aparelho, de antes da correção):
+# a declaração que se infere do disco. Procura *.apk fora de node_modules/.git/.team-project e de **/build/outputs (esse o
+# accept já acha sozinho). Uma pasta só → apk = a máscara do nome (o trecho que varia entre os arquivos vira *; um arquivo só,
+# o nome) e, no app híbrido (capacitor.config.* ou config.xml do Cordova), apkSources = a pasta src/ e o arquivo de
+# configuração ao lado dele. @{ Found; Apk; Sources; Dirs; Note } — Found $false com Dirs vazio (nada) ou com várias pastas
+# (ambíguo: a escolha é do stakeholder).
+function Find-ApkCandidate([string]$Root) {
+    $r = @{ Found = $false; Apk = ''; Sources = @(); Dirs = @(); Note = '' }
+    $rootFull = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/')
+    $skip = '[\\/](node_modules|\.git|\.team-project|\.gradle|build[\\/]intermediates)[\\/]'
+    $skipNames = @('node_modules', '.git', '.team-project', '.gradle', '.angular', '.nx', 'intermediates', 'tmp')
+    # Busca sem entrar nas pastas puladas (no garden, node_modules tem centenas de milhares de arquivos), até 8 níveis.
+    $files = New-Object System.Collections.Generic.List[System.IO.FileInfo]
+    $stack = New-Object System.Collections.Stack; $stack.Push(@((Get-Item -LiteralPath $rootFull), 0))
+    while ($stack.Count) {
+        $it = $stack.Pop(); $d = $it[0]; $lv = [int]$it[1]
+        foreach ($c in @(Get-ChildItem -LiteralPath $d.FullName -Force -ErrorAction SilentlyContinue)) {
+            if ($c.PSIsContainer) { if ($lv -lt 8 -and $skipNames -notcontains $c.Name -and -not ($c.Attributes -band [IO.FileAttributes]::ReparsePoint)) { $stack.Push(@($c, ($lv + 1))) } }
+            elseif ($c.Extension -eq '.apk' -or $c.Name -match '^capacitor\.config\.(ts|json|js)$' -or $c.Name -eq 'config.xml') { $files.Add($c) }
+        }
+    }
+    $apks = @($files | Where-Object { $_.Extension -eq '.apk' })
+    if (-not $apks.Count) { $r.Note = 'nenhum APK no projeto: rode o build do app uma vez e repita'; return $r }
+    if (@($apks | Where-Object { $_.FullName -match '[\\/]build[\\/]outputs[\\/]apk[\\/]' }).Count) { $r.Note = 'o APK está em <módulo>/build/outputs/apk/: o accept já o acha sem declaração'; return $r }
+    $groups = @($apks | Group-Object DirectoryName)
+    $r.Dirs = @($groups | ForEach-Object { ($_.Name.Substring($rootFull.Length).TrimStart('\', '/')) -replace '\\', '/' })
+    if ($groups.Count -ne 1) { $r.Note = "APKs em $($groups.Count) pastas ($($r.Dirs -join ', ')): a escolha é do stakeholder"; return $r }
+    $names = @($groups[0].Group | ForEach-Object { $_.Name })
+    $leaf = $names[0]
+    if ($names.Count -gt 1) {
+        $pre = $names[0]; $suf = $names[0]
+        foreach ($nm in $names) {
+            while ($pre -and -not $nm.StartsWith($pre)) { $pre = $pre.Substring(0, $pre.Length - 1) }
+            while ($suf -and -not $nm.EndsWith($suf)) { $suf = $suf.Substring(1) }
+        }
+        if (-not $suf.EndsWith('.apk')) { $suf = '.apk' }
+        $leaf = if ($pre.Length + $suf.Length -le ($names | ForEach-Object { $_.Length } | Measure-Object -Minimum).Minimum) { "$pre*$suf" } else { '*.apk' }
+    }
+    $r.Apk = (@($r.Dirs[0], $leaf) | Where-Object { $_ }) -join '/'
+    $cfgF = @($files | Where-Object { $_.Extension -ne '.apk' -and $_.FullName -notmatch $skip -and $_.FullName -notmatch '[\\/](android|ios|platforms|res)[\\/]' } | Sort-Object { $_.FullName.Length } | Select-Object -First 1)
+    if ($cfgF.Count) {
+        $base = $cfgF[0].DirectoryName
+        $rel = { param($x) (($x.Substring($rootFull.Length).TrimStart('\', '/')) -replace '\\', '/') }
+        if (Test-Path -LiteralPath (Join-Path $base 'src') -PathType Container) { $r.Sources += (& $rel (Join-Path $base 'src')) }
+        $r.Sources += (& $rel $cfgF[0].FullName)
+    }
+    $r.Found = $true
+    return $r
+}
+# O texto da declaração inferida para os avisos ('' sem inferência única).
+function Get-ApkCandidateText([string]$Root) {
+    $c = Find-ApkCandidate $Root
+    if (-not $c.Found) { return '' }
+    $src = if ($c.Sources.Count) { ', "apkSources": [' + (($c.Sources | ForEach-Object { '"' + $_ + '"' }) -join ', ') + ']' } else { '' }
+    return "inferido do disco: targets.android ← `"apk`": `"$($c.Apk)`"$src"
+}
 # O app instalado é o mesmo de uma rodada anterior do aceite, e o código do app mudou desde então? Conferência sem depender de
 # declaração: a identidade é o hash do base.apk (accept.ps1 Get-AppIdentity) e cada result.json guarda a árvore (tree). Vale a
 # rodada MAIS ANTIGA com a mesma identidade — o app foi construído antes dela, então o que mudou depois não está nele.
@@ -1476,6 +1532,20 @@ function Set-AskRoute([string]$Root, [string]$Rota, [string]$Task = '', [string]
     if (-not $Rota) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue; return }
     if ($Motivo.Length -gt 300) { $Motivo = $Motivo.Substring(0, 300) + '…' }
     [System.IO.File]::WriteAllText($p, ([ordered]@{ rota = $Rota; task = $Task; motivo = $Motivo; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+    $script:AskRouteNew = $p
+}
+# v3.65.11 (garden S6, 22/11 02:21 e 06:48: a sessão escreveu a pergunta do zero, com hash, exit 4 e nome de arquivo, e o
+# stakeholder respondeu "não entendi nada"): a rota gravada nesta chamada leva o texto em linguagem simples do próprio script
+# (a linha PARA O STAKEHOLDER), de onde o formulário parte. O run.ps1 Say chama aqui.
+function Add-AskRoutePlain([string]$Text) {
+    $p = $script:AskRouteNew
+    if (-not $p -or -not $Text -or -not (Test-Path -LiteralPath $p)) { return }
+    try {
+        $ar = Read-Text $p | ConvertFrom-Json
+        $ar | Add-Member -NotePropertyName plain -NotePropertyValue $Text -Force
+        [System.IO.File]::WriteAllText($p, ($ar | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+    } catch { }
+    $script:AskRouteNew = ''
 }
 function Exit-TargetLock([string]$Root) {
     $lp = Join-Path $Root '.team-project/.target-lock'
@@ -3055,7 +3125,7 @@ function Get-SprintScenarioFiles([string]$Root) { return @(Get-ChildItem -Path (
 #   routedFail  v3.65.9: achado → a falha dos cenários dele naquele disparo; falha que mudou zera a conta (progresso)
 #   escalated   v3.65.9: achado → o disparo em que foi ao Arquiteto (degrau 1), antes do stakeholder
 function Get-GateState([string]$S) {
-    $st = [ordered]@{ round = 0; judged = $null; env = [ordered]@{ attempts = 0; at = ''; asked = ''; sent = 0; sentAt = '' }; proof = 0; routed = [ordered]@{}; stall = 0; routedAt = [ordered]@{}; routedFail = [ordered]@{}; escalated = [ordered]@{}; staleApp = $null }
+    $st = [ordered]@{ round = 0; judged = $null; env = [ordered]@{ attempts = 0; at = ''; asked = ''; sent = 0; sentAt = '' }; proof = 0; routed = [ordered]@{}; stall = 0; routedAt = [ordered]@{}; routedFail = [ordered]@{}; escalated = [ordered]@{}; staleApp = $null; noop = '' }
     $p = Join-Path $S 'gate.json'
     if (Test-Path -LiteralPath $p) {
         try {
@@ -3070,6 +3140,7 @@ function Get-GateState([string]$S) {
             if ($j.PSObject.Properties['routed'] -and $j.routed) { foreach ($pp in $j.routed.PSObject.Properties) { $st.routed[$pp.Name] = [int]$pp.Value } }
             if ($j.PSObject.Properties['stall']) { $st.stall = [int]$j.stall }   # v3.65.8
             if ($j.PSObject.Properties['staleApp'] -and $j.staleApp) { $st.staleApp = [ordered]@{ app = [string]$j.staleApp.app; at = [string]$j.staleApp.at; times = [int]$j.staleApp.times } }   # v3.65.10
+            if ($j.PSObject.Properties['noop'] -and $j.noop) { $st.noop = [string]$j.noop }   # v3.65.11: Q-S sem mudança já medidas de novo
             foreach ($mk in 'routedAt', 'routedFail', 'escalated') { if ($j.PSObject.Properties[$mk] -and $j.$mk) { foreach ($pp in $j.$mk.PSObject.Properties) { $st[$mk][$pp.Name] = [string]$pp.Value } } }   # v3.65.9
         } catch { }
     }

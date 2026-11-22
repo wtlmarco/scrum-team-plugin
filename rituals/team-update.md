@@ -139,6 +139,18 @@ Os passos de migração das versões v3.20 a v3.49 (antigas §7a a §7j) saíram
 
 **Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).targets.android.cdp.readyExpr` não contém `'complete'`, e o resto da expressão é o de antes.
 
+## 7q. O APK do projeto declarado (v3.65.11)
+
+> Roda quando a versão instalada for anterior à `v3.65.11` **e** o `guards.json` tem `targets.android` sem `apk`, e o accept não acha APK em `**/build/outputs/apk/`. Sem alvo android, ou com o APK em `build/outputs` (o accept já o acha), pule, dizendo isso em uma linha.
+
+**Por quê:** sem a declaração, o aceite não instala nem confere o app: prova o que estiver no aparelho. No garden (21–22/11), o aceite do portão rodou com um app de antes da correção, e três correções e três rodadas do QA julgaram a mesma prova velha.
+
+1. **Rode** `powershell -NoProfile -Command ". '${CLAUDE_PLUGIN_ROOT}/scripts/checks/lib.ps1'; Find-ApkCandidate '.' | ConvertTo-Json"` (só leitura).
+2. **`Found: true`** (uma pasta só de APKs no disco): grave em `targets.android` as chaves `apk` e, se vierem, `apkSources`, com os valores dados, **sem formulário**. O valor é onde o build do projeto já deixa o APK, não uma escolha. Diga em uma linha o que gravou e como desfazer (apagar as duas chaves). Exemplo do garden: `"apk": "source/dist/garden-management-*.apk", "apkSources": ["source/src", "source/capacitor.config.ts"]`.
+3. **`Found: false`:** com APKs em várias pastas (`Dirs`), **um formulário** (R22), com as pastas como opções e "pedir mais contexto" por último. Sem APK nenhum, registre a pendência em `.team-project/README.md` §7 ("declarar `targets.android.apk` depois do primeiro build") e siga.
+
+**Verificação do passo:** `powershell -NoProfile -Command ". '${CLAUDE_PLUGIN_ROOT}/scripts/checks/lib.ps1'; 'N=' + (Get-ApkDeclarationNote '.')"` devolve `N=` vazio.
+
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
 Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.

@@ -93,7 +93,7 @@ Cada achado tem **uma** causa. É ela que decide quem resolve, e o `run.ps1 next
 | `design` | o plano está errado, incompleto ou inexequível | Arquiteto | decide (`architect/decisions/S<n>.md`); o código vai na `Q-S<n>` |
 | `scenario` | o `.scn` está errado ou desatualizado | QA (instância nova) | corrige só o cenário; o operator mede de novo só ele; **sem Task de dev** |
 | `code` | o app não faz o que a especificação diz | dev | Task `Q-S<n>` que cita os IDs dos achados |
-| `environment` | alvo, massa de dados, configuração | operator ou stakeholder | reparo e nova medição; **nunca** `Q-S<n>` |
+| `environment` | alvo, massa de dados, configuração; e a **prova que não vale** (v3.65.11): o app do aceite não é o que a correção provou, ou a medição é de antes da correção — escreva "prova velha" no Achado | operator ou stakeholder | reparo e nova medição; **nunca** `Q-S<n>` |
 
 Exemplo: o título de um canteiro corta na fonte grande porque a tela não previa esse caso → `screen`. O UX acrescenta o caso na especificação da tela e responde `code`; aí a `Q-S<n>` corrige o app. Antes, o achado ia direto ao dev, e a especificação continuava sem o caso.
 

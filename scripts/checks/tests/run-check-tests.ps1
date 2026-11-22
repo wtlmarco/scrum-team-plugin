@@ -4835,6 +4835,75 @@ Remove-Item -LiteralPath (Join-Path $pg10 '.team-project/accept') -Recurse -Forc
 $r = & $g63 $pg10
 Check 'v3.65.10 B: portão que vai medir o aceite com alvo android sem APK local → o aviso da declaração junto do pedido de medir' $r 0 @('atenção \(guards\.json, do stakeholder; v3\.65\.10\): nenhum APK local', 'medir \(operator')
 
+# ======================= v3.65.11 · o app que a correção provou × o app da medição do portão =======================
+# Garden S6 (21/11 21:13 → 22/11 02:21): o aceite do portão rodou com o app de antes da correção (731dfab5); as Q-S6i, j e k
+# provaram o SC-161 com o app novo (eb971aea), sem mudar a produção, e o QA julgou a mesma rodada velha três vezes.
+$pg11 = Join-Path $tmp 'v36511-gate'
+Put $pg11 '.team-project/README.md' "| | |`n|---|---|`n| **Sprint corrente** | **1** — x |`n"
+Put $pg11 '.team-project/sprints/1/sprint-backlog.md' "# SB`n`n## História H-1 — x`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $ok10 T-001 | a | 1 | dev | — | — | — | SC-1 |`n`n## Correção do portão — sprint 1`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $ok10 Q-S1 | corrige S1-F1 | 1 | dev | — | — | — | SC-1 |`n"
+Put $pg11 '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+Put $pg11 '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-1 um`nlaunch`nassert-exists a`n"
+Put $pg11 'src/a.ts' "export const a = 1`n"
+$ErrorActionPreference = 'Continue'; & git -C $pg11 init -q 2>$null; Put $pg11 '.gitignore' ".team-project/`n"; & git -C $pg11 add -A 2>$null; & git -C $pg11 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+$prod11 = & $lib63 "Get-ProductionTree '$pg11'"; $scn11 = & $lib63 "Get-ScenarioSetHash (Get-SprintScenarioFiles '$pg11')"
+Put $pg11 '.team-project/quality/1/S1/result.json' (@{ id = 'S1'; at = '2026-11-21 21:00:00'; prod = $prod11; rows = @() } | ConvertTo-Json)
+$acc11 = { param($task, $at, $app, $st) Put $pg11 ".team-project/accept/1/$task/result.json" (@{ task = $task; target = 'android'; at = $at; prod = $prod11; scenariosHash = $scn11; app = $app; environment = $null; passed = $(if ($st -eq 'PASSOU') { 1 } else { 0 }); total = 1; results = @(@{ id = 'SC-1'; status = $st; detail = $(if ($st -eq 'PASSOU') { '' } else { 'tag não encontrada: insumos.unidade' }); shot = '' }) } | ConvertTo-Json -Depth 5) }
+& $acc11 'S1' '2026-11-21 21:13:35' 'apk:731dfab5b3fd' 'FALHOU'
+& $acc11 'Q-S1' '2026-11-22 00:42:13' 'apk:eb971aea13b1' 'PASSOU'
+Put $pg11 '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado — 2026-11-21`n`n## Frentes`n| Front | State | Round | Proof |`n|---|---|---|---|`n| functional | fail | 1 | x |`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F1 | T-001 | SC-1 falha: tag não encontrada | a.ts:1 | code | dev | open |`n"
+$r = & $g63 $pg11
+Check 'v3.65.11 A: a Q-S fechada provou o cenário com outro app, na mesma produção e depois da medição → o operator mede o aceite de novo (só ele), sem correção nova nem formulário' $r 0 @('medir \(operator.*aceite: o app mudou desde a medição — a Q-S1 provou SC-1 com o app apk:eb971aea13b1 \(2026-11-22 00:42:13\), e o aceite do portão \(2026-11-21 21:13:35\) rodou com apk:731dfab5b3fd', 'accept\.ps1 -Task S1 -Resume', 'o app a medir é o que a Q-S1 provou \(apk:eb971aea13b1\)', 'RUNLOG: S1 \| portão: a Q-S1 provou SC-1 com outro app', 'a correção já passou no teste dela com a versão nova do app', '^(?![\s\S]*quality\.ps1)', '^(?![\s\S]*abrir Q-S)', '^(?![\s\S]*PRÓXIMA AÇÃO: formulário)', '^(?![\s\S]*\.\.)')
+# O portão mais novo que a correção, com outro app da mesma produção: o aparelho não tem o app provado → o caminho do app velho.
+& $acc11 'S1' '2026-11-22 01:50:00' 'apk:731dfab5b3fd' 'FALHOU'
+$r = & $g63 $pg11
+Check 'v3.65.11 A: o aceite do portão, mais novo que a correção, rodou com outro app da mesma produção → reconstruir e reinstalar (o caminho do app velho da v3.65.10), sem QA' $r 0 @('reconstruir e reinstalar o app, depois repetir o aceite', 'a Q-S1 provou SC-1 com o app apk:eb971aea13b1, da mesma produção', '^(?![\s\S]*team:quality-assurance)', '^(?![\s\S]*abrir Q-S)')
+# O mesmo app nas duas rodadas, já julgadas: contradição → o Arquiteto decide a causa uma vez; depois, o caminho de antes.
+Remove-Item -LiteralPath (Join-Path $pg11 '.team-project/sprints/1/gate.json') -Force -ErrorAction SilentlyContinue
+& $acc11 'Q-S1' '2026-11-22 00:42:13' 'apk:731dfab5b3fd' 'PASSOU'
+Start-Sleep -Milliseconds 50; Put $pg11 '.team-project/operator/1/S1-alvo/diagnostico.md' "Veredito: APP`nCenário: SC-1`nMotivo: elemento ausente`n"
+$r = & $g63 $pg11
+Check 'v3.65.11 B: o cenário passou na correção recém-fechada (ainda não julgada) e falhou no portão com o mesmo app e a mesma produção → /arc question (degrau 1), antes de uma rodada do QA sobre a mesma prova e sem abrir outra Q-S' $r 0 @('S1-F1: o mesmo app passou na Q-S1 e falhou no portão → /arc question', 'team:architect', 'Mudar o código de novo não muda esse resultado', 'RUNLOG: S1 \| portão: S1-F1 — SC-1 passou na Q-S1', '^(?![\s\S]*abrir Q-S)', '^(?![\s\S]*team:quality-assurance)')
+Put $pg11 '.team-project/sprints/1/delivery/Q-S1.md' "# entrega`n"; (Get-Item -LiteralPath (Join-Path $pg11 '.team-project/sprints/1/delivery/Q-S1.md')).LastWriteTime = (Get-Date).AddHours(-2)
+$r = & $g63 $pg11
+Check 'v3.65.11 B: o Arquiteto já foi chamado para a contradição → o caminho de antes (a resolução dele governa; sem ela, correção nova)' $r 0 @('abrir Q-S1[a-z] — correção do portão: S1-F1', '^(?![\s\S]*o mesmo app passou)')
+# Itens 1, 2 e 4 da revisão do QA: a correção que fechou sem mudar nada, a que não mudou a produção, e o resumo da rodada.
+$pg12 = Join-Path $tmp 'v36511-noop'
+Put $pg12 '.team-project/README.md' "| | |`n|---|---|`n| **Sprint corrente** | **1** — x |`n"
+Put $pg12 '.team-project/sprints/1/sprint-backlog.md' "# SB`n`n## História H-1 — x`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $ok10 T-001 | a | 1 | dev | — | — | — | SC-1 |`n`n## Correção do portão — sprint 1`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $ok10 Q-S1 | corrige S1-F1 | 1 | dev | — | — | — | SC-1 |`n"
+Put $pg12 '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+Put $pg12 '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-1 um`nlaunch`nassert-exists a`n"
+Put $pg12 'src/a.ts' "export const a = 1`n"
+$ErrorActionPreference = 'Continue'; & git -C $pg12 init -q 2>$null; Put $pg12 '.gitignore' ".team-project/`n"; & git -C $pg12 add -A 2>$null; & git -C $pg12 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+$prod12 = & $lib63 "Get-ProductionTree '$pg12'"; $scn12 = & $lib63 "Get-ScenarioSetHash (Get-SprintScenarioFiles '$pg12')"; $tree12 = & $lib63 "Get-WorkTree '$pg12'"
+Put $pg12 '.team-project/quality/1/S1/result.json' (@{ id = 'S1'; at = '2026-11-21 21:00:00'; prod = $prod12; rows = @() } | ConvertTo-Json)
+Put $pg12 '.team-project/accept/1/S1/result.json' (@{ task = 'S1'; target = 'android'; at = '2026-11-21 21:13:35'; tree = $tree12; prod = $prod12; scenariosHash = $scn12; app = 'apk:731dfab5b3fd'; environment = $null; passed = 0; total = 1; results = @(@{ id = 'SC-1'; status = 'FALHOU'; detail = 'tag não encontrada: insumos.unidade'; shot = '' }) } | ConvertTo-Json -Depth 5)
+Put $pg12 '.team-project/sprints/1/gate.json' (@{ round = 1; judged = @{ prod = $prod12; scn = $scn12; accept = '2026-11-21 21:13:35'; quality = '2026-11-21 21:00:00'; qs = '' } } | ConvertTo-Json -Depth 4)
+Put $pg12 '.team-project/operator/1/S1-alvo/diagnostico.md' "Veredito: APP`nCenário: SC-1`nMotivo: elemento ausente`n"
+Start-Sleep -Milliseconds 50
+Put $pg12 '.team-project/sprints/1/validation.md' "# V`n**Veredito:** $fail63 reprovado — 2026-11-21`n`n## Frentes`n| Front | State | Round | Proof |`n|---|---|---|---|`n| functional | fail | 1 | x |`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F1 | T-001 | SC-1 falha: tag não encontrada | a.ts:1 | code | dev | open |`n"
+$r = & $g63 $pg12
+Check 'v3.65.11 item 2: a Q-S fechou sem mudar nada desde a medição (a árvore é a mesma) → o operator mede de novo uma vez, sem rodada do QA nem correção nova' $r 0 @('medir \(operator.*aceite: a Q-S1 fechou sem mudar nada desde a medição', 'a correção terminou sem precisar mudar nada', 'RUNLOG: S1 \| portão: a Q-S1 fechou sem mudar nada', '^(?![\s\S]*team:quality-assurance)', '^(?![\s\S]*abrir Q-S)')
+$r = & $g63 $pg12
+Check 'v3.65.11 item 1: já medida de novo (gate.json → noop), a prova é a mesma e a única novidade é a Q-S fechada sem mudar a produção → /arc question uma vez, sem rodada do QA sobre a mesma prova' $r 0 @('S1-F1: a Q-S1 fechou sem mudar o app nem os cenários → /arc question', 'team:architect', 'RUNLOG: S1 \| portão: S1-F1 — a Q-S1 fechou sem mudar a produção', '^(?![\s\S]*team:quality-assurance)', '^(?![\s\S]*medir \(operator)')
+$r = & $g63 $pg12
+$sum12 = Join-Path $pg12 '.team-project/sprints/1/proof/S1/round-2/abertos.md'; $st12 = if (Test-Path -LiteralPath $sum12) { [System.IO.File]::ReadAllText($sum12, $utf8) -replace '\s+', ' ' } else { 'SEM-RESUMO' }
+Check 'v3.65.11 item 4: depois do Arquiteto, a rodada focada do QA lê o resumo dos achados abertos (abertos.md, com o último veredito), não o validation.md inteiro' @{ Code = $r.Code; Out = "$($r.Out)`nSUM=$st12" } 0 @('revisar o veredito \(QA, instância nova, rodada 2 focada\)', 'resumo dos achados abertos: \.team-project/sprints/1/proof/S1/round-2/abertos\.md', 'não releia o validation\.md inteiro', 'SUM=.*Último veredito:\*\* .*reprovado.*\| S1-F1 \| T-001 \| SC-1 falha')
+# A declaração do APK inferida do disco.
+$pa11 = Join-Path $tmp 'v36511-apk'
+Put $pa11 'source/dist/garden-T-063-debug.apk' 'a'; Put $pa11 'source/dist/garden-Q-S6d-debug.apk' 'bb'; Put $pa11 'source/capacitor.config.ts' 'x'; Put $pa11 'source/src/main.ts' 'x'; Put $pa11 'source/node_modules/pkg/lixo.apk' 'z'
+$i1 = & $lib63 "`$c = Find-ApkCandidate '$pa11'; 'F=' + `$c.Found + '|A=' + `$c.Apk + '|S=' + (`$c.Sources -join ',')"
+Put $pa11 'outro/app.apk' 'c'
+$i2 = & $lib63 "`$c = Find-ApkCandidate '$pa11'; 'F=' + `$c.Found + '|N=' + `$c.Note"
+Remove-Item -LiteralPath (Join-Path $pa11 'outro') -Recurse -Force
+Check 'v3.65.11: a declaração do APK se infere do disco (uma pasta: a máscara do nome e, no híbrido, src/ e o capacitor.config; node_modules fora); APKs em duas pastas → ambíguo, sem inferência' @{ Code = 0; Out = "I1=$i1`nI2=$i2" } 0 @('I1=F=True\|A=source/dist/garden-\*-debug\.apk\|S=source/src,source/capacitor\.config\.ts', 'I2=F=False\|N=APKs em 2 pastas')
+Put $pa11 '.team-project/README.md' "| | |`n|---|---|`n| **Sprint corrente** | **1** — x |`n"
+Put $pa11 '.team-project/sprints/1/sprint-backlog.md' "# SB`n`n## História H-1 — x`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $ok10 T-001 | a | 1 | dev | — | — | — | SC-1 |`n"
+Put $pa11 '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+Put $pa11 '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-1 um`nlaunch`nassert-exists a`n"
+$ErrorActionPreference = 'Continue'; & git -C $pa11 init -q 2>$null; Put $pa11 '.gitignore' ".team-project/`n*.apk`n"; & git -C $pa11 add -A 2>$null; & git -C $pa11 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+$r = & $g63 $pa11
+Check 'v3.65.11: portão que vai medir o aceite sem o APK declarado e inferível → a sessão declara antes de medir (sem formulário), com o valor inferido' $r 0 @('declarar o APK do projeto antes de medir o aceite \(a sessão; sem formulário', '"apk": "source/dist/garden-\*-debug\.apk", "apkSources": \["source/src", "source/capacitor\.config\.ts"\]', 'como desfazer', 'RUNLOG: S1 \| portão: APK do projeto sem declaração e inferível', '^(?![\s\S]*team:operator)')
+
 # ==== fim dos casos ====
 try { Stop-Process -Id $script:watchdog.Id -Force -ErrorAction SilentlyContinue } catch { }
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
