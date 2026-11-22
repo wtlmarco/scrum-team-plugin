@@ -588,7 +588,8 @@ try {
                 $res = @{}; foreach ($x in @($acc.results)) { $res[[string]$x.id] = [string]$x.status }
                 $miss = @($ids | Where-Object { -not $res.ContainsKey($_) }); $bad = @($ids | Where-Object { $res.ContainsKey($_) -and $res[$_] -ne 'PASSOU' })
                 $nowT = Get-WorkTree $Root
-                if ($acc.environment) { Add-Result 'R7-aceite' 'falhou' "o último accept parou por falha de ambiente: $($acc.environment)" }
+                if ($acc.PSObject.Properties['staleApp'] -and $acc.staleApp) { Add-Result 'R7-aceite' 'falhou' "o último accept recusou o app do aparelho (v3.65.10): $($acc.staleApp)" }
+                elseif ($acc.environment) { Add-Result 'R7-aceite' 'falhou' "o último accept parou por falha de ambiente: $($acc.environment)" }
                 elseif ($miss.Count -or $bad.Count) { Add-Result 'R7-aceite' 'falhou' ((@($(if ($miss.Count) { 'sem execução: ' + ($miss -join ', ') }), $(if ($bad.Count) { 'falharam: ' + ($bad -join ', ') })) | Where-Object { $_ }) -join '; ') }
                 elseif ($nowT -and $acc.tree -and [string]$acc.tree -ne $nowT) { Add-Result 'R7-aceite' 'falhou' "a árvore mudou depois do accept de $($acc.at) — rode de novo" }
                 else { Add-Result 'R7-aceite' 'ok' "$($ids.Count) cenário(s) passaram no alvo $($acc.target) em $($acc.at), com captura" }
