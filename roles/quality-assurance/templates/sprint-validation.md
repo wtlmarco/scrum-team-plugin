@@ -65,7 +65,7 @@ O que a ferramenta não mede, com `arquivo:linha` e a seção de `standards/` qu
 
 | ID | Task | Achado | Onde | Cause | Owner | State |
 |---|---|---|---|---|---|---|
-| S<n>-F1 | T-<nnn> | <o que está errado e o que o standard, a tela ou o critério pede> | `arquivo:linha` ou a captura | code · design · scenario · screen · requirement · environment | dev · Arquiteto · QA · UX · PO · operator | open |
+| S<n>-F1 | T-<nnn> | <o que está errado e o que o standard, a tela ou o critério pede> | `arquivo:linha` ou a captura | code · design · scenario · screen · requirement · environment · executor | dev · Arquiteto · QA · UX · PO · operator | open |
 
 *(A consolidação dos documentos vivos (R12) é do Arquiteto, depois do veredito ✅, em `.team-project/sprints/<n>/docs-consolidation.md` — A5.)*
 
@@ -75,7 +75,7 @@ O que a ferramenta não mede, com `arquivo:linha` e a seção de `standards/` qu
 
 | ID | Task | Achado | Onde | Cause | Owner | State | Evidência |
 |---|---|---|---|---|---|---|---|
-| S<n>-F1 | <T-ID> | <o achado> | <arquivo:linha ou tela> | code · design · scenario · screen · requirement · environment | <dono> | fixed · open · debt · wontfix | <o que mudou e onde está a prova> |
+| S<n>-F1 | <T-ID> | <o achado> | <arquivo:linha ou tela> | code · design · scenario · screen · requirement · environment · executor | <dono> | fixed · open · debt · wontfix | <o que mudou e onde está a prova> |
 
 *(v3.64.0: a tabela da rodada é a mesma dos achados — a causa na coluna Cause, nunca dentro do ID; o `run.ps1 next` só lê achado com `S<n>-F<k>` no ID e a causa na coluna. `validation.md` anterior à v3.63.0, sem a coluna Cause: reescreva aqui cada achado antigo ainda aberto, com ID novo e uma causa.)*
 

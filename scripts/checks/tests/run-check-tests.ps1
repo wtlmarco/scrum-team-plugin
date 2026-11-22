@@ -2541,6 +2541,23 @@ function Dump { $script:Nodes = @([pscustomobject]@{ Id = 'f.campo'; Text = 'abc
 function AdbT([int]$Sec, [string[]]$A) { $script:AdbTimeout = ''; $script:calls += ($A -join ' '); '' }
 $script:calls = @(); TypeText 'f.campo' 'novo valor'; "TY1=$($script:calls -join ';')"
 try { TypeText 'f.campo' 'maçã'; 'TY2=sem erro' } catch { "TY2=$($_.Exception.Message)" }
+# v3.65.13 (garden SC-142): na árvore com o centro fora da tela não é "alcançado". A faixa está acima da tela (lista rolada) e
+# o filtro, à direita dela: rola a tela para baixo até a faixa voltar e, depois, a faixa de lado; toca dentro da tela.
+. $Adapter   # o Tap verdadeiro de volta (o teste do type o trocou)
+function Start-Sleep { }
+function Get-ScreenHint { '' }
+$script:vy = 0; $script:hx = 0; $script:vmax = 400; $script:ScreenWH = $null
+function Dump { $y = -200 + $script:vy; $x = 1000 + $script:hx; $script:Nodes = @([pscustomobject]@{ Id = 'f.ult'; Text = ''; Desc = ''; X1 = $x; Y1 = $y; X2 = $x + 200; Y2 = $y + 80 }); $script:Nodes }
+function Sh { $j = $args -join ' '; $script:calls += $j
+    if ($j -like 'wm size*') { 'Physical size: 1080x2400' }
+    elseif ($j -match '^input swipe (\d+) (\d+) (\d+) (\d+)') { $x1 = [int]$Matches[1]; $y1 = [int]$Matches[2]; $x2 = [int]$Matches[3]; $y2 = [int]$Matches[4]
+        if ($y1 -ne $y2) { $script:vy = [Math]::Min($script:vmax, $script:vy + ($y2 - $y1)) } else { $script:hx += ($x2 - $x1) } } }
+$script:calls = @(); Tap 'f.ult'
+$sw = @($script:calls | Where-Object { $_ -like 'input swipe*' }); "OS1=$($sw.Count)|$($sw -join ';')|$(@($script:calls | Where-Object { $_ -like 'input tap*' }) -join ';')"
+$script:vy = 0; $script:hx = 0; $script:vmax = 0; $script:calls = @()
+try { Tap 'f.ult'; 'OS2=sem erro' } catch { "OS2=$($_.Exception.Message)|$(@($script:calls | Where-Object { $_ -like 'input tap*' }).Count) toques" }
+$script:ScreenWH = $null; function Sh { $script:calls += ($args -join ' '); if (($args -join ' ') -like 'wm size*') { '' } }
+$script:vy = 0; $script:calls = @(); Tap 'f.ult'; "OS3=$(@($script:calls | Where-Object { $_ -like 'input tap*' }) -join ';')"
 '@, $utf8)
 $wk = Join-Path $tmp 'android-b'; New-Item -ItemType Directory -Force $wk | Out-Null
 $r = & { $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $hs3 -Adapter (Join-Path $checks 'targets/android.ps1') -Work $wk 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
@@ -2553,6 +2570,7 @@ Check 'v3.62.0: o id é só o resource-id (o content-desc não acha mais); WebVi
 Check 'v3.62.0: localizador CDP — pid e socket da WebView, forward tcp:0 com a porta devolvida, mesmo pid não refaz, pid novo refaz, limpeza só dos forwards da WebView deste aparelho' $r 0 @('CD1=4242\|webview_devtools_remote_4242\|\[\]', 'CD2=38123\|4242', 'CD3=shell pidof br\.x\r?\n', 'CD3b=forward --remove tcp:38123;forward tcp:0 localabstract:webview_devtools_remote_5353\|5353', 'CD4=1\|forward --remove tcp:38123\r?\n')
 Check 'v3.62.0: configuração do cdp com padrões (locator sem caixa; v3.65.6: readyExpr padrão = DOM lido), sem socket = CONFIGURAÇÃO (depuração da WebView), app fechado = falha do passo' $r 0 @("CD5=cdp\|\^x\|30\|\.a,\.b\|document\.readyState !== 'loading'\|60", 'CD6=uiautomator', 'CD7=CONFIGURAÇÃO: o APK não liga a depuração da WebView.*webview_devtools_remote_5151.*webContentsDebuggingEnabled', 'CD8=o app br\.x não está rodando')
 Check 'v3.62.0: type no uiautomator substitui o valor (MOVE_END, DEL × 3, texto) e recusa fora do ASCII' $r 0 @('TY1=tap f\.campo;shell input keyevent 123;shell input keyevent 67 67 67;shell input text novo%svalor;shell input keyevent 111', 'TY2=o uiautomator não digita fora do ASCII')
+Check 'v3.65.13: no uiautomator, o centro fora da tela não é alcançado — rola a tela até a faixa voltar, depois a faixa de lado, e toca dentro da tela; sem rolagem que traga, falha dizendo que existe e o contorno, sem tocar; sem wm size, vale a árvore' $r 0 @('OS1=2\|input swipe 360 600 360 1250 800;input swipe 810 240 270 240 500\|input tap 560 240', 'OS2=f\.ult existe, mas a rolagem não o trouxe à tela — .*volte ao estado inicial da tela.*\|0 toques', 'OS3=input tap 1100 -160')
 Check 'v3.58.4: liberação do emulador — serial de rede e projeto sem reparo declarado não se liberam; repair ou avd, sim; a porta do console vem do serial (padrão 5554)' $r 0 @('RB1=emulador em container \(serial de rede localhost:5555\)', 'RB2=sem targets\.android\.repair nem avd', 'RB3=\[\]', 'RB4=\[\]', 'PT1=5556', 'PT2=5554')
 Check 'v3.58.4: emulador ligado há menos de freshStartMinutes (padrão 30) conta como reiniciado; uptime pelo /proc/uptime, sem resposta = desconhecido; nada na porta = nada desligado' $r 0 @('FM1=30\|FM2=10', 'UP1=12\b', 'UP2=\[\]', 'SE1=False\|nenhum emulador local na porta 5554', 'FS6=True')
 Check 'v3.57.2 item 19: o accept instala por cima sem desinstalar (a base fica); com assinatura diferente, desinstala, reinstala e avisa que a base foi apagada' $r 0 @('IN1=\[\]\|install -r\|NOTE=\[\]', 'IN2=\[\]\|install -r;uninstall br\.x;install -r\|NOTE=\[o APK não instalava por cima \(INSTALL_FAILED_UPDATE_INCOMPATIBLE\).*base do app no aparelho foi apagada\]')
@@ -2799,7 +2817,7 @@ Check 'v3.62.0: tag ausente nos 2 primeiros na mesma tela → ESTADO DE PARTIDA 
 # v3.62.0: paridade dos executores — a página neutra e os cenários de fixtures/parity pelo CDP (toque por dedo, Chromium de
 # desktop: o caminho do locator "cdp" sem emulador) e pelo web-runner (Playwright, quando PARITY_PLAYWRIGHT_ROOT o resolve).
 $r = & { $ErrorActionPreference = 'Continue'; $o = & node (Join-Path $PSScriptRoot 'parity.js') 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
-Check 'v3.62.0: paridade — os 24 cenários (type que substitui, web component, página em cache, display contents, toque coberto, lista inteira, faixa horizontal, select, slider, fora do ASCII; v3.65.1: toque que fecha o alerta, alvo ainda deslizando; v3.65.2: assert que relê até bater e que desiste no prazo, toque que redesenha a lista; v3.65.3: rolador no shadow root com conteúdo por slot e campo de slot emulado, faixa de pílulas ida e volta, toque engolido que se repete e clique cancelado pelo app que não se repete) dão o veredito esperado pelo CDP; web junto quando há Playwright' $r 0 @('paridade: cdp 24/24 · web (24/24|NÃO EXECUTADO)', '^(?![\s\S]*DIVERGE)')
+Check 'v3.62.0: paridade — os 26 cenários (type que substitui, web component, página em cache, display contents, toque coberto, lista inteira, faixa horizontal, select, slider, fora do ASCII; v3.65.1: toque que fecha o alerta, alvo ainda deslizando; v3.65.2: assert que relê até bater e que desiste no prazo, toque que redesenha a lista; v3.65.3: rolador no shadow root com conteúdo por slot e campo de slot emulado, faixa de pílulas ida e volta, toque engolido que se repete e clique cancelado pelo app que não se repete; v3.65.13: filtro numa faixa que saiu da tela pelo alto, o último e o primeiro) dão o veredito esperado pelo CDP; web junto quando há Playwright' $r 0 @('paridade: cdp 26/26 · web (26/26|NÃO EXECUTADO)', '^(?![\s\S]*DIVERGE)')
 # v3.65.6 (garden S6, SC-161): a fonte de fora que nunca termina segurava o readyState em 'interactive' com o app na tela. O
 # padrão novo (DOM lido) passa; o 'complete' estoura o prazo e a mensagem diz a parte falsa, as fontes e o endereço que não chega.
 $r = & { $ErrorActionPreference = 'Continue'; $o = & node (Join-Path $PSScriptRoot 'parity.js') --ready 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
@@ -4200,7 +4218,7 @@ $scn659 = & $lib63 "Get-ScenarioSetHash (Get-SprintScenarioFiles '$p659')"
 Put $p659 '.team-project/quality/1/S1/result.json' (@{ id = 'S1'; at = '2026-11-21 01:00:00'; prod = $prod659; rows = @() } | ConvertTo-Json)
 $s659 = Join-Path $p659 '.team-project/sprints/1'
 $round659 = {
-    param([int]$K, [string]$Det)
+    param([int]$K, [string]$Det, [string]$Cause = 'scenario')
     $base = (Get-Date).AddHours(-6).AddMinutes($K * 10); $at = $base.ToString('yyyy-MM-dd HH:mm:ss')
     $ar = Join-Path $p659 '.team-project/accept/1/S1/result.json'
     Put $p659 '.team-project/accept/1/S1/result.json' (@{ task = 'S1'; at = $at; prod = $prod659; scenariosHash = $scn659; environment = $null; passed = 0; total = 1; results = @(@{ id = 'SC-1'; status = 'FALHOU'; detail = $Det; shot = '' }) } | ConvertTo-Json -Depth 4)
@@ -4214,7 +4232,7 @@ $round659 = {
     $gj.round = $K; $gj.proof = $K; $gj.judged.accept = $at
     [System.IO.File]::WriteAllText($gp, ($gj | ConvertTo-Json -Depth 6), $utf8)
     $vp = Join-Path $s659 'validation.md'
-    Put $p659 '.team-project/sprints/1/validation.md' ("# V`n" + (@(1..$K) | ForEach-Object { "**Veredito (rodada $_):** $fail63 reprovado`n" }) + "`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F1 | T-001 | SC-1 não acha o botão | SC-1 | scenario | QA | open |`n")
+    Put $p659 '.team-project/sprints/1/validation.md' ("# V`n" + (@(1..$K) | ForEach-Object { "**Veredito (rodada $_):** $fail63 reprovado`n" }) + "`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F1 | T-001 | SC-1 não acha o botão | SC-1 | $Cause | QA | open |`n")
     (Get-Item -LiteralPath $vp).LastWriteTime = $base.AddMinutes(3)
 }
 $rt659 = { $j = [System.IO.File]::ReadAllText((Join-Path $s659 'gate.json'), $utf8) | ConvertFrom-Json; "ROUTED=$($j.routed.'S1-F1') ESC=$(if ($j.PSObject.Properties['escalated'] -and $j.escalated.PSObject.Properties['S1-F1']) { 'sim' } else { 'nao' })" }
@@ -4228,11 +4246,31 @@ Check 'v3.65.9 L1: a rodada seguinte com a MESMA falha conta o 2º disparo (aind
 $r = & $g63 $p659; $r2 = & $g63 $p659
 Check 'v3.65.9 L1: 3ª rodada na mesma falha → Arquiteto (degrau 1), sem formulário; o next repetido reimprime o Arquiteto' @{ Code = $r.Code; Out = "$($r.Out)`n----`n$($r2.Out)`n$(& $rt659)" } 0 @('S1-F1 \(cenário\) voltou depois de 2 resoluções de /qa → /arc question \(degrau 1', 'Agent: team:architect', 'RUNLOG: S1 \| portão: S1-F1 \(cenário\) voltou', '----[\s\S]*→ /arc question \(degrau 1', 'ROUTED=3 ESC=sim', '^(?![\s\S]*formulário ao stakeholder)')
 & $round659 4 "passo 'tap a.b': tag não encontrada: a.b"
+$r = & $g63 $p659; $r2 = & $g63 $p659
+# v3.65.13 (garden SC-142): depois do Arquiteto vem o PO (degrau 2); o stakeholder só com o que muda o produto.
+Check 'v3.65.13: voltou na mesma falha DEPOIS do Arquiteto → PO (degrau 2), sem formulário; o next repetido reimprime o PO' @{ Code = $r.Code; Out = "$($r.Out)`n----`n$($r2.Out)" } 0 @('S1-F1 \(cenário\) sem resolução que se sustente depois de /qa e do Arquiteto → /po \(degrau 2', 'Agent: team:product-owner', 'Escolher entre dois passos de teste, um contorno ou a ferramenta de prova não muda o produto', '\*\*Muda para o usuário:\*\*', 'RUNLOG: S1 \| portão: S1-F1 \(cenário\) voltou depois de /qa e do Arquiteto → PO \(degrau 2\)', '----[\s\S]*→ /po \(degrau 2', '^(?![\s\S]*formulário ao stakeholder)')
+$gf659 = Join-Path $s659 'gate/S1-F1.md'
+[System.IO.File]::AppendAllText($gf659, "**Stakeholder:** trocar o passo do teste? — **Muda para o usuário:** nada`n", $utf8)
 $r = & $g63 $p659
-Check 'v3.65.9 L1: voltou na mesma falha DEPOIS do Arquiteto → aí sim o formulário' $r 0 @('formulário ao stakeholder — S1-F1 \(cenário\) .*e da decisão do Arquiteto \(degrau 1\)')
-& $round659 5 "passo 'tap c.d': tag não encontrada: c.d"
+Check 'v3.65.13: a pergunta do PO sem o que muda para o usuário não vira formulário' $r 0 @('^(?![\s\S]*formulário ao stakeholder)')
+[System.IO.File]::AppendAllText($gf659, "**Stakeholder:** fixar os filtros no topo da tela? — **Muda para o usuário:** os filtros ficam sempre à vista ao rolar a lista`n", $utf8)
+$r = & $g63 $p659
+$ar659 = Join-Path $p659 '.team-project/.ask-route'
+Check 'v3.65.13: a pergunta do PO com o que muda para o usuário → formulário com ela (degrau 3), sem esperar outra rodada; a rota diz que foi o PO' @{ Code = $r.Code; Out = "$($r.Out)`nAR=$(if (Test-Path -LiteralPath $ar659) { [System.IO.File]::ReadAllText($ar659, $utf8) })" } 0 @('formulário ao stakeholder — a pergunta que o PO subiu \(degrau 3: muda o produto\): S1-F1: fixar os filtros no topo da tela\? \(muda para o usuário: os filtros ficam sempre à vista ao rolar a lista\)', 'AR=.*o PO subiu ao stakeholder')
+[System.IO.File]::AppendAllText($gf659, "**Resolution:** done — o stakeholder escolheu deixar a tela como está`n", $utf8)
+$r = & $g63 $p659
+Check 'v3.65.13: respondida (Resolution depois da pergunta), a pergunta não volta ao formulário' $r 0 @('^(?![\s\S]*formulário ao stakeholder)')
+& $round659 5 "passo 'tap a.b': tag não encontrada: a.b"
+$r = & $g63 $p659
+Check 'v3.65.9 L1 · v3.65.13: voltou na mesma falha DEPOIS do Arquiteto e do PO → aí sim o formulário' $r 0 @('formulário ao stakeholder — S1-F1 \(cenário\) .*da decisão do Arquiteto \(degrau 1\) e da do PO \(degrau 2\)')
+& $round659 6 "passo 'tap c.d': tag não encontrada: c.d"
 $r = & $g63 $p659
 Check 'v3.65.9 L1: a falha mudou de passo (progresso) → a conta volta a 1 e o achado volta ao QA, sem formulário' @{ Code = $r.Code; Out = "$($r.Out)`n$(& $rt659)" } 0 @('cenário: S1-F1 → /qa', 'ROUTED=1 ESC=nao', '^(?![\s\S]*formulário ao stakeholder)')
+$gj659 = [System.IO.File]::ReadAllText((Join-Path $s659 'gate.json'), $utf8) | ConvertFrom-Json
+Check 'v3.65.13: com a falha nova, o degrau 2 também recomeça' @{ Code = 0; Out = "PO=$(if ($gj659.escalated.PSObject.Properties['S1-F1/po']) { 'sim' } else { 'nao' })" } 0 @('PO=nao')
+& $round659 7 "passo 'tap c.d': Position out of bounds" 'executor'
+$r = & $g63 $p659
+Check 'v3.65.13: causa executor → QA registra a ocorrência de plugin em note.md e contorna no .scn, com os contornos em ordem (estado inicial da tela primeiro) e o PO no lugar do stakeholder' $r 0 @('executor do plugin: S1-F1 → /qa', 'PARA O STAKEHOLDER: .*ferramenta de teste do time, não do app', 'note\.md como ocorrência de plugin', 'volte a tela ao estado inicial antes do passo \(restart; back; tocar em outra aba e voltar\)', 'cita os verbos de standards/scenario-language\.md', '\*\*Para o PO:\*\*', '^(?![\s\S]*formulário ao stakeholder)')
 
 # ----- v3.65.5 · sprint 6 do projeto piloto (21/11): rodadas focadas sem nada mudado e a metade do teste sem dono -----
 # S1-F1 (design) resolvido como code, com a parte do .scn ainda não aplicada; S1-F2 (scenario) com um "done" que a rodada

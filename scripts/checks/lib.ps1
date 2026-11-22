@@ -3091,10 +3091,13 @@ function Get-SessionGauge([string]$Path) {
 # O mesmo filtro de arquivo de teste do plan.ps1 (regra dos arquivos tocados).
 $script:TestPathRe = '(^|/)(tests?|specs?|__tests__)/|(^|/)test_[^/]+$|[._-](test|tests|spec|specs)\.[^/]+$|tests?\.[^/.]+$'
 # Causa de um achado do portão ou de um 🔺 GAP do dev — uma lista só (nomes em inglês, decisão do stakeholder de 17/11).
-$script:Causes = @('code', 'design', 'scenario', 'screen', 'requirement', 'environment', 'appearance', 'process')
-$script:CauseOwner = @{ code = 'developer'; design = 'architect'; scenario = 'quality-assurance'; screen = 'user-experience'; requirement = 'product-owner'; environment = 'operator'; appearance = 'architect'; process = 'architect' }
+# v3.65.13 (garden SC-142): 'executor' — a ferramenta de prova do plugin falhou (o toque que o navegador recusa, "Position out
+# of bounds", o elemento que o executor não alcança), nem o app nem o .scn. Antes ela virava 'scenario', e o QA trocava o passo
+# duas vezes contra um defeito que não era do passo.
+$script:Causes = @('code', 'design', 'scenario', 'screen', 'requirement', 'environment', 'appearance', 'process', 'executor')
+$script:CauseOwner = @{ code = 'developer'; design = 'architect'; scenario = 'quality-assurance'; screen = 'user-experience'; requirement = 'product-owner'; environment = 'operator'; appearance = 'architect'; process = 'architect'; executor = 'quality-assurance' }
 # Ordem das rotas no portão (série R1): decisão de produto e de tela antes, porque muda o que o dev vai corrigir.
-$script:CauseOrder = @('requirement', 'screen', 'design', 'scenario', 'code')
+$script:CauseOrder = @('requirement', 'screen', 'design', 'executor', 'scenario', 'code')
 # Causa a partir do texto (o valor em inglês ou o nome antigo em português — sinônimos para relatório anterior à v3.63.0).
 # '' quando não é nenhuma.
 function ConvertTo-Cause([string]$Value) {
@@ -3107,6 +3110,7 @@ function ConvertTo-Cause([string]$Value) {
     if ($v -match '^(environment|ambiente)$') { return 'environment' }
     if ($v -match '^(appearance|apar[êe]ncia)$') { return 'appearance' }
     if ($v -match '^(process|processo)$') { return 'process' }
+    if ($v -match '^(executor|ferramenta|tool)$') { return 'executor' }
     return ''
 }
 # Máscara de caminho (src/**, *.mjs, pasta/arquivo) → regex sobre o caminho relativo com '/'. Sem curinga = a pasta ou o arquivo.
@@ -3285,9 +3289,33 @@ function Read-ValidationFindings([string]$Path) {
 function Get-FindingResolution([string]$S, [string]$Id) {
     $p = Join-Path $S "gate/$Id.md"
     if (-not (Test-Path -LiteralPath $p)) { return $null }
-    $m = [regex]::Match((Read-Text $p), '(?im)^\*\*Resolution:\*\*\s*(done|code|debt)\b\s*[—–-]?\s*([^\r\n]*)')
-    if (-not $m.Success) { return @{ value = ''; text = ''; at = (Get-Item -LiteralPath $p).LastWriteTime } }
+    # v3.65.13: a ÚLTIMA linha — quem resolve depois acrescenta sem apagar (Arquiteto, PO, a resposta do stakeholder).
+    $ms = [regex]::Matches((Read-Text $p), '(?im)^\*\*Resolution:\*\*\s*(done|code|debt)\b\s*[—–-]?\s*([^\r\n]*)')
+    if (-not $ms.Count) { return @{ value = ''; text = ''; at = (Get-Item -LiteralPath $p).LastWriteTime } }
+    $m = $ms[$ms.Count - 1]
     return @{ value = $m.Groups[1].Value.ToLowerInvariant(); text = $m.Groups[2].Value.Trim(); at = (Get-Item -LiteralPath $p).LastWriteTime }
+}
+# v3.65.13 (garden SC-142: a escolha entre dois passos de teste chegou ao stakeholder). A escada do portão passa pelo PO antes do
+# stakeholder, e só sobe o que muda o produto. No gate/<ID>.md: **Para o PO:** <a decisão de produto e as opções> (o Arquiteto ou
+# o dono, quando nenhuma saída técnica serve) e **Stakeholder:** <a pergunta> — **Muda para o usuário:** <o que muda em cada
+# opção> (só o PO). Sem o "Muda para o usuário" preenchido, a pergunta não conta: o que não muda o produto, o time decide.
+# pending: a pergunta ainda sem resposta (nenhuma linha **Resolution:** depois dela) — o achado não conta como resolvido pela
+# resolução de antes. @{ po; ask; impact; pending } — textos vazios quando não há.
+function Get-FindingEscalation([string]$S, [string]$Id) {
+    $out = @{ po = ''; ask = ''; impact = ''; pending = $false }
+    $p = Join-Path $S "gate/$Id.md"
+    if (-not (Test-Path -LiteralPath $p)) { return $out }
+    $t = Read-Text $p
+    $m = [regex]::Match($t, '(?im)^\*\*Para o PO:\*\*\s*([^\r\n]*)'); if ($m.Success) { $out.po = $m.Groups[1].Value.Trim() }
+    $ms = [regex]::Matches($t, '(?im)^\*\*Stakeholder:\*\*\s*([^\r\n]*?)\s*[—–-]?\s*\*\*Muda para o usu[áa]rio:\*\*\s*([^\r\n]*)')
+    if ($ms.Count) {
+        $m = $ms[$ms.Count - 1]; $imp = $m.Groups[2].Value.Trim()
+        if ($imp -and $imp -notmatch '^(?i)(nada|nenhum|nenhuma|none|n/?a|—|-)(\b|\s|$)') {
+            $out.ask = $m.Groups[1].Value.Trim(); $out.impact = $imp
+            $out.pending = -not [regex]::IsMatch($t.Substring($m.Index + $m.Length), '(?im)^\*\*Resolution:\*\*\s*(done|code|debt)\b')
+        }
+    }
+    return $out
 }
 # v3.65.5 (sprint 6 do projeto piloto, 21/11): a parte do cenário de uma resolução `code` — o app muda na Q-S<n> e DEPOIS o
 # QA ajusta o .scn. No piloto, o S6-F10 e o S6-F15 diziam "o QA troca nos SC-264…" e "depois o QA acrescenta ao SC-161…",
@@ -3328,7 +3356,7 @@ function Copy-Proof([string]$Src, [string]$Dst) {
     return $k
 }
 # v3.63.0: nomes simples para quem acompanha (kanban.md, /team-status) — causas, donos e frentes.
-$script:CausePlain = @{ code = 'código do app'; design = 'desenho técnico'; scenario = 'teste (cenário)'; screen = 'tela'; requirement = 'regra ou critério'; environment = 'aparelho ou ambiente'; appearance = 'medida ou marcação'; process = 'processo do time' }
+$script:CausePlain = @{ code = 'código do app'; design = 'desenho técnico'; scenario = 'teste (cenário)'; screen = 'tela'; requirement = 'regra ou critério'; environment = 'aparelho ou ambiente'; appearance = 'medida ou marcação'; process = 'processo do time'; executor = 'ferramenta de teste do time' }
 $script:OwnerPlain = @{ developer = 'desenvolvedor'; architect = 'arquiteto'; 'quality-assurance' = 'qualidade'; 'user-experience' = 'UX'; 'product-owner' = 'dono do produto'; operator = 'operador do aparelho' }
 $script:FrontPlain = [ordered]@{ functional = 'funcional (testes no aparelho)'; measured = 'qualidade medida'; review = 'revisão do código'; security = 'segurança' }
 $script:FindingStatePlain = @{ open = 'aberto'; fixed = 'resolvido'; debt = 'aceito como dívida'; wontfix = 'não será feito' }

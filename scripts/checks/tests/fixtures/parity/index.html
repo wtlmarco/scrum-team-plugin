@@ -29,6 +29,17 @@
   <span id="p.lido">—</span>
 </section>
 
+<!-- v3.65.13 (garden SC-142): a tela rola na vertical e tem no topo uma faixa de filtros que rola na horizontal. Depois de rolar
+     a tela até o fim, a faixa fica acima da área visível, e o último filtro, à direita dentro dela. As pílulas são mais altas
+     que a faixa: ela também conta como rolador vertical (o overflow-x: auto faz o overflow-y virar auto). -->
+<section>
+  <div id="p.tela" style="height: 260px; overflow-y: auto; border: 1px solid #999">
+    <div id="p.filtros" style="width: 240px; height: 36px; overflow-x: auto; white-space: nowrap"><button id="p.filtro.1" style="width: 110px; height: 40px" onclick="lido('filtro 1')">1</button><button style="width: 110px; height: 40px">2</button><button style="width: 110px; height: 40px">3</button><button style="width: 110px; height: 40px">4</button><button id="p.filtro.5" style="width: 110px; height: 40px" onclick="lido('filtro 5')">5</button></div>
+    <div style="height: 700px">lista</div>
+    <button id="p.tela.fim" onclick="lido('fim da tela')">fim</button>
+  </div>
+</section>
+
 <!-- v3.65.3 (garden SC-161): o rolador vive no shadow root do host e o conteúdo chega por <slot>; o campo é um componente de
      slot emulado que esconde o <input> dele de children/childNodes. O campo e o botão começam fora da área do rolador. -->
 <section>

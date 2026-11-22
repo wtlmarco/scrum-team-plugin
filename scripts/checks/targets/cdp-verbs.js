@@ -101,6 +101,7 @@ function adbSwipe(s, x1, y1, x2, y2, dpr) {
 // CSS × devicePixelRatio) na vertical; o arrasto por toque (ou a roda do mouse, no web); o gesto sintetizado do DevTools. Confere
 // que a posição mudou e tenta o meio seguinte se não mudou.
 async function scrollOnce(s, plan, id) {
+  if (plan.none) return false;   // v3.65.13: nenhum rolador na tela com para onde ir (dom-probe scroll-plan)
   // Ponto do gesto: o que o dom-probe achou dentro do rolador sem outro rolador por cima; a distância cabe na área dele.
   const b = plan.box, cx = plan.at ? plan.at.x : b.x + b.w / 2, cy = plan.at ? plan.at.y : b.y + b.h / 2;
   const room = plan.axis === 'x' ? Math.min(cx - b.x, b.x + b.w - cx) : Math.min(cy - b.y, b.y + b.h - cy);
@@ -113,14 +114,18 @@ async function scrollOnce(s, plan, id) {
   // Último recurso, também no modo toque: a roda do mouse (medido: no Chromium headless o gesto de toque não rola a página na
   // vertical; a roda rola).
   if (touch(s)) ways.push(async () => s.call('Input.dispatchMouseEvent', { type: 'mouseWheel', x: cx, y: cy, deltaX: plan.axis === 'x' ? plan.dir * d * 2 : 0, deltaY: plan.axis === 'y' ? plan.dir * d * 2 : 0 }));
+  // v3.65.13: um meio que o navegador recusa (ponto do gesto fora da janela: "Position out of bounds") não derruba o passo —
+  // vai ao meio seguinte; o erro do adb (ambiente) continua parando.
   for (const w of ways) {
-    await w(); await sleep(300);
+    try { await w(); } catch (e) { if (e.kind === 'environment') throw e; continue; }
+    await sleep(300);
     if ((await probe(s, 'scroll-pos', { id, axis: plan.axis })) !== plan.pos) return true;
   }
   return false;
 }
 async function intoView(s, id, f) {
-  for (let i = 0; i < 25 && f.found && !f.inView; i++) {
+  // v3.65.13: rola até o centro ter folga da borda (comfy); se a rolagem não anda mais, basta o centro dentro (inView).
+  for (let i = 0; i < 25 && f.found && !(f.comfy === undefined ? f.inView : f.comfy); i++) {
     const plan = await probe(s, 'scroll-plan', { id });
     if (!(await scrollOnce(s, plan, id))) break;
     f = await probe(s, 'find', { id });
@@ -164,8 +169,14 @@ async function pressId(s, id) {
   let f = await reach(s, id, 6, true);
   if (!f) throw new Error(`tag não encontrada: ${id}`);
   if (f.inView) f = await settle(s, id, f);
-  if (!f.inView) throw new Error(`${id} existe, mas a rolagem não o trouxe à tela`);
+  if (!f.inView) {
+    // v3.65.13: o porquê da rolagem e o contorno do cenário (o estado da tela vem dos passos anteriores; o launch volta ao inicial).
+    const p = await probe(s, 'scroll-plan', { id });
+    throw new Error(`${id} existe, mas a rolagem não o trouxe à tela${p.none ? ` (${p.why})` : ''} — se um passo anterior deixou a tela num estado em que ele não aparece, volte ao estado inicial da tela antes (restart, back ou outra aba e volta)`);
+  }
   await quiet(s);
+  // v3.65.13: a caixa de novo depois da espera — a faixa que ainda deslizava durante o quiet levava o toque ao vizinho ("coberto").
+  { const g = await probe(s, 'find', { id }); if (g.found) { f = g.comfy ? g : await intoView(s, id, g); if (!f.inView) throw new Error(`${id} saiu da tela enquanto a rolagem parava`); } }
   const x = f.box.x + f.box.w / 2, y = f.box.y + f.box.h / 2;
   const h = await probe(s, 'hit', { id, x, y });
   if (!h.ok) throw new Error(`toque em ${id} cairia em ${h.by} (coberto)`);
