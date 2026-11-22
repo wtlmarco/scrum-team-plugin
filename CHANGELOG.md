@@ -13,6 +13,31 @@
 
 ---
 
+## v3.65.9 — 2026-11-21
+**Branch:** `fix/v3.65.9` a partir de `fix/v3.65.8` (`d9183d3`, ainda sem merge)
+Origem: revisão das 8 interrupções do stakeholder no garden em 21/11. Só 2 eram decisões dele (atualizar o plugin; o zip com dados fora do git). As outras vinham de quatro lacunas do processo. A quinta (a medição viva) foi resolvida na v3.65.8.
+**L1 · O contador do dono no portão** (`gate.ps1`, `gate.json`). Às 19:44, o S6-F10 e o S6-F15 foram ao stakeholder com `routed` 4, mas o QA tinha sido disparado de verdade duas vezes. Cada rodada tinha caído num ponto diferente (a abertura do app, depois um passo que faltava). O mesmo tinha acontecido às 03:54.
+- O contador conta **disparos**: a mesma rodada do `validation.md` com a mesma resolução é o mesmo disparo, e o `next` repetido (pela G20, pelo `wait` ou pelo `/clear`) não soma (`gate.json → routedAt`). Vale também para a parte do `.scn` (`<ID>/scn`).
+- Ele conta **repetição**, não progresso: a falha dos cenários citados no achado (status e detalhe do passo, no `result.json` do aceite) que mudou desde o disparo anterior zera a conta para 1 (`routedFail`).
+- Esgotado o dono, vai ao **Arquiteto (degrau 1)**, uma vez por achado e com o histórico das resoluções e o diagnóstico (`escalated`). O formulário só abre se o achado voltar na mesma falha depois da decisão dele. Achado de desenho ou de requisito vai direto, como antes: o dono já é o degrau 1.
+**L3 · O `quality.ps1` pelo `detach`** (`hooks/pre-tool.ps1`, `gate.ps1`). Às 19:18, a G14 negou ao operator o `detach.ps1` com o `quality.ps1` entre aspas escapadas por crase. Ele rodou o `quality.ps1` direto e a medição ficou órfã.
+- A G14 entende o escape por crase dentro de aspas duplas.
+- O comando de dentro do `detach` herda as variáveis do de fora e continua conferido trecho a trecho.
+- O prompt do portão manda rodar o `quality.ps1` pelo `detach.ps1`, com exit 3 = chamar o mesmo comando de novo.
+**L4 · Defeito do plugin não vira pergunta** (`stakeholder-question.md`, "a decisão é dele?"). Três casos novos: a medição que ainda roda (esperar é o padrão); a causa que é um padrão do próprio plugin, como o `readyExpr` das 08:50 às 17:30 (vai ao `note.md` e segue com o padrão novo); e o achado de cenário que voltou (QA, depois o Arquiteto).
+**L5 · O update não pergunta sobre o que o plugin escreveu** (`team-update.md` 7p e §8, manifesto em `deliverables/team-project/README.md`).
+- O trecho `readyState === 'complete'`, que o plugin sugeriu na v3.62.0, é trocado sem formulário, só ele, com aviso e o modo de desfazer.
+- A §8 do README ("Como usar o time") é substituída sem formulário quando está igual à do modelo da versão instalada. Editada pelo time, é conflito.
+- O manifesto ganha a classe "texto do plugin".
+
+Testes:
+- `run-check-tests.ps1`, 5 casos da L1: o `next` repetido conta um disparo; mesma falha → 2º disparo; 3ª vez → Arquiteto (o `next` repetido reimprime o Arquiteto); voltou depois dele → formulário; a falha mudou de passo → a conta volta a 1.
+- `run-check-tests.ps1`: o caso do portão que mede passa a exigir o `detach` no prompt.
+- `run-guard-tests.ps1`, 3 casos da G14: o comando do garden passa; `git push` escapado é negado; script fora do plugin escapado é negado.
+- O caso `v3.53.2: OCUPADO com -WaitBusySeconds` falhava nas rodadas completas: a rodada viva durava 7 s e, com 8 blocos em paralelo, o `verify` subia depois dela. Ela passa a durar 20 s.
+
+Suíte completa: 1147/1148 antes do ajuste (a falha era só esse caso); depois dele, o caso, os da v3.65.9 e a suíte de guardas inteira: 460/0.
+
 ## v3.65.8 — 2026-11-21
 **Branch:** `fix/v3.65.8` a partir de `develop` (`fc33307`, PR #207)
 Origem: portão do sprint 6 do garden, 19:18 → 19:32. O `quality.ps1` do portão rodava, e o `run.ps1 next` mandou o operator medir de novo, porque só olhava o `result.json`. A sonda `wait` respondeu "terminou" porque a espera não tinha Task, e a G20 barrou o fim do turno. Sem saída que a G20 aceitasse, a sessão perguntou ao stakeholder se esperava a medição terminar. Ela terminou sozinha. Estado de processo (rodando, terminou, travou) tem resposta do `next`, e o stakeholder só entra na segunda vez em que a medição trava.

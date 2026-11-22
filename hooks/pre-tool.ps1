@@ -639,7 +639,9 @@ function Test-DetachInner([string]$Seg) {
     if (-not $m.Success -or -not $script:qmap -or $script:g14Depth -ge 3) { return $false }
     $q = [string]$script:qmap[[int]$m.Groups[1].Value]
     if ($q.Length -lt 2) { return $false }
-    $ok = Test-CommandText $q.Substring(1, $q.Length - 2) ($script:g14Depth + 1)
+    $innerCmd = $q.Substring(1, $q.Length - 2)
+    if ($q.StartsWith('"')) { $innerCmd = $innerCmd -replace '`(["`])', '$1' }   # v3.65.9: `" e `` viram o texto que o detach recebe
+    $ok = Test-CommandText $innerCmd ($script:g14Depth + 1)
     if (-not $ok -and -not $script:badSegInner) { $script:badSegInner = [string]$script:badSeg }   # a negação cita o trecho de dentro
     return $ok
 }
@@ -770,10 +772,15 @@ function Test-CommandText([string]$Cmd, [int]$Depth = 0) {
         $script:g14Depth = $Depth
         $script:cwdRel = $null   # v3.57.3: a pasta do Set-Location dentro do projeto, trecho a trecho
         $script:cmdVars = Get-CommandVars $Cmd
+        # v3.65.9 (garden S6, 19:18): o comando de dentro do detach (-Command "…") herda as variáveis do de fora — entre aspas
+        # duplas o PowerShell expande "$root/…" antes de o detach receber o texto.
+        if ($Depth -gt 0 -and $saved.vars) { foreach ($k in @($saved.vars.Keys)) { if (-not $script:cmdVars.ContainsKey($k)) { $script:cmdVars[$k] = $saved.vars[$k] } } }
         $script:fnNames = @([regex]::Matches($Cmd, '(?im)\bfunction\s+([\w-]+)') | ForEach-Object { $_.Groups[1].Value.ToLowerInvariant() })
         $script:netWriteOk = Test-NetWrites $Cmd
         $script:qmap = New-Object System.Collections.ArrayList
-        $flat = [regex]::Replace($Cmd, '"([^"]*)"|''[^'']*''', { param($m)
+        # v3.65.9: dentro de aspas duplas, a crase escapa o caractere seguinte (`" não fecha o texto) — o operator passou
+        # -Command "powershell -File `"$root/…/quality.ps1`" -Id S6" ao detach e o texto se partia na primeira `".
+        $flat = [regex]::Replace($Cmd, '"((?:`[\s\S]|[^"`])*)"|''[^'']*''', { param($m)
             [void]$script:qmap.Add($m.Value); $tok = '"__q' + ($script:qmap.Count - 1) + '__"'
             if (-not ($m.Value.StartsWith('"') -and $m.Groups[1].Value.Contains('$('))) { return $tok }
             $inner = $m.Groups[1].Value; $subs = @(); $i = 0

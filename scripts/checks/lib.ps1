@@ -2955,8 +2955,11 @@ function Get-SprintScenarioFiles([string]$Root) { return @(Get-ChildItem -Path (
 #   proof       a última rodada copiada para sprints/<n>/proof/
 #   routed      achado → vezes que o dono foi disparado sem gravar a resolução
 #   stall       v3.65.8: medições do portão encerradas por POSSÍVEL TRAVAMENTO (regra 5: a 1ª sem formulário, a 2ª ao stakeholder)
+#   routedAt    v3.65.9: achado → o disparo contado por último (rodada do validation.md | hora do gate/<ID>.md); o next repetido não soma
+#   routedFail  v3.65.9: achado → a falha dos cenários dele naquele disparo; falha que mudou zera a conta (progresso)
+#   escalated   v3.65.9: achado → o disparo em que foi ao Arquiteto (degrau 1), antes do stakeholder
 function Get-GateState([string]$S) {
-    $st = [ordered]@{ round = 0; judged = $null; env = [ordered]@{ attempts = 0; at = ''; asked = ''; sent = 0; sentAt = '' }; proof = 0; routed = [ordered]@{}; stall = 0 }
+    $st = [ordered]@{ round = 0; judged = $null; env = [ordered]@{ attempts = 0; at = ''; asked = ''; sent = 0; sentAt = '' }; proof = 0; routed = [ordered]@{}; stall = 0; routedAt = [ordered]@{}; routedFail = [ordered]@{}; escalated = [ordered]@{} }
     $p = Join-Path $S 'gate.json'
     if (Test-Path -LiteralPath $p) {
         try {
@@ -2970,6 +2973,7 @@ function Get-GateState([string]$S) {
             if ($j.PSObject.Properties['proof']) { $st.proof = [int]$j.proof }
             if ($j.PSObject.Properties['routed'] -and $j.routed) { foreach ($pp in $j.routed.PSObject.Properties) { $st.routed[$pp.Name] = [int]$pp.Value } }
             if ($j.PSObject.Properties['stall']) { $st.stall = [int]$j.stall }   # v3.65.8
+            foreach ($mk in 'routedAt', 'routedFail', 'escalated') { if ($j.PSObject.Properties[$mk] -and $j.$mk) { foreach ($pp in $j.$mk.PSObject.Properties) { $st[$mk][$pp.Name] = [string]$pp.Value } } }   # v3.65.9
         } catch { }
     }
     return $st
