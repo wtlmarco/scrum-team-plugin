@@ -129,13 +129,15 @@ Os passos de migração das versões v3.20 a v3.49 (antigas §7a a §7j) saíram
 
 ## 7p. Prontidão pelo sinal do app, não da rede (v3.65.6)
 
-> Roda quando a versão instalada for anterior à `v3.65.6` **e** o `targets.android.cdp.readyExpr` do `guards.json` contém `readyState === 'complete'` (ou `== 'complete'`). Sem `readyExpr` declarado, o padrão novo vale sozinho: pule, dizendo isso em uma linha. O `guards.json` é do stakeholder: **o passo propõe; nunca grava sem o formulário.**
+> Roda quando a versão instalada for anterior à `v3.65.6` **e** o `targets.android.cdp.readyExpr` do `guards.json` contém `readyState === 'complete'` (ou `== 'complete'`). Sem `readyExpr` declarado, o padrão novo vale sozinho: pule, dizendo isso em uma linha.
 
-1. **Mostre** o `readyExpr` atual e a troca: só a parte `document.readyState === 'complete'` vira `document.readyState !== 'loading'`, e o resto da expressão fica igual. Explique em uma linha: o `complete` espera todo recurso da página, inclusive fonte e imagem de fora, e um pedido que não termina segura a abertura com o app já na tela (`scenario-language.md` §3).
-2. **Formulário** (`AskUserQuestion`, R22, "pedir mais contexto" por último). Opções: *trocar como mostrado · manter como está · pedir mais contexto*.
-3. **Aprovado:** grave a troca em `targets.android.cdp.readyExpr`. O passo não edita código. Se o app carrega recurso de fora na abertura e o projeto se declara offline, registre a pendência em `.team-project/README.md` §7 para o Arquiteto do projeto.
+**v3.65.9 — sem formulário.** O trecho `readyState === 'complete'` veio do próprio plugin (o passo 7n da v3.62.0 o propôs), e a troca corrige um defeito do plugin, não uma escolha do projeto. No garden (21/11, 19:10), o update perguntou ao stakeholder sobre um valor que o plugin tinha escrito. Por isso o passo troca sozinho **só esse trecho** e deixa o resto da expressão, que é do projeto, como está.
 
-**Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).targets.android.cdp.readyExpr` não contém `'complete'` (aprovado) ou segue igual (mantido, com a escolha dita ao stakeholder).
+1. **Troque** em `targets.android.cdp.readyExpr` só a parte `document.readyState === 'complete'` (ou `== 'complete'`) por `document.readyState !== 'loading'`. O resto da expressão fica igual. O passo não edita código.
+2. **Diga em uma linha**, sem formulário: o valor anterior, o novo e o porquê (o `complete` espera todo recurso da página, inclusive fonte e imagem de fora, e um pedido que não termina segura a abertura com o app já na tela, `scenario-language.md` §3). Diga também como desfazer: voltar o valor anterior no `guards.json`.
+3. Se o app carrega recurso de fora na abertura e o projeto se declara offline, registre a pendência em `.team-project/README.md` §7 para o Arquiteto do projeto.
+
+**Verificação do passo:** `(Get-Content .team-project/guards.json -Raw | ConvertFrom-Json).targets.android.cdp.readyExpr` não contém `'complete'`, e o resto da expressão é o de antes.
 
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
@@ -146,10 +148,11 @@ O manifesto do que foi instanciado, com a classe de reconciliação de cada arqu
 1. **Compare** o arquivo no projeto com o modelo da versão nova.
 2. **Classifique** a diferença conforme o manifesto:
    - **cópia literal** (`how-to.md`) → substitua, avisando em uma linha o que mudou;
-   - **estrutura + conteúdo local** (`sprints/<corrente>/sprint-backlog.md`, `product-backlog.md`, `baseline.md`, §8 do `README.md`) → **mostre o delta da estrutura** — seção nova, coluna nova, cabeçalho renomeado — e **peça aprovação por arquivo**. Nunca sobrescreva conteúdo escrito pelo time;
+   - **estrutura + conteúdo local** (`sprints/<corrente>/sprint-backlog.md`, `product-backlog.md`, `baseline.md`) → **mostre o delta da estrutura** — seção nova, coluna nova, cabeçalho renomeado — e **peça aprovação por arquivo**. Nunca sobrescreva conteúdo escrito pelo time;
+   - **texto do plugin dentro de um arquivo do projeto** (a §8 "Como usar o time neste projeto" do `README.md`) → compare a §8 do projeto com a §8 do modelo da **versão instalada** (`<cache de plugins>/<versão instalada>/roles/scrum-master/templates/project-context.md`, ou o histórico do git do plugin). **Igual** (ninguém do projeto a editou): substitua pela §8 do modelo novo **sem formulário**, avisando em uma linha o que mudou. **Diferente** (o time escreveu nela): aí é conflito (item 4). No garden (21/11, 19:11), o update perguntou duas vezes sobre trocar um texto que era do plugin (v3.65.9);
    - **histórico imutável** (tudo em `sprints/<n>/` de sprint já fechado) → **não reconcilie**. O registro retrata o sprint como ele foi; estrutura nova não se aplica retroativamente (passo 7a);
    - **só conteúdo local** (os seis `context.md`) → não toque; liste como "conferir manualmente" se o modelo mudou de forma relevante.
-3. **Apresente um resumo antes de aplicar qualquer coisa:** arquivo · classe · o que muda · o que se perde se aplicar. Sem confirmação, não aplique.
+3. **Apresente um resumo antes de aplicar qualquer coisa:** arquivo · classe · o que muda · o que se perde se aplicar. Sem confirmação, não aplique. A cópia literal e o texto do plugin igual ao modelo anterior não pedem confirmação: entram no resumo como "aplicado".
 4. **Conflito** — o time editou a mesma seção que o modelo mudou — não se resolve sozinho: mostre os dois lados e deixe o stakeholder escolher, ou registre como pendência no quadro.
 
 > **Regra que não se negocia:** o `update` **nunca apaga conteúdo do projeto** sem aprovação explícita. Na dúvida, proponha e registre — não aplique.

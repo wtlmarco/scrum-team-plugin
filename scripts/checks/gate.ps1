@@ -239,7 +239,10 @@ function Invoke-GateStep {
         Out "PRÓXIMA AÇÃO: validação do sprint $n — medir (operator, comandos longos fora das instâncias caras; C3): $($whyM -join ' · ')"
         Say $(if (-not $qj -and -not $aj) { 'Todas as partes do sprint estão prontas. Começou a revisão final: rodando todos os testes do app.' } else { 'Revisão final: medindo de novo só o que a correção mudou.' })
         Out "  $(Get-AgentLine 'operator')"
-        Out ("  prompt: `"Chamador: sessão $sid — Rode na raiz: " + ($cmds -join ' e ') + $(if (-not $aFresh) { ' (o -Resume reaproveita os cenários que já passaram com o mesmo app instalado e o mesmo texto de cenário)' } else { '' }) + ". Exit 4 = ambiente: rode target.ps1 -Repair uma vez e repita — salvo quando a linha do accept traz 'sinal do app' ou 'em uso por' (não repita: devolva a linha; o next leva ao diagnóstico ou ao stakeholder). Devolva os caminhos dos result.md e as linhas de resumo.`"")
+        # v3.65.9 (garden S6, 19:18): o quality passa dos 2 min da ferramenta — direto, ele ia para segundo plano e o operator
+        # devolvia com a medição ainda viva. Pelo detach.ps1 ele roda em processo próprio e a chamada volta com exit 3.
+        $qDet = if (-not $qFresh) { " O quality.ps1 passa de 2 min: rode-o pelo $plugin/detach.ps1 -Dir .team-project/operator/$n/$sid-quality -Command com o quality entre aspas escapadas por crase (exit 3 = ainda roda: chame o MESMO comando de novo, no mesmo turno; exit 5 'em uso por' = já há uma medição viva: devolva a linha)." } else { '' }
+        Out ("  prompt: `"Chamador: sessão $sid — Rode na raiz: " + ($cmds -join ' e ') + $(if (-not $aFresh) { ' (o -Resume reaproveita os cenários que já passaram com o mesmo app instalado e o mesmo texto de cenário)' } else { '' }) + ".$qDet Exit 4 = ambiente: rode target.ps1 -Repair uma vez e repita — salvo quando a linha do accept traz 'sinal do app' ou 'em uso por' (não repita: devolva a linha; o next leva ao diagnóstico ou ao stakeholder). Devolva os caminhos dos result.md e as linhas de resumo.`"")
         Out "  depois: run.ps1 next"
         exit 0
     }
@@ -311,6 +314,33 @@ function Invoke-GateStep {
         return $r
     }
     $resolved = { param([string]$Id) $r = & $effRes $Id; [bool]($r -and $r.value -and -not $r.stale) }
+    # v3.65.9 (garden S6, 19:44: S6-F10 e S6-F15 com routed 4 depois de 2 disparos reais do QA, e cada rodada caindo num ponto
+    # diferente). O contador do dono conta DISPAROS, não passagens do next: a mesma rodada do validation.md com a mesma
+    # resolução é o mesmo disparo (o next repetido pela G20, pelo wait ou pelo /clear não soma). E conta repetição, não
+    # progresso: a falha dos cenários do achado (SC citados, status e detalhe do passo no result.json do aceite) que mudou
+    # desde o disparo anterior zera a conta para 1 — a correção avançou e a falha nova é outra.
+    $failSig = {
+        param($f)
+        if (-not $aj -or -not $f) { return '' }
+        $ids = @([regex]::Matches("$($f.text) $($f.task)", 'SC-\d+') | ForEach-Object { $_.Value } | Sort-Object -Unique)
+        if (-not $ids.Count) { return '' }
+        return (@($ids | ForEach-Object {
+            $sc = $_; $rr = @(@($aj.results) | Where-Object { [string]$_.id -eq $sc }) | Select-Object -First 1
+            if (-not $rr) { "$sc=?" } else { $d = ((([string]$rr.detail) -replace '\d+', '#') -replace '\s+', ' ').Trim(); if ($d.Length -gt 160) { $d = $d.Substring(0, 160) }; "$sc=$([string]$rr.status):$d" }
+        }) -join ' | ')
+    }
+    $bumpRouted = {
+        param([string]$Key, $f)
+        $fid = ($Key -split '/')[0]; $rz = Get-FindingResolution $S $fid
+        $disp = "$($valAt.ToString('s'))|$(if ($rz -and $rz.at) { ([datetime]$rz.at).ToString('s') })"
+        if ([string]$gate.routedAt[$Key] -eq $disp) { return }
+        $fs = & $failSig $f
+        $cur = [int]$(if ($gate.routed.Contains($Key)) { $gate.routed[$Key] } else { 0 })
+        $moved = $fs -and $gate.routedFail.Contains($Key) -and [string]$gate.routedFail[$Key] -and [string]$gate.routedFail[$Key] -ne $fs
+        $gate.routed[$Key] = $(if ($moved) { 1 } else { $cur + 1 })
+        if ($moved -and $gate.escalated.Contains($Key)) { $gate.escalated.Remove($Key) }
+        $gate.routedAt[$Key] = $disp; $gate.routedFail[$Key] = $fs
+    }
     foreach ($k in $supersededBy.Keys) { if (@($qsRows | Where-Object { $_.Id -eq $k -and $_.Mark -ne $E.Done }).Count) { Out "  nota: a $k conta como substituída pela $($supersededBy[$k]) (o plano dela declara **Corrige:** $k) — não segura o portão" } }
     # v3.64.0 (item 8 B): achados novos para uma correção já aberta — a linha dela ganha os IDs e o Arquiteto emenda o plano
     # (o plano foi escrito para outros achados: no piloto, a Q-S6e só podia tocar a ferramenta do alvo, e os achados de código
@@ -394,12 +424,30 @@ function Invoke-GateStep {
         $items = @($open | Where-Object { $_.cause -eq $c -and -not (& $resolved $_.id) })
         if (-not $items.Count) { continue }
         $o = $owners[$c]
-        foreach ($it in $items) { $gate.routed[$it.id] = [int]$(if ($gate.routed.Contains($it.id)) { $gate.routed[$it.id] } else { 0 }) + 1 }
+        foreach ($it in $items) { & $bumpRouted $it.id $it }
         Set-GateState $S $gate
         $again = @($items | Where-Object { [int]$gate.routed[$_.id] -gt 2 })
         if ($again.Count) {
-            Set-AskRoute $Root 'portao' $sid "$($o[2]): $($o[1]) disparado 2 vezes sem uma resolução que se sustente para $(($again | ForEach-Object { $_.id }) -join ', ')"
-            Out "PRÓXIMA AÇÃO: formulário ao stakeholder — $(($again | ForEach-Object { $_.id }) -join ', ') ($($o[2])) sem resolução que se sustente depois de 2 disparos de $($o[1]) (sem gravar, ou a rodada seguinte manteve o achado aberto): decidir à mão (gravar .team-project/sprints/$n/gate/<ID>.md) ou aceitar como dívida"
+            # v3.65.9 (garden S6, 19:44): esgotado o dono, o degrau 1 é o Arquiteto (uma vez por achado), com o histórico das
+            # resoluções e o diagnóstico — ele pode trocar a causa. O stakeholder só entra se o achado voltar depois disso, e
+            # o achado de desenho (o dono já é o Arquiteto) ou de requisito (o PO já é o degrau 1) vai direto a ele.
+            # o mesmo disparo do Arquiteto (next repetido antes de ele gravar) reimprime o dele, não o formulário
+            $toArc = @($again | Where-Object { $c -notin 'design', 'requirement' -and (-not $gate.escalated.Contains($_.id) -or [string]$gate.escalated[$_.id] -eq [string]$gate.routedAt[$_.id]) })
+            if ($toArc.Count) {
+                foreach ($it in $toArc) { $gate.escalated[$it.id] = [string]$gate.routedAt[$it.id] }
+                Set-GateState $S $gate
+                $ids9 = ($toArc | ForEach-Object { $_.id }) -join ', '
+                $hist = ($toArc | ForEach-Object { "$($_.id): .team-project/sprints/$n/gate/$($_.id).md" }) -join '; '
+                Add-RunLog $S $n $sid "portão: $ids9 ($($o[2])) voltou depois de 2 resoluções de $($o[1]) → Arquiteto (degrau 1), antes do stakeholder" (& $short (($toArc | ForEach-Object { "$($_.id): $($_.text)" }) -join '; ')) "sprints/$n/gate.json"
+                Out "PRÓXIMA AÇÃO: validação do sprint $n — $ids9 ($($o[2])) voltou depois de 2 resoluções de $($o[1]) → /arc question (degrau 1, instância nova; o stakeholder só se voltar de novo — v3.65.9)"
+                Say 'Revisão final: um teste continua falhando depois de duas correções. O arquiteto vai olhar a causa de novo antes de qualquer pergunta a você.'
+                Out "  $(Get-AgentLine 'architect')"
+                Out "  prompt: `"/arc question — degrau 1 do portão do sprint ${n}: $ids9 ($($o[2])) voltou abertos depois de 2 resoluções de $($o[1]). Leia o histórico das resoluções ($hist), os achados em .team-project/sprints/$n/validation.md, a prova em .team-project/sprints/$n/proof/$sid/ e o diagnóstico do operator $diagRel, se houver. Decida a causa de verdade (a do validation.md pode estar errada: ambiente, código, desenho ou cenário) e o que muda. Grave, sem apagar o que já está lá, a linha **Resolution:** done|code — <a decisão e o porquê> em cada gate/<ID>.md; com code, a linha **Scenario:** se o .scn também muda. O que for decisão do stakeholder (escopo, o que o usuário vê, aceitar dívida), devolva na primeira linha STAKEHOLDER: <a pergunta e as opções>. Volte em até 15 linhas.`""
+                Out "  depois: run.ps1 next"
+                exit 0
+            }
+            Set-AskRoute $Root 'portao' $sid "$($o[2]): $($o[1]) disparado 2 vezes sem uma resolução que se sustente para $(($again | ForEach-Object { $_.id }) -join ', ')$(if ($c -notin 'design', 'requirement') { ', nem depois do Arquiteto' })"
+            Out "PRÓXIMA AÇÃO: formulário ao stakeholder — $(($again | ForEach-Object { $_.id }) -join ', ') ($($o[2])) sem resolução que se sustente depois de 2 disparos de $($o[1])$(if ($c -notin 'design', 'requirement') { ' e da decisão do Arquiteto (degrau 1)' }) (a rodada seguinte manteve o achado aberto, na mesma falha): decidir à mão (gravar .team-project/sprints/$n/gate/<ID>.md) ou aceitar como dívida"
             exit 0
         }
         # v3.65.5: a resolução que a rodada seguinte desmentiu vai no prompt — o dono não repete a mesma correção.
@@ -426,7 +474,7 @@ function Invoke-GateStep {
     # parte do cenário ANTES da rodada nova (no piloto, o S6-F10 e o S6-F15 ficaram com o app pronto e o .scn antigo).
     $scnHalf = @($codeF | Where-Object { $cov = @(& $qsOf $_.id); $cov.Count -and -not @($cov | Where-Object { $_.Mark -ne $E.Done }).Count -and (Get-FindingScenarioPart $S $_.id).need })
     if ($scnHalf.Count) {
-        foreach ($it in $scnHalf) { $k5 = "$($it.id)/scn"; $gate.routed[$k5] = [int]$(if ($gate.routed.Contains($k5)) { $gate.routed[$k5] } else { 0 }) + 1 }
+        foreach ($it in $scnHalf) { & $bumpRouted "$($it.id)/scn" $null }   # v3.65.9: disparo, não passagem do next
         Set-GateState $S $gate
         $againS = @($scnHalf | Where-Object { [int]$gate.routed["$($_.id)/scn"] -gt 2 })
         if ($againS.Count) {

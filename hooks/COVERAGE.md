@@ -241,6 +241,14 @@ Medido no sprint 6 do projeto piloto (15–17/11/2026): a medição e o julgamen
 | **G16** (`subagent-stop.ps1`) | `Get-WorkId` reconhece `S<n>` (o portão do sprint) e `S<n>-F<k>` (o achado), sem casar `Q-S<n>`; a linha do `usage.jsonl` ganha `gate_round`, lido de `sprints/<n>/gate.json` — o `consumption.ps1` dá a unidade "validação do sprint" / "correção do portão" e trata a 2ª rodada em diante como retrabalho | prompt que não cita o ID (a rodada fica em `n/a`, como antes) |
 | **Registro de agentes** (`common.ps1` `Test-AgentStale`, `Remove-StaleAgents`, `Write-NowSection`; `run.ps1 next`/`start`) | registro com 20 min ou mais sem ação (ou com o processo hospedeiro encerrado) e sem filho vivo aparece no "## Agora" e no `/team-status` como "sem sinal desde HH:mm — provavelmente encerrado"; o `next` e o `start` da Task, sem comando dela vivo, o tiram do `.active-agents`, levam ao `.interrupted` e dizem numa linha (com o `run-log.md`) | agente vivo mas parado há mais de 20 min sem nenhuma ação de ferramenta (não existe na prática: uma chamada dura no máximo 10 min) |
 
+## v3.65.9 — o detach aceita o script do plugin entre aspas escapadas
+
+Medido no portão do sprint 6 do garden (21/11/2026, 19:18). O operator chamou `detach.ps1 -Command "powershell -File `"$root/scripts/checks/quality.ps1`" -Id S6"`. A G14 partia o texto entre aspas duplas na primeira `` `" `` e negava o trecho `powershell -NoProfile -File`. O operator então rodou o `quality.ps1` direto, a ferramenta o moveu para segundo plano e a medição ficou órfã. Casos em `run-guard-tests.ps1` (marcados v3.65.9).
+
+| Guarda | O que mudou | O que **não** cobre |
+|---|---|---|
+| **G14** | (1) dentro de aspas duplas, a crase escapa o caractere seguinte: `` `" `` não fecha o texto; (2) o comando de dentro do `detach.ps1` (`-Command "…"`) é conferido sem os escapes e com as variáveis do comando de fora (`$root = "…"; … -Command "… `"$root/…`" …"`), porque o PowerShell expande as duas antes de o detach receber o texto. O comando de dentro continua conferido trecho a trecho: `git push` e script fora do plugin seguem negados | o texto entre aspas que termina numa crase solta antes da aspa (`"C:\pasta`"`): passa a seguir até a próxima aspa, como o PowerShell faz |
+
 ## v3.65.8 — a medição do portão que já roda vira "esperar", não pergunta
 
 Medido no portão do sprint 6 do garden (21/11/2026, 19:18 → 19:32). O `quality.ps1` do portão rodava, e o `next` mandou medir de novo porque só olhava o `result.json`. A sonda respondeu "terminou" porque a espera não tinha Task. A G20 barrou o turno (ação `agir`, e o registro não mostrava agente em voo), e a sessão, sem caminho, perguntou ao stakeholder se esperava. A medição terminou sozinha. Casos em `run-check-tests.ps1` (marcados v3.65.8), com o contrato: para cada comando do plugin em voo no portão (verify, accept, quality), o `next` grava "esperar", sem operator por cima e sem formulário.
