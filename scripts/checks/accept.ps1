@@ -37,6 +37,9 @@
 # restarted · webview-recreated · system-window · no-focus). O app que fechou com erro ou não respondeu ao abrir é FALHOU
 # do cenário, não ambiente; a interrupção por ambiente grava environmentSignal no result.json, e o run.ps1 manda ao
 # diagnóstico do operator antes do reparo. A identidade do -Resume é a do app instalado no aparelho (o hash do base.apk).
+# v3.65.10 (sprint 6 do garden): o FRESCOR do app no aparelho — result.json → fresh (installed, build, checked, reason). Sem APK
+# local, aviso em vez de silêncio; o app instalado igual ao de uma rodada anterior com o código do app mudado desde ela é
+# recusado (exit 2, staleApp no result.json, sem cenários); o APK igual byte a byte a uma cópia mais velha conta pela cópia.
 #
 # Linguagem (uma instrução por linha; '#' comenta; texto com espaço vai depois do '='):
 #   scenario <ID> <título>             começa um cenário          reset                  apaga os dados do app (web: sessão nova)
@@ -79,6 +82,7 @@ $screenVerbs = 'tap', 'type', 'select', 'slider', 'assert-text', 'assert-contain
 $script:Locator = 'uiautomator'
 $script:ExtCmd = ''; $script:ExtFrom = ''   # v3.62.3: o executor do projeto (o **Aceite:** comando do plano ou -Command)
 $script:AppId = ''; $script:ScnFiles = @()   # v3.63.0: identidade do app provado e os .scn lidos (retomada e portão)
+$script:Fresh = $null; $script:Installed = $false; $script:ApkDeclNote = ''   # v3.65.10: o frescor do app provado (android) — result.json → fresh
 $script:Attempt = @{}   # v3.63.1: tentativa de cada cenário (nome do registro do aparelho de cada falha)
 
 # Lê os cenários dos arquivos; erro de sintaxe vem com arquivo:linha.
@@ -140,6 +144,48 @@ function Write-AcceptConfig([string]$Dir, [string]$Msg, $Results) {
     $rel = ($Dir.Substring($Root.Length + 1) -replace '\\', '/')
     [Console]::Out.WriteLine("accept $Task · CONFIGURAÇÃO DO ALVO ($script:Tgt): $Msg · não é defeito do app nem queda do alvo — o reparo não resolve; vai ao stakeholder (guards.json e build são dele) · $rel/result.md")
     return 4
+}
+# v3.65.10: o app no aparelho (ou o APK do disco) é de antes do código — nem ambiente nem defeito do app: exit 2, reconstruir.
+# Grava result.json com staleApp (sem resultados), para o portão mandar reconstruir em vez de medir de novo ou julgar a rodada
+# anterior; o -Resume não reaproveita nada dela.
+function Write-AcceptStale([string]$Dir, [string]$Msg) {
+    New-Item -ItemType Directory -Force $Dir | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $Dir 'result.md'), "# Aceite $Task · alvo $script:Tgt · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n**Recusado — o app não é o código da árvore:** $Msg`n", $utf8)
+    [System.IO.File]::WriteAllText((Join-Path $Dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); prod = (Get-ProductionTree $Root); app = $script:AppId; scenariosHash = (Get-ScenarioSetHash $script:ScnFiles); staleApp = $Msg; fresh = $script:Fresh; environment = $null; startState = $null; passed = 0; total = 0; results = @() } | ConvertTo-Json -Depth 6), $utf8)
+    [Console]::Out.WriteLine("accept: $Msg")
+    return 2
+}
+# v3.65.10 (itens A e C): o frescor do app no aparelho, depois da instalação. Conferido = o APK local foi comparado com as
+# fontes (sem nota de idade não conferida) e é ele que está no aparelho (o hash do base.apk é o do arquivo; sem sha1sum no
+# aparelho, a instalação deste accept). Sem isso, a conferência pela identidade (Get-InstalledAppStaleness): o mesmo app de
+# uma rodada anterior com o código mudado desde ela → exit 2. Grava $script:Fresh (result.json → fresh). 0 = segue.
+function Test-AcceptFresh([string]$Dir, [string]$AppApk, $St) {
+    $inst = ([string]$script:AppId) -replace '^apk:', ''
+    $build = $null; $checked = $false; $why = ''
+    if ($AppApk -and (Test-Path -LiteralPath $AppApk -PathType Leaf)) {
+        $it = Get-Item -LiteralPath $AppApk; $lh = Get-FileHash12 $AppApk
+        $build = [ordered]@{ path = ($AppApk.Replace($Root, '').TrimStart('\', '/') -replace '\\', '/'); hash = $lh; at = $it.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss'); twin = $(if ($St -and $St.Twin) { ([string]$St.Twin).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/' } else { $null }) }
+        $same = if ($inst -match '^[0-9a-f]{12}$') { $inst -eq $lh } else { [bool]$script:Installed }
+        if (-not $same) { $why = "o app instalado (apk:$inst) não é o APK local $($build.path) (apk:$lh)" }
+        elseif ($St -and $St.Note) { $why = [string]$St.Note }
+        else { $checked = $true }
+    } else { $why = if ($script:ApkDeclNote) { [string]$script:ApkDeclNote } else { 'nenhum APK local para comparar' } }
+    $script:Fresh = [ordered]@{ checked = $checked; installed = [string]$script:AppId; build = $build; reason = $why }
+    if ($checked) { return 0 }
+    $hs = Get-InstalledAppStaleness $Root ([string]$script:AppId) $AppApk
+    if ($hs.Stale) {
+        $script:Fresh.reason = "o mesmo app da rodada de $($hs.Since) e o código mudou desde ela"
+        return (Write-AcceptStale $Dir "o app instalado ($($script:AppId)) é o mesmo da rodada de $($hs.Since) ($($hs.Dir)), e o código do app mudou desde ela ($($hs.Count) arquivo(s): $($hs.Files -join ', ')$(if ($hs.Count -gt $hs.Files.Count) { ', …' })) — o aparelho não tem a mudança. Reconstrua o APK e instale-o antes do accept. Não é falha de ambiente nem defeito do app. (Se esses arquivos não entram no APK, declare targets.android.apkSources com as fontes que entram; com o build no disco, targets.android.apk deixa o accept instalar e conferir o APK.)")
+    }
+    $whyL = if ($script:ApkDeclNote -and $why -eq $script:ApkDeclNote) { 'sem APK local (o aviso acima)' } else { $why }
+    [Console]::Out.WriteLine("accept: atenção — frescor do app não conferido ($($script:AppId)): $whyL. Elemento ausente nesta rodada não é classificado como defeito do app (APP) sem essa conferência (v3.65.10)")
+    return 0
+}
+# A linha do result.md sobre o app no aparelho ('' fora do android).
+function Format-AcceptFresh {
+    $f = $script:Fresh; if (-not $f) { return '' }
+    $b = if ($f.build) { "build $($f.build.path) (apk:$($f.build.hash), $($f.build.at))" } else { 'sem APK local' }
+    return "`n`n**App no aparelho:** $($f.installed) · $b · frescor: $(if ($f.checked) { 'conferido' } else { "**não conferido** — $($f.reason)" })"
 }
 # A tela em que o passo falhou, do "[tela: … · ids: … · textos: …]" do adaptador android ('' sem ela).
 function Get-FailScreen([string]$Detail) {
@@ -290,13 +336,13 @@ function Invoke-AcceptCommand([string]$Dir, $Blocks, $Cfg) {
     if ($script:Tgt -eq 'web') { Stop-WebServer }
     $ok = @($results | Where-Object { $_.status -eq 'PASSOU' }).Count
     $miss = $Blocks.Count - $results.Count
-    $md = "# Aceite $Task · alvo $script:Tgt · executor do projeto · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n**Comando** ($script:ExtFrom): ``$script:ExtCmd```n`n$ok de $($results.Count) cenário(s) passaram" + $(if ($usage) { "; **interrompido:** $usage" } elseif ($envFail) { "; **interrompido por falha de ambiente:** $envFail ($miss cenário(s) não rodaram)" } else { '' }) + ".`n`n| Cenário | Resultado | Detalhe | Prova (captura) |`n|---|---|---|---|`n"
+    $md = "# Aceite $Task · alvo $script:Tgt · executor do projeto · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n**Comando** ($script:ExtFrom): ``$script:ExtCmd```n`n$ok de $($results.Count) cenário(s) passaram" + $(if ($usage) { "; **interrompido:** $usage" } elseif ($envFail) { "; **interrompido por falha de ambiente:** $envFail ($miss cenário(s) não rodaram)" } else { '' }) + ".$(Format-AcceptFresh)`n`n| Cenário | Resultado | Detalhe | Prova (captura) |`n|---|---|---|---|`n"
     foreach ($r in $results) { $lg = if ($r.Contains('log') -and $r.log) { " · registro $($r.log)" } else { '' }; $md += "| $($r.id) $($r.title) | $($r.status) | $((@($r.detail, $r.note) | Where-Object { $_ }) -join ' · ' -replace '\|', '/')$lg | $($r.shot) |`n" }
     $md += "`n| Arquivo | Cenários | Exit | Segundos | Log |`n|---|---|---|---|---|`n"
     foreach ($u in $runs) { $md += "| $($u.file) | $($u.only) | $($u.exit) | $($u.seconds) | $($u.log) |`n" }
     [System.IO.File]::WriteAllText((Join-Path $Dir 'result.md'), $md, $utf8)
     $envAll = if ($usage) { $null } else { $envFail }
-    [System.IO.File]::WriteAllText((Join-Path $Dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $null; executor = 'comando'; command = $script:ExtCmd; commandFrom = $script:ExtFrom; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); prod = (Get-ProductionTree $Root); app = $script:AppId; scenariosHash = (Get-ScenarioSetHash $script:ScnFiles); environment = $envAll; startState = $null; passed = $ok; total = $results.Count; results = $results; runs = $runs } | ConvertTo-Json -Depth 6), $utf8)
+    [System.IO.File]::WriteAllText((Join-Path $Dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $null; executor = 'comando'; command = $script:ExtCmd; commandFrom = $script:ExtFrom; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); prod = (Get-ProductionTree $Root); app = $script:AppId; fresh = $script:Fresh; scenariosHash = (Get-ScenarioSetHash $script:ScnFiles); environment = $envAll; startState = $null; passed = $ok; total = $results.Count; results = $results; runs = $runs } | ConvertTo-Json -Depth 6), $utf8)
     $rel = ($Dir.Substring($Root.Length + 1) -replace '\\', '/')
     if ($usage) { [Console]::Out.WriteLine("accept $Task · $usage · $rel/result.md"); return 2 }
     if ($envFail) { [Console]::Out.WriteLine("accept $Task · FALHA DE AMBIENTE ($script:Tgt): $envFail · $ok de $($results.Count) antes da interrupção, $miss não rodaram · $rel/result.md"); return 4 }
@@ -406,12 +452,17 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
         $appApk = Resolve-AndroidApk $Root $Apk
         # v3.53.6 (sprint 5 do garden, item 7): APK mais velho que o código do módulo não é instalado — rodaria o app de antes
         # da mudança ("tag não encontrada" para o id recém-criado). Nem ambiente nem defeito do app: exit 2, reconstruir.
+        # v3.65.10 (item B): sem APK local, o aviso — antes o accept seguia calado sobre o app que já estava no aparelho.
+        $script:ApkDeclNote = Get-ApkDeclarationNote $Root $appApk
+        if ($script:ApkDeclNote) { [Console]::Out.WriteLine("accept: atenção — $($script:ApkDeclNote)") }
         $st = Get-ApkStaleness $appApk $Root   # v3.57.1: com $Root, vale targets.android.apkSources (app híbrido)
+        $relX = { param($x) ([string]$x).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/' }
+        # v3.65.10 (item D): o APK igual byte a byte a uma cópia mais velha é sobra de build anterior (a idade conta pela cópia).
+        if ($st.Twin) { [Console]::Out.WriteLine("accept: atenção — $(& $relX $appApk) é byte a byte igual a $(& $relX $st.Twin) (de $($st.TwinTime.ToString('yyyy-MM-dd HH:mm:ss'))): cópia de um build anterior, não um build novo — a idade do APK conta pela cópia") }
         if ($st.Stale) {
-            $fr = ([string]$st.File).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/'
-            $ar = ([string]$st.ApkFull).Replace($Root, '').TrimStart('\', '/') -replace '\\', '/'
-            [Console]::Out.WriteLine("accept: APK mais velho que o código ($fr alterado em $($st.FileTime.ToString('yyyy-MM-dd HH:mm:ss')); $ar de $($st.ApkTime.ToString('yyyy-MM-dd HH:mm:ss'))): reconstrua ($($st.Task)) antes do accept. Não é falha de ambiente nem defeito do app — o APK do disco não tem a mudança.")
-            return 2
+            $fr = & $relX $st.File
+            $ar = & $relX $st.ApkFull
+            return (Write-AcceptStale $dir "APK mais velho que o código ($fr alterado em $($st.FileTime.ToString('yyyy-MM-dd HH:mm:ss')); $ar de $($st.ApkTime.ToString('yyyy-MM-dd HH:mm:ss'))$(if ($st.Twin) { ', a data da cópia igual mais velha' })): reconstrua ($($st.Task)) antes do accept. Não é falha de ambiente nem defeito do app — o APK do disco não tem a mudança.")
         }
         if ($st.Note) { [Console]::Out.WriteLine("accept: $($st.Note)") }
         $fresh = Test-AndroidFreshStartDue $Cfg $dir ([bool]$NoRepair)
@@ -445,7 +496,7 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
     if ($script:Tgt -eq 'android') {
         if (-not ($Cfg -and $Cfg.package)) { Set-AndroidPackage (Get-ApkPackage $appApk) }
         if (-not $script:Pkg) { [Console]::Out.WriteLine('accept: sem o pacote do app — nenhum APK em <projeto>/**/build/outputs/apk/ e nada em targets.android.package; construa o app (assembleDebug ou assembleRelease) antes'); return 2 }
-        if ($appApk) { $ie = Install-AndroidApk $appApk; if ($ie) { [Console]::Out.WriteLine("accept: $ie"); return 2 }; [Console]::Out.WriteLine("accept: $($script:Pkg) instalado de $($appApk.Replace($Root, '').TrimStart('\', '/'))" + $(if ($script:InstallNote) { " — atenção: $($script:InstallNote)" } else { ' (por cima: dados do app mantidos)' })) }
+        if ($appApk) { $ie = Install-AndroidApk $appApk; if ($ie) { [Console]::Out.WriteLine("accept: $ie"); return 2 }; $script:Installed = $true; [Console]::Out.WriteLine("accept: $($script:Pkg) instalado de $($appApk.Replace($Root, '').TrimStart('\', '/'))" + $(if ($script:InstallNote) { " — atenção: $($script:InstallNote)" } else { ' (por cima: dados do app mantidos)' })) }
         # v3.54.2: o estado de partida declarado, depois da instalação.
         $be = Invoke-AcceptBaseline
         if ($be) { [Console]::Out.WriteLine("accept: FALHA DE AMBIENTE ($script:Tgt) — $be. Não é defeito do app."); return 4 }
@@ -464,6 +515,10 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
         }
     }
     $script:AppId = Get-AppIdentity $(if ($script:Tgt -eq 'android') { $appApk } else { '' }) $Cfg   # v3.63.0
+    if ($script:Tgt -eq 'android') {
+        $fc = Test-AcceptFresh $dir $appApk $st
+        if ($fc) { return $fc }
+    }
     if ($script:ExtCmd) { New-Item -ItemType Directory -Force $dir | Out-Null; return (Invoke-AcceptCommand $dir $Blocks $Cfg) }   # v3.62.3
 
     $script:Shots = Join-Path $dir 'shots'; New-Item -ItemType Directory -Force $script:Shots | Out-Null
@@ -522,10 +577,10 @@ function Invoke-Accept($Blocks, $Cfg, $Health, $Repair) {
     $timing = Get-AcceptTiming $(if ($script:RunClock) { $script:RunClock.Elapsed.TotalSeconds } else { 0 })   # v3.65.2
     $ranN = @($results | Where-Object { -not $_.reused }).Count
     $sigMd = if ($envSig) { " **Sinal do app** ($($envSig.scenario)): $($envSig.text)$(if ($envSig.log) { " · registro $($envSig.log)" })$(if ($envSig.shot) { " · captura $($envSig.shot)" }) — vai ao diagnóstico antes de ser tratado como ambiente." } else { '' }
-    $md = "# Aceite $Task · alvo $script:Tgt · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n$ok de $($results.Count) cenário(s) passaram" + $(if ($startState) { "; **interrompido no estado de partida:** $envFail" } elseif ($envFail) { "; **interrompido por falha de ambiente:** $envFail" } else { '' }) + ".$sigMd`n`n$(Format-AcceptTiming $timing $ranN)`n`n| Cenário | Resultado | Detalhe | Prova (captura) | s |`n|---|---|---|---|---|`n"
+    $md = "# Aceite $Task · alvo $script:Tgt · $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n$ok de $($results.Count) cenário(s) passaram" + $(if ($startState) { "; **interrompido no estado de partida:** $envFail" } elseif ($envFail) { "; **interrompido por falha de ambiente:** $envFail" } else { '' }) + ".$sigMd`n`n$(Format-AcceptTiming $timing $ranN)$(Format-AcceptFresh)`n`n| Cenário | Resultado | Detalhe | Prova (captura) | s |`n|---|---|---|---|---|`n"
     foreach ($r in $results) { $lg = if ($r.Contains('log') -and $r.log) { " · registro $($r.log)" } else { '' }; $md += "| $($r.id) $($r.title) | $($r.status) | $((@($r.detail, $r.note) | Where-Object { $_ }) -join ' · ' -replace '\|', '/')$lg | $($r.shot) | $(if ($r.Contains('seconds')) { $r.seconds }) |`n" }
     [System.IO.File]::WriteAllText((Join-Path $dir 'result.md'), $md, $utf8)
-    [System.IO.File]::WriteAllText((Join-Path $dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $(if ($script:Tgt -eq 'android') { $script:Locator } else { $null }); at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); prod = (Get-ProductionTree $Root); app = $script:AppId; scenariosHash = (Get-ScenarioSetHash $script:ScnFiles); environment = $envFail; environmentSignal = $envSig; startState = $startState; passed = $ok; total = $results.Count; timing = $timing; results = $results } | ConvertTo-Json -Depth 6), $utf8)
+    [System.IO.File]::WriteAllText((Join-Path $dir 'result.json'), ([ordered]@{ task = $Task; target = $script:Tgt; locator = $(if ($script:Tgt -eq 'android') { $script:Locator } else { $null }); at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); tree = (Get-WorkTree $Root); prod = (Get-ProductionTree $Root); app = $script:AppId; fresh = $script:Fresh; scenariosHash = (Get-ScenarioSetHash $script:ScnFiles); environment = $envFail; environmentSignal = $envSig; startState = $startState; passed = $ok; total = $results.Count; timing = $timing; results = $results } | ConvertTo-Json -Depth 6), $utf8)
     $rel = ($dir.Substring($Root.Length + 1) -replace '\\', '/')
     if ($startState) { [Console]::Out.WriteLine("accept $Task · $envFail · $rel/result.md"); return 4 }
     if ($envFail) { [Console]::Out.WriteLine("accept $Task · FALHA DE AMBIENTE ($script:Tgt): $envFail$(if ($envSig) { " · sinal do app: $($envSig.text) (vai ao diagnóstico)" }) · $ok de $($results.Count) antes da interrupção · $rel/result.md"); return 4 }

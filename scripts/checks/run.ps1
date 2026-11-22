@@ -737,7 +737,7 @@ function Write-Handoff($T, [string]$S, [string]$n) {
     if ($pf) { foreach ($lab in 'Verifica[çc][ãa]o', 'Aceite', 'Cen[áa]rios') { $om = [regex]::Match($pt, "(?m)^\*\*$($lab):\*\*[^\r\n]*"); if ($om.Success) { $planOrders += $om.Value.TrimEnd() } } }
     $dgRel = "operator/$n/$($T.Id)-alvo/diagnostico.md"; $dg = Join-Path $Root ".team-project/$dgRel"
     $ar = Join-Path ((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'; $atxt = 'nenhum ainda'
-    if (Test-Path -LiteralPath $ar) { try { $a = Read-Text $ar | ConvertFrom-Json; $atxt = if ($a.environment) { "falha de ambiente: $($a.environment)" } else { "$($a.passed) de $($a.total) em $($a.at)" } } catch { } }
+    if (Test-Path -LiteralPath $ar) { try { $a = Read-Text $ar | ConvertFrom-Json; $atxt = if ($a.PSObject.Properties['staleApp'] -and $a.staleApp) { "recusado — o app do aparelho não é o código da árvore: $($a.staleApp)" } elseif ($a.environment) { "falha de ambiente: $($a.environment)" } else { "$($a.passed) de $($a.total) em $($a.at)" } } catch { } }
     $rem = if ($pf -and $stop) { Get-RemainingSteps $pt $stop $Block } else { $null }
     # v3.53.7: as decisões do sprint que valem para a Task (todas, as que a citam e as que o plano cita), uma linha cada.
     $dl = @(Get-TaskDecisionLines $Root $n $T.Id $(if ($pf) { $pt } else { '' }))
@@ -1117,6 +1117,17 @@ try {
                     Out "  depois: run.ps1 done -Task $($T.Id) -Result gap de novo — o done lê o veredito: AMBIENTE → reparo e dev novo · APP → dev novo com o diagnóstico · PLANO → Arquiteto"
                     exit 0
                 }
+                # v3.65.10 (item C): APP só com o app do aparelho conferido com o build da árvore (result.json → fresh); sem isso
+                # o elemento ausente pode ser o app de antes da mudança — vale PLANO, e o Arquiteto decide (reconstruir e reinstalar).
+                if ($diagV -eq 'APP') {
+                    $arF = Join-Path ((Get-VerifyDir $Root $T.Id) -replace '[\\/]verify[\\/]', '/accept/') 'result.json'; $fgap = ''
+                    if (Test-Path -LiteralPath $arF) { try { $fgap = Get-AcceptFreshGap (Read-Text $arF | ConvertFrom-Json) } catch { } }
+                    if ($fgap) {
+                        $diagV = 'PLANO'; if (-not $Cause -and -not $Nature) { $Cause = 'design' }   # a causa é conhecida: o Arquiteto decide o build
+                        Add-RunLog $S $n $T.Id 'operator: APP sem o frescor do app conferido → vale PLANO (Arquiteto): build não conferido' $fgap $diagRel
+                        Out "run: o operator diagnosticou APP na prova da $($T.Id), mas $fgap — sem essa conferência o elemento ausente pode ser o app de antes da mudança (v3.65.10). Vale PLANO: o Arquiteto decide (reconstruir e reinstalar o APK; declarar targets.android.apk/apkSources)."
+                    }
+                }
                 if ($diagV -eq 'AMBIENTE') { $Result = 'env'; Out "run: o operator diagnosticou AMBIENTE na prova da $($T.Id) ($diagRel) — rota de queda de ambiente:" }
                 elseif ($diagV -eq 'APP') {
                     $null = Update-DevCounter $T $S 'fail'
@@ -1276,10 +1287,11 @@ try {
                 if ($dE.Verdict -eq 'PLANO') {
                     $toQa = $dE.Owner -eq 'QA'
                     Add-RunLog $S $n $T.Id "operator: PLANO na prova no alvo$elw → $(if ($toQa) { '/qa corrige o .scn' } else { '/arc question' }) em instância nova; o dev volta pelo start" 'veredito do operator pelas capturas e pelo registro do aparelho' $diagRel
-                    Out "run: o operator diagnosticou PLANO na prova da $($T.Id)$elw — nem o código nem o alvo: $(if ($toQa) { 'o cenário' } else { 'o contrato de ids ou o plano' }) (v3.63.1):"
+                    if ($dE.FreshGap) { Out "run: o operator disse APP, mas $($dE.FreshGap) — sem essa conferência o elemento ausente pode ser o app de antes da mudança; vale PLANO com o Arquiteto (v3.65.10)" }
+                    Out "run: o operator diagnosticou PLANO na prova da $($T.Id)$elw — nem o código nem o alvo: $(if ($toQa) { 'o cenário' } elseif ($dE.FreshGap) { 'o build no aparelho não foi conferido' } else { 'o contrato de ids ou o plano' }) (v3.63.1):"
                     Out "  $(Get-AgentLine $(if ($toQa) { 'quality-assurance' } else { 'architect' }))"
                     if ($toQa) { Out "  prompt: `"/qa — o cenário da $($T.Id) não prova o critério como está: leia o diagnóstico $diagRel (veredito PLANO$elw) e corrija só o(s) cenário(s) citado(s) no .scn — o passo que toca o elemento certo, na tela e na posição que o diagnóstico diz (e a volta à tela depois de recriar a WebView ou reabrir o app, se for o caso); rode $plugin/accept.ps1 -ParseOnly. Volte em até 10 linhas.`"" }
-                    else { Out "  prompt: `"/arc question — decida a falha da prova no alvo da $($T.Id) pelo diagnóstico $diagRel (veredito PLANO$elw) e o plano .team-project/sprints/$n/$($T.Plan): o elemento que o cenário pede e onde ele fica na tela. Registre a decisão no plano (R9) com o Edit, delta, com **Origem:** e **Lição:**; rode plan.ps1 -Plan .team-project/sprints/$n/$($T.Plan). Não escreva código. Volte em até 15 linhas.`"" }
+                    else { Out "  prompt: `"/arc question — decida a falha da prova no alvo da $($T.Id) pelo diagnóstico $diagRel (veredito PLANO$elw) e o plano .team-project/sprints/$n/$($T.Plan): o elemento que o cenário pede e onde ele fica na tela.$(if ($dE.FreshGap) { " O app do aparelho não foi conferido com o build da árvore ($($dE.FreshGap)): antes de mudar código, decida reconstruir e reinstalar o APK e repetir o accept." }) Registre a decisão no plano (R9) com o Edit, delta, com **Origem:** e **Lição:**; rode plan.ps1 -Plan .team-project/sprints/$n/$($T.Plan). Não escreva código. Volte em até 15 linhas.`"" }
                     Out "  depois: dev em instância NOVA — run.ps1 start -Task $($T.Id) e rode run.ps1 done de novo"
                     exit 0
                 }
@@ -1853,6 +1865,8 @@ try {
         Set-AskRoute $Root ''   # v3.58.3 (G24): a fila anda — nenhuma decisão do stakeholder pendente nesta rodada
         Out "PRÓXIMA AÇÃO: construir $($next.Id) — $($next.Title) (executor de Task)"
         Say "Construindo $(Get-RunLabel $next.Id)."
+        # v3.65.10 (item B): o alvo android sem APK local a instalar e conferir é dito, não calado.
+        if ($next.Scenarios.Count) { $adn = Get-ApkDeclarationNote $Root; if ($adn) { Out "  atenção (guards.json, do stakeholder): $adn" } }
         Out "  $(Get-AgentLine 'task-runner')"
         Out "  prompt: `"Conduza a $($next.Id) até fechar ou parar, pelo ciclo do agents/task-runner.md: run.ps1 start -Task $($next.Id), dev, run.ps1 done -Task $($next.Id) -Result ok|gap|env|teto (gap: Arquiteto e start de novo; teto: start de novo).$resume Volte em UMA linha.`""
         Out "  ao voltar: run.ps1 next"

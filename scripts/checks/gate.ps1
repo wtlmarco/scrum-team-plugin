@@ -48,7 +48,9 @@ function Invoke-GateStep {
     $diag = if ($need -and $need.Need) { Read-AcceptDiagnosis (Join-Path $Root $diagRel) $ar } else { $null }
     # A interrupção que o diagnóstico atribuiu ao app ou ao plano não é ambiente: a rodada vale como medição e vai ao QA.
     if ($aEnv -and $diag -and $diag.Verdict -in 'APP', 'PLANO') { $aEnv = '' }
-    $aFresh = (-not $hasTarget) -or ($aj -and (& $sameBase $aj) -and $aScnOk -and -not $aEnv -and -not $aCfg)
+    # v3.65.10: o accept recusou o app do aparelho (de antes do código) — a rodada não é medição.
+    $aStale = if ($hasTarget -and $aj -and $aj.PSObject.Properties['staleApp'] -and $aj.staleApp) { [string]$aj.staleApp } else { '' }
+    $aFresh = (-not $hasTarget) -or ($aj -and (& $sameBase $aj) -and $aScnOk -and -not $aEnv -and -not $aCfg -and -not $aStale)
     $gate = Get-GateState $S
     $val = Join-Path $S 'validation.md'; $vv = Get-VerdictOf $val
     # v3.52.2 (C6): ⚠️ com "**Decisão do PO:** aceito com dívida — …" passa o portão; ❌ nunca.
@@ -141,6 +143,34 @@ function Invoke-GateStep {
             exit 0
         }
     }
+
+    # ---------- v3.65.10 · o app no aparelho é de antes do código ----------
+    # Garden S6 (20–21/11): as rodadas 6 a 12 do aceite rodaram sobre o APK da Q-S6f, e a Q-S6h passou a ✅ sem a mudança no
+    # aparelho. O accept agora recusa (exit 2, staleApp no result.json): reconstruir e reinstalar, depois medir. O mesmo app
+    # recusado de novo depois do pedido vai ao stakeholder (o build é do projeto e não regerou o APK).
+    if ($aStale -and (& $sameBase $aj)) {
+        $sa = [string]$aj.app
+        $prevSa = $gate.staleApp
+        $times = if ($prevSa -and [string]$prevSa.app -eq $sa -and [string]$prevSa.at -ne [string]$aj.at) { [int]$prevSa.times + 1 } elseif ($prevSa -and [string]$prevSa.app -eq $sa) { [int]$prevSa.times } else { 1 }
+        $gate['staleApp'] = [ordered]@{ app = $sa; at = [string]$aj.at; times = $times }; Set-GateState $S $gate
+        $whyS = & $short $aStale
+        if ($times -ge 2) {
+            Set-AskRoute $Root 'ambiente' $sid $whyS
+            Add-RunLog $S $n $sid 'portão: o app do aparelho segue sendo o de antes do código depois do pedido de reconstruir → stakeholder (formulário)' $whyS "accept/$n/$sid/result.md"
+            Out "PRÓXIMA AÇÃO: formulário ao stakeholder — o aceite do portão do sprint $n recusou de novo o app do aparelho ($sa): $whyS"
+            Out "  não é veredito nem ambiente: o build do projeto não gerou um APK novo, ou ele não foi instalado. Opções ao stakeholder: ele confere o build (e declara em guards.json targets.android.apk, onde o APK fica, e targets.android.apkSources, para o accept instalar e conferir) e a sessão roda run.ps1 next; ou segue esperando."
+            Say 'A revisão final parou porque o app instalado no aparelho de teste ainda é uma versão antiga, mesmo depois de reconstruir. Preciso de você para conferir como o app é gerado.'
+            exit 0
+        }
+        Out "PRÓXIMA AÇÃO: validação do sprint $n — reconstruir e reinstalar o app, depois repetir o aceite (operator; o aceite recusou o app do aparelho, não é veredito — v3.65.10)"
+        Say 'A revisão final parou porque o app instalado no aparelho de teste é de antes das últimas correções. Estou gerando o app de novo e retomando os testes.'
+        Out "  recusado: $whyS"
+        Out "  $(Get-AgentLine 'operator')"
+        Out "  prompt: `"Chamador: sessão $sid — O aceite recusou o app do aparelho: $whyS. Gere o APK pelo build do projeto (o comando que o CLAUDE.md, o README ou o guards.json do projeto declaram para gerar o APK; sem comando declarado, não invente: devolva a linha), confira que o hash do APK novo é outro (o mesmo hash = o build não regerou: devolva a linha), instale-o no aparelho e rode $plugin/accept.ps1 -Task $sid -Resume. Devolva o caminho do APK, o hash, o caminho do result.md e a linha de resumo.`""
+        Out "  depois: run.ps1 next"
+        exit 0
+    }
+    if ($gate.staleApp -and $aj -and -not $aStale) { $gate.staleApp = $null; Set-GateState $S $gate }
 
     # ---------- A · o accept que parou no ambiente não é medição ----------
     if ($hasTarget -and $aj -and ($aCfg -or $aEnv) -and (& $sameBase $aj) -and $aScnOk) {
@@ -236,6 +266,7 @@ function Invoke-GateStep {
         foreach ($ot in @($tasks | Where-Object { $_.Mark -ne $E.Done })) { $ckG = Save-TaskCheckpoint $Root $S $ot 'antes da medição do portão'; if ($ckG) { Out "  $ckG" } }
         $pendG = @(Get-GitPendingFiles $Root | Where-Object { $_ -notmatch '^docs/' })
         if ($pendG.Count) { Out "  atenção: pendente sem commit no disco, que a medição inclui: $(($pendG | Select-Object -First 5) -join ', ')$(if ($pendG.Count -gt 5) { " e mais $($pendG.Count - 5)" }) — commit da dona, chore, ou guards.json → treeIgnore" }
+        if (-not $aFresh) { $adnG = Get-ApkDeclarationNote $Root; if ($adnG) { Out "  atenção (guards.json, do stakeholder; v3.65.10): $adnG" } }
         Out "PRÓXIMA AÇÃO: validação do sprint $n — medir (operator, comandos longos fora das instâncias caras; C3): $($whyM -join ' · ')"
         Say $(if (-not $qj -and -not $aj) { 'Todas as partes do sprint estão prontas. Começou a revisão final: rodando todos os testes do app.' } else { 'Revisão final: medindo de novo só o que a correção mudou.' })
         Out "  $(Get-AgentLine 'operator')"
