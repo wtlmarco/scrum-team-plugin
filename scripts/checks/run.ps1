@@ -135,7 +135,12 @@ function Select-LiveAgents($Agents, [string]$Id) {
 function Get-WaitState {
     $nv = Get-Marker $Root '.next-verdict'
     $tk = if ($nv) { [string]$nv.task } else { '' }
-    if (-not $tk) { return @{ Code = 0; Text = 'wait: terminou — nenhuma espera registrada pelo next (.next-verdict); a sessão roda run.ps1 next' } }
+    # v3.65.8: sem Task, o next não registrou espera — se registrou uma AÇÃO ("agir"), a linha diz isso; "terminou" sozinho
+    # parecia dizer que a medição acabou (garden S6, 19:30).
+    if (-not $tk) {
+        if ($nv -and [string]$nv.acao -eq 'agir') { return @{ Code = 0; Text = "wait: terminou — nada em espera: o último next mandou agir ($([string]$nv.motivo)), não esperar; a sessão roda run.ps1 next" } }
+        return @{ Code = 0; Text = 'wait: terminou — nenhuma espera registrada pelo next (.next-verdict); a sessão roda run.ps1 next' }
+    }
     $liveW0 = @(Get-LiveAgents $Root $tk | Where-Object { ([string]$_.type -replace '^.*:', '') -in 'task-runner', 'developer' })
     $liveW = @(Select-LiveAgents $liveW0 $tk)
     $cmdW = Get-TaskWait $Root $tk

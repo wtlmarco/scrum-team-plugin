@@ -13,6 +13,24 @@
 
 ---
 
+## v3.65.8 — 2026-11-21
+**Branch:** `fix/v3.65.8` a partir de `develop` (`fc33307`, PR #207)
+Origem: portão do sprint 6 do garden, 19:18 → 19:32. O `quality.ps1` do portão rodava, e o `run.ps1 next` mandou o operator medir de novo, porque só olhava o `result.json`. A sonda `wait` respondeu "terminou" porque a espera não tinha Task, e a G20 barrou o fim do turno. Sem saída que a G20 aceitasse, a sessão perguntou ao stakeholder se esperava a medição terminar. Ela terminou sozinha. Estado de processo (rodando, terminou, travou) tem resposta do `next`, e o stakeholder só entra na segunda vez em que a medição trava.
+**A trava da qualidade** (`quality.ps1`): uma medição por ID de cada vez, em `quality/<seg>/<ID>/quality.lock` (PID, hora de criação, início). A segunda chamada sai com exit 5 e a linha "em uso por", que o prompt do operator já manda devolver sem repetir. `-Kill` encerra a medição viva e a árvore dela e apaga a trava. A trava sai em toda saída do script.
+**O portão espera a medição viva** (`gate.ps1`): antes de mandar medir, o portão lê o `Get-TaskWait` do `S<n>`: `verify.lock`, `quality.lock` e o `.target-lock` do accept. Medição viva e andando → `PRÓXIMA AÇÃO: esperar`, com a linha do watcher e a decisão `esperar` gravada, que a G20 aceita. POSSÍVEL TRAVAMENTO na 1ª vez → encerrar só a medição (`-Kill`) e rodar o `next`, sem formulário (regra 5; contador em `gate.json → stall`). Na 2ª vez → formulário, pela rota `travamento`.
+**A sonda enxerga o portão** (`lib.ps1` `Get-TaskWait`, `run.ps1 wait`): com a espera gravada no `S<n>`, o `wait` acha a trava da qualidade e responde `vivo` ou `POSSÍVEL TRAVAMENTO`. Sem espera e com ação `agir` pendente, a linha diz "o último next mandou agir, não esperar", em vez de só "terminou".
+Textos: `sprint-run.md` §Protocolo de espera ("Estado de processo não vai ao stakeholder") e `hooks/COVERAGE.md` (§v3.65.8).
+Testes (`run-check-tests.ps1`, marcados v3.65.8): 7 casos da medição:
+- qualidade viva: esperar, a sonda diz vivo e não há operator nem formulário;
+- segunda chamada do `quality.ps1`: exit 5, e a trava fica;
+- 1º travamento: encerrar e retomar, sem formulário;
+- 2º travamento: formulário, pela rota `travamento`;
+- `-Kill`: encerra a medição e apaga a trava;
+- sem medição viva: o portão volta a medir;
+- a medição que termina solta a própria trava.
+
+Mais 3 casos de contrato: verify, accept e quality do sprint em voo, cada um → esperar, sem operator por cima e sem formulário.
+
 ## v3.65.7 — 2026-11-21
 **Branch:** `fix/v3.65.7` a partir de `fix/v3.65.6` (`2aec342`, mesclada em `develop` pelo PR #205)
 Origem: portão do sprint 6 do garden. Às 7:56, o `run.ps1 next` mandou o operator medir de novo o aceite com `-Resume`. A sessão escreveu o aviso ao stakeholder ("Revisão final: medindo de novo…") e encerrou o turno sem disparar o agente. O time ficou parado até 8:34, quando o stakeholder perguntou "como estamos". A G20 existe para barrar esse fim de turno, mas só olhava a fila de Tasks. No portão, todas estavam ✅: sem Task elegível, ela liberava calada, sem linha no `guards.log`.
