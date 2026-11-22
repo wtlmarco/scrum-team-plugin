@@ -14,7 +14,7 @@
 ---
 
 ## v3.65.11 — 2026-11-22
-**Branch:** `fix/v3.65.11` a partir de `fix/v3.65.10` (`ddfa617`, ainda sem merge)
+**Branch:** `fix/v3.65.11` a partir de `develop` (`35caac7`, com a v3.65.10 mesclada pelo PR #213)
 Origem: o sprint 6 do garden, de 21/11 21:13 a 22/11 02:21. O aceite do portão rodou com o app `apk:731dfab5b3fd`, de antes da correção da Q-S6h. As correções Q-S6i, j e k não mudaram a produção (`prod:f564a31bd676` nas quatro rodadas) e cada uma provou o SC-161 com o app novo (`apk:eb971aea13b1`). Mesmo assim, o QA julgou a mesma rodada das 21:13 três vezes (rodadas 13 a 15), e o script pediu uma quarta correção. A sessão discordou e perguntou ao stakeholder em texto, com hash, `exit 4` e nome de arquivo. Ele respondeu "não entendi nada". Nada daquilo era decisão dele.
 **A · O portão mede de novo quando o app mudou** (`gate.ps1`). Com a mesma produção, uma correção fechada que passou um cenário que falhou no aceite do portão:
 - com outro app, e a correção mais nova: a medição é velha, e o operator repete o aceite (`-Resume`), sem correção nova, sem QA e sem formulário;
