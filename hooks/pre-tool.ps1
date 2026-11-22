@@ -65,6 +65,21 @@ function Test-G2([object]$ToolInput) {
 # R34 (projeto com "Identificador remoto" no README §1): a pergunta começa com [<ID> · <onde> · <ponto>]
 # e esse prefixo já está gravado como pendência em §7 — a pendência sai de §7 ao ser decidida, então só
 # o instante do formulário mostra que ela veio antes.
+# v3.65.11: os termos do processo que não vão ao stakeholder (lista de '<tipo> "<trecho>"'; vazia = nada).
+function Get-StakeholderJargon([string]$Text) {
+    $rules = @(
+        @('código de versão', '\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b'),
+        @('ID interno', '(?<![\w-])(Q-S\d+[a-z]?|S\d+-F\d+|SC-\d+)(?![\w-])'),
+        @('nome de arquivo', '(?<![\w/])[\w.-]+\.(ps1|psm1|json|jsonl|scn|apk|log|ya?ml)\b'),
+        @('comando', '(?i)\b(adb|gradlew|npx|npm run|run\.ps1|accept\.ps1|target\.ps1)\b'),
+        @('código de saída', '(?i)\bexit\s+\d+\b'),
+        @('nome de regra', '(?<![\w$-])[RG]\d{1,2}(?![\w-])'),
+        @('papel interno', '(?i)\b(operator|task-runner|watcher)\b')
+    )
+    $out = @()
+    foreach ($r in $rules) { foreach ($m in [regex]::Matches($Text, $r[1])) { $out += "$($r[0]) '$($m.Value)'" } }
+    return @($out | Select-Object -Unique)
+}
 function Test-G3([object]$ToolInput) {
     $remoteId = $null; $pending = ''
     $readme = Join-Path $script:projectDir '.team-project/README.md'
@@ -90,6 +105,14 @@ function Test-G3([object]$ToolInput) {
         $all = $text + ' ' + ((@($opts) | ForEach-Object { [string]$_.description }) -join ' ')
         if ($all -notmatch '(?i)\b(exemplo|por exemplo|ex\.:|ex:|e\.g\.|for example|example)') {
             Deny 'G3' $text "H1 (v3.51): a pergunta '$text' não traz um exemplo prático. Diga o problema em uma ou duas frases, sem sigla nem nome de regra, e um exemplo concreto do produto ('Exemplo: hoje, se o usuário …'), o que muda em cada opção (na descrição) e a recomendação primeiro (roles/scrum-master/templates/stakeholder-question.md). Refaça o formulário."
+        }
+        # v3.65.11 (garden S6, 22/11 02:21 e 06:48: "Não entendi nada"): a pergunta e as opções sem o vocabulário do processo —
+        # código de identificação (hash, Q-S<n>, S<n>-F<k>, SC-<n>), nome de arquivo ou comando, código de saída, nome de regra
+        # ou de guarda, papel interno. O prefixo R34 ([<ID> · <onde> · <ponto>]) fica de fora da conferência.
+        $plainAll = ($text -replace '^\s*\[[^\]]*\]\s*', '') + ' ' + ((@($opts) | ForEach-Object { "$([string]$_.label) $([string]$_.description)" }) -join ' ')
+        $jargon = @(Get-StakeholderJargon $plainAll)
+        if ($jargon.Count) {
+            Deny 'G3' $text ("linguagem do processo na pergunta ao stakeholder: " + (($jargon | Select-Object -First 4) -join ' · ') + ". Diga o que o usuário vê ou o que muda para ele, não o código interno — 'a versão antiga do app' em vez do hash, 'a correção do campo de unidade' em vez do ID, 'o teste no aparelho' em vez do script (roles/scrum-master/templates/stakeholder-question.md §Linguagem simples; o texto da linha PARA O STAKEHOLDER, em .team-project/.ask-route → plain, é o ponto de partida). Refaça o formulário.")
         }
         if ($remoteId) {
             $pm = [regex]::Match($text, '^\s*(\[' + [regex]::Escape($remoteId) + ' · [^\]]+\])')

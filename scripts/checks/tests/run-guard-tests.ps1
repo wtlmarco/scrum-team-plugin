@@ -733,6 +733,37 @@ $cases = @(
        Check = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.ask-route') -Force -ErrorAction SilentlyContinue
                  Remove-Item -LiteralPath (Join-Path $proj '.team-project/.next-verdict') -Force -ErrorAction SilentlyContinue; $true }
        Payload = @{ hook_event_name = 'Stop' } },
+    # ---------- v3.65.11 — pergunta escrita ao stakeholder barrada (G20) e linguagem do processo recusada no formulário (G3) ----------
+    @{ Name = 'v3.65.11 G20: a última fala termina em pergunta escrita ao stakeholder, sem rota — barra'; Script = 'stop.ps1'; Expect = 2; ExpectErr = 'pergunta escrita ao stakeholder'
+       Setup = { $t = Join-Path $tmp 'tq.jsonl'
+                 $a1 = '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"PowerShell","input":{}}]}}'
+                 $a2 = '{"type":"assistant","message":{"content":[{"type":"text","text":"Nao abri a Q-S6l.\n\nRefazer o aceite com o APK atual (recomendo).\nSeguir a fila do script.\n\nQual voce escolhe?"}]}}'
+                 [System.IO.File]::WriteAllLines($t, [string[]]@($a1, $a2), (New-Object System.Text.UTF8Encoding($false)))
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/.ask-route') -Force -ErrorAction SilentlyContinue
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/guards.log') -Force -ErrorAction SilentlyContinue }
+       Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw -Encoding UTF8) -like '*G20*bloqueio: pergunta escrita ao stakeholder*' }
+       Payload = @{ hook_event_name = 'Stop'; transcript_path = (Join-Path $tmp 'tq.jsonl') } },
+    @{ Name = 'v3.65.11 G20: "Até você responder" sem ponto de interrogação também é pedido de decisão — barra'; Script = 'stop.ps1'; Expect = 2; ExpectErr = 'pergunta escrita'
+       Setup = { $t = Join-Path $tmp 'tq2.jsonl'
+                 [System.IO.File]::WriteAllLines($t, [string[]]@('{"type":"assistant","message":{"content":[{"type":"text","text":"Preciso que voce diga como quer seguir:\n- refazer\n- pausar\n\nAte voce responder, o run fica parado aqui."}]}}'), (New-Object System.Text.UTF8Encoding($false)))
+                 $t2 = (Get-Content -LiteralPath $t -Raw) -replace 'Ate voce', 'Até você'; [System.IO.File]::WriteAllText($t, $t2, (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ hook_event_name = 'Stop'; transcript_path = (Join-Path $tmp 'tq2.jsonl') } },
+    @{ Name = 'v3.65.11 G20: com a rota ao stakeholder dos últimos 15 min (o formulário foi o caminho), a fala com pergunta não barra'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') ('{"rota":"ambiente","task":"S7","motivo":"x","at":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Check = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.ask-route') -Force -ErrorAction SilentlyContinue; $true }
+       Payload = @{ hook_event_name = 'Stop'; transcript_path = (Join-Path $tmp 'tq.jsonl') } },
+    @{ Name = 'v3.65.11 G20: fala que só informa (sem pergunta; a pergunta citada em bloco de código não conta) segue a regra de antes — libera sem Task elegível'; Script = 'stop.ps1'; Expect = 0
+       Setup = { $t = Join-Path $tmp 'tq3.jsonl'
+                 [System.IO.File]::WriteAllLines($t, [string[]]@('{"type":"assistant","message":{"content":[{"type":"text","text":"O operator mede de novo com a versao nova.\n```\nQual voce escolhe?\n```\nSigo quando ele voltar."}]}}'), (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ hook_event_name = 'Stop'; transcript_path = (Join-Path $tmp 'tq3.jsonl') } },
+    @{ Name = 'v3.65.11 G20: pergunta escrita de OUTRA sessão (não a que conduz o run) não barra'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.run-session') '{"session":"sessao-do-run","at":"2026-11-22 02:00:00"}' -Encoding UTF8 }
+       Check = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.run-session') -Force -ErrorAction SilentlyContinue; $true }
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'outra-sessao'; transcript_path = (Join-Path $tmp 'tq.jsonl') } },
+    @{ Name = 'v3.65.11 G3: hash, ID interno, arquivo, código de saída e papel interno na pergunta — negada com os termos'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = "linguagem do processo na pergunta ao stakeholder: código de versão 'eb971aea13b1' · ID interno 'SC-161' · nome de arquivo 'target.ps1'"
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'O aceite rodou com o APK velho. Exemplo: o SC-161 falha. Como seguir?'; header = 'Q'; multiSelect = $false; options = @(@{ label = 'Reinstalar'; description = 'o operator reinstala o eb971aea13b1; o target.ps1 deu exit 4' }, (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'v3.65.11 G3: a mesma decisão em linguagem simples passa (R$ e versão do plugin não são jargão)'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'O aparelho de teste continua com uma versão antiga do app. Exemplo: a correção do campo de unidade em Insumos não aparece nele. Como seguir?'; header = 'Q'; multiSelect = $false; options = @(@{ label = 'Conferir a geração do app'; description = 'você confere como o app é gerado; custa R$ 0 e a versão 3.65.11 do time segue' }, (Opt 'Pedir mais contexto')) }) } } },
     # ---------- v3.51.4 — negações reais do SunScape (note.md itens 3, 4, 5, 10) e do garden (itens 5, 6, 25) ----------
     @{ Name = 'G14 texto com $( ) entre aspas: subexpressões conferidas, rótulos não viram trecho (tests=, node:)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "sprint", "id": "1", "desde": "2026-10-06 10:00" }' -Encoding UTF8

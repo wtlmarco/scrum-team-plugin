@@ -12,6 +12,29 @@
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 
+# v3.65.11: o texto da última fala da sessão (as partes "text" da última entrada assistant com texto; '' sem ela).
+function Get-LastAssistantText([string]$Path) {
+    $tail = @(Get-Content -LiteralPath $Path -Encoding UTF8 -Tail 80)
+    for ($i = $tail.Count - 1; $i -ge 0; $i--) {
+        $l = $tail[$i]
+        if ($l -notmatch '"type"\s*:\s*"assistant"') { continue }
+        try { $j = $l | ConvertFrom-Json } catch { continue }
+        $parts = @(@($j.message.content) | Where-Object { $_ -and $_.PSObject.Properties['type'] -and [string]$_.type -eq 'text' } | ForEach-Object { [string]$_.text })
+        if ($parts.Count) { return ($parts -join "`n") }
+    }
+    return ''
+}
+# A fala termina pedindo uma decisão: '?' numa das 4 últimas linhas com texto (fora de bloco de código e de citação), ou a
+# frase que pede a escolha ("como quer seguir", "qual você escolhe", "até você responder"…).
+function Test-TextQuestion([string]$Text) {
+    $t = [regex]::Replace($Text, '(?s)```.*?```', '')
+    $lines = @($t -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -notmatch '^>' })
+    if (-not $lines.Count) { return $false }
+    $last = @($lines | Select-Object -Last 4)
+    if (@($last | Where-Object { $_ -match '\?\**\s*$' }).Count) { return $true }
+    return ($t -match '(?i)(como (você )?quer seguir|qual (você )?(escolhe|prefere)|preciso que você (diga|decida|escolha|responda)|até você responder|aguardo (a )?(sua )?(resposta|decisão))')
+}
+
 try {
     $hookInput = Read-HookInput
     if ($null -eq $hookInput) { exit 0 }
@@ -31,6 +54,26 @@ try {
             foreach ($l in (Get-Content -LiteralPath $log -Encoding UTF8 -Tail 50)) { if ($l -match 'G20' -and $l -match 'bloqueio') { $m = [regex]::Match($l, '(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?)'); if ($m.Success) { try { if ([datetime]::Parse($m.Groups[1].Value) -ge $lim) { $recent++ } } catch { } } } }
         }
         if ($recent -ge 3) { Write-GuardLog $projectDir 'G20' $hookInput '' 'liberado após 3 bloqueios'; exit 0 }
+    }
+    # v3.65.11 (garden S6, 22/11 02:21): a sessão discordou do run.ps1 next e parou com uma pergunta ESCRITA ao stakeholder,
+    # cheia de hash, exit 4 e nome de arquivo, sobre trabalho do próprio time (reinstalar o app, repetir o aceite). Pergunta
+    # escrita não passa pela G3 (forma) nem pela G24 (rota) — só o formulário passa. Barra o fim de turno da sessão que conduz
+    # o run quando a última fala termina em pergunta (ou pede a escolha) sem rota ao stakeholder nos últimos 15 min.
+    $sidQ = [string]$hookInput.session_id
+    $rsQ = Get-Marker $projectDir '.run-session'
+    $isRunSession = ($null -eq $rsQ) -or (-not $sidQ) -or ([string]$rsQ.session -eq $sidQ)
+    $trQ = [string]$hookInput.transcript_path
+    if ($isRunSession -and $trQ -and (Test-Path -LiteralPath $trQ)) {
+        $lastTxt = Get-LastAssistantText $trQ
+        if ($lastTxt -and (Test-TextQuestion $lastTxt)) {
+            $arQ = Get-Marker $projectDir '.ask-route'
+            $arAge = 999; if ($null -ne $arQ) { try { $arAge = ((Get-Date) - [datetime]::ParseExact([string]$arQ.at, 'yyyy-MM-dd HH:mm:ss', $null)).TotalMinutes } catch { } }
+            if ($arAge -ge 15) {
+                Write-GuardLog $projectDir 'G20' $hookInput '' 'bloqueio: pergunta escrita ao stakeholder durante o run, sem formulário nem rota'
+                [Console]::Error.WriteLine("[G20] O sprint run está em andamento e a sua última fala termina numa pergunta escrita ao stakeholder. Pergunta escrita não passa pela forma (G3) nem pela rota (G24). Antes, confira se a decisão é dele (roles/scrum-master/templates/stakeholder-question.md, 'a decisão é dele?'): discordar do run.ps1 next, instalar ou reparar o aparelho, repetir o aceite, 'sigo?' ou 'tento de novo?' não são — leve ao Arquiteto (/arc question, degrau 1) ou ao operator, e siga a fila. Se for dele: rode run.ps1 next até a rota ao stakeholder e use o formulário (AskUserQuestion), partindo da linha PARA O STAKEHOLDER (.team-project/.ask-route → plain), sem código de tarefa, hash nem nome de arquivo.")
+                exit 2
+            }
+        }
     }
     # Espera legítima por agente em voo. v3.52.2 (note.md item 2): o Agent não tem mais run_in_background — toda chamada volta
     # "lançado" e o aviso reabre a sessão; o filtro "bg" barrava a espera (195 G20 no sprint 3 do piloto). Vale QUALQUER agente
