@@ -691,8 +691,12 @@ function Get-ContentChangedSince([string]$Root, $Files, [datetime]$Since) {
     $changed = New-Object 'System.Collections.Generic.HashSet[string]'
     $known = New-Object 'System.Collections.Generic.HashSet[string]'
     # Em lotes, para a linha de comando não estourar.
+    # v3.65.15: o pathspec do git diferencia maiúsculas, mesmo com core.ignorecase (Windows). As chaves são minúsculas, e
+    # passá-las cruas deixava todo caminho com maiúscula (quase todo .kt) "fora do git", com a data valendo de novo: mexer e
+    # desfazer deixava o accept recusando o APK, que o build não regrava com as fontes iguais (ensaio do benchmark, 23/11).
+    # :(literal,icase) casa sem distinção de caixa e sem glob ([, *, ? no nome).
     for ($i = 0; $i -lt $paths.Count; $i += 200) {
-        $chunk = @($paths[$i..([Math]::Min($i + 199, $paths.Count - 1))])
+        $chunk = @($paths[$i..([Math]::Min($i + 199, $paths.Count - 1))] | ForEach-Object { ':(literal,icase)' + $_ })
         $tracked = @(& git -C $top -c core.quotePath=false ls-files -- @chunk 2>$null)
         if ($LASTEXITCODE -ne 0) { return $Files }
         foreach ($t in $tracked) { [void]$known.Add(([string]$t).ToLowerInvariant()) }
