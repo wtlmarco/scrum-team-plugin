@@ -590,7 +590,27 @@ try {
                 $nowT = Get-WorkTree $Root
                 if ($acc.PSObject.Properties['staleApp'] -and $acc.staleApp) { Add-Result 'R7-aceite' 'falhou' "o último accept recusou o app do aparelho (v3.65.10): $($acc.staleApp)" }
                 elseif ($acc.environment) { Add-Result 'R7-aceite' 'falhou' "o último accept parou por falha de ambiente: $($acc.environment)" }
-                elseif ($miss.Count -or $bad.Count) { Add-Result 'R7-aceite' 'falhou' ((@($(if ($miss.Count) { 'sem execução: ' + ($miss -join ', ') }), $(if ($bad.Count) { 'falharam: ' + ($bad -join ', ') })) | Where-Object { $_ }) -join '; ') }
+                elseif ($miss.Count -or $bad.Count) {
+                    # v3.65.14 (D · garden S6, Q-S6e e Q-S6g): a correção do portão prova o que corrige. O cenário que falhou e
+                    # não é citado em nenhum achado que ela cobre (coluna Task do quadro → validation.md) não é defeito dela: o
+                    # R7-aceite segue reprovando — nada se afrouxa — e a linha diz que ele sai da **Cenários:** do plano (o
+                    # Arquiteto) e fica no portão. Sem cenário citado nos achados, não há como separar: vale a linha de antes.
+                    $own = @(); $alien = @()
+                    if ($Task -match '^Q-S\d+[a-z]?$' -and $bad.Count) {
+                        $cov = @([regex]::Matches((Clean-Cell (Get-Cell $taskRow (Find-Col $taskTable 'Task'))), 'S\d+-F\d+') | ForEach-Object { $_.Value } | Select-Object -Unique)
+                        $vf = Read-ValidationFindings (Join-Path $S 'validation.md')
+                        $cited = @($cov | Where-Object { $vf.Findings.Contains($_) } | ForEach-Object { [regex]::Matches([string]$vf.Findings[$_].text, 'SC-\d+') | ForEach-Object { $_.Value } } | Select-Object -Unique)
+                        if ($cited.Count) { $own = @($bad | Where-Object { $_ -in $cited }); $alien = @($bad | Where-Object { $_ -notin $cited }) }
+                    }
+                    if ($alien.Count) {
+                        $parts = New-Object System.Collections.Generic.List[string]
+                        if ($miss.Count) { $parts.Add('sem execução: ' + ($miss -join ', ')) }
+                        if ($own.Count) { $parts.Add('falharam: ' + ($own -join ', ')) }
+                        $parts.Add("falharam fora dos achados da $Task ($($cov -join ', ')): $($alien -join ', ') — não são desta correção: o Arquiteto os tira da linha **Cenários:** do plano e eles seguem no portão")
+                        Add-Result 'R7-aceite' 'falhou' ($parts -join '; ')
+                    }
+                    else { Add-Result 'R7-aceite' 'falhou' ((@($(if ($miss.Count) { 'sem execução: ' + ($miss -join ', ') }), $(if ($bad.Count) { 'falharam: ' + ($bad -join ', ') })) | Where-Object { $_ }) -join '; ') }
+                }
                 elseif ($nowT -and $acc.tree -and [string]$acc.tree -ne $nowT) { Add-Result 'R7-aceite' 'falhou' "a árvore mudou depois do accept de $($acc.at) — rode de novo" }
                 else { Add-Result 'R7-aceite' 'ok' "$($ids.Count) cenário(s) passaram no alvo $($acc.target) em $($acc.at), com captura" }
                 Add-Result 'R30' $(if ($miss.Count) { 'falhou' } else { 'ok' }) ("cenários da Task no accept: " + ($ids -join ', '))

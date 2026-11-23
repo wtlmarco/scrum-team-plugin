@@ -440,7 +440,7 @@ Put $p '.team-project/usage.jsonl' (@(
 $r = Invoke-Check 'consumption.ps1' @('-Root', $p)
 $r = Invoke-Check 'consumption.ps1' @('-Root', $p)
 $r.Out = $r.Out + (Get-Content -Raw -Encoding UTF8 (Join-Path $p $dst))
-Check 'Consumo: medidas entram, manual e sessão ficam, sem duplicar' $r 0 @('3 linha\(s\) medida\(s\), 3 mantida', 'operator \| haiku 4\.5 \| `Agent` · suite \| T-041 \| verificação \| H-014 \| 40.000', 'chamado por dev; medido: o1#1', '\| dev \| haiku 4\.5 .*\| retrabalho \| H-014 \| 100.000', '\| operator ← dev \| haiku 4\.5 \| 40.000 \| 1 \| 1 ', '\| operator ← qa \| haiku \| não medido — só notificação \| 1 \| 1 \| 00:30 \| 500 \|', 'linha de sessão')
+Check 'Consumo: medidas entram, manual e sessão ficam, sem duplicar' $r 0 @('3 linha\(s\) medida\(s\), 3 mantida', 'operator \| haiku 4\.5 \| `Agent` · suite \| T-041 \| verificação \| H-014 \| 40.000', 'chamado por dev; medido: o1#1', '\| dev \| haiku 4\.5 .*\| retrabalho \| H-014 \| 100.000', '\| operator ← dev \| haiku 4\.5 \| 40.000 \| 1 \| 1 ', '\| operator ← qa \| haiku \| não medido — só notificação \| 1 \| 1 \| 00:30 \| 500 \|', 'linha de sessão', '\*Contagem R28 \(derivada, v3\.65\.14\): \d+ report\(s\) em `operator/1/` × 2 rodada\(s\) do operator chamadas por papel', '^(?![\s\S]*Contagem R28[\s\S]*Contagem R28)')
 if (([regex]::Matches($r.Out, 'medido: d1#1')).Count -ne 1) { $fail++; Write-Output '---- consumo duplicou a linha medida' }
 # v3.49: Totais separam instâncias (agentes distintos) de rodadas — o dev d1 tem 2 rodadas e 1 instância — e o modelo vem com a versão.
 Check 'Consumo: Totais com instâncias × rodadas e modelo com versão (v3.49)' $r 0 @('\| Papel \| Modelo \| Σ tokens processados \| Instâncias \| Rodadas \|', '\| dev \| haiku 4\.5 \| 400.000 \| 1 \| 2 \|')
@@ -4984,6 +4984,171 @@ Put $pa11 '.team-project/quality-assurance/scenarios/a.scn' "scenario SC-1 um`nl
 $ErrorActionPreference = 'Continue'; & git -C $pa11 init -q 2>$null; Put $pa11 '.gitignore' ".team-project/`n*.apk`n"; & git -C $pa11 add -A 2>$null; & git -C $pa11 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
 $r = & $g63 $pa11
 Check 'v3.65.11: portão que vai medir o aceite sem o APK declarado e inferível → a sessão declara antes de medir (sem formulário), com o valor inferido' $r 0 @('declarar o APK do projeto antes de medir o aceite \(a sessão; sem formulário', '"apk": "source/dist/garden-\*-debug\.apk", "apkSources": \["source/src", "source/capacitor\.config\.ts"\]', 'como desfazer', 'RUNLOG: S1 \| portão: APK do projeto sem declaração e inferível', '^(?![\s\S]*team:operator)')
+
+# ---- v3.65.14 (A): quedas de ambiente repetidas no bloco → o operator diagnostica AMBIENTE × PROVA antes de outro dev ----
+$pA14 = Join-Path $tmp 'v36514-env'; New-Project $pA14
+Put $pA14 '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`nparou: verify full exit 124 (no message in 120000 ms)`n"
+$edA14 = Join-Path $pA14 '.team-project/operator/1/T-041-ambiente.md'
+$null = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pA14)
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pA14)
+Check 'v3.65.14 A: 1ª e 2ª queda do bloco seguem como antes (reparo e dev novo), sem diagnóstico' $r 0 @('FALHA DE AMBIENTE', 'Registrada \(2 neste bloco\)', 'dev em instância NOVA', '^(?![\s\S]*AMBIENTE × PROVA)')
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pA14)
+Check 'v3.65.14 A: 3ª queda no bloco → operator diagnostica AMBIENTE × PROVA, sem reparo e sem dev' $r 0 @('pela 3ª vez seguida \(limite 3\)', 'team:operator', "Veredito: PROVA", 'operator/1/T-041-ambiente\.md', '^(?![\s\S]*dev em instância NOVA: run\.ps1 start)')
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pA14)
+Check 'v3.65.14 A: o done de novo sem o veredito pede o diagnóstico de novo (não volta ao reparo)' $r 0 @('team:operator', 'Veredito: AMBIENTE')
+Put $pA14 '.team-project/operator/1/T-041-ambiente.md' "Veredito: PROVA`nCausa: o spec de migrações estoura o prazo do Karma`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pA14)
+Check 'v3.65.14 A: veredito PROVA → /arc question decide o teste ou o prazo no plano; nada de reparo' $r 0 @('diagnosticou PROVA', 'team:architect', 'spec de migrações estoura o prazo', 'depois: dev em instância NOVA', '^(?![\s\S]*FALHA DE AMBIENTE)')
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pA14)
+$stA14 = [System.IO.File]::ReadAllText((Join-Path $pA14 '.team-project/sprints/1/handoff/T-041-env.json'), $utf8)
+Check 'v3.65.14 A: depois do PROVA a contagem recomeça (a queda seguinte é a 1ª, vai ao reparo) e o diagnóstico velho não decide' @{ Code = $r.Code; Out = "$($r.Out)`nST=$stA14" } 0 @('FALHA DE AMBIENTE', 'ST=.*"drops":1', '^(?![\s\S]*diagnosticou PROVA)', '^(?![\s\S]*AMBIENTE × PROVA)')
+# O done repetido no ciclo do diagnóstico do aceite (PLANO, APP) não é queda nova: não chega ao limite.
+$pF14 = Join-Path $tmp 'v36514-env4'; New-Project $pF14
+Put $pF14 '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+Put $pF14 '.team-project/accept/1/T-041/result.json' '{ "environment": "o app br.x não ficou na frente", "environmentSignal": { "kind": "no-focus", "text": "x", "scenario": "SC-119" }, "results": [ { "id": "SC-118", "status": "FALHOU", "detail": "a conexão caiu", "shot": "x" } ] }'
+$null = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pF14)
+Put $pF14 '.team-project/operator/1/T-041-alvo/diagnostico.md' "Veredito: PLANO`nCenário: SC-118`nElemento: tab`nOnde: barra`nDono: QA`n"
+$null = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pF14)
+Put $pF14 '.team-project/operator/1/T-041-alvo/diagnostico.md' "Veredito: APP`nCenário: SC-118`nMotivo: x`n"
+$null = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pF14)
+Put $pF14 '.team-project/operator/1/T-041-alvo/diagnostico.md' "Veredito: AMBIENTE`nMotivo: janela do sistema`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pF14)
+Check 'v3.65.14 A: as voltas do diagnóstico do aceite (PLANO, APP, AMBIENTE) não somam quedas — a 1ª que chega ao reparo segue o reparo' $r 0 @('FALHA DE AMBIENTE \(D4\)', '^(?![\s\S]*AMBIENTE × PROVA)')
+# AMBIENTE duas vezes: a 1ª segue o reparo, a 2ª vai ao stakeholder.
+$pB14 = Join-Path $tmp 'v36514-env2'; New-Project $pB14
+Put $pB14 '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`nparou: adb offline`n"
+1..3 | ForEach-Object { $null = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pB14) }
+Put $pB14 '.team-project/operator/1/T-041-ambiente.md' "Veredito: AMBIENTE`nCausa: o emulador reinicia sozinho`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pB14)
+Check 'v3.65.14 A: 1º AMBIENTE → segue o reparo e dev novo, e a contagem recomeça' $r 0 @('confirmou AMBIENTE', 'o emulador reinicia sozinho', 'dev em instância NOVA', '^(?![\s\S]*ambiente instável)')
+1..3 | ForEach-Object { $null = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pB14) }
+Put $pB14 '.team-project/operator/1/T-041-ambiente.md' "Veredito: AMBIENTE`nCausa: o emulador reinicia sozinho`n"
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pB14)
+$arB14 = Join-Path $pB14 '.team-project/.ask-route'; $arT14 = if (Test-Path -LiteralPath $arB14) { [System.IO.File]::ReadAllText($arB14, $utf8) } else { 'SEM-ROTA' }
+Check 'v3.65.14 A: 2º AMBIENTE → 🔴 sem reabertura automática e formulário pela rota ambiente-repetido, com o texto simples' @{ Code = $r.Code; Out = "$($r.Out)`nROTA=$arT14" } 0 @('AMBIENTE pela 2ª vez', 'ambiente instável', 'ROTA=.*"rota":"ambiente-repetido"', 'ROTA=.*"plain":"O teste no aparelho', '^(?![\s\S]*dev em instância NOVA: run\.ps1 start)')
+# O limite vem do guards.json.
+$pC14 = Join-Path $tmp 'v36514-env3'; New-Project $pC14
+Put $pC14 '.team-project/sprints/1/delivery/T-041.md' "## Entrega — T-041`n`nparou: rede`n"
+$gC14 = Join-Path $pC14 '.team-project/guards.json'; $gj14 = if (Test-Path -LiteralPath $gC14) { [System.IO.File]::ReadAllText($gC14, $utf8) | ConvertFrom-Json } else { [pscustomobject]@{} }
+$gj14 | Add-Member -NotePropertyName run -NotePropertyValue ([pscustomobject]@{ envDropsBeforeDiagnosis = 1 }) -Force
+Put $pC14 '.team-project/guards.json' ($gj14 | ConvertTo-Json -Depth 8)
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'T-041', '-Result', 'env', '-Root', $pC14)
+Check 'v3.65.14 A: guards.json → run.envDropsBeforeDiagnosis = 1 → a 1ª queda já pede o diagnóstico' $r 0 @('pela 1ª vez seguida \(limite 1\)', 'team:operator')
+
+# ---- v3.65.14 (D): a correção do portão prova o que corrige ----
+$pD14 = Join-Path $tmp 'v36514-qs'; New-Project $pD14
+$sbD14 = Join-Path $pD14 '.team-project/sprints/1/sprint-backlog.md'
+$sbT = [System.IO.File]::ReadAllText($sbD14, $utf8) -replace [regex]::Escape("$($e.qa) T-041 | Endpoint de exportação"), "$($e.qa) Q-S1 | S1-F1 correção do filtro" -replace '\| SC-014 \(novo\) \|', '| SC-014, SC-020 |'
+[System.IO.File]::WriteAllText($sbD14, $sbT, $utf8)
+Remove-Item -LiteralPath (Join-Path $pD14 '.team-project/sprints/1/evidence/T-041.md') -Force
+Put $pD14 '.team-project/sprints/1/delivery/Q-S1.md' ("## Entrega — Q-S1`n`n### Verificação`n``````n> verify full Q-S1`nverify full Q-S1 · tudo exit 0`n``````n`n### Documentos vivos (R12)`n**Estado:** a consolidar no fim do sprint — 03-architecture §4`n`n### Não fiz (fora do plano)`nnada`n")
+Put $pD14 '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+Put $pD14 '.team-project/sprints/1/validation.md' "# V`n`n## Achados`n| ID | Task | Achado | Onde | Cause | Owner | State |`n|---|---|---|---|---|---|---|`n| S1-F1 | T-041 | SC-014 falha: o filtro não volta | a.ts:1 | code | dev | open |`n| S1-F2 | T-041 | SC-020 falha: toque fora da tela | — | executor | QA | open |`n"
+Put $pD14 '.team-project/accept/1/Q-S1/result.json' '{ "task": "Q-S1", "target": "android", "at": "2026-11-22 10:00:00", "tree": null, "environment": null, "results": [ { "id": "SC-014", "status": "PASSOU", "detail": "" }, { "id": "SC-020", "status": "FALHOU", "detail": "Position out of bounds" } ] }'
+$r = Invoke-Check 'close.ps1' @('-Task', 'Q-S1', '-Root', $pD14)
+Check 'v3.65.14 D: na correção do portão, o cenário que falhou fora dos achados dela reprova (nada se afrouxa) com a linha que o manda sair da Cenários: do plano' $r 1 @('\| R7-aceite \| falhou.*falharam fora dos achados da Q-S1 \(S1-F1\): SC-020', 'o Arquiteto os tira da linha \*\*Cenários:\*\*', '^(?![\s\S]*R7-aceite \| falhou \| falharam: SC-020)')
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'Q-S1', '-Result', 'ok', '-Root', $pD14)
+Check 'v3.65.14 D: o done que só reprova por cenário fora dos achados vai ao Arquiteto (tirar da linha), sem dev' $r 0 @('só por cenários que não são dos achados desta correção: SC-020', 'team:architect', 'Tire esses cenários da linha \*\*Cenários:\*\*', '^(?![\s\S]*dev em instância NOVA)')
+Put $pD14 '.team-project/accept/1/Q-S1/result.json' '{ "task": "Q-S1", "target": "android", "at": "2026-11-22 10:00:00", "tree": null, "environment": null, "results": [ { "id": "SC-014", "status": "FALHOU", "detail": "o filtro não volta" }, { "id": "SC-020", "status": "FALHOU", "detail": "Position out of bounds" } ] }'
+$r = Invoke-Check 'close.ps1' @('-Task', 'Q-S1', '-Root', $pD14)
+Check 'v3.65.14 D: o cenário do próprio achado que falha segue como antes (falharam:), ao lado dos de fora' $r 1 @('\| R7-aceite \| falhou \| falharam: SC-014; falharam fora dos achados da Q-S1 \(S1-F1\): SC-020')
+$r = Invoke-Check 'run.ps1' @('done', '-Task', 'Q-S1', '-Result', 'ok', '-Root', $pD14)
+Check 'v3.65.14 D: com falha do próprio achado, o done segue ao dev como antes' $r 0 @('dev em instância NOVA|reprovou no done', '^(?![\s\S]*Tire esses cenários)')
+
+# ---- v3.65.14 (B): o "Vale para" que o script lê — plano: <termo>, o aviso do texto livre e a proposta na repetição ----
+$o14 = & $lib63 "`$t = Get-ScopeTerms 'Q-S6e · plano: ``prova-cdp.mjs``, plano: alvo:capturar · **Origem:** x'; 'T=' + (`$t -join '|') + '|HIT=' + (Test-PlanTerms `$t 'passo 4: npm run alvo:capturar -- T-089') + '|MISS=' + (Test-PlanTerms `$t 'passo 4: npm test')"
+$p14 = & $lib63 "'P1=' + ((Get-ScopeProse 'Q-S6e · a QA da rodada 5 do portão S6 · toda Task de triagem de falhas do alvo no S6') -join '|') + '#P2=' + ((Get-ScopeProse 'todas (prova pelo ``prova-cdp.mjs`` e cenários com ``assert-contains``)') -join '|') + '#P3=' + ((Get-ScopeProse '``source/src/**/*.html``, T-041, portão do S6, plano: x · **Origem:** y') -join '|') + '#'"
+Check 'v3.65.14 B: plano: <termo> lido do Vale para (casa pelo texto do plano) e o texto livre separado do que o script lê (todas, IDs, globs, portão do S<n>)' @{ Code = 0; Out = "$o14`n$p14" } 0 @('T=prova-cdp\.mjs\|alvo:capturar\|HIT=True\|MISS=False', 'P1=a QA da rodada 5 do portão S6\|toda Task de triagem de falhas do alvo no S6#', 'P2=#', 'P3=#')
+$pB14k = Join-Path $tmp 'v36514-vale'; New-Project $pB14k
+Put $pB14k '.team-project/sprints/1/plan/T-041-export.md' "# Plano — T-041`n**Cenários:** nenhum — interno`n`n**Arquivos tocados:** ``src/app/estufa/lista.page.ts```n`nPasso 3: rodar ``node tools/prova-cdp.mjs``.`n`n**Decisão do GAP T-041 (22/11/2026):** a captura segue o roteiro da D-1.`n**Origem:** conhecimento`n**Lição:** projeto`n`n## 6. Testes`n"
+Put $pB14k '.team-project/architect/decisions/S1.md' ("# Decisões do sprint 1`n`n## D-1 — Roteiro da captura`n**Vale para:** toda Task de triagem de falhas do alvo · **Do GAP:** T-040`n**Origem:** previsão`n**Lição:** projeto`nA captura volta às abas antes do dump.`n`n" +
+    "## D-2 — Prova pelo executor do projeto`n**Vale para:** plano: prova-cdp.mjs · **Do GAP:** T-040`n**Origem:** previsão`n**Lição:** projeto`nA prova cruzada não segura a Task.`n")
+$lnB14 = & $lib63 "(Get-TaskDecisionLines '$pB14k' '1' 'T-041' ([System.IO.File]::ReadAllText('$pB14k/.team-project/sprints/1/plan/T-041-export.md'))) -join ' ## '"
+Check 'v3.65.14 B: a decisão com plano: <termo> chega à Task cujo plano traz o termo; a de texto livre não' @{ Code = 0; Out = "L=$lnB14" } 0 @('L=.*D-2 — Prova pelo executor do projeto', '^(?![\s\S]*D-1 — Roteiro)')
+$r = Invoke-Check 'knowledge.ps1' @('-Sprint', '1', '-Apply', '-Root', $pB14k)
+$lsB14 = [System.IO.File]::ReadAllText((Join-Path $pB14k '.team-project/sprints/1/lessons.md'), $utf8)
+Check 'v3.65.14 B: no fechamento, o texto livre do Vale para vira um aviso (uma linha) e a repetição que não chegou traz a proposta pronta (ID, pasta, plano:)' @{ Code = 0; Out = $lsB14 } 0 @('1 registro\(s\) com \*\*Vale para\*\* em texto que o script não lê \(D-1\) — ex\.: D-1 ''toda Task de triagem de falhas do alvo''', 'repete D-1 — o registro existia e NÃO chegou à Task .* proposta: acrescentar ao \*\*Vale para:\*\* de D-1 `T-041` ou `src/app/estufa/\*\*` ou `plano: ')
+# ---- v3.65.14 (F): o formulário do fechamento sem ruído ----
+Put $pB14k '.team-project/sprints/1/run-log.md' "| quando | item | decisão | porquê | evidência |`n|---|---|---|---|---|`n| 2026-11-20 10:00 | T-041 | liberou: npm run alvo:capturar | x | y |`n| 2026-11-20 10:05 | T-041 | liberou: & 'C:\Users\x\.claude\plugins\cache\team\team\3.64.0\accept.ps1' | x | y |`n"
+Put $pB14k '.team-project/architect/decisions/S1.md' ("# Decisões do sprint 1`n`n## D-1 — Falso positivo da Q9`n**Vale para:** todas · **Do GAP:** T-041`n**Origem:** ambiente`n**Lição:** plugin`nTODO em português é falso positivo.`n`n" +
+    "## D-2 — Prazo da massa`n**Vale para:** T-041 · **Do GAP:** T-041`n**Origem:** ambiente`n**Lição:** projeto`nA massa demora: subir ``targets.android.seedTimeoutSec`` para 120.`n`n" +
+    "## D-3 — Rede lenta`n**Vale para:** T-041 · **Do GAP:** T-041`n**Origem:** ambiente`n**Lição:** nenhuma`nA rede caiu durante a prova; repetiu e passou.`n")
+$r = Invoke-Check 'knowledge.ps1' @('-Sprint', '1', '-Apply', '-Root', $pB14k)
+$lsF14 = [System.IO.File]::ReadAllText((Join-Path $pB14k '.team-project/sprints/1/lessons.md'), $utf8)
+$cfgF14 = [regex]::Match($lsF14, '(?s)## Propostas de configuração.*?(?=\n## |\z)').Value
+Check 'v3.65.14 F: propostas de configuração — só o GAP de ambiente que cita a chave (com ela), sem repetir a ocorrência de plugin; o caminho de versão do plugin em runCommands vira proposta de tirar' @{ Code = 0; Out = $cfgF14 } 0 @('runCommands: npm run alvo:capturar — manter', 'runCommands com o caminho de uma versão do plugin \(3\.64\.0\)', 'D-2 do S1 \(T-041\): Prazo da massa — rever no guards\.json: `targets\.android\.seedTimeoutSec`', '^(?![\s\S]*D-1 do S1)', '^(?![\s\S]*D-3 do S1)', '^(?![\s\S]*ex\.: seedTimeoutSec, timeoutMinutes)')
+
+# ---- v3.65.14 (J): o git do sprint e do fix ----
+$pJ14 = Join-Path $tmp 'v36514-git'; New-Project $pJ14
+$bareJ14 = Join-Path $tmp 'v36514-git-remote.git'
+$ErrorActionPreference = 'Continue'
+& git init -q --bare $bareJ14 2>$null
+& git -C $pJ14 init -q -b main 2>$null; Put $pJ14 '.gitignore' ".team-project/`n"; Put $pJ14 'src/a.ts' "export const a = 1`n"; Put $pJ14 'docs/sdd/arq.md' "# Arq`n"
+& git -C $pJ14 add -A 2>$null; & git -C $pJ14 -c user.email=t@t -c user.name=t commit -qm init 2>$null
+& git -C $pJ14 branch develop 2>$null; & git -C $pJ14 remote add origin $bareJ14 2>$null; & git -C $pJ14 push -q origin main develop 2>$null
+& git -C $pJ14 config user.email t@t 2>$null; & git -C $pJ14 config user.name t 2>$null
+$ErrorActionPreference = 'Stop'
+Put $pJ14 '.team-project/.active-run' '{ "trilha": "sprint", "id": "7", "desde": "2026-11-23 10:00" }'
+Put $pJ14 'src/b.ts' "export const b = 2`n"
+$r = Invoke-Check 'git-flow.ps1' @('begin', '-Root', $pJ14)
+$brJ = (& git -C $pJ14 rev-parse --abbrev-ref HEAD 2>$null | Out-String).Trim()
+Check 'v3.65.14 J: begin com alteração pendente fora de .team-project/ não troca de branch e avisa (o run segue na atual)' @{ Code = $r.Code; Out = "$($r.Out)`nBR=$brJ" } 0 @('a branch do run é feat/sprint-7, mas há alteração pendente fora de \.team-project/ \(src/b\.ts\)', 'BR=main')
+Remove-Item -LiteralPath (Join-Path $pJ14 'src/b.ts') -Force
+$r = Invoke-Check 'git-flow.ps1' @('begin', '-Root', $pJ14)
+$brJ = (& git -C $pJ14 rev-parse --abbrev-ref HEAD 2>$null | Out-String).Trim()
+Check 'v3.65.14 J: begin cria feat/sprint-<n> a partir da base develop do remoto' @{ Code = $r.Code; Out = "$($r.Out)`nBR=$brJ" } 0 @('git: branch feat/sprint-7 criada a partir de origin/develop', 'BR=feat/sprint-7')
+$ErrorActionPreference = 'Continue'; & git -C $pJ14 switch -q main 2>$null; $ErrorActionPreference = 'Stop'
+$r = Invoke-Check 'git-flow.ps1' @('begin', '-Root', $pJ14)
+Check 'v3.65.14 J: begin de novo volta à branch que já existe' $r 0 @('de volta à branch feat/sprint-7 \(já existia\)')
+$r = Invoke-Check 'git-flow.ps1' @('begin', '-Track', 'fix', '-Id', 'B-002', '-Root', $pJ14)
+$brJ = (& git -C $pJ14 rev-parse --abbrev-ref HEAD 2>$null | Out-String).Trim()
+Check 'v3.65.14 J: fix → branch fix/<id> em minúsculas' @{ Code = $r.Code; Out = "$($r.Out)`nBR=$brJ" } 0 @('branch fix/b-002 criada', 'BR=fix/b-002')
+$ErrorActionPreference = 'Continue'; & git -C $pJ14 switch -q feat/sprint-7 2>$null
+Put $pJ14 'src/c.ts' "export const c = 3`n"; & git -C $pJ14 add src/c.ts 2>$null; & git -C $pJ14 commit -qm "T-041: Endpoint de exportação" 2>$null
+$ErrorActionPreference = 'Stop'
+Put $pJ14 'docs/sdd/arq.md' "# Arq`n`nrevisado no sprint 7`n"; Put $pJ14 'src/solto.ts' "x`n"
+Put $pJ14 '.team-project/sprints/7/sprint-backlog.md' "# SB`n`n**Objetivo:** exportar o resultado`n`n## História H-1 — x`n`n| ID | Task | Est. | Dono | Depende de | Plano | Evidência | Cenários |`n|---|---|---|---|---|---|---|---|`n| $($e.ok) T-041 | Endpoint de exportação | 1 | dev | — | — | — | nenhum aplicável — x |`n| $($e.todo) T-042 | Filtro por data | 1 | dev | — | — | — | nenhum aplicável — x |`n"
+$r = Invoke-Check 'git-flow.ps1' @('finish', '-Id', '7', '-Root', $pJ14)
+$logJ = (& git -C $pJ14 log --format=%s -3 2>$null | Out-String)
+$remJ = (& git -C $bareJ14 branch --list 2>$null | Out-String)
+Check 'v3.65.14 J: finish — commit docs: só da documentação, push da branch e o PR na tela (título, o que entrou, o que ficou para depois)' @{ Code = $r.Code; Out = "$($r.Out)`nLOG=$logJ`nREM=$remJ" } 0 @('commit da documentação revisada \(1 arquivo', 'fora do commit \(não é documentação\): src/solto\.ts', 'push da feat/sprint-7 feito', '----- título -----\s+Sprint 7: exportar o resultado', '### O que entrou\s+- T-041: Endpoint de exportação', '### Documentação\s+- docs: documentação revisada — sprint 7', '### Ficou para depois\s+- T-042 — Filtro por data', 'LOG=docs: documentação revisada — sprint 7', 'REM=[\s\S]*feat/sprint-7')
+Put $pJ14 '.team-project/guards.json' '{ "git": { "push": false } }'
+Put $pJ14 'docs/sdd/arq.md' "# Arq`n`nrevisado de novo`n"
+$r = Invoke-Check 'git-flow.ps1' @('finish', '-Id', '7', '-Root', $pJ14)
+Check 'v3.65.14 J: git.push = false → só imprime o comando do push' $r 0 @('git\.push = false — o stakeholder roda: git push -u origin feat/sprint-7')
+$uJ = & $lib63 "function Invoke-GitCmd([string]`$Root, [string[]]`$GitArgs) { @{ Code = 0; Out = 'git@github.com:dono/projeto.git' } }; Get-GitCompareUrl 'x' 'develop' 'feat/sprint-7'"
+Check 'v3.65.14 J: o link de abrir o PR no GitHub, a partir do remoto' @{ Code = 0; Out = $uJ } 0 @('https://github\.com/dono/projeto/compare/develop\.\.\.feat/sprint-7\?expand=1')
+$pJ2 = Join-Path $tmp 'v36514-nogit'; New-Project $pJ2
+$r = Invoke-Check 'git-flow.ps1' @('begin', '-Id', '7', '-Root', $pJ2)
+Check 'v3.65.14 J: projeto sem git → nada, sem erro' $r 0 @('projeto sem git — sem branch do run')
+
+# ---- v3.65.14 (E): a Task dispensada por decisão do stakeholder sai riscada, sem ✅ e sem fechamento falso ----
+$pE14 = Join-Path $tmp 'v36514-sub'; New-Project $pE14
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'superseded', '-Root', $pE14)
+Check 'v3.65.14 E: -To superseded sem -Decision recusa e não grava' $r 2 @('pede -Decision')
+$r = Invoke-Check 'mark.ps1' @('-Task', 'T-041a', '-To', 'superseded', '-Decision', 'a prova foi substituída pelas correções do portão', '-Root', $pE14)
+$sbE = [System.IO.File]::ReadAllText((Join-Path $pE14 '.team-project/sprints/1/sprint-backlog.md'), $utf8); $bdE = [System.IO.File]::ReadAllText((Join-Path $pE14 '.team-project/sprints/1/burndown.md'), $utf8)
+$qE = & $lib63 "(Get-SprintTasks '$pE14/.team-project/sprints/1' | ForEach-Object { `$_.Id }) -join ','"
+Check 'v3.65.14 E: a Task sai riscada (fora da fila), a estimativa sai do restante e o Registro guarda a decisão do stakeholder' @{ Code = $r.Code; Out = "$($r.Out)`n$sbE`n$bdE`nQ=$qE" } 0 @('mark: T-041a .* → retirada \(substituída: a prova foi substituída', '\| ~~.*T-041a~~ retirada — substituída \|', '\| T-041a .* → retirada \(substituída\) · stakeholder \| 1 \| 1 \|', '\| T-041a \| .* → retirada \(substituída\) \| [\d-]+ [\d:]+ \| stakeholder · sessão \(`mark\.ps1`\) — a prova foi substituída', 'Q=T-041$')
+
+# ---- v3.65.14 (K): plano que cita o lint, com a configuração dele protegida, avisa antes da construção ----
+$pK14 = Join-Path $tmp 'v36514-lint'; New-Project $pK14
+Put $pK14 'source/.eslintrc.json' '{ }'
+$ErrorActionPreference = 'Continue'; & git -C $pK14 init -q 2>$null; Put $pK14 '.gitignore' ".team-project/`n"; & git -C $pK14 add -A 2>$null; & git -C $pK14 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+Put $pK14 '.team-project/guards.json' '{ "protectedPaths": ["**/.eslintrc.json"] }'
+$plK = Join-Path $pK14 '.team-project/sprints/1/plan/T-041-export.md'
+$plKt = [System.IO.File]::ReadAllText($plK, $utf8)
+if ($plKt -notmatch '(?m)^\*\*Arquivos protegidos:\*\*') { $plKt = $plKt -replace '(?m)^(# [^\r\n]*)', "`$1`n`n**Arquivos protegidos:** nenhum" } else { $plKt = $plKt -replace '(?m)^\*\*Arquivos protegidos:\*\*[^\r\n]*', '**Arquivos protegidos:** nenhum' }
+[System.IO.File]::WriteAllText($plK, $plKt + "`nPasso 5: corrigir o aviso do eslint em calc.ts.`n", $utf8)
+$r = Invoke-Check 'plan.ps1' @('-Plan', '.team-project/sprints/1/plan/T-041-export.md', '-Root', $pK14)
+Check 'v3.65.14 K: plano que cita o lint, com a configuração protegida e "Arquivos protegidos: nenhum" → aviso (sem reprovar por isso)' @{ Code = 0; Out = $r.Out } 0 @('\| protegidos-lint \| ok \| atenção: o plano cita lint ou formatação e source/\.eslintrc\.json é arquivo de gate')
+[System.IO.File]::WriteAllText($plK, $plKt, $utf8)
+$r = Invoke-Check 'plan.ps1' @('-Plan', '.team-project/sprints/1/plan/T-041-export.md', '-Root', $pK14)
+Check 'v3.65.14 K: sem citar lint, nada' @{ Code = 0; Out = $r.Out } 0 @('^(?![\s\S]*protegidos-lint)')
+# ---- v3.65.14 (H): a duração dos totais em horas a partir de 1 h ----
+$fdH = [regex]::Match([System.IO.File]::ReadAllText((Join-Path $checks 'consumption.ps1'), $utf8), '(?ms)^function Format-Duration\(.*?^function Format-DurationTotal\([^\r\n]*').Value
+$oH = & powershell -NoProfile -Command ($fdH + "; (Format-DurationTotal 690539) + '|' + (Format-DurationTotal 3599) + '|' + (Format-DurationTotal 3600)") 2>&1 | Out-String
+Check 'v3.65.14 H: 690539 s → 191h48 (não 11508:59); abaixo de 1 h segue mm:ss' @{ Code = 0; Out = $oH } 0 @('191h48\|59:59\|1h00')
 
 # ==== fim dos casos ====
 try { Stop-Process -Id $script:watchdog.Id -Force -ErrorAction SilentlyContinue } catch { }

@@ -75,6 +75,16 @@ try {
     # ---------- 16 · arquivos protegidos declarados ----------
     if ($text -match '(?m)^\*\*Arquivos protegidos:\*\*\s*(nenhum|ver §12)') { Add-Result 'protegidos' 'ok' ($Matches[0].Trim()) }
     else { Add-Result 'protegidos' 'falhou' 'linha **Arquivos protegidos:** nenhum | ver §12 ausente' }
+    # v3.65.14 (K · garden S6, T-067: o plano mandou corrigir um aviso do lint, a configuração do lint era protegida e a G5 só
+    # apareceu na construção, com um 🔺 GAP). Plano que cita lint ou formatação, com "Arquivos protegidos: nenhum" e a
+    # configuração dessa ferramenta em protectedPaths: aviso, sem reprovar — se o passo pedir mudá-la, o diff vai na §12.
+    if ($text -match '(?m)^\*\*Arquivos protegidos:\*\*\s*nenhum' -and $text -match '(?i)\b(e?s?lint\w*|prettier|stylelint|ktlint|detekt|ruff|flake8|rubocop|checkstyle|formata[çc][ãa]o|aviso do lint|warning do lint)\b') {
+        $gcfgL = Get-GuardConfig $Root
+        $cfgRe = '(?i)(^|/)(\.eslintrc(\.\w+)?|eslint\.config\.\w+|\.prettierrc(\.\w+)?|prettier\.config\.\w+|\.stylelintrc(\.\w+)?|\.editorconfig|detekt\.ya?ml|ruff\.toml|\.flake8|\.rubocop\.yml|checkstyle\.xml|\.globalconfig|[\w.-]+\.ruleset)$'
+        $ErrorActionPreference = 'Continue'; $tracked = @(& git -C $Root ls-files 2>$null); $ErrorActionPreference = 'Stop'
+        $lintCfg = @($tracked | Where-Object { $_ -match $cfgRe -and $_ -notmatch '(^|/)node_modules/' -and (Test-GlobMatch (Normalize-PathText $_) @($gcfgL.protectedPaths)) } | Select-Object -First 3)
+        if ($lintCfg.Count) { Add-Result 'protegidos-lint' 'ok' "atenção: o plano cita lint ou formatação e $($lintCfg -join ', ') é arquivo de gate (protectedPaths) — se algum passo pedir mudá-lo, ponha o diff em **Arquivos protegidos:** ver §12 agora (a sessão aplica); na construção, a G5 nega ao dev e vira 🔺 GAP" }
+    }
 
     # ---------- 2 · blocos acima de 8 arquivos ----------
     if ($files -and $files.Count -gt 8) {

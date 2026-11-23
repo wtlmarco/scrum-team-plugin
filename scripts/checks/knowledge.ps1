@@ -201,10 +201,29 @@ foreach ($it in @($items | Where-Object { $_.Class.Origin -eq 'conhecimento' }))
         if (-not $ent) { continue }
         $ptxt = if ($it.Plan) { $it.Plan } else { $pp0 = @(Get-ChildItem -LiteralPath (Join-Path $S 'plan') -Filter "$($it.Task)-*.md" -File -ErrorAction SilentlyContinue) | Select-Object -First 1; if ($pp0) { Read-Text $pp0.FullName } else { '' } }
         $files = @(Get-TaskFiles $Root $Sprint $it.Task $ptxt)
-        $hit = if ($it.Task) { Test-EntryApplies $ent $it.Task $files @() } else { $false }
-        $reps += "$($it.Key)$(if ($it.Task) { " ($($it.Task))" }) repete $cid — " + $(if ($hit) { 'o registro chegou ao cartão (o Vale para casa com a Task) e não foi seguido: achado contra o plano e a ficha' } else { "o registro existia e NÃO chegou à Task (o Vale para de $cid não casa com os arquivos dela): achado contra a ficha e o cartão — alargar o Vale para" })
+        $hit = if ($it.Task) { (Test-EntryApplies $ent $it.Task $files @() $ptxt) -or ($ent.PSObject.Properties['Terms'] -and (Test-PlanTerms @($ent.Terms) $ptxt)) -or ($ent.PSObject.Properties['All'] -and $ent.All) -or (@($ent.Ids) -contains $it.Task) } else { $false }
+        # v3.65.14 (B): a proposta pronta para o formulário do fechamento — o ID da Task, a pasta comum dos arquivos dela.
+        $prop = ''
+        if (-not $hit -and $it.Task) {
+            $dirs = @($files | ForEach-Object { $d = ($_ -replace '\\', '/'); $i = $d.LastIndexOf('/'); if ($i -gt 0) { $d.Substring(0, $i) } } | Where-Object { $_ } | Select-Object -Unique)
+            $common = ''
+            if ($dirs.Count) { $common = $dirs[0]; foreach ($d in $dirs) { while ($common -and -not ($d + '/').StartsWith($common + '/')) { $i = $common.LastIndexOf('/'); $common = if ($i -gt 0) { $common.Substring(0, $i) } else { '' } } } }
+            $opts = @("``$($it.Task)``"); if ($common) { $opts += "``$common/**``" }; $opts += '`plano: <termo que os planos dessas Tasks trazem>`'
+            $prop = " — proposta: acrescentar ao **Vale para:** de $cid $($opts -join ' ou ')"
+        }
+        $reps += "$($it.Key)$(if ($it.Task) { " ($($it.Task))" }) repete $cid — " + $(if ($hit) { 'o registro chegou ao cartão (o Vale para casa com a Task) e não foi seguido: achado contra o plano e a ficha' } else { "o registro existia e NÃO chegou à Task (o Vale para de $cid não casa com os arquivos dela): achado contra a ficha e o cartão — alargar o Vale para$prop" })
     }
 }
+
+# v3.65.14 (B): o **Vale para** com condição em texto não chega a Task nenhuma — aviso nas decisões do sprint e nas K dele.
+# Uma linha só (no garden S6 eram 26 das 31 decisões), com até 3 exemplos.
+$proseIds = @(); $proseEx = @()
+foreach ($ent in @(@($allD) + @($allK | Where-Object { $_.Since -eq [int]$Sprint }))) {
+    $vl = if ($ent.PSObject.Properties['Scope']) { [string]$ent.Scope } else { $vm0 = [regex]::Match([string]$ent.Body, '(?m)^\*\*Vale para:\*\*\s*([^\r\n]*)$'); if ($vm0.Success) { $vm0.Groups[1].Value } else { '' } }
+    $pr = @(Get-ScopeProse $vl)
+    if ($pr.Count) { $proseIds += $ent.Id; if ($proseEx.Count -lt 3) { $proseEx += "$($ent.Id) '$($pr[0])'" } }
+}
+if ($proseIds.Count) { $warns += "$($proseIds.Count) registro(s) com **Vale para** em texto que o script não lê ($($proseIds -join ', ')) — ex.: $($proseEx -join '; '). A condição em texto não leva a regra a Task nenhuma: o Arquiteto reescreve com IDs de Task, caminhos com glob, ``todas`` ou ``plano: <termo que o plano traz>`` (ex.: ``plano: prova-cdp.mjs``)" }
 
 # Teto: knowledge.md acima de 15 KB ou mais de 10 entradas locais de stack sem promoção → consolidação no próximo prepare.
 $kBytes = $utf8.GetByteCount($kText + $kAdd)
@@ -223,11 +242,24 @@ $rlP = Join-Path $S 'run-log.md'
 if (Test-Path -LiteralPath $rlP) {
     $rl = Read-Text $rlP
     $lib = @([regex]::Matches($rl, '(?m)\|\s*liberou:\s*([^|]+)\|') | ForEach-Object { $_.Groups[1].Value.Trim() })
+    # v3.65.14 (F · garden S6: a lista trazia "& '…\plugins\cache\team\team\3.64.0\accept.ps1'"): o caminho de uma versão
+    # do plugin em runCommands fica velho no update seguinte — proposta própria, de tirar.
+    $cacheRe = '(?i)[\\/]plugins[\\/]cache[\\/]|[\\/]\d+\.\d+\.\d+[\\/][\w-]+\.ps1'
+    $libOld = @($lib | Where-Object { $_ -match $cacheRe } | Select-Object -Unique)
+    $lib = @($lib | Where-Object { $_ -notmatch $cacheRe } | Select-Object -Unique)
     if ($lib.Count) { $cfgP += "comandos liberados no run e já gravados em runCommands: $($lib -join '; ') — manter (nada a fazer) ou tirar algum" }
+    foreach ($o in $libOld) { $vm1 = [regex]::Match($o, '[\\/](\d+\.\d+\.\d+)[\\/]'); $cfgP += "runCommands com o caminho de uma versão do plugin$(if ($vm1.Success) { " ($($vm1.Groups[1].Value))" }): $o — tirar: o run chama os scripts do plugin pela versão instalada, e este caminho envelhece no próximo update" }
     $rep = @([regex]::Matches($rl, '(?mi)^\|[^\n]*\b(reparo|repair|target\.ps1 -Repair)\b[^\n]*$')).Count
     if ($rep) { $cfgP += "$rep linha(s) de reparo do alvo no run-log — rever targets.<alvo>.repair, maxUptimeHours ou freshStart" }
 }
-foreach ($it in @($items | Where-Object { $_.Class.Origin -eq 'ambiente' })) { $cfgP += "GAP de ambiente $($it.Key)$(if ($it.Task) { " ($($it.Task))" }): $($it.Title) — rever a chave de targets ou verify que ele pediu (ex.: seedTimeoutSec, timeoutMinutes)" }
+# v3.65.14 (F · garden S6: 12 linhas com o mesmo "rever a chave … (ex.: seedTimeoutSec, timeoutMinutes)", até para a Q9 e o
+# executor, e repetindo as ocorrências de plugin): só o GAP de ambiente que não é ocorrência de plugin e cita uma chave de
+# configuração vira proposta, e a linha traz a chave que ele citou.
+$cfgKeyRe = '\b(targets\.[\w.]+|verify\.[\w.]+|run\.[\w.]+|quality\.[\w.]+|seedTimeoutSec|timeoutMinutes|maxUptimeHours|freshStart|readyExpr|baseline|runCommands|protectedPaths|coveragePattern|todoPattern|apkSources)\b'
+foreach ($it in @($items | Where-Object { $_.Class.Origin -eq 'ambiente' -and $_.Lesson -ne 'plugin' })) {
+    $keys = @([regex]::Matches(([string]$it.Title + "`n" + [string]$it.Body), $cfgKeyRe) | ForEach-Object { $_.Value } | Where-Object { $_ -notmatch '(?i)\.(ps1|md|json|ts|js|mjs|html|scn|txt)$' } | Select-Object -Unique)
+    if ($keys.Count) { $cfgP += "GAP de ambiente $($it.Key)$(if ($it.Task) { " ($($it.Task))" }): $($it.Title) — rever no guards.json: $(($keys | ForEach-Object { '`' + $_ + '`' }) -join ', ')" }
+}
 
 # lessons.md — a seção "Lições do sprint" da retrospectiva.
 $md = @("# Lições do sprint $Sprint", '', "> Gerado por ``knowledge.ps1 -Sprint $Sprint$(if ($Apply) { ' -Apply' })`` em $(Get-Date -Format 'yyyy-MM-dd HH:mm'). A retrospectiva cita este arquivo na seção **Lições do sprint**; o SM não reescreve o conteúdo técnico.", '',
