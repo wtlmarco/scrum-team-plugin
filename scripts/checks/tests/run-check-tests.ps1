@@ -4878,6 +4878,20 @@ $ErrorActionPreference = 'Continue'; & git -C $pc12 checkout -q -- source/src/te
 Put $pc12 'source/src/nova.ts' "export const n = 1`n"; (Get-Item (Join-Path $pc12 'source/src/nova.ts')).LastWriteTime = (Get-Date).AddMinutes(5); (Get-Item $tela12).LastWriteTime = (Get-Date).AddMinutes(5)
 $c3 = & $lib63 "`$s = Get-ApkStaleness '$apk12' '$pc12'; 'S=' + `$s.Stale + '|' + (Split-Path `$s.File -Leaf)"
 Check 'v3.65.12: idade do APK pelo conteúdo — fonte só com a data mais nova não é app velho; conteúdo mudado ou arquivo novo, sim' @{ Code = 0; Out = "C1=$c1`nC2=$c2`nC3=$c3" } 0 @('C1=S=False', 'C2=S=True\|tela\.html', 'C3=S=True\|nova\.ts')
+# v3.65.15 (ensaio do benchmark, 23/11): o caminho com maiúscula (o .kt do app nativo, no módulo inferido de build/outputs/apk)
+# também vale pelo conteúdo. Antes, o pathspec em minúsculas não casava no git, e a data voltava a valer: mexer e desfazer
+# deixava o APK velho para sempre. O nome com [ ] também (pathspec literal).
+$pc15 = Join-Path $tmp 'v36515-caixa'
+Put $pc15 'source/app/src/main/java/br/X/Tela.kt' "class Tela`n"; Put $pc15 'source/app/src/main/res/values/Str[1].xml' "<r/>`n"; Put $pc15 'source/app/build/outputs/apk/debug/app-debug.apk' 'APK1'
+Put $pc15 '.gitignore' "build/`n"
+$ErrorActionPreference = 'Continue'; & git -C $pc15 init -q 2>$null; & git -C $pc15 config core.ignorecase true 2>$null; & git -C $pc15 add -A 2>$null; & git -C $pc15 -c user.email=t@t -c user.name=t commit -qm i 2>$null; $ErrorActionPreference = 'Stop'
+Put $pc15 '.team-project/guards.json' '{ "targets": { "android": { "package": "br.x" } } }'
+$apk15 = Join-Path $pc15 'source/app/build/outputs/apk/debug/app-debug.apk'; $kt15 = Join-Path $pc15 'source/app/src/main/java/br/X/Tela.kt'; $xml15 = Join-Path $pc15 'source/app/src/main/res/values/Str[1].xml'
+(Get-Item -LiteralPath $apk15).LastWriteTime = (Get-Date).AddMinutes(1); (Get-Item -LiteralPath $kt15).LastWriteTime = (Get-Date).AddMinutes(5); (Get-Item -LiteralPath $xml15).LastWriteTime = (Get-Date).AddMinutes(5)
+$d1 = & $lib63 "`$s = Get-ApkStaleness '$apk15' '$pc15'; 'S=' + `$s.Stale + '|' + `$s.Note"
+Set-Content -LiteralPath $kt15 "class Tela2" -Encoding UTF8; (Get-Item -LiteralPath $kt15).LastWriteTime = (Get-Date).AddMinutes(5)
+$d2 = & $lib63 "`$s = Get-ApkStaleness '$apk15' '$pc15'; 'S=' + `$s.Stale + '|' + (Split-Path `$s.File -Leaf)"
+Check 'v3.65.15: caminho com maiúscula e com [ ] vale pelo conteúdo (o .kt desfeito não é app velho; o .kt mudado, sim)' @{ Code = 0; Out = "D1=$d1`nD2=$d2" } 0 @('D1=S=False\|', 'D2=S=True\|Tela\.kt')
 $h12 = & $lib63 "Get-FileHash12 '$apk12'"
 Put $pc12 '.team-project/apk-attest.json' "{ `"hash`": `"$h12`", `"by`": `"architect`", `"why`": `"prova`", `"at`": `"agora`" }"
 $c4 = & $lib63 "'A=' + [bool](Get-ApkAttest '$pc12' '$h12') + '|B=' + [bool](Get-ApkAttest '$pc12' 'apk:$h12') + '|C=' + [bool](Get-ApkAttest '$pc12' '000000000000')"
