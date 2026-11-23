@@ -240,6 +240,37 @@ function Update-DevCounter($T, [string]$S, [string]$Field) {
     [System.IO.File]::WriteAllText((Join-Path $dir "$($T.Id).json"), ($o | ConvertTo-Json -Depth 4 -Compress), $utf8)
     return $all[$k]
 }
+# v3.65.14 (A · garden S6, Q-S6e: 6 quedas de ambiente seguidas, cada uma com reparo e dev novo — parte era o verify full
+# que estourava o prazo do Karma, defeito da prova e não do alvo). A queda não conta para o escalonamento (R27), mas a partir
+# de guards.json → run.envDropsBeforeDiagnosis (padrão 3) no bloco o operator diagnostica AMBIENTE × PROVA antes de outro dev.
+# Estado em handoff/<ID>-env.json: drops (quedas seguidas que chegaram à rota de reparo — o done repetido no ciclo do diagnóstico
+# do aceite não conta), asked (quando o diagnóstico foi pedido) e ambiente (vereditos AMBIENTE já consumidos).
+function Get-EnvDropLimit([string]$Root) {
+    $v = Get-RunSetting $Root 'envDropsBeforeDiagnosis'
+    $i = 0; if ($null -ne $v -and [int]::TryParse([string]$v, [ref]$i) -and $i -ge 1) { return $i }
+    return 3
+}
+function Get-EnvDiagState($T, [string]$S) {
+    $p = Join-Path $S "handoff/$($T.Id)-env.json"
+    $st = @{ asked = ''; ambiente = 0; drops = 0 }
+    if (Test-Path -LiteralPath $p) { try { $j = Read-Text $p | ConvertFrom-Json; $st.asked = [string]$j.asked; $st.ambiente = [int]$j.ambiente; $st.drops = [int]$j.drops } catch { } }
+    return $st
+}
+function Save-EnvDiagState($T, [string]$S, $St) {
+    $dir = Join-Path $S 'handoff'; New-Item -ItemType Directory -Force $dir | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $dir "$($T.Id)-env.json"), ([ordered]@{ task = $T.Id; asked = [string]$St.asked; ambiente = [int]$St.ambiente; drops = [int]$St.drops } | ConvertTo-Json -Compress), $utf8)
+}
+# O veredito do operator gravado DEPOIS do pedido: @{ Verdict = AMBIENTE|PROVA|''; Cause } ou $null (sem pedido, sem arquivo
+# ou arquivo de antes do pedido — um diagnóstico velho não decide a queda de agora).
+function Read-EnvDiag([string]$Path, [string]$Asked) {
+    if (-not $Asked -or -not (Test-Path -LiteralPath $Path)) { return $null }
+    $at = [datetime]::MinValue; try { $at = [datetime]::ParseExact($Asked, 'yyyy-MM-dd HH:mm:ss', $null) } catch { return $null }
+    if ((Get-Item -LiteralPath $Path).LastWriteTime -lt $at) { return $null }
+    $tx = Read-Text $Path
+    $vm = [regex]::Match($tx, '(?mi)^\W*Veredito\W*\s*(AMBIENTE|PROVA)\b')
+    $cm = [regex]::Match($tx, '(?mi)^\W*Causa\W*\s*(.+)$')
+    return @{ Verdict = $(if ($vm.Success) { $vm.Groups[1].Value.ToUpperInvariant() } else { '' }); Cause = $(if ($cm.Success) { (($cm.Groups[1].Value -replace '["|]', "'") -replace '\s+', ' ').Trim() } else { '' }) }
+}
 # v3.58.3 (sprint 6 do garden: a T-067 levou 3 formulários em 15 min e ficou 2 h parada à espera da resposta, por uma suíte
 # com o navegador de teste preso): POSSÍVEL TRAVAMENTO segue a regra 5 do protocolo de espera — UMA tentativa automática por
 # causa. Na primeira vez da Task, a sessão encerra só o que o run iniciou (verify.ps1 -Kill / target.ps1 -Kill) e retoma, sem
@@ -303,6 +334,14 @@ function Save-TaskCommit($T, [string]$S) {
     if (-not $staged.Count) { return @{ Line = "  commit: nada a versionar para a $($T.Id) no escopo do plano$outTxt"; Sha = '' } }
     $subj = "$($T.Id): $($T.Title)"; $body = ''
     if ($subj.Length -gt 72) { $cut = $subj.LastIndexOf(' ', 70); if ($cut -lt 20) { $cut = 70 }; $body = $subj; $subj = $subj.Substring(0, $cut).TrimEnd(' ', ',', ';', ':', '-', '—') + '…' }
+    # v3.65.14 (J): o que entrou — os itens do "### Feito" mais recente do relatório do dev, no corpo (até 8 linhas).
+    if (Test-Path -LiteralPath $dvp) {
+        $fm = @([regex]::Matches((Read-Text $dvp), '(?ms)^###\s+Feito[^\r\n]*\r?\n(.*?)(?=^#{2,3}\s|\z)'))
+        if ($fm.Count) {
+            $fl = @($fm[$fm.Count - 1].Groups[1].Value -split "`r?`n" | Where-Object { $_ -match '^\s*([-*]|\d+\.)\s+\S' } | ForEach-Object { '- ' + (($_ -replace '^\s*([-*]|\d+\.)\s+', '').Trim()) } | Select-Object -First 8)
+            if ($fl.Count) { $body = ($(if ($body) { "$body`n`n" } else { '' })) + "Entrou:`n" + ($fl -join "`n") }
+        }
+    }
     $mf = [System.IO.Path]::GetTempFileName()
     try {
         [System.IO.File]::WriteAllText($mf, $subj + $(if ($body) { "`n`n$body" } else { '' }) + "`n", $utf8)
@@ -771,7 +810,7 @@ function Write-Handoff($T, [string]$S, [string]$n) {
                 if ($evl.Count -and $evl[0] -match 'modo: dev') { "**O done reprovou** (corrija o que falhou — código, teste ou relatório, dentro do plano — e rode a prova de novo): $evItems" }
                 else { "**Só completar a evidência** (o done reprovou: rode os comandos de prova que faltam e cole a saída no relatório): $evItems" }
             } else { $null }),
-            ("**O que o plano manda** (cópia do cabeçalho de ``$planRel``): " + $(if ($planOrders.Count) { $planOrders -join ' · ' } else { 'o plano não tem as linhas **Verificação:**, **Aceite:** nem **Cenários:**' })),
+            ("**O que o plano manda** (cópia do cabeçalho de ``$planRel``): " + $(if ($planOrders.Count) { $planOrders -join ' · ' } else { 'o plano não tem as linhas **Verificação:**, **Aceite:** nem **Cenários:**' }) + ' — em conflito com este cartão ou com o texto padrão do seu papel, **vale o plano**; não abra 🔺 GAP só por isso (v3.65.14)'),
             "**O que já rodou:** **Verify registrado:** $vtxt · **Accept registrado:** $atxt",
             "**GAPs:** $(if ($gaps.Count) { $gaps -join ' · ' } else { 'nenhum' })",
             $(if ($dl.Count) { "**Decisões do sprint** (``architect/decisions/S$n.md`` — valem como o plano; não abra o arquivo):`n" + ($dl -join "`n") } else { $null }),
@@ -1227,6 +1266,10 @@ try {
         if ($Result -eq 'env') {
             $tg = Get-TargetsConfig $Root; $names = @(if ($tg) { $tg.PSObject.Properties | ForEach-Object { $_.Name } })
             $ec = Update-DevCounter $T $S 'env'   # v3.52.2 (item 14): queda de ambiente não conta para o escalonamento do dev
+            # v3.65.14 (A): o estado do diagnóstico AMBIENTE × PROVA (lido aqui; decidido só na rota de reparo, abaixo).
+            $edRel = "operator/$n/$($T.Id)-ambiente.md"; $edP = Join-Path $Root ".team-project/$edRel"
+            $envSt = Get-EnvDiagState $T $S
+            $envDg = Read-EnvDiag $edP $envSt.asked
             # v3.54.2 (carta do sprint 5 do garden, item 3): o accept parou no ESTADO DE PARTIDA (os 2 primeiros cenários na
             # mesma tela, nenhum passou — startState no result.json). O reparo do emulador não muda a tela de partida e a
             # reabertura automática repetiria o accept que não passa (T-063: 🔴 → 🟪 → 🔴 → 🟪 → 🔴, um operator em cada).
@@ -1308,6 +1351,49 @@ try {
                     exit 0
                 }
             }
+            # v3.65.14 (A): quedas repetidas no bloco — o operator diz se é o alvo ou a prova antes de outro reparo e outro dev.
+            $envLim = Get-EnvDropLimit $Root
+            if ($envDg) {
+                if ($envDg.Verdict -eq 'PROVA') {
+                    $envSt.drops = 0; $envSt.asked = ''; Save-EnvDiagState $T $S $envSt
+                    Add-RunLog $S $n $T.Id "quedas repetidas: operator diz PROVA ($($envDg.Cause)) → /arc question decide o teste ou o prazo no plano; depois dev novo" 'diagnóstico AMBIENTE × PROVA (v3.65.14)' $edRel
+                    Out "run: $($T.Id) — o operator diagnosticou PROVA nas quedas repetidas: $($envDg.Cause). Não é o alvo: o comando da prova não termina ou estoura o prazo. Sem reparo e sem dev agora:"
+                    Out "  $(Get-AgentLine 'architect')"
+                    Out "  prompt: `"/arc question — a $($T.Id) parou por 'ambiente' várias vezes seguidas e o diagnóstico $edRel diz que é a prova, não o alvo: $($envDg.Cause). Decida no plano .team-project/sprints/$n/$($T.Plan) o que muda no teste ou no prazo do comando (fatiar o spec, prazo do runner, o passo que trava), delta, com **Origem:** e **Lição:** (R9); rode plan.ps1 -Plan .team-project/sprints/$n/$($T.Plan). Não escreva código. Volte em até 15 linhas.`""
+                    Out "  depois: dev em instância NOVA — run.ps1 start -Task $($T.Id) e rode run.ps1 done de novo"
+                    Say "$(Get-RunLabel $T.Id): o teste vinha parando por algo que parecia o ambiente, mas é o próprio teste; o Arquiteto decide o ajuste, sem precisar de você."
+                    exit 0
+                }
+                if ($envDg.Verdict -eq 'AMBIENTE') {
+                    $envSt.ambiente++; $envSt.drops = 0; $envSt.asked = ''; Save-EnvDiagState $T $S $envSt
+                    if ($envSt.ambiente -ge 2) {
+                        $cz = if ($envDg.Cause) { $envDg.Cause } else { 'o diagnóstico não diz a causa' }; if ($cz.Length -gt 160) { $cz = $cz.Substring(0, 160) + '…' }
+                        Set-AskRoute $Root 'ambiente-repetido' $T.Id "quedas repetidas, diagnosticadas como ambiente pela 2ª vez: $cz"
+                        Add-AskRoutePlain "O teste no aparelho de $(Get-RunLabel $T.Id) parou várias vezes, e duas conferências dizem que a causa é o ambiente da máquina ($cz), não o app. Escolha: eu ajeito a máquina e o time retoma; ou a tarefa segue provada pelos testes automáticos e o aparelho fica para a revisão final."
+                        Add-RunLog $S $n $T.Id "quedas repetidas, AMBIENTE pela 2ª vez ($cz) → 🔴 sem reabertura automática; decisão do stakeholder" 'diagnóstico AMBIENTE × PROVA (v3.65.14)' $edRel
+                        Out "run: $($T.Id) — AMBIENTE pela 2ª vez nas quedas repetidas: $cz. Reparo e dev novo não resolveram; nenhum papel caro é chamado."
+                        Out "  1. $plugin/mark.ps1 -Task $($T.Id) -To blocked -Reason `"ambiente instável — $cz`" (sem a etiqueta da prova pendente: o next não a reabre sozinho)"
+                        Out "  2. devolva `"$($T.Id) 🔴 bloqueada: ambiente instável · a fila segue`". A sessão leva ao stakeholder num formulário (R22) a escolha da linha PARA O STAKEHOLDER; ajeitado, mark.ps1 -Task $($T.Id) -To qa -Reopen resume; 'provar por teste': run.ps1 prove -Task $($T.Id) -By stakeholder -Because `"<motivo>`"."
+                        exit 0
+                    }
+                    Add-RunLog $S $n $T.Id "quedas repetidas: operator diz AMBIENTE ($($envDg.Cause)) → reparo e dev novo; a próxima série vai ao stakeholder" 'diagnóstico AMBIENTE × PROVA (v3.65.14)' $edRel
+                    Out "run: $($T.Id) — o operator confirmou AMBIENTE nas quedas repetidas ($($envDg.Cause)): segue o reparo. A contagem recomeça; outra série com o mesmo veredito vai ao stakeholder."
+                }
+                else { $envDg = $null; $envSt.asked = '' }   # arquivo sem a linha Veredito: pede de novo abaixo
+            }
+            # Conta só a queda que chega à rota de reparo — o done repetido no ciclo do diagnóstico do aceite (PLANO, APP) não é queda.
+            if (-not $envDg) { $envSt.drops++; Save-EnvDiagState $T $S $envSt }
+            if (-not $envDg -and $envSt.drops -ge $envLim) {
+                $envSt.asked = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); Save-EnvDiagState $T $S $envSt
+                $vdRel = ((Get-VerifyDir $Root $T.Id).Substring($Root.Length + 1) -replace '\\', '/')
+                Add-RunLog $S $n $T.Id "queda de ambiente ($($envSt.drops) seguidas, limite $envLim) → operator diagnostica AMBIENTE × PROVA antes de outro dev" 'quedas repetidas no mesmo bloco (v3.65.14); não conta para o escalonamento (R27)' $edRel
+                Out "run: $($T.Id) parou por ambiente pela $($envSt.drops)ª vez seguida (limite $envLim). Antes de outro reparo e outro dev, o operator diz se é o alvo ou a prova:"
+                Out "  $(Get-AgentLine 'operator')"
+                Out "  prompt: `"Diagnóstico de quedas repetidas da $($T.Id): ela parou por 'ambiente' $($envSt.drops) vezes seguidas. Leia o relatório sprints/$n/delivery/$($T.Id).md (seção mais recente), $vdRel/ (result.json e os logs dos comandos) e, se houver, o result.md do accept da Task. Decida: AMBIENTE — o alvo, o serviço, a rede ou a máquina caiu (cite o sinal: adb offline, emulador reiniciado, conexão recusada, memória) — ou PROVA — o próprio comando da prova não termina ou estoura o prazo (spec lento, prazo do runner, suíte presa num teste; cite o comando e a linha do log). Grave .team-project/$edRel com as linhas 'Veredito: AMBIENTE' ou 'Veredito: PROVA' e 'Causa: <uma frase>'. Não mude código, teste nem configuração. Volte em até 5 linhas.`""
+                Out "  depois: run.ps1 done -Task $($T.Id) -Result env de novo — o done lê o veredito: PROVA → Arquiteto · AMBIENTE → reparo e dev novo (na 2ª série, o stakeholder)"
+                Say "$(Get-RunLabel $T.Id) parou várias vezes por algo que parece o ambiente; o time confere a causa antes de tentar de novo, sem precisar de você."
+                exit 0
+            }
             Add-RunLog $S $n $T.Id "queda de ambiente ($($ec.env) neste bloco) → reparo do alvo e dev em instância nova" 'o dev parou por ambiente (exit 4 do verify/accept, rede, energia); não conta para o escalonamento (R27)' "sprints/$n/delivery/$($T.Id).md"
             Out "run: $($T.Id) parou por FALHA DE AMBIENTE (D4) — não é defeito do código; nenhum papel caro é chamado. Registrada ($($ec.env) neste bloco); não conta para o escalonamento do dev (R27)."
             foreach ($nm in $names) { Out "  1. $plugin/target.ps1 -Target $nm -Repair" }
@@ -1364,6 +1450,19 @@ try {
                 Out "run: $($T.Id) — só o R7-aceite reprovou, pelo accept parado no estado de partida na árvore de agora: outro dev rodaria o mesmo accept. Rota de ambiente:"
                 Out ($rr.Out.TrimEnd())
                 exit $rr.Code
+            }
+            # v3.65.14 (D): só o R7-aceite reprovou, e só por cenários fora dos achados que a correção do portão cobre — outro dev
+            # rodaria o mesmo accept e pararia igual. O Arquiteto tira esses cenários da **Cenários:** do plano; eles seguem no portão.
+            $accLine = @($bad | Where-Object { $_ -match '\|\s*R7-aceite\s*\|' }) -join ' '
+            if ($onlyAcc -and $sameTree -and $accLine -match 'falharam fora dos achados' -and $accLine -notmatch '(^|[|;]\s*)(falharam|sem execução): ') {
+                $am = [regex]::Match($accLine, 'falharam fora dos achados da \S+ \(([^)]*)\): ([^—]+)')
+                $alienT = if ($am.Success) { $am.Groups[2].Value.Trim() } else { 'os cenários da linha' }
+                Add-RunLog $S $n $T.Id "R7-aceite só por cenários fora dos achados desta correção ($alienT) → /arc question tira da linha Cenários: do plano; sem dev" 'a correção do portão prova o que corrige (v3.65.14)' "sprints/$n/$($T.Plan)"
+                Out "run: $($T.Id) — o done reprovou só no R7-aceite, e só por cenários que não são dos achados desta correção: $alienT. Não é defeito dela; outro dev pararia no mesmo ponto."
+                Out "  $(Get-AgentLine 'architect')"
+                Out "  prompt: `"/arc question — a correção $($T.Id) reprovou no R7-aceite só por $alienT, que nenhum achado dela cita ($(if ($am.Success) { $am.Groups[1].Value } else { 'coluna Task do quadro' })). Tire esses cenários da linha **Cenários:** do plano .team-project/sprints/$n/$($T.Plan) (ou passe a '(teste)' o que um teste do plano prova), delta, com **Origem:** e **Lição:** (R9): eles seguem no portão, que os mede de novo. Rode plan.ps1 -Plan .team-project/sprints/$n/$($T.Plan). Não escreva código. Volte em até 10 linhas.`""
+                Out "  depois: run.ps1 done -Task $($T.Id) de novo (o close confere com a linha nova; sem dev)"
+                exit 0
             }
             # v3.64.0 (item 2 B e C): a reprovação vai a quem resolve, pela natureza de cada linha — antes toda reprovação virava
             # "dev novo, só a evidência, não mude código" (58 vezes no sprint 6 do piloto, 17 repetindo a anterior igual, e com a
@@ -1470,6 +1569,13 @@ try {
     Set-NextVerdict $Root ''
     $script:InNext = $true   # v3.65.7: daqui em diante, toda linha de disparo grava a ação pendente (Get-AgentLine)
     $script:RunNews = Get-RunNews   # v3.59.0: o que ficou pronto ou parou desde o next anterior abre a fala ao stakeholder
+    # v3.65.14 (J): com o run ativo, o trabalho vai na branch dele (feat/sprint-<n>, fix/<id>), criada da base no primeiro next.
+    $arG = Get-Marker $Root '.active-run'
+    if ($arG -and $arG.trilha -and $arG.id) {
+        $gb = Invoke-GitBegin $Root ([string]$arG.trilha) ([string]$arG.id)
+        foreach ($gl in $gb.Lines) { Out $gl }
+        if ($gb.Lines.Count -and $gb.Branch -and [string]$arG.trilha -eq 'sprint') { Add-RunLog $S $n "$([string]$arG.trilha) $([string]$arG.id) · git" (($gb.Lines -join ' · ') -replace '\|', '/') 'a branch do run (v3.65.14)' 'git' }
+    }
     # v3.51.4: o run parou por limite de uso da conta (.usage-limit, gravado pela G16 ou pelo Stop) — diz o motivo e segue.
     $lim = Join-Path $tp '.usage-limit'
     if (Test-Path -LiteralPath $lim) {

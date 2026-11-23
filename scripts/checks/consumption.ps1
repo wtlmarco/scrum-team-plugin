@@ -56,6 +56,9 @@ function Get-ShortModel([string]$Model) {
 }
 
 function Format-Duration([int]$Seconds) { return ('{0:00}:{1:00}' -f [Math]::Floor($Seconds / 60), ($Seconds % 60)) }
+# v3.65.14 (H · garden S6: o total '11508:59' foi lido como horas; eram 191 h 48 min): nos totais, de 1 h para cima, horas e minutos.
+# As linhas do registro seguem em mm:ss — é o formato que os outros scripts leem.
+function Format-DurationTotal([int]$Seconds) { if ($Seconds -lt 3600) { return (Format-Duration $Seconds) }; return ('{0}h{1:00}' -f [Math]::Floor($Seconds / 3600), [Math]::Floor(($Seconds % 3600) / 60)) }
 
 function Get-Number([string]$Cell) {
     $d = (Clean-Cell $Cell) -replace '[^\d]', ''
@@ -481,10 +484,24 @@ try {
                     if ($null -ne $a.Q5) { $sum5 = [double]$sum5 + $a.Q5; $sumW = [double]$sumW + $a.QW }
                     # Grupo só com linhas à mão não tem número processado: "não medido", nunca 0 (R7).
                     $tok = if ($a.Measured) { '{0:N0}' -f $a.Tokens } else { 'não medido — só notificação' }
-                    $rows += ('| {0} | {1} | {2} | {3} | {4} | {5} | {6:N0} | {7} | {8} |' -f $a.Papel, $a.Model, $tok, $inst, $a.Rounds, (Format-Duration $a.Seconds), $a.Notified, $(if ($null -ne $a.Q5) { Format-Pct $a.Q5 } else { '—' }), $(if ($null -ne $a.QW) { Format-Pct $a.QW } else { '—' }))
+                    $rows += ('| {0} | {1} | {2} | {3} | {4} | {5} | {6:N0} | {7} | {8} |' -f $a.Papel, $a.Model, $tok, $inst, $a.Rounds, (Format-DurationTotal $a.Seconds), $a.Notified, $(if ($null -ne $a.Q5) { Format-Pct $a.Q5 } else { '—' }), $(if ($null -ne $a.QW) { Format-Pct $a.QW } else { '—' }))
                 }
-                $rows += ('| **{0}** | — | **{1:N0}** | **{2}** | **{3}** | **{4}** | **{5:N0}** | **{6}** | **{7}** |' -f $label, $sumT, $sumI, $sumR, (Format-Duration $sumS), $sumNot, $(if ($null -ne $sum5) { Format-Pct $sum5 } else { '—' }), $(if ($null -ne $sumW) { Format-Pct $sumW } else { '—' }))
-                $lines.RemoveRange($s, $e2 - $s + 1); $lines.InsertRange($s, [string[]]$rows)
+                $rows += ('| **{0}** | — | **{1:N0}** | **{2}** | **{3}** | **{4}** | **{5:N0}** | **{6}** | **{7}** |' -f $label, $sumT, $sumI, $sumR, (Format-DurationTotal $sumS), $sumNot, $(if ($null -ne $sum5) { Format-Pct $sum5 } else { '—' }), $(if ($null -ne $sumW) { Format-Pct $sumW } else { '—' }))
+                # v3.65.14 (I · garden S6: "101 rodadas do operator × 30 relatórios" no relatório ao dono do plugin): a contagem
+                # R28 separada por quem chamou. Os papéis gravam um report.md por chamada na pasta do job; a sessão (medição do
+                # portão, diagnóstico do aceite, reconstrução do APK) grava o resultado na pasta do portão ou do alvo, sem report
+                # por chamada — conta à parte, e a diferença deixa de parecer chamada perdida.
+                $opRole = 0; $opSess = 0
+                foreach ($k in $agg.Keys) { if ($k -like 'operator ← sessão|*' -or $k -like 'operator ← session|*') { $opSess += $agg[$k].Rounds } elseif ($k -like 'operator ← *') { $opRole += $agg[$k].Rounds } }
+                $cnt = @()
+                if ($opRole -or $opSess) {
+                    $opDir = if ($sm.Success) { Join-Path $tp "operator/$($sm.Groups[1].Value)" } else { '' }
+                    $reps = if ($opDir -and (Test-Path -LiteralPath $opDir)) { @(Get-ChildItem -LiteralPath $opDir -Recurse -File -Filter 'report*.md' -ErrorAction SilentlyContinue).Count } else { 0 }
+                    $cnt = @('', "*Contagem R28 (derivada, v3.65.14): $reps report(s) em ``operator/$(if ($sm.Success) { $sm.Groups[1].Value } else { '<n>' })/`` × $opRole rodada(s) do operator chamadas por papel$(if ($reps -ne $opRole) { " — **diferença de $([Math]::Abs($reps - $opRole))**: $(if ($reps -lt $opRole) { 'chamada de papel sem report na pasta do job' } else { 'report sem a rodada medida' })" } else { ' — fecha' }) · $opSess rodada(s) chamadas pela sessão (portão, diagnóstico, reconstrução), que gravam na pasta do portão ou do alvo e contam à parte.*")
+                }
+                $after = $e2 + 1
+                while ($after -lt $lines.Count -and (($lines[$after] -like '`*Contagem R28*') -or ($lines[$after] -eq '' -and $after + 1 -lt $lines.Count -and $lines[$after + 1] -like '`*Contagem R28*'))) { $lines.RemoveAt($after) }
+                $lines.RemoveRange($s, $e2 - $s + 1); $lines.InsertRange($s, [string[]]($rows + $cnt))
             }
         }
 
@@ -533,7 +550,7 @@ try {
             $sec += '', '### Por rodada do portão', '', '| Rodada | Papel | Rodadas | Σ tokens | Duração | Categoria |', '|---|---|---|---|---|---|'
             foreach ($g in @($gateRows | Group-Object { '{0:D2}|{1}' -f [int]$_.GateRound, $_.Role } | Sort-Object Name)) {
                 $gk = $g.Name -split '\|', 2; $gt = [int64](($g.Group | Measure-Object Tokens -Sum).Sum); $gs = [int](($g.Group | Measure-Object Seconds -Sum).Sum)
-                $sec += ('| {0} | {1} | {2} | {3:N0} | {4} | {5} |' -f $(if ([int]$gk[0]) { [int]$gk[0] } else { '—' }), $gk[1], $g.Count, $gt, (Format-Duration $gs), $(if ([int]$gk[0] -ge 2) { 'retrabalho' } else { '—' }))
+                $sec += ('| {0} | {1} | {2} | {3:N0} | {4} | {5} |' -f $(if ([int]$gk[0]) { [int]$gk[0] } else { '—' }), $gk[1], $g.Count, $gt, (Format-DurationTotal $gs), $(if ([int]$gk[0] -ge 2) { 'retrabalho' } else { '—' }))
             }
         }
         $ci = -1; for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^##\s+Cota da assinatura') { $ci = $i; break } }

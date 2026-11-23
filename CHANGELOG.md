@@ -13,6 +13,76 @@
 
 ---
 
+## v3.65.14 — 2026-11-23
+**Branch:** `fix/v3.65.14` a partir de `develop` (`aa05e6f`, com a v3.65.13 mesclada pelo PR #219) · **Plano:** `melhorias/plano-v3.65.14.md` (itens A a K, aprovados pelo stakeholder em 23/11)
+Origem: o `plugin-report.md` do sprint 6 do garden (22/11, plugin 3.65.12), conferido contra o `run-log.md`, o `lessons.md`, o `consumption.md`, as decisões do S6 e o código. A conferência mudou três itens do relatório:
+- o "`next` manda construir com o verify vivo" era, na Task mais cara (Q-S6e, 20 M de tokens), uma série de **6 quedas de ambiente seguidas, sem limite**;
+- o "cartão × plano" já estava quase todo resolvido na v3.64.0;
+- a G5 tinha caminho de exceção e ele funcionou.
+
+Mais o pedido do stakeholder sobre o git do sprint e do fix (J).
+
+**A · A queda de ambiente ganha limite** (`run.ps1 done -Result env`; `Get-EnvDropLimit`, `Read-EnvDiag`, `handoff/<ID>-env.json`):
+- Da 3ª queda no bloco em diante (`guards.json → run.envDropsBeforeDiagnosis`, padrão 3), sem reparo e sem dev, o operator diagnostica AMBIENTE × PROVA em `operator/<n>/<ID>-ambiente.md`. PROVA é o teste que estoura o prazo, como o `no message in 120000 ms` do Karma na Q-S6e.
+- PROVA vai ao Arquiteto (`/arc question`), que decide o teste ou o prazo no plano.
+- O 1º AMBIENTE segue o reparo e zera a contagem.
+- O 2º AMBIENTE leva a Task a 🔴 sem reabertura automática, com a rota `ambiente-repetido` e a escolha em texto simples.
+- O `done` que volta com o diagnóstico pedido não conta como queda nova, e o diagnóstico de antes do pedido não decide.
+
+**B · O "Vale para" que o script lê** (`lib.ps1` `Read-AppliesTo`, `Get-ScopeTerms`, `Test-PlanTerms`, `Get-ScopeProse`, `Test-EntryApplies`, `Get-SprintDecisions`, `Get-TaskDecisionLines`; `knowledge.ps1`):
+- Forma nova `plano: <termo>`: a decisão, o conhecimento ou a armadilha chega à Task cujo plano traz o termo (`plano: prova-cdp.mjs`).
+- No fechamento, uma linha em §Achados de processo lista os registros com condição em texto, que não chegam a Task nenhuma. Medido no garden: **26 das 31 decisões do S6** ("toda Task de triagem…", "todo .scn que navega…").
+- A repetição "não chegou à Task" traz a proposta pronta: o ID da Task, a pasta comum dos arquivos dela ou `plano:`.
+- "portão do S<n>", `todas (…)` e caminhos contam como legíveis.
+
+**C · Em conflito, vale o plano** (cartão do dev, `agents/developer.md` item 12): o cartão e o contrato dizem que, quando o texto padrão e o plano discordam, vale o plano, sem 🔺 GAP só por isso.
+
+**D · A correção do portão prova o que corrige** (`close.ps1` R7-aceite, `run.ps1 done`, `gate.ps1`):
+- O cenário que falhou e não é citado em nenhum achado que a Q-S cobre continua reprovando, sem afrouxar nada, com a linha "falharam fora dos achados da <Q-S>".
+- O `done` que reprova só por esses cenários vai ao Arquiteto, para tirá-los da **Cenários:** do plano (ficam no portão), e não a outro dev.
+- O portão, ao abrir ou emendar a Q-S, diz os cenários citados nos achados.
+
+**E · Task dispensada sai riscada** (`mark.ps1 -To superseded -Decision "<decisão>"`): a linha fica "~~T-…~~ retirada — substituída", que a fila e o portão já pulavam. A estimativa sai do restante e o Registro e o run-log guardam a decisão. Nunca ✅, sem evidência; sem `-Decision`, recusa.
+
+**F · O formulário do fechamento sem ruído** (`knowledge.ps1`):
+- O GAP de ambiente que já é ocorrência de plugin não se repete nas propostas de configuração.
+- A proposta só aparece quando a decisão cita uma chave de configuração, e traz a chave. Antes eram 12 linhas com o mesmo "rever … (ex.: seedTimeoutSec, timeoutMinutes)".
+- O caminho de uma versão do plugin em `runCommands` vira proposta de tirar.
+
+**G · O custo da sessão principal: medido, sem mudança de código.**
+- Nas 4 maiores sessões do S6, o contexto parte de cerca de 48 mil e chega a 235 mil em 113 chamadas.
+- As saídas de ferramenta somam cerca de 50 mil (`sprint-run.md` 13 mil, as 21 saídas do `next` 8 mil). O custo vem do comprimento da conversa.
+- O reinício por teto já existe (`run.sessionContextCap`, 150 mil) e foi usado: 60 sessões no sprint. Ele só age sem agente em voo.
+- 380 M dos 398 M da sessão rodaram em haiku 5.5, quase tudo leitura de cache. Os 47,6% em tokens exageram o custo.
+- A alavanca que sobra é o teto do projeto, escolha do stakeholder.
+
+**H · Duração legível** (`consumption.ps1` `Format-DurationTotal`): nos totais, de 1 h para cima, `191h48`, e não `11508:59`. As linhas do registro seguem em mm:ss, que os scripts leem.
+
+**I · A contagem R28 por chamador** (`consumption.ps1`): abaixo dos Totais, os reports em `operator/<n>/` × as rodadas do operator chamadas por papel, com a diferença, mais as rodadas chamadas pela sessão (portão, diagnóstico, reconstrução), que gravam na pasta do portão e contam à parte.
+
+**J · O git do sprint e do fix** (pedido do stakeholder; `scripts/checks/git-flow.ps1` novo; `lib.ps1` `Invoke-GitBegin`, `Invoke-GitFinish`, `Get-GitCompareUrl`; `run.ps1 next` e `Save-TaskCommit`; `guards.json → git`):
+- O primeiro `next` do run cria `feat/sprint-<n>` a partir da base (`develop`; sem ela, `main`) ou volta a ela. O fix usa `git-flow.ps1 begin` e cria `fix/<id>`.
+- Com alteração pendente fora de `.team-project/`, ele não troca e avisa.
+- O commit de cada Task traz no corpo o "Feito" do relatório.
+- No fechamento, `git-flow.ps1 finish`, rodado pela sessão: commit `docs: …` dos `docsPaths`, `git push -u origin <branch>` e o título e a descrição do PR para a base na tela, com o link de abertura no GitHub e uma cópia em `.team-project/pr/`.
+- `git.push: false` só imprime o comando. Projeto sem git: nada muda.
+
+**K · Aviso do arquivo protegido no plano** (`plan.ps1`, linha `protegidos-lint`): o plano que cita lint ou formatação, com "Arquivos protegidos: nenhum" e a configuração da ferramenta em `protectedPaths`, recebe o aviso antes da construção, sem reprovar.
+
+**Fora:** a Q9 (resolvida na v3.65.1) e a prova no aparelho (v3.65.1 a v3.65.13, falta o campo no S7). Também fica de fora o "chegou ao cartão e não foi seguido" (3 repetições), que é obediência do agente.
+**Textos:** `workflow-sprint.md` (Git do sprint), `fix-run.md` (Git do bloco), `guards.json` modelo (`git`, `run.envDropsBeforeDiagnosis`), `agents/developer.md`.
+**Testes** (`run-check-tests.ps1`, marcados v3.65.14):
+- A: 8 casos
+- D: 4 casos
+- B e F: 4 casos
+- J: 8 casos, com repositório e remoto locais
+- E: 2 casos
+- K: 2 casos
+- H: 1 caso
+- I: a linha da contagem no caso do consumo existente
+
+---
+
 ## v3.65.13 — 2026-11-22
 **Branch:** `fix/v3.65.13` a partir de `develop` (`6304464`, com a v3.65.12 mesclada pelo PR #217)
 Origem: o sprint 6 do garden, em 22/11, das 15:33 às 16:31. No portão, o SC-142 falhou em `tap estufa.filtro-estado.PERDIDO` com "Position out of bounds" em várias rodadas. O QA trocou o passo duas vezes, uma delas tocando em "TODOS", que caía na mesma falha. O Arquiteto não resolveu. O stakeholder recebeu "o teste não consegue voltar ao topo da lista: como seguir?". A sessão disse que a linguagem de cenário não tinha como voltar, mas os verbos para isso já existiam (sair da aba e voltar). A causa real era o executor: com a lista rolada, a faixa de filtros ficava acima da tela e o "Perdido" à direita dentro dela. O executor rolava a faixa **na horizontal, fora da tela**, e o Chromium recusava o gesto.

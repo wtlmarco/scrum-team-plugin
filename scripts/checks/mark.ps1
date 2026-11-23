@@ -19,6 +19,9 @@
 #          sprints/<n>/handoff/<ID>-replan.md e o run.ps1 next manda o Arquiteto emendar o plano antes de qualquer dev.
 #        No piloto, "Ajustar a espera — o Arquiteto ajusta" virou -To build: o dev novo repetiu o verify que já tinha caído três
 #        vezes, com o plano ainda proibindo mexer no karma.conf.js.
+#   -To superseded -Decision "<decisão>" (v3.65.14): a Task que uma decisão do stakeholder dispensou (prova substituída por
+#        correções posteriores, escopo que saiu) sai do quadro riscada — "~~T-…~~ retirada — substituída" —, a estimativa sai
+#        do restante e o Registro e o run-log guardam a decisão. Nunca vira ✅ e não pede evidência; sem -Decision, recusa.
 # Saída: uma linha. Exit 0 · 2 = erro de uso ou de leitura (nada é gravado).
 param(
     [Parameter(Mandatory = $true)][string]$Task,
@@ -48,6 +51,15 @@ try {
     $marks = @($todo, $E.Plan, $E.Build, $E.QA, $red)
     $byName = @{ todo = $todo; plan = $E.Plan; build = $E.Build; qa = $E.QA; blocked = $red }
     $t = $To.Trim()
+    # v3.65.14 (E · garden S6: uma prova substituída por correções posteriores não tinha como sair de 🔴 sem um fechamento falso).
+    # -To superseded -Decision "<a decisão do stakeholder>": a Task fica riscada no quadro ("~~T-…~~ retirada", que a fila, o
+    # portão e a Review já tratam à parte), a estimativa sai do restante e o Registro guarda a decisão. Nunca vira ✅.
+    $supersede = $t -ieq 'superseded' -or $t -ieq 'substituida' -or $t -ieq 'substituída'
+    if ($supersede) {
+        if (-not $Decision.Trim()) { [Console]::Error.WriteLine('mark: -To superseded pede -Decision "<a decisão do stakeholder que dispensou a Task>" — sem ela, nada gravado.'); exit 2 }
+        if (-not $PSBoundParameters.ContainsKey('By')) { $By = 'stakeholder' }
+        $t = 'blocked'   # só para passar a validação abaixo; o destino real é a linha riscada
+    }
     if ($t -eq $E.Done -or $t -ieq 'done') { [Console]::Error.WriteLine('mark: o ✅ é do close.ps1 -Apply (confere o fechamento e baixa a estimativa).'); exit 2 }
     $target = if ($byName.ContainsKey($t.ToLowerInvariant())) { $byName[$t.ToLowerInvariant()] } elseif ($marks -contains $t) { $t } else { $null }
     if (-not $target) { [Console]::Error.WriteLine("mark: -To '$To' desconhecido — use todo, plan, build, qa ou blocked."); exit 2 }
@@ -103,6 +115,41 @@ try {
         if ($from) { $row = $i; break }
     }
     if ($row -lt 0) { [Console]::Error.WriteLine("mark: $Task sem linha com marcador no quadro ($boardPath)."); exit 2 }
+    if ($supersede) {
+        $dec = (($Decision -replace '\|', '/') -replace '\s+', ' ').Trim()
+        $cellsB = @(Split-Row $bl[$row]); $c0 = $cellsB[0]
+        $ix0 = $bl[$row].IndexOf($c0.Trim())
+        $bl[$row] = $bl[$row].Substring(0, $ix0) + "~~$($c0.Trim())~~ retirada — substituída" + $bl[$row].Substring($ix0 + $c0.Trim().Length)
+        # A estimativa da Task (coluna Est. do quadro) sai do restante; a Task sai das restantes e da coluna do marcador.
+        $est = 0.0; $hdrI = -1
+        for ($i = $row - 1; $i -ge 0; $i--) { if ($bl[$i].TrimStart().StartsWith('|') -and (Clean-Cell (Split-Row $bl[$i])[0]) -eq 'ID') { $hdrI = $i; break } }
+        if ($hdrI -ge 0) { $hc = @(Split-Row $bl[$hdrI] | ForEach-Object { Clean-Cell $_ }); for ($k = 0; $k -lt $hc.Count; $k++) { if ($hc[$k] -match '^Est') { $em = [regex]::Match([string]$cellsB[$k], '\d+(?:[.,]\d+)?'); if ($em.Success) { $est = [double]($em.Value -replace ',', '.') }; break } } }
+        $bdText = Read-Text $bdPath; $bnl = if ($bdText.Contains("`r`n")) { "`r`n" } else { "`n" }
+        $lines = ConvertTo-Lines $bdText
+        $se = Get-TableEnd $lines '^##\s+S[ée]rie'
+        if ($se -ge 0) {
+            $sTable = (Get-Tables (Get-Section $bdText '^##\s+S[ée]rie'))[0]
+            $last = Split-Row $lines[$se]; $first = if ($sTable.Rows.Count) { $sTable.Rows[0] } else { $last }
+            $d0 = Get-FirstDate (Get-Cell $first (Find-Col $sTable 'Data'))
+            $day = if ($d0) { [int]((Get-Date).Date - $d0).TotalDays } else { Clean-Cell (Get-Cell $last 0) }
+            $num = { param($s) $mm = [regex]::Match([string]$s, '\d+(?:[.,]\d+)?'); if ($mm.Success) { [double]($mm.Value -replace ',', '.') } else { 0 } }
+            $er = [Math]::Max(0, (& $num (Get-Cell $last (Find-Col $sTable 'Est. restante'))) - $est); $tr = [Math]::Max(0, (& $num (Get-Cell $last (Find-Col $sTable 'Tasks restantes'))) - 1)
+            $cells = @("$day", $now, "$Task $from → retirada (substituída) · $By", ("{0:0.##}" -f $er).Replace(',', '.'), "$([int]$tr)")
+            foreach ($mk in @($todo, $E.Plan, $E.Build, $E.QA, $E.Done, $red)) { $ci = Find-Col $sTable $mk; if ($ci -lt 0) { continue }; $v = [int](& $num (Get-Cell $last $ci)); if ($mk -eq $from) { $v = [Math]::Max(0, $v - 1) }; $cells += "$v" }
+            $lines.Insert($se + 1, '| ' + ($cells -join ' | ') + ' |')
+        }
+        $regRow = "| $Task | $from → retirada (substituída) | $now | $By · sessão (``mark.ps1``) — $dec |"
+        $re = Get-TableEnd $lines '^##\s+Registro de transi'
+        if ($re -ge 0) { $lines.Insert($re + 1, $regRow) } else { $rb = Get-TableEnd $bl '^##\s+Registro de transi'; if ($rb -ge 0) { $bl.Insert($rb + 1, $regRow) } }
+        $utf8 = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText($boardPath, ($bl -join $nl), $utf8)
+        [System.IO.File]::WriteAllText($bdPath, ($lines -join $bnl), $utf8)
+        if ($recFs) { Exit-FileLock $recFs $bdPath }
+        $rl = Join-Path $S 'run-log.md'
+        if (Test-Path -LiteralPath $rl) { [System.IO.File]::AppendAllText($rl, "| $now | $Task | retirada: substituída por decisão do stakeholder | $dec | sprint-backlog.md |`n", $utf8) }
+        [Console]::Out.WriteLine("mark: $Task $from → retirada (substituída: $dec) · a estimativa ($est) saiu do restante; a Review a lista à parte (nem ✅ nem pendente)")
+        return
+    }
     if ($from -eq $target) { [Console]::Error.WriteLine("mark: $Task já está $target."); exit 2 }
     # v3.64.2: sair de 🔴 diz como — retomar como está ou replanejar com o Arquiteto antes do dev.
     $replanWhy = ''

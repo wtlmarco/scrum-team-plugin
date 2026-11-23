@@ -2835,7 +2835,8 @@ function Get-SprintDecisions([string]$Root, [string]$Sprint) {
         $all = $scope -match '(?i)^\s*todas'
         $ids = @([regex]::Matches($scope, $script:TaskIdRe) | ForEach-Object { $_.Value })
         $rule = (@($body -split "`r?`n" | Where-Object { $_.Trim() -and $_ -notmatch $script:EntryMetaRe } | ForEach-Object { $_.Trim() }) -join ' ').Trim()
-        $out += [pscustomobject]@{ Id = $m.Groups[1].Value; Title = $m.Groups[2].Value.Trim(); All = $all; Ids = $ids; Rule = $rule; Body = $body; Class = (Get-LessonClass $body) }
+        $vline = if ($vm.Success) { $vm.Groups[1].Value } else { '' }
+        $out += [pscustomobject]@{ Id = $m.Groups[1].Value; Title = $m.Groups[2].Value.Trim(); All = $all; Ids = $ids; Terms = @(Get-ScopeTerms $vline); Scope = $vline; Rule = $rule; Body = $body; Class = (Get-LessonClass $body) }
     }
     return $out
 }
@@ -2949,14 +2950,46 @@ function Get-KnowledgePath([string]$Root) { return (Join-Path $Root '.team-proje
 # "Vale para" de K, D e armadilha de stack: todas, T-IDs e globs de caminho, separados por vírgula (crases opcionais).
 function Read-AppliesTo([string]$Body) {
     $vm = [regex]::Match([string]$Body, '(?m)^\*\*Vale para:\*\*\s*([^\r\n]*)$')
-    $scope = if ($vm.Success) { ($vm.Groups[1].Value -split '\s+·\s+')[0] } else { '' }
+    $line = if ($vm.Success) { $vm.Groups[1].Value } else { '' }
+    $scope = ($line -split '\s+·\s+')[0]
     $all = $scope -match '(?i)^\s*todas\b'
     $ids = @(); $globs = @()
     foreach ($it in @($scope -split '[,;]' | ForEach-Object { ($_ -replace '`', '').Trim() } | Where-Object { $_ })) {
-        if ($it -match '(?i)^todas$') { continue }
+        if ($it -match '(?i)^todas$' -or $it -match '(?i)^plano:') { continue }
         if ($it -match ('^' + $script:TaskIdRe + '$')) { $ids += $it } else { $globs += ($it -replace '\\', '/') }
     }
-    return [pscustomobject]@{ All = [bool]$all; Ids = $ids; Globs = $globs }
+    return [pscustomobject]@{ All = [bool]$all; Ids = $ids; Globs = $globs; Terms = @(Get-ScopeTerms $line) }
+}
+# v3.65.14 (B · garden S6: a D-27 "toda Task de triagem de falhas do alvo" e a K-17 "(Task com `npm run alvo:capturar` …)"
+# não chegaram às Tasks que repetiram o erro — condição em texto, que o casamento por ID e glob não lê). A forma
+# `plano: <termo>` no **Vale para** casa quando o termo aparece no plano da Task (sem diferença de maiúscula). Vale em
+# qualquer parte da linha, até antes do primeiro campo **…:** que vem depois.
+function Get-ScopeTerms([string]$Line) {
+    $l = ([string]$Line -split '\*\*[^*]+:\*\*')[0]
+    return @([regex]::Matches($l, '(?i)\bplano:\s*`?([^,;·`]+?)`?\s*(?=[,;·]|$)') | ForEach-Object { $_.Groups[1].Value.Trim() } | Where-Object { $_ } | Select-Object -Unique)
+}
+function Test-PlanTerms([string[]]$Terms, [string]$PlanText) {
+    if (-not $PlanText) { return $false }
+    foreach ($t in @($Terms)) { if ($t -and $PlanText.IndexOf($t, [StringComparison]::OrdinalIgnoreCase) -ge 0) { return $true } }
+    return $false
+}
+# Os trechos do **Vale para** que o script não lê: nem `todas`, nem ID de Task, nem caminho/glob, nem `plano:`. Para o aviso
+# do fechamento (knowledge.ps1): a condição em texto não chega a Task nenhuma.
+function Get-ScopeProse([string]$Line) {
+    $l = ([string]$Line -split '\*\*[^*]+:\*\*')[0]
+    if ($l -match '(?i)^\s*todas\b') { return @() }   # chega a toda Task; o parêntese é comentário
+    $l = $l -replace '\([^)]*\)', ''                   # o parêntese explica, não decide a quem vale
+    $out = @()
+    foreach ($part in @($l -split '\s+·\s+|[,;]')) {
+        $p = ($part -replace '`', '').Trim().TrimEnd('.')
+        if (-not $p) { continue }
+        if ($p -match ('^' + $script:TaskIdRe + '$')) { continue }
+        if ($p -match '(?i)^plano:') { continue }
+        if ($p -match '(?i)^(o )?port[ãa]o( do)? S\d+$') { continue }         # a correção do portão: o portão a lê pelo sprint
+        if ($p -notmatch '\s' -and $p -match '[/*]|\.\w{1,6}$') { continue }   # caminho ou glob
+        $out += $p
+    }
+    return $out
 }
 $script:EntryMetaRe = '^\*\*(Vale para|Origem|Li[çc][ãa]o|Desde|At[ée]|Promovida|Sintoma|Fato|Como testar):\*\*'
 function Get-ProjectKnowledge([string]$Root) {
@@ -2968,7 +3001,7 @@ function Get-ProjectKnowledge([string]$Root) {
         $um = [regex]::Match($body, '\*\*At[ée]:\*\*\s*([^\r\n·]*)')
         $sm = [regex]::Match($body, '\*\*Desde:\*\*\s*S?(\d+)')
         $rule = (@($body -split "`r?`n" | Where-Object { $_.Trim() -and $_ -notmatch $script:EntryMetaRe } | ForEach-Object { $_.Trim() }) -join ' ').Trim()
-        $out += [pscustomobject]@{ Id = $m.Groups[1].Value; Title = $m.Groups[2].Value.Trim(); All = $ap.All; Ids = $ap.Ids; Globs = $ap.Globs; Rule = $rule; Body = $body
+        $out += [pscustomobject]@{ Id = $m.Groups[1].Value; Title = $m.Groups[2].Value.Trim(); All = $ap.All; Ids = $ap.Ids; Globs = $ap.Globs; Terms = $ap.Terms; Rule = $rule; Body = $body
                                    Until = $(if ($um.Success) { $um.Groups[1].Value.Trim() } else { '' }); Since = $(if ($sm.Success) { [int]$sm.Groups[1].Value } else { 0 }) }
     }
     return $out
@@ -2985,8 +3018,9 @@ function Get-TaskFiles([string]$Root, [string]$Sprint, [string]$TaskId, [string]
     }
     return @($fs | Where-Object { $_ } | Select-Object -Unique)
 }
-function Test-EntryApplies($Entry, [string]$TaskId, [string[]]$Files, [string[]]$Refs) {
+function Test-EntryApplies($Entry, [string]$TaskId, [string[]]$Files, [string[]]$Refs, [string]$PlanText = '') {
     if ($Entry.All -or (@($Entry.Ids) -contains $TaskId) -or (@($Refs) -contains $Entry.Id)) { return $true }
+    if ($Entry.PSObject.Properties['Terms'] -and (Test-PlanTerms @($Entry.Terms) $PlanText)) { return $true }   # v3.65.14 (B)
     if (-not @($Entry.Globs).Count -or -not @($Files).Count) { return $false }
     foreach ($f in @($Files)) { if (Test-GlobMatch (Normalize-PathText $f) @($Entry.Globs)) { return $true } }
     return $false
@@ -2996,7 +3030,7 @@ function Test-EntryApplies($Entry, [string]$TaskId, [string[]]$Files, [string[]]
 function Get-TaskKnowledgeLines([string]$Root, [string]$Sprint, [string]$TaskId, [string]$PlanText = '', [int]$MaxChars = 300) {
     $ks = @(Get-ProjectKnowledge $Root); if (-not $ks.Count) { return @() }
     $files = @(Get-TaskFiles $Root $Sprint $TaskId $PlanText); $refs = @(Get-PlanKnowledgeRefs $PlanText)
-    return @($ks | Where-Object { Test-EntryApplies $_ $TaskId $files $refs } | ForEach-Object {
+    return @($ks | Where-Object { Test-EntryApplies $_ $TaskId $files $refs $PlanText } | ForEach-Object {
         $r = if ($_.Rule.Length -gt $MaxChars) { $_.Rule.Substring(0, $MaxChars).TrimEnd() + '…' } else { $_.Rule }
         "- $($_.Id) — $($_.Title)$(if ($r) { ": $r" })$(if ($_.Until) { " (até: $($_.Until))" })" })
 }
@@ -3063,7 +3097,7 @@ function Get-StackPitfallLines([string]$Root, [string]$Sprint, [string]$TaskId, 
 # As decisões que valem para a Task: "todas", as que a citam em **Vale para:** e as que o plano cita. Uma linha cada.
 function Get-TaskDecisionLines([string]$Root, [string]$Sprint, [string]$TaskId, [string]$PlanText = '', [int]$MaxChars = 300) {
     $refs = Get-PlanDecisionRefs $PlanText
-    return @(Get-SprintDecisions $Root $Sprint | Where-Object { $_.All -or ($_.Ids -contains $TaskId) -or ($refs -contains $_.Id) } | ForEach-Object {
+    return @(Get-SprintDecisions $Root $Sprint | Where-Object { $_.All -or ($_.Ids -contains $TaskId) -or ($refs -contains $_.Id) -or (Test-PlanTerms @($_.Terms) $PlanText) } | ForEach-Object {
         $r = if ($_.Rule.Length -gt $MaxChars) { $_.Rule.Substring(0, $MaxChars).TrimEnd() + '…' } else { $_.Rule }
         "- $($_.Id) — $($_.Title)$(if ($r) { ": $r" })" })
 }
@@ -3375,4 +3409,125 @@ function Get-GateSummary([string]$S, [string]$n) {
         [pscustomobject]@{ Id = $f.id; Text = [string]$f.text; Cause = $(if ($script:CausePlain.ContainsKey($c)) { $script:CausePlain[$c] } else { 'sem causa' }); Owner = $(if ($o -and $script:OwnerPlain.ContainsKey($o)) { $script:OwnerPlain[$o] } else { '—' }); State = $(if ($script:FindingStatePlain.ContainsKey([string]$f.state)) { $script:FindingStatePlain[[string]$f.state] } else { [string]$f.state }) }
     })
     return [pscustomobject]@{ Round = [Math]::Max([int]$g.round, $vr); Judged = $vr; Verdict = $vm; Fronts = $fr; Findings = $fs; EnvAttempts = [int]$g.env.attempts; Proof = $(if ([int]$g.proof) { "sprints/$n/proof/S$n/round-$([int]$g.proof)/" } else { '' }) }
+}
+# ============================ v3.65.14 (J) · o git do sprint e do fix ============================
+# Pedido do stakeholder (23/11): todo sprint e todo fix trabalha numa branch com nome em inglês (feat/sprint-<n>, fix/<id>), um
+# commit por Task (já era assim, desde a v3.52; agora com o que entrou no corpo) e, no fechamento, o commit da documentação
+# revisada, o push e o texto do PR para a base, na tela. guards.json → git: { "branchPerRun": true, "push": true,
+# "base": "develop", "docsPaths": ["docs/**", "README.md", "CHANGELOG.md"] } — false desliga cada parte; sem git, nada.
+function Get-GitSetting([string]$Root, [string]$Name, $Default) {
+    $g = Join-Path $Root '.team-project/guards.json'
+    if (-not (Test-Path -LiteralPath $g)) { return $Default }
+    try { $j = Read-Text $g | ConvertFrom-Json } catch { return $Default }
+    if (-not $j.PSObject.Properties['git'] -or $null -eq $j.git -or -not $j.git.PSObject.Properties[$Name] -or $null -eq $j.git.$Name) { return $Default }
+    return $j.git.$Name
+}
+function Get-RunBranchName([string]$Track, [string]$Id) {
+    if ($Track -eq 'fix') { return 'fix/' + (([string]$Id).ToLowerInvariant() -replace '[^a-z0-9.]+', '-').Trim('-') }
+    return "feat/sprint-$(([string]$Id).Trim())"
+}
+function Invoke-GitCmd([string]$Root, [string[]]$GitArgs) {
+    $ErrorActionPreference = 'Continue'
+    $o = & git -C $Root @GitArgs 2>&1 | Out-String
+    return @{ Code = $LASTEXITCODE; Out = $o.Trim() }
+}
+function Test-GitRepo([string]$Root) { return (Invoke-GitCmd $Root @('rev-parse', '--is-inside-work-tree')).Code -eq 0 }
+function Test-GitRef([string]$Root, [string]$Ref) { return (Invoke-GitCmd $Root @('rev-parse', '--verify', '--quiet', $Ref)).Code -eq 0 }
+function Test-GitRemote([string]$Root) { return (Invoke-GitCmd $Root @('remote', 'get-url', 'origin')).Code -eq 0 }
+# A base declarada (padrão develop); sem ela, main e depois master. Devolve o nome local ('' sem nenhuma).
+function Get-GitBase([string]$Root) {
+    $want = [string](Get-GitSetting $Root 'base' 'develop')
+    foreach ($b in @($want, 'main', 'master') | Select-Object -Unique) { if ((Test-GitRef $Root $b) -or (Test-GitRef $Root "origin/$b")) { return $b } }
+    return ''
+}
+# O que está pendente fora de .team-project/ (o .team-project não vai ao git, R31).
+function Get-GitPending([string]$Root) {
+    # Sem o Trim da saída inteira: a 1ª linha do porcelain começa com espaço (" M docs/…") e o corte de 3 colunas a comeria.
+    $ErrorActionPreference = 'Continue'
+    $st = @(& git -C $Root status --porcelain -uall 2>$null)
+    return @($st | ForEach-Object { [string]$_ } | Where-Object { $_.Length -gt 3 } | ForEach-Object { ($_.Substring(3) -split ' -> ')[-1].Trim('"') } | Where-Object { $_ -and $_ -notmatch '^\.team-project(/|$)' })
+}
+# Abre (ou retoma) a branch do run. @{ Lines; Branch; Ok } — Ok falso só quando não trocou por alteração pendente.
+function Invoke-GitBegin([string]$Root, [string]$Track, [string]$Id) {
+    $out = @{ Lines = @(); Branch = ''; Ok = $true }
+    if (-not (Test-GitRepo $Root)) { $out.Lines += 'git: projeto sem git — sem branch do run'; return $out }
+    if (-not [bool](Get-GitSetting $Root 'branchPerRun' $true)) { $out.Lines += 'git: guards.json → git.branchPerRun = false — o run segue na branch atual'; return $out }
+    $want = Get-RunBranchName $Track $Id; $out.Branch = $want
+    $cur = (Invoke-GitCmd $Root @('rev-parse', '--abbrev-ref', 'HEAD')).Out
+    if ($cur -eq $want) { return $out }
+    $pend = @(Get-GitPending $Root)
+    if ($pend.Count) {
+        $out.Ok = $false
+        $out.Lines += "git: a branch do run é $want, mas há alteração pendente fora de .team-project/ ($(($pend | Select-Object -First 5) -join ', ')$(if ($pend.Count -gt 5) { " e mais $($pend.Count - 5)" })): o run segue na $cur, sem trocar — os commits das Tasks vão para ela. Para trocar: commit ou stash do que está pendente e o next de novo"
+        return $out
+    }
+    if (Test-GitRef $Root $want) {
+        $r = Invoke-GitCmd $Root @('switch', $want)
+        $out.Lines += $(if ($r.Code -eq 0) { "git: de volta à branch $want (já existia)" } else { "git: não troquei para $want — $($r.Out)" }); if ($r.Code -ne 0) { $out.Ok = $false }
+        return $out
+    }
+    $base = Get-GitBase $Root
+    $from = 'HEAD'
+    if ($base) {
+        if (Test-GitRemote $Root) { $null = Invoke-GitCmd $Root @('fetch', '-q', 'origin', $base) }
+        $from = if (Test-GitRef $Root "origin/$base") { "origin/$base" } else { $base }
+    }
+    $r = Invoke-GitCmd $Root @('switch', '--no-track', '-c', $want, $from)
+    if ($r.Code -eq 0) { $out.Lines += "git: branch $want criada a partir de $from" } else { $out.Ok = $false; $out.Lines += "git: não criei a branch $want — $($r.Out)" }
+    return $out
+}
+# O endereço de abrir o PR no GitHub ('' fora dele).
+function Get-GitCompareUrl([string]$Root, [string]$Base, [string]$Branch) {
+    $u = (Invoke-GitCmd $Root @('remote', 'get-url', 'origin')).Out
+    $m = [regex]::Match($u, '(?i)github\.com[:/]+([^/\s]+)/([^/\s]+?)(\.git)?$')
+    if (-not $m.Success) { return '' }
+    return "https://github.com/$($m.Groups[1].Value)/$($m.Groups[2].Value)/compare/$Base...$Branch`?expand=1"
+}
+# O fechamento: o commit da documentação revisada, o push e o texto do PR. -Title é o objetivo do sprint ou o título do
+# fix; -Pending, as Tasks que não fecharam. @{ Lines; Title; Body; Url }.
+function Invoke-GitFinish([string]$Root, [string]$Track, [string]$Id, [string]$Title = '', [string[]]$Pending = @(), [string]$Verdict = '') {
+    $out = @{ Lines = @(); Title = ''; Body = ''; Url = '' }
+    if (-not (Test-GitRepo $Root)) { $out.Lines += 'git: projeto sem git — sem commit de documentação, push nem PR'; return $out }
+    $branch = (Invoke-GitCmd $Root @('rev-parse', '--abbrev-ref', 'HEAD')).Out
+    $base = Get-GitBase $Root
+    $label = if ($Track -eq 'fix') { "correção $Id" } else { "sprint $Id" }
+    # 1. A documentação revisada: só os caminhos de git.docsPaths; o resto pendente fica fora e é citado.
+    $docGlobs = @(Get-GitSetting $Root 'docsPaths' @('docs/**', 'README.md', 'CHANGELOG.md'))
+    $pend = @(Get-GitPending $Root)
+    $docs = @($pend | Where-Object { Test-GlobMatch $_ $docGlobs })
+    $rest = @($pend | Where-Object { $docs -notcontains $_ })
+    if ($docs.Count) {
+        foreach ($f in $docs) { $null = Invoke-GitCmd $Root @('add', '-A', '--', ":(literal)$f") }
+        $mf = [System.IO.Path]::GetTempFileName()
+        try {
+            [System.IO.File]::WriteAllText($mf, "docs: documentação revisada — $label`n`n" + (($docs | ForEach-Object { "- $_" }) -join "`n") + "`n", (New-Object System.Text.UTF8Encoding($false)))
+            $c = Invoke-GitCmd $Root (@('commit', '-q', '-F', $mf, '--') + @($docs | ForEach-Object { ":(literal)$_" }))
+        } finally { Remove-Item -LiteralPath $mf -Force -ErrorAction SilentlyContinue }
+        $out.Lines += $(if ($c.Code -eq 0) { "git: commit da documentação revisada ($($docs.Count) arquivo(s)): $((Invoke-GitCmd $Root @('rev-parse', '--short', 'HEAD')).Out)" } else { "git: o commit da documentação falhou — $($c.Out)" })
+    } else { $out.Lines += 'git: nenhuma documentação pendente para commit' }
+    if ($rest.Count) { $out.Lines += "git: fora do commit (não é documentação): $(($rest | Select-Object -First 5) -join ', ')$(if ($rest.Count -gt 5) { " e mais $($rest.Count - 5)" })" }
+    # 2. O push — da sessão; a G14 nega o git push ao subagente.
+    $pushCmd = "git push -u origin $branch"
+    if (-not (Test-GitRemote $Root)) { $out.Lines += 'git: sem remoto origin — sem push' }
+    elseif (-not [bool](Get-GitSetting $Root 'push' $true)) { $out.Lines += "git: guards.json → git.push = false — o stakeholder roda: $pushCmd" }
+    else {
+        $p = Invoke-GitCmd $Root @('push', '-u', 'origin', $branch)
+        $out.Lines += $(if ($p.Code -eq 0) { "git: push da $branch feito" } else { "git: o push falhou — $(($p.Out -split "`r?`n" | Select-Object -Last 2) -join ' ') · o stakeholder roda: $pushCmd" })
+    }
+    # 3. O texto do PR, a partir dos commits da branch.
+    $range = if ($base) { "$(if (Test-GitRef $Root "origin/$base") { "origin/$base" } else { $base })..HEAD" } else { 'HEAD' }
+    $subj = @((Invoke-GitCmd $Root @('log', '--no-merges', '--reverse', '--format=%s', $range)).Out -split "`r?`n" | Where-Object { $_.Trim() })
+    $tasks = @($subj | Where-Object { $_ -notmatch '^docs:' -and $_ -notmatch '\(checkpoint' })
+    $docC = @($subj | Where-Object { $_ -match '^docs:' })
+    $out.Title = if ($Track -eq 'fix') { "fix($Id): $(if ($Title) { $Title } else { 'correção' })" } else { "Sprint ${Id}$(if ($Title) { ": $Title" })" }
+    $b = @("## $(if ($Track -eq 'fix') { "Correção $Id" } else { "Sprint $Id" })", '')
+    if ($Title) { $b += "$Title", '' }
+    $b += '### O que entrou'
+    $b += $(if ($tasks.Count) { @($tasks | ForEach-Object { "- $_" }) } else { @('- (nenhum commit de Task nesta branch)') })
+    if ($docC.Count) { $b += '', '### Documentação'; $b += @($docC | ForEach-Object { "- $_" }) }
+    if (@($Pending).Count) { $b += '', '### Ficou para depois'; $b += @($Pending | ForEach-Object { "- $_" }) }
+    if ($Verdict) { $b += '', '### Validação', "- $Verdict" }
+    $out.Body = ($b -join "`n").TrimEnd()
+    $out.Url = Get-GitCompareUrl $Root $(if ($base) { $base } else { 'develop' }) $branch
+    return $out
 }
