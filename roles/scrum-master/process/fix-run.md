@@ -74,6 +74,8 @@ Só depois do C4 do passo 5 (F-IDs que fecham = veredito ✅ e itens bloqueantes
 
 **Commit por Correção (v3.52).** O checkpoint `F-<nnn>:` do passo 2 é o equivalente do commit `T-<nnn>:` do `sprint run`: nunca `.team-project/` (R31); sem git, a cópia dos trechos originais.
 
+**Git do bloco (v3.65.14, pedido do stakeholder).** Logo depois de gravar o `.active-run`, a sessão roda `scripts/checks/git-flow.ps1 begin`: a branch `fix/<id do bloco>` (`fix/b-002`) sai da base (`guards.json → git.base`, padrão `develop`) ou é retomada. Com alteração pendente fora de `.team-project/`, ela não troca e avisa. No §Fechamento, depois do relatório e da documentação revisada, a sessão roda `git-flow.ps1 finish`. Ele faz o commit `docs: …`, o push e imprime o título e a descrição do PR para a base, com o link, para o stakeholder colar. Mesmas chaves e mesmas regras do sprint ([`workflow-sprint.md`](workflow-sprint.md) §Git do sprint).
+
 ## Bloco — resumo das regras
 
 | Aspecto | Regra |
