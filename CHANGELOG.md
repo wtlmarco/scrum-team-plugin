@@ -13,6 +13,13 @@
 
 ---
 
+## v3.65.15 — 2026-11-23
+**Branch:** `fix/v3.65.15` a partir de `develop` (`94323fc`, com a v3.65.14 mesclada pelo PR #221)
+Origem: o ensaio do kit do benchmark da virada (23/11), antes de qualquer braço. Num app Android nativo, um `.kt` mexido e desfeito (`git checkout`) deixou o `accept` recusando "APK mais velho que o código" a cada rodada. O `assembleDebug` viu as fontes iguais e não regravou o APK, cuja data não mudou. Só saiu apagando o APK. É o laço que a v3.65.12 (item A) queria fechar.
+
+**A · A idade do APK pelo conteúdo vale para caminho com maiúscula** (`lib.ps1` `Get-ContentChangedSince`). As chaves dos arquivos são minúsculas, e iam assim ao `git ls-files`, ao `git status` e ao `git log`. O pathspec do git diferencia maiúsculas mesmo com `core.ignorecase = true`, no Windows. Todo caminho com maiúscula (quase todo `.kt`, `MainActivity.kt`, `Conteiner.kt`) saía como "fora do git", e a data voltava a valer. O caso do garden passou na v3.65.12 porque o arquivo era todo minúsculo (`lista-insumos.component.html`). Agora o pathspec vai como `:(literal,icase)<caminho>`: casa sem distinção de caixa, também com uma pasta que só mudou de grafia, e sem glob (`[`, `*` e `?` no nome).
+
+**Testes:** `run-check-tests.ps1`, caso v3.65.15 (módulo nativo inferido de `build/outputs/apk`, `br/X/Tela.kt` e `Str[1].xml`): fonte com a data nova e o conteúdo do commit → não é app velho; `.kt` mudado → app velho. Suítes: `run-all-tests.ps1` 1223/0; `release.ps1` ok.
 ## v3.65.14 — 2026-11-23
 **Branch:** `fix/v3.65.14` a partir de `develop` (`aa05e6f`, com a v3.65.13 mesclada pelo PR #219) · **Plano:** `melhorias/plano-v3.65.14.md` (itens A a K, aprovados pelo stakeholder em 23/11)
 Origem: o `plugin-report.md` do sprint 6 do garden (22/11, plugin 3.65.12), conferido contra o `run-log.md`, o `lessons.md`, o `consumption.md`, as decisões do S6 e o código. A conferência mudou três itens do relatório:
