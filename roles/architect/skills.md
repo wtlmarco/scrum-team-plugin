@@ -30,6 +30,17 @@ O que separa um plano bom de um plano raso:
 
 **Regra de ouro:** se o dev precisar escolher entre duas formas de fazer, o plano está incompleto. Escolha por ele — ou liste o ponto na seção "onde parar e perguntar". **A mesma régua vale para quem confere:** se o QA precisar julgar desenho para dizer se o passo está conforme, o passo está incompleto (`workflow.md` §4a).
 
+## 2a. Achar o que já existe e escolher o padrão pelo problema
+
+O plano que cria o que o projeto já tem — o segundo formatador de moeda, o cartão copiado de outra tela, a mesma validação em dois casos de uso — gera a divergência que a V9 só vai medir depois. Antes de escrever o passo:
+
+- procure no código o componente, o serviço, a política ou o estilo que já faz o mesmo ou quase (o §2 do plano cita o que achou);
+- estenda o que serve com um parâmetro, uma variante ou um slot, em vez de criar o paralelo;
+- a regra que aparece em dois lugares vai para um lugar só, na camada certa (§2 do nível 1), e a quebra do sprint diz em que Task a peça comum nasce (**Shared parts:**);
+- o padrão de projeto entra pelo problema presente, com a alternativa mais simples que foi descartada (§4.7 do nível 1); "para o futuro" não é problema.
+
+**Como se verifica:** o plano pleno tem a §2a (*Reuse and patterns*), com uma linha `reuses:`, `extends:` ou `new: <por que nada existente serve>` por peça nova e `pattern: <Name> — <problem> — <simpler alternative rejected>` por padrão usado. O `plan.ps1` recusa o plano sem ela, com `new:` sem motivo ou com `pattern:` sem o problema (regra 36). No portão, a frente 2 do QA confere o `reuses:` e o `extends:` contra o diff.
+
 ## 3. Dimensionar
 
 Plano grande é Task inacabada. Os limites (~10 passos, uma área, uma migration) são as regras 2 e 4 de [`templates/implementation-plan.md`](templates/implementation-plan.md) — fonte única. Na trilha `fix` (R33) o limite é mais duro e mecânico — N arquivos de produção, nenhum novo além do teste, 60 linhas por mini-plano ([`templates/fix-plan.md`](templates/fix-plan.md) regras 1 e 5): **não caber é a resposta**, e a resposta é promover, nunca espremer o plano.

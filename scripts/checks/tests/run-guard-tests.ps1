@@ -1279,6 +1279,31 @@ $cases = @(
        Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessPrep'; tool_input = @{ questions = @(@{ question = '[ACME · S1 · H-Q] Os cards podem ficar lado a lado? Exemplo: hoje cada card ocupa a linha inteira.'; header = 'Cards'; multiSelect = $false; options = @((Opt 'Quando couber (Recomendado)'), (Opt 'Pedir mais contexto')) }) } } }
 )
 
+
+# v3.66.0 (R36) — o inventário dos formulários legítimos: cada modo que abre formulário ao stakeholder declara o impasse do
+# tipo dele (impasse.ps1 raise) e o formulário passa na G24 de primeira, fora do sprint run. Um caso por modo.
+$invModes = @(
+    @{ M = '/team update'; Part = 'MODO-UPDATE'; A = @('-Type', 'plugin-update', '-Detail', '3.65.14 para 3.66.0') },
+    @{ M = 'onboarding (cadência)'; Part = 'MODO-ONBOARDING'; A = @('-Type', 'configuration', '-Detail', 'guards.json → run.planner = claude') },
+    @{ M = 'brainstorm'; Part = 'MODO-BRAINSTORM'; A = @('-Type', 'scope', '-Detail', 'a ideia entra no backlog') },
+    @{ M = 'SDD ①'; Part = 'MODO-SDD'; A = @('-Type', 'gate', '-Gate', '①') },
+    @{ M = 'sprint 0 (aceite)'; Part = 'MODO-SPRINT0'; A = @('-Type', 'gate', '-Gate', 'sprint0') },
+    @{ M = 'prepare (escopo)'; Part = 'MODO-PREPARE'; A = @('-Type', 'scope', '-Detail', 'a H-S reduzida a Compras') },
+    @{ M = 'plan ③'; Part = 'MODO-PLAN'; A = @('-Type', 'gate', '-Gate', '③') },
+    @{ M = 'review (aceite)'; Part = 'MODO-REVIEW'; A = @('-Type', 'gate', '-Gate', 'review') },
+    @{ M = 'close (propostas de configuração)'; Part = 'MODO-CLOSE'; A = @('-Type', 'configuration', '-Detail', 'targets.android.repair') },
+    @{ M = 'fix plan (ajustes, R33)'; Part = 'B-901'; A = @('-Type', 'gate', '-Gate', 'fix-adjust') },
+    @{ M = '/sec (escopo autorizado)'; Part = 'MODO-SEC'; A = @('-Type', 'authorization', '-Detail', 'pentest gray-box em homologação') },
+    @{ M = 'decisão estratégica'; Part = 'MODO-ADR'; A = @('-Type', 'strategic', '-Detail', 'provider: trocar o serviço de e-mail') }
+)
+foreach ($im in $invModes) {
+    $imArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $root 'scripts/checks/impasse.ps1'), 'raise', '-Part', $im.Part, '-Subject', 'formulario', '-Origin', $im.M, '-Consulted', 'none', '-Text', "decisão do modo $($im.M)") + $im.A + @('-Root', $proj)
+    $cases += @{ Name = "v3.66.0 inventário: $($im.M) — o raise do tipo dele grava a rota e o formulário passa na G24"; Script = 'pre-tool.ps1'; Expect = 0
+        Setup = [scriptblock]::Create("[System.IO.File]::WriteAllText((Join-Path `$proj '.team-project/README.md'), ""# Contexto``n``n## 7. Decisões pendentes do stakeholder``n``nnenhuma``n"", (New-Object System.Text.UTF8Encoding(`$false))); foreach (`$f in '.active-run', '.run-session', '.ask-route') { Remove-Item -LiteralPath (Join-Path `$proj "".team-project/`$f"") -Force -ErrorAction SilentlyContinue }; `$o = & powershell $(($imArgs | ForEach-Object { "'" + ($_ -replace "'", "''") + "'" }) -join ' ') 2>&1; if (`$LASTEXITCODE -ne 0) { Write-Host ('raise falhou: ' + (`$o -join ' ')) }")
+        Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') -Raw -Encoding UTF8) -match '"usado":' }
+        Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessInv'; tool_input = @{ questions = @(@{ question = 'Você aprova esta decisão? Exemplo: o que muda para você em cada opção está na descrição.'; header = 'Modo'; multiSelect = $false; options = @((Opt 'Aprovar (Recomendado)'), (Opt 'Pedir mais contexto')) }) } } }
+}
+
 $rows = @(); $fail = 0
 foreach ($c in $cases) {
     if ($c.Setup) { & $c.Setup }

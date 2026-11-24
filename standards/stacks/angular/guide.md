@@ -55,3 +55,13 @@ Regra de lint que falha o build (Q1): `@nx/enforce-module-boundaries` em workspa
 
 - **Orçamento** no `angular.json` (`budgets`: tamanho inicial e por componente) e Web Vitals p75 num cenário Playwright.
 - **O artefato entregue é o `ng build --configuration production`** servido estático: o portão do QA roda os cenários contra ele.
+
+## NG-8 Reuse and patterns (exemplos de §4.6 e §4.7)
+
+*Não normativo: a regra é a do [nível 1](../../implementation-principles.md) §4.6 e §4.7; aqui, a forma na stack.*
+
+- **Componente standalone compartilhado** para o que duas telas mostram igual (o cartão, o seletor, a pílula): um componente com `input()` e `output()`, nunca o HTML copiado. A variação vai por input ou por slot (`ng-content`), não por cópia.
+- **Pipe** para a formatação que se repete (moeda, data, unidade): um pipe puro, usado por todas as telas.
+- **Serviço `providedIn: 'root'`** para a regra ou o cálculo de mais de um componente; o componente só chama.
+- **Estilo no tema global** (variáveis CSS, classes utilitárias do projeto) em vez do mesmo SCSS em cada componente.
+- **Strategy** pela injeção: um `InjectionToken` com a implementação por tipo, em vez do `switch` em cada componente. **Adapter** é o serviço de infraestrutura que fala com a API ou o plugin nativo.

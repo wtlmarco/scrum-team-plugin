@@ -14,7 +14,7 @@
 ---
 
 ## v3.66.0 — 2026-11-23
-**Branch:** `feat/v3.66.0` a partir de `develop` (`8e20d86`, com a v3.65.15 mesclada pelo PR #223) · **Plano:** `melhorias/plano-v3.66.0.md` (etapa 1, itens A a F, e etapa 2, itens G a J; o item K vem depois)
+**Branch:** `feat/v3.66.0` a partir de `develop` (`8e20d86`, com a v3.65.15 mesclada pelo PR #223) · **Plano:** `melhorias/plano-v3.66.0.md` (etapa 1, itens A a F; etapa 2, itens G a J; e o item K)
 Origem: a conferência da preparação do sprint 7 do garden (23/11, plugin 3.65.14). O stakeholder foi chamado 22 vezes, e 15 eram do time:
 - licença para o próprio trabalho;
 - o que ele mesmo tinha relatado ou decidido;
@@ -70,6 +70,26 @@ A regra "quem resolve" morava em nove lugares. A G24 só olhava a sessão do `sp
 **Testes (etapa 2):**
 - `run-check-tests.ps1`: o dono de cada causa pela matriz e o papel pelo nome do dono; a rota do run registrada uma vez e fechada ao apagar; a pendência R34 gravada na §7 e resolvida pelo `close`, com a pergunta repetida recusada; o C3 com a causa só no JSON.
 - `run-guard-tests.ps1`: o `raise` grava a pendência e o formulário com o prefixo passa na G3 e na G24.
+
+**Item K — reuso, centralização e design patterns como standard do Arquiteto (aprovado em 23/11):**
+- **Standard:** `standards/implementation-principles.md` ganha o **§4.6** (*Reuse, componentization and centralization*: procurar antes de criar, estender antes de duplicar, uma regra num lugar só, peça usada duas vezes vira compartilhada, o que varia é configuração) e o **§4.7** (*Design patterns*: o padrão vem do problema, com o catálogo Strategy · Adapter/Port · Factory · Observer/Mediator · Template Method · Repository e o que não se faz). O §4.5 ganha "abstração especulativa não é reuso", e o Quadro de Verificação (§7) ganha a linha 24.
+- **Perfis de stack:** cada um ganha o exemplo na tecnologia, sem ser normativo: angular NG-8, ionic-capacitor IONIC-4, react RE-8, kotlin-android KA-9, dotnet §12.
+- **Plano:** a **§2a. Reuse and patterns** entra no plano pleno (regra 36), com as linhas `reuses:` · `extends:` · `new:` com motivo · `pattern: <Name> — <problem> — <simpler alternative rejected>` · `none:` com motivo.
+  - O `plan.ps1` reprova o plano sem a seção ou com uma linha incompleta.
+  - Ficam de fora a variante leve e o plano de sprint com o ③ aprovado antes da v3.66.0, inclusive o sprint 7 em curso do projeto piloto.
+- **Plano externo:** o roteiro do pacote (`external-plan.md`) ganha a instrução `[reuso]`.
+- **Quebra:** `breakdown.md` ganha **Shared parts** (a peça comum nasce numa Task; as outras a citam em `reuses:`).
+- **Arquiteto e QA:** `roles/architect/README.md` e `skills.md` §2a apontam para o §4.6 e o §4.7. A frente 2 da QA confere o `reuses:` e o `extends:` contra o diff.
+
+**Pendências da etapa 1, fechadas:**
+- **Comandos implicados:** a linha **Comandos implicados:** entra na ficha (`breakdown.md`, regra 10). O comando que a Task exige e o run não libera sozinho vai ao ③, e a aprovação vira `impasse.ps1 close -Allow`.
+- **`/team-usage`:** ganha a seção "Impasses (matriz, R36)". Ela traz o registro do sprint (resolvidos, em andamento, subidos, recusados, por tipo) e as recusas da G3 e da G24 e as ofertas vistas pela G26, contadas no `guards.log`. É a medida da meta.
+- **Inventário dos formulários:** um caso de guarda por modo que abre formulário legítimo (update, onboarding, brainstorm, ①, sprint 0, prepare, ③, Review, propostas de configuração do close, ajustes do fix plan, `/sec` e decisão estratégica). Cada um declara o impasse do tipo dele e passa na G24 de primeira.
+- **G7 restringindo o executor de Task ao dono que o `done` imprime:** não implementado. O caminho certo do GAP de requisito e de tela é dono, depois Arquiteto, depois dev, e a regra de um papel só o barraria. Fica a instrução no `agents/task-runner.md`.
+
+**Testes (item K e pendências):**
+- `run-check-tests.ps1`: a regra 36 em sprint antigo (n-a), sem a §2a, com `new:` e `pattern:` incompletos, completa, com `none:` e na trilha leve; o `/team-usage` com os impasses.
+- `run-guard-tests.ps1`: o inventário, com doze modos.
 ## v3.65.15 — 2026-11-23
 **Branch:** `fix/v3.65.15` a partir de `develop` (`94323fc`, com a v3.65.14 mesclada pelo PR #221)
 Origem: o ensaio do kit do benchmark da virada (23/11), antes de qualquer braço. Num app Android nativo, um `.kt` mexido e desfeito (`git checkout`) deixou o `accept` recusando "APK mais velho que o código" a cada rodada. O `assembleDebug` viu as fontes iguais e não regravou o APK, cuja data não mudou. Só saiu apagando o APK. É o laço que a v3.65.12 (item A) queria fechar.

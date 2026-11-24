@@ -9,6 +9,10 @@ Salvo em `.team-project/architect/breakdown/S<n>.md` — um arquivo por sprint, 
 ```markdown
 # Quebra em Tasks — Sprint <n>
 
+## Shared parts — sprint <n>
+**Shared parts:** nenhuma | 
+- `<peça: componente, serviço, estilo, política>` — <o que é> · nasce em T-<nnn> · usada por T-<nnn>, T-<nnn>
+
 ## H-<nnn> <título da História>
 
 | Task | Título | Depende de | Critério de pronto | Cenários |
@@ -25,6 +29,7 @@ Salvo em `.team-project/architect/breakdown/S<n>.md` — um arquivo por sprint, 
 **Fontes:** `docs/sdd/<documento>.md` §<n> · `standards/<arquivo>.md` §<n> · `.team-project/user-experience/screens/<tela>.md` §<n>–§<m>
 **Nomes comuns:** `<nome literal>`, `<nome literal>`
 **Arquivos previstos:** <n>
+**Comandos implicados:** nenhum | `<comando>` — <por quê> *(instalação, dependência nova, sync de plataforma: o que a Task exige e o run não libera sozinho)*
 ```
 
 ## Regras da ficha
@@ -37,3 +42,5 @@ Salvo em `.team-project/architect/breakdown/S<n>.md` — um arquivo por sprint, 
 6. **Curta:** até ~25 linhas por ficha. Ficha que cresce está fazendo o plano — o desenho é do plano. A ficha continua curta mesmo com os trechos: quem copia é o script, a ficha só aponta a faixa. Os trechos de uma Task somam até 60 KB no recorte; o que passa fica como nota, para o plano ler no trecho.
 7. **Arquivos previstos (v3.53.2): até 6 por Task.** Quantos arquivos a Task deve mudar, produção e teste somados. Acima de 6, **divido a Task aqui**, na quebra (R2), dentro da mesma História: o custo do plano cresce mais rápido que a Task (no projeto piloto, sprint 5: 6 arquivos ≈ US$ 2,5; 9 ≈ US$ 4,7; 12 ≈ US$ 8,7, cada chamada relendo uma conversa maior). Se escapar, o `run.ps1 next` não chama o Arquiteto do plano: pede a divisão primeiro. O `plan.ps1` mostra o previsto × o do plano, para a retrospectiva calibrar a estimativa.
 8. **Caminho com pasta, a partir da raiz** (`.team-project/user-experience/screens/x.md`, não `x.md`). O `run.ps1 next` confere os caminhos da ficha **antes** de chamar o Arquiteto do plano e, se algum não existe, pede a correção numa instância curta. Em **Fontes:**, só é caminho o termo com pasta ou extensão — nome de classe entre crases não é conferido.
+9. **Shared parts (v3.66.0, R36 · `standards/implementation-principles.md` §4.6):** a peça que duas ou mais Tasks do sprint tocam igual (o mesmo componente, o mesmo estilo, a mesma política) nasce **numa** Task, a primeira da ordem de construção; as outras dependem dela no quadro e citam no plano `reuses:` com a Task de origem. Sem peça comum, `**Shared parts:** nenhuma`. No sprint 7 do projeto piloto, a lua do semeio "igual à do Geral" e o card do Geral eram a mesma peça em duas Tasks, sem lugar para dizer.
+10. **Comandos implicados (v3.66.0):** o comando que a Task exige e que o run não libera sozinho — instalar uma dependência, o sync da plataforma depois dela — vai na ficha, com o porquê. O ③ o apresenta ao stakeholder junto com a Task (é ação externa: dependência nova), e a aprovação dele vira `impasse.ps1 close -Allow "<comando>"` — a sessão o roda em nome da decisão, antes da construção, e o que o run libera por prefixo vai a `runCommands`. No sprint 7 do projeto piloto, o plugin de teclado aprovado no ③ ainda gerou duas perguntas: liberar o `npx cap sync` e rodar o `npm install`.

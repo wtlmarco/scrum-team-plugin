@@ -216,6 +216,38 @@ Estes são os limites da organização. O perfil de stack configura a ferramenta
 | *Boy Scout Rule* ("deixe o código melhor do que encontrou") | **Não vale como licença para refatorar de passagem.** O escopo é fechado pelo Plano de Implementação; melhoria percebida vira Task, registrada na seção "Não fiz (fora do plano)" do relatório do dev. Refatoração oportunista quebra a rastreabilidade entre Task, mudança e evidência |
 | "Todo comentário é uma falha" | Comentário de **porquê**, decisão e referência a ADR é desejável. O que se proíbe é o comentário que repete o código |
 | Cobertura de 100% como meta | O gate é 80% (§5.4). Perseguir 100% produz teste de decoração, não proteção |
+| Abstração "para o futuro" (interface, fábrica ou camada que ainda nenhum segundo uso pede) | **Abstração especulativa não é reuso.** Ela só entra com o problema presente, declarado no plano (§4.7); até lá, o código concreto e simples |
+
+
+### 4.6 Reuse, componentization and centralization
+
+O mesmo comportamento escrito duas vezes diverge na primeira mudança. A V9 mede a duplicação **depois**, no código; esta seção é o que o plano decide **antes**, e o `plan.ps1` confere (§7, linha 24).
+
+- **Procurar antes de criar.** O plano diz o que procurou: o componente, o serviço ou o estilo que já faz o mesmo ou quase. O §2 do plano (o contexto de código a ler) traz o que achou.
+- **Estender antes de duplicar.** O que já existe e serve com um parâmetro, uma variante ou um slot se estende; não ganha cópia ao lado.
+- **Uma regra, um lugar.** A mesma regra de negócio, o mesmo cálculo ou a mesma decisão mora num lugar só — uma política ou serviço de domínio, uma tabela de configuração, um componente compartilhado — e os outros pontos chamam esse lugar. Duas telas que formatam o mesmo valor chamam o mesmo formatador; dois casos de uso que validam a mesma regra chamam a mesma política.
+- **Peça usada duas vezes vira compartilhada**, na camada certa do §2: regra no domínio, orquestração na aplicação, apresentação no componente ou no estilo compartilhado da interface. A quebra do sprint aponta em que Task ela nasce (**Shared parts:**).
+- **O que varia por projeto ou ambiente é configuração**, não ramo de código.
+
+### 4.7 Design patterns
+
+O padrão vem do problema, nunca o contrário. O plano que usa um padrão o nomeia, diz o problema que ele resolve **aqui** e a alternativa mais simples que foi descartada (`pattern: <Name> — <problem> — <simpler alternative rejected>`).
+
+| Problema presente | Padrão (nome em inglês) | Em vez de |
+|---|---|---|
+| comportamento que varia por tipo, regra ou configuração | **Strategy** (ou tabela de regras) | cadeia de `if`/`switch` repetida em vários lugares |
+| integração com serviço, SDK ou formato de fora | **Adapter** · **Port** (o anel de infraestrutura do §2.3) | chamada ao fornecedor espalhada pelo domínio |
+| construção com variação (o objeto certo pelo contexto) | **Factory** | `new` condicional repetido em quem usa |
+| reação a um evento sem quem emite conhecer quem reage | **Observer** · **Mediator** | chamada direta de um módulo a todos os interessados |
+| fluxo comum com passos que variam | **Template Method** ou composição | o fluxo copiado com um passo trocado |
+| acesso a dados por trás de uma interface do domínio | **Repository** (§2) | consulta ao banco dentro do caso de uso |
+
+**Não se faz:**
+- padrão sem problema presente — camada, interface ou fábrica "para o futuro" (§4.5);
+- herança só para reaproveitar código: prefira composição;
+- **Singleton** com estado.
+
+Os perfis de stack (`stacks/<stack>/guide.md`) trazem o exemplo de cada um na tecnologia; a regra é esta.
 
 ---
 
@@ -405,6 +437,7 @@ Toda regra deste normativo tem uma forma de verificação. Regra sem verificaç�
 | 21 | Operação de V18 sem cenário executável, ou Task que a toca sem a saída do comando (§5.6 P6) | Uma linha de V18 ↔ um cenário ↔ um job; saída real no relatório de entrega — trecho **e** ponteiro do relatório da execução (§5.4) | auditoria | Achado bloqueante de aderência |
 | 22 | Ficha com V18–V21 ausentes (§5.6 P2) | Seção existe no documento de arquitetura do produto | antes do plano | Ficha incompleta — sem Plano de Implementação |
 | 23 | Mudança de layout sem teste de render que mede caixas (§5.1) | Teste de render na lista do plano, saída do comando de V22 no relatório de entrega e mutação que quebra a medição | QA | Task volta ao dev |
+| 24 | Reuse and patterns declared in the plan (§4.6, §4.7) | `plan.ps1` (§2a do plano pleno: `reuses:` · `extends:` · `new:` com motivo · `pattern:` com o problema) + revisão de aderência do QA — frente 2 (o diff contra o `reuses:` e o `extends:`) | antes da construção · QA | Plano reprovado não vai ao dev; código novo onde o plano dizia `reuses:` volta ao dev |
 
 ---
 

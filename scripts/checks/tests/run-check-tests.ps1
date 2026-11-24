@@ -5282,6 +5282,38 @@ Check 'v3.66.0 J: o close marca a pendência como resolvida, e o mesmo assunto n
 $r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'scope', '-Part', 'H-Q', '-Subject', 'cards', '-Origin', 'po', '-Consulted', 'none', '-Text', 'de novo?', '-Detail', 'x', '-Root', $pJ66)
 Check 'v3.66.0 J: o já decidido (registro e §7) recusa a pergunta repetida' $r 3 @('já foi decidido')
 
+
+# ---- v3.66.0 (item K, regra 36): o plano pleno diz o que reaproveita e qual padrão usa (standards §4.6 e §4.7) ----
+$pK = Join-Path $tmp 'v3660-reuso'; New-Project $pK
+$plKp = '.team-project/sprints/1/plan/T-041-export.md'
+$plKf = Join-Path $pK $plKp
+$plK0 = [System.IO.File]::ReadAllText($plKf, $utf8)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plKp, '-Root', $pK)
+Check 'v3.66.0 K: sprint com o ③ aprovado antes da v3.66.0 — a regra 36 não entra no meio (n-a)' @{ Code = 0; Out = $r.Out } 0 @('\| reuso \| n-a \| sprint com o ③ aprovado antes da v3\.66\.0')
+Edit-File (Join-Path $pK '.team-project/sprints/1/sprint-backlog.md') '| **Aprovado em** | 2026-09-01 |' '| **Aprovado em** | 2026-11-25 |'
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plKp, '-Root', $pK)
+Check 'v3.66.0 K: plano pleno sem a §2a — reprova com a forma das linhas' $r 1 @("\| reuso \| falhou \| plano pleno sem '## 2a\. Reuse and patterns'", 'reuses:', 'pattern: <Name> — <problem> — <simpler alternative rejected>')
+function Set-Reuse([string]$Lines) { [System.IO.File]::WriteAllText($plKf, ($plK0 -replace '(?m)^## 3\. ', "## 2a. Reuse and patterns`n$Lines`n`n## 3. "), $utf8) }
+Set-Reuse "- reuses: ``src/export/formatter.ts`` — o formatador de moeda do relatório`n- new: ``src/export/csv.ts```n- pattern: Strategy"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plKp, '-Root', $pK)
+Check 'v3.66.0 K: new: sem o motivo e pattern: sem o problema e a alternativa — reprova os dois' $r 1 @("'new:' sem o motivo", "'pattern:' sem o problema e a alternativa descartada", 'regra 36')
+Set-Reuse "- reuses: ``src/export/formatter.ts`` — o formatador de moeda do relatório`n- extends: ``src/export/job.ts`` — ganha o parâmetro do formato`n- new: ``src/export/csv.ts`` — nenhum exportador gera CSV; procurei em src/export`n- pattern: Strategy — o formato do arquivo varia por pedido — um switch no job"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plKp, '-Root', $pK)
+Check 'v3.66.0 K: §2a completa — ok, com a contagem por tipo de linha' @{ Code = 0; Out = $r.Out } 0 @('\| reuso \| ok \| 1 reuses · 1 extends · 1 new · 1 pattern')
+Set-Reuse "- none: a Task só corrige a regra que já existe em src/export/job.ts"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plKp, '-Root', $pK)
+Check 'v3.66.0 K: sem peça nova, none: com o motivo — ok' @{ Code = 0; Out = $r.Out } 0 @('\| reuso \| ok \| 1 none')
+[System.IO.File]::WriteAllText($plKf, ($plK0 -replace '(?m)^(\*\*Estimativa:\*\*[^\r\n]*)', "`$1 · **Trilha:** leve"), $utf8)
+if ([System.IO.File]::ReadAllText($plKf, $utf8) -notmatch 'Trilha:\*\*\s*leve') { [System.IO.File]::WriteAllText($plKf, "**Trilha:** leve`n" + $plK0, $utf8) }
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plKp, '-Root', $pK)
+Check 'v3.66.0 K: a variante leve fica de fora da regra 36' @{ Code = 0; Out = $r.Out } 0 @('\| reuso \| n-a \| trilha leve')
+
+# ---- v3.66.0 (item F): o /team-usage mostra a medida da matriz de impasses ----
+$pU = Join-Path $tmp 'v3660-usage'; New-Project $pU
+$null = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'product-rule', '-Part', 'H-X', '-Subject', 'alerta', '-Origin', 'po', '-Consulted', 'none', '-Text', 'texto do alerta?', '-Root', $pU)
+$r = Invoke-Check 'team-view.ps1' @('-View', 'usage', '-Sprint', '1', '-Root', $pU)
+Check 'v3.66.0 F: /team-usage traz os impasses do sprint (resolvidos, em andamento, subidos, recusados, por tipo) e as recusas da G3, G24 e G26' $r 0 @('Impasses \(matriz, R36\):', '1 no registro · o time resolveu 0 · em andamento com o dono 1 · subiram ao stakeholder 0 · recusados por já decididos 0', 'por tipo: product-rule 1')
+
 # ==== fim dos casos ====
 try { Stop-Process -Id $script:watchdog.Id -Force -ErrorAction SilentlyContinue } catch { }
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue

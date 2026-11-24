@@ -37,6 +37,13 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
 |---|---|
 | <caminho:linha> | <o que observar — assinatura, padrão a espelhar, invariante> |
 
+## 2a. Reuse and patterns *(plano pleno — regra 36; régua: `standards/implementation-principles.md` §4.6 e §4.7)*
+- reuses: `<arquivo>` — <o que reaproveita, sem mudar>
+- extends: `<arquivo>` — <o que acrescenta: parâmetro, variante, slot>
+- new: `<arquivo>` — <por que nada existente serve; onde procurou>
+- pattern: <Name> — <o problema que ele resolve aqui> — <a alternativa mais simples descartada>
+- none: <por que a Task não cria peça nova> *(só quando é o caso: a Task só muda código que já existe)*
+
 ## 3. Ambiente medido e comandos validados (antes dos passos — R26)
 **Medição do `operator` (quando foi ela):** `.team-project/operator/<sprint|pre-sprint>/<job>/report.md` — trabalho `<nome>`, código de saída `<n>`, veredito `<ok | falhou>` *(`inconclusivo` não preenche; medição feita antes de mudar o arquivo da toolchain, ou sem o `report`, caduca — R28)*
 
@@ -231,6 +238,8 @@ Salvo em `.team-project/sprints/<n>/plan/<T-ID>-<slug>.md` (sem sprint corrente,
 34. ✓ **A dispensa do aceite num lugar só.** O cartão, o `start` e o `next` só deixam de mandar o `accept.ps1` quando leem a dispensa. Ela vai na linha `**Aceite:** não roda — <motivo>` do cabeçalho; plano que diz em qualquer outra frase que o aceite não roda ("o dev não roda `accept.ps1`", "`accept.ps1`: não rodar", "`accept.ps1` dispensado") sem essa linha **reprova**. Com `**Cenários:** nenhum` não há o que dispensar; se a frase fala de outra coisa e o aceite roda, `**Aceite:** roda — <quem roda>`. O `não roda` ou o `roda` que prova os cenários por um script do projeto (`*.mjs`, `*.js`, `*.ps1`, `*.py`… — os do plugin não contam) **reprova**: é o aceite por outro executor, e o `close.ps1` exige o resultado do `accept.ps1` (v3.65.3: a Q-S6g do garden declarou `roda — … pelo executor do projeto (`prova-cdp.mjs`)` e travou no portão). Linha `**Aceite:**` fora das três formas — `roda — <quem roda>`, `não roda — <motivo>`, ``comando — `<cmd>` `` — **reprova**: nenhum script a lê. Plano **sem** a linha, com cenários, que cita (em **Decisões:**) ou é nomeado no **Vale para** de uma decisão do sprint que prova os cenários por script do projeto ou dispensa o aceite também **reprova** (v3.65.4): a decisão só chega ao portão pela linha. O executor próprio do projeto vai em ``**Aceite:** comando — `<cmd com {scn}>` ``, e o `accept.ps1` o roda; comando sem `{scn}`, com instalação, rede, push ou destrutivo, ou com `**Cenários:** nenhum`, reprova.
 
 35. ✓ **Como a Task se verifica, quando o verify full não serve.** A linha `**Verificação:**` do cabeçalho tem duas formas: `dispensada — <motivo>` (Task de laudo, sem código; Task que só mexe em configuração de teste) — o `close.ps1` dá o R7-verify como n-a, a evidência é o comando colado no relatório e o QA revisa a dispensa no portão; não combina com `**Mutações:**` (use `sem prova: <motivo>`) — e ``comando — `<comando>` `` (prova por runner fora do framework principal, como o `node --test`) — o `verify.ps1` roda o comando como o passo `plano`: sem `-Tests`, o focused roda só ele e o lint; o full o roda depois da cobertura, com a trava e a árvore de sempre. Fora dos dois formatos, dispensa com mutação ou comando de instalação, rede, push ou destrutivo reprovam. Sem a linha, vale o verify full padrão.
+
+36. ✓ **O plano pleno diz o que reaproveita e qual padrão usa.** A §2a (*Reuse and patterns*) traz uma linha por peça nova de código (componente, serviço, helper, estilo): `reuses:` o arquivo que serve como está, `extends:` o que ganha parâmetro, variante ou slot, `new:` o arquivo novo **com o motivo** de nada existente servir; e uma linha `pattern: <Name> — <problem> — <simpler alternative rejected>` por padrão de projeto usado. Sem peça nova, `- none: <motivo>`. Antes de escrever o passo, procure (§2): a regra que aparece em dois lugares vai para um lugar só (§4.6 do nível 1), e padrão "para o futuro" não entra (§4.7). O `plan.ps1` **reprova** o plano pleno sem a §2a, com `new:` sem motivo, `pattern:` sem o problema e a alternativa, `reuses:`/`extends:` sem o arquivo, ou `none:` sem motivo. A variante leve fica de fora; o plano de sprint aprovado antes da v3.66.0 também. No portão, a frente 2 do QA confere o `reuses:` e o `extends:` contra o diff: código novo onde o plano dizia `reuses:` é achado.
 
 ## Variante leve (R23)
 

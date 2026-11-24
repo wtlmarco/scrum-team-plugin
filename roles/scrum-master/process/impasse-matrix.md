@@ -114,6 +114,7 @@ powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/impasse.ps1" r
 ## 4. Onde o stakeholder vê
 - **Kanban do sprint e do bloco:** a subseção **"Decisões do time"**, no `## Controle`, é gerada pelo `kanban.ps1` a cada `raise` e `close` e não se edita à mão. Colunas: quando · o que foi decidido · quem decidiu · por que não precisou de você · onde está.
 - **Resumo do kanban e `/team-status`:** a linha "o time decidiu N coisas sozinho; M subiram a você".
+- **`/team-usage`:** a seção "Impasses (matriz, R36)", com o registro do sprint por resultado e por tipo e as recusas da G3, da G24 e da G26 no `guards.log`: é a medida da meta (no máximo 1 chamada desnecessária e 2 recusas da G3 por preparação).
 - **Review e fechamento do fix:** a seção "Decidido pelo time sem você" (`impasse.ps1 list -Format review`). Qualquer linha pode ser revertida, e a reversão volta como `contradicts-acceptance` com `-From`.
 
 ## 5. As guardas
