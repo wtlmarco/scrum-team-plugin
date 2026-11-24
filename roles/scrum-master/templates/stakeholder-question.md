@@ -6,6 +6,8 @@ A guarda G3 confere duas coisas no formulário: a última opção é **"Pedir ma
 
 ## Antes de perguntar — a decisão é dele? (v3.58.3)
 
+**v3.66.0 (R36):** quem decide é a [matriz de impasses](../process/impasse-matrix.md), a fonte única. Antes de qualquer formulário, declare o impasse no `scripts/checks/impasse.ps1 raise`, que diz o dono, recusa o que já foi decidido e, só para o tipo que sobe, grava a rota sem a qual a G24 nega o formulário, em qualquer sessão. A tabela abaixo segue como exemplos do roteiro do run, até a etapa 2 levá-los à matriz.
+
 A forma vem depois da pergunta certa: muitas decisões já são do roteiro ou do par PO + Arquiteto. Antes de abrir o formulário, confira:
 
 | Se a pergunta é… | Quem decide | O que fazer |

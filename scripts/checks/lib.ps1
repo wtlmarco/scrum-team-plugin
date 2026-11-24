@@ -3459,15 +3459,20 @@ function Invoke-GitBegin([string]$Root, [string]$Track, [string]$Id) {
     $want = Get-RunBranchName $Track $Id; $out.Branch = $want
     $cur = (Invoke-GitCmd $Root @('rev-parse', '--abbrev-ref', 'HEAD')).Out
     if ($cur -eq $want) { return $out }
+    # v3.66.0 (projeto piloto, sprint 7: o gaps.md que o próprio time editou na preparação deixou o run na develop, e o aviso
+    # subiu 3 vezes): com alteração pendente, tenta a troca LEVANDO as alterações — o git recusa sozinho quando um arquivo
+    # pendente difere entre a branch atual e o destino, e nada se perde. Só com a recusa dele o run segue na branch atual.
     $pend = @(Get-GitPending $Root)
-    if ($pend.Count) {
+    $pendTxt = if ($pend.Count) { "$(($pend | Select-Object -First 5) -join ', ')$(if ($pend.Count -gt 5) { " e mais $($pend.Count - 5)" })" } else { '' }
+    $refused = {
+        param($why)
         $out.Ok = $false
-        $out.Lines += "git: a branch do run é $want, mas há alteração pendente fora de .team-project/ ($(($pend | Select-Object -First 5) -join ', ')$(if ($pend.Count -gt 5) { " e mais $($pend.Count - 5)" })): o run segue na $cur, sem trocar — os commits das Tasks vão para ela. Para trocar: commit ou stash do que está pendente e o next de novo"
-        return $out
+        $out.Lines += "git: a branch do run é $want, mas a troca levando as alterações pendentes fora de .team-project/ ($pendTxt) foi recusada pelo git ($(($why -replace '\s+', ' ').Trim())): o run segue na $cur — os commits das Tasks vão para ela. Para trocar: commit ou stash do que está pendente e o next de novo"
     }
     if (Test-GitRef $Root $want) {
         $r = Invoke-GitCmd $Root @('switch', $want)
-        $out.Lines += $(if ($r.Code -eq 0) { "git: de volta à branch $want (já existia)" } else { "git: não troquei para $want — $($r.Out)" }); if ($r.Code -ne 0) { $out.Ok = $false }
+        if ($r.Code -ne 0 -and $pend.Count) { & $refused $r.Out; return $out }
+        $out.Lines += $(if ($r.Code -eq 0) { "git: de volta à branch $want (já existia)$(if ($pend.Count) { " — com as alterações pendentes ($pendTxt)" })" } else { "git: não troquei para $want — $($r.Out)" }); if ($r.Code -ne 0) { $out.Ok = $false }
         return $out
     }
     $base = Get-GitBase $Root
@@ -3477,7 +3482,8 @@ function Invoke-GitBegin([string]$Root, [string]$Track, [string]$Id) {
         $from = if (Test-GitRef $Root "origin/$base") { "origin/$base" } else { $base }
     }
     $r = Invoke-GitCmd $Root @('switch', '--no-track', '-c', $want, $from)
-    if ($r.Code -eq 0) { $out.Lines += "git: branch $want criada a partir de $from" } else { $out.Ok = $false; $out.Lines += "git: não criei a branch $want — $($r.Out)" }
+    if ($r.Code -ne 0 -and $pend.Count) { & $refused $r.Out; return $out }
+    if ($r.Code -eq 0) { $out.Lines += "git: branch $want criada a partir de $from$(if ($pend.Count) { " — com as alterações pendentes ($pendTxt), que seguem sem commit" })" } else { $out.Ok = $false; $out.Lines += "git: não criei a branch $want — $($r.Out)" }
     return $out
 }
 # O endereço de abrir o PR no GitHub ('' fora dele).

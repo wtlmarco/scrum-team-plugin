@@ -140,13 +140,17 @@ function Set-RunSession([object]$ToolInput) {
     $p = Join-Path $script:projectDir '.team-project/.run-session'
     try { [System.IO.File]::WriteAllText($p, (@{ session = $sid; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false))) } catch { }
 }
+# v3.66.0 (R36, matriz de impasses): a G24 vale para TODA sessão principal, não só a que conduz o sprint run. Na preparação
+# do sprint 7 do projeto piloto (23/11), 15 de 22 chamadas ao stakeholder eram do time e saíram do prepare e do plan, onde a
+# guarda não olhava. Fora do run, a rota vem do impasse.ps1 raise (tipo que sobe na matriz); no run, do run.ps1 e do gate.ps1,
+# como antes. stakeholder-request só passa com a frase dele presente numa fala dele na sessão. Fora: o clone-fonte do plugin.
 function Test-G24([object]$ToolInput) {
     if ($script:role) { return }                                    # papel não pergunta ao stakeholder (G3/G7 cuidam)
+    if ($script:pluginSource) { return }                            # o /review no clone-fonte do plugin
     $run = Get-Marker $script:projectDir '.active-run'
-    if ($null -eq $run -or [string]$run.trilha -ne 'sprint') { return }   # o fix run tem o formulário dos ajustes (R33)
     $rs = Get-Marker $script:projectDir '.run-session'
     $sid = [string]$script:hookInput.session_id
-    if ($null -eq $rs -or -not $sid -or [string]$rs.session -ne $sid) { return }   # sessão que não conduz o run
+    $inRun = ($null -ne $run -and [string]$run.trilha -eq 'sprint' -and $null -ne $rs -and $sid -and [string]$rs.session -eq $sid)
     $ar = Get-Marker $script:projectDir '.ask-route'
     $q = [string](@($ToolInput.questions) | Select-Object -First 1).question
     if ($q.Length -gt 100) { $q = $q.Substring(0, 100) + '…' }
@@ -159,6 +163,9 @@ function Test-G24([object]$ToolInput) {
             # seguintes (a G3 recusou a forma, o formulário volta corrigido) passam. Pergunta nova pede rota nova do run.ps1.
             $usedAt = $null; if ($ar.PSObject.Properties['usado'] -and $ar.usado) { try { $usedAt = [datetime]::ParseExact([string]$ar.usado, 'yyyy-MM-dd HH:mm:ss', $null) } catch { } }
             if ($null -eq $usedAt) {
+                if ([string]$ar.rota -eq 'stakeholder-request' -and -not (Test-ImpasseQuoteInTranscript ([string]$script:hookInput.transcript_path) ([string]$ar.quote))) {
+                    Deny 'G24' $q "R36: a rota 'stakeholder-request' ($([string]$ar.impasse)) cita ""$([string]$ar.quote)"", e essa frase não está numa fala do stakeholder nesta sessão. Pedido do stakeholder é o que ele escreveu: cite a frase dele, literal, no -Quote do impasse.ps1 raise — ou, se ele não pediu, declare o impasse com o tipo certo (roles/scrum-master/process/impasse-matrix.md)."
+                }
                 try {
                     $ar | Add-Member -NotePropertyName usado -NotePropertyValue (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') -Force
                     [System.IO.File]::WriteAllText((Join-Path $script:projectDir '.team-project/.ask-route'), ($ar | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
@@ -168,6 +175,13 @@ function Test-G24([object]$ToolInput) {
             if (((Get-Date) - $usedAt).TotalMinutes -lt 10) { return }
             $usedNote = "A rota '$([string]$ar.rota)'$(if ($ar.task) { " ($([string]$ar.task))" }) já foi usada por um formulário às $($usedAt.ToString('HH:mm')) — vale uma pergunta por rota. "
         }
+    }
+    if (-not $inRun) {
+        $up = @((Get-ImpasseMatrix $script:projectDir).Types | Where-Object { [string]$_.reachesStakeholder -ne 'never' -and -not $_.scriptOnly } | ForEach-Object { [string]$_.type }) -join ' · '
+        Deny 'G24' $q ("R36 (matriz de impasses): $usedNote" + "formulário ao stakeholder só sai com a rota do impasse. Antes de perguntar, declare: powershell -NoProfile -File ""`${CLAUDE_PLUGIN_ROOT}/scripts/checks/impasse.ps1"" raise -Type <tipo> -Part <parte> -Subject <chave> -Origin <papel ou modo> -Consulted ""<§7 N | D-k | none>"" -Text ""<o impasse numa frase>"" [-Detail …]. " +
+            "Sobem ao stakeholder só: $up. O resto fica no time e o raise diz o dono — decisão técnica (Arquiteto), desenho (UX), regra de produto (PO), prova (QA), ordem do trabalho (SM), passo do roteiro ('aciono a QA?', 'anoto?', 'sigo?': execute e informe) e registro em documento (o dono do arquivo). Já decidido: o raise mostra a decisão — aplique. " +
+            "Se o stakeholder pediu o formulário: -Type stakeholder-request -Quote ""<a frase dele, literal>"". Regra: roles/scrum-master/process/impasse-matrix.md.")
+        return
     }
     if ($usedNote) {
         Deny 'G24' $q ("R25 (c): $usedNote" + "Aplique a resposta que o stakeholder deu (run.ps1 prove, mark.ps1, run.ps1 next) e siga a fila; se o run.ps1 next mandar levar outra decisão ao stakeholder, ele grava rota nova e o formulário passa. Se o stakeholder interrompeu e pediu a pergunta, é a parada (d): run.ps1 pause antes.")
@@ -404,13 +418,15 @@ function Test-G8([string]$Rel, [string]$Shown) {
     if (-not $r -or $r -eq 'operator' -or -not $Rel) { return }   # operator: G11
     $own = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'ownership.json') -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($null -eq $own.roles.$r) { return }                          # agente fora do time
-    $rules = if ($script:pluginSource) { $own.pluginSource } else { $own.project }
-    foreach ($rule in @($rules)) {
-        if (-not (Test-GlobMatch $Rel @($rule.paths))) { continue }
+    # v3.66.0: a regra que casa vem de Find-OwnershipRule (impasse-lib.ps1), a mesma do impasse.ps1 owner.
+    $hit = Find-OwnershipRule $Rel -PluginSource:([bool]$script:pluginSource)
+    if ($hit) {
+        $rule = $hit.Rule
         if (@($rule.writers) -contains $r) { return }
-        $who = if (@($rule.writers).Count) { (@($rule.writers) | ForEach-Object { $own.roles.$_ }) -join ' · ' } else { 'stakeholder / a sessão principal' }
+        $who = if (@($rule.writers).Count) { $hit.WriterNames -join ' · ' } else { 'stakeholder / a sessão principal' }
         $row = if ($rule.matriz) { "linha '$($rule.matriz)'" } else { [string]$rule.nota }
-        Deny 'G8' $Shown "$Rel não é seu: escreve $who (artifact-ownership.md §1, $row). Quem não é dono lê, cita e pede alteração ao dono — não edita."
+        $disp = if (@($rule.writers).Count) { " Peça ao dono: $(Get-AgentDispatchText $script:projectDir ([string]@($rule.writers)[0])) (a sessão dispara; impasse.ps1 owner -Path <arquivo> diz o mesmo)." } else { '' }
+        Deny 'G8' $Shown "$Rel não é seu: escreve $who (artifact-ownership.md §1, $row). Quem não é dono lê, cita e pede alteração ao dono — não edita.$disp"
     }
     if ($script:pluginSource) { return }
     $isSource = if (@($cfg.sourceRoots).Count) { Test-GlobMatch $Rel $cfg.sourceRoots } else { $Rel -notmatch '^docs/' }

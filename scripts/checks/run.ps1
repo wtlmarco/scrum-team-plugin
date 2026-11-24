@@ -210,16 +210,13 @@ function Write-ScenarioDivergence($T, [string]$S, [string]$n) {
     Add-RunLog $S $n $T.Id $mark "backlog: $(if (@($T.BacklogScenarios).Count) { @($T.BacklogScenarios) -join ', ' } else { 'nenhum' }) · o cartão, o start e o accept seguem a linha **Cenários:** do plano" "sprints/$n/$($T.Plan)"
 }
 function Get-AgentLine([string]$Role) {
-    $mc = Get-ModelsConfig $Root
-    $dm = Get-AgentDefaultModel $Role; if (-not $dm) { $dm = "agents/$Role.md" }
-    $model = if ($mc.State -eq 'ok' -and $mc.Models.ContainsKey($Role)) { "model `"$($mc.Models[$Role])`" (models.json)" } else { "model do agente ($dm)" }
     # v3.52.2 (note.md item 2, C1): o Agent não tem mais run_in_background — toda chamada volta "lançado" e o resultado
     # chega por aviso. Quem dispara encerra o turno e é acordado pelo aviso; ninguém espera com Start-Sleep nem sonda o disco.
     # v3.65.7 (garden S6, 7:56 → 8:34): o next que manda disparar grava a ação pendente (.next-verdict "agir"). A G20 barra o
     # fim de turno com ela e sem agente desta sessão em voo — no portão não há Task elegível, e a sessão que só escreveu o aviso
     # parava sem ninguém ver. Uma decisão "esperar" ou "reiniciar" gravada depois, no mesmo next, a substitui.
     if ($script:InNext) { Set-NextVerdict $Root 'agir' '' ("disparar team:$Role" + $(if ($script:LastAction) { " — $($script:LastAction)" } else { '' })) }
-    return "Agent: subagent_type `"team:$Role`" · $model — dispare e encerre o turno; o aviso traz a volta"
+    return (Get-AgentDispatchText $Root $Role)   # v3.66.0: fonte única em hooks/common.ps1 (também a do impasse.ps1)
 }
 # Contador de instâncias do dev por Task e bloco (v3.52.2, note.md item 14): sprints/<n>/handoff/<ID>.json. "fail" conta só
 # a instância encerrada por falha de papel (GAP, evidência reprovada no done); "env" (done -Result env) é queda de ambiente
@@ -1569,12 +1566,29 @@ try {
     Set-NextVerdict $Root ''
     $script:InNext = $true   # v3.65.7: daqui em diante, toda linha de disparo grava a ação pendente (Get-AgentLine)
     $script:RunNews = Get-RunNews   # v3.59.0: o que ficou pronto ou parou desde o next anterior abre a fala ao stakeholder
+    # v3.66.0 (projeto piloto, sprint 7: o kanban.md escrito à mão na Planning saiu sem "## Série", o mark.ps1 parou o executor
+    # e a sessão estourou o contexto): sem Série no kanban.md nem no consumption.md, o run não parte — o próprio script repara.
+    if (-not $Block -and (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md'))) {
+        $kbN = Join-Path $S 'kanban.md'; $csN = Join-Path $S 'consumption.md'
+        $hasSerieN = @($kbN, $csN, (Join-Path $S 'burndown.md') | Where-Object { (Test-Path -LiteralPath $_) -and ((Read-Text $_) -match '(?m)^##\s+S[ée]rie') }).Count -gt 0
+        if (-not $hasSerieN -and -not (Test-Path -LiteralPath (Join-Path $S 'retrospective.md'))) {
+            [Console]::Error.WriteLine("run next: o quadro do sprint $n está sem a Série do burndown (nem no kanban.md nem no consumption.md) — o mark.ps1 pararia a primeira Task. Rode: powershell -NoProfile -File `"$plugin/kanban.ps1`" -Sprint $n -Init -Opened <data da aprovação do pacote, aaaa-mm-dd> (cria o kanban.md, ou só acrescenta a Série e o Registro) e o next de novo. É passo do roteiro: sem formulário ao stakeholder.")
+            exit 2
+        }
+    }
     # v3.65.14 (J): com o run ativo, o trabalho vai na branch dele (feat/sprint-<n>, fix/<id>), criada da base no primeiro next.
     $arG = Get-Marker $Root '.active-run'
     if ($arG -and $arG.trilha -and $arG.id) {
         $gb = Invoke-GitBegin $Root ([string]$arG.trilha) ([string]$arG.id)
-        foreach ($gl in $gb.Lines) { Out $gl }
-        if ($gb.Lines.Count -and $gb.Branch -and [string]$arG.trilha -eq 'sprint') { Add-RunLog $S $n "$([string]$arG.trilha) $([string]$arG.id) · git" (($gb.Lines -join ' · ') -replace '\|', '/') 'a branch do run (v3.65.14)' 'git' }
+        # v3.66.0: a troca recusada pelo git é aviso ao SM, uma vez por run — não pergunta ao stakeholder (no piloto, 3 vezes).
+        $gwP = Join-Path $Root '.team-project/.git-warned'; $gwKey = "$([string]$arG.trilha) $([string]$arG.id)"
+        $gwSeen = (Test-Path -LiteralPath $gwP) -and ((Read-Text $gwP).Trim() -eq $gwKey)
+        if (-not $gb.Ok -and $gwSeen) { Out "git: o run segue na branch atual (aviso já dado neste run — run-log.md); siga, sem perguntar ao stakeholder" }
+        else {
+            foreach ($gl in $gb.Lines) { Out $gl }
+            if (-not $gb.Ok) { [System.IO.File]::WriteAllText($gwP, $gwKey, $utf8); Out "  (aviso ao SM, registrado no run-log; não é pergunta ao stakeholder — o run segue)" }
+            if ($gb.Lines.Count -and $gb.Branch -and [string]$arG.trilha -eq 'sprint') { Add-RunLog $S $n "$([string]$arG.trilha) $([string]$arG.id) · git" (($gb.Lines -join ' · ') -replace '\|', '/') 'a branch do run (v3.65.14)' 'git' }
+        }
     }
     # v3.51.4: o run parou por limite de uso da conta (.usage-limit, gravado pela G16 ou pelo Stop) — diz o motivo e segue.
     $lim = Join-Path $tp '.usage-limit'
