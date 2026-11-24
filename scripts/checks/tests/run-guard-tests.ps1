@@ -58,6 +58,9 @@ function Invoke-Hook([string]$Script, [hashtable]$Payload, [hashtable]$Env = @{}
 }
 
 function Opt([string]$Label) { @{ label = $Label; description = 'x' } }
+# v3.66.0 (R36): a G24 vale em toda sessão principal — o caso que testa a forma do formulário (G3, H1, G18) grava antes a
+# rota fresca, como o impasse.ps1 raise faria; o que testa a rota (G24) monta a sua.
+$FreshRoute = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') ('{"rota":"scope","task":"T-1","motivo":"teste","at":"' + (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
 
 $cases = @(
     @{ Name = 'G1 commit com .team-project no stage'; Script = 'pre-tool.ps1'; Expect = 2; Setup = { & git -C $proj add -f .team-project/README.md 2>$null }
@@ -74,11 +77,11 @@ $cases = @(
        Payload = @{ tool_name = 'Edit'; tool_input = @{ file_path = (Join-Path $root 'roles/x.md'); old_string = 'a'; new_string = 'b' } } },
     @{ Name = 'G2 Write fora do plugin'; Script = 'pre-tool.ps1'; Expect = 0; Env = @{ CLAUDE_PLUGIN_ROOT = $installed }
        Payload = @{ tool_name = 'Write'; tool_input = @{ file_path = (Join-Path $proj 'app.txt'); content = 'x' } } },
-    @{ Name = 'G3 formulário correto'; Script = 'pre-tool.ps1'; Expect = 0
+    @{ Name = 'G3 formulário correto'; Script = 'pre-tool.ps1'; Expect = 0; Setup = $FreshRoute
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Q? Exemplo: hoje a lista aparece vazia.'; header = 'Q'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
-    @{ Name = 'G3 sem "Pedir mais contexto" por último'; Script = 'pre-tool.ps1'; Expect = 2
+    @{ Name = 'G3 sem "Pedir mais contexto" por último'; Script = 'pre-tool.ps1'; Expect = 2; Setup = $FreshRoute
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Q?'; header = 'Q'; multiSelect = $false; options = @((Opt 'Pedir mais contexto'), (Opt 'Aprovar')) }) } } },
-    @{ Name = 'G3 segunda pergunta errada'; Script = 'pre-tool.ps1'; Expect = 2
+    @{ Name = 'G3 segunda pergunta errada'; Script = 'pre-tool.ps1'; Expect = 2; Setup = $FreshRoute
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(
            @{ question = 'A?'; header = 'A'; multiSelect = $false; options = @((Opt 'Sim'), (Opt 'pedir mais contexto')) },
            @{ question = 'B?'; header = 'B'; multiSelect = $false; options = @((Opt 'Sim'), (Opt 'Não')) }) } } },
@@ -90,14 +93,14 @@ $cases = @(
        Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:operator'; tool_input = @{ command = 'x' }; tool_response = @{ stdout = ((1..400) -join "`n") } } },
     @{ Name = 'G13 autoteste';Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'Guardas do time'
        Payload = @{ hook_event_name = 'SessionStart' } },
-    @{ Name = 'G3 R34 sem Identificador remoto: prefixo não exigido'; Script = 'pre-tool.ps1'; Expect = 0
+    @{ Name = 'G3 R34 sem Identificador remoto: prefixo não exigido'; Script = 'pre-tool.ps1'; Expect = 0; Setup = $FreshRoute
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Aprova o pacote? Exemplo: a tela de exportação.'; header = 'P'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
     @{ Name = 'G3 R34 com ID, pergunta sem prefixo'; Script = 'pre-tool.ps1'; Expect = 2
-       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/README.md') "# Contexto`n`n## 1. O produto`n**Identificador remoto:** ACME`n**Conta remota:** pessoal`n`n## 7. Decisões pendentes do stakeholder`n`n1. [ACME · S4 · ③ pacote] Aprova o pacote? — material: sprint-backlog.md — 2026-10-03 10:00`n`n## 7a. Registro de consultores`n" -Encoding UTF8 }
+       Setup = { & $FreshRoute; Set-Content -LiteralPath (Join-Path $proj '.team-project/README.md') "# Contexto`n`n## 1. O produto`n**Identificador remoto:** ACME`n**Conta remota:** pessoal`n`n## 7. Decisões pendentes do stakeholder`n`n1. [ACME · S4 · ③ pacote] Aprova o pacote? — material: sprint-backlog.md — 2026-10-03 10:00`n`n## 7a. Registro de consultores`n" -Encoding UTF8 }
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Aprova o pacote?'; header = 'P'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
-    @{ Name = 'G3 R34 prefixo sem pendência em §7'; Script = 'pre-tool.ps1'; Expect = 2
+    @{ Name = 'G3 R34 prefixo sem pendência em §7'; Script = 'pre-tool.ps1'; Expect = 2; Setup = $FreshRoute
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = '[ACME · S4 · ④ H-012] Aceita a H-012?'; header = 'P'; multiSelect = $false; options = @((Opt 'Aceita'), (Opt 'Pedir mais contexto')) }) } } },
-    @{ Name = 'G3 R34 prefixo com pendência em §7'; Script = 'pre-tool.ps1'; Expect = 0
+    @{ Name = 'G3 R34 prefixo com pendência em §7'; Script = 'pre-tool.ps1'; Expect = 0; Setup = $FreshRoute
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = '[ACME · S4 · ③ pacote] Aprova o pacote? Exemplo: a tela de exportação.'; header = 'P'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
     # ---------- Fase 2 (v3.42) — agent_type no formato medido pela sonda: team:<papel> ----------
     @{ Name = 'G7 dev dispara outro papel'; Script = 'pre-tool.ps1'; Expect = 2
@@ -562,7 +565,7 @@ $cases = @(
                  Remove-Item -LiteralPath (Join-Path $proj '.team-project/models.json') -Force -ErrorAction SilentlyContinue }
        Payload = @{ tool_name = 'Write'; agent_type = 'team:architect'; tool_input = @{ file_path = (Join-Path $proj 'src/a.cs'); content = 'x' } } },
     # ---------- v3.47 (M3) — G18 modo benchmark: respostas do dossiê e primeiro plano ----------
-    @{ Name = 'G18 sem bench: a G3 segue valendo'; Script = 'pre-tool.ps1'; Expect = 0
+    @{ Name = 'G18 sem bench: a G3 segue valendo'; Script = 'pre-tool.ps1'; Expect = 0; Setup = $FreshRoute
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = '[ACME · S4 · ③ pacote] Aprova o pacote? Exemplo: a tela de exportação.'; header = 'P'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
     @{ Name = 'G18 bench: o dossiê responde (pick casa o rótulo)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'resposta do stakeholder: Aprovar'
        Setup = { Set-Content -LiteralPath (Join-Path $proj 'bench-answers.json') '{ "respostas": [ { "tema": "Portões", "match": "(?i)pacote|portão", "pick": "^(?i)aprovar" } ] }' -Encoding UTF8
@@ -584,10 +587,10 @@ $cases = @(
     @{ Name = 'G18 bench: foreground aceita agente em primeiro plano'; Script = 'pre-tool.ps1'; Expect = 0
        Payload = @{ tool_name = 'Agent'; tool_input = @{ subagent_type = 'team:developer'; run_in_background = $false; prompt = 'x' } } },
     @{ Name = 'G18 bench sem answers: a G3 decide (formulário sem "Pedir mais contexto" é negado)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G3'
-       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "bench": { "arm": "P0-r1" } }' -Encoding UTF8 }
+       Setup = { & $FreshRoute; Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "bench": { "arm": "P0-r1" } }' -Encoding UTF8 }
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Q?'; header = 'Q'; multiSelect = $false; options = @((Opt 'Sim'), (Opt 'Não')) }) } } },
     @{ Name = 'G18 desligada em guards.json: a G3 volta a valer'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G3'
-       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "disabled": ["G18"], "bench": { "arm": "x", "answers": "bench-answers.json" } }' -Encoding UTF8 }
+       Setup = { & $FreshRoute; Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "disabled": ["G18"], "bench": { "arm": "x", "answers": "bench-answers.json" } }' -Encoding UTF8 }
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Aprova o pacote?'; header = 'Q'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Não')) }) } } },
     @{ Name = 'G13 avisa o modo benchmark ligado'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'Modo benchmark ligado'
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "bench": { "arm": "P0-r1", "foreground": true } }' -Encoding UTF8 }
@@ -608,9 +611,9 @@ $cases = @(
        Payload = @{ hook_event_name = 'SessionStart' } },
     # ---------- v3.51 — H1 (G3 com exemplo prático), G19 (retomada de papel caro) e G20 (hook Stop) ----------
     @{ Name = 'H1 pergunta sem exemplo prático: negada pela G3'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'H1 (v3.51)'
-       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/README.md') "# Contexto`n" -Encoding UTF8; Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "disabled": [] }' -Encoding UTF8 }
+       Setup = { & $FreshRoute; Set-Content -LiteralPath (Join-Path $proj '.team-project/README.md') "# Contexto`n" -Encoding UTF8; Set-Content -LiteralPath (Join-Path $proj '.team-project/guards.json') '{ "disabled": [] }' -Encoding UTF8 }
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Aprova o ajuste?'; header = 'A'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
-    @{ Name = 'H1 exemplo na descrição de uma opção: liberado'; Script = 'pre-tool.ps1'; Expect = 0
+    @{ Name = 'H1 exemplo na descrição de uma opção: liberado'; Script = 'pre-tool.ps1'; Expect = 0; Setup = $FreshRoute
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'Aprova o ajuste?'; header = 'A'; multiSelect = $false; options = @(@{ label = 'Aprovar'; description = 'por exemplo: o raio começa em 150 km' }, (Opt 'Pedir mais contexto')) }) } } },
     @{ Name = 'G19 SendMessage ao Arquiteto parado há 20 min: instância nova'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'G19'
        Setup = { Add-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') ('{"ts":"' + (Get-Date).AddMinutes(-20).ToString('yyyy-MM-ddTHH:mm:ss') + '","agent_id":"arc19old","role":"architect","model":"claude-opus-5-5"}') -Encoding UTF8
@@ -760,9 +763,9 @@ $cases = @(
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.run-session') '{"session":"sessao-do-run","at":"2026-11-22 02:00:00"}' -Encoding UTF8 }
        Check = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.run-session') -Force -ErrorAction SilentlyContinue; $true }
        Payload = @{ hook_event_name = 'Stop'; session_id = 'outra-sessao'; transcript_path = (Join-Path $tmp 'tq.jsonl') } },
-    @{ Name = 'v3.65.11 G3: hash, ID interno, arquivo, código de saída e papel interno na pergunta — negada com os termos'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = "linguagem do processo na pergunta ao stakeholder: código de versão 'eb971aea13b1' · ID interno 'SC-161' · nome de arquivo 'target.ps1'"
+    @{ Name = 'v3.65.11 G3: hash, ID interno, arquivo, código de saída e papel interno na pergunta — negada com os termos'; Script = 'pre-tool.ps1'; Expect = 2; Setup = $FreshRoute; ExpectErr = "linguagem do processo na pergunta ao stakeholder: código de versão 'eb971aea13b1' · ID interno 'SC-161' · nome de arquivo 'target.ps1'"
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'O aceite rodou com o APK velho. Exemplo: o SC-161 falha. Como seguir?'; header = 'Q'; multiSelect = $false; options = @(@{ label = 'Reinstalar'; description = 'o operator reinstala o eb971aea13b1; o target.ps1 deu exit 4' }, (Opt 'Pedir mais contexto')) }) } } },
-    @{ Name = 'v3.65.11 G3: a mesma decisão em linguagem simples passa (R$ e versão do plugin não são jargão)'; Script = 'pre-tool.ps1'; Expect = 0
+    @{ Name = 'v3.65.11 G3: a mesma decisão em linguagem simples passa (R$ e versão do plugin não são jargão)'; Script = 'pre-tool.ps1'; Expect = 0; Setup = $FreshRoute
        Payload = @{ tool_name = 'AskUserQuestion'; tool_input = @{ questions = @(@{ question = 'O aparelho de teste continua com uma versão antiga do app. Exemplo: a correção do campo de unidade em Insumos não aparece nele. Como seguir?'; header = 'Q'; multiSelect = $false; options = @(@{ label = 'Conferir a geração do app'; description = 'você confere como o app é gerado; custa R$ 0 e a versão 3.65.11 do time segue' }, (Opt 'Pedir mais contexto')) }) } } },
     # ---------- v3.51.4 — negações reais do SunScape (note.md itens 3, 4, 5, 10) e do garden (itens 5, 6, 25) ----------
     @{ Name = 'G14 texto com $( ) entre aspas: subexpressões conferidas, rótulos não viram trecho (tests=, node:)'; Script = 'pre-tool.ps1'; Expect = 0; ExpectOut = '"permissionDecision":"allow"'
@@ -1179,14 +1182,14 @@ $cases = @(
     @{ Name = 'G24 (v3.58.3): rota com mais de 24 h vale como ausente — negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'durante o sprint run o formulário'
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') ('{"rota":"bloqueio","task":"T-089","motivo":"x","at":"' + (Get-Date).AddHours(-25).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
        Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessRun'; tool_input = @{ questions = @(@{ question = 'Tento de novo? Exemplo: a verificação falhou duas vezes.'; header = 'Q'; multiSelect = $false; options = @((Opt 'Tentar de novo'), (Opt 'Pedir mais contexto')) }) } } },
-    @{ Name = 'G24 (v3.58.3): outra sessão no mesmo projeto (o /team update) não passa pela guarda'; Script = 'pre-tool.ps1'; Expect = 0
+    @{ Name = 'G24 (v3.66.0): outra sessão no mesmo projeto (o /team update) sem rota — negado, com o impasse.ps1 raise e os tipos que sobem'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'R36 (matriz de impasses)*impasse.ps1*raise -Type*Sobem ao stakeholder só: scope*plugin-update*stakeholder-request -Quote'
        Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessUpdate'; tool_input = @{ questions = @(@{ question = 'Atualizar o plugin? Exemplo: a mutação cai de 17 para 2,5 min.'; header = 'Atualizar'; multiSelect = $false; options = @((Opt 'Atualizar agora'), (Opt 'Pedir mais contexto')) }) } } },
     @{ Name = 'G24 (v3.58.3): papel não é conferido pela G24'; Script = 'pre-tool.ps1'; Expect = 0
        Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessRun'; agent_type = 'team:product-owner'; agent_id = 'po1'; tool_input = @{ questions = @(@{ question = 'Q? Exemplo: x.'; header = 'Q'; multiSelect = $false; options = @((Opt 'Sim'), (Opt 'Pedir mais contexto')) }) } } },
-    @{ Name = 'G24 (v3.58.3): trilha fix (formulário dos ajustes, R33) não é conferida'; Script = 'pre-tool.ps1'; Expect = 0
+    @{ Name = 'G24 (v3.66.0): trilha fix sem rota — o formulário dos ajustes (R33) pede o impasse.ps1 raise -Type gate'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'R36'
        Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.active-run') '{ "trilha": "fix", "id": "B-009", "desde": "2026-11-13 10:00" }' -Encoding UTF8 }
        Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessRun'; tool_input = @{ questions = @(@{ question = 'Aprova o ajuste? Exemplo: o rótulo muda.'; header = 'A'; multiSelect = $false; options = @((Opt 'Aprovar'), (Opt 'Pedir mais contexto')) }) } } },
-    @{ Name = 'G24 (v3.58.3): sem .active-run (interrupção, parada d) a guarda cala'; Script = 'pre-tool.ps1'; Expect = 0
+    @{ Name = 'G24 (v3.66.0): sem .active-run (interrupção, parada d) e sem rota — negado fora do run (R36)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'R36'
        Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-run') -Force -ErrorAction SilentlyContinue }
        Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessRun'; tool_input = @{ questions = @(@{ question = 'Quais as opções? Exemplo: corrigir antes.'; header = 'Q'; multiSelect = $false; options = @((Opt 'Planejar a correção'), (Opt 'Pedir mais contexto')) }) } } },
     @{ Name = 'G24 (v3.58.3): desligável em guards.json → disabled'; Script = 'pre-tool.ps1'; Expect = 0
@@ -1194,7 +1197,7 @@ $cases = @(
                  Remove-Item -LiteralPath (Join-Path $proj '.team-project/.ask-route') -Force -ErrorAction SilentlyContinue
                  [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ "disabled": ["G24"] }', (New-Object System.Text.UTF8Encoding($false))) }
        Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessRun'; tool_input = @{ questions = @(@{ question = 'Sigo? Exemplo: x.'; header = 'Q'; multiSelect = $false; options = @((Opt 'Sim'), (Opt 'Pedir mais contexto')) }) } } },
-    @{ Name = 'SessionStart (v3.58.3): a retomada vale para o comando do run; outro comando diz em uma linha, sem formulário'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'G23, G24, G25;*Retome agora, sem esperar o stakeholder: /sm sprint run*se ele pediu outro comando*sem formulário*formulário só quando o run.ps1 manda levar ao stakeholder (G24'
+    @{ Name = 'SessionStart (v3.58.3): a retomada vale para o comando do run; outro comando diz em uma linha, sem formulário'; Script = 'session-start.ps1'; Expect = 0; ExpectOut = 'G23, G24, G25, G26;*Retome agora, sem esperar o stakeholder: /sm sprint run*se ele pediu outro comando*sem formulário*formulário só quando o run.ps1 manda levar ao stakeholder (G24'
        Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ }', (New-Object System.Text.UTF8Encoding($false))) }
        Check = { foreach ($f in '.active-run', '.run-session', '.ask-route') { Remove-Item -LiteralPath (Join-Path $proj ".team-project/$f") -Force -ErrorAction SilentlyContinue }; $true }
        Payload = @{ hook_event_name = 'SessionStart'; source = 'startup' } },
@@ -1223,8 +1226,100 @@ $cases = @(
     @{ Name = 'v3.59.1 item 2: agente sem rodada no usage.jsonl e fora do registro não é inventado'; Script = 'pre-tool.ps1'; Expect = 0
        Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue }
        Check = { -not (Test-Path -LiteralPath (Join-Path $proj '.team-project/.active-agents')) }
-       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; agent_id = 'dev359nunca'; session_id = 'sessA'; tool_input = @{ command = 'git status' } } }
+       Payload = @{ tool_name = 'PowerShell'; agent_type = 'team:developer'; agent_id = 'dev359nunca'; session_id = 'sessA'; tool_input = @{ command = 'git status' } } },
+    # ---------- v3.66.0 — R36: a G24 em toda sessão, o stakeholder-request pela frase dele, a G26 no fim de turno ----------
+    @{ Name = 'v3.66.0 G24: fora do run, com a rota do impasse.ps1 raise (tipo que sobe), o formulário passa'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { foreach ($f in '.active-run', '.run-session') { Remove-Item -LiteralPath (Join-Path $proj ".team-project/$f") -Force -ErrorAction SilentlyContinue }
+                 [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ }', (New-Object System.Text.UTF8Encoding($false)))
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') ('{"rota":"scope","task":"H-Q","motivo":"cards","at":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '","impasse":"S2-I1","origem":"impasse"}') -Encoding UTF8 }
+       Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessPrep'; tool_input = @{ questions = @(@{ question = 'Os cards podem ficar lado a lado? Exemplo: hoje cada card ocupa a linha inteira.'; header = 'Cards'; multiSelect = $false; options = @((Opt 'Quando couber (Recomendado)'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'v3.66.0 G24: fora do run, a rota já usada há mais de 10 min — outra pergunta é negada pela R36'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'R36 (matriz de impasses): A rota*já foi usada*impasse.ps1'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') ('{"rota":"scope","task":"H-Q","motivo":"x","at":"' + (Get-Date).AddMinutes(-30).ToString('yyyy-MM-dd HH:mm:ss') + '","usado":"' + (Get-Date).AddMinutes(-15).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessPrep'; tool_input = @{ questions = @(@{ question = 'Quer que eu acione a QA? Exemplo: os dois campos brancos.'; header = 'QA'; multiSelect = $false; options = @((Opt 'Sim'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'v3.66.0 G24: stakeholder-request cuja frase NÃO está numa fala dele na sessão — negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'não está numa fala do stakeholder nesta sessão'
+       Setup = { $t = Join-Path $tmp 'sr.jsonl'
+                 [System.IO.File]::WriteAllLines($t, [string[]]@('{"type":"user","message":{"role":"user","content":"Vamos adicionar as medias ao sprint"}}', '{"type":"assistant","message":{"content":[{"type":"text","text":"Certo."}]}}'), (New-Object System.Text.UTF8Encoding($false)))
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') ('{"rota":"stakeholder-request","task":"S7","motivo":"baixas","at":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '","impasse":"S7-I9","quote":"apresente em modo formulario e eu escolho"}') -Encoding UTF8 }
+       Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessPrep'; transcript_path = (Join-Path $tmp 'sr.jsonl'); tool_input = @{ questions = @(@{ question = 'Quais baixas entram? Exemplo: o texto do alerta.'; header = 'Baixas'; multiSelect = $false; options = @((Opt 'Entra'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'v3.66.0 G24: stakeholder-request com a frase dele na sessão (sem acento e caixa) — passa'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { $t = Join-Path $tmp 'sr2.jsonl'
+                 [System.IO.File]::WriteAllLines($t, [string[]]@('{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Vamos adicionar as médias, e para as baixas Apresente em modo formulário e eu escolho a que entra"}]}}'), (New-Object System.Text.UTF8Encoding($false)))
+                 Set-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') ('{"rota":"stakeholder-request","task":"S7","motivo":"baixas","at":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '","impasse":"S7-I9","quote":"apresente em modo formulario e eu escolho"}') -Encoding UTF8 }
+       Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessPrep'; transcript_path = (Join-Path $tmp 'sr2.jsonl'); tool_input = @{ questions = @(@{ question = 'Quais baixas entram? Exemplo: o texto do alerta.'; header = 'Baixas'; multiSelect = $false; options = @((Opt 'Entra'), (Opt 'Pedir mais contexto')) }) } } },
+    @{ Name = 'v3.66.0 G26 (warn, padrão): fim de turno "Quer que eu acione a QA?" fora do run — não barra, registra no guards.log'; Script = 'stop.ps1'; Expect = 0
+       Setup = { $t = Join-Path $tmp 'of.jsonl'
+                 [System.IO.File]::WriteAllLines($t, [string[]]@('{"type":"assistant","message":{"content":[{"type":"text","text":"A triagem terminou.\n\nQuer que eu acione a QA para os dois campos e abra as F-IDs?"}]}}'), (New-Object System.Text.UTF8Encoding($false)))
+                 Remove-Item -LiteralPath (Join-Path $proj '.team-project/.ask-route'), (Join-Path $proj '.team-project/guards.log') -Force -ErrorAction SilentlyContinue }
+       Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/guards.log') -Raw -Encoding UTF8) -like '*G26*aviso (warn)*Quer que eu acione a QA*' }
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessPrep'; transcript_path = (Join-Path $tmp 'of.jsonl') } },
+    @{ Name = 'v3.66.0 G26 (enforce): a mesma fala barra, com o caminho (executar pelo dono)'; Script = 'stop.ps1'; Expect = 2; ExpectErr = 'G26] A sua fala termina oferecendo*execute pelo dono*impasse.ps1 raise'
+       Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ "impasses": { "offerGuard": "enforce" } }', (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessPrep'; transcript_path = (Join-Path $tmp 'of.jsonl') } },
+    @{ Name = 'v3.66.0 G26 (enforce): "Posso anotar no gaps.md?" também é oferta — barra'; Script = 'stop.ps1'; Expect = 2; ExpectErr = 'A sua fala termina oferecendo'
+       Setup = { $t = Join-Path $tmp 'of2.jsonl'
+                 [System.IO.File]::WriteAllLines($t, [string[]]@('{"type":"assistant","message":{"content":[{"type":"text","text":"O registro da QA ainda diz que a prova e estatica.\nPosso anotar no gaps.md que o defeito foi visto no aparelho?"}]}}'), (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessPrep'; transcript_path = (Join-Path $tmp 'of2.jsonl') } },
+    @{ Name = 'v3.66.0 G26 (enforce): resposta que só informa, sem oferta de ação — não barra'; Script = 'stop.ps1'; Expect = 0
+       Setup = { $t = Join-Path $tmp 'of3.jsonl'
+                 [System.IO.File]::WriteAllLines($t, [string[]]@('{"type":"assistant","message":{"content":[{"type":"text","text":"O proximo passo e o planejamento do sprint 7.\nDigite /clear e depois /team:sm sprint plan."}]}}'), (New-Object System.Text.UTF8Encoding($false))) }
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessPrep'; transcript_path = (Join-Path $tmp 'of3.jsonl') } },
+    @{ Name = 'v3.66.0 G26 (enforce): com rota gravada nos últimos 15 min (a pergunta foi em formulário), não barra'; Script = 'stop.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') ('{"rota":"scope","task":"H-Q","motivo":"x","at":"' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Check = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.ask-route') -Force -ErrorAction SilentlyContinue; [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ }', (New-Object System.Text.UTF8Encoding($false))); $true }
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessPrep'; transcript_path = (Join-Path $tmp 'of.jsonl') } },
+    @{ Name = 'v3.66.0 G26: desligável em guards.json → disabled'; Script = 'stop.ps1'; Expect = 0
+       Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ "disabled": ["G26"], "impasses": { "offerGuard": "enforce" } }', (New-Object System.Text.UTF8Encoding($false))) }
+       Check = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ }', (New-Object System.Text.UTF8Encoding($false))); $true }
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessPrep'; transcript_path = (Join-Path $tmp 'of.jsonl') } },
+    # ---------- v3.66.0 (item H) — G7: o executor de Task segue a sequência do 🔺 GAP aberto, da matriz de impasses ----------
+    @{ Name = 'v3.66.0 G7: GAP de requisito aberto da T-077 — o executor dispara o PO para ela (antes negado)'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.gap-route') ('{"task":"T-077","cause":"requirement","sequence":["product-owner","architect","developer"],"at":"' + (Get-Date).AddHours(-0).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run077'; tool_input = @{ subagent_type = 'team:product-owner'; prompt = '/po — decida o 🔺 GAP de requisito da T-077' } } },
+    @{ Name = 'v3.66.0 G7: GAP de requisito da T-077 — a QA está fora da sequência (PO → Arquiteto → dev): negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'GAP aberto da T-077 (causa requirement) vai pela sequência da matriz de impasses: product-owner → architect → developer'
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run077'; tool_input = @{ subagent_type = 'team:quality-assurance'; prompt = '/qa — confira o GAP da T-077' } } },
+    @{ Name = 'v3.66.0 G7: o operator fica sempre liberado no GAP aberto'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run077'; tool_input = @{ subagent_type = 'team:operator'; prompt = "Chamador: task-runner T-077`nmeça" } } },
+    @{ Name = 'v3.66.0 G7: pedido que cita outra Task segue a regra de antes (UX negado ao executor)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'o executor de Task dispara só developer, architect, operator e quality-assurance'
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run078'; tool_input = @{ subagent_type = 'team:user-experience'; prompt = '/ux — a tela da T-078' } } },
+    @{ Name = 'v3.66.0 G7: GAP técnico aberto (Arquiteto → dev) — levar ao PO é negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'architect → developer'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.gap-route') ('{"task":"T-077","cause":"design","sequence":["architect","developer"],"at":"' + (Get-Date).AddHours(-0).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run077'; tool_input = @{ subagent_type = 'team:product-owner'; prompt = '/po — o GAP de desenho da T-077' } } },
+    @{ Name = 'v3.66.0 G7: rota do GAP com mais de 6 h vale como ausente (regra de antes)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'o executor de Task dispara só'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.gap-route') ('{"task":"T-077","cause":"requirement","sequence":["product-owner","architect","developer"],"at":"' + (Get-Date).AddHours(-7).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Check = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.gap-route') -Force -ErrorAction SilentlyContinue; $true }
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run077'; tool_input = @{ subagent_type = 'team:product-owner'; prompt = '/po — decida o GAP da T-077' } } },
+    @{ Name = 'v3.66.0 J: o impasse.ps1 raise grava a pendência na §7 com o prefixo R34 — o formulário que começa por ele passa na G3 e na G24 de primeira'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/README.md'), "# Contexto`n`n## 1. O produto`n**Identificador remoto:** ACME`n`n## 7. Decisões pendentes do stakeholder`n`nnenhuma`n`n## 8. Outra`n", (New-Object System.Text.UTF8Encoding($false)))
+                 foreach ($f in '.active-run', '.run-session', '.ask-route', 'fixes') { Remove-Item -LiteralPath (Join-Path $proj ".team-project/$f") -Recurse -Force -ErrorAction SilentlyContinue }   # sem bloco de fix aberto: a trilha é o sprint (S1)
+                 $null = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'scripts/checks/impasse.ps1') raise -Type scope -Part H-Q -Subject cards -Origin po -Consulted none -Text 'Os cards podem ficar lado a lado?' -Detail 'muda o card ativo' -Root $proj 2>&1 }
+       Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/README.md') -Raw -Encoding UTF8) -match '(?s)## 7\..*1\. \[ACME · S1 · H-Q\] Os cards.*## 8\.' }
+       Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessPrep'; tool_input = @{ questions = @(@{ question = '[ACME · S1 · H-Q] Os cards podem ficar lado a lado? Exemplo: hoje cada card ocupa a linha inteira.'; header = 'Cards'; multiSelect = $false; options = @((Opt 'Quando couber (Recomendado)'), (Opt 'Pedir mais contexto')) }) } } }
 )
+
+
+# v3.66.0 (R36) — o inventário dos formulários legítimos: cada modo que abre formulário ao stakeholder declara o impasse do
+# tipo dele (impasse.ps1 raise) e o formulário passa na G24 de primeira, fora do sprint run. Um caso por modo.
+$invModes = @(
+    @{ M = '/team update'; Part = 'MODO-UPDATE'; A = @('-Type', 'plugin-update', '-Detail', '3.65.14 para 3.66.0') },
+    @{ M = 'onboarding (cadência)'; Part = 'MODO-ONBOARDING'; A = @('-Type', 'configuration', '-Detail', 'guards.json → run.planner = claude') },
+    @{ M = 'brainstorm'; Part = 'MODO-BRAINSTORM'; A = @('-Type', 'scope', '-Detail', 'a ideia entra no backlog') },
+    @{ M = 'SDD ①'; Part = 'MODO-SDD'; A = @('-Type', 'gate', '-Gate', '①') },
+    @{ M = 'sprint 0 (aceite)'; Part = 'MODO-SPRINT0'; A = @('-Type', 'gate', '-Gate', 'sprint0') },
+    @{ M = 'prepare (escopo)'; Part = 'MODO-PREPARE'; A = @('-Type', 'scope', '-Detail', 'a H-S reduzida a Compras') },
+    @{ M = 'plan ③'; Part = 'MODO-PLAN'; A = @('-Type', 'gate', '-Gate', '③') },
+    @{ M = 'review (aceite)'; Part = 'MODO-REVIEW'; A = @('-Type', 'gate', '-Gate', 'review') },
+    @{ M = 'close (propostas de configuração)'; Part = 'MODO-CLOSE'; A = @('-Type', 'configuration', '-Detail', 'targets.android.repair') },
+    @{ M = 'fix plan (ajustes, R33)'; Part = 'B-901'; A = @('-Type', 'gate', '-Gate', 'fix-adjust') },
+    @{ M = '/sec (escopo autorizado)'; Part = 'MODO-SEC'; A = @('-Type', 'authorization', '-Detail', 'pentest gray-box em homologação') },
+    @{ M = 'decisão estratégica'; Part = 'MODO-ADR'; A = @('-Type', 'strategic', '-Detail', 'provider: trocar o serviço de e-mail') }
+)
+foreach ($im in $invModes) {
+    $imArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $root 'scripts/checks/impasse.ps1'), 'raise', '-Part', $im.Part, '-Subject', 'formulario', '-Origin', $im.M, '-Consulted', 'none', '-Text', "decisão do modo $($im.M)") + $im.A + @('-Root', $proj)
+    $cases += @{ Name = "v3.66.0 inventário: $($im.M) — o raise do tipo dele grava a rota e o formulário passa na G24"; Script = 'pre-tool.ps1'; Expect = 0
+        Setup = [scriptblock]::Create("[System.IO.File]::WriteAllText((Join-Path `$proj '.team-project/README.md'), ""# Contexto``n``n## 7. Decisões pendentes do stakeholder``n``nnenhuma``n"", (New-Object System.Text.UTF8Encoding(`$false))); foreach (`$f in '.active-run', '.run-session', '.ask-route') { Remove-Item -LiteralPath (Join-Path `$proj "".team-project/`$f"") -Force -ErrorAction SilentlyContinue }; `$o = & powershell $(($imArgs | ForEach-Object { "'" + ($_ -replace "'", "''") + "'" }) -join ' ') 2>&1; if (`$LASTEXITCODE -ne 0) { Write-Host ('raise falhou: ' + (`$o -join ' ')) }")
+        Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') -Raw -Encoding UTF8) -match '"usado":' }
+        Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessInv'; tool_input = @{ questions = @(@{ question = 'Você aprova esta decisão? Exemplo: o que muda para você em cada opção está na descrição.'; header = 'Modo'; multiSelect = $false; options = @((Opt 'Aprovar (Recomendado)'), (Opt 'Pedir mais contexto')) }) } } }
+}
 
 $rows = @(); $fail = 0
 foreach ($c in $cases) {

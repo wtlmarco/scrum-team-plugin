@@ -215,6 +215,45 @@ try {
     elseif ($cg.Missing.Count) { Add-Result 'comandos' 'ok' ("faltam em guards.json → runCommands: " + ($cg.Missing -join '; ') + " — o run.ps1 pede a liberação ao stakeholder uma vez, antes da construção (F2)") }
     else { Add-Result 'comandos' 'ok' $(if ($cg.None) { 'nenhum além da lista base' } else { 'todos os comandos da Task já estão na lista base ou em runCommands' }) }
 
+    # ---------- 36 · reuse and patterns (v3.66.0, item K; standards/implementation-principles.md §4.6 e §4.7) ----------
+    # O plano pleno diz, antes da construção, o que reaproveita, o que estende, o que é novo (e por quê) e qual padrão usa (e
+    # para qual problema). No sprint 7 do projeto piloto, a "lua do semeio igual à do Geral" não tinha onde dizer se reaproveitava
+    # o componente do Geral. A V9 mede a duplicação depois; esta linha decide antes. Plano de sprint com o ③ aprovado antes da
+    # v3.66.0 (2026-11-24) não ganha regra nova no meio: n-a.
+    $r36Since = '2026-11-24'
+    $r36Sprint = [regex]::Match(($path -replace '\\', '/'), 'sprints/(\d+)/plan/')
+    $r36Old = $false
+    if ($r36Sprint.Success) {
+        $sbp = Join-Path $Root ".team-project/sprints/$($r36Sprint.Groups[1].Value)/sprint-backlog.md"
+        if (Test-Path -LiteralPath $sbp) { $am = [regex]::Match((Read-Text $sbp), '(?m)^\|\s*\*\*Aprovado em\*\*\s*\|\s*(\d{4}-\d{2}-\d{2})'); if ($am.Success -and $am.Groups[1].Value -lt $r36Since) { $r36Old = $true } }
+    }
+    if ($light) { Add-Result 'reuso' 'n-a' 'trilha leve (regra 36 vale para o plano pleno)' }
+    elseif ($r36Old) { Add-Result 'reuso' 'n-a' "sprint com o ③ aprovado antes da v3.66.0 ($r36Since): a §2a vale a partir do próximo sprint" }
+    else {
+        $s2a = [regex]::Match($text, '(?ms)^##\s+2a\.[^\r\n]*\r?\n(.*?)(?=^##\s|\z)')
+        if (-not $s2a.Success) { Add-Result 'reuso' 'falhou' "plano pleno sem '## 2a. Reuse and patterns' (regra 36; standards/implementation-principles.md §4.6 e §4.7) — uma linha por peça nova: '- reuses: ``<arquivo>`` — <o que reaproveita>' · '- extends: ``<arquivo>`` — <o que muda>' · '- new: ``<arquivo>`` — <por que nada existente serve>'; por padrão usado: '- pattern: <Name> — <problem> — <simpler alternative rejected>'; sem peça nova: '- none: <motivo>'" }
+        else {
+            $rl = @(($s2a.Groups[1].Value -split "`r?`n") | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^-\s*(reuses|extends|new|pattern|none)\s*:' })
+            $iss = @()
+            if (-not $rl.Count) { $iss += "a §2a sem nenhuma linha reuses: · extends: · new: · pattern: · none:" }
+            foreach ($ln in $rl) {
+                $kind = ([regex]::Match($ln, '^-\s*(\w+)\s*:')).Groups[1].Value.ToLowerInvariant()
+                $body = ($ln -replace '^-\s*\w+\s*:\s*', '').Trim()
+                switch ($kind) {
+                    { $_ -in 'reuses', 'extends' } { if ($body -notmatch '`[^`]+`') { $iss += "'${kind}:' sem o arquivo entre crases ($ln)" } }
+                    'new' { if ($body -notmatch '`[^`]+`\s*[—–-]\s*\S.{9,}') { $iss += "'new:' sem o motivo de nada existente servir — '- new: ``<arquivo>`` — <por quê>' ($ln)" } }
+                    'pattern' { if ($body -notmatch '^[^—–]+?\s*[—–]\s*[^—–]{3,}?\s*[—–]\s*\S.{2,}$') { $iss += "'pattern:' sem o problema e a alternativa descartada — '- pattern: <Name> — <problem> — <simpler alternative rejected>' ($ln)" } }
+                    'none' { if ($body.Length -lt 10) { $iss += "'none:' sem o motivo ($ln)" } }
+                }
+            }
+            if ($iss.Count) { Add-Result 'reuso' 'falhou' (($iss -join '; ') + ' (regra 36)') }
+            else {
+                $cnt = @{}; foreach ($ln in $rl) { $k = ([regex]::Match($ln, '^-\s*(\w+)')).Groups[1].Value.ToLowerInvariant(); $cnt[$k] = 1 + [int]$cnt[$k] }
+                Add-Result 'reuso' 'ok' ((@('reuses', 'extends', 'new', 'pattern', 'none') | Where-Object { $cnt.ContainsKey($_) } | ForEach-Object { "$($cnt[$_]) $_" }) -join ' · ')
+            }
+        }
+    }
+
     # ---------- 22 · plano enxuto (v3.51; sem corte por tamanho desde a v3.53.2) ----------
     # v3.53.2 (plugin-report prévio do sprint 5 do garden, decisão do stakeholder): o teto de 20 KB fazia o Arquiteto escrever
     # e depois cortar em dezenas de edições, cada uma relendo a conversa toda — metade do custo do plano da T-042 (US$ 4,39 de

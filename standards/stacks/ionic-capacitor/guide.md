@@ -37,3 +37,11 @@
 - **O executor nunca navega a WebView:** `Page.navigate` recarrega a WebView do Capacitor e derruba o app (IONIC-P15). Navegação é sempre pelo próprio app, nos passos do cenário.
 - APK novo pede build novo: o Gradle com `UP-TO-DATE` entrega o mesmo APK (IONIC-P16). Para provar que o build foi feito, compare o carimbo do APK com o do código, ou force o `assembleDebug` depois do `npx cap sync`.
 - Emulador em container (serial de rede `localhost:5555`): o caminho está no `how-to.md` (v3.55.0 G) e em [`../../test-ids.md`](../../test-ids.md) §6.
+
+## IONIC-4 Reuse and patterns (exemplos de §4.6 e §4.7)
+
+*Não normativo: a regra é a do [nível 1](../../implementation-principles.md) §4.6 e §4.7; a parte Angular está em [`../angular/guide.md`](../angular/guide.md) NG-8.*
+
+- **O mesmo visual de lista, cartão ou formulário** em telas diferentes é um componente compartilhado sobre os componentes do Ionic (`ion-card`, `ion-item`), com o id de teste no host (IONIC-1) — nunca a marcação copiada tela a tela.
+- **Tema do Ionic** (`variables.scss`, `--ion-color-*`, classes globais) para cor, fundo e espaçamento comuns: o campo de fundo branco que só uma tela tem é sinal de estilo local que devia ser do tema.
+- **Plugin nativo do Capacitor atrás de um serviço** (Adapter): a tela chama o serviço, e o teste troca o serviço; o plugin não aparece no componente.

@@ -55,3 +55,12 @@ A fronteira de import é regra de lint que **falha o build** (nível 1 §2.3, Q1
 
 - **Orçamento** (V18) em métrica de usuário: LCP, INP e CLS no percentil 75 (Lighthouse CI ou `web-vitals` num cenário Playwright) e tamanho do bundle (`vite build` + limite por arquivo).
 - **O artefato entregue é o build de produção** (`npm run build` + `preview`): o portão do QA roda os cenários contra ele, não contra o servidor de desenvolvimento.
+
+## RE-8 Reuse and patterns (exemplos de §4.6 e §4.7)
+
+*Não normativo: a regra é a do [nível 1](../../implementation-principles.md) §4.6 e §4.7; aqui, a forma na stack.*
+
+- **Componente compartilhado** com props e `children` para o que duas telas mostram igual; a variação por prop, não por cópia.
+- **Hook compartilhado** (`useX`) para o estado e o efeito que mais de um componente repete; a regra de negócio fica fora do hook, no módulo de domínio.
+- **Formatadores** (moeda, data) num módulo único, importado por todos.
+- **Strategy** como mapa de implementações por tipo; **Adapter** como o módulo que fala com a API, com a interface que o componente usa.

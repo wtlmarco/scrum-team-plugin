@@ -15,7 +15,12 @@
 # da Planning traz ao stakeholder (workflow-sprint.md §5e "Durante o sprint").
 # Saída: uma linha. Exit 0 · 2 = erro de uso ou de leitura. Nunca falha quem o chamou.
 
-param([string]$Block = '', [switch]$Init, [string]$Fid = '', [string]$To = '', [switch]$Capacity, [double]$Add = 0, [string]$Root = (Get-Location).Path)
+# v3.66.0: -Sprint <n> -Init [-Opened aaaa-mm-dd] gera o kanban.md do sprint no passo 11 da Planning (antes, escrito à mão:
+# no sprint 7 do projeto piloto saiu sem "## Série" e o mark.ps1 parou o executor) — com a linha 0 da Série, o Registro, o
+# Controle e a subseção "Decisões do time". Com o kanban.md já lá e sem Série (nem nele nem no consumption.md), só acrescenta
+# a Série e o Registro. A subseção "Decisões do time" (Controle) e a "## Decisões do time" do bloco saem do registro da trilha
+# (team-decisions.jsonl, impasse.ps1).
+param([string]$Block = '', [switch]$Init, [string]$Fid = '', [string]$To = '', [switch]$Capacity, [double]$Add = 0, [string]$Sprint = '', [string]$Opened = '', [string]$Root = (Get-Location).Path)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib.ps1')
@@ -280,6 +285,33 @@ function Set-KanbanOrder([string]$Text, [string]$Nl) {
     return ($pre + ((@($f) + $mid + @($b) | ForEach-Object { $_.Body }) -join '')).TrimEnd() + $Nl
 }
 
+# v3.66.0: a Série com a linha 0 e o Registro vazio — do kanban.md novo e do reparo do kanban sem Série.
+function Format-OpeningRecord($Tasks, [string]$OpenDate, [string]$Nl) {
+    $marks = @($todo, $E.Plan, $E.Build, $E.QA, $E.Done, $red)
+    $cnt = @($marks | ForEach-Object { $mk = $_; @($Tasks | Where-Object { $(if ($_.Mark) { $_.Mark } else { $todo }) -eq $mk }).Count })
+    $open = @($Tasks | Where-Object { $_.Mark -ne $E.Done })
+    $est = [double](@($open | Where-Object { $null -ne $_.Est } | ForEach-Object { $_.Est }) | Measure-Object -Sum).Sum
+    $l = @('## Série', '*(Só na Planning: a linha 0. No `sprint run`, o `kanban.ps1` leva a Série e o Registro ao `consumption.md`, onde o `mark.ps1` e o `close.ps1 -Apply` gravam cada transição — v3.60.0.)*', '',
+        '| Dia | Data | Evento | Est. restante | Tasks restantes | ⬜ | 🟦 | 🟨 | 🟪 | ✅ | 🔴 |', '|---|---|---|---|---|---|---|---|---|---|---|',
+        "| 0 | $OpenDate | Abertura do sprint — **pacote aprovado** | $($est.ToString('0.##', $pt)) | $($open.Count) | $($cnt -join ' | ') |", '',
+        '## Registro de transições (R24)', '', '| Task | De → Para | Quando | Por quem |', '|---|---|---|---|', '')
+    return ($l -join $Nl)
+}
+function New-SprintKanbanText([string]$N, $Tasks, [string]$OpenDate, [string]$Nl) {
+    $total = [double](@($Tasks | Where-Object { $null -ne $_.Est } | ForEach-Object { $_.Est }) | Measure-Object -Sum).Sum
+    $l = @("# Kanban — Sprint $N", '',
+        "> **DOCUMENTO VIVO durante o sprint** → **fechado** no ``/sm sprint close`` · **Dono:** SM · gerado pelo ``kanban.ps1 -Sprint $N -Init`` no passo 11 da Planning (v3.66.0). O Resumo, o Kanban, o Burndown, as Decisões do time e as Rodadas são regravados pelo script; o Controle (Entradas, Bloqueios, Decisões pendentes) é do SM, à mão.", '',
+        '## Kanban', '', '## Controle', '',
+        '### Entradas fora da Planning', '', '> O Sprint Backlog **não cresce** durante o sprint (R4). A única exceção é o GAP que bloqueia uma História já no sprint. Toda entrada declara **o que saiu para caber** — ou a **Decisão do stakeholder** com data e onde ela está.', '',
+        '| Task | História | Por que entrou fora da Planning | O que saiu para caber | Data | Decisão do stakeholder |', '|---|---|---|---|---|---|', '',
+        '### Bloqueios e riscos abertos', '', '| # | Task / História | Natureza | Degrau | Quem destrava | Desde |', '|---|---|---|---|---|---|', '',
+        '### Decisões pendentes do stakeholder', '', '| # | Decisão pendente | Por que o degrau 1 não fechou (ou "estratégica — direto") | Task(s) que destrava | Desde |', '|---|---|---|---|---|', '',
+        '### Decisões do time', '', '',
+        '## Fechamento *(preenchido só no `/sm sprint close`)*', '- **Estimativa restante final:** —', '- **Objetivo do sprint atingido?** — ver a Sprint Review', '',
+        '## Linha de base', '', '| | |', '|---|---|', "| **Sprint** | $N |", "| **Janela** | $OpenDate → sem data fixa |", "| **Estimativa total planejada** | $($total.ToString('0.##', $pt)) — soma das $(@($Tasks).Count) Tasks na abertura |", '')
+    return (($l -join $Nl) + $Nl + (Format-OpeningRecord $Tasks $OpenDate $Nl))
+}
+
 function Format-Board($Items, [string]$Nl) {
     $rows = [Math]::Max(1, (@($cols | ForEach-Object { $c = $_; @($Items | Where-Object { $_.Mark -eq $c.mk }).Count } | Measure-Object -Maximum).Maximum))
     $tbl = @(('| ' + (($cols | ForEach-Object { "$($_.mk) $($_.t)" }) -join ' | ') + ' |'), ('|' + ('---|' * $cols.Count)))
@@ -293,10 +325,16 @@ try {
 
     if (-not $Block) {
         # ---------- sprint ----------
-        $readme = Join-Path $tp 'README.md'
-        $m = if (Test-Path -LiteralPath $readme) { [regex]::Match((Read-Text $readme), $script:SprintLineRe) } else { $null }
-        if (-not $m -or -not $m.Success) { [Console]::Error.WriteLine('kanban: README §2 sem "Sprint corrente" — esperado: ' + $script:SprintLineHelp); exit 2 }
-        $n = $m.Groups[1].Value; $S = Join-Path $tp "sprints/$n"
+        if ($Sprint) {
+            if ($Sprint -notmatch '^\d+$') { [Console]::Error.WriteLine("kanban: -Sprint '$Sprint' inválido — use o número."); exit 2 }
+            $n = $Sprint
+        } else {
+            $readme = Join-Path $tp 'README.md'
+            $m = if (Test-Path -LiteralPath $readme) { [regex]::Match((Read-Text $readme), $script:SprintLineRe) } else { $null }
+            if (-not $m -or -not $m.Success) { [Console]::Error.WriteLine('kanban: README §2 sem "Sprint corrente" — esperado: ' + $script:SprintLineHelp); exit 2 }
+            $n = $m.Groups[1].Value
+        }
+        $S = Join-Path $tp "sprints/$n"
         if ($Capacity) {
             $c = Get-SprintCapacity $Root $S $Add
             if (-not $c) { [Console]::Out.WriteLine("kanban -Capacity: sprint $n sem capacidade declarada (linha **Capacidade** do sprint-backlog.md ou **Capacidade do sprint** do README) — sem conta para o formulário."); exit 0 }
@@ -312,6 +350,25 @@ try {
             [Console]::Out.WriteLine("kanban: sprints/$n/consumption.md criado")
         }
         $kb = Join-Path $S 'kanban.md'
+        # v3.66.0: o kanban.md da abertura sai daqui (passo 11 da Planning), e o sem Série ganha a Série e o Registro.
+        if ($Init -and $Sprint) {
+            if (-not (Test-Path -LiteralPath (Join-Path $S 'sprint-backlog.md'))) { [Console]::Error.WriteLine("kanban -Sprint $n -Init: sprints/$n/sprint-backlog.md não existe — o Sprint Backlog (passo 9 da Planning) vem antes do quadro."); exit 2 }
+            if (Test-Path -LiteralPath (Join-Path $S 'retrospective.md')) { [Console]::Error.WriteLine("kanban -Sprint $n -Init: sprint $n fechado — o quadro não muda mais."); exit 2 }
+            $od = if ($Opened) { $Opened } else { Get-Date -Format 'yyyy-MM-dd' }
+            if ($od -notmatch '^\d{4}-\d{2}-\d{2}$') { [Console]::Error.WriteLine("kanban: -Opened '$Opened' — use aaaa-mm-dd (a data da aprovação do pacote)."); exit 2 }
+            $initTasks = @(Get-SprintTasks $S)
+            if (-not (Test-Path -LiteralPath $kb)) {
+                [System.IO.File]::WriteAllText($kb, (New-SprintKanbanText $n $initTasks $od "`n"), $utf8)
+                [Console]::Out.WriteLine("kanban: sprints/$n/kanban.md criado — dia 0 em $od, $($initTasks.Count) Task(s)")
+            } else {
+                $hasSerie = ((Read-Text $kb) -match '(?m)^##\s+S[ée]rie') -or ((Test-Path -LiteralPath $consS) -and ((Read-Text $consS) -match '(?m)^##\s+S[ée]rie'))
+                if (-not $hasSerie) {
+                    $kt = Read-Text $kb; $knl = if ($kt.Contains("`r`n")) { "`r`n" } else { "`n" }
+                    [System.IO.File]::WriteAllText($kb, ($kt.TrimEnd() + $knl + $knl + (Format-OpeningRecord $initTasks $od $knl)), $utf8)
+                    [Console]::Out.WriteLine("kanban: sprints/$n/kanban.md sem Série — acrescentei a Série (linha 0 em $od) e o Registro de transições")
+                }
+            }
+        }
         if (-not (Test-Path -LiteralPath $kb)) { [Console]::Out.WriteLine("kanban: sprints/$n/kanban.md não existe (sprint anterior à v3.51) — nada a regravar."); exit 0 }
         if (Test-Path -LiteralPath (Join-Path $S 'retrospective.md')) { [Console]::Out.WriteLine("kanban: sprint $n fechado — o kanban.md não muda mais."); exit 0 }
         # v3.54.2 (carta do sprint 5 do garden, item 4): Task sem marcador (recém-entrada no sprint-backlog — entrada fora da
@@ -363,6 +420,9 @@ try {
             $sum = @(Get-PlainSummary $Root $n -Objective | ForEach-Object { "- **$($_.K):** $($_.V)" })
             $res = "## Resumo$nl*(Para quem acompanha, em palavras simples. Gerado às $((Get-Date).ToString('HH:mm')) a cada mudança de etapa e a cada rodada do time — não editar à mão. Agora mesmo: ``/team-status``; detalhe técnico: ``/team-status detalhe`` e o fim deste arquivo.)*$nl$nl" + ($sum -join $nl) + "$nl$nl"
             $text = Set-Section $text 'Resumo' $res $(if ($text -match '(?m)^##\s+Agora\s*$') { 'Agora' } else { 'Kanban' })
+            # v3.66.0 (item F): "Decisões do time" no Controle, do registro do sprint (impasse.ps1).
+            $tdP = Join-Path $S 'team-decisions.jsonl'
+            if ((Test-Path -LiteralPath $tdP) -or $text -match '(?m)^###\s+Decis[õo]es do time') { $text = Update-TeamDecisionsInText $text $tdP (Get-ImpasseMatrix $Root) $nl }
             $text = Set-KanbanOrder $text $nl
             [System.IO.File]::WriteAllText($kb, $text, $utf8)
         }
@@ -457,7 +517,11 @@ try {
     $doc = @("# Kanban — Bloco $B", '',
         "> Regravado inteiro pelo ``kanban.ps1`` na entrada de cada fase (``-Fid``/``-To``), ao fim de cada rodada de agente e no fechamento do bloco — não editar à mão. Colunas iguais às do sprint; $($E.Done) Fechada = saiu do bloco (fechada, promovida ou devolvida — o Registro diz qual).", '',
         '## Kanban', '', (Format-Board $items $nl), '',
-        '## Registro de transições', '', '| F-ID | De → Para | Quando | Por quem |', '|---|---|---|---|') + $reg + @('', (Format-Rounds $rounds $nl).TrimEnd())
+        '## Registro de transições', '', '| F-ID | De → Para | Quando | Por quem |', '|---|---|---|---|') + $reg
+    # v3.66.0 (item F): as decisões do bloco, do registro dele (impasse.ps1).
+    $tdB = Join-Path $bdir 'team-decisions.jsonl'
+    if (Test-Path -LiteralPath $tdB) { $doc += @('', '## Decisões do time', '', $script:TeamDecisionsIntro, '', (Format-TeamDecisionsTable @(Get-TeamDecisions $tdB) (Get-ImpasseMatrix $Root) $nl)) }
+    $doc += @('', (Format-Rounds $rounds $nl).TrimEnd())
     if ($closedAt) { $doc += @('', "**Fechado em:** $closedAt") }
     [System.IO.File]::WriteAllText($kb, (($doc -join $nl) + $nl), $utf8)
     $made += 'kanban.md'

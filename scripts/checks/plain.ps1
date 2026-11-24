@@ -5,6 +5,9 @@
 # fim do kanban.md).
 # Carregado pelo hooks/common.ps1 (as funções de nome, papel e ação não dependem do lib.ps1) e pelos scripts do quadro.
 # Get-PlainSummary e Get-PlainPending usam o lib.ps1 (Get-SprintTasks, Get-Section, Get-Tables) — só quem o carregou as chama.
+# v3.66.0: carrega o impasse-lib.ps1 (matriz de impasses e registro da trilha), que o Resumo usa e que os hooks, o kanban.ps1,
+# o run.ps1 e o impasse.ps1 recebem por aqui.
+. (Join-Path $PSScriptRoot 'impasse-lib.ps1')
 
 $script:PlainTodo = [char]::ConvertFromUtf32(0x2B1C); $script:PlainPlan = [char]::ConvertFromUtf32(0x1F7E6)
 $script:PlainBuild = [char]::ConvertFromUtf32(0x1F7E8); $script:PlainQA = [char]::ConvertFromUtf32(0x1F7EA)
@@ -285,6 +288,9 @@ function Get-PlainSummary([string]$Root, [string]$Sprint, [switch]$Live, [switch
     $pend = @(if (Test-Path -LiteralPath $rdm) { Get-PlainPending (Read-Text $rdm) })   # @() fora: uma pendência só não tem .Count no 5.1
     if ($pend.Count) { $need += "$($pend.Count) $(if ($pend.Count -eq 1) { 'decisão' } else { 'decisões' }) na lista de pendências (README §7); a mais recente: `"$(Get-PlainClean $pend[0].Text 90)`"" }
     $o += @{ K = 'Precisa de você'; V = $(if ($need.Count) { $need -join '; ' } else { 'nada agora.' }) }
+    # v3.66.0 (item F): o que o time decidiu sozinho e o que subiu, pelo registro do sprint (team-decisions.jsonl).
+    $tdl = Get-TeamDecisionsLine (Join-Path $S 'team-decisions.jsonl')
+    if ($tdl) { $o += @{ K = 'Decisões do time'; V = $tdl } }
     if (-not $closed) {
         $nextT = @($open | Where-Object { $_.Mark -eq $script:PlainPlan -or $_.Mark -eq $script:PlainTodo -or -not $_.Mark } | Select-Object -First 2)
         if ($nextT.Count) { $o += @{ K = 'A seguir'; V = (($nextT | ForEach-Object { & $lab $_.Id }) -join '; depois, ') } }

@@ -64,3 +64,12 @@ Um lugar só monta as dependências (nível 1, V16): um `Conteiner` criado em `A
 
 - **Arranque a frio** medido por `adb shell am start -W` (mediana de 3, emulador limpo) ou Macrobenchmark; **tamanho do APK** de release pelo `apkanalyzer` ou pelo tamanho do arquivo. São as linhas de V18/V19 quando o pedido traz RNF.
 - **O artefato entregue é o `assembleRelease` do código final** — o executor de cenários instala o release, não o debug, no portão do QA.
+
+## KA-9 Reuse and patterns (exemplos de §4.6 e §4.7)
+
+*Não normativo: a regra é a do [nível 1](../../implementation-principles.md) §4.6 e §4.7; aqui, a forma na stack.*
+
+- **Composable compartilhado** para o que duas telas mostram igual, com parâmetros e `@Composable` lambdas para o que varia.
+- **Use case** para a regra de mais de uma tela; o ViewModel só orquestra.
+- **Tema do app** (`MaterialTheme`, tokens de cor e tipografia) em vez de cor e tamanho na tela.
+- **Repository** atrás da interface do domínio; **Adapter** para o SDK de fora; **Factory** por `@Provides`/`@Binds` quando a construção varia.

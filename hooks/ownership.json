@@ -262,6 +262,17 @@
                     },
                     {
                         "paths":  [
+                                      ".team-project/sprints/*/team-decisions.jsonl",
+                                      ".team-project/fixes/b-*/team-decisions.jsonl"
+                                  ],
+                        "writers":  [
+
+                                    ],
+                        "matriz":  "Decisões do time (`.team-project/sprints/\u003cn\u003e/team-decisions.jsonl`",
+                        "dono":  "SM"
+                    },
+                    {
+                        "paths":  [
                                       ".team-project/sprints/*/handoff/**"
                                   ],
                         "writers":  [
@@ -299,6 +310,7 @@
                                       ".team-project/.target-web.json",
                                       ".team-project/.target-android.json",
                                       ".team-project/.ask-route",
+                                      ".team-project/.gap-route",
                                       ".team-project/.stakeholder-seen"
                                   ],
                         "writers":  [

@@ -8,6 +8,69 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.63 — O portão do QA por marcos: ambiente não vira veredito, a rodada nova mede e julga só o que venceu, cada achado tem causa e dono, e a prova de cada rodada fica no sprint (SM + QA + PO + UX + Arquiteto + Dev) — 17/11/2026
+
+**Instrução:** (stakeholder, 17/11/2026) "Avalie se o processo de QA desde que inicia possui marcos do processo sobre as diversas validações que realiza pois uma falha em um deles não necessariamente poderá reiniciar todo o processo do zero"; "existe na falha dos cenários uma marcação do motivo para talvez resolvê-lo a nível de UX, PO, Arquiteto ou dev?"; "o Kanban, consumption precisam controlar também essa tarefa além de dentro do sprint guardar as evidências das entregas". Formulários do mesmo dia: tudo numa 3.63.0; nomes em inglês; o portão vira item controlado; guardar o resultado e as capturas, sem os logs brutos. Plano em `melhorias/plano-v3.63.0.md`.
+**Medido (garden, S6, 15–17/11):** 3 rodadas do portão reprovadas, quase todas por ambiente, e 4 Tasks de correção (Q-S6 a Q-S6d); cada rodada refez a qualidade inteira e os 49 cenários, também depois de correções só na ferramenta de prova; o `validation.md` citava `accept/6/S6/result.md` das rodadas 1 e 2, e só existia o da última; o "Volta para" só tinha dev e Arquiteto, em texto livre; a medição e o julgamento do portão caíram em `n/a · sprint-6` no consumo (~2,1 mi de tokens); o "## Agora" mostrou como trabalhando agentes encerrados havia 37 min.
+**Classificação:** instrumento (`gate.ps1`; `accept.ps1 -Resume`; `Get-ProductionTree`, `gate.json`, `proof/`; G16 e registro de agentes) · formato de documento (`validation.md` com `## Frentes` e `## Achados`: ID `S<n>-F<k>`, `Cause`, `State`; `**Cause:**` no GAP; `gate/<ID>.md` com `**Resolution:**`) · rota (a causa decide o dono: PO, UX, Arquiteto, QA, `Q-S<n>`, reparo) · cerimônia (rodada focada do QA).
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `sprint-run.md` | passos 4 e 5 da tabela · §Validação do sprint · Gap (natureza → causa) | o portão por marcos (medir só o que venceu, ambiente fora do veredito, prova guardada, causa com dono em ordem fixa, rodada focada); a `Q-S<n>` cita os IDs; quadro e consumo do portão |
+| `quality-assurance/templates/sprint-validation.md` · `quality-assurance/README.md` · `agents/quality-assurance.md` | modelo inteiro · `/qa sprint <n>` passos 1, 2, 4 e 5 | tabelas `## Frentes` e `## Achados` com valores fixos em inglês; ID que não se reaproveita; a prova citada por `proof/`; rodada focada sem reabrir frente mantida |
+| `developer/templates/gap.md` · `agents/developer.md` · `agents/task-runner.md` | linha do GAP · rota | `**Cause:**` com `appearance`, `design`, `scenario`, `screen`, `requirement`, `process`, `environment` (os nomes antigos são sinônimos); `screen` → UX, `requirement` → PO, `scenario` → QA |
+| `user-experience/README.md` · `agents/user-experience.md` | achado ou GAP de tela | o UX acrescenta o caso na especificação da tela e grava a resolução |
+| `product-owner/README.md` · `agents/product-owner.md` | achado ou GAP de requisito | o PO decide o que é dele e devolve em `STAKEHOLDER:` o que é do stakeholder; resolução `done`, `code` ou `debt` |
+| `scrum-master/templates/sprint-backlog.md` | linha da `Q-S<n>` | os IDs dos achados que ela corrige |
+| `standards/scenario-language.md` | §6 (nova) | `-Resume`: identidade do app, hash do cenário, o que o `result.json` passa a trazer |
+| `how-to.md` · `hooks/COVERAGE.md` | `/team-status` · pastas · bloco v3.63.0 | a revisão final no `/team-status` e no `kanban.md`; a pasta `proof/`; G16 com o portão; o registro sem sinal; o que o `host_pid` prova |
+
+### Por quê
+O portão tinha marcos grossos: a medição valia pela árvore inteira, então qualquer correção refazia tudo, e o aceite que caía no ambiente virava veredito do QA e correção do dev. A falha de um marco reiniciava os outros. E o achado só tinha dois destinos, então o que era da tela ou do critério voltava ao dev, e a especificação continuava sem o caso.
+
+### Conflitos com o processo vigente
+Nenhum com regra. Muda a rota da natureza `produto` do GAP (v3.57.0: ia direto ao formulário do stakeholder) — agora passa pelo PO, que é o canal do stakeholder (R22). O "cenário não exercitado reprova o portão" da v3.51 fica: o que muda é que o ambiente é reparado antes de o QA julgar.
+
+### Como saberemos que funcionou
+No próximo portão de um projeto com alvo: nenhuma `Q-S<n>` aberta por ambiente; a rodada 2 roda só os cenários que falharam, não rodaram ou mudaram; nenhuma frente de código rejulgada depois de correção só em ferramenta de prova; todo caminho de prova citado no `validation.md` existe no fim do sprint; o consumo separa o custo de cada rodada do portão.
+
+### Evidência (R19)
+| Classe | Comando | Saída | Ok? |
+|---|---|---|---|
+| Arquivamento de entrada | bloco v3.60 que saiu do vivo × arquivo (`.Contains`) | True; o vivo fica com v3.63, v3.62, v3.61 | ✅ |
+| Comportamento | `run-check-tests.ps1`, casos marcados v3.63.0 | ver `CHANGELOG.md` v3.63.0 | ✅ |
+| Entrega | `release.ps1` (C3) | R17 e R18 ok | ✅ |
+
+### Parte mecânica (implementada pela sessão principal, citada aqui)
+`scripts/checks/gate.ps1` (novo), `run.ps1` (portão, `done -Cause`, registro ignorado), `accept.ps1` (`-Resume`), `lib.ps1` (árvore de produção, `gate.json`, achados, prova, causas), `quality.ps1`, `close.ps1` (`proof/<ID>/`), `kanban.ps1`, `team-view.ps1`, `consumption.ps1`, `hooks/subagent-stop.ps1`, `hooks/common.ps1`. Detalhe e suítes no `CHANGELOG.md` v3.63.0.
+
+### Decidido pelo stakeholder (formulários de 17/11)
+- Uma entrega só (3.63.0), com os marcos do QA, as causas com dono, o controle no quadro e no consumo e a prova guardada.
+- Identificadores novos em inglês; o texto para pessoas continua em português.
+- Guardar o resultado e as capturas de cada rodada e de cada Task, sem os logs brutos.
+
+### Addendum v3.63.1 — toda falha de cenário do aceite passa pelo diagnóstico, com a prova do aparelho, e o alvo preso não prende o run (SM + QA + Arquiteto) — 2026-11-18
+
+**Instrução:** (stakeholder, 18/11/2026, sessão `/sm sprint run` do projeto piloto) "Esse erro não era previsto tratar pelo plugin retornando ao dev, ao UX ou ao PO para indicar qual botão acionar e onde ele está?" — com a lista de pedidos do sprint 6 (diagnóstico automático em toda falha de cenário; "app não ficou na frente" com motivo e registro do aparelho; foco e WebView recriada como sinais separados; identidade do app no `-Resume`; órfão de accept no travamento do operator; sonda de travamento pelo progresso; escalonamento do laço de reparo).
+**Medido (piloto, S6, 18/11):** um operator travou 600 s e foi encerrado pelo watchdog; o `accept.ps1 -Task S6 -Resume` que ele disparou (PID 15292, de 06:13 a 08:22) segurou o alvo, o reparo recusou "em uso por accept S6", o `target.ps1 -Kill` disse "nada registrado" e o `next` repetiu "reparar e repetir" — o accept recusado não gravava `result.json`, então a contagem do portão nunca subia. Depois, o SC-118 falhou duas vezes ("a conexão com a página caiu", a captura na aba Geral, não na Estufa) e o cenário seguinte parou em "não ficou na frente, foco: nenhum"; o `next` tratou como ambiente, sem diagnóstico; o diagnóstico pedido à mão saiu AMBIENTE sem registro do aparelho. O `-Resume` leu "apk:?" (o APK instalado pelo comando do projeto, sem arquivo local) e rodou todos.
+**Classificação:** rota (falha de cenário → diagnóstico antes do ambiente e antes do QA; PLANO → QA ou Arquiteto com o elemento e onde; o alvo preso → esperar ou stakeholder na primeira vez; o navegador da suíte que cai duas vezes no mesmo teste → dev) · instrumento (registro do aparelho e sinal do app no `accept`; identidade do app instalado; trava com hora de criação e pasta; `target.ps1 -Kill` encerra o dono da trava; o `verify` repete a rodada em que o navegador caiu).
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `sprint-run.md` | §Validação do sprint, item 2 | o diagnóstico antes do reparo e do julgamento; AMBIENTE só com prova; o alvo preso por outro processo; a 3ª repetição do mesmo `result.json` vai ao stakeholder |
+| `agents/operator.md` | regra 9 | o diagnóstico vale para toda falha de cenário (Task e portão); lê o registro do aparelho e o sinal; grava `Cenário:`, `Motivo:`, `Elemento:`, `Onde:` e `Dono:`; o órfão sai por `target.ps1 -Kill` |
+| `standards/scenario-language.md` | §6 | a identidade do `-Resume` é a do app instalado no aparelho; `signal`, `log` e `environmentSignal` no `result.json` |
+| `sprint-run.md` · `agents/operator.md` | §Validação do sprint, item 2 · regra 9 | quem usa o aparelho por `target.ps1 -Who`; duplicado por `-KillDuplicates`; a trava atômica e o `-Unlock` que recusa dono vivo |
+
+**Quem usa o aparelho** (mesmo dia: a sessão e o plugin leram um accept, o invólucro e os observadores da mesma rodada como "três accepts", e dois observadores foram encerrados): `target.ps1 -Who` mostra quem usa o alvo, sem adivinhar por lista de processos; `-KillDuplicates` encerra só o duplicado deste projeto; a trava é atômica, não é tomada de dono vivo que anda e o `-Unlock` recusa com o dono vivo.
+
+**Dois projetos, um emulador** (v3.63.2, mesmo dia, pergunta do stakeholder): a trava do aparelho, comum aos projetos da máquina (`%LOCALAPPDATA%\team-plugin\device-locks`), tomada junto com a do projeto — o accept, o reparo e o `-Release` de um projeto não entram no aparelho que outro usa; o `next` espera ou leva ao stakeholder. Os dois ao mesmo tempo: um `targets.android.serial` por projeto.
+
+**O navegador da suíte que cai no meio** (Karma "no message in 120000 ms", Q-S6d, duas quedas seguidas no `verify full`): não é teste reprovado. O `verify` repete a rodada uma vez, com a memória conferida. Caiu de novo no mesmo teste: um teste trava o navegador — código, vai ao dev. Caiu em pontos diferentes: carga ou memória — ambiente, com a medida; o prazo do runner e as flags do navegador são do projeto (Task, com o Arquiteto).
+
+---
+
 ## v3.62 — A prova do app híbrido no aparelho é de primeira classe: o id é lido pelo CDP e a configuração do alvo vai ao stakeholder, não ao Arquiteto (SM + Arquiteto + QA) — 16/11/2026
 
 **Instrução:** (stakeholder, 16/11/2026, sobre o item 25 de `note.md`, depois de análise no garden) versão com plano; `assert-count` e `assert-order` valem para a lista inteira; revogada a espera pelo espelho do id no `aria-label`; correção genérica para qualquer app híbrido. Depois: "aplicar a fase G do plano-v3.62.0".

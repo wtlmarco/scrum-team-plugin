@@ -94,6 +94,63 @@ try {
         else { Add-Result 'ownership' 'ok' "$n regra(s) batem com a linha e o dono de §1; $noRow com nota (pasta do papel ou sem linha)" }
     } else { Add-Result 'ownership' 'falhou' 'hooks/ownership.json ausente (G8)' }
 
+    # ---------- hooks/impasses.json × impasse-matrix.md §1 (v3.66.0, R36: a matriz é a fonte única) ----------
+    # Os dois arquivos com os mesmos tipos, donos, subida, evidência, "só por script" e rotas antigas; e toda rota que o
+    # run.ps1 e o gate.ps1 gravam (Set-AskRoute) existe na matriz — a regra não volta a se espalhar.
+    $imJ = Join-Path $Root 'hooks/impasses.json'; $imM = Join-Path $Root 'roles/scrum-master/process/impasse-matrix.md'
+    if ((Test-Path -LiteralPath $imJ) -and (Test-Path -LiteralPath $imM)) {
+        $ij = Read-Text $imJ | ConvertFrom-Json
+        $imText = Read-Text $imM
+        $isec = [regex]::Match($imText, '(?ms)^## 1\. Matriz.*?(?=^### 1a\.|^## 2\.)').Value
+        $mrows = @{}
+        foreach ($ln in ($isec -split "`r?`n")) {
+            if ($ln -notmatch '^\|\s*`([a-z-]+)`') { continue }
+            $cl = @(($ln -split '\|') | ForEach-Object { $_.Trim() })
+            $lr = @([regex]::Matches($cl[6], '`([a-z-]+)`') | ForEach-Object { $_.Groups[1].Value })
+            $mrows[$cl[1].Trim('`')] = [pscustomobject]@{ Owner = $cl[2].Trim('`'); Reach = $cl[3].Trim('`'); Ev = $cl[4].Trim('`'); Script = ($cl[5] -eq 'sim'); Legacy = (@($lr | Sort-Object) -join ',') }
+        }
+        $ibad = @()
+        $jtypes = @{}; foreach ($t in @($ij.types)) { $jtypes[[string]$t.type] = $t }
+        foreach ($k in $jtypes.Keys) {
+            if (-not $mrows.ContainsKey($k)) { $ibad += "tipo '$k' no JSON e não na matriz"; continue }
+            $t = $jtypes[$k]; $r = $mrows[$k]
+            if ([string]$t.owner -ne $r.Owner) { $ibad += "${k}: dono '$($t.owner)' no JSON × '$($r.Owner)' na matriz" }
+            if ([string]$t.reachesStakeholder -ne $r.Reach) { $ibad += "${k}: subida '$($t.reachesStakeholder)' × '$($r.Reach)'" }
+            if ([string]$t.evidence -ne $r.Ev) { $ibad += "${k}: evidência '$($t.evidence)' × '$($r.Ev)'" }
+            if ([bool]$t.scriptOnly -ne $r.Script) { $ibad += "${k}: só por script $([bool]$t.scriptOnly) × $($r.Script)" }
+            if (((@($t.legacyRoutes) | Sort-Object) -join ',') -ne $r.Legacy) { $ibad += "${k}: rotas antigas '$(@($t.legacyRoutes) -join ',')' × '$($r.Legacy)'" }
+        }
+        foreach ($k in $mrows.Keys) { if (-not $jtypes.ContainsKey($k)) { $ibad += "tipo '$k' na matriz e não no JSON" } }
+        # §1a causas e §1b papéis (etapa 2): iguais no JSON; o tipo de cada causa existe e o dono dele tem papel em §1b.
+        $cSec = [regex]::Match($imText, '(?ms)^### 1a\..*?(?=^### 1b\.|^## 2\.)').Value
+        $rSec = [regex]::Match($imText, '(?ms)^### 1b\..*?(?=^## 2\.)').Value
+        $mCauses = @{}; foreach ($ln in ($cSec -split "`r?`n")) { $cm = [regex]::Match($ln, '^\|\s*`([a-z-]+)`\s*\|\s*`([a-z-]+)`\s*\|\s*([^|]+?)\s*\|\s*([^|]*?)\s*\|'); if ($cm.Success) { $sq = (@([regex]::Matches($cm.Groups[4].Value, '`([a-z-]+)`') | ForEach-Object { $_.Groups[1].Value }) -join '>'); $mCauses[$cm.Groups[1].Value] = "$($cm.Groups[2].Value)|$($cm.Groups[3].Value)|$sq" } }
+        $mRoles = @{}; foreach ($ln in ($rSec -split "`r?`n")) { $rm = [regex]::Match($ln, '^\|\s*`([a-z-]+)`\s*\|\s*`([^`]+)`\s*\|\s*([^|]+?)\s*\|'); if ($rm.Success) { $mRoles[$rm.Groups[1].Value] = "$($rm.Groups[2].Value)|$($rm.Groups[3].Value)" } }
+        $jCauses = @{}; if ($ij.causes) { foreach ($pp in $ij.causes.PSObject.Properties) { $jCauses[$pp.Name] = "$([string]$pp.Value.type)|$([string]$pp.Value.label)|$((@($pp.Value.sequence) | Where-Object { $_ }) -join '>')" } }
+        $jRoles = @{}; if ($ij.roles) { foreach ($pp in $ij.roles.PSObject.Properties) { $jRoles[$pp.Name] = "$([string]$pp.Value.command)|$([string]$pp.Value.short)" } }
+        foreach ($pair in @(@{ M = $mCauses; J = $jCauses; N = 'causa' }, @{ M = $mRoles; J = $jRoles; N = 'papel' })) {
+            foreach ($k in $pair.J.Keys) { if (-not $pair.M.ContainsKey($k)) { $ibad += "$($pair.N) '$k' no JSON e não na matriz" } elseif ($pair.M[$k] -ne $pair.J[$k]) { $ibad += "$($pair.N) '${k}': '$($pair.J[$k])' no JSON × '$($pair.M[$k])' na matriz" } }
+            foreach ($k in $pair.M.Keys) { if (-not $pair.J.ContainsKey($k)) { $ibad += "$($pair.N) '$k' na matriz e não no JSON" } }
+        }
+        foreach ($k in $jCauses.Keys) {
+            $ct = ($jCauses[$k] -split '\|')[0]
+            if (-not $jtypes.ContainsKey($ct)) { $ibad += "causa '$k' aponta o tipo '$ct', que não existe" }
+            elseif (-not $jRoles.ContainsKey([string]$jtypes[$ct].owner)) { $ibad += "causa '$k': o dono '$($jtypes[$ct].owner)' do tipo '$ct' sem papel em §1b" }
+        }
+        $known = @{}; foreach ($t in @($ij.types)) { $known[[string]$t.type] = 1; foreach ($l in @($t.legacyRoutes)) { $known[[string]$l] = 1 } }
+        $routes = @{}
+        $scDir = Join-Path $Root 'scripts/checks'
+        foreach ($sf in @(if (Test-Path -LiteralPath $scDir) { Get-ChildItem -LiteralPath $scDir -Filter '*.ps1' -File })) {
+            foreach ($mm in [regex]::Matches((Read-Text $sf.FullName), 'Set-AskRoute\s+\$Root\s+(\$\(if[^\r\n]*?\}\s*\)|''[^'']*'')')) {
+                foreach ($q in [regex]::Matches($mm.Groups[1].Value, "'([a-z-]*)'")) { $v = $q.Groups[1].Value; if ($v) { $routes[$v] = $sf.Name } }
+            }
+        }
+        foreach ($rt in $routes.Keys) { if (-not $known.ContainsKey($rt)) { $ibad += "rota '$rt' ($($routes[$rt])) sem tipo na matriz" } }
+        if (@($ij.offerPhrases).Count) { foreach ($p in @($ij.offerPhrases)) { try { $null = [regex]::new([string]$p) } catch { $ibad += "offerPhrases: regex inválida '$p'" } } }
+        if ($ibad.Count) { Add-Result 'impasses' 'falhou' ($ibad -join '; ') }
+        else { Add-Result 'impasses' 'ok' "$($jtypes.Count) tipo(s) iguais na matriz e no JSON; $($routes.Count) rota(s) dos scripts com tipo" }
+    } else { Add-Result 'impasses' 'falhou' 'hooks/impasses.json ou roles/scrum-master/process/impasse-matrix.md ausente (R36)' }
+
     # ---------- Modelos órfãos (aviso) ----------
     $templates = @(Get-ChildItem -Path (Join-Path $Root 'roles') -Recurse -File -Filter '*.md' | Where-Object { $_.Directory.Name -eq 'templates' })
     $corpus = @(Get-ChildItem -LiteralPath $Root -Recurse -File -Include '*.md', '*.json' | Where-Object {
@@ -111,7 +168,7 @@ try {
     else { Add-Result 'órfãos' 'ok' "$($templates.Count) modelos, todos referenciados" }
 
     Write-Results "C3 · entrega v$v1"
-    if (@($script:Results | Where-Object { $_.Regra -in 'R17', 'R18', 'ps1-5.1', 'ownership' -and $_.Resultado -eq 'falhou' }).Count) { exit 1 }
+    if (@($script:Results | Where-Object { $_.Regra -in 'R17', 'R18', 'ps1-5.1', 'ownership', 'impasses' -and $_.Resultado -eq 'falhou' }).Count) { exit 1 }
     exit 0
 } catch {
     [Console]::Error.WriteLine("C3: erro — $($_.Exception.Message)")

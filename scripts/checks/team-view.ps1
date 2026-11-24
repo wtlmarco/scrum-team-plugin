@@ -81,6 +81,34 @@ function Format-Time([double]$S) {
     if ($s -lt 3600) { return "$([int][Math]::Floor($s / 60)) min" }
     return ('{0}h{1:00}' -f [int][Math]::Floor($s / 3600), [int][Math]::Floor(($s % 3600) / 60))
 }
+# v3.66.0 (R36, item F): a medida da matriz de impasses no /team-usage — quantos o time resolveu, quantos subiram, quantos
+# foram recusados por já estarem decididos (do team-decisions.jsonl do sprint), e quantas vezes a G3 recusou um formulário e a
+# G26 viu uma oferta de ação no fim do turno (do guards.log, desde o início do sprint). É a conta da meta da v3.66.0: no máximo
+# 1 chamada desnecessária e 2 recusas da G3 por preparação.
+function Get-ImpasseUsageLines([string]$N, [string]$Since) {
+    $jp = Join-Path $tp "sprints/$N/team-decisions.jsonl"
+    $o = @('', 'Impasses (matriz, R36):')
+    if (Test-Path -LiteralPath $jp) {
+        $all = @(Get-TeamDecisions $jp)
+        $c = Get-TeamDecisionCounts $jp
+        $o += "  $($c.Total) no registro · o time resolveu $($c.Team) · em andamento com o dono $($c.Routed) · subiram ao stakeholder $($c.Up) · recusados por já decididos $($c.Refused)"
+        $byT = @($all | Group-Object Type | Sort-Object Count -Descending | ForEach-Object { "$($_.Name) $($_.Count)" })
+        if ($byT.Count) { $o += "  por tipo: $($byT -join ' · ')" }
+    }
+    $gl = Join-Path $tp 'guards.log'
+    if (Test-Path -LiteralPath $gl) {
+        $from = $null; if ($Since) { try { $from = [datetime]$Since } catch { } }
+        $g3 = 0; $g24 = 0; $g26 = 0
+        foreach ($l in [System.IO.File]::ReadAllLines($gl, $utf8)) {
+            if ($l -notmatch '^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| (G3|G24|G26) \|') { continue }
+            if ($from) { try { if ([datetime]$Matches[1] -lt $from) { continue } } catch { } }
+            switch ($Matches[2]) { 'G3' { if ($l -match '\| deny:') { $g3++ } } 'G24' { if ($l -match '\| deny:') { $g24++ } } 'G26' { $g26++ } }
+        }
+        if ($g3 + $g24 + $g26) { $o += "  formulários recusados: pela forma (G3) $g3 · sem rota (G24) $g24 · ofertas de ação no fim do turno (G26) $g26$(if ($from) { " — desde $($from.ToString('dd/MM HH:mm'))" })" }
+    }
+    if ($o.Count -le 2) { return @() }   # nada registrado nem recusado: a seção não aparece
+    return $o
+}
 function Read-Json([string]$Path) { if (-not (Test-Path -LiteralPath $Path)) { return $null }; try { return (Read-Text $Path | ConvertFrom-Json) } catch { return $null } }
 
 try {
@@ -273,7 +301,7 @@ try {
             if ([string]$r.dest -eq $dest) { $rows += $r }
         }
     }
-    if (-not $rows.Count) { Out-View @("Consumo · $title", 'Nenhuma rodada de agente medida ainda neste sprint.'); exit 0 }
+    if (-not $rows.Count) { Out-View (@("Consumo · $title", 'Nenhuma rodada de agente medida ainda neste sprint.') + @(Get-ImpasseUsageLines $n '')); exit 0 }
     $rows = @($rows | Sort-Object { [string]$_.start })
     $sum = { param($rs, $f) [double](@($rs) | ForEach-Object { if ($null -ne $_.$f) { [double]$_.$f } else { 0 } } | Measure-Object -Sum).Sum }
     # v3.53.6 (decisão do stakeholder, item 10): sem US$ — a medida é a cota da assinatura (status line → quota-log.jsonl).
@@ -304,6 +332,7 @@ try {
 
     $lr = $rows[-1]
     $when = try { ([datetime]$lr.start).ToString('dd/MM HH:mm') } catch { [string]$lr.start }
+    $o += Get-ImpasseUsageLines $n ([string]$rows[0].start)
     $o += ''; $o += "Última rodada: $when · $(Get-Role ([string]$lr.role)) · $([string]$lr.work) · $(Format-Tok ([double]$lr.processed))"
     Out-View $o
     exit 0

@@ -5,6 +5,7 @@
 > **v3.60.0 (pedido do stakeholder, 15/11/2026):** a **Série**, o **Registro de transições**, a **Rodada a rodada** e a **Espera de comando** moram no [`consumption.md`](consumption.md) do sprint. A Série e o Registro nascem aqui na Planning (linha 0) e o `kanban.ps1` os leva para lá na primeira regravação do `sprint run`; os scripts os acham onde estiverem (`Get-RecordPath`).
 > Nasce no `/sm sprint plan` (linha de abertura, dia 0 — **a data da aprovação do pacote de abertura**, não a do fechamento da Planning · R25), ganha **uma linha na Série e uma no Registro a cada transição de marcador** — no `sprint run`, gravadas pelo `mark.ps1` e pelo `close.ps1 -Apply` no momento da passagem ([`sprint-run.md`](../process/sprint-run.md) §Marcador); fora dele, no `/sm board` e no `/sm close <T-ID>` (R24) —, e **fecha** — sem mais edição — no `/sm sprint close`.
 > **Só Markdown:** não há página HTML. `scripts/checks/kanban.ps1` regrava o `## Resumo`, o `## Kanban` e a `## Rodadas` **a cada transição** (`mark.ps1`, `close.ps1`) **e ao fim de cada rodada de agente** (hook G16, que confirma o estado e soma o custo), e põe as seções na ordem acima (v3.59.0: só move seções inteiras; os scripts acham cada uma pelo título). É script: **não custa token**. O nome de cada parte vem de `scripts/checks/plain.ps1` — a coluna **Para o stakeholder** do Sprint Backlog ou, sem ela, o título da História com "parte k de m".
+> **v3.66.0:** o quadro da abertura sai do `kanban.ps1 -Sprint <n> -Init -Opened <aaaa-mm-dd>` no passo 11 da Planning, com a linha 0 da Série, o Registro, o Controle e a subseção **Decisões do time** — não se escreve à mão (no sprint 7 do projeto piloto, o quadro feito à mão saiu sem Série e parou o executor). Com o `kanban.md` já lá e sem Série, o mesmo comando só a acrescenta. A subseção **Decisões do time** (no Controle) é gerada do registro da trilha (`team-decisions.jsonl`, [`impasse-matrix.md`](../process/impasse-matrix.md)) a cada impasse aberto ou fechado.
 > **Bloco de fix:** `fixes/<B-nnn>/kanban.md`, gerado **inteiro** por `kanban.ps1 -Block B-<nnn>` (`-Init` no `fix plan`) — ver a variante no fim.
 
 ```markdown
@@ -76,6 +77,13 @@
 | # | Decisão pendente | Por que o degrau 1 não fechou (ou "estratégica — direto") | Task(s) que destrava | Desde |
 |---|---|---|---|---|
 
+### Decisões do time
+> Gerada pelo `kanban.ps1` a partir do registro da trilha (`team-decisions.jsonl`) a cada impasse aberto ou fechado — não editar à mão. O que o time resolveu sem você, o que subiu a você e por quê; qualquer linha pode ser revertida (a reversão volta como "contradiz uma decisão aceita").
+
+| Quando | O que foi decidido | Quem decidiu | Por que não precisou de você | Onde está |
+|---|---|---|---|---|
+| <dd/mm hh:mm> | <a decisão em frase simples> | <Arquiteto · UX · PO · QA · Scrum Master · o roteiro · você> | <decisão técnica · desenho de tela · já decidido · subiu a você: muda o que a parte entrega> | <documento (código da parte)> |
+
 ## Fechamento *(preenchido só no `/sm sprint close`)*
 - **Estimativa restante final:** <n> — <zero, se o sprint fechou todas as Tasks | o que ficou, e para onde foi (Product Backlog, com a História — R5)>
 - **Objetivo do sprint atingido?** <ver Sprint Review — não é este documento que decide>
@@ -132,4 +140,4 @@ Este artefato **reaproveita** o que já acontece: no `sprint run`, os scripts gr
 
 ## Variante — bloco de fix (`fixes/B-<nnn>/kanban.md`)
 
-Gerado **inteiro** pelo `kanban.ps1 -Block B-<nnn>` (`-Init` no `fix plan`, junto com o `consumption.md` do bloco; a G16 cria os dois na primeira rodada se faltarem). Seções: **Kanban** das F-IDs, numa tabela com as **etapas do sprint** (Na fila · Sendo planejadas · Em construção · Em teste · Prontas · Paradas — v3.59.0); **Registro de transições**, marcado **na entrada de cada fase** (`-Fid F-<n> -To plan|build|qa`, chamado pela sessão antes de acionar o papel: Arquiteto → 🟦, dev → 🟨, QA → 🟪; marcas em `fixes/B-<nnn>/.marks`); fechamento do `verdict.md` (→ ✅, com "(promovida)" ou "(devolvida)" como nota) e "Critério que caiu" (→ 🔴 "(promoção)") seguem derivados; **Rodadas**, como acima, só confirmam o estado e somam o custo. Sem Série, burndown nem Controle. Com `**Fechado em:**` no `verdict.md`, o script não regrava mais (a pasta é imutável).
+Gerado **inteiro** pelo `kanban.ps1 -Block B-<nnn>` (`-Init` no `fix plan`, junto com o `consumption.md` do bloco; a G16 cria os dois na primeira rodada se faltarem). Seções: **Kanban** das F-IDs, **Decisões do time** (v3.66.0, do `fixes/B-<nnn>/team-decisions.jsonl`, quando há), numa tabela com as **etapas do sprint** (Na fila · Sendo planejadas · Em construção · Em teste · Prontas · Paradas — v3.59.0); **Registro de transições**, marcado **na entrada de cada fase** (`-Fid F-<n> -To plan|build|qa`, chamado pela sessão antes de acionar o papel: Arquiteto → 🟦, dev → 🟨, QA → 🟪; marcas em `fixes/B-<nnn>/.marks`); fechamento do `verdict.md` (→ ✅, com "(promovida)" ou "(devolvida)" como nota) e "Critério que caiu" (→ 🔴 "(promoção)") seguem derivados; **Rodadas**, como acima, só confirmam o estado e somam o custo. Sem Série, burndown nem Controle. Com `**Fechado em:**` no `verdict.md`, o script não regrava mais (a pasta é imutável).

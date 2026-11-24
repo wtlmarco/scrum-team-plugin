@@ -641,6 +641,15 @@ function Get-AgentDefaultModel([string]$Role) {
     return $null
 }
 
+# v3.66.0: a linha "Agent:" do disparo de um papel, com o modelo do models.json ou do proprio agente. Fonte unica do
+# run.ps1 (Get-AgentLine) e do impasse.ps1 (o dono do impasse).
+function Get-AgentDispatchText([string]$ProjectDir, [string]$Role) {
+    $mc = Get-ModelsConfig $ProjectDir
+    $dm = Get-AgentDefaultModel $Role; if (-not $dm) { $dm = "agents/$Role.md" }
+    $model = if ($mc.State -eq 'ok' -and $mc.Models.ContainsKey($Role)) { "model `"$($mc.Models[$Role])`" (models.json)" } else { "model do agente ($dm)" }
+    return "Agent: subagent_type `"team:$Role`" · $model — dispare e encerre o turno; o aviso traz a volta"
+}
+
 # v3.47 (M2) - perfil Arquiteto executor: models.json "executor": "architect" liga o perfil; o marcador .active-executor
 # (gravado pela sessao no passo 3 do sprint run, como o .active-task) diz que o Arquiteto esta implementando a Task.
 # O marcador sozinho nao basta: sem o perfil no models.json ele e ignorado (G8 continua negando codigo ao Arquiteto).

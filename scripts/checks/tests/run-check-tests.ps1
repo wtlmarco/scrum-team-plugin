@@ -8,6 +8,9 @@ $e = @{ ok = [char]::ConvertFromUtf32(0x2705); build = [char]::ConvertFromUtf32(
         plan = [char]::ConvertFromUtf32(0x1F7E6); todo = [char]::ConvertFromUtf32(0x2B1C) }
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 
+# v3.66.0: o .ps1 do repositório-fonte falso vai com BOM (o C3 confere ps1-5.1).
+function Put-Bom([string]$Base, [string]$Rel, [string]$Text) { $q = Join-Path $Base $Rel; New-Item -ItemType Directory -Force (Split-Path $q) | Out-Null; [System.IO.File]::WriteAllText($q, $Text, (New-Object System.Text.UTF8Encoding($true))) }
+
 function Put([string]$Base, [string]$Rel, [string]$Text) {
     $p = Join-Path $Base $Rel
     New-Item -ItemType Directory -Force (Split-Path $p) | Out-Null
@@ -1349,8 +1352,24 @@ Put $rp 'roles/scrum-master/templates/modelo.md' "# modelo`n"
 Put $rp 'roles/scrum-master/README.md' "usa templates/modelo.md`n"
 Put $rp 'roles/scrum-master/process/artifact-ownership.md' "# Propriedade`n`n## 1. Matriz`n`n| Artefato | Dono | Regra |`n|---|---|---|`n| Planos (``.team-project/sprints/<n>/plan/``) | Arquiteto | x |`n| **Jobs** (``a\|b``) | **SM** · papel chamador | y |`n`n### 1a. Outra`n"
 Put $rp 'hooks/ownership.json' '{ "roles": { "architect": "Arquiteto", "operator": "operator" }, "project": [ { "paths": [".team-project/sprints/*/plan/**"], "writers": ["architect"], "matriz": "Planos (`.team-project/sprints/<n>/plan/`)", "dono": "Arquiteto" }, { "paths": [".team-project/operator/**"], "writers": ["operator"], "matriz": "Jobs", "dono": "papel chamador" }, { "paths": [".team-project/**"], "writers": [], "nota": "sem linha" } ], "pluginSource": [] }'
+# v3.66.0 (R36): a matriz de impasses mínima — a fonte e o derivado, iguais; o script grava uma rota com tipo
+Put $rp 'roles/scrum-master/process/impasse-matrix.md' "# Matriz`n`n## 1. Matriz`n`n| Tipo | Dono | Sobe | Evidência | Só por script | Rotas antigas | Exemplos |`n|---|---|---|---|---|---|---|`n| ``scope`` | ``stakeholder`` | ``direct`` | ``detail`` | não | — | x |`n| ``environment`` | ``stakeholder`` | ``direct`` | ``none`` | sim | ``ambiente`` | y |`n`n## 2. Declarar`n"
+Put $rp 'hooks/impasses.json' '{ "offerPhrases": ["\\bquer que eu\\b"], "types": [ { "type": "scope", "owner": "stakeholder", "reachesStakeholder": "direct", "evidence": "detail", "scriptOnly": false, "legacyRoutes": [] }, { "type": "environment", "owner": "stakeholder", "reachesStakeholder": "direct", "evidence": "none", "scriptOnly": true, "legacyRoutes": ["ambiente"] } ] }'
+Put-Bom $rp 'scripts/checks/x.ps1' "Set-AskRoute `$Root 'ambiente' 'T-1' 'x'`n"
 $r = Invoke-Check 'release.ps1' @('-Root', $rp)
-Check 'C3 fonte coerente: exit 0' $r 0 @('\| R18 \| ok', '\| R17 \| ok', '\| ownership \| ok.*2 regra', '\| órfãos \| ok')
+Check 'C3 fonte coerente: exit 0' $r 0 @('\| R18 \| ok', '\| R17 \| ok', '\| ownership \| ok.*2 regra', '\| impasses \| ok \| 2 tipo\(s\) iguais na matriz e no JSON; 1 rota', '\| órfãos \| ok')
+Put-Bom $rp 'scripts/checks/y.ps1' "Set-AskRoute `$Root 'rota-nova' 'T-1' 'x'`n"
+$r = Invoke-Check 'release.ps1' @('-Root', $rp)
+Check 'v3.66.0 C3: rota gravada por script sem tipo na matriz — falha (a regra não volta a se espalhar)' $r 1 @("\| impasses \| falhou \| rota 'rota-nova' \(y\.ps1\) sem tipo na matriz")
+Remove-Item -LiteralPath (Join-Path $rp 'scripts/checks/y.ps1') -Force
+Edit-File (Join-Path $rp 'hooks/impasses.json') '"type": "scope", "owner": "stakeholder"' '"type": "scope", "owner": "architect"'
+$r = Invoke-Check 'release.ps1' @('-Root', $rp)
+Check 'v3.66.0 C3: dono diferente entre a matriz e o JSON — falha' $r 1 @("\| impasses \| falhou \| scope: dono 'architect' no JSON × 'stakeholder' na matriz")
+Edit-File (Join-Path $rp 'hooks/impasses.json') '"type": "scope", "owner": "architect"' '"type": "scope", "owner": "stakeholder"'
+Edit-File (Join-Path $rp 'hooks/impasses.json') '"offerPhrases"' '"causes": { "requirement": { "type": "scope", "label": "requisito" } }, "offerPhrases"'
+$r = Invoke-Check 'release.ps1' @('-Root', $rp)
+Check 'v3.66.0 C3: causa no JSON e não na §1a da matriz — falha' $r 1 @("causa 'requirement' no JSON e não na matriz")
+Edit-File (Join-Path $rp 'hooks/impasses.json') '"causes": { "requirement": { "type": "scope", "label": "requisito" } }, "offerPhrases"' '"offerPhrases"'
 Edit-File (Join-Path $rp 'hooks/ownership.json') '"dono": "Arquiteto"' '"dono": "QA"'
 $r = Invoke-Check 'release.ps1' @('-Root', $rp)
 Check 'C3 ownership.json com dono divergente da matriz: exit 1' $r 1 @('\| ownership \| falhou.*dono ''QA''')
@@ -5106,8 +5125,16 @@ Put $pJ14 '.team-project/.active-run' '{ "trilha": "sprint", "id": "7", "desde":
 Put $pJ14 'src/b.ts' "export const b = 2`n"
 $r = Invoke-Check 'git-flow.ps1' @('begin', '-Root', $pJ14)
 $brJ = (& git -C $pJ14 rev-parse --abbrev-ref HEAD 2>$null | Out-String).Trim()
-Check 'v3.65.14 J: begin com alteração pendente fora de .team-project/ não troca de branch e avisa (o run segue na atual)' @{ Code = $r.Code; Out = "$($r.Out)`nBR=$brJ" } 0 @('a branch do run é feat/sprint-7, mas há alteração pendente fora de \.team-project/ \(src/b\.ts\)', 'BR=main')
-Remove-Item -LiteralPath (Join-Path $pJ14 'src/b.ts') -Force
+Check 'v3.66.0 E: begin com alteração pendente leva a alteração para a branch nova (o git só recusa quando não é seguro)' @{ Code = $r.Code; Out = "$($r.Out)`nBR=$brJ" } 0 @('git: branch feat/sprint-7 criada a partir de origin/develop — com as alterações pendentes \(src/b\.ts\)', 'BR=feat/sprint-7')
+$ErrorActionPreference = 'Continue'
+& git -C $pJ14 switch -q main 2>$null; & git -C $pJ14 branch -q -D feat/sprint-7 2>$null; Remove-Item -LiteralPath (Join-Path $pJ14 'src/b.ts') -Force
+& git -C $pJ14 switch -q develop 2>$null; Put $pJ14 'docs/sdd/arq.md' "# Arq`n`nmudou na develop`n"; & git -C $pJ14 commit -qam "docs na develop" 2>$null; & git -C $pJ14 push -q origin develop 2>$null; & git -C $pJ14 switch -q main 2>$null
+$ErrorActionPreference = 'Stop'
+Put $pJ14 'docs/sdd/arq.md' "# Arq`n`nlocal sem commit`n"
+$r = Invoke-Check 'git-flow.ps1' @('begin', '-Root', $pJ14)
+$brJ = (& git -C $pJ14 rev-parse --abbrev-ref HEAD 2>$null | Out-String).Trim()
+Check 'v3.66.0 E: com conflito entre a alteração pendente e a base, o git recusa a troca e o run segue na atual' @{ Code = $r.Code; Out = "$($r.Out)`nBR=$brJ" } 0 @('a troca levando as alterações pendentes fora de \.team-project/ \(docs/sdd/arq\.md\) foi recusada pelo git', 'BR=main')
+$ErrorActionPreference = 'Continue'; & git -C $pJ14 checkout -q -- docs/sdd/arq.md 2>$null; $ErrorActionPreference = 'Stop'
 $r = Invoke-Check 'git-flow.ps1' @('begin', '-Root', $pJ14)
 $brJ = (& git -C $pJ14 rev-parse --abbrev-ref HEAD 2>$null | Out-String).Trim()
 Check 'v3.65.14 J: begin cria feat/sprint-<n> a partir da base develop do remoto' @{ Code = $r.Code; Out = "$($r.Out)`nBR=$brJ" } 0 @('git: branch feat/sprint-7 criada a partir de origin/develop', 'BR=feat/sprint-7')
@@ -5163,6 +5190,136 @@ Check 'v3.65.14 K: sem citar lint, nada' @{ Code = 0; Out = $r.Out } 0 @('^(?![\
 $fdH = [regex]::Match([System.IO.File]::ReadAllText((Join-Path $checks 'consumption.ps1'), $utf8), '(?ms)^function Format-Duration\(.*?^function Format-DurationTotal\([^\r\n]*').Value
 $oH = & powershell -NoProfile -Command ($fdH + "; (Format-DurationTotal 690539) + '|' + (Format-DurationTotal 3599) + '|' + (Format-DurationTotal 3600)") 2>&1 | Out-String
 Check 'v3.65.14 H: 690539 s → 191h48 (não 11508:59); abaixo de 1 h segue mm:ss' @{ Code = 0; Out = $oH } 0 @('191h48\|59:59\|1h00')
+
+
+# ---- v3.66.0 (R36): a matriz de impasses — impasse.ps1, o registro da trilha, o kanban e as falhas do plugin ----
+$pI = Join-Path $tmp 'v3660-imp'; New-Project $pI
+$rmI = [System.IO.File]::ReadAllText((Join-Path $pI '.team-project/README.md'), $utf8)
+[System.IO.File]::WriteAllText((Join-Path $pI '.team-project/README.md'), ($rmI -replace '1\. nenhuma', '1. [RESOLVIDO em 2026-11-22 — a seta fecha e descarta] {subject: seta-teclado} A seta do celular fecha a janela?'), $utf8)
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'technical', '-Part', 'T-098', '-Subject', 'plugin teclado', '-Origin', 'sm prepare', '-Consulted', 'none', '-Text', 'usar o plugin oficial do teclado?', '-Root', $pI)
+$jI = [System.IO.File]::ReadAllText((Join-Path $pI '.team-project/sprints/1/team-decisions.jsonl'), $utf8)
+Check 'v3.66.0 B: tipo do time (technical) fica no Arquiteto — linha Agent, sem rota, registro no sprint aberto' @{ Code = $r.Code; Out = "$($r.Out)`nJ=$jI`nAR=$(Test-Path (Join-Path $pI '.team-project/.ask-route'))" } 0 @('S1-I1 · technical — fica no time: Arquiteto', 'Agent: subagent_type "team:architect"', '"id":"S1-I1","event":"raise"', '"subject":"plugin-teclado"', 'AR=False')
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'technical', '-Part', 'T-098', '-Subject', 'plugin-teclado', '-Origin', 'sm', '-Consulted', 'none', '-Text', 'de novo?', '-Root', $pI)
+Check 'v3.66.0 B: o mesmo assunto em andamento — recusa (exit 3), não abre outro' $r 3 @('já está em andamento \(S1-I1, com Arquiteto\)')
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'routine', '-Part', 'T-098', '-Subject', 'acionar-qa', '-Origin', 'sm', '-Consulted', 'none', '-Text', 'aciono a QA?', '-Root', $pI)
+Check 'v3.66.0 B: assunto novo numa parte que já tem decisões pede -Distinct' $r 2 @('T-098 já tem decisões sobre: plugin-teclado', '-Distinct')
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'routine', '-Part', 'T-098', '-Subject', 'acionar-qa', '-Origin', 'sm', '-Consulted', 'none', '-Text', 'aciono a QA?', '-Distinct', 'outro assunto: conferir o defeito', '-Root', $pI)
+Check 'v3.66.0 B: passo do roteiro — quem perguntou executa, sem formulário' $r 0 @('fica no time: o roteiro', 'é passo do roteiro: quem perguntou executa e informa')
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'scope', '-Part', 'H-Z', '-Subject', 'seta-teclado', '-Origin', 'po', '-Consulted', 'none', '-Text', 'a seta fecha?', '-Detail', 'muda a regra 5', '-Root', $pI)
+Check 'v3.66.0 B: já decidido na §7 do README ({subject: …}) — recusa (exit 3) e mostra a decisão' $r 3 @('H-Z/seta-teclado já foi decidido \(§7 1\)', 'Aplique a', 'Recusa registrada \(S1-I4\)')
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'scope', '-Part', 'H-Q', '-Subject', 'cards', '-Origin', 'po', '-Consulted', 'none', '-Text', 'cards lado a lado?', '-Root', $pI)
+Check 'v3.66.0 B: tipo que sobe sem a evidência (-Detail) — recusa' $r 2 @("o tipo 'scope' pede -Detail")
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'scope', '-Part', 'H-Q', '-Subject', 'cards', '-Origin', 'po', '-Consulted', 'none', '-Text', 'cards lado a lado?', '-Detail', 'muda a regra aceita do card ativo', '-Root', $pI)
+$arI = [System.IO.File]::ReadAllText((Join-Path $pI '.team-project/.ask-route'), $utf8)
+Check 'v3.66.0 B: tipo que sobe grava a rota da G24 com o texto simples e o id do impasse' @{ Code = $r.Code; Out = "$($r.Out)`nAR=$arI" } 0 @('S1-I5 · scope — sobe a você', '"rota":"scope"', '"impasse":"S1-I5"', '"plain":"cards lado a lado\? — muda a regra aceita do card ativo"')
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'environment', '-Part', 'T-1', '-Subject', 'x', '-Origin', 'sm', '-Consulted', 'none', '-Text', 'x', '-Root', $pI)
+Check 'v3.66.0 B: tipo só por script (rota do run.ps1) — recusa' $r 2 @("só é gravado pelo run.ps1 ou pelo gate.ps1")
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'contradicts-acceptance', '-Part', 'H-W3', '-Subject', 'card', '-Origin', 'po', '-Consulted', 'none', '-Text', 'reabre o aceite?', '-Root', $pI)
+Check 'v3.66.0 B: contradicts-acceptance pede em -Consulted a decisão aceita' $r 2 @('pede em -Consulted a decisão aceita')
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'strategic', '-Part', 'PROJETO', '-Subject', 'banco', '-Origin', 'arc', '-Consulted', 'none', '-Text', 'trocar o banco?', '-Detail', 'trocar o SQLite', '-Root', $pI)
+Check 'v3.66.0 B: strategic pede a categoria no -Detail' $r 2 @('começando pela categoria')
+Put $pI '.team-project/.active-run' '{ "trilha": "sprint", "id": "1", "desde": "2026-11-23 10:00" }'
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'schedule', '-Part', 'S1', '-Subject', 'prazo', '-Origin', 'sm', '-Consulted', 'none', '-Text', 'estourar?', '-Detail', '+1 dia', '-Root', $pI)
+Check 'v3.66.0 B: durante o sprint run, tipo que sobe não sai pelo impasse.ps1 (R25 c)' $r 2 @('durante o sprint run a rota ao stakeholder vem do run.ps1 next')
+Remove-Item -LiteralPath (Join-Path $pI '.team-project/.active-run') -Force
+$r = Invoke-Check 'impasse.ps1' @('close', '-Id', 'S1-I1', '-Summary', 'usa o plugin oficial do teclado', '-Root', $pI)
+Check 'v3.66.0 B: close sem -Ref — recusa' $r 2 @('close pede -Ref')
+$r = Invoke-Check 'impasse.ps1' @('close', '-Id', 'S1-I1', '-Summary', 'usa o plugin oficial do teclado', '-Ref', '.team-project/README.md', '-Allow', 'npm install @capacitor/keyboard@^8', '-Root', $pI)
+Check 'v3.66.0 E: close liga a decisão ao documento; instalação aprovada fica com a sessão, em nome da decisão' $r 0 @('S1-I1 fechado — usa o plugin oficial do teclado', 'autorizado pela decisão S1-I1: a sessão roda agora `npm install @capacitor/keyboard@\^8`')
+$r = Invoke-Check 'impasse.ps1' @('list', '-Format', 'review', '-Root', $pI)
+Check 'v3.66.0 F: list -Format review — a seção "Decidido pelo time sem você", em palavras simples' $r 0 @('## Decidido pelo time sem você', '\| usa o plugin oficial do teclado \| Arquiteto \| decisão técnica \(Arquiteto\)', 'não perguntou de novo: a seta fecha\? \| o time \| já decidido', 'esperando você: cards lado a lado\? \| você \| subiu a você: muda o que a parte entrega')
+$r = Invoke-Check 'impasse.ps1' @('owner', '-Path', '.team-project/sprints/1/stories/H-1.md', '-Root', $pI)
+Check 'v3.66.0 I: owner — o dono pelo ownership.json, com a linha Agent' $r 0 @('dono: PO', 'Agent: subagent_type "team:product-owner"')
+Put $pI '.team-project/sprints/1/retrospective.md' "# Retro`n"
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'product-rule', '-Part', 'H-X', '-Subject', 'alerta', '-Origin', 'po prepare', '-Consulted', 'none', '-Text', 'texto do alerta?', '-Root', $pI)
+$rmI2 = [System.IO.File]::ReadAllText((Join-Path $pI '.team-project/README.md'), $utf8)
+Check 'v3.66.0 F: com o sprint fechado, o prepare grava no sprint em preparação (n+1) e o README segue no corrente' @{ Code = $r.Code; Out = "$($r.Out)`nF=$(Test-Path (Join-Path $pI '.team-project/sprints/2/team-decisions.jsonl'))`nRM=$($rmI2 -match '\*\*Sprint corrente\*\* \| \*\*1\*\*')" } 0 @('S2-I1 · product-rule', 'o sprint em preparação; a Planning herda', 'F=True', 'RM=True')
+
+# kanban -Sprint <n> -Init: o quadro da abertura gerado, com a Série, o Registro e as Decisões do time
+Copy-Item -LiteralPath (Join-Path $pI '.team-project/sprints/1/sprint-backlog.md') (Join-Path $pI '.team-project/sprints/2/sprint-backlog.md')
+$r = Invoke-Check 'kanban.ps1' @('-Sprint', '2', '-Init', '-Opened', '2026-11-23', '-Root', $pI)
+$kI = [System.IO.File]::ReadAllText((Join-Path $pI '.team-project/sprints/2/kanban.md'), $utf8)
+$cI = if (Test-Path (Join-Path $pI '.team-project/sprints/2/consumption.md')) { [System.IO.File]::ReadAllText((Join-Path $pI '.team-project/sprints/2/consumption.md'), $utf8) } else { '' }
+Check 'v3.66.0 E: kanban -Sprint 2 -Init gera o quadro (dia 0 na data do ③), com a Série, o Registro e as Decisões do time herdadas do prepare' @{ Code = $r.Code; Out = "$($r.Out)`n$kI`n$cI" } 0 @('kanban: sprints/2/kanban.md criado — dia 0 em 2026-11-23', '## Controle', '### Decisões do time', 'em andamento: texto do alerta\?', '\| 0 \| 2026-11-23 \| Abertura do sprint — \*\*pacote aprovado\*\*', '## Registro de transições')
+Put $pI '.team-project/sprints/3/sprint-backlog.md' ([System.IO.File]::ReadAllText((Join-Path $pI '.team-project/sprints/1/sprint-backlog.md'), $utf8))
+Put $pI '.team-project/sprints/3/kanban.md' "# Kanban — Sprint 3`n`n## Kanban`n`n## Controle`n`n### Bloqueios e riscos abertos`n`n| # | x |`n|---|---|`n"
+$r = Invoke-Check 'kanban.ps1' @('-Sprint', '3', '-Init', '-Opened', '2026-11-23', '-Root', $pI)
+Check 'v3.66.0 E: kanban já aberto sem a Série — o -Init só acrescenta a Série e o Registro' $r 0 @('sem Série — acrescentei a Série \(linha 0 em 2026-11-23\) e o Registro de transições')
+
+# knowledge -Consolidated: o fim da consolidação apaga o arquivo que o próprio script abriu
+Put $pI '.team-project/architect/consolidation.md' "# Consolidação`n"
+$r = Invoke-Check 'knowledge.ps1' @('-Consolidated', '-Root', $pI)
+Check 'v3.66.0 E: knowledge -Consolidated apaga architect/consolidation.md, sem perguntar' @{ Code = $r.Code; Out = "$($r.Out)`nEX=$(Test-Path (Join-Path $pI '.team-project/architect/consolidation.md'))" } 0 @('consolidação encerrada — architect/consolidation.md apagado', 'EX=False')
+
+# run.ps1 next sem a Série no quadro: recusa e dá o comando de reparo
+$pN = Join-Path $tmp 'v3660-serie'; New-Project $pN
+foreach ($f in 'burndown.md', 'kanban.md', 'consumption.md') { Remove-Item -LiteralPath (Join-Path $pN ".team-project/sprints/1/$f") -Force -ErrorAction SilentlyContinue }
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pN)
+Check 'v3.66.0 E: run next sem a Série (nem no kanban.md, nem no consumption.md, nem no burndown.md) — recusa com o comando de reparo' $r 2 @('está sem a Série do burndown', 'kanban\.ps1" -Sprint 1 -Init -Opened', 'sem formulário ao')
+
+
+# ---- v3.66.0 etapa 2 (R36): o run e o portão leem a matriz; a rota do script entra no registro; a pendência R34 pelo raise ----
+$com66 = (Resolve-Path (Join-Path $checks '..\..\hooks\common.ps1')).Path
+$prR = Join-Path $tmp 'v3660-owner-probe.ps1'
+[System.IO.File]::WriteAllText($prR, (". '$(Join-Path $checks 'lib.ps1')'; . '$com66'" + "`n" + 'foreach ($c in ''requirement'', ''screen'', ''design'', ''appearance'', ''process'', ''scenario'', ''executor'', ''code'') { $o = Resolve-ImpasseOwner $c; if ($o) { "$c=$($o.Role)|$($o.Command)|$($o.Short)|$($o.Label)" } else { "$c=nenhum" } }' + "`n" + '"PO=" + (Get-RoleByOwnerName ''PO'') + ";ARQ=" + (Get-RoleByOwnerName ''Arquiteto'')'), (New-Object System.Text.UTF8Encoding($true)))
+$oR = & powershell -NoProfile -ExecutionPolicy Bypass -File $prR 2>&1 | Out-String
+Check 'v3.66.0 G: o dono de cada causa de GAP e de achado vem da matriz (causes → tipo → dono), e o papel pelo nome do dono vem do ownership.json' @{ Code = 0; Out = $oR } 0 @('requirement=product-owner\|/po\|o PO\|requisito', 'screen=user-experience\|/ux\|o UX\|tela', 'design=architect\|/arc question\|o Arquiteto\|desenho', 'scenario=quality-assurance\|/qa\|o QA\|cenário', 'executor=quality-assurance\|/qa\|o QA\|executor do plugin', 'code=nenhum', 'PO=product-owner;ARQ=architect')
+$pG = Join-Path $tmp 'v3660-rota'; New-Project $pG
+$prG = Join-Path $tmp 'v3660-route-probe.ps1'
+[System.IO.File]::WriteAllText($prG, (". '$(Join-Path $checks 'lib.ps1')'; . '$com66'" + "`n" + "Set-AskRoute '$pG' 'bloqueio' 'T-041' 'nenhuma Task elegível'; Set-AskRoute '$pG' 'bloqueio' 'T-041' 'nenhuma Task elegível'; Get-Content -Raw -Encoding UTF8 '$pG/.team-project/.ask-route'; Set-AskRoute '$pG' ''; Get-Content -Raw -Encoding UTF8 '$pG/.team-project/sprints/1/team-decisions.jsonl'"), (New-Object System.Text.UTF8Encoding($true)))
+$oG = & powershell -NoProfile -ExecutionPolicy Bypass -File $prG 2>&1 | Out-String
+Check 'v3.66.0 G: a rota do run.ps1 entra no registro da trilha com o tipo da matriz (blocked), uma vez só no next repetido, e fecha quando o run a apaga' @{ Code = 0; Out = $oG } 0 @('"rota":"bloqueio".*"impasse":"S1-I1"', '"id":"S1-I1","event":"raise".*"origin":"run.ps1","type":"blocked","part":"T-041"', '^(?![\s\S]*"id":"S1-I2")', '"id":"S1-I1","event":"close".*"summary":"respondido; o run seguiu com a decisão"')
+$pJ66 = Join-Path $tmp 'v3660-r34'; New-Project $pJ66
+$rmJ = [System.IO.File]::ReadAllText((Join-Path $pJ66 '.team-project/README.md'), $utf8)
+[System.IO.File]::WriteAllText((Join-Path $pJ66 '.team-project/README.md'), ($rmJ -replace '## 2\. Situação atual', "**Identificador remoto:** HORTA`n`n## 2. Situação atual" -replace '1\. nenhuma', "1. [RESOLVIDO em 2026-11-20 — x] [HORTA · S1 · ③ pacote] Aprova?`n`n## 7a. Registro de consultores`n`nnada"), $utf8)
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'scope', '-Part', 'H-Q', '-Subject', 'cards', '-Origin', 'po', '-Consulted', 'none', '-Text', 'Os cards podem ficar lado a lado?', '-Detail', 'muda o card ativo', '-Root', $pJ66)
+$rmJ2 = [System.IO.File]::ReadAllText((Join-Path $pJ66 '.team-project/README.md'), $utf8)
+$s7 = [regex]::Match($rmJ2, '(?ms)^## 7\..*?(?=^## 7a)').Value
+Check 'v3.66.0 J: com Identificador remoto, o raise grava a pendência DENTRO da §7 com o prefixo R34 e o {subject:} (a G3 confere)' @{ Code = $r.Code; Out = "$($r.Out)`nS7=$s7" } 0 @('pendência 2 gravada na §7 do README — a pergunta começa com \[HORTA · S1 · H-Q\]', 'S7=[\s\S]*2\. \[HORTA · S1 · H-Q\] Os cards podem ficar lado a lado\? \{subject: cards\} — material: muda o card ativo — \d{4}-\d\d-\d\d \d\d:\d\d')
+$r = Invoke-Check 'impasse.ps1' @('close', '-Id', 'S1-I1', '-Summary', 'quando couber', '-Ref', '.team-project/README.md', '-Root', $pJ66)
+$rmJ3 = [System.IO.File]::ReadAllText((Join-Path $pJ66 '.team-project/README.md'), $utf8)
+Check 'v3.66.0 J: o close marca a pendência como resolvida, e o mesmo assunto não volta a subir' @{ Code = $r.Code; Out = "$($r.Out)`n$rmJ3" } 0 @('pendência 2 da §7 marcada como resolvida', '2\. \[RESOLVIDO em \d{4}-\d\d-\d\d — quando couber\] \[HORTA · S1 · H-Q\]')
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'scope', '-Part', 'H-Q', '-Subject', 'cards', '-Origin', 'po', '-Consulted', 'none', '-Text', 'de novo?', '-Detail', 'x', '-Root', $pJ66)
+Check 'v3.66.0 J: o já decidido (registro e §7) recusa a pergunta repetida' $r 3 @('já foi decidido')
+
+
+# ---- v3.66.0 (item K, regra 36): o plano pleno diz o que reaproveita e qual padrão usa (standards §4.6 e §4.7) ----
+$pK = Join-Path $tmp 'v3660-reuso'; New-Project $pK
+$plKp = '.team-project/sprints/1/plan/T-041-export.md'
+$plKf = Join-Path $pK $plKp
+$plK0 = [System.IO.File]::ReadAllText($plKf, $utf8)
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plKp, '-Root', $pK)
+Check 'v3.66.0 K: sprint com o ③ aprovado antes da v3.66.0 — a regra 36 não entra no meio (n-a)' @{ Code = 0; Out = $r.Out } 0 @('\| reuso \| n-a \| sprint com o ③ aprovado antes da v3\.66\.0')
+Edit-File (Join-Path $pK '.team-project/sprints/1/sprint-backlog.md') '| **Aprovado em** | 2026-09-01 |' '| **Aprovado em** | 2026-11-25 |'
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plKp, '-Root', $pK)
+Check 'v3.66.0 K: plano pleno sem a §2a — reprova com a forma das linhas' $r 1 @("\| reuso \| falhou \| plano pleno sem '## 2a\. Reuse and patterns'", 'reuses:', 'pattern: <Name> — <problem> — <simpler alternative rejected>')
+function Set-Reuse([string]$Lines) { [System.IO.File]::WriteAllText($plKf, ($plK0 -replace '(?m)^## 3\. ', "## 2a. Reuse and patterns`n$Lines`n`n## 3. "), $utf8) }
+Set-Reuse "- reuses: ``src/export/formatter.ts`` — o formatador de moeda do relatório`n- new: ``src/export/csv.ts```n- pattern: Strategy"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plKp, '-Root', $pK)
+Check 'v3.66.0 K: new: sem o motivo e pattern: sem o problema e a alternativa — reprova os dois' $r 1 @("'new:' sem o motivo", "'pattern:' sem o problema e a alternativa descartada", 'regra 36')
+Set-Reuse "- reuses: ``src/export/formatter.ts`` — o formatador de moeda do relatório`n- extends: ``src/export/job.ts`` — ganha o parâmetro do formato`n- new: ``src/export/csv.ts`` — nenhum exportador gera CSV; procurei em src/export`n- pattern: Strategy — o formato do arquivo varia por pedido — um switch no job"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plKp, '-Root', $pK)
+Check 'v3.66.0 K: §2a completa — ok, com a contagem por tipo de linha' @{ Code = 0; Out = $r.Out } 0 @('\| reuso \| ok \| 1 reuses · 1 extends · 1 new · 1 pattern')
+Set-Reuse "- none: a Task só corrige a regra que já existe em src/export/job.ts"
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plKp, '-Root', $pK)
+Check 'v3.66.0 K: sem peça nova, none: com o motivo — ok' @{ Code = 0; Out = $r.Out } 0 @('\| reuso \| ok \| 1 none')
+[System.IO.File]::WriteAllText($plKf, ($plK0 -replace '(?m)^(\*\*Estimativa:\*\*[^\r\n]*)', "`$1 · **Trilha:** leve"), $utf8)
+if ([System.IO.File]::ReadAllText($plKf, $utf8) -notmatch 'Trilha:\*\*\s*leve') { [System.IO.File]::WriteAllText($plKf, "**Trilha:** leve`n" + $plK0, $utf8) }
+$r = Invoke-Check 'plan.ps1' @('-Plan', $plKp, '-Root', $pK)
+Check 'v3.66.0 K: a variante leve fica de fora da regra 36' @{ Code = 0; Out = $r.Out } 0 @('\| reuso \| n-a \| trilha leve')
+
+# ---- v3.66.0 (item F): o /team-usage mostra a medida da matriz de impasses ----
+$pU = Join-Path $tmp 'v3660-usage'; New-Project $pU
+$null = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'product-rule', '-Part', 'H-X', '-Subject', 'alerta', '-Origin', 'po', '-Consulted', 'none', '-Text', 'texto do alerta?', '-Root', $pU)
+$r = Invoke-Check 'team-view.ps1' @('-View', 'usage', '-Sprint', '1', '-Root', $pU)
+Check 'v3.66.0 F: /team-usage traz os impasses do sprint (resolvidos, em andamento, subidos, recusados, por tipo) e as recusas da G3, G24 e G26' $r 0 @('Impasses \(matriz, R36\):', '1 no registro · o time resolveu 0 · em andamento com o dono 1 · subiram ao stakeholder 0 · recusados por já decididos 0', 'por tipo: product-rule 1')
+
+# ---- v3.66.0 (item H): a sequência do 🔺 GAP para a G7, da matriz (§1a) ----
+$pH = Join-Path $tmp 'v3660-gaproute'; New-Project $pH
+$prH = Join-Path $tmp 'v3660-gaproute-probe.ps1'
+[System.IO.File]::WriteAllText($prH, (". '$(Join-Path $checks 'lib.ps1')'" + "`n" + "'REQ=' + ((Set-GapRoute '$pH' 'T-077' 'requirement') -join '>'); 'ENV=' + ((Set-GapRoute '$pH' 'T-077' 'environment') -join '>'); 'SCN=' + ((Set-GapRoute '$pH' 'T-077' 'scenario') -join '>'); Clear-GapRoute '$pH' 'T-099'; 'KEPT=' + [string](Get-GapRoute '$pH').task; Clear-GapRoute '$pH' 'T-077'; 'GONE=' + [string](`$null -eq (Get-GapRoute '$pH'))"), (New-Object System.Text.UTF8Encoding($true)))
+$oH = & powershell -NoProfile -ExecutionPolicy Bypass -File $prH 2>&1 | Out-String
+Check 'v3.66.0 H: a sequência do GAP vem da matriz (requisito PO → Arquiteto → dev; sem causa na matriz, Arquiteto → dev; cenário QA → dev) e sai com a Task' @{ Code = 0; Out = $oH } 0 @('REQ=product-owner>architect>developer', 'ENV=architect>developer', 'SCN=quality-assurance>developer', 'KEPT=T-077', 'GONE=True')
 
 # ==== fim dos casos ====
 try { Stop-Process -Id $script:watchdog.Id -Force -ErrorAction SilentlyContinue } catch { }
