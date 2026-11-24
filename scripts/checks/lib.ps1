@@ -15,6 +15,10 @@ $script:E = @{
 
 $script:Results = New-Object System.Collections.ArrayList
 
+# v3.66.0 (R36): o núcleo da matriz de impasses (impasse-lib.ps1, sem dependência deste arquivo) — o gate.ps1, o run.ps1 e o
+# Set-AskRoute o usam mesmo quando quem chamou não carregou o hooks/common.ps1.
+. (Join-Path $PSScriptRoot 'impasse-lib.ps1')
+
 function Read-Text([string]$Path) {
     return [System.IO.File]::ReadAllText($Path, (New-Object System.Text.UTF8Encoding($false)))
 }
@@ -1584,11 +1588,22 @@ function Set-NextVerdict([string]$Root, [string]$Acao, [string]$Task = '', [stri
 # produto, estado de partida, ambiente sem reparo, travamento repetido, comandos dos planos. A G24 (hooks/pre-tool.ps1) só
 # deixa a sessão que conduz o sprint run abrir formulário com ela gravada (R25 c). Vale até o próximo start ou até o next
 # mandar construir, e no máximo 24 h. Rota '' apaga.
-function Set-AskRoute([string]$Root, [string]$Rota, [string]$Task = '', [string]$Motivo = '') {
+# v3.66.0 (R36, item G): a rota entra no registro da trilha (team-decisions.jsonl, Register-ImpasseRoute do impasse-lib.ps1),
+# com o id do impasse na .ask-route; apagada, fecha os impasses que o run registrou. Sem o impasse-lib carregado, como antes.
+function Set-AskRoute([string]$Root, [string]$Rota, [string]$Task = '', [string]$Motivo = '', [switch]$NoRegister) {
     $p = Join-Path $Root '.team-project/.ask-route'
-    if (-not $Rota) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue; return }
+    $imp = (-not $NoRegister) -and [bool](Get-Command Register-ImpasseRoute -ErrorAction SilentlyContinue)   # o impasse.ps1 já registrou o dele
+    if (-not $Rota) {
+        $had = Test-Path -LiteralPath $p
+        Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue
+        if ($imp -and $had) { try { Close-ImpasseRoutes $Root } catch { } }
+        return
+    }
     if ($Motivo.Length -gt 300) { $Motivo = $Motivo.Substring(0, 300) + '…' }
-    [System.IO.File]::WriteAllText($p, ([ordered]@{ rota = $Rota; task = $Task; motivo = $Motivo; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+    $iid = ''; if ($imp) { try { $iid = Register-ImpasseRoute $Root $Rota $Task $Motivo } catch { } }
+    $o = [ordered]@{ rota = $Rota; task = $Task; motivo = $Motivo; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') }
+    if ($iid) { $o['impasse'] = $iid }
+    [System.IO.File]::WriteAllText($p, ($o | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
     $script:AskRouteNew = $p
 }
 # v3.65.11 (garden S6, 22/11 02:21 e 06:48: a sessão escreveu a pergunta do zero, com hash, exit 4 e nome de arquivo, e o
@@ -3459,15 +3474,20 @@ function Invoke-GitBegin([string]$Root, [string]$Track, [string]$Id) {
     $want = Get-RunBranchName $Track $Id; $out.Branch = $want
     $cur = (Invoke-GitCmd $Root @('rev-parse', '--abbrev-ref', 'HEAD')).Out
     if ($cur -eq $want) { return $out }
+    # v3.66.0 (projeto piloto, sprint 7: o gaps.md que o próprio time editou na preparação deixou o run na develop, e o aviso
+    # subiu 3 vezes): com alteração pendente, tenta a troca LEVANDO as alterações — o git recusa sozinho quando um arquivo
+    # pendente difere entre a branch atual e o destino, e nada se perde. Só com a recusa dele o run segue na branch atual.
     $pend = @(Get-GitPending $Root)
-    if ($pend.Count) {
+    $pendTxt = if ($pend.Count) { "$(($pend | Select-Object -First 5) -join ', ')$(if ($pend.Count -gt 5) { " e mais $($pend.Count - 5)" })" } else { '' }
+    $refused = {
+        param($why)
         $out.Ok = $false
-        $out.Lines += "git: a branch do run é $want, mas há alteração pendente fora de .team-project/ ($(($pend | Select-Object -First 5) -join ', ')$(if ($pend.Count -gt 5) { " e mais $($pend.Count - 5)" })): o run segue na $cur, sem trocar — os commits das Tasks vão para ela. Para trocar: commit ou stash do que está pendente e o next de novo"
-        return $out
+        $out.Lines += "git: a branch do run é $want, mas a troca levando as alterações pendentes fora de .team-project/ ($pendTxt) foi recusada pelo git ($(($why -replace '\s+', ' ').Trim())): o run segue na $cur — os commits das Tasks vão para ela. Para trocar: commit ou stash do que está pendente e o next de novo"
     }
     if (Test-GitRef $Root $want) {
         $r = Invoke-GitCmd $Root @('switch', $want)
-        $out.Lines += $(if ($r.Code -eq 0) { "git: de volta à branch $want (já existia)" } else { "git: não troquei para $want — $($r.Out)" }); if ($r.Code -ne 0) { $out.Ok = $false }
+        if ($r.Code -ne 0 -and $pend.Count) { & $refused $r.Out; return $out }
+        $out.Lines += $(if ($r.Code -eq 0) { "git: de volta à branch $want (já existia)$(if ($pend.Count) { " — com as alterações pendentes ($pendTxt)" })" } else { "git: não troquei para $want — $($r.Out)" }); if ($r.Code -ne 0) { $out.Ok = $false }
         return $out
     }
     $base = Get-GitBase $Root
@@ -3477,7 +3497,8 @@ function Invoke-GitBegin([string]$Root, [string]$Track, [string]$Id) {
         $from = if (Test-GitRef $Root "origin/$base") { "origin/$base" } else { $base }
     }
     $r = Invoke-GitCmd $Root @('switch', '--no-track', '-c', $want, $from)
-    if ($r.Code -eq 0) { $out.Lines += "git: branch $want criada a partir de $from" } else { $out.Ok = $false; $out.Lines += "git: não criei a branch $want — $($r.Out)" }
+    if ($r.Code -ne 0 -and $pend.Count) { & $refused $r.Out; return $out }
+    if ($r.Code -eq 0) { $out.Lines += "git: branch $want criada a partir de $from$(if ($pend.Count) { " — com as alterações pendentes ($pendTxt), que seguem sem commit" })" } else { $out.Ok = $false; $out.Lines += "git: não criei a branch $want — $($r.Out)" }
     return $out
 }
 # O endereço de abrir o PR no GitHub ('' fora dele).

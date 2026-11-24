@@ -548,7 +548,9 @@ function Invoke-GateStep {
         Out "  depois: run.ps1 next"
         exit 0
     }
-    $owners = @{ requirement = @('product-owner', '/po', 'requisito'); screen = @('user-experience', '/ux', 'tela'); design = @('architect', '/arc question', 'desenho'); scenario = @('quality-assurance', '/qa', 'cenário'); executor = @('quality-assurance', '/qa', 'executor do plugin') }
+    # v3.66.0 (R36, item G): o dono, o comando e o rótulo de cada causa vêm da matriz de impasses (hooks/impasses.json → causes e
+    # roles) — antes, este mapa e o do run.ps1 eram dois lugares da mesma regra.
+    $owners = @{}; foreach ($ck in 'requirement', 'screen', 'design', 'scenario', 'executor') { $ro = Resolve-ImpasseOwner $ck; if ($ro) { $owners[$ck] = @($ro.Role, $ro.Command, $ro.Label) } }
     # v3.65.13 (garden SC-142: o teste não voltava ao topo da lista, e a sessão perguntou ao stakeholder qual passo usar). Os
     # contornos de um cenário que não chega ao elemento, em ordem — "não há como" só depois de passar por eles, citando os verbos
     # de standards/scenario-language.md que conferiu.

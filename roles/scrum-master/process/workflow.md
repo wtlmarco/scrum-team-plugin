@@ -236,7 +236,7 @@ Não há orquestrador. O QA classifica o achado pelo **objeto da dúvida** e o e
 | jornada, tela, usabilidade ou acessibilidade | **UX** | `/ux` |
 | o achado toca dois donos e o QA **não consegue** classificar | **SM**, que facilita o acordo | `/sm agreement` |
 
-**Quem recebe e não é dono devolve** — dizendo de quem é. Devolução não é recusa: é a classificação sendo corrigida por quem tem o contexto. Errar a rota custa uma devolução; reunir seis papéis para não errar custa muito mais.
+**A regra completa de quem resolve cada impasse — o achado do QA, o 🔺 GAP do dev, a pergunta da sessão — é a [matriz de impasses](impasse-matrix.md) (R36, v3.66.0); esta tabela é o recorte do QA.** **Quem recebe e não é dono devolve** — dizendo de quem é. Devolução não é recusa: é a classificação sendo corrigida por quem tem o contexto. Errar a rota custa uma devolução; reunir seis papéis para não errar custa muito mais.
 
 **A origem do achado não muda o degrau.** Quando o achado nasce de um defeito que o PO acionou (relato do stakeholder, §6a), o QA investiga e roteia pela mesma escada de sempre — construção, outro dono, ou visão especialista do Arquiteto — só registrando `Origem: stakeholder` em `pending.md`. O canal de entrada muda; a classificação pelo objeto da dúvida, não. **É esta a escada que o achado interno (§6a) sempre seguiu** — bug que o próprio time acha entra direto aqui, com `Origem: time`, sem o passo extra do PO.
 

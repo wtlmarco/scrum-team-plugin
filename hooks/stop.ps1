@@ -42,8 +42,39 @@ try {
     $tp = Join-Path $projectDir '.team-project'
     if (-not (Test-Path -LiteralPath $tp)) { exit 0 }
     $cfg = Get-GuardConfig $projectDir
-    if (-not (Test-GuardEnabled $cfg 'G20')) { exit 0 }
+    # v3.66.0 — G26 (R36, matriz de impasses): fora da sessão que conduz o sprint run (dentro dela, a G20), o turno que termina
+    # oferecendo uma ação do roteiro ("Quer que eu acione a QA?", "Posso anotar no documento?") sem rota ao stakeholder. Na
+    # preparação do sprint 7 do projeto piloto (23/11), 7 chamadas eram licença para o próprio trabalho. A frase é heurística
+    # de texto: guards.json → impasses.offerGuard "warn" (padrão — só registra no guards.log) ou "enforce" (barra; a 3ª vez
+    # em 10 min passa, como a G20). Frases: hooks/impasses.json → offerPhrases.
     $run = Get-Marker $projectDir '.active-run'
+    $rsO = Get-Marker $projectDir '.run-session'; $sidO = [string]$hookInput.session_id
+    $runSessionO = ($null -ne $run -and [string]$run.trilha -eq 'sprint' -and (($null -eq $rsO) -or (-not $sidO) -or ([string]$rsO.session -eq $sidO)))
+    if (-not $runSessionO -and (Test-GuardEnabled $cfg 'G26') -and -not (Test-PluginSource $projectDir)) {
+        $trO = [string]$hookInput.transcript_path
+        if ($trO -and (Test-Path -LiteralPath $trO)) {
+            $hitO = Find-OfferPhrase (Get-LastAssistantText $trO) @((Get-ImpasseMatrix $projectDir).OfferPhrases)
+            if ($hitO) {
+                $arO = Get-Marker $projectDir '.ask-route'; $arAgeO = 999
+                if ($null -ne $arO) { try { $arAgeO = ((Get-Date) - [datetime]::ParseExact([string]$arO.at, 'yyyy-MM-dd HH:mm:ss', $null)).TotalMinutes } catch { } }
+                if ($arAgeO -ge 15) {
+                    $modeO = 'warn'
+                    try { $gj = Get-Content -LiteralPath (Join-Path $tp 'guards.json') -Raw -Encoding UTF8 | ConvertFrom-Json; if ([string]$gj.impasses.offerGuard -eq 'enforce') { $modeO = 'enforce' } } catch { }
+                    $short = if ($hitO.Length -gt 140) { $hitO.Substring(0, 140) + '…' } else { $hitO }
+                    if ($modeO -ne 'enforce') { Write-GuardLog $projectDir 'G26' $hookInput '' "aviso (warn): fim de turno oferecendo ação do roteiro sem rota — '$short'"; exit 0 }
+                    if ($hookInput.stop_hook_active -eq $true) {
+                        $logO = Join-Path $tp 'guards.log'; $recentO = 0
+                        if (Test-Path -LiteralPath $logO) { $limO = (Get-Date).AddMinutes(-10); foreach ($l in (Get-Content -LiteralPath $logO -Encoding UTF8 -Tail 50)) { if ($l -match '\| G26 \|' -and $l -match 'bloqueio') { $mO = [regex]::Match($l, '(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})'); if ($mO.Success -and [datetime]::Parse($mO.Groups[1].Value) -ge $limO) { $recentO++ } } } }
+                        if ($recentO -ge 2) { Write-GuardLog $projectDir 'G26' $hookInput '' 'liberado após 2 bloqueios'; exit 0 }
+                    }
+                    Write-GuardLog $projectDir 'G26' $hookInput '' "bloqueio: fim de turno oferecendo ação do roteiro sem rota — '$short'"
+                    [Console]::Error.WriteLine("[G26] A sua fala termina oferecendo uma ação ('$short') sem rota ao stakeholder. Pela matriz de impasses (roles/scrum-master/process/impasse-matrix.md, R36), passo do roteiro, registro em documento, ordem do trabalho e decisão técnica, de desenho, de produto ou de prova são do time: execute pelo dono e informe em uma linha. Na dúvida: impasse.ps1 raise -Type <tipo> … diz o dono. Se for mesmo do stakeholder, o raise grava a rota e a pergunta vai em formulário (AskUserQuestion), não em texto.")
+                    exit 2
+                }
+            }
+        }
+    }
+    if (-not (Test-GuardEnabled $cfg 'G20')) { exit 0 }
     if ($null -eq $run -or [string]$run.trilha -ne 'sprint') { exit 0 }   # v1: só a trilha sprint
 
     # Laço: o Claude Code já continua por causa de um bloqueio anterior. Da 3ª vez em 10 min, libera e registra.
@@ -70,7 +101,7 @@ try {
             $arAge = 999; if ($null -ne $arQ) { try { $arAge = ((Get-Date) - [datetime]::ParseExact([string]$arQ.at, 'yyyy-MM-dd HH:mm:ss', $null)).TotalMinutes } catch { } }
             if ($arAge -ge 15) {
                 Write-GuardLog $projectDir 'G20' $hookInput '' 'bloqueio: pergunta escrita ao stakeholder durante o run, sem formulário nem rota'
-                [Console]::Error.WriteLine("[G20] O sprint run está em andamento e a sua última fala termina numa pergunta escrita ao stakeholder. Pergunta escrita não passa pela forma (G3) nem pela rota (G24). Antes, confira se a decisão é dele (roles/scrum-master/templates/stakeholder-question.md, 'a decisão é dele?'): discordar do run.ps1 next, instalar ou reparar o aparelho, repetir o aceite, 'sigo?' ou 'tento de novo?' não são — leve ao Arquiteto (/arc question, degrau 1) ou ao operator, e siga a fila. Se for dele: rode run.ps1 next até a rota ao stakeholder e use o formulário (AskUserQuestion), partindo da linha PARA O STAKEHOLDER (.team-project/.ask-route → plain), sem código de tarefa, hash nem nome de arquivo.")
+                [Console]::Error.WriteLine("[G20] O sprint run está em andamento e a sua última fala termina numa pergunta escrita ao stakeholder. Pergunta escrita não passa pela forma (G3) nem pela rota (G24). Antes, confira se a decisão é dele (a matriz de impasses, roles/scrum-master/process/impasse-matrix.md — R36): discordar do run.ps1 next, instalar ou reparar o aparelho, repetir o aceite, 'sigo?' ou 'tento de novo?' não são — leve ao Arquiteto (/arc question, degrau 1) ou ao operator, e siga a fila. Se for dele: rode run.ps1 next até a rota ao stakeholder e use o formulário (AskUserQuestion), partindo da linha PARA O STAKEHOLDER (.team-project/.ask-route → plain), sem código de tarefa, hash nem nome de arquivo.")
                 exit 2
             }
         }

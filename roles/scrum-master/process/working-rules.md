@@ -297,6 +297,30 @@ Depois do onboarding (R14) e antes do primeiro `/sm sprint prepare`, o projeto p
 
 **Evita:** o backlog funcional nascer sobre documentação que ninguém conferiu contra o código — o QA sem requisito para escrever cenário, o plano pagando a exploração do código a cada Task — e o sprint funcional parar por ambiente (emulador, serviço fora do ar, prova no aparelho) que devia estar pronto antes da primeira Task; e, no outro extremo, o sprint 0 virar uma reescrita sem fim do sistema inteiro.
 **SM verifica:** **Instrumentos:** `foundation.ps1` (régua por item e completa; `close` só grava o aceite com tudo ok), **G25** (`hooks/prompt-submit.ps1` nega `/sm sprint prepare` e `plan` com o sprint 0 exigido e não concluído) e **C2** (`project.ps1`, linha R35: sprint funcional aberto com o sprint 0 exigido e não concluído = falhou; e a R15 não cobra o ① dos documentos que o sprint 0 aceitou). **Julgamento:** a amostra de fidelidade do QA cobre cada área do escopo; a dívida achada chegou ao backlog na review; a História do `prepare` cai numa área documentada.
+
+### R36. O impasse vai ao dono da matriz; ao stakeholder, só o tipo que sobe
+Quem trava, papel ou sessão, em qualquer modo, **não pergunta direto ao stakeholder**: declara o impasse no `scripts/checks/impasse.ps1 raise`, e a [matriz de impasses](impasse-matrix.md) diz quem resolve. A matriz é a fonte única, e o `hooks/impasses.json` é o derivado que se lê. **Ficam no time:**
+- a decisão técnica (Arquiteto);
+- o desenho de tela (UX);
+- a regra de produto dentro do escopo aprovado (PO);
+- a prova (QA), onde o relato do stakeholder vale como evidência observada;
+- a ordem do trabalho (SM);
+- o passo do roteiro ("aciono a QA?", "anoto?", "sigo?": quem perguntou executa e informa);
+- o registro em documento (o dono do arquivo);
+- a falha do próprio plugin (ocorrência em `note.md`).
+
+**Sobem ao stakeholder** só: escopo, dado já gravado, prazo, contradição com o que ele aceitou, portão de aprovação, decisão estratégica, risco aceito, ação externa que nenhuma decisão cobre, configuração dele, autorização, atualização do plugin e o pedido explícito dele (com a frase citada). O bloqueio e a lacuna de produto sobem só depois do par PO + Arquiteto (R25).
+
+O que já foi decidido para a mesma parte e o mesmo assunto **não se pergunta de novo**: o `raise` recusa e mostra a decisão, salvo fato novo declarado. Cada caso fica no registro da trilha (`sprints/<n>/` ou `fixes/B-<nnn>/team-decisions.jsonl`), e o kanban mostra ao stakeholder o que o time decidiu sozinho e o que subiu, com o motivo. Durante o `sprint run`, a rota ao stakeholder continua vindo do `run.ps1` e do `gate.ps1` (R25 c).
+
+**Evita:** o stakeholder chamado para dar licença ao próprio trabalho do time, para confirmar o que ele mesmo relatou ou já decidiu, ou para escolher o que é de outro papel. Na preparação do sprint 7 do projeto piloto (23/11/2026), foram 15 de 22 chamadas. Evita também a regra espalhada em nove lugares, em que cada correção tapava um e o problema voltava pelos outros.
+**SM verifica:** **Instrumentos:**
+- **G24** (`hooks/pre-tool.ps1`) nega o formulário de qualquer sessão principal sem rota gravada (pelo `impasse.ps1 raise` de tipo que sobe, ou pelo `run.ps1` e pelo `gate.ps1` no run), e o `stakeholder-request` sem a frase dele na sessão;
+- **G26** (`hooks/stop.ps1`) registra (`warn`) ou barra (`enforce`) o fim de turno que oferece ação do roteiro sem rota;
+- **`impasse.ps1`** recusa o já decidido e a evidência que falta;
+- **C3** (`release.ps1`, linha `impasses`) confere a matriz contra o JSON e as rotas dos scripts.
+
+**Julgamento:** na retrospectiva, as linhas "subiu a você" do kanban; tipo que subiu sem ser do stakeholder é achado de processo, e tipo do time decidido contra a vontade dele volta como `contradicts-acceptance`.
 ---
 
 ## Como o SM aplica

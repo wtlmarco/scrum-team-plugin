@@ -13,6 +13,84 @@
 
 ---
 
+## v3.66.0 — 2026-11-23
+**Branch:** `feat/v3.66.0` a partir de `develop` (`8e20d86`, com a v3.65.15 mesclada pelo PR #223) · **Plano:** `melhorias/plano-v3.66.0.md` (etapa 1, itens A a F; etapa 2, itens G a J; e o item K)
+Origem: a conferência da preparação do sprint 7 do garden (23/11, plugin 3.65.14). O stakeholder foi chamado 22 vezes, e 15 eram do time:
+- licença para o próprio trabalho;
+- o que ele mesmo tinha relatado ou decidido;
+- decisão técnica e de desenho;
+- falha do próprio plugin.
+
+A regra "quem resolve" morava em nove lugares. A G24 só olhava a sessão do `sprint run`, e as perguntas saíram do `prepare` e do `plan`. Pedido dele: um módulo central que decida para onde vai o impasse, em todo o plugin, com o registro por sprint ou fix à vista no kanban.
+
+**A · A matriz de impasses** (`roles/scrum-master/process/impasse-matrix.md`, fonte; `hooks/impasses.json`, derivado). Trinta tipos, cada um com dono, subida (`never` · `direct` · `afterLadder`, que é a R25), evidência, "só por script" e as rotas antigas da `.ask-route`.
+- **Sobem:** escopo, dado gravado, prazo, contradição com aceite, portão, estratégico, risco aceito, ação externa, configuração, autorização, atualização do plugin, pedido do stakeholder, e o bloqueio e a lacuna de produto depois do par PO + Arquiteto.
+- **Ficam no time:** técnica, desenho, regra de produto, prova, ordem do trabalho, passo do roteiro, registro em documento e falha do plugin.
+- **Projeto:** acrescenta tipos em `guards.json → impasses.extra`, sem mudar os do plugin.
+- **C3 (`release.ps1`, linha `impasses`):** confere os dois arquivos e que toda rota gravada pelo `run.ps1` e pelo `gate.ps1` tem tipo.
+
+**B · `impasse.ps1`** (`raise` · `close` · `owner` · `list`; núcleo em `impasse-lib.ps1`, carregado pelo `plain.ps1` e por isso disponível aos hooks, ao kanban e ao run).
+- **Já decidido:** recusa (exit 3) o que já foi decidido para a mesma parte e o mesmo assunto, no registro de qualquer trilha ou na §7 do README com `{subject: …}`, e mostra a decisão. Assunto novo numa parte com decisões pede `-Distinct`.
+- **Evidência do tipo:** confere `-Detail`, `-Consulted` apontando o aceite, `-Quote`, `-Gate` e a categoria do estratégico.
+- **Tipo do time:** dá a linha `Agent` do dono.
+- **Tipo que sobe:** grava a rota com o texto simples.
+- **No `sprint run`:** tipo que sobe é recusado (R25 c), salvo `stakeholder-request`.
+- **`close -Allow`:** leva os comandos aprovados ao `run.ps1 allow`; instalação, rede e push ficam com a sessão, em nome da decisão.
+- **Fonte única:** a linha `Agent` (`Get-AgentDispatchText`, `common.ps1`) e a regra de propriedade (`Find-OwnershipRule`) agora valem para o `run.ps1`, a G8 e o `impasse.ps1`.
+
+**C · A G24 em toda sessão principal.** Fora do run, o formulário só sai com a rota do `raise`, e a recusa traz o comando e os tipos que sobem. O `stakeholder-request` só passa com a frase citada presente numa fala do stakeholder no transcrito. Ficam fora o papel, o clone-fonte do plugin e o modo benchmark.
+
+**D · G26 (nova, `stop.ps1`).** Fora da sessão do run, o fim de turno que oferece ação do roteiro ("Quer que eu…?", "Posso…?"; frases em `impasses.json → offerPhrases`) sem rota. `warn` é o padrão (`guards.json → impasses.offerGuard`, só registra) e `enforce` barra; a 3ª vez em 10 min passa.
+
+**E · As falhas do plugin não viram pergunta:**
+- `kanban.ps1 -Sprint <n> -Init` gera o quadro da abertura, com a Série, o Registro e as Decisões do time, ou acrescenta a Série que falta. O `run.ps1 next` recusa partir sem a Série e dá o comando.
+- `Invoke-GitBegin` troca de branch levando as alterações pendentes, e o git recusa quando não é seguro; o aviso vai ao SM uma vez por run.
+- `knowledge.ps1 -Consolidated` apaga o `architect/consolidation.md`.
+- A falha do plugin declarada vai a `note.md` como ocorrência.
+
+**F · O registro por trilha, no kanban.**
+- **Onde:** `sprints/<n>/team-decisions.jsonl`, ou `fixes/B-<nnn>/` no fix; fora dos dois, o sprint em preparação, que a Planning herda. Uma linha por evento, só acrescentada.
+- **Kanban:** a subseção "Decisões do time" no Controle (e no kanban do bloco), mais a linha do Resumo e do `/team-status`.
+- **Review:** a seção "Decidido pelo time sem você" (`impasse.ps1 list -Format review`), revertível.
+
+**Regra:** R36 (`working-rules.md` e índice, R1–R36).
+**Documentos:** `artifact-ownership.md` e `ownership.json`, o manifesto do `.team-project/`, os modelos do kanban, da Review e da pergunta, o `workflow-sprint.md` (passo 11, consolidação), o `fix-run.md`, os `commands/{sm,po,arc,ux,team}.md`, o `how-to.md`, o `hooks/COVERAGE.md` e o modelo do `guards.json`.
+
+**Testes:**
+- `run-check-tests.ps1`, casos v3.66.0: o `raise` em cada saída (dono, já decidido pelo registro e pela §7, `-Distinct`, evidência, só por script, R25 c), o `close` com `-Ref` e `-Allow`, o `list -Format review`, o `owner`, a trilha n+1, o `kanban -Sprint -Init` (novo e reparo), o `-Consolidated`, o `next` sem Série e a branch que leva a alteração ou é recusada pelo git.
+- `run-guard-tests.ps1`: a G24 fora do run (com e sem rota, rota usada), o `stakeholder-request` (frase presente e ausente) e a G26 (`warn`, `enforce`, oferta "Posso…?", resposta sem oferta, rota recente, desligada). Os casos de forma da G3 gravam a rota antes; três casos antigos da G24 mudaram de sentido (outra sessão, trilha fix, sem `.active-run`: agora pedem rota).
+
+**Etapa 2 — o run, o portão, o executor e a triagem na mesma matriz:**
+- **G · O dono da causa vem da matriz.** A matriz ganha a §1a, causas do 🔺 GAP e do achado do portão (causa → tipo → dono, com o rótulo), e a §1b, papéis (comando e nome curto). Sai o mapa `$ownG` do `run.ps1 done -Result gap` e sai o `$owners` do `gate.ps1`: os dois leem `Resolve-ImpasseOwner`. O `$docOwnerRoles` da consolidação lê o papel pelo nome do dono no `hooks/ownership.json` (`Get-RoleByOwnerName`). A saída do run e do portão não muda (a suíte deles passa igual). O C3 confere a §1a e a §1b contra o JSON e que o dono de cada causa tem papel.
+- **G · A rota do script entra no registro.** O `Set-AskRoute` (`lib.ps1`) registra cada rota do `run.ps1` e do `gate.ps1` no `team-decisions.jsonl` da trilha, com o tipo pela rota antiga, e põe o id do impasse na `.ask-route`. O `next` repetido não duplica, e a rota apagada (start, construir, pausa) fecha os impasses que o run abriu. Não recusa nada: a escada do run e do portão continua a dela.
+- **H · A tabela "a decisão é dele?" vira exemplos da matriz.** As 25 linhas do `stakeholder-question.md` passam à §6 da matriz, cada uma com o tipo; o modelo fica só com a forma da pergunta. O §6b do `workflow.md`, a escada R25 do `workflow-sprint.md`, o `agents/task-runner.md` (o dono do GAP é o que o `done` imprime, pela matriz) e a triagem do `agents/product-owner.md` (defeito = `proof`, com o relato do stakeholder como evidência; escopo = `scope`; dúvida = `product-rule`) apontam para ela. A G20 aponta a matriz no lugar da tabela.
+- **I · O dono antes do bloqueio da G8.** Já entrou na etapa 1 (a mensagem da G8 traz a linha `Agent` do dono, pelo `Find-OwnershipRule`).
+- **J · O formulário passa na G3 de primeira.** Em projeto com Identificador remoto, o `raise` de tipo que sobe grava a pendência **dentro** da §7 do README, com o prefixo R34 e o `{subject:}`, e diz com que prefixo a pergunta começa. O `close` marca a pendência `[RESOLVIDO em … — <a decisão>]`.
+
+**Testes (etapa 2):**
+- `run-check-tests.ps1`: o dono de cada causa pela matriz e o papel pelo nome do dono; a rota do run registrada uma vez e fechada ao apagar; a pendência R34 gravada na §7 e resolvida pelo `close`, com a pergunta repetida recusada; o C3 com a causa só no JSON.
+- `run-guard-tests.ps1`: o `raise` grava a pendência e o formulário com o prefixo passa na G3 e na G24.
+
+**Item K — reuso, centralização e design patterns como standard do Arquiteto (aprovado em 23/11):**
+- **Standard:** `standards/implementation-principles.md` ganha o **§4.6** (*Reuse, componentization and centralization*: procurar antes de criar, estender antes de duplicar, uma regra num lugar só, peça usada duas vezes vira compartilhada, o que varia é configuração) e o **§4.7** (*Design patterns*: o padrão vem do problema, com o catálogo Strategy · Adapter/Port · Factory · Observer/Mediator · Template Method · Repository e o que não se faz). O §4.5 ganha "abstração especulativa não é reuso", e o Quadro de Verificação (§7) ganha a linha 24.
+- **Perfis de stack:** cada um ganha o exemplo na tecnologia, sem ser normativo: angular NG-8, ionic-capacitor IONIC-4, react RE-8, kotlin-android KA-9, dotnet §12.
+- **Plano:** a **§2a. Reuse and patterns** entra no plano pleno (regra 36), com as linhas `reuses:` · `extends:` · `new:` com motivo · `pattern: <Name> — <problem> — <simpler alternative rejected>` · `none:` com motivo.
+  - O `plan.ps1` reprova o plano sem a seção ou com uma linha incompleta.
+  - Ficam de fora a variante leve e o plano de sprint com o ③ aprovado antes da v3.66.0, inclusive o sprint 7 em curso do projeto piloto.
+- **Plano externo:** o roteiro do pacote (`external-plan.md`) ganha a instrução `[reuso]`.
+- **Quebra:** `breakdown.md` ganha **Shared parts** (a peça comum nasce numa Task; as outras a citam em `reuses:`).
+- **Arquiteto e QA:** `roles/architect/README.md` e `skills.md` §2a apontam para o §4.6 e o §4.7. A frente 2 da QA confere o `reuses:` e o `extends:` contra o diff.
+
+**Pendências da etapa 1, fechadas:**
+- **Comandos implicados:** a linha **Comandos implicados:** entra na ficha (`breakdown.md`, regra 10). O comando que a Task exige e o run não libera sozinho vai ao ③, e a aprovação vira `impasse.ps1 close -Allow`.
+- **`/team-usage`:** ganha a seção "Impasses (matriz, R36)". Ela traz o registro do sprint (resolvidos, em andamento, subidos, recusados, por tipo) e as recusas da G3 e da G24 e as ofertas vistas pela G26, contadas no `guards.log`. É a medida da meta.
+- **Inventário dos formulários:** um caso de guarda por modo que abre formulário legítimo (update, onboarding, brainstorm, ①, sprint 0, prepare, ③, Review, propostas de configuração do close, ajustes do fix plan, `/sec` e decisão estratégica). Cada um declara o impasse do tipo dele e passa na G24 de primeira.
+- **G7 com a sequência do GAP (item H):** a matriz ganha, na §1a, a sequência de cada causa: requisito PO → Arquiteto → dev; tela UX → Arquiteto → dev; cenário QA → dev; desenho, aparência e processo Arquiteto → dev. O `run.ps1 done -Result gap` a grava em `.team-project/.gap-route` e a imprime. Com o GAP aberto, a G7 deixa o executor disparar, para aquela Task, só os papéis da sequência e o `operator`. Isso libera o PO e o UX, que eram negados ao executor desde a v3.63, e barra o que sai da sequência. A rota sai quando a Task fecha; o C3 confere a coluna.
+
+**Testes (item K e pendências):**
+- `run-check-tests.ps1`: a regra 36 em sprint antigo (n-a), sem a §2a, com `new:` e `pattern:` incompletos, completa, com `none:` e na trilha leve; o `/team-usage` com os impasses.
+- `run-guard-tests.ps1`: o inventário, com doze modos; a G7 com a sequência (PO liberado no GAP de requisito, QA fora dela negada, `operator` sempre, outra Task pela regra de antes, GAP técnico ao PO negado, rota vencida).
+- `run-check-tests.ps1`: a sequência pela matriz e a rota que sai com a Task.
 ## v3.65.15 — 2026-11-23
 **Branch:** `fix/v3.65.15` a partir de `develop` (`94323fc`, com a v3.65.14 mesclada pelo PR #221)
 Origem: o ensaio do kit do benchmark da virada (23/11), antes de qualquer braço. Num app Android nativo, um `.kt` mexido e desfeito (`git checkout`) deixou o `accept` recusando "APK mais velho que o código" a cada rodada. O `assembleDebug` viu as fontes iguais e não regravou o APK, cuja data não mudou. Só saiu apagando o APK. É o laço que a v3.65.12 (item A) queria fechar.

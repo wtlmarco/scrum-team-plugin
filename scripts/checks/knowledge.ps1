@@ -9,6 +9,7 @@
 #                                        Lição stack:<x> → <X>-L<n> em .team-project/standards/stacks/<x>/pitfalls.md;
 #                                        sprints/<n>/lessons.md (a seção "Lições do sprint" da retrospectiva); acima do
 #                                        teto, architect/consolidation.md (o primeiro item do próximo prepare)
+#   knowledge.ps1 -Consolidated          (v3.66.0) fim da consolidação do Arquiteto: apaga architect/consolidation.md
 #   knowledge.ps1 -Migrate [-Apply] [-Classify "D-1=conhecimento:projeto;D-3=processo:plugin@<até>"] [-Retire K-3]
 #                                        /team update 7m: cria o knowledge.md (Classificação desde: o sprint seguinte ao
 #                                        aberto) e a pasta local de stacks, lista as D sem classificação, grava a
@@ -25,6 +26,7 @@ param(
     [switch]$Migrate,
     [string]$Classify = '',
     [string]$Retire = '',
+    [switch]$Consolidated,   # v3.66.0: a consolidação do Arquiteto terminou — apaga architect/consolidation.md (o roteiro manda; antes, à mão)
     [string]$Root = (Get-Location).Path
 )
 
@@ -39,6 +41,19 @@ $cur = if (Test-Path -LiteralPath $readmeP) { Get-CurrentSprint (Read-Text $read
 if (-not $Sprint) { $Sprint = [string]$cur }
 function Out([string]$s) { [Console]::Out.WriteLine($s) }
 function Save([string]$Path, [string]$Text) { New-Item -ItemType Directory -Force (Split-Path $Path) | Out-Null; [System.IO.File]::WriteAllText($Path, $Text, $utf8) }
+
+# ---------- -Consolidated (v3.66.0) ----------
+# O architect/consolidation.md é aberto por este script (teto do knowledge.md) e o roteiro manda apagá-lo ao fim da
+# consolidação. No projeto piloto (23/11) a remoção foi negada pelas permissões e virou duas perguntas ao stakeholder.
+if ($Consolidated) {
+    $consP = Join-Path $tp 'architect/consolidation.md'
+    if (-not (Test-Path -LiteralPath $consP)) { Out 'knowledge -Consolidated: não há consolidação aberta (architect/consolidation.md ausente) — nada a fazer.'; exit 0 }
+    $kp0 = Get-KnowledgePath $Root
+    $kb = if (Test-Path -LiteralPath $kp0) { [Math]::Round((Get-Item -LiteralPath $kp0).Length / 1KB, 1) } else { 0 }
+    Remove-Item -LiteralPath $consP -Force
+    Out "knowledge -Consolidated: consolidação encerrada — architect/consolidation.md apagado; knowledge.md com $kb KB$(if ($kb -gt 15) { ' (ainda acima do teto de 15 KB: o próximo close reabre a consolidação)' })."
+    exit 0
+}
 
 $kPath = Get-KnowledgePath $Root
 $kTemplate = Join-Path (Get-PluginRoot) 'roles/architect/templates/knowledge.md'
@@ -285,7 +300,7 @@ if ($Apply) {
     }
     Save (Join-Path $S 'lessons.md') ((($md -join "`n").TrimEnd()) + "`n")
     $cons = Join-Path $tp 'architect/consolidation.md'
-    if ($teto.Count) { Save $cons ("# Consolidação do conhecimento — primeiro item do próximo /sm sprint prepare`n`n> Aberta por ``knowledge.ps1 -Sprint $Sprint -Apply`` em $(Get-Date -Format 'yyyy-MM-dd'). O Arquiteto, numa instância: junta entradas parecidas, apaga as superadas e sobe para os standards do projeto o que virou regra geral; propõe ao /review a promoção das entradas locais de stack confirmadas. Apaga este arquivo ao terminar.`n`n" + (($teto | ForEach-Object { "- $_" }) -join "`n") + "`n") }
+    if ($teto.Count) { Save $cons ("# Consolidação do conhecimento — primeiro item do próximo /sm sprint prepare`n`n> Aberta por ``knowledge.ps1 -Sprint $Sprint -Apply`` em $(Get-Date -Format 'yyyy-MM-dd'). O Arquiteto, numa instância: junta entradas parecidas, apaga as superadas e sobe para os standards do projeto o que virou regra geral; propõe ao /review a promoção das entradas locais de stack confirmadas. Ao terminar, rode ``knowledge.ps1 -Consolidated`` (apaga este arquivo; sem pedir ao stakeholder).`n`n" + (($teto | ForEach-Object { "- $_" }) -join "`n") + "`n") }
 }
 
 Out "knowledge S${Sprint}$(if ($Apply) { ' -Apply' } else { ' -Check' }): $($items.Count) decisão(ões) · promoções $($prom.Count) · plugin $($plugin.Count) · repetições com registro $($reps.Count) · achados $($finds.Count)$(if ($warns.Count) { " · avisos $($warns.Count)" }) · propostas $($cfgP.Count)$(if ($teto.Count) { ' · TETO: consolidação no próximo prepare' })"

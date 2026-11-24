@@ -49,6 +49,7 @@
 9. Estratégia de Testes
 10. Versionamento de API
 11. Formato de Resposta de Erro
+12. Reuse and patterns (exemplos de §4.6 e §4.7 do nível 1)
 
 ---
 
@@ -902,3 +903,14 @@ Versionamento obrigatório para qualquer mudança incompatível de contrato. Est
 | `503 Service Unavailable` | Dependência indisponível — readiness falhou |
 
 **Regra:** nunca retornar `500` para erros de validação de negócio — usar `400`, `409` ou `422` conforme o caso.
+
+---
+
+## 12. Reuse and patterns (exemplos de §4.6 e §4.7 do nível 1)
+
+*Não normativo: a regra é a do [nível 1](../../implementation-principles.md) §4.6 e §4.7; aqui, a forma na stack.*
+
+- **Domain policy** (ou domain service) para a regra que mais de um handler valida: os handlers chamam a política, não repetem a condição.
+- **Pipeline behavior** do mediator para o que todo command faz igual (validação, log, transação), em vez do mesmo código no início de cada handler.
+- **Strategy** por injeção keyed (`[FromKeyedServices]`) ou dicionário de implementações, em vez de `switch` por tipo; **Adapter** é o §5 (integração multi-provedor); **Factory** só com variação real de construção.
+- **Componente compartilhado** de apresentação (Blazor/Razor) para o que duas páginas mostram igual.

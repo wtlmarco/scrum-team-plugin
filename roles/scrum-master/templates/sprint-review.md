@@ -63,6 +63,12 @@ O aceite detalhado de cada História — critério a critério, com a Task e a e
 | # | Bloqueio | Por que o degrau 1 não fechou (ou "estratégica — direto") | Recomendação do time | Resposta do stakeholder |
 |---|---|---|---|---|
 
+### Decidido pelo time sem você *(v3.66.0 · R36)*
+> Sai pronta do `impasse.ps1 list -Trail S<n> -Format review`, a partir do registro do sprint (`sprints/<n>/team-decisions.jsonl`). Não se reescreve à mão. O stakeholder pode reverter qualquer linha: a reversão vira um impasse `contradicts-acceptance` com `-From <id>`, e o caso volta ao backlog ou ao próximo sprint.
+
+| Quando | O que foi decidido | Quem decidiu | Por que não precisou de você | Onde está |
+|---|---|---|---|---|
+
 ### Balanço
 - **Objetivo do sprint atingido?** <sim | parcial — o quê ficou | não — por quê>
 - **Histórias entregues:** <n> de <n> planejadas
