@@ -31,7 +31,56 @@ function Get-ImpasseMatrix([string]$ProjectDir = '') {
             }
         }
     }
-    return [pscustomobject]@{ Types = @($types); OfferPhrases = @($m.offerPhrases); Rejected = $rejected; Version = [string]$m.version }
+    return [pscustomobject]@{ Types = @($types); OfferPhrases = @($m.offerPhrases); Rejected = $rejected; Version = [string]$m.version; Causes = $m.causes; Roles = $m.roles }
+}
+
+# v3.66.0 (etapa 2, item G): o dono de uma causa de 🔺 GAP (run.ps1 done) ou de achado do portão (gate.ps1), pela matriz —
+# antes, dois mapas fixos ($ownG no run.ps1 e $owners no gate.ps1). @{ Cause; Type; Role; Command; Short; Label } ou $null.
+function Resolve-ImpasseOwner([string]$Cause, $Matrix = $null) {
+    if (-not $Matrix) { $Matrix = Get-ImpasseMatrix }
+    $c = $Matrix.Causes.$Cause
+    if (-not $c) { return $null }
+    $t = Get-ImpasseType $Matrix ([string]$c.type)
+    if (-not $t) { return $null }
+    $role = [string]$t.owner; $ri = $Matrix.Roles.$role
+    return [pscustomobject]@{ Cause = $Cause; Type = [string]$t.type; Role = $role; Command = $(if ($ri) { [string]$ri.command } else { '' }); Short = $(if ($ri) { [string]$ri.short } else { $role }); Label = [string]$c.label }
+}
+
+# O papel (sufixo do agent_type) pelo nome do dono na matriz de propriedade ("PO", "Arquiteto"…) — o hooks/ownership.json → roles
+# lido ao contrário. Fonte única do run.ps1 (consolidação dos documentos vivos). '' se não há.
+function Get-RoleByOwnerName([string]$Name) {
+    $own = Read-ImpText (Join-Path $script:ImpasseLibDir '..\..\hooks\ownership.json') | ConvertFrom-Json
+    foreach ($p in $own.roles.PSObject.Properties) { if ([string]$p.Value -eq $Name) { return $p.Name } }
+    return ''
+}
+
+# v3.66.0 (item G): toda rota que o run.ps1 e o gate.ps1 gravam (Set-AskRoute, lib.ps1) entra no registro da trilha, com o tipo
+# da matriz pela rota antiga. Não recusa nada: o run e o portão têm a escada deles (a 2ª queda, o 2º travamento), e a suíte deles
+# não muda. A mesma rota com o mesmo motivo, ainda aberta, não ganha linha nova (o next repetido regrava a rota). Devolve o id.
+function Register-ImpasseRoute([string]$ProjectDir, [string]$Rota, [string]$Task, [string]$Motivo) {
+    $mx = Get-ImpasseMatrix $ProjectDir
+    $t = Get-ImpasseType $mx $Rota
+    if (-not $t) { return '' }
+    $tr = Get-ImpasseTrail $ProjectDir
+    $part = if ($Task) { $Task.ToUpperInvariant() } else { $tr.Id }
+    $txt = ($Motivo -replace '\s+', ' ').Trim(); if (-not $txt) { $txt = [string]$t.plain }
+    $open = @(Get-TeamDecisions $tr.Path | Where-Object { $_.Origin -eq 'run.ps1' -and $_.Result -eq 'escalated' -and $_.Type -eq [string]$t.type -and $_.Part -eq $part -and $_.Text -eq $txt }) | Select-Object -Last 1
+    if ($open) { return $open.Id }
+    $n = @(Read-ImpasseEvents $tr.Path | Where-Object { [string]$_.event -in 'raise', 'refused' }).Count
+    $iid = "$($tr.Id)-I$($n + 1)"
+    Add-ImpasseEvent $tr.Path ([ordered]@{ id = $iid; event = 'raise'; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); origin = 'run.ps1'; type = [string]$t.type; part = $part; subject = (ConvertTo-ImpasseSubject $Rota); owner = 'stakeholder'; reaches = [string]$t.reachesStakeholder; text = $txt; consulted = 'run.ps1 next'; route = $Rota })
+    return $iid
+}
+
+# A rota apagada pelo run.ps1 (start, construir, pausa) fecha os impasses abertos que ele mesmo registrou: a decisão já foi
+# aplicada e está no run-log.md da trilha.
+function Close-ImpasseRoutes([string]$ProjectDir) {
+    $tr = Get-ImpasseTrail $ProjectDir
+    if (-not (Test-Path -LiteralPath $tr.Path)) { return }
+    $ref = "$($tr.Rel)/run-log.md"
+    foreach ($d in @(Get-TeamDecisions $tr.Path | Where-Object { $_.Origin -eq 'run.ps1' -and $_.Result -eq 'escalated' })) {
+        Add-ImpasseEvent $tr.Path ([ordered]@{ id = $d.Id; event = 'close'; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); summary = 'respondido; o run seguiu com a decisão'; ref = $ref })
+    }
 }
 
 # O tipo pelo nome (em inglês) ou pela rota antiga que o run.ps1 e o gate.ps1 gravam (legacyRoutes). $null se não existe.
@@ -191,6 +240,46 @@ function Find-OwnershipRule([string]$Rel, [switch]$PluginSource) {
         return [pscustomobject]@{ Rule = $rule; Roles = $own.roles; Writers = @($rule.writers); WriterNames = $names; Owner = [string]$rule.dono }
     }
     return $null
+}
+
+# v3.66.0 (item J, R34): em projeto com Identificador remoto, o impasse que sobe grava a pendência DENTRO da §7 do README —
+# "N. [<ID> · <trilha> · <parte>] <pergunta> {subject: <chave>} — material: … — aaaa-mm-dd hh:mm" —, de onde a G3 confere o
+# prefixo. No sprint 7 do projeto piloto, as pendências caíram depois da §8 e a G3 recusou o formulário quatro vezes.
+# @{ N; Prefix } ou $null (projeto sem Identificador remoto, ou README sem §7).
+function Add-ImpassePending([string]$ProjectDir, [string]$TrailId, [string]$Part, [string]$Text, [string]$Subject, [string]$Material) {
+    $rd = Join-Path $ProjectDir '.team-project/README.md'
+    if (-not (Test-Path -LiteralPath $rd)) { return $null }
+    $t = Read-ImpText $rd
+    $im = [regex]::Match($t, '(?m)^\*\*Identificador remoto:\*\*\s*([A-Z]{3,8})\b')
+    if (-not $im.Success) { return $null }
+    $sec = [regex]::Match($t, '(?ms)^##\s+7\.\s.*?(?=^##\s|\z)')
+    if (-not $sec.Success) { return $null }
+    $nl = if ($t.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $nums = @([regex]::Matches($sec.Value, '(?m)^\s*(\d+)\.') | ForEach-Object { [int]$_.Groups[1].Value })
+    $n = 1 + $(if ($nums.Count) { ($nums | Measure-Object -Maximum).Maximum } else { 0 })
+    $prefix = "[$($im.Groups[1].Value) · $TrailId · $Part]"
+    $line = "$n. $prefix $(($Text -replace '\s+', ' ').Trim()) {subject: $Subject} — material: $(($Material -replace '\s+', ' ').Trim()) — $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+    $body = $sec.Value.TrimEnd()
+    $new = $t.Substring(0, $sec.Index) + $body + $nl + $line + $nl + $nl + $t.Substring($sec.Index + $sec.Length)
+    [System.IO.File]::WriteAllText($rd, $new, $script:ImpUtf8)
+    return [pscustomobject]@{ N = $n; Prefix = $prefix }
+}
+
+# Respondido o impasse, a pendência N da §7 ganha "[RESOLVIDO em aaaa-mm-dd — <a decisão>]" (o registro do caso; o
+# Find-ImpasseDecision a lê pelo {subject: …}). $false se a linha não existe.
+function Set-ImpassePendingResolved([string]$ProjectDir, [int]$N, [string]$Summary) {
+    $rd = Join-Path $ProjectDir '.team-project/README.md'
+    if (-not (Test-Path -LiteralPath $rd)) { return $false }
+    $t = Read-ImpText $rd
+    $sec = [regex]::Match($t, '(?ms)^##\s+7\.\s.*?(?=^##\s|\z)')
+    if (-not $sec.Success) { return $false }
+    $lm = [regex]::Match($sec.Value, "(?m)^(\s*$N\.\s+)(?!\*{0,2}\[RESOLVID)")
+    if (-not $lm.Success) { return $false }
+    $at = $sec.Index + $lm.Index + $lm.Groups[1].Length
+    $s = ($Summary -replace '\s+', ' ').Trim()
+    $new = $t.Substring(0, $at) + "[RESOLVIDO em $(Get-Date -Format 'yyyy-MM-dd') — $s] " + $t.Substring($at)
+    [System.IO.File]::WriteAllText($rd, $new, $script:ImpUtf8)
+    return $true
 }
 
 # Quem decide, em palavras de quem acompanha.

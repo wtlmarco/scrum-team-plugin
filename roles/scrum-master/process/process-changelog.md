@@ -120,6 +120,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | `templates/stakeholder-question.md` · `commands/{sm,po,arc,ux,team}.md` · `process/fix-run.md` | antes do formulário | O formulário só depois do `impasse.ps1 raise`, que diz o dono, recusa o já decidido e só grava a rota do tipo que sobe. Os ajustes do `fix plan` sobem como `gate` |
 | `process/workflow-sprint.md` | Planning passo 11 · consolidação | O quadro pelo script, nunca à mão; a consolidação do Arquiteto termina com `knowledge.ps1 -Consolidated` |
 | `hooks/COVERAGE.md` · `how-to.md` | v3.66.0 | A G24 em toda sessão principal; a G26 nova; a G8 com a linha do dono |
+| `process/impasse-matrix.md` · `hooks/impasses.json` · `scripts/checks/{run,gate,lib}.ps1` (etapa 2) | §1a causas · §1b papéis · §6 exemplos | O dono da causa do 🔺 GAP e do achado do portão sai da matriz (fim do `$ownG` e do `$owners`); a rota do script entra no registro da trilha; as 25 linhas de "a decisão é dele?" viram exemplos, com o tipo; o `raise` grava a pendência R34 dentro da §7 e o `close` a resolve |
 
 ### Por quê
 Na preparação do sprint 7 do projeto piloto (23/11), o stakeholder foi chamado 22 vezes, e 15 eram do time:

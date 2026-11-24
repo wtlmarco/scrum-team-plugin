@@ -1,5 +1,5 @@
 {
-  "_leia": "Derivado de roles/scrum-master/process/impasse-matrix.md §1 (fonte única, v3.66.0). Lido pelo scripts/checks/impasse-lib.ps1 (impasse.ps1, G24, G26, kanban.ps1). type = nome do tipo; owner = papel (sufixo do agent_type), 'stakeholder', 'routine' (quem perguntou executa o passo do roteiro) ou 'file-owner' (o dono do arquivo pelo hooks/ownership.json); reachesStakeholder = never · direct · afterLadder (R25: o par PO + Arquiteto primeiro); evidence = o que o impasse.ps1 raise exige além de -Part, -Subject, -Text e -Consulted (none · detail · consulted · quote · gate · ladder); scriptOnly = só o run.ps1 e o gate.ps1 gravam a rota; legacyRoutes = o identificador que a .ask-route já usava. O C3 (release.ps1) confere este arquivo contra a matriz e as rotas dos scripts. Mudou a matriz, muda aqui no mesmo ciclo.",
+  "_leia": "Derivado de roles/scrum-master/process/impasse-matrix.md §1 (fonte única, v3.66.0). Lido pelo scripts/checks/impasse-lib.ps1 (impasse.ps1, G24, G26, kanban.ps1). type = nome do tipo; owner = papel (sufixo do agent_type), 'stakeholder', 'routine' (quem perguntou executa o passo do roteiro) ou 'file-owner' (o dono do arquivo pelo hooks/ownership.json); reachesStakeholder = never · direct · afterLadder (R25: o par PO + Arquiteto primeiro); evidence = o que o impasse.ps1 raise exige além de -Part, -Subject, -Text e -Consulted (none · detail · consulted · quote · gate · ladder); scriptOnly = só o run.ps1 e o gate.ps1 gravam a rota; legacyRoutes = o identificador que a .ask-route já usava. causes = o tipo e o rótulo de cada causa de 🔺 GAP (run.ps1 done) e de achado do portão (gate.ps1), §1a; roles = o comando e o nome curto de cada papel, §1b. O C3 (release.ps1) confere este arquivo contra a matriz e as rotas dos scripts. Mudou a matriz, muda aqui no mesmo ciclo.",
   "version": "3.66.0",
   "offerPhrases": [
     "\\bquer que eu\\b",
@@ -12,8 +12,23 @@
     "\\bsigo (com|para|pelo|pela)\\b[^?]*\\?",
     "\\b(come[çc]o|disparo|aciono|rodo) (agora )?(o|a|os|as|pelo|pela)\\b[^?]*\\?"
   ],
-  "types": [
-    { "type": "scope", "owner": "stakeholder", "reachesStakeholder": "direct", "evidence": "detail", "detailLabel": "o que muda no que a parte entrega", "plain": "muda o que a parte entrega", "scriptOnly": false, "legacyRoutes": [] },
+  "causes": {
+    "requirement": { "type": "product-rule", "label": "requisito" },
+    "screen": { "type": "design", "label": "tela" },
+    "design": { "type": "technical", "label": "desenho" },
+    "appearance": { "type": "technical", "label": "aparência" },
+    "process": { "type": "technical", "label": "processo" },
+    "scenario": { "type": "proof", "label": "cenário" },
+    "executor": { "type": "proof", "label": "executor do plugin" }
+  },
+  "roles": {
+    "product-owner": { "command": "/po", "short": "o PO" },
+    "user-experience": { "command": "/ux", "short": "o UX" },
+    "architect": { "command": "/arc question", "short": "o Arquiteto" },
+    "quality-assurance": { "command": "/qa", "short": "o QA" },
+    "scrum-master": { "command": "/sm", "short": "o SM" }
+  },
+  "types": [    { "type": "scope", "owner": "stakeholder", "reachesStakeholder": "direct", "evidence": "detail", "detailLabel": "o que muda no que a parte entrega", "plain": "muda o que a parte entrega", "scriptOnly": false, "legacyRoutes": [] },
     { "type": "stored-data", "owner": "stakeholder", "reachesStakeholder": "direct", "evidence": "detail", "detailLabel": "o dado já gravado que muda", "plain": "muda um dado que já está gravado", "scriptOnly": false, "legacyRoutes": [] },
     { "type": "schedule", "owner": "stakeholder", "reachesStakeholder": "direct", "evidence": "detail", "detailLabel": "a diferença de prazo ou capacidade (ex.: +0,5 dia)", "plain": "muda o prazo ou a capacidade", "scriptOnly": false, "legacyRoutes": [] },
     { "type": "contradicts-acceptance", "owner": "stakeholder", "reachesStakeholder": "direct", "evidence": "consulted", "detailLabel": "", "plain": "reabre uma decisão que você já aceitou", "scriptOnly": false, "legacyRoutes": [] },

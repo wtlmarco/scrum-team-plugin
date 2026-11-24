@@ -100,7 +100,8 @@ try {
     $imJ = Join-Path $Root 'hooks/impasses.json'; $imM = Join-Path $Root 'roles/scrum-master/process/impasse-matrix.md'
     if ((Test-Path -LiteralPath $imJ) -and (Test-Path -LiteralPath $imM)) {
         $ij = Read-Text $imJ | ConvertFrom-Json
-        $isec = [regex]::Match((Read-Text $imM), '(?ms)^## 1\. Matriz.*?(?=^## 2\.)').Value
+        $imText = Read-Text $imM
+        $isec = [regex]::Match($imText, '(?ms)^## 1\. Matriz.*?(?=^### 1a\.|^## 2\.)').Value
         $mrows = @{}
         foreach ($ln in ($isec -split "`r?`n")) {
             if ($ln -notmatch '^\|\s*`([a-z-]+)`') { continue }
@@ -120,6 +121,22 @@ try {
             if (((@($t.legacyRoutes) | Sort-Object) -join ',') -ne $r.Legacy) { $ibad += "${k}: rotas antigas '$(@($t.legacyRoutes) -join ',')' × '$($r.Legacy)'" }
         }
         foreach ($k in $mrows.Keys) { if (-not $jtypes.ContainsKey($k)) { $ibad += "tipo '$k' na matriz e não no JSON" } }
+        # §1a causas e §1b papéis (etapa 2): iguais no JSON; o tipo de cada causa existe e o dono dele tem papel em §1b.
+        $cSec = [regex]::Match($imText, '(?ms)^### 1a\..*?(?=^### 1b\.|^## 2\.)').Value
+        $rSec = [regex]::Match($imText, '(?ms)^### 1b\..*?(?=^## 2\.)').Value
+        $mCauses = @{}; foreach ($ln in ($cSec -split "`r?`n")) { $cm = [regex]::Match($ln, '^\|\s*`([a-z-]+)`\s*\|\s*`([a-z-]+)`\s*\|\s*([^|]+?)\s*\|'); if ($cm.Success) { $mCauses[$cm.Groups[1].Value] = "$($cm.Groups[2].Value)|$($cm.Groups[3].Value)" } }
+        $mRoles = @{}; foreach ($ln in ($rSec -split "`r?`n")) { $rm = [regex]::Match($ln, '^\|\s*`([a-z-]+)`\s*\|\s*`([^`]+)`\s*\|\s*([^|]+?)\s*\|'); if ($rm.Success) { $mRoles[$rm.Groups[1].Value] = "$($rm.Groups[2].Value)|$($rm.Groups[3].Value)" } }
+        $jCauses = @{}; if ($ij.causes) { foreach ($pp in $ij.causes.PSObject.Properties) { $jCauses[$pp.Name] = "$([string]$pp.Value.type)|$([string]$pp.Value.label)" } }
+        $jRoles = @{}; if ($ij.roles) { foreach ($pp in $ij.roles.PSObject.Properties) { $jRoles[$pp.Name] = "$([string]$pp.Value.command)|$([string]$pp.Value.short)" } }
+        foreach ($pair in @(@{ M = $mCauses; J = $jCauses; N = 'causa' }, @{ M = $mRoles; J = $jRoles; N = 'papel' })) {
+            foreach ($k in $pair.J.Keys) { if (-not $pair.M.ContainsKey($k)) { $ibad += "$($pair.N) '$k' no JSON e não na matriz" } elseif ($pair.M[$k] -ne $pair.J[$k]) { $ibad += "$($pair.N) '${k}': '$($pair.J[$k])' no JSON × '$($pair.M[$k])' na matriz" } }
+            foreach ($k in $pair.M.Keys) { if (-not $pair.J.ContainsKey($k)) { $ibad += "$($pair.N) '$k' na matriz e não no JSON" } }
+        }
+        foreach ($k in $jCauses.Keys) {
+            $ct = ($jCauses[$k] -split '\|')[0]
+            if (-not $jtypes.ContainsKey($ct)) { $ibad += "causa '$k' aponta o tipo '$ct', que não existe" }
+            elseif (-not $jRoles.ContainsKey([string]$jtypes[$ct].owner)) { $ibad += "causa '$k': o dono '$($jtypes[$ct].owner)' do tipo '$ct' sem papel em §1b" }
+        }
         $known = @{}; foreach ($t in @($ij.types)) { $known[[string]$t.type] = 1; foreach ($l in @($t.legacyRoutes)) { $known[[string]$l] = 1 } }
         $routes = @{}
         $scDir = Join-Path $Root 'scripts/checks'

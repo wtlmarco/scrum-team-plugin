@@ -1270,7 +1270,13 @@ $cases = @(
     @{ Name = 'v3.66.0 G26: desligável em guards.json → disabled'; Script = 'stop.ps1'; Expect = 0
        Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ "disabled": ["G26"], "impasses": { "offerGuard": "enforce" } }', (New-Object System.Text.UTF8Encoding($false))) }
        Check = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ }', (New-Object System.Text.UTF8Encoding($false))); $true }
-       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessPrep'; transcript_path = (Join-Path $tmp 'of.jsonl') } }
+       Payload = @{ hook_event_name = 'Stop'; session_id = 'sessPrep'; transcript_path = (Join-Path $tmp 'of.jsonl') } },
+    @{ Name = 'v3.66.0 J: o impasse.ps1 raise grava a pendência na §7 com o prefixo R34 — o formulário que começa por ele passa na G3 e na G24 de primeira'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/README.md'), "# Contexto`n`n## 1. O produto`n**Identificador remoto:** ACME`n`n## 7. Decisões pendentes do stakeholder`n`nnenhuma`n`n## 8. Outra`n", (New-Object System.Text.UTF8Encoding($false)))
+                 foreach ($f in '.active-run', '.run-session', '.ask-route', 'fixes') { Remove-Item -LiteralPath (Join-Path $proj ".team-project/$f") -Recurse -Force -ErrorAction SilentlyContinue }   # sem bloco de fix aberto: a trilha é o sprint (S1)
+                 $null = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'scripts/checks/impasse.ps1') raise -Type scope -Part H-Q -Subject cards -Origin po -Consulted none -Text 'Os cards podem ficar lado a lado?' -Detail 'muda o card ativo' -Root $proj 2>&1 }
+       Check = { (Get-Content -LiteralPath (Join-Path $proj '.team-project/README.md') -Raw -Encoding UTF8) -match '(?s)## 7\..*1\. \[ACME · S1 · H-Q\] Os cards.*## 8\.' }
+       Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessPrep'; tool_input = @{ questions = @(@{ question = '[ACME · S1 · H-Q] Os cards podem ficar lado a lado? Exemplo: hoje cada card ocupa a linha inteira.'; header = 'Cards'; multiSelect = $false; options = @((Opt 'Quando couber (Recomendado)'), (Opt 'Pedir mais contexto')) }) } } }
 )
 
 $rows = @(); $fail = 0

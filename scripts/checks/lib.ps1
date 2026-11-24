@@ -15,6 +15,10 @@ $script:E = @{
 
 $script:Results = New-Object System.Collections.ArrayList
 
+# v3.66.0 (R36): o núcleo da matriz de impasses (impasse-lib.ps1, sem dependência deste arquivo) — o gate.ps1, o run.ps1 e o
+# Set-AskRoute o usam mesmo quando quem chamou não carregou o hooks/common.ps1.
+. (Join-Path $PSScriptRoot 'impasse-lib.ps1')
+
 function Read-Text([string]$Path) {
     return [System.IO.File]::ReadAllText($Path, (New-Object System.Text.UTF8Encoding($false)))
 }
@@ -1584,11 +1588,22 @@ function Set-NextVerdict([string]$Root, [string]$Acao, [string]$Task = '', [stri
 # produto, estado de partida, ambiente sem reparo, travamento repetido, comandos dos planos. A G24 (hooks/pre-tool.ps1) só
 # deixa a sessão que conduz o sprint run abrir formulário com ela gravada (R25 c). Vale até o próximo start ou até o next
 # mandar construir, e no máximo 24 h. Rota '' apaga.
-function Set-AskRoute([string]$Root, [string]$Rota, [string]$Task = '', [string]$Motivo = '') {
+# v3.66.0 (R36, item G): a rota entra no registro da trilha (team-decisions.jsonl, Register-ImpasseRoute do impasse-lib.ps1),
+# com o id do impasse na .ask-route; apagada, fecha os impasses que o run registrou. Sem o impasse-lib carregado, como antes.
+function Set-AskRoute([string]$Root, [string]$Rota, [string]$Task = '', [string]$Motivo = '', [switch]$NoRegister) {
     $p = Join-Path $Root '.team-project/.ask-route'
-    if (-not $Rota) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue; return }
+    $imp = (-not $NoRegister) -and [bool](Get-Command Register-ImpasseRoute -ErrorAction SilentlyContinue)   # o impasse.ps1 já registrou o dele
+    if (-not $Rota) {
+        $had = Test-Path -LiteralPath $p
+        Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue
+        if ($imp -and $had) { try { Close-ImpasseRoutes $Root } catch { } }
+        return
+    }
     if ($Motivo.Length -gt 300) { $Motivo = $Motivo.Substring(0, 300) + '…' }
-    [System.IO.File]::WriteAllText($p, ([ordered]@{ rota = $Rota; task = $Task; motivo = $Motivo; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+    $iid = ''; if ($imp) { try { $iid = Register-ImpasseRoute $Root $Rota $Task $Motivo } catch { } }
+    $o = [ordered]@{ rota = $Rota; task = $Task; motivo = $Motivo; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') }
+    if ($iid) { $o['impasse'] = $iid }
+    [System.IO.File]::WriteAllText($p, ($o | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
     $script:AskRouteNew = $p
 }
 # v3.65.11 (garden S6, 22/11 02:21 e 06:48: a sessão escreveu a pergunta do zero, com hash, exit 4 e nome de arquivo, e o

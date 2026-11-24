@@ -54,6 +54,28 @@
 - **Encadeamento:** o dono de um tipo do time que conclui que a decisão muda escopo, dado, prazo ou aceite abre outro impasse, do tipo que sobe, com `-From <id do primeiro>`. O kanban mostra a cadeia.
 - **Projeto:** `guards.json → impasses.extra` acrescenta tipos. Não muda dono nem subida de tipo que já está aqui.
 
+### 1a. As causas do 🔺 GAP e do achado do portão
+O `run.ps1 done -Result gap -Cause <causa>` e o `gate.ps1` (o achado do `validation.md`) acham o dono **por aqui**: a causa diz o tipo, e o tipo diz o dono (§1). Antes, cada script tinha um mapa próprio. A causa `code` não está aqui: no portão ela vira a Task de correção, e no GAP do dev vale como `design`. A `environment` também não: segue a escada de ambiente do `run.ps1`.
+
+| Causa (`causes`) | Tipo (`type`) | Rótulo (`label`) |
+|---|---|---|
+| `requirement` | `product-rule` | requisito |
+| `screen` | `design` | tela |
+| `design` | `technical` | desenho |
+| `appearance` | `technical` | aparência |
+| `process` | `technical` | processo |
+| `scenario` | `proof` | cenário |
+| `executor` | `proof` | executor do plugin |
+
+### 1b. Os papéis: o comando e o nome curto
+| Papel (`roles`) | Comando (`command`) | Nome curto (`short`) |
+|---|---|---|
+| `product-owner` | `/po` | o PO |
+| `user-experience` | `/ux` | o UX |
+| `architect` | `/arc question` | o Arquiteto |
+| `quality-assurance` | `/qa` | o QA |
+| `scrum-master` | `/sm` | o SM |
+
 ## 2. Declarar o impasse — `impasse.ps1`
 
 ```
@@ -65,7 +87,8 @@ powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/impasse.ps1" r
 - **Assunto novo numa parte que já tem decisões:** mostra os assuntos dela e exige `-Distinct`. Trocar a palavra não escapa do "já decidido".
 - **Evidência:** confere a do tipo (§1).
 - **Tipo do time:** imprime o dono e a linha `Agent` pronta. Não grava rota.
-- **Tipo que sobe:** grava a rota (`.team-project/.ask-route`) com o texto simples, de onde o formulário parte (R22, H1, R34).
+- **Tipo que sobe:** grava a rota (`.team-project/.ask-route`) com o texto simples, de onde o formulário parte (R22, H1). Em projeto com Identificador remoto, grava também a pendência **dentro** da §7 do README, com o prefixo R34 e o `{subject:}`, e diz com que prefixo a pergunta começa; o `close` a marca como resolvida.
+- **As rotas do `run.ps1` e do `gate.ps1`:** entram no mesmo registro pelo `Set-AskRoute` (`lib.ps1`), com o tipo pela rota antiga, sem recusar nada (a escada deles continua a deles); a rota apagada fecha os impasses que o run abriu.
 - **Durante o `sprint run`:** só o `run.ps1` e o `gate.ps1` levam ao stakeholder (R25 c). O `raise` de tipo que sobe é recusado, com uma exceção: o `stakeholder-request`, quando o stakeholder interrompeu, e nesse caso a parada (d) é `run.ps1 pause` antes. Os tipos do time seguem registrados.
 
 **`close -Id <id> -Summary "<a decisão em frase simples>" -Ref "<arquivo>#<âncora>" [-Allow "<cmd>;<cmd>"]`:** fecha o caso, ligando-o ao lugar onde o dono gravou a decisão. O `-Allow` traz os comandos que a decisão aprovou:
@@ -99,3 +122,35 @@ powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/impasse.ps1" r
   - O padrão é `warn` (`guards.json → impasses.offerGuard`): registra no `guards.log` e no `/team-usage` sem barrar.
   - O `enforce` vem depois de medir o falso positivo em campo.
   - As frases ficam em `hooks/impasses.json → offerPhrases`.
+
+## 6. Exemplos do roteiro — quem decide o caso que já aconteceu
+
+Os casos medidos nos projetos piloto, que até a v3.65 viviam na tabela "a decisão é dele?" do [`stakeholder-question.md`](../templates/stakeholder-question.md), cada um com o tipo da matriz (§1). Um caso novo entra aqui, com o tipo, e não no modelo da pergunta.
+
+| Tipo | Se a pergunta é… | Quem decide | O que fazer |
+|---|---|---|---|
+| `routine` | cenário que só se prova por teste de código | o roteiro | marcar `(teste)` na coluna Cenários e uma linha no run-log, sem formulário |
+| `technical` | nome de teste (id) que falta na tela | Arquiteto | 🔺 GAP: ele estende o plano ou o contrato de ids |
+| `blocked` | teste vermelho fora da Task, premissa da sessão, em que commit entra uma correção, ordem da fila | par PO + Arquiteto (degrau 1) | `mark.ps1 -To blocked`; a fila segue nas independentes |
+| `technical` | dois planos para a mesma Task, ajuste de lint previsto no plano | Arquiteto / o próprio plano | comparar e seguir; avisar em uma linha |
+| `routine` | "sigo?", "tento de novo?", "retomo o sprint?" | o roteiro | `run.ps1 next` (ou, em outro comando, dizer em uma linha como retomar) |
+| `routine` | estado de um processo, de um arquivo, de um log | quem pergunta | ler; nunca pedir ao stakeholder que rode um comando de leitura |
+| `target-configuration` | o `accept` sai com exit 4 e `configuration` no `result.json` (APK sem depuração da WebView, Node < 22, várias páginas sem `cdp.pageUrl`, `cdp.pageUrl` que não casa nenhuma página carregada, app híbrido com `uiautomator`) | **o stakeholder**, dono do `guards.json` e do build — não é GAP, nem ambiente da Task, nem decisão do Arquiteto | formulário com a mensagem do `accept` e o que corrigir; sem reparo, sem dev, sem política de `deviceProofFallback` (não se aplica) |
+| `starting-state` | a prova no aparelho não roda (estado de partida; serviço fora do ar) | a política do projeto (`guards.json` → `run.deviceProofFallback`) ou, sem ela, o stakeholder **uma vez** | com a política, o `run.ps1 done` aplica a prova por teste sozinho; sem ela, no formulário ofereça gravar a política, e a resposta se aplica com `run.ps1 prove -Task <T-ID>` — nunca editando plano ou quadro à mão |
+| `routine` | a decisão já tomada não chegou ao plano ou ao quadro; "posso tirar de 🔴?" | o roteiro | prova por teste com `run.ps1 prove -Task <T-ID>`; a Task sai de 🔴 por `mark.ps1 -Task <ID> -To build -Reopen resume` (o reparo foi fora do repositório) ou `-Reopen replan -Decision "<a resposta>"` (a decisão muda o que o plano manda); nunca perguntar de novo o que já foi respondido |
+| `technical` | plano acima de 30 KB numa Task em construção | Arquiteto | substitui o texto que a decisão derrubou, sem dividir a Task ([`sprint-run.md`](../process/sprint-run.md) §Plano acima de 30 KB); o `run.ps1 start` dá o prompt dele — nunca "encurtar ou dividir?" ao stakeholder |
+| `routine` | arquivo alterado por outra Task trava o fechamento | o roteiro | o que já estava alterado quando a Task começou não é dela (`handoff/<T-ID>-alheios.json`); o close o ignora, siga |
+| `technical` | id dinâmico que falta, comentário no HTML × lista no guards.json | Arquiteto | declara no código (`// testid-dinamico: <padrão>`), sem mexer no `guards.json` e sem formulário |
+| `routine` | serviço do ambiente desligado (Docker…) | o roteiro | declarado em `guards.json` → `run.prereqs`, o `run.ps1 start` o sobe; formulário só se ele não subir |
+| `routine` | "pode pausar?" / o stakeholder mandou parar | o stakeholder já decidiu | `run.ps1 pause` (apaga o `.active-run` e registra); nunca pedir que ele apague arquivo |
+| `routine` | "quando posso atualizar o plugin?" | o roteiro | todo reinício por teto de contexto e todo intervalo entre Tasks é ponto seguro — a linha PARA O STAKEHOLDER já diz |
+| `routine` | devolução de plano externo recusada | o roteiro | uma linha, sem formulário |
+| `routine` | a medição, o teste ou o build ainda roda: "espero ou recomeço?" (v3.65.9) | o roteiro | esperar é o padrão: o `run.ps1 next` manda esperar com o watcher; travado na 1ª vez, encerrar e retomar sozinho (regra 5). Só a 2ª vez vai ao formulário |
+| `plugin-failure` | a causa é um padrão do **próprio plugin** (valor que o plugin sugeriu ou gravou, regra dele) — "o plugin exige X e o app faz Y, como corrigir?" (v3.65.9) | o plugin | não é escolha do stakeholder: registre o defeito em `.team-project/note.md` (o `/review` o leva ao plugin) e siga com o padrão novo, se a versão instalada já o traz; o que o projeto **mudou por conta própria** continua dele. No garden (21/11, 08:50 → 17:30) o `readyExpr` do plugin esperava a rede inteira, e o stakeholder recebeu três formulários sobre como corrigir |
+| `proof` | o achado de cenário voltou de novo depois da correção do QA (v3.65.9 · v3.65.13) | QA, depois o Arquiteto (degrau 1), depois o PO (degrau 2) | o portão conta só disparo real e zera quando a falha muda de passo; esgotado o QA, o Arquiteto revê a causa; voltando de novo, o PO decide o que é de produto (aceitar como dívida, mandar fazer de outro jeito). Formulário só com a pergunta que o PO subiu dizendo **o que muda para o usuário** (`**Stakeholder:** … — **Muda para o usuário:** …` no `gate/<ID>.md`), ou se o achado voltar **na mesma falha** depois do PO |
+| `proof` | qual passo de teste usar, como o teste volta ao topo da lista, um contorno no cenário, a ferramenta de prova que falhou (v3.65.13) | QA; a ferramenta, o plugin | nenhuma opção muda o produto: o time decide e registra. O QA passa pelos contornos em ordem (a captura; voltar a tela ao estado inicial com `restart`, `back` ou outra aba; reordenar ou dividir o cenário; `seed`) antes de dizer que não há como, citando os verbos de [`scenario-language.md`](../../../standards/scenario-language.md) que conferiu. A falha da ferramenta é causa `executor` e vai como ocorrência em `.team-project/note.md`. No garden (22/11, 16:27) o stakeholder recebeu "o teste não consegue voltar ao topo da lista: como seguir?" — a sessão disse que a linguagem não tinha como, e a resposta (sair da aba e voltar) estava nos verbos que ela já tinha; a causa real era o executor rolando a faixa de filtros fora da tela |
+| `routine` | instalar o app novo no aparelho, reiniciar ou reparar o emulador; "o adb foi negado à sessão" (v3.65.11) | o operator | a guarda nega o aparelho à sessão de propósito: é a rota, não um bloqueio. O reparo é `target.ps1 -Repair`; a instalação, o APK declarado em `targets.android.apk` (o accept instala). Formulário só se o app gerado de novo continuar o antigo **depois do Arquiteto** (o portão já diz) |
+| `technical` | o build gerou o mesmo APK de antes; "o app está certo, sigo com o teste?"; investigar por que a geração não pega a mudança (v3.65.12) | o operator, depois o Arquiteto | o portão manda o operator gerar, instalar e repetir o aceite (o accept confere o app pelo conteúdo das fontes, não pela data); recusado de novo, o Arquiteto acha a causa e conserta o ambiente do build. A sessão não pausa nem pergunta: `run.ps1 pause` sem o pedido do stakeholder é recusado. No garden (22/11, 08:18 → 08:35) a sessão parou o run por conta própria e levou ao stakeholder cache, volume e hash. Depois, descobriu sozinha que o app estava certo e ainda perguntou se seguia |
+| `routine` | "repito o aceite inteiro?" ou "o teste rodou com o app velho, refaço?" (v3.65.11) | o roteiro | o portão mede de novo quando a produção, os cenários **ou o app** mudaram (a correção que provou o cenário com outro app basta) e o `-Resume` reaproveita o que já passou com o mesmo app. Aceite completo por decisão do Arquiteto, só por causa estrutural |
+| `technical` | a sessão discorda do `run.ps1 next` ("o script quer corrigir o código, mas o problema é outro") (v3.65.11) | o Arquiteto (degrau 1) | `/arc question` com as duas provas; a resolução dele (`gate/<ID>.md`) muda a rota. Nunca uma pergunta escrita ao stakeholder: a G20 barra o fim de turno que termina em pergunta sem formulário |
+| `routine` | o APK do projeto não está declarado no `guards.json` (v3.65.11) | o roteiro | com uma pasta só de APKs no disco, o `next` (e o `/team update`, passo 7q) dá a declaração inferida: a sessão grava e diz em uma linha o que gravou e como desfazer. Formulário só com APKs em várias pastas ou nenhum |

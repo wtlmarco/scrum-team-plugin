@@ -112,6 +112,9 @@ if ($Action -eq 'close') {
         Out "  run allow: $(($o -replace '\s+', ' ').Trim())"
     } elseif ($allowRun.Count) { $allowSession += $allowRun }
     Add-ImpasseEvent $tr.Path ([ordered]@{ id = $Id; event = 'close'; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); summary = $Summary.Trim(); ref = $Ref.Trim(); allow = @($allowRun + $allowSession) })
+    # v3.66.0 (item J, R34): a pendência que o raise gravou na §7 sai como resolvida, na mesma resposta.
+    $rEv = @(Read-ImpasseEvents $tr.Path | Where-Object { [string]$_.id -eq $Id -and [string]$_.event -eq 'raise' }) | Select-Object -First 1
+    if ($rEv -and $rEv.pending) { if (Set-ImpassePendingResolved $Root ([int]$rEv.pending) $Summary.Trim()) { Out "  R34: pendência $($rEv.pending) da §7 marcada como resolvida." } }
     Update-Board $tr
     Out "impasse close: $Id fechado — $($Summary.Trim()) ($($Ref.Trim())). Registrado em $($tr.Rel)/team-decisions.jsonl; o kanban mostra na seção Decisões do time."
     foreach ($c in $allowSession) { Out "  autorizado pela decisão ${Id}: a sessão roda agora ``$c`` (instalação, rede ou envio não vão ao papel nem a runCommands — G14)." }
@@ -177,6 +180,10 @@ $iid = Get-NextImpasseId $tr
 $ev = [ordered]@{ id = $iid; event = 'raise'; at = $nowS; origin = $Origin.Trim(); type = $t.type; part = $P; subject = $Sj; owner = $owner; reaches = [string]$t.reachesStakeholder; text = $Text.Trim(); consulted = $Consulted.Trim() }
 foreach ($kv in @(@{ k = 'detail'; v = $Detail }, @{ k = 'newFact'; v = $NewFact }, @{ k = 'from'; v = $From }, @{ k = 'distinct'; v = $Distinct }, @{ k = 'quote'; v = $Quote }, @{ k = 'gate'; v = $Gate }, @{ k = 'path'; v = $Path })) { if (([string]$kv.v).Trim()) { $ev[$kv.k] = ([string]$kv.v).Trim() } }
 if ($prev) { $ev['previous'] = $prev.Id }
+# v3.66.0 (item J, R34): o que sobe, em projeto com Identificador remoto, grava antes a pendência dentro da §7, com o prefixo.
+$pend = $null
+if ($escal) { $pend = Add-ImpassePending $Root $tr.Id $P $Text.Trim() $Sj $(if ($Detail) { $Detail.Trim() } else { "impasse $iid" }) }
+if ($pend) { $ev['pending'] = $pend.N; $ev['prefix'] = $pend.Prefix }
 Add-ImpasseEvent $tr.Path $ev
 
 # Falha do plugin: a ocorrência vai ao note.md (o /review a leva ao plugin).
@@ -197,16 +204,18 @@ if (-not $escal) {
 }
 
 # Sobe ao stakeholder: a rota da G24, com o texto simples de onde o formulário parte.
-Set-AskRoute $Root $t.type $P $Text.Trim()
+Set-AskRoute $Root $t.type $P $Text.Trim() -NoRegister
 Add-AskRoutePlain "$($Text.Trim())$(if ($Detail) { " — $($Detail.Trim())" })"
 try {
     $arp = Join-Path $tp '.ask-route'; $arj = Read-Text $arp | ConvertFrom-Json
     $arj | Add-Member -NotePropertyName impasse -NotePropertyValue $iid -Force
     $arj | Add-Member -NotePropertyName origem -NotePropertyValue 'impasse' -Force
     if ($Quote) { $arj | Add-Member -NotePropertyName quote -NotePropertyValue $Quote.Trim() -Force }
+    if ($pend) { $arj | Add-Member -NotePropertyName prefix -NotePropertyValue $pend.Prefix -Force; $arj | Add-Member -NotePropertyName pendencia -NotePropertyValue $pend.N -Force }
     [System.IO.File]::WriteAllText($arp, ($arj | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
 } catch { }
 Update-Board $tr
-Out "impasse raise: $iid · $($t.type) — sobe a você: $($t.plain). Rota gravada (.team-project/.ask-route): um formulário (R22 e H1: o problema simples, um exemplo, as opções com a recomendação primeiro e 'Pedir mais contexto' por último; R34: a pendência na §7 do README antes, com {subject: $Sj})."
-Out "  ao responder: impasse.ps1 close -Id $iid -Summary ""<a escolha dele>"" -Ref "".team-project/README.md#§7 <N>"""
+Out "impasse raise: $iid · $($t.type) — sobe a você: $($t.plain). Rota gravada (.team-project/.ask-route): um formulário (R22 e H1: o problema simples, um exemplo, as opções com a recomendação primeiro e 'Pedir mais contexto' por último)."
+if ($pend) { Out "  R34: pendência $($pend.N) gravada na §7 do README — a pergunta começa com $($pend.Prefix) (a G3 confere)." }
+Out "  ao responder: impasse.ps1 close -Id $iid -Summary ""<a escolha dele>"" -Ref "".team-project/README.md#§7 $(if ($pend) { $pend.N } else { '<N>' })""$(if ($pend) { ' (marca a pendência como resolvida)' })"
 exit 0

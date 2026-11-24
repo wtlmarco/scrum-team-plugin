@@ -284,4 +284,5 @@ Na preparação do sprint 7 do projeto piloto (23/11/2026), 15 de 22 chamadas ao
 - `run.ps1 next` — recusa partir sem a Série e dá o comando de reparo; o aviso da branch sai uma vez por run.
 - `lib.ps1 Invoke-GitBegin` — troca de branch levando as alterações pendentes, e o git recusa quando não é seguro.
 - `knowledge.ps1 -Consolidated` — apaga o `architect/consolidation.md`.
-- `release.ps1` (C3, linha `impasses`) — a matriz contra o JSON e as rotas dos scripts.
+- `release.ps1` (C3, linha `impasses`) — a matriz contra o JSON (tipos, §1a causas, §1b papéis) e as rotas dos scripts.
+- Etapa 2: o `run.ps1` (GAP) e o `gate.ps1` (achado) acham o dono por `Resolve-ImpasseOwner`; o `Set-AskRoute` registra a rota no `team-decisions.jsonl` da trilha e a fecha quando o run a apaga; o `raise` grava a pendência R34 dentro da §7, e o formulário passa na G3 de primeira.

@@ -14,7 +14,7 @@
 ---
 
 ## v3.66.0 — 2026-11-23
-**Branch:** `feat/v3.66.0` a partir de `develop` (`8e20d86`, com a v3.65.15 mesclada pelo PR #223) · **Plano:** `melhorias/plano-v3.66.0.md` (etapa 1, itens A a F; o K e a etapa 2 vêm depois)
+**Branch:** `feat/v3.66.0` a partir de `develop` (`8e20d86`, com a v3.65.15 mesclada pelo PR #223) · **Plano:** `melhorias/plano-v3.66.0.md` (etapa 1, itens A a F, e etapa 2, itens G a J; o item K vem depois)
 Origem: a conferência da preparação do sprint 7 do garden (23/11, plugin 3.65.14). O stakeholder foi chamado 22 vezes, e 15 eram do time:
 - licença para o próprio trabalho;
 - o que ele mesmo tinha relatado ou decidido;
@@ -59,6 +59,17 @@ A regra "quem resolve" morava em nove lugares. A G24 só olhava a sessão do `sp
 **Testes:**
 - `run-check-tests.ps1`, casos v3.66.0: o `raise` em cada saída (dono, já decidido pelo registro e pela §7, `-Distinct`, evidência, só por script, R25 c), o `close` com `-Ref` e `-Allow`, o `list -Format review`, o `owner`, a trilha n+1, o `kanban -Sprint -Init` (novo e reparo), o `-Consolidated`, o `next` sem Série e a branch que leva a alteração ou é recusada pelo git.
 - `run-guard-tests.ps1`: a G24 fora do run (com e sem rota, rota usada), o `stakeholder-request` (frase presente e ausente) e a G26 (`warn`, `enforce`, oferta "Posso…?", resposta sem oferta, rota recente, desligada). Os casos de forma da G3 gravam a rota antes; três casos antigos da G24 mudaram de sentido (outra sessão, trilha fix, sem `.active-run`: agora pedem rota).
+
+**Etapa 2 — o run, o portão, o executor e a triagem na mesma matriz:**
+- **G · O dono da causa vem da matriz.** A matriz ganha a §1a, causas do 🔺 GAP e do achado do portão (causa → tipo → dono, com o rótulo), e a §1b, papéis (comando e nome curto). Sai o mapa `$ownG` do `run.ps1 done -Result gap` e sai o `$owners` do `gate.ps1`: os dois leem `Resolve-ImpasseOwner`. O `$docOwnerRoles` da consolidação lê o papel pelo nome do dono no `hooks/ownership.json` (`Get-RoleByOwnerName`). A saída do run e do portão não muda (a suíte deles passa igual). O C3 confere a §1a e a §1b contra o JSON e que o dono de cada causa tem papel.
+- **G · A rota do script entra no registro.** O `Set-AskRoute` (`lib.ps1`) registra cada rota do `run.ps1` e do `gate.ps1` no `team-decisions.jsonl` da trilha, com o tipo pela rota antiga, e põe o id do impasse na `.ask-route`. O `next` repetido não duplica, e a rota apagada (start, construir, pausa) fecha os impasses que o run abriu. Não recusa nada: a escada do run e do portão continua a dela.
+- **H · A tabela "a decisão é dele?" vira exemplos da matriz.** As 25 linhas do `stakeholder-question.md` passam à §6 da matriz, cada uma com o tipo; o modelo fica só com a forma da pergunta. O §6b do `workflow.md`, a escada R25 do `workflow-sprint.md`, o `agents/task-runner.md` (o dono do GAP é o que o `done` imprime, pela matriz) e a triagem do `agents/product-owner.md` (defeito = `proof`, com o relato do stakeholder como evidência; escopo = `scope`; dúvida = `product-rule`) apontam para ela. A G20 aponta a matriz no lugar da tabela.
+- **I · O dono antes do bloqueio da G8.** Já entrou na etapa 1 (a mensagem da G8 traz a linha `Agent` do dono, pelo `Find-OwnershipRule`).
+- **J · O formulário passa na G3 de primeira.** Em projeto com Identificador remoto, o `raise` de tipo que sobe grava a pendência **dentro** da §7 do README, com o prefixo R34 e o `{subject:}`, e diz com que prefixo a pergunta começa. O `close` marca a pendência `[RESOLVIDO em … — <a decisão>]`.
+
+**Testes (etapa 2):**
+- `run-check-tests.ps1`: o dono de cada causa pela matriz e o papel pelo nome do dono; a rota do run registrada uma vez e fechada ao apagar; a pendência R34 gravada na §7 e resolvida pelo `close`, com a pergunta repetida recusada; o C3 com a causa só no JSON.
+- `run-guard-tests.ps1`: o `raise` grava a pendência e o formulário com o prefixo passa na G3 e na G24.
 ## v3.65.15 — 2026-11-23
 **Branch:** `fix/v3.65.15` a partir de `develop` (`94323fc`, com a v3.65.14 mesclada pelo PR #221)
 Origem: o ensaio do kit do benchmark da virada (23/11), antes de qualquer braço. Num app Android nativo, um `.kt` mexido e desfeito (`git checkout`) deixou o `accept` recusando "APK mais velho que o código" a cada rodada. O `assembleDebug` viu as fontes iguais e não regravou o APK, cuja data não mudou. Só saiu apagando o APK. É o laço que a v3.65.12 (item A) queria fechar.

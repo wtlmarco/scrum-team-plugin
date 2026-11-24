@@ -354,7 +354,6 @@ function Save-TaskCommit($T, [string]$S) {
 # manejo em vários canteiros construído): o docs-consolidation.md é lido em duas tabelas — "## Aplicado pelo Arquiteto" e
 # "## Pedidos aos donos" (roles/architect/templates/docs-consolidation.md) — e o next confere no git, aciona os donos e
 # versiona. O estado mecânico fica em sprints/<n>/.docs-check.json (do script; ninguém edita).
-$script:docOwnerRoles = @{ 'PO' = 'product-owner'; 'UX' = 'user-experience'; 'SM' = 'scrum-master'; 'QA' = 'quality-assurance'; 'Arquiteto' = 'architect' }
 function Get-ConsolidationRows([string]$Text) {
     $sec = ''; $hasArch = $false; $arch = @(); $req = @()
     foreach ($line in ($Text -split "`r?`n")) {
@@ -1229,9 +1228,11 @@ try {
             }
             # v3.63.0: requisito vai ao PO (o canal do stakeholder: o que for dele, ele devolve em STAKEHOLDER:), tela ao UX e
             # cenário ao QA — antes, 'produto' ia direto ao formulário do stakeholder e a especificação da tela ficava sem o caso.
-            $ownG = @{ requirement = @('product-owner', '/po', 'REQUISITO', 'o PO'); screen = @('user-experience', '/ux', 'TELA', 'o UX'); scenario = @('quality-assurance', '/qa', 'CENÁRIO', 'o QA') }
-            if ($ownG.ContainsKey($nat)) {
-                $o = $ownG[$nat]; $gline = if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }
+            # v3.66.0 (R36, item G): o dono da causa vem da matriz de impasses (hooks/impasses.json → causes e roles), não de um
+            # mapa daqui; a causa cujo dono é o Arquiteto segue o ciclo do Arquiteto, abaixo.
+            $gOwn = Resolve-ImpasseOwner $nat
+            if ($gOwn -and $gOwn.Role -ne 'architect') {
+                $o = @($gOwn.Role, $gOwn.Command, $gOwn.Label.ToUpperInvariant(), $gOwn.Short); $gline = if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }
                 if ($nat -eq 'requirement') { Set-AskRoute $Root 'gap-produto' $T.Id $gline }
                 Add-RunLog $S $n $T.Id "🔺 GAP [$nat · $natSrc] → $($o[1]) em instância nova$(if ($nat -ne 'scenario') { '; o Arquiteto registra a decisão no plano (parecer curto)' }); o dev volta pelo start" $gline "sprints/$n/delivery/$($T.Id).md"
                 Out "run: $($T.Id) com 🔺 GAP de causa $($o[2]) — quem decide é $($o[3]), não o Arquiteto (v3.63.0):"
@@ -2076,7 +2077,7 @@ try {
         $own = [string]$grp.Name
         $open = @($grp.Group | Where-Object { (Get-DocHash $_.Path) -eq [string]$dc.base[$_.Path] } | ForEach-Object { $_.Path } | Select-Object -Unique)
         if (-not $open.Count) { continue }
-        $role = if ($script:docOwnerRoles.ContainsKey($own)) { $script:docOwnerRoles[$own] } else { '' }
+        $role = Get-RoleByOwnerName $own   # v3.66.0: o papel pelo nome do dono, do hooks/ownership.json (fonte única)
         if ($role -and -not $dc.dispatched.ContainsKey($own)) {
             $dc.dispatched[$own] = (Get-Date -Format 'yyyy-MM-dd HH:mm'); Set-DocsCheck $S $dc
             Out "PRÓXIMA AÇÃO: pedidos da consolidação ao dono $own — $($open -join ', ') (R12: o Arquiteto pediu, ninguém aplicou ainda)"

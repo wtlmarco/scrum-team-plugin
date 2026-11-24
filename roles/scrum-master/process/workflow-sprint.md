@@ -160,7 +160,7 @@ A sequência ponta a ponta (História → detalhamento → `prepare` → Plannin
 | **1 — o par** | durante o sprint | **PO e Arquiteto conversam** — é o par certo, porque a pergunta quase sempre é *"o requisito está errado ou o desenho está?"* (R9 · §6b) | sobe ao degrau 2. O SM registra no quadro o resultado da conversa, resolvida ou não |
 | **2 — o stakeholder** | quando o par não fecha | stakeholder, na **forma fixa de R22**: opções descritas · recomendação · a via de pedir mais contexto | fica aberto no quadro, com data e dono — e o SM o leva à Review |
 
-**Exceção que pula o degrau 1: decisão estratégica** — stack, provedor, custo, risco aceito — escala **direto** ao stakeholder. É dele por definição (§6), e o par não pode resolvê-la; fazê-la passar pelo degrau 1 seria só atraso.
+**Exceção que pula o degrau 1: decisão estratégica** — stack, provedor, custo, risco aceito — escala **direto** ao stakeholder. Na [matriz de impasses](impasse-matrix.md) (R36), o bloqueio e a lacuna de produto são os tipos `afterLadder` (este degrau 1 antes), e o estratégico é `direct`; o que é do time (técnica, desenho, regra de produto, prova, ordem, passo do roteiro) nunca chega ao degrau 2. É dele por definição (§6), e o par não pode resolvê-la; fazê-la passar pelo degrau 1 seria só atraso.
 
 **`/sm agreement` não é degrau obrigatório.** Fica disponível se PO e Arquiteto quiserem facilitação do SM sobre a mesma questão — é a via do §6b quando o achado toca dois donos e ninguém consegue classificar.
 

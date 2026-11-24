@@ -1366,6 +1366,10 @@ Edit-File (Join-Path $rp 'hooks/impasses.json') '"type": "scope", "owner": "stak
 $r = Invoke-Check 'release.ps1' @('-Root', $rp)
 Check 'v3.66.0 C3: dono diferente entre a matriz e o JSON — falha' $r 1 @("\| impasses \| falhou \| scope: dono 'architect' no JSON × 'stakeholder' na matriz")
 Edit-File (Join-Path $rp 'hooks/impasses.json') '"type": "scope", "owner": "architect"' '"type": "scope", "owner": "stakeholder"'
+Edit-File (Join-Path $rp 'hooks/impasses.json') '"offerPhrases"' '"causes": { "requirement": { "type": "scope", "label": "requisito" } }, "offerPhrases"'
+$r = Invoke-Check 'release.ps1' @('-Root', $rp)
+Check 'v3.66.0 C3: causa no JSON e não na §1a da matriz — falha' $r 1 @("causa 'requirement' no JSON e não na matriz")
+Edit-File (Join-Path $rp 'hooks/impasses.json') '"causes": { "requirement": { "type": "scope", "label": "requisito" } }, "offerPhrases"' '"offerPhrases"'
 Edit-File (Join-Path $rp 'hooks/ownership.json') '"dono": "Arquiteto"' '"dono": "QA"'
 $r = Invoke-Check 'release.ps1' @('-Root', $rp)
 Check 'C3 ownership.json com dono divergente da matriz: exit 1' $r 1 @('\| ownership \| falhou.*dono ''QA''')
@@ -5252,6 +5256,31 @@ $pN = Join-Path $tmp 'v3660-serie'; New-Project $pN
 foreach ($f in 'burndown.md', 'kanban.md', 'consumption.md') { Remove-Item -LiteralPath (Join-Path $pN ".team-project/sprints/1/$f") -Force -ErrorAction SilentlyContinue }
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $pN)
 Check 'v3.66.0 E: run next sem a Série (nem no kanban.md, nem no consumption.md, nem no burndown.md) — recusa com o comando de reparo' $r 2 @('está sem a Série do burndown', 'kanban\.ps1" -Sprint 1 -Init -Opened', 'sem formulário ao')
+
+
+# ---- v3.66.0 etapa 2 (R36): o run e o portão leem a matriz; a rota do script entra no registro; a pendência R34 pelo raise ----
+$com66 = (Resolve-Path (Join-Path $checks '..\..\hooks\common.ps1')).Path
+$prR = Join-Path $tmp 'v3660-owner-probe.ps1'
+[System.IO.File]::WriteAllText($prR, (". '$(Join-Path $checks 'lib.ps1')'; . '$com66'" + "`n" + 'foreach ($c in ''requirement'', ''screen'', ''design'', ''appearance'', ''process'', ''scenario'', ''executor'', ''code'') { $o = Resolve-ImpasseOwner $c; if ($o) { "$c=$($o.Role)|$($o.Command)|$($o.Short)|$($o.Label)" } else { "$c=nenhum" } }' + "`n" + '"PO=" + (Get-RoleByOwnerName ''PO'') + ";ARQ=" + (Get-RoleByOwnerName ''Arquiteto'')'), (New-Object System.Text.UTF8Encoding($true)))
+$oR = & powershell -NoProfile -ExecutionPolicy Bypass -File $prR 2>&1 | Out-String
+Check 'v3.66.0 G: o dono de cada causa de GAP e de achado vem da matriz (causes → tipo → dono), e o papel pelo nome do dono vem do ownership.json' @{ Code = 0; Out = $oR } 0 @('requirement=product-owner\|/po\|o PO\|requisito', 'screen=user-experience\|/ux\|o UX\|tela', 'design=architect\|/arc question\|o Arquiteto\|desenho', 'scenario=quality-assurance\|/qa\|o QA\|cenário', 'executor=quality-assurance\|/qa\|o QA\|executor do plugin', 'code=nenhum', 'PO=product-owner;ARQ=architect')
+$pG = Join-Path $tmp 'v3660-rota'; New-Project $pG
+$prG = Join-Path $tmp 'v3660-route-probe.ps1'
+[System.IO.File]::WriteAllText($prG, (". '$(Join-Path $checks 'lib.ps1')'; . '$com66'" + "`n" + "Set-AskRoute '$pG' 'bloqueio' 'T-041' 'nenhuma Task elegível'; Set-AskRoute '$pG' 'bloqueio' 'T-041' 'nenhuma Task elegível'; Get-Content -Raw -Encoding UTF8 '$pG/.team-project/.ask-route'; Set-AskRoute '$pG' ''; Get-Content -Raw -Encoding UTF8 '$pG/.team-project/sprints/1/team-decisions.jsonl'"), (New-Object System.Text.UTF8Encoding($true)))
+$oG = & powershell -NoProfile -ExecutionPolicy Bypass -File $prG 2>&1 | Out-String
+Check 'v3.66.0 G: a rota do run.ps1 entra no registro da trilha com o tipo da matriz (blocked), uma vez só no next repetido, e fecha quando o run a apaga' @{ Code = 0; Out = $oG } 0 @('"rota":"bloqueio".*"impasse":"S1-I1"', '"id":"S1-I1","event":"raise".*"origin":"run.ps1","type":"blocked","part":"T-041"', '^(?![\s\S]*"id":"S1-I2")', '"id":"S1-I1","event":"close".*"summary":"respondido; o run seguiu com a decisão"')
+$pJ66 = Join-Path $tmp 'v3660-r34'; New-Project $pJ66
+$rmJ = [System.IO.File]::ReadAllText((Join-Path $pJ66 '.team-project/README.md'), $utf8)
+[System.IO.File]::WriteAllText((Join-Path $pJ66 '.team-project/README.md'), ($rmJ -replace '## 2\. Situação atual', "**Identificador remoto:** HORTA`n`n## 2. Situação atual" -replace '1\. nenhuma', "1. [RESOLVIDO em 2026-11-20 — x] [HORTA · S1 · ③ pacote] Aprova?`n`n## 7a. Registro de consultores`n`nnada"), $utf8)
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'scope', '-Part', 'H-Q', '-Subject', 'cards', '-Origin', 'po', '-Consulted', 'none', '-Text', 'Os cards podem ficar lado a lado?', '-Detail', 'muda o card ativo', '-Root', $pJ66)
+$rmJ2 = [System.IO.File]::ReadAllText((Join-Path $pJ66 '.team-project/README.md'), $utf8)
+$s7 = [regex]::Match($rmJ2, '(?ms)^## 7\..*?(?=^## 7a)').Value
+Check 'v3.66.0 J: com Identificador remoto, o raise grava a pendência DENTRO da §7 com o prefixo R34 e o {subject:} (a G3 confere)' @{ Code = $r.Code; Out = "$($r.Out)`nS7=$s7" } 0 @('pendência 2 gravada na §7 do README — a pergunta começa com \[HORTA · S1 · H-Q\]', 'S7=[\s\S]*2\. \[HORTA · S1 · H-Q\] Os cards podem ficar lado a lado\? \{subject: cards\} — material: muda o card ativo — \d{4}-\d\d-\d\d \d\d:\d\d')
+$r = Invoke-Check 'impasse.ps1' @('close', '-Id', 'S1-I1', '-Summary', 'quando couber', '-Ref', '.team-project/README.md', '-Root', $pJ66)
+$rmJ3 = [System.IO.File]::ReadAllText((Join-Path $pJ66 '.team-project/README.md'), $utf8)
+Check 'v3.66.0 J: o close marca a pendência como resolvida, e o mesmo assunto não volta a subir' @{ Code = $r.Code; Out = "$($r.Out)`n$rmJ3" } 0 @('pendência 2 da §7 marcada como resolvida', '2\. \[RESOLVIDO em \d{4}-\d\d-\d\d — quando couber\] \[HORTA · S1 · H-Q\]')
+$r = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'scope', '-Part', 'H-Q', '-Subject', 'cards', '-Origin', 'po', '-Consulted', 'none', '-Text', 'de novo?', '-Detail', 'x', '-Root', $pJ66)
+Check 'v3.66.0 J: o já decidido (registro e §7) recusa a pergunta repetida' $r 3 @('já foi decidido')
 
 # ==== fim dos casos ====
 try { Stop-Process -Id $script:watchdog.Id -Force -ErrorAction SilentlyContinue } catch { }
