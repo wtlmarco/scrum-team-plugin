@@ -73,7 +73,7 @@ Achado dentro do seu alcance: corrija e registre no changelog. Achado no documen
 
 ## Regras do repositório-fonte (R17–R19)
 
-Numeradas na sequência das [regras de trabalho](../roles/scrum-master/process/working-rules.md), mas só valem aqui, no clone do plugin; o instrumento das três é o C3 (`scripts/checks/release.ps1`), que a rodada completa da suíte (`scripts/checks/tests/run-all-tests.ps1`, sem `-Only`) também roda.
+Numeradas na sequência das [regras de trabalho](../roles/scrum-master/process/working-rules.md), mas só valem aqui, no clone do plugin; o instrumento das três é o C3 (`scripts/checks/release.ps1`), que a rodada da suíte (`scripts/checks/tests/run-all-tests.ps1`, sem `-Only`) também roda. A conferência antes do PR é a rodada **`-Full`**: sem parâmetro a suíte pula o nível lento (casos com mais de 20 s na última medição) e `-Changed` roda só o que a mudança toca — as duas servem ao dia a dia, nenhuma substitui a `-Full` (v3.66.1).
 
 ### R17. Entrada de changelog do processo tem teto e forma fixa
 
