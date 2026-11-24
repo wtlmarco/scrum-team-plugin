@@ -1271,6 +1271,23 @@ $cases = @(
        Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ "disabled": ["G26"], "impasses": { "offerGuard": "enforce" } }', (New-Object System.Text.UTF8Encoding($false))) }
        Check = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/guards.json'), '{ }', (New-Object System.Text.UTF8Encoding($false))); $true }
        Payload = @{ hook_event_name = 'Stop'; session_id = 'sessPrep'; transcript_path = (Join-Path $tmp 'of.jsonl') } },
+    # ---------- v3.66.0 (item H) — G7: o executor de Task segue a sequência do 🔺 GAP aberto, da matriz de impasses ----------
+    @{ Name = 'v3.66.0 G7: GAP de requisito aberto da T-077 — o executor dispara o PO para ela (antes negado)'; Script = 'pre-tool.ps1'; Expect = 0
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.gap-route') ('{"task":"T-077","cause":"requirement","sequence":["product-owner","architect","developer"],"at":"' + (Get-Date).AddHours(-0).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run077'; tool_input = @{ subagent_type = 'team:product-owner'; prompt = '/po — decida o 🔺 GAP de requisito da T-077' } } },
+    @{ Name = 'v3.66.0 G7: GAP de requisito da T-077 — a QA está fora da sequência (PO → Arquiteto → dev): negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'GAP aberto da T-077 (causa requirement) vai pela sequência da matriz de impasses: product-owner → architect → developer'
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run077'; tool_input = @{ subagent_type = 'team:quality-assurance'; prompt = '/qa — confira o GAP da T-077' } } },
+    @{ Name = 'v3.66.0 G7: o operator fica sempre liberado no GAP aberto'; Script = 'pre-tool.ps1'; Expect = 0
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run077'; tool_input = @{ subagent_type = 'team:operator'; prompt = "Chamador: task-runner T-077`nmeça" } } },
+    @{ Name = 'v3.66.0 G7: pedido que cita outra Task segue a regra de antes (UX negado ao executor)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'o executor de Task dispara só developer, architect, operator e quality-assurance'
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run078'; tool_input = @{ subagent_type = 'team:user-experience'; prompt = '/ux — a tela da T-078' } } },
+    @{ Name = 'v3.66.0 G7: GAP técnico aberto (Arquiteto → dev) — levar ao PO é negado'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'architect → developer'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.gap-route') ('{"task":"T-077","cause":"design","sequence":["architect","developer"],"at":"' + (Get-Date).AddHours(-0).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run077'; tool_input = @{ subagent_type = 'team:product-owner'; prompt = '/po — o GAP de desenho da T-077' } } },
+    @{ Name = 'v3.66.0 G7: rota do GAP com mais de 6 h vale como ausente (regra de antes)'; Script = 'pre-tool.ps1'; Expect = 2; ExpectErr = 'o executor de Task dispara só'
+       Setup = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.gap-route') ('{"task":"T-077","cause":"requirement","sequence":["product-owner","architect","developer"],"at":"' + (Get-Date).AddHours(-7).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+       Check = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.gap-route') -Force -ErrorAction SilentlyContinue; $true }
+       Payload = @{ tool_name = 'Agent'; agent_type = 'team:task-runner'; agent_id = 'run077'; tool_input = @{ subagent_type = 'team:product-owner'; prompt = '/po — decida o GAP da T-077' } } },
     @{ Name = 'v3.66.0 J: o impasse.ps1 raise grava a pendência na §7 com o prefixo R34 — o formulário que começa por ele passa na G3 e na G24 de primeira'; Script = 'pre-tool.ps1'; Expect = 0
        Setup = { [System.IO.File]::WriteAllText((Join-Path $proj '.team-project/README.md'), "# Contexto`n`n## 1. O produto`n**Identificador remoto:** ACME`n`n## 7. Decisões pendentes do stakeholder`n`nnenhuma`n`n## 8. Outra`n", (New-Object System.Text.UTF8Encoding($false)))
                  foreach ($f in '.active-run', '.run-session', '.ask-route', 'fixes') { Remove-Item -LiteralPath (Join-Path $proj ".team-project/$f") -Recurse -Force -ErrorAction SilentlyContinue }   # sem bloco de fix aberto: a trilha é o sprint (S1)

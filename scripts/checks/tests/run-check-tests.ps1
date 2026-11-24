@@ -5314,6 +5314,13 @@ $null = Invoke-Check 'impasse.ps1' @('raise', '-Type', 'product-rule', '-Part', 
 $r = Invoke-Check 'team-view.ps1' @('-View', 'usage', '-Sprint', '1', '-Root', $pU)
 Check 'v3.66.0 F: /team-usage traz os impasses do sprint (resolvidos, em andamento, subidos, recusados, por tipo) e as recusas da G3, G24 e G26' $r 0 @('Impasses \(matriz, R36\):', '1 no registro · o time resolveu 0 · em andamento com o dono 1 · subiram ao stakeholder 0 · recusados por já decididos 0', 'por tipo: product-rule 1')
 
+# ---- v3.66.0 (item H): a sequência do 🔺 GAP para a G7, da matriz (§1a) ----
+$pH = Join-Path $tmp 'v3660-gaproute'; New-Project $pH
+$prH = Join-Path $tmp 'v3660-gaproute-probe.ps1'
+[System.IO.File]::WriteAllText($prH, (". '$(Join-Path $checks 'lib.ps1')'" + "`n" + "'REQ=' + ((Set-GapRoute '$pH' 'T-077' 'requirement') -join '>'); 'ENV=' + ((Set-GapRoute '$pH' 'T-077' 'environment') -join '>'); 'SCN=' + ((Set-GapRoute '$pH' 'T-077' 'scenario') -join '>'); Clear-GapRoute '$pH' 'T-099'; 'KEPT=' + [string](Get-GapRoute '$pH').task; Clear-GapRoute '$pH' 'T-077'; 'GONE=' + [string](`$null -eq (Get-GapRoute '$pH'))"), (New-Object System.Text.UTF8Encoding($true)))
+$oH = & powershell -NoProfile -ExecutionPolicy Bypass -File $prH 2>&1 | Out-String
+Check 'v3.66.0 H: a sequência do GAP vem da matriz (requisito PO → Arquiteto → dev; sem causa na matriz, Arquiteto → dev; cenário QA → dev) e sai com a Task' @{ Code = 0; Out = $oH } 0 @('REQ=product-owner>architect>developer', 'ENV=architect>developer', 'SCN=quality-assurance>developer', 'KEPT=T-077', 'GONE=True')
+
 # ==== fim dos casos ====
 try { Stop-Process -Id $script:watchdog.Id -Force -ErrorAction SilentlyContinue } catch { }
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue

@@ -57,15 +57,17 @@
 ### 1a. As causas do 🔺 GAP e do achado do portão
 O `run.ps1 done -Result gap -Cause <causa>` e o `gate.ps1` (o achado do `validation.md`) acham o dono **por aqui**: a causa diz o tipo, e o tipo diz o dono (§1). Antes, cada script tinha um mapa próprio. A causa `code` não está aqui: no portão ela vira a Task de correção, e no GAP do dev vale como `design`. A `environment` também não: segue a escada de ambiente do `run.ps1`.
 
-| Causa (`causes`) | Tipo (`type`) | Rótulo (`label`) |
-|---|---|---|
-| `requirement` | `product-rule` | requisito |
-| `screen` | `design` | tela |
-| `design` | `technical` | desenho |
-| `appearance` | `technical` | aparência |
-| `process` | `technical` | processo |
-| `scenario` | `proof` | cenário |
-| `executor` | `proof` | executor do plugin |
+| Causa (`causes`) | Tipo (`type`) | Rótulo (`label`) | Sequência do executor (`sequence`) |
+|---|---|---|---|
+| `requirement` | `product-rule` | requisito | `product-owner` → `architect` → `developer` |
+| `screen` | `design` | tela | `user-experience` → `architect` → `developer` |
+| `design` | `technical` | desenho | `architect` → `developer` |
+| `appearance` | `technical` | aparência | `architect` → `developer` |
+| `process` | `technical` | processo | `architect` → `developer` |
+| `scenario` | `proof` | cenário | `quality-assurance` → `developer` |
+| `executor` | `proof` | executor do plugin | `quality-assurance` |
+
+**A sequência do executor de Task (G7):** o `run.ps1 done -Result gap` grava em `.team-project/.gap-route` a sequência da causa. Enquanto o GAP daquela Task está aberto, a G7 deixa o executor disparar, para ela, só os papéis da sequência, mais o `operator`, que mede. Num GAP de requisito, o PO decide, o Arquiteto registra a decisão no plano e o dev volta; o executor não leva um GAP técnico ao PO nem pula o Arquiteto num GAP de tela. A rota sai quando a Task fecha ou com o GAP seguinte.
 
 ### 1b. Os papéis: o comando e o nome curto
 | Papel (`roles`) | Comando (`command`) | Nome curto (`short`) |

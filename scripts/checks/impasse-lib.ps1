@@ -43,7 +43,33 @@ function Resolve-ImpasseOwner([string]$Cause, $Matrix = $null) {
     $t = Get-ImpasseType $Matrix ([string]$c.type)
     if (-not $t) { return $null }
     $role = [string]$t.owner; $ri = $Matrix.Roles.$role
-    return [pscustomobject]@{ Cause = $Cause; Type = [string]$t.type; Role = $role; Command = $(if ($ri) { [string]$ri.command } else { '' }); Short = $(if ($ri) { [string]$ri.short } else { $role }); Label = [string]$c.label }
+    $seq = @(@($c.sequence) | Where-Object { $_ } | ForEach-Object { [string]$_ })
+    return [pscustomobject]@{ Cause = $Cause; Type = [string]$t.type; Role = $role; Command = $(if ($ri) { [string]$ri.command } else { '' }); Short = $(if ($ri) { [string]$ri.short } else { $role }); Label = [string]$c.label; Sequence = $seq }
+}
+
+# v3.66.0 (item H, G7): a sequência de papéis que o executor de Task pode disparar para o 🔺 GAP aberto da Task — a da causa
+# na matriz (§1a, sequence), gravada pelo run.ps1 done -Result gap em .team-project/.gap-route. Sem causa na matriz, o ciclo
+# do Arquiteto (architect → developer). Sai quando a Task fecha ou com o GAP seguinte; vale no máximo 6 h.
+function Set-GapRoute([string]$ProjectDir, [string]$Task, [string]$Cause) {
+    $o = Resolve-ImpasseOwner $Cause
+    $seq = if ($o -and @($o.Sequence).Count) { @($o.Sequence) } else { @('architect', 'developer') }
+    $p = Join-Path $ProjectDir '.team-project/.gap-route'
+    [System.IO.File]::WriteAllText($p, ([ordered]@{ task = $Task; cause = $Cause; sequence = $seq; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), $script:ImpUtf8)
+    return $seq
+}
+function Get-GapRoute([string]$ProjectDir) {
+    $p = Join-Path $ProjectDir '.team-project/.gap-route'
+    if (-not (Test-Path -LiteralPath $p)) { return $null }
+    $g = $null; try { $g = Read-ImpText $p | ConvertFrom-Json } catch { return $null }
+    $age = 999; try { $age = ((Get-Date) - [datetime]::ParseExact([string]$g.at, 'yyyy-MM-dd HH:mm:ss', $null)).TotalHours } catch { }
+    if ($age -ge 6) { return $null }
+    return $g
+}
+function Clear-GapRoute([string]$ProjectDir, [string]$Task = '') {
+    $p = Join-Path $ProjectDir '.team-project/.gap-route'
+    if (-not (Test-Path -LiteralPath $p)) { return }
+    if ($Task) { $g = $null; try { $g = Read-ImpText $p | ConvertFrom-Json } catch { }; if ($g -and [string]$g.task -ne $Task) { return } }
+    Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue
 }
 
 # O papel (sufixo do agent_type) pelo nome do dono na matriz de propriedade ("PO", "Arquiteto"…) — o hooks/ownership.json → roles

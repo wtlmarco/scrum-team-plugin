@@ -1231,6 +1231,9 @@ try {
             # v3.66.0 (R36, item G): o dono da causa vem da matriz de impasses (hooks/impasses.json → causes e roles), não de um
             # mapa daqui; a causa cujo dono é o Arquiteto segue o ciclo do Arquiteto, abaixo.
             $gOwn = Resolve-ImpasseOwner $nat
+            # v3.66.0 (item H): a sequência que a G7 deixa o executor disparar para este GAP (dono → … → dev), da matriz.
+            $gSeq = Set-GapRoute $Root $T.Id $nat
+            Out "  sequência deste 🔺 GAP (matriz de impasses, §1a; a G7 a confere): $(@($gSeq | ForEach-Object { $_ }) -join ' → ') (e o operator, que mede)"
             if ($gOwn -and $gOwn.Role -ne 'architect') {
                 $o = @($gOwn.Role, $gOwn.Command, $gOwn.Label.ToUpperInvariant(), $gOwn.Short); $gline = if ($gl.Count) { $gl[0] -replace '^[#>*\-\s]+', '' } else { 'GAP no relatório do dev' }
                 if ($nat -eq 'requirement') { Set-AskRoute $Root 'gap-produto' $T.Id $gline }
@@ -1546,6 +1549,7 @@ try {
             if ($sesR.Code -ne 0) { Out "  aviso: a medida da sessão principal não gravou (consumption.ps1 -Session saiu com $($sesR.Code)); rode-o no close" }
             Out "run: $($T.Id) fechada pela evidência do dev (close.ps1 -Apply)."; Out (($c -split "`r?`n" | Where-Object { $_ -match '^\s*-\s|\*\*|Status' } | Select-Object -Last 6) -join "`n")
             $cm = Save-TaskCommit $T $S; Out $cm.Line
+            Clear-GapRoute $Root $T.Id   # v3.66.0: a Task fechou — a sequência do GAP dela não vale mais (G7)
             Set-SafePoint $T $n
             # v3.59.0: o próprio done apaga o .active-task e o .active-executor (passo 8 do roteiro) — dependia do executor rodar o
             # dispatch -Clear, e no sprint 6 do garden o registro da T-069a sobrou: o /team-status a mostrava "em execução",

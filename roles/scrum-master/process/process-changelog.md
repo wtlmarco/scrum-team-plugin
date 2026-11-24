@@ -122,6 +122,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 | `hooks/COVERAGE.md` · `how-to.md` | v3.66.0 | A G24 em toda sessão principal; a G26 nova; a G8 com a linha do dono |
 | `process/impasse-matrix.md` · `hooks/impasses.json` · `scripts/checks/{run,gate,lib}.ps1` (etapa 2) | §1a causas · §1b papéis · §6 exemplos | O dono da causa do 🔺 GAP e do achado do portão sai da matriz (fim do `$ownG` e do `$owners`); a rota do script entra no registro da trilha; as 25 linhas de "a decisão é dele?" viram exemplos, com o tipo; o `raise` grava a pendência R34 dentro da §7 e o `close` a resolve |
 | `standards/implementation-principles.md` · `standards/stacks/*/guide.md` · `roles/architect/*` · `roles/quality-assurance/README.md` (item K, Arquiteto) | §4.6 · §4.7 · §7 linha 24 · §2a do plano (regra 36) · Shared parts · Comandos implicados | Reuso, centralização e design patterns viram standard com verificação: o plano pleno declara o que reaproveita, estende ou cria (com motivo) e o padrão pelo problema; o `plan.ps1` reprova sem isso; a quebra diz em que Task nasce a peça comum; a QA confere contra o diff |
+| `hooks/pre-tool.ps1` (G7) · `process/impasse-matrix.md` §1a · `agents/task-runner.md` (item H) | sequência do 🔺 GAP | O executor de Task segue a sequência da causa (dono → Arquiteto → dev), gravada pelo `run.ps1 done`; a G7 libera o PO e o UX do GAP de requisito e de tela e nega o papel fora da sequência |
 
 ### Por quê
 Na preparação do sprint 7 do projeto piloto (23/11), o stakeholder foi chamado 22 vezes, e 15 eram do time:

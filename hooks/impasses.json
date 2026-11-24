@@ -13,13 +13,13 @@
     "\\b(come[çc]o|disparo|aciono|rodo) (agora )?(o|a|os|as|pelo|pela)\\b[^?]*\\?"
   ],
   "causes": {
-    "requirement": { "type": "product-rule", "label": "requisito" },
-    "screen": { "type": "design", "label": "tela" },
-    "design": { "type": "technical", "label": "desenho" },
-    "appearance": { "type": "technical", "label": "aparência" },
-    "process": { "type": "technical", "label": "processo" },
-    "scenario": { "type": "proof", "label": "cenário" },
-    "executor": { "type": "proof", "label": "executor do plugin" }
+    "requirement": { "type": "product-rule", "label": "requisito", "sequence": ["product-owner", "architect", "developer"] },
+    "screen": { "type": "design", "label": "tela", "sequence": ["user-experience", "architect", "developer"] },
+    "design": { "type": "technical", "label": "desenho", "sequence": ["architect", "developer"] },
+    "appearance": { "type": "technical", "label": "aparência", "sequence": ["architect", "developer"] },
+    "process": { "type": "technical", "label": "processo", "sequence": ["architect", "developer"] },
+    "scenario": { "type": "proof", "label": "cenário", "sequence": ["quality-assurance", "developer"] },
+    "executor": { "type": "proof", "label": "executor do plugin", "sequence": ["quality-assurance"] }
   },
   "roles": {
     "product-owner": { "command": "/po", "short": "o PO" },

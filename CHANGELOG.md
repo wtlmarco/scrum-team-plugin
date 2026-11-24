@@ -85,11 +85,12 @@ A regra "quem resolve" morava em nove lugares. A G24 só olhava a sessão do `sp
 - **Comandos implicados:** a linha **Comandos implicados:** entra na ficha (`breakdown.md`, regra 10). O comando que a Task exige e o run não libera sozinho vai ao ③, e a aprovação vira `impasse.ps1 close -Allow`.
 - **`/team-usage`:** ganha a seção "Impasses (matriz, R36)". Ela traz o registro do sprint (resolvidos, em andamento, subidos, recusados, por tipo) e as recusas da G3 e da G24 e as ofertas vistas pela G26, contadas no `guards.log`. É a medida da meta.
 - **Inventário dos formulários:** um caso de guarda por modo que abre formulário legítimo (update, onboarding, brainstorm, ①, sprint 0, prepare, ③, Review, propostas de configuração do close, ajustes do fix plan, `/sec` e decisão estratégica). Cada um declara o impasse do tipo dele e passa na G24 de primeira.
-- **G7 restringindo o executor de Task ao dono que o `done` imprime:** não implementado. O caminho certo do GAP de requisito e de tela é dono, depois Arquiteto, depois dev, e a regra de um papel só o barraria. Fica a instrução no `agents/task-runner.md`.
+- **G7 com a sequência do GAP (item H):** a matriz ganha, na §1a, a sequência de cada causa: requisito PO → Arquiteto → dev; tela UX → Arquiteto → dev; cenário QA → dev; desenho, aparência e processo Arquiteto → dev. O `run.ps1 done -Result gap` a grava em `.team-project/.gap-route` e a imprime. Com o GAP aberto, a G7 deixa o executor disparar, para aquela Task, só os papéis da sequência e o `operator`. Isso libera o PO e o UX, que eram negados ao executor desde a v3.63, e barra o que sai da sequência. A rota sai quando a Task fecha; o C3 confere a coluna.
 
 **Testes (item K e pendências):**
 - `run-check-tests.ps1`: a regra 36 em sprint antigo (n-a), sem a §2a, com `new:` e `pattern:` incompletos, completa, com `none:` e na trilha leve; o `/team-usage` com os impasses.
-- `run-guard-tests.ps1`: o inventário, com doze modos.
+- `run-guard-tests.ps1`: o inventário, com doze modos; a G7 com a sequência (PO liberado no GAP de requisito, QA fora dela negada, `operator` sempre, outra Task pela regra de antes, GAP técnico ao PO negado, rota vencida).
+- `run-check-tests.ps1`: a sequência pela matriz e a rota que sai com a Task.
 ## v3.65.15 — 2026-11-23
 **Branch:** `fix/v3.65.15` a partir de `develop` (`94323fc`, com a v3.65.14 mesclada pelo PR #221)
 Origem: o ensaio do kit do benchmark da virada (23/11), antes de qualquer braço. Num app Android nativo, um `.kt` mexido e desfeito (`git checkout`) deixou o `accept` recusando "APK mais velho que o código" a cada rodada. O `assembleDebug` viu as fontes iguais e não regravou o APK, cuja data não mudou. Só saiu apagando o APK. É o laço que a v3.65.12 (item A) queria fechar.

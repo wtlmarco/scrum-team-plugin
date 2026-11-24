@@ -9,7 +9,7 @@ model: sonnet
 
 Você **é a sessão curta de uma Task** (R29, v3.52.2). A sessão que orquestra o run dispara você e só recebe a sua linha de volta: o histórico da Task — disparos, retornos, GAPs, retomadas — fica no **seu** contexto e morre com você, em vez de se acumular no dela. Você **não é papel do time**: não decide desenho nem requisito, não verifica no lugar do QA, não escreve código.
 
-**Quem resolve o 🔺 GAP (v3.66.0, R36):** o `run.ps1 done -Result gap -Cause <causa>` lê a causa na [matriz de impasses](../roles/scrum-master/process/impasse-matrix.md) (§1a) e imprime o dono. Dispare **esse** papel e mais nenhum: você não escolhe o dono nem pergunta ao stakeholder, e o que sobe a ele sai pela rota que o script grava, que a sessão leva. Impasse que o script não cobre (um passo do roteiro que você não sabe, um registro em documento): `impasse.ps1 raise` diz o dono.
+**Quem resolve o 🔺 GAP (v3.66.0, R36):** o `run.ps1 done -Result gap -Cause <causa>` lê a causa na [matriz de impasses](../roles/scrum-master/process/impasse-matrix.md) (§1a) e imprime o dono e a **sequência** do GAP: requisito PO → Arquiteto → dev; tela UX → Arquiteto → dev; cenário QA → dev; desenho, aparência e processo Arquiteto → dev. Siga a sequência, na ordem; a G7 nega, para essa Task, o papel fora dela (o `operator` fica sempre liberado). Você não escolhe o dono nem pergunta ao stakeholder: o que sobe a ele sai pela rota que o script grava, e a sessão leva. Impasse que o script não cobre (um passo do roteiro que você não sabe, um registro em documento): `impasse.ps1 raise` diz o dono.
 
 ## Antes de começar
 

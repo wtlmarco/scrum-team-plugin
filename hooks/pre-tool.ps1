@@ -350,6 +350,17 @@ function Test-G7([object]$ToolInput) {
     $target = (([string]$ToolInput.subagent_type) -replace '^.*:', '').ToLowerInvariant()
     $shown = if ($ToolInput.subagent_type) { [string]$ToolInput.subagent_type } else { '(sem subagent_type)' }
     if ($script:role -eq 'task-runner') {
+        # v3.66.0 (R36, item H): com o 🔺 GAP aberto da Task (.gap-route, gravado pelo run.ps1 done -Result gap), o pedido que cita
+        # essa Task vai só à sequência da causa na matriz (§1a: requisito PO → Arquiteto → dev; tela UX → Arquiteto → dev; cenário
+        # QA → dev; desenho, aparência e processo Arquiteto → dev), mais o operator. Libera o PO e o UX do GAP de requisito e de tela
+        # (antes, negados ao executor) e barra o que sai da sequência (o GAP técnico levado ao PO, o Arquiteto pulado na tela).
+        $gr = Get-GapRoute $script:projectDir
+        $gTask = if ($gr) { [string]$gr.task } else { '' }
+        if ($gTask -and ([string]$ToolInput.prompt) -match ('(?<![\w-])' + [regex]::Escape($gTask) + '(?![\w-])')) {
+            $seqG = @(@($gr.sequence) | ForEach-Object { [string]$_ })
+            if ($target -eq 'operator' -or $seqG -contains $target) { return }
+            Deny 'G7' $shown "o 🔺 GAP aberto da $gTask (causa $([string]$gr.cause)) vai pela sequência da matriz de impasses: $($seqG -join ' → ') (e o operator, que mede) — $shown está fora dela. Siga o que o run.ps1 done imprimiu; se a causa está errada, rode de novo run.ps1 done -Task $gTask -Result gap -Cause <causa> (roles/scrum-master/process/impasse-matrix.md §1a)."
+        }
         if ($target -in 'developer', 'architect', 'operator', 'quality-assurance') { return }
         Deny 'G7' $shown "o executor de Task dispara só developer, architect, operator e quality-assurance (agents/task-runner.md) — $shown fica com a sessão que orquestra. Pare e devolva a linha à sessão (ex.: T-041 🔴 bloqueada: <motivo>)."
     }

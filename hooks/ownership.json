@@ -310,6 +310,7 @@
                                       ".team-project/.target-web.json",
                                       ".team-project/.target-android.json",
                                       ".team-project/.ask-route",
+                                      ".team-project/.gap-route",
                                       ".team-project/.stakeholder-seen"
                                   ],
                         "writers":  [
