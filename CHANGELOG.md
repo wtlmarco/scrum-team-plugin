@@ -13,6 +13,75 @@
 
 ---
 
+## v3.66.1 — 2026-11-24
+**Branch:** `fix/v3.66.1` a partir de `develop` (`84ac1ef`, com a v3.66.0 mesclada pelo PR #225) · **Plano:** `melhorias/plano-v3.66.1.md` (itens A a E; o F ficou de fora, abaixo)
+Origem: as rodadas da suíte durante a v3.66.0 (23 e 24/11):
+- 16 minutos de parede com 4 processos;
+- 48 falhas por tempo esgotado numa rodada com 8 processos e a máquina carregada;
+- duas rodadas perdidas porque a sessão caiu no meio;
+- o caso host_pid falhando em toda rodada separada.
+
+Só a suíte e o script que a roda. O comportamento do plugin nos projetos não muda: a única linha fora dos testes é a variável que só a suíte liga, no `Get-HostProcess`.
+
+**A · Nível lento** (`run-all-tests.ps1`, `suite-blocks.ps1` `Get-UnitTier`). A unidade com caso cujo último tempo no `test-times.json` passa de 20 s (`-SlowSec`) fica fora da rodada sem parâmetro. A saída diz quantos casos e quanto tempo isso poupou. Não há lista à mão: o caso que ficar mais rápido sai sozinho depois do `-Full` que o mediu, e caso novo, sem medição, é rápido. **`-Full`** roda tudo e é a conferência antes do PR (`rituals/review-contract.md`, R16 a R18). `-Only` roda o que casa, lento ou não.
+
+**B · `-Changed`** (`suite-blocks.ps1` `Get-ChangedFiles`, `Get-AffectedNames`, `Get-PreambleTouch`). O que mudou desde o ponto em que a branch saiu de `-Base` (`develop`): os commits da branch, o disco e os arquivos novos fora do git.
+- **Biblioteca comum** (`lib.ps1`, `hooks/common.ps1`, `plain.ps1`, `impasse-lib.ps1`, `hooks/*.json`): roda tudo.
+- **Script, hook ou documento:** entram os blocos e os grupos das guardas que o citam, e os dos scripts que o **carregam ou chamam** (`Join-Path … 'x.ps1'`, `-File`, `. `, `& `), por fecho. Citar o nome numa mensagem não conta: o `lib.ps1` cita quase todos os scripts, e sem isso qualquer mudança rodava tudo.
+- **Preâmbulo da suíte:** a função ou variável que carrega o nome alterado leva junto as unidades que a usam.
+- **Linha alterada na própria suíte:** roda a unidade (ou o grupo) dela; no preâmbulo ou no executor, a suíte inteira.
+- **O C3 roda sempre.** A saída lista o que mudou e por que cada bloco entrou. Não substitui o `-Full`.
+- Medido nesta árvore, uma mudança só no `plan.ps1` roda 240 dos 894 casos de conferência e 1 dos 30 grupos das guardas; no `stop.ps1`, 11 grupos; num documento que nenhum script carrega, só o C3.
+
+**C · As guardas em grupos paralelos** (`run-guard-tests.ps1`, `suite-blocks.ps1` `Get-GuardGroups`, `Invoke-GuardGroupCheck`).
+- **Grupos:** a suíte se divide nas 28 seções (`# ---------- vX.Y — … ----------`), mais o grupo base e o dos casos montados depois da lista, 30 ao todo. Cada grupo roda num processo com o seu `$tmp` e o seu projeto falso. `-Groups 3,7` roda só esses, `-ListGroups` lista e confere que cada caso está num grupo só.
+- **`-CheckGroups`:** roda cada grupo sozinho e acusa o que só passa depois de outro. Na primeira conferência foram **16 grupos**, que herdavam o run em curso, a Task ativa, o `guards.json` e o backlog do sprint 7 dos grupos anteriores.
+- **O conserto:** cada um deles declara o estado de partida em `$GroupBase`, e o executor o monta antes do primeiro caso do grupo, em série e sozinho. Os grupos não foram juntados. Chave de `$GroupBase` que não acha exatamente uma seção quebra a suíte.
+- **Robustez:** a `Setup` ou o `Check` que quebra falha o caso, com o erro, em vez de derrubar o processo.
+- **No `run-all-tests.ps1`:** os grupos entram no mesmo pool dos blocos de conferência, pelo tempo medido de cada grupo. As guardas, 411 casos, passaram de ~300 s em série para **101 s de parede** com 6 processos.
+- `run-guard-tests.ps1` sozinho segue rodando tudo em série.
+
+**D · Rodada que sobrevive à sessão.**
+- **`-Detach`:** sobe a rodada pelo `Start-DetachedJob` (`lib.ps1`, o mesmo processo fora da árvore da sessão da v3.62.2) e volta na hora com a pasta (`%LOCALAPPDATA%\team-plugin\suite-runs\…`) e o processo. A rodada grava `summary.txt`, com a contagem, as falhas com a saída, os mais lentos e a parede, e termina com `FIM exit=<código>`. Cada bloco que termina deixa `pronto: <bloco> (k/n, s)` no `job.out`.
+- **`-Wait <pasta>`:** espera até `-WaitSeconds` (540). Imprime o resumo e sai com o código da rodada; exit 3 = ainda rodando, com o último `pronto:`.
+- **O caso host_pid:** o hospedeiro é simulado (`TEAM_TEST_HOST_PID`, que só a suíte liga, lido pelo `Get-HostProcess` do `hooks/common.ps1`). Fora da sessão do Claude Code não há ancestral que não seja shell. O caso segue provando que o registro do Agent leva o processo vivo e o horário dele.
+- Os `.bloco-*.ps1` de rodada que morreu no meio, com mais de 6 h, saem na rodada seguinte.
+
+**D2 · A máquina suspensa não vira falha** (`check-watchdog.ps1`, `run-all-tests.ps1`). Numa rodada de medição, o notebook entrou em espera com a tampa fechada (18:12 às 18:41, eventos 506/507 do Kernel-Power). Ao acordar, a sentinela viu processos com 1.112 s de idade e os cortou. Cada corte deixou o caso seguinte sem o arquivo que esperava, e 29 minutos de tampa fechada viraram 160 falhas.
+- **A sentinela:** uma volta do laço que levou mais de `-SleepGapSec` (60 s) é suspensão. O intervalo é descontado da idade de quem já existia. O caso preso de verdade segue cortado no prazo.
+- **O `run-all-tests.ps1`:** mede a mesma lacuna no pool e diz "a máquina ficou suspensa ~N s durante a rodada". **Não grava** os tempos dessa rodada no `test-times.json`: os casos congelados pareceriam lentos, e o nível lento passou a pular 231 casos em vez de 13.
+
+**E · Processos pela máquina** (`Get-DefaultWorkers`). O padrão de `-Workers` passa a ser o menor entre núcleos − 1, memória livre ÷ 1,5 GB e 6. Com menos de 4 GB livres, no máximo 2, com "máquina ocupada: N processos; a rodada fica mais lenta". O `-Workers` explícito vence.
+
+**F · fora desta entrega.** Medidos os casos mais lentos, o tempo deles não está nos prazos de produção que o plano listava, e sim:
+- na própria montagem do teste: o processo que segura a trava por 20 s, a suíte falsa de 14 s contra o teto de 18 s, o mutante que dorme 60 s até o prazo;
+- no custo de cada chamada: as 12 chamadas ao `run.ps1 wait` do caso do protocolo.
+
+Encurtar os dois lados deixa o atraso fixo de subir um processo, que é o que estoura com a máquina carregada, maior que a margem do caso. O ganho seria de poucos segundos por caso, contra o risco que esta entrega quer tirar. Os casos seguem no nível lento.
+
+**Testes:** `run-check-tests.ps1`, 24 casos v3.66.1, contra um repositório falso (develop + branch, scripts, hooks, documento, suítes falsas de conferências e de guardas):
+- **A:** a classificação pelo tempo; sem parâmetro pula o lento e diz quantos; `-Full` roda todos; o caso que ficou rápido sai do lento.
+- **B:** só o `kanban.ps1`; `lib.ps1` roda tudo; um hook roda o grupo dele; só um `.md`; sem mudança, só o C3; o fecho pelo script que carrega e pela função do preâmbulo; a linha alterada na suíte.
+- **C:** `-CheckGroups` acusa o grupo dependente (em série ele passa); grupos independentes passam; os grupos em paralelo no `run-all-tests.ps1`; na suíte real, a soma dos grupos é a lista.
+- **D:** `-Detach` volta na hora; `-Wait` traz o resumo, a falha e o código; a rodada verde dá `FIM exit=0`; pasta sem rodada dá exit 2.
+- **E:** os três limites; o aviso com pouca memória; o `-Workers` explícito.
+- **D2:** a sentinela com o processo dela suspenso por 10 s (`NtSuspendProcess`, o que ela enxerga quando a máquina dorme) não corta o caso são ao voltar, e corta o preso no prazo. A sentinela da v3.64.1 corta o caso são. O `run-all-tests.ps1` suspenso por 6 s avisa e não grava os tempos.
+
+**Achado da medição — o bloco que decidia a parede.** A primeira rodada sem parâmetro levou 507 s, e 459 deles eram um bloco só: 136 casos em 950 linhas que não se dividiam. Duas constantes da v3.63 (`$ok63` e `$fail63`, as marcas ✅ e ❌) eram definidas no meio da suíte e lidas até o fim dela. Elas foram para o preâmbulo, e o maior bloco caiu para ~230 s, uma unidade de verdade (os casos de mutação dividem o mesmo projeto falso).
+
+**Medido (mesma máquina, 24/11; 12 núcleos lógicos, Core 7 150U; 6 processos pelo item E):**
+
+| Rodada | Antes | Agora | Meta do plano |
+|---|---|---|---|
+| `-Full` | 978 s com 4 processos; 1.769 s e 48 falhas por tempo com 8 | **789 a 892 s**, 1313 casos, 0 falhas (duas rodadas; a variação é a carga do notebook) | 600 s |
+| Sem parâmetro (dia a dia) | — | **599 s** com 6 processos e o Docker fechado (771 s com ele ligado); 907 s com 4 processos | 300 s |
+| Guardas | ~300 s em série | 101 s em grupos | — |
+| Rodada desacoplada | caía com a sessão | `-Detach`/`-Wait`, 0 falhas | 0 falhas |
+
+**As metas de parede não foram atingidas.** A suíte é limitada pelo trabalho total (~4.200 s de casos), espalhado em centenas de casos de 5 a 15 s. Só 13 casos passam de 20 s depois da medição da `-Full`, então o nível lento poupa pouco, e mais processos disputam os mesmos núcleos. O ganho grande do dia a dia é o `-Changed`. O próximo passo de parede é o custo de cada caso, que fica fora desta entrega.
+- **Onde está o custo** (as ~980 chamadas de uma rodada, cronometradas): a mesma chamada custa 3 a 4× mais dentro da suíte que sozinha. O `pre-tool.ps1` leva 0,54 s sozinho e 1,9 s na suíte; o `run.ps1 next`, 2,2 s e 6,4 s. É a disputa pelos núcleos do notebook (2 rápidos e 8 econômicos). Abrir o PowerShell e carregar a biblioteca custa 0,3 a 0,6 s e não é o gargalo.
+- **Candidatos para uma entrega própria:** o `run.ps1 next` (84 chamadas, 541 s) e o hook `pre-tool.ps1`. O hook roda em toda ação de todo agente nos projetos, então deixá-lo mais leve ganha também fora da suíte.
+
 ## v3.66.0 — 2026-11-23
 **Branch:** `feat/v3.66.0` a partir de `develop` (`8e20d86`, com a v3.65.15 mesclada pelo PR #223) · **Plano:** `melhorias/plano-v3.66.0.md` (etapa 1, itens A a F; etapa 2, itens G a J; e o item K)
 Origem: a conferência da preparação do sprint 7 do garden (23/11, plugin 3.65.14). O stakeholder foi chamado 22 vezes, e 15 eram do time:

@@ -240,6 +240,8 @@ function Check([string]$Name, $Result, [int]$Code, [string[]]$Expect) {
 # (run-all-tests.ps1, em paralelo) e não pode depender de uma definição feita no meio de outro bloco.
 $warn = [char]::ConvertFromUtf32(0x26A0); $x = [char]::ConvertFromUtf32(0x274C)
 $ck = [char]::ConvertFromUtf32(0x2714)
+# v3.66.1: as marcas da v3.63 (eram definidas no meio da suíte e amarravam 950 linhas num bloco só, que decidia a parede).
+$ok63 = [char]::ConvertFromUtf32(0x2705); $fail63 = [char]::ConvertFromUtf32(0x274C)
 $bdText = "# Quebra — Sprint 1`n`n## H-014 Exportar`n`n### Decisões comuns — H-014`n- ``export_job`` — tabela dos pedidos · T-041, T-041a`n`n### Ficha T-041a — Variante`n**Código a ler:**`n- ``src/a.ts:3`` — padrão a espelhar (``IExporter``)`n`n**Fontes:** ``docs/sdd/03-architecture.md`` §4 · ``standards/implementation-principles.md`` §2 · ``IExporter```n**Nomes comuns:** ``export_job```n**Arquivos previstos:** 2`n`n## H-020 Outra`n`n### Ficha T-099 — fora`n**Nomes comuns:** ``outro```n"
 function New-FixBlock([string]$Dir) {
     Put $Dir 'docs/implementation/pending.md' "# GAPs`n`n## GAP-007 — exportação perde a última linha`n"
@@ -4061,7 +4063,7 @@ Check 'v3.62.3: executor do projeto sai 4 → FALHA DE AMBIENTE (exit 4) com a �
 $r = & $hc 'uso'
 Check 'v3.62.3: executor do projeto sai 2 sem linha nenhuma → exit 2 (uso), sem environment' $r 0 @('CODE=2', 'saiu 2 \(uso ou cenário malformado\) em cen a', '"environment": null')
 
-$ok63 = [char]::ConvertFromUtf32(0x2705); $fail63 = [char]::ConvertFromUtf32(0x274C); New-Item -ItemType Directory -Force $tmp | Out-Null
+New-Item -ItemType Directory -Force $tmp | Out-Null
 # ======================= v3.63.0 · portão do QA por marcos, causa com dono, controle e prova guardada =======================
 # O passo do portão (gate.ps1) com as funções do run.ps1 simuladas, num projeto git de verdade (a árvore de produção é do git).
 $pg = Join-Path $tmp 'v3630-gate'
@@ -5321,6 +5323,162 @@ $prH = Join-Path $tmp 'v3660-gaproute-probe.ps1'
 $oH = & powershell -NoProfile -ExecutionPolicy Bypass -File $prH 2>&1 | Out-String
 Check 'v3.66.0 H: a sequência do GAP vem da matriz (requisito PO → Arquiteto → dev; sem causa na matriz, Arquiteto → dev; cenário QA → dev) e sai com a Task' @{ Code = 0; Out = $oH } 0 @('REQ=product-owner>architect>developer', 'ENV=architect>developer', 'SCN=quality-assurance>developer', 'KEPT=T-077', 'GONE=True')
 
+# ---- v3.66.1: a suíte do plugin mais rápida e que sobrevive à sessão (run-all-tests.ps1, suite-blocks.ps1) ----
+# Um repositório falso (develop + branch) com scripts, hooks, um documento e duas suítes falsas — uma de conferências, uma de
+# guardas com três grupos. O run-all-tests.ps1 roda contra ele (-Root, -CheckSuite, -GuardSuite, -TimesFile, -RunsDir), sem
+# tocar a suíte real nem o test-times.json da máquina.
+$raF = Join-Path $PSScriptRoot 'run-all-tests.ps1'
+$sbF = Join-Path $PSScriptRoot 'suite-blocks.ps1'
+$fr = Join-Path $tmp 'v3661-repo'
+foreach ($f in @('scripts/checks/lib.ps1', 'scripts/checks/kanban.ps1', 'scripts/checks/gate.ps1', 'hooks/pre-tool.ps1', 'hooks/stop.ps1')) { Put-Bom $fr $f "# $f`n" }
+Put-Bom $fr 'scripts/checks/run.ps1' "# run`n. (Join-Path `$PSScriptRoot 'gate.ps1')`n"
+Put $fr 'docs/guia.md' "# guia`n"
+Put-Bom $fr 'scripts/checks/tests/fake-check.ps1' (@'
+$ErrorActionPreference = 'Stop'
+$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('fake-check-' + [guid]::NewGuid().ToString('N').Substring(0, 6))
+New-Item -ItemType Directory -Force $tmp | Out-Null
+$rows = @(); $fail = 0
+function Invoke-Check([string]$Script) { return @{ Code = 0; Out = $Script } }
+function Check([string]$Name, $Result, [int]$Code) { $ok = $Result.Code -eq $Code; if (-not $ok) { $script:fail++; Write-Output "---- $Name falhou" }; $script:rows += [pscustomobject]@{ Caso = $Name; Exit = $Result.Code; Ok = $(if ($ok) { 'ok' } else { 'FALHOU' }); Seg = 0 } }
+function Use-Gate { if ($false) { . (Join-Path $PSScriptRoot 'gate.ps1') }; 'gate' }
+@@INI@@
+$k1 = Invoke-Check 'kanban.ps1'
+Check 'f-kanban' $k1 0
+$k2 = Invoke-Check 'run.ps1'
+Check 'f-run' $k2 0
+$k3 = @{ Code = 0; Out = 'ver docs/guia.md' }
+Check 'f-guia' $k3 0
+$k4 = @{ Code = 0; Out = (Use-Gate) }
+Check 'f-preambulo' $k4 0
+$k5 = @{ Code = $(if ($env:FAKE_FAIL) { 1 } else { 0 }); Out = $(if ($env:FAKE_WAIT) { Start-Sleep ([int]$env:FAKE_WAIT) }; 'x') }
+Check 'f-lento' $k5 0
+@@FIM@@
+'@).Replace('@@INI@@', '# ==== início dos casos ====').Replace('@@FIM@@', '# ==== fim dos casos ====')
+Put-Bom $fr 'scripts/checks/tests/fake-guard.ps1' (@'
+param([string]$Groups = '', [string]$ResultFile = '', [switch]$CheckGroups, [int]$Workers = 2)
+$ErrorActionPreference = 'Stop'
+. '@@SB@@'
+$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('fake-guard-' + [guid]::NewGuid().ToString('N').Substring(0, 6))
+New-Item -ItemType Directory -Force $tmp | Out-Null
+$state = Join-Path $tmp 'estado.txt'
+$cases = @(
+    @{ Name = 'g-base'; Script = 'pre-tool.ps1'; Run = { $true } },
+    # ---------- v9.1 — grupo A: monta o estado ----------
+    @{ Name = 'g-a1'; Script = 'pre-tool.ps1'; Run = { Set-Content -LiteralPath $state 'ok'; $true } },
+    # ---------- v9.2 — grupo B: o hook stop ----------
+    @{ Name = 'g-b1'; Script = 'stop.ps1'; Run = { (-not $env:FAKE_DEP) -or (Test-Path -LiteralPath $state) } }
+)
+$gg = Get-GuardGroups $PSCommandPath
+if ($CheckGroups) { $cg = Invoke-GuardGroupCheck $PSCommandPath $gg $tmp $Workers; $cg.Lines; Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue; if ($cg.Bad) { exit 1 }; exit 0 }
+$sel = @(0..($cases.Count - 1)); if ($Groups) { $sel = @(); foreach ($gi in @($Groups -split '[,\s]+' | Where-Object { $_ })) { $sel += @(Get-GuardGroupCases $gg ([int]$gi) $cases.Count) } }
+$rows = @(); $fail = 0
+foreach ($ci in $sel) { $c = $cases[$ci]; $ok = [bool](& $c.Run); if (-not $ok) { $fail++ }; $rows += [pscustomobject]@{ Caso = $c.Name; Esperado = 0; Obtido = 0; Ok = $(if ($ok) { 'ok' } else { 'FALHOU' }); Mensagem = ''; Seg = 0 } }
+if ($ResultFile) { [System.IO.File]::WriteAllText($ResultFile, (ConvertTo-Json -InputObject ([ordered]@{ fail = $fail; rows = @($rows) }) -Depth 4), (New-Object System.Text.UTF8Encoding($false))) }
+Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+Write-Output ("{0} casos · {1} falharam" -f $sel.Count, $fail)
+if ($fail) { exit 1 }; exit 0
+'@).Replace('@@SB@@', $sbF)
+$frT = Join-Path $tmp 'v3661-times.json'
+[System.IO.File]::WriteAllText($frT, '{"f-lento":30,"f-kanban":1}', $utf8)
+$frA = @('-Root', $fr, '-CheckSuite', (Join-Path $fr 'scripts/checks/tests/fake-check.ps1'), '-GuardSuite', (Join-Path $fr 'scripts/checks/tests/fake-guard.ps1'), '-TimesFile', $frT, '-RunsDir', (Join-Path $tmp 'v3661-runs'), '-Workers', '2')
+$raR = { param([string[]]$A) $ErrorActionPreference = 'Continue'; $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $raF @A 2>&1 | Out-String; @{ Code = $LASTEXITCODE; Out = $o } }
+$gitF = { $ErrorActionPreference = 'Continue'; $null = & git -C $fr @args 2>$null }
+& $gitF init -q; & $gitF checkout -q -b develop; & $gitF add -A; & $gitF -c user.email=t@t -c user.name=t commit -qm init; & $gitF checkout -q -b feat
+# B · -Changed: só o que a mudança toca (o C3 sempre)
+$chgR = { param([string]$Rel, [string]$Add) if ($Rel) { [System.IO.File]::AppendAllText((Join-Path $fr $Rel), $Add, $utf8) }; $o = & $raR ($frA + @('-Changed', '-ListBlocks')); & $gitF checkout -q -- .; $o }
+$r = & $chgR 'scripts/checks/kanban.ps1' "# muda`n"
+Check 'v3.66.1 B: mudança só no kanban.ps1 roda só o bloco que o cita, e o C3' @{ Code = $(if ($r.Out -notmatch 'cita run\.ps1|guard-\d') { $r.Code } else { 9 }); Out = $r.Out } 0 @('mudou: scripts/checks/kanban\.ps1', 'entrou: cita kanban\.ps1 \(mudou\)', '-Changed: 1 bloco\(s\)/grupo\(s\) entram; 7 unidade\(s\)/grupo\(s\) ficam de fora; o C3 \(release\.ps1\) roda sempre')
+$r = & $chgR 'scripts/checks/lib.ps1' "# muda`n"
+Check 'v3.66.1 B: mudança no lib.ps1 (biblioteca comum) roda tudo' $r 0 @('biblioteca comum alterada \(scripts/checks/lib\.ps1\): roda tudo', 'guard-3', '; 0 unidade\(s\)/grupo\(s\) ficam de fora')
+$r = & $chgR 'hooks/stop.ps1' "# muda`n"
+Check 'v3.66.1 B: mudança num hook roda o grupo das guardas que o chama' @{ Code = $(if ($r.Out -notmatch '(?m)^(guard-[12]|check-)') { $r.Code } else { 9 }); Out = $r.Out } 0 @('(?m)^guard-3 ', 'entrou: cita stop\.ps1 \(mudou\)')
+$r = & $chgR 'docs/guia.md' "mais`n"
+Check 'v3.66.1 B: mudança só num documento roda o C3 e o bloco que cita o documento' $r 0 @('entrou: cita guia\.md \(mudou\)', '-Changed: 1 bloco\(s\)/grupo\(s\) entram; 7 .*roda sempre')
+$r = & $chgR '' ''
+Check 'v3.66.1 B: sem mudança nenhuma, só o C3' $r 0 @('-Changed: 0 arquivo\(s\)', '-Changed: 0 bloco\(s\)/grupo\(s\) entram; 8 .*o C3 \(release\.ps1\) roda sempre')
+$r = & $chgR 'scripts/checks/gate.ps1' "# muda`n"
+Check 'v3.66.1 B: script alterado entra também pelo script que o carrega e pela função do preâmbulo que o cita' $r 0 @('entrou: cita run\.ps1 \(carrega gate\.ps1, que mudou\)', 'entrou: usa Use-Gate do preâmbulo, que carrega gate\.ps1 \(mudou\)')
+[System.IO.File]::WriteAllText((Join-Path $fr 'scripts/checks/tests/fake-check.ps1'), ([System.IO.File]::ReadAllText((Join-Path $fr 'scripts/checks/tests/fake-check.ps1'), $utf8).Replace("'ver docs/guia.md'", "'ver docs/guia.md de novo'")), (New-Object System.Text.UTF8Encoding($true)))
+$r = & $raR ($frA + @('-Changed', '-ListBlocks')); & $gitF checkout -q -- .
+Check 'v3.66.1 B: linha alterada na própria suíte roda a unidade dela' $r 0 @('entrou: caso alterado na suíte', '-Changed: 1 bloco')
+# A · nível lento (f-lento mediu 30 s)
+$prA = Join-Path $tmp 'v3661-tier.ps1'
+[System.IO.File]::WriteAllText($prA, ". '$sbF'`n`$t = @{ a = 25.0; b = 15.0 }`n'A=' + (Get-UnitTier ([pscustomobject]@{ Checks = @('x', 'a') }) `$t 20)`n'B=' + (Get-UnitTier ([pscustomobject]@{ Checks = @('b') }) `$t 20)`n'N=' + (Get-UnitTier ([pscustomobject]@{ Checks = @('novo') }) `$t 20)`n", (New-Object System.Text.UTF8Encoding($true)))
+$oA = & powershell -NoProfile -ExecutionPolicy Bypass -File $prA 2>&1 | Out-String
+Check 'v3.66.1 A: o nível pelo último tempo — acima de 20 s lento, abaixo rápido, sem medição rápido' @{ Code = 0; Out = $oA } 0 @('A=slow', 'B=fast', 'N=fast')
+$r = & $raR ($frA + @('-Suites', 'check', '-NoRelease'))
+Check 'v3.66.1 A: sem parâmetro, o nível lento fica de fora e a saída diz quantos casos e quanto tempo' $r 0 @('4 casos · 0 falharam', 'nível lento fora: 1 casos \(≈ 30 s de trabalho poupados\) — -Full roda todos', 'sem o nível lento')
+$r = & $raR ($frA + @('-Suites', 'check', '-NoRelease', '-Full'))
+Check 'v3.66.1 A: -Full roda todos' @{ Code = $(if ($r.Out -notmatch 'nível lento fora') { $r.Code } else { 9 }); Out = $r.Out } 0 @('5 casos · 0 falharam', '-Full')
+$r = & $raR ($frA + @('-Suites', 'check', '-NoRelease'))
+Check 'v3.66.1 A: o caso que ficou rápido no -Full sai do nível lento na rodada seguinte' @{ Code = $(if ($r.Out -notmatch 'nível lento fora') { $r.Code } else { 9 }); Out = $r.Out } 0 @('5 casos · 0 falharam')
+# D · rodada desacoplada: -Detach volta na hora; -Wait devolve o resumo e o código
+$env:FAKE_FAIL = '1'
+$swD = [System.Diagnostics.Stopwatch]::StartNew()
+$r = & $raR ($frA + @('-Suites', 'check', '-NoRelease', '-Full', '-Detach'))
+$dD = ([regex]::Match($r.Out, 'rodada desacoplada: (.+?) · processo (\d+)')).Groups[1].Value
+Remove-Item Env:\FAKE_FAIL
+Check 'v3.66.1 D: -Detach volta na hora com a pasta e o processo da rodada' @{ Code = $(if ($dD -and $swD.Elapsed.TotalSeconds -lt 30 -and (Test-Path -LiteralPath (Join-Path $dD 'job.json'))) { $r.Code } else { 9 }); Out = $r.Out } 0 @('rodada desacoplada: .+ · processo \d+', 'acompanhe: .*run-all-tests\.ps1 -Wait')
+$r = & $raR @('-Wait', $dD, '-WaitSeconds', '120')
+Check 'v3.66.1 D: -Wait espera o FIM e imprime o resumo — contagem, a falha com a saída dela, a parede — com o código da rodada' @{ Code = $r.Code; Out = ($r.Out + $(if (Test-Path -LiteralPath (Join-Path $dD 'summary.txt')) { ' SUMMARY-OK' })) } 1 @('---- f-lento falhou', '5 casos · 1 falharam', 'parede: ', 'FIM exit=1', 'SUMMARY-OK')
+$r = & $raR ($frA + @('-Suites', 'check', '-NoRelease', '-Detach'))
+$dD2 = ([regex]::Match($r.Out, 'rodada desacoplada: (.+?) · processo')).Groups[1].Value
+$r = & $raR @('-Wait', $dD2, '-WaitSeconds', '120')
+Check 'v3.66.1 D: a rodada desacoplada verde devolve 0 e o FIM exit=0' $r 0 @('5 casos · 0 falharam', 'FIM exit=0')
+$r = & $raR @('-Wait', (Join-Path $tmp 'v3661-nada'), '-WaitSeconds', '1')
+Check 'v3.66.1 D: -Wait numa pasta sem rodada diz isso (exit 2)' $r 2 @('nenhuma rodada em')
+# C · as guardas em grupos: a conferência de independência acusa o grupo que só passa depois de outro
+$gfF = Join-Path $fr 'scripts/checks/tests/fake-guard.ps1'
+$env:FAKE_DEP = '1'
+$oC = & powershell -NoProfile -ExecutionPolicy Bypass -File $gfF -CheckGroups 2>&1 | Out-String; $cC = $LASTEXITCODE
+$oS = & powershell -NoProfile -ExecutionPolicy Bypass -File $gfF 2>&1 | Out-String; $cS = $LASTEXITCODE
+Remove-Item Env:\FAKE_DEP
+Check 'v3.66.1 C: -CheckGroups acusa o grupo que só passa depois de outro (em série, passa)' @{ Code = $(if ($cS -eq 0 -and $oS -match '3 casos · 0 falharam') { $cC } else { 9 }); Out = $oC } 1 @('grupo  3 \(v9\.2 — grupo B: o hook stop\): 1 falharam sozinho', 'g-b1', '3 grupos · 1 dependem de outro')
+$oC = & powershell -NoProfile -ExecutionPolicy Bypass -File $gfF -CheckGroups 2>&1 | Out-String
+Check 'v3.66.1 C: grupos independentes passam sozinhos' @{ Code = $LASTEXITCODE; Out = $oC } 0 @('3 grupos · 0 dependem de outro')
+$r = & $raR ($frA + @('-Suites', 'guard', '-NoRelease'))
+Check 'v3.66.1 C: o run-all-tests.ps1 roda cada grupo das guardas num processo, em paralelo' $r 0 @('3 casos · 0 falharam', 'bloco: guard-1 ', 'bloco: guard-2 ', 'bloco: guard-3 ')
+$oL = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'run-guard-tests.ps1') -ListGroups 2>&1 | Out-String
+Check 'v3.66.1 C: a suíte real das guardas — a soma dos grupos é a lista inteira, cada caso num grupo só' @{ Code = $LASTEXITCODE; Out = $oL } 0 @('(\d+) casos nos \d+ grupos · a lista tem \1 · cada caso num grupo só')
+# E · processos pela máquina
+$prE = Join-Path $tmp 'v3661-workers.ps1'
+[System.IO.File]::WriteAllText($prE, ". '$sbF'`nforeach (`$p in @(@(16, 32), @(4, 32), @(16, 7.5), @(16, 3), @(2, 32))) { `$w = Get-DefaultWorkers `$p[0] `$p[1]; 'W' + `$p[0] + '/' + `$p[1] + '=' + `$w.Workers + `$(if (`$w.Busy) { ' ocupada' }) }`n", (New-Object System.Text.UTF8Encoding($true)))
+$oE = & powershell -NoProfile -ExecutionPolicy Bypass -File $prE 2>&1 | Out-String
+Check 'v3.66.1 E: o padrão de processos — teto 6, núcleos − 1, memória ÷ 1,5 GB, máquina ocupada abaixo de 4 GB' @{ Code = 0; Out = $oE } 0 @('W16/32=6\b', 'W4/32=3\b', 'W16/7.5=5\b', 'W16/3=2 ocupada', 'W2/32=1\b')
+$frE = @($frA | Where-Object { $_ -ne '-Workers' -and $_ -ne '2' })
+$r = & $raR ($frE + @('-ListBlocks', '-FreeGB', '3', '-Cores', '16'))
+Check 'v3.66.1 E: com pouca memória livre, sobe no máximo 2 processos e avisa' $r 0 @('máquina ocupada: 2 processos; a rodada fica mais lenta', 'processos: 2')
+$r = & $raR ($frE + @('-ListBlocks', '-FreeGB', '3', '-Cores', '16', '-Workers', '3'))
+Check 'v3.66.1 E: o -Workers explícito vence' @{ Code = $(if ($r.Out -notmatch 'máquina ocupada') { $r.Code } else { 9 }); Out = $r.Out } 0 @('processos: 3')
+# Suspensão da máquina (tampa fechada): a sentinela e o run-all congelam junto com os casos. O teste suspende o processo
+# deles (NtSuspendProcess), que é o que eles enxergam quando a máquina dorme.
+$prS = Join-Path $tmp 'v3661-suspende.ps1'
+[System.IO.File]::WriteAllText($prS, @"
+param([string]`$Wd, [string]`$Log, [int]`$Pid2 = 0, [int]`$Sec = 10, [int]`$Delay = 4)
+`$null = Add-Type -Namespace V3661 -Name Nt -MemberDefinition '[DllImport("ntdll.dll")] public static extern int NtSuspendProcess(IntPtr h); [DllImport("ntdll.dll")] public static extern int NtResumeProcess(IntPtr h);'
+if (`$Pid2) { `$x = Get-Process -Id `$Pid2; Start-Sleep `$Delay; [void][V3661.Nt]::NtSuspendProcess(`$x.Handle); Start-Sleep `$Sec; [void][V3661.Nt]::NtResumeProcess(`$x.Handle); 'SUSPENSO'; exit 0 }
+`$c = Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-Sleep 60' -PassThru -WindowStyle Hidden
+`$w = Start-Process powershell -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', `$Wd, '-Parent', `$PID, '-TimeoutSec', '10', '-Log', `$Log, '-SleepGapSec', '4' -PassThru -WindowStyle Hidden
+Start-Sleep `$Delay
+[void][V3661.Nt]::NtSuspendProcess(`$w.Handle); Start-Sleep `$Sec; [void][V3661.Nt]::NtResumeProcess(`$w.Handle)
+Start-Sleep 3; `$c.Refresh(); 'VIVO-DEPOIS-DA-SUSPENSAO=' + (-not `$c.HasExited)
+`$sw = [System.Diagnostics.Stopwatch]::StartNew(); while (-not `$c.HasExited -and `$sw.Elapsed.TotalSeconds -lt 25) { Start-Sleep -Milliseconds 500; `$c.Refresh() }
+'CORTADO-NO-PRAZO=' + `$c.HasExited + ' LOG=' + (Test-Path -LiteralPath `$Log)
+foreach (`$q in @(`$c, `$w)) { try { Stop-Process -Id `$q.Id -Force -ErrorAction SilentlyContinue } catch { } }
+"@, (New-Object System.Text.UTF8Encoding($true)))
+$oS = & powershell -NoProfile -ExecutionPolicy Bypass -File $prS -Wd (Join-Path $PSScriptRoot 'check-watchdog.ps1') -Log (Join-Path $tmp 'v3661-wd.log') 2>&1 | Out-String
+Check 'v3.66.1: a sentinela desconta a suspensão da máquina — o caso são não é cortado ao acordar, e o preso segue cortado no prazo' @{ Code = 0; Out = $oS } 0 @('VIVO-DEPOIS-DA-SUSPENSAO=True', 'CORTADO-NO-PRAZO=True LOG=True')
+$hT0 = (Get-FileHash -LiteralPath $frT).Hash
+$env:FAKE_WAIT = '12'
+$r = & $raR ($frA + @('-Suites', 'check', '-NoRelease', '-Full', '-SleepGapSec', '3', '-Detach'))
+Remove-Item Env:\FAKE_WAIT
+$dS = ([regex]::Match($r.Out, 'rodada desacoplada: (.+?) · processo (\d+)')).Groups[1].Value
+$jS = [int]([regex]::Match($r.Out, 'processo (\d+)')).Groups[1].Value
+$raP = $null; $swS = [System.Diagnostics.Stopwatch]::StartNew()
+while (-not $raP -and $swS.Elapsed.TotalSeconds -lt 20) { $raP = @(Get-CimInstance Win32_Process -Filter "ParentProcessId=$jS" | Where-Object { $_.Name -eq 'powershell.exe' })[0]; if (-not $raP) { Start-Sleep -Milliseconds 300 } }
+$oS2 = if ($raP) { & powershell -NoProfile -ExecutionPolicy Bypass -File $prS -Pid2 $raP.ProcessId -Sec 6 -Delay 3 2>&1 | Out-String } else { 'sem o processo do run-all' }
+$r = & $raR @('-Wait', $dS, '-WaitSeconds', '120')
+Check 'v3.66.1: o run-all percebe a suspensão — diz quanto dormiu e não grava os tempos da rodada' @{ Code = $(if ($oS2 -match 'SUSPENSO' -and (Get-FileHash -LiteralPath $frT).Hash -eq $hT0) { $r.Code } else { 9 }); Out = $r.Out + $oS2 } 0 @('a máquina ficou suspensa ~\d+ s durante a rodada', 'os tempos desta rodada não foram gravados', 'FIM exit=0')
 # ==== fim dos casos ====
 try { Stop-Process -Id $script:watchdog.Id -Force -ErrorAction SilentlyContinue } catch { }
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue

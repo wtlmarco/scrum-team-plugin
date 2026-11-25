@@ -284,6 +284,13 @@ function Get-AgentIdleHours($Agent) {
 # do hook que nao e shell. O SessionStart de uma segunda sessao aberta no mesmo projeto tratava os agentes vivos da primeira
 # como mortos, e o run.ps1 next redisparava a Task: dois devs no mesmo emulador. @{ pid; start } ou $null.
 function Get-HostProcess {
+    # v3.66.1 (item D): a suíte do plugin simula o hospedeiro (TEAM_TEST_HOST_PID = um processo vivo dela) — fora de uma sessão
+    # do Claude Code (a rodada desacoplada) não há ancestral que não seja shell. Na produção a variável não existe.
+    if ($env:TEAM_TEST_HOST_PID) {
+        $tp = Get-Process -Id ([int]$env:TEAM_TEST_HOST_PID) -ErrorAction SilentlyContinue
+        if ($tp) { try { return @{ pid = [int]$tp.Id; start = $tp.StartTime.ToString('yyyy-MM-dd HH:mm:ss') } } catch { } }
+        return $null
+    }
     try {
         $id = $PID
         for ($i = 0; $i -lt 6; $i++) {
