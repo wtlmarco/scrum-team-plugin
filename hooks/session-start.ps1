@@ -67,8 +67,9 @@ try {
     $all = 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G11', 'G14', 'G15', 'G16', 'G17', 'G18', 'G19', 'G20', 'G21', 'G22', 'G23', 'G24', 'G25', 'G26'   # v3.65.0 (A2-11): a G25 se desliga e não aparecia na linha · v3.66.0: G26
     $on= @($all | Where-Object { Test-GuardEnabled $cfg $_ })
     $off = @($all | Where-Object { -not (Test-GuardEnabled $cfg $_) })
-    $line = "Guardas do time (hooks/COVERAGE.md): ativas " + ($(if ($on.Count) { $on -join ', ' } else { 'nenhuma' })) +
-            "; desativadas " + ($(if ($off.Count) { $off -join ', ' } else { 'nenhuma' })) +
+    # v3.66.2 (item F): a linha vai em toda sessão — as ativas viram contagem; as desativadas seguem pelo nome (são a exceção).
+    $line = "Guardas do time (hooks/COVERAGE.md): $($on.Count) de $($all.Count) ativas" +
+            $(if ($off.Count) { "; desativadas " + ($off -join ', ') } else { '' }) +
             "; guards.json " + $cfg.state + $(if ($cfg.probe) { '; sonda ligada' } else { '' }) + '.'
     if ($cfg.state -eq 'invalido') { $line += ' guards.json inválido: valem os padrões — corrija ou recrie a partir do modelo.' }
     # v3.47: modelo por papel (.team-project/models.json) — uma linha só quando o arquivo existe.
@@ -85,8 +86,9 @@ try {
     $run = Get-Marker $projectDir '.active-run'
     if ($null -ne $run -and [string]$run.trilha -in @('sprint', 'fix')) {
         $cmd = if ([string]$run.trilha -eq 'sprint') { '/sm sprint run' } else { '/sm fix run' }
-        $line += " Retomada: o $([string]$run.trilha) run $([string]$run.id) estava em andamento (desde $([string]$run.desde)). Retome agora, sem esperar o stakeholder: $cmd — a fila continua pelo marcador do quadro e pelo run.ps1 next (sprint-run.md §Ordem da fila e retomada); agente: dispare e encerre o turno — o aviso reabre a sessão; retomada por instância nova com o cartão. Só apague o .active-run se o run terminou ou o stakeholder mandou parar." +
-                 " Isso vale quando o pedido desta sessão é o $cmd (ou 'continue'); se ele pediu outro comando (/team update, /team version, /po …), faça só o que ele pediu e diga em uma linha que o run segue parado e retoma com $cmd — sem formulário: 'retomo?' não é decisão do stakeholder (v3.58.3; no sprint 6 do garden, o /team version perguntou duas vezes)."
+        # v3.66.2 (item F): o como retomar está no cartão da sessão (sprint-run-session.md); aqui, só o fato e a regra do outro comando.
+        $line += " Retomada: o $([string]$run.trilha) run $([string]$run.id) estava em andamento (desde $([string]$run.desde)). Pedido desta sessão = $cmd (ou 'continue'): retome sem esperar o stakeholder, pelo run.ps1 next$(if ([string]$run.trilha -eq 'sprint') { ' (cartão: roles/scrum-master/process/sprint-run-session.md)' })." +
+                 " Outro comando (/team update, /po …): faça só ele e diga em uma linha que o run segue parado e retoma com $cmd — sem formulário ('retomo?' não é decisão do stakeholder, v3.58.3). Só apague o .active-run se o run terminou ou o stakeholder mandou parar."
     } elseif (Test-Path -LiteralPath $runPath) {
         $line += " Atenção: .team-project/.active-run existe mas está ilegível — se nada está em andamento, retome com o comando do run ou apague o arquivo."
     }

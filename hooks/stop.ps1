@@ -110,8 +110,11 @@ try {
     # "lançado" e o aviso reabre a sessão; o filtro "bg" barrava a espera (195 G20 no sprint 3 do piloto). Vale QUALQUER agente
     # disparado nesta sessão (session = session_id do hook; registro antigo sem session também) com sinal de vida há menos de
     # 3 h (mais velho é resto de queda); agente de outra sessão não segura o turno.
+    # v3.66.2 (garden S7, T-100, 24/11 08:01): o corte de 3 h aceitava como "em voo" o dev interrompido às 07:53 (último sinal
+    # às 06:45) e o executor "aguardando filho" dele, e a sessão encerrou o turno sem ninguém que a acordasse. A régua é a do
+    # run.ps1 (Get-LiveAgents: sinal há menos de 20 min, rodada aberta, sem interrupção na transcrição, filho vivo).
     $sid = [string]$hookInput.session_id
-    $agents = @(Get-ActiveAgents $projectDir | Where-Object { $s = if ($_.PSObject.Properties['session']) { [string]$_.session } else { '' }; -not $s -or -not $sid -or $s -eq $sid } | Where-Object { (Get-AgentIdleHours $_) -lt 3 })
+    $agents = @(Get-LiveAgents $projectDir '*' | Where-Object { $s = if ($_.PSObject.Properties['session']) { [string]$_.session } else { '' }; -not $s -or -not $sid -or $s -eq $sid })
     if ($agents.Count) { exit 0 }
     $tr = [string]$hookInput.transcript_path
     # v3.51.4 (note.md itens 2, 6 e 11): o turno acabou por limite de uso da conta (resposta sintética do harness) — não é
@@ -139,9 +142,20 @@ try {
     $nv = Get-Marker $projectDir '.next-verdict'
     # v3.57.2 (note.md item 21): "reiniciar" — a sessão passou do teto de contexto sem agente em voo; o fim do turno é o
     # caminho para o stakeholder rodar /clear e /sm sprint run (o run retoma do quadro e do .active-run).
-    if ($null -ne $nv -and [string]$nv.acao -in 'esperar', 'reiniciar') {
+    if ($null -ne $nv -and [string]$nv.acao -eq 'reiniciar') {
         $nvAge = try { ((Get-Date) - [datetime]::ParseExact([string]$nv.at, 'yyyy-MM-dd HH:mm:ss', $null)).TotalMinutes } catch { 999 }
         if ($nvAge -lt 30) { Write-GuardLog $projectDir 'G20' $hookInput ([string]$nv.task) "liberado: o run.ps1 next mandou $([string]$nv.acao) ($([string]$nv.motivo))"; exit 0 }
+    }
+    # v3.66.2 (garden S7, T-100, 24/11 08:01): o "esperar" do next liberava o fim de turno sozinho por 30 min. O watcher voltou
+    # "vivo", a sessão encerrou o turno sem redisparar ninguém e o verify terminou às 08:24 sem que ninguém rodasse o next. A
+    # espera só é legítima com quem avise: um agente desta sessão em voo (liberado acima — o watcher conta). Sem ele, barra.
+    if ($null -ne $nv -and [string]$nv.acao -eq 'esperar') {
+        # O travamento repetido manda esperar e leva ao stakeholder (rota gravada): a decisão é dele.
+        $arW = Get-Marker $projectDir '.ask-route'
+        if ($null -ne $arW -and [string]$arW.at -ge [string]$nv.at) { Write-GuardLog $projectDir 'G20' $hookInput ([string]$arW.task) "liberado: a rota ao stakeholder ($([string]$arW.rota)) veio com a espera"; exit 0 }
+        Write-GuardLog $projectDir 'G20' $hookInput ([string]$nv.task) "bloqueio: espera sem quem avise ($([string]$nv.motivo))"
+        [Console]::Error.WriteLine("[G20] O run.ps1 next mandou esperar ($([string]$nv.motivo)), mas nenhum agente desta sessão está em voo para avisar quando a espera mudar: encerrar o turno agora deixa o time parado até alguém digitar. Dispare o watcher com a linha que o next imprimiu (Agent subagent_type 'team:watcher', model 'haiku', description 'Watcher da espera', prompt 'Rode a sonda do seu roteiro e devolva a linha.') e então encerre o turno — o aviso dele reabre a sessão quando a espera terminar ou travar. Se a espera já acabou, rode run.ps1 next.")
+        exit 2
     }
     if ($tr -and (Test-Path -LiteralPath $tr)) {
         $tail = @(Get-Content -LiteralPath $tr -Encoding UTF8 -Tail 40)
