@@ -13,6 +13,49 @@
 
 ---
 
+## v3.66.2 — 2026-11-25
+**Branch:** `fix/v3.66.2` a partir de `fix/v3.66.1` (`2c9370f`, a mesma árvore que entrou em `develop` pelo PR #227) · **Plano:** `melhorias/plano-v3.66.2.md` (itens A a F) · **Processo:** addendum v3.66.2
+
+Origem: a T-100 do sprint 7 do garden (24/11, plugin 3.65.15).
+- O notebook entrou em espera moderna com a tampa fechada às 06:52 e acordou às 07:53. No mesmo segundo, o pedido preso do dev foi abortado (`[Request interrupted by user]`), sem SubagentStop.
+- O executor devolveu ⏸ e ficou no registro como "aguardando filho" do dev morto. O `next` das 07:55 mandou esperar.
+- O watcher voltou "vivo" às 08:01: era a 2ª rodada da suíte, recomeçada do zero depois da suspensão, que a sessão leu como "voltou a andar". A sessão encerrou o turno sem redisparar ninguém.
+- O `verify` terminou às 08:24 com exit 0, e ninguém rodou o `next` até o stakeholder perguntar, 3 h depois.
+
+**A · Uma régua de vida para agentes** (`hooks/common.ps1`).
+- `Test-AgentInterrupted`: a última fala da transcrição do subagente (`<pasta da sessão>/<session>/subagents/agent-<id>.jsonl`, achada pelo `.session-transcript`) é a interrupção → o agente acabou ali, sem esperar os 20 min.
+- `Get-PendingChildren`: o filho só segura o pai com sinal há menos de 20 min (ou rodada `ESPERANDO`), sem a interrupção, ou esperando um neto vivo. Antes, o filho sem linha de rodada contava para sempre.
+- `Get-LiveAgents`: o filho listado no consumo e sem linha de rodada só conta se não estiver no registro (o do registro já foi julgado); `'*'` traz os de qualquer item.
+- `Test-AgentStale`/`Remove-StaleAgents`: a interrupção também é fim, com o motivo "interrompido (fim na transcrição do subagente)" no `.interrupted`.
+- **G20** (`hooks/stop.ps1`): "agente em voo" pela mesma régua, e não mais "sinal há menos de 3 h".
+- `run.ps1`: a limpeza do registro (v3.63.0) roda também com o `verify` em processo próprio vivo (`Test-StaleSweep`).
+
+**B · Toda espera tem quem avise — o watcher paciente.**
+- O `next` imprime `quem avisa:` (o agente vivo, ou o watcher) junto da linha do watcher.
+- **G20:** o "esperar" do `.next-verdict` deixa de liberar o fim de turno sozinho. Sem agente desta sessão em voo (o watcher conta), barra: "espera sem quem avise". A rota ao stakeholder gravada com a espera (travamento repetido) libera.
+- `agents/watcher.md`: chama `run.ps1 wait -For 540` (com `timeout: 570000`) **até a espera mudar**; não volta mais com "vivo". A sonda diz `teto do watcher` quando ele foi disparado há mais de `run.watcherMaxMinutes` (padrão 60, lido do `desde` dele no registro; a sonda segue só de leitura). O teto do `-For` passou de 90 para 540.
+- Descartada a espera por comando em segundo plano, aprovada em 24/11: o CHANGELOG da v3.62.2 registra que o Claude Code às vezes encerra esse comando com o turno, e a G22 o nega na sessão.
+- Medido no garden: 183 rodadas do watcher custaram US$ 0,44; no sprint 6, as voltas "vivo" acordaram a sessão 405 vezes (~US$ 3,60).
+
+**C · A rodada atual, a suspensão e o "recomeçou"** (`scripts/checks/lib.ps1`, `verify.ps1`).
+- `Invoke-ProjectCommand`: laço de 30 s no lugar do `WaitForExit` único. Grava `heartbeat.json` na pasta do log: a rodada (`attempt`, `reason`), o tamanho **real** do log (aberto com compartilhamento — a data da pasta não anda com o arquivo aberto), quando ele cresceu e os trechos em que a máquina dormiu (volta de mais de 2 min). O prazo conta o tempo acordado.
+- O `verify` declara a 2ª rodada (suspensão ou navegador caído) com o motivo: "máquina suspensa 06:52–07:53".
+- `Get-WaitPulse`: com o pulso, o tempo conta da rodada em curso, a saída vem do log ("saída do comando há N min") e a linha diz "2ª rodada de suite desde HH:mm: recomeçou do zero (…)" e as suspensões. O watcher repete essas palavras e nunca diz "voltou a andar".
+
+**D · A máquina não dorme por tempo ocioso no meio de um comando pesado** (`lib.ps1` `Set-KeepAwake`). `SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)` enquanto roda um comando com prazo acima de `machine.keepAwakeMinMinutes` (padrão 5), desfeito no fim; `machine.keepAwake` (padrão `true`) desliga; `machine.keepAwakeDisplay` (padrão `false`) mantém também a tela. Não impede a tampa fechada.
+
+**E · A conversa do coordenador reinicia antes da faixa cara.** `run.sessionContextCap` passa de 150 mil para **100 mil** (o valor declarado pelo projeto vale; 0 desliga), e o aviso da linha `SESSÃO:` usa o mesmo teto. Medido nas sessões do garden desde 11/11: 72% das chamadas do coordenador (Haiku 5.5) acima de 100 mil, onde o preço é 5×, com ~93% do custo da sessão.
+
+**F · A conversa do sprint nasce menor.**
+- **O roteiro fora da abertura:** a sessão do garden lia o `sprint-run.md` inteiro (≈70 mil caracteres) ao abrir, e a conversa ia de 55 para 80 mil tokens antes do primeiro passo. Agora ela lê o cartão `roles/scrum-master/process/sprint-run-session.md` (3,9 mil caracteres) e o roteiro só por seção.
+- **`/sm` curto:** o `commands/sm.md`, enviado inteiro a cada `/sm`, caiu de 13,9 mil para 1,6 mil caracteres; a tabela dos modos foi, sem mudança de conteúdo, para `roles/scrum-master/process/sm-modes.md`.
+- **Aviso de abertura** (`hooks/session-start.ps1`): as guardas ativas viram contagem, e a retomada aponta o cartão.
+- **Conversa enxuta** (`scripts/checks/lean-session.ps1` + `lean-session.json`, oferecida no `/team init` e no passo 7r do `/team update`, só com a aprovação do stakeholder): `permissions.deny` de Artifact, ScheduleWakeup, ReportFindings, Workflow e ShareOnboardingGuide, `disableClaudeAiConnectors` e `skillOverrides` `"off"` nas 28 habilidades que o time não usa, em `.claude/settings.local.json`, juntando ao que existe; `-Off` desfaz só o que ele gravou. Medido em 25/11 (Claude Code 2.1.331, `claude -p` numa pasta vazia, Haiku 5.5): **49.561 → 21.706 tokens** na primeira chamada. `disableBundledSkills` piora (a ferramenta Workflow cresce de 5,9 mil para 23,6 mil caracteres) e o `deny` de `Skill(<nome>)` não tira a habilidade da lista.
+
+**Documentos:** `sprint-run.md` (§Protocolo de espera: regra 6, constantes, contrato do watcher; abertura pelo cartão; a G20 sem o "esperar" de 30 min), `agents/task-runner.md` ("dev interrompido", nunca "disparo interrompido"), `rituals/team-update.md` §7r, `rituals/team-init.md` §4a, `how-to.md` §Conversa enxuta, `working-rules.md` R29, `working-rules-index.md`, `templates/retrospective.md`.
+
+---
+
 ## v3.66.1 — 2026-11-24
 **Branch:** `fix/v3.66.1` a partir de `develop` (`84ac1ef`, com a v3.66.0 mesclada pelo PR #225) · **Plano:** `melhorias/plano-v3.66.1.md` (itens A a E; o F ficou de fora, abaixo)
 Origem: as rodadas da suíte durante a v3.66.0 (23 e 24/11):

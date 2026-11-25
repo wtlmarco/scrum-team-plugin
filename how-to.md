@@ -372,6 +372,14 @@ O rodapé passa a mostrar algo como `Opus 5.5 · 5h 37% (reinicia 14:20) · sema
 - **Logo depois de atualizar o plugin** (`/team update`), feche e abra a sessão para os comandos funcionarem sem token.
 - **Se aparecer uma resposta do modelo em vez da tela acima**, o atalho sem token não funcionou nessa sessão. O resultado é o mesmo, mas gasta um pouco de token. Feche e abra a sessão. Se continuar, avise o dono do plugin.
 
+### Conversa enxuta: gastar menos em cada chamada (v3.66.2)
+
+Cada chamada da conversa reenvia tudo o que ela carrega. Três ajustes mantêm a conversa do sprint pequena:
+
+- **O que o time não usa sai da conversa** (opcional, com a sua aprovação no `/team init` ou no `/team update`): ferramentas, conectores da conta e habilidades de Word, PowerPoint, Excel, gráficos e Google Drive. Medido: ~28 mil tokens a menos em cada conversa nova. Vale para todas as conversas do projeto. Para ver o estado: `powershell -NoProfile -File "<plugin>/scripts/checks/lean-session.ps1" -Check`; para desfazer: `… -Off`.
+- **A conversa do `sprint run` reinicia em 100 mil tokens** (`guards.json` → `run.sessionContextCap`; 0 desliga). Acima disso o Haiku cobra 5×. Quando o time pedir, digite `/clear` e `/sm sprint run`: nada se perde.
+- **A conversa abre pelo cartão curto da sessão** (`sprint-run-session.md`), e não pelo roteiro inteiro do sprint (~70 mil caracteres).
+
 ## Conhecimento do projeto: o que o sprint ensinou volta para o próximo (v3.56.0)
 
 Todo 🔺 GAP ensina alguma coisa. Até a v3.55, essa lição ficava no plano da Task ou na ficha do sprint e morria com ele: o mesmo limiar de 160 px reprovou numa Task do sprint 4 e de novo numa do sprint 5. Agora cada lição tem um destino, e o sprint seguinte a recebe sem ninguém reler arquivo inteiro.

@@ -161,7 +161,8 @@ function Invoke-Logged([string]$Key, [string]$Cmd, [string]$Log) {
     if ($r.suspended) {
         $first = [string]$r.environment
         if ($r.Contains('kept')) { $script:daemonPids += @($r.kept) }
-        $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon -PidFile $pidFile
+        # v3.66.2 (item C): a 2ª rodada se declara no heartbeat.json — a sonda diz "recomeçou do zero", e não "voltou a andar".
+        $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon -PidFile $pidFile -Attempt 2 -AttemptReason (Format-SuspensionReason $r)
         if (-not $r.suspended) { $r.warnings = @($r.warnings) + @("$Key`: $first — rodada repetida e válida") }
     }
     # v3.63.1 (pedido 8 do sprint 6 do projeto piloto, Q-S6d): o navegador da suíte caiu no meio ("Disconnected … no message in
@@ -176,7 +177,7 @@ function Invoke-Logged([string]$Key, [string]$Cmd, [string]$Log) {
         $free1 = Get-FreeMemoryMB; $relT = ''
         if ($minF -gt 0 -and $free1 -ge 0 -and $free1 -lt $minF) { $rel = Invoke-TargetRelease $Root; if ($rel.Ran) { $relT = " · alvo: $($rel.Text)" }; if ($rel.Freed) { Start-Sleep -Seconds 3 } }
         [Console]::Out.WriteLine("verify: $Key — $first; memória livre $free1 MB$relT — repetindo a rodada uma vez")
-        $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon -PidFile $pidFile
+        $r = Invoke-ProjectCommand $Root $Key $Cmd $Log $tmo ([pscustomobject]$extra) -KeepDescendants:$daemon -PidFile $pidFile -Attempt 2 -AttemptReason 'o navegador da suíte caiu no meio'
         if (-not ($r.Contains('disconnect') -and $r.disconnect)) { $r.warnings = @($r.warnings) + @("$Key`: $first — rodada repetida e válida") }
         else {
             $d2 = $r.disconnect; $free2 = Get-FreeMemoryMB; $top = Get-TopMemoryText 5

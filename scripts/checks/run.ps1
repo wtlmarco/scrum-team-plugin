@@ -115,8 +115,34 @@ function Get-RunNews {
 # A linha que o next imprime quando manda esperar (protocolo de espera, regra 6): a conferência por tempo é do watcher.
 # O disparo NÃO cita ID de Task (o registro de agentes lê ID na descrição e no prompt e trataria o watcher como agente da Task).
 # v3.57.1: o papel se chamava "vigia" (team:vigia); renomeado para o padrão em inglês dos outros agentes.
-function Get-WatcherLine {
-    return "  conferência por tempo (protocolo de espera): dispare o watcher — Agent(subagent_type 'team:watcher', model 'haiku', description 'Watcher da espera', prompt 'Rode a sonda do seu roteiro e devolva a linha.'), sem ID de Task — e encerre o turno. Ele confere por até 10 min e o aviso dele reabre a sessão: 'vivo' = encerre o turno e espere; 'travado' = leve ao stakeholder (formulário: encerrar com target.ps1 -Kill, retomar por dev novo com o cartão, ou seguir esperando); 'terminou' = run.ps1 next. O primeiro aviso pode ser parcial."
+# v3.66.2 (garden S7, T-100, 24/11 08:01): o watcher voltava "vivo" a cada 10 min, e cada volta acordava a sessão, que relê o
+# contexto inteiro (no sprint 6, ~US$ 3,60 de sessão contra US$ 0,24 do watcher). Numa dessas voltas a sessão encerrou o turno
+# sem redisparar ninguém e o sprint parou. Agora o watcher é PACIENTE: confere até a espera mudar (terminou ou travado), com
+# teto de run.watcherMaxMinutes (guards.json, padrão 60); a linha diz quem avisa, e a G20 barra o fim de turno sem agente
+# desta sessão em voo. $Who: o agente cujo fim também reabre a sessão ('' = só o watcher).
+function Get-WatcherLine([string]$Who = '') {
+    $q = if ($Who) { "  quem avisa: $Who — e o watcher, que confere o comando que ele espera" } else { '  quem avisa: o watcher — nenhum agente acompanha esta espera; sem o watcher em voo, a G20 barra o fim do turno' }
+    return "$q`n  conferência por tempo (protocolo de espera): dispare o watcher — Agent(subagent_type 'team:watcher', model 'haiku', description 'Watcher da espera', prompt 'Rode a sonda do seu roteiro e devolva a linha.'), sem ID de Task — e encerre o turno. Ele confere até a espera mudar (terminou ou travado), por até $(Get-WatcherMaxMinutes) min, e o aviso dele reabre a sessão: 'terminou', 'travado' ou 'teto do watcher' = run.ps1 next. Se o agente acima voltar antes, encerre o watcher (TaskStop) e rode run.ps1 next."
+}
+function Get-WatcherMaxMinutes {
+    $m = 60
+    $gj = Join-Path $Root '.team-project/guards.json'
+    if (Test-Path -LiteralPath $gj) { try { $g = Read-Text $gj | ConvertFrom-Json; if ($g.PSObject.Properties['run'] -and $g.run -and $g.run.PSObject.Properties['watcherMaxMinutes'] -and [int]$g.run.watcherMaxMinutes -gt 0) { $m = [int]$g.run.watcherMaxMinutes } } catch { } }
+    return $m
+}
+# v3.66.2: há quanto tempo o watcher mais recente da sessão foi disparado (minutos; -1 sem watcher no registro). É o que a
+# sonda usa para o teto — ela segue só de leitura: o 'desde' é o do disparo, gravado pela PreToolUse.
+function Get-WatcherAgeMinutes {
+    $w = @(Get-ActiveAgents $Root | Where-Object { ([string]$_.type -replace '^.*:', '') -eq 'watcher' } | Sort-Object { [string]$_.desde } -Descending) | Select-Object -First 1
+    if (-not $w) { return -1 }
+    try { return ((Get-Date) - [datetime]::ParseExact([string]$w.desde, 'yyyy-MM-dd HH:mm:ss', $null)).TotalMinutes } catch { return -1 }
+}
+# v3.66.2: a limpeza do registro de agentes sem sinal (v3.63.0) roda sem comando da Task vivo — e também com o verify em
+# processo próprio, que não depende de agente nenhum (v3.62.2). Na T-100 do garden (24/11), o verify desacoplado vivo
+# impedia a limpeza, e o dev interrompido às 07:53 ficou no registro.
+function Test-StaleSweep([string]$Id) {
+    $w = Get-TaskWait $Root $Id
+    return [bool](-not $w -or ($w.PSObject.Properties['Detached'] -and $w.Detached))
 }
 
 # wait (v3.57.0, protocolo de espera regras 1 e 6): a sonda do WATCHER (agents/watcher.md), SÓ DE LEITURA — não grava o
@@ -169,17 +195,23 @@ function Get-WaitState {
 # o ambiente a move para segundo plano e a saída pode voltar vazia). -For acima de 90 é cortado para 90: com conferências
 # de ~0,5–1 s (Get-CimInstance) e a partida do powershell, a chamada fica abaixo de ~100 s. Exit code É o veredito
 # (0 · 3 · 5); a linha é o detalhe — o watcher lê o código quando a saída vem vazia.
-$script:waitMaxFor = 90
+# v3.66.2: o watcher paciente chama com -For 540 e o prazo da ferramenta declarado (timeout 570000), abaixo dos 600 s em que o
+# Claude Code move a chamada para segundo plano; o teto passou de 90 para 540. Vivo com o watcher disparado há mais de
+# run.watcherMaxMinutes: a linha traz "teto do watcher" e a chamada sai (exit 3) — o watcher devolve e o next o redispara.
+$script:waitMaxFor = 540
 if ($Action -eq 'wait') {
     if ($For -gt $script:waitMaxFor) { $For = $script:waitMaxFor }
     $every = [Math]::Max(1, $Every)
-    $sw = [System.Diagnostics.Stopwatch]::StartNew(); $checks = 0
+    $wMax = Get-WatcherMaxMinutes
+    $sw = [System.Diagnostics.Stopwatch]::StartNew(); $checks = 0; $teto = $false
     while ($true) {
         $st = Get-WaitState; $checks++
+        if ($st.Code -eq 3) { $age = Get-WatcherAgeMinutes; if ($age -ge $wMax) { $teto = $true; break } }
         if ($st.Code -ne 3 -or ($sw.Elapsed.TotalSeconds + $every) -gt $For) { break }
         Start-Sleep -Seconds $every
     }
     $tail = if ($For -gt 0) { " (conferido $checks vez(es) em $([int]$sw.Elapsed.TotalSeconds) s)" } else { '' }
+    if ($teto) { $tail += " · teto do watcher ($wMax min): devolva a linha; o next o redispara" }
     Out "$($st.Text)$tail"; [Console]::Out.Flush(); exit $st.Code
 }
 
@@ -1006,7 +1038,7 @@ try {
             exit 2
         }
         $preqNote = $preq.Lines
-        if (-not (Get-TaskWait $Root $T.Id)) { foreach ($sa in @(Remove-StaleAgents $Root $T.Id)) { $sm0 = "registro ignorado: $(([string]$sa.type) -replace '^.*:', '') $([string]$sa.agent_id) sem ação há $([int]((Get-AgentIdleHours $sa) * 60)) min — saiu do .active-agents (foi para o .interrupted)"; Out "run start: $sm0"; Add-RunLog $S $n $T.Id $sm0 'sem sinal de vida há 20 min ou mais e sem comando da Task vivo' '.team-project/.interrupted' } }   # v3.63.0
+        if (Test-StaleSweep $T.Id) { foreach ($sa in @(Remove-StaleAgents $Root $T.Id)) { $sm0 = "registro ignorado: $(([string]$sa.type) -replace '^.*:', '') $([string]$sa.agent_id) sem ação há $([int]((Get-AgentIdleHours $sa) * 60)) min — saiu do .active-agents (foi para o .interrupted)"; Out "run start: $sm0"; Add-RunLog $S $n $T.Id $sm0 'sem sinal de vida há 20 min ou mais e sem comando da Task vivo' '.team-project/.interrupted' } }   # v3.63.0
         $liveDev = @(Select-LiveAgents @(Get-LiveAgents $Root $T.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -eq 'developer' }) $T.Id)
         if ($liveDev.Count) {
             $a = $liveDev[0]; $idle = [int]((Get-AgentIdleHours $a) * 60)
@@ -1656,14 +1688,17 @@ try {
         if ($sg) {
             $kk = [int][Math]::Round($sg.LastContext / 1000)
             Out "SESSÃO: $($sg.Calls) chamada(s) · contexto da última $kk mil tokens"
-            if ($sg.LastContext -gt 150000) { Out "  aviso: acima de 150 mil — a sessão está conduzindo trabalho que é do executor? (o executor de Task conduz start, dev e done; a sessão dispara e lê a linha de volta)" }
             # v3.57.2 (note.md item 21, ocorrência 13 do sprint 5 do garden): a sessão que orquestra nunca reiniciava — a maior do
             # sprint foi de 56 mil a 409 mil de contexto em 238 chamadas, e 56,1 M dos 57,3 M processados foram releitura do
             # mesmo histórico (≈ 1/3 do custo do sprint, fora da conta). Acima do teto (guards.json → run.sessionContextCap,
-            # padrão 150 mil; 0 desliga) e sem agente em voo, a próxima ação é reiniciar: o run retoma do quadro e do .active-run.
-            $capS = 150000
+            # 0 desliga) e sem agente em voo, a próxima ação é reiniciar: o run retoma do quadro e do .active-run.
+            # v3.66.2 (item E): padrão de 150 para 100 mil. O Haiku 5.5 cobra 5× acima de 100 mil de contexto; nas sessões do
+            # garden desde 11/11, 72% das chamadas do coordenador estavam acima disso, com ~93% do custo da sessão.
+            $capS = 100000
             $gjS = Join-Path $tp 'guards.json'
             if (Test-Path -LiteralPath $gjS) { try { $gS = Read-Text $gjS | ConvertFrom-Json; if ($gS.PSObject.Properties['run'] -and $gS.run -and $gS.run.PSObject.Properties['sessionContextCap']) { $capS = [int]$gS.run.sessionContextCap } } catch { } }
+            $warnS = if ($capS -gt 0) { $capS } else { 100000 }
+            if ($sg.LastContext -gt $warnS) { Out "  aviso: acima de $([int]($warnS / 1000)) mil — a sessão está conduzindo trabalho que é do executor? (o executor de Task conduz start, dev e done; a sessão dispara e lê a linha de volta)" }
             $flying = @(Get-ActiveAgents $Root | Where-Object { (Get-AgentIdleHours $_) * 60 -lt 30 -and (Test-AgentHostAlive $_) -ne $false })
             if ($capS -gt 0 -and $sg.LastContext -gt $capS -and -not $flying.Count) {
                 Set-NextVerdict $Root 'reiniciar' '' "sessão com $kk mil de contexto (teto $([int]($capS / 1000)) mil)"
@@ -1947,7 +1982,7 @@ try {
         # no mesmo projeto, ou desta, antes do aviso de volta. Redisparar punha dois devs no mesmo emulador.
         # v3.63.0 (Q-S6d do piloto, 17/11): o registro sem sinal de vida da Task sai do .active-agents com uma linha — antes o next
         # o ignorava calado, o "## Agora" o mostrava "trabalhando" e alguém renomeou o arquivo à mão. Só sem comando da Task vivo.
-        if (-not (Get-TaskWait $Root $next.Id)) { foreach ($sa in @(Remove-StaleAgents $Root $next.Id)) { $sm0 = "registro ignorado: $(([string]$sa.type) -replace '^.*:', '') $([string]$sa.agent_id) sem ação desde $(try { ([datetime]::Parse([string]$(if ($sa.at) { $sa.at } else { $sa.desde }))).ToString('HH:mm') } catch { '?' }) ($([int]((Get-AgentIdleHours $sa) * 60)) min) — saiu do .active-agents (foi para o .interrupted)"; Out "  $sm0"; Add-RunLog $S $n $next.Id $sm0 'sem sinal de vida há 20 min ou mais e sem comando da Task vivo' '.team-project/.interrupted' } }
+        if (Test-StaleSweep $next.Id) { foreach ($sa in @(Remove-StaleAgents $Root $next.Id)) { $sm0 = "registro ignorado: $(([string]$sa.type) -replace '^.*:', '') $([string]$sa.agent_id) sem ação desde $(try { ([datetime]::Parse([string]$(if ($sa.at) { $sa.at } else { $sa.desde }))).ToString('HH:mm') } catch { '?' }) ($([int]((Get-AgentIdleHours $sa) * 60)) min) — saiu do .active-agents (foi para o .interrupted)"; Out "  $sm0"; Add-RunLog $S $n $next.Id $sm0 'sem sinal de vida há 20 min ou mais e sem comando da Task vivo' '.team-project/.interrupted' } }
         $liveA = @(Select-LiveAgents @(Get-LiveAgents $Root $next.Id | Where-Object { ([string]$_.type -replace '^.*:', '') -in 'task-runner', 'developer' }) $next.Id)
         if ($liveA.Count) {
             $a = @($liveA | Sort-Object { [string]$_.at } -Descending)[0]
@@ -1955,11 +1990,11 @@ try {
             # v3.58.3: o agente está vivo, mas o comando que ele espera parou — o mesmo POSSÍVEL TRAVAMENTO que o watcher acusa.
             $wA = Get-TaskWait $Root $next.Id
             if ($wA -and $wA.Pulse.Stalled -and -not ($wA.PSObject.Properties['NoProgress'] -and $wA.NoProgress)) { exit (Write-StallAction $next $S $n $wA) }
-            Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) já tem $agTxt. Não dispare outro executor nem dev: seriam duas instâncias no mesmo alvo. Encerre o turno; o aviso de volta reabre a sessão (se ele é de outra sessão, a volta chega lá). Sem sinal de vida por 20 min, o registro deixa de valer e o next segue."
+            Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) já tem $agTxt. Não dispare outro executor nem dev: seriam duas instâncias no mesmo alvo. Dispare o watcher (abaixo) e encerre o turno; o aviso de volta do agente ou o do watcher reabre a sessão (se o agente é de outra sessão, a volta dele chega lá). Sem sinal de vida por 20 min, ou com a interrupção na transcrição dele, o registro deixa de valer e o next segue."
             Say "$(Get-RunLabel $next.Id) continua em construção; o time está trabalhando nela."
             # v3.53.5: o comando que o agente espera, com o sinal de vida (CPU, arquivo, POSSÍVEL TRAVAMENTO).
             if ($wA) { Out "  espera: $($wA.Text)"; if ($wA.PSObject.Properties['NoProgress'] -and $wA.NoProgress) { Set-AskRoute $Root 'sem-avanco' $next.Id $wA.NoProgress; Out "  SEM AVANÇO: $($wA.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." } }
-            Out (Get-WatcherLine)
+            Out (Get-WatcherLine "$(([string]$a.type) -replace '^.*:', '') $([string]$a.agent_id)")
             Set-NextVerdict $Root 'esperar' $next.Id "agente: $agTxt"
             exit 3
         }
@@ -1972,7 +2007,7 @@ try {
         if ($wN) {
             $noProgN = $wN.PSObject.Properties['NoProgress'] -and $wN.NoProgress
             if ($wN.Pulse.Stalled -and -not $noProgN) { exit (Write-StallAction $next $S $n $wN) }
-            Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) ainda tem $($wN.Text) rodando (um dev esperava por ele). Não dispare executor nem dev: seriam dois na mesma Task e no mesmo alvo. Encerre o turno; rode run.ps1 next quando o aviso de volta chegar."
+            Out "PRÓXIMA AÇÃO: esperar — a $($next.Id) ainda tem $($wN.Text) rodando (um dev esperava por ele). Não dispare executor nem dev: seriam dois na mesma Task e no mesmo alvo. Nenhum agente acompanha este comando: dispare o watcher (abaixo) e encerre o turno; rode run.ps1 next quando o aviso dele chegar."
             Say "$(Get-RunLabel $next.Id): esperando os testes ou a compilação terminarem."
             if ($noProgN) { Set-AskRoute $Root 'sem-avanco' $next.Id $wN.NoProgress; Out "  SEM AVANÇO: $($wN.NoProgress). O accept não vai passar assim: leve ao stakeholder (formulário) — encerrar o accept (ele decide) e preparar o estado de partida (targets.android.baseline) ou o cenário, ou seguir esperando." }
             Out (Get-WatcherLine)

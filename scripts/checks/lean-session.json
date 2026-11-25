@@ -1,0 +1,14 @@
+{
+  "_sobre": "v3.66.2 (item F) · o que a conversa do Claude Code carrega e o time não usa. Medido em 25/11/2026 (Claude Code 2.1.331, claude -p numa pasta vazia, Haiku 5.5): 49.561 tokens na primeira chamada sem nada; 21.706 com esta lista. Bloquear Skill(<nome>) em permissions.deny NÃO tira a habilidade da lista; skillOverrides com \"off\" tira. disableBundledSkills piora (a ferramenta Workflow cresce de 5,9 mil para 23,6 mil caracteres) e não entra.",
+  "measured": { "date": "2026-11-25", "claudeCode": "2.1.331", "before": 49561, "after": 21706 },
+  "deny": ["Artifact", "ScheduleWakeup", "ReportFindings", "Workflow", "ShareOnboardingGuide"],
+  "disableClaudeAiConnectors": true,
+  "skillsOff": [
+    "dataviz", "artifact-design", "artifact-diagramming", "artifact-capabilities", "update-config", "keybindings-help",
+    "code-review", "simplify", "fewer-permission-prompts", "claude-approvals", "loop", "schedule", "claude-api",
+    "workflow-authoring", "run", "plugin-authoring", "init", "security-review",
+    "anthropic-skills:artifact-emulator", "anthropic-skills:docs", "anthropic-skills:docx", "anthropic-skills:google-workspace",
+    "anthropic-skills:import-memory", "anthropic-skills:morning", "anthropic-skills:pdf", "anthropic-skills:pptx",
+    "anthropic-skills:skill-creator", "anthropic-skills:xlsx"
+  ]
+}

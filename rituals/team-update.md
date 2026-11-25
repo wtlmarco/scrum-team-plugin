@@ -151,6 +151,19 @@ Os passos de migração das versões v3.20 a v3.49 (antigas §7a a §7j) saíram
 
 **Verificação do passo:** `powershell -NoProfile -Command ". '${CLAUDE_PLUGIN_ROOT}/scripts/checks/lib.ps1'; 'N=' + (Get-ApkDeclarationNote '.')"` devolve `N=` vazio.
 
+## 7r. Conversa enxuta — o que o time não usa sai da conversa (v3.66.2)
+
+> Roda quando a versão instalada for anterior à `v3.66.2`, em qualquer projeto; o `/team init` também o oferece (passo 4a). **O passo propõe; nunca grava sem o formulário**: a mudança vale para todas as conversas do projeto, não só as do sprint.
+
+**Por quê:** cada chamada da conversa reenvia tudo o que ela carrega. Medido em 25/11 (Claude Code 2.1.331): uma conversa vazia abre com ~50 mil tokens, e ~28 mil deles são ferramentas, conectores da conta e habilidades que o time nunca usa (páginas publicadas, Word, PowerPoint, Excel, gráficos, Google Drive…). No garden, a sessão do sprint passava 72% das chamadas acima de 100 mil tokens, onde o Haiku cobra 5×.
+
+1. **Rode** `powershell -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/checks/lean-session.ps1" -Check` (só leitura). Exit 0 = já aplicada: diga em uma linha e pule.
+2. **Um formulário** (R22, "pedir mais contexto" por último), em linguagem simples, com o exemplo do ganho: *aplicar (recomendado) · não aplicar · pedir mais contexto*. Diga na descrição que vale para todas as conversas deste projeto e que se desfaz a qualquer momento.
+3. **Aplicar:** `… lean-session.ps1 -Apply`. Ele grava em `.claude/settings.local.json` (pessoal, fora do git) só o que falta, sem apagar nada do projeto, e anota o que acrescentou em `.team-project/lean-session.json`. Diga em uma linha que vale na próxima conversa e como desfazer (`… lean-session.ps1 -Off`). **Não aplicar:** registre a escolha em `.team-project/README.md` §7 só se o stakeholder pedir para lembrar depois.
+4. **Diga também**, em uma linha, os dois ajustes que já valem sem formulário: a conversa do `sprint run` reinicia em 100 mil tokens (`guards.json` → `run.sessionContextCap`; o valor que o projeto já declarou fica) e abre pelo cartão curto da sessão, e não mais pelo roteiro inteiro.
+
+**Verificação do passo:** `… lean-session.ps1 -Check` sai com exit 0 (aplicada) ou o stakeholder escolheu não aplicar.
+
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
 Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.
