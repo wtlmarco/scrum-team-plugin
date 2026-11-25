@@ -1,6 +1,15 @@
 ﻿# Testes das guardas (fase 1 e fase 2): entrega a cada despachante o JSON que o harness mandaria e confere a decisão.
 # Uso (na raiz do repositório-fonte): powershell -NoProfile -File scripts/checks/tests/run-guard-tests.ps1
 # Saída: tabela caso · esperado · obtido · ok; exit 1 se algum caso falhar.
+# v3.66.1 (item C): os casos se dividem nos grupos das seções (# ---------- vX.Y — … ----------; suite-blocks.ps1,
+# Get-GuardGroups), e cada grupo roda num processo com o seu $tmp e o seu projeto falso:
+#   -ListGroups              os grupos, com o número de casos
+#   -Groups 3,7              só esses grupos (o run-all-tests.ps1 sobe um processo por grupo, em paralelo)
+#   -CheckGroups [-Workers n] roda cada grupo sozinho e acusa o que só passa depois de outro (o estado que ele herdava
+#                            passa a ser montado no Setup dele — não se juntam grupos para esconder a dependência)
+#   -ResultFile <json>       grava { fail, rows } para o run-all-tests.ps1
+# Sem parâmetro, tudo em série, como antes.
+param([string]$Groups = '', [string]$ResultFile = '', [switch]$ListGroups, [switch]$CheckGroups, [int]$Workers = 4)
 
 $ErrorActionPreference = 'Stop'
 $root  = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
@@ -61,6 +70,50 @@ function Opt([string]$Label) { @{ label = $Label; description = 'x' } }
 # v3.66.0 (R36): a G24 vale em toda sessão principal — o caso que testa a forma do formulário (G3, H1, G18) grava antes a
 # rota fresca, como o impasse.ps1 raise faria; o que testa a rota (G24) monta a sua.
 $FreshRoute = { Set-Content -LiteralPath (Join-Path $proj '.team-project/.ask-route') ('{"rota":"scope","task":"T-1","motivo":"teste","at":"' + (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') + '"}') -Encoding UTF8 }
+
+# v3.66.1 (item C): cada grupo (seção do $cases) roda também sozinho, num processo com o projeto falso recém-montado. O grupo
+# cujos casos supõem um run em curso declara aqui o estado de partida, que o executor monta antes do primeiro caso dele — em
+# série e sozinho. Antes, esse estado vinha dos casos de outro grupo, e 16 grupos só passavam depois dos anteriores.
+#   -Task T-003|T-001 (o .active-task e o plano dela) · -Run <sprint> (o .active-run; -NoRun apaga) · -Guards <json> ('' apaga
+#   o guards.json; '*' deixa) · -Backlog <chave de $Backlogs> (o sprint-backlog.md do sprint do run)
+$Backlogs = @{
+    'T2-elegivel'      = "## História H-1 — x`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2705)) T-1 | a | — |`n| $([char]::ConvertFromUtf32(0x2B1C)) T-2 | b | T-1 |`n| $([char]::ConvertFromUtf32(0x2B1C)) T-3 | c | T-9 |`n"
+    'T3-bloqueada'     = "## História H-1 — x`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2B1C)) T-3 | c | T-9 |`n"
+    'T3-rastreabilidade' = "## História H-1 — x`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2B1C)) T-3 | c | — |`n`n## Rastreabilidade`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2B1C)) T-99 | fantasma | — |`n"
+    'portao-Q-S7'      = "## História H-1 — x`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2705)) T-1 | a | — |`n`n## Correção do portão — sprint 7`n`n| ID | Task | Depende de |`n|---|---|---|`n| $([char]::ConvertFromUtf32(0x2B1C)) Q-S7b | b | Q-S7 |`n| $([char]::ConvertFromUtf32(0x2B1C)) Q-S7 | achados do portão | T-1 |`n"
+}
+$RunBase = { param([string]$Task = 'T-003', [string]$Run = '1', [switch]$NoRun, [string]$Guards = '*', [string]$Backlog = '')
+    $tp = Join-Path $proj '.team-project'; $u = New-Object System.Text.UTF8Encoding($true)
+    New-Item -ItemType Directory -Force (Join-Path $tp 'sprints/1/plan'), (Join-Path $tmp 'transcripts') | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $tp 'sprints/1/plan/T-001-x.md'), "# Plano — T-001`n**História:** H-001`n**Arquivos tocados:** ``src/a.cs``,`n``tests/ATests.cs``, ``src/pages/plantio.page.ts```n`n## 1. Objetivo`n", $u)
+    [System.IO.File]::WriteAllText((Join-Path $tp 'sprints/1/plan/T-003-z.md'), "# Plano — T-003`n**Arquivos tocados:** ``src/e.cs```n``tests/ETests.cs```n`n**Arquivos protegidos:** ver §12`n`n## 12. Arquivos protegidos`n| ``src/z.cs`` | x |`n", $u)
+    $plan = if ($Task -eq 'T-001') { 'T-001-x.md' } else { 'T-003-z.md' }
+    Set-Content -LiteralPath (Join-Path $tp '.active-task') ('{ "trilha": "sprint", "id": "' + $Task + '", "plano": ".team-project/sprints/1/plan/' + $plan + '" }') -Encoding UTF8
+    if ($NoRun) { Remove-Item -LiteralPath (Join-Path $tp '.active-run') -Force -ErrorAction SilentlyContinue }
+    else { Set-Content -LiteralPath (Join-Path $tp '.active-run') ('{ "trilha": "sprint", "id": "' + $Run + '", "desde": "2026-10-06 10:00" }') -Encoding UTF8 }
+    if ($Guards -eq '') { Remove-Item -LiteralPath (Join-Path $tp 'guards.json') -Force -ErrorAction SilentlyContinue }
+    elseif ($Guards -ne '*') { Set-Content -LiteralPath (Join-Path $tp 'guards.json') $Guards -Encoding UTF8 }
+    if ($Backlog) { New-Item -ItemType Directory -Force (Join-Path $tp "sprints/$Run") | Out-Null; [System.IO.File]::WriteAllText((Join-Path $tp "sprints/$Run/sprint-backlog.md"), $Backlogs[$Backlog], $u) }
+}
+$npmTest = '{ "runCommands": ["npm test"] }'
+$GroupBase = [ordered]@{
+    'v3.44 — G14 run sem trava'      = { & $RunBase -NoRun -Guards '' }
+    'v3.51.2 — negações do fix run'  = { & $RunBase -Guards $npmTest }
+    'v3.47.1 — G14'                  = { & $RunBase -Guards $npmTest }
+    'v3.48 — achados'                = { & $RunBase -Guards $npmTest }
+    'v3.47 (M2)'                     = { & $RunBase -Guards '' }
+    'v3.47 (M3)'                     = { & $RunBase -Task T-001 -Guards '' }
+    'v3.57.0 — o watcher'            = { & $RunBase -Task T-001 -Run 7 -Guards '{ "disabled": [] }' -Backlog 'T2-elegivel' }
+    'v3.57.2 (note.md item 23'       = { & $RunBase -Task T-001 -Run 7 -Guards '{ "disabled": [] }' -Backlog 'T2-elegivel' }
+    'v3.65.7 — G20'                  = { & $RunBase -Task T-001 -Run 7 -Guards '{ "disabled": [] }' -Backlog 'T3-bloqueada' }
+    'v3.65.11 —'                     = { & $RunBase -Task T-001 -Run 7 -Guards '{ "disabled": [] }' -Backlog 'T3-bloqueada' }
+    'v3.51.4 —'                      = { & $RunBase -Task T-001 -Run 7 -Guards '{ "disabled": [] }' -Backlog 'T3-bloqueada' }
+    'v3.52 — orquestrador'           = { & $RunBase -Task T-001 -Run 7 -Guards '' -Backlog 'T3-rastreabilidade' }
+    'v3.52.2 —'                      = { & $RunBase -Task T-001 -Run 7 -Guards '' -Backlog 'T3-rastreabilidade' }
+    'v3.53.1 —'                      = { & $RunBase -Task T-001 -Run 7 -Guards '' -Backlog 'portao-Q-S7' }
+    'v3.53.5 —'                      = { & $RunBase -Task T-001 -Run 7 -Guards '' -Backlog 'portao-Q-S7' }
+    'v3.64.1 (sprint 6'              = { & $RunBase -Task T-001 -Run 7 -Guards '{ "runCommands": ["npm test"], "targets": { "android": { "package": "br.x", "repair": "docker restart horta-emulador; adb connect localhost:5555" }, "web": { "url": "http://x" } } }' -Backlog 'portao-Q-S7' }
+}
 
 $cases = @(
     @{ Name = 'G1 commit com .team-project no stage'; Script = 'pre-tool.ps1'; Expect = 2; Setup = { & git -C $proj add -f .team-project/README.md 2>$null }
@@ -1013,10 +1066,13 @@ $cases = @(
        Check = { @(Get-Content -LiteralPath (Join-Path $proj '.team-project/usage.jsonl') -Encoding UTF8 | Where-Object { $_ -match 'run0000006' }).Count -eq 2 }
        Payload = @{ hook_event_name = 'SubagentStop'; agent_id = 'run0000006'; agent_type = 'team:task-runner'; transcript_path = (Join-Path $tmp 'transcripts/sess6.jsonl') } },
     # ---------- v3.53.1 — plugin-report do sprint 4 do garden: agente vivo de outra sessão, teto do dev (G23), works do dev, git de leitura ----------
-    @{ Name = 'Registro do Agent (v3.53.1): leva o processo hospedeiro (host_pid vivo, host_start)'; Script = 'pre-tool.ps1'; Expect = 0
+    # v3.66.1 (item D): o hospedeiro é simulado (TEAM_TEST_HOST_PID = esta suíte) — fora da sessão do Claude Code (rodada
+    # desacoplada) não há hospedeiro de verdade, e o caso falhava em toda rodada separada. Prova o mesmo: o registro leva o
+    # processo vivo e o horário de início dele.
+    @{ Name = 'Registro do Agent (v3.53.1): leva o processo hospedeiro (host_pid vivo, host_start)'; Script = 'pre-tool.ps1'; Expect = 0; Env = @{ TEAM_TEST_HOST_PID = [string]$PID }
        Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Force -ErrorAction SilentlyContinue }
        Check = { $a = @(Get-Content -LiteralPath (Join-Path $proj '.team-project/.active-agents') -Raw -Encoding UTF8 | ConvertFrom-Json | ForEach-Object { $_ })
-                 $a.Count -eq 1 -and [int]$a[0].host_pid -gt 0 -and $a[0].host_start -match '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$' -and (Get-Process -Id ([int]$a[0].host_pid) -ErrorAction SilentlyContinue) }
+                 $a.Count -eq 1 -and [int]$a[0].host_pid -eq $PID -and $a[0].host_start -eq (Get-Process -Id $PID).StartTime.ToString('yyyy-MM-dd HH:mm:ss') }
        Payload = @{ tool_name = 'Agent'; session_id = 'sessH'; tool_input = @{ subagent_type = 'team:task-runner'; description = 'Executor T-050'; prompt = 'Conduza a T-050' } } },
     @{ Name = 'SessionStart startup (v3.53.1): agente com o processo hospedeiro vivo fica e a sessão é avisada; o de processo morto vai ao .interrupted'; Script = 'session-start.ps1'; Expect = 0
        Setup = { Remove-Item -LiteralPath (Join-Path $proj '.team-project/.interrupted') -Force -ErrorAction SilentlyContinue
@@ -1321,9 +1377,53 @@ foreach ($im in $invModes) {
         Payload = @{ tool_name = 'AskUserQuestion'; session_id = 'sessInv'; tool_input = @{ questions = @(@{ question = 'Você aprova esta decisão? Exemplo: o que muda para você em cada opção está na descrição.'; header = 'Modo'; multiSelect = $false; options = @((Opt 'Aprovar (Recomendado)'), (Opt 'Pedir mais contexto')) }) } } }
 }
 
+# v3.66.1 (item C): os grupos.
+. (Join-Path $PSScriptRoot 'suite-blocks.ps1')
+$gg = Get-GuardGroups $PSCommandPath
+$stopAll = { try { Stop-Process -Id $watchdog.Id -Force -ErrorAction SilentlyContinue } catch { }; Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue }
+if ($ListGroups) {
+    $sum = 0; $seen = @{}
+    foreach ($g in $gg.Groups) { $gc = @(Get-GuardGroupCases $gg $g.Index $cases.Count); $sum += $gc.Count; foreach ($k in $gc) { $seen[$k] = 1 + [int]$seen[$k] }; Write-Output ("grupo {0,2}  {1,3} casos  linhas {2}–{3}  {4}" -f $g.Index, $gc.Count, $g.From, $g.To, $g.Title) }
+    $one = @($seen.Values | Where-Object { $_ -ne 1 }).Count -eq 0 -and $seen.Count -eq $cases.Count
+    Write-Output ("{0} casos nos {1} grupos · a lista tem {2}{3}" -f $sum, $gg.Groups.Count, $cases.Count, $(if ($one -and $sum -eq $cases.Count) { ' · cada caso num grupo só' } else { ' · DIVERGE' }))
+    & $stopAll; exit 0
+}
+if ($CheckGroups) {
+    $cg = Invoke-GuardGroupCheck $PSCommandPath $gg $tmp $Workers
+    foreach ($l in $cg.Lines) { Write-Output $l }
+    & $stopAll
+    if ($cg.Bad) { exit 1 }; exit 0
+}
+$sel = @(0..($cases.Count - 1))
+if ($Groups) {
+    $sel = @()
+    foreach ($gi in @($Groups -split '[,\s]+' | Where-Object { $_ })) { $sel += @(Get-GuardGroupCases $gg ([int]$gi) $cases.Count) }
+    $sel = @($sel | Sort-Object -Unique)
+}
+
+# O estado de partida de cada grupo ($GroupBase), no primeiro caso dele. Chave que não acha exatamente uma seção quebra a
+# suíte: seção renomeada não pode deixar o grupo sem o estado que ele supõe.
+$groupStart = @{}
+foreach ($k in $GroupBase.Keys) {
+    $hit = @($gg.Groups | Where-Object { $_.Title.StartsWith($k) })
+    if ($hit.Count -ne 1) { & $stopAll; throw "run-guard-tests: a chave '$k' de `$GroupBase acha $($hit.Count) seções (esperado 1)" }
+    $first = @(Get-GuardGroupCases $gg $hit[0].Index $cases.Count)
+    if ($first.Count) { $groupStart[$first[0]] = $GroupBase[$k] }
+}
 $rows = @(); $fail = 0
-foreach ($c in $cases) {
-    if ($c.Setup) { & $c.Setup }
+foreach ($ci in $sel) {
+    $c = $cases[$ci]
+    $cw = [System.Diagnostics.Stopwatch]::StartNew()
+    if ($groupStart.ContainsKey($ci)) {
+        try { & $groupStart[$ci] } catch { $fail++; $rows += [pscustomobject]@{ Caso = $c.Name; Esperado = $c.Expect; Obtido = 'base'; Ok = 'FALHOU'; Mensagem = "o estado de partida do grupo quebrou: $($_.Exception.Message)"; Seg = 0 }; continue }
+    }
+    # v3.66.1: a Setup que quebra (o estado que ela esperava não existe) falha o caso, com o erro — não derruba o processo.
+    if ($c.Setup) {
+        try { & $c.Setup } catch {
+            $fail++; $rows += [pscustomobject]@{ Caso = $c.Name; Esperado = $c.Expect; Obtido = 'Setup'; Ok = 'FALHOU'; Mensagem = "a Setup quebrou: $($_.Exception.Message)"; Seg = [int]$cw.Elapsed.TotalSeconds }
+            continue
+        }
+    }
     $envs = if ($c.Env) { $c.Env } else { @{} }
     $tl0 = Get-TimeoutMark
     $r = Invoke-Hook $c.Script $c.Payload $envs ([string]$c.Raw)
@@ -1336,16 +1436,16 @@ foreach ($c in $cases) {
     }
     if ($ok -and $c.ContainsKey('ExpectErr')) { $ok = $r.Err -like "*$($c.ExpectErr)*" }
     if ($ok -and $c.ContainsKey('NotOut')) { $ok = $r.Out -notlike "*$($c.NotOut)*" }
-    if ($ok -and $c.Check) { $ok = [bool](& $c.Check) }
+    if ($ok -and $c.Check) { try { $ok = [bool](& $c.Check) } catch { $ok = $false; $r.Err = "o Check quebrou: $($_.Exception.Message) " + $r.Err } }
     if (-not $ok) { $fail++ }
     $detail = (($r.Err + ' ' + $r.Out) -replace '\s+', ' ').Trim()
     if ($detail.Length -gt 90) { $detail = $detail.Substring(0, 90) + '…' }
-    $rows += [pscustomobject]@{ Caso = $c.Name; Esperado = $c.Expect; Obtido = $r.Code; Ok = $(if ($ok) { 'ok' } else { 'FALHOU' }); Mensagem = $detail }
+    $rows += [pscustomobject]@{ Caso = $c.Name; Esperado = $c.Expect; Obtido = $r.Code; Ok = $(if ($ok) { 'ok' } else { 'FALHOU' }); Mensagem = $detail; Seg = [int]$cw.Elapsed.TotalSeconds }
 }
 
-try { Stop-Process -Id $watchdog.Id -Force -ErrorAction SilentlyContinue } catch { }
-Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
-$rows | Format-Table -AutoSize -Wrap | Out-String -Width 220 | Write-Output
-Write-Output ("{0} casos · {1} falharam" -f $cases.Count, $fail)
+& $stopAll
+if ($ResultFile) { [System.IO.File]::WriteAllText($ResultFile, (ConvertTo-Json -InputObject ([ordered]@{ fail = $fail; rows = @($rows) }) -Depth 4), (New-Object System.Text.UTF8Encoding($false))) }
+$rows | Select-Object Caso, Esperado, Obtido, Ok, Mensagem | Format-Table -AutoSize -Wrap | Out-String -Width 220 | Write-Output
+Write-Output ("{0} casos · {1} falharam" -f $sel.Count, $fail)
 if ($fail -gt 0) { exit 1 }
 exit 0
