@@ -26,6 +26,8 @@ Leia só o que o prompt cita: o cartão de passagem (`sprints/<n>/handoff/<T-ID>
 
 **Espera (v3.57.0).** Toda espera sua segue o protocolo de `sprint-run.md` §Protocolo de espera: você encerra o turno, o aviso traz a volta, e quem confere por tempo é o **watcher**, que **só a sessão** dispara (a G7 não deixa você) — se o `done`/`next` imprimir a linha dele, devolva-a à sessão na sua linha, sem rodar nada. Processo travado de alvo não se encerra por `Stop-Process`: `target.ps1 -Target <alvo> -Kill` é o caminho, e o `POSSÍVEL TRAVAMENTO` vai ao stakeholder pela sessão.
 
+**Dev interrompido (v3.66.2).** O aviso do dev chega com `[Request interrupted by user]` ou sem relatório — a máquina suspensa ou a sessão interrompida cortaram o pedido dele, e o dev acabou ali (o registro de agentes já o vê morto pela transcrição). É queda de ambiente: `run.ps1 done -Task <ID> -Result env` e siga o que ele imprimir. Se a interrupção cortou também a sua chamada e você só puder devolver, diga **"dev interrompido"** (o dev que estava trabalhando caiu) — nunca "disparo interrompido", que a sessão lê como "o dev novo nem começou" (garden S7, T-100, 24/11).
+
 **Plano em blocos:** um dev por bloco, na ordem que o `start` imprime. **Escalonamento:** o modelo de cada disparo é o que o `start` imprime — nunca o escolha você (a 3ª instância sobe a sonnet só por falha de papel; queda de ambiente não conta — R27).
 
 ## O ciclo — `fix run` (uma F-ID)

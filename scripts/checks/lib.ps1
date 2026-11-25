@@ -331,7 +331,63 @@ function Get-Decisive([string]$Log) {
 # processo do comando (pid, hora de criação, chave, quem o iniciou) enquanto ele roda e apaga o registro no fim. Se quem chamou
 # morre no meio (o verify encerrado pela ferramenta, o dev que caiu), o registro fica: é o que o verify.ps1 -Kill e a rodada
 # seguinte encerram — só esses processos, nunca um de fora (no sprint 5 sobraram suítes e Chrome que só saíram com taskkill à mão).
-function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [string]$Log, [double]$TimeoutMinutes, $EnvExtra, [switch]$KeepDescendants, [double]$ClockSkewMin = 0, [string]$PidFile = '') {
+# v3.66.2 (item D, garden S7, 24/11): a máquina não dorme por tempo ocioso no meio de um comando pesado. O Windows entrou em
+# espera moderna por "Idle Timeout" às 08:10, no meio da suíte da T-100, e em dezenas de outros momentos desde as 05:06.
+# SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED [| ES_DISPLAY_REQUIRED]) vale enquanto esta thread vive e é
+# desfeito no fim; não impede a tampa fechada nem o botão de energia (decisão do usuário). guards.json → machine.keepAwake
+# (padrão true), machine.keepAwakeMinMinutes (padrão 5: só comando com prazo maior), machine.keepAwakeDisplay (padrão false).
+# TEAM_TEST_KEEPAWAKE_LOG (só a suíte): grava as chamadas nesse arquivo em vez de chamar o Windows.
+function Get-KeepAwakeConfig([string]$Root) {
+    $c = [ordered]@{ On = $true; MinMinutes = 5.0; Display = $false }
+    $gp = Join-Path $Root '.team-project/guards.json'
+    if (Test-Path -LiteralPath $gp) {
+        try {
+            $m = (Read-Text $gp | ConvertFrom-Json).machine
+            if ($m) {
+                if ($null -ne $m.keepAwake) { $c.On = [bool]$m.keepAwake }
+                if ($null -ne $m.keepAwakeMinMinutes) { $c.MinMinutes = [double]$m.keepAwakeMinMinutes }
+                if ($null -ne $m.keepAwakeDisplay) { $c.Display = [bool]$m.keepAwakeDisplay }
+            }
+        } catch { }
+    }
+    return [pscustomobject]$c
+}
+function Set-KeepAwake([bool]$On, [bool]$Display = $false) {
+    # ES_CONTINUOUS = 0x80000000, ES_SYSTEM_REQUIRED = 0x1, ES_DISPLAY_REQUIRED = 0x2 (em decimal: o 5.1 lê 0x80000000 como Int32 negativo)
+    $flags = [uint32]([long]2147483648 + $(if ($On) { 1 + $(if ($Display) { 2 } else { 0 }) } else { 0 }))
+    if ($env:TEAM_TEST_KEEPAWAKE_LOG) { try { [System.IO.File]::AppendAllText($env:TEAM_TEST_KEEPAWAKE_LOG, ('0x{0:X8}' -f $flags) + "`n") } catch { }; return }
+    try {
+        if (-not ('TeamPlugin.KeepAwake' -as [type])) { Add-Type -Namespace 'TeamPlugin' -Name 'KeepAwake' -MemberDefinition '[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint esFlags);' -ErrorAction Stop }
+        $null = [TeamPlugin.KeepAwake]::SetThreadExecutionState($flags)
+    } catch { }
+}
+# v3.66.2 (item C): o tamanho REAL do log — aberto com compartilhamento, e não pela data da pasta, que não anda enquanto o
+# filho segura o arquivo aberto. -1 sem arquivo.
+function Get-LogLength([string]$Path) {
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return -1 }
+    $fs = $null
+    try { $fs = [System.IO.File]::Open($Path, 'Open', 'Read', 'ReadWrite, Delete'); return [long]$fs.Length } catch { return -1 } finally { if ($fs) { $fs.Dispose() } }
+}
+# v3.66.2 (item C): o pulso do comando, gravado a cada volta do laço do Invoke-ProjectCommand em heartbeat.json, na pasta do
+# log. A sonda (Get-WaitPulse) lê dele a rodada em curso, quando a saída cresceu pela última vez e as suspensões.
+function Write-CommandHeartbeat([string]$Path, $Hb) {
+    try { [System.IO.File]::WriteAllText($Path, ($Hb | ConvertTo-Json -Depth 4 -Compress), (New-Object System.Text.UTF8Encoding($false))) } catch { }
+}
+# v3.66.2 (item D3): o motivo da 2ª rodada em palavras — os trechos em que a máquina dormiu ("máquina suspensa 06:52–07:53"),
+# ou, sem trecho medido (suspensão percebida só pelo relógio), "suspensão do sistema".
+function Format-SuspensionReason($R) {
+    $sp = @(); if ($R -and $R.Contains('suspensions')) { $sp = @($R.suspensions) }
+    if (-not $sp.Count) { return 'suspensão do sistema' }
+    $parts = @($sp | ForEach-Object { try { '{0}–{1}' -f ([datetime]::Parse([string]$_.from)).ToString('HH:mm'), ([datetime]::Parse([string]$_.to)).ToString('HH:mm') } catch { $null } } | Where-Object { $_ })
+    return "máquina suspensa $($parts -join ', ')"
+}
+function Read-CommandHeartbeat([string]$Dir) {
+    if (-not $Dir) { return $null }
+    $p = Join-Path $Dir 'heartbeat.json'
+    if (-not (Test-Path -LiteralPath $p)) { return $null }
+    try { return (Read-Text $p | ConvertFrom-Json) } catch { return $null }
+}
+function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [string]$Log, [double]$TimeoutMinutes, $EnvExtra, [switch]$KeepDescendants, [double]$ClockSkewMin = 0, [string]$PidFile = '', [int]$Attempt = 1, [string]$AttemptReason = '') {
     $u8 = New-Object System.Text.UTF8Encoding($false)
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $t0 = Get-Date   # v3.57.0 (item 8): relógio de parede, para perceber a suspensão do sistema (o WaitForExit não conta o tempo dormindo)
@@ -345,7 +401,37 @@ function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [strin
     $null = $p.Handle   # sem o handle aberto, o ExitCode volta vazio no 5.1
     if ($PidFile) { try { [System.IO.File]::WriteAllText($PidFile, ([ordered]@{ pid = $p.Id; created = (Get-ProcessCreated $p.Id); key = $Key; owner = $PID; at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } | ConvertTo-Json -Compress), $u8) } catch { } }
     $limit = if ($TimeoutMinutes -gt 0) { [Math]::Max(0.05, $TimeoutMinutes) } else { 9 }
-    $timedOut = -not $p.WaitForExit([int]($limit * 60000))
+    # v3.66.2 (item C, garden S7, T-100, 24/11): o WaitForExit único não dizia nada durante a espera. A suíte ficou congelada
+    # de 06:52 a 07:53 (tampa fechada), e a sonda só via "nenhum arquivo há 1h26" — a data da pasta não anda com o log aberto.
+    # Depois, a repetição recomeçou a suíte às ~07:59, e a sessão leu "voltou a andar". Agora o laço volta a cada 30 s (ou
+    # menos, no fim do prazo) e grava heartbeat.json: rodada, tamanho real do log, quando ele cresceu e os trechos em que a
+    # máquina dormiu (volta que levou mais de 2 min). O prazo conta o tempo ACORDADO; a regra da suspensão abaixo não muda.
+    $hbPath = Join-Path (Split-Path -Parent $Log) 'heartbeat.json'
+    $hbTick = if ($env:TEAM_TEST_HEARTBEAT_SEC) { [double]$env:TEAM_TEST_HEARTBEAT_SEC } else { 30.0 }
+    $hbGap = [Math]::Max(120.0, $hbTick * 4)
+    $hb = [ordered]@{ key = $Key; attempt = $Attempt; reason = $AttemptReason; started = $t0.ToString('yyyy-MM-dd HH:mm:ss'); at = $t0.ToString('yyyy-MM-dd HH:mm:ss'); pid = $p.Id; logBytes = -1; lastGrowth = $t0.ToString('yyyy-MM-dd HH:mm:ss'); suspensions = @(); done = $false }
+    Write-CommandHeartbeat $hbPath $hb
+    $ka = Get-KeepAwakeConfig $Root
+    $kaOn = $ka.On -and $limit -gt $ka.MinMinutes
+    if ($kaOn) { Set-KeepAwake $true $ka.Display }
+    $awake = 0.0; $lastTick = $t0; $lastLen = -1L; $susp = @(); $timedOut = $false
+    try {
+        while ($true) {
+            $ms = [int][Math]::Max(200, [Math]::Min($hbTick * 1000, ($limit - $awake) * 60000))
+            if ($p.WaitForExit($ms)) { break }
+            $now = Get-Date; $gapS = ($now - $lastTick).TotalSeconds
+            if ($gapS -gt $hbGap) { $susp += [ordered]@{ from = $lastTick.ToString('yyyy-MM-dd HH:mm:ss'); to = $now.ToString('yyyy-MM-dd HH:mm:ss'); minutes = [Math]::Round($gapS / 60, 1) } } else { $awake += $gapS / 60 }
+            $lastTick = $now
+            $len = Get-LogLength $Log
+            if ($len -ne $lastLen) { $lastLen = $len; $hb.lastGrowth = $now.ToString('yyyy-MM-dd HH:mm:ss') }
+            $hb.at = $now.ToString('yyyy-MM-dd HH:mm:ss'); $hb.logBytes = $lastLen; $hb.suspensions = @($susp)
+            Write-CommandHeartbeat $hbPath $hb
+            if ($awake -ge $limit) { $timedOut = $true; break }
+        }
+    } finally {
+        if ($kaOn) { Set-KeepAwake $false }
+        $hb.done = $true; $hb.at = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'); Write-CommandHeartbeat $hbPath $hb
+    }
     $kept = @()
     if ($timedOut) { $null = Stop-ProcessTree $p.Id; $p.WaitForExit(5000) | Out-Null; $code = 124 }
     elseif ($KeepDescendants) { $p.WaitForExit(); $code = $p.ExitCode; $kept = @(Get-DescendantIds $p.Id) }
@@ -370,7 +456,7 @@ function Invoke-ProjectCommand([string]$Root, [string]$Key, [string]$Cmd, [strin
     $disc = $null
     if (-not $envFail -and $code -ne 0) { $disc = Get-RunnerDisconnect (Read-LogText $Log) }
     if ($disc) { $envFail = "o navegador da suíte caiu no meio ($($disc.Text))$(if ($disc.At) { " depois do teste $($disc.At) de $($disc.Total)" }) — não é teste reprovado" }
-    $r = [ordered]@{ key = $Key; command = $Cmd; exit = $code; seconds = [int]$sw.Elapsed.TotalSeconds; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive; environment = $envFail; hygiene = @($hy.Tools); warnings = @($hy.Warnings); suspended = $suspended; disconnect = $disc }
+    $r = [ordered]@{ key = $Key; command = $Cmd; exit = $code; seconds = [int]$sw.Elapsed.TotalSeconds; log = ($Log.Substring($Root.Length + 1) -replace '\\', '/'); lines = $d.Lines; decisive = $d.Decisive; environment = $envFail; hygiene = @($hy.Tools); warnings = @($hy.Warnings); suspended = $suspended; disconnect = $disc; attempt = $Attempt; suspensions = @($susp) }
     if ($KeepDescendants) { $r.kept = $kept }
     return $r
 }
@@ -1520,8 +1606,26 @@ function Get-WaitPulse([int]$ProcId, [string]$Desde = '', [string]$Dir = '') {
     }
     $wmin = $null
     if ($Dir -and (Test-Path -LiteralPath $Dir)) {
-        $lw = @(Get-ChildItem -LiteralPath $Dir -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -notin 'verify.lock', 'quality.lock' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
+        $lw = @(Get-ChildItem -LiteralPath $Dir -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -notin 'verify.lock', 'quality.lock', 'heartbeat.json' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
         if ($lw.Count) { $wmin = [Math]::Max(0, ($now - $lw[0].LastWriteTime).TotalMinutes) }
+    }
+    # v3.66.2 (item C): com o pulso do comando (heartbeat.json, gravado a cada 30 s pelo Invoke-ProjectCommand), a última
+    # saída vem do tamanho real do log, e o tempo conta da rodada em curso. Na T-100 do garden (24/11) a sonda somou as duas
+    # rodadas ("vivo há ~92 min") e leu a 2ª, recomeçada do zero, como a 1ª voltando a andar.
+    $hbT = ''; $hbUsed = $false
+    $hb = Read-CommandHeartbeat $Dir
+    if ($hb -and -not $hb.done) {
+        try {
+            $hbAt = [datetime]::Parse([string]$hb.at)
+            if (($now - $hbAt).TotalMinutes -lt 5) {
+                $wmin = [Math]::Max(0, ($now - [datetime]::Parse([string]$hb.lastGrowth)).TotalMinutes); $hbUsed = $true
+                $hbStart = [datetime]::Parse([string]$hb.started)
+                $start = $hbStart; $min = [Math]::Max(0, ($now - $hbStart).TotalMinutes)
+                if ([int]$hb.attempt -ge 2) { $hbT = " · $([int]$hb.attempt)ª rodada de $([string]$hb.key) desde $($hbStart.ToString('HH:mm')): recomeçou do zero$(if ($hb.reason) { " ($([string]$hb.reason))" })" }
+                $spx = @($hb.suspensions)
+                if ($spx.Count) { $hbT += " · máquina suspensa nesta rodada: $(@($spx | ForEach-Object { try { '{0}–{1}' -f ([datetime]::Parse([string]$_.from)).ToString('HH:mm'), ([datetime]::Parse([string]$_.to)).ToString('HH:mm') } catch { } }) -join ', ')" }
+            }
+        } catch { }
     }
     # v3.58.1: a CPU acima é a dos processos VIVOS da árvore — não é cumulativa: o filho que termina leva a CPU dele junto
     # (medido: 6 filhos de 3 s de CPU cada, a soma oscilou 0,7 → 3,5 → 0,9 → 4,0 s e nunca passou de 4 s dos ~18 s gastos).
@@ -1532,7 +1636,7 @@ function Get-WaitPulse([int]$ProcId, [string]$Desde = '', [string]$Dir = '') {
     $spawnMin = $null; if ($kidsT.Count) { $spawnMin = [Math]::Max(0, ($now - (@($kidsT | Sort-Object CreationDate)[-1]).CreationDate).TotalMinutes) }
     $stalled = ($min -ge 10) -and ($null -eq $wmin -or $wmin -ge 10) -and ($null -eq $spawnMin -or $spawnMin -ge 10) -and ($cpu -lt [Math]::Max(5, $min * 60 * 0.005))
     $fmt = { param($m) if ($m -lt 60) { "$([int][Math]::Floor($m)) min" } else { '{0}h{1:00}' -f [int][Math]::Floor($m / 60), [int][Math]::Floor($m % 60) } }
-    $txt = "há $(& $fmt $min) · CPU $([int][Math]::Round($cpu)) s" + $(if ($leaf) { " · esperando: $leaf" } else { '' }) + $(if ($null -ne $spawnMin -and $spawnMin -lt 10) { " · processo filho novo há $(& $fmt $spawnMin)" } else { '' }) + $(if ($null -ne $wmin) { " · último arquivo há $(& $fmt $wmin)" } elseif ($Dir) { ' · nenhum arquivo gravado' } else { '' })
+    $txt = "há $(& $fmt $min) · CPU $([int][Math]::Round($cpu)) s" + $(if ($leaf) { " · esperando: $leaf" } else { '' }) + $(if ($null -ne $spawnMin -and $spawnMin -lt 10) { " · processo filho novo há $(& $fmt $spawnMin)" } else { '' }) + $(if ($null -ne $wmin) { $(if ($hbUsed) { " · saída do comando há $(& $fmt $wmin)" } else { " · último arquivo há $(& $fmt $wmin)" }) } elseif ($Dir) { ' · nenhum arquivo gravado' } else { '' }) + $hbT
     if ($stalled) { $txt += " · $([char]0x26A0) POSSÍVEL TRAVAMENTO (sem CPU, processo filho nem arquivo novo há 10 min ou mais)" }
     return [pscustomobject]@{ Min = $min; CpuS = $cpu; Leaf = $leaf; WriteMin = $wmin; SpawnMin = $spawnMin; Stalled = $stalled; Text = $txt }
 }

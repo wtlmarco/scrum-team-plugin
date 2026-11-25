@@ -140,6 +140,21 @@ A regra "quem resolve" morava em nove lugares, e cada entrega remendava um deles
 | PO · Arquiteto · UX · QA | Recebem o impasse do tipo deles, decidem, gravam no próprio documento e devolvem o lugar (`close -Ref`); o relato do stakeholder vale como evidência observada para a QA |
 | SM | O kanban mostra as Decisões do time; na retrospectiva, a linha "subiu a você" de tipo que não era do stakeholder é achado de processo |
 
+### Addendum v3.66.2 — toda espera tem quem avise, e a conversa do sprint nasce menor (SM) — 25/11/2026
+
+**Instrução:** (stakeholder, 24–25/11/2026, depois da T-100 do sprint 7 do garden, parada 3 h com o verify verde) investigar a parada e "a inconsistência na frase que diz que voltou a andar"; aprovados o watcher paciente, a máquina acordada parametrizável, o reinício em 100 mil e a conversa enxuta, oferecida por projeto. Plano em `melhorias/plano-v3.66.2.md`.
+**Classificação:** regra (protocolo de espera: quem espera declara quem avisa; a G20 não libera o "esperar" sem agente da sessão em voo) · instrumento (régua única de vida no registro de agentes; pulso do comando; `lean-session.ps1`) · formato de documento (cartão da sessão do `sprint run`; `/sm` curto).
+
+| Documento | Seção | Mudança |
+|---|---|---|
+| `process/sprint-run.md` · `agents/watcher.md` | §Protocolo de espera, regra 6 e contrato do watcher | O `next` imprime `quem avisa:`; o watcher chama a sonda até a espera mudar (terminou, travado ou teto de 60 min) e repete as palavras dela ("recomeçou do zero", nunca "voltou a andar"); a sessão não encerra o turno sem agente dela em voo |
+| `process/sprint-run-session.md` (novo) · `process/sm-modes.md` (novo) · `commands/sm.md` | abertura do `sprint run` · tabela dos modos | A sessão abre pelo cartão (3,9 mil caracteres) e consulta o roteiro só por seção; o `/sm`, enviado inteiro a cada chamada, aponta o cartão e o arquivo dos modos |
+| `agents/task-runner.md` | Dev interrompido | Interrupção do dev é queda de ambiente (`done -Result env`); a linha diz "dev interrompido", nunca "disparo interrompido" |
+| `process/working-rules.md` R29 · `working-rules-index.md` · `templates/retrospective.md` | linha `SESSÃO:` | O teto que vira achado é o `run.sessionContextCap`, padrão 100 mil (era 150 mil) |
+| `rituals/team-update.md` §7r · `rituals/team-init.md` §4a · `how-to.md` | conversa enxuta | Oferta, com formulário, de tirar das conversas do projeto o que o time não usa; desfaz com `-Off` |
+
+**Por quê:** na T-100, o dev morreu sem SubagentStop quando a tampa abriu (07:53), o registro o contou vivo e segurou o executor "aguardando filho"; o watcher voltou "vivo" às 08:01 lendo a 2ª rodada da suíte, recomeçada depois da suspensão, como a 1ª voltando a andar; a sessão encerrou o turno e ninguém rodou o `next` quando o verify terminou (08:24). Do lado do custo, a sessão do sprint lia 70 mil caracteres de roteiro ao abrir e passava 72% das chamadas acima de 100 mil tokens, onde o Haiku cobra 5×.
+
 ---
 
 ## v3.65 — Revisão geral: uma fonte por regra, o plano grande com precedência escrita e o normativo sem história (SM + Arquiteto + Dev) — 19/11/2026

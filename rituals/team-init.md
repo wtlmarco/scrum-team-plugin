@@ -59,6 +59,8 @@ Com os comandos reais de build/teste/lint do passo 3, siga os **passos 7f e 7h d
 
 **Stacks e conhecimento do projeto (v3.56.0).** No **mesmo formulário**, proponha `"stacks"` no `guards.json` pela stack do passo 3 (as pastas de `${CLAUDE_PLUGIN_ROOT}/standards/stacks/`: `angular`, `ionic-capacitor`, `react`, `kotlin-android`, `dotnet`, ou uma nova só com a camada local) — é o que decide quais armadilhas da stack o cartão do dev traz. Crie `.team-project/architect/knowledge.md` a partir de `${CLAUDE_PLUGIN_ROOT}/roles/architect/templates/knowledge.md`, com `**Classificação desde:** S1` (toda decisão de 🔺 GAP declara Origem e Lição desde o primeiro sprint), e a pasta vazia `.team-project/standards/stacks/`. O mesmo que o `knowledge.ps1 -Migrate -Apply` do passo 7m de `team-update.md` faz, sem decisões a classificar.
 
+**Conversa enxuta (v3.66.2).** No **mesmo formulário**, ofereça tirar das conversas deste projeto o que o time não usa (ferramentas, conectores da conta e habilidades de Word, PowerPoint, Excel, gráficos…): ~28 mil tokens a menos em cada conversa nova. Siga o **passo 7r de `${CLAUDE_PLUGIN_ROOT}/rituals/team-update.md`** (`lean-session.ps1 -Check`, e `-Apply` só com a aprovação). Vale para todas as conversas do projeto e se desfaz com `-Off`.
+
 ## 5. Aponte o próximo passo
 
 Conforme a resposta do passo 3:

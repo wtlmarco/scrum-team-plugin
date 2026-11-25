@@ -271,10 +271,51 @@ function Test-AgentRoundOpen($Agent, $Rounds) {
     if ($Rounds[$id].waiting) { return $true }
     try { return ([datetime]::Parse([string]$Rounds[$id].ts) -lt [datetime]::Parse([string]$Agent.at)) } catch { return $true }
 }
+# v3.66.2 (garden S7, T-100, 24/11 07:53): o agente interrompido não passa pela SubagentStop nem grava linha de rodada. A
+# volta da espera moderna do Windows abortou o pedido preso do dev ("[Request interrupted by user]"), e o registro o contou
+# vivo: o executor ficou "aguardando filho" de um dev morto, o next mandou esperar e o sprint parou. O fim fica na transcrição
+# do subagente — <pasta da transcrição da sessão>/<session>/subagents/agent-<agent_id>.jsonl, com a transcrição da sessão em
+# .team-project/.session-transcript (prompt-submit.ps1). $null quando não há como achá-la.
+function Get-SubagentTranscript([string]$ProjectDir, $Agent) {
+    $id = [string]$Agent.agent_id; $sid = if ($Agent.PSObject.Properties['session']) { [string]$Agent.session } else { '' }
+    if (-not $ProjectDir -or -not $id -or -not $sid) { return $null }
+    $cur = Join-Path $ProjectDir '.team-project/.session-transcript'
+    if (-not (Test-Path -LiteralPath $cur)) { return $null }
+    $st = ''; try { $st = ([System.IO.File]::ReadAllText($cur, [System.Text.Encoding]::UTF8)).Trim() } catch { return $null }
+    if (-not $st) { return $null }
+    try { $p = Join-Path (Join-Path (Join-Path (Split-Path -Parent $st) $sid) 'subagents') "agent-$id.jsonl" } catch { return $null }
+    if (Test-Path -LiteralPath $p) { return $p }
+    return $null
+}
+# v3.66.2: a última fala da transcrição do subagente (usuário ou assistente) é a interrupção — o agente acabou ali, sem
+# SubagentStop. Sem transcrição legível: $false (vale só o prazo de sinal de vida).
+function Test-AgentInterrupted([string]$ProjectDir, $Agent) {
+    $p = Get-SubagentTranscript $ProjectDir $Agent
+    if (-not $p) { return $false }
+    $tail = @(); try { $tail = @(Get-Content -LiteralPath $p -Encoding UTF8 -Tail 12 -ErrorAction Stop) } catch { return $false }
+    for ($i = $tail.Count - 1; $i -ge 0; $i--) {
+        $l = [string]$tail[$i]
+        if ($l -notmatch '^\s*\{.*"type"\s*:\s*"(user|assistant)"') { continue }
+        return [bool]($l -match '"type"\s*:\s*"user"' -and $l -match '\[Request interrupted by user')
+    }
+    return $false
+}
 # v3.59.1: filhos do agente que ainda contam — registro com parent = ele e rodada aberta.
-function Get-PendingChildren($List, [string]$AgentId, $Rounds) {
+# v3.66.2: e com vida pela mesma régua do pai — sinal há menos de $MaxIdleMin min (ou rodada encerrada com ESPERANDO) e sem
+# interrupção na transcrição. Antes, o filho sem linha de rodada contava para sempre: o dev interrompido às 07:53 (último
+# sinal às 06:45) segurou o executor "aguardando filho".
+function Get-PendingChildren($List, [string]$AgentId, $Rounds, [string]$ProjectDir = '', [int]$MaxIdleMin = 20, [int]$Depth = 0) {
     if (-not $AgentId) { return @() }
-    return @($List | Where-Object { $_.PSObject.Properties['parent'] -and [string]$_.parent -eq $AgentId -and (Test-AgentRoundOpen $_ $Rounds) })
+    return @($List | Where-Object {
+        $c = $_
+        if (-not ($c.PSObject.Properties['parent'] -and [string]$c.parent -eq $AgentId -and (Test-AgentRoundOpen $c $Rounds))) { return $false }
+        if (Test-AgentInterrupted $ProjectDir $c) { return $false }
+        $cid = [string]$c.agent_id
+        if ($cid -and $Rounds.ContainsKey($cid) -and $Rounds[$cid].waiting) { return $true }
+        if ((Get-AgentIdleHours $c) * 60 -lt $MaxIdleMin) { return $true }
+        # O filho que espera um neto (o dev que chamou o operator) fica sem sinal enquanto o neto trabalha.
+        return [bool]($Depth -lt 4 -and $cid -and [string]$c.last -eq 'aguardando filho' -and @(Get-PendingChildren $List $cid $Rounds $ProjectDir $MaxIdleMin ($Depth + 1)).Count)
+    })
 }
 # Horas desde o último sinal de vida do registro (at; senão desde). Ilegível = muito velho.
 function Get-AgentIdleHours($Agent) {
@@ -315,11 +356,13 @@ function Test-AgentHostAlive($Agent) {
 # ferramenta, ou o processo hospedeiro encerrado — e sem filho vivo no registro. O run.ps1 já não o contava como vivo
 # (Get-LiveAgents), mas o "## Agora" e o /team-status o mostravam "trabalhando" 37 min depois de ele sumir, e alguém renomeou o
 # .active-agents à mão. O host_pid é o processo do Claude Code que hospeda a SESSÃO: vivo, prova que a sessão existe, não o agente.
-function Test-AgentStale($Agent, $List = @(), [int]$MaxIdleMin = 20) {
+# v3.66.2: com $ProjectDir, a interrupção na transcrição do subagente também é fim (sem esperar o prazo).
+function Test-AgentStale($Agent, $List = @(), [int]$MaxIdleMin = 20, [string]$ProjectDir = '') {
+    if ($ProjectDir -and (Test-AgentInterrupted $ProjectDir $Agent)) { return $true }
     $idle = (Get-AgentIdleHours $Agent) * 60
     if ($idle -lt $MaxIdleMin -and (Test-AgentHostAlive $Agent) -ne $false) { return $false }
     $id = [string]$Agent.agent_id
-    if ($id -and @(@($List) | Where-Object { $_.PSObject.Properties['parent'] -and [string]$_.parent -eq $id -and -not (Test-AgentStale $_ @() $MaxIdleMin) }).Count) { return $false }
+    if ($id -and @(@($List) | Where-Object { $_.PSObject.Properties['parent'] -and [string]$_.parent -eq $id -and -not (Test-AgentStale $_ @() $MaxIdleMin $ProjectDir) }).Count) { return $false }
     return $true
 }
 # v3.63.0: tira do .active-agents os registros sem sinal de vida do item (todos, com $Work vazio) e os leva ao .interrupted,
@@ -328,11 +371,11 @@ function Remove-StaleAgents([string]$ProjectDir, [string]$Work = '', [int]$MaxId
     $script:StaleRemoved = @()
     $null = Invoke-ActiveAgentsLocked $ProjectDir {
         $all = @(Get-ActiveAgents $ProjectDir)
-        $st = @($all | Where-Object { (-not $Work -or [string]$_.work -eq $Work) -and (Test-AgentStale $_ $all $MaxIdleMin) })
+        $st = @($all | Where-Object { (-not $Work -or [string]$_.work -eq $Work) -and (Test-AgentStale $_ $all $MaxIdleMin $ProjectDir) })
         if ($st.Count) {
             $ip = Join-Path $ProjectDir '.team-project/.interrupted'
             $prev = @(); if (Test-Path -LiteralPath $ip) { try { $prev = @((Get-Content -LiteralPath $ip -Raw -Encoding UTF8 | ConvertFrom-Json) | ForEach-Object { $_ }) } catch { $prev = @() } }
-            $recs = @($st | ForEach-Object { [pscustomobject][ordered]@{ type = [string]$_.type; work = [string]$_.work; parent = [string]$_.parent; desde = [string]$_.desde; last = [string]$_.last; at = [string]$_.at; session = [string]$_.session; agent_id = $(if ($_.PSObject.Properties['agent_id']) { [string]$_.agent_id } else { '' }); transcript = ''; session_transcript = ''; reason = "sem sinal de vida há $MaxIdleMin min ou mais" } })
+            $recs = @($st | ForEach-Object { [pscustomobject][ordered]@{ type = [string]$_.type; work = [string]$_.work; parent = [string]$_.parent; desde = [string]$_.desde; last = [string]$_.last; at = [string]$_.at; session = [string]$_.session; agent_id = $(if ($_.PSObject.Properties['agent_id']) { [string]$_.agent_id } else { '' }); transcript = ''; session_transcript = ''; reason = $(if (Test-AgentInterrupted $ProjectDir $_) { 'interrompido (fim na transcrição do subagente)' } else { "sem sinal de vida há $MaxIdleMin min ou mais" }) } })
             [System.IO.File]::WriteAllText($ip, (ConvertTo-Json -InputObject @($prev + $recs) -Depth 3 -Compress), (New-Object System.Text.UTF8Encoding($false)))
             Set-ActiveAgents $ProjectDir @($all | Where-Object { $st -notcontains $_ })
         }
@@ -342,9 +385,11 @@ function Remove-StaleAgents([string]$ProjectDir, [string]$Work = '', [int]$MaxId
 }
 # Agentes do item ainda vivos: processo hospedeiro vivo (ou desconhecido) e sinal de vida há menos de $MaxIdleMin minutos
 # (um verify full fica até ~10 min sem ação de ferramenta). Agente cortado sem SubagentStop sai daqui ao passar do prazo.
+# v3.66.2: $Work = '*' traz os de qualquer item (a G20, que libera o fim de turno por agente em voo, usa a mesma régua).
 function Get-LiveAgents([string]$ProjectDir, [string]$Work, [int]$MaxIdleMin = 20) {
     $all = @(Get-ActiveAgents $ProjectDir)
-    $cand = @($all | Where-Object { [string]$_.work -eq $Work -and (Get-AgentIdleHours $_) * 60 -lt $MaxIdleMin -and (Test-AgentHostAlive $_) -ne $false })
+    # v3.66.2: o "aguardando filho" pode estar parado há mais de $MaxIdleMin enquanto o filho trabalha — o filho decide (abaixo).
+    $cand = @($all | Where-Object { ($Work -eq '*' -or [string]$_.work -eq $Work) -and ((Get-AgentIdleHours $_) * 60 -lt $MaxIdleMin -or [string]$_.last -eq 'aguardando filho') -and (Test-AgentHostAlive $_) -ne $false })
     if (-not $cand.Count) { return @() }
     # v3.59.1 (T-069b): registro cuja rodada já terminou não é agente vivo; "aguardando filho" só vale com filho de rodada aberta
     # ou, sem ele, nos 3 min seguintes ao fim do último filho (o aviso do filho está acordando o pai). Antes, os dois esperavam
@@ -352,16 +397,21 @@ function Get-LiveAgents([string]$ProjectDir, [string]$Work, [int]$MaxIdleMin = 2
     $rounds = Get-AgentRounds $ProjectDir @($all | ForEach-Object { [string]$_.agent_id })
     return @($cand | Where-Object {
         $a = $_
-        if ([string]$a.last -ne 'aguardando filho') { return (Test-AgentRoundOpen $a $rounds) }
-        if (@(Get-PendingChildren $all ([string]$a.agent_id) $rounds).Count) { return $true }
+        if ([string]$a.last -ne 'aguardando filho') { return ((Test-AgentRoundOpen $a $rounds) -and -not (Test-AgentInterrupted $ProjectDir $a)) }
+        if (@(Get-PendingChildren $all ([string]$a.agent_id) $rounds $ProjectDir $MaxIdleMin).Count) { return $true }
+        if ((Get-AgentIdleHours $a) * 60 -ge $MaxIdleMin) { return $false }
         $kids = @(); if ($rounds.ContainsKey([string]$a.agent_id)) { $kids = @($rounds[[string]$a.agent_id].children) }
         $lastKid = $null; $lastWaiting = $false
         foreach ($k in $kids) { if ($rounds.ContainsKey([string]$k)) { try { $t = [datetime]::Parse([string]$rounds[[string]$k].ts); if (-not $lastKid -or $t -gt $lastKid) { $lastKid = $t; $lastWaiting = [bool]$rounds[[string]$k].waiting } } catch { } } }
-        if (-not $kids.Count) { return $true }   # sem a lista de filhos no usage.jsonl: comportamento anterior
+        # Sem a lista de filhos no usage.jsonl: comportamento anterior — v3.66.2: salvo quando o registro tem filhos dele e
+        # nenhum vivo (Get-PendingChildren acima já os julgou mortos).
+        if (-not $kids.Count) { return -not @($all | Where-Object { $_.PSObject.Properties['parent'] -and [string]$_.parent -eq [string]$a.agent_id }).Count }
         if ($lastWaiting) { return $true }       # o último filho parou com ESPERANDO: o comando dele ainda o acorda
         if (-not $lastKid) {
             # Filho que ainda não parou nenhuma vez: o pai espera de fato (a rodada do filho não tem linha ainda).
-            $missing = @($kids | Where-Object { -not $rounds.ContainsKey([string]$_) })
+            # v3.66.2: só o filho que não está no registro — o que está já foi julgado pelo Get-PendingChildren acima (o dev
+            # interrompido da T-100 nunca teve linha de rodada e mantinha o executor vivo por aqui).
+            $missing = @($kids | Where-Object { $k = [string]$_; -not $rounds.ContainsKey($k) -and -not @($all | Where-Object { [string]$_.agent_id -eq $k }).Count })
             return [bool]$missing.Count
         }
         return (((Get-Date) - $lastKid).TotalMinutes -lt 3)
@@ -380,7 +430,7 @@ function Test-AgentOnlyWaiting([string]$ProjectDir, $Agent) {
         if (-not $rounds.ContainsKey($id) -or -not $rounds[$id].waiting) { return $false }
         try { return ([datetime]::Parse([string]$rounds[$id].ts) -ge [datetime]::Parse([string]$Agent.at)) } catch { return $true }
     }
-    if (@(Get-PendingChildren $all $id $rounds | Where-Object { -not (Test-AgentOnlyWaiting $ProjectDir $_) }).Count) { return $false }
+    if (@(Get-PendingChildren $all $id $rounds $ProjectDir | Where-Object { -not (Test-AgentOnlyWaiting $ProjectDir $_) }).Count) { return $false }
     $kids = @(); if ($rounds.ContainsKey($id)) { $kids = @($rounds[$id].children) }
     $last = $null; $lastW = $false
     foreach ($k in $kids) { if ($rounds.ContainsKey([string]$k)) { try { $t = [datetime]::Parse([string]$rounds[[string]$k].ts); if (-not $last -or $t -gt $last) { $last = $t; $lastW = [bool]$rounds[[string]$k].waiting } } catch { } } }
@@ -458,7 +508,7 @@ function Remove-ActiveAgent([string]$ProjectDir, [string]$Type, [string]$AgentId
         $me = [string]$l[$ix].agent_id
         $kids = @(); if ($me) { $kids = @($l | Where-Object { $_.PSObject.Properties['parent'] -and [string]$_.parent -eq $me }) }
         $rounds = if ($kids.Count) { Get-AgentRounds $ProjectDir @($kids | ForEach-Object { [string]$_.agent_id }) } else { @{} }
-        $pending = @(Get-PendingChildren $kids $me $rounds)
+        $pending = @(Get-PendingChildren $l $me $rounds $ProjectDir)   # v3.66.2: a lista toda, para o neto que segura o filho
         $stale = @($kids | Where-Object { $pending -notcontains $_ })
         if ($pending.Count) {
             $a = $l[$ix]
@@ -506,7 +556,7 @@ function Write-NowSection([string]$ProjectDir, $List) {
                 $at = try { ([datetime]::Parse([string]$(if ($a.at) { $a.at } else { $a.desde }))).ToString('HH:mm') } catch { '?' }
                 $since = try { ([datetime]::Parse([string]$a.desde)).ToString('HH:mm') } catch { '?' }
                 $doing = (Get-PlainAction ([string]$a.last)) -replace '\|', '/'
-                if (Test-AgentStale $a @($List)) { $doing = "sem sinal desde $at — provavelmente encerrado" }   # v3.63.0
+                if (Test-AgentStale $a @($List) 20 $ProjectDir) { $doing = "sem sinal desde $at — provavelmente encerrado" }   # v3.63.0
                 # v3.52.2 (note.md itens 2 e 4): todo agente é assíncrono; o filho mostra quem o chamou.
                 $by = ''
                 if ($a.PSObject.Properties['parent'] -and [string]$a.parent) { $pa = @(@($List) | Where-Object { [string]$_.agent_id -eq [string]$a.parent } | Select-Object -First 1); if ($pa.Count) { $by = ' (chamado pelo ' + (Get-PlainRole ([string]$pa[0].type)) + ')' } }

@@ -218,6 +218,9 @@ $env:TEAM_DEVICE_LOCK_DIR = Join-Path $tmp 'device-locks'; $env:TEAM_TEST_DEVICE
 # v3.64.0 (item 7): a máquina medida (CPU, emuladores, servidores do adb) também é fixa — nenhum teste depende do que roda de
 # verdade na máquina; os casos do item 7 trocam a medida no próprio caso.
 $env:TEAM_TEST_ADB_PORTS = '5037'; $env:TEAM_TEST_MACHINE_LOAD = '{"cpu":10,"emulators":[],"adbPorts":[5037],"others":[]}'; $env:TEAM_TEST_HEAVY_POLL_S = '1'
+# v3.66.2 (item D): o pedido de máquina acordada vai a um arquivo do temp — sem compilar o acesso ao Windows a cada comando
+# (Add-Type) e sem mexer na energia da máquina que roda a suíte. Os casos do item D leem esse arquivo.
+$env:TEAM_TEST_KEEPAWAKE_LOG = Join-Path ([System.IO.Path]::GetTempPath()) ('team-keepawake-' + $PID + '.log')
 # v3.64.1: prazo por chamada de script de um caso (TEAM_TEST_CHECK_TIMEOUT_S, padrão 240 s) — a sentinela encerra a árvore de
 # quem passa dele e o caso falha com TEMPO ESGOTADO; antes, um verify preso segurou a suíte por 29 min.
 if (-not $env:TEAM_TEST_CHECK_TIMEOUT_S) { $env:TEAM_TEST_CHECK_TIMEOUT_S = '240' }
@@ -1680,12 +1683,16 @@ Put $p 'transcript.jsonl' ('{"type":"assistant","uuid":"u1","message":{"model":"
 Put $p '.team-project/usage.jsonl' ('{"role":"developer","work":"T-041","model":"claude-haiku-5-5","start":"2026-09-02T10:00:00","duration_s":60,"processed":1000,"dest":".team-project/sprints/1/consumption.md","session_transcript":"' + $tr + '"}' + "`n")
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
 Check 'C2: .interrupted — RETOMADA por Task com os tipos, a última ação e o Parei no passo; o arquivo sai' @{ Code = $r.Code; Out = $r.Out + "`nINT=" + $(if (Test-Path -LiteralPath (Join-Path $p '.team-project/.interrupted')) { 'presente' } else { 'apagado' }) } 0 @('RETOMADA: a sessão anterior caiu com T-041 em andamento \(team:task-runner, team:developer\), última ação Edit src/a\.ts às 10:42 · parei no passo: passo 3 de 5', 'INT=apagado')
-Check 'item 17: SESSÃO com chamadas por message.id (sem <synthetic>) e o contexto da última; aviso acima de 150 mil' $r 0 @('SESSÃO: 2 chamada\(s\) · contexto da última 170 mil tokens', 'aviso: acima de 150 mil')
+Check 'item 17: SESSÃO com chamadas por message.id (sem <synthetic>) e o contexto da última; aviso acima do teto (v3.66.2: padrão 100 mil)' $r 0 @('SESSÃO: 2 chamada\(s\) · contexto da última 170 mil tokens', 'aviso: acima de 100 mil')
 # v3.57.2 (note.md item 21): acima do teto e sem agente em voo, a próxima ação é reiniciar a sessão (o veredito libera a G20); teto 0 desliga.
 Check 'v3.57.2 item 21: sessão acima do teto (150 mil) sem agente em voo → PRÓXIMA AÇÃO: reiniciar a sessão (/clear e /sm sprint run) e o veredito "reiniciar"' @{ Code = $r.Code; Out = $r.Out + "`nNV=" + [System.IO.File]::ReadAllText((Join-Path $p '.team-project/.next-verdict')) } 0 @('PRÓXIMA AÇÃO: reiniciar a sessão — contexto da última chamada 170 mil', '/clear e depois /sm sprint run', 'NV=.*"acao":"reiniciar"')
 Put $p '.team-project/guards.json' '{ "run": { "sessionContextCap": 0 } }'
 $r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
-Check 'v3.57.2 item 21: run.sessionContextCap 0 desliga o reinício (o aviso fica)' $r $r.Code @('aviso: acima de 150 mil', '^(?![\s\S]*reiniciar a sessão)')
+Check 'v3.57.2 item 21: run.sessionContextCap 0 desliga o reinício (o aviso fica, no padrão de 100 mil)' $r $r.Code @('aviso: acima de 100 mil', '^(?![\s\S]*reiniciar a sessão)')
+# v3.66.2 (item E): o valor que o projeto declarou vale — 200 mil com a sessão em 170 mil não reinicia nem avisa.
+Put $p '.team-project/guards.json' '{ "run": { "sessionContextCap": 200000 } }'
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $p)
+Check 'v3.66.2 item E: run.sessionContextCap declarado (200 mil) vale — a sessão em 170 mil não reinicia nem recebe o aviso' $r $r.Code @('SESSÃO: 2 chamada\(s\) · contexto da última 170 mil tokens', '^(?![\s\S]*reiniciar a sessão)', '^(?![\s\S]*aviso: acima de)')
 Remove-Item -LiteralPath (Join-Path $p '.team-project/guards.json') -Force -ErrorAction SilentlyContinue
 # v3.57.4: depois do /clear o usage.jsonl ainda cita a sessão antiga (170 mil); a SESSÃO mede a corrente (.session-transcript).
 $trN = (Join-Path $p 'nova.jsonl') -replace '\\', '/'
@@ -3589,8 +3596,11 @@ $rps = Get-Content -LiteralPath (Join-Path $checks 'run.ps1') -Raw -Encoding UTF
 $wFor = if ($wmd -match 'run\.ps1" wait -For (\d+)') { [int]$Matches[1] } else { -1 }
 $wCap = if ($rps -match '\$script:waitMaxFor = (\d+)') { [int]$Matches[1] } else { -1 }
 $wRot = $srm.Contains('wait -For ' + $wFor + '`')
-$wOut = "for=$wFor cap=$wCap cabe=$($wFor -gt 0 -and $wFor -le $wCap -and $wCap -le 100) timeout=$($wmd -match 'timeout: 300000') roteiro=$wRot vazia=$($wmd -match 'Saída vazia')"
-Check 'v3.58.1: o watcher roda wait -For <= teto do run.ps1 (<= 100 s, abaixo dos 120 s da ferramenta), com timeout explícito, o roteiro cita o mesmo -For e a saída vazia tem regra' @{ Code = 0; Out = $wOut } 0 @('cabe=True', 'timeout=True', 'roteiro=True', 'vazia=True')
+# v3.66.2 (item B): o watcher paciente — -For 540 com timeout 570000, abaixo dos 600 s em que a ferramenta move a chamada
+# para segundo plano; o teto do run.ps1 acompanha.
+$wTo = if ($wmd -match 'timeout: (\d+)') { [int]$Matches[1] } else { -1 }
+$wOut = "for=$wFor cap=$wCap cabe=$($wFor -gt 0 -and $wFor -le $wCap -and $wCap -le 540) timeout=$($wTo -gt ($wFor * 1000) -and $wTo -lt 600000) roteiro=$wRot vazia=$($wmd -match 'Saída vazia') paciente=$($wmd -match 'rode o comando \*\*de novo\*\*' -and $wmd -match 'teto do watcher')"
+Check 'v3.58.1/v3.66.2: o watcher roda wait -For <= teto do run.ps1 (<= 540 s), com timeout explícito entre o -For e os 600 s da ferramenta, o roteiro cita o mesmo -For, a saída vazia tem regra e o vivo sem teto roda de novo (paciente)' @{ Code = 0; Out = $wOut } 0 @('cabe=True', 'timeout=True', 'roteiro=True', 'vazia=True', 'paciente=True')
 
 # v3.57.1 (note.md item 11) — "## Agora" para quem acompanha: papel com nome de gente, título da Task (a linha com marcador,
 # não a tabela de Histórias; a frase em negrito vira o nome), o que faz numa frase simples e horários fixos (sem "Há N min").
@@ -5479,6 +5489,126 @@ while (-not $raP -and $swS.Elapsed.TotalSeconds -lt 20) { $raP = @(Get-CimInstan
 $oS2 = if ($raP) { & powershell -NoProfile -ExecutionPolicy Bypass -File $prS -Pid2 $raP.ProcessId -Sec 6 -Delay 3 2>&1 | Out-String } else { 'sem o processo do run-all' }
 $r = & $raR @('-Wait', $dS, '-WaitSeconds', '120')
 Check 'v3.66.1: o run-all percebe a suspensão — diz quanto dormiu e não grava os tempos da rodada' @{ Code = $(if ($oS2 -match 'SUSPENSO' -and (Get-FileHash -LiteralPath $frT).Hash -eq $hT0) { $r.Code } else { 9 }); Out = $r.Out + $oS2 } 0 @('a máquina ficou suspensa ~\d+ s durante a rodada', 'os tempos desta rodada não foram gravados', 'FIM exit=0')
+# ---- v3.66.2 (garden S7, T-100, 24/11) — a régua de vida, o watcher paciente, o pulso do comando, a máquina acordada e a
+# conversa enxuta. Os scripts dos casos vão com BOM: o texto deles tem acento e o PowerShell 5.1 lê sem BOM como ANSI.
+$bom62 = New-Object System.Text.UTF8Encoding($true)
+$v62a = Join-Path $tmp 'v3662-vida.ps1'
+[System.IO.File]::WriteAllText($v62a, @'
+param([string]$Lib, [string]$P)
+. $Lib
+. (Join-Path (Split-Path -Parent $Lib) '..\..\hooks\common.ps1')   # o registro de agentes (Get-LiveAgents) mora nos hooks
+$u8 = New-Object System.Text.UTF8Encoding($false)
+$tp = Join-Path $P '.team-project'; New-Item -ItemType Directory -Force $tp | Out-Null
+$now = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'; $old = (Get-Date).AddMinutes(-70).ToString('yyyy-MM-dd HH:mm:ss')
+$tr = Join-Path $P 'tr'; $sd = Join-Path $tr 'sessA\subagents'; New-Item -ItemType Directory -Force $sd | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $tp '.session-transcript'), (Join-Path $tr 'main.jsonl'), $u8)
+[System.IO.File]::WriteAllText((Join-Path $tp 'usage.jsonl'), ('{"agent_id":"run1","role":"task-runner","ts":"' + $old + '","description":"Executor T-9","children":["dev1"]}' + "`n"), $u8)
+function Set-Agents([string]$DevAt) { [System.IO.File]::WriteAllText((Join-Path $tp '.active-agents'), ('[{"type":"team:task-runner","desde":"' + $old + '","session":"sessA","parent":"","agent_id":"run1","work":"T-9","last":"aguardando filho","at":"' + $now + '"},{"type":"team:developer","desde":"' + $old + '","session":"sessA","parent":"run1","agent_id":"dev1","work":"T-9","last":"verify.ps1","at":"' + $DevAt + '"}]'), $u8) }
+function Get-L([string]$W = 'T-9') { return (@(Get-LiveAgents $P $W | ForEach-Object { $_.agent_id }) -join ',') }
+$cut = '{"type":"user","message":{"role":"user","content":[{"type":"text","text":"[Request interrupted by user]"}]}}'
+Set-Agents $old; "1 dev-70min=" + (Get-L)
+Set-Agents $now; "2 dev-vivo=" + (Get-L)
+[System.IO.File]::WriteAllText((Join-Path $sd 'agent-dev1.jsonl'), ('{"type":"assistant","message":{"id":"m1"}}' + "`n" + $cut + "`n" + '{"type":"attachment"}' + "`n"), $u8)
+"3 dev-interrompido=" + (Get-L)
+"4 interrompido=" + (Test-AgentInterrupted $P ([pscustomobject]@{ agent_id = 'dev1'; session = 'sessA' }))
+"5 qualquer=" + (Get-L '*')
+[System.IO.File]::WriteAllText((Join-Path $sd 'agent-dev1.jsonl'), ($cut + "`n" + '{"type":"assistant","message":{"id":"m2"}}' + "`n"), $u8)
+"6 retomado=" + (Get-L)
+[System.IO.File]::WriteAllText((Join-Path $sd 'agent-dev1.jsonl'), ($cut + "`n"), $u8)
+$st = @(Remove-StaleAgents $P 'T-9'); "7 limpeza=" + (@($st | ForEach-Object { $_.agent_id }) -join ',')
+"8 motivo=" + ((Get-Content (Join-Path $tp '.interrupted') -Raw -Encoding UTF8 | ConvertFrom-Json | ForEach-Object { $_.reason }) -join '|')
+'@, $bom62)
+$v62o = (& powershell -NoProfile -ExecutionPolicy Bypass -File $v62a -Lib (Join-Path $checks 'lib.ps1') -P (Join-Path $tmp 'v3662-vida') 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.66.2 item A: a régua de vida — dev parado há 70 min sem rodada não segura o executor "aguardando filho"; dev vivo segura; dev com a interrupção no fim da transcrição está morto na hora (e volta a contar se a transcrição continua); a limpeza o tira com o motivo' @{ Code = 0; Out = $v62o } 0 @('(?m)^1 dev-70min=$', '(?m)^2 dev-vivo=run1,dev1$', '(?m)^3 dev-interrompido=$', '(?m)^4 interrompido=True$', '(?m)^5 qualquer=$', '(?m)^6 retomado=run1,dev1$', '(?m)^7 limpeza=dev1$', '8 motivo=.*interrompido \(fim na transcrição do subagente\)')
+
+# Watcher paciente: a sonda diz "teto do watcher" quando o watcher do registro foi disparado há mais de run.watcherMaxMinutes.
+$v62b = Join-Path $tmp 'v3662-teto.ps1'
+[System.IO.File]::WriteAllText($v62b, @'
+param([string]$Run, [string]$Proj)
+$u8 = New-Object System.Text.UTF8Encoding($false)
+$tp = Join-Path $Proj '.team-project'; New-Item -ItemType Directory -Force $tp | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $tp 'README.md'), "# Contexto`n`n## 2. Situacao atual`n`n| | |`n|---|---|`n| **Sprint corrente** | **7** $([char]0x2014) teste |`n", $u8)
+$now = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+[System.IO.File]::WriteAllText((Join-Path $tp '.next-verdict'), ('{"acao":"esperar","task":"T-2","motivo":"x","at":"' + $now + '"}'), $u8)
+function Set-W([int]$AgoMin) { $d = (Get-Date).AddMinutes(-$AgoMin).ToString('yyyy-MM-dd HH:mm:ss'); [System.IO.File]::WriteAllText((Join-Path $tp '.active-agents'), ('[{"type":"team:developer","desde":"' + $now + '","session":"s","parent":"","agent_id":"a1","work":"T-2","last":"Bash","at":"' + $now + '"},{"type":"team:watcher","desde":"' + $d + '","session":"s","parent":"","agent_id":"w1","work":"","last":"wait","at":"' + $now + '"}]'), $u8) }
+function W { $o = (& powershell -NoProfile -ExecutionPolicy Bypass -File $Run wait -For 0 -Root $Proj 2>&1 | ForEach-Object { "$_" }) -join ' '; return "exit=$LASTEXITCODE $o" }
+Set-W 61; "1 " + (W)
+Set-W 5; "2 " + (W)
+[System.IO.File]::WriteAllText((Join-Path $tp 'guards.json'), '{ "run": { "watcherMaxMinutes": 2 } }', $u8)
+"3 " + (W)
+'@, $bom62)
+$v62bo = (& powershell -NoProfile -ExecutionPolicy Bypass -File $v62b -Run (Join-Path $checks 'run.ps1') -Proj (Join-Path $tmp 'v3662-teto') 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.66.2 item B: o watcher paciente tem teto — disparado há 61 min (padrão 60) a sonda diz "teto do watcher"; há 5 min, não; run.watcherMaxMinutes 2 vale' @{ Code = 0; Out = $v62bo } 0 @('1 exit=3 wait: vivo — T-2 .*teto do watcher \(60 min\)', '(?m)^2 exit=3 wait: vivo — T-2 (?!.*teto do watcher)', '3 exit=3 wait: vivo — T-2 .*teto do watcher \(2 min\)')
+
+# O pulso do comando (heartbeat.json): a sonda conta da rodada em curso, diz que a 2ª rodada recomeçou do zero e quando a
+# máquina dormiu, e mede a saída pelo tamanho real do log; sem crescer há 15 min (e sem CPU), POSSÍVEL TRAVAMENTO.
+$v62c = Join-Path $tmp 'v3662-pulso.ps1'
+[System.IO.File]::WriteAllText($v62c, @'
+param([string]$Lib, [string]$D)
+. $Lib
+New-Item -ItemType Directory -Force $D | Out-Null
+$f = { param([int]$m) (Get-Date).AddMinutes(-$m).ToString('yyyy-MM-dd HH:mm:ss') }
+$sl = Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Start-Sleep 60' -PassThru -WindowStyle Hidden
+Start-Sleep 1
+function Set-Hb([int]$Started, [int]$Growth, [bool]$Done = $false) { [System.IO.File]::WriteAllText((Join-Path $D 'heartbeat.json'), (([ordered]@{ key = 'suite'; attempt = 2; reason = 'máquina suspensa 06:52–07:53'; started = (& $f $Started); at = (& $f 0); pid = $sl.Id; logBytes = 100; lastGrowth = (& $f $Growth); suspensions = @([ordered]@{ from = '2026-11-24 06:52:16'; to = '2026-11-24 07:53:14'; minutes = 61 }); done = $Done }) | ConvertTo-Json -Depth 4 -Compress), (New-Object System.Text.UTF8Encoding($false))) }
+Set-Hb 3 1; "1 " + (Get-WaitPulse $sl.Id (& $f 95) $D).Text
+Set-Hb 20 15; $p2 = Get-WaitPulse $sl.Id (& $f 95) $D; "2 parado=$($p2.Stalled) " + $p2.Text
+Set-Hb 3 1 $true; "3 " + (Get-WaitPulse $sl.Id (& $f 95) $D).Text
+"4 motivo=" + (Format-SuspensionReason ([ordered]@{ suspensions = @([ordered]@{ from = '2026-11-24 06:52:16'; to = '2026-11-24 07:53:14' }) }))
+"5 motivo=" + (Format-SuspensionReason ([ordered]@{ suspensions = @() }))
+try { Stop-Process -Id $sl.Id -Force } catch { }
+'@, $bom62)
+$v62co = (& powershell -NoProfile -ExecutionPolicy Bypass -File $v62c -Lib (Join-Path $checks 'lib.ps1') -D (Join-Path $tmp 'v3662-pulso') 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.66.2 item C: a sonda lê o pulso — há 3 min (da 2ª rodada, não da 1ª), "recomeçou do zero" com o motivo, a suspensão da rodada, "saída do comando há 1 min"; sem crescer há 15 min, travado; pulso encerrado não vale; o motivo da 2ª rodada em palavras' @{ Code = 0; Out = $v62co } 0 @('(?m)^1 há 3 min .*saída do comando há 1 min · 2ª rodada de suite desde \d\d:\d\d: recomeçou do zero \(máquina suspensa 06:52–07:53\) · máquina suspensa nesta rodada: 06:52–07:53', '2 parado=True há 20 min .*saída do comando há 15 min.*POSSÍVEL TRAVAMENTO', '(?m)^3 há 1h35 (?!.*recomeçou)', '4 motivo=máquina suspensa 06:52–07:53', '5 motivo=suspensão do sistema')
+
+# O laço do Invoke-ProjectCommand grava o pulso e pede a máquina acordada só com prazo maior que keepAwakeMinMinutes e com
+# keepAwake ligado (TEAM_TEST_KEEPAWAKE_LOG registra o pedido no lugar do Windows).
+$v62d = Join-Path $tmp 'v3662-laco.ps1'
+[System.IO.File]::WriteAllText($v62d, @'
+param([string]$Lib, [string]$Rt)
+. $Lib
+$u8 = New-Object System.Text.UTF8Encoding($false)
+New-Item -ItemType Directory -Force (Join-Path $Rt '.team-project/verify') | Out-Null
+$env:TEAM_TEST_HEARTBEAT_SEC = '1'
+$ka = Join-Path $Rt 'ka.log'; $env:TEAM_TEST_KEEPAWAKE_LOG = $ka
+$log = Join-Path $Rt '.team-project/verify/suite.log'
+function Invoke-Case([string]$Guards, [double]$Tmo) {
+    [System.IO.File]::WriteAllText((Join-Path $Rt '.team-project/guards.json'), $Guards, $u8)
+    if (Test-Path -LiteralPath $ka) { Remove-Item -LiteralPath $ka -Force }
+    $j = Start-Job -ScriptBlock { param($l, $d) . $l; Start-Sleep -Milliseconds 2500; (Get-WaitPulse $PID '' $d).Text } -ArgumentList $Lib, (Join-Path $Rt '.team-project/verify')
+    $r = Invoke-ProjectCommand $Rt 'suite' 'for ($i = 0; $i -lt 5; $i++) { Write-Output "linha $i"; Start-Sleep 1 }' $log $Tmo ([pscustomobject]@{}) -Attempt 2 -AttemptReason 'teste'
+    $mid = (Receive-Job $j -Wait) -join ' '; Remove-Job $j -Force
+    $hb = Get-Content (Join-Path $Rt '.team-project/verify/heartbeat.json') -Raw | ConvertFrom-Json
+    $k = if (Test-Path -LiteralPath $ka) { (Get-Content $ka) -join ' ' } else { '' }
+    return "exit=$($r.exit) attempt=$($r.attempt) done=$($hb.done) bytes=$([int]($hb.logBytes -gt 0)) ka=[$k] meio=[$mid]"
+}
+"1 " + (Invoke-Case '{ "machine": { "keepAwakeMinMinutes": 0.01 } }' 1)
+"2 " + (Invoke-Case '{ "machine": { "keepAwake": false, "keepAwakeMinMinutes": 0.01 } }' 1)
+"3 " + (Invoke-Case '{ }' 1)
+"4 " + (Invoke-Case '{ "machine": { "keepAwakeMinMinutes": 0.01, "keepAwakeDisplay": true } }' 1)
+'@, $bom62)
+$v62do = (& powershell -NoProfile -ExecutionPolicy Bypass -File $v62d -Lib (Join-Path $checks 'lib.ps1') -Rt (Join-Path $tmp 'v3662-laco') 2>&1 | ForEach-Object { "$_" }) -join "`n"
+Check 'v3.66.2 itens C e D: o laço do comando grava o pulso (a sonda no meio lê "2ª rodada" e a saída), fecha com done e o tamanho do log; a máquina acordada liga e desliga só com keepAwake e prazo acima do mínimo (padrão 5 min), e a tela só com keepAwakeDisplay' @{ Code = 0; Out = $v62do } 0 @('1 exit=0 attempt=2 done=True bytes=1 ka=\[0x80000001 0x80000000\] meio=\[.*2ª rodada de suite.*recomeçou do zero \(teste\)', '2 exit=0 attempt=2 done=True bytes=1 ka=\[\]', '3 exit=0 .* ka=\[\]', '4 exit=0 .* ka=\[0x80000003 0x80000000\]')
+
+# Conversa enxuta: -Check (exit 3 com algo a aplicar), -Apply junta sem apagar nada do projeto, -Off tira só o que gravou.
+$v62e = Join-Path $tmp 'v3662-enxuta'
+Put $v62e '.claude/settings.local.json' '{ "permissions": { "allow": ["Bash(git status)"], "deny": ["Bash(rm:*)", "Workflow"] }, "skillOverrides": { "dataviz": "on" } }'
+New-Item -ItemType Directory -Force (Join-Path $v62e '.team-project') | Out-Null
+$r1 = Invoke-Check 'lean-session.ps1' @('-Check', '-Root', $v62e)
+$r2 = Invoke-Check 'lean-session.ps1' @('-Apply', '-Root', $v62e)
+$sj = Get-Content (Join-Path $v62e '.claude/settings.local.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$a1 = "deny=$(@($sj.permissions.deny) -join ',') allow=$(@($sj.permissions.allow) -join ',') dataviz=$($sj.skillOverrides.dataviz) docx=$($sj.skillOverrides.'anthropic-skills:docx') conn=$($sj.disableClaudeAiConnectors)"
+$r3 = Invoke-Check 'lean-session.ps1' @('-Check', '-Root', $v62e)
+$r4 = Invoke-Check 'lean-session.ps1' @('-Off', '-Root', $v62e)
+$sj = Get-Content (Join-Path $v62e '.claude/settings.local.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$a2 = "deny=$(@($sj.permissions.deny) -join ',') allow=$(@($sj.permissions.allow) -join ',') ov=$(@($sj.skillOverrides.PSObject.Properties | ForEach-Object { "$($_.Name)=$($_.Value)" }) -join ',') conn=$([bool]$sj.PSObject.Properties['disableClaudeAiConnectors']) marca=$(Test-Path -LiteralPath (Join-Path $v62e '.team-project/lean-session.json'))"
+Check 'v3.66.2 item F: lean-session -Check (falta aplicar, exit 3) · -Apply junta ao que o projeto tem (Workflow e dataviz=on ficam) · -Check aplicado (exit 0) · -Off tira só o que gravou' @{ Code = 0; Out = "c1=$($r1.Code) c2=$($r2.Code) c3=$($r3.Code) c4=$($r4.Code)`n$a1`n$a2`n$($r1.Out)" } 0 @('c1=3 c2=0 c3=0 c4=0', 'deny=Bash\(rm:\*\),Workflow,Artifact,ScheduleWakeup,ReportFindings,ShareOnboardingGuide allow=Bash\(git status\) dataviz=on docx=off conn=True', 'deny=Bash\(rm:\*\),Workflow allow=Bash\(git status\) ov=dataviz=on conn=False marca=False', 'falta aplicar — ferramentas: Artifact, ScheduleWakeup, ReportFindings, ShareOnboardingGuide')
+
+# O /sm vai inteiro a cada chamada: curto, aponta o cartão da sessão do sprint run e o arquivo dos modos.
+$smT = Get-Content -LiteralPath (Join-Path $checks '../../commands/sm.md') -Raw -Encoding UTF8
+$crd = Join-Path $checks '../../roles/scrum-master/process/sprint-run-session.md'
+$smO = "sm=$($smT.Length) curto=$($smT.Length -lt 5000) cartao=$((Test-Path -LiteralPath $crd) -and (Get-Item -LiteralPath $crd).Length -lt 6000) aponta=$($smT -match 'sprint-run-session\.md' -and $smT -match 'sm-modes\.md') modos=$(Test-Path -LiteralPath (Join-Path $checks '../../roles/scrum-master/process/sm-modes.md'))"
+Check 'v3.66.2 item F: commands/sm.md abaixo de 5 mil caracteres, apontando o cartão da sessão (abaixo de 6 mil) e o arquivo dos modos' @{ Code = 0; Out = $smO } 0 @('curto=True', 'cartao=True', 'aponta=True', 'modos=True')
 # ==== fim dos casos ====
 try { Stop-Process -Id $script:watchdog.Id -Force -ErrorAction SilentlyContinue } catch { }
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
