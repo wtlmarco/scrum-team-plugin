@@ -189,7 +189,8 @@ Add-ImpasseEvent $tr.Path $ev
 # Falha do plugin: a ocorrência vai ao note.md (o /review a leva ao plugin).
 if ($t.type -eq 'plugin-failure') {
     $np = Join-Path $tp 'note.md'
-    $line = "`n- **Ocorrência de plugin** ($nowS, $iid, $P): $($Text.Trim()) — $($Detail.Trim())`n"
+    # v3.67.0: [plugin] no início — o /po analyze pula o item (não é pedido do stakeholder) e ele fica para o /review.
+    $line = "`n- [plugin] **Ocorrência de plugin** ($nowS, $iid, $P): $($Text.Trim()) — $($Detail.Trim())`n"
     try { [System.IO.File]::AppendAllText($np, $line, (New-Object System.Text.UTF8Encoding($false))) } catch { }
 }
 
@@ -198,7 +199,7 @@ if (-not $escal) {
     Out "impasse raise: $iid · $($t.type) — fica no time: $(Get-ImpasseOwnerName $owner). Registrado em $($tr.Rel)/team-decisions.jsonl$(if ($tr.Preparing) { ' (o sprint em preparação; a Planning herda)' })."
     if ($owner -eq 'routine') { Out "  é passo do roteiro: quem perguntou executa e informa em uma linha — sem formulário ao stakeholder." }
     elseif ($ownerLine) { Out "  dono: $ownerLine — prompt: ""$($Text.Trim())$(if ($Detail) { " ($($Detail.Trim()))" }) — impasse $iid; decida, grave no seu documento e devolva a decisão em uma frase e o lugar onde gravou.""" }
-    if ($t.type -eq 'plugin-failure') { Out "  ocorrência registrada em .team-project/note.md. Siga pelo caminho do script, se há; se a ação ainda precisa de autorização de fora, raise -Type external-action com o comando exato (uma vez)." }
+    if ($t.type -eq 'plugin-failure') { Out "  ocorrência registrada em .team-project/note.md (item com [plugin] no início: o /po analyze não o trata). Siga pelo caminho do script, se há; se a ação ainda precisa de autorização de fora, raise -Type external-action com o comando exato (uma vez)." }
     Out "  ao voltar: impasse.ps1 close -Id $iid -Summary ""<a decisão>"" -Ref ""<arquivo>#<âncora>"""
     exit 0
 }

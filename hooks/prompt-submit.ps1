@@ -7,7 +7,8 @@
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 
-# Ritual = comando + modo: "sm sprint run", "sm fix plan", "po note", "ux prototype". $null se o texto não abre ritual.
+# Ritual = comando + modo: "sm sprint run", "sm fix plan", "po analyze", "ux prototype". $null se o texto não abre ritual.
+# v3.67.0: "po analyze" (a entrada única do que o stakeholder pede) no lugar de "po note"; o "/po note" antigo conta igual.
 function Get-RitualKey([string]$Cmd, [string]$ArgText) {
     $c = ($Cmd -replace '^/', '' -replace '^[\w-]+:', '').ToLowerInvariant()
     $w = @(([string]$ArgText).Trim().ToLowerInvariant() -split '\s+' | Where-Object { $_ })
@@ -20,7 +21,7 @@ function Get-RitualKey([string]$Cmd, [string]$ArgText) {
             if ($a1 -eq 'review') { return 'sm sprint review' }
             if ($a1 -eq 'fix' -and $a2 -in @('plan', 'run')) { return "sm fix $a2" }
         }
-        'po' { if ($a1 -eq 'note') { return 'po note' } }
+        'po' { if ($a1 -eq 'note' -or ($a1 -eq 'analyze' -and -not $a2)) { return 'po analyze' } }   # a fila; o pedido avulso não é ritual
         'ux' { if ($a1 -eq 'prototype') { return 'ux prototype' } }
     }
     return $null

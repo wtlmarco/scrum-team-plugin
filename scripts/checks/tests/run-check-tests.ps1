@@ -3913,6 +3913,69 @@ $r = Invoke-Check 'run.ps1' @('next', '-Root', $pd)
 $rlTxt = [System.IO.File]::ReadAllText($rld, $utf8)
 Check 'v3.59.2: next de novo — sem commit nem linha de run-log repetidos' @{ Code = $r.Code; Out = "$($r.Out)`nN=" + ([regex]::Matches($rlTxt, '\| S1 \| commit da consolidação')).Count + '/' + ([regex]::Matches($rlTxt, 'pendência que vai à Review')).Count } 0 @('PRÓXIMA AÇÃO: fim da fila', '^(?![\s\S]*commit da consolidação:)', '^(?![\s\S]*declarado pelo Arquiteto)', 'pedido ao SM não aplicado', 'N=1/1')
 
+# ---------- v3.67.0 — a Task do SDD (Trilha sdd): pré-condição, fora da fila do dev, executada pela consolidação, ----------
+# fechada depois do commit e revertida quando a Review rejeita a História; e a regra 37 do plan.ps1 (estrutural sem ②).
+$pz = Join-Path $tmp 'v3670-sdd'; New-Project $pz
+$ErrorActionPreference = 'Continue'
+& git -C $pz init -q 2>$null; Put $pz '.gitignore' ".team-project/`n"; Put $pz 'docs/sdd/api.md' "# API`n"; Put $pz 'docs/sdd/requirements.md' "# Req`n"
+& git -C $pz add -A 2>$null; & git -C $pz -c user.email=t@t -c user.name=t commit -qm init 2>$null
+& git -C $pz config user.email t@t 2>$null; & git -C $pz config user.name t 2>$null
+$ErrorActionPreference = 'Stop'
+$zHead = [System.IO.File]::ReadAllText((Join-Path $pz '.team-project/sprints/1/sprint-backlog.md'), $utf8) -replace '(?s)## História H-014.*$', ''
+$zRows = "| $($e.ok) T-041 | Endpoint de exportação | 1 | plena | dev | — | [``plan/T-041-export.md``](plan/T-041-export.md) | [``evidence/T-041.md``](evidence/T-041.md) | SC-014 (novo) | teste de integração |`n| $($e.ok) T-041a | Variante | 1 | plena | dev | T-041 | [``plan/T-041a-x.md``](plan/) | [``evidence/T-041a.md``](evidence/) | nenhum aplicável — refatoração interna | teste |`n"
+$zSdd = "| $($e.todo) T-042 | SDD da H-014: 01 RF-044 | 0,25 | sdd | PO + Arquiteto | T-041, T-041a | — | [docs-consolidation.md](docs-consolidation.md) | nenhum aplicável — documentação | linhas da T-042 aplicadas |`n"
+$zBoard = { param($withSdd) $zHead + "## História H-014 — Exportar o resultado da análise (alta)`n`n| ID | Task | Est. | Trilha | Dono | Depende de | Plano | Evidência | Cenários | Critério de pronto |`n|---|---|---|---|---|---|---|---|---|---|`n" + $zRows + $(if ($withSdd) { $zSdd } else { '' }) + "`n" }
+Put $pz '.team-project/sprints/1/sprint-backlog.md' (& $zBoard $false)
+Put $pz '.team-project/product-owner/stories/H-014-exportar.md' "## H-014 — Exportar`n`n**Estado:** detalhada`n`n**Origem:** A-001 (análise do ``/po analyze``)`n"
+Put $pz '.team-project/product-owner/analysis/A-001-exportar.md' "# A-001 — exportar`n`n### 5. Decisão`n**Aprovado** — x`n`n**O que muda no SDD:** 01 RF-044 (exportar em PDF)`n"
+Put $pz '.team-project/quality/1/S1/result.json' '{"tree":null}'
+Put $pz '.team-project/sprints/1/validation.md' "# Validação`n`n**Veredito:** $($e.ok) aprovado — 2026-09-05`n"
+(Get-Item -LiteralPath (Join-Path $pz '.team-project/quality/1/S1/result.json')).LastWriteTime = (Get-Date).AddHours(-1)
+Put $pz '.team-project/sprints/1/run-log.md' ("# Run-log`n`n| Data | Item | O quê | Por quê | Ref |`n|---|---|---|---|---|`n| " + (Get-Date).AddHours(1).ToString('yyyy-MM-dd HH:mm') + " | T-041 | início | — | — |`n")
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pz)
+Check 'v3.67.0: História de evolução (Origem A-001, a análise muda o SDD) sem Task do SDD → o run para e o SM grava a linha' $r 0 @('PRÓXIMA AÇÃO: Planning sem a Task do SDD — H-014 \(A-001\)', 'team:scrum-master', 'Trilha sdd')
+Put $pz '.team-project/sprints/1/sprint-backlog.md' (& $zBoard $true)
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pz)
+Check 'v3.67.0: com só a Task do SDD aberta, a fila do dev acabou — vai à consolidação, com a análise da História no prompt (sem "nenhuma Task elegível")' $r 0 @('PRÓXIMA AÇÃO: consolidação dos documentos vivos', 'T-042 \(História H-014 · análise \.team-project/product-owner/analysis/A-001-exportar\.md\)', 'cita o ID da Task do SDD', '^(?![\s\S]*nenhuma Task elegível)', '^(?![\s\S]*team:task-runner)')
+$r = Invoke-Check 'run.ps1' @('start', '-Task', 'T-042', '-Root', $pz)
+Check 'v3.67.0: run start da Task do SDD — recusado (não vai ao dev)' $r 2 @('T-042 é a Task do SDD')
+Put $pz '.team-project/sprints/1/docs-consolidation.md' ("**Estado:** feita`n`n# Sprint 1`n`n## Aplicado pelo Arquiteto`n`n| Documento | O que mudou | Task / decisão |`n|---|---|---|`n| ``docs/sdd/api.md`` §2 | exportar | T-041 |`n`n## Pedidos aos donos`n`n| Documento | O que mudar | Origem | Dono |`n|---|---|---|---|`n| ``docs/sdd/requirements.md`` | RF-044 | T-041 |`n`n## Sem mudança`n`n| Task | Motivo |`n|---|---|`n| T-041a | só teste |`n")
+Put $pz 'docs/sdd/api.md' "# API`n`nexportar`n"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pz)
+Check 'v3.67.0: consolidação feita sem as linhas da Task do SDD → o Arquiteto volta uma vez para incluí-las' $r 0 @('consolidação sem as linhas da Task do SDD — T-042', 'team:architect')
+Put $pz '.team-project/sprints/1/docs-consolidation.md' ("**Estado:** feita`n`n# Sprint 1`n`n## Aplicado pelo Arquiteto`n`n| Documento | O que mudou | Task / decisão |`n|---|---|---|`n| ``docs/sdd/api.md`` §2 | exportar | T-041, T-042 |`n`n## Pedidos aos donos`n`n| Documento | O que mudar | Origem | Dono |`n|---|---|---|---|`n| ``docs/sdd/requirements.md`` | RF-044 da análise A-001 | T-042 | PO |`n`n## Sem mudança`n`n| Task | Motivo |`n|---|---|`n| T-041a | só teste |`n")
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pz)
+Check 'v3.67.0: as linhas da Task do SDD vão ao PO como qualquer pedido' $r 0 @('pedidos da consolidação ao dono PO — docs/sdd/requirements\.md', 'team:product-owner')
+Put $pz 'docs/sdd/requirements.md' "# Req`n`nRF-044 exportar em PDF`n"
+$r = Invoke-Check 'run.ps1' @('next', '-Root', $pz)
+$zb = [System.IO.File]::ReadAllText((Join-Path $pz '.team-project/sprints/1/sprint-backlog.md'), $utf8)
+Check 'v3.67.0: depois do commit docs(sdd), a Task do SDD com as linhas aplicadas fecha pelo close.ps1 -Apply (✅ no quadro) e o run segue ao formulário da Review' @{ Code = $r.Code; Out = "$($r.Out)`nB=$zb" } 0 @('commit da consolidação: [0-9a-f]{7,}', 'T-042 \(Task do SDD da H-014\) ✅ — fechada pela consolidação', 'PRÓXIMA AÇÃO: fim da fila', "B=[\s\S]*\| $($e.ok) T-042 \|")
+$r = Invoke-Check 'close.ps1' @('-Task', 'T-042', '-Root', $pz)
+Check 'v3.67.0: close.ps1 da Task do SDD — R7 pela consolidação, verify/mutação/aceite n-a' $r 0 @('\| R7 \| ok \| Task do SDD aplicada na consolidação', '\| R7-verify \| n-a \| Task do SDD')
+$r = Invoke-Check 'run.ps1' @('revert-docs', '-Story', 'H-014', '-Root', $pz)
+Check 'v3.67.0: revert-docs — o Arquiteto desfaz os documentos dele pelas linhas da Task do SDD' $r 0 @('reverter o SDD técnico da H-014', 'team:architect', 'docs/sdd/api\.md', 'run.ps1 revert-docs -Story H-014')
+$r = Invoke-Check 'run.ps1' @('revert-docs', '-Story', 'H-014', '-Root', $pz)
+Check 'v3.67.0: revert-docs — depois o PO, com a entrada "revertida" no 06-changelog' $r 0 @('reverter os documentos do PO que a H-014 mudou', 'team:product-owner', 'docs/sdd/requirements\.md', "revertida — H-014 rejeitada")
+Put $pz 'docs/sdd/api.md' "# API`n"; Put $pz 'docs/sdd/requirements.md' "# Req`n"
+$r = Invoke-Check 'run.ps1' @('revert-docs', '-Story', 'H-014', '-Root', $pz)
+$ErrorActionPreference = 'Continue'; $zlog = (& git -C $pz log -1 --format='%s' 2>$null); $ErrorActionPreference = 'Stop'
+Check 'v3.67.0: revert-docs — commit próprio da reversão e linha no run-log' @{ Code = $r.Code; Out = "$($r.Out)`nLOG=$zlog" } 0 @('run revert-docs: H-014 — commit [0-9a-f]{7,} docs\(sdd\): reversão da H-014', 'LOG=docs\(sdd\): reversão da H-014 \(Review do sprint 1\)')
+$r = Invoke-Check 'run.ps1' @('revert-docs', '-Story', 'H-014', '-Root', $pz)
+Check 'v3.67.0: revert-docs de novo — já feita, nada a fazer' $r 0 @('já foi feita')
+# Regra 37: migration numa Task de História de evolução sem o ② do Delta técnico reprova; com o ② aprovado, passa.
+Put $pz '.team-project/sprints/1/plan/T-041-mig.md' "# Plano — T-041`n`n**Arquivos tocados:** ``src/migrations/001_area.sql`` ``tests/area.test.ts```n`n## 4. Passos`n"
+$r = Invoke-Check 'plan.ps1' @('-Plan', (Join-Path $pz '.team-project/sprints/1/plan/T-041-mig.md'), '-Root', $pz)
+Check 'v3.67.0 regra 37: migration na Task de evolução sem Delta técnico → estrutural falhou' $r 1 @('\| estrutural \| falhou \| mudança estrutural sem ② — src/migrations/001_area\.sql.*não há Delta técnico \.team-project/architect/deltas/A-001\.md')
+Put $pz '.team-project/architect/deltas/A-001.md' "# Delta técnico — A-001`n`n## Portão ②`n| História | Decisão | Data | Canal | Ajuste pedido |`n|---|---|---|---|---|`n| H-014 | aprovado com ajuste | 2026-09-01 | terminal | renomear campo |`n"
+$r = Invoke-Check 'plan.ps1' @('-Plan', (Join-Path $pz '.team-project/sprints/1/plan/T-041-mig.md'), '-Root', $pz)
+Check "v3.67.0 regra 37: o ② com ajuste ainda não vale (o Arquiteto revisa e a pergunta volta)" $r 1 @("\| estrutural \| falhou \| .*Portão ② da H-014 no delta está 'ajuste'")
+Put $pz '.team-project/architect/deltas/A-001.md' "# Delta técnico — A-001`n`n## Portão ②`n| História | Decisão | Data | Canal | Ajuste pedido |`n|---|---|---|---|---|`n| H-014 | aprovado | 2026-09-01 | terminal | — |`n"
+$r = Invoke-Check 'plan.ps1' @('-Plan', (Join-Path $pz '.team-project/sprints/1/plan/T-041-mig.md'), '-Root', $pz)
+Check 'v3.67.0 regra 37: com o ② aprovado no Delta técnico → estrutural ok' @{ Code = 0; Out = $r.Out } 0 @('\| estrutural \| ok \| H-014: mudança estrutural \(src/migrations/001_area\.sql\) com o ② aprovado')
+Put $pz '.team-project/product-owner/stories/H-014-exportar.md' "## H-014 — Exportar`n`n**Origem:** RF-031`n"
+$r = Invoke-Check 'plan.ps1' @('-Plan', (Join-Path $pz '.team-project/sprints/1/plan/T-041-mig.md'), '-Root', $pz)
+Check 'v3.67.0 regra 37: História sem Origem A-<nnn> (veio do SDD) → n-a' @{ Code = 0; Out = $r.Out } 0 @('\| estrutural \| n-a \| a História não tem Origem A-<nnn>')
+
 # ---------- v3.61.0 — sprint 0 (R35): foundation.ps1, G25 no C2 e a R15 dos documentos aceitos no sprint 0 ----------
 $f0 = Join-Path $tmp 'sprint0'
 Put $f0 '.team-project/README.md' ("# Ctx`n`n## 2. Situação atual`n`n| | |`n|---|---|`n| **Sprint corrente** | **<n>** — x |`n`n**Diretório de produto:** ``docs/```n" -replace "`n", "`r`n")   # CRLF: o README de projeto no Windows

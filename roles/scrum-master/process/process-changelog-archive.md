@@ -8,6 +8,26 @@ Entradas anteriores, **íntegras e inalteradas**. Arquivar é relocar para tirar
 
 ---
 
+## v3.64 — A evidência que o script já sabe, o cartão que só diz o que o plano diz, a árvore e a máquina com dono e o portão que não duplica correção (SM + Arquiteto + Dev + QA) — 18/11/2026
+
+**Instrução:** (stakeholder, 18/11/2026) "consegue fazer uma análise no projeto garden para identificar tudo que gerou retrabalho durante o sprint 6"; depois "monte o plano de correção dos itens 2, 5 e 6", "inclua no plano v3.64.0" (a parada da Q-S6e no Karma), "inclua somente o necessário para resolver no plugin" (o portão que mandava abrir a Q-S6f) e "pode construir". Decisões D1–D8 em formulário, no mesmo dia (`melhorias/plano-v3.64.0.md` §8).
+**Medido (piloto, S6, 11 a 18/11):** 58 reprovações do `done` viraram "dev novo, só a evidência, não mude código" — 9 eram só papel, 18 só um comando, 17 repetiam a anterior igual, e com a suíte vermelha o dev não podia mudar código; o cartão dizia "**Verificação:** sem verify" (o estado) e o dev leu "não rode" (T-083, T-093); a T-090 parada em 🔴 deixou 6 arquivos no disco e a T-093 só fechou com um commit à mão (`6e84fcf`); às 19:21 de 18/11 outro projeto da máquina subiu um servidor do adb próprio e um emulador no meio da suíte do Karma — o emulador do piloto caiu e a suíte ficou 2,6× mais lenta — e o diagnóstico mandou abrir Task de configuração; o `validation.md` começado antes da v3.63.0 nunca chegou ao caminho por causa, e o `next` mandou abrir a Q-S6f com a Q-S6e aberta para os mesmos 21 cenários.
+**Classificação:** rota (a reprovação do `done` segue a natureza — script, operator, dev, ambiente; repetição idêntica escalona; uma `Q-S<n>` por vez; Q-S em 🔴 vai ao bloqueio) · instrumento (prova registrada e R12 escritos pelo script; checkpoint; `treeIgnore`; diagnóstico da máquina; trava pesada e `machine-lock.ps1`; `inputs` e `lastGreen`) · formato de documento (cartão em duas seções; tabela da rodada com `Cause`).
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `agents/task-runner.md` | O ciclo, passo 4a | a reprovação do `done` pela natureza: mecânica o script preenche · prova não rodada → operator, sem dev · vermelha ou escopo → dev normal, que pode mudar código · a mesma reprovação pela 2ª vez → Arquiteto (ou stakeholder, ambiente) |
+| `roles/developer/templates/delivery-report.md` | Documentos vivos · Ajustes na margem | sem a seção R12, o `done` a escreve; com o verify verde, a saída não precisa ser colada (`### Prova registrada`); a linha de margem que se lê é aviso |
+| `roles/quality-assurance/templates/sprint-validation.md` | Rodada 2 | a tabela da rodada é a dos achados (com `Cause` na coluna); o formato antigo converte os achados abertos |
+| `sprint-run.md` | §Validação do sprint · Correção do portão | uma `Q-S<n>` por vez, achados novos à aberta com o plano emendado pelo Arquiteto, `**Corrige:**` substitui, 🔴 vai ao bloqueio, o diagnóstico do operator é informação nova; checkpoint antes de medir; a suíte reaproveitada por `inputs` roda de fato na revisão final |
+| `how-to.md` | Alvos | um servidor do adb por máquina e uma porta de emulador por projeto; trabalho pesado um por vez (`machine-lock.ps1` para scripts do projeto); `inputs` da suíte; `treeIgnore` e o checkpoint |
+
+### Pendente do stakeholder
+Nada.
+
+---
+
 ## v3.63 — O portão do QA por marcos: ambiente não vira veredito, a rodada nova mede e julga só o que venceu, cada achado tem causa e dono, e a prova de cada rodada fica no sprint (SM + QA + PO + UX + Arquiteto + Dev) — 17/11/2026
 
 **Instrução:** (stakeholder, 17/11/2026) "Avalie se o processo de QA desde que inicia possui marcos do processo sobre as diversas validações que realiza pois uma falha em um deles não necessariamente poderá reiniciar todo o processo do zero"; "existe na falha dos cenários uma marcação do motivo para talvez resolvê-lo a nível de UX, PO, Arquiteto ou dev?"; "o Kanban, consumption precisam controlar também essa tarefa além de dentro do sprint guardar as evidências das entregas". Formulários do mesmo dia: tudo numa 3.63.0; nomes em inglês; o portão vira item controlado; guardar o resultado e as capturas, sem os logs brutos. Plano em `melhorias/plano-v3.63.0.md`.

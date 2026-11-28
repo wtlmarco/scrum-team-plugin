@@ -24,14 +24,14 @@ A partir de `${CLAUDE_PLUGIN_ROOT}/roles/scrum-master/templates/project-context.
 │   └── <n>/                  planning.md · sprint-backlog.md · stories/ · plan/ · evidence/
 │                             consumption.md · kanban.md · review.md · retrospective.md · plugin-report.md
 ├── scrum-master/             context.md
-├── product-owner/            context.md · product-backlog.md
+├── product-owner/            context.md · product-backlog.md · demand-log.md
 ├── architect/                context.md · spikes/
 ├── user-experience/          context.md · prototype/ · journeys/ · screens/
 ├── developer/                context.md
 └── quality-assurance/        context.md · baseline.md
 ```
 
-**O manifesto do que criar, com a origem de cada arquivo e a classe de reconciliação, está em `${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/README.md`** — é a lista única, e é ela que o `/team update` relê depois para reconciliar o que aqui foi instanciado. Em resumo: `product-backlog.md` sai do `templates/` do PO; os seis `context.md`, da seção "O que vai em cada `context.md`" do modelo de contexto. `sprints/`, `spikes/`, `prototype/`, `journeys/` e `screens/` nascem **vazios**. O `how-to.md` é **cópia literal** de `${CLAUDE_PLUGIN_ROOT}/how-to.md`, com um comentário no topo dizendo que não deve ser editado ali — é o guia de uso à mão de quem trabalha no projeto.
+**O manifesto do que criar, com a origem de cada arquivo e a classe de reconciliação, está em `${CLAUDE_PLUGIN_ROOT}/deliverables/team-project/README.md`** — é a lista única, e é ela que o `/team update` relê depois para reconciliar o que aqui foi instanciado. Em resumo: `product-backlog.md` e `demand-log.md` (índice dos pedidos do `/po analyze`, v3.67.0) saem do `templates/` do PO; os seis `context.md`, da seção "O que vai em cada `context.md`" do modelo de contexto. `sprints/`, `spikes/`, `prototype/`, `journeys/` e `screens/` nascem **vazios**. O `how-to.md` é **cópia literal** de `${CLAUDE_PLUGIN_ROOT}/how-to.md`, com um comentário no topo dizendo que não deve ser editado ali — é o guia de uso à mão de quem trabalha no projeto.
 
 **`.gitignore` — o processo fica fora do git (R31).** Se o projeto é repositório git, acrescente (crie o arquivo se não existir) a linha `.team-project/` ao `.gitignore` da raiz. **Só acrescente**: nunca reescreva um `.gitignore` existente. O repositório recebe só o produto (código e `docs/`); o estado da gestão é local e sem histórico. Se `.team-project/` já estiver rastreado (`git ls-files .team-project` não vazio), não o altere aqui: aponte o passo 7b do `/team update`, que desrastreia e limpa o histórico com confirmação explícita do stakeholder em cada passo destrutivo.
 
@@ -67,7 +67,7 @@ Conforme a resposta do passo 3:
 
 - **projeto retomado** → `/sm onboarding`, depois o sprint 0 (`/sm sprint0 plan` → `run` → `review`, R35): o SDD do sistema como ele é, conferido pelo QA contra o código, e o ambiente de testes provado — as primeiras Histórias saem do SDD aceito;
 - **projeto novo com ideia ainda aberta** → `/sm brainstorm <ideia>` e depois `/sm sdd`;
-- **projeto novo com requisitos já claros** → `/po analyze <visão do produto>` e depois `/sm sdd`.
+- **projeto novo com requisitos já claros** → `/sm brainstorm <visão do produto>` (as fases andam rápido quando a visão já está escrita) e depois `/sm sdd`.
 
 Em qualquer um dos três, o caminho depois é o mesmo: `/sm sdd` (SDD funcional → **①** → SDD técnico → **②** → Histórias) → `/sm sprint prepare` → `/sm sprint plan` → **③** (pacote de abertura).
 

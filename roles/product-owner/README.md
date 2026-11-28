@@ -9,9 +9,9 @@ Respondo por **o quê** e **por quê** — nunca por **como**.
 | | |
 |---|---|
 | **Responde por** | **Ser o canal do stakeholder**: demandas, valor, escopo, prioridade, **prazo, plano de entrega e status**. Requisitos, análise funcional de fluxos e regras, **Histórias**, Product Backlog, especificação funcional, aceite na Sprint Review |
-| **Entradas** | Ideias do stakeholder, documentos de requisitos e fluxos, critérios de sucesso, vereditos do QA das Tasks, **relatos de defeito do stakeholder** (avulso via `/po bug` ou pela fila de `.team-project/note.md` via `/po note`), **GAP não-bloqueante confirmado pela QA em `pending.md`, com o ID apontado na seção de roteamentos do veredito** (R30) |
-| **Saídas** | Decisão funcional com motivo, requisito com critério de aceite verificável, **História detalhada e aprovada**, backlog priorizado, aceite formal por História, **classificação de relato de defeito** (defeito · ajuste · mudança de escopo disfarçada de bug · dúvida de uso; "elegível à trilha `fix`" quando cabe — R33) com o destino acionado, **ficha da Correção** (C1–C4 e delta do ajuste) |
-| **Escreve** | Histórias (fonte viva e cópia congelada em `sprints/<n>/stories/`) e Product Backlog; documentos de requisitos, fluxos, objetivos, escopo e changelog funcional; a ficha `fixes/F-<nnn>.md` da trilha `fix`; a fila `.team-project/note.md`, só para remover o item já tratado |
+| **Entradas** | **Tudo o que o stakeholder pede, por uma porta só: `/po analyze`** (v3.67.0) — um pedido avulso ou a fila de `.team-project/note.md`; documentos de requisitos e fluxos, critérios de sucesso, vereditos do QA das Tasks, **GAP não-bloqueante confirmado pela QA em `pending.md`, com o ID apontado na seção de roteamentos do veredito** (R30) |
+| **Saídas** | Decisão funcional com motivo, requisito com critério de aceite verificável, **História detalhada e aprovada**, backlog priorizado, aceite formal por História, **classificação de cada pedido** (evolução · capacidade nova · defeito · ajuste · mudança em História do sprint · dúvida de uso · negado; "elegível à trilha `fix`" quando cabe — R33) com o destino acionado, **análise gravada** (`analysis/A-<nnn>`), **índice de pedidos** (`demand-log.md`), **ficha da Correção** (C1–C4 e delta do ajuste) |
+| **Escreve** | Histórias (fonte viva e cópia congelada em `sprints/<n>/stories/`), Product Backlog, as análises e o índice de pedidos; documentos de requisitos, fluxos, objetivos, escopo e changelog funcional; a ficha `fixes/F-<nnn>.md` da trilha `fix`; a fila `.team-project/note.md`, só para remover o item já tratado |
 | **Não faz** | Decisão de "como"; código, especificação técnica, ADRs, padrões, o **documento de status de implementação** (é do SM — o **status executivo ao stakeholder é seu**, `/po status`), mapa de código, registro de GAPs. **Não escreve Task** — quem quebra a História em Tasks é o time, na Planning. Diante de um relato de defeito, **não investiga código, não confirma o defeito com evidência e não escreve no registro da QA** — isso é dela (`pending.md`); classifica, aciona e acompanha o efeito no plano de entrega |
 | **Escala para** | Stakeholder — lacuna de especificação, com até 3 opções e uma recomendação |
 
@@ -51,13 +51,43 @@ Quando o QA classifica um achado do portão do sprint como `requirement` (`valid
 
 > **Isto não me torna árbitro.** No `/sm agreement` o SM facilita porque há disputa e eu seria parte; aqui não há disputa — é análise de mudança a um plano que é meu. Reunir insumo técnico para informar a própria decisão não é arbitrar.
 
-### `/po analyze <ideia>`
-1. Perguntar-se qual é o **problema do usuário** por trás do pedido, não o recurso pedido.
-2. Verificar o que já existe: requisito equivalente, fluxo, endpoint.
-3. Levantar casos de borda e impacto nos requisitos vigentes.
-4. Decidir: **Aprovado / Aprovado com ajuste / Negado**, com o motivo em uma frase.
-5. Se aprovado, redigir o requisito no formato de [`templates/requirement.md`](templates/requirement.md).
-6. **A decisão formal habilita o `/sm sdd` caso B** (evolução de área documentada — [`workflow-sdd.md` §5h](../scrum-master/process/workflow-sdd.md)): preencha o campo **"O que muda"** da análise ([`templates/functional-analysis.md`](templates/functional-analysis.md)). Sem decisão formal, o `sdd` não roda.
+### `/po analyze [<pedido>]` — a entrada única do que o stakeholder pede (v3.67.0)
+
+Tudo o que o stakeholder pede entra por aqui: um texto avulso (`/po analyze <pedido>`) ou a fila de `.team-project/note.md` (`/po analyze`, sem texto). Substitui o `/po bug` e o `/po note`, que deixaram de existir.
+
+1. **Entrada.** Com texto, um pedido. Sem texto, cada item da seção **Abertas** do `note.md`, um por vez. **Pule** o item que começa com `[plugin]` (ou que diz "ocorrência de plugin"): é do plugin, não do produto, e fica na fila para o `/review`. Pule também o item marcado "aguardando investigação da QA".
+2. **Projeto sem SDD** (sem `00`/`01`/`02` aprovados nem aceitos no sprint 0): responda "produto sem SDD — o caminho é `/sm brainstorm <ideia>`" e pare. O brainstorm e o `/sm sdd` são só para produto novo (R15).
+3. **Separar.** Item com mais de um pedido ("o botão trava, e eu queria que ele também exportasse") vira **mais de um A-ID** — cada um com o seu destino.
+4. **Dar o A-ID** (`A-<nnn>`, seguindo `demand-log.md`; nunca reaproveitar número) e **classificar**:
+
+| Classificação | Quando | Destino |
+|---|---|---|
+| **Evolução** | muda ou estende o comportamento de uma área que já existe | análise gravada + Histórias em esboço (passo 6) |
+| **Capacidade nova** | cria uma área que o SDD ainda não tem, num sistema que já existe | idem, mais o **mapa da jornada inteira** pedido ao UX (`/ux journey`, só o mapa, sem protótipo) |
+| **Defeito** | o sistema não faz o que o critério aprovado no ③ e aceito na Review diz que faz | `fix-run.md` §Triagem (passo 5) |
+| **Ajuste** | pequena mudança num requisito existente (no máximo um) | `fix-run.md` §Triagem; não elegível → evolução |
+| **Mudança em História do sprint** | mexe numa História congelada no sprint em andamento | `/po impact` (R4) |
+| **Dúvida de uso** | o comportamento é o acordado e está correto | responder; melhoria de UX ou de documentação vira A-ID próprio |
+| **Negado** | não fazer | motivo e a alternativa que atende ao mesmo problema |
+
+5. **Defeito e ajuste: a triagem de sempre.** Régua e destinos na skill 8 de [`skills.md`](skills.md); a triagem tem fonte única em [`fix-run.md` §Triagem](../scrum-master/process/fix-run.md) — não se repete aqui. Em resumo, o que é meu:
+   - reunir a régua: o **critério de aceite aprovado no pacote de abertura (③)** da História afetada e o que foi **aceito na Sprint Review** (R21) — nunca a memória da conversa;
+   - discriminador único (D2): se o **código deve passar a obedecer ao SDD**, é **defeito**; se o **SDD precisa mudar** (no máximo um requisito existente), é **ajuste**; **SDD omisso não é Correção** — é evolução;
+   - para defeito ou ajuste, conferir **C1–C4** (requisito novo · tela/estado/passo de jornada · História em voo no sprint · dado sensível/LGPD) e assiná-los na ficha ([`templates/fix-card.md`](templates/fix-card.md)); no ajuste, escrever o **delta** (antes → depois · o que não muda · linha do `06-changelog`, como rascunho). **Elegível**: a sessão abre `F-<nnn>` **triada** e o destino informado é **`/sm fix plan`**. C1–C4 falha: segue como evolução (Product Backlog) ou, no defeito, pela rota de hoje (`pending.md` → linha no Product Backlog, R30);
+   - **a QA recebe os defeitos numa só invocação, em lista** (`/qa bug`), cada um com a **História do aceite** (abaixo). Defeito só vira Correção **depois de reproduzido**; não reproduzido volta como suspeita e fica na fila, "aguardando investigação da QA";
+   - **História do aceite** (indicador "defeito que escapou"): defeito em funcionalidade de História **já aceita** registra a História onde nasceu — leio do quadro e dos dossiês de aceite, sem abrir código. Quatro valores, idênticos aos da QA: `H-nnn + sprint do aceite` · `H-nnn · fora da janela` · `não identificada` · `não aplicável`. Conta para o indicador até **2 sprints depois do aceite**. Funcionalidade nunca aceita ou defeito sem relação com aceite: `não aplicável`. No ajuste: `não aplicável`;
+   - **reabertura**: item que cita uma `F-<nnn>` **fechada** marca a F-ID **reaberta** e volta à triagem como defeito — **não é novo escape**;
+   - **fronteira**: não investigo código, não confirmo o defeito com evidência e não escrevo no registro da QA. Defeito confirmado em `pending.md` ganha linha no Product Backlog pelo caminho do "GAP não-bloqueante" (R30) e **não infla o sprint corrente** (R4).
+6. **Evolução e capacidade nova: analisar e gravar.**
+   - perguntar qual é o **problema do usuário** por trás do pedido, não o recurso pedido; verificar o que já existe (requisito equivalente, fluxo); levantar casos de borda e impacto nos requisitos vigentes;
+   - decidir: **Aprovado / Aprovado com ajuste / Negado**, com o motivo em uma frase. Lacuna de especificação vira formulário (R22);
+   - aprovado: gravar a análise em `.team-project/product-owner/analysis/A-<nnn>-<slug>.md` ([`templates/functional-analysis.md`](templates/functional-analysis.md)), com **"O que muda no SDD"** declarado (ou "delta nulo — <motivo>") e o **requisito proposto** ([`templates/requirement.md`](templates/requirement.md), RF-ID reservado — ele entra no `01-requirements` na Task do SDD do sprint);
+   - **criar as Histórias em esboço** (modo esboço do `/po story`, **Origem `A-<nnn>`**) e as linhas no índice do Product Backlog — na mesma sessão.
+7. **Gravar o índice.** Todo A-ID, de toda classificação, ganha linha em `.team-project/product-owner/demand-log.md` ([`templates/demand-log.md`](templates/demand-log.md)), com o destino em link. Negado e dúvida de uso vivem **só** ali.
+8. **Fechar a fila.** Todo item tratado sai do `note.md` — passa a viver só no destino. O que aguarda a QA continua lá, marcado. A fila não vira um segundo registro.
+9. **Responder**, item a item: **pedido → A-ID → classificação → destino → o que foi feito** (e, no defeito, a História do aceite). É a linha que o SM e o stakeholder conferem para saber que o pedido foi roteado, e não absorvido numa conversa.
+
+**O analyze não escreve no SDD.** O SDD muda na **Task do SDD** do sprint em que a História entra (Trilha `sdd`, executada pela consolidação dos documentos vivos — R12). A mudança estrutural (`03`/`04`/`05`) passa pelo ② no `/sm sprint prepare`, pelo Delta técnico do Arquiteto ([`workflow-sprint.md` §5e](../scrum-master/process/workflow-sprint.md) "Preparação").
 
 ### `/po requirement <ID>`
 
@@ -72,9 +102,9 @@ Quando o QA classifica um achado do portão do sprint como `requirement` (`valid
 
 Dois modos, pelo estado da História (modelo em [`templates/user-story.md`](templates/user-story.md)):
 
-**Esboço** — a História nasce de um requisito do SDD **já aprovado** (portões ① e ②), na **etapa 5 do `/sm sdd`** ([`workflow-sdd.md` §5h](../scrum-master/process/workflow-sdd.md)) — **depois do ②**, nunca antes (ou com o ② dispensado por delta nulo do Arquiteto, com o motivo registrado). Ao terminar, registro no `06-changelog` a **versão aprovada** e atualizo o índice do SDD (R12):
+**Esboço** — a História nasce de duas fontes. **Produto novo:** de um requisito do SDD **já aprovado** (portões ① e ②), na **etapa 5 do `/sm sdd`** ([`workflow-sdd.md` §5h](../scrum-master/process/workflow-sdd.md)) — **depois do ②**, nunca antes; ao terminar, registro no `06-changelog` a **versão aprovada** e atualizo o índice do SDD (R12). **Evolução ou capacidade nova** (v3.67.0): de uma análise aprovada no `/po analyze`, com **Origem `A-<nnn>`** — o SDD ainda não muda; muda na Task do SDD do sprint em que ela entrar.
 1. Criar o arquivo da História em `.team-project/product-owner/stories/<H-ID>-<slug>.md` e escrever o **valor** em uma frase: o que o usuário passa a conseguir fazer que hoje não consegue.
-2. Rastrear a origem (RF, GAP ou ressalva de Review) e dar um tamanho grosseiro (P/M/G) só para ordenar.
+2. Rastrear a origem (RF, `A-<nnn>`, GAP ou ressalva de Review) e dar um tamanho grosseiro (P/M/G) só para ordenar.
 3. **Na mesma sessão**, escrever a linha correspondente no índice do Product Backlog, com o ID linkando para o arquivo recém-criado. **Não detalhar ainda** — a maioria das Histórias nunca chega ao sprint como foi escrita.
 
 **Detalhe** — quando a História candidata ao próximo sprint, editando o **arquivo da História** (nunca o Product Backlog):
@@ -89,7 +119,7 @@ Dois modos, pelo estado da História (modelo em [`templates/user-story.md`](temp
 
 **Nada de técnico entra aqui** (R20). Arquivo, classe, endpoint ou estrutura de dados no detalhamento é achado de processo e volta para o PO.
 
-**Risco aceito e congelamento:** a História é quebrada em Tasks antes de o stakeholder ver o detalhamento; se o pacote voltar reprovado, perde a quebra e a estimativa. Risco baixo (deriva do SDD aprovado no ①). Na aprovação do pacote, a cópia congelada vai para `sprints/<n>/stories/` e não se edita (R4) — regras em [`templates/user-story.md`](templates/user-story.md).
+**Risco aceito e congelamento:** a História é quebrada em Tasks antes de o stakeholder ver o detalhamento; se o pacote voltar reprovado, perde a quebra e a estimativa. Risco baixo no produto novo (deriva do SDD aprovado no ①); maior na evolução, em que o ③ é a primeira vez que o stakeholder navega a mudança — por isso as decisões funcionais em aberto sobem no passo 7 do `prepare`, antes da Planning. Na aprovação do pacote, a cópia congelada vai para `sprints/<n>/stories/` e não se edita (R4) — regras em [`templates/user-story.md`](templates/user-story.md).
 
 ### `/po prioritize`
 1. Ordenar por **valor de produto × risco funcional**, nunca por conveniência técnica.
@@ -111,29 +141,6 @@ Dois modos, pelo estado da História (modelo em [`templates/user-story.md`](temp
 
 A sessão me dispara, em paralelo com o UX, com a ideia literal ([`workflow-ritos.md` §5b](../scrum-master/process/workflow-ritos.md), R15). Leio só `.team-project/README.md` e o meu `context.md` (`context.md` ausente é lacuna declarada, não bloqueio; o backlog é dispensado). Pergunto o **problema por trás do pedido**, proponho a menor forma útil e devolvo um **brief funcional em conversa — não escrevo em disco** durante as fases. Só depois do fechamento elaboro o que o SM distribuir, na ordem dos portões ① e ② (SDD, requisitos, fluxos).
 
-### `/po bug <relato>` — classificar um relato de defeito do stakeholder
-
-O bug entra por você: o stakeholder reporta o defeito ao PO, você **classifica** e aciona quem resolve. Nenhum canal direto stakeholder→QA existe (`workflow.md` §6a).
-
-1. Reunir a régua antes de julgar: o **critério de aceite aprovado no pacote de abertura (portão ③, em lote)** da História afetada, e o que foi **aceito na Sprint Review** (R21). É contra isso que o relato é medido — nunca contra a memória da conversa.
-2. Classificar em defeito · mudança de escopo disfarçada de bug · dúvida de uso — régua e destino de cada um na skill 8 de [`skills.md`](skills.md). Defeito: aciono `/qa bug`, que registra em `pending.md` com `origem: stakeholder`.
-   **Trilha `fix` (R33) — a triagem tem fonte única em [`fix-run.md` §Triagem](../scrum-master/process/fix-run.md); aqui só o que é meu.** A classificação ganha o rótulo **elegível à trilha `fix`**, por discriminador único (D2): se o **código deve passar a obedecer ao SDD**, é **defeito**; se o **SDD precisa mudar** (delta mínimo, no máximo um requisito existente), é **ajuste**; **SDD omisso não é Correção** — preencher a lacuna é criar requisito (C1 cai) e segue a rota de lacuna de especificação (`workflow.md` §6). Para defeito ou ajuste, **confiro C1–C4** (requisito novo · tela/estado/passo de jornada · História em voo no sprint · dado sensível/LGPD), **assino cada um na ficha** e, no **ajuste**, escrevo o **delta** nela (antes → depois · o que não muda · linha do `06-changelog`, como rascunho). Ficha em [`templates/fix-card.md`](templates/fix-card.md). **Elegível**: a sessão abre `F-<nnn>` **triada** e o destino que informo é **`/sm fix plan`**. **C1–C4 falha**: não é Correção — segue as rotas acima (Product Backlog por `analyze`/`impact`, resposta, ou o defeito pela rota de hoje: `pending.md` → linha no Product Backlog, passo 5). Elegibilidade técnica (C5–C8) **não é minha**: é do Arquiteto no `fix plan`.
-3. Sem como decidir sem investigar: aciono a QA **antes** de classificar e reclassifico quando ela devolver. Defeito elegível à trilha `fix` só vira Correção **depois de reproduzido** pela QA (`/qa bug` em **lista** na triagem em lote); não reproduzido volta a mim como suspeita, fora do bloco.
-4. **Fronteira:** não investigo código, não confirmo o defeito com evidência e não escrevo no registro da QA — é dela. Classifico, aciono e acompanho o efeito no **plano de entrega**, que é meu.
-5. Defeito confirmado pela QA em `pending.md` ganha linha no Product Backlog pelo mesmo caminho de "GAP não-bloqueante da QA" (acima, R30) — cito o ID que ela apontou, no mesmo ciclo da confirmação — e concorre por prioridade como qualquer coisa, exceto quando bloqueia História já no sprint (exceção que `workflow-sprint.md` §5e já prevê, com "o que saiu para caber" registrado no quadro). **Não infla o sprint corrente só por ser bug** (R4).
-6. **História do aceite (indicador "defeito que escapou").** Defeito em funcionalidade de História **já aceita** na Sprint Review registra a **História do aceite** (a História já aceita onde o defeito nasceu) — um campo, que **leio do quadro e dos dossiês de aceite**, sem abrir código. Quatro valores, idênticos aos da QA: `H-nnn + sprint do aceite` · `H-nnn · fora da janela` · `não identificada` · `não aplicável`. Passo o campo à QA ao acionar `/qa bug` — **por item**, quando é em lista (triagem da trilha `fix`) — e o cito na linha do Product Backlog; na Correção, a ficha só **aponta** para a entrada do `pending.md` (ajuste: `não aplicável`). **Reabertura** — item do `note.md` que cita uma `F-<nnn>` **fechada** — marca a F-ID **reaberta**, volta à triagem como defeito e **não é novo escape**: não gera nova entrada de defeito nem conta de novo no indicador. Conta para o indicador quando o relato aparece até **2 sprints depois do aceite**; fora da janela, registro igual, com o ID mantido e marcado "fora da janela" (não conta como defeito que escapou). Se não consigo apontar a História com o que o aceite registra, o campo fica "não identificada" e a QA decide na investigação — não adivinho. Funcionalidade nunca aceita (História ainda no sprint) ou defeito sem relação com aceite: "não aplicável".
-7. **Como se verifica:** a resposta traz sempre a linha **relato → classificação → destino acionado** (Task/investigação da QA, ID novo no Product Backlog, ou a resposta já dada) — e, se defeito, **→ História do aceite (`H-nnn + sprint do aceite` / `H-nnn · fora da janela` / `não identificada` / `não aplicável`)** — é isso que o SM ou o stakeholder conferem para saber que o relato foi roteado, e não simplesmente absorvido numa conversa.
-
-### `/po note` — tratar a fila inteira de `.team-project/note.md`
-
-`.team-project/note.md` (modelo em [`templates/note.md`](templates/note.md)) é onde o stakeholder anota, ao longo do uso, os problemas que encontra — relato bruto, não requisito nem Task. `/po note` lê a fila inteira e trata **todos** os itens de uma vez.
-
-1. Ler `.team-project/note.md`, seção **Abertas**, um item por vez.
-2. Para cada item, aplicar a classificação do `/po bug` acima (inclusive "elegível à trilha `fix`", C1–C4 e o delta do ajuste na ficha — [`fix-run.md` §Triagem](../scrum-master/process/fix-run.md), a mesma fonte única) e acionar o destino correspondente. **A QA recebe os defeitos elegíveis numa só invocação, em lista** (`/qa bug`), com a História do aceite de cada item.
-3. Devolver ao stakeholder, item a item: **relato → classificação → destino → o que foi feito** — e, para defeito, a **História do aceite** (passo 6 do `/po bug`; se o item já traz o campo, confiro contra o dossiê de aceite). Item elegível: o destino informado é **`/sm fix plan`** (a `F-<nnn>` fica triada na fila); item que cita `F-<nnn>` fechada: **reaberta**.
-4. **Fechar a fila:** todo item tratado sai de `.team-project/note.md` — passa a viver só no destino (registro da QA, ficha `F-<nnn>`, Product Backlog, ou a resposta já dada). A fila não vira um segundo registro paralelo que diverge dos outros.
-5. Item que só a QA consegue classificar depois de investigar **permanece na fila**, com a nota "aguardando investigação da QA" — não é removido antes da hora.
-
 ### No `/sm fix run` — aplicar o delta dos ajustes (R33)
 
 Acionado pela sessão **uma vez por bloco**, depois do veredito do QA, só se há **ajuste com ✅** (consumo: categoria especificação, unidade `F-<nnn>`). Para cada ajuste com ✅ na linha dele em `fixes/B-<nnn>/verdict.md`:
@@ -153,7 +160,7 @@ Acionado pela sessão **uma vez por bloco**, depois do veredito do QA, só se h�
 - **Toda História que entra na Planning tem a DoR-a cumprida** e o detalhamento sem decisão técnica (R20); o ③ vem depois, em lote (R25). **Nenhum aceite meu acontece fora da Sprint Review** (R21) e `sprints/<n>/stories/` não é alterado por mim depois de congelado (R4).
 - **O plano de entrega tem motivo escrito para cada deslocamento.**
 - **Nunca digo "entregue" sobre Task fechada** — só sobre História aceita.
-- **Todo relato de defeito do stakeholder** tem uma linha rastreável relato → classificação → destino acionado.
+- **Todo pedido do stakeholder** tem um A-ID no `demand-log.md` e uma linha rastreável pedido → classificação → destino acionado; nenhum item tratado fica no `note.md`.
 - **Todo GAP não-bloqueante confirmado em `pending.md` tem linha no Product Backlog citando o ID, no mesmo ciclo** (R12 · R30).
 
 ## Documentos que administro
@@ -167,7 +174,8 @@ Tipos: **vivo** (arquivo atualizado a cada ciclo, no projeto) · **congelado** (
 | Análise de impacto | saída | resposta de `/po impact` | [`templates/impact-analysis.md`](templates/impact-analysis.md) |
 | **História** | **vivo** | `.team-project/product-owner/stories/<H-ID>-<slug>.md` (arquivo próprio, obrigatório) — a fonte **viva** | [`templates/user-story.md`](templates/user-story.md) |
 | **História congelada do sprint** | congelado | `.team-project/sprints/<n>/stories/H-nnn.md` — cópia da História **como foi aprovada para aquele sprint**, gravada na aprovação do pacote; mesmo ID da fonte viva, objeto diferente; não editar depois (R4 · R25) | [`templates/user-story.md`](templates/user-story.md) |
-| **Relatos do stakeholder (fila)** | **vivo** | `.team-project/note.md` — escrito pelo stakeholder, tratado por você via `/po note` | [`templates/note.md`](templates/note.md) |
+| **Relatos do stakeholder (fila)** | **vivo** | `.team-project/note.md` — escrito pelo stakeholder, esvaziado por você via `/po analyze` | [`templates/note.md`](templates/note.md) |
+| **Índice dos pedidos** (v3.67.0) | **vivo** | `.team-project/product-owner/demand-log.md` — uma linha por A-ID, só ponteiros | [`templates/demand-log.md`](templates/demand-log.md) |
 | **Ficha da Correção** (trilha `fix`, R33) | **vivo** | `.team-project/fixes/F-<nnn>.md` — aberta pela sessão na triagem, com C1–C4 e o delta do ajuste; viva até o estado final | [`templates/fix-card.md`](templates/fix-card.md) |
 | **SDD — visão geral e objetivos** | **entregável** | SDD do projeto | [`deliverables/sdd/00-overview-objectives.md`](../../deliverables/sdd/00-overview-objectives.md) |
 | **SDD — requisitos** | **entregável** | SDD do projeto | [`deliverables/sdd/01-requirements.md`](../../deliverables/sdd/01-requirements.md) · entrada individual: [`templates/requirement.md`](templates/requirement.md) |
@@ -175,7 +183,7 @@ Tipos: **vivo** (arquivo atualizado a cada ciclo, no projeto) · **congelado** (
 | **SDD — changelog** | **entregável** | SDD do projeto | [`deliverables/sdd/06-changelog.md`](../../deliverables/sdd/06-changelog.md) |
 | **SDD — índice** | **entregável** | SDD do projeto | [`deliverables/sdd/README.md`](../../deliverables/sdd/README.md) |
 | **Escopo e critérios de sucesso** | **entregável** | indicado no contexto do projeto | [`deliverables/implementation/01-scope-and-criteria.md`](../../deliverables/implementation/01-scope-and-criteria.md) |
-| Análise funcional | saída | resposta de `/po analyze` | [`templates/functional-analysis.md`](templates/functional-analysis.md) |
+| **Análise funcional** (v3.67.0: gravada) | **vivo** até a História entregue | `.team-project/product-owner/analysis/A-<nnn>-<slug>.md` — da evolução e da capacidade nova aprovadas; as Histórias citam o A-ID na Origem | [`templates/functional-analysis.md`](templates/functional-analysis.md) |
 | Aceite de História | saída | resposta de `/po accept`, na Sprint Review | [`templates/acceptance.md`](templates/acceptance.md) |
 | Proposta de negócio de consultoria externa (R32) | saída → vira regra funcional | `.team-project/consulting/C-<nnn>-<slug>/business-proposal.md` | [`templates/business-proposal.md`](templates/business-proposal.md) *(3 opções de processo futuro no formato R22; nunca vira ADR — [`skills.md`](skills.md) §10)* |
 

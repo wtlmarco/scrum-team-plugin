@@ -32,8 +32,8 @@ O time trabalha numa cadência fixa, toda conduzida pelo `/sm`:
 | Assumir um projeto que já existe | `/sm onboarding` → `/sm sprint0 plan` → cenário B |
 | Documentar o sistema e preparar o ambiente de testes antes do primeiro sprint (sprint 0) | `/sm sprint0 plan` → `/sm sprint0 run` → `/sm sprint0 review` → cenário B |
 | Documentar uma área nova que o backlog vai tocar | `/sm sprint0 area <área>` |
-| Evoluir uma área que já está documentada | `/po analyze <ideia>` → `/sm sdd` → cenário C |
-| Transformar o brief ou a decisão em SDD e Histórias | `/sm sdd` |
+| Evoluir o sistema ou criar uma capacidade nova nele | `/po analyze <pedido>` → `/sm sprint prepare` → cenário C |
+| Transformar o brief do brainstorm (produto novo) em SDD e Histórias | `/sm sdd` |
 | Abrir um sprint | `/sm sprint prepare` e depois `/sm sprint plan` |
 | Mandar o time construir | `/sm sprint run` (a fila) ou `/sm sprint run <T-ID>` (uma Task) |
 | Saber onde estamos, prazo, andamento | `/po status` |
@@ -42,7 +42,7 @@ O time trabalha numa cadência fixa, toda conduzida pelo `/sm`:
 | Saber o custo de uma mudança antes de pedir | `/po impact <mudança>` |
 | Saber se o time compensa (custo × qualidade) | `/usage` no fim de cada sessão, colado ao time · retrospectiva "Custo × resultado" · experimento em `rituals/benchmark.md` → cenário H |
 | Relatar e corrigir problemas | anote em `.team-project/note.md` → `/sm fix plan` → `/sm fix run` → cenário D |
-| Só relatar, sem corrigir agora | anote em `.team-project/note.md` e rode `/po note`, ou `/po bug <relato>` → cenário D |
+| Pedir ou relatar, sem corrigir agora | anote em `.team-project/note.md` e rode `/po analyze`, ou `/po analyze <pedido>` → cenário D |
 | Ver a fila de correções | `/sm fix` |
 | Tirar uma dúvida técnica | `/arc question <dúvida>` |
 | Resolver uma questão que envolve vários papéis | `/sm agreement <questão>` |
@@ -106,8 +106,8 @@ Há código, e a documentação pode não corresponder a ele.
 
 | A ideia é… | Caminho |
 |---|---|
-| Em **área já documentada** | `/po analyze <ideia>` → o PO decide e declara o que muda → `/sm sdd` atualiza só as seções afetadas, com portões só no que mudou → `/sm sprint prepare` → `plan` → … |
-| **Capacidade nova**, sem cobertura no SDD | `/sm brainstorm <ideia>` → segue o cenário A a partir do `/sm sdd` |
+| Num **sistema que já existe** (evolução ou capacidade nova) | `/po analyze <ideia>` → o PO grava a análise e cria as Histórias → `/sm sprint prepare` (o Arquiteto diz se é estrutural; se for, você aprova o Delta técnico no ②) → `plan` (com a Task do SDD) → … |
+| **Produto novo**, ainda sem SDD | `/sm brainstorm <ideia>` → segue o cenário A a partir do `/sm sdd` |
 
 Se a mudança mexe em algo já planejado ou em construção, rode antes **`/po impact <mudança>`**: o PO diz o que ela custa, o que quebra e o que sai para caber.
 
@@ -143,7 +143,7 @@ Item tratado **sai do `note.md`** e passa a viver no destino.
 - **O bloco tem limite** (5 correções). O que sobrar fica na fila para o próximo `/sm fix plan`; `/sm fix` mostra a fila.
 - **Com sprint aberto:** o `fix plan` roda a qualquer hora; o `fix run` espera a Task em construção terminar, e nenhuma Task começa enquanto ele roda. O custo das correções fica na pasta do bloco, fora do sprint.
 - **Correção fechada pelo QA está encerrada** — não passa pela Sprint Review. Se o problema voltar, anote no `note.md` citando a correção (`F-<nnn>`): ela é reaberta no próximo `/sm fix plan`.
-- **Só relatar, sem corrigir agora:** `/po note` (a fila) ou `/po bug <relato>` (um item). A triagem é a mesma; as correções ficam na fila até o próximo `/sm fix plan`.
+- **Pedir ou relatar, sem corrigir agora:** `/po analyze` (a fila) ou `/po analyze <pedido>` (um item). A triagem é a mesma; as correções ficam na fila até o próximo `/sm fix plan`.
 
 **O time também acha defeito sozinho** — QA numa validação, dev implementando, Arquiteto revisando. Isso vai direto ao registro do QA, sem passar por você. Se bloqueia uma História do sprint, vira Task no próprio sprint; se não, o PO o leva ao Product Backlog.
 
@@ -235,14 +235,14 @@ Algumas regras são garantidas pelo próprio Claude Code, por **guardas** (hooks
 | Portão | Onde | O que você recebe | Como decide |
 |---|---|---|---|
 | **① SDD funcional** | `/sm sdd` | o protótipo funcional em HTML, com todos os fluxos principais — e, no projeto remoto, o link para abrir no celular | **navega** o protótipo e responde o formulário; "aprovar" **declara** que você navegou |
-| **② SDD técnico** | `/sm sdd` | arquitetura, dados e API da primeira fatia, resumidos pelo Arquiteto | formulário |
+| **② SDD técnico** | `/sm sdd` (produto novo) · `/sm sprint prepare` (evolução estrutural) | arquitetura, dados e API da primeira fatia, resumidos pelo Arquiteto — ou, na evolução que mexe em dados ou API, o **Delta técnico** (antes → depois) | formulário |
 | **③ Pacote do sprint** | `/sm sprint plan` | Sprint Backlog fechado · critérios de aceite · protótipo do sprint · `planning.md` (inclusive o que **não** entrou e por quê) | **navega** o protótipo do sprint (na máquina ou pelo link no celular) e responde um formulário só para o pacote inteiro; "aprovar" **declara** que você navegou |
 | **④ Aceite** | `/sm sprint review` | o dossiê de cada História, critério a critério, com a evidência do QA | uma pergunta por História |
 
 - **Por que navegar, e não ler.** Aprovar texto é aprovar uma descrição; a divergência entre o que você imaginou e o que o time entendeu só aparece quando você atravessa o fluxo. No ① o que se joga fora é HTML; depois, é arquitetura e código.
 - **O ③ aprova todas as Histórias do sprint de uma vez** e é o que faz o sprint arrancar: nenhuma Task entra em construção antes dele. Se reprovar, o PO reordena, o corte é refeito e o pacote volta.
 - **No ④, ressalva, gap e erro** viram entrada no Product Backlog na mesma sessão, com dono, e a priorização deles volta a você no pacote do sprint seguinte.
-- **Na evolução de área documentada (cenário C)**, um portão sem nada a decidir é dispensado — só com o dono declarando, com motivo, que aquela parte não muda.
+- **Na evolução de um sistema que já existe (cenário C)**, não há ①: você navega a mudança no protótipo do sprint (③). O ② só aparece quando ela mexe em dados, API ou arquitetura, e o SDD é atualizado pela Task do SDD, depois que o QA aprova; se você rejeitar a História na Review, essa atualização é desfeita.
 - **Um `/ux prototype` ou `/arc` rodado avulso não abre nem fecha portão**: a decisão fica pendente até o `/sm sdd`.
 
 ## Acompanhar o sprint sem gastar token
@@ -503,7 +503,7 @@ Depois disso, basta `claude --remote-control "ACME · <produto>"`. Duas coisas p
 | Comando | Modos | Papel |
 |---|---|---|
 | `/sm` | `onboarding` · `sprint0 plan \| run \| review \| area <área>` · `brainstorm <ideia>` · `sdd [<tema>]` · `sprint prepare \| plan \| run [<T-ID>] \| review \| close` *(`review` tem o alias `/sm review`)* · `fix [plan [<F-ID> …] \| run]` · `board` · `agreement <questão>` · `consulting <domínio> <tema>` · `close <T-ID>` | Scrum Master — cadência, rituais, quadro, capacidade, riscos |
-| `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` · `bug <relato>` · `note` | Product Owner — **o seu canal**: status, prazo, requisitos, Histórias, backlog, aceite, defeitos que você relata |
+| `/po` | `status` · `impact <mudança>` · `analyze [<pedido>]` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` | Product Owner — **o seu canal**: tudo o que você pede (`analyze`, com o pedido ou sobre a fila `.team-project/note.md`), status, prazo, requisitos, Histórias, backlog, aceite |
 | `/arc` | `plan <ID>` · `adr <tema>` · `question <dúvida>` | Arquiteto — desenho, SDD técnico, Plano de Implementação, ADR, standards |
 | `/ux` | `prototype` · `prototype sprint <n>` · `prototype screen <tela>` · `journey <fluxo>` · `screen <nome>` · `review-ui <tela>` | UX — protótipos, jornadas, telas, usabilidade, acessibilidade |
 | `/dev` | `<ID>` · `resume <ID>` · `gap <resposta>` | Desenvolvedor — executa o plano, não improvisa |
@@ -523,7 +523,7 @@ Depois disso, basta `claude --remote-control "ACME · <produto>"`. Duas coisas p
 
 **`/sm sprint review` não é `/review`.** O primeiro é a Sprint Review, no projeto, onde você aceita as Histórias. O segundo muda o processo do time e roda só no repositório-fonte do plugin.
 
-**Duas filas de anotação, dois alvos.** `.team-project/note.md` é a fila do **produto** — problemas que você encontra usando o que o time construiu; o PO a trata com `/po note`. O `note.md` do repositório do plugin é a fila do **processo** — como o time trabalha; o `/review` a trata. Melhoria de processo percebida num projeto é anotada como sintoma lá, não aqui.
+**Duas filas de anotação, dois alvos.** `.team-project/note.md` é a fila do **produto** — problemas que você encontra usando o que o time construiu; o PO a trata com `/po analyze`. O `note.md` do repositório do plugin é a fila do **processo** — como o time trabalha; o `/review` a trata. Melhoria de processo percebida num projeto é anotada como sintoma lá, não aqui.
 
 **Se um comando não for reconhecido, use o prefixo do plugin:** `/team:sm`, `/team:po`, `/team:review`… Isso acontece quando outro plugin instalado declara o mesmo nome curto.
 
@@ -544,7 +544,7 @@ Uma pasta só, `.team-project/`, na raiz. **Nada fora dela é tocado** — a nã
 .team-project/
 ├── README.md              contexto do projeto · declara o SPRINT CORRENTE (§2)
 ├── how-to.md              cópia deste guia, atualizada a cada /team update
-├── note.md                sua fila de relatos — escreva o sintoma, o PO trata em /po note
+├── note.md                sua fila de relatos — escreva o sintoma ou o pedido, o PO trata em /po analyze
 │
 ├── consumption.md         consumo fora de sprint (onboarding, brainstorm, prepare, sdd, entre sprints) — mesmo modelo do de dentro do sprint
 ├── consulting/            casos de consultoria externa (/sm consulting) — nasce só quando você pede um

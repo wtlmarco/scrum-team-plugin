@@ -946,6 +946,10 @@ $cases = @(
        Payload = @{ prompt = '/team:sm fix plan'; transcript_path = (Join-Path $tmp 'transcripts/g21p.jsonl') } },
     @{ Name = 'G21 comando que não é ritual: silêncio'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
        Payload = @{ prompt = '/po status'; transcript_path = (Join-Path $tmp 'transcripts/g21.jsonl') } },
+    @{ Name = 'v3.67.0 G21 /po analyze sem texto (a fila do note.md) é ritual: avisa em sessão que já rodou outro'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = '/po analyze'
+       Payload = @{ prompt = '/po analyze'; transcript_path = (Join-Path $tmp 'transcripts/g21.jsonl') } },
+    @{ Name = 'v3.67.0 G21 /po analyze <pedido> avulso não é ritual: silêncio'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
+       Payload = @{ prompt = '/po analyze o botão de salvar trava'; transcript_path = (Join-Path $tmp 'transcripts/g21.jsonl') } },
     @{ Name = 'v3.57.4 primeiro prompt da sessão nova (transcript ainda sem arquivo): grava o .session-transcript dela'; Script = 'prompt-submit.ps1'; Expect = 0; ExpectOut = ''
        Check = { $f = Join-Path $proj '.team-project/.session-transcript'; $ok = (Test-Path -LiteralPath $f) -and ((Get-Content -LiteralPath $f -Raw -Encoding UTF8).Trim() -eq (Join-Path $tmp 'transcripts/pos-clear.jsonl')); Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue; $ok }
        Payload = @{ prompt = '/sm sprint run'; transcript_path = (Join-Path $tmp 'transcripts/pos-clear.jsonl') } },

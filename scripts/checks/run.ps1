@@ -16,6 +16,8 @@
 #             Roda sozinho com guards.json → run.deviceProofFallback "teste" (política); sem ela, depois da decisão do stakeholder.
 #   pause     (v3.60.1) pausa o run a pedido do stakeholder (-Because): apaga .active-run e .ask-route e registra no run-log; o
 #             mesmo /sm sprint run retoma. Antes era apagar o .active-run à mão (negado pelo classificador no garden, 15/11).
+#   revert-docs (v3.67.0) -Story H-<nnn>: a História rejeitada na Review desfaz o SDD que a Task do SDD (Trilha sdd) aplicou
+#             na consolidação — despacha o Arquiteto e o PO pelas linhas da Task e versiona a reversão (uma ação por chamada).
 #   allow     (v3.55.0, F2) grava a decisão do formulário único dos comandos dos planos: -Commands = prefixos liberados (vão para guards.json →
 #             runCommands, resto do arquivo intacto), -Deny = negados (a Task volta ao Arquiteto), -By = quem autorizou (run-log.md). O next/start
 #             param uma vez com os comandos de '### Comandos da Task' que a G14 ainda não libera, de todos os planos da História.
@@ -39,8 +41,9 @@
 # vez da Task é encerrada e retomada sem formulário (Write-StallAction).
 
 param(
-    [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff', 'allow', 'wait', 'prove', 'pause')][string]$Action,
+    [Parameter(Position = 0, Mandatory = $true)][ValidateSet('next', 'start', 'done', 'handoff', 'allow', 'wait', 'prove', 'pause', 'revert-docs')][string]$Action,
     [string]$Task = '',
+    [string]$Story = '',      # v3.67.0 · revert-docs: a História rejeitada na Review cujo SDD (Task do SDD) é desfeito
     [ValidateSet('', 'ok', 'gap', 'env', 'teto')][string]$Result = '',
     [string]$Block = '',
     [string]$Commands = '',   # v3.55.0 (F2) · allow: prefixos liberados, separados por ;
@@ -417,14 +420,17 @@ function Get-ConsolidationRows([string]$Text) {
 }
 function Get-DocsCheck([string]$S) {
     $p = Join-Path $S '.docs-check.json'
-    $o = @{ arch_redo = ''; format_redo = ''; base = @{}; dispatched = @{}; gaps_logged = ''; commit = ''; arch_gaps = @() }
+    # v3.67.0: sdd_redo (o Arquiteto chamado uma vez para pôr na consolidação as linhas da Task do SDD) e revert (a reversão
+    # da História rejeitada na Review: História → etapa feita, 'arch' · 'po' · 'commit').
+    $o = @{ arch_redo = ''; format_redo = ''; base = @{}; dispatched = @{}; gaps_logged = ''; commit = ''; arch_gaps = @(); sdd_redo = ''; revert = @{} }
     if (Test-Path -LiteralPath $p) {
         try {
             $j = Read-Text $p | ConvertFrom-Json
-            foreach ($k in 'arch_redo', 'format_redo', 'gaps_logged', 'commit') { if ($j.PSObject.Properties[$k]) { $o[$k] = [string]$j.$k } }
+            foreach ($k in 'arch_redo', 'format_redo', 'gaps_logged', 'commit', 'sdd_redo') { if ($j.PSObject.Properties[$k]) { $o[$k] = [string]$j.$k } }
             if ($j.PSObject.Properties['arch_gaps']) { $o.arch_gaps = @($j.arch_gaps | ForEach-Object { [string]$_ }) }
             if ($j.base) { foreach ($b in $j.base.PSObject.Properties) { $o.base[$b.Name] = [string]$b.Value } }
             if ($j.dispatched) { foreach ($b in $j.dispatched.PSObject.Properties) { $o.dispatched[$b.Name] = [string]$b.Value } }
+            if ($j.PSObject.Properties['revert'] -and $j.revert) { foreach ($b in $j.revert.PSObject.Properties) { $o.revert[$b.Name] = [string]$b.Value } }
         } catch { }
     }
     return $o
@@ -934,6 +940,69 @@ try {
 
     if ($Action -eq 'handoff') { if (-not $T) { [Console]::Error.WriteLine('run handoff pede -Task.'); exit 2 }; Out "run: cartão $(Write-Handoff $T $S $n)"; exit 0 }
 
+    # v3.67.0: a História rejeitada na Review desfaz o SDD que a Task do SDD dela aplicou na consolidação — pelas linhas da
+    # consolidação que citam a Task: o Arquiteto (03/04/05), cada dono dos pedidos (PO: 00/01/02/06) e o commit, um por chamada.
+    if ($Action -eq 'revert-docs') {
+        if (-not $Story) { [Console]::Error.WriteLine('run revert-docs pede -Story H-<nnn> (a História rejeitada na Review).'); exit 2 }
+        $sddT = @($tasks | Where-Object { $_.Story -eq $Story -and (Test-SddTask $_) })
+        if (-not $sddT.Count) { Out "run revert-docs: a $Story não tem Task do SDD (Trilha sdd) no quadro do sprint $n — nada a desfazer."; exit 0 }
+        $consP = Join-Path $S 'docs-consolidation.md'
+        if (-not (Test-Path -LiteralPath $consP)) { Out "run revert-docs: sprint $n sem docs-consolidation.md — o SDD da $Story não chegou a mudar; nada a desfazer."; exit 0 }
+        $ct = Read-Text $consP; $rArch = @(); $rReq = @(); $rOwn = @{}
+        foreach ($st in $sddT) { $cp = Get-ConsolidationTaskPaths $ct $st.Id; $rArch += $cp.Arch; $rReq += $cp.Req; foreach ($k in $cp.Owners.Keys) { $rOwn[$k] = $cp.Owners[$k] } }
+        $rArch = @($rArch | Select-Object -Unique); $rReq = @($rReq | Select-Object -Unique)
+        $rIds = ($sddT | ForEach-Object { $_.Id }) -join ', '
+        if (-not $rArch.Count -and -not $rReq.Count) { Out "run revert-docs: a consolidação do sprint $n não tem linha da $rIds — o SDD da $Story não mudou; nada a desfazer."; exit 0 }
+        $dc = Get-DocsCheck $S
+        if ([string]$dc.revert[$Story] -eq 'feita') { Out "run revert-docs: a reversão da $Story já foi feita e versionada — nada a fazer."; exit 0 }
+        $why = "a $Story foi rejeitada na Review do sprint $n (R21)"
+        if ($rArch.Count -and -not $dc.revert.ContainsKey("$Story|arch")) {
+            $dc.revert["$Story|arch"] = (Get-Date -Format 'yyyy-MM-dd HH:mm'); Set-DocsCheck $S $dc
+            Out "PRÓXIMA AÇÃO: reverter o SDD técnico da $Story — $why; Arquiteto, instância nova"
+            Say "$(Get-RunStory $Story) foi rejeitada: o arquiteto está desfazendo a atualização da documentação técnica que ela trouxe."
+            Out "  $(Get-AgentLine 'architect')"
+            Out "  prompt: `"$why. Desfaça em $($rArch -join ', ') o que as linhas da $rIds de .team-project/sprints/$n/docs-consolidation.md aplicaram (o Delta técnico da História), deixando o documento como antes dela; o que outras Histórias do sprint mudaram fica. Não faça commit. Volte em até 5 linhas.`""
+            Out "  depois: run.ps1 revert-docs -Story $Story"
+            exit 0
+        }
+        foreach ($grp in @($rReq | Group-Object { if ($rOwn.ContainsKey($_)) { $rOwn[$_] } else { 'PO' } })) {
+            $own = [string]$grp.Name
+            if ($dc.revert.ContainsKey("$Story|$own")) { continue }
+            $role = Get-RoleByOwnerName $own
+            if (-not $role) { continue }
+            $dc.revert["$Story|$own"] = (Get-Date -Format 'yyyy-MM-dd HH:mm'); Set-DocsCheck $S $dc
+            Out "PRÓXIMA AÇÃO: reverter os documentos do $own que a $Story mudou — $why"
+            Say "$(Get-RunStory $Story) foi rejeitada: a documentação de responsabilidade do $own volta a ser a de antes dela."
+            Out "  $(Get-AgentLine $role)"
+            Out "  prompt: `"$why. Desfaça em $(@($grp.Group) -join ', ') o que as linhas da $rIds de .team-project/sprints/$n/docs-consolidation.md pediram; no 06-changelog, acrescente a entrada 'revertida — $Story rejeitada na Review do sprint $n' (não apague a anterior). O que outras Histórias mudaram fica. Não faça commit. Volte em até 5 linhas.`""
+            Out "  depois: run.ps1 revert-docs -Story $Story"
+            exit 0
+        }
+        $ErrorActionPreference = 'Continue'
+        $rPaths = @(@($rArch) + @($rReq) | Select-Object -Unique)
+        $null = & git -C $Root rev-parse --is-inside-work-tree 2>$null
+        $rLine = ''
+        if ($LASTEXITCODE -ne 0) { $rLine = 'projeto sem git — os documentos revertidos ficam no disco' }
+        else {
+            foreach ($f in $rPaths) { $null = & git -C $Root add -A -- ":(literal)$f" 2>$null }
+            $rSt = @(& git -C $Root diff --cached --name-only -- @($rPaths | ForEach-Object { ":(literal)$_" }) 2>$null | Where-Object { $_ })
+            if (-not $rSt.Count) { $rLine = 'nada pendente no git — os documentos não mudaram com a reversão (confira se os donos aplicaram)' }
+            else {
+                $mf = [System.IO.Path]::GetTempFileName()
+                try {
+                    [System.IO.File]::WriteAllText($mf, "docs(sdd): reversão da $Story (Review do sprint $n)`n`n$why; linhas da $rIds em .team-project/sprints/$n/docs-consolidation.md: $($rSt -join ', ')`n", $utf8)
+                    $null = & git -C $Root commit -q -F $mf -- @($rSt | ForEach-Object { ":(literal)$_" }) 2>&1
+                    $rLine = if ($LASTEXITCODE -eq 0) { "commit $(([string](& git -C $Root rev-parse --short HEAD 2>$null)).Trim()) docs(sdd): reversão da $Story ($($rSt.Count) arquivo(s))" } else { 'o commit da reversão falhou — os documentos revertidos seguem no disco; reporte na retrospectiva' }
+                } finally { Remove-Item -LiteralPath $mf -Force -ErrorAction SilentlyContinue }
+            }
+        }
+        $ErrorActionPreference = 'Stop'
+        $dc.revert[$Story] = 'feita'; Set-DocsCheck $S $dc
+        Add-RunLog $S $n $Story 'SDD da História rejeitada revertido (R21 · R12)' $rLine "sprints/$n/docs-consolidation.md ($rIds)"
+        Out "run revert-docs: $Story — $rLine. A $rIds volta ao Product Backlog com a História, como as outras Tasks dela (R21)."
+        exit 0
+    }
+
     # v3.60.1: a decisão "provar por teste" aplicada inteira pelo script (Invoke-ProveByTest).
     if ($Action -eq 'prove') {
         if (-not $T) { [Console]::Error.WriteLine('run prove pede -Task.'); exit 2 }
@@ -995,6 +1064,7 @@ try {
 
     if ($Action -eq 'start') {
         if (-not $T) { [Console]::Error.WriteLine('run start pede -Task.'); exit 2 }
+        if (Test-SddTask $T) { [Console]::Error.WriteLine("run: $($T.Id) é a Task do SDD (Trilha sdd) — não vai ao dev; a consolidação dos documentos vivos a executa depois do portão do QA (run.ps1 next)."); exit 2 }
         $pf = Get-PlanFull $T $S; if (-not $pf) { [Console]::Error.WriteLine("run: $($T.Id) sem plano — o preparo da construção vem antes (run.ps1 next)."); exit 2 }
         # v3.64.2: a decisão do stakeholder que muda o plano espera o Arquiteto — o dev não começa sobre o plano de antes.
         $rpS = Get-ReplanState $T $S
@@ -1793,6 +1863,26 @@ try {
         Out "  depois: run.ps1 next — com o plano regravado e o plan.ps1 verde, a $($rt.Id) vai a 🟨 e o executor retoma pelo cartão"
         exit 0
     }
+    # v3.67.0: a Task do SDD (Trilha sdd) não entra na fila do dev, não conta como elegível nem como bloqueio e não passa pelo
+    # portão do QA — a consolidação dos documentos vivos (passo 5, abaixo) a executa. Pré-condição: a História de evolução
+    # (Origem A-<nnn>) cuja análise muda o SDD, ou que tem Delta técnico, tem a sua Task do SDD (Planning, passo 4).
+    $sddTasks = @($tasks | Where-Object { Test-SddTask $_ })
+    $tasks = @($tasks | Where-Object { -not (Test-SddTask $_) })
+    $sddMiss = @()
+    foreach ($sg in @(@($tasks) + @($sddTasks) | Group-Object Story)) {
+        if (-not $sg.Name -or $sg.Name -notmatch '^H-') { continue }
+        if (@($sddTasks | Where-Object { $_.Story -eq $sg.Name }).Count) { continue }
+        $an = Get-StoryAnalysis $Root $S $sg.Name
+        if ($an -and ($an.Changes -or $an.Delta)) { $sddMiss += "$($sg.Name) ($($an.Id)$(if ($an.Delta) { ', Delta técnico' }))" }
+    }
+    if ($sddMiss.Count) {
+        Out "PRÓXIMA AÇÃO: Planning sem a Task do SDD — $($sddMiss -join '; '): a análise muda o SDD e a História não tem Task de Trilha sdd no quadro (workflow-sprint.md §5e Planning, passo 4)"
+        Say 'Antes de começar, falta no quadro a tarefa de atualizar a documentação de uma parte do sprint. O time vai acrescentá-la e seguir.'
+        Out "  $(Get-AgentLine 'scrum-master')"
+        Out "  prompt: `"No quadro .team-project/sprints/$n/sprint-backlog.md, acrescente a Task do SDD de $(($sddMiss | ForEach-Object { ($_ -split ' ')[0] }) -join ', ') no modelo roles/scrum-master/templates/sprint-backlog.md (Trilha sdd): ID na sequência, 'SDD da H-<nnn>: <seções que a análise muda>', Est. 0,25 (ajuste se o delta é grande), Trilha sdd, Dono PO + Arquiteto, Depende de todas as outras Tasks da História, Plano —, Evidência docs-consolidation.md, Cenários 'nenhum aplicável — documentação'. A linha entra no Registro como entrada fora da Planning (kanban.ps1). Volte em até 5 linhas.`""
+        Out '  depois: run.ps1 next'
+        exit 0
+    }
     $open = @($tasks | Where-Object { $_.Mark -ne $E.Done -and $_.Mark -ne $redMk })
     $doneIds = @($tasks | Where-Object { $_.Mark -eq $E.Done } | ForEach-Object { $_.Id })
     $deferred = Get-DeferredScenarios $Root
@@ -2074,11 +2164,23 @@ try {
     Invoke-GateStep
     # 5 · consolidação dos documentos vivos (A5) e 6 · Review.
     $cons = Join-Path $S 'docs-consolidation.md'
+    # v3.67.0: a Task do SDD de cada História de evolução vai na consolidação — a análise (o que muda no 00/01/02/06) e o
+    # Delta técnico (03/04/05) como fontes, e cada linha citando o ID da Task, que é por onde o run a fecha.
+    $sddOpen = @($sddTasks | Where-Object { $_.Mark -ne $E.Done })
+    $sddSrc = @(foreach ($st in $sddOpen) {
+        $an = Get-StoryAnalysis $Root $S $st.Story
+        $rel = { param($p) $q = ([string]$p) -replace '\\', '/'; $ix = $q.IndexOf('.team-project/'); if ($ix -ge 0) { $q.Substring($ix) } else { $q } }
+        $parts = @("$($st.Id) (História $($st.Story)")
+        if ($an -and $an.Path) { $parts += "análise $(& $rel $an.Path)" }
+        if ($an -and $an.Delta) { $parts += "Delta técnico $(& $rel $an.Delta)" }
+        ($parts -join ' · ') + ')'
+    })
+    $sddTxt = if ($sddSrc.Count) { " Tasks do SDD (Trilha sdd) deste sprint, que esta consolidação executa: $($sddSrc -join '; '). Para cada uma: aplique o Delta técnico em 03/04/05 (tabela 'Aplicado pelo Arquiteto') e peça ao PO o 'O que muda no SDD' da análise, o requisito proposto no 01-requirements, a versão no 06-changelog e o índice do SDD ('Pedidos aos donos', dono PO) — a coluna 'Task / decisão' (ou 'Origem') de cada linha cita o ID da Task do SDD." } else { '' }
     if (-not (Test-Path -LiteralPath $cons) -or (Read-Text $cons) -notmatch '(?m)^\*\*Estado:\*\*\s*feita') {
         Out "PRÓXIMA AÇÃO: consolidação dos documentos vivos (R12) — Arquiteto, uma vez no sprint (A5)"
         Say 'A revisão final passou. Atualizando a documentação com o que foi entregue.'
         Out "  $(Get-AgentLine 'architect')"
-        Out "  prompt: `"Consolide os documentos vivos do sprint ${n}: leia as seções 'Documentos vivos (R12)' de .team-project/sprints/$n/delivery/*.md, atualize o SDD técnico e os ADRs que são seus e peça ao dono o que não é seu. Registre em .team-project/sprints/$n/docs-consolidation.md no modelo roles/architect/templates/docs-consolidation.md do plugin: **Estado:** feita na primeira linha e as tabelas '## Aplicado pelo Arquiteto', '## Pedidos aos donos' (a última coluna é o dono: PO, UX, SM ou QA) e '## Sem mudança', com o caminho de cada documento entre crases na primeira coluna. O run.ps1 confere no git cada documento da primeira tabela, leva os pedidos aos donos e faz o commit. Não faça commit. Volte em até 15 linhas.`""
+        Out "  prompt: `"Consolide os documentos vivos do sprint ${n}: leia as seções 'Documentos vivos (R12)' de .team-project/sprints/$n/delivery/*.md, atualize o SDD técnico e os ADRs que são seus e peça ao dono o que não é seu. Registre em .team-project/sprints/$n/docs-consolidation.md no modelo roles/architect/templates/docs-consolidation.md do plugin: **Estado:** feita na primeira linha e as tabelas '## Aplicado pelo Arquiteto', '## Pedidos aos donos' (a última coluna é o dono: PO, UX, SM ou QA) e '## Sem mudança', com o caminho de cada documento entre crases na primeira coluna. O run.ps1 confere no git cada documento da primeira tabela, leva os pedidos aos donos e faz o commit.$sddTxt Não faça commit. Volte em até 15 linhas.`""
         exit 0
     }
     # v3.59.2 (R12): a consolidação "feita" é conferida, os pedidos chegam aos donos e os documentos vão a um commit próprio.
@@ -2093,6 +2195,20 @@ try {
             exit 0
         }
         $docGaps += 'o docs-consolidation.md segue fora do modelo: os documentos do Arquiteto não foram conferidos'
+    }
+    # v3.67.0: consolidação "feita" sem linha de uma Task do SDD aberta — o Arquiteto volta uma vez para incluí-la.
+    $consText = Read-Text $cons
+    $sddNoRow = @($sddOpen | Where-Object { $cp = Get-ConsolidationTaskPaths $consText $_.Id; -not ($cp.Arch.Count + $cp.Req.Count) })
+    if ($sddNoRow.Count -and -not $dc.commit) {
+        if (-not $dc.sdd_redo) {
+            $dc.sdd_redo = (Get-Date -Format 'yyyy-MM-dd HH:mm'); Set-DocsCheck $S $dc
+            Out "PRÓXIMA AÇÃO: consolidação sem as linhas da Task do SDD — $(($sddNoRow | ForEach-Object { $_.Id }) -join ', ') (Arquiteto, uma vez)"
+            Say 'A atualização da documentação ficou sem a parte das funcionalidades novas do sprint; o arquiteto vai completá-la.'
+            Out "  $(Get-AgentLine 'architect')"
+            Out "  prompt: `"Em .team-project/sprints/$n/docs-consolidation.md faltam as linhas das Tasks do SDD.$sddTxt Acrescente as linhas, aplique o que é seu, e mantenha o resto do registro. Não faça commit. Volte em até 10 linhas.`""
+            exit 0
+        }
+        $docGaps += "Task do SDD sem linha na consolidação: $(($sddNoRow | ForEach-Object { $_.Id }) -join ', ')"
     }
     $since = Get-SprintStart $S
     # Depois do commit, a conferência já foi feita: vale o que ficou registrado (o next seguinte não reconfere o versionado).
@@ -2132,6 +2248,27 @@ try {
         $cm = Save-DocsCommit $docPaths $n
         Out $cm.Line
         if ($cm.Sha) { $dc.commit = $cm.Sha; $dc.arch_gaps = @($unchanged); Set-DocsCheck $S $dc; if ($cm.Sha -ne '-') { Add-RunLog $S $n "S$n" 'commit da consolidação dos documentos vivos (R12)' $cm.Line.Trim() "sprints/$n/docs-consolidation.md" } }
+    }
+    # v3.67.0: a Task do SDD fecha pela consolidação — com o commit feito e todas as linhas dela aplicadas (o documento do
+    # Arquiteto mudou no sprint; o pedido ao dono mudou o documento depois de aparecer), o close.ps1 -Apply a marca ✅. Linha
+    # pendente: a Task vai a 🔴 e a pendência vai à Review, como os outros documentos vivos.
+    if ($dc.commit) {
+        foreach ($st in $sddOpen) {
+            $cp = Get-ConsolidationTaskPaths $consText $st.Id
+            if (-not ($cp.Arch.Count + $cp.Req.Count)) { continue }
+            $pend = @(@($cp.Arch | Where-Object { @($dc.arch_gaps) -contains $_ }) + @($cp.Req | Where-Object { $dc.base.ContainsKey($_) -and (Get-DocHash $_) -eq [string]$dc.base[$_] }))
+            if ($pend.Count) {
+                if ($st.Mark -ne $redMk) {
+                    $mk = Invoke-Child 'mark.ps1' @('-Task', $st.Id, '-To', 'blocked', '-Reason', "SDD não aplicado na consolidação: $($pend -join ', ')", '-By', 'sessão (run.ps1 next — Task do SDD)', '-Root', $Root)
+                    if ($mk.Code -eq 0) { Out "  $((($mk.Out -split "`r?`n") | Where-Object { $_ -match '^mark:' } | Select-Object -First 1))" }
+                }
+                $docGaps += "Task do SDD $($st.Id) com documento não aplicado: $($pend -join ', ')"
+                continue
+            }
+            $cl = Invoke-Child 'close.ps1' @('-Task', $st.Id, '-Apply', '-Root', $Root)
+            if ($cl.Code -eq 0) { Out "  $($st.Id) (Task do SDD da $($st.Story)) ✅ — fechada pela consolidação"; Add-RunLog $S $n $st.Id 'Task do SDD fechada pela consolidação dos documentos vivos (R12)' "linhas aplicadas: $((@($cp.Arch) + @($cp.Req)) -join ', ')" "sprints/$n/docs-consolidation.md" }
+            else { $docGaps += "Task do SDD $($st.Id) não fechou no close.ps1: $((($cl.Out -split "`r?`n") | Where-Object { $_ -match 'Não fecha|falhou' } | Select-Object -First 1))" }
+        }
     }
     if ($docGaps.Count -and -not $dc.gaps_logged) {
         $dc.gaps_logged = (Get-Date -Format 'yyyy-MM-dd HH:mm'); Set-DocsCheck $S $dc
