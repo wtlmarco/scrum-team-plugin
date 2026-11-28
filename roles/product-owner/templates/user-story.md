@@ -27,7 +27,7 @@ A História tem **dois estados no Product Backlog** (fonte viva), mais uma **có
 
 **Valor:** <uma frase — o que o stakeholder ou o usuário passa a conseguir fazer que hoje não consegue.>
 
-**Origem:** RF-<nnn> / GAP <ID> / ressalva da Review do sprint <n>
+**Origem:** RF-<nnn> / A-<nnn> (análise do `/po analyze`) / GAP <ID> / ressalva da Review do sprint <n>
 **Tamanho grosseiro:** P / M / G  *(indicativo para ordenar o backlog, não é a estimativa — essa é por Task, na Planning)*
 ```
 
@@ -40,7 +40,7 @@ A História tem **dois estados no Product Backlog** (fonte viva), mais uma **có
 
 **Valor:** <a mesma frase do esboço, revista se o entendimento mudou.>
 
-**Origem:** RF-<nnn> / GAP <ID> / ressalva da Review do sprint <n>
+**Origem:** RF-<nnn> / A-<nnn> (análise do `/po analyze`) / GAP <ID> / ressalva da Review do sprint <n>
 
 ### Regras funcionais
 <O que o sistema passa a fazer, em linguagem de negócio. Uma regra por linha.

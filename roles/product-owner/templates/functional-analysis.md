@@ -1,10 +1,12 @@
-# Template — Análise Funcional (`/po analyze <ideia>`)
+# Template — Análise Funcional (`/po analyze`)
 
-Resposta do PO a uma ideia do stakeholder, antes de virar requisito.
+Análise do PO de um pedido do stakeholder classificado como **evolução** ou **capacidade nova** (v3.67.0). **Gravada** em `.team-project/product-owner/analysis/A-<nnn>-<slug>.md` quando aprovada — é o insumo do `/sm sprint prepare` e da Task do SDD do sprint. Negada, fica só a linha no `demand-log.md` (motivo e alternativa).
 
 ```markdown
-## Análise Funcional — <ideia em uma frase> — <data>
+# A-<nnn> — <pedido em uma frase>
 
+**Data:** <aaaa-mm-dd> · **Classificação:** evolução | capacidade nova
+**Origem:** <texto avulso | item do note.md de <data>>
 **Pedido:** <literal, como veio>
 **Problema do usuário por trás:** <a necessidade real, não o recurso pedido>
 
@@ -34,10 +36,21 @@ Resposta do PO a uma ideia do stakeholder, antes de virar requisito.
 <Se aprovado com ajuste: qual é a menor forma útil e por que ela basta agora.>
 <Se negado: qual alternativa atende ao mesmo problema.>
 
-**O que muda (habilita o `/sm sdd` caso B):** <seções e requisitos afetados do SDD | "delta nulo — <motivo>" | "n/a — negado">
+**O que muda no SDD:** <seções e requisitos afetados (`00`/`01`/`02`) | "delta nulo — <motivo>"> — é o que a **Task do SDD** do sprint aplica. A parte técnica (`03`/`04`/`05`) não é sua: o Arquiteto a declara na varredura do `prepare` (Delta técnico, se estrutural).
 
 ### 6. Escalação ao stakeholder
-<Só quando há lacuna real de especificação. Até 3 opções, com recomendação e custo funcional de cada uma. Caso contrário: "nenhuma".>
+<Só quando há lacuna real de especificação. Até 3 opções, com recomendação e custo funcional de cada uma (formulário R22). Caso contrário: "nenhuma".>
+
+### 7. Requisito proposto
+<No formato de `requirement.md`, com o RF-ID reservado (seguindo a numeração existente). Entra no `01-requirements` na Task do SDD — não antes.>
+
+### 8. Histórias geradas
+| História | Trecho do pedido que cobre |
+|---|---|
+| H-<nnn> | <...> |
+
+### 9. Jornada (só capacidade nova)
+<O mapa da jornada inteira do UX — os passos do usuário, por onde entra e sai, e o trecho que cada História cobre — ou o ponteiro do arquivo dele. Orienta o `prepare` de cada sprint; não tem portão.>
 ```
 
 ## Regras
@@ -46,6 +59,8 @@ Resposta do PO a uma ideia do stakeholder, antes de virar requisito.
 - Negar sem alternativa é abdicar do papel: toda negativa vem com o caminho que atende ao mesmo problema.
 - Não entrar em solução técnica — nem para elogiar, nem para descartar. Isso é `/arc`.
 - Lacuna da especificação **nunca** é preenchida por conta própria (R9): vira escalação com opções.
+- **Uma análise por A-ID.** Várias Histórias podem nascer de uma análise; a análise não é copiada nelas — elas citam `A-<nnn>` na Origem.
+- **A análise não altera o SDD.** O "O que muda no SDD" é o que a Task do SDD aplica no fim da História, depois do ✅ do QA.
 
 ## Exemplo
 

@@ -14,6 +14,8 @@
 # dispensa o aceite em qualquer frase declara a linha **Aceite:**, a única que o cartão lê).
 # v3.57.3: 35 (**Verificação:** dispensada — <motivo> | comando — `<comando>`; fora do formato, dispensa com mutação ou comando
 # proibido reprovam).
+# v3.67.0: 37 (Task de História de evolução — Origem A-<nnn> — com migration ou caminho de guards.json → structural.paths
+# precisa do Delta técnico com o ② da História aprovado).
 # As mensagens dizem o que corrigir: o Arquiteto não precisa abrir este script (note.md item 7).
 # Saída: tabela regra · resultado · linha decisiva. Exit 1 se alguma falhou · 2 = erro de uso.
 
@@ -253,6 +255,38 @@ try {
             }
         }
     }
+
+    # ---------- 37 · mudança estrutural da evolução passa pelo ② (v3.67.0; R15, technical-delta.md) ----------
+    # A Task de uma História com Origem A-<nnn> que prevê migration (o mesmo critério da trilha leve) ou toca um caminho de
+    # guards.json → structural.paths (contratos, schema: configuração do projeto) precisa do Delta técnico da A-<nnn> com a
+    # linha 'aprovado' da História na tabela "Portão ②". É o caso em que a varredura do prepare disse "não é estrutural" e o
+    # plano mostra o contrário: volta ao Arquiteto (o delta) e ao stakeholder (o ②), antes do dev.
+    $r37 = 'n-a'; $r37Why = 'plano fora de sprints/<n>/plan/ (sem História)'
+    $r37Sprint = [regex]::Match(($path -replace '\\', '/'), '(.*)/sprints/(\d+)/plan/([A-Z]+-[\w-]+?)-[^/]*\.md$')
+    if (-not $r37Sprint.Success) { $r37Sprint = [regex]::Match(($path -replace '\\', '/'), '(.*)/sprints/(\d+)/plan/((?:Q-S\d+[a-z]?|[A-Z]+-\d+[a-z]?))\.md$') }
+    if ($r37Sprint.Success) {
+        $r37S = Join-Path $Root ".team-project/sprints/$($r37Sprint.Groups[2].Value)"
+        $r37Id = ([regex]::Match($r37Sprint.Groups[3].Value, '^(?:Q-S\d+[a-z]?|[A-Z]+-\d+[a-z]?)')).Value
+        $r37T = if (Test-Path -LiteralPath (Join-Path $r37S 'sprint-backlog.md')) { @(Get-SprintTasks $r37S | Where-Object { $_.Id -eq $r37Id }) | Select-Object -First 1 } else { $null }
+        $r37An = if ($r37T) { Get-StoryAnalysis $Root $r37S $r37T.Story } else { $null }
+        if (-not $r37An) { $r37Why = 'a História não tem Origem A-<nnn> (não é evolução pelo /po analyze)' }
+        else {
+            $sPaths = @()
+            $gjp = Join-Path $Root '.team-project/guards.json'
+            if (Test-Path -LiteralPath $gjp) { try { $gj = Read-Text $gjp | ConvertFrom-Json; if ($gj.PSObject.Properties['structural'] -and $gj.structural.PSObject.Properties['paths']) { $sPaths = @($gj.structural.paths | ForEach-Object { [string]$_ }) } } catch { } }
+            $hits = @($files | Where-Object { $_ -match '(?i)migrat' -or ($sPaths.Count -and (Test-GlobMatch $_ $sPaths)) })
+            if (-not $hits.Count) { $r37 = 'ok'; $r37Why = "$($r37T.Story) ($($r37An.Id)): sem migration nem caminho de structural.paths na lista" }
+            else {
+                $dec = Get-DeltaGateDecision $r37An.Delta $r37T.Story
+                if ($dec -eq 'aprovado') { $r37 = 'ok'; $r37Why = "$($r37T.Story): mudança estrutural ($($hits -join ', ')) com o ② aprovado no Delta técnico $($r37An.Id)" }
+                else {
+                    $r37 = 'falhou'
+                    $r37Why = "mudança estrutural sem ② — $($hits -join ', ') na lista, e $(if (-not $r37An.Delta) { "não há Delta técnico .team-project/architect/deltas/$($r37An.Id).md" } elseif ($dec) { "o Portão ② da $($r37T.Story) no delta está '$dec'" } else { "o Delta técnico $($r37An.Id) não tem a linha 'aprovado' da $($r37T.Story) no Portão ②" }): o Arquiteto escreve ou estende o delta (roles/architect/templates/technical-delta.md) e o stakeholder o aprova no ② antes do dev (regra 37)"
+                }
+            }
+        }
+    }
+    Add-Result 'estrutural' $r37 $r37Why
 
     # ---------- 22 · plano enxuto (v3.51; sem corte por tamanho desde a v3.53.2) ----------
     # v3.53.2 (plugin-report prévio do sprint 5 do garden, decisão do stakeholder): o teto de 20 KB fazia o Arquiteto escrever

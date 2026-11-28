@@ -13,6 +13,7 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 | Versão | O que mudou |
 |---|---|
+| [`v3.64`](process-changelog-archive.md) | A evidência que o script já sabe, o cartão que só diz o que o plano diz, a árvore e a máquina com dono e o portão que não duplica correção (SM + Arquiteto + Dev + QA) — 18/11/2026 |
 | [`v3.63`](process-changelog-archive.md) | O portão do QA por marcos: ambiente não vira veredito, a rodada nova mede e julga só o que venceu, cada achado tem causa e dono, e a prova de cada rodada fica no sprint (SM + QA + PO + UX + Arquiteto + Dev) — 17/11/2026 |
 | [`v3.62`](process-changelog-archive.md) | A prova do app híbrido no aparelho é de primeira classe: o id é lido pelo CDP e a configuração do alvo vai ao stakeholder, não ao Arquiteto (SM + Arquiteto + QA) — 16/11/2026 |
 | [`v3.61`](process-changelog-archive.md) | Sprint 0: o backlog funcional abre sobre documentação conforme e ambiente de testes provado — o onboarding pergunta onde está a documentação e decide o sprint 0 (SM + PO + Arquiteto + QA) — 16/11/2026 |
@@ -105,6 +106,48 @@ Este documento viaja com o time na replicação: é a memória de por que cada r
 
 ---
 
+## v3.67 — Uma entrada só para o que o stakeholder pede: o `/po analyze` grava a análise e cria as Histórias, a evolução vai direto ao sprint, a mudança estrutural passa pelo ② e o SDD muda na Task do SDD (SM + PO + Arquiteto + UX) — 27/11/2026
+
+**Instrução:** (stakeholder, 27/11/2026) "vamos unificar o /po note no /po analyze; o /sm sdd passa a existir somente após o brainstorm e a parte de prepare pega os itens do product backlog para iniciar um novo sprint; importante é que na plan tenha a task de atualizar o sdd". Depois: o `/po bug` também sai; mudança estrutural passa pelo ② técnico, num documento próprio (não ADR); capacidade nova num sistema que já existe vai pelo analyze, sem brainstorm. Plano em `melhorias/plano-v3.67.0-entrada-unica-analyze.md`.
+**Classificação:** regra (R15 reescrita; R12 com a Task do SDD) · formato de documento (análise gravada, índice de pedidos, Delta técnico, Trilha `sdd`) · instrumento (`run.ps1` fila, pré-condição, consolidação e `revert-docs`; `close.ps1` Trilha `sdd`; regra 37 do `plan.ps1`; G20 e G21) · propriedade de artefato (`demand-log.md`, `analysis/`, `architect/deltas/`).
+
+### O que mudou
+| Documento | Seção | Mudança |
+|---|---|---|
+| `commands/po.md` · `agents/product-owner.md` · `roles/product-owner/README.md` · `skills.md` §8 | modos | `/po note` e `/po bug` saem. `/po analyze [<pedido>]` é a entrada única: texto avulso ou a fila do `note.md`; um A-ID por pedido (item misto vira dois); classificação evolução · capacidade nova · defeito · ajuste · mudança em História do sprint · dúvida · negado; a triagem de defeito e ajuste segue o `fix-run.md` §Triagem |
+| `templates/functional-analysis.md` · `templates/demand-log.md` (novo) · `templates/note.md` · `product-backlog.md` · `user-story.md` · `requirement.md` | | A análise aprovada vai a `product-owner/analysis/A-<nnn>-<slug>.md` (o que muda no SDD, requisito proposto, Histórias geradas, jornada); todo A-ID ganha linha no índice; a História cita `A-<nnn>` na Origem; o `note.md` aceita pedido além de sintoma, e o item `[plugin]` fica para o `/review`; a tabela "Requisitos em elaboração" sai do backlog |
+| `process/working-rules.md` R15 · `workflow-sdd.md` · `workflow-ritos.md` §5b · `workflow.md` · `sm-modes.md` | | Brainstorm e `/sm sdd` só para produto sem SDD; o caso B do `sdd` sai. Num sistema existente, todo pedido vai por `/po analyze` ao `prepare`; a aprovação funcional da evolução é o ③; o que o brief deixa fora da primeira fatia vira A-ID |
+| `process/workflow-sprint.md` · `workflow.md` §3a · `roles/architect/*` · `templates/technical-delta.md` (novo) · `technical-decision.md` | prepare 1, 5, 6, 7 · DoR-a | Entram as Histórias com Origem `A-<nnn>`; a varredura técnica é obrigatória para elas, com a coluna "Estrutural?"; estrutural (`03`/`04`/`05`) pede o **Delta técnico** `architect/deltas/A-<nnn>.md`, aprovado no **②** no passo 7 (tabela "Portão ②", registro único); a área nova da análise vale na regra do sprint 0 |
+| `workflow-sprint.md` Planning 4 · `sprint-run.md` · R12 · `templates/sprint-backlog.md` · `docs-consolidation.md` · `breakdown.md` | Task do SDD | A História de evolução que muda o SDD ganha a **Task do SDD** (Trilha `sdd`, dono PO + Arquiteto, depende das outras), executada pela consolidação dos documentos vivos depois do portão do QA: o Arquiteto aplica o delta, o PO o funcional, cada linha cita a Task; o `run.ps1` a fecha depois do commit. A Review que rejeita a História roda `run.ps1 revert-docs` |
+| `scripts/checks/{run,lib,close,plan,gate,impasse}.ps1` · `hooks/{stop,prompt-submit}.ps1` | | Fila sem a Task `sdd` e pré-condição dela; consolidação com a análise e o delta no prompt e o fechamento da Task; `revert-docs`; `close.ps1` pela consolidação; regra 37 (migration ou `structural.paths` sem o ② reprova); G20 não conta a Task `sdd`; G21 com `/po analyze` (a fila); marcador `[plugin]` |
+| `roles/user-experience/README.md` | `/ux journey` | O mapa da jornada inteira da capacidade nova, pedido pelo PO no analyze, sem protótipo e sem portão |
+| `rituals/team-update.md` 7s · `team-init.md` · manifesto · `artifact-ownership.md` · `README.md` · `how-to.md` | | O índice de pedidos nasce no `init` e no `update`; o caso B aberto vira pendência para o PO converter; as três pastas novas com dono |
+
+### Por quê
+O pedido do stakeholder entrava por três modos que se sobrepunham, e o caminho até o sprint tinha três falhas:
+- a decisão do analyze não ficava gravada, e o `sdd` caso B a lia do disco em sessão limpa;
+- mudança de escopo achada no `note.md` saía da fila e não chegava a lugar nenhum;
+- toda evolução pagava uma sessão de `sdd` com o ① e o ②, e depois o ③ de novo: dois protótipos para a mesma mudança.
+
+Agora cada pedido tem um A-ID num índice, a evolução comum vai do analyze ao `prepare`, o ② só aparece quando ela mexe em dados, API ou arquitetura, e o SDD muda depois do QA, pela consolidação que já existia.
+
+### Quem passa a ser cobrado de forma diferente
+| Papel | O que muda para ele |
+|---|---|
+| PO | Grava a análise e cria as Histórias no analyze; mantém o `demand-log.md`; aplica o funcional na consolidação; reverte o seu na História rejeitada |
+| Arquiteto | Varredura obrigatória na evolução, com o Delta técnico quando estrutural; aplica o delta na consolidação; o `plan.ps1` reprova o plano estrutural sem o ② |
+| UX | Mapa da jornada inteira na capacidade nova; sem protótipo funcional na evolução |
+| SM | Confere a Task do SDD na Planning (o run para sem ela) e a área nova da análise no `prepare` |
+
+### Como saberemos que funcionou
+- Nenhum pedido sai do `note.md` sem A-ID no `demand-log.md`.
+- Nenhuma evolução passa pelo `/sm sdd`; a evolução não estrutural chega à Review com uma aprovação só (③).
+- Nenhuma História de evolução fecha a Review com o SDD desatualizado (Task do SDD ✅ ou pendência no formulário da Review).
+
+### Pendente do stakeholder
+Nada. A v3.67.0 não entra na virada do benchmark (`melhorias/plano-virada.md`, 3.66.2) sem decisão sua.
+
+---
 ## v3.66 — A matriz de impasses: quem trava declara, a matriz diz quem resolve, e ao stakeholder só sobe o que é dele (SM + PO + Arquiteto + UX + QA) — 23/11/2026
 
 **Instrução:** (stakeholder, 23/11/2026, depois da conferência da preparação do sprint 7 do projeto piloto) "um módulo central que avalie para onde vai o impasse, unificando isso por todo o plugin". Registro do que o time decidiu, por sprint ou fix, à vista no kanban; nomes de arquivo e identificadores em inglês. Plano em `melhorias/plano-v3.66.0.md`, etapa 1 nesta entrega.
@@ -202,25 +245,5 @@ Nenhuma Task em construção dividida e nenhum plano emendado com o texto antigo
 
 ### Pendente do stakeholder
 `rituals/review-contract.md` §Regras do repositório-fonte (R17–R19, texto pronto): a guarda G8 negou a escrita ao SM; sem ele, o ponteiro da R17–R19 em `working-rules.md` aponta para a seção a criar. `close.ps1` (C1 × diff do plano, Q1) e os `agents/*` são do stakeholder.
-
----
-
-## v3.64 — A evidência que o script já sabe, o cartão que só diz o que o plano diz, a árvore e a máquina com dono e o portão que não duplica correção (SM + Arquiteto + Dev + QA) — 18/11/2026
-
-**Instrução:** (stakeholder, 18/11/2026) "consegue fazer uma análise no projeto garden para identificar tudo que gerou retrabalho durante o sprint 6"; depois "monte o plano de correção dos itens 2, 5 e 6", "inclua no plano v3.64.0" (a parada da Q-S6e no Karma), "inclua somente o necessário para resolver no plugin" (o portão que mandava abrir a Q-S6f) e "pode construir". Decisões D1–D8 em formulário, no mesmo dia (`melhorias/plano-v3.64.0.md` §8).
-**Medido (piloto, S6, 11 a 18/11):** 58 reprovações do `done` viraram "dev novo, só a evidência, não mude código" — 9 eram só papel, 18 só um comando, 17 repetiam a anterior igual, e com a suíte vermelha o dev não podia mudar código; o cartão dizia "**Verificação:** sem verify" (o estado) e o dev leu "não rode" (T-083, T-093); a T-090 parada em 🔴 deixou 6 arquivos no disco e a T-093 só fechou com um commit à mão (`6e84fcf`); às 19:21 de 18/11 outro projeto da máquina subiu um servidor do adb próprio e um emulador no meio da suíte do Karma — o emulador do piloto caiu e a suíte ficou 2,6× mais lenta — e o diagnóstico mandou abrir Task de configuração; o `validation.md` começado antes da v3.63.0 nunca chegou ao caminho por causa, e o `next` mandou abrir a Q-S6f com a Q-S6e aberta para os mesmos 21 cenários.
-**Classificação:** rota (a reprovação do `done` segue a natureza — script, operator, dev, ambiente; repetição idêntica escalona; uma `Q-S<n>` por vez; Q-S em 🔴 vai ao bloqueio) · instrumento (prova registrada e R12 escritos pelo script; checkpoint; `treeIgnore`; diagnóstico da máquina; trava pesada e `machine-lock.ps1`; `inputs` e `lastGreen`) · formato de documento (cartão em duas seções; tabela da rodada com `Cause`).
-
-### O que mudou
-| Documento | Seção | Mudança |
-|---|---|---|
-| `agents/task-runner.md` | O ciclo, passo 4a | a reprovação do `done` pela natureza: mecânica o script preenche · prova não rodada → operator, sem dev · vermelha ou escopo → dev normal, que pode mudar código · a mesma reprovação pela 2ª vez → Arquiteto (ou stakeholder, ambiente) |
-| `roles/developer/templates/delivery-report.md` | Documentos vivos · Ajustes na margem | sem a seção R12, o `done` a escreve; com o verify verde, a saída não precisa ser colada (`### Prova registrada`); a linha de margem que se lê é aviso |
-| `roles/quality-assurance/templates/sprint-validation.md` | Rodada 2 | a tabela da rodada é a dos achados (com `Cause` na coluna); o formato antigo converte os achados abertos |
-| `sprint-run.md` | §Validação do sprint · Correção do portão | uma `Q-S<n>` por vez, achados novos à aberta com o plano emendado pelo Arquiteto, `**Corrige:**` substitui, 🔴 vai ao bloqueio, o diagnóstico do operator é informação nova; checkpoint antes de medir; a suíte reaproveitada por `inputs` roda de fato na revisão final |
-| `how-to.md` | Alvos | um servidor do adb por máquina e uma porta de emulador por projeto; trabalho pesado um por vez (`machine-lock.ps1` para scripts do projeto); `inputs` da suíte; `treeIgnore` e o checkpoint |
-
-### Pendente do stakeholder
-Nada.
 
 ---

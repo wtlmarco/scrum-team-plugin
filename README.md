@@ -1,6 +1,6 @@
 # Time Scrum — Plugin do Claude Code
 
-> **Versão atual: v3.66.2** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
+> **Versão atual: v3.67.0** · o que entrou em cada entrega está em [`CHANGELOG.md`](CHANGELOG.md).
 > Versionamento de **entrega** no padrão `vMAJOR.MINOR.PATCH`; cada entrega sai numa branch `fix/vX.Y.Z` ou `feat/vX.Y.Z` a partir de `develop` (ou empilhada sobre a entrega anterior), via PR para `develop` e aprovação. `main` recebe `develop` quando o stakeholder consolida a linha estável. O [changelog do processo](roles/scrum-master/process/process-changelog.md) (`vX.Y`) é outra coisa: registra a evolução interna das regras.
 
 Este repositório **é o plugin**: um time Scrum completo — Scrum Master, Product Owner, Arquiteto, UX, Desenvolvedor e QA — que se instala em qualquer projeto para conduzir concepção, construção e manutenção.
@@ -107,7 +107,7 @@ Os **entregáveis** são a diferença entre um time que escreve código e um tim
 
 ```
 /sm     onboarding | sprint0 plan|run|review|area <área> | brainstorm <ideia> | sdd [<tema>] | sprint prepare | sprint plan | sprint run [<T-ID>] | sprint review | sprint close | board | agreement <questão> | consulting <domínio> <tema> | close <T-ID>    (review = alias de sprint review)
-/po     status | impact <mudança> | analyze <ideia> | requirement <ID> | story <H-ID> | prioritize | accept <H-ID> | bug <relato> | note
+/po     status | impact <mudança> | analyze [<pedido>] | requirement <ID> | story <H-ID> | prioritize | accept <H-ID>
 /arc    plan <T-ID> | adr <tema> | question <dúvida>
 /ux     prototype | prototype sprint <n> | prototype screen <tela> | journey <fluxo> | screen <nome> | review-ui <tela>
 /dev    <T-ID> | resume <T-ID> | gap <resposta do arquiteto>
@@ -135,8 +135,8 @@ O **SM não é canal de demanda** — é **processo, organização e eficiência
 | `/sm agreement <questão>` | O SM chama **só os papéis que a questão toca**, consolida **uma** recomendação e registra a divergência que sobrou | Questão que atravessa papéis e precisa de uma posição |
 | `/sm consulting <domínio> <tema>` | Segunda opinião **externa** (humano ou IA, do registro do projeto): os papéis do domínio escrevem a carta sanitizada, você a transporta, o time valida a resposta (até 3 réplicas) e você escolhe entre 3 opções em formulário (R32) | Decisão técnica especializada ou processo de uma área de negócio que o time não domina — **fora do `sprint run`** |
 | `/sm sprint0 plan · run · review` | **Sprint 0** — entre o onboarding e o primeiro sprint: o SDD do sistema **como ele é**, nos modelos e conferido pelo QA contra o código, e o ambiente de testes provado (comandos no `guards.json`, baseline, um cenário no alvo). Um formulário de escopo (áreas da 1ª onda) e um aceite (R35, [`workflow-sprint0.md`](roles/scrum-master/process/workflow-sprint0.md)); `area <área>` reabre para uma área nova | Projeto com código que vai receber backlog — antes do primeiro `/sm sprint prepare` |
-| `/sm brainstorm <ideia>` | Descoberta funcional de ideia sem documentação, facilitada pelo SM: fase 1 stakeholder + PO + UX; fase 2 entra o Arquiteto, em rodadas até fechar para o SDD (R15, [`workflow-ritos.md` §5b](roles/scrum-master/process/workflow-ritos.md)) | Ideia greenfield que ainda não tem visão, requisitos nem fluxos |
-| `/sm sdd [<tema>]` | Transição inteira para o SDD, depois do brainstorm (ideia nova) ou do `/po analyze` (área documentada): SDD funcional + protótipo → **① formulário** → SDD técnico da fatia → **② formulário** → Histórias no Product Backlog (R15, [`workflow-sdd.md` §5h](roles/scrum-master/process/workflow-sdd.md)) | Levar o brief até Histórias prontas para o `prepare`, com dois portões seus | UX (se há interface) → Arquiteto → dev → QA e fecha a Task no ✅, a fila inteira do sprint ou uma Task, parando no primeiro problema | Levar a fila (ou uma Task) do plano ao veredito, sem te acionar |
+| `/sm brainstorm <ideia>` | Descoberta funcional de um produto sem SDD, facilitada pelo SM: fase 1 stakeholder + PO + UX; fase 2 entra o Arquiteto, em rodadas até fechar para o SDD (R15, [`workflow-ritos.md` §5b](roles/scrum-master/process/workflow-ritos.md)) | Ideia greenfield que ainda não tem visão, requisitos nem fluxos |
+| `/sm sdd [<tema>]` | Transição inteira para o SDD, depois do brainstorm (produto novo, sem SDD): SDD funcional + protótipo → **① formulário** → SDD técnico da fatia → **② formulário** → Histórias no Product Backlog (R15, [`workflow-sdd.md` §5h](roles/scrum-master/process/workflow-sdd.md)) | Levar o brief até Histórias prontas para o `prepare`, com dois portões seus | UX (se há interface) → Arquiteto → dev → QA e fecha a Task no ✅, a fila inteira do sprint ou uma Task, parando no primeiro problema | Levar a fila (ou uma Task) do plano ao veredito, sem te acionar |
 
 **Acordo não é votação.** A propriedade dos papéis sobrevive à facilitação: requisito, valor, escopo e **prazo** são do PO; desenho é do Arquiteto; tela é do UX; evidência é do QA — os outros aconselham. Maioria não sobrepõe dono; divergência que sobra vira decisão sua. O SM facilita **porque não é dono de nenhum desses assuntos**.
 
@@ -147,9 +147,8 @@ Acordo e status **não escrevem em disco** — são conversa e leitura. O que vi
 ```
 [projeto novo/retomado] ──▶ /sm onboarding ──▶ entendimento alinhado + contexto do projeto  (uma vez, R14)
 [projeto com código]    ──▶ /sm sprint0 ──▶ SDD do sistema como é (conferido pelo QA) + ambiente de testes provado ──▶ aceite  (R35)
-[ideia sem documentação] ──▶ /sm brainstorm ──▶ fase 1 (PO+UX) ─▶ fase 2 (+Arquiteto) ─▶ brief  (R15)  ──▶ /sm sdd
-                                   │
-stakeholder ──▶ /po analyze ──▶ decisão + requisito  ──▶ /sm sdd  (área já documentada: só o delta)
+[sistema existente]     ──▶ /po analyze ──▶ A-ID + análise + Histórias ──▶ /sm sprint prepare  (② se estrutural; SDD na Task do SDD)
+[produto sem SDD]       ──▶ /sm brainstorm ──▶ fase 1 (PO+UX) ─▶ fase 2 (+Arquiteto) ─▶ brief  (R15)
                      │
                      ▼
               /sm sdd ──▶ SDD funcional (PO: 00,01,02)

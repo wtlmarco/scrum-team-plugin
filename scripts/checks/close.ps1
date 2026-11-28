@@ -53,6 +53,34 @@ try {
     }
     foreach ($t in $boardTables) { if ((Find-Col $t 'Plano') -ge 0 -and (Find-Col $t 'Cenários') -ge 0) { $taskTable = $t; break } }
 
+    # v3.67.0: a Task do SDD (Trilha sdd) fecha pela consolidação dos documentos vivos, não pela evidência do dev — não tem
+    # código, plano nem cenário. Fecha com a consolidação "feita", as linhas que citam a Task e o commit docs(sdd) feito, sem
+    # documento do Arquiteto que não mudou (o run.ps1 next só a manda fechar com os pedidos aos donos aplicados).
+    $sddMode = $false
+    if ($taskRow -and $taskTable) {
+        $tci = Find-Col $taskTable 'Trilha'
+        if ($tci -ge 0 -and ((Clean-Cell (Get-Cell $taskRow $tci)) -replace '[*`]', '').Trim().ToLowerInvariant() -eq 'sdd') { $sddMode = $true }
+    }
+    if ($sddMode) {
+        $consP = Join-Path $S 'docs-consolidation.md'
+        if (-not (Test-Path -LiteralPath $consP)) { Add-Result 'R7' 'falhou' "Task do SDD sem sprints/$n/docs-consolidation.md — a consolidação dos documentos vivos é que a executa (run.ps1 next, passo 5)" }
+        else {
+            $ct = Read-Text $consP
+            $cp = Get-ConsolidationTaskPaths $ct $Task
+            $dcj = $null; $dcp = Join-Path $S '.docs-check.json'; if (Test-Path -LiteralPath $dcp) { try { $dcj = Read-Text $dcp | ConvertFrom-Json } catch { } }
+            $gapsA = if ($dcj -and $dcj.PSObject.Properties['arch_gaps']) { @($dcj.arch_gaps | ForEach-Object { [string]$_ }) } else { @() }
+            $stuck = @($cp.Arch | Where-Object { $gapsA -contains $_ })
+            if ($ct -notmatch '(?m)^\*\*Estado:\*\*\s*feita') { Add-Result 'R7' 'falhou' 'consolidação ainda não está **Estado:** feita' }
+            elseif (-not ($cp.Arch.Count + $cp.Req.Count)) { Add-Result 'R7' 'falhou' "nenhuma linha de docs-consolidation.md cita a $Task (a coluna 'Task / decisão' ou 'Origem' cita o ID da Task do SDD)" }
+            elseif (-not ($dcj -and [string]$dcj.commit)) { Add-Result 'R7' 'falhou' 'consolidação sem o commit docs(sdd) — o run.ps1 next o faz' }
+            elseif ($stuck.Count) { Add-Result 'R7' 'falhou' "documento declarado pelo Arquiteto e sem mudança no sprint: $($stuck -join ', ')" }
+            else { Add-Result 'R7' 'ok' ("Task do SDD aplicada na consolidação (commit $([string]$dcj.commit)): " + ((@($cp.Arch) + @($cp.Req)) -join ', ')) }
+        }
+        Add-Result 'R12' 'ok' 'a Task do SDD é a própria atualização dos documentos vivos (R12, A5)'
+        foreach ($r in 'R7-verify', 'R7-mutação', 'R7-aceite', 'R30') { Add-Result $r 'n-a' 'Task do SDD (Trilha sdd): documentação, sem código nem cenário' }
+    }
+
+    if (-not $sddMode) {
     # Evidência: a rodada do QA mais recente — o primeiro bloco "## " que tem **Veredito:** (v3.48: nota ou revisão sem veredito
     # acima dela não esconde mais a rodada; antes, só o primeiro bloco contava e a revisão tinha de repetir o veredito).
     $evPath = Join-Path $S "evidence/$Task.md"
@@ -359,6 +387,8 @@ try {
         else { Add-Result 'R16' 'falhou' 'nenhuma citação de standards/ com § numerado — conferir se todo passo é "Standard aplicável: n/a" com motivo' }
     }
 
+    }   # v3.67.0: fim das regras de evidência e escopo (a Task do SDD segue em R20, R24 e R25)
+
     # ---------- R20 · Task com História; aprovação do pacote antes da construção ----------
     if (-not $story) { Add-Result 'R20' 'falhou' "$Task não está sob um cabeçalho '## História H-nnn' (nem '## Habilitadora') no quadro" }
     elseif ($story -eq 'habilitadora') { Add-Result 'R20' 'falhou' "$Task está sob '## Habilitadora' — Task sem História viola a R20: mova-a para baixo da primeira História que depende dela e cite-a em 'Depende de' nas outras (workflow-sprint.md §5e Planning, passo 4)" }
@@ -412,7 +442,8 @@ try {
         }
         $bdIssues = @()
         # Marcador acompanhado (sprint-run.md §Marcador): a Task fechada passou por 🟦, 🟨 e 🟪 no Registro.
-        $skipped = @($E.Plan, $E.Build, $E.QA | Where-Object { -not $reached.ContainsKey($_) })
+        # v3.67.0: a Task do SDD não passa por plano, construção nem teste — vai de ⬜ (ou 🔴) a ✅ pela consolidação.
+        $skipped = if ($sddMode) { @() } else { @($E.Plan, $E.Build, $E.QA | Where-Object { -not $reached.ContainsKey($_) }) }
         if ($closed -and $skipped.Count) { $bdIssues += "Registro sem a linha → " + ($skipped -join ', → ') + " de $Task (marcador não acompanhado)" }
         $bdPath = Get-RecordPath $S   # v3.60.0: consumption.md (ou kanban.md/burndown.md antes da mudança)
         if (Test-Path -LiteralPath $bdPath) {
@@ -480,6 +511,7 @@ try {
     }
     if ($r25.Count) { Add-Result 'R25' 'falhou' ($r25 -join '; ') } else { Add-Result 'R25' 'ok' 'pacote completo, aprovado; planning §5 preenchido; bloqueios com degrau' }
 
+    if (-not $sddMode) {   # v3.67.0: R26, R28 e R30 são da Task com plano e código
     # ---------- R26 · ambiente medido no plano (informativo) ----------
     if ($null -eq $plan) { Add-Result 'R26' 'n-a' 'sem plano' }
     else {
@@ -634,6 +666,7 @@ try {
             else { Add-Result 'R30' 'ok' ("resultado para " + ($allIds -join ', ')) }
         }
     }
+    }   # v3.67.0: fim das regras da Task com código (a Task do SDD fechou pelas regras acima)
 
     foreach ($r in 'R2', 'R6', 'R9', 'R21', 'R32') { Add-Result $r 'n-a' $(if ($r -eq 'R21') { 'aceite é da Review — conferido por C2' } else { 'julgamento' }) }
 
@@ -737,7 +770,8 @@ try {
         $okN = @($script:Results | Where-Object { $_.Resultado -eq 'ok' }).Count; $naN = @($script:Results | Where-Object { $_.Resultado -eq 'n-a' }).Count
         $failR = @($script:Results | Where-Object { $_.Resultado -eq 'falhou' } | ForEach-Object { $_.Regra })
         $evid = if ($devMode) { 'ver `sprints/' + $n + '/delivery/' + $Task + '.md` (dev) — portão do QA no fim do sprint' } else { 'ver `sprints/' + $n + '/evidence/' + $Task + '.md`' }
-        if ($hasVerify -and $vfull) { $evid = 'verify full ' + $vfull.at + ' — ' + ((@($vfull.commands) | ForEach-Object { "$($_.key) exit $($_.exit) (" + (@($_.decisive) | Select-Object -Last 1) + ')' }) -join '; ') }
+        if ($sddMode) { $evid = 'consolidação dos documentos vivos — `sprints/' + $n + '/docs-consolidation.md` (Task do SDD)' }
+        elseif ($hasVerify -and $vfull) { $evid = 'verify full ' + $vfull.at + ' — ' + ((@($vfull.commands) | ForEach-Object { "$($_.key) exit $($_.exit) (" + (@($_.decisive) | Select-Object -Last 1) + ')' }) -join '; ') }
         $nex = if ($evBlock) { $s = Get-Section $evBlock '^###\s+N[ãa]o exercitado'; if ($s) { (($s -split "`r?`n") | Where-Object { $_.Trim() } | Select-Object -First 1) } else { $null } } else { $null }
         $nfiles = if ($plan) { $pl = [regex]::Match($plan, '(?s)\*\*Arquivos tocados:\*\*(.*?)(?:\r?\n[ \t]*\r?\n|\r?\n#|\z)'); if ($pl.Success) { [regex]::Matches($pl.Groups[1].Value, '`[^`]+`').Count } else { '?' } } else { '?' }
         [Console]::Out.WriteLine('')

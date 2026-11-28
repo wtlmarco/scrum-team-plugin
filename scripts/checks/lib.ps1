@@ -2207,9 +2207,70 @@ function Get-SprintTasks([string]$S) {
         $div = ($from -eq 'plano') -and ((@($bScn | Sort-Object) -join ',') -ne (@($scn | Sort-Object) -join ',') -or (@($bTst | Sort-Object) -join ',') -ne (@($tst | Sort-Object) -join ','))
         # v3.57.3 (capacidade): a estimativa da coluna Est., em número (vírgula ou ponto); sem número, $null.
         $em = [regex]::Match((Clean-Cell (& $col 'Est')), '\d+(?:[.,]\d+)?'); $est = if ($em.Success) { [double]($em.Value -replace ',', '.') } else { $null }
-        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn; TestScenarios = $tst; ScenariosFrom = $from; BacklogScenarios = @($bScn + $bTst); ScenariosDiverge = [bool]$div; AcceptWaiver = $waiver; AcceptCommand = $acmd; Verification = $pver; Est = $est }
+        # v3.67.0: a Trilha do quadro (plena · leve · sdd). A Task do SDD (Trilha sdd) não vai ao dev: a consolidação a executa.
+        $track = ((Clean-Cell (& $col 'Trilha')) -replace '[*`]', '').Trim().ToLowerInvariant()
+        $tasks += [pscustomobject]@{ Id = $idm.Value; Title = (Clean-Cell (& $col 'Task')); Story = $story; Mark = $mk; Deps = $deps; Plan = $pp; Scenarios = $scn; TestScenarios = $tst; ScenariosFrom = $from; BacklogScenarios = @($bScn + $bTst); ScenariosDiverge = [bool]$div; AcceptWaiver = $waiver; AcceptCommand = $acmd; Verification = $pver; Est = $est; Track = $track }
     }
     return $tasks
+}
+# v3.67.0: a Task do SDD (Trilha `sdd`) — executada pela consolidação dos documentos vivos, nunca pelo dev.
+function Test-SddTask($Task) { return ($Task -and $Task.PSObject.Properties['Track'] -and [string]$Task.Track -eq 'sdd') }
+# v3.67.0: a análise A-<nnn> que a História cita na Origem (stories/H-<nnn>-*.md da fonte viva, ou a cópia congelada do
+# sprint). Devolve @{ Id; Path; Text; Changes (o "O que muda no SDD" não nulo); Delta (caminho do Delta técnico, ou '') } ou $null.
+function Get-StoryAnalysis([string]$Root, [string]$S, [string]$Story) {
+    if (-not $Story -or $Story -notmatch '^H-') { return $null }
+    $tp = Join-Path $Root '.team-project'
+    $cands = @(Get-ChildItem -LiteralPath (Join-Path $tp 'product-owner/stories') -Filter "$Story-*.md" -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
+    $frozen = Join-Path $S "stories/$Story.md"; if (Test-Path -LiteralPath $frozen) { $cands += $frozen }
+    $aid = $null
+    foreach ($c in $cands) { $m = [regex]::Match((Read-Text $c), '(?m)^\*\*Origem:\*\*[^\r\n]*?\b(A-\d+)\b'); if ($m.Success) { $aid = $m.Groups[1].Value; break } }
+    if (-not $aid) { return $null }
+    $ap = @(Get-ChildItem -LiteralPath (Join-Path $tp 'product-owner/analysis') -Filter "$aid-*.md" -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+    $atx = if ($ap.Count) { Read-Text $ap[0].FullName } else { '' }
+    $chg = [regex]::Match($atx, '(?m)^\*\*O que muda no SDD:\*\*\s*(.+)$')
+    $changes = $chg.Success -and $chg.Groups[1].Value -notmatch '(?i)^\s*"?delta nulo' -and $chg.Groups[1].Value.Trim() -notmatch '^<'
+    $dp = Join-Path $tp "architect/deltas/$aid.md"
+    return [pscustomobject]@{ Id = $aid; Path = $(if ($ap.Count) { $ap[0].FullName } else { '' }); Text = $atx; Changes = [bool]$changes; Delta = $(if (Test-Path -LiteralPath $dp) { $dp } else { '' }) }
+}
+# v3.67.0: as linhas da consolidação (docs-consolidation.md) que citam a Task do SDD — a 1ª célula dá os caminhos (entre
+# crases, como no Get-ConsolidationRows do run.ps1), e a linha cita o ID da Task em qualquer outra célula. @{ Arch; Req; Owners }:
+# Arch = caminhos de "## Aplicado pelo Arquiteto"; Req = caminhos de "## Pedidos aos donos"; Owners = caminho → dono.
+function Get-ConsolidationTaskPaths([string]$Text, [string]$TaskId) {
+    $sec = ''; $arch = @(); $req = @(); $own = @{}
+    $idRe = "(?<![\w-])$([regex]::Escape($TaskId))(?![\w-])"
+    foreach ($line in ($Text -split "`r?`n")) {
+        if ($line -match '^##\s+(.+?)\s*$') { $h = $Matches[1]; $sec = if ($h -match '(?i)^Aplicado pelo Arquiteto') { 'arch' } elseif ($h -match '(?i)^Pedidos aos donos') { 'req' } else { '' }; continue }
+        if (-not $sec -or $line -notmatch '^\s*\|') { continue }
+        $cells = @($line.Trim().Trim('|') -split '\|' | ForEach-Object { $_.Trim() })
+        if ($cells.Count -lt 2 -or $cells[0] -match '^:?-{2,}' -or $cells[0] -match '(?i)^documento$') { continue }
+        if (-not (@($cells[1..($cells.Count - 1)]) -join ' ' -match $idRe)) { continue }
+        $dir = ''
+        foreach ($m in [regex]::Matches($cells[0], '`([^`]+)`')) {
+            $p = ($m.Groups[1].Value -replace '\\', '/').Trim()
+            $p = ($p -replace '\s+§.*$', '' -replace '\s*\(.*$', '' -replace ':\d+.*$', '' -replace '#.*$', '').Trim()
+            if ($p -notmatch '\.\w{1,6}$') { continue }
+            if ($p -notmatch '/') { if ($dir) { $p = "$dir/$p" } else { continue } } elseif (-not $dir) { $dir = ($p -replace '/[^/]+$', '') }
+            if ($p -match '^\.team-project/') { continue }
+            if ($sec -eq 'arch') { $arch += $p } else { $req += $p; $own[$p] = ([string]$cells[-1] -replace '[*_`]', '').Trim() }
+        }
+    }
+    return @{ Arch = @($arch | Select-Object -Unique); Req = @($req | Select-Object -Unique); Owners = $own }
+}
+# v3.67.0: a decisão do portão ② da História no Delta técnico (tabela "## Portão ②"): 'aprovado' · 'ajuste' · 'reprovado' · ''.
+function Get-DeltaGateDecision([string]$DeltaPath, [string]$Story) {
+    if (-not $DeltaPath -or -not (Test-Path -LiteralPath $DeltaPath)) { return '' }
+    $sec = [regex]::Match((Read-Text $DeltaPath), '(?ms)^##\s+Port[ãa]o\s+②.*?(?=^##\s|\z)')
+    if (-not $sec.Success) { return '' }
+    foreach ($ln in ($sec.Value -split "`r?`n")) {
+        if ($ln -notmatch "^\|\s*\**$([regex]::Escape($Story))\b") { continue }
+        $cells = @(Split-Row $ln)
+        if ($cells.Count -lt 2) { continue }
+        $d = (Clean-Cell $cells[1]).ToLowerInvariant()
+        if ($d -match 'reprovad') { return 'reprovado' }
+        if ($d -match 'ajuste') { return 'ajuste' }
+        if ($d -match 'aprovad') { return 'aprovado' }
+    }
+    return ''
 }
 # v3.57.3: o plano da Task do sprint corrente — a coluna Plano do quadro; sem ela, sprints/<n>/plan/<T-ID>-*.md. '' sem plano.
 function Get-TaskPlanPath([string]$Root, [string]$Task) {

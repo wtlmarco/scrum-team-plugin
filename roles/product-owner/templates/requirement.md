@@ -43,12 +43,12 @@ Entra no documento de requisitos do projeto (caminho em `.team-project/README.md
 - <o que este requisito explicitamente NÃO cobre>
 
 **Impacto em requisitos existentes:** <ID alterado | nenhum>
-**O que muda (caso B do `/sm sdd`):** <seções e requisitos afetados do SDD funcional | "delta nulo — <motivo>">
+**Origem:** <brainstorm fechado em <data> | análise A-<nnn>>
 ```
 
 ## Regras
 
-- **"O que muda"** só se preenche quando o `/sm sdd` caso B despacha o requisito ([`workflow-sdd.md` §5h](../../scrum-master/process/workflow-sdd.md)). É o delta funcional que delimita o que o UX e o Arquiteto refazem e o que passa pelo ①. **Delta nulo** (evolução só técnica) exige o motivo e dispensa o ①; nunca por conveniência (R15).
+- **Requisito de evolução** (v3.67.0) nasce como **requisito proposto** na análise do `/po analyze` (`analysis/A-<nnn>-<slug>.md` §7), com o RF-ID reservado, e entra no `01-requirements` na **Task do SDD** do sprint, pela consolidação dos documentos vivos — nunca antes do ✅ do QA. O delta funcional fica no "O que muda no SDD" da análise.
 
 - Numeração **nunca reaproveitada**; requisito descontinuado é marcado, não apagado.
 - Grafia de entidade, campo e enum idêntica à especificação (R10).
