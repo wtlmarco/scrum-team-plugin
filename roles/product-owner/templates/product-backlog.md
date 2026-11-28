@@ -11,9 +11,11 @@ A declarada no contexto do projeto; na falta dela, a do padrão do papel ([`skil
 
 | # | ID | História | Valor para o usuário | Origem | Tamanho | Estado |
 |---:|---|---|---|---|---|---|
-| 1 | [H-<nnn>](stories/H-<nnn>-<slug>.md) | <título na voz do usuário> | <o que ele passa a conseguir fazer> | RF-<nnn> / GAP <ID> / Review <n> | P/M/G | esboço · detalhada · em sprint · entregue |
+| 1 | [H-<nnn>](stories/H-<nnn>-<slug>.md) | <título na voz do usuário> | <o que ele passa a conseguir fazer> | RF-<nnn> / A-<nnn> / GAP <ID> / Review <n> | P/M/G | esboço · detalhada · em sprint · entregue |
 
-**Estados.** `esboço` — nasceu do SDD, tem valor declarado. `detalhada` — tem regras, protótipos e critérios de aceite, pronta para o pacote de abertura de um sprint; **o ③ ainda não aconteceu** — ele é em lote, depois da Planning (R20 · R25). `em sprint` — entrou na Planning e foi **congelada** em `sprints/<n>/stories/H-nnn.md` na aprovação do pacote — é ali que o ③ desta História aconteceu. `entregue` — aceita na Sprint Review.
+**Origem `A-<nnn>`** (v3.67.0): a História nasceu de uma análise aprovada no `/po analyze` (evolução ou capacidade nova); a análise vive em `analysis/A-<nnn>-<slug>.md` e o índice de todos os pedidos em `demand-log.md`.
+
+**Estados.** `esboço` — nasceu do SDD ou de uma análise, tem valor declarado. `detalhada` — tem regras, protótipos e critérios de aceite, pronta para o pacote de abertura de um sprint; **o ③ ainda não aconteceu** — ele é em lote, depois da Planning (R20 · R25). `em sprint` — entrou na Planning e foi **congelada** em `sprints/<n>/stories/H-nnn.md` na aprovação do pacote — é ali que o ③ desta História aconteceu. `entregue` — aceita na Sprint Review.
 
 **Este documento é a fonte viva.** `sprints/<n>/stories/H-nnn.md` é uma **cópia congelada**, gravada na aprovação do pacote de abertura — mesmo ID, objeto diferente (R4 · R25). Editar a História aqui durante o sprint **não** altera o congelado; o ajuste concorre no Product Backlog e entra no sprint seguinte.
 
@@ -33,11 +35,7 @@ O conteúdo de cada História — regras funcionais, protótipos, critérios de 
 
 **Quando uma História desloca**, registre o motivo em uma linha. Deslocamento sem motivo escrito é o que faz o plano perder credibilidade antes de perder a data.
 
-## Requisitos em elaboração
-
-| RF | Título | Situação | Bloqueio |
-|---|---|---|---|
-| RF-<nnn> | <título> | rascunho / em análise / aprovado | <o que falta decidir> |
+> **Requisito em elaboração** (v3.67.0): não há mais tabela aqui. O requisito proposto vive na análise (`analysis/A-<nnn>-<slug>.md` §7) até a Task do SDD o levar ao `01-requirements`; o estado de cada pedido está em `demand-log.md`.
 
 ## Ressalvas e débitos vindos da Sprint Review
 

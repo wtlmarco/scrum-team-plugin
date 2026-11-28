@@ -63,7 +63,7 @@ Fecho: com todos ✅, o `next` manda `/clear` e `/sm sprint0 review`.
 2. **PO apresenta** em `sprints/0/review.md`: o que cada documento passou a dizer (uma linha por documento), os achados (documento antigo × código) e a **dívida** encontrada (`03` §0.1 e retornos), cada uma já como item do Product Backlog com a criticidade proposta. Áreas documentadas e o que ficou para depois.
 3. **Formulário único de aceite (R22):** aprovar · aprovar com ajuste (o ajuste vira item e volta ao `run`) · reprovar com o motivo · pedir mais contexto.
 4. Aprovado: `foundation.ps1 close -By "<quem>" -Decision "<decisão>"` — grava o aceite, move as áreas para **documentadas** e muda a linha `Sprint 0 (fundação)` para **concluído**. O PO registra a versão do SDD no `06-changelog` (já feito no item `06`) e a data no índice.
-5. Fecho: `/clear` e `/sm sprint prepare` (projeto retomado: o PO escreve as Histórias sobre o SDD aceito; melhoria nova segue `/po analyze` → `/sm sdd`).
+5. Fecho: `/clear` e `/sm sprint prepare` (projeto retomado: o PO escreve as Histórias sobre o SDD aceito; melhoria nova segue `/po analyze` → `/sm sprint prepare`).
 
 ## `/sm sprint0 area <área>`
 

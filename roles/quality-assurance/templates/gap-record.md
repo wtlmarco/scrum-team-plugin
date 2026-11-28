@@ -39,7 +39,7 @@ Distingue a entrada que o time resolve sozinho da que está parada esperando uma
 
 ### `História do aceite`
 
-Só em entrada `Origem: stakeholder`; em `time` a linha é omitida. Valor **transcrito do que o PO passou** ao acionar `/qa bug` (passo 6 do `/po bug`): `H-nnn` + sprint do aceite · `H-nnn · fora da janela` (relato além de 2 sprints do aceite; o ID fica e não conta como defeito que escapou) · `não identificada` · `não aplicável` (funcionalidade nunca aceita). O QA não reinterpreta; só resolve "não identificada" com evidência `arquivo:linha` registrada na própria linha. Fonte do indicador "defeito que escapou" (`pending.md` + este campo).
+Só em entrada `Origem: stakeholder`; em `time` a linha é omitida. Valor **transcrito do que o PO passou** ao acionar `/qa bug` (passo 5 do `/po analyze`): `H-nnn` + sprint do aceite · `H-nnn · fora da janela` (relato além de 2 sprints do aceite; o ID fica e não conta como defeito que escapou) · `não identificada` · `não aplicável` (funcionalidade nunca aceita). O QA não reinterpreta; só resolve "não identificada" com evidência `arquivo:linha` registrada na própria linha. Fonte do indicador "defeito que escapou" (`pending.md` + este campo).
 
 **Verificação:** toda entrada `Origem: stakeholder` tem a linha `História do aceite:` preenchida com um dos quatro valores. Comando de checagem: buscar cada bloco `### <ID>` com `Origem: stakeholder` e confirmar a linha. Ausente: formato incompleto, devolvida ao PO para informar o campo antes de contar no indicador.
 

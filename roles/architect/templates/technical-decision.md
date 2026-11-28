@@ -62,12 +62,14 @@ Resposta de `/arc question` quando o `/sm sprint prepare` a chama (**prepare, pa
 ```markdown
 ## Varredura técnica — sprint <n> · candidatas
 
-| História | Dependência técnica | Risco | Pré-requisito de ambiente | Bloqueia a Planning? |
-|---|---|---|---|---|
-| H-<nnn> | <o que precisa existir antes, com `arquivo:linha` — ou "nenhuma"> | <o que pode dar errado e o custo> | <declarado em `context.md` / medição vigente — ou "a medir na seção 3 do plano"> | não · **sim — <o que falta; destino: PO (funcional) ou Arquiteto (técnico)>** |
+| História | Dependência técnica | Risco | Pré-requisito de ambiente | Estrutural? | Bloqueia a Planning? |
+|---|---|---|---|---|---|
+| H-<nnn> | <o que precisa existir antes, com `arquivo:linha` — ou "nenhuma"> | <o que pode dar errado e o custo> | <declarado em `context.md` / medição vigente — ou "a medir na seção 3 do plano"> | <`sim — 04/05` + [delta](../deltas/A-<nnn>.md) · `não — <motivo>` · `n/a` (História sem Origem A-<nnn>)> | não · **sim — <o que falta; destino: PO (funcional) ou Arquiteto (técnico)>** |
 ```
 
-- **Sem passo, Task, estimativa nem desenho** — isso nasce na Planning e no `/arc plan`, depois do ③ (R20).
+- **A varredura é obrigatória para a História com Origem `A-<nnn>`** (v3.67.0) e continua opcional para as outras. A coluna **Estrutural?** é sua: `sim` quando o que a História pede toca `03`, `04` ou `05` (entidade, campo, migration, endpoint, contrato, componente). Com `sim`, escreva ou estenda **na mesma instância** o [Delta técnico](technical-delta.md) do A-ID — é ele que o stakeholder aprova no ②, no passo 7 do `prepare`. Com `não`, o motivo em uma linha.
+
+- **Sem passo, Task nem estimativa** — isso nasce na Planning e no `/arc plan`, depois do ③ (R20). O único desenho da varredura é o **Delta técnico** da História estrutural: o que muda em `03`/`04`/`05`, sem passo de implementação.
 - **Sem chamada ao `operator`** — a varredura não mede: ambiente não medido sai como "a medir na seção 3 do plano", que só nasce depois do ③ (R20 · R26).
 - Todo "sim" traz o destino; lacuna funcional vai ao PO, não é decidida aqui.
 

@@ -193,6 +193,9 @@ try {
         if ($cells[0] -eq 'ID') { $header = $cells; continue }
         if (-not $header -or $line -match '^\s*\|[\s:\-|]+\|\s*$') { continue }
         $id = [regex]::Match($cells[0], $idRe).Value; if (-not $id) { continue }
+        # v3.67.0: a Task do SDD (Trilha sdd) não é da fila do dev — a consolidação a executa; não conta como elegível.
+        $ti = [array]::IndexOf($header, 'Trilha')
+        if ($ti -ge 0 -and $ti -lt $cells.Count -and (($cells[$ti] -replace '[*`]', '').Trim().ToLowerInvariant() -eq 'sdd')) { continue }
         $di = [array]::IndexOf($header, ($header | Where-Object { $_ -like 'Depende*' } | Select-Object -First 1))
         $rows += [pscustomobject]@{ Id = $id; Cell = $cells[0]; Deps = $(if ($di -ge 0 -and $di -lt $cells.Count) { @([regex]::Matches($cells[$di], $idRe) | ForEach-Object { $_.Value }) } else { @() }) }
     }

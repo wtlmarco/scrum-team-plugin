@@ -8,7 +8,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 .team-project/
 ├── README.md                 ← este modelo · declara o SPRINT CORRENTE (§2)
 ├── how-to.md                 cópia de `${CLAUDE_PLUGIN_ROOT}/how-to.md` — guia de uso, não editar aqui
-├── note.md                   fila de relatos do stakeholder — escrita por ele, tratada pelo PO via `/po note`
+├── note.md                   fila de relatos do stakeholder — escrita por ele, tratada pelo PO via `/po analyze`
 ├── consumption.md            consumo fora de sprint (Nota pre-sprint;/entre-sprints;) — nasce vazio, sem rotação
 ├── operator/                 jobs do `operator` (report + log) — nasce sob demanda; SM verifica e poda
 ├── consulting/               casos de consultoria externa, C-<nnn>-<slug>/ — nasce sob demanda (R32)
@@ -35,7 +35,7 @@ Este é o modelo do **diretório de contexto** que o time lê para trabalhar num
 |---|---|
 | `README.md` | este documento |
 | `how-to.md` | cópia literal de `${CLAUDE_PLUGIN_ROOT}/how-to.md` |
-| `note.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/note.md` *(fila de relatos do stakeholder, tratada por `/po note`/`/po bug`)* |
+| `note.md` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/note.md` *(fila de relatos do stakeholder, tratada por `/po analyze`)* |
 | `sprints/<n>/planning.md` | `templates/planning.md` — **SM** *(decisões da Planning + o que não entrou, com o motivo — R25)* |
 | `sprints/<n>/sprint-backlog.md` | `templates/sprint-backlog.md` — **SM** *(vivo no sprint, com o pacote de abertura e o marcador de cada Task; fecha no `/sm sprint close`, sem cópia)* |
 | `sprints/<n>/stories/` | `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/user-story.md` — **PO** *(uma História por arquivo, congelada na aprovação do pacote)* |
@@ -164,7 +164,7 @@ Titular e alternativo podem ser **humano** (especialista) ou **IA**, em qualquer
 | Comando | Modos |
 |---|---|
 | `/sm` | `onboarding` · `sprint0 plan` · `sprint0 run` · `sprint0 review` · `sprint0 area <área>` · `brainstorm <ideia>` · `sdd [<tema>]` · `sprint prepare` · `sprint plan` · `sprint run [<T-ID>]` · `sprint review` *(alias: `review`)* · `sprint close` · `board` · `agreement <questão>` · `consulting <domínio> <tema>` · `close <T-ID>` |
-| `/po` | `status` · `impact <mudança>` · `analyze <ideia>` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` · `bug <relato>` · `note` |
+| `/po` | `status` · `impact <mudança>` · `analyze [<pedido>]` · `requirement <ID>` · `story <H-ID>` · `prioritize` · `accept <H-ID>` |
 | `/arc` | `plan <T-ID>` · `adr <tema>` · `question <dúvida>` |
 | `/ux` | `prototype` · `prototype sprint <n>` · `prototype screen <tela>` · `journey <fluxo>` · `screen <nome>` · `review-ui <tela>` |
 | `/dev` | `<T-ID>` · `resume <T-ID>` · `gap <resposta>` |
@@ -183,8 +183,8 @@ Titular e alternativo podem ser **humano** (especialista) ou **IA**, em qualquer
 |---|---|
 | **Projeto novo** | `/sm onboarding` → `/sm brainstorm <ideia>` → `/sm sdd` (SDD funcional + protótipo → ① → SDD técnico → ② → Histórias) → `/sm sprint0 plan` → `/sm sprint0 run` → `/sm sprint0 review` (o SDD conferido e o ambiente de testes montado) → `/sm sprint prepare` → `/sm sprint plan` → ③ (pacote aprovado) → `/sm sprint run` → `/sm sprint review` |
 | **Projeto retomado** | `/sm onboarding` (onde está a documentação, e ela serve?) → `/sm sprint0 plan` → `/sm sprint0 run` (o SDD do sistema como ele é, conferido pelo QA contra o código; ambiente de testes provado) → `/sm sprint0 review` (um aceite) → `/po story <H-ID>` → `/sm sprint prepare` → `/sm sprint plan` |
-| **Bug** | Relatado pelo stakeholder: `/po bug <relato>` ou `.team-project/note.md` via `/po note` (PO classifica, aciona a QA se for defeito). Achado pelo time: direto no registro da QA (🔺 GAP do dev · achado próprio da QA · §6b para Arquiteto/UX), sem passar pelo PO. Dos dois: `/arc question <dúvida>` (diagnóstico, se a causa não é óbvia) → `/arc plan <T-ID>` → `/dev <T-ID>` → `/qa <T-ID>` → `/sm close <T-ID>` → aceite na `/sm sprint review` |
-| **Melhoria** | `/po analyze` (área já documentada) ou `/sm brainstorm` (capacidade nova) → `/po impact` → `/sm sdd` → `/sm sprint prepare` → `/sm sprint plan` → `/sm sprint run` |
+| **Bug** | Relatado pelo stakeholder: `/po analyze <relato>` ou `.team-project/note.md` via `/po analyze` (PO classifica, aciona a QA se for defeito). Achado pelo time: direto no registro da QA (🔺 GAP do dev · achado próprio da QA · §6b para Arquiteto/UX), sem passar pelo PO. Dos dois: `/arc question <dúvida>` (diagnóstico, se a causa não é óbvia) → `/arc plan <T-ID>` → `/dev <T-ID>` → `/qa <T-ID>` → `/sm close <T-ID>` → aceite na `/sm sprint review` |
+| **Melhoria** | `/po analyze` (evolução ou capacidade nova num sistema existente; ② no `prepare` se estrutural) → `/sm sprint prepare` → `/sm sprint plan` (com a Task do SDD) → `/sm sprint run`. Produto novo, sem SDD: `/sm brainstorm` → `/sm sdd` |
 | **Fim de sprint** | `/sm sprint review` (PO conduz o aceite, o stakeholder decide por História) → `/sm sprint close` (retrospectiva) → `/sm sprint prepare` → `/sm sprint plan` (abre o próximo, e o ③ do próximo pacote) |
 
 Achado do QA volta pelo **degrau certo**: correção local → `/dev resume <ID>` · atravessa papéis → o QA roteia pelo dono, ou `/sm agreement` · o desenho não sustenta o requisito → `/arc question` · a dúvida é o critério → `/po`.

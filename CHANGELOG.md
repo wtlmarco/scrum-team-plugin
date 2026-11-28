@@ -13,6 +13,35 @@
 
 ---
 
+## v3.67.0 — 2026-11-27
+**Branch:** `feat/v3.67.0` a partir de `develop` (`a3a0269`) · **Plano:** `melhorias/plano-v3.67.0-entrada-unica-analyze.md` · **Processo:** v3.67
+
+Pedido do stakeholder (27/11): uma entrada só para o que ele pede, o `/sm sdd` só depois do brainstorm, e a Task de atualizar o SDD na Planning.
+
+**Entrada única — `/po analyze`.**
+- `/po note` e `/po bug` saem. `/po analyze <pedido>` analisa um pedido; `/po analyze` sem texto trata a fila do `.team-project/note.md`.
+- Cada pedido ganha um **A-ID** e uma linha no índice novo `.team-project/product-owner/demand-log.md`. Item com dois pedidos vira dois A-IDs.
+- Classificação: evolução · capacidade nova · defeito · ajuste · mudança em História do sprint (`/po impact`) · dúvida de uso · negado. Defeito e ajuste seguem a triagem da trilha `fix`, sem mudança de regra.
+- Evolução e capacidade nova aprovadas: a análise vai a `product-owner/analysis/A-<nnn>-<slug>.md`, e as Histórias nascem em esboço com **Origem `A-<nnn>`**. Na capacidade nova, o UX desenha o mapa da jornada inteira (sem protótipo).
+- O item do `note.md` com `[plugin]` no início é ocorrência do plugin: o analyze não o trata. O `impasse.ps1` e o `gate.ps1` passam a gravá-lo assim.
+
+**`/sm sdd` só para produto novo.** Brainstorm e `sdd` ficam para o produto sem SDD; o caso B do `sdd` saiu. Num sistema que já existe, o pedido vai do analyze ao `/sm sprint prepare`, e a aprovação funcional é o ③ do sprint.
+
+**Mudança estrutural com o ② — Delta técnico.**
+- No `prepare`, a varredura técnica passa a ser obrigatória para a História com Origem `A-<nnn>` e diz se ela é **estrutural** (toca `03`/`04`/`05`).
+- Estrutural: o Arquiteto escreve o **Delta técnico** `.team-project/architect/deltas/A-<nnn>.md` (modelo novo `technical-delta.md`: antes → depois, migration, compatibilidade, risco), e o stakeholder o aprova no ② no passo 7. Não é ADR.
+- **Regra 37 do `plan.ps1`:** o plano de uma Task de evolução com migration (ou caminho de `guards.json` → `structural.paths`) reprova sem a linha `aprovado` da História no Portão ② do delta.
+
+**Task do SDD (Trilha `sdd`).**
+- Na Planning, a História de evolução que muda o SDD ganha a Task `SDD da H-<nnn>`, a última da História, dono PO + Arquiteto, estimada.
+- Ela não vai ao dev: a **consolidação dos documentos vivos** (R12) a executa depois do portão do QA. O prompt do Arquiteto leva a análise e o delta; cada linha da consolidação cita a Task; o `run.ps1 next` a fecha pelo `close.ps1 -Apply` depois do commit `docs(sdd)`. Linha não aplicada: 🔴 e pendência da Review.
+- `run.ps1 next` para quando a História precisa da Task e não a tem; `run.ps1 start` recusa a Task `sdd`; a G20 não a conta como elegível.
+- **História rejeitada na Review:** `run.ps1 revert-docs -Story H-<nnn>` despacha o Arquiteto e o PO pelas linhas da Task e versiona a reversão.
+
+**Migração (`/team update` 7s):** cria o `demand-log.md`, troca o cabeçalho do `note.md` (os itens ficam), registra o `sdd` caso B aberto como pendência para o PO converter e lista a tabela antiga "Requisitos em elaboração".
+
+**Testes:** 15 casos novos na suíte de conferências (pré-condição, fila, consolidação, fechamento, reversão, regra 37) e 2 na das guardas (G21).
+
 ## v3.66.2 — 2026-11-25
 **Branch:** `fix/v3.66.2` a partir de `fix/v3.66.1` (`2c9370f`, a mesma árvore que entrou em `develop` pelo PR #227) · **Plano:** `melhorias/plano-v3.66.2.md` (itens A a F) · **Processo:** addendum v3.66.2
 

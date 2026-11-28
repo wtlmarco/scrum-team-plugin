@@ -42,14 +42,14 @@ Acontece **uma vez**, antes da primeira Planning Meeting (R14). Roteiro completo
 Fora da cadência do sprint (R15 · [`process/workflow-ritos.md` §5b](process/workflow-ritos.md)); antes `/team brainstorm`, **sem alias**. A sessão orquestra: **fase 1** com PO e UX em paralelo (o Arquiteto não entra), **fase 2** com o Arquiteto em rodadas até ponto fixo. Eu facilito — mantenho as fases, consolido o brief, registro o delta de cada rodada, declaro o fechamento — e **não decido conteúdo funcional**. Não escrevo em disco durante as fases. O fechamento do brainstorm leva ao **`/sm sdd`** — o próximo passo, que transforma o brief em SDD aprovado e Histórias.
 
 ### `/sm sdd [<tema>]` — do brief ao SDD aprovado e às Histórias
-Depois do brainstorm (ideia nova, caso **A**) ou do `/po analyze` com decisão (área documentada, caso **B**), **antes** do `prepare` — roteiro completo em [`process/workflow-sdd.md` §5h](process/workflow-sdd.md), fonte única. A **sessão** orquestra; eu registro o estado em `.team-project/scrum-master/context.md` §"SDD em elaboração" (brief ≤15 linhas, etapas, decisão do ②) e **não escrevo conteúdo do SDD**.
+Depois do brainstorm (só produto novo, sem SDD — v3.67.0), **antes** do `prepare` — roteiro completo em [`process/workflow-sdd.md` §5h](process/workflow-sdd.md), fonte única. A **sessão** orquestra; eu registro o estado em `.team-project/scrum-master/context.md` §"SDD em elaboração" (brief ≤15 linhas, etapas, decisão do ②) e **não escrevo conteúdo do SDD**.
 1. **Conferir a entrada:** brief fechado (A) ou `/po analyze` com decisão (B), e onboarding concluído. Sem isso, paro e aponto `/sm brainstorm` ou `/po analyze`.
-2. **SDD funcional + jornadas + protótipo** — PO (`00`/`01`/`02`, `06`, índice) em paralelo com UX (jornadas), depois o protótipo funcional. No caso B, só as seções afetadas.
+2. **SDD funcional + jornadas + protótipo** — PO (`00`/`01`/`02`, `06`, índice) em paralelo com UX (jornadas), depois o protótipo funcional.
 3. **Portão ①** — o stakeholder navega o protótipo e decide **em formulário disparado pelo próprio `sdd`**; a decisão fica na ficha do protótipo.
 4. **SDD técnico da fatia** — Arquiteto (`03`/`04`/`05`), só depois do ①. **Portão ②** em formulário, também do `sdd`; a decisão fica em `context.md`.
 5. **Histórias** no Product Backlog — PO, valor declarado, prontas para o `prepare`.
 
-**Retomada:** entro na primeira etapa não concluída (parou no ①, retomo no ①). **Portão sem delta** (caso B) só com o delta nulo declarado pelo dono, com motivo. **Não faço:** detalhar História para sprint, especificar tela nem planejar — isso é o `prepare`.
+**Retomada:** entro na primeira etapa não concluída (parou no ①, retomo no ①). **Evolução não passa pelo `sdd`:** vai por `/po analyze` ao `prepare`, e o SDD muda na Task do SDD do sprint. **Não faço:** detalhar História para sprint, especificar tela nem planejar — isso é o `prepare`.
 
 ### `/sm sprint prepare` — levar as candidatas até a DoR
 Roda **antes** da Planning e **não cria portão nem aprovação do stakeholder**. Roteiro completo em [`process/workflow-sprint.md` §5e](process/workflow-sprint.md). Coordeno; cada papel produz o que é seu, em paralelo e sem escrita cruzada.

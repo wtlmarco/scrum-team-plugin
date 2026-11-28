@@ -164,6 +164,21 @@ Os passos de migração das versões v3.20 a v3.49 (antigas §7a a §7j) saíram
 
 **Verificação do passo:** `… lean-session.ps1 -Check` sai com exit 0 (aplicada) ou o stakeholder escolheu não aplicar.
 
+## 7s. Uma entrada só para o que o stakeholder pede — `/po analyze` (v3.67.0)
+
+> Roda quando a versão instalada for anterior à `v3.67.0`, em qualquer projeto com `.team-project/`. **Sem formulário:** o passo cria um arquivo vazio, troca texto do plugin e lista o que o PO converte depois.
+
+**Por quê:** o `/po note` e o `/po bug` saíram, e o `/po analyze` passou a ser a entrada única (texto avulso ou a fila do `note.md`). A análise agora é gravada, cada pedido ganha um A-ID num índice, e a evolução de um sistema existente não passa mais pelo `/sm sdd`: vai ao `prepare`, com o ② do Delta técnico quando é estrutural e o SDD atualizado na Task do SDD do sprint.
+
+1. **Crie** `.team-project/product-owner/demand-log.md` a partir de `${CLAUDE_PLUGIN_ROOT}/roles/product-owner/templates/demand-log.md` (só o bloco do índice, com a tabela vazia), se ainda não existe. `analysis/` e `architect/deltas/` nascem no primeiro uso.
+2. **`note.md`:** troque só o **cabeçalho** (do início até `## Abertas`, exclusive) e a seção `## Como este arquivo é fechado` pelo texto do modelo novo — é texto do plugin. **Os itens de `## Abertas` não mudam.** Diga em uma linha.
+3. **`/sm sdd` caso B aberto** (`scrum-master/context.md` §"SDD em elaboração" com `caso: B` e etapa não ✅): **não converta aqui**. Registre em `.team-project/README.md` §7 a pendência "o `sdd` em elaboração era de evolução (caso B, que saiu na v3.67.0): converter no próximo `/po analyze`" e diga ao stakeholder em uma linha o que acontece: com o ② já aprovado, as Histórias ganham Origem `A-<nnn>` e o Arquiteto cria o Delta técnico a partir do `03`/`04`/`05` aprovado; antes do ①, o PO refaz a análise no formato novo.
+4. **Product Backlog com a tabela "Requisitos em elaboração"** preenchida: não apague. Liste as linhas em uma frase ("o PO converte em A-ID no próximo `/po analyze`"); a tabela saiu do modelo, e o passo 8 trata a diferença de estrutura.
+5. **Histórias já no backlog** (Origem RF-<nnn>) **e sprint em andamento:** nada muda. Vieram de SDD aprovado e passam no `prepare`; a Trilha `sdd` só aparece na próxima Planning.
+6. **Diga também**, em uma linha: `/po note` e `/po bug` viraram `/po analyze`; `guards.json` → `structural.paths` (opcional) lista as pastas de contrato do projeto que a regra 37 do `plan.ps1` trata como mudança estrutural — sem ela, vale só a migration.
+
+**Verificação do passo:** `.team-project/product-owner/demand-log.md` existe e o cabeçalho do `.team-project/note.md` cita `/po analyze`.
+
 ## 8. Reconcilie o `.team-project/` com os modelos novos
 
 Atualizar o plugin atualiza `${CLAUDE_PLUGIN_ROOT}` — e **só isso**. Tudo que o `/team init` instanciou a partir de um modelo (`.team-project/how-to.md`, o quadro, o Product Backlog, o registro de evidências, o `README.md`) continua como estava no dia da instalação, e **deriva em silêncio a cada versão nova**. Este passo fecha esse buraco.
